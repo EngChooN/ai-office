@@ -1,0 +1,659 @@
+import { DatabaseSync } from 'node:sqlite'
+import type { AutoApproveConfig } from '../shared/autoApprove'
+import { app } from 'electron'
+import path from 'node:path'
+import {
+  DEFAULT_EQUIPMENT,
+  type Attachment,
+  type SecretaryCard,
+  type SecretaryMessage,
+  type AutoApproveState,
+  type AutoHandled,
+  withSettingsDefaults,
+  type Equipment,
+  type Lab,
+  type ProcessRun,
+  type ChatMessage,
+  type HireInput,
+  type LogEntry,
+  type LogType,
+  type Meeting,
+  type ModelChoice,
+  type PlanUsage,
+  type Schedule,
+  type Settings,
+  type Staff,
+  type Task,
+  type Team,
+} from '../shared/types'
+import { EMPTY_SHOP, type LedgerEntry, type LedgerKind, type ShopState } from '../shared/economy'
+import type { RemoteConfig } from './remote/service.ts'
+import { settleGrid } from './shopGrid.ts'
+import { grantedLevels, grantedZones, runIsoMigration, runLevelGrants } from './isoMigrate.ts'
+
+// 사무실의 모든 영속 데이터는 사용자 데이터 폴더의 office.db 한 파일에 둔다
+let db: DatabaseSync
+
+export function openDb() {
+  db = new DatabaseSync(path.join(app.getPath('userData'), 'office.db'))
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS staff (
+      id TEXT PRIMARY KEY, name TEXT NOT NULL, role TEXT NOT NULL, avatar INTEGER NOT NULL,
+      model TEXT NOT NULL, cwd TEXT NOT NULL, system_prompt TEXT NOT NULL, approval_mode TEXT NOT NULL,
+      session_id TEXT, desk_index INTEGER NOT NULL, hired_at INTEGER NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, staff_id TEXT NOT NULL, ts INTEGER NOT NULL, type TEXT NOT NULL, text TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS log_staff_ts ON log (staff_id, ts);
+    CREATE INDEX IF NOT EXISTS log_ts ON log (ts);
+    CREATE TABLE IF NOT EXISTS usage (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, staff_id TEXT NOT NULL, ts INTEGER NOT NULL,
+      cost_usd REAL NOT NULL, tokens_in INTEGER NOT NULL, tokens_out INTEGER NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS team (
+      id TEXT PRIMARY KEY, name TEXT NOT NULL, color TEXT NOT NULL, lead_id TEXT, created_at INTEGER NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS task (
+      id TEXT PRIMARY KEY, title TEXT NOT NULL, detail TEXT NOT NULL, status TEXT NOT NULL,
+      assignee_id TEXT, team_id TEXT, result TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS meeting (id TEXT PRIMARY KEY, data TEXT NOT NULL, created_at INTEGER NOT NULL);
+    CREATE TABLE IF NOT EXISTS schedule (
+      id TEXT PRIMARY KEY, staff_id TEXT NOT NULL, label TEXT NOT NULL, time TEXT NOT NULL, weekdays TEXT NOT NULL,
+      instruction TEXT NOT NULL, enabled INTEGER NOT NULL, last_run_date TEXT
+    );
+    CREATE TABLE IF NOT EXISTS chat (id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER NOT NULL, sender TEXT NOT NULL, text TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS setting (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS lab (id TEXT PRIMARY KEY, data TEXT NOT NULL, created_at INTEGER NOT NULL);
+    CREATE TABLE IF NOT EXISTS run (id TEXT PRIMARY KEY, data TEXT NOT NULL, created_at INTEGER NOT NULL);
+    CREATE TABLE IF NOT EXISTS secretary_message (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER NOT NULL, role TEXT NOT NULL, text TEXT NOT NULL, card TEXT, target TEXT, tokens INTEGER, is_error INTEGER
+    );
+    CREATE TABLE IF NOT EXISTS ledger (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER NOT NULL, amount INTEGER NOT NULL, kind TEXT NOT NULL, label TEXT NOT NULL, key TEXT UNIQUE
+    );
+  `)
+  const staffCols = (db.prepare('PRAGMA table_info(staff)').all() as { name: string }[]).map((c) => c.name)
+  if (!staffCols.includes('team_id')) db.exec('ALTER TABLE staff ADD COLUMN team_id TEXT')
+  if (!staffCols.includes('equipment')) db.exec('ALTER TABLE staff ADD COLUMN equipment TEXT')
+  // 참고 문서(JSON 배열). 랩은 data JSON 안에 함께 저장된다
+  if (!staffCols.includes('ref_docs')) db.exec('ALTER TABLE staff ADD COLUMN ref_docs TEXT')
+  const taskCols = (db.prepare('PRAGMA table_info(task)').all() as { name: string }[]).map((c) => c.name)
+  if (!taskCols.includes('lab_id')) db.exec('ALTER TABLE task ADD COLUMN lab_id TEXT')
+  if (!taskCols.includes('parent_id')) db.exec('ALTER TABLE task ADD COLUMN parent_id TEXT')
+  if (!taskCols.includes('plan')) db.exec('ALTER TABLE task ADD COLUMN plan TEXT')
+  if (!taskCols.includes('meeting_id')) db.exec('ALTER TABLE task ADD COLUMN meeting_id TEXT')
+  // 첨부(JSON 배열)는 로그·단체방·업무 카드에 붙는다
+  const teamCols = (db.prepare('PRAGMA table_info(team)').all() as { name: string }[]).map((c) => c.name)
+  if (!teamCols.includes('manuals')) db.exec('ALTER TABLE team ADD COLUMN manuals TEXT')
+  if (!teamCols.includes('ref_docs')) db.exec('ALTER TABLE team ADD COLUMN ref_docs TEXT')
+  // 팀 자리가 있는 층 (NULL = 1층)
+  if (!teamCols.includes('floor')) db.exec('ALTER TABLE team ADD COLUMN floor INTEGER')
+  for (const table of ['log', 'chat', 'task']) {
+    const cols = (db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).map((c) => c.name)
+    if (!cols.includes('attachments')) db.exec(`ALTER TABLE ${table} ADD COLUMN attachments TEXT`)
+  }
+}
+
+const run = (sql: string, ...params: (string | number | null)[]) => db.prepare(sql).run(...params)
+const all = <T>(sql: string, ...params: (string | number | null)[]) => db.prepare(sql).all(...params) as unknown as T[]
+const get = <T>(sql: string, ...params: (string | number | null)[]) => db.prepare(sql).get(...params) as unknown as T | undefined
+/** JSON 배열 열 (NULL이면 빈 목록) */
+const parseList = (raw: string | null): string[] => (raw ? (JSON.parse(raw) as string[]) : [])
+
+// ── 직원 ────────────────────────────────────────────────
+
+interface StaffRow {
+  id: string
+  name: string
+  role: string
+  avatar: number
+  model: string
+  cwd: string
+  system_prompt: string
+  approval_mode: string
+  session_id: string | null
+  desk_index: number
+  hired_at: number
+  team_id: string | null
+  equipment: string | null
+  ref_docs: string | null
+}
+
+export type StoredStaff = Omit<Staff, 'stats' | 'meetingId' | 'labIds' | 'statusSince' | 'todayDone'>
+
+export function loadHiredStaff(): StoredStaff[] {
+  return all<StaffRow>('SELECT * FROM staff ORDER BY hired_at').map((r) => {
+    const total = usageSince(r.id, 0)
+    return {
+      id: r.id,
+      kind: 'hired',
+      name: r.name,
+      role: r.role,
+      avatar: r.avatar,
+      model: r.model as Staff['model'],
+      cwd: r.cwd,
+      ownCwd: r.cwd,
+      systemPrompt: r.system_prompt,
+      approvalMode: r.approval_mode as Staff['approvalMode'],
+      sessionId: r.session_id,
+      teamId: r.team_id,
+      equipment: r.equipment ? { ...DEFAULT_EQUIPMENT, ...(JSON.parse(r.equipment) as Partial<Equipment>) } : DEFAULT_EQUIPMENT,
+      refDocs: parseList(r.ref_docs),
+      pid: null,
+      status: 'idle',
+      activity: '',
+      approvals: [],
+      costUsd: total.costUsd,
+      tokensIn: total.tokensIn,
+      tokensOut: total.tokensOut,
+      deskIndex: r.desk_index,
+      hiredAt: r.hired_at,
+    }
+  })
+}
+
+export function insertStaff(id: string, input: HireInput, deskIndex: number, hiredAt: number) {
+  run(
+    `INSERT INTO staff (id, name, role, avatar, model, cwd, system_prompt, approval_mode, session_id, desk_index, hired_at, team_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?)`,
+    id, input.name, input.role, input.avatar, input.model, input.cwd, input.systemPrompt, input.approvalMode, deskIndex, hiredAt, input.teamId,
+  )
+}
+
+export function updateStaffRow(id: string, patch: { teamId?: string | null; name?: string; role?: string; model?: ModelChoice; avatar?: number; systemPrompt?: string; cwd?: string }) {
+  if (patch.teamId !== undefined) run('UPDATE staff SET team_id = ? WHERE id = ?', patch.teamId, id)
+  if (patch.name !== undefined) run('UPDATE staff SET name = ? WHERE id = ?', patch.name, id)
+  if (patch.role !== undefined) run('UPDATE staff SET role = ? WHERE id = ?', patch.role, id)
+  if (patch.model !== undefined) run('UPDATE staff SET model = ? WHERE id = ?', patch.model, id)
+  if (patch.avatar !== undefined) run('UPDATE staff SET avatar = ? WHERE id = ?', patch.avatar, id)
+  if (patch.cwd !== undefined) run('UPDATE staff SET cwd = ? WHERE id = ?', patch.cwd, id)
+  if (patch.systemPrompt !== undefined) run('UPDATE staff SET system_prompt = ? WHERE id = ?', patch.systemPrompt, id)
+}
+
+export function saveStaffRefDocs(id: string, docs: string[]) {
+  run('UPDATE staff SET ref_docs = ? WHERE id = ?', JSON.stringify(docs), id)
+}
+
+export function saveEquipment(id: string, equipment: Equipment) {
+  run('UPDATE staff SET equipment = ? WHERE id = ?', JSON.stringify(equipment), id)
+}
+
+export function deleteStaff(id: string) {
+  run('DELETE FROM staff WHERE id = ?', id)
+  run('DELETE FROM schedule WHERE staff_id = ?', id)
+  run('UPDATE task SET assignee_id = NULL WHERE assignee_id = ?', id)
+  run('UPDATE team SET lead_id = NULL WHERE lead_id = ?', id)
+}
+
+export function saveSessionId(id: string, sessionId: string | null) {
+  run('UPDATE staff SET session_id = ? WHERE id = ?', sessionId, id)
+}
+
+// ── 로그·사용량 ─────────────────────────────────────────
+
+interface LogRow {
+  id: number
+  staff_id: string
+  ts: number
+  type: LogType
+  text: string
+  attachments: string | null
+}
+const parseAttachments = (raw: string | null): Attachment[] | undefined => (raw ? (JSON.parse(raw) as Attachment[]) : undefined)
+const toLog = (r: LogRow): LogEntry => ({ id: r.id, staffId: r.staff_id, ts: r.ts, type: r.type, text: r.text, attachments: parseAttachments(r.attachments) })
+
+export function insertLog(staffId: string, type: LogType, text: string, attachments?: Attachment[]): LogEntry {
+  const ts = Date.now()
+  const raw = attachments?.length ? JSON.stringify(attachments) : null
+  const { lastInsertRowid } = run('INSERT INTO log (staff_id, ts, type, text, attachments) VALUES (?, ?, ?, ?, ?)', staffId, ts, type, text, raw)
+  return { id: Number(lastInsertRowid), staffId, ts, type, text, attachments: attachments?.length ? attachments : undefined }
+}
+
+export function logsSince(staffId: string, since: number): LogEntry[] {
+  return all<LogRow>('SELECT * FROM log WHERE staff_id = ? AND ts >= ? ORDER BY ts', staffId, since).map(toLog)
+}
+
+export function allLogsBetween(since: number, until: number): LogEntry[] {
+  return all<LogRow>('SELECT * FROM log WHERE ts >= ? AND ts < ? ORDER BY ts', since, until).map(toLog)
+}
+
+/** 성장 지표용: 직원별 로그 종류 개수 */
+export function logCounts(): { staffId: string; type: LogType; n: number }[] {
+  return all<{ staff_id: string; type: LogType; n: number }>('SELECT staff_id, type, COUNT(*) n FROM log GROUP BY staff_id, type').map((r) => ({
+    staffId: r.staff_id,
+    type: r.type,
+    n: r.n,
+  }))
+}
+
+export function insertUsage(staffId: string, costUsd: number, tokensIn: number, tokensOut: number) {
+  run('INSERT INTO usage (staff_id, ts, cost_usd, tokens_in, tokens_out) VALUES (?, ?, ?, ?, ?)', staffId, Date.now(), costUsd, tokensIn, tokensOut)
+}
+
+export function usageSince(staffId: string, since: number, until = Number.MAX_SAFE_INTEGER) {
+  const row = get<{ c: number; i: number; o: number }>(
+    'SELECT COALESCE(SUM(cost_usd), 0) c, COALESCE(SUM(tokens_in), 0) i, COALESCE(SUM(tokens_out), 0) o FROM usage WHERE staff_id = ? AND ts >= ? AND ts < ?',
+    staffId, since, until,
+  )!
+  return { costUsd: row.c, tokensIn: row.i, tokensOut: row.o }
+}
+
+/** 기간 전체(전 직원) 사용량 합계 */
+export function usageTotalBetween(since: number, until: number) {
+  const row = get<{ c: number; i: number; o: number }>(
+    'SELECT COALESCE(SUM(cost_usd), 0) c, COALESCE(SUM(tokens_in), 0) i, COALESCE(SUM(tokens_out), 0) o FROM usage WHERE ts >= ? AND ts < ?',
+    since, until,
+  )!
+  return { costUsd: row.c, tokensIn: row.i, tokensOut: row.o }
+}
+
+export function usageByStaffBetween(since: number, until: number) {
+  return all<{ staff_id: string; c: number; i: number; o: number }>(
+    'SELECT staff_id, SUM(cost_usd) c, SUM(tokens_in) i, SUM(tokens_out) o FROM usage WHERE ts >= ? AND ts < ? GROUP BY staff_id',
+    since, until,
+  )
+}
+
+export function resultCountBetween(staffId: string, since: number, until: number) {
+  return get<{ n: number }>("SELECT COUNT(*) n FROM log WHERE staff_id = ? AND type = 'result' AND ts >= ? AND ts < ?", staffId, since, until)!.n
+}
+
+// ── 팀 ──────────────────────────────────────────────────
+
+export function loadTeams(): Team[] {
+  return all<{ id: string; name: string; color: string; lead_id: string | null; manuals: string | null; ref_docs: string | null; floor: number | null }>('SELECT * FROM team ORDER BY created_at').map((r) => ({
+    id: r.id,
+    name: r.name,
+    color: r.color,
+    leadId: r.lead_id,
+    kind: 'hired',
+    manuals: parseList(r.manuals),
+    refDocs: parseList(r.ref_docs),
+    floor: r.floor ?? 1,
+  }))
+}
+
+export function insertTeam(t: Team) {
+  run('INSERT INTO team (id, name, color, lead_id, created_at) VALUES (?, ?, ?, ?, ?)', t.id, t.name, t.color, t.leadId, Date.now())
+}
+
+export function updateTeamRow(t: Team) {
+  run(
+    'UPDATE team SET name = ?, color = ?, lead_id = ?, manuals = ?, ref_docs = ?, floor = ? WHERE id = ?',
+    t.name, t.color, t.leadId, JSON.stringify(t.manuals ?? []), JSON.stringify(t.refDocs ?? []), t.floor ?? 1, t.id,
+  )
+}
+
+export function deleteTeamRow(id: string) {
+  run('DELETE FROM team WHERE id = ?', id)
+  run('UPDATE staff SET team_id = NULL WHERE team_id = ?', id)
+  run('UPDATE task SET team_id = NULL WHERE team_id = ?', id)
+}
+
+// ── 업무 보드 ───────────────────────────────────────────
+
+interface TaskRow {
+  id: string
+  title: string
+  detail: string
+  status: Task['status']
+  assignee_id: string | null
+  team_id: string | null
+  result: string
+  created_at: number
+  updated_at: number
+  lab_id: string | null
+  attachments: string | null
+  parent_id: string | null
+  plan: string | null
+  meeting_id: string | null
+}
+
+export function loadTasks(): Task[] {
+  return all<TaskRow>('SELECT * FROM task ORDER BY created_at').map((r) => ({
+    id: r.id,
+    title: r.title,
+    detail: r.detail,
+    status: r.status,
+    assigneeId: r.assignee_id,
+    teamId: r.team_id,
+    labId: r.lab_id,
+    attachments: parseAttachments(r.attachments),
+    result: r.result,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+    parentId: r.parent_id,
+    plan: r.plan ? (JSON.parse(r.plan) as Task['plan']) : null,
+    meetingId: r.meeting_id ?? null,
+  }))
+}
+
+export function upsertTask(t: Task) {
+  run(
+    `INSERT INTO task (id, title, detail, status, assignee_id, team_id, result, created_at, updated_at, lab_id, attachments, parent_id, plan, meeting_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET title = excluded.title, detail = excluded.detail, status = excluded.status, assignee_id = excluded.assignee_id,
+       team_id = excluded.team_id, result = excluded.result, updated_at = excluded.updated_at, lab_id = excluded.lab_id, attachments = excluded.attachments,
+       parent_id = excluded.parent_id, plan = excluded.plan, meeting_id = excluded.meeting_id`,
+    t.id, t.title, t.detail, t.status, t.assigneeId, t.teamId, t.result, t.createdAt, t.updatedAt, t.labId, t.attachments?.length ? JSON.stringify(t.attachments) : null,
+    t.parentId ?? null, t.plan ? JSON.stringify(t.plan) : null, t.meetingId ?? null,
+  )
+}
+
+export function deleteTaskRow(id: string) {
+  run('DELETE FROM task WHERE id = ?', id)
+}
+
+// ── 회의 ────────────────────────────────────────────────
+
+export function loadMeetings(limit: number): Meeting[] {
+  return all<{ data: string }>('SELECT data FROM meeting ORDER BY created_at DESC LIMIT ?', limit).map((r) => JSON.parse(r.data) as Meeting)
+}
+
+export function saveMeeting(m: Meeting) {
+  run('INSERT INTO meeting (id, data, created_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data', m.id, JSON.stringify(m), m.createdAt)
+}
+
+// ── 예약 업무 ───────────────────────────────────────────
+
+export function loadSchedules(): Schedule[] {
+  return all<{ id: string; staff_id: string; label: string; time: string; weekdays: string; instruction: string; enabled: number; last_run_date: string | null }>(
+    'SELECT * FROM schedule ORDER BY time',
+  ).map((r) => ({
+    id: r.id,
+    staffId: r.staff_id,
+    label: r.label,
+    time: r.time,
+    weekdays: JSON.parse(r.weekdays) as number[],
+    instruction: r.instruction,
+    enabled: r.enabled === 1,
+    lastRunDate: r.last_run_date,
+  }))
+}
+
+export function upsertSchedule(s: Schedule) {
+  run(
+    `INSERT INTO schedule (id, staff_id, label, time, weekdays, instruction, enabled, last_run_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET staff_id = excluded.staff_id, label = excluded.label, time = excluded.time, weekdays = excluded.weekdays,
+       instruction = excluded.instruction, enabled = excluded.enabled, last_run_date = excluded.last_run_date`,
+    s.id, s.staffId, s.label, s.time, JSON.stringify(s.weekdays), s.instruction, s.enabled ? 1 : 0, s.lastRunDate,
+  )
+}
+
+export function deleteScheduleRow(id: string) {
+  run('DELETE FROM schedule WHERE id = ?', id)
+}
+
+// ── 단체방 ──────────────────────────────────────────────
+
+export function insertChat(from: string, text: string, attachments?: Attachment[]): ChatMessage {
+  const ts = Date.now()
+  const raw = attachments?.length ? JSON.stringify(attachments) : null
+  const { lastInsertRowid } = run('INSERT INTO chat (ts, sender, text, attachments) VALUES (?, ?, ?, ?)', ts, from, text, raw)
+  return { id: Number(lastInsertRowid), ts, from, text, attachments: attachments?.length ? attachments : undefined }
+}
+
+export function recentChat(limit: number): ChatMessage[] {
+  return all<{ id: number; ts: number; sender: string; text: string; attachments: string | null }>('SELECT * FROM chat ORDER BY id DESC LIMIT ?', limit)
+    .reverse()
+    .map((r) => ({ id: r.id, ts: r.ts, from: r.sender, text: r.text, attachments: parseAttachments(r.attachments) }))
+}
+
+// ── 비서 대화 ───────────────────────────────────────────
+
+interface SecretaryRow {
+  id: number
+  ts: number
+  role: SecretaryMessage['role']
+  text: string
+  card: string | null
+  target: string | null
+  tokens: number | null
+  is_error: number | null
+}
+
+const toSecretaryMessage = (r: SecretaryRow): SecretaryMessage & { target?: unknown } => ({
+  id: r.id,
+  ts: r.ts,
+  role: r.role,
+  text: r.text,
+  ...(r.card ? { card: JSON.parse(r.card) as SecretaryCard } : {}),
+  ...(r.target ? { target: JSON.parse(r.target) as unknown } : {}),
+  ...(r.tokens ? { tokens: r.tokens } : {}),
+  ...(r.is_error ? { isError: true } : {}),
+})
+
+export function insertSecretaryMessage(m: Omit<SecretaryMessage, 'id'>, target?: unknown): SecretaryMessage {
+  const { lastInsertRowid } = run(
+    'INSERT INTO secretary_message (ts, role, text, card, target, tokens, is_error) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    m.ts, m.role, m.text, m.card ? JSON.stringify(m.card) : null, target ? JSON.stringify(target) : null, m.tokens ?? null, m.isError ? 1 : null,
+  )
+  return { ...m, id: Number(lastInsertRowid) }
+}
+
+export function updateSecretaryMessage(m: SecretaryMessage) {
+  run('UPDATE secretary_message SET text = ?, card = ?, tokens = ?, is_error = ? WHERE id = ?', m.text, m.card ? JSON.stringify(m.card) : null, m.tokens ?? null, m.isError ? 1 : null, m.id)
+}
+
+/** 보관 기간 안의 대화 (오래된 것은 지운다) */
+export function loadSecretaryMessages(keepSince: number, limit: number) {
+  run('DELETE FROM secretary_message WHERE ts < ?', keepSince)
+  return all<SecretaryRow>('SELECT * FROM secretary_message ORDER BY id DESC LIMIT ?', limit).reverse().map(toSecretaryMessage)
+}
+
+export function clearSecretaryMessages() {
+  run('DELETE FROM secretary_message')
+}
+
+/** 비서 세션: 이어 쓰는 세션 id와 시작 시각·질문 수(길어지면 새로), 마지막으로 본 누적 비용·토큰(차이만 쌓는다) */
+export interface StoredSecretarySession {
+  id: string
+  startedAt: number
+  turns: number
+  cost: number
+  tokensIn: number
+  tokensOut: number
+}
+
+export function loadSecretarySession(): StoredSecretarySession | null {
+  const raw = get<{ value: string }>("SELECT value FROM setting WHERE key = 'secretarySession'")?.value
+  if (!raw) return null
+  try {
+    const v = JSON.parse(raw) as StoredSecretarySession
+    return typeof v?.id === 'string' ? v : null
+  } catch {
+    // 예전에는 id 글자만 저장했다 — 새 세션으로
+    return null
+  }
+}
+
+export function saveSecretarySession(s: StoredSecretarySession | null) {
+  run("INSERT INTO setting (key, value) VALUES ('secretarySession', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", s ? JSON.stringify(s) : '')
+}
+
+// ── 설정 ────────────────────────────────────────────────
+
+export function loadSettings(): Settings {
+  const row = get<{ value: string }>("SELECT value FROM setting WHERE key = 'settings'")
+  return withSettingsDefaults(row ? (JSON.parse(row.value) as Partial<Settings>) : {})
+}
+
+export function saveSettings(s: Settings) {
+  run("INSERT INTO setting (key, value) VALUES ('settings', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", JSON.stringify(s))
+}
+
+/** 이번 기간에 이미 보낸 예산 알림 키 */
+export function loadBudgetAlerts(): string[] {
+  const row = get<{ value: string }>("SELECT value FROM setting WHERE key = 'budgetAlerts'")
+  return row ? (JSON.parse(row.value) as string[]) : []
+}
+
+export function saveBudgetAlerts(keys: string[]) {
+  run("INSERT INTO setting (key, value) VALUES ('budgetAlerts', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", JSON.stringify(keys))
+}
+
+/** 자동결재 상태 (기간 설정·이번에 대신 처리한 수·처리 목록) — 앱을 다시 켜도 이어서 세고 끝날 때 요약한다 */
+export interface StoredAutoApprove {
+  config: AutoApproveConfig
+  counts: AutoApproveState['counts']
+  /** 이번 기간에 시간대 안에 있었는지 (끝난 순간을 알아채 요약을 보낸다) */
+  wasActive: boolean
+  log: AutoHandled[]
+}
+
+export function loadAutoApprove(): Partial<StoredAutoApprove> {
+  const row = get<{ value: string }>("SELECT value FROM setting WHERE key = 'autoApprove'")
+  return row ? (JSON.parse(row.value) as Partial<StoredAutoApprove>) : {}
+}
+
+export function saveAutoApprove(v: StoredAutoApprove) {
+  run("INSERT INTO setting (key, value) VALUES ('autoApprove', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", JSON.stringify(v))
+}
+
+/** 원격 접속 설정 (토큰 해시·폐기 목록 포함 — Settings와 따로 둬서 화면으로 가지 않는다) */
+export function loadRemoteConfig(): Partial<RemoteConfig> {
+  const row = get<{ value: string }>("SELECT value FROM setting WHERE key = 'remote'")
+  return row ? (JSON.parse(row.value) as Partial<RemoteConfig>) : {}
+}
+
+export function saveRemoteConfig(c: RemoteConfig) {
+  run("INSERT INTO setting (key, value) VALUES ('remote', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", JSON.stringify(c))
+}
+
+/** Claude 플랜 사용률 — 앱을 다시 켜도 마지막 값을 보여 준다 */
+export function loadPlanUsage(): PlanUsage[] {
+  const row = get<{ value: string }>("SELECT value FROM setting WHERE key = 'planUsage'")
+  return row ? (JSON.parse(row.value) as PlanUsage[]) : []
+}
+
+export function savePlanUsage(list: PlanUsage[]) {
+  run("INSERT INTO setting (key, value) VALUES ('planUsage', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", JSON.stringify(list))
+}
+
+// ── 회사 자금·상점 ────────────────────────────────────
+
+/** 보너스·보상·구매를 적는다. key가 같으면 한 번만 (레벨업 보상·업무 보너스 중복 방지) */
+export function addLedger(amount: number, kind: LedgerKind, label: string, key: string | null = null) {
+  run('INSERT OR IGNORE INTO ledger (ts, amount, kind, label, key) VALUES (?, ?, ?, ?, ?)', Date.now(), Math.round(amount), kind, label, key)
+}
+
+export function ledgerSum() {
+  return get<{ s: number }>('SELECT COALESCE(SUM(amount), 0) s FROM ledger')!.s
+}
+
+export function ledgerEntries(limit: number): LedgerEntry[] {
+  return all<LedgerEntry>('SELECT id, ts, amount, kind, label FROM ledger ORDER BY ts DESC LIMIT ?', limit)
+}
+
+/** 고용 직원이 지금까지 쓴 토큰 (수당 계산용) */
+export function tokenTotal() {
+  return get<{ t: number }>('SELECT COALESCE(SUM(tokens_in + tokens_out), 0) t FROM usage')!.t
+}
+
+/** 날짜별 토큰 사용량 (장부에 하루치 수당으로 묶어 보여 준다) */
+export function tokensByDay(limit: number) {
+  return all<{ day: string; t: number; ts: number }>(
+    "SELECT date(ts / 1000, 'unixepoch', 'localtime') day, SUM(tokens_in + tokens_out) t, MAX(ts) ts FROM usage GROUP BY day ORDER BY day DESC LIMIT ?",
+    limit,
+  )
+}
+
+// ── 미션·업적용 집계 ──
+
+export function countLogs(type: string, since: number) {
+  return get<{ n: number }>('SELECT COUNT(*) n FROM log WHERE type = ? AND ts >= ?', type, since)!.n
+}
+
+export function countMeetings(since: number) {
+  return get<{ n: number }>('SELECT COUNT(*) n FROM meeting WHERE created_at >= ?', since)!.n
+}
+
+/** 장부 키 접두어로 센다 (task: 업무 완료, mission: 미션 …) */
+export function countLedgerKeys(prefix: string, since: number) {
+  return get<{ n: number }>('SELECT COUNT(*) n FROM ledger WHERE key LIKE ? AND ts >= ?', `${prefix}%`, since)!.n
+}
+
+export function countLedgerKind(kind: LedgerKind, since: number) {
+  return get<{ n: number }>('SELECT COUNT(*) n FROM ledger WHERE kind = ? AND ts >= ?', kind, since)!.n
+}
+
+export function tokensSince(since: number) {
+  return get<{ t: number }>('SELECT COALESCE(SUM(tokens_in + tokens_out), 0) t FROM usage WHERE ts >= ?', since)!.t
+}
+
+/** 이미 받은 보상 키 */
+export function ledgerKeys(prefix: string): Set<string> {
+  return new Set(all<{ key: string }>('SELECT key FROM ledger WHERE key LIKE ?', `${prefix}%`).map((r) => r.key))
+}
+
+export function loadShop(): ShopState {
+  const row = get<{ value: string }>("SELECT value FROM setting WHERE key = 'shop'")
+  return row ? { ...EMPTY_SHOP, ...(JSON.parse(row.value) as Partial<ShopState>) } : EMPTY_SHOP
+}
+
+export function saveShop(shop: ShopState) {
+  run("INSERT INTO setting (key, value) VALUES ('shop', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", JSON.stringify(shop))
+}
+
+/** 칸 배치로 옮기기 (한 번만, 트랜잭션 하나) — 옮긴 상점 상태를 돌려준다 */
+export function migrateShopToGrid(level: number, legacyLevel: number): ShopState {
+  return runIsoMigration(db, { level, legacyLevel })
+}
+
+/** 도달한 레벨의 기본 지급 가구 (레벨마다 한 번, 트랜잭션 하나) — 바뀌었으면 새 상점 상태, 아니면 null */
+export function grantLevelItems(level: number): ShopState | null {
+  return runLevelGrants(db, level)
+}
+
+/** 바닥 밖·고정 칸에 걸린 가구를 서랍으로 (settleGrid) — 저장하고 뺀 개수를 돌려준다 */
+export function settleShopGrid(level: number): { shop: ShopState; count: number } {
+  const cur = loadShop()
+  const { shop, removed } = settleGrid(cur, level)
+  if (removed.length) saveShop(shop)
+  return { shop, count: removed.length }
+}
+
+/** 기본 지급을 이미 받은 레벨들 — 업적이 무료 지급분을 빼고 센다 */
+export function loadGrantedLevels(): number[] {
+  return grantedLevels(db)
+}
+
+/** 구역 지급을 이미 받은 구역들 */
+export function loadGrantedZones(): string[] {
+  return grantedZones(db)
+}
+
+/** 지금까지 오른 최고 회사 레벨 — 레벨은 내려가지 않는다 (office-iso-tech.md 5-3절). 없으면 0 */
+export function loadCompanyLevelMax(): number {
+  return Number(get<{ value: string }>("SELECT value FROM setting WHERE key = 'companyLevelMax'")?.value) || 0
+}
+
+export function saveCompanyLevelMax(level: number) {
+  run("INSERT INTO setting (key, value) VALUES ('companyLevelMax', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", String(level))
+}
+
+// ── 랩 ──────────────────────────────────────────────────
+
+export function loadLabs(): Lab[] {
+  return all<{ data: string }>('SELECT data FROM lab ORDER BY created_at').map((r) => JSON.parse(r.data) as Lab)
+}
+
+export function saveLab(lab: Lab) {
+  run('INSERT INTO lab (id, data, created_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data', lab.id, JSON.stringify(lab), Date.now())
+}
+
+export function deleteLabRow(id: string) {
+  run('DELETE FROM lab WHERE id = ?', id)
+  run('UPDATE task SET lab_id = NULL WHERE lab_id = ?', id)
+}
+
+// ── 프로세스 실행 ───────────────────────────────────────
+
+export function loadRuns(limit: number): ProcessRun[] {
+  return all<{ data: string }>('SELECT data FROM run ORDER BY created_at DESC LIMIT ?', limit).map((r) => JSON.parse(r.data) as ProcessRun)
+}
+
+export function saveRun(r: ProcessRun) {
+  run('INSERT INTO run (id, data, created_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data', r.id, JSON.stringify(r), r.createdAt)
+}

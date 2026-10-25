@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 화면은 Compose 테마(ui/theme)가 그린다. 이 테마는 시작 순간의 창 배경만 맞춘다 -->
+    <style name="Theme.ClaudeOffice" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/background</item>
+        <item name="android:statusBarColor">@color/background</item>
+        <item name="android:navigationBarColor">@color/background</item>
+    </style>
+</resources>

@@ -1,0 +1,8 @@
+{ "hooks": {
+  "SessionStart":[{"hooks":[{"type":"command","command":"cat >> /Users/pc-2311001/flitto/poc/claude-office/spikes/hooks/events.jsonl; echo >> /Users/pc-2311001/flitto/poc/claude-office/spikes/hooks/events.jsonl"}]}],
+  "UserPromptSubmit":[{"hooks":[{"type":"command","command":"cat >> /Users/pc-2311001/flitto/poc/claude-office/spikes/hooks/events.jsonl; echo >> /Users/pc-2311001/flitto/poc/claude-office/spikes/hooks/events.jsonl"}]}],
+  "PreToolUse":[{"hooks":[{"type":"command","command":"cat >> /Users/pc-2311001/flitto/poc/claude-office/spikes/hooks/events.jsonl; echo >> /Users/pc-2311001/flitto/poc/claude-office/spikes/hooks/events.jsonl"}]}],
+  "Notification":[{"hooks":[{"type":"command","command":"cat >> /Users/pc-2311001/flitto/poc/claude-office/spikes/hooks/events.jsonl; echo >> /Users/pc-2311001/flitto/poc/claude-office/spikes/hooks/events.jsonl"}]}],
+  "Stop":[{"hooks":[{"type":"command","command":"cat >> /Users/pc-2311001/flitto/poc/claude-office/spikes/hooks/events.jsonl; echo >> /Users/pc-2311001/flitto/poc/claude-office/spikes/hooks/events.jsonl"}]}],
+  "SessionEnd":[{"hooks":[{"type":"command","command":"cat >> /Users/pc-2311001/flitto/poc/claude-office/spikes/hooks/events.jsonl; echo >> /Users/pc-2311001/flitto/poc/claude-office/spikes/hooks/events.jsonl"}]}]
+}}

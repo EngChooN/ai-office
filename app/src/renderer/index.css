@@ -1,0 +1,125 @@
+@import 'tailwindcss';
+
+@custom-variant dark (&:where(.dark, .dark *));
+/* 윈도우에서만: <html data-platform="win32"> (main.tsx) */
+@custom-variant win (&:where([data-platform=win32], [data-platform=win32] *));
+/* 안드로이드 앱(모바일 빌드) 안에서만: <html data-platform="android"> — 태블릿의 PC 배치 다듬기용 */
+@custom-variant android (&:where([data-platform=android], [data-platform=android] *));
+/* 폰 배치: 모바일 빌드가 폭 840 미만(세로 폰)이거나 키보드를 뺀 높이 500 미만(가로 폰)일 때 <html data-layout="phone">을 붙인다
+   (판정은 layout/layoutState.ts 한 곳 — 키보드로 WebView가 줄어도 바뀌지 않는다). 데스크톱 빌드에는 붙지 않는다 */
+/* 휴대폰 앱 전체(폰·태블릿 배치 모두): 키보드(--ime) 비키기 등 */
+@custom-variant mobile (&:where([data-shell=mobile] *));
+@custom-variant phone (&:where([data-layout=phone] *));
+/* 가로로 돌린 폰: 헤더를 아래 탭 줄로 합치고 제목·탭을 한 줄로 줄인다 */
+@custom-variant short (&:where([data-layout=phone][data-short] *));
+/* 가로 폰에서 키보드가 열린 동안: 남는 높이가 100여 px라 화면 제목을 숨기고 입력창을 남긴다 */
+@custom-variant typing (&:where([data-layout=phone][data-short][data-keyboard] *));
+
+/* shadcn/ui 토큰 — 다크 사무실 기본 */
+:root {
+  color-scheme: dark;
+  /* 바꾸면 main/index.ts의 윈도우 titleBarOverlay.color(이 값의 근사 #111318)도 같이 고친다 */
+  --background: oklch(0.17 0.01 260);
+  --foreground: oklch(0.96 0 0);
+  --card: oklch(0.21 0.012 260);
+  --card-foreground: oklch(0.96 0 0);
+  --popover: oklch(0.21 0.012 260);
+  --popover-foreground: oklch(0.96 0 0);
+  --primary: oklch(0.72 0.15 45);
+  --primary-foreground: oklch(0.18 0.02 45);
+  --secondary: oklch(0.27 0.015 260);
+  --secondary-foreground: oklch(0.96 0 0);
+  --muted: oklch(0.25 0.012 260);
+  --muted-foreground: oklch(0.7 0.015 260);
+  --accent: oklch(0.29 0.02 260);
+  --accent-foreground: oklch(0.96 0 0);
+  --destructive: oklch(0.64 0.21 25);
+  --border: oklch(0.3 0.015 260);
+  --input: oklch(0.32 0.015 260);
+  --ring: oklch(0.72 0.15 45);
+  --status-working: oklch(0.72 0.17 150);
+  --status-waiting: oklch(0.8 0.16 85);
+  --status-idle: oklch(0.65 0.02 260);
+  --status-error: oklch(0.64 0.21 25);
+  --radius: 0.625rem;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-status-working: var(--status-working);
+  --color-status-waiting: var(--status-waiting);
+  --color-status-idle: var(--status-idle);
+  --color-status-error: var(--status-error);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Pretendard', 'Segoe UI', 'Malgun Gothic', sans-serif;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-sans);
+    user-select: none;
+  }
+  textarea,
+  input,
+  .selectable {
+    user-select: text;
+  }
+  /* 휴대폰 앱: 당겨서 새로 고침·탭 강조 없음 */
+  [data-shell='mobile'] body {
+    overscroll-behavior: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  /* 셸이 알려 준 키보드 높이(insets.ime → --ime)만큼 화면 아래를 비워 아래 탭·입력창·본문이 키보드 바로 위에 붙게 한다 */
+  [data-shell='mobile'] #root {
+    box-sizing: border-box;
+    padding-bottom: var(--ime, 0px);
+  }
+}
+
+/* 레벨업 축하 꽃가루 */
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(-20px) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(420px) rotate(360deg);
+    opacity: 0;
+  }
+}
+.animate-confetti {
+  top: 0;
+  animation: confetti-fall 2.4s ease-in forwards;
+}

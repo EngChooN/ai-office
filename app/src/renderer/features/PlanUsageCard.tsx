@@ -1,0 +1,124 @@
+import { useState } from 'react'
+import { InfoIcon, RefreshCwIcon } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
+import { useOffice } from '@/store'
+import { fmtDate, t, type TKey } from '@shared/i18n'
+import { PLAN_WINDOW_LABEL, type PlanUsage } from '@shared/types'
+
+const ORDER = Object.keys(PLAN_WINDOW_LABEL)
+/** 한도 종류 이름 — 모르는 종류는 받은 값 그대로 */
+const typeLabel = (type: string) => (type in PLAN_WINDOW_LABEL ? t(`planUsage.window.${type}` as TKey) : type)
+/** 대시보드(compact)에선 기본 한도 두 줄만 */
+const COMPACT_TYPES = new Set(['five_hour', 'seven_day'])
+const WARN_PERCENT = 80
+const MINUTE_MS = 60_000
+const HOUR_MS = 60 * MINUTE_MS
+
+/** "2시간 10분 뒤" 같은 남은 시간 */
+function untilText(at: number) {
+  const ms = at - Date.now()
+  if (ms <= 0) return t('planUsage.resetDone')
+  const h = Math.floor(ms / HOUR_MS)
+  const m = Math.round((ms % HOUR_MS) / MINUTE_MS)
+  if (h >= 24) return t('planUsage.inDaysHours', { d: Math.floor(h / 24), h: h % 24 })
+  return h ? t('planUsage.inHoursMinutes', { h, m }) : t('planUsage.inMinutes', { m })
+}
+
+function resetText(at: number) {
+  const d = new Date(at)
+  const isToday = d.toDateString() === new Date().toDateString()
+  const time = fmtDate(d, isToday ? { hour: 'numeric', minute: '2-digit' } : { month: 'numeric', day: 'numeric', weekday: 'short', hour: 'numeric', minute: '2-digit' })
+  return `${t('planUsage.resetAt', { time })} · ${untilText(at)}`
+}
+
+function Row({ usage, isCompact }: { usage: PlanUsage; isCompact: boolean }) {
+  const pct = usage.percent
+  const isOver = usage.status === 'rejected'
+  const isWarn = !isOver && (usage.status === 'allowed_warning' || (pct ?? 0) >= WARN_PERCENT)
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex items-baseline gap-2 text-xs">
+        <span className={cn('shrink-0 font-medium', isCompact ? 'w-14' : 'w-28')}>{typeLabel(usage.type)}</span>
+        <span className={cn('font-semibold tabular-nums', isOver ? 'text-status-error' : isWarn ? 'text-status-waiting' : '')}>{pct === null ? '—' : `${pct}%`}</span>
+        {isOver && <span className="text-status-error">{t('planUsage.limitReached')}</span>}
+        <span className={cn('text-muted-foreground ml-auto', isCompact && 'min-w-0 truncate')}>{usage.resetsAt ? resetText(usage.resetsAt) : t('planUsage.resetUnknown')}</span>
+      </div>
+      <div className="bg-muted h-1.5 overflow-hidden rounded-full">
+        <div className={cn('h-full rounded-full', isOver ? 'bg-status-error' : isWarn ? 'bg-status-waiting' : 'bg-primary')} style={{ width: `${Math.min(100, isOver ? 100 : (pct ?? 0))}%` }} />
+      </div>
+    </div>
+  )
+}
+
+/** Claude 플랜 사용률(참고) — Claude가 토큰 수 대신 사용률과 리셋 시각만 알려 주므로 그대로 보여 준다. compact = 대시보드 칸 (5시간·7일만, 바깥 간격은 부모가 준다) */
+export function PlanUsageCard({ isCompact = false }: { isCompact?: boolean }) {
+  const list = useOffice((s) => s.planUsage).filter((u) => !isCompact || COMPACT_TYPES.has(u.type))
+  const sorted = [...list].sort((a, b) => (ORDER.indexOf(a.type) + 1 || 99) - (ORDER.indexOf(b.type) + 1 || 99))
+  const updatedAt = Math.max(0, ...list.map((u) => u.updatedAt))
+  const [isChecking, setIsChecking] = useState(false)
+  const note = t('planUsage.note')
+  const handleRefresh = async () => {
+    setIsChecking(true)
+    try {
+      await window.office.refreshPlanUsage()
+    } finally {
+      setIsChecking(false)
+    }
+  }
+  return (
+    <section className={cn('bg-card flex flex-col gap-3 rounded-xl border p-4', !isCompact && 'mb-6 max-w-3xl')}>
+      <header className="flex items-baseline gap-2">
+        <h2 className="text-sm font-semibold">{t('planUsage.title')}</h2>
+        {isCompact ? (
+          <InfoIcon className="text-muted-foreground size-3.5 self-center" aria-label={note}>
+            <title>{note}</title>
+          </InfoIcon>
+        ) : (
+          <span className="text-muted-foreground text-xs">{t('planUsage.forReference')}</span>
+        )}
+        {updatedAt > 0 && (
+          <span className="text-muted-foreground ml-auto text-[11px]">
+            {t('planUsage.asOf', { time: fmtDate(updatedAt, { month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit' }) })}
+          </span>
+        )}
+        <Button
+          size="sm"
+          variant="ghost"
+          className={cn('h-7 text-xs', updatedAt === 0 && 'ml-auto')}
+          onClick={() => void handleRefresh()}
+          disabled={isChecking}
+          title={t('planUsage.refreshTitle')}
+        >
+          <RefreshCwIcon className={cn('size-3.5', isChecking && 'animate-spin')} />
+          {!isCompact && ` ${t('planUsage.refresh')}`}
+        </Button>
+      </header>
+      {sorted.length === 0 && isCompact ? (
+        <p className="text-muted-foreground text-xs">{t('planUsage.emptyCompact')}</p>
+      ) : sorted.length === 0 ? (
+        <p className="text-muted-foreground text-xs">{t('planUsage.empty')}</p>
+      ) : (
+        sorted.map((u) => <Row key={u.type} usage={u} isCompact={isCompact} />)
+      )}
+      {!isCompact && <p className="text-muted-foreground text-[11px]">{note}</p>}
+    </section>
+  )
+}
+
+/** 상단 바: 기본 한도(5시간·7일) 사용률 한 줄. 누르면 급여 명세서로. 아직 값이 없으면 숨긴다 */
+export function PlanUsageChip({ usage, onOpen }: { usage: PlanUsage[]; onOpen: () => void }) {
+  const shown = usage.filter((u) => COMPACT_TYPES.has(u.type) && u.percent !== null).sort((a, b) => ORDER.indexOf(a.type) - ORDER.indexOf(b.type))
+  if (shown.length === 0) return null
+  return (
+    <button type="button" onClick={onOpen} title={t('planUsage.chipTitle')} className="text-muted-foreground text-xs tabular-nums [-webkit-app-region:no-drag] hover:underline">
+      {t('planUsage.chip')}{' '}
+      {shown.map((u, i) => (
+        <span key={u.type} className={cn((u.percent ?? 0) >= WARN_PERCENT && 'text-status-waiting', (u.percent ?? 0) >= 100 && 'text-status-error')}>
+          {i > 0 && ' · '}
+          {typeLabel(u.type)} {Math.round(u.percent ?? 0)}%
+        </span>
+      ))}
+    </button>
+  )
+}

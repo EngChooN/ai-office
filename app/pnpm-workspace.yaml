@@ -1,0 +1,11 @@
+nodeLinker: hoisted
+onlyBuiltDependencies:
+  - electron
+  - esbuild
+  - '@tailwindcss/oxide'
+  - macos-alias
+  - fs-xattr
+# 맥에서 윈도우용 설치본도 만들 수 있게 윈도우 x64용 claude 실행 파일 패키지까지 받는다
+supportedArchitectures:
+  os: [current, win32]
+  cpu: [current, x64]

@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>
+/* ── 여기만 바꾸면 됩니다 ──────────────────────────────
+   주소가 비어 있으면 버튼에 '준비 중'이 보입니다. */
+var DOWNLOADS = {
+  mac: '',        // Mac 설치 파일(.dmg) 주소
+  win: '',        // Windows 설치 파일(.exe) 주소
+  android: '',    // 안드로이드 앱(.apk) 주소
+  github: '',     // GitHub 저장소 주소 (예: https://github.com/아이디/claude-office)
+  changelog: '',  // 변경 기록 페이지 주소 (비우면 GitHub 저장소의 CHANGELOG.md)
+  license: 'MIT', // 라이선스 이름
+  version: '0.11.0'
+};
+</script>
+<title>Claude Office</title>
+<meta name="description" content="">
+<meta name="theme-color" content="#0b0c10">
+<link rel="icon" type="image/png" href="assets/icon.png">
+<link rel="apple-touch-icon" href="assets/icon.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Claude Office">
+<meta property="og:title" content="Claude Office">
+<meta property="og:description" content="Hire AI teammates, assign work, approve and get reports — Claude Code for everyone.">
+<meta property="og:image" content="assets/screens/ko/office.png">
+<meta name="twitter:card" content="summary_large_image">
+<style>
+:root{
+  --bg:#0b0c10; --panel:#12141b; --panel2:#181b24; --line:#232733; --line2:#2e3342;
+  --fg:#eef0f5; --muted:#9097a8; --dim:#636a7b; --accent:#7c9cff; --accent2:#5eead4;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--fg);line-height:1.6;-webkit-font-smoothing:antialiased;
+  font-family:var(--sans),"Apple SD Gothic Neo","Malgun Gothic","Hiragino Sans","PingFang SC","Microsoft YaHei","Noto Sans CJK KR",system-ui,sans-serif}
+html:lang(ko) body{font-family:var(--sans),"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR","Noto Sans CJK KR",system-ui,sans-serif;word-break:keep-all}
+html:lang(ja) body{font-family:var(--sans),"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic UI","Yu Gothic",Meiryo,"Noto Sans JP","Noto Sans CJK JP",system-ui,sans-serif;line-break:strict}
+html:lang(zh-CN) body{font-family:var(--sans),"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans SC","Noto Sans CJK SC",system-ui,sans-serif}
+a{color:inherit;text-decoration:none}
+img{max-width:100%;height:auto;display:block}
+.wrap{max-width:1140px;margin:0 auto;padding:0 24px}
+section{padding:112px 0}
+h1{font-size:clamp(36px,6.2vw,68px);line-height:1.1;font-weight:700;letter-spacing:-.03em;max-width:900px;margin:0 auto}
+h2{font-size:clamp(26px,3.6vw,40px);line-height:1.2;font-weight:700;letter-spacing:-.02em}
+.eyebrow{font-size:13px;font-weight:600;color:var(--accent);letter-spacing:.04em;margin-bottom:12px}
+.sub{color:var(--muted);font-size:17px;max-width:640px;margin-top:12px}
+.head{margin-bottom:48px}
+
+/* 헤더 */
+.top{position:sticky;top:0;z-index:10;background:rgba(11,12,16,.8);backdrop-filter:saturate(1.4) blur(12px);-webkit-backdrop-filter:saturate(1.4) blur(12px);border-bottom:1px solid var(--line)}
+.top .wrap{display:flex;align-items:center;gap:28px;height:60px}
+.logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px;white-space:nowrap}
+.logo img{width:28px;height:28px}
+.top nav{display:flex;gap:24px;font-size:14px;color:var(--muted)}
+.top nav a:hover{color:var(--fg)}
+.top .right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.lang{appearance:none;-webkit-appearance:none;background:transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%239097a8' fill='none' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 10px center;color:var(--muted);border:1px solid var(--line2);border-radius:8px;font:inherit;font-size:13px;padding:6px 28px 6px 10px;cursor:pointer}
+.lang:hover{color:var(--fg)}
+.lang option{background:var(--panel);color:var(--fg)}
+
+/* 버튼 */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:44px;padding:0 18px;border-radius:10px;border:1px solid var(--line2);background:var(--panel2);color:var(--fg);font-weight:600;font-size:15px;white-space:nowrap;transition:background .15s,border-color .15s}
+.btn:hover{border-color:#454c60;background:#1e222d}
+.btn.primary{background:var(--fg);border-color:var(--fg);color:#0b0c10}
+.btn.primary:hover{background:#fff}
+.btn.sm{height:34px;padding:0 12px;font-size:13px;border-radius:8px}
+.btn.off{opacity:.5;pointer-events:none}
+.btn small{font-weight:500;opacity:.65;font-size:.85em}
+.btn svg{width:18px;height:18px;flex:none}
+
+/* 첫 화면 */
+.hero{padding:96px 0 0;text-align:center}
+.hero .appicon{width:84px;height:84px;margin:0 auto 28px}
+.badge{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line2);border-radius:99px;padding:5px 12px 5px 6px;font-size:13px;color:var(--muted);margin-bottom:28px}
+.badge b{background:rgba(124,156,255,.14);color:var(--accent);font-weight:600;border-radius:99px;padding:1px 8px}
+.hero .lead{font-size:clamp(17px,2vw,20px);color:var(--muted);max-width:660px;margin:22px auto 0}
+.cta{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-top:36px}
+.also{margin-top:16px;font-size:13.5px;color:var(--dim)}
+.also a{color:var(--muted);text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--line2)}
+.also a:hover{color:var(--fg)}
+.shot{margin:72px auto 0;max-width:1100px;border:1px solid var(--line2);border-radius:14px;overflow:hidden;background:var(--panel);box-shadow:0 40px 120px -20px rgba(124,156,255,.16),0 20px 60px rgba(0,0,0,.5)}
+.shot img{width:100%;height:auto;aspect-ratio:1360/860;object-fit:contain}
+
+/* 기능 */
+.features{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--line);border-radius:14px;overflow:hidden;gap:1px;background:var(--line)}
+.feat{background:var(--bg);padding:32px 28px}
+.feat svg{width:22px;height:22px;color:var(--accent);margin-bottom:18px}
+.feat h3{font-size:17px;font-weight:600;margin-bottom:8px;letter-spacing:-.01em}
+.feat p{font-size:15px;color:var(--muted)}
+
+/* 화면 */
+.shots{display:grid;grid-template-columns:2.2fr 1fr 1fr;gap:16px;align-items:start}
+figure{border:1px solid var(--line2);border-radius:12px;overflow:hidden;background:var(--panel)}
+figure img{width:100%;height:auto}
+figure.pc img{aspect-ratio:1360/860}
+figure.ph img{aspect-ratio:390/844}
+figcaption{padding:12px 14px;font-size:13.5px;color:var(--muted);border-top:1px solid var(--line)}
+figcaption b{color:var(--fg);font-weight:600}
+
+/* 다운로드 */
+.dls{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.dlc{border:1px solid var(--line2);border-radius:14px;padding:26px;display:flex;flex-direction:column;gap:14px;background:var(--panel)}
+.dlc.mine{border-color:rgba(124,156,255,.6)}
+.dlc h3{font-size:18px;font-weight:600;display:flex;align-items:center;gap:10px}
+.dlc h3 svg{width:20px;height:20px;color:var(--muted)}
+.dlc .tag{font-size:11.5px;font-weight:600;color:var(--accent);border:1px solid rgba(124,156,255,.4);border-radius:99px;padding:1px 8px;display:none}
+.dlc.mine .tag{display:inline-block}
+.dlc ul{list-style:none;font-size:14px;color:var(--muted);flex:1}
+.dlc li{padding-left:16px;position:relative;margin-bottom:6px}
+.dlc li:before{content:"–";position:absolute;left:0;color:var(--dim)}
+.dlc .btn{width:100%;height:auto;min-height:44px;padding:10px 16px;white-space:normal;text-align:center}
+
+/* FAQ */
+.faq{max-width:820px;border-top:1px solid var(--line)}
+details{border-bottom:1px solid var(--line);padding:20px 0}
+summary{cursor:pointer;font-weight:600;font-size:16px;list-style:none;display:flex;justify-content:space-between;gap:16px}
+summary::-webkit-details-marker{display:none}
+summary:after{content:"+";color:var(--dim);font-size:20px;line-height:1.2;font-weight:400}
+details[open] summary:after{content:"−"}
+details p{color:var(--muted);font-size:15px;margin-top:10px;max-width:720px}
+
+/* 푸터 */
+footer{border-top:1px solid var(--line);padding:40px 0 56px;font-size:13.5px;color:var(--dim)}
+footer .wrap{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px}
+footer .brand{display:flex;align-items:center;gap:10px;color:var(--muted)}
+footer .brand img{width:20px;height:20px}
+footer .links{display:flex;flex-wrap:wrap;gap:22px}
+footer .links a{color:var(--muted)}
+footer .links a:hover{color:var(--fg)}
+footer .links .off{color:var(--dim);pointer-events:none}
+
+@media (max-width:960px){
+  .top nav{display:none}
+  .features{grid-template-columns:1fr 1fr}
+  .dls{grid-template-columns:1fr}
+  .shots{grid-template-columns:1fr 1fr}
+  .shots .pc{grid-column:1/-1}
+}
+@media (max-width:600px){
+  section{padding:80px 0}
+  .wrap{padding:0 18px}
+  .hero{padding-top:64px}
+  .hero .appicon{width:68px;height:68px}
+  .features{grid-template-columns:1fr}
+  .feat{padding:26px 22px}
+  .cta .btn{flex:1 1 100%}
+  .shot{margin-top:48px;border-radius:10px}
+  .top .gh span{display:none}
+  .logo span{display:none}
+}
+</style>
+</head>
+<body>
+
+<header class="top"><div class="wrap">
+  <a class="logo" href="#"><img src="assets/icon.png" alt="" width="28" height="28"><span>Claude Office</span></a>
+  <nav>
+    <a href="#features" data-i18n="nav.features"></a>
+    <a href="#screens" data-i18n="nav.screens"></a>
+    <a href="#download" data-i18n="nav.download"></a>
+    <a href="#faq" data-i18n="nav.faq"></a>
+  </nav>
+  <div class="right">
+    <select class="lang" id="lang" aria-label="Language">
+      <option value="ko">한국어</option><option value="en">English</option><option value="ja">日本語</option><option value="zh">简体中文</option>
+    </select>
+    <a class="btn sm gh" data-gh><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5a11.5 11.5 0 00-3.6 22.4c.6.1.8-.3.8-.6v-2c-3.2.7-3.9-1.4-3.9-1.4-.5-1.3-1.3-1.7-1.3-1.7-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.7 1.3 3.4 1 .1-.8.4-1.3.7-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.2 1.2a11 11 0 015.8 0C17.3 4.9 18.3 5.2 18.3 5.2c.6 1.6.2 2.8.1 3.1.8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.2c0 .3.2.7.8.6A11.5 11.5 0 0012 .5z"/></svg><span>GitHub</span></a>
+  </div>
+</div></header>
+
+<section class="hero"><div class="wrap">
+  <img class="appicon" src="assets/icon.png" alt="Claude Office" width="84" height="84">
+  <div class="badge"><b>v<span data-version></span></b><span data-i18n="badge.oss"></span></div>
+  <h1 data-i18n="hero.title"></h1>
+  <p class="lead" data-i18n="hero.lead"></p>
+  <div class="cta" id="cta"></div>
+  <p class="also" id="also"></p>
+  <div class="shot"><img src="assets/screens/ko/office.png" data-shot="office" data-i18n-alt="alt.office" width="1360" height="860"></div>
+</div></section>
+
+<section id="features"><div class="wrap">
+  <div class="head">
+    <div class="eyebrow" data-i18n="feat.eyebrow"></div>
+    <h2 data-i18n="feat.title"></h2>
+    <p class="sub" data-i18n="feat.sub"></p>
+  </div>
+  <div class="features">
+    <div class="feat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0114 0M19 8v6M16 11h6"/></svg><h3 data-i18n="f1.t"></h3><p data-i18n="f1.p"></p></div>
+    <div class="feat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 3v2h6V3M8.5 13l2.5 2.5 5-5"/></svg><h3 data-i18n="f2.t"></h3><p data-i18n="f2.p"></p></div>
+    <div class="feat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="5" height="16" rx="1.5"/><rect x="10" y="4" width="5" height="11" rx="1.5"/><rect x="17" y="4" width="4" height="7" rx="1.5"/></svg><h3 data-i18n="f3.t"></h3><p data-i18n="f3.p"></p></div>
+    <div class="feat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 01-11.6 7.1L4 20l1-4.6A8 8 0 1121 12z"/><path d="M8.5 11h7M8.5 14h4"/></svg><h3 data-i18n="f4.t"></h3><p data-i18n="f4.p"></p></div>
+    <div class="feat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 6-7"/></svg><h3 data-i18n="f5.t"></h3><p data-i18n="f5.p"></p></div>
+    <div class="feat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/></svg><h3 data-i18n="f6.t"></h3><p data-i18n="f6.p"></p></div>
+    <div class="feat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V10l8-6 8 6v11"/><path d="M9 21v-6h6v6M12 4V2"/></svg><h3 data-i18n="f7.t"></h3><p data-i18n="f7.p"></p></div>
+    <div class="feat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 010 18M12 3a14 14 0 000 18"/></svg><h3 data-i18n="f8.t"></h3><p data-i18n="f8.p"></p></div>
+    <div class="feat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M8 15l2 2 4-4"/></svg><h3 data-i18n="f9.t"></h3><p data-i18n="f9.p"></p></div>
+  </div>
+</div></section>
+
+<section id="screens"><div class="wrap">
+  <div class="head">
+    <div class="eyebrow" data-i18n="scr.eyebrow"></div>
+    <h2 data-i18n="scr.title"></h2>
+    <p class="sub" data-i18n="scr.sub"></p>
+  </div>
+  <div class="shots">
+    <figure class="pc"><img src="assets/screens/ko/office.png" data-shot="office" data-i18n-alt="alt.office" loading="lazy" width="1360" height="860"><figcaption data-i18n="cap.office"></figcaption></figure>
+    <figure class="ph"><img src="assets/screens/ko/phone-dashboard.png" data-shot="phone-dashboard" data-i18n-alt="alt.dash" loading="lazy" width="390" height="844"><figcaption data-i18n="cap.dash"></figcaption></figure>
+    <figure class="ph"><img src="assets/screens/ko/phone-chat.png" data-shot="phone-chat" data-i18n-alt="alt.chat" loading="lazy" width="390" height="844"><figcaption data-i18n="cap.chat"></figcaption></figure>
+  </div>
+</div></section>
+
+<section id="download"><div class="wrap">
+  <div class="head">
+    <div class="eyebrow" data-i18n="dl.eyebrow"></div>
+    <h2 data-i18n="dl.title"></h2>
+    <p class="sub" data-i18n="dl.sub"></p>
+  </div>
+  <div class="dls" id="dls">
+    <div class="dlc" data-os="mac"><h3 data-os-title></h3><ul><li data-i18n="mac.1"></li><li data-i18n="mac.2"></li><li data-i18n="mac.3"></li></ul><a data-dl></a></div>
+    <div class="dlc" data-os="win"><h3 data-os-title></h3><ul><li data-i18n="win.1"></li><li data-i18n="win.2"></li><li data-i18n="win.3"></li></ul><a data-dl></a></div>
+    <div class="dlc" data-os="android"><h3 data-os-title></h3><ul><li data-i18n="and.1"></li><li data-i18n="and.2"></li><li data-i18n="and.3"></li></ul><a data-dl></a></div>
+  </div>
+</div></section>
+
+<section id="faq"><div class="wrap">
+  <div class="head">
+    <div class="eyebrow">FAQ</div>
+    <h2 data-i18n="faq.title"></h2>
+  </div>
+  <div class="faq">
+    <details><summary data-i18n="q1"></summary><p data-i18n="a1"></p></details>
+    <details><summary data-i18n="q2"></summary><p data-i18n="a2"></p></details>
+    <details><summary data-i18n="q3"></summary><p data-i18n="a3"></p></details>
+    <details><summary data-i18n="q4"></summary><p data-i18n="a4"></p></details>
+    <details><summary data-i18n="q5"></summary><p data-i18n="a5"></p></details>
+    <details><summary data-i18n="q6"></summary><p data-i18n="a6"></p></details>
+    <details><summary data-i18n="q7"></summary><p data-i18n="a7"></p></details>
+  </div>
+</div></section>
+
+<footer><div class="wrap">
+  <div class="brand"><img src="assets/icon.png" alt="" width="20" height="20"><span>Claude Office · v<span data-version></span></span></div>
+  <div class="links">
+    <a data-link="license"></a>
+    <a data-link="changelog" data-i18n="foot.changelog"></a>
+    <a data-link="github">GitHub</a>
+  </div>
+</div></footer>
+
+<script>
+var I18N = {
+  ko: {
+    'meta.title': 'Claude Office — 코드를 몰라도, AI 직원에게 일을 맡기세요',
+    'meta.desc': 'Claude Code를 직원 고용·업무 지시·결재·보고라는 익숙한 사무실 방식으로 쓰는 무료 오픈소스 데스크톱 앱. 명령어 창도, 어려운 설정도 필요 없습니다.',
+    'nav.features': '기능', 'nav.screens': '화면', 'nav.download': '다운로드', 'nav.faq': 'FAQ',
+    'badge.oss': '무료 · 오픈소스',
+    'hero.title': '코드를 몰라도,<br>AI 직원에게 일을 맡기세요',
+    'hero.lead': 'Claude Code를 직원 고용 · 업무 지시 · 결재 · 보고라는 익숙한 사무실 방식으로 쓰는 데스크톱 앱입니다. 명령어 창도, 어려운 설정도 필요 없습니다.',
+    'btn.download': '{os}용 다운로드', 'btn.soon': '준비 중', 'btn.also': '다른 플랫폼:',
+    'os.mac': 'Mac', 'os.win': 'Windows', 'os.android': '안드로이드',
+    'feat.eyebrow': '주요 기능', 'feat.title': '이미 아는 방식으로, 사무실처럼',
+    'feat.sub': 'Claude Code 창 하나는 직원 한 명, 확인창은 결재함, 작업 기록은 업무 보고, 사용량은 급여 명세서가 됩니다.',
+    'f1.t': '뽑고, 말로 시키기', 'f1.p': '직무와 모습을 고르면 바로 일할 준비 끝. 단체방에서 @이름 · @팀 · @전체로 부르거나, 아무도 안 부르면 일에 맞는 직원이 받아요.',
+    'f2.t': '중요한 일은 결재로', 'f2.p': '파일을 바꾸거나 명령을 실행하는 일은 결재함에 먼저 올라옵니다. 얼마나 맡길지는 내가 정하고, 위험한 명령은 항상 막아요.',
+    'f3.t': '팀장이 나눠서 진행', 'f3.p': '큰 일을 팀장에게 주면 계획을 세워 나누고, 확인을 받은 뒤 순서대로 진행해 보고합니다. 진행 상황은 업무 보드에서.',
+    'f4.t': '단체방과 회의실', 'f4.p': '보고와 허락 요청이 채팅으로 흐릅니다. 회의실에서는 직원들이 돌아가며 의견을 내고 회의록과 할 일이 자동으로 정리돼요.',
+    'f5.t': '대시보드와 급여 명세서', 'f5.p': '누가 일하고 누가 확인을 기다리는지 한눈에 보고, 직원별 사용량과 Claude 플랜 사용률을 확인해요.',
+    'f6.t': '휴대폰으로도 결재', 'f6.p': '안드로이드 앱을 QR로 PC와 연결하면 밖에서도 결재하고 지시할 수 있어요. 회사 화면용 업무 모드도 있습니다.',
+    'f7.t': '일할수록 자라는 회사', 'f7.p': '직원이 일하면 회사 레벨이 올라 사무실이 넓어지고, 차고에서 5층 타워까지 커져요. 상점에서 가구·벽지·고양이와 강아지를 사서 꾸밀 수 있어요. 업무 모드에서는 이런 요소를 숨겨요.',
+    'f8.t': '4개 언어 지원', 'f8.p': '한국어 · 영어 · 일본어 · 중국어로 쓸 수 있어요. 설정에서 바꾸면 다시 켜지 않아도 바로 적용되고, 휴대폰 앱도 같은 언어를 지원해요.',
+    'f9.t': '예약 업무와 참고 문서', 'f9.p': '매일·매주 할 일을 예약해 두면 정해진 시간에 직원이 알아서 해요. 직원이 일하기 전에 먼저 읽을 문서와 업무 매뉴얼도 등록할 수 있어요.',
+    'scr.eyebrow': '화면', 'scr.title': '일하는 모습이 보이는 사무실',
+    'scr.sub': '직원이 일할수록 회사가 커지고 사무실을 꾸밀 수 있어요. 휴대폰에서는 같은 화면을 손에 맞게 보여 줍니다.',
+    'cap.office': '<b>사무실</b> — 직원들이 자리에서 일하고, 층을 오가며 볼 수 있어요',
+    'cap.dash': '<b>대시보드</b> — 확인이 필요한 일을 바로 결재',
+    'cap.chat': '<b>단체방</b> — 말로 지시하고 보고받기',
+    'alt.office': 'Claude Office 사무실 화면', 'alt.dash': '휴대폰 대시보드 화면', 'alt.chat': '휴대폰 단체방 화면',
+    'dl.eyebrow': '다운로드', 'dl.title': '무료로 받아 보세요', 'dl.sub': '그 컴퓨터에 Claude Code가 로그인되어 있어야 합니다.', 'dl.mine': '내 기기',
+    'mac.1': 'Apple Silicon(M1 이후) 전용', 'mac.2': 'dmg를 열어 응용 프로그램 폴더로 끌어다 놓기', 'mac.3': '처음 열 때 경고가 나오면 시스템 설정 › 개인정보 보호 및 보안 › "그래도 열기"',
+    'win.1': '시험판 · 64비트', 'win.2': '"Windows의 PC 보호" 창이 뜨면 "추가 정보 › 실행"', 'win.3': '외부 직원 알림·화면 캡처는 아직 Mac 전용',
+    'and.1': 'PC 앱을 원격으로 쓰는 휴대폰 앱', 'and.2': 'PC의 설정 › 휴대폰 연결에서 켜고 QR로 연결', 'and.3': 'PC와 같은 버전을 쓰세요',
+    'faq.title': '자주 묻는 질문',
+    'q1': '따로 가입하거나 API 키가 필요한가요?', 'a1': '아니요. 그 컴퓨터에 로그인된 Claude Code 계정을 그대로 씁니다. 직원들은 그 계정으로 일하고, 사용량도 그 계정에 잡힙니다.',
+    'q2': '개발을 전혀 몰라도 쓸 수 있나요?', 'a2': '네. 직원을 뽑고, 채팅으로 일을 시키고, 결재함에서 승인·반려만 하면 됩니다. 명령어를 입력할 일은 없습니다.',
+    'q3': '설치할 때 경고창이 떠요.', 'a3': '아직 앱에 서명을 하지 않아서 나오는 안내입니다. Mac은 시스템 설정 › 개인정보 보호 및 보안에서 "그래도 열기", Windows는 "추가 정보 › 실행"을 누르면 열립니다.',
+    'q4': '직원이 마음대로 파일을 바꾸지 않나요?', 'a4': '영향이 큰 일은 결재함에 먼저 올라오고, 승인해야 진행됩니다. 어디까지 알아서 하게 할지 정할 수 있고, 되돌리기 어려운 위험한 명령은 항상 막습니다.',
+    'q5': '내 데이터는 어디에 저장되나요?', 'a5': '직원·업무·대화 기록은 내 컴퓨터 안의 파일 하나에 저장됩니다. 휴대폰 연결은 기본으로 꺼져 있고, 켤 때만 연결할 수 있습니다.',
+    'q6': '휴대폰 앱만 따로 쓸 수 있나요?', 'a6': '아니요. 휴대폰 앱은 PC에서 켜 둔 Claude Office를 원격으로 쓰는 앱이라 PC 앱이 켜져 있어야 합니다.',
+    'q7': '어떤 언어로 쓸 수 있나요?', 'a7': '한국어, 영어, 일본어, 중국어를 지원합니다. 처음에는 컴퓨터(휴대폰) 언어를 따르고, 지원하지 않는 언어면 영어로 시작해요. 설정 맨 위의 \'언어\'에서 언제든 바꿀 수 있습니다.',
+    'foot.license': '{license} 라이선스', 'foot.changelog': '변경 기록'
+  },
+  en: {
+    'meta.title': 'Claude Office — Hand off work to AI teammates, no code required',
+    'meta.desc': 'A free, open-source desktop app that lets you use Claude Code the way you already run an office: hire, assign, approve and get reports. No terminal, no config files.',
+    'nav.features': 'Features', 'nav.screens': 'Screens', 'nav.download': 'Download', 'nav.faq': 'FAQ',
+    'badge.oss': 'Free & Open Source',
+    'hero.title': 'Hand off work to AI teammates.<br>No code required.',
+    'hero.lead': 'Claude Office turns Claude Code into a familiar office: hire teammates, assign work, approve requests and get reports. No terminal, no config files.',
+    'btn.download': 'Download for {os}', 'btn.soon': 'Coming soon', 'btn.also': 'Also available for',
+    'os.mac': 'Mac', 'os.win': 'Windows', 'os.android': 'Android',
+    'feat.eyebrow': 'Features', 'feat.title': 'Works the way an office works',
+    'feat.sub': 'Each Claude Code session becomes a teammate, permission prompts become an approval inbox, logs become reports, and usage becomes payroll.',
+    'f1.t': 'Hire and just ask', 'f1.p': 'Pick a role and a look, and they’re ready to go. Mention @name, @team or @all in the group chat — or mention no one and the right teammate picks it up.',
+    'f2.t': 'Approvals for what matters', 'f2.p': 'Editing files or running commands lands in your approval inbox first. You decide how much to delegate, and risky commands are always blocked.',
+    'f3.t': 'Team leads split the work', 'f3.p': 'Give a big task to a team lead: they plan, split it up, check with you, run it in order and report back. Track it all on the task board.',
+    'f4.t': 'Group chat and meetings', 'f4.p': 'Reports and permission requests flow into chat. In the meeting room, teammates take turns sharing ideas, and minutes and action items are written for you.',
+    'f5.t': 'Dashboard and payroll', 'f5.p': 'See who’s working and who’s waiting on you at a glance, plus per-teammate usage and your Claude plan usage.',
+    'f6.t': 'Approve from your phone', 'f6.p': 'Pair the Android app with your PC via QR code to approve and assign work on the go. There’s also a Work Mode for office screens.',
+    'f7.t': 'A company that grows', 'f7.p': 'As your teammates work, your company levels up — the office expands from a garage to a five-story tower. Decorate with furniture, wallpaper, and even an office cat and dog from the shop. Work Mode hides all of this.',
+    'f8.t': 'Four languages', 'f8.p': 'Use it in Korean, English, Japanese, or Chinese. Switch in Settings and it applies instantly without a restart — the phone app supports the same languages.',
+    'f9.t': 'Scheduled work & reference docs', 'f9.p': 'Schedule daily or weekly tasks and teammates handle them on time. Register docs and work manuals for teammates to read before they start.',
+    'scr.eyebrow': 'Screens', 'scr.title': 'An office you can watch at work',
+    'scr.sub': 'The more your teammates work, the more your company grows — and you can decorate the office. On your phone, the same screens fit in your hand.',
+    'cap.office': '<b>Office</b> — teammates at their desks, floor by floor',
+    'cap.dash': '<b>Dashboard</b> — approve what needs you, right away',
+    'cap.chat': '<b>Group chat</b> — assign by talking, get reports back',
+    'alt.office': 'Claude Office office view', 'alt.dash': 'Phone dashboard', 'alt.chat': 'Phone group chat',
+    'dl.eyebrow': 'Download', 'dl.title': 'Get it free', 'dl.sub': 'Requires Claude Code to be signed in on the same computer.', 'dl.mine': 'Your device',
+    'mac.1': 'Apple Silicon (M1 or later) only', 'mac.2': 'Open the .dmg and drag the app into Applications', 'mac.3': 'If you see a warning on first launch, go to System Settings › Privacy & Security › “Open Anyway”',
+    'win.1': 'Preview · 64-bit', 'win.2': 'If “Windows protected your PC” appears, choose “More info › Run anyway”', 'win.3': 'External session alerts and screen capture are Mac-only for now',
+    'and.1': 'A remote companion for the desktop app', 'and.2': 'Turn on Settings › Phone connection on your PC, then scan the QR code', 'and.3': 'Use the same version as your PC',
+    'faq.title': 'Frequently asked questions',
+    'q1': 'Do I need a separate account or API key?', 'a1': 'No. It uses the Claude Code account already signed in on your computer. Teammates work under that account, and usage is counted there.',
+    'q2': 'Can I use it without any coding knowledge?', 'a2': 'Yes. Hire teammates, give them work in chat, and approve or decline in the inbox. You never have to type a command.',
+    'q3': 'I see a warning when installing.', 'a3': 'The app isn’t code-signed yet. On Mac, choose “Open Anyway” in System Settings › Privacy & Security. On Windows, choose “More info › Run anyway”.',
+    'q4': 'Will teammates change my files without asking?', 'a4': 'Anything with real impact goes to your approval inbox first and only runs once you approve. You choose how much they can do on their own, and hard-to-undo commands are always blocked.',
+    'q5': 'Where is my data stored?', 'a5': 'Teammates, tasks and chat history live in a single file on your own computer. Phone connection is off by default and only works when you turn it on.',
+    'q6': 'Can I use the phone app on its own?', 'a6': 'No. The phone app remotely controls Claude Office running on your PC, so the desktop app needs to be open.',
+    'q7': 'Which languages are supported?', 'a7': 'Korean, English, Japanese, and Chinese. It starts in your computer’s (or phone’s) language, or English if that isn’t supported. You can change it anytime under Language at the top of Settings.',
+    'foot.license': '{license} License', 'foot.changelog': 'Changelog'
+  },
+  ja: {
+    'meta.title': 'Claude Office — コードがわからなくても、AIスタッフに仕事を任せよう',
+    'meta.desc': 'Claude Code を「採用・指示・承認・報告」というおなじみのオフィスのやり方で使える、無料・オープンソースのデスクトップアプリ。ターミナルも難しい設定も不要です。',
+    'nav.features': '機能', 'nav.screens': '画面', 'nav.download': 'ダウンロード', 'nav.faq': 'FAQ',
+    'badge.oss': '無料・オープンソース',
+    'hero.title': 'コードがわからなくても、<br>AIスタッフに仕事を任せよう',
+    'hero.lead': 'Claude Code を、スタッフの採用・仕事の指示・承認・報告というおなじみのオフィスのやり方で使えるデスクトップアプリです。ターミナルも難しい設定もいりません。',
+    'btn.download': '{os} 版をダウンロード', 'btn.soon': '準備中', 'btn.also': 'ほかのプラットフォーム：',
+    'os.mac': 'Mac', 'os.win': 'Windows', 'os.android': 'Android',
+    'feat.eyebrow': '主な機能', 'feat.title': 'いつものオフィスのやり方で',
+    'feat.sub': 'Claude Code のセッションはスタッフに、確認ダイアログは承認ボックスに、作業ログは業務報告に、使用量は給与明細になります。',
+    'f1.t': '採用して、話しかけるだけ', 'f1.p': '職種と見た目を選べば準備完了。グループチャットで @名前・@チーム・@全員 と呼びかけるか、誰も指名しなければ最適なスタッフが引き受けます。',
+    'f2.t': '大事なことは承認制', 'f2.p': 'ファイルの変更やコマンドの実行は、まず承認ボックスに届きます。どこまで任せるかは自分で決められ、危険なコマンドは常にブロックされます。',
+    'f3.t': 'リーダーが仕事を分担', 'f3.p': '大きな仕事をチームリーダーに渡すと、計画を立てて分担し、確認を取ってから順に進めて報告します。進み具合はタスクボードで。',
+    'f4.t': 'グループチャットと会議室', 'f4.p': '報告や許可の依頼はチャットに流れてきます。会議室ではスタッフが順番に意見を出し、議事録とToDoが自動でまとまります。',
+    'f5.t': 'ダッシュボードと給与明細', 'f5.p': '誰が作業中で、誰が確認待ちかがひと目でわかります。スタッフごとの使用量や Claude プランの使用率も確認できます。',
+    'f6.t': 'スマホからも承認', 'f6.p': 'Android アプリを QR コードで PC とつなげば、外出先でも承認や指示ができます。職場の画面向けの「業務モード」もあります。',
+    'f7.t': '働くほど成長する会社', 'f7.p': 'スタッフが働くと会社のレベルが上がってオフィスが広がり、ガレージから5階建てのタワーまで大きくなります。ショップで家具・壁紙・ネコやイヌを買って飾れます。業務モードではこうした要素を隠せます。',
+    'f8.t': '4言語に対応', 'f8.p': '韓国語・英語・日本語・中国語で使えます。設定で切り替えると再起動なしですぐ反映され、スマホアプリも同じ言語に対応しています。',
+    'f9.t': '予約業務と参考ドキュメント', 'f9.p': '毎日・毎週の作業を予約しておけば、決まった時間にスタッフが自動で行います。作業前に読ませたいドキュメントや業務マニュアルも登録できます。',
+    'scr.eyebrow': '画面', 'scr.title': '働く様子が見えるオフィス',
+    'scr.sub': 'スタッフが働くほど会社が成長し、オフィスを飾りつけられます。スマホでは同じ画面が手のひらサイズに。',
+    'cap.office': '<b>オフィス</b> — 席で働くスタッフを、フロアごとに',
+    'cap.dash': '<b>ダッシュボード</b> — 確認が必要なものをすぐ承認',
+    'cap.chat': '<b>グループチャット</b> — 話して指示、報告を受け取る',
+    'alt.office': 'Claude Office のオフィス画面', 'alt.dash': 'スマホのダッシュボード画面', 'alt.chat': 'スマホのグループチャット画面',
+    'dl.eyebrow': 'ダウンロード', 'dl.title': '無料で使えます', 'dl.sub': '同じパソコンで Claude Code にログインしている必要があります。', 'dl.mine': 'お使いの端末',
+    'mac.1': 'Apple シリコン（M1 以降）専用', 'mac.2': '.dmg を開いて「アプリケーション」フォルダへドラッグ', 'mac.3': '初回起動で警告が出たら、システム設定 › プライバシーとセキュリティ ›「このまま開く」',
+    'win.1': 'プレビュー版・64 ビット', 'win.2': '「Windows によって PC が保護されました」と出たら「詳細情報 › 実行」', 'win.3': '外部セッションの通知と画面キャプチャは現在 Mac のみ',
+    'and.1': 'PC アプリをリモートで使うスマホアプリ', 'and.2': 'PC の 設定 › スマホ連携 をオンにして QR コードで接続', 'and.3': 'PC と同じバージョンを使ってください',
+    'faq.title': 'よくある質問',
+    'q1': '別途アカウント登録や API キーは必要ですか？', 'a1': 'いいえ。そのパソコンでログイン中の Claude Code アカウントをそのまま使います。スタッフはそのアカウントで働き、使用量もそのアカウントに計上されます。',
+    'q2': 'プログラミングの知識がなくても使えますか？', 'a2': 'はい。スタッフを採用し、チャットで仕事を頼み、承認ボックスで承認・却下するだけです。コマンドを入力する必要はありません。',
+    'q3': 'インストール時に警告が出ます。', 'a3': 'アプリにまだ署名をしていないために表示されます。Mac はシステム設定 › プライバシーとセキュリティで「このまま開く」、Windows は「詳細情報 › 実行」で開けます。',
+    'q4': 'スタッフが勝手にファイルを変更しませんか？', 'a4': '影響の大きい操作はまず承認ボックスに届き、承認するまで実行されません。どこまで任せるかを選べ、取り消しにくい危険なコマンドは常にブロックされます。',
+    'q5': 'データはどこに保存されますか？', 'a5': 'スタッフ・タスク・チャットの記録は、自分のパソコン内の 1 つのファイルに保存されます。スマホ連携は初期状態でオフで、オンにしたときだけ接続できます。',
+    'q6': 'スマホアプリだけで使えますか？', 'a6': 'いいえ。スマホアプリは PC で起動している Claude Office をリモートで操作するアプリなので、PC アプリが起動している必要があります。',
+    'q7': 'どの言語で使えますか？', 'a7': '韓国語、英語、日本語、中国語に対応しています。最初はパソコン（スマホ）の言語に合わせ、対応していない言語の場合は英語で始まります。設定の一番上の「言語」でいつでも変更できます。',
+    'foot.license': '{license} ライセンス', 'foot.changelog': '更新履歴'
+  },
+  zh: {
+    'meta.title': 'Claude Office — 不懂代码，也能把工作交给 AI 员工',
+    'meta.desc': '一款免费开源的桌面应用，用“招聘、派活、审批、汇报”这种熟悉的办公室方式来使用 Claude Code。无需命令行，也无需复杂配置。',
+    'nav.features': '功能', 'nav.screens': '界面', 'nav.download': '下载', 'nav.faq': '常见问题',
+    'badge.oss': '免费开源',
+    'hero.title': '不懂代码，<br>也能把工作交给 AI 员工',
+    'hero.lead': 'Claude Office 用招聘员工、分派任务、审批、汇报这种熟悉的办公室方式来使用 Claude Code。无需命令行，也无需复杂配置。',
+    'btn.download': '下载 {os} 版', 'btn.soon': '即将推出', 'btn.also': '其他平台：',
+    'os.mac': 'Mac', 'os.win': 'Windows', 'os.android': 'Android',
+    'feat.eyebrow': '主要功能', 'feat.title': '像管理办公室一样简单',
+    'feat.sub': '每个 Claude Code 会话就是一名员工：确认弹窗变成审批箱，工作记录变成工作汇报，用量变成工资单。',
+    'f1.t': '招人，然后直接说', 'f1.p': '选好职位和形象就能开工。在群聊里 @名字、@团队 或 @全员，不点名的话，最合适的员工会主动接手。',
+    'f2.t': '重要的事先审批', 'f2.p': '修改文件、执行命令等操作会先进入审批箱。放权多少由你决定，危险命令始终会被拦截。',
+    'f3.t': '组长拆分任务', 'f3.p': '把大任务交给组长，组长会制定计划、分配工作、征得你的确认后按顺序推进并汇报。进度在任务看板上一目了然。',
+    'f4.t': '群聊与会议室', 'f4.p': '汇报和权限请求都会出现在群聊里。在会议室，员工轮流发言，会议纪要和待办事项自动整理好。',
+    'f5.t': '仪表盘与工资单', 'f5.p': '谁在工作、谁在等你确认，一眼就能看清；还能查看每位员工的用量和 Claude 套餐使用率。',
+    'f6.t': '用手机也能审批', 'f6.p': '用二维码把 Android 应用和电脑连接起来，在外面也能审批和派活。还有适合办公室大屏的“工作模式”。',
+    'f7.t': '越工作越壮大的公司', 'f7.p': '员工工作得越多，公司等级越高，办公室也越大，从车库一路成长为五层大楼。可以在商店购买家具、壁纸，甚至办公室猫狗来装饰。工作模式下会隐藏这些元素。',
+    'f8.t': '支持4种语言', 'f8.p': '支持韩语、英语、日语和中文。在设置中切换后无需重启即可生效，手机应用也支持相同的语言。',
+    'f9.t': '定时任务与参考文档', 'f9.p': '预约每天或每周的工作，员工会按时自动完成。还可以登记员工开工前要先读的文档和工作手册。',
+    'scr.eyebrow': '界面', 'scr.title': '看得见大家在工作的办公室',
+    'scr.sub': '员工干得越多，公司就越大，还可以装饰办公室。在手机上，同样的界面也能单手操作。',
+    'cap.office': '<b>办公室</b> — 员工在工位上工作，可逐层查看',
+    'cap.dash': '<b>仪表盘</b> — 需要你确认的事，马上审批',
+    'cap.chat': '<b>群聊</b> — 说一句就能派活，随时收到汇报',
+    'alt.office': 'Claude Office 办公室界面', 'alt.dash': '手机仪表盘界面', 'alt.chat': '手机群聊界面',
+    'dl.eyebrow': '下载', 'dl.title': '免费下载', 'dl.sub': '需要在同一台电脑上登录 Claude Code。', 'dl.mine': '你的设备',
+    'mac.1': '仅支持 Apple 芯片（M1 及以上）', 'mac.2': '打开 .dmg，把应用拖进“应用程序”文件夹', 'mac.3': '首次打开出现警告时，前往 系统设置 › 隐私与安全性 › “仍要打开”',
+    'win.1': '预览版 · 64 位', 'win.2': '出现“Windows 已保护你的电脑”时，选择“更多信息 › 仍要运行”', 'win.3': '外部会话通知和截屏目前仅支持 Mac',
+    'and.1': '远程使用电脑端应用的手机应用', 'and.2': '在电脑的 设置 › 手机连接 中开启，然后扫描二维码', 'and.3': '请使用与电脑相同的版本',
+    'faq.title': '常见问题',
+    'q1': '需要另外注册账号或 API 密钥吗？', 'a1': '不需要。直接使用这台电脑上已登录的 Claude Code 账号。员工用这个账号工作，用量也计入这个账号。',
+    'q2': '完全不懂开发也能用吗？', 'a2': '可以。招聘员工、在聊天里派活、在审批箱里批准或驳回就行，不需要输入任何命令。',
+    'q3': '安装时出现了警告。', 'a3': '这是因为应用还没有签名。Mac 上在 系统设置 › 隐私与安全性 中点“仍要打开”，Windows 上点“更多信息 › 仍要运行”即可。',
+    'q4': '员工会擅自修改我的文件吗？', 'a4': '影响较大的操作会先进入审批箱，批准后才会执行。你可以决定放权的范围，难以撤销的危险命令始终会被拦截。',
+    'q5': '我的数据存在哪里？', 'a5': '员工、任务和聊天记录都保存在你自己电脑上的一个文件里。手机连接默认关闭，只有开启后才能连接。',
+    'q6': '可以只用手机应用吗？', 'a6': '不可以。手机应用是远程操作电脑上正在运行的 Claude Office，因此电脑端应用需要保持打开。',
+    'q7': '支持哪些语言？', 'a7': '支持韩语、英语、日语和中文。默认跟随电脑（手机）的语言，不支持时以英语启动。随时可在设置顶部的“语言”中更改。',
+    'foot.license': '{license} 许可证', 'foot.changelog': '更新日志'
+  }
+};
+
+(function(){
+  var D = DOWNLOADS, LANGS = ['ko', 'en', 'ja', 'zh'], HTML_LANG = {ko:'ko', en:'en', ja:'ja', zh:'zh-CN'};
+  var ICON = {
+    mac: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M16.4 12.6c0-2.5 2-3.6 2.1-3.7-1.2-1.7-3-1.9-3.6-2-1.5-.2-3 .9-3.7.9-.8 0-2-.9-3.2-.9-1.7 0-3.2 1-4 2.5-1.7 3-.4 7.4 1.2 9.8.8 1.2 1.8 2.5 3 2.4 1.2 0 1.7-.8 3.1-.8s1.9.8 3.2.8c1.3 0 2.1-1.2 2.9-2.4.9-1.4 1.3-2.7 1.3-2.8 0 0-2.5-1-2.3-3.8zM14 5.2c.7-.8 1.1-1.9 1-3-1 0-2.1.7-2.8 1.5-.6.7-1.2 1.8-1 2.9 1.1.1 2.1-.6 2.8-1.4z"/></svg>',
+    win: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 5.5l7.4-1v7.1H3V5.5zm0 13l7.4 1v-7H3v6zm8.3 1.1L21 21v-8.4h-9.7v7zm0-15.2v7.2H21V3l-9.7 1.4z"/></svg>',
+    android: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.6 9.5l1.7-3a.4.4 0 00-.7-.4l-1.8 3.1a10.6 10.6 0 00-9.6 0L5.4 6.1a.4.4 0 00-.7.4l1.7 3A9.9 9.9 0 001.5 17h21a9.9 9.9 0 00-4.9-7.5zM7 14.4a1 1 0 110-2 1 1 0 010 2zm10 0a1 1 0 110-2 1 1 0 010 2z"/></svg>'
+  };
+  var EXT = {mac:'.dmg', win:'.exe', android:'.apk'};
+  var ua = navigator.userAgent || '';
+  var os = /Android/i.test(ua) ? 'android' : /iPhone|iPad|iPod/i.test(ua) ? '' : /Mac/i.test(ua) ? 'mac' : /Win/i.test(ua) ? 'win' : '';
+  var changelog = D.changelog || (D.github ? D.github.replace(/\/$/, '') + '/blob/main/CHANGELOG.md' : '');
+  var licenseUrl = D.github ? D.github.replace(/\/$/, '') + '/blob/main/LICENSE' : '';
+
+  function pickLang(){
+    var saved = null;
+    try { saved = localStorage.getItem('lang'); } catch (e) {}
+    if (LANGS.indexOf(saved) >= 0) return saved;
+    var list = navigator.languages || [navigator.language || ''];
+    for (var i = 0; i < list.length; i++) {
+      var code = String(list[i]).toLowerCase().split('-')[0];
+      if (LANGS.indexOf(code) >= 0) return code;
+    }
+    return 'en';
+  }
+
+  function link(a, url){
+    if (url) { a.href = url; a.classList.remove('off'); a.removeAttribute('aria-disabled'); }
+    else { a.removeAttribute('href'); a.classList.add('off'); a.setAttribute('aria-disabled', 'true'); }
+  }
+
+  function dlButton(k, t, primary){
+    var a = document.createElement('a'), url = D[k];
+    a.className = 'btn' + (primary ? ' primary' : '');
+    a.innerHTML = ICON[k] + '<span>' + t['btn.download'].replace('{os}', t['os.' + k]) + ' <small>' + (url ? EXT[k] : '· ' + t['btn.soon']) + '</small></span>';
+    if (url) a.setAttribute('download', '');
+    link(a, url);
+    return a;
+  }
+
+  // 스크린샷: 그 언어 → 영어 → 한국어 순으로 대체 (assets/screens/README.md)
+  function setShot(img, lang){
+    var chain = [lang, 'en', 'ko'].filter(function(l, n, a){ return a.indexOf(l) === n; });
+    var name = img.getAttribute('data-shot'), i = 0;
+    var gen = img._shotGen = (img._shotGen || 0) + 1;
+    img.onerror = function(){
+      if (gen !== img._shotGen) return;
+      if (++i < chain.length) img.src = 'assets/screens/' + chain[i] + '/' + name + '.png';
+      else img.onerror = null;
+    };
+    img.src = 'assets/screens/' + chain[0] + '/' + name + '.png';
+  }
+
+  function render(lang){
+    var t = I18N[lang];
+    document.documentElement.lang = HTML_LANG[lang];
+    document.title = t['meta.title'];
+    document.querySelector('meta[name="description"]').content = t['meta.desc'];
+    document.getElementById('lang').value = lang;
+    document.querySelectorAll('[data-i18n]').forEach(function(el){ el.innerHTML = t[el.getAttribute('data-i18n')]; });
+    document.querySelectorAll('[data-i18n-alt]').forEach(function(el){ el.alt = t[el.getAttribute('data-i18n-alt')]; });
+    document.querySelectorAll('[data-version]').forEach(function(el){ el.textContent = D.version; });
+    document.querySelectorAll('[data-shot]').forEach(function(el){ setShot(el, lang); });
+
+    // 첫 화면: 내 기기 다운로드 + GitHub, 나머지는 작은 링크
+    var cta = document.getElementById('cta'), also = document.getElementById('also');
+    cta.innerHTML = ''; also.innerHTML = '';
+    var keys = ['mac', 'win', 'android'];
+    if (os) {
+      cta.appendChild(dlButton(os, t, true));
+      also.appendChild(document.createTextNode(t['btn.also'] + ' '));
+      keys.filter(function(k){ return k !== os; }).forEach(function(k, n){
+        if (n) also.appendChild(document.createTextNode(' · '));
+        var a = document.createElement('a');
+        a.textContent = t['os.' + k];
+        a.href = D[k] || '#download';
+        also.appendChild(a);
+      });
+    } else {
+      keys.forEach(function(k){ cta.appendChild(dlButton(k, t, false)); });
+    }
+    var gh = document.createElement('a');
+    gh.className = 'btn';
+    gh.innerHTML = document.querySelector('[data-gh] svg').outerHTML + '<span>GitHub' + (D.github ? '' : ' <small>· ' + t['btn.soon'] + '</small>') + '</span>';
+    link(gh, D.github);
+    cta.appendChild(gh);
+
+    // 다운로드 칸
+    var box = document.getElementById('dls');
+    box.querySelectorAll('.dlc').forEach(function(c){
+      var k = c.getAttribute('data-os');
+      c.querySelector('[data-os-title]').innerHTML = ICON[k] + t['os.' + k] + ' <span class="tag">' + t['dl.mine'] + '</span>';
+      var b = dlButton(k, t, k === os);
+      b.setAttribute('data-dl', '');
+      c.querySelector('[data-dl]').replaceWith(b);
+      c.classList.toggle('mine', k === os);
+    });
+
+    // 헤더·푸터 링크
+    link(document.querySelector('[data-gh]'), D.github);
+    var lic = document.querySelector('[data-link="license"]');
+    lic.textContent = t['foot.license'].replace('{license}', D.license);
+    link(lic, licenseUrl);
+    link(document.querySelector('[data-link="changelog"]'), changelog);
+    link(document.querySelector('[data-link="github"]'), D.github);
+  }
+
+  if (os) { var mine = document.querySelector('.dlc[data-os="' + os + '"]'); mine.parentNode.insertBefore(mine, mine.parentNode.firstChild); }
+  document.getElementById('lang').addEventListener('change', function(){
+    try { localStorage.setItem('lang', this.value); } catch (e) {}
+    render(this.value);
+  });
+  render(pickLang());
+})();
+</script>
+</body>
+</html>

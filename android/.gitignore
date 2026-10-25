@@ -1,0 +1,10 @@
+.gradle/
+build/
+local.properties
+.idea/
+*.iml
+.kotlin/
+# 서명 키·비밀번호는 프로젝트 밖에 둔다 (README "서명")
+*.jks
+*.keystore
+keystore.properties

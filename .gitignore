@@ -1,0 +1,19 @@
+.DS_Store
+node_modules/
+*.log
+.env
+.env.*
+
+# 앱 빌드 결과 (설치 파일은 GitHub Releases에 올림)
+app/out/
+app/.vite/
+app/dist-*/
+
+# 안드로이드
+android/build/
+android/app/build/
+android/.gradle/
+android/local.properties
+*.keystore
+*.jks
+*.apk

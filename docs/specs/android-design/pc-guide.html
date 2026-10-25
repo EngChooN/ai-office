@@ -1,0 +1,59 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>PC 첫 연결 가이드</title><link rel="stylesheet" href="mock.css">
+<style>.qrin{width:100%;height:100%;background:
+linear-gradient(90deg,#000 0 14%,transparent 14% 18%,#000 18% 22%,transparent 22% 40%,#000 40% 46%,transparent 46% 58%,#000 58% 62%,transparent 62% 78%,#000 78% 86%,transparent 86%),
+linear-gradient(#000 0 10%,transparent 10% 30%,#000 30% 36%,transparent 36% 52%,#000 52% 60%,transparent 60% 74%,#000 74% 80%,transparent 80%);background-blend-mode:multiply;position:relative}
+.fd{position:absolute;width:30%;height:30%;border:7px solid #000;background:#fff}.fd::after{content:'';position:absolute;inset:6px;background:#000}
+.grid{display:grid;grid-template-columns:640px 640px;gap:28px}</style></head><body>
+<h1>PC · 휴대폰 연결 첫 가이드 (설정 › 휴대폰 연결)</h1>
+<div class="sub">데스크톱 다크 테마 · Dialog 한 장 안에서 단계 이동 · 디자인 팀 이디자 · 2026-10-22</div>
+<div class="grid">
+
+<div><div class="pc"><div class="hd"><b>휴대폰 연결</b><div class="stp"><span class="on">1 켜기</span><span>2 포트</span><span>3 공유기</span><span>4 주소</span><span>5 QR</span></div></div>
+<div class="bd">
+<div class="t16">밖에서도 휴대폰으로 사무실을 확인해요</div>
+<div class="m">휴대폰으로 직원 상태를 보고, 결재·질문에 답하고, 일을 시킬 수 있어요. 파일을 열거나 설정을 바꾸는 일은 휴대폰에서 할 수 없어요.</div>
+<div class="banner w" style="color:#F2F2F2"><span style="color:#EDB417">⚠</span><div><b>켜기 전에 꼭 읽어 주세요</b><div class="m" style="margin-top:4px">켜면 이 PC의 문(포트) 하나가 인터넷 쪽으로 열려요. 연결용 QR 코드를 가진 사람은 누구나 이 사무실에 결재하고 지시할 수 있어요.<br>· QR 코드를 사진으로 남기거나 다른 사람에게 보내지 마세요.<br>· 휴대폰을 잃어버렸다면 바로 "QR 다시 만들기"를 눌러 주세요.<br>· 쓰지 않을 때는 꺼 두세요. 끄면 문이 바로 닫혀요.</div></div></div>
+<label style="display:flex;gap:10px;align-items:center"><input type="checkbox" checked> 위 내용을 확인했어요</label>
+</div><div class="ft"><span class="m s12">기본은 꺼져 있어요</span><button class="btn pri">원격 연결 켜기</button></div></div><div class="cap">① 원격 켜기 · 보안 주의 (체크해야 버튼 활성)</div></div>
+
+<div><div class="pc"><div class="hd"><b>휴대폰 연결</b><div class="stp"><span class="dn">✓ 켜기</span><span class="on">2 포트</span><span>3 공유기</span><span>4 주소</span><span>5 QR</span></div></div>
+<div class="bd">
+<div class="t16">연결에 쓸 문 번호(포트)를 확인해요</div>
+<div class="m">포트는 휴대폰이 이 PC를 찾아올 때 두드리는 문 번호예요. 보통은 그대로 두면 돼요.</div>
+<div class="kv"><b>포트 번호</b><span><span class="mono" style="border:1px solid #2E333B;border-radius:8px;padding:6px 10px;display:inline-block;width:110px">47900</span> <span class="m s12">1024~65535</span></span>
+<b>이 PC 안쪽 주소</b><span class="mono">192.168.0.24</span>
+<b>상태</b><span style="color:#3FC168">● 이 PC에서 열 준비가 됐어요</span></div>
+<div class="banner n"><span>ℹ</span><div class="m">다른 프로그램이 이미 이 번호를 쓰고 있으면 여기서 알려 드려요. 그때만 번호를 바꿔 주세요.</div></div>
+<div class="banner" style="border:1px solid color-mix(in srgb,#F14445 45%,transparent);background:color-mix(in srgb,#F14445 12%,transparent)"><span style="color:#F14445">⨯</span><div><b>예시 · 포트가 사용 중일 때</b><div class="m">47900번은 다른 프로그램이 쓰고 있어요. 다른 번호(예: 47901)로 바꿔 주세요.</div></div></div>
+</div><div class="ft"><button class="btn">이전</button><button class="btn pri">공유기 설정 시도</button></div></div><div class="cap">② 포트 확인 (사용 중이면 아래 오류 배너)</div></div>
+
+<div><div class="pc"><div class="hd"><b>휴대폰 연결</b><div class="stp"><span class="dn">✓ 켜기</span><span class="dn">✓ 포트</span><span class="on">3 공유기</span><span>4 주소</span><span>5 QR</span></div></div>
+<div class="bd">
+<div style="display:flex;gap:12px;align-items:center"><div class="ic k" style="--ok:#3FC168">✓</div><div><div class="t16">공유기가 문을 열어 줬어요</div><div class="m">공유기에 자동으로 길을 만들었어요(UPnP).</div></div></div>
+<div class="kv"><b>바깥 주소</b><span class="mono">203.0.113.10 : 47900</span><b>열린 길</b><span>공유기 47900 → 이 PC 47900</span><b>유지</b><span>앱이 켜져 있는 동안 30분마다 새로 고쳐요</span></div>
+<div class="banner w" style="color:#F2F2F2"><span style="color:#EDB417">⚠</span><div class="m">바깥 주소가 <b style="color:#F2F2F2">100.64.x.x ~ 100.127.x.x</b>로 보이면 통신사가 공유하는 주소라 밖에서 연결이 안 될 수 있어요. (이 화면은 정상 예시)</div></div>
+</div><div class="ft"><button class="btn">이전</button><button class="btn pri">다음</button></div></div><div class="cap">③-a 공유기 자동 설정(UPnP) 성공</div></div>
+
+<div><div class="pc"><div class="hd"><b>휴대폰 연결</b><div class="stp"><span class="dn">✓ 켜기</span><span class="dn">✓ 포트</span><span class="on">3 공유기</span><span>4 주소</span><span>5 QR</span></div></div>
+<div class="bd">
+<div style="display:flex;gap:12px;align-items:center"><div class="ic w" style="--wait:#EDB417">!</div><div><div class="t16">공유기가 자동 설정을 받지 않았어요</div><div class="m">직접 한 번만 설정하면 돼요. 같은 와이파이 안에서는 지금도 연결돼요.</div></div></div>
+<div class="card" style="--card:#15181E;--border:#292E36"><b>공유기 관리 화면에서 할 일 (포트포워딩)</b><ol class="m" style="padding-left:18px;margin-top:6px;display:flex;flex-direction:column;gap:4px"><li>브라우저에서 공유기 관리 화면을 열어요. 보통 <span class="mono">192.168.0.1</span> 또는 공유기 밑면에 적힌 주소예요.</li><li>"포트포워딩" 또는 "가상 서버" 메뉴를 찾아요.</li><li>아래 값으로 하나 추가해요.</li></ol>
+<div class="kv" style="margin-top:8px"><b>외부 포트</b><span class="mono">47900</span><b>내부 IP</b><span class="mono">192.168.0.24</span><b>내부 포트</b><span class="mono">47900</span><b>프로토콜</b><span class="mono">TCP</span></div></div>
+</div><div class="ft"><button class="btn">이전</button><div style="display:flex;gap:8px"><button class="btn">다시 확인</button><button class="btn pri">설정했어요, 다음</button></div></div></div><div class="cap">③-b UPnP 실패 → 수동 포트포워딩 안내</div></div>
+
+<div><div class="pc"><div class="hd"><b>휴대폰 연결</b><div class="stp"><span class="dn">✓ 켜기</span><span class="dn">✓ 포트</span><span class="dn">✓ 공유기</span><span class="on">4 주소</span><span>5 QR</span></div></div>
+<div class="bd">
+<div class="t16">바깥 주소가 바뀌어도 이어지게 할까요? (선택)</div>
+<div class="m">집·회사 인터넷 주소는 공유기를 다시 켜면 바뀔 수 있어요. 바뀌면 휴대폰에서 QR을 다시 찍어야 해요. 공유기의 <b style="color:#F2F2F2">DDNS</b>(바뀌지 않는 이름) 기능을 켜면 그럴 필요가 없어요.</div>
+<div class="card" style="--card:#15181E;--border:#292E36"><b>DDNS 쓰는 법</b><ol class="m" style="padding-left:18px;margin-top:6px"><li>공유기 관리 화면에서 "DDNS" 메뉴를 켜고 이름을 정해요. 예: <span class="mono">myoffice.iptime.org</span></li><li>그 이름을 아래에 적어요.</li></ol>
+<div style="margin-top:10px"><div class="m s12" style="margin-bottom:4px">DDNS 이름 (비워 두면 지금 주소 203.0.113.10을 써요)</div><div class="mono" style="border:1px solid #2E333B;border-radius:8px;padding:9px 12px">myoffice.iptime.org</div></div></div>
+</div><div class="ft"><button class="btn">이전</button><div style="display:flex;gap:8px"><button class="btn">건너뛰기</button><button class="btn pri">다음</button></div></div></div><div class="cap">④ DDNS 안내 (선택 단계)</div></div>
+
+<div><div class="pc"><div class="hd"><b>휴대폰 연결</b><div class="stp"><span class="dn">✓ 켜기</span><span class="dn">✓ 포트</span><span class="dn">✓ 공유기</span><span class="dn">✓ 주소</span><span class="on">5 QR</span></div></div>
+<div class="bd">
+<div style="display:flex;gap:20px"><div class="qr"><div class="qrin"><div class="fd" style="left:0;top:0"></div><div class="fd" style="right:0;top:0"></div><div class="fd" style="left:0;bottom:0"></div></div></div>
+<div style="display:flex;flex-direction:column;gap:8px"><div class="t16">휴대폰으로 QR을 찍어 주세요</div><ol class="m" style="padding-left:18px"><li>휴대폰에 Claude Office 앱을 설치해요.</li><li>앱에서 "QR 코드 찍기"를 눌러요.</li><li>연결되면 이 창에 "연결됐어요"가 떠요.</li></ol><div class="kv" style="grid-template-columns:70px 1fr"><b>주소</b><span class="mono">myoffice.iptime.org:47900</span></div><div style="color:#EDB417;font-size:13px">4:32 뒤에 QR이 가려져요</div></div></div>
+<div class="banner w" style="color:#F2F2F2"><span style="color:#EDB417">⚠</span><div class="m">이 QR에는 이 사무실의 열쇠가 들어 있어요. 사진·캡처로 남기지 마세요. 휴대폰을 바꾸거나 잃어버렸으면 "QR 다시 만들기"를 눌러 주세요. 연결된 휴대폰이 모두 끊겨요.</div></div>
+</div><div class="ft"><button class="btn" style="color:#F14445;border-color:color-mix(in srgb,#F14445 50%,transparent)">QR 다시 만들기</button><button class="btn">닫기</button></div></div><div class="cap">⑤ QR 표시 (5분 뒤 가림 · 재발급은 확인창 필수)</div></div>
+
+</div></body></html>

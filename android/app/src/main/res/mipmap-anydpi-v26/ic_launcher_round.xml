@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- PC 앱 아이콘(app/build/icon.png)과 같은 픽셀아트. foreground PNG는 108dp 캔버스 가운데 64dp에 그림, 바깥은 벽·선반을 이어 그림 -->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/ic_launcher_background" />
+    <foreground android:drawable="@mipmap/ic_launcher_foreground" />
+    <monochrome android:drawable="@drawable/ic_launcher_monochrome" />
+</adaptive-icon>

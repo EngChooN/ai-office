@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 평문(HTTP) 통신 전면 차단. 사용자 설치 CA는 믿지 않는다.
+     PC 서버는 자체 서명이라 시스템 CA로도 통과하지 않고, 앱은 QR의 SPKI 지문으로만 확인한다 (net/PinnedTls.kt) -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

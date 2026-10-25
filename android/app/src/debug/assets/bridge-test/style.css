@@ -1,0 +1,29 @@
+:root { --bg: #0d1014; --card: #15181e; --line: #292e36; --fg: #f2f2f2; --muted: #999fa8; --primary: #f0834e; --ok: #3fc168; --warn: #edb417; --err: #f14445; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.5 sans-serif; }
+header { display: flex; gap: 8px; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+header b { flex: 1; }
+.pill { font-size: 12px; padding: 2px 8px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); }
+.pill.open { color: var(--ok); border-color: var(--ok); }
+#layout { font-size: 12px; color: var(--muted); }
+main { display: grid; gap: 12px; padding: 12px 16px; }
+/* 태블릿(840px 이상): PC처럼 옆으로, 폰: 세로로 쌓기 */
+@media (min-width: 840px) { main { grid-template-columns: 280px 1fr 1fr; } }
+section { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px; min-width: 0; }
+h2 { font-size: 13px; color: var(--muted); margin: 4px 0 8px; font-weight: 600; }
+ul, ol { margin: 0; padding-left: 18px; }
+#log { font-size: 12px; max-height: 40vh; overflow: auto; word-break: break-all; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+button { min-height: 40px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); font: inherit; }
+button#send { background: var(--primary); color: #190f0a; border: 0; font-weight: 600; }
+textarea { width: 100%; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 10px; padding: 8px; font: inherit; }
+.muted { color: var(--muted); }
+.ok { color: var(--ok); } .err { color: var(--err); } .warn { color: var(--warn); }
+#preview { max-width: 160px; display: block; margin-top: 8px; border-radius: 8px; }
+.sheet { position: fixed; left: 0; right: 0; bottom: 0; background: var(--card); border-top: 1px solid var(--line); border-radius: 20px 20px 0 0; padding: 16px; }
+.hidden { display: none; }
+
+/* 아래에 붙은 입력창: 화면이 --ime만큼 올려 키보드 바로 위에 둔다 (--ime가 없으면 0 = 셸이 WebView를 줄인 경우) */
+body { padding-bottom: calc(64px + var(--ime, 0px)); }
+.composer { position: fixed; left: 0; right: 0; bottom: var(--ime, 0px); display: flex; gap: 8px; align-items: center; padding: 8px 16px; background: var(--card); border-top: 1px solid var(--line); }
+.composer input { flex: 1; min-height: 40px; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 10px; padding: 0 10px; font: inherit; }

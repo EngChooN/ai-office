@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 테마 아이콘(Android 13+)용 단색 레이어: 픽셀아트 직원·모니터·선반 외곽선 (108dp 캔버스, 1칸 2dp, 그림 64dp) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M74,36h6v2h-6zM48,38h12v2h-12zM74,38h2v2h-2zM78,38h2v2h-2zM46,40h16v2h-16zM68,40h2v2h-2zM74,40h2v2h-2zM78,40h2v2h-2zM44,42h20v2h-20zM68,42h2v2h-2zM74,42h2v2h-2zM78,42h2v2h-2zM42,44h24v2h-24zM68,44h2v2h-2zM74,44h6v2h-6zM24,46h42v2h-42zM68,46h8v2h-8zM78,46h6v2h-6zM24,48h2v2h-2zM40,48h6v2h-6zM62,48h4v2h-4zM68,48h2v2h-2zM74,48h6v2h-6zM82,48h2v2h-2zM24,50h2v2h-2zM40,50h4v2h-4zM48,50h2v2h-2zM58,50h2v2h-2zM64,50h6v2h-6zM82,50h2v2h-2zM24,52h20v2h-20zM48,52h2v2h-2zM58,52h2v2h-2zM64,52h20v2h-20zM42,54h2v2h-2zM64,54h2v2h-2zM28,56h18v2h-18zM64,56h2v2h-2zM28,58h18v2h-18zM60,58h2v2h-2zM28,60h18v2h-18zM48,60h2v2h-2zM58,60h4v2h-4zM72,60h6v2h-6zM28,62h18v2h-18zM62,62h2v2h-2zM72,62h2v2h-2zM76,62h2v2h-2zM28,64h18v2h-18zM64,64h2v2h-2zM72,64h2v2h-2zM76,64h2v2h-2zM24,66h2v2h-2zM28,66h18v2h-18zM48,66h36v2h-36z" />
+</vector>

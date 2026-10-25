@@ -1,0 +1,24 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>폰 배치 보드</title>
+<style>
+body{margin:0;background:#07090c;color:#F2F2F2;font:14px/1.5 'Apple SD Gothic Neo','Noto Sans KR',sans-serif;padding:24px}
+h1{font-size:22px;margin:0 0 4px}.sub{color:#999FA8;font-size:13px;margin-bottom:16px}
+.row{display:flex;gap:20px;align-items:flex-start}
+.shot{position:relative;flex:none}.shot img{display:block;height:640px;border:1px solid #2a2f37;border-radius:14px}
+.cap{color:#999FA8;font-size:13px;margin-top:6px;text-align:center}
+.box{position:absolute;border:2.5px solid #F14445;border-radius:8px;box-shadow:0 0 0 1px rgba(0,0,0,.6)}
+.box b{position:absolute;left:-12px;top:-12px;width:24px;height:24px;border-radius:50%;background:#F14445;color:#fff;font-size:13px;display:flex;align-items:center;justify-content:center}
+.notes{flex:1;min-width:360px;display:flex;flex-direction:column;gap:10px}
+.n{display:flex;gap:10px;background:#15181E;border:1px solid #292E36;border-radius:12px;padding:10px 12px}
+.n b{flex:none;width:22px;height:22px;border-radius:50%;background:#F14445;color:#fff;font-size:12px;display:flex;align-items:center;justify-content:center}
+.n b.z{background:#292E36;color:#999FA8}
+</style><script src="boards.js"></script></head><body>
+<script>
+const id = new URLSearchParams(location.search).get('id')
+const b = BOARDS[id]
+document.write(`<h1>${b.title}</h1><div class="sub">폰 배치안 · 실제 renderer 캡처(390×844 / 800×1280) 위에 표시 · 디자인 팀 이디자 · 2026-10-23</div><div class="row">`)
+for (const [img, label] of b.imgs) {
+  const boxes = (b.boxes[img] || []).map(([x, y, w, h, n]) => `<div class="box" style="left:${x}%;top:${y}%;width:${w}%;height:${h}%"><b>${n}</b></div>`).join('')
+  document.write(`<div class="shot"><img src="img/${img}.png">${boxes}<div class="cap">${label}</div></div>`)
+}
+document.write(`<div class="notes">${b.notes.map(([n, t]) => `<div class="n"><b class="${n ? '' : 'z'}">${n || '·'}</b><div>${t}</div></div>`).join('')}</div></div>`)
+</script></body></html>
