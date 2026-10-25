@@ -7,10 +7,11 @@
 /* ── 여기만 바꾸면 됩니다 ──────────────────────────────
    주소가 비어 있으면 버튼에 '준비 중'이 보입니다. */
 var DOWNLOADS = {
-  mac: '',        // Mac 설치 파일(.dmg) 주소
-  win: '',        // Windows 설치 파일(.exe) 주소
-  android: '',    // 안드로이드 앱(.apk) 주소
-  github: '',     // GitHub 저장소 주소 (예: https://github.com/아이디/claude-office)
+  // 최신 Release의 고정 파일 이름으로 연결 — 새 버전은 같은 이름으로 Release에 올리면 됨
+  mac: 'https://github.com/EngChooN/claude-office/releases/latest/download/Claude-Office-mac-arm64.dmg',
+  win: 'https://github.com/EngChooN/claude-office/releases/latest/download/Claude-Office-win-x64.zip',
+  android: 'https://github.com/EngChooN/claude-office/releases/latest/download/Claude-Office-android.apk',
+  github: 'https://github.com/EngChooN/claude-office',
   changelog: '',  // 변경 기록 페이지 주소 (비우면 GitHub 저장소의 CHANGELOG.md)
   license: 'MIT', // 라이선스 이름
   version: '0.11.0'
@@ -282,7 +283,7 @@ var I18N = {
     'alt.office': 'Claude Office 사무실 화면', 'alt.dash': '휴대폰 대시보드 화면', 'alt.chat': '휴대폰 단체방 화면',
     'dl.eyebrow': '다운로드', 'dl.title': '무료로 받아 보세요', 'dl.sub': '그 컴퓨터에 Claude Code가 로그인되어 있어야 합니다.', 'dl.mine': '내 기기',
     'mac.1': 'Apple Silicon(M1 이후) 전용', 'mac.2': 'dmg를 열어 응용 프로그램 폴더로 끌어다 놓기', 'mac.3': '처음 열 때 경고가 나오면 시스템 설정 › 개인정보 보호 및 보안 › "그래도 열기"',
-    'win.1': '시험판 · 64비트', 'win.2': '"Windows의 PC 보호" 창이 뜨면 "추가 정보 › 실행"', 'win.3': '외부 직원 알림·화면 캡처는 아직 Mac 전용',
+    'win.1': '시험판 · 64비트 · .zip 압축을 풀고 Claude Office.exe 실행', 'win.2': '"Windows의 PC 보호" 창이 뜨면 "추가 정보 › 실행"', 'win.3': '외부 직원 알림·화면 캡처는 아직 Mac 전용',
     'and.1': 'PC 앱을 원격으로 쓰는 휴대폰 앱', 'and.2': 'PC의 설정 › 휴대폰 연결에서 켜고 QR로 연결', 'and.3': 'PC와 같은 버전을 쓰세요',
     'faq.title': '자주 묻는 질문',
     'q1': '따로 가입하거나 API 키가 필요한가요?', 'a1': '아니요. 그 컴퓨터에 로그인된 Claude Code 계정을 그대로 씁니다. 직원들은 그 계정으로 일하고, 사용량도 그 계정에 잡힙니다.',
@@ -322,7 +323,7 @@ var I18N = {
     'alt.office': 'Claude Office office view', 'alt.dash': 'Phone dashboard', 'alt.chat': 'Phone group chat',
     'dl.eyebrow': 'Download', 'dl.title': 'Get it free', 'dl.sub': 'Requires Claude Code to be signed in on the same computer.', 'dl.mine': 'Your device',
     'mac.1': 'Apple Silicon (M1 or later) only', 'mac.2': 'Open the .dmg and drag the app into Applications', 'mac.3': 'If you see a warning on first launch, go to System Settings › Privacy & Security › “Open Anyway”',
-    'win.1': 'Preview · 64-bit', 'win.2': 'If “Windows protected your PC” appears, choose “More info › Run anyway”', 'win.3': 'External session alerts and screen capture are Mac-only for now',
+    'win.1': 'Preview · 64-bit · unzip and run Claude Office.exe', 'win.2': 'If “Windows protected your PC” appears, choose “More info › Run anyway”', 'win.3': 'External session alerts and screen capture are Mac-only for now',
     'and.1': 'A remote companion for the desktop app', 'and.2': 'Turn on Settings › Phone connection on your PC, then scan the QR code', 'and.3': 'Use the same version as your PC',
     'faq.title': 'Frequently asked questions',
     'q1': 'Do I need a separate account or API key?', 'a1': 'No. It uses the Claude Code account already signed in on your computer. Teammates work under that account, and usage is counted there.',
@@ -362,7 +363,7 @@ var I18N = {
     'alt.office': 'Claude Office のオフィス画面', 'alt.dash': 'スマホのダッシュボード画面', 'alt.chat': 'スマホのグループチャット画面',
     'dl.eyebrow': 'ダウンロード', 'dl.title': '無料で使えます', 'dl.sub': '同じパソコンで Claude Code にログインしている必要があります。', 'dl.mine': 'お使いの端末',
     'mac.1': 'Apple シリコン（M1 以降）専用', 'mac.2': '.dmg を開いて「アプリケーション」フォルダへドラッグ', 'mac.3': '初回起動で警告が出たら、システム設定 › プライバシーとセキュリティ ›「このまま開く」',
-    'win.1': 'プレビュー版・64 ビット', 'win.2': '「Windows によって PC が保護されました」と出たら「詳細情報 › 実行」', 'win.3': '外部セッションの通知と画面キャプチャは現在 Mac のみ',
+    'win.1': 'プレビュー版・64 ビット・.zip を展開して Claude Office.exe を実行', 'win.2': '「Windows によって PC が保護されました」と出たら「詳細情報 › 実行」', 'win.3': '外部セッションの通知と画面キャプチャは現在 Mac のみ',
     'and.1': 'PC アプリをリモートで使うスマホアプリ', 'and.2': 'PC の 設定 › スマホ連携 をオンにして QR コードで接続', 'and.3': 'PC と同じバージョンを使ってください',
     'faq.title': 'よくある質問',
     'q1': '別途アカウント登録や API キーは必要ですか？', 'a1': 'いいえ。そのパソコンでログイン中の Claude Code アカウントをそのまま使います。スタッフはそのアカウントで働き、使用量もそのアカウントに計上されます。',
@@ -402,7 +403,7 @@ var I18N = {
     'alt.office': 'Claude Office 办公室界面', 'alt.dash': '手机仪表盘界面', 'alt.chat': '手机群聊界面',
     'dl.eyebrow': '下载', 'dl.title': '免费下载', 'dl.sub': '需要在同一台电脑上登录 Claude Code。', 'dl.mine': '你的设备',
     'mac.1': '仅支持 Apple 芯片（M1 及以上）', 'mac.2': '打开 .dmg，把应用拖进“应用程序”文件夹', 'mac.3': '首次打开出现警告时，前往 系统设置 › 隐私与安全性 › “仍要打开”',
-    'win.1': '预览版 · 64 位', 'win.2': '出现“Windows 已保护你的电脑”时，选择“更多信息 › 仍要运行”', 'win.3': '外部会话通知和截屏目前仅支持 Mac',
+    'win.1': '预览版 · 64 位 · 解压 .zip 后运行 Claude Office.exe', 'win.2': '出现“Windows 已保护你的电脑”时，选择“更多信息 › 仍要运行”', 'win.3': '外部会话通知和截屏目前仅支持 Mac',
     'and.1': '远程使用电脑端应用的手机应用', 'and.2': '在电脑的 设置 › 手机连接 中开启，然后扫描二维码', 'and.3': '请使用与电脑相同的版本',
     'faq.title': '常见问题',
     'q1': '需要另外注册账号或 API 密钥吗？', 'a1': '不需要。直接使用这台电脑上已登录的 Claude Code 账号。员工用这个账号工作，用量也计入这个账号。',
@@ -423,7 +424,7 @@ var I18N = {
     win: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 5.5l7.4-1v7.1H3V5.5zm0 13l7.4 1v-7H3v6zm8.3 1.1L21 21v-8.4h-9.7v7zm0-15.2v7.2H21V3l-9.7 1.4z"/></svg>',
     android: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.6 9.5l1.7-3a.4.4 0 00-.7-.4l-1.8 3.1a10.6 10.6 0 00-9.6 0L5.4 6.1a.4.4 0 00-.7.4l1.7 3A9.9 9.9 0 001.5 17h21a9.9 9.9 0 00-4.9-7.5zM7 14.4a1 1 0 110-2 1 1 0 010 2zm10 0a1 1 0 110-2 1 1 0 010 2z"/></svg>'
   };
-  var EXT = {mac:'.dmg', win:'.exe', android:'.apk'};
+  var EXT = {mac:'.dmg', win:'.zip', android:'.apk'};
   var ua = navigator.userAgent || '';
   var os = /Android/i.test(ua) ? 'android' : /iPhone|iPad|iPod/i.test(ua) ? '' : /Mac/i.test(ua) ? 'mac' : /Win/i.test(ua) ? 'win' : '';
   var changelog = D.changelog || (D.github ? D.github.replace(/\/$/, '') + '/blob/main/CHANGELOG.md' : '');
