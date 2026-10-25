@@ -2,6 +2,7 @@
 // 대표 결정(2026-10-23): 위험 명령을 뺀 전부 자동 승인. 위험 명령(RISKY_BASH)과 푸시·외부 전송은 대표를 기다린다
 
 import { findRiskyCommand } from './bashPolicy.ts'
+import { browserVerdict } from './browserTools.ts'
 import { base, gitSubcommand, lexSegments, resolveCommand, type Segment } from './commandScan.ts'
 import { t } from './i18n/index.ts'
 
@@ -164,7 +165,7 @@ function isDangerousWritePath(p: string, content: string) {
 
 /**
  * 자동결재 판정: 'allow'면 대표 대신 승인, 'wait'면 평소처럼 결재함에서 대표를 기다린다.
- * 대기 = 위험 명령 · 푸시·외부 전송 · 스크립트 실행 · 실행 위험 경로 쓰기 · 화면 캡처. 질문(AskUserQuestion)은 따로 답한다
+ * 대기 = 위험 명령 · 푸시·외부 전송 · 스크립트 실행 · 실행 위험 경로 쓰기 · 화면 캡처 · 브라우저 조작. 질문(AskUserQuestion)은 따로 답한다
  */
 export function autoApprove(tool: string, input: Record<string, unknown>): AutoVerdict {
   if (tool === 'Bash') {
@@ -182,6 +183,9 @@ export function autoApprove(tool: string, input: Record<string, unknown>): AutoV
     return /[?#]/.test(url) ? 'wait' : 'allow'
   }
   if (tool === 'mcp__office__capture_screen') return 'wait'
+  // 브라우저 장비: 조회만 허용, 이동·클릭·입력·업로드·제출은 대표를 기다린다 (결재 판정과 같은 기준 — browserTools)
+  const browser = browserVerdict(tool, input)
+  if (browser) return browser
   if (tool.startsWith('mcp__')) {
     const name = tool.slice(tool.indexOf('__', 5) + 2)
     // 이름의 모든 낱말을 본다 (camelCase·_·- 로 쪼갬). 쓰기 동사가 하나라도 섞이면 기다린다 (A5 — get_or_create 등)

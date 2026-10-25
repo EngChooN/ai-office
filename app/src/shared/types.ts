@@ -4,6 +4,7 @@ import type { LedgerRow, MissionsView, ShopState, Zone } from './economy'
 import type { GridItem } from './iso/furniture'
 import type { RefDocReject } from './refDocs'
 import type { AutoApproveConfig, AutoApprovePlan, AutoKind } from './autoApprove'
+import type { StaffCommand } from './slashCommands'
 import { COMPANY_LEVELS, companyLevelOf } from './officeLevel.ts'
 import type { LangSetting } from './i18n/index.ts'
 
@@ -200,7 +201,11 @@ export interface Equipment {
 }
 
 export interface EquipmentCatalog {
-  mcpServers: { name: string; source: string; detail: string }[]
+  /**
+   * 첫 줄은 앱 기본 장비 '브라우저'(name = BROWSER_EQUIPMENT, isBuiltin) — 사용자 MCP 카탈로그와 별개로 늘 있다.
+   * unavailable: 이 컴퓨터에서 쓸 수 없는 이유(쉬운 말). 있으면 칩을 끄고 이 문장을 보여 준다
+   */
+  mcpServers: { name: string; source: string; detail: string; isBuiltin?: boolean; unavailable?: string }[]
   skills: { name: string; source: string; description: string }[]
 }
 
@@ -450,6 +455,8 @@ export interface OfficeSnapshot {
   autoApprove: AutoApproveState
   /** 비서 대화·확인 카드 (옛 main이면 비어 있을 수 있다) — 휴대폰 앱도 스냅샷으로 같이 받는다 */
   secretary?: SecretaryState
+  /** 직원별 /명령어 자동완성 목록 (세션을 연 적 있는 직원만 — 없으면 loadStaffCommands로 불러온다). 막힌 기본 명령은 이미 빠져 있다 */
+  staffCommands?: Record<string, StaffCommand[]>
 }
 
 /** 자동결재가 대신 처리한 한 건 (결재함 "자동 처리됨" 목록) */
@@ -639,7 +646,10 @@ export interface OfficeApi {
   hire(input: HireInput): Promise<Staff>
   fire(staffId: string): Promise<void>
   updateStaff(staffId: string, patch: { teamId?: string | null; name?: string; role?: string; model?: ModelChoice; avatar?: number; systemPrompt?: string; cwd?: string }): Promise<void>
+  /** text가 /명령이면 세션에 그대로 보낸다. /clear는 새 대화로, 막힌 기본 명령은 보내지 않고 직원 기록에 안내를 남긴다 */
   instruct(staffId: string, text: string, attachments?: Attachment[]): Promise<void>
+  /** 이 직원의 /명령어 목록을 (아직 없으면) 불러온다. 결과는 스냅샷 staffCommands로 온다 */
+  loadStaffCommands(staffId: string): Promise<void>
   saveAttachments(files: UploadFile[]): Promise<Attachment[]>
   openAttachment(id: string): Promise<void>
   /** 하던 일을 멈춘다. 지시를 같이 주면 멈춘 뒤 바로 그 지시를 받는다 (끼어들기) */

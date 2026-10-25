@@ -254,6 +254,7 @@ OfficeApi는 **메서드 84개 + 값 1개(`platform`) + 이벤트 5개**다(구�
 | 82 | `autoApproveStatus` | R | | 자동결재 상태 (스냅샷 `autoApprove`와 같음) |
 | 83 | `setAutoApprove` | R | | 자동결재 켜기·끄기 `{ mode: 'off' \| 'hours' \| 'daily', hours?, start?, end? }` — 허용 필드는 이 넷 |
 | 84 | `autoApproveLog` | R | | 자동결재가 대신 처리한 목록(최근 것부터) |
+| 85 | `loadStaffCommands` | R | | 직원의 /명령어 목록을 (없으면) 불러온다. 결과는 스냅샷 `staffCommands[직원 id]`(`StaffCommand[]`: name·description·argumentHint·isBuiltin). 직원 세션을 잠깐 띄우므로 몇 초 걸릴 수 있음. 거르기 규칙은 `shared/slashCommands.ts`의 `matchCommands`(이름 앞부분 → 이름 안 → 설명). `instruct`·`sendChat`의 `/명령`은 PC와 같게 처리(막힌 명령은 안내, `/clear`는 새 대화) |
 
 개수: **R 58 · S 17 · P 6 · C 2 · U 1 = 84**. 코드는 `app/src/main/remote/v2.ts`의 `V2_METHODS: Record<OfficeMethod, …>` 한 표 — 메서드가 빠지거나 남으면 tsc가 실패하고, `scripts/remote-v2.test.mts`가 이름·개수를 다시 확인한다.
 

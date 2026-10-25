@@ -1,0 +1,53 @@
+[English](README.md) · [한국어](README.ko.md) · [日本語](README.ja.md) · [中文](README.zh.md)
+
+# Claude Office
+
+把你的 Claude Code 会话变成**员工**，像一间办公室一样一起查看和指挥的个人 PoC（Electron 桌面应用）。
+
+- 状态：**0.12.0**（2026-10-26）— 办公室地图（团队区域、会议室、休息室）· 团队/组长委派 · 任务看板 · 审批箱 · 群聊 · 会议 · 定时任务 · 报告 · 工资单 · 布置
+- 技术栈：Electron Forge + Vite · React 19 · Zustand · Tailwind 4 + shadcn/ui · Phaser 4 · SQLite（`node:sqlite`）· Claude Agent SDK
+
+## 安装 (0.12.0)
+- 打开 `app/out/make/dmg/arm64/Claude Office.dmg`，拖到 Applications 文件夹
+- 仅限 Apple Silicon · 未签名/未公证 → 首次打开时若出现“无法验证开发者”提示，请前往 系统设置 › 隐私与安全性 › “仍要打开”
+- 前提条件：该 Mac 上已登录 Claude Code（员工使用该账户工作，费用也计入该账户）
+- 重新构建：`cd app && pnpm make`
+
+## Windows（第一阶段 · 试用版）
+- 构建：`cd app && pnpm install && pnpm make:win` → `app/out/make/zip/win32/x64/*.zip`（无需安装，解压后运行 `claude-office.exe`）
+  - 在 Mac 上构建也可以。`pnpm-workspace.yaml` 中的 `supportedArchitectures` 会同时下载 Windows x64 用 claude 可执行文件包（修改设置后需要运行一次 `pnpm install`）
+- 未签名 → 首次打开时若出现 SmartScreen“Windows 已保护你的电脑”窗口，点击“更多信息 › 仍要运行”
+- 数据：`%APPDATA%\Claude Office\office.db`
+- 目前仅 Mac 支持：外部员工通知与提问接收（hooks）、屏幕截图。工作成果检查（提交·PR）需要 Git for Windows 和 GitHub CLI，且尚未实际验证
+
+## 手机远程（0.8.0 起）
+- 在 设置 › 手机连接 中开启，然后用二维码连接安卓应用（`android/`）。**默认关闭。** 开启后，本机端口（默认 47900）会向互联网开放，不用时请关闭。
+- 从手机进行的审批和指令与在电脑上直接操作具有相同权限。若手机丢失，请点击“重新生成二维码”。
+- 通知大约每 15 分钟检查一次，因此可能延迟几十分钟。若 PC 的远程密钥变化（证书固定），请重新生成二维码并重新连接。
+- 兼容性：电脑 **0.8.0 及以上** ↔ 安卓 **1.0.x** ↔ 协议 **v1**（`docs/specs/remote-protocol-v1.md`）。电脑 **0.9.0 及以上** ↔ 安卓 **1.1.x** ↔ 协议 **v2**（整个 PC 屏幕，`docs/specs/remote-protocol-v2.md`）— 1.0.x 应用仍可通过 v1 连接 0.9.0 的电脑。**从 0.10.1 起，手机应用版本号与电脑相同（PC 0.10.1 ↔ 手机 0.10.1；上面的 1.x 标注是之前的历史）。** 应用构建和签名指纹见 `android/README.md`，0.8.0 的发布说明见 `docs/release-notes/0.8.0.md`。
+
+## 开发运行
+```bash
+cd app
+pnpm install
+pnpm start
+```
+- 登录：无需单独的 API 密钥，直接使用本机 Claude Code 的登录状态。
+- 数据：`~/Library/Application Support/Claude Office/office.db`
+- 一个数据文件夹只能由一个应用使用（`office.lock`）。若已启动安装版，开发版会显示“已经在运行”并退出。要在保持安装版运行的同时启动开发版或 QA，请指定其他文件夹：`CLAUDE_OFFICE_USER_DATA=~/claude-office-dev pnpm start`
+
+## 两类员工
+| | 雇用员工 | 外部员工 |
+|---|---|---|
+| 身份 | 应用通过 Agent SDK 启动的会话 | 在终端或桌面应用中已在运行的会话 |
+| 状态 | 实时（流） | 每 2 秒轮询 `~/.claude/sessions` 注册表（+ 可选开启的 hooks） |
+| 指令·审批 | 在应用中 | 在原窗口中 |
+| 今日工作 | 应用数据库 | 对话记录 jsonl |
+
+## 目录
+- `app/` — 应用（`src/main` 主进程、`src/renderer` 界面、`src/shared` 共享类型）
+- `spikes/` — 第一阶段联动验证脚本
+- `docs/` — 调研与 spike 记录
+
+## 文档
+- [CONTEXT.md](CONTEXT.md) — 给新人的背景资料 · [intro.html](intro.html) — 介绍幻灯片（用浏览器打开） · [SPEC.md](SPEC.md) — 已确定的规格 · [CHANGELOG.zh.md](CHANGELOG.zh.md) — 变更记录 · [docs/spike-integration.md](docs/spike-integration.md)

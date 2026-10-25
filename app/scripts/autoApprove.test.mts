@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { autoApprove, autoKindOf, autoStep, autoSummaryText, autoWindow, commandWaits, formatRemaining, planToConfig } from '../src/shared/autoApprove.ts'
 import { findRiskyCommand } from '../src/shared/bashPolicy.ts'
+import { BROWSER_EQUIPMENT, browserVerdict } from '../src/shared/browserTools.ts'
 import { buildTrayMenu, menuKey, type TrayMenuActions } from '../src/main/trayMenu.ts'
 import { AUTO_APPROVE_OFF, type OfficeSnapshot, type Staff } from '../src/shared/types.ts'
 
@@ -358,4 +359,21 @@ test('메뉴바: 자동결재 중이면 남은 시간·대신 처리한 수, 끄
   assert.deepEqual(calls, ['auto:{"mode":"off"}', 'secretary'])
   // 메뉴가 바뀌었는지 열쇠: 남은 시간이 바뀌면 다시 그린다
   assert.notEqual(menuKey(items), menuKey(buildTrayMenu(snap({ autoApprove: autoOn }), { ...extra, now: at(0, 0, 1) }, actions)))
+})
+
+test('브라우저 장비: 조회는 허용, 이동·클릭·입력·업로드·제출은 기다린다 (결재 판정과 같은 기준)', () => {
+  const b = (name: string) => `mcp__${BROWSER_EQUIPMENT}__${name}`
+  for (const name of ['browser_snapshot', 'browser_take_screenshot', 'browser_console_messages', 'browser_network_requests', 'browser_wait_for', 'browser_verify_text_visible', 'browser_close']) {
+    assert.equal(autoApprove(b(name), {}), 'allow', name)
+    assert.equal(browserVerdict(b(name), {}), 'allow', name)
+  }
+  assert.equal(autoApprove(b('browser_tabs'), { action: 'list' }), 'allow', '탭 목록')
+  for (const action of ['new', 'close', 'select', undefined]) assert.equal(autoApprove(b('browser_tabs'), { action }), 'wait', `탭 ${action}`)
+  for (const name of ['browser_navigate', 'browser_navigate_back', 'browser_click', 'browser_type', 'browser_fill_form', 'browser_file_upload', 'browser_press_key', 'browser_select_option', 'browser_drag', 'browser_hover', 'browser_evaluate', 'browser_run_code', 'browser_handle_dialog', 'browser_install', 'browser_something_new']) {
+    assert.equal(autoApprove(b(name), { url: 'https://example.com' }), 'wait', name)
+    assert.equal(browserVerdict(b(name), {}), 'wait', name)
+  }
+  // 다른 MCP 서버의 같은 이름 도구는 브라우저 판정이 아니라 평소 MCP 규칙을 따른다
+  assert.equal(browserVerdict('mcp__playwright__browser_snapshot', {}), null)
+  assert.equal(browserVerdict('mcp__office__capture_screen', {}), null)
 })

@@ -6,6 +6,8 @@
 import { APP_VERSION } from '@/lib/changelog'
 import { companyFromXp, DEFAULT_EQUIPMENT, DEFAULT_SETTINGS, type ChatMessage, type OfficeSnapshot, type Staff } from '@shared/types'
 import type { GridItem } from '@shared/iso/furniture'
+import { LANGS, type Lang } from '@shared/i18n'
+import { DEMO_CHAT, DEMO_LAB, DEMO_LIVE, DEMO_MEETING, DEMO_STAFF, DEMO_TASKS, DEMO_TEAMS } from './demoData'
 
 // 미리보기도 휴대폰처럼 손가락 기기로 친다 (단축키 문구·Enter 줄바꿈 확인용)
 const realMatchMedia = window.matchMedia.bind(window)
@@ -280,6 +282,65 @@ const slip = {
     { period: 'week', usedTokens: 8_600_000, limitTokens: 10_000_000 },
     { period: 'month', usedTokens: 18_400_000, limitTokens: 30_000_000 },
   ],
+}
+
+// demo=ko|en|ja|zh: 소개 사이트 스크린샷용 가상 회사로 바꾼다 (demoData.ts)
+const demo = params.get('demo') as Lang | null
+if (demo && LANGS.includes(demo)) {
+  const nameOf = (id: string) => DEMO_STAFF.find((s) => s.id === id)?.name[demo] ?? ''
+  staff.splice(
+    0,
+    staff.length,
+    ...DEMO_STAFF.map((s) => {
+      const live = DEMO_LIVE[s.id]
+      const a = live.approval
+      return mk(s.id, s.name[demo], s.role[demo], s.avatar, s.teamId, live.status, a ? a.summary[demo] : (live.activity ?? ''), {
+        cwd: DEMO_LAB.cwd,
+        ownCwd: DEMO_LAB.cwd,
+        labIds: [DEMO_LAB.id],
+        statusSince: now - 4 * min,
+        approvals: a
+          ? [{ id: `a-${s.id}`, staffId: s.id, toolName: a.toolName, summary: a.summary[demo], createdAt: now - 4 * min, ...(a.options ? { questions: [{ question: a.summary[demo], header: '', multiSelect: false, options: a.options[demo].map((label) => ({ label, description: '' })) }] } : {}) }]
+          : [],
+      })
+    }),
+  )
+  snapshot.teams = DEMO_TEAMS.map((t) => ({ id: t.id, name: t.name[demo], color: t.color, leadId: t.leadId, kind: 'hired' })) as unknown as OfficeSnapshot['teams']
+  snapshot.labs = [{ id: DEMO_LAB.id, name: DEMO_LAB.name[demo], color: DEMO_LAB.color, goal: DEMO_LAB.goal[demo], cwd: DEMO_LAB.cwd, leadId: DEMO_LAB.leadId, memberIds: staff.map((s) => s.id) }]
+  snapshot.tasks = DEMO_TASKS.map((t) => ({
+    id: t.id,
+    title: t.title[demo],
+    detail: '',
+    status: t.status,
+    assigneeId: t.assigneeId,
+    teamId: t.teamId,
+    labId: DEMO_LAB.id,
+    result: t.result?.[demo] ?? '',
+    createdAt: now - (t.ago + 60) * min,
+    updatedAt: now - t.ago * min,
+    plan: t.plan
+      ? { spec: t.plan.spec[demo], subtasks: t.plan.subtasks.map((p) => ({ title: p.title[demo], detail: '', assigneeId: p.assigneeId, assigneeName: nameOf(p.assigneeId) })), status: 'waiting', feedback: '', isAggregating: false, proposedAt: now - t.ago * min }
+      : null,
+  }))
+  const m = DEMO_MEETING
+  snapshot.meetings = [
+    {
+      id: m.id,
+      topic: m.topic[demo],
+      participantIds: m.participantIds,
+      rounds: 2,
+      status: 'waiting',
+      messages: m.lines.map((l) => ({ staffId: l.from, name: nameOf(l.from), text: l.text[demo], ts: now - l.ago * min })),
+      summary: '',
+      createdAt: now - 25 * min,
+      decisions: [{ id: 'dd1', askedBy: m.decision.askedBy, askedByName: nameOf(m.decision.askedBy), question: m.decision.question[demo], options: m.decision.options[demo], answer: null, ts: now - 10 * min }],
+    },
+  ] as unknown as OfficeSnapshot['meetings']
+  snapshot.schedules = []
+  snapshot.settings = { ...snapshot.settings, language: demo }
+  snapshot.secretary = { ...snapshot.secretary!, messages: [] }
+  chat.splice(0, chat.length, ...DEMO_CHAT.map((c, i) => ({ id: i + 1, ts: now - c.ago * min, from: c.from, text: c.text[demo] }) as ChatMessage))
+  slip.rows = staff.slice(0, 6).map((s) => ({ staffId: s.id, name: s.name, role: s.role, avatar: s.avatar, costUsd: 3.21, tokensIn: 2_100_000, tokensOut: 180_000, tasksDone: 9 }))
 }
 
 const impl: Record<string, (...args: never[]) => unknown> = {

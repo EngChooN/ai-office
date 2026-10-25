@@ -7,6 +7,16 @@ Writing rules
 - Write from the user's point of view, describing "what you can now do." Do not use technical names (file paths, program or library names, English abbreviations). If one is truly needed, put it once in parentheses after a plain-language explanation.
 - Development details (how it was built, where files are) go in `SPEC.md` and `docs/changelog-dev.md`.
 
+## [0.12.0] - 2026-10-26
+
+### New features
+- **The app now lets you know when an update is available.** When a new version comes out you get a notice, and you can see what changed right away in the update news.
+- **Download a new version right away.** When a new version comes out, "What's new" at the bottom of the left menu shows a "New" mark and a notice pops up. It briefly shows what changed, and "Download" opens your browser to get the installer for this computer. You install it yourself by opening the downloaded file. "Later" stops reminders for that version, and you'll be told again when a newer one comes out. The app checks at startup and every 6 hours, and quietly skips the check when you're offline. You can also see your current version and check right away in Settings under "Check for updates."
+- **The phone app also tells you about new versions.** While the app is open it checks when it starts and every 6 hours; when a new version is out, a notice appears at the top of the screen. "Download" opens the APK in your browser, and "Later" hides that version from future notices. You can see your current version and check right away under "Check for updates" in Settings. If the check fails, it passes quietly.
+- **Put staff to work with a manual or a Claude command.** Under the staff chat box, '📘 Manuals' shows only that staff member's work manuals and lab/team processes, and '/ Commands' shows only Claude built-in commands (summarize the chat, new chat, code review, etc.) and skills. Type '/' in the box to get one list with 'My manuals' on top and 'Claude commands' below. Move with ↑↓ and pick with Enter. In the group chat, type '@name /' to see the recipient's manuals and commands. Commands the app can't run (login, settings, etc.) aren't sent; you just get a note. Works the same in the phone app.
+- **Staff can open a browser to look at websites and work with them.** Turn on "🌐 Browser" in the Equipment tab and that staff member can open a site, read its title, or click buttons and type text. Actions that change a page, such as moving to another page, clicking, or typing, go to the approval box and run only after you approve. Looking-only actions run right away. Each staff member has their own browser, so a login stays saved. If the computer is missing a required program, the switch can't be turned on, and the app tells you what to install.
+- **Type / in the chat to pick a command.** A list of skills and commands appears; choose with the arrow keys and press Tab to fill it in. Commands that take nothing extra, like /compact and /clear, are sent right away with Enter (for the rest, Enter just fills them in too). In the group room, use `@name /command`. /compact shortens the conversation, and /clear starts fresh. If you type a command the app can't run (for example /login), it tells you why.
+
 ## [0.11.0] - 2026-10-25
 
 ### New features

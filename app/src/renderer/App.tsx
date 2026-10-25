@@ -8,6 +8,7 @@ import { Sidebar } from '@/features/Sidebar'
 import { StaffPanel } from '@/features/StaffPanel'
 import { LevelUp } from '@/features/LevelUp'
 import { WhatsNew } from '@/features/WhatsNew'
+import { UpdateNotice } from '@/features/AppUpdate'
 import { RemoteUpgradeNotice } from '@/features/RemoteUpgradeNotice'
 import { QuickSecretary } from '@/features/secretary/QuickSecretary'
 import { AutoApproveBadge } from '@/features/AutoApprove'
@@ -55,6 +56,7 @@ function AppBody() {
       <Onboarding onStartTour={() => setIsTourOpen(true)} />
       <CoachTour isOpen={isTourOpen} onClose={() => setIsTourOpen(false)} />
       <WhatsNew />
+      <UpdateNotice />
       <LevelUp />
       {!isPhone && <QuickSecretary />}
       {/* PC 주인에게만 (휴대폰에서 QR을 다시 만들면 그 휴대폰이 끊긴다) */}

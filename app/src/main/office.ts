@@ -1,10 +1,11 @@
 import { execFile } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import { EventEmitter } from 'node:events'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { z } from 'zod'
-import { fmtDate, resolveLang, setLang, t, tx } from '../shared/i18n/index.ts'
+import { fmtDate, getLang, resolveLang, setLang, t, tx, type Lang } from '../shared/i18n/index.ts'
 import {
   companyFromXp,
   COMPANY_LEVELS,
@@ -69,6 +70,9 @@ import { legacyLevelOfXp } from './isoMigrate'
 import type { GridItem } from '../shared/iso/furniture'
 import { ExternalWatcher, upgradeAskHook } from './external'
 import { equipmentCatalog, mcpConfigs } from './equipment'
+import { browserMcpConfig } from './browser'
+import { BROWSER_EQUIPMENT } from '../shared/browserTools.ts'
+import { parseTranslations, pendingDescriptions, slashAction, toStaffCommands, translationPrompt, type RawCommand, type StaffCommand } from '../shared/slashCommands.ts'
 import { listManuals, removeManual, saveManual } from './manuals'
 import type { SDKRateLimitInfo } from '@anthropic-ai/claude-agent-sdk'
 import {
@@ -159,6 +163,13 @@ export class Office extends EventEmitter<{
   /** 마지막으로 스냅샷을 낸 날 (자정 갱신용) */
   private snapshotDay = startOfDay(new Date())
   private origins = new Map<string, Origin[]>()
+  /** 직원별 /명령어: raw = 세션 원본(별칭·기본 명령 판정용), list = 자동완성 목록(스냅샷으로 나간다) */
+  private commands = new Map<string, { raw: RawCommand[]; list: StaffCommand[] }>()
+  /** 목록을 불러오는 중인 직원 (같은 요청이 겹치지 않게) */
+  private commandsLoading = new Set<string>()
+  /** /명령 설명 번역 (키: 원문 해시 + 언어 → 번역, null = DB에도 없음). 번역 중인 키는 원문 그대로 둔다 */
+  private commandText = new Map<string, string | null>()
+  private commandTextBusy = new Set<string>()
   private planUsage: PlanUsage[] = []
   private shop!: ShopState
   /** 레벨업 보상을 어디까지 챙겼는지 (매 갱신마다 DB를 두드리지 않게) */
@@ -229,7 +240,22 @@ export class Office extends EventEmitter<{
         const s = this.hired.get(id)
         if (!s) return {}
         const catalog = mcpConfigs(s.cwd)
-        return Object.fromEntries(s.equipment.mcpServers.flatMap((name) => (catalog.has(name) ? [[name, catalog.get(name)!.config]] : [])))
+        return Object.fromEntries(
+          s.equipment.mcpServers.flatMap((name) => {
+            // 기본 장비 '브라우저': 직원별 프로필로 Playwright MCP를 붙인다 (실행 환경이 없으면 빼고 연다)
+            if (name === BROWSER_EQUIPMENT) {
+              const config = browserMcpConfig(s.id)
+              return config ? [[name, config]] : []
+            }
+            return catalog.has(name) ? [[name, catalog.get(name)!.config]] : []
+          }),
+        )
+      },
+      commands: (id, raw, terminalOnly) => {
+        if (!this.hired.has(id)) return
+        this.commands.set(id, { raw, list: toStaffCommands(raw, terminalOnly) })
+        this.scheduleEmit()
+        void this.translateCommands(id)
       },
     })
     this.watcher = new ExternalWatcher(
@@ -349,6 +375,7 @@ export class Office extends EventEmitter<{
       shop: this.shop,
       autoApprove: this.autoApproveStatus(),
       secretary: this.secretaryState(),
+      staffCommands: Object.fromEntries([...this.commands].map(([id, c]) => [id, c.list.map((cmd) => ({ ...cmd, localizedDescription: this.describeCommand(cmd) }))])),
     }
   }
 
@@ -370,6 +397,7 @@ export class Office extends EventEmitter<{
       s.cwd = dir.cwd
       s.cwdSource = dir.source
       this.manager.resetSession(s.id)
+      this.commands.delete(s.id) // 폴더마다 스킬·명령이 다르다
       this.log(s.id, 'status', t('log.cwdChanged', { dir: dir.cwd }))
     }
   }
@@ -510,6 +538,7 @@ export class Office extends EventEmitter<{
     const s = this.hired.get(staffId)
     this.manager.remove(staffId)
     this.hired.delete(staffId)
+    this.commands.delete(staffId)
     db.deleteStaff(staffId)
     for (const t of this.teams.values()) if (t.leadId === staffId) t.leadId = null
     for (const l of this.labs.values()) {
@@ -541,11 +570,86 @@ export class Office extends EventEmitter<{
     const s = this.hired.get(staffId)
     if (!s) return
     this.log(staffId, 'instruction', via ? `${via} ${text}` : text, attachments)
+    if (this.handleSlash(staffId, text, origin)) return
     const origins = this.origins.get(staffId) ?? []
     // 같은 카드는 받은 업무에 한 번만 (피드백으로 다시 보낼 때도 카드는 하나)
     const isSameTask = origin.kind === 'task' && origins.some((o) => o.kind === 'task' && o.taskId === origin.taskId)
     if (!isSameTask) this.origins.set(staffId, [...origins, origin])
     this.manager.instruct(staffId, text, attachments)
+  }
+
+  /**
+   * 앱이 직접 처리하는 /명령: /clear(새 대화)와 막힌 기본 명령(안내만). 처리했으면 true — 나머지 /명령은 세션에 그대로 간다
+   */
+  private handleSlash(staffId: string, text: string, origin: Origin) {
+    const action = slashAction(text, this.commands.get(staffId)?.raw)
+    if (action.kind !== 'clear' && action.kind !== 'blocked') return false
+    const notice = action.kind === 'clear' ? t('slash.cleared') : t('slash.blocked', { name: action.name })
+    if (action.kind === 'clear') {
+      this.manager.resetSession(staffId)
+      this.scheduleEmit()
+    }
+    this.log(staffId, 'status', notice)
+    if (origin.kind === 'chat') this.postChat(OFFICE_SENDER, `${this.hired.get(staffId)?.name}: ${notice}`)
+    return true
+  }
+
+  /** 앱 언어로 보여 줄 명령 설명 — 기본 명령은 사전, 나머지는 번역 캐시 (없으면 원문) */
+  private describeCommand(cmd: StaffCommand): string {
+    if (cmd.isBuiltin) return tx(`slash.desc.${cmd.name}`, cmd.description)
+    return this.cachedCommandText(cmd.description, getLang()) ?? cmd.description
+  }
+
+  private cachedCommandText(text: string, lang: Lang): string | null {
+    const key = commandTextKey(text, lang)
+    if (!this.commandText.has(key)) this.commandText.set(key, db.loadTranslation(key))
+    return this.commandText.get(key) ?? null
+  }
+
+  /** 이 직원 목록에서 아직 번역 안 된 스킬·커스텀 명령 설명을 Haiku 한 번으로 번역해 캐시하고 스냅샷을 갱신한다 */
+  private async translateCommands(staffId: string) {
+    const list = this.commands.get(staffId)?.list
+    if (!list) return
+    const lang = getLang()
+    const texts = pendingDescriptions(list, lang, (text) => this.commandTextBusy.has(commandTextKey(text, lang)) || this.cachedCommandText(text, lang) !== null)
+    if (!texts.length) return
+    const keys = texts.map((text) => commandTextKey(text, lang))
+    keys.forEach((k) => this.commandTextBusy.add(k))
+    try {
+      const { system, prompt } = translationPrompt(texts, lang)
+      const r = await askOnce({ prompt, system, model: 'haiku', cwd: os.homedir(), onRateLimit: (info) => this.onRateLimit(info) })
+      this.recordUsage(staffId, r)
+      const done = parseTranslations(texts, r.text)
+      texts.forEach((text, i) => {
+        const translated = done.get(text)
+        // 실패한 설명은 이번 실행 동안 원문으로 두고 다시 묻지 않는다 (다음 실행에 한 번 더)
+        this.commandText.set(keys[i], translated ?? text)
+        if (translated) db.saveTranslation(keys[i], translated)
+      })
+    } catch {
+      keys.forEach((k, i) => this.commandText.set(k, texts[i]))
+    } finally {
+      keys.forEach((k) => this.commandTextBusy.delete(k))
+      this.scheduleEmit()
+    }
+  }
+
+  /** 이 직원의 /명령어 목록이 없으면 불러온다 (결과는 스냅샷 staffCommands) */
+  async loadStaffCommands(staffId: string) {
+    if (!this.hired.has(staffId) || this.commands.has(staffId) || this.commandsLoading.has(staffId)) return
+    this.commandsLoading.add(staffId)
+    try {
+      await this.manager.loadCommands(staffId)
+    } catch (e) {
+      this.log(staffId, 'error', t('slash.loadFailed', { error: String(e).slice(0, 120) }))
+      // 빈 목록이라도 보내야 메뉴가 '불러오는 중…'에 멈추지 않는다. 다음에 세션을 열면 commands 콜백이 덮어쓴다
+      if (this.hired.has(staffId) && !this.commands.has(staffId)) {
+        this.commands.set(staffId, { raw: [], list: [] })
+        this.scheduleEmit()
+      }
+    } finally {
+      this.commandsLoading.delete(staffId)
+    }
   }
 
   /** 하던 일을 멈춘다. 지시를 같이 주면 멈춘 뒤 그 지시를 바로 받는다 (끼어들기 — 하던 업무 카드는 그대로 이어 간다) */
@@ -1514,6 +1618,7 @@ export class Office extends EventEmitter<{
     s.equipment = equipment
     db.saveEquipment(staffId, equipment)
     this.manager.restart(staffId)
+    this.commands.delete(staffId) // 지급한 스킬이 바뀌면 목록도 바뀐다 — 다음에 세션을 열거나 /를 칠 때 다시 받는다
     this.log(
       staffId,
       'status',
@@ -2205,7 +2310,8 @@ export class Office extends EventEmitter<{
     const { matched, recipientIds, body } = parseMentions(text, mentionTargets(hired, [...this.teams.values()], [...this.labs.values()]))
     // 멘션만 있고 할 말이 없으면 여러 명에게 빈 지시가 가지 않게 막는다. 첨부만 있으면 첨부를 보라고 전한다
     if (!body && attachments.length === 0) return this.postChat(OFFICE_SENDER, '내용이 없어 전달하지 않았어요.')
-    const message = `[단체방] ${body || '첨부 파일을 확인해 주세요.'}`
+    // `@이름 /명령`은 머리말 없이 그대로 보내야 세션이 명령으로 알아듣는다
+    const message = body.startsWith('/') ? body : `[단체방] ${body || '첨부 파일을 확인해 주세요.'}`
     if (matched.length === 0) {
       const leadIds = new Set([...this.teams.values(), ...this.labs.values()].map((g) => g.leadId))
       const id = pickResponder(
@@ -2310,6 +2416,8 @@ export class Office extends EventEmitter<{
   /** 설정의 언어를 main 쪽 t()에 반영 (auto면 기기 언어) */
   private applyLanguage() {
     setLang(resolveLang(this.settings.language, Intl.DateTimeFormat().resolvedOptions().locale))
+    // 언어를 바꾸면 그 언어 번역이 없는 /명령 설명만 새로 번역한다
+    for (const id of this.commands.keys()) void this.translateCommands(id)
   }
 
   /** 실제 한도는 Claude 플랜이 정한다 — 앱이 정한 토큰·비용 한도 대신 플랜 사용률이 80%·100%를 넘을 때 알린다 */
@@ -2418,4 +2526,9 @@ function hash(s: string) {
   let h = 0
   for (const c of s) h = (h * 31 + c.charCodeAt(0)) >>> 0
   return h
+}
+
+/** 번역 캐시 키 — 같은 설명·같은 언어면 직원·명령이 달라도 한 번만 번역한다 */
+function commandTextKey(text: string, lang: Lang) {
+  return `${lang}:${createHash('sha256').update(text).digest('hex').slice(0, 32)}`
 }

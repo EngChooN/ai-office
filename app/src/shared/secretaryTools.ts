@@ -83,8 +83,10 @@ export const SECRETARY_TOOLS: Record<OfficeMethod, ToolSpec> = {
   recruitExternal: change('외부 직원 영입'),
   forkExternal: change('외부 직원 대화 이어받기'),
 
-  // ── 제외 (23) — PC 화면이 필요하거나 연결·보안, 되돌릴 수 없는 외부 전송, 사용자가 즐기는 부분 ──
+  // ── 제외 (24) — PC 화면이 필요하거나 연결·보안, 되돌릴 수 없는 외부 전송, 사용자가 즐기는 부분 ──
   pickFolder: exclude,
+  // 채팅 자동완성용 (직원 세션을 잠깐 띄운다) — 비서에게는 필요 없다
+  loadStaffCommands: exclude,
   pickFiles: exclude,
   openAttachment: exclude,
   saveAttachments: exclude,

@@ -32,7 +32,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.claudeoffice.remote.BuildConfig
+import com.claudeoffice.remote.update.CheckState
+import com.claudeoffice.remote.update.UpdateManager
 import com.claudeoffice.remote.data.OfficeState
 import com.claudeoffice.remote.data.Reach
 import com.claudeoffice.remote.net.PROTOCOL_VERSION
@@ -55,6 +58,7 @@ fun SettingsTab(state: OfficeState, onForget: () -> Unit, onBack: (() -> Unit)? 
             verticalArrangement = Arrangement.spacedBy(Space.s3),
         ) {
             LanguageCard()
+            UpdateCard()
             OfficeCard {
                 Column(verticalArrangement = Arrangement.spacedBy(Space.s1)) {
                     MutedText(S.get(R.string.settings_connected_pc))
@@ -138,6 +142,33 @@ private fun LanguageCard() {
                     Text(label, style = Type.bodyLarge, color = c.onSurface, modifier = Modifier.weight(1f))
                     if (code == saved) Text("✓", style = Type.bodyLarge, color = c.primary)
                 }
+            }
+        }
+    }
+}
+
+/** 업데이트 확인 — 현재 버전, [지금 확인], 결과 */
+@Composable
+private fun UpdateCard() {
+    val c = Office.colors
+    val context = LocalContext.current
+    val ui by UpdateManager.ui.collectAsStateWithLifecycle()
+    OfficeCard {
+        Column(verticalArrangement = Arrangement.spacedBy(Space.s2)) {
+            Text(S.get(R.string.update_settings_title), style = Type.titleMedium, color = c.onSurface)
+            MutedText(S.get(R.string.update_current, ui.current))
+            val result = when (ui.state) {
+                CheckState.CHECKING -> S.get(R.string.update_checking)
+                CheckState.UP_TO_DATE -> S.get(R.string.update_up_to_date)
+                CheckState.AVAILABLE -> ui.latest?.let { S.get(R.string.update_available, it.version) }
+                CheckState.FAILED -> S.get(R.string.update_failed)
+                CheckState.IDLE -> null
+            }
+            if (result != null) Text(result, style = Type.bodyLarge, color = c.onSurface)
+            Row(horizontalArrangement = Arrangement.spacedBy(Space.s2)) {
+                OutlineButton(S.get(R.string.update_check_now), { UpdateManager.checkNow(context) }, enabled = ui.state != CheckState.CHECKING)
+                val latest = ui.latest
+                if (ui.state == CheckState.AVAILABLE && latest != null) PrimaryButton(S.get(R.string.update_download), { UpdateManager.download(context, latest) })
             }
         }
     }

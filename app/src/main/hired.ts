@@ -12,6 +12,9 @@ import fs from 'node:fs'
 import { insertUsage, saveSessionId } from './db'
 import { CONTEXT_ROTATE_TOKENS, contextOf, findSessionFile, handoffText, readSessionTail } from './sessionRotate'
 import { exeName } from './platform'
+import { BROWSER_EQUIPMENT, browserVerdict } from '../shared/browserTools.ts'
+import { parseSlash, type RawCommand } from '../shared/slashCommands.ts'
+import { browserOutputDir } from './browser'
 
 // SDK는 ESM 전용이라 externals로 두고 require(esm)로 불러온다
 export const sdk = createRequire(__filename)('@anthropic-ai/claude-agent-sdk') as typeof import('@anthropic-ai/claude-agent-sdk')
@@ -60,6 +63,8 @@ export interface HiredHooks {
   refDocs(staffId: string): { prompt: string; paths: string[] }
   /** 지급된 MCP 서버 설정 (장비) */
   equippedMcp(staffId: string): Record<string, McpServerConfig>
+  /** 세션이 알려 준 /명령어 목록 (세션을 열 때·목록이 바뀔 때·미리 불러올 때). terminalOnly = 터미널 화면 전용 명령 이름 */
+  commands(staffId: string, raw: RawCommand[], terminalOnly: string[]): void
 }
 
 const OFFICE_TOOL_PREFIX = 'mcp__office__'
@@ -87,6 +92,10 @@ class Worker {
   private contextTokens: number | null = null
   /** 새 대화로 넘길 때 인수인계로 붙일 직전 보고 */
   private lastReport = ''
+  /** 보낸 /명령 이름 (결과가 올 때까지) — /compact처럼 모델이 돌지 않는 명령도 끝난 보고로 친다 */
+  private slashPending: string | null = null
+  /** 세션 init이 알려 준 터미널 화면 전용 명령 */
+  private terminalOnly: string[] = []
 
   constructor(
     private staff: Staff,
@@ -97,8 +106,10 @@ class Worker {
   }
 
   send(text: string, attachments: Attachment[] = []) {
-    // 손이 빈 상태에서 받은 새 지시만 — 일하는 중 끼어든 말은 같은 대화에 이어야 한다
-    if (!this.isRunning) text = this.rotateIfLong(text)
+    const slash = parseSlash(text)
+    if (slash && !this.isRunning) this.slashPending = slash.name
+    // 손이 빈 상태에서 받은 새 지시만 — 일하는 중 끼어든 말은 같은 대화에 이어야 한다. /명령은 앞에 인수인계를 붙이면 명령이 깨지므로 넘기지 않는다
+    if (!this.isRunning && !slash) text = this.rotateIfLong(text)
     this.inbox.push({ type: 'user', message: { role: 'user', content: toContent(text, attachments) }, parent_tool_use_id: null })
     this.wake?.()
     if (!this.q) this.start()
@@ -196,6 +207,40 @@ class Worker {
     this.q?.close()
   }
 
+  /**
+   * /명령어 목록을 불러온다. 세션이 열려 있으면 그 세션에 묻고, 없으면 같은 폴더·설정으로 잠깐 띄워 묻고 닫는다 (지시를 보내지 않아 비용이 들지 않는다)
+   */
+  async loadCommands() {
+    if (this.q) {
+      this.hooks.commands(this.staff.id, await this.q.supportedCommands(), this.terminalOnly)
+      return
+    }
+    let release = () => {}
+    const idle = new Promise<void>((r) => (release = r))
+    async function* nothing(): AsyncGenerator<SDKUserMessage> {
+      await idle
+    }
+    const probe = sdk.query({
+      prompt: nothing(),
+      options: {
+        cwd: this.staff.cwd,
+        pathToClaudeCodeExecutable: CLAUDE_BINARY,
+        persistSession: false,
+        settingSources: ['user', 'project', 'local'],
+        skills: this.staff.equipment.skills,
+        env: { ...process.env, [HIRED_ENV]: '1' },
+      },
+    })
+    try {
+      const raw = await probe.supportedCommands()
+      // 그사이 진짜 세션이 열렸으면 그쪽 목록이 더 정확하다
+      if (!this.q) this.hooks.commands(this.staff.id, raw, this.terminalOnly)
+    } finally {
+      release()
+      probe.close()
+    }
+  }
+
   private async *messages(gen: number): AsyncGenerator<SDKUserMessage> {
     while (!this.closed && gen === this.generation) {
       if (this.inbox.length === 0) await new Promise<void>((r) => (this.wake = r))
@@ -207,6 +252,8 @@ class Worker {
     const s = this.staff
     const refDocs = this.hooks.refDocs(s.id)
     const refDocPaths = new Set(refDocs.paths)
+    const mcpServers = this.hooks.equippedMcp(s.id)
+    const browserGuide = mcpServers[BROWSER_EQUIPMENT] ? t('staff.browser.guide', { dir: browserOutputDir(s.id) }) : ''
     this.q = sdk.query({
       prompt: this.messages(this.generation),
       options: {
@@ -218,15 +265,17 @@ class Worker {
         systemPrompt: {
           type: 'preset',
           preset: 'claude_code',
-          append: [t('staff.identity', { name: s.name, role: s.role }), t('staff.language'), this.hooks.context(s.id), refDocs.prompt, s.systemPrompt].filter(Boolean).join('\n'),
+          append: [t('staff.identity', { name: s.name, role: s.role }), t('staff.language'), this.hooks.context(s.id), refDocs.prompt, browserGuide, s.systemPrompt].filter(Boolean).join('\n'),
         },
         settingSources: ['user', 'project', 'local'],
         // 고용 직원 표시: 사용자 설정의 "질문 받기" hook이 이 세션은 건너뛴다 (질문은 canUseTool → 결재함·대신 답하기로)
         env: { ...process.env, [HIRED_ENV]: '1' },
-        mcpServers: { ...this.hooks.equippedMcp(s.id), office: this.hooks.officeTools(s.id) },
+        mcpServers: { ...mcpServers, office: this.hooks.officeTools(s.id) },
         skills: s.equipment.skills,
         disallowedTools: s.equipment.disallowedTools.filter((t) => !isBashPolicyMark(t)),
         canUseTool: (toolName, input, { signal }) => {
+          // 브라우저 조회(스냅샷·스크린샷·탭 목록)는 결재 없이. 이동·클릭·입력 등은 아래 평소 흐름(결재함·자동결재 판정)으로
+          if (browserVerdict(toolName, input) === 'allow') return Promise.resolve({ behavior: 'allow' })
           const command = toolName === 'Bash' && typeof input.command === 'string' ? input.command : null
           // 사무실 내부 도구(팀 조회·위임)와 장비로 허용한 도구는 결재 없이 쓴다
           // 화면 캡처는 대표 화면이 그대로 찍히므로, 장비에서 "화면 캡처 자율"을 켠 직원만 결재 없이 찍는다
@@ -278,6 +327,11 @@ class Worker {
       },
     })
     void this.consume(this.q)
+    const q = this.q
+    q.supportedCommands().then(
+      (raw) => this.q === q && this.hooks.commands(s.id, raw, this.terminalOnly),
+      () => {}, // 목록을 못 받아도 지시는 그대로 된다
+    )
   }
 
   private askApproval(toolName: string, input: Record<string, unknown>, signal: AbortSignal, questions?: StaffQuestion[]) {
@@ -320,7 +374,12 @@ class Worker {
       this.hooks.rateLimit(m.rate_limit_info)
       return
     }
+    if (m.type === 'system' && m.subtype === 'commands_changed') {
+      this.hooks.commands(id, m.commands, this.terminalOnly)
+      return
+    }
     if (m.type === 'system' && m.subtype === 'init') {
+      this.terminalOnly = m.terminal_slash_commands ?? []
       if (m.session_id !== this.staff.sessionId) {
         if (this.staff.sessionId) this.baseline = { cost: 0, tokensIn: 0, tokensOut: 0 }
         this.staff.sessionId = m.session_id
@@ -377,13 +436,16 @@ class Worker {
 
       // 지시와 상관없는 결과는 사용량만 남긴다 — 손이 빈 뒤 끝난 백그라운드 작업이 연 턴, 모델이 한 번도 돌지 않은 0턴.
       // 이걸 완료로 치면 새 지시가 바로 끝난 것처럼 빈 보고가 가고, 일하는 중인데 대기로 보인다
-      if (!this.isRunning || (m.subtype === 'success' && m.num_turns === 0)) {
+      const slash = this.slashPending
+      this.slashPending = null
+      if (!this.isRunning || (m.subtype === 'success' && m.num_turns === 0 && !slash)) {
         this.hooks.update(id, { costUsd: this.staff.costUsd, tokensIn: this.staff.tokensIn, tokensOut: this.staff.tokensOut })
         return
       }
 
       const isError = m.subtype !== 'success'
-      const summary = m.subtype === 'success' ? m.result : `오류로 중단 (${m.subtype})`
+      // /compact처럼 답 글이 없는 명령은 "실행했어요"로 보고한다
+      const summary = m.subtype === 'success' ? m.result || (slash ? t('slash.ran', { name: slash }) : '') : `오류로 중단 (${m.subtype})`
       if (!isError && summary.trim()) this.lastReport = summary
       // 성공 보고 본문은 이미 assistant 텍스트로 기록됐으므로 완료 로그는 짧게 남긴다
       this.hooks.log(id, isError ? 'error' : 'result', isError ? summary : t('log.taskDone', { n: m.num_turns }))
@@ -501,6 +563,10 @@ export class HiredStaffManager {
 
   resetSession(staffId: string) {
     this.workers.get(staffId)?.resetSession()
+  }
+
+  loadCommands(staffId: string) {
+    return this.workers.get(staffId)?.loadCommands()
   }
 
   decide(approvalId: string, allow: boolean) {

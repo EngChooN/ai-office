@@ -111,6 +111,7 @@ export function createOfficeHandlers(office: Office, remoteApi: () => RemoteServ
     fireExternal: (id: string) => office.fireExternal(id),
     recruitExternal: (id: string, input: Parameters<Office['recruitExternal']>[1]) => office.recruitExternal(id, input),
     equipmentCatalog: (cwd: string) => office.equipmentCatalog(cwd),
+    loadStaffCommands: (staffId: string) => office.loadStaffCommands(staffId),
     setEquipment: (id: string, eq: Parameters<Office['setEquipment']>[1]) => office.setEquipment(id, eq),
     workChanges: (id: string) => office.workChanges(id),
     suggestCommitMessage: (id: string) => office.suggestCommitMessage(id),

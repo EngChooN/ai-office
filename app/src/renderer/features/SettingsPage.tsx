@@ -11,6 +11,8 @@ import { RemoteSection } from './RemoteSection'
 import { COMPANY_LEVELS, type DayNight, type HooksStatus, type Settings, type ThemeId } from '@shared/types'
 import { officeOf } from '@shared/officeLevel'
 import { AutoApproveSection } from './AutoApprove'
+import { UpdateSection } from './AppUpdate'
+import { updateActions } from '@/lib/update'
 import { LANG_NAMES, LANGS, t, type LangSetting, type TKey } from '@shared/i18n'
 
 const THEMES: { value: ThemeId; labelKey: TKey; swatch: string[] }[] = [
@@ -170,6 +172,11 @@ export function SettingsPage() {
       <Section title={t('settingsPage.remote.title')} description={t('settingsPage.remote.desc')}>
         <RemoteSection />
       </Section>
+      {updateActions.isAvailable && (
+        <Section title={t('update.section.title')} description={t('update.section.desc')}>
+          <UpdateSection />
+        </Section>
+      )}
       <Section title={t('settingsPage.guide.title')} description={t('settingsPage.guide.desc')}>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => update({ isOnboarded: false })}>

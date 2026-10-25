@@ -65,6 +65,7 @@ export function openDb() {
     );
     CREATE TABLE IF NOT EXISTS chat (id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER NOT NULL, sender TEXT NOT NULL, text TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS setting (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS translation (key TEXT PRIMARY KEY, text TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS lab (id TEXT PRIMARY KEY, data TEXT NOT NULL, created_at INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS run (id TEXT PRIMARY KEY, data TEXT NOT NULL, created_at INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS secretary_message (
@@ -481,6 +482,24 @@ export function loadSettings(): Settings {
 
 export function saveSettings(s: Settings) {
   run("INSERT INTO setting (key, value) VALUES ('settings', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", JSON.stringify(s))
+}
+
+/** 번역 캐시 (키: 원문 해시 + 언어) — /명령 설명처럼 같은 글을 다시 번역하지 않게 */
+export function loadTranslation(key: string): string | null {
+  return get<{ text: string }>('SELECT text FROM translation WHERE key = ?', key)?.text ?? null
+}
+
+export function saveTranslation(key: string, text: string) {
+  run('INSERT INTO translation (key, text) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET text = excluded.text', key, text)
+}
+
+/** 업데이트 알림에서 [나중에]로 건너뛴 버전 (없으면 null) */
+export function loadSkippedUpdate(): string | null {
+  return get<{ value: string }>("SELECT value FROM setting WHERE key = 'skippedUpdate'")?.value || null
+}
+
+export function saveSkippedUpdate(version: string) {
+  run("INSERT INTO setting (key, value) VALUES ('skippedUpdate', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", version)
 }
 
 /** 이번 기간에 이미 보낸 예산 알림 키 */

@@ -37,6 +37,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalConfiguration
@@ -146,6 +147,7 @@ fun AppRoot(repo: OfficeRepository, launch: LaunchRequest?, onLaunchHandled: () 
             state.v2 == com.claudeoffice.remote.data.V2Mode.ACTIVE && webEntry != null -> WebRoot(repo, webEntry!!)
             else -> MainRoot(repo, tab, onTab = { tab = it }, hasWebBundle = webEntry != null)
         }
+        if (step == null) UpdateBanner(Modifier.align(Alignment.TopCenter))
     }
 }
 

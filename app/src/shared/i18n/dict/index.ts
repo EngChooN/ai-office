@@ -8,6 +8,8 @@ import game from './game.ts'
 import main from './main.ts'
 import staff from './staff.ts'
 import logs from './logs.ts'
+import update from './update.ts'
+import tools from './tools.ts'
 
 export interface Entry {
   ko: string
@@ -17,7 +19,7 @@ export interface Entry {
 }
 
 /** 영역별 조각 (같은 키가 두 파일에 있으면 테스트가 잡는다) */
-export const DICT_PARTS = { common, settings, featuresA, featuresB, shell, game, main, staff, logs }
+export const DICT_PARTS = { common, settings, featuresA, featuresB, shell, game, main, staff, logs, update, tools }
 
-export const DICT = { ...common, ...settings, ...featuresA, ...featuresB, ...shell, ...game, ...main, ...staff, ...logs } satisfies Record<string, Entry>
+export const DICT = { ...common, ...settings, ...featuresA, ...featuresB, ...shell, ...game, ...main, ...staff, ...logs, ...update, ...tools } satisfies Record<string, Entry>
 export type TKey = keyof typeof DICT

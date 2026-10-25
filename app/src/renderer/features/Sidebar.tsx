@@ -4,12 +4,15 @@ import { APP_VERSION } from '@/lib/changelog'
 import { useOffice, useWorkMode } from '@/store'
 import { t } from '@shared/i18n'
 import { GAME_VIEWS, NAV_ITEMS, useNavBadges } from './nav'
+import { updateActions } from '@/lib/update'
+import { useUpdateBadge } from './AppUpdate'
 
 export function Sidebar() {
   const view = useOffice((s) => s.view)
   const setView = useOffice((s) => s.setView)
   const isWorkMode = useWorkMode()
   const badges = useNavBadges()
+  const newVersion = useUpdateBadge()
   // 업무 모드에선 사무실(게임 화면)과 상점(게임 재화)을 메뉴에서 뺀다
   const items = isWorkMode ? NAV_ITEMS.filter((i) => !GAME_VIEWS.has(i.view)) : NAV_ITEMS
 
@@ -33,7 +36,11 @@ export function Sidebar() {
       ))}
       <button
         type="button"
-        onClick={() => setView('updates')}
+        onClick={() => {
+          setView('updates')
+          // 새 버전이 있으면 안내 창을 다시 연다
+          if (newVersion) updateActions.openNotice()
+        }}
         data-tour="nav-updates"
         className={cn(
           'mt-auto flex items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-xs',
@@ -42,7 +49,13 @@ export function Sidebar() {
       >
         <MegaphoneIcon className="size-3.5" />
         <span className="flex-1">{t('nav.updates')}</span>
-        <span className="tabular-nums">v{APP_VERSION}</span>
+        {newVersion ? (
+          <span className="bg-status-waiting rounded-full px-1.5 text-[10px] font-semibold text-black" title={t('update.badge', { version: newVersion })}>
+            {t('update.badgeShort')}
+          </span>
+        ) : (
+          <span className="tabular-nums">v{APP_VERSION}</span>
+        )}
       </button>
     </nav>
   )

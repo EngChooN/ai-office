@@ -3,6 +3,9 @@ import os from 'node:os'
 import path from 'node:path'
 import type { McpServerConfig } from '@anthropic-ai/claude-agent-sdk'
 import type { EquipmentCatalog } from '../shared/types'
+import { BROWSER_EQUIPMENT } from '../shared/browserTools.ts'
+import { t } from '../shared/i18n/index.ts'
+import { browserUnavailable } from './browser'
 
 // 장비 창고: 이 맥에 설정된 MCP 서버와 스킬을 모아 직원에게 지급할 수 있게 한다
 
@@ -58,7 +61,10 @@ function listSkills(dir: string, source: string) {
 }
 
 export function equipmentCatalog(cwd: string): EquipmentCatalog {
-  const mcp = [...mcpConfigs(cwd)].map(([name, { config, source }]) => ({ name, source, detail: describe(config) }))
+  const unavailable = browserUnavailable()
+  // 앱 기본 장비 '브라우저'는 사용자 MCP 카탈로그와 별개로 늘 첫 줄에 (같은 이름의 사용자 MCP는 가린다)
+  const browser = { name: BROWSER_EQUIPMENT, source: t('equip.browser.source'), detail: t('equip.browser.desc'), isBuiltin: true, ...(unavailable ? { unavailable } : {}) }
+  const mcp = [browser, ...[...mcpConfigs(cwd)].filter(([name]) => name !== BROWSER_EQUIPMENT).map(([name, { config, source }]) => ({ name, source, detail: describe(config) }))]
   const userDir = path.join(HOME, '.claude', 'skills')
   const projectDir = path.join(cwd, '.claude', 'skills')
   // 폴더 지정 없는 직원은 홈에서 일해서 프로젝트 스킬 폴더가 내 계정 폴더와 같다 — 두 번 읽지 않는다

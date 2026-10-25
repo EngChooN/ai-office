@@ -59,6 +59,7 @@ export const V2_METHODS: Record<OfficeMethod, MethodSpec> = {
   fire: R('s'),
   updateStaff: S('s o'),
   instruct: R('s s a?', [2]),
+  loadStaffCommands: R('s'),
   saveAttachments: { cls: 'U', args: 'a' },
   openAttachment: P('download_file', 's'),
   interrupt: R('s s? a?', [2]),

@@ -14,6 +14,7 @@ export const OFFICE_METHODS = [
   'fire',
   'updateStaff',
   'instruct',
+  'loadStaffCommands',
   'interrupt',
   'decide',
   'getRecord',

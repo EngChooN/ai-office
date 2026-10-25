@@ -6,6 +6,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { AttachButton, AttachmentView, DraftAttachments, useDraftAttachments } from '@/components/attachments'
 import { cn } from '@/lib/utils'
 import { handleComposerKey, NEWLINE_HINT } from '@/lib/composerKeys'
+import { commandDescription, commandItem, manualItem, SlashMenu, usePersonalManuals, useSlashKeys, useStaffCommands } from '@/components/slash-menu'
+import { matchCommands, runsOnEnter } from '@shared/slashCommands'
 import { useOffice } from '@/store'
 import type { ChatMessage, Staff } from '@shared/types'
 import { ALL_MENTION, mentionTargets, mentionToken, OFFICE_SENDER, parseMentions, type MentionKind, type MentionTarget } from '@shared/mention'
@@ -119,21 +121,50 @@ function Composer() {
   }, [mentionQuery, targets])
   const parsed = useMemo(() => (draft.trim() ? parseMentions(draft, targets) : null), [draft, targets])
 
+  // "@이름 /명령": 멘션 뒤 본문이 /로 시작하면 받는 직원의 명령을 띄운다 (여러 명이면 모두가 쓸 수 있는 것만).
+  // 개인 매뉴얼(매뉴얼실과 이름 대조)은 '내 매뉴얼' 묶음으로 위에, 나머지는 'Claude 명령' 묶음으로 아래에
+  const slashToken = draft.match(/\s\/(\S*)$/)?.[1]
+  const recipientIds = parsed?.recipientIds ?? []
+  const slashQuery = slashToken !== undefined && recipientIds.length > 0 && parsed?.body === `/${slashToken}` ? slashToken : null
+  const commands = useStaffCommands(recipientIds, slashQuery !== null)
+  const manualNames = new Set(usePersonalManuals(slashQuery !== null).map((m) => m.name))
+  const matched = slashQuery === null || !commands ? [] : matchCommands(commands, slashQuery)
+  const slashCommands = [...matched.filter((c) => manualNames.has(c.name)), ...matched.filter((c) => !manualNames.has(c.name))]
+  const slashItems = commands && slashCommands.map((c) => (manualNames.has(c.name) ? manualItem(c.name, commandDescription(c)) : commandItem(c)))
+  // 꼭 넣을 인자가 없는 명령은 Enter면 바로 보낸다 (매뉴얼·Tab·클릭은 채우기만)
+  const handleSlashPick = (i: number, isEnter = false) => {
+    const command = slashCommands[i]
+    const filled = draft.replace(/\/\S*$/, `/${command.name}`)
+    if (isEnter && runsOnEnter(command) && !manualNames.has(command.name)) return void handleSend(filled)
+    setDraft(`${filled} `)
+  }
+  const slashKeys = useSlashKeys(slashCommands.length, slashQuery, handleSlashPick)
+
   const draftFiles = useDraftAttachments()
-  const handleSend = async () => {
-    const text = draft.trim()
+  const handleSend = async (typed = draft) => {
+    const text = typed.trim()
     if (!text && draftFiles.files.length === 0) return
     setDraft('')
     const attachments = await draftFiles.upload()
     draftFiles.clear()
     void window.office.sendChat(text, attachments)
   }
-  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => handleComposerKey(e, () => void handleSend(), setDraft)
+  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => slashKeys.onKeyDown(e) || handleComposerKey(e, () => void handleSend(), setDraft)
   // 같은 이름의 직원·팀·랩이 있으면 "@디자인(팀)"처럼 종류를 붙여 고른 대상에게 가게 한다
   const handleMention = (tg: MentionTarget) => setDraft((d) => d.replace(/@(\S*)$/, `${mentionToken(tg, targets)} `))
 
   return (
     <div className="typing:py-2 relative border-t p-4">
+      {slashQuery !== null && (
+        <SlashMenu
+          query={slashQuery}
+          items={slashItems}
+          active={slashKeys.active}
+          onPick={handleSlashPick}
+          note={recipientIds.length > 1 ? t('slashMenu.commonOnly', { count: recipientIds.length }) : undefined}
+          className="absolute bottom-full left-4 mb-1 w-80 max-w-[calc(100%-2rem)]"
+        />
+      )}
       {suggestions.length > 0 && (
         <div className="bg-popover absolute bottom-full left-4 mb-1 flex max-h-80 min-w-56 flex-col overflow-y-auto rounded-lg border p-1 shadow-lg">
           {suggestions.map((g) => (

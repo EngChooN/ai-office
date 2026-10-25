@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
+import { create } from 'zustand'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { APP_VERSION, releasesFor } from '@/lib/changelog'
@@ -26,11 +27,18 @@ function writeSeen() {
   }
 }
 
+// 열림 여부를 밖에서도 본다 — 새 버전 안내 창이 이 창과 겹쳐 뜨지 않고 닫힌 뒤에 뜨도록
+const useWhatsNewStore = create<{ isOpen: boolean }>(() => ({ isOpen: false }))
+const setIsOpen = (isOpen: boolean) => useWhatsNewStore.setState({ isOpen })
+
+/** 업데이트 소식 창이 지금 열려 있는지 */
+export const useIsWhatsNewOpen = () => useWhatsNewStore((s) => s.isOpen)
+
 /** 업데이트 뒤 처음 켜면 이번 버전의 새로워진 점을 한 번 보여 준다 (처음 설치한 사람은 첫 실행 안내가 대신한다) */
 export function WhatsNew() {
   const isOnboarded = useOffice((s) => s.isLoaded && s.settings.isOnboarded)
   const setView = useOffice((s) => s.setView)
-  const [isOpen, setIsOpen] = useState(false)
+  const isOpen = useIsWhatsNewOpen()
   const lang = useLang()
   const release = releasesFor(lang).find((r) => r.version === APP_VERSION)
 

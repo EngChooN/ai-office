@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="ko">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -14,20 +14,38 @@ var DOWNLOADS = {
   github: 'https://github.com/EngChooN/claude-office',
   changelog: '',  // 변경 기록 페이지 주소 (비우면 GitHub 저장소의 CHANGELOG.md)
   license: 'MIT', // 라이선스 이름
-  version: '0.11.0'
+  version: '0.12.0'
 };
 </script>
-<title>Claude Office</title>
-<meta name="description" content="">
+<!-- 공유 미리보기: 크롤러는 JS를 돌리지 않으니 정적 기본값(한국어)을 둔다. 언어를 바꾸면 render()가 제목·설명을 바꾼다 -->
+<title>Claude Office — 코드를 몰라도, AI 직원에게 일을 맡기세요</title>
+<meta name="description" content="Claude Code를 직원 고용·업무 지시·결재·보고라는 익숙한 사무실 방식으로 쓰는 무료 오픈소스 데스크톱 앱. 명령어 창도, 어려운 설정도 필요 없습니다.">
 <meta name="theme-color" content="#0b0c10">
-<link rel="icon" type="image/png" href="assets/icon.png">
-<link rel="apple-touch-icon" href="assets/icon.png">
+<link rel="canonical" href="https://engchoon.github.io/claude-office/">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="icon" type="image/png" sizes="512x512" href="assets/icon.png">
+<link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Claude Office">
-<meta property="og:title" content="Claude Office">
-<meta property="og:description" content="Hire AI teammates, assign work, approve and get reports — Claude Code for everyone.">
-<meta property="og:image" content="assets/screens/ko/office.png">
+<meta property="og:url" content="https://engchoon.github.io/claude-office/">
+<meta property="og:title" content="Claude Office — 코드를 몰라도, AI 직원에게 일을 맡기세요">
+<meta property="og:description" content="Claude Code를 직원 고용·업무 지시·결재·보고라는 익숙한 사무실 방식으로 쓰는 무료 오픈소스 데스크톱 앱. 명령어 창도, 어려운 설정도 필요 없습니다.">
+<meta property="og:image" content="https://engchoon.github.io/claude-office/assets/og.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Claude Office — 꾸민 사무실에서 AI 직원들이 일하는 화면">
+<meta property="og:locale" content="ko_KR">
+<meta property="og:locale:alternate" content="en_US">
+<meta property="og:locale:alternate" content="ja_JP">
+<meta property="og:locale:alternate" content="zh_CN">
 <meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Claude Office — 코드를 몰라도, AI 직원에게 일을 맡기세요">
+<meta name="twitter:description" content="Claude Code를 직원 고용·업무 지시·결재·보고라는 익숙한 사무실 방식으로 쓰는 무료 오픈소스 데스크톱 앱. 명령어 창도, 어려운 설정도 필요 없습니다.">
+<meta name="twitter:image" content="https://engchoon.github.io/claude-office/assets/og.png">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Claude Office","url":"https://engchoon.github.io/claude-office/","image":"https://engchoon.github.io/claude-office/assets/og.png","applicationCategory":"BusinessApplication","operatingSystem":"macOS, Windows, Android","softwareVersion":"0.12.0","license":"https://opensource.org/licenses/MIT","downloadUrl":"https://github.com/EngChooN/claude-office/releases/latest","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"inLanguage":["ko","en","ja","zh"],"description":"Claude Code를 직원 고용·업무 지시·결재·보고라는 익숙한 사무실 방식으로 쓰는 무료 오픈소스 데스크톱 앱."}
+</script>
 <style>
 :root{
   --bg:#0b0c10; --panel:#12141b; --panel2:#181b24; --line:#232733; --line2:#2e3342;
@@ -93,8 +111,23 @@ h2{font-size:clamp(26px,3.6vw,40px);line-height:1.2;font-weight:700;letter-spaci
 .feat h3{font-size:17px;font-weight:600;margin-bottom:8px;letter-spacing:-.01em}
 .feat p{font-size:15px;color:var(--muted)}
 
-/* 화면 */
-.shots{display:grid;grid-template-columns:2.2fr 1fr 1fr;gap:16px;align-items:start}
+/* 기능: 큰 캡처 + 글이 좌우 번갈아 나오는 줄 */
+.rows{display:flex;flex-direction:column;gap:104px}
+.row{display:grid;grid-template-columns:5fr 7fr;gap:56px;align-items:center}
+.row:nth-child(even){grid-template-columns:7fr 5fr}
+.row:nth-child(even) .txt{order:2}
+.row .ico{display:inline-flex;margin-bottom:18px}
+.row .ico svg{width:22px;height:22px;box-sizing:content-box;padding:9px;border-radius:10px;color:var(--accent);background:rgba(124,156,255,.1);border:1px solid rgba(124,156,255,.2)}
+.row:nth-child(3n+2) .ico svg{color:var(--accent2);background:rgba(94,234,212,.08);border-color:rgba(94,234,212,.2)}
+.row:nth-child(3n) .ico svg{color:#f6a77c;background:rgba(246,167,124,.08);border-color:rgba(246,167,124,.2)}
+.row h3{font-size:clamp(22px,2.4vw,28px);line-height:1.3;font-weight:700;letter-spacing:-.02em;margin-bottom:12px}
+.row p{font-size:16px;color:var(--muted);max-width:440px}
+.row figure{border-radius:14px;box-shadow:0 30px 80px -24px rgba(124,156,255,.14),0 16px 40px rgba(0,0,0,.45)}
+.row figure img{aspect-ratio:1360/860}
+.features.more{grid-template-columns:repeat(3,1fr);margin-top:104px}
+
+/* 화면 (휴대폰) */
+.shots{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;align-items:start;max-width:920px;margin:0 auto}
 figure{border:1px solid var(--line2);border-radius:12px;overflow:hidden;background:var(--panel)}
 figure img{width:100%;height:auto}
 figure.pc img{aspect-ratio:1360/860}
@@ -134,12 +167,75 @@ footer .links a{color:var(--muted)}
 footer .links a:hover{color:var(--fg)}
 footer .links .off{color:var(--dim);pointer-events:none}
 
+/* ── 꾸밈: 배경 빛·글자 그라데이션·창 테두리·등장 효과 ── */
+.hero{position:relative;overflow:hidden}
+.hero:before{content:"";position:absolute;inset:-10% -20% auto;height:820px;z-index:-1;pointer-events:none;
+  background:radial-gradient(600px 340px at 50% 18%,rgba(124,156,255,.22),transparent 70%),radial-gradient(420px 260px at 78% 42%,rgba(94,234,212,.12),transparent 70%),radial-gradient(380px 240px at 20% 46%,rgba(244,140,96,.10),transparent 70%)}
+.hero:after{content:"";position:absolute;inset:0 0 auto;height:760px;z-index:-2;pointer-events:none;
+  background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:44px 44px;opacity:.35;
+  -webkit-mask-image:radial-gradient(ellipse 70% 60% at 50% 20%,#000,transparent 75%);mask-image:radial-gradient(ellipse 70% 60% at 50% 20%,#000,transparent 75%)}
+.hero .appicon{filter:drop-shadow(0 12px 32px rgba(124,156,255,.35));animation:float 6s ease-in-out infinite}
+@keyframes float{50%{transform:translateY(-6px)}}
+.hero h1{background:linear-gradient(180deg,#fff 30%,#b9c4e6);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero h1 em{font-style:normal;background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.btn.primary{box-shadow:0 8px 28px -8px rgba(124,156,255,.6)}
+.shot{position:relative}
+.chrome{display:flex;align-items:center;gap:7px;height:34px;padding:0 14px;border-bottom:1px solid var(--line);background:var(--panel2)}
+.chrome i{width:11px;height:11px;border-radius:50%;background:#3a3f4d}
+.chrome i:nth-child(1){background:#ff5f57}.chrome i:nth-child(2){background:#febc2e}.chrome i:nth-child(3){background:#28c840}
+.chrome span{margin:0 auto;padding-right:50px;font-size:12px;color:var(--dim)}
+
+/* 쓰는 순서 */
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;counter-reset:step}
+.step{position:relative;border:1px solid var(--line2);border-radius:14px;padding:28px 26px;background:linear-gradient(180deg,var(--panel2),var(--panel))}
+.step:before{counter-increment:step;content:counter(step);display:inline-grid;place-items:center;width:32px;height:32px;border-radius:10px;margin-bottom:18px;
+  font-weight:700;font-size:15px;color:#0b0c10;background:linear-gradient(135deg,var(--accent),var(--accent2))}
+.step h3{font-size:18px;font-weight:600;margin-bottom:8px}
+.step p{font-size:15px;color:var(--muted)}
+.step .say{margin-top:16px;font-size:13.5px;color:var(--fg);background:rgba(124,156,255,.1);border:1px solid rgba(124,156,255,.25);border-radius:10px 10px 10px 2px;padding:9px 12px}
+.step:not(:last-child):after{content:"";position:absolute;top:44px;right:-13px;width:10px;height:10px;border-top:2px solid var(--line2);border-right:2px solid var(--line2);transform:rotate(45deg)}
+
+/* 기능 카드 */
+.feat{transition:background .2s}
+.feat:hover{background:var(--panel)}
+.feat svg{box-sizing:content-box;padding:9px;border-radius:10px;background:rgba(124,156,255,.1);border:1px solid rgba(124,156,255,.2)}
+.feat:nth-child(3n+2) svg{color:var(--accent2);background:rgba(94,234,212,.08);border-color:rgba(94,234,212,.2)}
+.feat:nth-child(3n) svg{color:#f6a77c;background:rgba(246,167,124,.08);border-color:rgba(246,167,124,.2)}
+
+/* 화면·다운로드 */
+figure{transition:transform .25s,border-color .25s}
+figure:hover{transform:translateY(-4px);border-color:#454c60}
+.dlc{transition:transform .2s,border-color .2s}
+.dlc:hover{transform:translateY(-3px);border-color:#454c60}
+.dlc.mine{background:linear-gradient(180deg,rgba(124,156,255,.08),var(--panel) 60%)}
+
+/* 마지막 권유 */
+.final{text-align:center;padding:96px 0 120px}
+.final .box{border:1px solid var(--line2);border-radius:20px;padding:64px 24px;background:radial-gradient(500px 220px at 50% 0%,rgba(124,156,255,.18),transparent 70%),var(--panel)}
+.final .sub{margin:12px auto 28px}
+
+/* 스크롤 등장 */
+.rv{opacity:0;transform:translateY(18px);transition:opacity .6s ease,transform .6s ease}
+.rv.in{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){
+  .rv{opacity:1;transform:none;transition:none}
+  .hero .appicon{animation:none}
+  figure:hover,.dlc:hover{transform:none}
+}
+
 @media (max-width:960px){
   .top nav{display:none}
+  .steps{grid-template-columns:1fr}
+  .step:after{display:none}
   .features{grid-template-columns:1fr 1fr}
+  .features.more{grid-template-columns:1fr}
   .dls{grid-template-columns:1fr}
-  .shots{grid-template-columns:1fr 1fr}
-  .shots .pc{grid-column:1/-1}
+  .rows{gap:72px}
+  .row,.row:nth-child(even){grid-template-columns:1fr;gap:24px}
+  .row:nth-child(even) .txt{order:0}
+  .row p{max-width:640px}
+  .features.more{margin-top:72px}
+  .shots{gap:14px}
 }
 @media (max-width:600px){
   section{padding:80px 0}
@@ -150,6 +246,11 @@ footer .links .off{color:var(--dim);pointer-events:none}
   .feat{padding:26px 22px}
   .cta .btn{flex:1 1 100%}
   .shot{margin-top:48px;border-radius:10px}
+  .row figure{border-radius:10px}
+  /* 휴대폰 화면은 옆으로 넘겨 보기 */
+  .shots{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -18px;padding:0 18px 8px;scrollbar-width:none}
+  .shots::-webkit-scrollbar{display:none}
+  .shots figure{flex:0 0 72%;scroll-snap-align:center}
   .top .gh span{display:none}
   .logo span{display:none}
 }
@@ -160,6 +261,7 @@ footer .links .off{color:var(--dim);pointer-events:none}
 <header class="top"><div class="wrap">
   <a class="logo" href="#"><img src="assets/icon.png" alt="" width="28" height="28"><span>Claude Office</span></a>
   <nav>
+    <a href="#how" data-i18n="nav.how"></a>
     <a href="#features" data-i18n="nav.features"></a>
     <a href="#screens" data-i18n="nav.screens"></a>
     <a href="#download" data-i18n="nav.download"></a>
@@ -180,60 +282,75 @@ footer .links .off{color:var(--dim);pointer-events:none}
   <p class="lead" data-i18n="hero.lead"></p>
   <div class="cta" id="cta"></div>
   <p class="also" id="also"></p>
-  <div class="shot"><img src="assets/screens/ko/office.png" data-shot="office" data-i18n-alt="alt.office" width="1360" height="860"></div>
+  <div class="shot"><div class="chrome"><i></i><i></i><i></i><span>Claude Office</span></div><img src="assets/screens/ko/office.png" data-shot="office" data-i18n-alt="alt.office" width="1360" height="860"></div>
+</div></section>
+
+<section id="how"><div class="wrap">
+  <div class="head rv">
+    <div class="eyebrow" data-i18n="how.eyebrow"></div>
+    <h2 data-i18n="how.title"></h2>
+    <p class="sub" data-i18n="how.sub"></p>
+  </div>
+  <div class="steps">
+    <div class="step rv"><h3 data-i18n="s1.t"></h3><p data-i18n="s1.p"></p><div class="say" data-i18n="s1.say"></div></div>
+    <div class="step rv"><h3 data-i18n="s2.t"></h3><p data-i18n="s2.p"></p><div class="say" data-i18n="s2.say"></div></div>
+    <div class="step rv"><h3 data-i18n="s3.t"></h3><p data-i18n="s3.p"></p><div class="say" data-i18n="s3.say"></div></div>
+  </div>
 </div></section>
 
 <section id="features"><div class="wrap">
-  <div class="head">
+  <div class="head rv">
     <div class="eyebrow" data-i18n="feat.eyebrow"></div>
     <h2 data-i18n="feat.title"></h2>
     <p class="sub" data-i18n="feat.sub"></p>
   </div>
-  <div class="features">
-    <div class="feat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0114 0M19 8v6M16 11h6"/></svg><h3 data-i18n="f1.t"></h3><p data-i18n="f1.p"></p></div>
-    <div class="feat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 3v2h6V3M8.5 13l2.5 2.5 5-5"/></svg><h3 data-i18n="f2.t"></h3><p data-i18n="f2.p"></p></div>
-    <div class="feat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="5" height="16" rx="1.5"/><rect x="10" y="4" width="5" height="11" rx="1.5"/><rect x="17" y="4" width="4" height="7" rx="1.5"/></svg><h3 data-i18n="f3.t"></h3><p data-i18n="f3.p"></p></div>
-    <div class="feat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 01-11.6 7.1L4 20l1-4.6A8 8 0 1121 12z"/><path d="M8.5 11h7M8.5 14h4"/></svg><h3 data-i18n="f4.t"></h3><p data-i18n="f4.p"></p></div>
-    <div class="feat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 6-7"/></svg><h3 data-i18n="f5.t"></h3><p data-i18n="f5.p"></p></div>
-    <div class="feat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/></svg><h3 data-i18n="f6.t"></h3><p data-i18n="f6.p"></p></div>
-    <div class="feat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V10l8-6 8 6v11"/><path d="M9 21v-6h6v6M12 4V2"/></svg><h3 data-i18n="f7.t"></h3><p data-i18n="f7.p"></p></div>
-    <div class="feat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 010 18M12 3a14 14 0 000 18"/></svg><h3 data-i18n="f8.t"></h3><p data-i18n="f8.p"></p></div>
-    <div class="feat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M8 15l2 2 4-4"/></svg><h3 data-i18n="f9.t"></h3><p data-i18n="f9.p"></p></div>
+  <div class="rows">
+    <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0114 0M19 8v6M16 11h6"/></svg></span><h3 data-i18n="f1.t"></h3><p data-i18n="f1.p"></p></div><figure><img src="assets/screens/ko/chat.png" data-shot="chat" data-i18n-alt="alt.f1" loading="lazy" width="1360" height="860"></figure></div>
+    <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 3v2h6V3M8.5 13l2.5 2.5 5-5"/></svg></span><h3 data-i18n="f2.t"></h3><p data-i18n="f2.p"></p></div><figure><img src="assets/screens/ko/inbox.png" data-shot="inbox" data-i18n-alt="alt.f2" loading="lazy" width="1360" height="860"></figure></div>
+    <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="5" height="16" rx="1.5"/><rect x="10" y="4" width="5" height="11" rx="1.5"/><rect x="17" y="4" width="4" height="7" rx="1.5"/></svg></span><h3 data-i18n="f3.t"></h3><p data-i18n="f3.p"></p></div><figure><img src="assets/screens/ko/board.png" data-shot="board" data-i18n-alt="alt.f3" loading="lazy" width="1360" height="860"></figure></div>
+    <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 01-11.6 7.1L4 20l1-4.6A8 8 0 1121 12z"/><path d="M8.5 11h7M8.5 14h4"/></svg></span><h3 data-i18n="f4.t"></h3><p data-i18n="f4.p"></p></div><figure><img src="assets/screens/ko/meeting.png" data-shot="meeting" data-i18n-alt="alt.f4" loading="lazy" width="1360" height="860"></figure></div>
+    <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 6-7"/></svg></span><h3 data-i18n="f5.t"></h3><p data-i18n="f5.p"></p></div><figure><img src="assets/screens/ko/dashboard.png" data-shot="dashboard" data-i18n-alt="alt.f5" loading="lazy" width="1360" height="860"></figure></div>
+    <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V10l8-6 8 6v11"/><path d="M9 21v-6h6v6M12 4V2"/></svg></span><h3 data-i18n="f7.t"></h3><p data-i18n="f7.p"></p></div><figure><img src="assets/screens/ko/exterior.png" data-shot="exterior" data-i18n-alt="alt.f7" loading="lazy" width="1360" height="860"></figure></div>
+  </div>
+  <div class="features more">
+    <div class="feat rv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/></svg><h3 data-i18n="f6.t"></h3><p data-i18n="f6.p"></p></div>
+    <div class="feat rv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 010 18M12 3a14 14 0 000 18"/></svg><h3 data-i18n="f8.t"></h3><p data-i18n="f8.p"></p></div>
+    <div class="feat rv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M8 15l2 2 4-4"/></svg><h3 data-i18n="f9.t"></h3><p data-i18n="f9.p"></p></div>
   </div>
 </div></section>
 
 <section id="screens"><div class="wrap">
-  <div class="head">
+  <div class="head rv">
     <div class="eyebrow" data-i18n="scr.eyebrow"></div>
     <h2 data-i18n="scr.title"></h2>
     <p class="sub" data-i18n="scr.sub"></p>
   </div>
   <div class="shots">
-    <figure class="pc"><img src="assets/screens/ko/office.png" data-shot="office" data-i18n-alt="alt.office" loading="lazy" width="1360" height="860"><figcaption data-i18n="cap.office"></figcaption></figure>
-    <figure class="ph"><img src="assets/screens/ko/phone-dashboard.png" data-shot="phone-dashboard" data-i18n-alt="alt.dash" loading="lazy" width="390" height="844"><figcaption data-i18n="cap.dash"></figcaption></figure>
-    <figure class="ph"><img src="assets/screens/ko/phone-chat.png" data-shot="phone-chat" data-i18n-alt="alt.chat" loading="lazy" width="390" height="844"><figcaption data-i18n="cap.chat"></figcaption></figure>
+    <figure class="ph rv"><img src="assets/screens/ko/phone-dashboard.png" data-shot="phone-dashboard" data-i18n-alt="alt.dash" loading="lazy" width="390" height="844"><figcaption data-i18n="cap.dash"></figcaption></figure>
+    <figure class="ph rv"><img src="assets/screens/ko/phone-inbox.png" data-shot="phone-inbox" data-i18n-alt="alt.inbox" loading="lazy" width="390" height="844"><figcaption data-i18n="cap.inbox"></figcaption></figure>
+    <figure class="ph rv"><img src="assets/screens/ko/phone-chat.png" data-shot="phone-chat" data-i18n-alt="alt.chat" loading="lazy" width="390" height="844"><figcaption data-i18n="cap.chat"></figcaption></figure>
   </div>
 </div></section>
 
 <section id="download"><div class="wrap">
-  <div class="head">
+  <div class="head rv">
     <div class="eyebrow" data-i18n="dl.eyebrow"></div>
     <h2 data-i18n="dl.title"></h2>
     <p class="sub" data-i18n="dl.sub"></p>
   </div>
   <div class="dls" id="dls">
-    <div class="dlc" data-os="mac"><h3 data-os-title></h3><ul><li data-i18n="mac.1"></li><li data-i18n="mac.2"></li><li data-i18n="mac.3"></li></ul><a data-dl></a></div>
-    <div class="dlc" data-os="win"><h3 data-os-title></h3><ul><li data-i18n="win.1"></li><li data-i18n="win.2"></li><li data-i18n="win.3"></li></ul><a data-dl></a></div>
-    <div class="dlc" data-os="android"><h3 data-os-title></h3><ul><li data-i18n="and.1"></li><li data-i18n="and.2"></li><li data-i18n="and.3"></li></ul><a data-dl></a></div>
+    <div class="dlc rv" data-os="mac"><h3 data-os-title></h3><ul><li data-i18n="mac.1"></li><li data-i18n="mac.2"></li><li data-i18n="mac.3"></li></ul><a data-dl></a></div>
+    <div class="dlc rv" data-os="win"><h3 data-os-title></h3><ul><li data-i18n="win.1"></li><li data-i18n="win.2"></li><li data-i18n="win.3"></li></ul><a data-dl></a></div>
+    <div class="dlc rv" data-os="android"><h3 data-os-title></h3><ul><li data-i18n="and.1"></li><li data-i18n="and.2"></li><li data-i18n="and.3"></li></ul><a data-dl></a></div>
   </div>
 </div></section>
 
 <section id="faq"><div class="wrap">
-  <div class="head">
+  <div class="head rv">
     <div class="eyebrow">FAQ</div>
     <h2 data-i18n="faq.title"></h2>
   </div>
-  <div class="faq">
+  <div class="faq rv">
     <details><summary data-i18n="q1"></summary><p data-i18n="a1"></p></details>
     <details><summary data-i18n="q2"></summary><p data-i18n="a2"></p></details>
     <details><summary data-i18n="q3"></summary><p data-i18n="a3"></p></details>
@@ -243,6 +360,12 @@ footer .links .off{color:var(--dim);pointer-events:none}
     <details><summary data-i18n="q7"></summary><p data-i18n="a7"></p></details>
   </div>
 </div></section>
+
+<section class="final"><div class="wrap"><div class="box rv">
+  <h2 data-i18n="end.title"></h2>
+  <p class="sub" data-i18n="end.sub"></p>
+  <a class="btn primary" href="#download" data-i18n="end.btn"></a>
+</div></div></section>
 
 <footer><div class="wrap">
   <div class="brand"><img src="assets/icon.png" alt="" width="20" height="20"><span>Claude Office · v<span data-version></span></span></div>
@@ -259,8 +382,14 @@ var I18N = {
     'meta.title': 'Claude Office — 코드를 몰라도, AI 직원에게 일을 맡기세요',
     'meta.desc': 'Claude Code를 직원 고용·업무 지시·결재·보고라는 익숙한 사무실 방식으로 쓰는 무료 오픈소스 데스크톱 앱. 명령어 창도, 어려운 설정도 필요 없습니다.',
     'nav.features': '기능', 'nav.screens': '화면', 'nav.download': '다운로드', 'nav.faq': 'FAQ',
+    'nav.how': '사용법',
+    'how.eyebrow': '사용법', 'how.title': '세 단계면 충분해요', 'how.sub': '사람에게 일을 맡기듯 하면 됩니다. 뽑고, 말하고, 확인만 하세요.',
+    's1.t': '직원 뽑기', 's1.p': '직무와 모습을 고르면 자리에 앉아 바로 일할 준비를 해요.', 's1.say': '마케터 ‘한소라’를 뽑았어요',
+    's2.t': '말로 시키기', 's2.p': '단체방에서 이름을 부르거나 팀장에게 큰 일을 통째로 맡겨요.', 's2.say': '@한소라 다음 주 뉴스레터 초안 부탁해요',
+    's3.t': '결재하고 보고받기', 's3.p': '중요한 일은 결재함에서 승인하고, 끝나면 보고가 올라와요.', 's3.say': '초안 올렸어요. 확인 부탁드려요!',
+    'end.title': '오늘 첫 직원을 뽑아 보세요', 'end.sub': '무료이고, 설치하고 몇 분이면 첫 업무를 맡길 수 있어요.', 'end.btn': '무료로 받기',
     'badge.oss': '무료 · 오픈소스',
-    'hero.title': '코드를 몰라도,<br>AI 직원에게 일을 맡기세요',
+    'hero.title': '코드를 몰라도,<br><em>AI 직원</em>에게 일을 맡기세요',
     'hero.lead': 'Claude Code를 직원 고용 · 업무 지시 · 결재 · 보고라는 익숙한 사무실 방식으로 쓰는 데스크톱 앱입니다. 명령어 창도, 어려운 설정도 필요 없습니다.',
     'btn.download': '{os}용 다운로드', 'btn.soon': '준비 중', 'btn.also': '다른 플랫폼:',
     'os.mac': 'Mac', 'os.win': 'Windows', 'os.android': '안드로이드',
@@ -275,12 +404,14 @@ var I18N = {
     'f7.t': '일할수록 자라는 회사', 'f7.p': '직원이 일하면 회사 레벨이 올라 사무실이 넓어지고, 차고에서 5층 타워까지 커져요. 상점에서 가구·벽지·고양이와 강아지를 사서 꾸밀 수 있어요. 업무 모드에서는 이런 요소를 숨겨요.',
     'f8.t': '4개 언어 지원', 'f8.p': '한국어 · 영어 · 일본어 · 중국어로 쓸 수 있어요. 설정에서 바꾸면 다시 켜지 않아도 바로 적용되고, 휴대폰 앱도 같은 언어를 지원해요.',
     'f9.t': '예약 업무와 참고 문서', 'f9.p': '매일·매주 할 일을 예약해 두면 정해진 시간에 직원이 알아서 해요. 직원이 일하기 전에 먼저 읽을 문서와 업무 매뉴얼도 등록할 수 있어요.',
-    'scr.eyebrow': '화면', 'scr.title': '일하는 모습이 보이는 사무실',
-    'scr.sub': '직원이 일할수록 회사가 커지고 사무실을 꾸밀 수 있어요. 휴대폰에서는 같은 화면을 손에 맞게 보여 줍니다.',
+    'scr.eyebrow': '휴대폰', 'scr.title': '자리를 비워도 손안에서',
+    'scr.sub': '안드로이드 앱을 PC와 연결하면 대시보드·결재함·단체방을 휴대폰에서 그대로 쓸 수 있어요.',
     'cap.office': '<b>사무실</b> — 직원들이 자리에서 일하고, 층을 오가며 볼 수 있어요',
     'cap.dash': '<b>대시보드</b> — 확인이 필요한 일을 바로 결재',
     'cap.chat': '<b>단체방</b> — 말로 지시하고 보고받기',
     'alt.office': 'Claude Office 사무실 화면', 'alt.dash': '휴대폰 대시보드 화면', 'alt.chat': '휴대폰 단체방 화면',
+    'cap.inbox': '<b>결재함</b> — 밖에서도 승인·반려', 'alt.inbox': '휴대폰 결재함 화면',
+    'alt.f1': '단체방에서 @이름으로 일을 시키고 직원이 답하는 화면', 'alt.f2': '결재함에 회의 결정·질문·명령 실행 요청이 모인 화면', 'alt.f3': '업무 보드와 팀장이 나눈 계획(기획 확인 대기)', 'alt.f4': '회의실에서 직원들이 돌아가며 발언하는 화면', 'alt.f5': '대시보드: 작업 중·확인 필요 요약과 최근 활동', 'alt.f7': '거리에서 본 회사 건물',
     'dl.eyebrow': '다운로드', 'dl.title': '무료로 받아 보세요', 'dl.sub': '그 컴퓨터에 Claude Code가 로그인되어 있어야 합니다.', 'dl.mine': '내 기기',
     'mac.1': 'Apple Silicon(M1 이후) 전용', 'mac.2': 'dmg를 열어 응용 프로그램 폴더로 끌어다 놓기', 'mac.3': '처음 열 때 경고가 나오면 시스템 설정 › 개인정보 보호 및 보안 › "그래도 열기"',
     'win.1': '시험판 · 64비트 · .zip 압축을 풀고 Claude Office.exe 실행', 'win.2': '"Windows의 PC 보호" 창이 뜨면 "추가 정보 › 실행"', 'win.3': '외부 직원 알림·화면 캡처는 아직 Mac 전용',
@@ -299,8 +430,14 @@ var I18N = {
     'meta.title': 'Claude Office — Hand off work to AI teammates, no code required',
     'meta.desc': 'A free, open-source desktop app that lets you use Claude Code the way you already run an office: hire, assign, approve and get reports. No terminal, no config files.',
     'nav.features': 'Features', 'nav.screens': 'Screens', 'nav.download': 'Download', 'nav.faq': 'FAQ',
+    'nav.how': 'How it works',
+    'how.eyebrow': 'How it works', 'how.title': 'Three steps is all it takes', 'how.sub': 'Work with them like you would with people. Hire, ask, and approve.',
+    's1.t': 'Hire a teammate', 's1.p': 'Pick a role and a look — they take a desk and get ready to work.', 's1.say': 'You hired Sarah, a marketer',
+    's2.t': 'Ask in plain words', 's2.p': 'Mention them in the group chat, or hand a big job to a team lead.', 's2.say': '@Sarah Can you draft next week’s newsletter?',
+    's3.t': 'Approve and get reports', 's3.p': 'Approve what matters in your inbox, and get a report when it’s done.', 's3.say': 'Draft is up — take a look when you can!',
+    'end.title': 'Hire your first teammate today', 'end.sub': 'It’s free, and you can hand off your first task minutes after installing.', 'end.btn': 'Get it free',
     'badge.oss': 'Free & Open Source',
-    'hero.title': 'Hand off work to AI teammates.<br>No code required.',
+    'hero.title': 'Hand off work to <em>AI teammates</em>.<br>No code required.',
     'hero.lead': 'Claude Office turns Claude Code into a familiar office: hire teammates, assign work, approve requests and get reports. No terminal, no config files.',
     'btn.download': 'Download for {os}', 'btn.soon': 'Coming soon', 'btn.also': 'Also available for',
     'os.mac': 'Mac', 'os.win': 'Windows', 'os.android': 'Android',
@@ -315,12 +452,14 @@ var I18N = {
     'f7.t': 'A company that grows', 'f7.p': 'As your teammates work, your company levels up — the office expands from a garage to a five-story tower. Decorate with furniture, wallpaper, and even an office cat and dog from the shop. Work Mode hides all of this.',
     'f8.t': 'Four languages', 'f8.p': 'Use it in Korean, English, Japanese, or Chinese. Switch in Settings and it applies instantly without a restart — the phone app supports the same languages.',
     'f9.t': 'Scheduled work & reference docs', 'f9.p': 'Schedule daily or weekly tasks and teammates handle them on time. Register docs and work manuals for teammates to read before they start.',
-    'scr.eyebrow': 'Screens', 'scr.title': 'An office you can watch at work',
-    'scr.sub': 'The more your teammates work, the more your company grows — and you can decorate the office. On your phone, the same screens fit in your hand.',
+    'scr.eyebrow': 'On your phone', 'scr.title': 'Your office, in your pocket',
+    'scr.sub': 'Pair the Android app with your PC to use the dashboard, approvals and group chat on the go.',
     'cap.office': '<b>Office</b> — teammates at their desks, floor by floor',
     'cap.dash': '<b>Dashboard</b> — approve what needs you, right away',
     'cap.chat': '<b>Group chat</b> — assign by talking, get reports back',
     'alt.office': 'Claude Office office view', 'alt.dash': 'Phone dashboard', 'alt.chat': 'Phone group chat',
+    'cap.inbox': '<b>Approvals</b> — approve or reject on the go', 'alt.inbox': 'Phone approvals',
+    'alt.f1': 'Group chat: assigning work with @name and a teammate replying', 'alt.f2': 'Approval inbox with a meeting decision, a question and a command request', 'alt.f3': 'Task board with a plan split up by the team lead, awaiting review', 'alt.f4': 'Meeting room with teammates taking turns to speak', 'alt.f5': 'Dashboard with a status summary and recent activity', 'alt.f7': 'The company building seen from the street',
     'dl.eyebrow': 'Download', 'dl.title': 'Get it free', 'dl.sub': 'Requires Claude Code to be signed in on the same computer.', 'dl.mine': 'Your device',
     'mac.1': 'Apple Silicon (M1 or later) only', 'mac.2': 'Open the .dmg and drag the app into Applications', 'mac.3': 'If you see a warning on first launch, go to System Settings › Privacy & Security › “Open Anyway”',
     'win.1': 'Preview · 64-bit · unzip and run Claude Office.exe', 'win.2': 'If “Windows protected your PC” appears, choose “More info › Run anyway”', 'win.3': 'External session alerts and screen capture are Mac-only for now',
@@ -339,8 +478,14 @@ var I18N = {
     'meta.title': 'Claude Office — コードがわからなくても、AIスタッフに仕事を任せよう',
     'meta.desc': 'Claude Code を「採用・指示・承認・報告」というおなじみのオフィスのやり方で使える、無料・オープンソースのデスクトップアプリ。ターミナルも難しい設定も不要です。',
     'nav.features': '機能', 'nav.screens': '画面', 'nav.download': 'ダウンロード', 'nav.faq': 'FAQ',
+    'nav.how': '使い方',
+    'how.eyebrow': '使い方', 'how.title': '3ステップで始められます', 'how.sub': '人に仕事を頼むのと同じです。採用して、話しかけて、確認するだけ。',
+    's1.t': 'スタッフを採用', 's1.p': '職種と見た目を選ぶと、席についてすぐに働く準備をします。', 's1.say': 'マーケターの「佐藤さくら」を採用しました',
+    's2.t': '言葉で頼む', 's2.p': 'グループチャットで名前を呼ぶか、大きな仕事をリーダーにまるごと任せます。', 's2.say': '@佐藤さくら 来週のニュースレター案をお願いします',
+    's3.t': '承認して報告を受ける', 's3.p': '大事なことは承認ボックスで承認し、終われば報告が届きます。', 's3.say': '案を上げました。ご確認ください！',
+    'end.title': '今日、最初のスタッフを採用しよう', 'end.sub': '無料で、インストールから数分で最初の仕事を任せられます。', 'end.btn': '無料でダウンロード',
     'badge.oss': '無料・オープンソース',
-    'hero.title': 'コードがわからなくても、<br>AIスタッフに仕事を任せよう',
+    'hero.title': 'コードがわからなくても、<br><em>AIスタッフ</em>に仕事を任せよう',
     'hero.lead': 'Claude Code を、スタッフの採用・仕事の指示・承認・報告というおなじみのオフィスのやり方で使えるデスクトップアプリです。ターミナルも難しい設定もいりません。',
     'btn.download': '{os} 版をダウンロード', 'btn.soon': '準備中', 'btn.also': 'ほかのプラットフォーム：',
     'os.mac': 'Mac', 'os.win': 'Windows', 'os.android': 'Android',
@@ -355,12 +500,14 @@ var I18N = {
     'f7.t': '働くほど成長する会社', 'f7.p': 'スタッフが働くと会社のレベルが上がってオフィスが広がり、ガレージから5階建てのタワーまで大きくなります。ショップで家具・壁紙・ネコやイヌを買って飾れます。業務モードではこうした要素を隠せます。',
     'f8.t': '4言語に対応', 'f8.p': '韓国語・英語・日本語・中国語で使えます。設定で切り替えると再起動なしですぐ反映され、スマホアプリも同じ言語に対応しています。',
     'f9.t': '予約業務と参考ドキュメント', 'f9.p': '毎日・毎週の作業を予約しておけば、決まった時間にスタッフが自動で行います。作業前に読ませたいドキュメントや業務マニュアルも登録できます。',
-    'scr.eyebrow': '画面', 'scr.title': '働く様子が見えるオフィス',
-    'scr.sub': 'スタッフが働くほど会社が成長し、オフィスを飾りつけられます。スマホでは同じ画面が手のひらサイズに。',
+    'scr.eyebrow': 'スマホ', 'scr.title': '席を離れても、手のひらで',
+    'scr.sub': 'Android アプリを PC とつなげば、ダッシュボード・承認箱・グループチャットをスマホでそのまま使えます。',
     'cap.office': '<b>オフィス</b> — 席で働くスタッフを、フロアごとに',
     'cap.dash': '<b>ダッシュボード</b> — 確認が必要なものをすぐ承認',
     'cap.chat': '<b>グループチャット</b> — 話して指示、報告を受け取る',
     'alt.office': 'Claude Office のオフィス画面', 'alt.dash': 'スマホのダッシュボード画面', 'alt.chat': 'スマホのグループチャット画面',
+    'cap.inbox': '<b>承認箱</b> — 外出先でも承認・却下', 'alt.inbox': 'スマホの承認箱画面',
+    'alt.f1': 'グループチャットで @名前 で指示し、スタッフが返信する画面', 'alt.f2': '会議の決定・質問・コマンド実行の依頼が集まった承認箱', 'alt.f3': 'タスクボードと、リーダーが分担した計画（確認待ち）', 'alt.f4': '会議室でスタッフが順番に発言する画面', 'alt.f5': 'ダッシュボード：作業状況の概要と最近のアクティビティ', 'alt.f7': '通りから見た会社の建物',
     'dl.eyebrow': 'ダウンロード', 'dl.title': '無料で使えます', 'dl.sub': '同じパソコンで Claude Code にログインしている必要があります。', 'dl.mine': 'お使いの端末',
     'mac.1': 'Apple シリコン（M1 以降）専用', 'mac.2': '.dmg を開いて「アプリケーション」フォルダへドラッグ', 'mac.3': '初回起動で警告が出たら、システム設定 › プライバシーとセキュリティ ›「このまま開く」',
     'win.1': 'プレビュー版・64 ビット・.zip を展開して Claude Office.exe を実行', 'win.2': '「Windows によって PC が保護されました」と出たら「詳細情報 › 実行」', 'win.3': '外部セッションの通知と画面キャプチャは現在 Mac のみ',
@@ -379,8 +526,14 @@ var I18N = {
     'meta.title': 'Claude Office — 不懂代码，也能把工作交给 AI 员工',
     'meta.desc': '一款免费开源的桌面应用，用“招聘、派活、审批、汇报”这种熟悉的办公室方式来使用 Claude Code。无需命令行，也无需复杂配置。',
     'nav.features': '功能', 'nav.screens': '界面', 'nav.download': '下载', 'nav.faq': '常见问题',
+    'nav.how': '使用方法',
+    'how.eyebrow': '使用方法', 'how.title': '三步就能上手', 'how.sub': '就像把工作交给同事一样：招人、说一句、确认即可。',
+    's1.t': '招聘员工', 's1.p': '选好职位和形象，员工就会坐到工位上准备开工。', 's1.say': '已招聘市场专员“林晓”',
+    's2.t': '直接说', 's2.p': '在群聊里点名，或者把大任务整个交给组长。', 's2.say': '@林晓 帮忙起草下周的新闻简报',
+    's3.t': '审批并收到汇报', 's3.p': '重要的事在审批箱里批准，完成后会收到汇报。', 's3.say': '草稿已提交，请过目！',
+    'end.title': '今天就招聘第一位员工吧', 'end.sub': '完全免费，安装后几分钟就能交出第一项工作。', 'end.btn': '免费下载',
     'badge.oss': '免费开源',
-    'hero.title': '不懂代码，<br>也能把工作交给 AI 员工',
+    'hero.title': '不懂代码，<br>也能把工作交给 <em>AI 员工</em>',
     'hero.lead': 'Claude Office 用招聘员工、分派任务、审批、汇报这种熟悉的办公室方式来使用 Claude Code。无需命令行，也无需复杂配置。',
     'btn.download': '下载 {os} 版', 'btn.soon': '即将推出', 'btn.also': '其他平台：',
     'os.mac': 'Mac', 'os.win': 'Windows', 'os.android': 'Android',
@@ -395,12 +548,14 @@ var I18N = {
     'f7.t': '越工作越壮大的公司', 'f7.p': '员工工作得越多，公司等级越高，办公室也越大，从车库一路成长为五层大楼。可以在商店购买家具、壁纸，甚至办公室猫狗来装饰。工作模式下会隐藏这些元素。',
     'f8.t': '支持4种语言', 'f8.p': '支持韩语、英语、日语和中文。在设置中切换后无需重启即可生效，手机应用也支持相同的语言。',
     'f9.t': '定时任务与参考文档', 'f9.p': '预约每天或每周的工作，员工会按时自动完成。还可以登记员工开工前要先读的文档和工作手册。',
-    'scr.eyebrow': '界面', 'scr.title': '看得见大家在工作的办公室',
-    'scr.sub': '员工干得越多，公司就越大，还可以装饰办公室。在手机上，同样的界面也能单手操作。',
+    'scr.eyebrow': '手机', 'scr.title': '不在工位，也尽在掌握',
+    'scr.sub': '把 Android 应用和电脑连接起来，就能在手机上使用仪表盘、审批箱和群聊。',
     'cap.office': '<b>办公室</b> — 员工在工位上工作，可逐层查看',
     'cap.dash': '<b>仪表盘</b> — 需要你确认的事，马上审批',
     'cap.chat': '<b>群聊</b> — 说一句就能派活，随时收到汇报',
     'alt.office': 'Claude Office 办公室界面', 'alt.dash': '手机仪表盘界面', 'alt.chat': '手机群聊界面',
+    'cap.inbox': '<b>审批箱</b> — 在外面也能批准或驳回', 'alt.inbox': '手机审批箱界面',
+    'alt.f1': '在群聊里用 @名字 派活、员工回复的界面', 'alt.f2': '汇集了会议决定、提问和命令执行请求的审批箱', 'alt.f3': '任务看板和组长拆分的计划（等待确认）', 'alt.f4': '会议室里员工轮流发言的界面', 'alt.f5': '仪表盘：工作状态概览和最近动态', 'alt.f7': '从街道上看到的公司大楼',
     'dl.eyebrow': '下载', 'dl.title': '免费下载', 'dl.sub': '需要在同一台电脑上登录 Claude Code。', 'dl.mine': '你的设备',
     'mac.1': '仅支持 Apple 芯片（M1 及以上）', 'mac.2': '打开 .dmg，把应用拖进“应用程序”文件夹', 'mac.3': '首次打开出现警告时，前往 系统设置 › 隐私与安全性 › “仍要打开”',
     'win.1': '预览版 · 64 位 · 解压 .zip 后运行 Claude Office.exe', 'win.2': '出现“Windows 已保护你的电脑”时，选择“更多信息 › 仍要运行”', 'win.3': '外部会话通知和截屏目前仅支持 Mac',
@@ -418,7 +573,7 @@ var I18N = {
 };
 
 (function(){
-  var D = DOWNLOADS, LANGS = ['ko', 'en', 'ja', 'zh'], HTML_LANG = {ko:'ko', en:'en', ja:'ja', zh:'zh-CN'};
+  var D = DOWNLOADS, LANGS = ['ko', 'en', 'ja', 'zh'], HTML_LANG = {ko:'ko', en:'en', ja:'ja', zh:'zh-CN'}, OG_LOCALE = {ko:'ko_KR', en:'en_US', ja:'ja_JP', zh:'zh_CN'};
   var ICON = {
     mac: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M16.4 12.6c0-2.5 2-3.6 2.1-3.7-1.2-1.7-3-1.9-3.6-2-1.5-.2-3 .9-3.7.9-.8 0-2-.9-3.2-.9-1.7 0-3.2 1-4 2.5-1.7 3-.4 7.4 1.2 9.8.8 1.2 1.8 2.5 3 2.4 1.2 0 1.7-.8 3.1-.8s1.9.8 3.2.8c1.3 0 2.1-1.2 2.9-2.4.9-1.4 1.3-2.7 1.3-2.8 0 0-2.5-1-2.3-3.8zM14 5.2c.7-.8 1.1-1.9 1-3-1 0-2.1.7-2.8 1.5-.6.7-1.2 1.8-1 2.9 1.1.1 2.1-.6 2.8-1.4z"/></svg>',
     win: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 5.5l7.4-1v7.1H3V5.5zm0 13l7.4 1v-7H3v6zm8.3 1.1L21 21v-8.4h-9.7v7zm0-15.2v7.2H21V3l-9.7 1.4z"/></svg>',
@@ -473,7 +628,10 @@ var I18N = {
     var t = I18N[lang];
     document.documentElement.lang = HTML_LANG[lang];
     document.title = t['meta.title'];
-    document.querySelector('meta[name="description"]').content = t['meta.desc'];
+    // 공유 미리보기 문구도 고른 언어로 (크롤러는 정적 한국어 값을 본다)
+    var meta = { 'meta[name="description"]': t['meta.desc'], 'meta[property="og:title"]': t['meta.title'], 'meta[property="og:description"]': t['meta.desc'],
+      'meta[name="twitter:title"]': t['meta.title'], 'meta[name="twitter:description"]': t['meta.desc'], 'meta[property="og:locale"]': OG_LOCALE[lang] };
+    Object.keys(meta).forEach(function(q){ var m = document.querySelector(q); if (m) m.content = meta[q]; });
     document.getElementById('lang').value = lang;
     document.querySelectorAll('[data-i18n]').forEach(function(el){ el.innerHTML = t[el.getAttribute('data-i18n')]; });
     document.querySelectorAll('[data-i18n-alt]').forEach(function(el){ el.alt = t[el.getAttribute('data-i18n-alt')]; });
@@ -528,6 +686,14 @@ var I18N = {
     try { localStorage.setItem('lang', this.value); } catch (e) {}
     render(this.value);
   });
+  // 스크롤하면 부드럽게 나타나기
+  var rv = document.querySelectorAll('.rv');
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function(es){
+      es.forEach(function(e){ if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+    }, {rootMargin: '0px 0px -8% 0px'});
+    rv.forEach(function(el, n){ el.style.transitionDelay = (n % 3) * 70 + 'ms'; io.observe(el); });
+  } else rv.forEach(function(el){ el.classList.add('in'); });
   render(pickLang());
 })();
 </script>

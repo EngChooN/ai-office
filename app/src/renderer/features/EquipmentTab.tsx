@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import type { Equipment, EquipmentCatalog, Staff } from '@shared/types'
 import { READ_ONLY_BASH, RISKY_BASH } from '@shared/bashPolicy'
+import { BROWSER_EQUIPMENT } from '@shared/browserTools'
 import { osText } from '@/lib/platform'
 import { NotOnWindows } from '@/components/not-on-windows'
 import { t } from '@shared/i18n'
@@ -21,9 +22,9 @@ const TOOL_PRESETS: { label: TKey; hint: TKey; allow?: string[]; deny?: string[]
   { label: 'equipment.preset.autoCapture', hint: 'equipment.preset.autoCapture.hint', allow: ['mcp__office__capture_screen'] },
 ]
 
-function Chip({ isOn, onClick, children, title }: { isOn: boolean; onClick: () => void; children: React.ReactNode; title?: string }) {
+function Chip({ isOn, onClick, children, title, disabled }: { isOn: boolean; onClick: () => void; children: React.ReactNode; title?: string; disabled?: boolean }) {
   return (
-    <button type="button" onClick={onClick} title={title} className={cn('rounded-md border px-2 py-1 text-left text-xs', isOn && 'border-primary bg-accent')}>
+    <button type="button" onClick={onClick} title={title} disabled={disabled} className={cn('rounded-md border px-2 py-1 text-left text-xs disabled:opacity-60', isOn && 'border-primary bg-accent')}>
       {children}
     </button>
   )
@@ -39,6 +40,8 @@ export function EquipmentTab({ staff }: { staff: Staff }) {
     void window.office.equipmentCatalog(staff.cwd).then(setCatalog)
   }, [staff.cwd])
 
+  // 브라우저는 결재를 꼭 거치므로 "MCP 도구 자동 허용"에서 뺀다
+  const userMcp = eq.mcpServers.filter((n) => n !== BROWSER_EQUIPMENT)
   const toggleIn = (list: string[], v: string) => (list.includes(v) ? list.filter((x) => x !== v) : [...list, v])
   const presetOn = (p: (typeof TOOL_PRESETS)[number]) => (p.allow ?? []).every((tool) => eq.allowedTools.includes(tool)) && (p.deny ?? []).every((tool) => eq.disallowedTools.includes(tool))
   const togglePreset = (p: (typeof TOOL_PRESETS)[number]) => {
@@ -57,21 +60,31 @@ export function EquipmentTab({ staff }: { staff: Staff }) {
     <section className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-4 text-sm">
       <div className="flex flex-col gap-2">
         <h3 className="text-xs font-semibold">🔌 {t('equipment.mcp.title')}</h3>
-        {catalog?.mcpServers.length === 0 && <p className="text-muted-foreground text-xs">{t('equipment.mcp.empty', { device: osText(t('equipment.device.mac'), t('equipment.device.win')) })}</p>}
+        {catalog?.mcpServers.every((m) => m.isBuiltin) && <p className="text-muted-foreground text-xs">{t('equipment.mcp.empty', { device: osText(t('equipment.device.mac'), t('equipment.device.win')) })}</p>}
         <div className="flex flex-col gap-1">
-          {catalog?.mcpServers.map((m) => (
-            <Chip key={m.name} isOn={eq.mcpServers.includes(m.name)} onClick={() => setEq((e) => ({ ...e, mcpServers: toggleIn(e.mcpServers, m.name) }))} title={m.detail}>
-              <span className="font-medium">{m.name}</span> <span className="text-muted-foreground">· {m.source}</span>
-              <div className="text-muted-foreground truncate font-mono text-[10px]">{m.detail}</div>
-            </Chip>
-          ))}
+          {catalog?.mcpServers.map((m) => {
+            const isOn = eq.mcpServers.includes(m.name)
+            const toggle = () => setEq((e) => ({ ...e, mcpServers: toggleIn(e.mcpServers, m.name) }))
+            // 앱 기본 장비(브라우저): 이 컴퓨터에서 못 쓰면 켤 수 없고 이유를 보여 준다 (켜져 있던 건 끌 수 있게)
+            return m.isBuiltin ? (
+              <Chip key={m.name} isOn={isOn} onClick={toggle} disabled={Boolean(m.unavailable) && !isOn}>
+                <span className="font-medium">🌐 {t('equip.browser.name')}</span> <span className="text-muted-foreground">· {t('equip.browser.source')}</span>
+                <div className={cn('text-[11px]', m.unavailable ? 'text-status-waiting' : 'text-muted-foreground')}>{m.unavailable ?? t('equip.browser.desc')}</div>
+              </Chip>
+            ) : (
+              <Chip key={m.name} isOn={isOn} onClick={toggle} title={m.detail}>
+                <span className="font-medium">{m.name}</span> <span className="text-muted-foreground">· {m.source}</span>
+                <div className="text-muted-foreground truncate font-mono text-[10px]">{m.detail}</div>
+              </Chip>
+            )
+          })}
         </div>
-        {eq.mcpServers.length > 0 && (
+        {userMcp.length > 0 && (
           <label className="text-muted-foreground flex items-center gap-2 text-xs">
             <input
               type="checkbox"
-              checked={eq.mcpServers.every((n) => eq.allowedTools.includes(n))}
-              onChange={(e) => setEq((x) => ({ ...x, allowedTools: e.target.checked ? [...new Set([...x.allowedTools, ...x.mcpServers])] : x.allowedTools.filter((tool) => !x.mcpServers.includes(tool)) }))}
+              checked={userMcp.every((n) => eq.allowedTools.includes(n))}
+              onChange={(e) => setEq((x) => ({ ...x, allowedTools: e.target.checked ? [...new Set([...x.allowedTools, ...userMcp])] : x.allowedTools.filter((tool) => !userMcp.includes(tool)) }))}
             />
             {t('equipment.mcp.autoAllow')}
           </label>

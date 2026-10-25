@@ -1,12 +1,15 @@
 /// <reference types="@electron-forge/plugin-vite/forge-vite-env" />
 /// <reference types="vite/client" />
 import type { OfficeApi } from './shared/types'
+import type { OfficeUpdateApi } from './shared/updateCheck'
 
 declare global {
   interface Window {
     office: OfficeApi
     /** 데스크톱 창 상태 (preload — 모바일 빌드에는 없다) */
     officeWindow?: { onShown(cb: (isShown: boolean) => void): () => void }
+    /** 앱 업데이트 확인 (preload — 모바일 빌드에는 없다) */
+    officeUpdate?: OfficeUpdateApi
     /** 안드로이드 셸이 넣는 메시지 통로 (모바일 빌드만, docs/specs/android-bridge.md) */
     OfficeBridge?: { postMessage(text: string): void; onmessage: ((e: { data: string }) => void) | null }
   }

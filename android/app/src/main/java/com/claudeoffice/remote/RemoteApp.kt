@@ -19,6 +19,7 @@ class RemoteApp : Application() {
         S.install(this)
         Notifier.createChannel(this)
         repository = OfficeRepository(this)
+        com.claudeoffice.remote.update.UpdateManager.start(this)
     }
 
     // 기기 언어가 바뀌면 "자동"일 때 따라간다

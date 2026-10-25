@@ -14,6 +14,7 @@ import * as upnp from './remote/upnp.ts'
 import { Secretary } from './secretary'
 import { SECRETARY_FOCUS } from '../shared/types'
 import { t } from '../shared/i18n/index.ts'
+import { registerUpdates, type UpdateChecker } from './updates'
 
 registerAttachmentScheme()
 const office = new Office()
@@ -25,6 +26,8 @@ let remote: RemoteService | null = null
 let handlers: OfficeHandlers | null = null
 // 비서: 처리 함수 표로 카드 단계를 실행하고, 자동결재 중 직원 질문에 대신 답한다 (DB를 연 뒤에 만든다)
 let secretary: Secretary | null = null
+// 업데이트 확인: 켤 때 한 번 + 6시간마다 (DB를 연 뒤에 만든다 — 건너뛴 버전을 읽는다)
+let updates: UpdateChecker | null = null
 function createRemote() {
   return new RemoteService({
     office: office.remotePort(),
@@ -204,7 +207,9 @@ app.whenReady().then(() => {
   registerIpc()
   office.start()
   void remote.init()
+  updates = registerUpdates(() => win)
   createWindow()
+  updates.start()
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
@@ -216,6 +221,7 @@ app.on('before-quit', (e) => {
   isQuitting = true
   tray.destroy()
   secretary?.stop()
+  updates?.stop()
   office.stop()
   if (!remote) return
   // 원격 포트와 공유기 매핑을 닫을 때까지 최대 3초 기다린 뒤 끝낸다 (매핑은 1시간 임대라 못 지워도 1시간 안에 사라진다)

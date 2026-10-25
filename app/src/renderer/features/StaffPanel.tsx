@@ -19,6 +19,8 @@ import { LiveMiniView } from './LiveMiniView'
 import { Avatar, StatusDot } from './StaffCard'
 import { formatCost, formatTokens, shortPath, workDirLabel } from './status'
 import { Markdown } from '@/components/markdown'
+import { commandItem, manualItem, SlashMenu, usePersonalManuals, useSlashKeys, useStaffCommands, type SlashMode } from '@/components/slash-menu'
+import { matchCommands, runsOnEnter } from '@shared/slashCommands'
 import { mergeRefDocs, REF_DOCS_TOTAL } from '@shared/refDocs'
 import { fmtDate, t, type TKey } from '@shared/i18n'
 
@@ -239,33 +241,82 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
   const draftFiles = useDraftAttachments()
   const [pickedManual, setPickedManual] = useState<ManualChoice | null>(null)
   // now: 일하는 중이면 하던 일을 멈추고 바로 전한다 (끼어들기) · 아니면 하던 일이 끝난 뒤 이어서 처리한다
-  const handleSend = async (isNow = false) => {
-    const text = draft.trim().replace(/^\/\S*\s*/, (m) => (pickedManual ? '' : m))
+  const handleSend = async (isNow = false, typed = draft) => {
+    const text = typed.trim().replace(/^\/\S*\s*/, (m) => (pickedManual ? '' : m))
     if (!text && draftFiles.files.length === 0) return
     setDraft('')
     const attachments = await draftFiles.upload()
     draftFiles.clear()
     const choice = pickedManual
     setPickedManual(null)
-    if (choice?.kind === 'process') {
-      void window.office.startRun({
-        manualName: choice.name,
-        scope: choice.scope!,
-        input: text,
-        attachments,
-      })
+    if (choice?.scope) {
+      void window.office.startRun({ manualName: choice.name, scope: choice.scope, input: text, attachments })
       return
     }
+    // /명령(스킬 포함)은 그대로 보낸다 — 막힌 명령·/clear는 main이 판정한다. 개인 매뉴얼을 고르면 그 스킬을 쓰라고 분명히 적어 보낸다
     const body = text || '첨부한 파일을 확인해 주세요.'
-    // 개인 매뉴얼을 고르면 그 스킬을 쓰라고 분명히 적어 보낸다
     const instruction = choice ? `[업무 매뉴얼: ${choice.name}] "${choice.name}" 스킬(매뉴얼)을 사용해서 처리해 주세요.\n${body}` : body
     if (isNow) void window.office.interrupt(staff.id, instruction, attachments)
     else void window.office.instruct(staff.id, instruction, attachments)
   }
   const isBusy = staff.status === 'working' || staff.status === 'waiting'
   const hasDraft = Boolean(draft.trim()) || draftFiles.files.length > 0
+
+  // '/'로 시작하는 첫 낱말을 치는 동안: 위에 '내 매뉴얼'(개인 매뉴얼 + 랩·팀 프로세스), 아래에 'Claude 명령'.
+  // 📘 매뉴얼·/ 명령 버튼으로 열면 그쪽만 보인다
+  const slashQuery = isHired && !pickedManual ? (draft.match(/^\/(\S*)$/)?.[1] ?? null) : null
+  const [slashMode, setSlashMode] = useState<SlashMode>('all')
+  useEffect(() => {
+    if (slashQuery === null) setSlashMode('all')
+  }, [slashQuery])
+  const openSlash = (mode: SlashMode) => {
+    setSlashMode(mode)
+    setDraft((d) => (d.startsWith('/') ? d : `/${d}`))
+  }
+  const isMenuOpen = slashQuery !== null
+  const personalManuals = usePersonalManuals(isMenuOpen)
+  const commands = useStaffCommands([staff.id], isMenuOpen && slashMode !== 'manual')
+  const processes = useProcessChoices(staff)
+  const q = (slashQuery ?? '').toLowerCase()
+  const manualChoices: ManualChoice[] =
+    !isMenuOpen || slashMode === 'command'
+      ? []
+      : [
+          ...personalManuals
+            .filter((m) => staff.equipment.skills === 'all' || staff.equipment.skills.includes(m.name))
+            .map((m) => ({ name: m.name, label: m.name, description: m.description })),
+          ...processes,
+        ].filter((m) => m.name.toLowerCase().includes(q))
+  // 스킬 목록 중 매뉴얼실에 있는 개인 매뉴얼(이름 대조)은 '내 매뉴얼' 쪽에만 둔다
+  const manualNames = new Set(personalManuals.map((m) => m.name))
+  const slashCommands =
+    !isMenuOpen || slashMode === 'manual' || !commands ? [] : matchCommands(commands.filter((c) => !manualNames.has(c.name)), q)
+  const isLoading = slashMode !== 'manual' && !commands
+  const slashItems =
+    isLoading && manualChoices.length === 0
+      ? null
+      : [
+          ...manualChoices.map((m) =>
+            m.scope ? { ...manualItem(m.name), key: `run:${m.label}`, label: `🔁 ${m.label}`, tag: t('staffPanel.manual.startProcess') } : manualItem(m.name, m.description),
+          ),
+          ...slashCommands.map(commandItem),
+        ]
+  // 매뉴얼·프로세스는 고른 표시로 바꾸고, 명령은 "/이름 "까지 채워 인자를 이어 쓰게 한다(한 번 더 Enter로 보내기)
+  // 매뉴얼·프로세스·꼭 넣을 인자가 있는 명령은 채우기만, 나머지 명령은 Enter면 바로 보낸다
+  const handleSlashPick = (i: number, isEnter = false) => {
+    if (i >= manualChoices.length) {
+      const command = slashCommands[i - manualChoices.length]
+      if (isEnter && runsOnEnter(command)) return void handleSend(false, `/${command.name}`)
+      return setDraft(`/${command.name} `)
+    }
+    setPickedManual(manualChoices[i])
+    setDraft('')
+  }
+  const slashKeys = useSlashKeys(slashItems?.length ?? 0, slashQuery, handleSlashPick)
+
   // Esc는 Claude Code처럼 하던 일을 멈춘다 (쓰던 글은 그대로 둔다)
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (slashKeys.onKeyDown(e)) return
     if (e.key === 'Escape' && isBusy && !e.nativeEvent.isComposing) {
       e.preventDefault()
       return handleInterrupt()
@@ -433,7 +484,10 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
       {tab === 'review' || tab === 'equip' ? null : isHired ? (
         <footer className="flex flex-col gap-2 border-t p-4">
           <DraftAttachments files={draftFiles.files} onRemove={draftFiles.remove} />
-          <ManualPicker staff={staff} query={draft.match(/^\/(\S*)$/)?.[1] ?? null} picked={pickedManual} onPick={(m) => (setPickedManual(m), setDraft((d) => d.replace(/^\/\S*$/, '')))} />
+          {pickedManual && <PickedManual manual={pickedManual} onRemove={() => setPickedManual(null)} />}
+          {slashQuery !== null && (
+            <SlashMenu query={slashQuery} items={slashItems} active={slashKeys.active} onPick={handleSlashPick} emptyText={slashMode === 'manual' ? t('slashMenu.emptyManual') : undefined} />
+          )}
           {/* 입력 상자 안: 왼쪽 첨부, 오른쪽 보내기. 일하는 중이면 비어 있을 땐 "멈추기", 글을 쓰면 "끝나면 보내기"·"지금 끼어들기" 두 갈래를 글자로 보여 준다 */}
           <div className="border-input focus-within:ring-ring/50 flex items-end gap-1 rounded-lg border px-1.5 py-1 focus-within:ring-2">
             <AttachButton onPick={draftFiles.add} className="shrink-0" />
@@ -483,8 +537,11 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
             )}
           </div>
           <div className="flex items-center gap-2">
-            <Button size="sm" variant="ghost" className="h-8 px-2 text-xs" onClick={() => setDraft((d) => (d.startsWith('/') ? d : `/${d}`))} title={t('staffPanel.manual.pickTitle')}>
-              📘 {t('staffPanel.manual.button')}
+            <Button size="sm" variant="ghost" className="h-8 px-2 text-xs" onClick={() => openSlash('manual')} title={t('slashMenu.manualButtonTitle')}>
+              {t('slashMenu.manualButton')}
+            </Button>
+            <Button size="sm" variant="ghost" className="h-8 px-2 text-xs" onClick={() => openSlash('command')} title={t('slashMenu.buttonTitle')}>
+              {t('slashMenu.button')}
             </Button>
             <Button size="sm" variant="ghost" className="text-muted-foreground ml-auto" onClick={handleFire}>
               <UserMinusIcon /> {t('staffPanel.fire.button')}
@@ -807,70 +864,38 @@ function ExternalActions({ staff }: { staff: Staff }) {
   )
 }
 
+/** 지시창에서 고를 수 있는 매뉴얼 — scope가 있으면 랩·팀 프로세스(실행 시작), 없으면 개인 매뉴얼(스킬로 지시) */
 interface ManualChoice {
   name: string
-  kind: 'personal' | 'process'
   label: string
+  description?: string
   scope?: { kind: 'lab' | 'team'; id: string }
 }
 
-/** 지시창 매뉴얼 고르기: "/"를 치거나 📘 버튼 → 이 직원이 교육받은 개인 매뉴얼 + 이 직원이 속한 랩·팀의 프로세스 */
-function ManualPicker({ staff, query, picked, onPick }: { staff: Staff; query: string | null; picked: ManualChoice | null; onPick: (m: ManualChoice | null) => void }) {
-  const manuals = useOffice((s) => s.manuals)
-  const refresh = useOffice((s) => s.refreshManuals)
+/** 이 직원이 속한 랩·팀의 프로세스 */
+function useProcessChoices(staff: Staff): ManualChoice[] {
   const labs = useOffice((s) => s.labs)
   const teams = useOffice((s) => s.teams)
-  useEffect(() => {
-    if (query !== null) void refresh()
-  }, [query, refresh])
-
-  if (picked)
-    return (
-      <div className="flex items-center gap-2 text-xs">
-        <span className="bg-primary/15 text-primary rounded-full px-2 py-0.5 font-medium">📘 {picked.label}</span>
-        <button type="button" className="text-muted-foreground" onClick={() => onPick(null)}>
-          {t('staffPanel.manual.remove')}
-        </button>
-      </div>
-    )
-  if (query === null) return null
-
-  const personal: ManualChoice[] = manuals
-    .filter((m) => m.kind === 'personal' && (staff.equipment.skills === 'all' || staff.equipment.skills.includes(m.name)))
-    .map((m) => ({ name: m.name, kind: 'personal', label: m.name }))
-  const process: ManualChoice[] = [
+  return [
     ...labs
       .filter((l) => l.memberIds.includes(staff.id))
-      .flatMap((l) =>
-        (l.manuals ?? []).map((m): ManualChoice => ({
-          name: m,
-          kind: 'process',
-          label: `${m} · 🧪 ${l.name}`,
-          scope: { kind: 'lab', id: l.id },
-        })),
-      ),
+      .flatMap((l) => (l.manuals ?? []).map((m): ManualChoice => ({ name: m, label: `${m} · 🧪 ${l.name}`, scope: { kind: 'lab', id: l.id } }))),
     ...teams
       .filter((tm) => tm.id === staff.teamId)
-      .flatMap((tm) =>
-        (tm.manuals ?? []).map((m): ManualChoice => ({
-          name: m,
-          kind: 'process',
-          label: `${m} · ${tm.name}`,
-          scope: { kind: 'team', id: tm.id },
-        })),
-      ),
+      .flatMap((tm) => (tm.manuals ?? []).map((m): ManualChoice => ({ name: m, label: `${m} · ${tm.name}`, scope: { kind: 'team', id: tm.id } }))),
   ]
-  const items = [...personal, ...process].filter((m) => !query || m.name.includes(query))
+}
+
+/** 고른 매뉴얼 표시 — 보내면 프로세스는 실행을 시작하고, 개인 매뉴얼은 그 스킬을 쓰라고 지시한다 */
+function PickedManual({ manual, onRemove }: { manual: ManualChoice; onRemove: () => void }) {
   return (
-    <div className="bg-popover flex max-h-56 flex-col overflow-y-auto rounded-lg border p-1 text-xs shadow-lg">
-      {items.length === 0 && <span className="text-muted-foreground p-2">{t('staffPanel.manual.empty')}</span>}
-      {items.map((m) => (
-        <button key={`${m.kind}-${m.label}`} type="button" onClick={() => onPick(m)} className="hover:bg-accent flex items-center gap-2 rounded px-2 py-1.5 text-left">
-          <span>{m.kind === 'process' ? '🔁' : '📘'}</span>
-          <span className="flex-1 truncate">{m.label}</span>
-          <span className="text-muted-foreground">{m.kind === 'process' ? t('staffPanel.manual.startProcess') : t('staffPanel.manual.useManual')}</span>
-        </button>
-      ))}
+    <div className="flex items-center gap-2 text-xs">
+      <span className="bg-primary/15 text-primary rounded-full px-2 py-0.5 font-medium">
+        {manual.scope ? '🔁' : '📘'} {manual.label}
+      </span>
+      <button type="button" className="text-muted-foreground" onClick={onRemove}>
+        {t('staffPanel.manual.remove')}
+      </button>
     </div>
   )
 }

@@ -42,4 +42,28 @@
 
 ## 5. 기록 남기기
 - 버전을 올린 이유(어떤 기능 때문에 마이너/패치인지)를 최종 보고에 한 줄로 적습니다.
-- git 저장소가 아니라 태그는 없습니다. 생기면 `v0.6.0` 형식으로 태그.
+- 태그는 `vX.Y.Z` 형식(예: `v0.11.1`)이고, 앱 업데이트 알림이 이 태그를 현재 버전과 비교합니다. 올리는 방법은 6번을 봅니다.
+
+## 6. 릴리즈 (GitHub Release)
+업데이트 알림은 서버 없이 GitHub Release를 읽습니다. 저장소는 `EngChooN/claude-office`(origin)이고, 앱은 `https://api.github.com/repos/EngChooN/claude-office/releases/latest`를 인증 없이 조회합니다.
+
+- **태그:** `vX.Y.Z` (예: `v0.11.1`). 앱은 `tag_name`을 현재 앱 버전과 semver로 비교해 더 높을 때만 알립니다. 태그 번호 = `app/package.json`의 `version` = 안드로이드 `versionName`.
+- **고정 파일 이름 3개:** 앱이 이름으로 파일을 찾으므로 빌드 산출물 이름 그대로 올리지 말고, 복사해서 아래 이름으로 바꿔 올립니다.
+
+| 플랫폼 | Release에 올릴 이름 | 빌드 산출물 (복사해서 이름 변경) |
+|---|---|---|
+| Mac (Apple Silicon) | `Claude-Office-mac-arm64.dmg` | `app/out/make/dmg/arm64/Claude Office.dmg` |
+| Windows (x64) | `Claude-Office-win-x64.zip` | `app/out/make/zip/win32/x64/*.zip` |
+| Android | `Claude-Office-android.apk` | `android/app/build/outputs/apk/release/app-release.apk` |
+
+- **Release 설명은 4개 언어로 쓴다**(한·영·일·중). `docs/release-notes/X.Y.Z.md` 한 파일에 `## 한국어` / `## English` / `## 日本語` / `## 中文` 섹션으로 두고, 내용은 같은 버전의 `CHANGELOG*.md` 항목을 따른다. 이 파일을 그대로 notes로 넣는다. 앱(PC·휴대폰)은 화면 언어에 맞는 섹션만 골라 안내 창에 요약해 보여 준다(없으면 English → 한국어).
+- **gh 도구:** PATH에 없습니다. `~/.local/gh-cli/gh_2.103.2_macOS_arm64/bin/gh`를 씁니다(버전이 바뀌면 이 경로를 확인). 처음 한 번 `gh auth status`로 로그인을 확인합니다.
+- **명령 예:**
+  ```
+  ~/.local/gh-cli/gh_2.103.2_macOS_arm64/bin/gh release create vX.Y.Z \
+    --repo EngChooN/claude-office --title "Claude Office X.Y.Z" \
+    --notes-file <notes.md> \
+    <Claude-Office-mac-arm64.dmg> <Claude-Office-win-x64.zip> <Claude-Office-android.apk>
+  ```
+- **순서:** 번호 결정 → 3번 항목 수정 → 4번 빌드·검증 → 파일 3개 복사·이름 변경(저장소 밖 임시 폴더) → notes 파일 작성 → `gh release create`.
+- **주의:** `gh release create`는 공개 작업이라(태그 생성·파일 공개) 실행 전에 리드 확인을 받습니다. 잘못 올렸으면 `gh release delete vX.Y.Z --cleanup-tag`로 되돌립니다.
