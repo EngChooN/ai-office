@@ -12,6 +12,7 @@ import { dioramaFit, dioramaLayout, isOnOffice } from './exteriorLayout'
 import { isNightTime } from '@shared/dayNight'
 import { officeStage } from './officeStage'
 import { DecorDrawer } from './DecorDrawer'
+import { isReducedMotion } from '@/lib/reducedMotion'
 import { t } from '@shared/i18n'
 import { levelTitle } from '@shared/i18n/names'
 
@@ -79,7 +80,7 @@ function OfficeExterior() {
     canvas.width = W
     canvas.height = H
     const [skyCanvas, scene, front] = [0, 0, 0].map(() => Object.assign(document.createElement('canvas'), { width: W, height: H }))
-    const isStill = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const isStill = isReducedMotion()
     paintDiorama(skyCanvas, scene, front, layout, isNight)
     const street = new DioramaStreet(W, H, layout, isNight, isStill)
     const step = (dt: number) => street.step(dt)

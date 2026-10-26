@@ -76,6 +76,7 @@ export const OFFICE_METHODS = [
   'storeItem',
   'placeGridItem',
   'moveGridItem',
+  'setGridItemOn',
   'stowAllGrid',
   'restoreGridItems',
   'setGear',

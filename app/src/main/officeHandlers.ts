@@ -78,6 +78,7 @@ export function createOfficeHandlers(office: Office, remoteApi: () => RemoteServ
     storeItem: (uid: string) => office.storeItem(uid),
     placeGridItem: (itemId: string, floor: number, gx: number, gy: number, rot: number) => office.placeGridItem(itemId, floor, gx, gy, rot),
     moveGridItem: (uid: string, floor: number, gx: number, gy: number, rot: number) => office.moveGridItem(uid, floor, gx, gy, rot),
+    setGridItemOn: (uid: string, isOn: boolean) => office.setGridItemOn(uid, isOn),
     stowAllGrid: (floor: number, keepSeats: boolean) => office.stowAllGrid(floor, keepSeats),
     restoreGridItems: (items: GridItem[]) => office.restoreGridItems(items),
     setGear: (staffId: string, slot: 'desk' | 'chair', itemId: string | null) => office.setGear(staffId, slot, itemId),

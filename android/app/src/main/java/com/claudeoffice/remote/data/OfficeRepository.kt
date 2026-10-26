@@ -35,7 +35,12 @@ import java.util.Date
 import java.util.Locale
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -99,6 +104,9 @@ sealed interface ActionResult {
     data class Failed(val error: ApiError) : ActionResult
 }
 
+/** 기본 네트워크를 잃은 뒤 이만큼 기다려도 다른 망이 없으면 오프라인 표시 */
+const val OFFLINE_GRACE_MS = 3000L
+
 class OfficeRepository(private val context: Context) {
     private val secure = SecureStore(context)
     private val prefs = AppPrefs(context)
@@ -109,6 +117,10 @@ class OfficeRepository(private val context: Context) {
     private var client: RemoteClient? = conn?.let(::newClient)
     /** 429·503 뒤 자동 갱신을 미루는 시각 (휴대폰 시계) */
     private var pauseUntil = 0L
+    /** 기본 네트워크가 (다시) 잡혔다는 신호 — 이벤트 스트림이 옛 소켓을 버리고 바로 다시 붙는다 */
+    private val _networkAvailable = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    val networkAvailable: SharedFlow<Unit> = _networkAvailable.asSharedFlow()
+    private var offlineJob: Job? = null
 
     private val _state = MutableStateFlow(initialState())
     val state: StateFlow<OfficeState> = _state.asStateFlow()
@@ -117,15 +129,20 @@ class OfficeRepository(private val context: Context) {
         connectivity?.registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: Network) {
                 scope.launch {
+                    offlineJob?.cancel()
+                    _networkAvailable.tryEmit(Unit)
                     if (_state.value.reach == Reach.PHONE_OFFLINE) refresh()
                 }
             }
 
             // 기본 네트워크를 잃었다 = 지금 쓸 수 있는 네트워크가 없다 (다른 망이 이어받으면 onAvailable이 뒤따른다).
             // 이 순간 activeNetwork는 아직 잃은 망을 돌려줄 수 있어 isPhoneOnline()으로 다시 확인하지 않는다
+            // 와이파이↔LTE 전환은 잃자마자 다른 망이 이어받는다 — 잠깐은 기다렸다가 그래도 없을 때만 오프라인으로 본다
             override fun onLost(network: Network) {
-                scope.launch {
-                    if (_state.value.gate == null) _state.update { it.copy(reach = Reach.PHONE_OFFLINE) }
+                offlineJob?.cancel()
+                offlineJob = scope.launch {
+                    delay(OFFLINE_GRACE_MS)
+                    if (_state.value.gate == null && !isPhoneOnline()) _state.update { it.copy(reach = Reach.PHONE_OFFLINE) }
                 }
             }
         })
@@ -148,6 +165,7 @@ class OfficeRepository(private val context: Context) {
             clockOffset = offset,
             address = prefs.displayAddress,
             serverVersion = prefs.serverVersion,
+            v2 = if (prefs.v2Active) V2Mode.ACTIVE else V2Mode.UNKNOWN,
         )
         return base.copy(gate = gateFromPrefs(System.currentTimeMillis() + offset))
     }
@@ -289,7 +307,7 @@ class OfficeRepository(private val context: Context) {
         _state.update {
             it.copy(
                 status = s, clockOffset = offset, lastSuccessAt = prefs.lastSuccessAt, serverVersion = s.serverVersion,
-                reach = Reach.OK, tried = emptyList(), route = prefs.routeMemory.preferred, v2 = v2ModeOf(s),
+                reach = Reach.OK, tried = emptyList(), route = prefs.routeMemory.preferred, v2 = v2ModeOf(s).also { prefs.v2Active = it == V2Mode.ACTIVE },
             )
         }
     }

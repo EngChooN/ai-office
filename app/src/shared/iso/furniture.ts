@@ -24,6 +24,8 @@ export interface FurnitureSpec {
   layer: Layer
   kind: FurnitureKind
   spots?: FurnitureSpot[]
+  /** 서 있는 직원을 다 가리는 높은 구조물(가벽) — 뒤에 직원이 가려지면 장면이 안쪽 벽처럼 반투명(depth.ts hidesMover · WALL_FADE)으로 그린다 */
+  isTallWall?: boolean
 }
 
 /** 저장 형식 (shop.grid의 한 줄). floor는 1부터 */
@@ -34,6 +36,8 @@ export interface GridItem {
   gx: number
   gy: number
   rot: Rot
+  /** 눌러서 켜고 끄는 소품(연출 B)을 켜 둠 — 옮기기·치우기 되돌리기에도 따라간다. 없으면 꺼짐 */
+  isOn?: boolean
 }
 
 /** 놓기 검사·차지 칸 계산에 필요한 만큼 */
@@ -54,6 +58,8 @@ const sides = (w: number, d: number, action: string) =>
     { at: [-1, 0], face: 3, use: 'use', action },
     { at: [w, 0], face: 1, use: 'use', action },
   ])
+/** 파티션·가벽 (docs/specs/partition-items.md): 일자형 L칸, 쓰는 자리 없음. 길은 다른 object 가구처럼 막는다(path.ts) */
+const divider = (L: number, isTall: boolean): FurnitureSpec => ({ ...spec(L, 1), ...(isTall ? { isTallWall: true } : {}) })
 /** 앞(+gy)에 서서 쓰는 가구 */
 const front = (w: number, d: number, action?: string) => spec(w, d, 'deco', [{ at: [0, d], face: 2, use: 'use', ...(action ? { action } : {}) }])
 
@@ -69,6 +75,8 @@ export const FURNITURE: Record<string, FurnitureSpec> = {
   'beanbag-blue': seat(1),
   bookshelf: front(2, 1, 'bookshelf'),
   whiteboard: front(2, 1),
+  /** 연출 B 파일럿 (눌러서 켜고 끄기) — 직원이 쓰는 자리는 없다 */
+  tv: spec(2, 1),
   'rug-round': rug(2, 2),
   'rug-persian': rug(3, 2),
   foosball: sides(2, 1, 'foosball'),
@@ -77,6 +85,10 @@ export const FURNITURE: Record<string, FurnitureSpec> = {
   piano: front(2, 2, 'piano'),
   aquarium: front(2, 1, 'aquarium'),
   trophy: front(2, 1),
+  'partition-low-fabric': divider(2, false),
+  'partition-low-glass': divider(3, false),
+  'partition-wall-white': divider(1, true),
+  'partition-wall-wood': divider(3, true),
 
   // 레벨 전용 가구 (2-3절). 상점에 아직 없는 품목 — id는 임시이고 상점 품목을 만들 때(B1·김기획) 같이 확정한다
   'lv-folding-desk': desk(2),

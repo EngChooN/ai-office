@@ -1,0 +1,4984 @@
+{
+ "scale": 2,
+ "note": "칸 크기·기준점은 아트 px(×scale = 화면 px). 기준점 = 가구 로컬 (0,0) 칸 꼭짓점, 같은 행의 모든 프레임이 같다",
+ "lv-fountain": {
+  "id": "lv-fountain",
+  "kind": "A",
+  "rowOfRot": [
+   0,
+   0,
+   0,
+   0
+  ],
+  "anchors": [
+   [
+    35,
+    41
+   ]
+  ],
+  "clips": {
+   "loop": {
+    "frames": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5
+    ],
+    "ms": 500
+   }
+  },
+  "still": 0,
+  "file": "lv-fountain.png",
+  "cell": [
+   70,
+   76
+  ],
+  "cols": 6,
+  "rowCount": 1,
+  "rowFrames": [
+   6
+  ],
+  "frameCount": 6,
+  "px": [
+   840,
+   152
+  ]
+ },
+ "tv": {
+  "id": "tv",
+  "kind": "B",
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "anchors": [
+   [
+    19,
+    38
+   ],
+   [
+    35,
+    38
+   ],
+   [
+    19,
+    38
+   ],
+   [
+    35,
+    38
+   ]
+  ],
+  "clips": {
+   "off": {
+    "frames": [
+     0
+    ]
+   },
+   "turnOn": {
+    "frames": [
+     1
+    ],
+    "ms": 200
+   },
+   "on": {
+    "frames": [
+     2,
+     3,
+     4,
+     5
+    ],
+    "ms": 500
+   }
+  },
+  "still": {
+   "off": 0,
+   "on": 2
+  },
+  "note": "뒷면 방향(r1·r2)은 화면이 안 보여 0번 한 장만 둔다",
+  "file": "tv.png",
+  "cell": [
+   54,
+   65
+  ],
+  "cols": 6,
+  "rowCount": 4,
+  "rowFrames": [
+   6,
+   1,
+   1,
+   6
+  ],
+  "frameCount": 14,
+  "px": [
+   648,
+   520
+  ]
+ },
+ "coffee-machine": {
+  "id": "coffee-machine",
+  "kind": "C",
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "anchors": [
+   [
+    19,
+    31
+   ],
+   [
+    19,
+    31
+   ],
+   [
+    19,
+    31
+   ],
+   [
+    19,
+    31
+   ]
+  ],
+  "clips": {
+   "idle": {
+    "frames": [
+     0
+    ]
+   },
+   "use": {
+    "frames": [
+     1,
+     2,
+     3,
+     4
+    ],
+    "ms": 300
+   }
+  },
+  "still": {
+   "idle": 0,
+   "use": 1
+  },
+  "shares": [
+   "prop-coffeeCorner",
+   "lv-espresso-bar"
+  ],
+  "file": "coffee-machine.png",
+  "cell": [
+   38,
+   50
+  ],
+  "cols": 5,
+  "rowCount": 4,
+  "rowFrames": [
+   5,
+   5,
+   5,
+   5
+  ],
+  "frameCount": 20,
+  "px": [
+   380,
+   400
+  ]
+ },
+ "floor-lamp": {
+  "id": "floor-lamp",
+  "kind": "B+G",
+  "anchors": [
+   [
+    19,
+    41
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   0,
+   0,
+   0
+  ],
+  "clips": {
+   "off": {
+    "frames": [
+     0
+    ]
+   },
+   "turnOn": {
+    "frames": [
+     1
+    ],
+    "ms": 200
+   },
+   "on": {
+    "frames": [
+     2
+    ]
+   },
+   "day": {
+    "frames": [
+     0
+    ]
+   },
+   "night": {
+    "frames": [
+     2
+    ]
+   }
+  },
+  "still": {
+   "off": 0,
+   "on": 2,
+   "day": 0,
+   "night": 2
+  },
+  "shares": [
+   "prop-lamp"
+  ],
+  "note": "가운데 대칭이라 행 1개. 켜짐은 가만한 빛이라 1장 (가이드의 켜짐 반복 4~6장 대신)",
+  "file": "floor-lamp.png",
+  "cell": [
+   38,
+   60
+  ],
+  "cols": 3,
+  "rowCount": 1,
+  "rowFrames": [
+   3
+  ],
+  "frameCount": 3,
+  "px": [
+   228,
+   120
+  ]
+ },
+ "jukebox": {
+  "id": "jukebox",
+  "kind": "B+C",
+  "anchors": [
+   [
+    19,
+    51
+   ],
+   [
+    19,
+    51
+   ],
+   [
+    19,
+    51
+   ],
+   [
+    19,
+    51
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "off": {
+    "frames": [
+     0
+    ]
+   },
+   "turnOn": {
+    "frames": [
+     1
+    ],
+    "ms": 200
+   },
+   "on": {
+    "frames": [
+     2,
+     3,
+     4,
+     5
+    ],
+    "ms": 500
+   },
+   "idle": {
+    "frames": [
+     0
+    ]
+   },
+   "use": {
+    "frames": [
+     2,
+     3,
+     4,
+     5
+    ],
+    "ms": 500
+   }
+  },
+  "still": {
+   "off": 0,
+   "on": 2,
+   "idle": 0,
+   "use": 2
+  },
+  "note": "음표가 뚜껑 위로 올라가서 칸 위쪽을 16 아트 px 더 비웠다 (가로·기준점 규칙은 같음)",
+  "file": "jukebox.png",
+  "cell": [
+   38,
+   70
+  ],
+  "cols": 6,
+  "rowCount": 4,
+  "rowFrames": [
+   6,
+   6,
+   6,
+   6
+  ],
+  "frameCount": 24,
+  "px": [
+   456,
+   560
+  ]
+ },
+ "neon-sign": {
+  "id": "neon-sign",
+  "kind": "A+B+G",
+  "anchors": [
+   [
+    19,
+    29
+   ],
+   [
+    19,
+    29
+   ],
+   [
+    19,
+    29
+   ],
+   [
+    19,
+    29
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "off": {
+    "frames": [
+     0
+    ]
+   },
+   "turnOn": {
+    "frames": [
+     1
+    ],
+    "ms": 200
+   },
+   "on": {
+    "frames": [
+     2,
+     3,
+     4,
+     5
+    ],
+    "ms": 500
+   },
+   "loop": {
+    "frames": [
+     2,
+     3,
+     4,
+     5
+    ],
+    "ms": 500
+   },
+   "day": {
+    "frames": [
+     0
+    ]
+   },
+   "night": {
+    "frames": [
+     2,
+     3,
+     4,
+     5
+    ],
+    "ms": 500
+   }
+  },
+  "still": {
+   "off": 0,
+   "on": 2,
+   "loop": 2,
+   "day": 0,
+   "night": 2
+  },
+  "note": "뒷면 방향(r1·r2)은 관이 안 보여 0번 한 장",
+  "file": "neon-sign.png",
+  "cell": [
+   38,
+   48
+  ],
+  "cols": 6,
+  "rowCount": 4,
+  "rowFrames": [
+   6,
+   1,
+   1,
+   6
+  ],
+  "frameCount": 14,
+  "px": [
+   456,
+   384
+  ]
+ },
+ "treadmill": {
+  "id": "treadmill",
+  "kind": "C",
+  "anchors": [
+   [
+    35,
+    32
+   ],
+   [
+    19,
+    32
+   ],
+   [
+    35,
+    32
+   ],
+   [
+    19,
+    32
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "idle": {
+    "frames": [
+     0
+    ]
+   },
+   "use": {
+    "frames": [
+     1,
+     2,
+     3,
+     4
+    ],
+    "ms": 300
+   }
+  },
+  "still": {
+   "idle": 0,
+   "use": 1
+  },
+  "file": "treadmill.png",
+  "cell": [
+   54,
+   59
+  ],
+  "cols": 5,
+  "rowCount": 4,
+  "rowFrames": [
+   5,
+   5,
+   5,
+   5
+  ],
+  "frameCount": 20,
+  "px": [
+   540,
+   472
+  ]
+ },
+ "aquarium": {
+  "id": "aquarium",
+  "kind": "A+B",
+  "anchors": [
+   [
+    19,
+    35
+   ],
+   [
+    35,
+    35
+   ],
+   [
+    19,
+    35
+   ],
+   [
+    35,
+    35
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "off": {
+    "frames": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "ms": 500
+   },
+   "turnOn": {
+    "frames": [
+     4
+    ],
+    "ms": 200
+   },
+   "on": {
+    "frames": [
+     5,
+     6,
+     7,
+     8
+    ],
+    "ms": 500
+   },
+   "loop": {
+    "frames": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "ms": 500
+   }
+  },
+  "still": {
+   "off": 0,
+   "on": 5,
+   "loop": 0
+  },
+  "shares": [
+   "prop-aquarium"
+  ],
+  "note": "꺼짐도 물고기가 움직인다 (A). 물고기는 앞면이 보이는 방향에서만 보인다",
+  "file": "aquarium.png",
+  "cell": [
+   54,
+   62
+  ],
+  "cols": 9,
+  "rowCount": 4,
+  "rowFrames": [
+   9,
+   9,
+   9,
+   9
+  ],
+  "frameCount": 36,
+  "px": [
+   972,
+   496
+  ]
+ },
+ "rocket": {
+  "id": "rocket",
+  "kind": "A+F",
+  "anchors": [
+   [
+    19,
+    46
+   ],
+   [
+    19,
+    46
+   ],
+   [
+    19,
+    46
+   ],
+   [
+    19,
+    46
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "loop": {
+    "frames": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "ms": 500
+   },
+   "party": {
+    "frames": [
+     4,
+     5,
+     6
+    ],
+    "ms": 80
+   }
+  },
+  "still": 0,
+  "note": "행사 때 몸체가 떠올라 칸 위쪽을 6 아트 px 더 비웠다",
+  "file": "rocket.png",
+  "cell": [
+   38,
+   65
+  ],
+  "cols": 7,
+  "rowCount": 4,
+  "rowFrames": [
+   7,
+   7,
+   7,
+   7
+  ],
+  "frameCount": 28,
+  "px": [
+   532,
+   520
+  ]
+ },
+ "xmas-tree": {
+  "id": "xmas-tree",
+  "kind": "A+G+F",
+  "anchors": [
+   [
+    19,
+    46
+   ],
+   [
+    19,
+    46
+   ],
+   [
+    19,
+    46
+   ],
+   [
+    19,
+    46
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "day": {
+    "frames": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "ms": 500
+   },
+   "night": {
+    "frames": [
+     4,
+     5,
+     6,
+     7
+    ],
+    "ms": 500
+   },
+   "loop": {
+    "frames": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "ms": 500
+   },
+   "party": {
+    "frames": [
+     8,
+     9,
+     10
+    ],
+    "ms": 80
+   }
+  },
+  "still": {
+   "day": 0,
+   "night": 4,
+   "loop": 0
+  },
+  "file": "xmas-tree.png",
+  "cell": [
+   38,
+   65
+  ],
+  "cols": 11,
+  "rowCount": 4,
+  "rowFrames": [
+   11,
+   11,
+   11,
+   11
+  ],
+  "frameCount": 44,
+  "px": [
+   836,
+   520
+  ]
+ },
+ "lv-projector": {
+  "id": "lv-projector",
+  "kind": "B+F",
+  "anchors": [
+   [
+    19,
+    20
+   ],
+   [
+    19,
+    20
+   ],
+   [
+    19,
+    20
+   ],
+   [
+    19,
+    20
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "off": {
+    "frames": [
+     0
+    ]
+   },
+   "turnOn": {
+    "frames": [
+     1
+    ],
+    "ms": 200
+   },
+   "on": {
+    "frames": [
+     2,
+     3,
+     4,
+     5
+    ],
+    "ms": 500
+   }
+  },
+  "still": {
+   "off": 0,
+   "on": 2
+  },
+  "note": "빛줄기는 앞(+y)으로. 앞이 안 보이는 방향(r1·r2)은 가구 뒤에 그린다",
+  "file": "lv-projector.png",
+  "cell": [
+   38,
+   39
+  ],
+  "cols": 6,
+  "rowCount": 4,
+  "rowFrames": [
+   6,
+   6,
+   6,
+   6
+  ],
+  "frameCount": 24,
+  "px": [
+   456,
+   312
+  ]
+ },
+ "prop-printer": {
+  "id": "prop-printer",
+  "kind": "D",
+  "anchors": [
+   [
+    19,
+    22
+   ],
+   [
+    19,
+    22
+   ],
+   [
+    19,
+    22
+   ],
+   [
+    19,
+    22
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "off": {
+    "frames": [
+     0
+    ]
+   },
+   "work": {
+    "frames": [
+     1,
+     2,
+     3,
+     4
+    ],
+    "ms": 500
+   },
+   "done": {
+    "frames": [
+     5,
+     6,
+     7
+    ],
+    "ms": 83
+   }
+  },
+  "still": {
+   "off": 0,
+   "work": 1
+  },
+  "note": "종이는 앞면이 보이는 방향(r0·r3)에서만 보인다",
+  "file": "prop-printer.png",
+  "cell": [
+   38,
+   41
+  ],
+  "cols": 8,
+  "rowCount": 4,
+  "rowFrames": [
+   8,
+   8,
+   8,
+   8
+  ],
+  "frameCount": 32,
+  "px": [
+   608,
+   328
+  ]
+ },
+ "fishbowl": {
+  "id": "fishbowl",
+  "kind": "A+C",
+  "anchors": [
+   [
+    19,
+    27
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   0,
+   0,
+   0
+  ],
+  "clips": {
+   "idle": {
+    "frames": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "ms": 500
+   },
+   "loop": {
+    "frames": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "ms": 500
+   },
+   "use": {
+    "frames": [
+     4,
+     5,
+     6,
+     7
+    ],
+    "ms": 300
+   }
+  },
+  "still": {
+   "idle": 0,
+   "loop": 0,
+   "use": 4
+  },
+  "note": "어항은 둥근 그림이라 네 방향이 같다 (행 1개)",
+  "file": "fishbowl.png",
+  "cell": [
+   38,
+   46
+  ],
+  "cols": 8,
+  "rowCount": 1,
+  "rowFrames": [
+   8
+  ],
+  "frameCount": 8,
+  "px": [
+   608,
+   92
+  ]
+ },
+ "lava-lamp": {
+  "id": "lava-lamp",
+  "kind": "A+B",
+  "anchors": [
+   [
+    19,
+    21
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   0,
+   0,
+   0
+  ],
+  "clips": {
+   "off": {
+    "frames": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "ms": 500
+   },
+   "loop": {
+    "frames": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "ms": 500
+   },
+   "turnOn": {
+    "frames": [
+     4
+    ],
+    "ms": 200
+   },
+   "on": {
+    "frames": [
+     5,
+     6,
+     7,
+     8
+    ],
+    "ms": 500
+   }
+  },
+  "still": {
+   "off": 0,
+   "loop": 0,
+   "on": 5
+  },
+  "note": "가운데 대칭(행 1개). 꺼짐도 덩어리가 움직인다(A), 켜면 밝아지고 빛남",
+  "file": "lava-lamp.png",
+  "cell": [
+   38,
+   40
+  ],
+  "cols": 9,
+  "rowCount": 1,
+  "rowFrames": [
+   9
+  ],
+  "frameCount": 9,
+  "px": [
+   684,
+   80
+  ]
+ },
+ "whiteboard": {
+  "id": "whiteboard",
+  "kind": "D+F",
+  "anchors": [
+   [
+    19,
+    37
+   ],
+   [
+    35,
+    37
+   ],
+   [
+    19,
+    37
+   ],
+   [
+    35,
+    37
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "off": {
+    "frames": [
+     0
+    ]
+   },
+   "work": {
+    "frames": [
+     1,
+     2,
+     3,
+     4
+    ],
+    "ms": 500
+   },
+   "done": {
+    "frames": [
+     5,
+     6,
+     7
+    ],
+    "ms": 83
+   },
+   "party": {
+    "frames": [
+     5,
+     6,
+     7
+    ],
+    "ms": 80
+   }
+  },
+  "still": {
+   "off": 0,
+   "work": 1
+  },
+  "note": "뒷면 방향은 0번 한 장. 끝남·행사는 같은 장(노란 메모)을 쓴다",
+  "file": "whiteboard.png",
+  "cell": [
+   54,
+   64
+  ],
+  "cols": 8,
+  "rowCount": 4,
+  "rowFrames": [
+   8,
+   1,
+   1,
+   8
+  ],
+  "frameCount": 18,
+  "px": [
+   864,
+   512
+  ]
+ },
+ "dartboard": {
+  "id": "dartboard",
+  "kind": "C",
+  "anchors": [
+   [
+    19,
+    35
+   ],
+   [
+    19,
+    35
+   ],
+   [
+    19,
+    35
+   ],
+   [
+    19,
+    35
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "idle": {
+    "frames": [
+     0
+    ]
+   },
+   "use": {
+    "frames": [
+     1,
+     2,
+     3,
+     4
+    ],
+    "ms": 300
+   }
+  },
+  "still": {
+   "idle": 0,
+   "use": 1
+  },
+  "file": "dartboard.png",
+  "cell": [
+   38,
+   54
+  ],
+  "cols": 5,
+  "rowCount": 4,
+  "rowFrames": [
+   5,
+   5,
+   5,
+   5
+  ],
+  "frameCount": 20,
+  "px": [
+   380,
+   432
+  ]
+ },
+ "globe": {
+  "id": "globe",
+  "kind": "A",
+  "anchors": [
+   [
+    19,
+    27
+   ],
+   [
+    19,
+    27
+   ],
+   [
+    19,
+    27
+   ],
+   [
+    19,
+    27
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "loop": {
+    "frames": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7
+    ],
+    "ms": 375
+   }
+  },
+  "still": 0,
+  "note": "8장 · 3초. 0번은 오른쪽 끝 한 줄만 기존과 다르다(돌아가는 무늬를 이으려고)",
+  "file": "globe.png",
+  "cell": [
+   38,
+   46
+  ],
+  "cols": 8,
+  "rowCount": 4,
+  "rowFrames": [
+   8,
+   8,
+   8,
+   8
+  ],
+  "frameCount": 32,
+  "px": [
+   608,
+   368
+  ]
+ },
+ "arc-lamp": {
+  "id": "arc-lamp",
+  "kind": "B+G",
+  "anchors": [
+   [
+    19,
+    38
+   ],
+   [
+    19,
+    38
+   ],
+   [
+    19,
+    38
+   ],
+   [
+    19,
+    38
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "off": {
+    "frames": [
+     0
+    ]
+   },
+   "turnOn": {
+    "frames": [
+     1
+    ],
+    "ms": 200
+   },
+   "on": {
+    "frames": [
+     2
+    ]
+   },
+   "day": {
+    "frames": [
+     0
+    ]
+   },
+   "night": {
+    "frames": [
+     2
+    ]
+   }
+  },
+  "still": {
+   "off": 0,
+   "on": 2,
+   "day": 0,
+   "night": 2
+  },
+  "file": "arc-lamp.png",
+  "cell": [
+   38,
+   57
+  ],
+  "cols": 3,
+  "rowCount": 4,
+  "rowFrames": [
+   3,
+   3,
+   3,
+   3
+  ],
+  "frameCount": 12,
+  "px": [
+   228,
+   456
+  ]
+ },
+ "easel": {
+  "id": "easel",
+  "kind": "C",
+  "anchors": [
+   [
+    19,
+    31
+   ],
+   [
+    19,
+    31
+   ],
+   [
+    19,
+    31
+   ],
+   [
+    19,
+    31
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "idle": {
+    "frames": [
+     0
+    ]
+   },
+   "use": {
+    "frames": [
+     1,
+     2,
+     3,
+     4
+    ],
+    "ms": 300
+   }
+  },
+  "still": {
+   "idle": 0,
+   "use": 4
+  },
+  "note": "뒷면 방향은 0번 한 장",
+  "file": "easel.png",
+  "cell": [
+   38,
+   50
+  ],
+  "cols": 5,
+  "rowCount": 4,
+  "rowFrames": [
+   5,
+   1,
+   1,
+   5
+  ],
+  "frameCount": 12,
+  "px": [
+   380,
+   400
+  ]
+ },
+ "punching-bag": {
+  "id": "punching-bag",
+  "kind": "C+E",
+  "anchors": [
+   [
+    19,
+    43
+   ],
+   [
+    19,
+    43
+   ],
+   [
+    19,
+    43
+   ],
+   [
+    19,
+    43
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "idle": {
+    "frames": [
+     0
+    ]
+   },
+   "use": {
+    "frames": [
+     1,
+     2,
+     3,
+     4
+    ],
+    "ms": 300
+   },
+   "react": {
+    "frames": [
+     5,
+     6
+    ],
+    "ms": 100
+   }
+  },
+  "still": {
+   "idle": 0,
+   "use": 1
+  },
+  "file": "punching-bag.png",
+  "cell": [
+   38,
+   62
+  ],
+  "cols": 7,
+  "rowCount": 4,
+  "rowFrames": [
+   7,
+   7,
+   7,
+   7
+  ],
+  "frameCount": 28,
+  "px": [
+   532,
+   496
+  ]
+ },
+ "popcorn": {
+  "id": "popcorn",
+  "kind": "C",
+  "anchors": [
+   [
+    19,
+    28
+   ],
+   [
+    19,
+    28
+   ],
+   [
+    19,
+    28
+   ],
+   [
+    19,
+    28
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "idle": {
+    "frames": [
+     0
+    ]
+   },
+   "use": {
+    "frames": [
+     1,
+     2,
+     3,
+     4
+    ],
+    "ms": 300
+   }
+  },
+  "still": {
+   "idle": 0,
+   "use": 1
+  },
+  "file": "popcorn.png",
+  "cell": [
+   38,
+   47
+  ],
+  "cols": 5,
+  "rowCount": 4,
+  "rowFrames": [
+   5,
+   5,
+   5,
+   5
+  ],
+  "frameCount": 20,
+  "px": [
+   380,
+   376
+  ]
+ },
+ "arcade": {
+  "id": "arcade",
+  "kind": "B+C",
+  "anchors": [
+   [
+    19,
+    35
+   ],
+   [
+    19,
+    35
+   ],
+   [
+    19,
+    35
+   ],
+   [
+    19,
+    35
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "off": {
+    "frames": [
+     0
+    ]
+   },
+   "turnOn": {
+    "frames": [
+     1
+    ],
+    "ms": 200
+   },
+   "on": {
+    "frames": [
+     2,
+     3,
+     4,
+     5
+    ],
+    "ms": 500
+   },
+   "idle": {
+    "frames": [
+     0
+    ]
+   },
+   "use": {
+    "frames": [
+     2,
+     3,
+     4,
+     5
+    ],
+    "ms": 500
+   }
+  },
+  "still": {
+   "off": 0,
+   "on": 2,
+   "idle": 0,
+   "use": 2
+  },
+  "shares": [
+   "prop-arcade"
+  ],
+  "note": "뒷면 방향은 0번 한 장",
+  "file": "arcade.png",
+  "cell": [
+   38,
+   54
+  ],
+  "cols": 6,
+  "rowCount": 4,
+  "rowFrames": [
+   6,
+   1,
+   1,
+   6
+  ],
+  "frameCount": 14,
+  "px": [
+   456,
+   432
+  ]
+ },
+ "gacha": {
+  "id": "gacha",
+  "kind": "C",
+  "anchors": [
+   [
+    19,
+    31
+   ],
+   [
+    19,
+    31
+   ],
+   [
+    19,
+    31
+   ],
+   [
+    19,
+    31
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "idle": {
+    "frames": [
+     0
+    ]
+   },
+   "use": {
+    "frames": [
+     1,
+     2,
+     3,
+     4
+    ],
+    "ms": 300
+   }
+  },
+  "still": {
+   "idle": 0,
+   "use": 1
+  },
+  "file": "gacha.png",
+  "cell": [
+   38,
+   50
+  ],
+  "cols": 5,
+  "rowCount": 4,
+  "rowFrames": [
+   5,
+   5,
+   5,
+   5
+  ],
+  "frameCount": 20,
+  "px": [
+   380,
+   400
+  ]
+ },
+ "clock-tower": {
+  "id": "clock-tower",
+  "kind": "A+G",
+  "anchors": [
+   [
+    19,
+    48
+   ],
+   [
+    19,
+    48
+   ],
+   [
+    19,
+    48
+   ],
+   [
+    19,
+    48
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "day": {
+    "frames": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "ms": 500
+   },
+   "loop": {
+    "frames": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "ms": 500
+   },
+   "night": {
+    "frames": [
+     4,
+     5,
+     6,
+     7
+    ],
+    "ms": 500
+   }
+  },
+  "still": {
+   "day": 0,
+   "loop": 0,
+   "night": 4
+  },
+  "note": "정시 종소리 연출은 소리·시각 신호가 없어 뺐다. 뒷면 방향은 0번 한 장",
+  "file": "clock-tower.png",
+  "cell": [
+   38,
+   67
+  ],
+  "cols": 8,
+  "rowCount": 4,
+  "rowFrames": [
+   8,
+   1,
+   1,
+   8
+  ],
+  "frameCount": 18,
+  "px": [
+   608,
+   536
+  ]
+ },
+ "parrot": {
+  "id": "parrot",
+  "kind": "E+C",
+  "anchors": [
+   [
+    19,
+    38
+   ],
+   [
+    19,
+    38
+   ],
+   [
+    19,
+    38
+   ],
+   [
+    19,
+    38
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "idle": {
+    "frames": [
+     0
+    ]
+   },
+   "use": {
+    "frames": [
+     1,
+     2,
+     3,
+     4
+    ],
+    "ms": 300
+   },
+   "react": {
+    "frames": [
+     5,
+     6
+    ],
+    "ms": 100
+   }
+  },
+  "still": {
+   "idle": 0,
+   "use": 1
+  },
+  "file": "parrot.png",
+  "cell": [
+   38,
+   58
+  ],
+  "cols": 7,
+  "rowCount": 4,
+  "rowFrames": [
+   7,
+   7,
+   7,
+   7
+  ],
+  "frameCount": 28,
+  "px": [
+   532,
+   464
+  ]
+ },
+ "foosball": {
+  "id": "foosball",
+  "kind": "C",
+  "anchors": [
+   [
+    19,
+    19
+   ],
+   [
+    35,
+    19
+   ],
+   [
+    19,
+    19
+   ],
+   [
+    35,
+    19
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "idle": {
+    "frames": [
+     0
+    ]
+   },
+   "use": {
+    "frames": [
+     1,
+     2,
+     3,
+     4
+    ],
+    "ms": 300
+   }
+  },
+  "still": {
+   "idle": 0,
+   "use": 1
+  },
+  "file": "foosball.png",
+  "cell": [
+   54,
+   46
+  ],
+  "cols": 5,
+  "rowCount": 4,
+  "rowFrames": [
+   5,
+   5,
+   5,
+   5
+  ],
+  "frameCount": 20,
+  "px": [
+   540,
+   368
+  ]
+ },
+ "pool-table": {
+  "id": "pool-table",
+  "kind": "C",
+  "anchors": [
+   [
+    35,
+    19
+   ],
+   [
+    51,
+    19
+   ],
+   [
+    35,
+    19
+   ],
+   [
+    51,
+    19
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "idle": {
+    "frames": [
+     0
+    ]
+   },
+   "use": {
+    "frames": [
+     1,
+     2,
+     3,
+     4
+    ],
+    "ms": 300
+   }
+  },
+  "still": {
+   "idle": 0,
+   "use": 1
+  },
+  "file": "pool-table.png",
+  "cell": [
+   86,
+   62
+  ],
+  "cols": 5,
+  "rowCount": 4,
+  "rowFrames": [
+   5,
+   5,
+   5,
+   5
+  ],
+  "frameCount": 20,
+  "px": [
+   860,
+   496
+  ]
+ },
+ "claw": {
+  "id": "claw",
+  "kind": "C+A",
+  "anchors": [
+   [
+    19,
+    40
+   ],
+   [
+    19,
+    40
+   ],
+   [
+    19,
+    40
+   ],
+   [
+    19,
+    40
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "idle": {
+    "frames": [
+     0,
+     1,
+     0,
+     2
+    ],
+    "ms": 750
+   },
+   "loop": {
+    "frames": [
+     0,
+     1,
+     0,
+     2
+    ],
+    "ms": 750
+   },
+   "use": {
+    "frames": [
+     3,
+     4,
+     5,
+     6
+    ],
+    "ms": 300
+   }
+  },
+  "still": {
+   "idle": 0,
+   "loop": 0,
+   "use": 3
+  },
+  "note": "늘 움직임은 0·1·0·2번을 돌려 쓴다 (장수 절약, 3초 반복)",
+  "file": "claw.png",
+  "cell": [
+   38,
+   59
+  ],
+  "cols": 7,
+  "rowCount": 4,
+  "rowFrames": [
+   7,
+   7,
+   7,
+   7
+  ],
+  "frameCount": 28,
+  "px": [
+   532,
+   472
+  ]
+ },
+ "piano": {
+  "id": "piano",
+  "kind": "B+C",
+  "anchors": [
+   [
+    35,
+    37
+   ],
+   [
+    35,
+    37
+   ],
+   [
+    35,
+    37
+   ],
+   [
+    35,
+    37
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "off": {
+    "frames": [
+     0
+    ]
+   },
+   "turnOn": {
+    "frames": [
+     1
+    ],
+    "ms": 200
+   },
+   "on": {
+    "frames": [
+     2,
+     3,
+     4,
+     5
+    ],
+    "ms": 500
+   },
+   "idle": {
+    "frames": [
+     0
+    ]
+   },
+   "use": {
+    "frames": [
+     2,
+     3,
+     4,
+     5
+    ],
+    "ms": 500
+   }
+  },
+  "still": {
+   "off": 0,
+   "on": 2,
+   "idle": 0,
+   "use": 2
+  },
+  "note": "음표가 위로 올라가 칸 위쪽을 12 아트 px 더 비웠다",
+  "file": "piano.png",
+  "cell": [
+   70,
+   72
+  ],
+  "cols": 6,
+  "rowCount": 4,
+  "rowFrames": [
+   6,
+   6,
+   6,
+   6
+  ],
+  "frameCount": 24,
+  "px": [
+   840,
+   576
+  ]
+ },
+ "trophy": {
+  "id": "trophy",
+  "kind": "F",
+  "anchors": [
+   [
+    19,
+    33
+   ],
+   [
+    35,
+    33
+   ],
+   [
+    19,
+    33
+   ],
+   [
+    35,
+    33
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "party": {
+    "frames": [
+     1,
+     2,
+     3
+    ],
+    "ms": 80
+   }
+  },
+  "still": 0,
+  "file": "trophy.png",
+  "cell": [
+   54,
+   60
+  ],
+  "cols": 4,
+  "rowCount": 4,
+  "rowFrames": [
+   4,
+   4,
+   4,
+   4
+  ],
+  "frameCount": 16,
+  "px": [
+   432,
+   480
+  ]
+ },
+ "statue": {
+  "id": "statue",
+  "kind": "F+A",
+  "anchors": [
+   [
+    19,
+    41
+   ],
+   [
+    19,
+    41
+   ],
+   [
+    19,
+    41
+   ],
+   [
+    19,
+    41
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "loop": {
+    "frames": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "ms": 750
+   },
+   "party": {
+    "frames": [
+     4,
+     5,
+     6
+    ],
+    "ms": 80
+   }
+  },
+  "still": 0,
+  "note": "광택은 3초에 한 번 (장당 750ms — 은은하게)",
+  "file": "statue.png",
+  "cell": [
+   38,
+   60
+  ],
+  "cols": 7,
+  "rowCount": 4,
+  "rowFrames": [
+   7,
+   7,
+   7,
+   7
+  ],
+  "frameCount": 28,
+  "px": [
+   532,
+   480
+  ]
+ },
+ "robot": {
+  "id": "robot",
+  "kind": "A+E",
+  "anchors": [
+   [
+    19,
+    36
+   ],
+   [
+    19,
+    36
+   ],
+   [
+    19,
+    36
+   ],
+   [
+    19,
+    36
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "loop": {
+    "frames": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "ms": 750
+   },
+   "react": {
+    "frames": [
+     4,
+     5
+    ],
+    "ms": 100
+   }
+  },
+  "still": 0,
+  "file": "robot.png",
+  "cell": [
+   38,
+   55
+  ],
+  "cols": 6,
+  "rowCount": 4,
+  "rowFrames": [
+   6,
+   6,
+   6,
+   6
+  ],
+  "frameCount": 24,
+  "px": [
+   456,
+   440
+  ]
+ },
+ "gold-bar": {
+  "id": "gold-bar",
+  "kind": "F+A",
+  "anchors": [
+   [
+    19,
+    31
+   ],
+   [
+    19,
+    31
+   ],
+   [
+    19,
+    31
+   ],
+   [
+    19,
+    31
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "loop": {
+    "frames": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "ms": 750
+   },
+   "party": {
+    "frames": [
+     4,
+     5,
+     6
+    ],
+    "ms": 80
+   }
+  },
+  "still": 0,
+  "file": "gold-bar.png",
+  "cell": [
+   38,
+   50
+  ],
+  "cols": 7,
+  "rowCount": 4,
+  "rowFrames": [
+   7,
+   7,
+   7,
+   7
+  ],
+  "frameCount": 28,
+  "px": [
+   532,
+   400
+  ]
+ },
+ "pumpkin": {
+  "id": "pumpkin",
+  "kind": "A+G",
+  "anchors": [
+   [
+    19,
+    17
+   ],
+   [
+    19,
+    17
+   ],
+   [
+    19,
+    17
+   ],
+   [
+    19,
+    17
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "day": {
+    "frames": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "ms": 500
+   },
+   "loop": {
+    "frames": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "ms": 500
+   },
+   "night": {
+    "frames": [
+     4,
+     5,
+     6,
+     7
+    ],
+    "ms": 500
+   }
+  },
+  "still": {
+   "day": 0,
+   "loop": 0,
+   "night": 4
+  },
+  "note": "뒷면 방향은 0번 한 장",
+  "file": "pumpkin.png",
+  "cell": [
+   38,
+   36
+  ],
+  "cols": 8,
+  "rowCount": 4,
+  "rowFrames": [
+   8,
+   1,
+   1,
+   8
+  ],
+  "frameCount": 18,
+  "px": [
+   608,
+   288
+  ]
+ },
+ "ghost": {
+  "id": "ghost",
+  "kind": "A",
+  "anchors": [
+   [
+    19,
+    29
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   0,
+   0,
+   0
+  ],
+  "clips": {
+   "loop": {
+    "frames": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "ms": 750
+   }
+  },
+  "still": 0,
+  "note": "둥근 그림이라 행 1개. 떠오르는 만큼 칸 위쪽을 2 아트 px 더 비웠다",
+  "file": "ghost.png",
+  "cell": [
+   38,
+   48
+  ],
+  "cols": 4,
+  "rowCount": 1,
+  "rowFrames": [
+   4
+  ],
+  "frameCount": 4,
+  "px": [
+   304,
+   96
+  ]
+ },
+ "cherry-tree": {
+  "id": "cherry-tree",
+  "kind": "A",
+  "anchors": [
+   [
+    19,
+    55
+   ],
+   [
+    19,
+    55
+   ],
+   [
+    19,
+    55
+   ],
+   [
+    19,
+    55
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "loop": {
+    "frames": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "ms": 750
+   }
+  },
+  "still": 0,
+  "file": "cherry-tree.png",
+  "cell": [
+   38,
+   74
+  ],
+  "cols": 4,
+  "rowCount": 4,
+  "rowFrames": [
+   4,
+   4,
+   4,
+   4
+  ],
+  "frameCount": 16,
+  "px": [
+   304,
+   592
+  ]
+ },
+ "bookshelf": {
+  "id": "bookshelf",
+  "kind": "C",
+  "anchors": [
+   [
+    19,
+    31
+   ],
+   [
+    35,
+    31
+   ],
+   [
+    19,
+    31
+   ],
+   [
+    35,
+    31
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "idle": {
+    "frames": [
+     0
+    ]
+   },
+   "use": {
+    "frames": [
+     1,
+     2,
+     3,
+     4
+    ],
+    "ms": 300
+   }
+  },
+  "still": {
+   "idle": 0,
+   "use": 2
+  },
+  "file": "bookshelf.png",
+  "cell": [
+   54,
+   58
+  ],
+  "cols": 5,
+  "rowCount": 4,
+  "rowFrames": [
+   5,
+   5,
+   5,
+   5
+  ],
+  "frameCount": 20,
+  "px": [
+   540,
+   464
+  ]
+ },
+ "lv-meeting-table": {
+  "id": "lv-meeting-table",
+  "kind": "F",
+  "anchors": [
+   [
+    35,
+    30
+   ],
+   [
+    35,
+    30
+   ],
+   [
+    35,
+    30
+   ],
+   [
+    35,
+    30
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "party": {
+    "frames": [
+     1,
+     2,
+     3
+    ],
+    "ms": 80
+   }
+  },
+  "still": 0,
+  "file": "lv-meeting-table.png",
+  "cell": [
+   70,
+   65
+  ],
+  "cols": 4,
+  "rowCount": 4,
+  "rowFrames": [
+   4,
+   4,
+   4,
+   4
+  ],
+  "frameCount": 16,
+  "px": [
+   560,
+   520
+  ]
+ },
+ "lv-glass-table": {
+  "id": "lv-glass-table",
+  "kind": "F",
+  "anchors": [
+   [
+    35,
+    24
+   ],
+   [
+    51,
+    24
+   ],
+   [
+    35,
+    24
+   ],
+   [
+    51,
+    24
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "party": {
+    "frames": [
+     1,
+     2,
+     3
+    ],
+    "ms": 80
+   }
+  },
+  "still": 0,
+  "file": "lv-glass-table.png",
+  "cell": [
+   86,
+   67
+  ],
+  "cols": 4,
+  "rowCount": 4,
+  "rowFrames": [
+   4,
+   4,
+   4,
+   4
+  ],
+  "frameCount": 16,
+  "px": [
+   688,
+   536
+  ]
+ },
+ "lv-mailbox": {
+  "id": "lv-mailbox",
+  "kind": "D",
+  "anchors": [
+   [
+    19,
+    29
+   ],
+   [
+    19,
+    29
+   ],
+   [
+    19,
+    29
+   ],
+   [
+    19,
+    29
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "off": {
+    "frames": [
+     0
+    ]
+   },
+   "work": {
+    "frames": [
+     1,
+     2,
+     3,
+     4
+    ],
+    "ms": 500
+   },
+   "done": {
+    "frames": [
+     5,
+     6,
+     7
+    ],
+    "ms": 83
+   }
+  },
+  "still": {
+   "off": 0,
+   "work": 1
+  },
+  "note": "편지는 앞면이 보이는 방향에서만, 반짝임은 네 방향 모두",
+  "file": "lv-mailbox.png",
+  "cell": [
+   38,
+   48
+  ],
+  "cols": 8,
+  "rowCount": 4,
+  "rowFrames": [
+   8,
+   8,
+   8,
+   8
+  ],
+  "frameCount": 32,
+  "px": [
+   608,
+   384
+  ]
+ },
+ "lv-fridge": {
+  "id": "lv-fridge",
+  "kind": "C",
+  "anchors": [
+   [
+    19,
+    37
+   ],
+   [
+    19,
+    37
+   ],
+   [
+    19,
+    37
+   ],
+   [
+    19,
+    37
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "idle": {
+    "frames": [
+     0
+    ]
+   },
+   "use": {
+    "frames": [
+     1,
+     2,
+     3,
+     4
+    ],
+    "ms": 300
+   }
+  },
+  "still": {
+   "idle": 0,
+   "use": 1
+  },
+  "note": "문을 여는 그림 대신 문틈 불빛과 찬 김으로 (칸 크기를 넘지 않게)",
+  "file": "lv-fridge.png",
+  "cell": [
+   38,
+   56
+  ],
+  "cols": 5,
+  "rowCount": 4,
+  "rowFrames": [
+   5,
+   5,
+   5,
+   5
+  ],
+  "frameCount": 20,
+  "px": [
+   380,
+   448
+  ]
+ },
+ "lv-vending": {
+  "id": "lv-vending",
+  "kind": "B+C",
+  "anchors": [
+   [
+    19,
+    37
+   ],
+   [
+    19,
+    37
+   ],
+   [
+    19,
+    37
+   ],
+   [
+    19,
+    37
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "off": {
+    "frames": [
+     0
+    ]
+   },
+   "turnOn": {
+    "frames": [
+     1
+    ],
+    "ms": 200
+   },
+   "on": {
+    "frames": [
+     2,
+     3,
+     4,
+     5
+    ],
+    "ms": 500
+   },
+   "idle": {
+    "frames": [
+     0
+    ]
+   },
+   "use": {
+    "frames": [
+     2,
+     3,
+     4,
+     5
+    ],
+    "ms": 500
+   }
+  },
+  "still": {
+   "off": 0,
+   "on": 2,
+   "idle": 0,
+   "use": 2
+  },
+  "note": "뒷면 방향은 0번 한 장",
+  "file": "lv-vending.png",
+  "cell": [
+   38,
+   56
+  ],
+  "cols": 6,
+  "rowCount": 4,
+  "rowFrames": [
+   6,
+   1,
+   1,
+   6
+  ],
+  "frameCount": 14,
+  "px": [
+   456,
+   448
+  ]
+ },
+ "lv-pingpong": {
+  "id": "lv-pingpong",
+  "kind": "C",
+  "anchors": [
+   [
+    35,
+    20
+   ],
+   [
+    51,
+    20
+   ],
+   [
+    35,
+    20
+   ],
+   [
+    51,
+    20
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "idle": {
+    "frames": [
+     0
+    ]
+   },
+   "use": {
+    "frames": [
+     1,
+     2,
+     3,
+     4
+    ],
+    "ms": 300
+   }
+  },
+  "still": {
+   "idle": 0,
+   "use": 1
+  },
+  "shares": [
+   "prop-pingpong"
+  ],
+  "file": "lv-pingpong.png",
+  "cell": [
+   86,
+   63
+  ],
+  "cols": 5,
+  "rowCount": 4,
+  "rowFrames": [
+   5,
+   5,
+   5,
+   5
+  ],
+  "frameCount": 20,
+  "px": [
+   860,
+   504
+  ]
+ },
+ "lv-floor-sign": {
+  "id": "lv-floor-sign",
+  "kind": "D+G",
+  "anchors": [
+   [
+    19,
+    35
+   ],
+   [
+    19,
+    35
+   ],
+   [
+    19,
+    35
+   ],
+   [
+    19,
+    35
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "off": {
+    "frames": [
+     0
+    ]
+   },
+   "work": {
+    "frames": [
+     1,
+     2,
+     3,
+     4
+    ],
+    "ms": 500
+   },
+   "done": {
+    "frames": [
+     5,
+     6,
+     7
+    ],
+    "ms": 83
+   },
+   "day": {
+    "frames": [
+     0
+    ]
+   },
+   "night": {
+    "frames": [
+     1,
+     2,
+     3,
+     4
+    ],
+    "ms": 500
+   }
+  },
+  "still": {
+   "off": 0,
+   "work": 1,
+   "day": 0,
+   "night": 1
+  },
+  "note": "뒷면 방향은 0번 한 장. 일하는 직원 수만큼 켜기는 신호가 없어 줄마다 차례로 켜지는 반복으로 대신",
+  "file": "lv-floor-sign.png",
+  "cell": [
+   38,
+   54
+  ],
+  "cols": 8,
+  "rowCount": 4,
+  "rowFrames": [
+   8,
+   1,
+   1,
+   8
+  ],
+  "frameCount": 18,
+  "px": [
+   608,
+   432
+  ]
+ },
+ "lv-sleep-pod": {
+  "id": "lv-sleep-pod",
+  "kind": "C",
+  "anchors": [
+   [
+    35,
+    34
+   ],
+   [
+    19,
+    34
+   ],
+   [
+    35,
+    34
+   ],
+   [
+    19,
+    34
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "idle": {
+    "frames": [
+     0
+    ]
+   },
+   "use": {
+    "frames": [
+     1,
+     2,
+     3,
+     4
+    ],
+    "ms": 300
+   }
+  },
+  "still": {
+   "idle": 0,
+   "use": 1
+  },
+  "shares": [
+   "prop-napPod"
+  ],
+  "note": "Zzz가 위로 올라가 칸 위쪽을 10 아트 px 더 비웠다",
+  "file": "lv-sleep-pod.png",
+  "cell": [
+   54,
+   61
+  ],
+  "cols": 5,
+  "rowCount": 4,
+  "rowFrames": [
+   5,
+   5,
+   5,
+   5
+  ],
+  "frameCount": 20,
+  "px": [
+   540,
+   488
+  ]
+ },
+ "lv-espresso-bar": {
+  "id": "lv-espresso-bar",
+  "kind": "C",
+  "anchors": [
+   [
+    19,
+    34
+   ],
+   [
+    51,
+    34
+   ],
+   [
+    19,
+    34
+   ],
+   [
+    51,
+    34
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "idle": {
+    "frames": [
+     0
+    ]
+   },
+   "use": {
+    "frames": [
+     1,
+     2,
+     3,
+     4
+    ],
+    "ms": 300
+   }
+  },
+  "still": {
+   "idle": 0,
+   "use": 1
+  },
+  "note": "커피머신 시트와 크기가 달라 이 그림의 머신 자리에 같은 연출을 따로 그렸다",
+  "file": "lv-espresso-bar.png",
+  "cell": [
+   70,
+   69
+  ],
+  "cols": 5,
+  "rowCount": 4,
+  "rowFrames": [
+   5,
+   5,
+   5,
+   5
+  ],
+  "frameCount": 20,
+  "px": [
+   700,
+   552
+  ]
+ },
+ "prop-coffeeCorner": {
+  "id": "prop-coffeeCorner",
+  "kind": "C",
+  "anchors": [
+   [
+    19,
+    29
+   ],
+   [
+    35,
+    29
+   ],
+   [
+    19,
+    29
+   ],
+   [
+    35,
+    29
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "idle": {
+    "frames": [
+     0
+    ]
+   },
+   "use": {
+    "frames": [
+     1,
+     2,
+     3,
+     4
+    ],
+    "ms": 300
+   }
+  },
+  "still": {
+   "idle": 0,
+   "use": 1
+  },
+  "note": "커피머신 시트와 크기가 달라 따로 그렸다",
+  "file": "prop-coffeeCorner.png",
+  "cell": [
+   54,
+   56
+  ],
+  "cols": 5,
+  "rowCount": 4,
+  "rowFrames": [
+   5,
+   5,
+   5,
+   5
+  ],
+  "frameCount": 20,
+  "px": [
+   540,
+   448
+  ]
+ },
+ "lv-stage": {
+  "id": "lv-stage",
+  "kind": "F",
+  "anchors": [
+   [
+    35,
+    35
+   ],
+   [
+    67,
+    35
+   ],
+   [
+    35,
+    35
+   ],
+   [
+    67,
+    35
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "party": {
+    "frames": [
+     1,
+     2,
+     3
+    ],
+    "ms": 80
+   }
+  },
+  "still": 0,
+  "file": "lv-stage.png",
+  "cell": [
+   102,
+   86
+  ],
+  "cols": 4,
+  "rowCount": 4,
+  "rowFrames": [
+   4,
+   4,
+   4,
+   4
+  ],
+  "frameCount": 16,
+  "px": [
+   816,
+   688
+  ]
+ },
+ "lv-bbq": {
+  "id": "lv-bbq",
+  "kind": "C+A",
+  "anchors": [
+   [
+    19,
+    36
+   ],
+   [
+    35,
+    36
+   ],
+   [
+    19,
+    36
+   ],
+   [
+    35,
+    36
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "idle": {
+    "frames": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "ms": 500
+   },
+   "loop": {
+    "frames": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "ms": 500
+   },
+   "use": {
+    "frames": [
+     4,
+     5,
+     6,
+     7
+    ],
+    "ms": 300
+   }
+  },
+  "still": {
+   "idle": 0,
+   "loop": 0,
+   "use": 4
+  },
+  "shares": [
+   "prop-bbq"
+  ],
+  "note": "연기가 올라가 칸 위쪽을 8 아트 px 더 비웠다",
+  "file": "lv-bbq.png",
+  "cell": [
+   54,
+   63
+  ],
+  "cols": 8,
+  "rowCount": 4,
+  "rowFrames": [
+   8,
+   8,
+   8,
+   8
+  ],
+  "frameCount": 32,
+  "px": [
+   864,
+   504
+  ]
+ },
+ "lv-trophy-case": {
+  "id": "lv-trophy-case",
+  "kind": "F",
+  "anchors": [
+   [
+    19,
+    41
+   ],
+   [
+    35,
+    41
+   ],
+   [
+    19,
+    41
+   ],
+   [
+    35,
+    41
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "party": {
+    "frames": [
+     1,
+     2,
+     3
+    ],
+    "ms": 80
+   }
+  },
+  "still": 0,
+  "shares": [
+   "prop-trophies",
+   "prop-lobbyTrophies"
+  ],
+  "file": "lv-trophy-case.png",
+  "cell": [
+   54,
+   68
+  ],
+  "cols": 4,
+  "rowCount": 4,
+  "rowFrames": [
+   4,
+   4,
+   4,
+   4
+  ],
+  "frameCount": 16,
+  "px": [
+   432,
+   544
+  ]
+ },
+ "lv-hall-of-fame": {
+  "id": "lv-hall-of-fame",
+  "kind": "F",
+  "anchors": [
+   [
+    19,
+    48
+   ],
+   [
+    51,
+    48
+   ],
+   [
+    19,
+    48
+   ],
+   [
+    51,
+    48
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "party": {
+    "frames": [
+     1,
+     2,
+     3
+    ],
+    "ms": 80
+   }
+  },
+  "still": 0,
+  "note": "액자 불빛은 앞면 방향만, 위 반짝임은 네 방향 모두",
+  "file": "lv-hall-of-fame.png",
+  "cell": [
+   70,
+   83
+  ],
+  "cols": 4,
+  "rowCount": 4,
+  "rowFrames": [
+   4,
+   4,
+   4,
+   4
+  ],
+  "frameCount": 16,
+  "px": [
+   560,
+   664
+  ]
+ },
+ "lv-tall-bookshelf": {
+  "id": "lv-tall-bookshelf",
+  "kind": "C",
+  "anchors": [
+   [
+    19,
+    45
+   ],
+   [
+    35,
+    45
+   ],
+   [
+    19,
+    45
+   ],
+   [
+    35,
+    45
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "idle": {
+    "frames": [
+     0
+    ]
+   },
+   "use": {
+    "frames": [
+     1,
+     2,
+     3,
+     4
+    ],
+    "ms": 300
+   }
+  },
+  "still": {
+   "idle": 0,
+   "use": 2
+  },
+  "note": "책장(bookshelf)과 같은 연출 (우선순위 하지만 생성기를 함께 써서 여기서 같이 만든다)",
+  "file": "lv-tall-bookshelf.png",
+  "cell": [
+   54,
+   72
+  ],
+  "cols": 5,
+  "rowCount": 4,
+  "rowFrames": [
+   5,
+   5,
+   5,
+   5
+  ],
+  "frameCount": 20,
+  "px": [
+   540,
+   576
+  ]
+ },
+ "flower-pot": {
+  "id": "flower-pot",
+  "kind": "F",
+  "anchors": [
+   [
+    19,
+    24
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   0,
+   0,
+   0
+  ],
+  "clips": {
+   "party": {
+    "frames": [
+     1,
+     2,
+     3
+    ],
+    "ms": 80
+   }
+  },
+  "still": 0,
+  "note": "둥근 화분이라 행 1개",
+  "file": "flower-pot.png",
+  "cell": [
+   38,
+   43
+  ],
+  "cols": 4,
+  "rowCount": 1,
+  "rowFrames": [
+   4
+  ],
+  "frameCount": 4,
+  "px": [
+   304,
+   86
+  ]
+ },
+ "beanbag-blue": {
+  "id": "beanbag-blue",
+  "kind": "C",
+  "anchors": [
+   [
+    19,
+    18
+   ],
+   [
+    19,
+    18
+   ],
+   [
+    19,
+    18
+   ],
+   [
+    19,
+    18
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "idle": {
+    "frames": [
+     0
+    ]
+   },
+   "use": {
+    "frames": [
+     1
+    ]
+   }
+  },
+  "still": {
+   "idle": 0,
+   "use": 1
+  },
+  "note": "앉은 직원이 가려서 쓰는 중은 1px 눌린 한 장",
+  "file": "beanbag-blue.png",
+  "cell": [
+   38,
+   37
+  ],
+  "cols": 2,
+  "rowCount": 4,
+  "rowFrames": [
+   2,
+   2,
+   2,
+   2
+  ],
+  "frameCount": 8,
+  "px": [
+   152,
+   296
+  ]
+ },
+ "sofa-green": {
+  "id": "sofa-green",
+  "kind": "C",
+  "anchors": [
+   [
+    19,
+    23
+   ],
+   [
+    35,
+    23
+   ],
+   [
+    19,
+    23
+   ],
+   [
+    35,
+    23
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "idle": {
+    "frames": [
+     0
+    ]
+   },
+   "use": {
+    "frames": [
+     1
+    ]
+   }
+  },
+  "still": {
+   "idle": 0,
+   "use": 1
+  },
+  "note": "쿠션이 1px 눌린 한 장",
+  "file": "sofa-green.png",
+  "cell": [
+   54,
+   50
+  ],
+  "cols": 2,
+  "rowCount": 4,
+  "rowFrames": [
+   2,
+   2,
+   2,
+   2
+  ],
+  "frameCount": 8,
+  "px": [
+   216,
+   400
+  ]
+ },
+ "sofa-pink": {
+  "id": "sofa-pink",
+  "kind": "C",
+  "anchors": [
+   [
+    19,
+    23
+   ],
+   [
+    35,
+    23
+   ],
+   [
+    19,
+    23
+   ],
+   [
+    35,
+    23
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "idle": {
+    "frames": [
+     0
+    ]
+   },
+   "use": {
+    "frames": [
+     1
+    ]
+   }
+  },
+  "still": {
+   "idle": 0,
+   "use": 1
+  },
+  "note": "쿠션이 1px 눌린 한 장",
+  "file": "sofa-pink.png",
+  "cell": [
+   54,
+   50
+  ],
+  "cols": 2,
+  "rowCount": 4,
+  "rowFrames": [
+   2,
+   2,
+   2,
+   2
+  ],
+  "frameCount": 8,
+  "px": [
+   216,
+   400
+  ]
+ },
+ "lv-studio-sofa": {
+  "id": "lv-studio-sofa",
+  "kind": "C",
+  "anchors": [
+   [
+    19,
+    23
+   ],
+   [
+    35,
+    23
+   ],
+   [
+    19,
+    23
+   ],
+   [
+    35,
+    23
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "idle": {
+    "frames": [
+     0
+    ]
+   },
+   "use": {
+    "frames": [
+     1
+    ]
+   }
+  },
+  "still": {
+   "idle": 0,
+   "use": 1
+  },
+  "note": "쿠션·베개가 1px 눌린 한 장",
+  "file": "lv-studio-sofa.png",
+  "cell": [
+   54,
+   50
+  ],
+  "cols": 2,
+  "rowCount": 4,
+  "rowFrames": [
+   2,
+   2,
+   2,
+   2
+  ],
+  "frameCount": 8,
+  "px": [
+   216,
+   400
+  ]
+ },
+ "record-shelf": {
+  "id": "record-shelf",
+  "kind": "C",
+  "anchors": [
+   [
+    19,
+    19
+   ],
+   [
+    19,
+    19
+   ],
+   [
+    19,
+    19
+   ],
+   [
+    19,
+    19
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "idle": {
+    "frames": [
+     0
+    ]
+   },
+   "use": {
+    "frames": [
+     1,
+     2,
+     3,
+     4
+    ],
+    "ms": 300
+   }
+  },
+  "still": {
+   "idle": 0,
+   "use": 1
+  },
+  "file": "record-shelf.png",
+  "cell": [
+   38,
+   38
+  ],
+  "cols": 5,
+  "rowCount": 4,
+  "rowFrames": [
+   5,
+   5,
+   5,
+   5
+  ],
+  "frameCount": 20,
+  "px": [
+   380,
+   304
+  ]
+ },
+ "icecream": {
+  "id": "icecream",
+  "kind": "C",
+  "anchors": [
+   [
+    19,
+    17
+   ],
+   [
+    19,
+    17
+   ],
+   [
+    19,
+    17
+   ],
+   [
+    19,
+    17
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "idle": {
+    "frames": [
+     0
+    ]
+   },
+   "use": {
+    "frames": [
+     1,
+     2,
+     3,
+     4
+    ],
+    "ms": 300
+   }
+  },
+  "still": {
+   "idle": 0,
+   "use": 1
+  },
+  "file": "icecream.png",
+  "cell": [
+   38,
+   36
+  ],
+  "cols": 5,
+  "rowCount": 4,
+  "rowFrames": [
+   5,
+   5,
+   5,
+   5
+  ],
+  "frameCount": 20,
+  "px": [
+   380,
+   288
+  ]
+ },
+ "vr-booth": {
+  "id": "vr-booth",
+  "kind": "C",
+  "anchors": [
+   [
+    19,
+    40
+   ],
+   [
+    19,
+    40
+   ],
+   [
+    19,
+    40
+   ],
+   [
+    19,
+    40
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "idle": {
+    "frames": [
+     0
+    ]
+   },
+   "use": {
+    "frames": [
+     1,
+     2,
+     3,
+     4
+    ],
+    "ms": 300
+   }
+  },
+  "still": {
+   "idle": 0,
+   "use": 1
+  },
+  "file": "vr-booth.png",
+  "cell": [
+   38,
+   59
+  ],
+  "cols": 5,
+  "rowCount": 4,
+  "rowFrames": [
+   5,
+   5,
+   5,
+   5
+  ],
+  "frameCount": 20,
+  "px": [
+   380,
+   472
+  ]
+ },
+ "dino": {
+  "id": "dino",
+  "kind": "E",
+  "anchors": [
+   [
+    19,
+    36
+   ],
+   [
+    19,
+    36
+   ],
+   [
+    19,
+    36
+   ],
+   [
+    19,
+    36
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "react": {
+    "frames": [
+     1,
+     2
+    ],
+    "ms": 100
+   }
+  },
+  "still": 0,
+  "note": "말풍선(으르렁)은 그림이 아니라 장면 쪽 일이라 뺐다",
+  "file": "dino.png",
+  "cell": [
+   38,
+   56
+  ],
+  "cols": 3,
+  "rowCount": 4,
+  "rowFrames": [
+   3,
+   3,
+   3,
+   3
+  ],
+  "frameCount": 12,
+  "px": [
+   228,
+   448
+  ]
+ },
+ "snowman": {
+  "id": "snowman",
+  "kind": "A",
+  "anchors": [
+   [
+    19,
+    36
+   ],
+   [
+    19,
+    36
+   ],
+   [
+    19,
+    36
+   ],
+   [
+    19,
+    36
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "loop": {
+    "frames": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "ms": 750
+   }
+  },
+  "still": 0,
+  "file": "snowman.png",
+  "cell": [
+   38,
+   55
+  ],
+  "cols": 4,
+  "rowCount": 4,
+  "rowFrames": [
+   4,
+   4,
+   4,
+   4
+  ],
+  "frameCount": 16,
+  "px": [
+   304,
+   440
+  ]
+ },
+ "lunar-lantern": {
+  "id": "lunar-lantern",
+  "kind": "A+G",
+  "anchors": [
+   [
+    19,
+    35
+   ],
+   [
+    19,
+    35
+   ],
+   [
+    19,
+    35
+   ],
+   [
+    19,
+    35
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "day": {
+    "frames": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "ms": 500
+   },
+   "loop": {
+    "frames": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "ms": 500
+   },
+   "night": {
+    "frames": [
+     4,
+     5,
+     6,
+     7
+    ],
+    "ms": 500
+   }
+  },
+  "still": {
+   "day": 0,
+   "loop": 0,
+   "night": 4
+  },
+  "file": "lunar-lantern.png",
+  "cell": [
+   38,
+   54
+  ],
+  "cols": 8,
+  "rowCount": 4,
+  "rowFrames": [
+   8,
+   8,
+   8,
+   8
+  ],
+  "frameCount": 32,
+  "px": [
+   608,
+   432
+  ]
+ },
+ "lv-kettle-shelf": {
+  "id": "lv-kettle-shelf",
+  "kind": "C",
+  "anchors": [
+   [
+    19,
+    26
+   ],
+   [
+    19,
+    26
+   ],
+   [
+    19,
+    26
+   ],
+   [
+    19,
+    26
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "idle": {
+    "frames": [
+     0
+    ]
+   },
+   "use": {
+    "frames": [
+     1,
+     2,
+     3,
+     4
+    ],
+    "ms": 300
+   }
+  },
+  "still": {
+   "idle": 0,
+   "use": 1
+  },
+  "file": "lv-kettle-shelf.png",
+  "cell": [
+   38,
+   45
+  ],
+  "cols": 5,
+  "rowCount": 4,
+  "rowFrames": [
+   5,
+   5,
+   5,
+   5
+  ],
+  "frameCount": 20,
+  "px": [
+   380,
+   360
+  ]
+ },
+ "lv-hanger": {
+  "id": "lv-hanger",
+  "kind": "E",
+  "anchors": [
+   [
+    19,
+    35
+   ],
+   [
+    19,
+    35
+   ],
+   [
+    19,
+    35
+   ],
+   [
+    19,
+    35
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "react": {
+    "frames": [
+     1,
+     2
+    ],
+    "ms": 100
+   }
+  },
+  "still": 0,
+  "file": "lv-hanger.png",
+  "cell": [
+   38,
+   54
+  ],
+  "cols": 3,
+  "rowCount": 4,
+  "rowFrames": [
+   3,
+   3,
+   3,
+   3
+  ],
+  "frameCount": 12,
+  "px": [
+   228,
+   432
+  ]
+ },
+ "lv-shower": {
+  "id": "lv-shower",
+  "kind": "C",
+  "anchors": [
+   [
+    19,
+    41
+   ],
+   [
+    19,
+    41
+   ],
+   [
+    19,
+    41
+   ],
+   [
+    19,
+    41
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "idle": {
+    "frames": [
+     0
+    ]
+   },
+   "use": {
+    "frames": [
+     1,
+     2,
+     3,
+     4
+    ],
+    "ms": 300
+   }
+  },
+  "still": {
+   "idle": 0,
+   "use": 1
+  },
+  "file": "lv-shower.png",
+  "cell": [
+   38,
+   60
+  ],
+  "cols": 5,
+  "rowCount": 4,
+  "rowFrames": [
+   5,
+   5,
+   5,
+   5
+  ],
+  "frameCount": 20,
+  "px": [
+   380,
+   480
+  ]
+ },
+ "lv-dumbbell": {
+  "id": "lv-dumbbell",
+  "kind": "C",
+  "anchors": [
+   [
+    19,
+    21
+   ],
+   [
+    35,
+    21
+   ],
+   [
+    19,
+    21
+   ],
+   [
+    35,
+    21
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "idle": {
+    "frames": [
+     0
+    ]
+   },
+   "use": {
+    "frames": [
+     1,
+     2,
+     3,
+     4
+    ],
+    "ms": 300
+   }
+  },
+  "still": {
+   "idle": 0,
+   "use": 1
+  },
+  "file": "lv-dumbbell.png",
+  "cell": [
+   54,
+   50
+  ],
+  "cols": 5,
+  "rowCount": 4,
+  "rowFrames": [
+   5,
+   5,
+   5,
+   5
+  ],
+  "frameCount": 20,
+  "px": [
+   540,
+   400
+  ]
+ },
+ "lv-salad-bar": {
+  "id": "lv-salad-bar",
+  "kind": "C",
+  "anchors": [
+   [
+    19,
+    27
+   ],
+   [
+    35,
+    27
+   ],
+   [
+    19,
+    27
+   ],
+   [
+    35,
+    27
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "idle": {
+    "frames": [
+     0
+    ]
+   },
+   "use": {
+    "frames": [
+     1,
+     2,
+     3,
+     4
+    ],
+    "ms": 300
+   }
+  },
+  "still": {
+   "idle": 0,
+   "use": 1
+  },
+  "file": "lv-salad-bar.png",
+  "cell": [
+   54,
+   54
+  ],
+  "cols": 5,
+  "rowCount": 4,
+  "rowFrames": [
+   5,
+   5,
+   5,
+   5
+  ],
+  "frameCount": 20,
+  "px": [
+   540,
+   432
+  ]
+ },
+ "lv-hammock": {
+  "id": "lv-hammock",
+  "kind": "A+C",
+  "anchors": [
+   [
+    19,
+    29
+   ],
+   [
+    35,
+    29
+   ],
+   [
+    19,
+    29
+   ],
+   [
+    35,
+    29
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "idle": {
+    "frames": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "ms": 750
+   },
+   "loop": {
+    "frames": [
+     0,
+     1,
+     2,
+     3
+    ],
+    "ms": 750
+   },
+   "use": {
+    "frames": [
+     4,
+     5,
+     6,
+     7
+    ],
+    "ms": 300
+   }
+  },
+  "still": {
+   "idle": 0,
+   "loop": 0,
+   "use": 4
+  },
+  "file": "lv-hammock.png",
+  "cell": [
+   54,
+   56
+  ],
+  "cols": 8,
+  "rowCount": 4,
+  "rowFrames": [
+   8,
+   8,
+   8,
+   8
+  ],
+  "frameCount": 32,
+  "px": [
+   864,
+   448
+  ]
+ },
+ "lv-telescope": {
+  "id": "lv-telescope",
+  "kind": "C",
+  "anchors": [
+   [
+    19,
+    39
+   ],
+   [
+    19,
+    39
+   ],
+   [
+    19,
+    39
+   ],
+   [
+    19,
+    39
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "idle": {
+    "frames": [
+     0
+    ]
+   },
+   "use": {
+    "frames": [
+     1,
+     2,
+     3,
+     4
+    ],
+    "ms": 300
+   }
+  },
+  "still": {
+   "idle": 0,
+   "use": 1
+  },
+  "file": "lv-telescope.png",
+  "cell": [
+   38,
+   58
+  ],
+  "cols": 5,
+  "rowCount": 4,
+  "rowFrames": [
+   5,
+   5,
+   5,
+   5
+  ],
+  "frameCount": 20,
+  "px": [
+   380,
+   464
+  ]
+ },
+ "prop-kitchen": {
+  "id": "prop-kitchen",
+  "kind": "C",
+  "anchors": [
+   [
+    19,
+    27
+   ],
+   [
+    51,
+    27
+   ],
+   [
+    19,
+    27
+   ],
+   [
+    51,
+    27
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "idle": {
+    "frames": [
+     0
+    ]
+   },
+   "use": {
+    "frames": [
+     1,
+     2,
+     3,
+     4
+    ],
+    "ms": 300
+   }
+  },
+  "still": {
+   "idle": 0,
+   "use": 1
+  },
+  "file": "prop-kitchen.png",
+  "cell": [
+   70,
+   62
+  ],
+  "cols": 5,
+  "rowCount": 4,
+  "rowFrames": [
+   5,
+   5,
+   5,
+   5
+  ],
+  "frameCount": 20,
+  "px": [
+   700,
+   496
+  ]
+ },
+ "prop-cooler": {
+  "id": "prop-cooler",
+  "kind": "C",
+  "anchors": [
+   [
+    19,
+    31
+   ],
+   [
+    19,
+    31
+   ],
+   [
+    19,
+    31
+   ],
+   [
+    19,
+    31
+   ]
+  ],
+  "rowOfRot": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "clips": {
+   "idle": {
+    "frames": [
+     0
+    ]
+   },
+   "use": {
+    "frames": [
+     1,
+     2,
+     3,
+     4
+    ],
+    "ms": 300
+   }
+  },
+  "still": {
+   "idle": 0,
+   "use": 1
+  },
+  "file": "prop-cooler.png",
+  "cell": [
+   38,
+   50
+  ],
+  "cols": 5,
+  "rowCount": 4,
+  "rowFrames": [
+   5,
+   5,
+   5,
+   5
+  ],
+  "frameCount": 20,
+  "px": [
+   380,
+   400
+  ]
+ }
+}

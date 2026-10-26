@@ -74,6 +74,26 @@ private sealed interface Detail {
     data class Plan(val id: String) : Detail
 }
 
+private val DetailSaver = androidx.compose.runtime.saveable.Saver<Detail?, String>(
+    save = { d ->
+        when (d) {
+            is Detail.Staff -> "staff:${d.id}"
+            is Detail.Question -> "question:${d.id}"
+            is Detail.Plan -> "plan:${d.id}"
+            null -> ""
+        }
+    },
+    restore = { t ->
+        val id = t.substringAfter(':', "")
+        when (t.substringBefore(':')) {
+            "staff" -> Detail.Staff(id)
+            "question" -> Detail.Question(id)
+            "plan" -> Detail.Plan(id)
+            else -> null
+        }
+    },
+)
+
 /** 첫 화면에서 열 탭 (알림을 눌러 열었을 때 등) */
 class LaunchRequest(val openDecisions: Boolean, val qrText: String?, val webEntry: com.claudeoffice.remote.web.WebEntry? = null)
 
@@ -119,7 +139,19 @@ fun AppRoot(repo: OfficeRepository, launch: LaunchRequest?, onLaunchHandled: () 
     val bg = Modifier.fillMaxSize().background(Office.colors.background)
     val step = onboarding
     // 하단 탭 화면은 Scaffold가 시스템 바 여백을 잡는다. 그 밖의 화면(첫 연결·상태 화면)은 여기서 잡는다 (QA 버그 1: 톱니가 상태 표시줄에 붙음)
-    val isMain = step == null && state.gate == null
+    // PC 화면(WebView)은 잠깐 막히는 상태(잠김·앱 오류·응답 이상)에서도 없애지 않는다 — 없애면 보던 화면이 첫 화면으로 돌아간다. 상태 화면은 그 위에 덮는다
+    val gate = state.gate
+    val keepWeb = webEntry != null && state.v2 == com.claudeoffice.remote.data.V2Mode.ACTIVE &&
+        (gate == null || gate is Gate.Locked || gate is Gate.AppBug || gate is Gate.BadResponse || gate == Gate.NeedsPcUpdate)
+    val isMain = step == null && (gate == null || keepWeb)
+
+    // 앱으로 돌아왔을 때 잠깐 막혔던 상태는 같은 화면에서 자동으로 다시 시도한다 (잠김은 풀린 뒤에만)
+    val owner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+    LaunchedEffect(owner, gate) {
+        if (gate is Gate.AppBug || gate is Gate.BadResponse || gate is Gate.Locked) {
+            owner.repeatOnLifecycle(Lifecycle.State.STARTED) { repo.retry() }
+        }
+    }
     Box(if (isMain) bg else bg.systemBarsPadding()) {
         when {
             step != null -> when (step) {
@@ -142,9 +174,14 @@ fun AppRoot(repo: OfficeRepository, launch: LaunchRequest?, onLaunchHandled: () 
                 Onboarding.Connected -> ConnectedScreen(state.address) { onboarding = null }
             }
             state.gate == Gate.NotConnected -> StartScreen { onboarding = Onboarding.Scan }
+            keepWeb -> {
+                WebRoot(repo, webEntry!!)
+                if (gate != null) Box(Modifier.fillMaxSize().background(Office.colors.background).systemBarsPadding()) {
+                    GatedRoot(repo, gate, state.clockOffset, onScan = { onboarding = Onboarding.Scan })
+                }
+            }
             state.gate != null -> GatedRoot(repo, state.gate!!, state.clockOffset, onScan = { onboarding = Onboarding.Scan })
-            // 전체 기능(v2)이 켜진 PC + 화면 묶음이 있으면 PC 화면 그대로, 아니면 기존 네이티브 화면(v1)
-            state.v2 == com.claudeoffice.remote.data.V2Mode.ACTIVE && webEntry != null -> WebRoot(repo, webEntry!!)
+            // 전체 기능(v2)이 켜진 PC + 화면 묶음이 있으면 PC 화면(위 keepWeb), 아니면 기존 네이티브 화면(v1)
             else -> MainRoot(repo, tab, onTab = { tab = it }, hasWebBundle = webEntry != null)
         }
         if (step == null) UpdateBanner(Modifier.align(Alignment.TopCenter))
@@ -179,7 +216,8 @@ private fun MainRoot(repo: OfficeRepository, requestedTab: Tab?, onTab: (Tab) ->
     val state by repo.state.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     val snackbar = remember { SnackbarHostState() }
-    var detail by remember { mutableStateOf<Detail?>(null) }
+    // 보던 상세 화면은 액티비티가 다시 만들어져도 이어진다
+    var detail by rememberSaveable(stateSaver = DetailSaver) { mutableStateOf<Detail?>(null) }
     var delayBanner by remember { mutableStateOf(repo.takeDelayBanner()) }
     val showMessage: (String) -> Unit = { msg -> scope.launch { snackbar.showSnackbar(msg) } }
 

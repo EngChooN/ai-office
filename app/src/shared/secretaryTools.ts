@@ -109,6 +109,7 @@ export const SECRETARY_TOOLS: Record<OfficeMethod, ToolSpec> = {
   storeItem: exclude,
   placeGridItem: exclude,
   moveGridItem: exclude,
+  setGridItemOn: exclude,
   stowAllGrid: exclude,
   restoreGridItems: exclude,
   setGear: exclude,

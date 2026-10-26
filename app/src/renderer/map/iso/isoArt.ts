@@ -580,6 +580,51 @@ function ball(a: After, x: number, y: number, z: number, r: number, c: string, f
 }
 
 /** 그림이 아직 없는 품목: 연보라 줄무늬 상자 (한눈에 임시인 게 보이게) */
+/** 회색 천: 2px 짜임 + 아래 걸레받이 */
+const fabricFace = (base: string) => (q: Q) => (q.v < 0.08 ? mix(base, S.sh, 0.3) : q.v > 0.9 ? mix(base, WHITE, 0.12) : n32(q.gx + q.gy, q.z / 32) < 0.22 ? mix(base, S.sh, 0.08) : base)
+/** 유리 칸막이: 가구 유리처럼 불투명 하늘색 + 사선 반사 (바닥 그림자 위에 반투명을 칠하면 그림자 알파로 흐려진다) */
+const glassPanel = (q: Q): Fill => {
+  const t = frac(q.gx + q.gy + q.v * 0.8)
+  return t < 0.06 || (t > 0.12 && t < 0.15) ? K.skyL : q.v > 0.85 ? mix(K.sky, WHITE, 0.35) : mix(K.sky, WHITE, 0.15)
+}
+/** 매트 흰 벽: 위아래 몰딩 줄 + 아래 걸레받이 */
+const matteFace = (base: string, base2: string) => (q: Q) => (q.v < 0.07 ? base2 : Math.abs(q.v - 0.09) < 0.015 || q.v > 0.95 ? mix(base, S.sh, 0.12) : base)
+/** 원목 세로 루버: 칸당 6줄 홈 + 결 */
+const slatFace = (base: string) => (q: Q) => {
+  if (q.v < 0.07) return mix(base, S.sh, 0.45)
+  const a = (q.gx + q.gy) * 6
+  if (frac(a) < 0.14) return mix(base, S.sh, 0.35)
+  return n32(Math.floor(a), q.z / 20) < 0.25 ? K.walnutT : frac(a) > 0.82 ? mix(base, WHITE, 0.1) : base
+}
+/** 낮은 파티션 L칸: 칸 경계마다 금속 기둥(받침 포함), 사이에 판 + 위 레일. lower = 아래 불투명 판 높이(유리 칸막이) */
+const partition = (name: string, L: number, h: number, base: string, face: Paint, lower = 0): ItemDef => {
+  const posts = Array.from({ length: L + 1 }, (_, i) => Math.min(L - 0.08, Math.max(0.02, i - 0.04)))
+  return {
+    name,
+    W: L,
+    D: 1,
+    parts: [
+      ...posts.flatMap((x) => [b(x, 0.32, 0.06, 0.36, 0, 2, K.metal), b(x, 0.43, 0.06, 0.14, 2, h + 1, K.metalL, { top: K.steel })]),
+      ...posts.slice(0, -1).flatMap((x, i) => {
+        const x0 = x + 0.06
+        const w = posts[i + 1] - x0
+        return [
+          ...(lower ? [b(x0, 0.45, w, 0.1, 2, lower - 2, K.white, { top: K.metalL })] : []),
+          b(x0, 0.46, w, 0.08, lower || 2, h - (lower || 2), base, { S: face, N: face }),
+          b(x0, 0.45, w, 0.1, h, 1, K.metalL, { top: K.steel }),
+        ]
+      }),
+    ],
+  }
+}
+/** 높은 가벽 L칸: 벽(WALL_T 두께)과 같은 얇은 통판 40px. 무늬는 앞뒤 두 면에 같이 */
+const dividerWall = (name: string, L: number, side: string, cap: string, face: Paint): ItemDef => ({
+  name,
+  W: L,
+  D: 1,
+  parts: [b(0.02, 0.41, L - 0.04, 0.18, 0, 40, side, { top: cap, S: face, N: face, E: mix(side, S.sh, 0.08), W: mix(side, S.sh, 0.08) })],
+})
+
 const placeholder = (W: number, D: number): ItemDef => {
   const stripe = (q: Q) => (frac((q.u * 3 + q.v * 2) * 1.5) < 0.5 ? '#ddd3f2' : '#cfc2ec')
   return { name: '임시', W, D, parts: [b(0.1, 0.1, W - 0.2, D - 0.2, 0, 14, '#e6def5', { S: stripe, E: stripe, W: stripe, N: stripe, top: (q) => (q.u < 0.06 || q.u > 0.94 || q.v < 0.06 || q.v > 0.94 ? '#cfc2ec' : '#efe9fa') })] }
@@ -1318,6 +1363,20 @@ const ITEMS: Record<string, ItemDef> = {
       return d < 0.18 ? K.red : d < 0.4 ? K.paper : d < 0.65 ? (Math.floor((Math.atan2(dy, dx) / Math.PI) * 5 + 5) % 2 ? K.red : K.leaf[0]) : d < 0.85 ? '#f4e6c8' : K.dark
     }),
   },
+  // 연출 B 파일럿 — 낮은 장 위 평면 TV, 화면은 +y 면. 움직이는 시트(motion/tv.png)의 꺼짐 장과 같은 모양 (서랍·미니 뷰는 이 그림)
+  tv: {
+    name: 'TV',
+    W: 2,
+    D: 1,
+    parts: [
+      b(0.05, 0.2, 1.9, 0.6, 0, 9, K.walnutT, { S: (q) => (Math.abs(q.u - 0.5) < 0.008 || q.v < 0.12 ? K.walnut : K.walnutT) }),
+      b(0.04, 0.18, 1.92, 0.64, 9, 1, K.walnut),
+      b(0.9, 0.4, 0.2, 0.12, 10, 3, K.metal),
+      b(0.12, 0.42, 1.76, 0.08, 13, 22, K.dark, {
+        S: (q) => (q.u < 0.04 || q.u > 0.96 || q.v < 0.06 || q.v > 0.94 ? K.dark : q.u + (1 - q.v) * 0.6 > 0.55 && q.u + (1 - q.v) * 0.6 < 0.68 ? '#5a6884' : '#3a4560'),
+      }),
+    ],
+  },
   globe: {
     name: '지구본',
     W: 1,
@@ -1670,6 +1729,11 @@ const ITEMS: Record<string, ItemDef> = {
       b(0.3, 1.05, 1.4, 0.8, 0, 0, '#dfe3ea'),
     ],
   },
+  // 파티션·가벽 (docs/specs/partition-items.md): 칸 가운데 얇은 판. 낮음은 24px(앉은 직원 머리 높이), 높음은 40px(서 있는 직원을 다 가린다 — 장면이 WALL_FADE로 비친다)
+  'partition-low-fabric': partition('낮은 패브릭 파티션', 2, 22, '#aaa9ad', fabricFace('#aaa9ad')),
+  'partition-low-glass': partition('낮은 유리 파티션', 3, 22, '#eef1f5', glassPanel, 7),
+  'partition-wall-white': dividerWall('화이트 가벽', 1, '#eef0f4', '#ffffff', matteFace('#eef0f4', '#d8dce4')),
+  'partition-wall-wood': dividerWall('원목 가벽', 3, K.walnut, K.walnutT, slatFace(K.walnut)),
 }
 
 // ── 고정 소품 (지금 사무실의 settings.layout 키) → 서랍 가구 prop-{key} ──
@@ -1865,6 +1929,16 @@ function artDef(def: ItemDef, r: Rot, role?: 'seat' | 'back', isPlaceholder = fa
   outline(cv)
   return { cv, o, box: boxOf(parts), w, d, isPlaceholder }
 }
+
+// ── 연출 시트 생성기용 (scripts/motion-pilot.mts · 연출④-5). 화면 코드는 쓰지 않는다 ──
+export type { ItemDef as ArtItemDef, Part as ArtPart, Q as ArtQ, Paint as ArtPaint, After as ArtAfter }
+/** 정의를 고친 한 방향 그림 — 프레임마다 부품 색·무늬만 바꾼다. 높이(extraH 포함)를 그대로 두면 칸 크기·기준점이 원래 그림과 같다 */
+export function artItemPatched(itemId: string, r: Rot, patch: (def: ItemDef) => ItemDef, withPets = true): ItemPixels {
+  const { def, isPlaceholder } = defOf(itemId)
+  return artDef(patch(def), r, undefined, isPlaceholder, withPets)
+}
+/** 팔레트·무늬 도우미 (생성기가 원래 무늬를 프레임마다 조금씩 바꿔 칠한다) */
+export const ART_KIT = { K, S, mix, noise, frac, inRect, C, WHITE, ball, line, leaves }
 
 export interface ItemArt {
   canvas: HTMLCanvasElement

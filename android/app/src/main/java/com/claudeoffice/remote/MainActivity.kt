@@ -5,6 +5,7 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -22,7 +23,13 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        enableEdgeToEdge()
+        // 상태바·내비게이션 바를 투명하게 하고 앱 배경이 그 아래까지 이어지게 한다. 아이콘 밝기는 시스템 다크/라이트를 따른다 (앱 테마도 같은 기준).
+        // 3버튼 내비게이션의 반투명 막(흰색)은 끈다
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.auto(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.auto(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT),
+        )
+        if (android.os.Build.VERSION.SDK_INT >= 29) window.isNavigationBarContrastEnforced = false
         super.onCreate(savedInstanceState)
         if (savedInstanceState == null) launchRequest = requestFrom(intent)
         val repo = (application as RemoteApp).repository

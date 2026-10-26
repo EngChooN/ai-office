@@ -62,8 +62,8 @@ const val LAN_CONNECT_TIMEOUT_SEC = 2L
 const val V2_CALL_READ_SEC = 130L
 const val V2_CALL_TOTAL_SEC = 140L
 
-/** 이벤트 스트림: 45초 동안 아무것도 못 받으면 끊긴 것으로 본다 (keep-alive 15초 × 3, 8-4절) */
-const val SSE_SILENCE_SEC = 45L
+/** 이벤트 스트림: 35초 동안 아무것도 못 받으면 끊긴 것으로 본다 (keep-alive 15초를 두 번 놓치고 여유 5초, 8-4절) */
+const val SSE_SILENCE_SEC = 35L
 
 /** v2 호출(call·첨부·파일)을 동시에 몇 개까지 — 서버 주소당 8개 중 SSE 2개를 빼고 여유 1 */
 const val V2_MAX_CONCURRENT = 5

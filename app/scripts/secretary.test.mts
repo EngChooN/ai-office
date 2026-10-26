@@ -37,11 +37,11 @@ function setup(over: Partial<DeskDeps> = {}) {
 
 const hireArgs = (name: string) => [{ name, role: '프론트엔드 개발', avatar: 3, model: 'default', cwd: '', systemPrompt: '', approvalMode: 'ask', teamId: '$1.id' }]
 
-test('분류표: OfficeApi 메서드 전부를 조회 20·변경 41·제외 28(+비서 자신 4)으로 빠짐없이', () => {
+test('분류표: OfficeApi 메서드 전부를 조회 20·변경 41·제외 29(+비서 자신 4)으로 빠짐없이', () => {
   assert.deepEqual(Object.keys(SECRETARY_TOOLS).sort(), [...OFFICE_METHODS].sort())
   assert.equal(methodsOfKind('read').length, 20)
   assert.equal(methodsOfKind('change').length, 41)
-  assert.equal(methodsOfKind('exclude').length, 28 + SECRETARY_SELF_METHODS.length)
+  assert.equal(methodsOfKind('exclude').length, 29 + SECRETARY_SELF_METHODS.length)
   // 연결·보안·상점·코드 저장은 비서 도구에 없다
   for (const m of ['regenerateRemoteQr', 'setRemoteEnabled', 'commitChanges', 'pushAndCreatePr', 'buyItem', 'placeGridItem', 'moveGridItem', 'stowAllGrid', 'restoreGridItems', 'pickFolder', 'setHooksInstalled', 'fireExternal', 'secretaryRun']) assert.equal(SECRETARY_TOOLS[m as keyof typeof SECRETARY_TOOLS].kind, 'exclude', m)
   for (const m of ['fire', 'deleteTeam', 'deleteLab', 'deleteManual']) assert.equal(SECRETARY_TOOLS[m as keyof typeof SECRETARY_TOOLS].risk, 'danger', m)

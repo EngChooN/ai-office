@@ -2,6 +2,7 @@ import { toCanvas } from './iso/isoArt'
 import { HH, HW } from '@shared/iso/grid'
 import { artCar, artExteriorPreview, artGround, artNeighbors, artPin, artWalker, P, type ExteriorBoard, type Pt } from './iso/exteriorArt'
 import type { DioramaLayout } from './exteriorLayout'
+import { isReducedMotion } from '@/lib/reducedMotion'
 
 // 새 사무실 외관 화면: 위에서 내려다본 도시 블록 한가운데의 내 사무실 부지 (docs/specs/office-iso-spaces.md 2-2절, 대표님 "땅에 붙이기"·"배경 없이 거리로"). 그림은 iso/exteriorArt.ts, 배치·누르기 판정은 exteriorLayout.ts
 // 땅(화면 전체)·이웃 건물·부지는 크기·레벨·낮밤이 바뀔 때만 굽고, 매 프레임에는 걷는 사람·차·내 사무실 핀·마우스 올림 빛만 그린다. 좌표는 논리 px(아트 px), 시간은 초
@@ -181,15 +182,13 @@ export class DioramaStreet {
 }
 
 let pinCanvas: HTMLCanvasElement | null = null
-let isReducedMotion: boolean | null = null
 
 /** 내 사무실 표시 + 마우스 올림 빛 (매 프레임, 사람·차·건너편 건물 위에).
  * 늘: 건물 위에 둥실 오르내리는 주황 핀. strength > 0이면: 건물 외곽선이 노랗게 빛나고, 출입문에 불이 켜지며 문 앞 바닥으로 빛이 번진다 */
 export function drawDioramaDoorGlow(c: CanvasRenderingContext2D, layout: DioramaLayout, strength: number) {
   const { pin } = layout
   pinCanvas ??= toCanvas(artPin(), 1)
-  isReducedMotion ??= window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  const bob = isReducedMotion ? 0 : Math.round(Math.sin((performance.now() / 1000 / PIN_PERIOD_S) * Math.PI * 2) * PIN_BOB)
+  const bob = isReducedMotion() ? 0 : Math.round(Math.sin((performance.now() / 1000 / PIN_PERIOD_S) * Math.PI * 2) * PIN_BOB)
   c.drawImage(pinCanvas, Math.round(pin.x - pinCanvas.width / 2), pin.y - pinCanvas.height - 6 + bob)
   if (strength <= 0) return
   const b = layout.board.building

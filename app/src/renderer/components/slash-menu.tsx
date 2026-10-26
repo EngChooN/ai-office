@@ -1,4 +1,4 @@
-import { useEffect, useState, type KeyboardEvent } from 'react'
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { cn } from '@/lib/utils'
 import { useOffice } from '@/store'
 import { slashAction, type StaffCommand } from '@shared/slashCommands'
@@ -99,8 +99,13 @@ export function useSlashKeys(count: number, query: string | null, onPick: (index
 export function SlashMenu({ query, items, active, onPick, note, emptyText, className }: { query: string; items: SlashItem[] | null; active: number; onPick: (index: number) => void; note?: string; emptyText?: string; className?: string }) {
   const action = slashAction(`/${query}`)
   const blocked = action.kind === 'blocked' ? action.name : null
+  const listRef = useRef<HTMLDivElement>(null)
+  // 고른 항목이 바뀔 때만 따라 내린다 — 렌더마다 부르면 마우스로 내린 스크롤이 맨 위로 튄다
+  useEffect(() => {
+    listRef.current?.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: 'nearest' })
+  }, [active])
   return (
-    <div role="listbox" className={cn('bg-popover flex max-h-64 flex-col overflow-y-auto rounded-lg border p-1 text-xs shadow-lg', className)}>
+    <div ref={listRef} role="listbox" className={cn('bg-popover flex max-h-64 flex-col overflow-y-auto rounded-lg border p-1 text-xs shadow-lg', className)}>
       {note && <span className="text-muted-foreground px-2 pt-1 text-[10px]">{note}</span>}
       {blocked && <span className="text-status-waiting p-2">{t('slash.blocked', { name: blocked })}</span>}
       {items === null && <span className="text-muted-foreground p-2">{t('slashMenu.loading')}</span>}
@@ -119,7 +124,6 @@ export function SlashMenu({ query, items, active, onPick, note, emptyText, class
           // 누르는 동안 입력창 포커스를 뺏지 않는다 (고른 뒤 바로 이어 쓰게)
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => onPick(i)}
-          ref={(el) => void (i === active && el?.scrollIntoView({ block: 'nearest' }))}
           className={cn('hover:bg-accent flex flex-col rounded px-2 py-1.5 text-left', i === active && 'bg-accent')}
         >
           <span className="flex items-center gap-2">

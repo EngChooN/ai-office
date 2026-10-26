@@ -11,6 +11,7 @@ import { roomOf } from '@shared/iso/levels'
 import { canPlace, REASON_TEXT, type FloorState } from '@shared/iso/place'
 import { seatsOf } from '@shared/iso/seats'
 import { setAutoOff, useSeatStatus } from './seatStatus'
+import { isReducedMotion } from '@/lib/reducedMotion'
 import type { IsoOfficeScene } from '../IsoOfficeScene'
 
 /** 들고 있는 가구. uid가 있으면 놓여 있던 것을 옮기는 중 */
@@ -398,7 +399,7 @@ export class DecorController {
   /** 빨강에서 확정하면 살짝 흔든다 (움직임 줄이기면 생략) */
   private shake() {
     const g = this.ghost
-    if (!g || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    if (!g || isReducedMotion()) return
     this.scene.tweens.add({ targets: g, x: g.x + 6, duration: 50, yoyo: true, repeat: 2 })
   }
 

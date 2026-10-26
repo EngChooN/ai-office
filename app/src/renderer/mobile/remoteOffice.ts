@@ -56,7 +56,7 @@ export const SCREEN_CAPABILITIES = ['iso-office'] as const
 /** PC가 예전 버전이라 칸 배치를 못 할 때 */
 export const pcUpdateText = () => t('shell.pcUpdate')
 /** 칸 배치 메서드 — 예전 PC(iso-office 모름)에는 보내지 않는다 */
-const GRID_METHODS = new Set<OfficeMethod>(['placeGridItem', 'moveGridItem', 'stowAllGrid', 'restoreGridItems'])
+const GRID_METHODS = new Set<OfficeMethod>(['placeGridItem', 'moveGridItem', 'setGridItemOn', 'stowAllGrid', 'restoreGridItems'])
 
 /** 연결이 끊기는 호출의 확인 문구 (배치안 7-2절) */
 const CONFIRM_TEXT: Partial<Record<OfficeMethod, string>> = {

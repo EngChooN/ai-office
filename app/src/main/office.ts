@@ -55,6 +55,7 @@ import {
 import { openResumeInTerminal } from './setup'
 import { decisionSections, decisionSectionsOf, decisionsContext, delegatedPrompt, parseDelegatedChoice, recordAnswer, recordDelegated, splitDecision, withDecisionSections } from '../shared/meetingDecisions'
 import { isAbsorbedOpen, matchAbsorbed, meetingCardItems, meetingResultCard, pickPlanCard } from '../shared/planTasks'
+import { shouldNudgeLead } from '../shared/leadNudge'
 import { mentionTargets, OFFICE_SENDER, parseMentions, pickResponder } from '../shared/mention'
 import { mergeRefDocs, refDocsPrompt, sanitizeRefDocs } from '../shared/refDocs'
 import { maskSecrets } from '../shared/redact'
@@ -182,6 +183,8 @@ export class Office extends EventEmitter<{
   private taskQueue = new Map<string, { taskId: string; context: string }[]>()
   /** 대화하려고 멈춘 직원 → 멈춘 업무 카드. 그 직원과 이야기가 끝나면 이어서 맡긴다 */
   private resumeAfterTalk = new Map<string, string[]>()
+  /** 자동 점검 지시를 받은 리드 — 그 턴이 끝나면 다시 점검하지 않는다 (무한 반복 방지) */
+  private leadNudged = new Set<string>()
   /** 업무 보드에서 직접 멈춘 직원 — 저절로 이어 하지 않는다 */
   private hardStops = new Set<string>()
   /** 회의 결정 대기: 결정 id → 답을 기다리는 회의 진행 */
@@ -771,6 +774,7 @@ export class Office extends EventEmitter<{
   private onFinished(staffId: string, summary: string) {
     const s = this.hired.get(staffId)
     if (!s) return
+    const isAutoCheckTurn = this.leadNudged.delete(staffId)
     const origins = this.origins.get(staffId) ?? []
     this.origins.set(staffId, [])
     const short = summary.length > CHAT_TEXT_MAX ? `${summary.slice(0, CHAT_TEXT_MAX)}…` : summary
@@ -799,6 +803,29 @@ export class Office extends EventEmitter<{
     this.taskQueue.set(staffId, queued)
     if (nextTask) this.assignTask(nextTask.taskId, staffId, nextTask.context)
     else if (!origins.some((o) => o.kind === 'task')) this.resumeStopped(staffId)
+    this.checkLeadStall(staffId, summary, isAutoCheckTurn)
+  }
+
+  /** 리드 멈춤 방지: "맡길게요"라고만 하고 실제로 맡긴 일·승인 대기 기획안이 없으면 한 번 다시 지시한다 */
+  private checkLeadStall(staffId: string, summary: string, isAutoCheckTurn: boolean) {
+    const delegates = this.delegatesOf(staffId)
+    const memberIds = new Set(delegates.map((m) => m.id))
+    const tasks = [...this.tasks.values()]
+    const hasOpenDelegation =
+      delegates.some((m) => (this.origins.get(m.id) ?? []).some((o) => o.kind === 'delegate' && o.leadId === staffId) || (this.taskQueue.get(m.id)?.length ?? 0) > 0) ||
+      tasks.some((task) => task.assigneeId && memberIds.has(task.assigneeId) && (task.status === 'todo' || task.status === 'doing'))
+    const hasWaitingPlan = tasks.some((task) => task.assigneeId === staffId && task.plan?.status === 'waiting')
+    const isNudge = shouldNudgeLead({
+      isLeader: delegates.length > 0,
+      isAutoCheckTurn,
+      isBusy: (this.origins.get(staffId)?.length ?? 0) > 0,
+      hasOpenDelegation,
+      hasWaitingPlan,
+      summary,
+    })
+    if (!isNudge) return
+    this.leadNudged.add(staffId)
+    this.instruct(staffId, t('staff.msg.leadNudge'), { kind: 'user' })
   }
 
   /** 대화하려고 멈췄던 업무를 이어 간다: 기획 하위 업무면 멈춘 기획을 다시 진행하고, 아니면 카드를 다시 맡긴다 */
@@ -1733,6 +1760,11 @@ export class Office extends EventEmitter<{
 
   moveGridItem(uid: string, floor: number, gx: number, gy: number, rot: number) {
     this.saveShopState(shopGrid.moveGridItem(this.shop, this.company().level, uid, floor, gx, gy, rot))
+  }
+
+  /** 눌러서 켜고 끄는 소품(연출 B)의 켜짐 — 가구 배치와 같이 shop.grid에 저장해 앱을 다시 열어도 남는다 */
+  setGridItemOn(uid: string, isOn: boolean) {
+    this.saveShopState(shopGrid.setGridItemOn(this.shop, uid, isOn))
   }
 
   /** 예전 "놓기"(D2): 1층 첫 빈칸에 자동 배치. 자리가 없으면 BlockedError('no_space') */

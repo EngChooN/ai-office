@@ -9,6 +9,7 @@ import { stowTargets } from '../shared/iso/stowTargets.ts'
 import { cellsOf, spotsOf, type GridItem } from '../shared/iso/furniture.ts'
 import { isoLevelOf, roomOf } from '../shared/iso/levels.ts'
 import { canPlace, fixedTiles, type FloorState } from '../shared/iso/place.ts'
+import { isToggleable } from '../shared/iso/propMotion.ts'
 
 // 서랍 개수·칸 가구 판정은 화면(꾸미기 서랍)도 쓰므로 shared/economy에 있다
 export { drawerCount, isGridFurniture, stowTargets }
@@ -37,6 +38,20 @@ export function moveGridItem(shop: ShopState, level: number, uid: string, floor:
   if (!cur) throw new InvalidArgsError('놓여 있는 가구가 아니에요')
   const r = checkPose(shop, level, cur.itemId, floor, gx, gy, rot, uid)
   return { ...shop, grid: shop.grid.map((g) => (g.uid === uid ? { ...g, floor, gx, gy, rot: r } : g)) }
+}
+
+/** 눌러서 켜고 끄는 소품(연출 B)의 켜짐 상태. 꺼짐은 필드를 지운다 (저장값을 작게) */
+export function setGridItemOn(shop: ShopState, uid: string, isOn: boolean): ShopState {
+  if (typeof isOn !== 'boolean') throw new InvalidArgsError('켜짐은 true·false여야 해요')
+  const cur = shop.grid.find((g) => g.uid === uid)
+  if (!cur) throw new InvalidArgsError('놓여 있는 가구가 아니에요')
+  if (!isToggleable(cur.itemId)) throw new InvalidArgsError('켜고 끌 수 있는 가구가 아니에요')
+  const grid = shop.grid.map((g) => {
+    if (g.uid !== uid) return g
+    const { isOn: _, ...rest } = g
+    return isOn ? { ...rest, isOn: true } : rest
+  })
+  return { ...shop, grid }
 }
 
 /**
@@ -104,7 +119,7 @@ export function restoreGrid(shop: ShopState, level: number, items: readonly Grid
     // 길 막힘은 보지 않는다 — 전체가 한 번 유효했던 배치이고, 하나씩 되놓는 중간에는 책상 없는 의자처럼 일시적으로 막혀 보일 수 있다
     const r = canPlace(floorState(cur, level, it.floor), it)
     if (!r.ok && r.reason !== 'blocks_path') continue
-    cur = { ...cur, grid: [...cur.grid, { uid: it.uid, itemId: it.itemId, floor: it.floor, gx: it.gx, gy: it.gy, rot: it.rot }] }
+    cur = { ...cur, grid: [...cur.grid, { uid: it.uid, itemId: it.itemId, floor: it.floor, gx: it.gx, gy: it.gy, rot: it.rot, ...(it.isOn === true && isToggleable(it.itemId) ? { isOn: true } : {}) }] }
   }
   return cur
 }

@@ -23,6 +23,8 @@ import { playLevelUpFx } from './iso/levelUpFx'
 import { pinchStep } from './gestures'
 import { isNightTime } from '@shared/dayNight'
 import { DecorController, useDecor } from './iso/decor'
+import { MotionPlayer } from './iso/motionPlayer'
+import { workersOf } from '@shared/iso/propMotion'
 
 /** 세계 여백 (화면 px). 위쪽은 뒷벽 위로 이름표·말풍선 자리 */
 const MARGIN = 40
@@ -96,6 +98,8 @@ type Category = 'fun' | 'rest' | 'office'
 
 /** 쉬는 직원이 찾아가는 자리 (기술 설계 6-3절) — x·y 대신 칸, face는 rot */
 interface Spot extends Cell {
+  /** 이 자리가 딸린 가구 (소품 연출 C — 쓰는 동안 움직인다) */
+  uid: string
   category: Category
   face: Rot
   isSitting: boolean
@@ -185,7 +189,7 @@ interface FurnPart {
 }
 
 /** 깊이 정렬 상자 (가구 부품·직원) */
-type DepthBox = IsoBox & { obj: Phaser.GameObjects.Image | Phaser.GameObjects.Container }
+type DepthBox = IsoBox & { obj: Phaser.GameObjects.Image | Phaser.GameObjects.Container; isTallWall?: boolean }
 
 const rand = (min: number, max: number) => min + Math.random() * (max - min)
 const pick = <T>(items: T[]) => items[Math.floor(Math.random() * items.length)]
@@ -213,6 +217,8 @@ const WARM_PER_FRAME = 2
 const ROOM_TEX_KEEP_MS = 4000
 
 const isBusy = (s: Staff) => s.status === 'working' || s.status === 'waiting' || s.status === 'error'
+/** 소품 연출 D의 '일하는 중' — 결재를 기다리는 동안도 일하는 중으로 본다 (끝나면 끝남 효과) */
+const isAtWork = (s: Staff) => s.status === 'working' || s.status === 'waiting'
 
 export class IsoOfficeScene extends Phaser.Scene {
   /** 층을 고정한 장면 (미니 뷰 전용, officeStage가 만든다). null이면 지도 장면 — 보고 있는 층 */
@@ -271,6 +277,8 @@ export class IsoOfficeScene extends Phaser.Scene {
   private frame = 0
   /** 꾸미기 컨트롤러 (지도 장면에만) */
   private decor: DecorController | null = null
+  /** 소품 연출 (지도 장면에만 — 미니 뷰는 멈춘 그림) */
+  private motion: MotionPlayer | null = null
   /** 꾸미기로 들고 있는 놓인 가구 — 그림을 숨긴다 */
   private hiddenUid: string | null = null
 
@@ -294,6 +302,11 @@ export class IsoOfficeScene extends Phaser.Scene {
       // 꾸미기가 포인터를 먼저 받는다 (들고 있으면 화면을 옮기지 않게)
       this.decor = new DecorController(this)
       this.setupCameraControls()
+      this.motion = new MotionPlayer(this, {
+        parts: () => this.parts,
+        isUsed: (uid) => this.isItemUsed(uid),
+        isWorking: (item) => workersOf(item, [...this.actors.values()]).some((a) => isAtWork(a.staff)),
+      })
     } else {
       this.input.enabled = false
       this.cameras.main.setVisible(false)
@@ -342,6 +355,9 @@ export class IsoOfficeScene extends Phaser.Scene {
     const here = floors[(this.fixedFloor ?? state.viewFloor) - 1] ?? floors[0]
     const isFloorChanged = here.floor !== this.floor
     this.floor = here.floor
+    const prevMeetingIds = new Set(this.hereMeetings.map((m) => m.id))
+    // 소품 연출 F: 같은 층에서 회의가 새로 시작됐다
+    const isMeetingStarted = !this.isFirstSync && !isFloorChanged && here.meetingRoom.meetings.some((m) => !prevMeetingIds.has(m.id))
     this.hereMeetings = here.meetingRoom.meetings
     this.awayMeeting = new Map(floors.flatMap((f) => (f.floor === this.floor ? [] : f.meetingRoom.meetings.flatMap((m) => m.participantIds.map((id) => [id, f.floor] as const)))))
     this.room = roomOf(this.level, this.floor)
@@ -397,6 +413,9 @@ export class IsoOfficeScene extends Phaser.Scene {
     // 층·방 크기가 바뀌면 다시 맞춘다 (사용자가 옮긴 카메라는 사무실 안으로만 당긴다)
     if (isFloorChanged || isRoomChanged || this.isFirstSync) this.fitCamera()
     this.isFirstSync = false
+    this.motion?.sync(this.items)
+    // 소품 연출 F: 레벨업(위 레벨업 연출과 같은 조건)·회의 시작 때 다 함께
+    if ((!settings.isWorkMode && (isGrown || isLevelUp)) || isMeetingStarted) this.motion?.celebrate()
     this.decor?.refresh()
   }
 
@@ -743,7 +762,7 @@ export class IsoOfficeScene extends Phaser.Scene {
         const act = s.action ? ITEM_ACTIONS[s.action] : undefined
         const category: Category = s.action ? 'fun' : spec.kind === 'seat' ? 'rest' : 'office'
         const zone = (this.room.zones ?? []).find((z) => s.gx >= z.gx && s.gx < z.gx + z.w && s.gy >= z.gy && s.gy < z.gy + z.d)?.id
-        this.spots.push({ gx: s.gx, gy: s.gy, face: s.face, category, zone, isSitting: s.use === 'sit', sitZ: seatHeight(it.itemId) ?? SIT_Z, takenBy: taken.get(`${s.gx},${s.gy}`) ?? null, emote: act?.emote, say: act?.say })
+        this.spots.push({ uid: it.uid, gx: s.gx, gy: s.gy, face: s.face, category, zone, isSitting: s.use === 'sit', sitZ: seatHeight(it.itemId) ?? SIT_Z, takenBy: taken.get(`${s.gx},${s.gy}`) ?? null, emote: act?.emote, say: act?.say })
       }
     }
   }
@@ -1026,6 +1045,12 @@ export class IsoOfficeScene extends Phaser.Scene {
     }
   }
 
+  /** 직원이 이 가구 자리에 도착해 머무는 중 (소품 연출 C) */
+  private isItemUsed(uid: string) {
+    for (const a of this.actors.values()) if (a.spot?.uid === uid && a.spot.takenBy === a.staff.id && !a.goal && a.mode === 'away') return true
+    return false
+  }
+
   private release(a: Actor) {
     if (a.spot && a.spot.takenBy === a.staff.id) a.spot.takenBy = null
     a.spot = null
@@ -1225,6 +1250,8 @@ export class IsoOfficeScene extends Phaser.Scene {
       a.x = tx
       a.y = ty
       a.path.shift()
+      // 소품 연출 E: 새 칸에 들어왔다 — 바로 옆 소품이 반응
+      this.motion?.passBy(next)
       if (!a.path.length) this.arrive(a)
     } else {
       a.x += (dx / dist) * move
@@ -1272,6 +1299,7 @@ export class IsoOfficeScene extends Phaser.Scene {
       this.draw(a)
     }
     this.updatePets(dt)
+    this.motion?.update(deltaMs)
     this.sortDepth()
     this.warmPeople()
   }
@@ -1286,7 +1314,8 @@ export class IsoOfficeScene extends Phaser.Scene {
 
   private sortDepth() {
     const statics: DepthBox[] = []
-    for (const parts of [...this.parts.values(), this.fixedParts]) for (const { img, box, item } of parts) statics.push({ x: item.gx + box.x, y: item.gy + box.y, w: box.w, d: box.d, z: box.z, h: box.h, obj: img })
+    for (const parts of [...this.parts.values(), this.fixedParts])
+      for (const { img, box, item } of parts) statics.push({ x: item.gx + box.x, y: item.gy + box.y, w: box.w, d: box.d, z: box.z, h: box.h, obj: img, isTallWall: specOf(item.itemId).isTallWall })
     const movers: DepthBox[] = []
     for (const a of this.actors.values()) if (a.container.visible) movers.push({ x: a.x - 0.18, y: a.y - 0.18, w: 0.36, d: 0.36, z: a.isSitting ? a.sitZ + 3 : 0, h: 24, obj: a.container })
     for (const p of this.pets.values()) if (p.img.visible) movers.push({ x: p.x - 0.18, y: p.y - 0.18, w: 0.36, d: 0.36, z: p.z, h: 8, obj: p.img })
@@ -1300,6 +1329,8 @@ export class IsoOfficeScene extends Phaser.Scene {
     }
     // 안쪽 벽: 뒤에 직원이 가려지면 그 칸 조각만 반투명 (G3 A)
     for (const parts of [this.fixedParts]) for (const p of parts) if (p.fade) p.img.setAlpha(hidesMover({ ...p.fade.edge, z: p.fade.edge.z, h: p.fade.edge.h }, movers) ? WALL_FADE_ALPHA : 1)
+    // 높은 가벽(isTallWall)도 같은 규칙 — 가구 한 장이라 통째로. 깜빡이는 중(flashItem)이면 건드리지 않는다
+    for (const s of statics) if (s.isTallWall && !this.tweens.isTweening(s.obj)) s.obj.setAlpha(hidesMover(s, movers) ? WALL_FADE_ALPHA : 1)
     const slots = placeMovers(cache.ordered, movers)
     if (slots) {
       for (const s of slots) s.item.obj.setDepth(10 + s.after * 10 + 1 + (8 * s.rank) / Math.max(1, movers.length))

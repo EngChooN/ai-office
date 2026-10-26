@@ -43,10 +43,10 @@ export default {
     zh: '尚未指定工作文件夹。请前往指示中提到的项目文件夹（没有则使用实验室的项目文件夹）工作；如果不清楚是哪个项目，请先询问。',
   },
   'staff.ctx.leaderGuide': {
-    ko: '리더로서 큰 일을 받으면 직접 기획한 뒤 하위 업무로 나눠 mcp__office__propose_plan으로 대표 확인을 받고(승인되면 앱이 배정·취합), 작은 단발성 일은 mcp__office__delegate로 바로 맡기세요. 사람 목록은 mcp__office__team으로 확인하세요.',
-    en: 'As a leader, when you receive a large task, plan it yourself, split it into subtasks and get the owner’s approval with mcp__office__propose_plan (once approved, the app assigns and collects them). Hand small one-off jobs straight to someone with mcp__office__delegate. Check the people list with mcp__office__team.',
-    ja: 'リーダーとして大きな仕事を受けたら、自分で企画してサブタスクに分け、mcp__office__propose_plan で代表の確認を受けてください（承認されるとアプリが割り当て・取りまとめを行います）。小さな単発の仕事は mcp__office__delegate で直接任せてください。メンバー一覧は mcp__office__team で確認できます。',
-    zh: '作为负责人，收到大任务时请先自己做规划并拆分为子任务，通过 mcp__office__propose_plan 请代表确认（批准后由应用分配并汇总）；零散的小任务可直接用 mcp__office__delegate 交办。成员列表请用 mcp__office__team 查看。',
+    ko: '리더로서 큰 일을 받으면 직접 기획한 뒤 하위 업무로 나눠 mcp__office__propose_plan으로 대표 확인을 받고(승인되면 앱이 배정·취합), 작은 단발성 일은 mcp__office__delegate로 바로 맡기세요. 사람 목록은 mcp__office__team으로 확인하세요. 남은 일을 "하겠다/맡기겠다"고 미루지 말고 이번 턴에 delegate·add_task로 실제로 맡기세요. 대표 결정이 필요해 멈추는 경우에만 보고 끝에 그 질문을 적으세요.',
+    en: 'As a leader, when you receive a large task, plan it yourself, split it into subtasks and get the owner’s approval with mcp__office__propose_plan (once approved, the app assigns and collects them). Hand small one-off jobs straight to someone with mcp__office__delegate. Check the people list with mcp__office__team. Do not defer remaining work by saying you will do or hand it off later — actually hand it off this turn with delegate or add_task. Only when you must stop for the owner’s decision, end your report with that question.',
+    ja: 'リーダーとして大きな仕事を受けたら、自分で企画してサブタスクに分け、mcp__office__propose_plan で代表の確認を受けてください（承認されるとアプリが割り当て・取りまとめを行います）。小さな単発の仕事は mcp__office__delegate で直接任せてください。メンバー一覧は mcp__office__team で確認できます。残りの仕事を「やります・任せます」と先送りせず、このターンのうちに delegate・add_task で実際に任せてください。代表の判断が必要で止まる場合のみ、報告の最後にその質問を書いてください。',
+    zh: '作为负责人，收到大任务时请先自己做规划并拆分为子任务，通过 mcp__office__propose_plan 请代表确认（批准后由应用分配并汇总）；零散的小任务可直接用 mcp__office__delegate 交办。成员列表请用 mcp__office__team 查看。不要把剩余工作说成“之后会做/会交办”而拖延，请在本轮就用 delegate 或 add_task 实际交办。只有需要等代表决定而停下时，才在汇报末尾写出该问题。',
   },
   'staff.ctx.memberGuide': {
     ko: '리더가 맡긴 일은 끝나면 결과를 간결하게 보고하세요.',
@@ -98,6 +98,12 @@ export default {
   'staff.msg.boardMark': { ko: '업무 보드', en: 'Task Board', ja: '業務ボード', zh: '任务看板' },
   'staff.msg.board': { ko: '[업무 보드] {title}', en: '[Task Board] {title}', ja: '[業務ボード] {title}', zh: '[任务看板] {title}' },
   'staff.msg.memberReport': { ko: '[팀원 보고] {name}({role}): {text}', en: '[Teammate report] {name} ({role}): {text}', ja: '[メンバー報告] {name}（{role}）: {text}', zh: '[成员汇报] {name}（{role}）：{text}' },
+  'staff.msg.leadNudge': {
+    ko: '[자동 점검] 보고에 남은 일이 있는데 지금 맡겨진 일이 없습니다. 지금 delegate나 add_task로 맡기세요. 대표 결정을 기다리는 중이면 아무것도 하지 말고 한 줄로만 답하세요.',
+    en: '[Auto check] Your report mentions remaining work, but nothing is currently handed off. Hand it off now with delegate or add_task. If you are waiting for the owner’s decision, do nothing and reply in a single line.',
+    ja: '[自動チェック] 報告に残りの仕事がありますが、いま任されている仕事がありません。今すぐ delegate か add_task で任せてください。代表の判断を待っている場合は何もせず、一行だけで返答してください。',
+    zh: '[自动检查] 汇报中还有剩余工作，但目前没有已交办的任务。请现在用 delegate 或 add_task 交办。如果正在等待代表决定，请不要做任何操作，只用一句话回复。',
+  },
   'staff.msg.delegated': { ko: '[{lead}의 지시] {instruction}', en: '[Instruction from {lead}] {instruction}', ja: '[{lead}からの指示] {instruction}', zh: '[{lead} 的指示] {instruction}' },
   'staff.msg.parent': {
     ko: '상위 업무: {parent} (리드: {lead}) · {i}/{n}단계',

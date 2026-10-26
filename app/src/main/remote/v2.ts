@@ -124,6 +124,7 @@ export const V2_METHODS: Record<OfficeMethod, MethodSpec> = {
   storeItem: R('s'),
   placeGridItem: R('s n n n n'),
   moveGridItem: R('s n n n n'),
+  setGridItemOn: R('s b'),
   stowAllGrid: R('n b'),
   restoreGridItems: R('a'),
   setGear: R('s s ~s'),

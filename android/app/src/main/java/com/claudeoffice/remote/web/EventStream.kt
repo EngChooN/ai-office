@@ -10,7 +10,9 @@ import kotlin.random.Random
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -41,6 +43,21 @@ class EventStream(
     @Volatile private var current: okhttp3.Response? = null
 
     val isRunning: Boolean get() = job?.isActive == true
+
+    /** 기다리는 중인 재연결을 깨우는 신호 (앱 복귀·네트워크 전환) */
+    private val wake = Channel<Unit>(Channel.CONFLATED)
+    @Volatile private var isKicked = false
+
+    /**
+     * 지금 바로 다시 붙는다 — 앱에 돌아왔거나 네트워크가 바뀌었을 때 (8-4절).
+     * 기다리는 중이면 깨우고, 열려 있으면 닫는다(망이 바뀌면 옛 소켓은 조용히 죽어 45초 무소식까지 기다리게 된다). 지연은 처음으로
+     */
+    fun reconnectNow() {
+        if (job?.isActive != true) return
+        isKicked = true
+        wake.trySend(Unit)
+        runCatching { current?.close() }
+    }
 
     fun start() {
         if (job?.isActive == true) return
@@ -76,13 +93,21 @@ class EventStream(
                     ApiError.NeedsAppUpdate, ApiError.PinMismatch, is ApiError.Locked -> return sink.onFatal(e)
                     is ApiError.RateLimited -> {
                         sink.onState("reconnecting", "rate_limited")
-                        delay(e.retryAfterSec * 1000L)
+                        withTimeoutOrNull(e.retryAfterSec * 1000L) { wake.receive() }
                         continue
                     }
                     else -> sink.onState("reconnecting", e::class.simpleName)
                 }
             }
-            delay(reconnectDelayMs(attempt++, Random.nextDouble()))
+            val wait = reconnectDelayMs(attempt++, Random.nextDouble())
+            if (!isKicked) {
+                wake.tryReceive() // 지난 신호가 남아 있으면 비운다
+                withTimeoutOrNull(wait) { wake.receive() }
+            }
+            if (isKicked) {
+                isKicked = false
+                attempt = 0
+            }
         }
     }
 
@@ -120,4 +145,56 @@ internal fun byeReason(data: String): String = try {
     (o?.get("reason") as? JsonPrimitive)?.content ?: "unknown"
 } catch (_: Exception) {
     "unknown"
+}
+
+/** 끊김을 이만큼 이어서 못 붙으면 그때 화면에 알린다 — 그 안에 다시 붙으면 사용자는 끊긴 줄 모른다 */
+const val DISCONNECT_GRACE_MS = 8_000L
+
+/**
+ * 스트림 상태를 화면(connection)에 알리는 길목. "open"은 바로, 끊김("connecting"·"reconnecting")은 유예 뒤에도 안 붙었을 때만.
+ * 앱이 화면에서 멈춘 "closed"(사유 없음)는 끊김이 아니므로 알리지 않는다. 사유 있는 "closed"(토큰 폐기 등 끝)는 바로.
+ * 한 번도 열리지 않은 첫 "connecting"은 바로 알린다 (화면의 기본값이라 표시가 없다)
+ */
+class GraceReporter(
+    private val scope: CoroutineScope,
+    private val graceMs: Long = DISCONNECT_GRACE_MS,
+    private val emit: (state: String, reason: String?) -> Unit,
+) {
+    private var pending: Job? = null
+    private var isOpen = false
+    private var shown: String? = null
+
+    /** 화면이 새로 떴다 (ready) — 화면은 "connecting"부터 다시 시작한다 */
+    fun reset() {
+        pending?.cancel(); pending = null
+        isOpen = false
+        shown = null
+    }
+
+    fun report(state: String, reason: String? = null) {
+        when {
+            state == "open" -> {
+                pending?.cancel(); pending = null
+                isOpen = true
+                emit("open", null)
+                shown = "open"
+            }
+            state == "closed" && reason == null -> { pending?.cancel(); pending = null }
+            state == "closed" -> { pending?.cancel(); pending = null; isOpen = false; show(state, reason) }
+            !isOpen -> show(state, reason)
+            pending == null && shown == "open" -> {
+                pending = scope.launch {
+                    delay(graceMs)
+                    pending = null
+                    show(state, reason)
+                }
+            }
+            shown != "open" -> show(state, reason)
+        }
+    }
+
+    private fun show(state: String, reason: String?) {
+        shown = state
+        emit(state, reason)
+    }
 }

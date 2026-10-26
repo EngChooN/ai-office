@@ -352,6 +352,12 @@ private class Bridge(
     @Volatile private var screenCapabilities: Set<String> = emptySet()
 
     private val stream = EventStream(repo::currentClient, this, scope, capabilities = { screenCapabilities })
+    private val reporter = GraceReporter(scope) { state, reason -> post(BridgeOut.connection(state, reason)) }
+
+    init {
+        // 네트워크가 바뀌면 (와이파이↔LTE) 옛 소켓을 버리고 바로 다시 붙는다
+        scope.launch { repo.networkAvailable.collect { stream.reconnectNow() } }
+    }
 
     fun receive(text: String, proxy: JavaScriptReplyProxy) {
         reply = proxy
@@ -364,9 +370,11 @@ private class Bridge(
                 val isChanged = caps != screenCapabilities
                 screenCapabilities = caps
                 post(BridgeOut.hello(BuildConfig.VERSION_NAME, isTablet))
+                reporter.reset()
                 if (isForeground) {
                     if (isChanged && stream.isRunning) stream.stop()
-                    stream.start()
+                    // 이미 붙어 있으면 다시 붙어서 새 화면이 hello·snapshot·open을 받게 한다
+                    if (stream.isRunning) stream.reconnectNow() else stream.start()
                 }
             }
             is BridgeRequest.Call -> scope.launch {
@@ -441,7 +449,8 @@ private class Bridge(
 
     fun onForeground() {
         isForeground = true
-        if (isReady) stream.start()
+        // 이미 붙는 중(지연 대기)이면 깨우고, 멈춰 있었으면 새로 연다
+        if (isReady) if (stream.isRunning) stream.reconnectNow() else stream.start()
     }
 
     fun onBackground() {
@@ -461,13 +470,13 @@ private class Bridge(
     }
 
     override fun onState(state: String, reason: String?) {
-        post(BridgeOut.connection(state, reason))
+        reporter.report(state, reason)
         // 스트림이 다시 열렸다 = PC에 닿는다. 셸이 들고 있던 "닿지 않음"을 지운다 (화면은 connection으로 따로 안다)
         if (state == "open") main.post { repo.markReachable() }
     }
 
     override fun onFatal(error: com.claudeoffice.remote.net.ApiError) {
-        post(BridgeOut.connection("closed", appCode(error)))
+        reporter.report("closed", appCode(error))
         main.post { repo.applyV2Error(error) }
     }
 

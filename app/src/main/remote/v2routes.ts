@@ -109,6 +109,10 @@ export class V2Routes {
   private openEvents(req: IncomingMessage, res: ServerResponse, reply: (r: RemoteResponse) => void, access: AccessLogger) {
     const tokenHash = tokenHashOf(req.headers.authorization)
     if (!this.ctx.hub.canAccept(tokenHash)) return reply(v2Fail('rate_limited', { retryAfterSec: 5 }))
+    // 망이 조용히 끊긴 연결(와이파이→LTE)을 OS가 더 빨리 알아채게 — 쓰기 대기가 쌓이는 것도 줄인다
+    req.socket.setKeepAlive(true, 15_000)
+    req.socket.setNoDelay(true)
+    req.socket.setTimeout(0)
     const last = req.headers['last-event-id']
     // 능력은 연결할 때의 헤더로 — 이 연결에만 쓴다 (같은 토큰의 다른 연결과 섞지 않는다)
     this.ctx.hub.open(res, tokenHash, typeof last === 'string' ? last : undefined, parseCapabilities(req.headers[CAPABILITIES_HEADER]))

@@ -746,6 +746,8 @@ export interface OfficeApi {
   placeGridItem(itemId: string, floor: number, gx: number, gy: number, rot: number): Promise<{ uid: string }>
   /** 놓인 칸 가구를 옮기거나 돌린다. 막히면 거절 — 원격은 422 blocked { reason } */
   moveGridItem(uid: string, floor: number, gx: number, gy: number, rot: number): Promise<void>
+  /** 눌러서 켜고 끄는 소품(연출 B)을 켜거나 끈다 — shop.grid에 저장. B가 아닌 가구면 거절(400) */
+  setGridItemOn(uid: string, isOn: boolean): Promise<void>
   /** 전부 치우기: floor 0 = 건물 전체. 놓인 가구를 한 번에 서랍으로 넣고 치운 가구를 돌려준다 */
   stowAllGrid(floor: number, keepSeats: boolean): Promise<GridItem[]>
   /** 전부 치우기 되돌리기: 치우기 전 가구를 다시 놓는다 */

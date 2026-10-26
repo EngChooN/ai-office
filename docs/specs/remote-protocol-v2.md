@@ -255,6 +255,7 @@ OfficeApi는 **메서드 84개 + 값 1개(`platform`) + 이벤트 5개**다(구�
 | 83 | `setAutoApprove` | R | | 자동결재 켜기·끄기 `{ mode: 'off' \| 'hours' \| 'daily', hours?, start?, end? }` — 허용 필드는 이 넷 |
 | 84 | `autoApproveLog` | R | | 자동결재가 대신 처리한 목록(최근 것부터) |
 | 85 | `loadStaffCommands` | R | | 직원의 /명령어 목록을 (없으면) 불러온다. 결과는 스냅샷 `staffCommands[직원 id]`(`StaffCommand[]`: name·description·argumentHint·isBuiltin). 직원 세션을 잠깐 띄우므로 몇 초 걸릴 수 있음. 거르기 규칙은 `shared/slashCommands.ts`의 `matchCommands`(이름 앞부분 → 이름 안 → 설명). `instruct`·`sendChat`의 `/명령`은 PC와 같게 처리(막힌 명령은 안내, `/clear`는 새 대화) |
+| 86 | `setGridItemOn` | R | | 눌러서 켜고 끄는 소품(연출 B, `shared/iso/propMotion.ts` `isToggleable`)을 켜거나 끈다 `(uid, isOn)`. `shop.grid[].isOn`으로 저장(꺼짐은 필드 없음). B가 아닌 가구·없는 uid는 400 invalid_args. 예전 PC(iso-office 모름)에는 보내지 않음 |
 
 개수: **R 58 · S 17 · P 6 · C 2 · U 1 = 84**. 코드는 `app/src/main/remote/v2.ts`의 `V2_METHODS: Record<OfficeMethod, …>` 한 표 — 메서드가 빠지거나 남으면 tsc가 실패하고, `scripts/remote-v2.test.mts`가 이름·개수를 다시 확인한다.
 
@@ -379,7 +380,9 @@ data: {"…":"…"}
 
 ### 8-4. 살아 있는지 확인, 재연결, 한도
 - **keep-alive:** 서버는 보낼 이벤트가 없어도 **15초마다** 주석 줄(`: keep-alive` + 빈 줄)을 보낸다. `hello.heartbeatSec`가 이 값이다.
-- **죽은 연결 판단:** 앱은 **45초(3번)** 동안 아무것도 못 받으면 연결이 끊긴 것으로 보고 닫고 다시 연결한다.
+- **죽은 연결 판단:** 앱은 **35초**(keep-alive 두 번을 놓치고 5초 여유) 동안 아무것도 못 받으면 연결이 끊긴 것으로 보고 닫고 다시 연결한다. 서버는 SSE 소켓에 TCP keep-alive(15초)를 켠다.
+- **즉시 재연결:** 앱이 화면으로 돌아왔거나 기본 네트워크가 바뀌면(와이파이↔LTE) 기다리던 지연을 건너뛰고 **바로** 다시 연결하며 지연은 처음으로 되돌린다. 열려 있던 연결은 닫고 새로 붙는다(옛 소켓은 조용히 죽어 있을 수 있다).
+- **끊김 알림:** 앱 셸은 끊김(`connecting`·`reconnecting`)을 **8초 안에 다시 붙으면 화면에 알리지 않는다.** 8초 넘게 못 붙을 때만 `connection` 메시지로 보낸다. 앱이 화면에서 멈춘 것(사유 없는 `closed`)은 끊김이 아니라 알리지 않는다. 토큰 폐기 같은 끝(`closed`+사유)과 `open`은 바로 알린다.
 - **재연결:** 서버는 `retry: 3000`을 보낸다. 앱은 지연을 1·2·4·8·16·30초(최대)로 늘리고 ±20% 흔들며, **60초 이상 이어졌으면** 지연을 처음으로 되돌린다. `401 token_revoked`·`426`이면 **다시 연결하지 않는다.** `401 auth_locked`는 `retryAt`까지 기다린다. `429`는 `retryAfterSec`를 따른다.
 - **연결 한도:** 한 토큰에서 **동시에 SSE 2개**(폰 한 대의 재연결이 겹칠 때를 위한 여유). 세 번째가 연결되면 **가장 오래된 연결에 `bye(replaced)`를 보내고 닫는다.** 서버 전체로는 **4개**. 넘으면 새 연결에 `429 rate_limited`(`retryAfterSec: 5`).
 - **토큰 확인:** 서버는 `heartbeat`마다 토큰이 아직 유효한지 확인한다. 폐기됐으면 `bye(token_revoked)`로 닫는다(QR 다시 만들기·PC에서 끄기에도 `bye(remote_disabled)`).

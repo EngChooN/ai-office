@@ -35,6 +35,11 @@ class AppPrefs(context: Context) {
         get() = prefs.getLong("lastSuccessAt", 0)
         set(v) = prefs.edit().putLong("lastSuccessAt", v).apply()
 
+    /** 마지막으로 확인한 PC가 전체 화면(v2)을 지원했는가 — 앱이 다시 뜰 때 네이티브 화면을 거치지 않고 바로 PC 화면으로 */
+    var v2Active: Boolean
+        get() = prefs.getBoolean("v2Active", false)
+        set(v) = prefs.edit().putBoolean("v2Active", v).apply()
+
     var serverVersion: String
         get() = prefs.getString("serverVersion", "") ?: ""
         set(v) = prefs.edit().putString("serverVersion", v).apply()

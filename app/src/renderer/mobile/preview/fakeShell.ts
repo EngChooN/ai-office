@@ -380,6 +380,7 @@ const impl: Record<string, (...args: never[]) => unknown> = {
     return { uid }
   },
   moveGridItem: (uid: string, floor: number, gx: number, gy: number, rot: number) => setGrid(snapshot.shop.grid.map((g) => (g.uid === uid ? { ...g, floor, gx, gy, rot: rot as 0 } : g))),
+  setGridItemOn: (uid: string, isOn: boolean) => setGrid(snapshot.shop.grid.map((g) => (g.uid === uid ? { ...g, isOn } : g))),
   stowAllGrid: (floor: number, keepSeats: boolean) => {
     const out = snapshot.shop.grid.filter((g) => (floor === 0 || g.floor === floor) && !(keepSeats && /desk|chair/.test(g.itemId)))
     setGrid(snapshot.shop.grid.filter((g) => !out.includes(g)))
