@@ -51,11 +51,13 @@ import {
   type SecretaryState,
   SECRETARY_ID,
   PLAN_WINDOW_LABEL,
+  type ChatApproval,
 } from '../shared/types'
+import { answersText } from '../shared/chatApproval'
 import { openResumeInTerminal } from './setup'
 import { decisionSections, decisionSectionsOf, decisionsContext, delegatedPrompt, parseDelegatedChoice, recordAnswer, recordDelegated, splitDecision, withDecisionSections } from '../shared/meetingDecisions'
 import { isAbsorbedOpen, matchAbsorbed, meetingCardItems, meetingResultCard, pickPlanCard } from '../shared/planTasks'
-import { shouldNudgeLead } from '../shared/leadNudge'
+import { shouldNudgeBackground, shouldNudgeLead } from '../shared/leadNudge'
 import { mentionTargets, OFFICE_SENDER, parseMentions, pickResponder } from '../shared/mention'
 import { mergeRefDocs, refDocsPrompt, sanitizeRefDocs } from '../shared/refDocs'
 import { maskSecrets } from '../shared/redact'
@@ -146,6 +148,8 @@ export class Office extends EventEmitter<{
   snapshot: [OfficeSnapshot]
   log: [LogEntry]
   chat: [ChatMessage]
+  /** 이미 올린 메시지가 바뀜 (결재 처리 결과) — PC 화면만 받는다 */
+  chatUpdate: [ChatMessage]
   notify: [{ title: string; body: string; staffId: string }]
 }> {
   private hired = new Map<string, db.StoredStaff>()
@@ -183,8 +187,8 @@ export class Office extends EventEmitter<{
   private taskQueue = new Map<string, { taskId: string; context: string }[]>()
   /** 대화하려고 멈춘 직원 → 멈춘 업무 카드. 그 직원과 이야기가 끝나면 이어서 맡긴다 */
   private resumeAfterTalk = new Map<string, string[]>()
-  /** 자동 점검 지시를 받은 리드 — 그 턴이 끝나면 다시 점검하지 않는다 (무한 반복 방지) */
-  private leadNudged = new Set<string>()
+  /** 자동 점검 지시를 받은 직원 — 그 턴이 끝나면 다시 점검하지 않는다 (무한 반복 방지) */
+  private autoChecked = new Set<string>()
   /** 업무 보드에서 직접 멈춘 직원 — 저절로 이어 하지 않는다 */
   private hardStops = new Set<string>()
   /** 회의 결정 대기: 결정 id → 답을 기다리는 회의 진행 */
@@ -231,7 +235,7 @@ export class Office extends EventEmitter<{
       autoDecide: (id, toolName, input, summary, questions) => this.autoDecide(id, toolName, input, summary, questions),
       cancelApproval: (id) => this.dropApproval(id, '취소됨'),
       rateLimit: (info) => this.onRateLimit(info),
-      finished: (id, summary) => this.onFinished(id, summary),
+      finished: (id, summary, backgroundTasks) => this.onFinished(id, summary, backgroundTasks),
       stopped: (id) => this.onStopped(id),
       officeTools: (id) => this.officeTools(id),
       context: (id) => this.teamContext(id),
@@ -269,7 +273,7 @@ export class Office extends EventEmitter<{
         },
         waiting: (s, message) => this.emit('notify', { title: t('notify.attention', { name: s.name }), body: message, staffId: s.id }),
         asked: (s, a) => {
-          this.postChat(s.id, `질문이 있어요 ❓ ${a.summary}`.slice(0, CHAT_TEXT_MAX))
+          this.postChat(s.id, `질문이 있어요 ❓ ${a.summary}`.slice(0, CHAT_TEXT_MAX), undefined, { id: a.id })
           this.emit('notify', { title: t('notify.question', { name: s.name }), body: a.summary.slice(0, 120), staffId: s.id })
         },
       },
@@ -711,13 +715,17 @@ export class Office extends EventEmitter<{
       s.approvals = s.approvals.filter((x) => x.id !== approvalId)
       this.log(s.id, 'approval', `${reason}: ${a.toolName} ${a.summary}`)
       this.patch(s.id, { status: s.approvals.length ? 'waiting' : 'working' })
+      this.settleChat({ id: approvalId, result: 'canceled' })
     }
   }
 
   /** 결재를 처리했으면 true (이미 끝난 결재면 false — 원격은 409로 알린다). via: 원격 표시 */
   decide(approvalId: string, allow: boolean, via = '') {
     // 외부 직원 질문은 "넘기기" = 원래 창에서 답하도록 놓아 준다
-    if (this.watcher.release(approvalId)) return true
+    if (this.watcher.release(approvalId)) {
+      this.settleChat({ id: approvalId, result: 'skipped' })
+      return true
+    }
     if (!this.manager.decide(approvalId, allow)) {
       this.dropApproval(approvalId, '이미 끝난 결재')
       return false
@@ -728,13 +736,15 @@ export class Office extends EventEmitter<{
       s.approvals = s.approvals.filter((x) => x.id !== approvalId)
       this.log(s.id, 'approval', `${via ? `${via} ` : ''}${allow ? t('log.approved') : t('log.rejected')}: ${a.toolName} ${a.summary}`)
       this.patch(s.id, { status: s.approvals.length ? 'waiting' : 'working' })
+      // 질문을 반려 = 넘기기 (답 없이 알아서 판단)
+      this.settleChat({ id: approvalId, result: a.questions ? 'skipped' : allow ? 'approved' : 'rejected' })
     }
     return true
   }
 
   answerQuestion(approvalId: string, answers: Record<string, string>, via = '') {
-    if (this.watcher.answer(approvalId, answers)) return true
-    if (!this.manager.answer(approvalId, answers)) return false
+    if (!this.watcher.answer(approvalId, answers) && !this.manager.answer(approvalId, answers)) return false
+    this.settleChat({ id: approvalId, result: 'answered', answer: answersText(answers) })
     for (const s of this.hired.values()) {
       const a = s.approvals.find((x) => x.id === approvalId)
       if (!a) continue
@@ -771,10 +781,10 @@ export class Office extends EventEmitter<{
     return { staffId, costUsd: 0, ...readExternalDay(staffId, ext.cwd, ext.sessionId, since) }
   }
 
-  private onFinished(staffId: string, summary: string) {
+  private onFinished(staffId: string, summary: string, backgroundTasks: string[] = []) {
     const s = this.hired.get(staffId)
     if (!s) return
-    const isAutoCheckTurn = this.leadNudged.delete(staffId)
+    const isAutoCheckTurn = this.autoChecked.delete(staffId)
     const origins = this.origins.get(staffId) ?? []
     this.origins.set(staffId, [])
     const short = summary.length > CHAT_TEXT_MAX ? `${summary.slice(0, CHAT_TEXT_MAX)}…` : summary
@@ -803,11 +813,20 @@ export class Office extends EventEmitter<{
     this.taskQueue.set(staffId, queued)
     if (nextTask) this.assignTask(nextTask.taskId, staffId, nextTask.context)
     else if (!origins.some((o) => o.kind === 'task')) this.resumeStopped(staffId)
-    this.checkLeadStall(staffId, summary, isAutoCheckTurn)
+    this.checkStall(staffId, summary, isAutoCheckTurn, backgroundTasks)
   }
 
-  /** 리드 멈춤 방지: "맡길게요"라고만 하고 실제로 맡긴 일·승인 대기 기획안이 없으면 한 번 다시 지시한다 */
-  private checkLeadStall(staffId: string, summary: string, isAutoCheckTurn: boolean) {
+  /**
+   * 멈춤 방지: 턴이 끝나면 앱이 다시 깨우지 않으니, 백그라운드 작업을 남겼거나
+   * 리드가 "맡길게요"라고만 하고 실제로 맡긴 일·승인 대기 기획안이 없으면 한 번 다시 지시한다
+   */
+  private checkStall(staffId: string, summary: string, isAutoCheckTurn: boolean, backgroundTasks: string[]) {
+    const isBusy = (this.origins.get(staffId)?.length ?? 0) > 0
+    if (shouldNudgeBackground({ isAutoCheckTurn, isBusy, backgroundTasks })) {
+      this.autoChecked.add(staffId)
+      this.instruct(staffId, t('staff.msg.backgroundNudge', { tasks: backgroundTasks.join(', ') }), { kind: 'user' })
+      return
+    }
     const delegates = this.delegatesOf(staffId)
     const memberIds = new Set(delegates.map((m) => m.id))
     const tasks = [...this.tasks.values()]
@@ -818,13 +837,13 @@ export class Office extends EventEmitter<{
     const isNudge = shouldNudgeLead({
       isLeader: delegates.length > 0,
       isAutoCheckTurn,
-      isBusy: (this.origins.get(staffId)?.length ?? 0) > 0,
+      isBusy,
       hasOpenDelegation,
       hasWaitingPlan,
       summary,
     })
     if (!isNudge) return
-    this.leadNudged.add(staffId)
+    this.autoChecked.add(staffId)
     this.instruct(staffId, t('staff.msg.leadNudge'), { kind: 'user' })
   }
 
@@ -848,12 +867,12 @@ export class Office extends EventEmitter<{
     s.approvals = [...s.approvals, a]
     if (a.questions) {
       this.patch(s.id, { status: 'waiting', activity: '대표 답변 대기' })
-      this.postChat(s.id, `질문이 있어요 ❓ ${a.summary}`.slice(0, CHAT_TEXT_MAX))
+      this.postChat(s.id, `질문이 있어요 ❓ ${a.summary}`.slice(0, CHAT_TEXT_MAX), undefined, { id: a.id })
       this.emit('notify', { title: t('notify.question', { name: s.name }), body: a.summary.slice(0, 120), staffId: s.id })
       return
     }
     this.patch(s.id, { status: 'waiting', activity: `결재 대기: ${a.toolName}` })
-    this.postChat(s.id, `결재 부탁드려요 🙏 ${a.toolName} ${a.summary}`.slice(0, CHAT_TEXT_MAX))
+    this.postChat(s.id, `결재 부탁드려요 🙏 ${a.toolName} ${a.summary}`.slice(0, CHAT_TEXT_MAX), undefined, { id: a.id })
     this.emit('notify', { title: t('notify.approval', { name: s.name }), body: `${a.toolName} ${a.summary}`.slice(0, 120), staffId: s.id })
   }
 
@@ -1110,6 +1129,7 @@ export class Office extends EventEmitter<{
       )
     if (!this.hired.get(staffId)?.ownCwd) lines.push(t('staff.ctx.noCwd'))
     lines.push(this.delegatesOf(staffId).length ? t('staff.ctx.leaderGuide') : t('staff.ctx.memberGuide'))
+    lines.push(t('staff.ctx.askGuide'))
     return lines.join('\n')
   }
 
@@ -2365,8 +2385,14 @@ export class Office extends EventEmitter<{
     for (const id of recipientIds) this.instruct(id, message, { kind: 'chat' }, attachments)
   }
 
-  private postChat(from: string, text: string, attachments?: Attachment[]) {
-    this.emit('chat', db.insertChat(from, text, attachments))
+  private postChat(from: string, text: string, attachments?: Attachment[], approval?: ChatApproval) {
+    this.emit('chat', db.insertChat(from, text, attachments, approval))
+  }
+
+  /** 결재·질문 처리 결과를 단체방 메시지에 남긴다 (어디서 처리했든 — 결재함·단체방·휴대폰) */
+  private settleChat(approval: ChatApproval) {
+    const m = db.settleChatApproval(approval)
+    if (m) this.emit('chatUpdate', m)
   }
 
   // ── 기록·급여·보고서 ──────────────────────────────────

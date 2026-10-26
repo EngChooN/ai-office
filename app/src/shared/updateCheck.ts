@@ -4,8 +4,18 @@
 import type { Lang } from './i18n/index.ts'
 
 export const RELEASE_API_URL = 'https://api.github.com/repos/EngChooN/claude-office/releases/latest'
-/** 앱을 켤 때 한 번 확인한 뒤 이 간격으로 다시 확인한다 */
-export const UPDATE_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000
+/** 앱을 켤 때 한 번 확인한 뒤 이 간격으로 다시 확인한다 (인증 없는 API 한도는 시간당 60회) */
+export const UPDATE_CHECK_INTERVAL_MS = 60 * 60 * 1000
+/** 창 포커스·잠자기에서 깨어날 때는 마지막 확인 뒤 이만큼 지났을 때만 다시 확인한다 */
+export const UPDATE_RECHECK_GAP_MS = 30 * 60 * 1000
+
+/**
+ * 창 포커스·잠자기 해제 때 다시 확인할지 — 마지막 확인(성공·실패 모두) 뒤 gap이 지났으면 true.
+ * 잠자기 동안 타이머가 밀려도 깨어나면 바로 따라잡는다. 아직 한 번도 확인하지 않았으면 true
+ */
+export function shouldRecheck(lastAttemptAt: number | null, now: number, gap = UPDATE_RECHECK_GAP_MS): boolean {
+  return lastAttemptAt === null || now - lastAttemptAt >= gap
+}
 
 /** Release에 올리는 설치 파일 이름 (고정) */
 export const ASSET_NAMES = {

@@ -1,10 +1,11 @@
-// 업데이트 확인 — GitHub Release를 앱을 켤 때 한 번, 그 뒤 6시간마다 읽는다.
+// 업데이트 확인 — GitHub Release를 앱을 켤 때 한 번, 그 뒤 1시간마다 읽는다.
+// 창에 다시 포커스가 오거나 잠자기에서 깨어나면 마지막 확인 뒤 30분이 지났을 때 다시 읽는다 (잠자기로 타이머가 밀려도 따라잡게).
 // 자동 확인 실패(오프라인·조회 제한 403)는 조용히 넘기고, 설정의 [지금 확인]만 실패를 알린다.
 // 화면과는 사무실 API(OfficeApi·원격 v2) 밖의 update:* 채널로 주고받는다 — PC 앱 자신의 업데이트라 휴대폰에서 부를 일이 없다
-import { app, ipcMain, shell, type BrowserWindow } from 'electron'
+import { app, ipcMain, powerMonitor, shell, type BrowserWindow } from 'electron'
 import { loadSkippedUpdate, saveSkippedUpdate } from './db'
 import { getLang, onLangChange } from '../shared/i18n/index.ts'
-import { assetTargetFor, parseRelease, RELEASE_API_URL, shouldNotify, summarizeNotes, UPDATE_CHECK_INTERVAL_MS, type ReleaseInfo, type UpdateStatus } from '../shared/updateCheck.ts'
+import { assetTargetFor, parseRelease, RELEASE_API_URL, shouldNotify, shouldRecheck, summarizeNotes, UPDATE_CHECK_INTERVAL_MS, type ReleaseInfo, type UpdateStatus } from '../shared/updateCheck.ts'
 
 const FETCH_TIMEOUT_MS = 15_000
 
@@ -24,6 +25,8 @@ export class UpdateChecker {
   private release: ReleaseInfo | null = null
   private state: UpdateStatus['state'] = 'idle'
   private checkedAt: number | null = null
+  /** 마지막으로 확인을 시도한 때 (실패 포함) — 포커스·깨어남 때 다시 확인할지 판단한다 */
+  private attemptedAt: number | null = null
   private skippedVersion = loadSkippedUpdate()
   private inflight: Promise<UpdateStatus> | null = null
   private timer: NodeJS.Timeout | null = null
@@ -34,6 +37,8 @@ export class UpdateChecker {
   start() {
     void this.check(false)
     this.timer = setInterval(() => void this.check(false), UPDATE_CHECK_INTERVAL_MS)
+    app.on('browser-window-focus', this.recheck)
+    powerMonitor.on('resume', this.recheck)
     // 바뀐 점 요약은 앱 언어 섹션이라, 언어를 바꾸면 다시 보낸다
     this.offLang = onLangChange(() => this.emit())
   }
@@ -41,6 +46,8 @@ export class UpdateChecker {
   stop() {
     if (this.timer) clearInterval(this.timer)
     this.timer = null
+    app.off('browser-window-focus', this.recheck)
+    powerMonitor.off('resume', this.recheck)
     this.offLang?.()
     this.offLang = null
   }
@@ -55,6 +62,11 @@ export class UpdateChecker {
     }
   }
 
+  /** 창 포커스·잠자기 해제: 마지막 확인 뒤 충분히 지났으면 자동 확인 (실패는 조용히) */
+  private recheck = () => {
+    if (shouldRecheck(this.attemptedAt, Date.now())) void this.check(false)
+  }
+
   /** 확인이 겹치면 진행 중인 것을 같이 기다린다 */
   check(isManual: boolean): Promise<UpdateStatus> {
     this.inflight ??= this.run(isManual).finally(() => (this.inflight = null))
@@ -63,6 +75,7 @@ export class UpdateChecker {
 
   private async run(isManual: boolean) {
     const before = this.state
+    this.attemptedAt = Date.now()
     this.setState('checking')
     try {
       const release = await fetchLatestRelease()

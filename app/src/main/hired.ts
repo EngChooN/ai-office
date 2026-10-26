@@ -52,7 +52,8 @@ export interface HiredHooks {
   rateLimit(info: SDKRateLimitInfo): void
   /** 세션이 결재 요청을 거둬들임 (취소·세션 재시작) */
   cancelApproval(approvalId: string): void
-  finished(staffId: string, summary: string): void
+  /** backgroundTasks: 턴이 끝날 때 세션에 아직 돌고 있는 백그라운드 작업 설명 (끝나도 직원을 다시 깨우지 않으니 점검용) */
+  finished(staffId: string, summary: string, backgroundTasks: string[]): void
   /** 대표가 하던 일을 멈춤 (보고 없이 끝남) */
   stopped(staffId: string): void
   /** 사무실 MCP 도구(팀 조회·위임·보드). 직원마다 같은 서버를 붙이고 권한은 도구 안에서 판단한다 */
@@ -96,6 +97,8 @@ class Worker {
   private slashPending: string | null = null
   /** 세션 init이 알려 준 터미널 화면 전용 명령 */
   private terminalOnly: string[] = []
+  /** 세션에서 돌고 있는 백그라운드 작업 (SDK background_tasks_changed — 받을 때마다 통째로 바꾼다) */
+  private backgroundTasks: string[] = []
 
   constructor(
     private staff: Staff,
@@ -254,6 +257,8 @@ class Worker {
     const refDocPaths = new Set(refDocs.paths)
     const mcpServers = this.hooks.equippedMcp(s.id)
     const browserGuide = mcpServers[BROWSER_EQUIPMENT] ? t('staff.browser.guide', { dir: browserOutputDir(s.id) }) : ''
+    // 백그라운드 작업 목록은 CLI 프로세스 단위라 새로 열면 비운다
+    this.backgroundTasks = []
     this.q = sdk.query({
       prompt: this.messages(this.generation),
       options: {
@@ -378,6 +383,10 @@ class Worker {
       this.hooks.commands(id, m.commands, this.terminalOnly)
       return
     }
+    if (m.type === 'system' && m.subtype === 'background_tasks_changed') {
+      this.backgroundTasks = m.tasks.filter((task) => !task.ambient).map((task) => task.description)
+      return
+    }
     if (m.type === 'system' && m.subtype === 'init') {
       this.terminalOnly = m.terminal_slash_commands ?? []
       if (m.session_id !== this.staff.sessionId) {
@@ -457,7 +466,7 @@ class Worker {
         tokensOut: this.staff.tokensOut,
       })
       this.isRunning = this.inbox.length > 0
-      this.hooks.finished(id, summary)
+      this.hooks.finished(id, summary, isError ? [] : this.backgroundTasks)
       this.applyPendingRestart()
     }
   }

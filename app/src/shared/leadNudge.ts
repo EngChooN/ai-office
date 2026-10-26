@@ -1,4 +1,5 @@
-// 리드 멈춤 방지 자동 점검 — 리드가 "맡길게요"처럼 할 일만 적고 실제로 맡기지 않은 채 턴을 끝냈는지 판단한다
+// 멈춤 방지 자동 점검 — 리드가 "맡길게요"처럼 할 일만 적고 실제로 맡기지 않았거나,
+// 직원이 백그라운드 작업을 남긴 채 턴을 끝냈는지 판단한다 (턴이 끝나면 앱이 다시 깨우지 않는다)
 
 const HANGUL_BASE = 0xac00
 const JONG_COUNT = 28
@@ -54,4 +55,18 @@ export function shouldNudgeLead(s: LeadTurnState): boolean {
   if (!s.isLeader || s.isAutoCheckTurn || s.isBusy) return false
   if (s.hasOpenDelegation || s.hasWaitingPlan) return false
   return hasPromise(s.summary)
+}
+
+export interface BackgroundTurnState {
+  /** 이번 턴이 자동 점검 지시로 시작됐는지 — 그렇다면 다시 점검하지 않는다 */
+  isAutoCheckTurn: boolean
+  /** 턴이 끝난 직후 이어서 시작된 일이 있는지 */
+  isBusy: boolean
+  /** 턴이 끝날 때 세션에 남아 있는 백그라운드 작업 */
+  backgroundTasks: string[]
+}
+
+/** 끝나지 않은 백그라운드 작업을 남기고 턴을 끝낸 직원에게 "[자동 점검]"을 다시 지시해야 하는지 */
+export function shouldNudgeBackground(s: BackgroundTurnState): boolean {
+  return !s.isAutoCheckTurn && !s.isBusy && s.backgroundTasks.length > 0
 }

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { CircleDashedIcon, FlaskConicalIcon, FolderIcon, UserPlusIcon, UsersIcon, XIcon } from 'lucide-react'
+import { CircleDashedIcon, FlaskConicalIcon, FolderIcon, LayoutGridIcon, ListIcon, UserPlusIcon, UsersIcon, XIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -9,6 +9,8 @@ import type { Staff } from '@shared/types'
 import { t } from '@shared/i18n'
 import { ActivityFeed, AttentionCard, SummaryRow, UsageCard, usePayslip } from './DashboardPanels'
 import { StaffCard } from './StaffCard'
+import { StaffRow } from './StaffRow'
+import { useStaffView } from './staffView'
 import { STATUS_META } from './status'
 
 const STATUS_ORDER: Record<Staff['status'], number> = { waiting: 0, error: 1, working: 2, idle: 3, offline: 4 }
@@ -31,6 +33,7 @@ export function Dashboard() {
   const planUsage = useOffice((s) => s.planUsage)
   const [groupBy, setGroupBy] = useState<'team' | 'lab'>('team')
   const [filter, setFilter] = useState<SummaryKey | null>(null)
+  const [staffView, setStaffView] = useStaffView()
 
   const staffById = useMemo(() => new Map(staff.map((s) => [s.id, s])), [staff])
   const counts = useMemo(() => countByStatus(staff), [staff])
@@ -101,6 +104,26 @@ export function Dashboard() {
                 </button>
               ))}
             </div>
+            {/* 카드 / 목록 보기 — 폰은 카드만 (전환 버튼을 숨기므로 그 기기에는 목록이 저장되지 않는다) */}
+            <div className="bg-muted phone:hidden flex w-fit rounded-lg p-0.5">
+              {(['cards', 'list'] as const).map((v) => {
+                const Icon = v === 'cards' ? LayoutGridIcon : ListIcon
+                const label = v === 'cards' ? t('dashboard.view.cards') : t('dashboard.view.list')
+                return (
+                  <button
+                    key={v}
+                    type="button"
+                    aria-label={label}
+                    aria-pressed={staffView === v}
+                    title={label}
+                    onClick={() => setStaffView(v)}
+                    className={cn('rounded-md px-2 py-1', staffView === v ? 'bg-background shadow-sm' : 'text-muted-foreground')}
+                  >
+                    <Icon className="size-3.5" />
+                  </button>
+                )
+              })}
+            </div>
           </div>
           {filter && groups.length === 0 && (
             <div className="text-muted-foreground flex flex-col items-start gap-3 rounded-xl border border-dashed p-6 text-sm">
@@ -123,11 +146,19 @@ export function Dashboard() {
                   {isWorkMode ? g.label : `${GROUP_EMOJI[g.kind]}${g.label}`}
                   <span className="text-muted-foreground font-normal">{g.members.length}</span>
                 </h3>
-                <div className="grid grid-cols-[repeat(auto-fill,minmax(250px,1fr))] gap-3">
-                  {[...g.members].sort(byUrgency).map((s) => (
-                    <StaffCard key={s.id} staff={s} isLead={g.leadId === s.id} isSelected={s.id === selectedId} onSelect={select} />
-                  ))}
-                </div>
+                {staffView === 'list' ? (
+                  <div className="bg-card flex flex-col divide-y overflow-hidden rounded-xl border">
+                    {[...g.members].sort(byUrgency).map((s) => (
+                      <StaffRow key={s.id} staff={s} isLead={g.leadId === s.id} isSelected={s.id === selectedId} onSelect={select} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-[repeat(auto-fill,minmax(250px,1fr))] gap-3">
+                    {[...g.members].sort(byUrgency).map((s) => (
+                      <StaffCard key={s.id} staff={s} isLead={g.leadId === s.id} isSelected={s.id === selectedId} onSelect={select} />
+                    ))}
+                  </div>
+                )}
               </section>
             )
           })}

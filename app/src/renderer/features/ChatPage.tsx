@@ -1,5 +1,5 @@
 import { memo, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
-import { FlaskConicalIcon, MegaphoneIcon, SendIcon, UsersIcon } from 'lucide-react'
+import { CheckIcon, FlaskConicalIcon, MegaphoneIcon, SendIcon, UsersIcon } from 'lucide-react'
 import { useShallow } from 'zustand/react/shallow'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -9,16 +9,26 @@ import { handleComposerKey, NEWLINE_HINT } from '@/lib/composerKeys'
 import { commandDescription, commandItem, manualItem, SlashMenu, usePersonalManuals, useSlashKeys, useStaffCommands } from '@/components/slash-menu'
 import { matchCommands, runsOnEnter } from '@shared/slashCommands'
 import { useOffice } from '@/store'
-import type { ChatMessage, Staff } from '@shared/types'
+import type { Approval, ChatApproval, ChatApprovalResult, ChatMessage, Staff } from '@shared/types'
+import { chatApprovalView } from '@shared/chatApproval'
 import { ALL_MENTION, mentionTargets, mentionToken, OFFICE_SENDER, parseMentions, type MentionKind, type MentionTarget } from '@shared/mention'
 import { fmtDate, t, type TKey } from '@shared/i18n'
 import { Avatar } from './StaffCard'
 import { Markdown } from '@/components/markdown'
+import { QuestionBox } from './QuestionBox'
 
 const MENTION_MAX = 6
 const KIND_ORDER: MentionKind[] = ['all', 'team', 'lab', 'staff']
 /** 자동완성 묶음 제목 */
 const KIND_LABEL: Record<MentionKind, TKey> = { all: 'chat.kind.all', team: 'chat.kind.team', lab: 'chat.kind.lab', staff: 'chat.kind.staff' }
+/** 처리된 결재·질문 말풍선에 붙는 결과 */
+const RESULT_LABEL: Record<ChatApprovalResult, TKey> = {
+  approved: 'chat.approval.approved',
+  rejected: 'chat.approval.rejected',
+  answered: 'chat.approval.answered',
+  skipped: 'chat.approval.skipped',
+  canceled: 'chat.approval.canceled',
+}
 
 /** 사무실 단체방: 직원 보고·결재 요청·위임이 채팅으로 흐르고, @직원·@팀·@랩·@전체 로 바로 지시한다 */
 export function ChatPage() {
@@ -39,6 +49,8 @@ function MessageList() {
   const chat = useOffice((s) => s.chat)
   const staff = useOffice((s) => s.staff)
   const select = useOffice((s) => s.select)
+  // 아직 기다리는 결재·질문 — 말풍선에서 바로 처리한다
+  const pendingById = useMemo(() => new Map(staff.flatMap((s) => s.approvals.map((a) => [a.id, a]))), [staff])
   const endRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -50,7 +62,18 @@ function MessageList() {
       <div className="mx-auto flex max-w-3xl flex-col gap-3">
         {chat.map((m) => {
           const sender = staff.find((s) => s.id === m.from)
-          return <Bubble key={m.id} message={m} senderId={sender?.id} senderName={sender?.name ?? t('common.formerStaff')} senderAvatar={sender?.avatar ?? 0} senderTeamId={sender?.teamId ?? null} onSelect={select} />
+          return (
+            <Bubble
+              key={m.id}
+              message={m}
+              senderId={sender?.id}
+              senderName={sender?.name ?? t('common.formerStaff')}
+              senderAvatar={sender?.avatar ?? 0}
+              senderTeamId={sender?.teamId ?? null}
+              pendingApproval={m.approval && pendingById.get(m.approval.id)}
+              onSelect={select}
+            />
+          )
         })}
         <div ref={endRef} />
       </div>
@@ -65,6 +88,7 @@ const Bubble = memo(function Bubble({
   senderName,
   senderAvatar,
   senderTeamId,
+  pendingApproval,
   onSelect,
 }: {
   message: ChatMessage
@@ -72,6 +96,7 @@ const Bubble = memo(function Bubble({
   senderName: string
   senderAvatar: number
   senderTeamId: string | null
+  pendingApproval: Approval | undefined
   onSelect: (id: string) => void
 }) {
   const isMe = m.from === 'me'
@@ -97,12 +122,37 @@ const Bubble = memo(function Bubble({
               <AttachmentView attachments={m.attachments} />
             </div>
           ) : null}
+          {m.approval && <ApprovalActions link={m.approval} pending={pendingApproval} />}
         </div>
         <span className="text-muted-foreground text-[10px]">{fmtDate(m.ts, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
       </div>
     </div>
   )
 })
+
+/** 결재 요청·질문 말풍선 아래: 기다리는 중이면 결재함과 같은 버튼, 처리됐으면 결과 */
+function ApprovalActions({ link, pending }: { link: ChatApproval; pending: Approval | undefined }) {
+  const view = chatApprovalView(link, pending)
+  if (view.kind === 'done')
+    return <p className="text-muted-foreground mt-2 border-t pt-2 text-xs break-words">{view.result ? t(RESULT_LABEL[view.result], { answer: view.answer ?? '' }) : t('chat.approval.done')}</p>
+  const a = view.approval
+  if (a.questions)
+    return (
+      <div className="mt-2 border-t pt-2">
+        <QuestionBox approval={a} />
+      </div>
+    )
+  return (
+    <div className="mt-2 flex gap-2 border-t pt-2">
+      <Button size="sm" onClick={() => void window.office.decide(a.id, true)}>
+        <CheckIcon /> {t('inbox.approve')}
+      </Button>
+      <Button size="sm" variant="outline" onClick={() => void window.office.decide(a.id, false)}>
+        {t('inbox.reject')}
+      </Button>
+    </div>
+  )
+}
 
 function Composer() {
   const [draft, setDraft] = useState('')

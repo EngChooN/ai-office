@@ -43,16 +43,22 @@ export default {
     zh: '尚未指定工作文件夹。请前往指示中提到的项目文件夹（没有则使用实验室的项目文件夹）工作；如果不清楚是哪个项目，请先询问。',
   },
   'staff.ctx.leaderGuide': {
-    ko: '리더로서 큰 일을 받으면 직접 기획한 뒤 하위 업무로 나눠 mcp__office__propose_plan으로 대표 확인을 받고(승인되면 앱이 배정·취합), 작은 단발성 일은 mcp__office__delegate로 바로 맡기세요. 사람 목록은 mcp__office__team으로 확인하세요. 남은 일을 "하겠다/맡기겠다"고 미루지 말고 이번 턴에 delegate·add_task로 실제로 맡기세요. 대표 결정이 필요해 멈추는 경우에만 보고 끝에 그 질문을 적으세요.',
-    en: 'As a leader, when you receive a large task, plan it yourself, split it into subtasks and get the owner’s approval with mcp__office__propose_plan (once approved, the app assigns and collects them). Hand small one-off jobs straight to someone with mcp__office__delegate. Check the people list with mcp__office__team. Do not defer remaining work by saying you will do or hand it off later — actually hand it off this turn with delegate or add_task. Only when you must stop for the owner’s decision, end your report with that question.',
-    ja: 'リーダーとして大きな仕事を受けたら、自分で企画してサブタスクに分け、mcp__office__propose_plan で代表の確認を受けてください（承認されるとアプリが割り当て・取りまとめを行います）。小さな単発の仕事は mcp__office__delegate で直接任せてください。メンバー一覧は mcp__office__team で確認できます。残りの仕事を「やります・任せます」と先送りせず、このターンのうちに delegate・add_task で実際に任せてください。代表の判断が必要で止まる場合のみ、報告の最後にその質問を書いてください。',
-    zh: '作为负责人，收到大任务时请先自己做规划并拆分为子任务，通过 mcp__office__propose_plan 请代表确认（批准后由应用分配并汇总）；零散的小任务可直接用 mcp__office__delegate 交办。成员列表请用 mcp__office__team 查看。不要把剩余工作说成“之后会做/会交办”而拖延，请在本轮就用 delegate 或 add_task 实际交办。只有需要等代表决定而停下时，才在汇报末尾写出该问题。',
+    ko: '리더로서 큰 일을 받으면 직접 기획한 뒤 하위 업무로 나눠 mcp__office__propose_plan으로 대표 확인을 받고(승인되면 앱이 배정·취합), 작은 단발성 일은 mcp__office__delegate로 바로 맡기세요. 사람 목록은 mcp__office__team으로 확인하세요. 남은 일을 "하겠다/맡기겠다"고 미루지 말고 이번 턴에 delegate·add_task로 실제로 맡기세요. 대표 결정이 필요해 멈추는 경우에만 AskUserQuestion으로 물으세요. 오래 걸리는 명령도 백그라운드로 돌려 놓고 턴을 끝내지 말고, 결과가 나올 때까지 이번 턴 안에서 기다려 끝내세요. 턴이 끝나면 앱이 다시 깨워 주지 않습니다.',
+    en: 'As a leader, when you receive a large task, plan it yourself, split it into subtasks and get the owner’s approval with mcp__office__propose_plan (once approved, the app assigns and collects them). Hand small one-off jobs straight to someone with mcp__office__delegate. Check the people list with mcp__office__team. Do not defer remaining work by saying you will do or hand it off later — actually hand it off this turn with delegate or add_task. Only when you must stop for the owner’s decision, ask with AskUserQuestion. Do not leave a long-running command in the background and end your turn — wait for its result within this turn and finish. Once your turn ends, the app will not wake you up again.',
+    ja: 'リーダーとして大きな仕事を受けたら、自分で企画してサブタスクに分け、mcp__office__propose_plan で代表の確認を受けてください（承認されるとアプリが割り当て・取りまとめを行います）。小さな単発の仕事は mcp__office__delegate で直接任せてください。メンバー一覧は mcp__office__team で確認できます。残りの仕事を「やります・任せます」と先送りせず、このターンのうちに delegate・add_task で実際に任せてください。代表の判断が必要で止まる場合のみ、AskUserQuestion で質問してください。時間のかかるコマンドもバックグラウンドに回したままターンを終えず、結果が出るまでこのターン内で待って仕上げてください。ターンが終わるとアプリは再び起こしてくれません。',
+    zh: '作为负责人，收到大任务时请先自己做规划并拆分为子任务，通过 mcp__office__propose_plan 请代表确认（批准后由应用分配并汇总）；零散的小任务可直接用 mcp__office__delegate 交办。成员列表请用 mcp__office__team 查看。不要把剩余工作说成“之后会做/会交办”而拖延，请在本轮就用 delegate 或 add_task 实际交办。只有需要等代表决定而停下时，才用 AskUserQuestion 提问。即使是耗时较长的命令，也不要放到后台后就结束本轮，请在本轮内等到结果出来再完成。本轮结束后，应用不会再唤醒你。',
   },
   'staff.ctx.memberGuide': {
-    ko: '리더가 맡긴 일은 끝나면 결과를 간결하게 보고하세요.',
-    en: 'When you finish a job the leader gave you, report the result concisely.',
-    ja: 'リーダーから任された仕事が終わったら、結果を簡潔に報告してください。',
-    zh: '完成负责人交办的工作后，请简明扼要地汇报结果。',
+    ko: '리더가 맡긴 일은 끝나면 결과를 간결하게 보고하세요. 오래 걸리는 명령도 백그라운드로 돌려 놓고 턴을 끝내지 말고, 결과가 나올 때까지 이번 턴 안에서 기다려 끝내세요. 턴이 끝나면 앱이 다시 깨워 주지 않습니다.',
+    en: 'When you finish a job the leader gave you, report the result concisely. Do not leave a long-running command in the background and end your turn — wait for its result within this turn and finish. Once your turn ends, the app will not wake you up again.',
+    ja: 'リーダーから任された仕事が終わったら、結果を簡潔に報告してください。時間のかかるコマンドもバックグラウンドに回したままターンを終えず、結果が出るまでこのターン内で待って仕上げてください。ターンが終わるとアプリは再び起こしてくれません。',
+    zh: '完成负责人交办的工作后，请简明扼要地汇报结果。即使是耗时较长的命令，也不要放到后台后就结束本轮，请在本轮内等到结果出来再完成。本轮结束后，应用不会再唤醒你。',
+  },
+  'staff.ctx.askGuide': {
+    ko: '사용자에게 묻거나 결정·확인을 받아야 하면 답변 글에 질문을 적지 말고 AskUserQuestion 도구로 물으세요(가능하면 선택지 2~4개, 추천안은 첫 번째). 그래야 결재함에 질문으로 올라갑니다.',
+    en: 'When you need to ask the user something or get a decision or confirmation, do not write the question in your reply — ask with the AskUserQuestion tool (2–4 options when possible, recommended one first). That way it shows up as a question in Approvals.',
+    ja: 'ユーザーに質問したり判断・確認をもらう必要があるときは、返答の文章に質問を書かず AskUserQuestion ツールで質問してください（できれば選択肢 2〜4 個、おすすめを最初に）。そうすると決裁箱に質問として表示されます。',
+    zh: '需要向用户提问或请其决定、确认时，不要把问题写在回复正文里，请用 AskUserQuestion 工具提问（尽量给出 2–4 个选项，推荐项放在第一个）。这样问题才会出现在审批箱中。',
   },
   'staff.refdocs.intro': {
     ko: '작업 전에 아래 참고 문서를 먼저 읽고(Read) 그 방식을 따르세요. 이 문서들은 결재 없이 읽을 수 있습니다.',
@@ -103,6 +109,12 @@ export default {
     en: '[Auto check] Your report mentions remaining work, but nothing is currently handed off. Hand it off now with delegate or add_task. If you are waiting for the owner’s decision, do nothing and reply in a single line.',
     ja: '[自動チェック] 報告に残りの仕事がありますが、いま任されている仕事がありません。今すぐ delegate か add_task で任せてください。代表の判断を待っている場合は何もせず、一行だけで返答してください。',
     zh: '[自动检查] 汇报中还有剩余工作，但目前没有已交办的任务。请现在用 delegate 或 add_task 交办。如果正在等待代表决定，请不要做任何操作，只用一句话回复。',
+  },
+  'staff.msg.backgroundNudge': {
+    ko: '[자동 점검] 끝나지 않은 백그라운드 작업이 있습니다. 끝날 때까지 기다려 마무리하세요. (남은 작업: {tasks})',
+    en: '[Auto check] There are background tasks that have not finished. Wait until they finish and wrap up. (Remaining: {tasks})',
+    ja: '[自動チェック] 終わっていないバックグラウンド作業があります。終わるまで待って仕上げてください。（残りの作業: {tasks}）',
+    zh: '[自动检查] 还有未完成的后台任务。请等待其完成后再收尾。（剩余任务：{tasks}）',
   },
   'staff.msg.delegated': { ko: '[{lead}의 지시] {instruction}', en: '[Instruction from {lead}] {instruction}', ja: '[{lead}からの指示] {instruction}', zh: '[{lead} 的指示] {instruction}' },
   'staff.msg.parent': {

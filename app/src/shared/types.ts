@@ -399,6 +399,18 @@ export interface ChatMessage {
   from: string
   text: string
   attachments?: Attachment[]
+  /** 결재 요청·직원 질문 메시지면 그 결재 — 단체방에서 바로 처리하고 결과를 보여 준다 */
+  approval?: ChatApproval
+}
+
+/** approved·rejected: 결재 승인·반려 / answered: 질문에 답함 / skipped: 질문 넘김 / canceled: 세션 쪽에서 사라짐 */
+export type ChatApprovalResult = 'approved' | 'rejected' | 'answered' | 'skipped' | 'canceled'
+
+export interface ChatApproval {
+  id: string
+  result?: ChatApprovalResult
+  /** 질문에 단 답 (answered일 때) */
+  answer?: string
 }
 
 export type ThemeId = 'wood' | 'mint' | 'night' | 'pastel'

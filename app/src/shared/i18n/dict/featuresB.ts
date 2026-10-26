@@ -882,4 +882,7 @@ export default {
     ja: '受け取る {count} 人全員が使えるコマンドだけを表示しています',
     zh: '仅显示全部 {count} 位接收者都能使用的命令',
   },
+  // dashboard 직원 영역 보기 전환
+  'dashboard.view.cards': { ko: '카드로 보기', en: 'Card view', ja: 'カード表示', zh: '卡片视图' },
+  'dashboard.view.list': { ko: '목록으로 보기', en: 'List view', ja: 'リスト表示', zh: '列表视图' },
 } satisfies Record<string, Entry>

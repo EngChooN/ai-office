@@ -179,6 +179,8 @@ function registerIpc() {
     win?.webContents.send('office:onChat', m)
     remote?.publish('chat', m)
   })
+  // 결재 결과로 바뀐 단체방 메시지는 PC 화면만 갈아 끼운다 (같은 채널 — store가 id로 바꿔 넣는다)
+  office.on('chatUpdate', (m) => win?.webContents.send('office:onChat', m))
   office.on('notify', ({ title, body, staffId }) => {
     const n = new Notification({ title, body })
     n.on('click', () => {

@@ -7,6 +7,20 @@ Writing rules
 - Write from the user's point of view, describing "what you can now do." Do not use technical names (file paths, program or library names, English abbreviations). If one is truly needed, put it once in parentheses after a plain-language explanation.
 - Development details (how it was built, where files are) go in `SPEC.md` and `docs/changelog-dev.md`.
 
+## [0.12.2] - 2026-10-26
+
+### New features
+- **Approve or reply right from the group chat.** When an approval request or a staff question comes into a group chat, you can approve, reject, or answer it right there. Handled items show their result, such as "Approved", "Rejected", or "Answered".
+
+### Improvements
+- **View staff as cards or as a list.** In the staff area of the dashboard you can switch the view, and your choice stays the same the next time you open it.
+- **Staff now post questions to the approval inbox.** Instead of a long message, they post a short question there, so you can pick an answer right away.
+- **New versions are checked more often.** The app checks every hour, and also right when you come back to the window and when the Mac wakes from sleep.
+
+### Bug fixes
+- **Fixed the lead and team members stopping while leaving background work unfinished.**
+- **Fixed "What's New" in the sidebar wrapping onto two lines or getting cut off.**
+
 ## [0.12.1] - 2026-10-26
 
 ### New features

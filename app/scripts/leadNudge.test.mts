@@ -1,7 +1,7 @@
 // 리드 멈춤 방지 자동 점검 판단 단위 테스트 — pnpm test
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { hasPromise, shouldNudgeLead, type LeadTurnState } from '../src/shared/leadNudge.ts'
+import { hasPromise, shouldNudgeBackground, shouldNudgeLead, type LeadTurnState } from '../src/shared/leadNudge.ts'
 
 const base: LeadTurnState = { isLeader: true, isAutoCheckTurn: false, isBusy: false, hasOpenDelegation: false, hasWaitingPlan: false, summary: '빌드는 김버전이 확인할 거예요.' }
 
@@ -34,4 +34,11 @@ test('자동 점검으로 시작된 턴 뒤에는 다시 점검하지 않는다'
 test('리드가 아니거나 약속 표현이 없으면 점검하지 않는다', () => {
   assert.equal(shouldNudgeLead({ ...base, isLeader: false }), false)
   assert.equal(shouldNudgeLead({ ...base, summary: '모두 끝냈습니다.' }), false)
+})
+
+test('턴이 끝날 때 백그라운드 작업이 남아 있으면 한 번 다시 지시한다', () => {
+  assert.equal(shouldNudgeBackground({ isAutoCheckTurn: false, isBusy: false, backgroundTasks: ['npm run build'] }), true)
+  assert.equal(shouldNudgeBackground({ isAutoCheckTurn: false, isBusy: false, backgroundTasks: [] }), false)
+  assert.equal(shouldNudgeBackground({ isAutoCheckTurn: false, isBusy: true, backgroundTasks: ['npm run build'] }), false)
+  assert.equal(shouldNudgeBackground({ isAutoCheckTurn: true, isBusy: false, backgroundTasks: ['npm run build'] }), false)
 })

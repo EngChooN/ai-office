@@ -1,7 +1,7 @@
 // 업데이트 알림: 버전 비교·알림 여부·설치 파일 고르기·Release 응답 해석 단위 테스트 — pnpm test
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { ASSET_NAMES, assetTargetFor, compareVersions, isNewerVersion, parseRelease, parseVersion, pickDownloadUrl, pickLanguageSection, shouldNotify, summarizeNotes } from '../src/shared/updateCheck.ts'
+import { ASSET_NAMES, assetTargetFor, compareVersions, isNewerVersion, parseRelease, parseVersion, pickDownloadUrl, pickLanguageSection, shouldNotify, shouldRecheck, summarizeNotes, UPDATE_CHECK_INTERVAL_MS, UPDATE_RECHECK_GAP_MS } from '../src/shared/updateCheck.ts'
 
 const sign = (n: number | null) => (n === null ? null : Math.sign(n))
 
@@ -109,4 +109,14 @@ test('pickLanguageSection: 없으면 English → 한국어, 언어 머리말이 
   const old = '## 새 기능\n- 옛 본문'
   assert.equal(pickLanguageSection(old, 'en'), old, '언어 머리말이 없는 옛 본문은 그대로')
   assert.equal(summarizeNotes(old, 'en'), '새 기능\n• 옛 본문')
+})
+
+test('shouldRecheck: 포커스·깨어남 때는 마지막 확인 뒤 30분이 지났을 때만 다시 확인', () => {
+  const now = 1_000_000_000
+  assert.equal(shouldRecheck(null, now), true)
+  assert.equal(shouldRecheck(now - 10 * 60 * 1000, now), false)
+  assert.equal(shouldRecheck(now - UPDATE_RECHECK_GAP_MS + 1, now), false)
+  assert.equal(shouldRecheck(now - UPDATE_RECHECK_GAP_MS, now), true)
+  assert.equal(shouldRecheck(now - 5 * 60 * 60 * 1000, now), true) // 잠자기로 오래 밀린 경우
+  assert.equal(UPDATE_CHECK_INTERVAL_MS, 60 * 60 * 1000)
 })

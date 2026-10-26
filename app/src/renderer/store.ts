@@ -109,7 +109,8 @@ export const useOffice = create<OfficeState>((set) => ({
   isQuickSecretaryOpen: false,
   setQuickSecretaryOpen: (isQuickSecretaryOpen) => set({ isQuickSecretaryOpen }),
   pushLog: (entry) => set((s) => ({ liveLogs: [...s.liveLogs.slice(-LIVE_LOG_MAX + 1), entry] })),
-  pushChat: (m) => set((s) => ({ chat: [...s.chat.slice(-CHAT_MAX + 1), m] })),
+  // 같은 id면 결재 결과로 바뀐 메시지 → 제자리에서 바꾼다
+  pushChat: (m) => set((s) => (s.chat.some((x) => x.id === m.id) ? { chat: s.chat.map((x) => (x.id === m.id ? m : x)) } : { chat: [...s.chat.slice(-CHAT_MAX + 1), m] })),
 }))
 
 /** main 프로세스 이벤트를 store에 연결한다 (앱 시작 시 1회) */
