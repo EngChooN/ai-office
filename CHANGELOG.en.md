@@ -7,6 +7,18 @@ Writing rules
 - Write from the user's point of view, describing "what you can now do." Do not use technical names (file paths, program or library names, English abbreviations). If one is truly needed, put it once in parentheses after a plain-language explanation.
 - Development details (how it was built, where files are) go in `SPEC.md` and `docs/changelog-dev.md`.
 
+## [0.12.1] - 2026-10-26
+
+### New features
+- **Split the office with partitions and walls.** In the shop you can buy two low partitions for dividing desks, a fabric one and a glass one, and two walls for dividing a space, a white wall and a wood wall. Turn them to place them in the direction you want. Staff can't walk through partitions or walls, so they go around them. Staff standing behind a tall wall look faded.
+- **Office props move and react.** Props such as the aquarium, coffee machine, printer, and arcade move or light up and off to match the moment. Some props react when staff use them, and some move as people walk past. During events, props such as the Christmas tree and fountain take on a special look.
+
+### Improvements
+- **The phone app reconnects faster and more reliably.** When you come back to the app, or switch Wi-Fi or mobile data, it reconnects right away. A brief drop isn't shown on screen right away; "Connection lost" appears only if it still hasn't reconnected.
+
+### Bug fixes
+- **Fixed the lead stalling after saying "I'll hand it off" without actually assigning the work.** Now the app notices this and tells the lead again to split the work and assign it. If assigned work is already in progress or a plan is waiting for approval, nothing changes.
+
 ## [0.12.0] - 2026-10-26
 
 ### New features
