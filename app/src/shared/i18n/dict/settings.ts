@@ -17,6 +17,13 @@ export default {
     ja: 'スタッフを動かすAIアカウントです。どちらか1つがつながっていればオフィスを使えます。',
     zh: '驱动员工的 AI 账号。只要连接其中一个即可使用办公室。',
   },
+  'provider.internalAi.title': { ko: '앱 내부 AI (비서·요약 등)', en: 'In-app AI (secretary, summaries…)', ja: 'アプリ内AI（秘書・要約など）', zh: '应用内 AI（秘书、摘要等）' },
+  'provider.internalAi.hint': {
+    ko: '고른 쪽이 실패하면 준비된 다른 쪽으로 한 번 더 시도해요.',
+    en: 'If the chosen one fails, the app tries the other ready one once more.',
+    ja: '選んだ方が失敗したら、準備済みのもう一方でもう一度試します。',
+    zh: '所选的一方失败时，会改用另一个已就绪的提供方再试一次。',
+  },
   'provider.beta': { ko: '베타', en: 'Beta', ja: 'ベータ', zh: '测试版' },
   'provider.state.checking': { ko: '확인 중', en: 'Checking', ja: '確認中', zh: '检查中' },
   'provider.state.missing': { ko: '설치 안 됨', en: 'Not installed', ja: '未インストール', zh: '未安装' },

@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 import type { AiProvider, ProvidersStatus, ProviderStatus } from '@shared/types'
 import { t, type TKey } from '@shared/i18n'
 import { isProviderStale } from '@/lib/providerRecheck'
+import { useOffice } from '@/store'
 
 // 공급자(Claude·Codex) 설치·로그인 상태 카드 — 설정 화면과 첫 실행 온보딩 게이트가 함께 쓴다
 
@@ -146,6 +147,35 @@ export function RecheckButton({ isChecking, onCheck }: { isChecking: boolean; on
   )
 }
 
+/** 앱 내부 AI(비서·요약 등) 공급자 고르기 — 준비 안 된 쪽은 못 누른다 ('auto'는 Claude로 보인다. main도 Claude 우선) */
+function InternalAiPicker({ status }: { status: ProvidersStatus | null }) {
+  const internalAi = useOffice((s) => s.settings.internalAi)
+  const selected: AiProvider = internalAi === 'codex' ? 'codex' : 'claude'
+  // main(aiSelect)과 같은 기준: Claude는 '확인 못 함'도 쓸 수 있는 것으로 본다
+  const isUsable = (p: AiProvider) => (status ? status[p].state === 'ready' || (p === 'claude' && status[p].state === 'unknown') : p === 'claude')
+  return (
+    <div className="flex flex-col gap-1.5 border-t pt-3">
+      <span className="text-sm font-medium">{t('provider.internalAi.title')}</span>
+      <div className="flex gap-2" role="radiogroup" aria-label={t('provider.internalAi.title')}>
+        {PROVIDERS.map((p) => (
+          <Button
+            key={p}
+            size="sm"
+            role="radio"
+            aria-checked={selected === p}
+            variant={selected === p ? 'default' : 'outline'}
+            disabled={selected !== p && !isUsable(p)}
+            onClick={() => void window.office.updateSettings({ internalAi: p })}
+          >
+            {PROVIDER_NAME[p]}
+          </Button>
+        ))}
+      </div>
+      <span className="text-muted-foreground text-xs">{t('provider.internalAi.hint')}</span>
+    </div>
+  )
+}
+
 /** 설정 화면: AI 공급자 카드 두 장 + 다시 확인 (로그인 창을 연 뒤엔 준비될 때까지 조용히 다시 본다) */
 export function ProviderSection() {
   const { status, isChecking, check } = useProviders()
@@ -160,6 +190,7 @@ export function ProviderSection() {
     <>
       <ProviderCards status={status} isChecking={isChecking} onRecheck={() => void check()} />
       <RecheckButton isChecking={isChecking} onCheck={() => void check()} />
+      <InternalAiPicker status={status} />
     </>
   )
 }
