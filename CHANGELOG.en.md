@@ -12,6 +12,7 @@ Writing rules
 ### New features
 - You can give staff a 'computer control' equipment. Equipped staff can look at your screen and work with the mouse and keyboard. Viewing the screen needs no approval; mouse and keyboard actions need approval in the approval inbox.
 - **You can place a desk from the shop at a staff member's seat, or remove it.**
+- **You can rotate a staff desk set (desk + chair) with the R key or right-click while decorating.**
 - **You can buy 20 new furniture and decor items at levels 11 to 20.** Two unlock at each level, and the number of floors does not change. From level 15, each level has one legendary item.
 
 ### Improvements
