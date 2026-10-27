@@ -3,8 +3,10 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { promisify } from 'node:util'
-import type { ClaudeStatus } from '../shared/types'
+import type { ClaudeStatus, ProvidersStatus } from '../shared/types'
 import { claudeBinaryPath } from './ai/claude'
+import { codexBinaryPath } from './ai/codex'
+import { classifyClaude, probeCodex } from './ai/providerStatus'
 import { IS_WINDOWS, toolEnv, WHICH } from './platform'
 
 // 첫 실행 점검: 로그인 상태 확인과 로그인 창 띄우기
@@ -26,6 +28,22 @@ export async function claudeStatus(): Promise<ClaudeStatus> {
   } catch {
     return { isLoggedIn: false, email: '', authMethod: '', hasTerminalClaude }
   }
+}
+
+/** 공급자(Claude·Codex)별 설치·로그인 상태 — 설정 화면 카드·온보딩 게이트용 */
+export async function providerStatus(): Promise<ProvidersStatus> {
+  const bin = claudeBinaryPath()
+  const claude = (async () => {
+    if (!fs.existsSync(bin)) return classifyClaude(false, null)
+    try {
+      const { stdout } = await run(bin, ['auth', 'status'], { timeout: STATUS_TIMEOUT_MS })
+      return classifyClaude(true, JSON.parse(stdout))
+    } catch (e) {
+      return classifyClaude(true, null, e instanceof Error ? e.message : String(e))
+    }
+  })()
+  const [c, x] = await Promise.all([claude, probeCodex(codexBinaryPath())])
+  return { claude: c, codex: x }
 }
 
 async function whichClaude() {

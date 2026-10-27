@@ -103,6 +103,7 @@ export const V2_METHODS: Record<OfficeMethod, MethodSpec> = {
   deleteCustomMcp: P('open_on_pc', 's'),
   setEquipment: R('s o'),
   claudeStatus: R(),
+  providerStatus: R(),
   openClaudeLogin: P('open_on_pc'),
   forkExternal: R('s s a?', [2]),
   listManuals: R(),

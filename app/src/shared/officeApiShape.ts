@@ -70,6 +70,7 @@ export const OFFICE_METHODS = [
   'revertWork',
   'pushAndCreatePr',
   'claudeStatus',
+  'providerStatus',
   'openClaudeLogin',
   'resumeInTerminal',
   'forkExternal',

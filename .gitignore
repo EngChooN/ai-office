@@ -17,3 +17,6 @@ android/local.properties
 *.keystore
 *.jks
 *.apk
+
+# Codex app-server 번들 (scripts/fetch-codex.mts 가 받음)
+app/vendor/

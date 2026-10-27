@@ -13,7 +13,7 @@ import { askHookInstalled, hooksInstalled, setAskHookInstalled, setHooksInstalle
 import type { Office } from './office'
 import type { RemoteService } from './remote/service.ts'
 import type { Secretary } from './secretary'
-import { claudeStatus, openClaudeLogin } from './setup'
+import { claudeStatus, openClaudeLogin, providerStatus } from './setup'
 
 // OfficeApi 메서드 하나 = 처리 함수 하나. PC 화면(IPC)과 휴대폰(원격 v2 /v2/call)이 이 표를 함께 쓴다 — 같은 코드 경로
 // 키는 OfficeMethod와 정확히 같아야 한다 (빠지거나 남으면 tsc 오류)
@@ -129,6 +129,7 @@ export function createOfficeHandlers(office: Office, remoteApi: () => RemoteServ
     updateSettings: (patch: Parameters<Office['updateSettings']>[0]) => office.updateSettings(patch),
     createLab: (input: Parameters<Office['createLab']>[0]) => office.createLab(input),
     claudeStatus: () => claudeStatus(),
+    providerStatus: () => providerStatus(),
     listManuals: () => office.listManuals(),
     saveManual: (input: Parameters<Office['saveManual']>[0], prev?: string) => office.saveManual(input, prev),
     deleteManual: (file: string) => office.deleteManual(file),

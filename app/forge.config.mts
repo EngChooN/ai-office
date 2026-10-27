@@ -79,6 +79,13 @@ const config: ForgeConfig = {
     // 깨진 서명은 내려받은 사람 맥에서 "손상되었기 때문에 열 수 없습니다"로 막힌다.
     // 하위 실행 파일(claude-agent-sdk 바이너리 등)은 먼저 같은 인증서로 서명하고, 그다음 앱 전체를 --deep으로 묶는다.
     postPackage: async (_config, result) => {
+      // Codex app-server 패키지(scripts/fetch-codex.mts 로 받아 둔 것)를 설치본 Resources/codex 로 복사한다
+      const codexSrc = path.resolve(import.meta.dirname, 'vendor', 'codex', `${result.platform}-${result.arch}`)
+      for (const dir of result.outputPaths) {
+        const resources = result.platform === 'darwin' ? path.join(dir, fs.readdirSync(dir).find((f) => f.endsWith('.app')) ?? '', 'Contents', 'Resources') : path.join(dir, 'resources')
+        if (fs.existsSync(codexSrc)) fs.cpSync(codexSrc, path.join(resources, 'codex'), { recursive: true, verbatimSymlinks: true })
+        else console.warn(`[codex] ${codexSrc} 없음 — Codex 번들 없이 패키징합니다 (node scripts/fetch-codex.mts ${result.platform}-${result.arch})`)
+      }
       if (result.platform !== 'darwin') return
       const identity = macSignIdentity()
       console.log(`[sign] identity: ${identity === '-' ? 'ad-hoc (인증서 없음)' : identity}`)

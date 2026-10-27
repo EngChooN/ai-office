@@ -279,6 +279,28 @@ export interface ClaudeStatus {
   hasTerminalClaude: boolean
 }
 
+/** 공급자 준비 상태: 실행 파일이 없음 · 로그인 안 됨 · 쓸 수 있음 */
+export type ProviderState = 'missing' | 'loggedOut' | 'ready'
+
+/** 공급자(Claude·Codex) 한 곳의 설치·로그인 상태 */
+export interface ProviderStatus {
+  state: ProviderState
+  /** 로그인 계정(이메일, 없으면 빈 문자열) */
+  account: string
+  /** 로그인 방식: claude.ai · chatgpt · apiKey 등 */
+  authMethod: string
+  /** 플랜 종류: free · plus · pro · max 등 (모르면 빈 문자열) */
+  plan: string
+  /** 쓸 수 있는 모델 id (Codex는 model/list, Claude는 빈 배열) */
+  models: string[]
+  /** 기본으로 고를 모델 id */
+  defaultModel: string
+  /** 감지 실패 사유 (없으면 빈 문자열) */
+  error: string
+}
+
+export type ProvidersStatus = Record<AiProvider, ProviderStatus>
+
 export interface ChangeFile {
   path: string
   status: string
@@ -851,6 +873,7 @@ export interface OfficeApi {
   setEquipment(staffId: string, equipment: Equipment): Promise<void>
 
   claudeStatus(): Promise<ClaudeStatus>
+  providerStatus(): Promise<ProvidersStatus>
   openClaudeLogin(): Promise<void>
   /** 외부 직원의 대화를 복사한 분신에게 지시 (원래 창은 그대로) */
   forkExternal(staffId: string, text: string, attachments?: Attachment[]): Promise<Staff | null>

@@ -372,6 +372,10 @@ const impl: Record<string, (...args: never[]) => unknown> = {
   dailyReport: () => '## 오늘 한 일\n- 프로토콜 v2 규격',
   hooksStatus: () => ({ installed: false, isAskInstalled: false, port: 47823 }),
   claudeStatus: () => ({ isLoggedIn: true, email: 'me@example.com', authMethod: 'claude.ai', hasTerminalClaude: true }),
+  providerStatus: () => ({
+    claude: { state: 'ready', account: 'me@example.com', authMethod: 'claude.ai', plan: 'max', models: [], defaultModel: '', error: '' },
+    codex: { state: 'loggedOut', account: '', authMethod: '', plan: '', models: [], defaultModel: '', error: '' },
+  }),
   equipmentCatalog: () => ({ mcpServers: [], skills: [] }),
   refreshEquipment: () => ({ mcpServers: [], skills: [] }),
   customMcpList: () => [],
