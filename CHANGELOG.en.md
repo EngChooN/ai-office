@@ -7,21 +7,36 @@ Writing rules
 - Write from the user's point of view, describing "what you can now do." Do not use technical names (file paths, program or library names, English abbreviations). If one is truly needed, put it once in parentheses after a plain-language explanation.
 - Development details (how it was built, where files are) go in `SPEC.md` and `docs/changelog-dev.md`.
 
-## [0.13.2] - 2026-10-27
+## [0.14.0] - 2026-10-27
 
 ### New features
+- **The app is now called 'AI Office'.** Staff, records and settings are copied over automatically the first time you open it. The old folder is left as it is.
+- **You can hire GPT staff (beta).** When you hire, choose whether the staff member is a Claude or a GPT staff member.
+- **You can connect your Claude and GPT accounts separately in Settings.** You can start with just one connected.
+- **You can choose which AI the built-in helpers (secretary, summaries) use.**
+- **You can see GPT usage next to Claude usage.**
+- **GPT work running in a terminal now shows as "working".**
+- **The phone's QR scanner is easier to use.** You can pick a photo or paste an image instead of using the camera, and tap to focus and zoom.
 - You can give staff a 'computer control' equipment. Equipped staff can look at your screen and work with the mouse and keyboard. Viewing the screen needs no approval; mouse and keyboard actions need approval in the approval inbox.
 - **You can place a desk from the shop at a staff member's seat, or remove it.**
 - **You can rotate a staff desk set (desk + chair) with the R key or right-click while decorating.**
 - **You can buy 20 new furniture and decor items at levels 11 to 20.** Two unlock at each level, and the number of floors does not change. From level 15, each level has one legendary item.
 
 ### Improvements
+- **GPT costs are calculated with OpenAI's official prices.**
+- **The install files are larger because GPT staff support is included.**
 - **When you assign work to a staff member on another floor, they return to their own floor to work.**
 - **You can click desks while decorating.**
 - **Appearance changes show on screen right away.**
 - **You can select furniture that overlaps.**
 
 ### Bug fixes
+- **If the provider status check takes too long, it shows "unknown" and keeps the previous status.**
+- **Stopping a GPT staff member no longer leaves its waiting approvals behind.**
+- **Fixed GPT work in a terminal not showing as "working" right away.**
+- **Fixed old records and approval messages staying in the old language after you change the language.**
+- **The office screen now moves or pauses correctly to match the window, even after the screen is reloaded.**
+- **The next instruction no longer gets stuck when a staff setting arrives with a missing value.**
 - **A moved desk set stays where you moved it.**
 - **Demo Day runs to the end, and the finished state is kept after restarting the app.**
 

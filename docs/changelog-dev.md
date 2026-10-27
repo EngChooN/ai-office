@@ -2,18 +2,28 @@
 
 버전은 SemVer. 기능 크기 기준으로 올린다. 버전마다 **새 기능 / 개선 / 버그 수정**으로 나눠 적는다(앱의 "업데이트 소식"이 이 파일을 그대로 보여 준다).
 
-## [0.13.2] - 2026-10-27
+## [0.14.0] - 2026-10-27
 
 ### 새 기능
+- GPT(Codex) 직원 M1·M2: 공급자 추상화 `AgentRuntime`·`AiBackend`(`4c80e69`), 공급자 감지 `providerStatus` IPC·app-server 번들(`c3f73f6`), 설정 AI 공급자 카드·온보딩 연결 관문 4개 국어(`155c5d5`), `CodexRuntime`(app-server 직원 세션·결재 매핑·단가표·세션 기록, `8643868`), office·secretary 도구를 로컬 HTTP MCP 서버로 이전(`1de2e61`), 앱 내부 AI Codex 백엔드·internalAi 폴백·고용 창 공급자/모델 선택·Codex 로그인(`fec338c`, `4c8dba5`), 내부 AI 공급자 고르기 칸(`12bab1d`).
+- 개명 Claude Office → AI Office: 표시 이름·문서·데이터 폴더 자동 복사, 번들 ID·exe·applicationId 유지(`dafc7de`).
+- 촬영용 데모 실시간 상태: `CLAUDE_OFFICE_DEMO=1`일 때 `main/demoLive.ts`가 `demo-live.json`을 읽어 결재·직원 상태·사용률·외부 세션을 채운다. 시드는 `scripts/demo-seed.mts`(`7bf1008`).
+- 안드로이드 QR 스캐너: 카메라 대체 선택, 탭 초점·확대, 720p 분석, 갤러리·붙여넣기 대체 경로(`501f868`).
 - 컴퓨터 조작 장비(`office-computer` MCP): `app/src/main/computer.ts`(장비 등록·권한 설정), `app/src/shared/computerTools.ts`(도구 판정). 화면 보기는 결재 없이, 이동·클릭·입력·스크롤은 결재함으로 보내며 자동결재 규칙과 같은 기준을 쓴다.
 - 레벨 11~20 상점 가구·소품 20종: `app/src/shared/economy.ts` 가격·해금, `app/src/shared/iso/`와 `isoArt.ts` 그림. 설계는 `docs/specs/office-iso-levels.md`의 'Lv.11~20 상점 가구·소품' 절.
 - 다른 층 방문 상태: `app/src/renderer/map/iso/floorVisits.ts`(화면에서만 보관, 저장·동기화 없음). 일을 맡기면 직원이 자기 층으로 돌아온다.
 - 데모데이 발표장 걷기: `app/src/shared/iso/walkAlong.ts`(순수 함수, 장면과 테스트가 같이 씀). 남은 걸음을 0으로 만들어 항상 끝나게 했다.
 
 ### 개선
+- Codex 단가를 OpenAI 공식 값으로 교체, 캐시 쓰기 1.25배(`e1449fd`). 스킬은 `$이름`으로 넣고 캐시 쓰기 토큰 중복 합산을 고침(`e996dd6`).
+- 공급자 상태 확인 시간 초과는 '확인 못 함'으로 두고 직전 상태 유지(`ae91b8c`, `fbf7caa`). 소개 페이지 0.14.0 개편·사진 갱신(`c9e4bef`, `50b9590`, `226c5ef`, `4b615b5`).
 - 꾸미기 중 책상 클릭, 겹친 가구 선택, 생김새 즉시 반영을 장면(`IsoOfficeScene.ts`, `OfficeMap.tsx`)에서 처리.
 
 ### 버그 수정
+- 외부 Codex 세션 '일하는 중' 판정: 턴 시작 줄이 끝부분 밖이어도 인식(`8b2fff8`). Codex 중단 시 대기 결재 정리·turn/start 직후 중단 지연 처리(`c2f8075`).
+- 번역 표시: 로그에 `text_i18n` 열 추가(`db.ts`), 결재 요약·역할명 키 저장과 화면 언어 재번역(`254ed09`), 비서 확인 카드 문구 번역(`5de0f48`).
+- 사무실 진입: `window:isShown` IPC로 가려진 채 새로고침해도 절전 상태를 맞춤, `renderSignal.ts`(`402f382`).
+- 장비 저장 시 빠진 칸(`mcpServers`·`allowedTools`·`disallowedTools`·`skills`)을 지금 값으로 채움 — 다음 지시가 'filter' 오류로 멈추던 문제(`office.ts` 장비 저장 경로).
 - 책상 세트 이동 상태 유지, 데모데이 종료 상태가 재시작 뒤에도 유지되도록 수정(세부 위치는 커밋 diff 참고).
 - 맥 서명: 하위 실행 파일(`claude`)을 다시 서명할 때 원래 엔타이틀먼트와 hardened runtime을 보존(`app/forge.config.mts` `signNested`). 빠지면 JIT가 막힐 수 있었다.
 
