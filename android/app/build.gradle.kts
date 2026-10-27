@@ -24,7 +24,7 @@ android {
         applicationId = "com.claudeoffice.remote"
         minSdk = 26
         targetSdk = 34
-        versionCode = 19
+        versionCode = 20
         versionName = "0.13.1"
     }
 
@@ -70,6 +70,15 @@ android {
 }
 
 val syncWebAssets by tasks.registering(Sync::class) {
+    // 화면(dist-mobile)이 없거나 app/package.json 버전과 다르면 빌드를 멈춘다 (옛 화면이 APK에 들어가는 사고 방지)
+    doFirst {
+        val dist = rootProject.file("../app/dist-mobile")
+        val appVersion = Regex(""""version"\s*:\s*"([^"]+)"""").find(rootProject.file("../app/package.json").readText())?.groupValues?.get(1)
+        val bundled = dist.resolve("assets").listFiles { f -> f.extension == "js" }.orEmpty()
+        if (appVersion == null || bundled.none { it.readText().contains(appVersion) }) {
+            throw GradleException("app/dist-mobile 이 없거나 app/package.json 버전($appVersion)과 달라요. 먼저 실행하세요: (cd app && npm run build:mobile)")
+        }
+    }
     from(rootProject.file("../app/dist-mobile")) { exclude("**/*.map") }
     into(layout.buildDirectory.dir("generated/webassets/web"))
 }
