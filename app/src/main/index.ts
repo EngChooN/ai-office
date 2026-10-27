@@ -140,7 +140,7 @@ function createWindow(isHidden = false) {
     height: 860,
     minWidth: 1024,
     minHeight: 680,
-    title: 'Claude Office',
+    title: 'AI Office',
     show: !isHidden,
     // 맥은 신호등만 남기고, 윈도우는 오른쪽 위 창 버튼을 상단 바(h-11 = 44px) 위에 겹쳐 그린다 (색은 --background 근사값)
     ...(IS_WINDOWS ? { titleBarStyle: 'hidden', titleBarOverlay: { color: '#111318', symbolColor: '#e8ecf4', height: 44 } } : { titleBarStyle: 'hiddenInset' }),
@@ -209,7 +209,7 @@ if (IS_WINDOWS) app.setAppUserModelId('com.joonyoung.claude-office')
 app.whenReady().then(() => {
   // 개발 실행 때도 Dock에 앱 아이콘을 보여 준다 (설치본은 번들 아이콘을 쓴다)
   if (!app.isPackaged) app.dock?.setIcon(path.join(app.getAppPath(), 'build', 'icon.png'))
-  // 같은 데이터 폴더를 쓰는 다른 Claude Office(설치본·개발 앱)가 켜져 있으면 DB를 열기 전에 멈춘다
+  // 같은 데이터 폴더를 쓰는 다른 AI Office(설치본·개발 앱)가 켜져 있으면 DB를 열기 전에 멈춘다
   if (!acquireDataLock()) return quitForDataLock()
   openDb()
   serveAttachments()

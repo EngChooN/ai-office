@@ -62,7 +62,7 @@ const machOFiles = (dir: string): string[] => {
 
 const config: ForgeConfig = {
   packagerConfig: {
-    name: 'Claude Office',
+    name: 'AI Office',
     executableName: 'claude-office',
     appBundleId: 'com.joonyoung.claude-office',
     // 확장자는 OS마다 붙는다 (맥 icon.icns · 윈도우 icon.ico)
@@ -101,7 +101,7 @@ const config: ForgeConfig = {
     },
   },
   // 윈도우는 설치 없이 풀어서 실행하는 zip (설치형 Squirrel·서명은 확인 후 추가)
-  makers: [new MakerDMG({ name: 'Claude Office', format: 'ULFO', icon: 'build/icon.icns' }), new MakerZIP({}, ['darwin', 'win32'])],
+  makers: [new MakerDMG({ name: 'AI Office', format: 'ULFO', icon: 'build/icon.icns' }), new MakerZIP({}, ['darwin', 'win32'])],
   plugins: [
     new VitePlugin({
       build: [

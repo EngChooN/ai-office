@@ -30,7 +30,7 @@ data class QrPayload(
 
 sealed interface QrParse {
     data class Ok(val payload: QrPayload) : QrParse
-    /** JSON이 아니거나 필수 필드가 없거나 틀림 → "Claude Office QR이 아니에요" */
+    /** JSON이 아니거나 필수 필드가 없거나 틀림 → "AI Office QR이 아니에요" */
     data object NotOurs : QrParse
     /** QR의 v가 앱이 아는 값보다 큼 → 연결 시도 없이 "앱 업데이트" */
     data object NeedsAppUpdate : QrParse

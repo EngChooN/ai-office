@@ -1,14 +1,14 @@
 [English](README.md) · [한국어](README.ko.md) · [日本語](README.ja.md) · [中文](README.zh.md)
 
-# Claude Office
+# AI Office
 
-A personal PoC (Electron desktop app) that turns your Claude Code sessions into **staff** you can watch and direct together, like one office.
+A personal PoC (Electron desktop app) that turns AI sessions (currently Claude Code) into **staff** you can hire, direct and review together, like one office. (Formerly named Claude Office — existing data is copied automatically on first launch; the old folder is left untouched.)
 
 - Status: **0.13.2** (2026-10-27) — Office map (team zones, meeting rooms, lounge) · Team / team-lead delegation · Task board · Approval inbox · Group chat · Meetings · Scheduled tasks · Reports · Payslips · Decorating
 - Stack: Electron Forge + Vite · React 19 · Zustand · Tailwind 4 + shadcn/ui · Phaser 4 · SQLite (`node:sqlite`) · Claude Agent SDK
 
 ## Installation (0.13.2)
-- Open `app/out/make/dmg/arm64/Claude Office.dmg` and drag it into Applications
+- Open `app/out/make/dmg/arm64/AI Office.dmg` and drag it into Applications
 - Apple Silicon only · Not signed or notarized → if you see an "unidentified developer" warning the first time you open it, go to System Settings › Privacy & Security › "Open Anyway"
 - Requirement: Claude Code must be signed in on that Mac (staff work under that account, and usage is billed to it)
 - Rebuild: `cd app && pnpm make`
@@ -17,7 +17,7 @@ A personal PoC (Electron desktop app) that turns your Claude Code sessions into 
 - Build: `cd app && pnpm install && pnpm make:win` → `app/out/make/zip/win32/x64/*.zip` (unzip and run `claude-office.exe`, no installation needed)
   - You can build it on a Mac too. `supportedArchitectures` in `pnpm-workspace.yaml` also fetches the claude executable package for Windows x64 (after changing the setting, run `pnpm install` once)
 - Not signed → if the SmartScreen "Windows protected your PC" window appears on first launch, click "More info › Run anyway"
-- Data: `%APPDATA%\Claude Office\office.db`
+- Data: `%APPDATA%\AI Office\office.db`
 - Still Mac-only: external staff notifications and question handling (hooks), and screen capture. Reviewing task results (commit · PR) requires Git for Windows and GitHub CLI, and has not been verified in practice yet
 
 ## Phone remote (0.8.0 and later)
@@ -33,7 +33,7 @@ pnpm install
 pnpm start
 ```
 - Sign-in: no separate API key is needed; it uses the Claude Code sign-in on this Mac as is.
-- Data: `~/Library/Application Support/Claude Office/office.db`
+- Data: `~/Library/Application Support/AI Office/office.db`
 - One data folder can be used by only one app at a time (`office.lock`). If the installed app is running, the dev app shows "already running" and quits. To run the dev app or QA while the installed app is open, give it a different folder: `CLAUDE_OFFICE_USER_DATA=~/claude-office-dev pnpm start`
 
 ## Two kinds of staff

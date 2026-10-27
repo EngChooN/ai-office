@@ -1,14 +1,14 @@
 [English](README.md) · [한국어](README.ko.md) · [日本語](README.ja.md) · [中文](README.zh.md)
 
-# Claude Office
+# AI Office
 
-내 Claude Code 세션들을 **직원**으로 삼아 하나의 사무실처럼 보고·부리는 개인 PoC (Electron 데스크톱 앱).
+AI 세션들(현재는 Claude Code)을 **직원**으로 고용해 하나의 사무실처럼 보고·부리는 개인 PoC (Electron 데스크톱 앱). 예전 이름은 Claude Office이며, 첫 실행 때 기존 데이터를 자동으로 복사해 옵니다(옛 폴더는 그대로 둡니다).
 
 - 상태: **0.13.2** (2026-10-27) — 사무실 맵(팀 구역·회의실·휴게실) · 팀/팀장 위임 · 업무 보드 · 결재함 · 단체방 · 회의 · 예약 업무 · 보고서 · 급여 명세서 · 꾸미기
 - 스택: Electron Forge + Vite · React 19 · Zustand · Tailwind 4 + shadcn/ui · Phaser 4 · SQLite(`node:sqlite`) · Claude Agent SDK
 
 ## 설치 (0.13.2)
-- `app/out/make/dmg/arm64/Claude Office.dmg` 를 열어 Applications로 드래그
+- `app/out/make/dmg/arm64/AI Office.dmg` 를 열어 Applications로 드래그
 - Apple Silicon 전용 · 서명/공증 없음 → 처음 열 때 "확인되지 않은 개발자" 경고가 나오면 시스템 설정 › 개인정보 보호 및 보안 › "그래도 열기"
 - 필요 조건: 그 맥에서 Claude Code에 로그인되어 있을 것 (직원은 그 계정으로 일하고 비용도 그 계정에 청구)
 - 다시 빌드: `cd app && pnpm make`
@@ -17,7 +17,7 @@
 - 빌드: `cd app && pnpm install && pnpm make:win` → `app/out/make/zip/win32/x64/*.zip` (설치 없이 풀어서 `claude-office.exe` 실행)
   - 맥에서 만들어도 된다. `pnpm-workspace.yaml`의 `supportedArchitectures`로 윈도우 x64용 claude 실행 파일 패키지까지 받아 둔다(설정을 바꾼 뒤 `pnpm install` 한 번 필요)
 - 서명 없음 → 처음 열 때 SmartScreen "Windows의 PC 보호" 창이 뜨면 "추가 정보 › 실행"
-- 데이터: `%APPDATA%\Claude Office\office.db`
+- 데이터: `%APPDATA%\AI Office\office.db`
 - 아직 맥 전용: 외부 직원 알림·질문 받기(hooks), 화면 캡처. 작업 결과 검토(커밋·PR)는 Git for Windows·GitHub CLI가 있어야 하고 실제 확인 전
 
 ## 휴대폰 원격 (0.8.0~)
@@ -33,7 +33,7 @@ pnpm install
 pnpm start
 ```
 - 로그인: 별도 API 키 없이 이 맥의 Claude Code 로그인을 그대로 쓴다.
-- 데이터: `~/Library/Application Support/Claude Office/office.db`
+- 데이터: `~/Library/Application Support/AI Office/office.db`
 - 데이터 폴더 하나는 한 앱만 쓴다(`office.lock`). 설치본이 켜져 있으면 개발 앱은 "이미 켜져 있어요"를 띄우고 꺼진다. 설치본을 켠 채 개발 앱·QA를 띄우려면 다른 폴더를 준다: `CLAUDE_OFFICE_USER_DATA=~/claude-office-dev pnpm start`
 
 ## 직원 두 종류

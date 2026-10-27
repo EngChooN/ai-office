@@ -473,7 +473,7 @@ export default {
     'coachTour.chapter.company': { ko: '회사 운영', en: 'Running the company', ja: '会社の運営', zh: '公司运营' },
 
     // Onboarding.tsx
-    'onboarding.welcome.title': { ko: 'Claude Office에 오신 걸 환영해요', en: 'Welcome to Claude Office', ja: 'Claude Officeへようこそ', zh: '欢迎来到 Claude Office' },
+    'onboarding.welcome.title': { ko: 'AI Office에 오신 걸 환영해요', en: 'Welcome to AI Office', ja: 'AI Officeへようこそ', zh: '欢迎来到 AI Office' },
     'onboarding.welcome.introBefore': { ko: 'AI(Claude)를 ', en: 'Your own office where you ', ja: 'AI（Claude）を', zh: '这是你专属的办公室，在这里你可以把 AI（Claude）' },
     'onboarding.welcome.introBold': { ko: '직원처럼 고용', en: 'hire AI (Claude) like staff', ja: 'スタッフのように雇用', zh: '像员工一样雇用' },
     'onboarding.welcome.introAfter': { ko: '해서 일을 맡기는 나만의 사무실이에요.', en: ' and hand them work.', ja: 'して仕事を任せる、自分だけのオフィスです。', zh: '，并把工作交给它。' },

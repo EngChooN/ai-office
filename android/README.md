@@ -1,6 +1,6 @@
-# Claude Office 원격 (안드로이드 앱)
+# AI Office 원격 (안드로이드 앱)
 
-PC에서 도는 Claude Office를 밖에서 휴대폰으로 확인하고 조종하는 **원격 컴패니언** 앱입니다. 상태 보기 · 결재·질문·기획 확인 · 지시 보내기만 합니다. 직원 실행·파일 접근·설정 변경은 PC에서만 합니다.
+PC에서 도는 AI Office를 밖에서 휴대폰으로 확인하고 조종하는 **원격 컴패니언** 앱입니다. 상태 보기 · 결재·질문·기획 확인 · 지시 보내기만 합니다. 직원 실행·파일 접근·설정 변경은 PC에서만 합니다.
 
 | 항목 | 값 |
 |---|---|
@@ -14,7 +14,7 @@ PC에서 도는 Claude Office를 밖에서 휴대폰으로 확인하고 조종�
 릴리스 APK는 아래 키로 서명합니다. 설치 전에 받은 APK의 지문이 같은지 확인하세요(`apksigner verify --print-certs <APK>`).
 
 ```
-CN=Claude Office Remote, O=Claude Office
+CN=AI Office Remote, O=AI Office
 SHA-256: 0d0c4c7953462e5850b9d0c4a5281dbab25db806a062cfc5e602f52e10818f76
 ```
 - 이 지문은 공개해도 되는 값입니다(키 자체가 아닙니다).
@@ -45,7 +45,7 @@ unset CLAUDE_OFFICE_STORE_PASSWORD
 ## 설치
 1. APK를 폰으로 옮깁니다.
 2. "출처를 알 수 없는 앱 설치"를 이 파일을 연 앱에 한해 허용합니다.
-3. 설치 뒤 PC의 Claude Office 설정 › 휴대폰 연결에서 QR을 만들어 앱으로 스캔합니다.
+3. 설치 뒤 PC의 AI Office 설정 › 휴대폰 연결에서 QR을 만들어 앱으로 스캔합니다.
 
 ## 알아 둘 것
 - 원격은 PC에서 **기본으로 꺼져** 있습니다. 켜면 PC의 포트가 인터넷 쪽으로 열립니다.

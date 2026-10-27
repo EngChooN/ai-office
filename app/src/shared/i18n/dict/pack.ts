@@ -123,10 +123,10 @@ export default {
     zh: '文件结构不正确。',
   },
   'pack.err.format': {
-    ko: 'Claude Office 직원 파일이 아니에요.',
-    en: 'This is not a Claude Office staff file.',
-    ja: 'Claude Office の社員ファイルではありません。',
-    zh: '这不是 Claude Office 的员工文件。',
+    ko: 'AI Office 직원 파일이 아니에요.',
+    en: 'This is not a AI Office staff file.',
+    ja: 'AI Office の社員ファイルではありません。',
+    zh: '这不是 AI Office 的员工文件。',
   },
   'pack.err.version': {
     ko: '이 앱 버전에서 읽을 수 없는 파일 버전이에요.',

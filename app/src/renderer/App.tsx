@@ -107,7 +107,7 @@ function DesktopShell({ children }: { children?: React.ReactNode }) {
     <div className="flex h-full flex-col">
       {/* 상단 바를 창 드래그 영역으로 쓴다. 맥은 왼쪽 신호등 자리, 윈도우는 오른쪽 위 창 버튼(최소화·최대화·닫기) 자리를 비운다 */}
       <header className="flex h-11 shrink-0 items-center gap-3 border-b pr-3 pl-20 [-webkit-app-region:drag] win:pr-[144px] win:pl-3 android:pl-3">
-        <span className="font-semibold">Claude Office</span>
+        <span className="font-semibold">AI Office</span>
         {!isWorkMode && (
           <button
             type="button"

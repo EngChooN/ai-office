@@ -136,7 +136,7 @@ export function buildTrayMenu(snap: OfficeSnapshot, extra: TrayExtra, actions: T
   const count = attentionCount(snap)
   const working = snap.staff.filter((s) => s.status === 'working').length
   const items: MenuItemConstructorOptions[] = [
-    { label: 'Claude Office', enabled: false },
+    { label: 'AI Office', enabled: false },
     {
       label: t('tray.summary', { working, count, done: extra.today.done, cost: extra.today.costUsd.toFixed(2) }),
       enabled: false,

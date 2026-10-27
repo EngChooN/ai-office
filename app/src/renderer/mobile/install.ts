@@ -11,7 +11,7 @@ import { useMobileUi } from './ui'
 const port = window.OfficeBridge
 if (!port) {
   // 휴대폰 앱 밖(일반 브라우저)에서 열면 PC와 이어질 길이 없다
-  document.body.textContent = '이 화면은 Claude Office 휴대폰 앱 안에서만 열려요.'
+  document.body.textContent = '이 화면은 AI Office 휴대폰 앱 안에서만 열려요.'
   throw new Error('OfficeBridge가 없어요')
 }
 

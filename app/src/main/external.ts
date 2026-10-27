@@ -25,7 +25,7 @@ const ASK_WAIT_MS = 540_000
 const ASK_HOOK_TIMEOUT_S = 600
 /**
  * 고용 직원 세션(CLAUDE_OFFICE_HIRED=1)은 건너뛴다 — 사용자 설정을 읽는 고용 직원에게도 이 hook이 돌아서,
- * 다른 Claude Office(설치본·개발 앱)가 포트를 잡고 있으면 그 앱이 외부 직원 질문으로 붙잡아 최대 9분 멈췄다 (QA: 대신 답하기 6분)
+ * 다른 AI Office(설치본·개발 앱)가 포트를 잡고 있으면 그 앱이 외부 직원 질문으로 붙잡아 최대 9분 멈췄다 (QA: 대신 답하기 6분)
  */
 export const HIRED_ENV = 'CLAUDE_OFFICE_HIRED'
 export const ASK_COMMAND = `[ -n "$${HIRED_ENV}" ] || curl -s -m ${ASK_HOOK_TIMEOUT_S - 10} -X POST -H 'content-type: application/json' --data-binary @- http://${ASK_MARKER} 2>/dev/null || true`

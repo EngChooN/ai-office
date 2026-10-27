@@ -70,7 +70,7 @@ const ERROR_MESSAGE: Record<ErrorCode, string> = {
   protocol_unsupported: '버전이 맞지 않아요. 업데이트해 주세요',
   rate_limited: '요청이 너무 잦아요. 잠시 뒤에 다시 시도하세요',
   internal_error: 'PC에서 문제가 생겼어요',
-  office_unavailable: 'PC의 Claude Office가 준비 중이에요',
+  office_unavailable: 'PC의 AI Office가 준비 중이에요',
   review_on_pc: '내용이 길어 휴대폰에는 일부만 보였어요. PC에서 전체를 확인해 주세요',
 }
 

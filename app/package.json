@@ -1,9 +1,9 @@
 {
   "name": "claude-office",
-  "productName": "Claude Office",
+  "productName": "AI Office",
   "version": "0.13.2",
   "private": true,
-  "description": "내 Claude Code 세션을 사무실처럼 보는 앱",
+  "description": "AI 직원을 고용해 일을 맡기는 사무실 앱",
   "license": "MIT",
   "author": {
     "name": "joonyoungcho",
