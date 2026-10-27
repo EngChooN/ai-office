@@ -78,6 +78,9 @@ export interface I18nText {
 }
 export type I18nArg = string | number | I18nText | { list: I18nArg[]; sep: string }
 
+/** 저장할 번역 문구 만들기 (키 오타는 타입이 잡는다) */
+export const tk = (key: TKey, params?: Record<string, I18nArg>): I18nText => (params ? { key, params } : { key })
+
 /** 저장된 I18nText를 지금 언어(또는 준 언어)로 */
 export function tr(v: I18nArg, lang: Lang = current): string {
   if (typeof v === 'string') return v
@@ -86,3 +89,6 @@ export function tr(v: I18nArg, lang: Lang = current): string {
   const vars = v.params && Object.fromEntries(Object.entries(v.params).map(([k, x]) => [k, tr(x, lang)]))
   return v.fallback === undefined ? t(v.key as TKey, vars, lang) : tx(v.key, v.fallback, vars, lang)
 }
+
+/** 번역할 글이 저장돼 있으면 지금 언어로, 없으면(예전 기록) 저장된 글자 그대로 */
+export const trOr = (v: I18nArg | undefined, text: string, lang: Lang = current) => (v === undefined ? text : tr(v, lang))

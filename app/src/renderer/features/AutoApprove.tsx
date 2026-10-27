@@ -9,7 +9,8 @@ import { ruleLabel, type ApprovalRule } from '@shared/approvalRules'
 import { maskSecrets } from '@shared/redact'
 import type { Approval, AutoHandled } from '@shared/types'
 import { useNow } from './status'
-import { fmtDate, t } from '@shared/i18n'
+import { fmtDate, t, trOr } from '@shared/i18n'
+import { toolDisplayName } from '@shared/computerTools'
 
 // 자동결재(대표 부재 중) 화면 3곳: 설정 칸 · 상단 바 표시 · 결재함 "자동 처리됨" 목록
 // + "앞으로 항상 승인" 규칙: 결재 승인 옆 버튼 · 설정의 규칙 목록 (approveAlways·approvalRules·deleteApprovalRule)
@@ -190,11 +191,11 @@ export function AutoHandledList() {
               {h.kind === 'answer' ? (
                 <>
                   <MessageCircleQuestionIcon className="mr-1 inline size-3.5" />
-                  {t('autoApprove.answered')} · {maskSecrets(h.summary)}
+                  {t('autoApprove.answered')} · {maskSecrets(trOr(h.summaryI18n, h.summary))}
                 </>
               ) : (
                 <>
-                  <span className="text-muted-foreground">{h.toolName}</span> {maskSecrets(h.summary)}
+                  <span className="text-muted-foreground">{toolDisplayName(h.toolName)}</span> {maskSecrets(trOr(h.summaryI18n, h.summary))}
                 </>
               )}
             </span>

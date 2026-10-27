@@ -4,13 +4,13 @@ import { findRiskyCommand, isBashPolicyMark, isReadOnlyCommand, READ_ONLY_BASH, 
 import { toQuestions } from './external'
 import { isRefDocRead } from '../shared/refDocs'
 import { ruleDraftFor } from '../shared/approvalRules'
-import { t } from '../shared/i18n/index.ts'
+import { t, tk, type I18nArg } from '../shared/i18n/index.ts'
 import os from 'node:os'
 import { insertUsage, saveSessionId } from './db'
 import { findCodexRollout, readCodexTail } from './ai/codexSession'
 import { CONTEXT_ROTATE_TOKENS, findSessionFile, handoffText, readSessionTail } from './sessionRotate'
 import { BROWSER_EQUIPMENT, browserVerdict } from '../shared/browserTools.ts'
-import { COMPUTER_EQUIPMENT, computerVerdict } from '../shared/computerTools.ts'
+import { COMPUTER_EQUIPMENT, computerSummary, computerSummaryI18n, computerVerdict, toolDisplayName } from '../shared/computerTools.ts'
 import { parseSlash, type RawCommand } from '../shared/slashCommands.ts'
 import { browserOutputDir } from './browser'
 import { createRuntime, modelIdFor, type AgentRuntime, type RateLimitInfo, type RuntimeEvent, type RuntimeMcpServer, type ToolDecision } from './ai'
@@ -37,7 +37,7 @@ export function isLightTask(text: string) {
 }
 export interface HiredHooks {
   update(staffId: string, patch: Partial<Staff>): void
-  log(staffId: string, type: 'reply' | 'tool' | 'result' | 'error' | 'status', text: string): void
+  log(staffId: string, type: 'reply' | 'tool' | 'result' | 'error' | 'status', text: Exclude<I18nArg, number>): void
   requestApproval(approval: Approval): void
   /**
    * 자동결재(대표 부재 중): 결재함에 올리기 전에 대표 대신 판정한다. null이면 평소처럼 결재함.
@@ -188,7 +188,7 @@ class Worker {
     // 새 업무 카드는 짧은 이전 대화도 넘기지 않는다 (인수인계 몫 정도는 남겨 두고 세 본다)
     if (this.contextTokens < (fresh ? CARD_ROTATE_MIN_TOKENS : CONTEXT_ROTATE_TOKENS)) return text
     this.hooks.saved(this.staff.id, (this.contextTokens - HANDOFF_TOKENS) * SAVED_CALLS_PER_TURN)
-    this.hooks.log(this.staff.id, 'status', t('log.rotated', { k: Math.round(this.contextTokens / 1000) }))
+    this.hooks.log(this.staff.id, 'status', tk('log.rotated', { k: Math.round(this.contextTokens / 1000) }))
     this.resetSession()
     this.hooks.update(this.staff.id, { sessionId: null })
     return handoffText(this.lastReport, text)
@@ -274,7 +274,7 @@ class Worker {
           isRefDocRead(toolName, input, refDocPaths, os.homedir())
         if (isAllowed) return Promise.resolve<ToolDecision>({ behavior: 'allow' })
         const questions = toolName === QUESTION_TOOL ? toQuestions(input) : undefined
-        const auto = this.hooks.autoDecide(s.id, toolName, input, summarizeInput(input), questions)
+        const auto = this.hooks.autoDecide(s.id, toolName, input, summarizeInput(input, toolName), questions)
         if (!auto) return this.askApproval(toolName, input, signal, questions)
         // 대신 답(비서 등)을 만들다 실패하면 평소처럼 대표를 기다린다
         return auto.then(
@@ -290,7 +290,7 @@ class Worker {
           this.hooks.log(s.id, 'tool', `막힘 (${risky}): ${command}`.slice(0, ACTIVITY_MAX))
           return { deny: t('staff.deny.risky', { risky }) }
         }
-        const text = `${toolName} ${summarizeInput(toolInput)}`.slice(0, ACTIVITY_MAX)
+        const text = `${toolDisplayName(toolName)} ${summarizeInput(toolInput, toolName)}`.slice(0, ACTIVITY_MAX)
         this.hooks.update(s.id, { activity: text })
         this.hooks.log(s.id, 'tool', text)
         return null
@@ -303,7 +303,9 @@ class Worker {
       id: `${this.staff.id}:${crypto.randomUUID()}`,
       staffId: this.staff.id,
       toolName,
-      summary: questions ? questions.map((q) => q.question).join(' / ') : summarizeInput(input),
+      summary: questions ? questions.map((q) => q.question).join(' / ') : summarizeInput(input, toolName),
+      // 화면 언어가 바뀌어도 다시 번역되게 (컴퓨터 조작 요약만 — 나머지 요약은 입력 원문이라 번역할 게 없다)
+      summaryI18n: (!questions && computerSummaryI18n(toolName, input)) || undefined,
       createdAt: Date.now(),
       questions,
       // 결재 카드의 "앞으로 항상 승인" — 위험 명령·질문이면 붙지 않는다
@@ -409,7 +411,7 @@ class Worker {
       const summary = m.ok ? m.text || (slash ? t('slash.ran', { name: slash }) : '') : `오류로 중단 (${m.subtype})`
       if (!isError && summary.trim()) this.lastReport = summary
       // 성공 보고 본문은 이미 assistant 텍스트로 기록됐으므로 완료 로그는 짧게 남긴다
-      this.hooks.log(id, isError ? 'error' : 'result', isError ? summary : t('log.taskDone', { n: m.numTurns }))
+      this.hooks.log(id, isError ? 'error' : 'result', isError ? summary : tk('log.taskDone', { n: m.numTurns }))
       this.hooks.update(id, {
         status: isError ? 'error' : this.rt.queued ? 'working' : 'idle',
         activity: isError ? summary : '',
@@ -433,9 +435,11 @@ class Worker {
   }
 }
 
-function summarizeInput(input: unknown): string {
+function summarizeInput(input: unknown, toolName = ''): string {
   if (!input || typeof input !== 'object') return ''
   const o = input as Record<string, unknown>
+  const computer = computerSummary(toolName, o)
+  if (computer) return computer
   const key = ['skill', 'command', 'file_path', 'path', 'pattern', 'url', 'query', 'description'].find((k) => typeof o[k] === 'string')
   return key ? String(o[key]) : JSON.stringify(o).slice(0, ACTIVITY_MAX)
 }

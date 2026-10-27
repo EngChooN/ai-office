@@ -26,6 +26,7 @@ import { DecorController, useDecor } from './iso/decor'
 import { MotionPlayer } from './iso/motionPlayer'
 import { workersOf } from '@shared/iso/propMotion'
 import { endVisit, headcountOf, startVisit, takeCameBack, useFloorVisits, type Visit } from './iso/floorVisits'
+import { roleLabel } from '@shared/roleLabel'
 
 /** 세계 여백 (화면 px). 위쪽은 뒷벽 위로 이름표·말풍선 자리 */
 const MARGIN = 40
@@ -1344,7 +1345,7 @@ export class IsoOfficeScene extends Phaser.Scene {
     if (!a) return
     const s = a.staff
     const activity = s.activity.length > 42 ? `${s.activity.slice(0, 42)}…` : s.activity
-    const lines = [`${s.name} · ${s.role}`, `상태  ${STATUS_LABEL[s.status]}`, `활동  ${activity || '—'}`]
+    const lines = [`${s.name} · ${roleLabel(s.role)}`, `상태  ${STATUS_LABEL[s.status]}`, `활동  ${activity || '—'}`]
     if (s.kind === 'hired') lines.push(`Lv.${s.stats.level}  ·  완료 ${s.stats.tasksDone}`)
     this.tooltipText.setText(lines.join('\n'))
     const b = this.tooltipText.getBounds()

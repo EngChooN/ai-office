@@ -4,7 +4,8 @@ import { test } from 'node:test'
 import { autoApprove, autoKindOf, autoStep, autoSummaryText, autoWindow, commandWaits, formatRemaining, planToConfig } from '../src/shared/autoApprove.ts'
 import { findRiskyCommand } from '../src/shared/bashPolicy.ts'
 import { BROWSER_EQUIPMENT, browserVerdict } from '../src/shared/browserTools.ts'
-import { COMPUTER_EQUIPMENT, computerVerdict } from '../src/shared/computerTools.ts'
+import { COMPUTER_EQUIPMENT, computerSummary, computerSummaryI18n, computerVerdict } from '../src/shared/computerTools.ts'
+import { setLang, tr, trOr } from '../src/shared/i18n/index.ts'
 import { buildTrayMenu, menuKey, type TrayMenuActions } from '../src/main/trayMenu.ts'
 import { AUTO_APPROVE_OFF, type OfficeSnapshot, type Staff } from '../src/shared/types.ts'
 
@@ -388,4 +389,19 @@ test('컴퓨터 조작 장비: 화면 보기만 허용, 이동·클릭·입력·
   assert.equal(computerVerdict('mcp__computer-use__computer', { action: 'get_screenshot' }), null)
   // 자동결재 중에도 조작은 기다리고, 스크린샷은 통과한다
   assert.equal(computerVerdict(c, { action: 'left_click' }), 'wait')
+})
+
+test('컴퓨터 조작 결재 요약: 한국어로 만들어도 키로 저장해 화면 언어로 보인다 (좌표·입력 글자는 그대로)', () => {
+  const c = `mcp__${COMPUTER_EQUIPMENT}__computer`
+  setLang('ko')
+  const click = computerSummaryI18n(c, { action: 'left_click', coordinate: [20, 12] })!
+  assert.equal(computerSummary(c, { action: 'left_click', coordinate: [20, 12] }), '클릭 (20, 12)')
+  assert.equal(tr(click, 'en'), 'Click (20, 12)')
+  assert.equal(tr(click, 'ja'), 'クリック (20, 12)')
+  assert.equal(tr(computerSummaryI18n(c, { action: 'type', text: '안녕' })!, 'zh'), '输入文字: "안녕"')
+  // 모르는 action은 이름 그대로, 다른 도구는 null
+  assert.equal(tr(computerSummaryI18n(c, { action: 'zoom' })!, 'en'), 'zoom')
+  assert.equal(computerSummaryI18n('Bash', { command: 'ls' }), null)
+  // 키가 없는 예전 결재는 저장된 글자 그대로
+  assert.equal(trOr(undefined, '클릭 (1, 2)', 'en'), '클릭 (1, 2)')
 })

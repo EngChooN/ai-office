@@ -10,7 +10,9 @@ import { RunCard } from './RunCard'
 import { Avatar } from './StaffCard'
 import { AlwaysApproveButton, AutoHandledList } from './AutoApprove'
 import { shortPath, workDirLabel } from './status'
-import { fmtDate, t } from '@shared/i18n'
+import { fmtDate, t, trOr } from '@shared/i18n'
+import { toolDisplayName } from '@shared/computerTools'
+import { roleLabel } from '@shared/roleLabel'
 
 /** 결재함: 모든 직원의 권한 요청을 한곳에서 도장 찍는다 */
 export function InboxPage() {
@@ -89,7 +91,7 @@ export function InboxPage() {
                 <span className="font-semibold">{a.staff.name}</span>
                 <span className="text-muted-foreground">
                   {' '}
-                  · {a.staff.role} ·{' '}
+                  · {roleLabel(a.staff.role)} ·{' '}
                   {fmtDate(a.createdAt, {
                     hour: '2-digit',
                     minute: '2-digit',
@@ -102,8 +104,8 @@ export function InboxPage() {
                 </div>
               ) : (
                 <>
-                  <div className="mt-1 text-sm font-medium">{a.toolName}</div>
-                  <pre className="bg-muted text-muted-foreground selectable mt-1 max-h-32 overflow-auto rounded p-2 font-mono text-xs break-all whitespace-pre-wrap">{a.summary}</pre>
+                  <div className="mt-1 text-sm font-medium">{toolDisplayName(a.toolName)}</div>
+                  <pre className="bg-muted text-muted-foreground selectable mt-1 max-h-32 overflow-auto rounded p-2 font-mono text-xs break-all whitespace-pre-wrap">{trOr(a.summaryI18n, a.summary)}</pre>
                 </>
               )}
             </div>

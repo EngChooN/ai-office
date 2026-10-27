@@ -353,7 +353,8 @@ test('자동결재 화면: 비밀값 가리기 · 범위 안내에 한계와 파
   assert.match(dictScope, /파일 수정은 대신 승인해요\(셸 설정·\.ssh·깃 훅·CI 설정 같은 위험한 설정 파일은 제외\)/)
   assert.doesNotMatch(ui, /void window\.office\.setAutoApprove/)
   assert.match(ui, /role="alert"/)
-  assert.match(ui, /maskSecrets\(h\.summary\)/)
+  // 화면 언어로 다시 번역한 요약(summaryI18n)도 가린 뒤 보인다
+  assert.match(ui, /maskSecrets\(trOr\(h\.summaryI18n, h\.summary\)\)/)
   assert.match(readApp('src/main/office.ts'), /summary: maskSecrets\(h\.summary\)/)
 })
 
@@ -425,8 +426,8 @@ test('지연 원인: 고용 직원 세션은 "질문 받기" hook을 건너뛴�
 test('지연: 질문을 받은 때부터 답·보류까지 걸린 시간을 기록에 남긴다, 대신 답하기는 대화 세션과 따로 매번 새로 부른다', () => {
   const office = readApp('src/main/office.ts')
   assert.match(office, /const askedAt = Date\.now\(\)/)
-  assert.match(office, /t\('log\.autoAnswer', \{ took: took\(\)/)
-  assert.match(office, /t\('log\.autoWait', \{ took: took\(\) \}\)/)
+  assert.match(office, /tk\('log\.autoAnswer', \{ took: tk\('log\.sec', \{ n: tookSec\(\) \}\)/)
+  assert.match(office, /tk\('log\.autoWait', \{ took: tk\('log\.sec', \{ n: tookSec\(\) \}\) \}\)/)
   const sec = readApp('src/main/secretary.ts')
   // askOnce = 한 번짜리 호출 (세션 저장 없음 · 턴 1 · 도구 없음), 60초는 질문을 받은 순간부터
   assert.match(sec, /await askOnce\(\{ prompt: context, system: AWAY_SYSTEM, tier: 'light'/)

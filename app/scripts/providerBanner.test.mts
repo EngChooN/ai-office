@@ -4,7 +4,7 @@ import { test } from 'node:test'
 import { providerBannerAction } from '../src/renderer/lib/providerBanner.ts'
 import { withSettingsDefaults } from '../src/shared/types.ts'
 
-const base = { isLoaded: true, isOnboarded: true, isSeen: false }
+const base = { isLoaded: true, isOnboarded: true, isSeen: false, codexState: 'loggedOut' as const }
 
 test('GPT 직원 안내 띠: 기존 사용자에게 한 번만 띄운다', () => {
   assert.equal(providerBannerAction({ ...base, isLoaded: false }), 'hide', '상태를 읽기 전')
@@ -16,8 +16,14 @@ test('GPT 직원 안내 띠: 기존 사용자에게 한 번만 띄운다', () =>
   assert.equal(providerBannerAction({ ...base, isOnboarded: false, isSeen: true }), 'hide')
 })
 
+test('GPT 직원 안내 띠: Codex가 이미 준비됨이면 띄우지 않고, 상태를 알기 전엔 기다린다', () => {
+  assert.equal(providerBannerAction({ ...base, codexState: 'ready' }), 'markSeen')
+  assert.equal(providerBannerAction({ ...base, codexState: null }), 'hide')
+  assert.equal(providerBannerAction({ ...base, codexState: 'missing' }), 'show')
+})
+
 test('GPT 직원 안내 띠: 옛 버전 설정에서 올라오면 아직 안 본 것으로 채운다', () => {
   const s = withSettingsDefaults({ isOnboarded: true })
   assert.equal(s.isProviderBannerSeen, false)
-  assert.equal(providerBannerAction({ isLoaded: true, isOnboarded: s.isOnboarded, isSeen: s.isProviderBannerSeen }), 'show')
+  assert.equal(providerBannerAction({ isLoaded: true, isOnboarded: s.isOnboarded, isSeen: s.isProviderBannerSeen, codexState: 'loggedOut' }), 'show')
 })

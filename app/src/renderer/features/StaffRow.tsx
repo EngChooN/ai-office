@@ -7,6 +7,7 @@ import { currentTask } from '@shared/dashboard'
 import type { Staff } from '@shared/types'
 import { t } from '@shared/i18n'
 import { Avatar, Elapsed, LeadMark, PracticeBadge, StatusDot } from './StaffCard'
+import { roleLabel } from '@shared/roleLabel'
 
 interface Props {
   staff: Staff
@@ -43,7 +44,7 @@ export function StaffRow({ staff, isLead = false, isSelected, onSelect }: Props)
           <span className="min-w-0 truncate">{staff.name}</span>
           {staff.isPractice && <PracticeBadge />}
         </div>
-        <div className="text-muted-foreground truncate text-xs">{staff.role}</div>
+        <div className="text-muted-foreground truncate text-xs">{roleLabel(staff.role)}</div>
       </div>
       <div className="flex w-28 shrink-0 flex-col items-start gap-0.5">
         <StatusDot staff={staff} />

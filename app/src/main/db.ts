@@ -3,6 +3,7 @@ import type { AutoApproveConfig } from '../shared/autoApprove'
 import type { ApprovalRule } from '../shared/approvalRules'
 import type { KnowledgeEntry } from '../shared/knowledge'
 import type { GalleryEntry, Praise } from '../shared/gallery'
+import type { I18nArg } from '../shared/i18n/index.ts'
 import { app } from 'electron'
 import path from 'node:path'
 import {
@@ -88,6 +89,8 @@ export function openDb() {
   `)
   workBaseStore = createWorkBaseStore(db)
   const staffCols = (db.prepare('PRAGMA table_info(staff)').all() as { name: string }[]).map((c) => c.name)
+  const logCols = (db.prepare('PRAGMA table_info(log)').all() as { name: string }[]).map((c) => c.name)
+  if (!logCols.includes('text_i18n')) db.exec('ALTER TABLE log ADD COLUMN text_i18n TEXT')
   if (!staffCols.includes('team_id')) db.exec('ALTER TABLE staff ADD COLUMN team_id TEXT')
   if (!staffCols.includes('equipment')) db.exec('ALTER TABLE staff ADD COLUMN equipment TEXT')
   // 참고 문서(JSON 배열). 랩은 data JSON 안에 함께 저장된다
@@ -232,16 +235,26 @@ interface LogRow {
   ts: number
   type: LogType
   text: string
+  text_i18n?: string | null
   attachments: string | null
 }
 const parseAttachments = (raw: string | null): Attachment[] | undefined => (raw ? (JSON.parse(raw) as Attachment[]) : undefined)
-const toLog = (r: LogRow): LogEntry => ({ id: r.id, staffId: r.staff_id, ts: r.ts, type: r.type, text: r.text, attachments: parseAttachments(r.attachments) })
+const parseI18n = (raw: string | null | undefined): I18nArg | undefined => {
+  if (!raw) return undefined
+  try {
+    return JSON.parse(raw) as I18nArg
+  } catch {
+    return undefined
+  }
+}
+const toLog = (r: LogRow): LogEntry => ({ id: r.id, staffId: r.staff_id, ts: r.ts, type: r.type, text: r.text, textI18n: parseI18n(r.text_i18n), attachments: parseAttachments(r.attachments) })
 
-export function insertLog(staffId: string, type: LogType, text: string, attachments?: Attachment[]): LogEntry {
+export function insertLog(staffId: string, type: LogType, text: string, attachments?: Attachment[], textI18n?: I18nArg): LogEntry {
   const ts = Date.now()
   const raw = attachments?.length ? JSON.stringify(attachments) : null
-  const { lastInsertRowid } = run('INSERT INTO log (staff_id, ts, type, text, attachments) VALUES (?, ?, ?, ?, ?)', staffId, ts, type, text, raw)
-  return { id: Number(lastInsertRowid), staffId, ts, type, text, attachments: attachments?.length ? attachments : undefined }
+  const i18nRaw = textI18n === undefined ? null : JSON.stringify(textI18n)
+  const { lastInsertRowid } = run('INSERT INTO log (staff_id, ts, type, text, text_i18n, attachments) VALUES (?, ?, ?, ?, ?, ?)', staffId, ts, type, text, i18nRaw, raw)
+  return { id: Number(lastInsertRowid), staffId, ts, type, text, textI18n, attachments: attachments?.length ? attachments : undefined }
 }
 
 export function logsSince(staffId: string, since: number): LogEntry[] {

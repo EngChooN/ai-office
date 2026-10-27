@@ -15,7 +15,7 @@ import { Markdown } from '@/components/markdown'
 import { AttachmentView } from '@/components/attachments'
 import { buildGroups, groupState, toggleGroup, type PickGroup } from './meetingPick'
 import { meetingRoomOf, nextMeetingRoomLevel } from '@shared/officeLevel'
-import { decisionView, type DecisionState } from '@shared/meetingDecisions'
+import { CEO_NAME, decisionView, type DecisionState, type DecisionView } from '@shared/meetingDecisions'
 
 /** 이 인원을 넘으면 회의가 오래 걸린다고 알려 준다 (모두가 바퀴마다 한 번씩 발언) */
 const LONG_MEETING = 10
@@ -276,6 +276,23 @@ const DECISION_STYLE: Record<DecisionState, { box: string; label: string }> = {
   unanswered: { box: 'border-l-status-idle bg-muted/40', label: 'text-muted-foreground bg-muted' },
 }
 
+/** 결정 배지 문구 — decisionView().label은 요약·회의록용 한국어라 화면은 상태로 다시 만든다 */
+function decisionLabel(view: DecisionView, meeting: Meeting) {
+  switch (view.state) {
+    case 'pending':
+      return t('meeting.decision.label.pending')
+    case 'direct':
+      return t('meeting.decision.label.direct')
+    case 'ended':
+    case 'unanswered':
+      return t('meeting.decision.label.unanswered')
+    case 'delegated':
+      if (view.deciderName) return t('meeting.decision.label.delegatedTo', { name: view.deciderName === CEO_NAME ? t('meeting.decision.ceo') : view.deciderName })
+      if (view.isLegacy) return t('meeting.decision.label.delegatedNoRecord')
+      return t(isMeetingLive(meeting) ? 'meeting.decision.label.delegatedDeciding' : 'meeting.decision.label.delegatedUndecided')
+  }
+}
+
 /** 회의 중 대표(나)에게 온 결정 요청: 선택지·직접 입력·"알아서 정해". 답한 뒤엔 유형 라벨과 최종 선택을 보여 준다 */
 export function DecisionBox({ meeting, decision }: { meeting: Meeting; decision: MeetingDecision }) {
   const [custom, setCustom] = useState('')
@@ -292,7 +309,7 @@ export function DecisionBox({ meeting, decision }: { meeting: Meeting; decision:
           <span className="font-semibold">🙋 {decision.askedByName}</span>
           <span className="text-muted-foreground"> {t('meeting.decision.request')}</span>
         </span>
-        <Badge className={cn('border-transparent', labelClass)}>{view.label}</Badge>
+        <Badge className={cn('border-transparent', labelClass)}>{decisionLabel(view, meeting)}</Badge>
       </div>
       {/* 답하기 전엔 전문을 보고 답하도록 펼친 채로, 답한 결정만 2줄로 접는다 */}
       <DecisionQuestion text={view.question} isCollapsible={!isPending} />

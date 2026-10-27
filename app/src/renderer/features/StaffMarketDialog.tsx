@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import type { PackMarketItem } from '@shared/staffPack'
 import { showToast } from '@/lib/toast'
 import { t } from '@shared/i18n'
+import { roleLabel } from '@shared/roleLabel'
 
 /** 기본 제공 직원 목록. [채용]은 파일 가져오기와 같은 검증·채용 길을 탄다 (main의 pack:hireMarket) */
 export function StaffMarketDialog({ open, onOpenChange, onHired }: { open: boolean; onOpenChange: (open: boolean) => void; onHired: (staffId: string) => void }) {
@@ -46,7 +47,7 @@ export function StaffMarketDialog({ open, onOpenChange, onHired }: { open: boole
               <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                 <span className="flex items-center gap-2 text-sm font-semibold">
                   {item.name}
-                  <span className="text-muted-foreground text-xs font-normal">· {item.role}</span>
+                  <span className="text-muted-foreground text-xs font-normal">· {roleLabel(item.role)}</span>
                 </span>
                 <span className="text-muted-foreground text-xs">{item.desc}</span>
               </div>

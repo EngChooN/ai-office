@@ -9,6 +9,7 @@ import type { ProcessRun, RunStatus } from '@shared/types'
 import { t, type TKey } from '@shared/i18n'
 import { Avatar } from './StaffCard'
 import { Markdown } from '@/components/markdown'
+import { roleLabel } from '@shared/roleLabel'
 
 const STATUS: Record<RunStatus, { label: TKey; className: string }> = {
   running: { label: 'runCard.status.running', className: 'bg-primary text-primary-foreground animate-pulse' },
@@ -41,7 +42,7 @@ export function RunCard({ run, isCompact = false }: { run: ProcessRun; isCompact
         {run.steps.map((s, i) => (
           <span
             key={s.id}
-            title={`${s.title} · ${s.role}`}
+            title={`${s.title} · ${roleLabel(s.role)}`}
             className={cn(
               'rounded-full border px-2 py-0.5 text-[10px]',
               i === run.stepIndex && run.status !== 'done' ? 'border-primary bg-primary/15 text-primary font-semibold' : doneIds.has(s.id) || run.status === 'done' ? 'bg-muted text-muted-foreground line-through' : 'text-muted-foreground',

@@ -13,6 +13,7 @@ import type { Approval, ChatApproval, ChatApprovalResult, ChatMessage, Staff } f
 import { chatApprovalView } from '@shared/chatApproval'
 import { ALL_MENTION, mentionTargets, mentionToken, OFFICE_SENDER, parseMentions, type MentionKind, type MentionTarget } from '@shared/mention'
 import { fmtDate, t, type TKey } from '@shared/i18n'
+import { roleLabel } from '@shared/roleLabel'
 import { Avatar } from './StaffCard'
 import { Markdown } from '@/components/markdown'
 import { JumpToBottom, useStickToBottom } from '@/components/stick-to-bottom'
@@ -234,7 +235,7 @@ function Composer() {
                 <button key={tg.key} type="button" onClick={() => handleMention(tg)} className="hover:bg-accent flex items-center gap-2 rounded px-2 py-1 text-left text-sm">
                   <TargetIcon target={tg} staff={staffById.get(tg.memberIds[0])} /> {tg.name}
                   <span className="text-muted-foreground ml-auto pl-3 text-xs">
-                    {tg.kind === 'staff' ? staffById.get(tg.memberIds[0])?.role : tg.kind === 'all' ? t('chat.allHired', { count: tg.memberIds.length }) : t('chat.peopleCount', { count: tg.memberIds.length })}
+                    {tg.kind === 'staff' ? roleLabel(staffById.get(tg.memberIds[0])?.role ?? '') : tg.kind === 'all' ? t('chat.allHired', { count: tg.memberIds.length }) : t('chat.peopleCount', { count: tg.memberIds.length })}
                   </span>
                 </button>
               ))}

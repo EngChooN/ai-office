@@ -647,6 +647,8 @@ export default {
   'autoApprove.changeInSettings': { ko: '설정에서 바꾸기', en: 'Change in Settings', ja: '設定で変更', zh: '在设置中更改' },
   'autoApprove.handledList': { ko: '자동 처리됨 {n}', en: 'Handled automatically {n}', ja: '自動処理済み {n}', zh: '已自动处理 {n}' },
   'autoApprove.answered': { ko: '대신 답한 질문', en: 'Answered for you', ja: '代理回答した質問', zh: '代为回答的问题' },
+  // 대신 답한 기록 한 줄: "질문 → 답 (12초)" — text는 질문·답 원문
+  'autoApprove.answerTook': { ko: '{text} ({sec}초)', en: '{text} ({sec}s)', ja: '{text} ({sec}秒)', zh: '{text} ({sec}秒)' },
   // 생김새 고르기 (AvatarEditor.tsx)
   'avatar.random': { ko: '랜덤', en: 'Random', ja: 'ランダム', zh: '随机' },
   'avatar.color': { ko: '색 {n}', en: 'Color {n}', ja: '色 {n}', zh: '颜色 {n}' },

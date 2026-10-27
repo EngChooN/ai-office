@@ -351,4 +351,13 @@ export default {
     ja: '（担当「{name}」が見つからず、リードに送りました）',
     zh: '（找不到负责人“{name}”，已发给负责人）',
   },
+  // ── 직무 프리셋 표시 이름 (화면용. 저장값은 ROLE_PRESETS의 한국어 그대로, roleLabel이 바꿔 보여 준다) ──
+  'role.lead': { ko: '팀장', en: 'Team lead', ja: 'チームリーダー', zh: '团队负责人' },
+  'role.frontend': { ko: '프론트엔드 개발자', en: 'Frontend developer', ja: 'フロントエンド開発者', zh: '前端开发' },
+  'role.backend': { ko: '백엔드 개발자', en: 'Backend developer', ja: 'バックエンド開発者', zh: '后端开发' },
+  'role.reviewer': { ko: '코드 리뷰어', en: 'Code reviewer', ja: 'コードレビュアー', zh: '代码审查员' },
+  'role.qa': { ko: 'QA', en: 'QA', ja: 'QA', zh: 'QA' },
+  'role.planner': { ko: '기획자', en: 'Planner', ja: 'プランナー', zh: '策划' },
+  'role.researcher': { ko: '리서처', en: 'Researcher', ja: 'リサーチャー', zh: '研究员' },
+  'role.free': { ko: '자유 직무', en: 'Freeform role', ja: 'フリー職務', zh: '自由职务' },
 } satisfies Record<string, Entry>

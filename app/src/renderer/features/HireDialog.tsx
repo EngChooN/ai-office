@@ -18,6 +18,7 @@ import { shortPath } from './status'
 import { StaffMarketDialog } from './StaffMarketDialog'
 import { showToast } from '@/lib/toast'
 import { t } from '@shared/i18n'
+import { roleLabel } from '@shared/roleLabel'
 
 // 화면 문구가 들어 있어 렌더할 때 만든다 (언어 바뀜 반영)
 const models = (): { value: ModelChoice; label: string }[] => [
@@ -303,7 +304,7 @@ export function HireDialog() {
                   }}
                   className={cn('rounded-md border px-2 py-1 text-xs', !isCustomRole && form.role === r && 'border-primary bg-accent')}
                 >
-                  {r}
+                  {roleLabel(r)}
                 </button>
               ))}
               <button

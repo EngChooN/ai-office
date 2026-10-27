@@ -25,7 +25,9 @@ import { JumpToBottom, useStickToBottom } from '@/components/stick-to-bottom'
 import { commandItem, manualItem, SlashMenu, usePersonalManuals, useSlashKeys, useStaffCommands, type SlashMode } from '@/components/slash-menu'
 import { matchCommands, runsOnEnter } from '@shared/slashCommands'
 import { mergeRefDocs, REF_DOCS_TOTAL } from '@shared/refDocs'
-import { fmtDate, t, type TKey } from '@shared/i18n'
+import { fmtDate, t, trOr, type TKey } from '@shared/i18n'
+import { toolDisplayName } from '@shared/computerTools'
+import { roleLabel } from '@shared/roleLabel'
 
 const EXTERNAL_REFRESH_MS = 5000
 const LOG_LABEL: Record<LogType, TKey> = {
@@ -171,7 +173,7 @@ const LogRow = memo(function LogRow({ entry: l }: { entry: LogEntry }) {
       <span className={cn('w-[2.6em] shrink-0 font-medium', LOG_COLOR[l.type] ?? 'text-muted-foreground')}>{t(LOG_LABEL[l.type])}</span>
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         {/* 지시는 대표가 엔터로 나눈 줄을 그대로 살린다 (마크다운은 한 줄 바꿈을 이어 붙인다) */}
-        {l.type === 'reply' || l.type === 'result' ? <Markdown>{l.text}</Markdown> : l.type === 'instruction' ? <Markdown className="[&_li]:whitespace-pre-line [&_p]:whitespace-pre-line">{l.text}</Markdown> : <span className="selectable break-words whitespace-pre-wrap">{l.text}</span>}
+        {l.type === 'reply' || l.type === 'result' ? <Markdown>{l.text}</Markdown> : l.type === 'instruction' ? <Markdown className="[&_li]:whitespace-pre-line [&_p]:whitespace-pre-line">{l.text}</Markdown> : <span className="selectable break-words whitespace-pre-wrap">{trOr(l.textI18n, l.text)}</span>}
         <AttachmentView attachments={l.attachments} size="sm" />
       </div>
     </div>
@@ -377,7 +379,7 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
             <StatusDot staff={staff} />
           </div>
           <div className="text-muted-foreground truncate text-xs">
-            {staff.role}
+            {roleLabel(staff.role)}
             {isHired && ` · ${modelLabel(staff.model)}`}
           </div>
           <div className="text-muted-foreground selectable truncate text-xs" title={staff.cwd}>
@@ -416,8 +418,8 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
                 <QuestionBox approval={a} />
               ) : (
                 <>
-                  <div className="text-sm font-medium">{a.toolName}</div>
-                  <div className="text-muted-foreground selectable line-clamp-3 font-mono text-xs break-all">{a.summary}</div>
+                  <div className="text-sm font-medium">{toolDisplayName(a.toolName)}</div>
+                  <div className="text-muted-foreground selectable line-clamp-3 font-mono text-xs break-all">{trOr(a.summaryI18n, a.summary)}</div>
                   <div className="flex gap-2">
                     <Button size="sm" onClick={() => void window.office.decide(a.id, true)}>
                       <CheckIcon /> {t('staffPanel.approvals.approve')}
@@ -851,7 +853,9 @@ function ExternalActions({ staff }: { staff: Staff }) {
           <div className="flex gap-2">
             <NativeSelect value={role} onChange={(e) => setRole(e.target.value)} className="h-8 flex-1 text-xs">
               {ROLE_PRESETS.map((r) => (
-                <option key={r}>{r}</option>
+                <option key={r} value={r}>
+                  {roleLabel(r)}
+                </option>
               ))}
             </NativeSelect>
             <NativeSelect value={model} onChange={(e) => setModel(e.target.value as ModelChoice)} className="h-8 w-24 text-xs">

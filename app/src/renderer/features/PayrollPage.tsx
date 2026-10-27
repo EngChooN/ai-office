@@ -10,6 +10,7 @@ import { PlanHoldBanner, PlanUsageCard } from './PlanUsageCard'
 import { SecretaryFace } from './secretary/SecretaryFace'
 import { SECRETARY_ID } from '@shared/types'
 import { t, type TKey } from '@shared/i18n'
+import { roleLabel } from '@shared/roleLabel'
 
 /** 직원별 토큰을 볼 기간 — 오늘·이번 주는 지금 기준, 달은 고른 달 */
 type Range = 'day' | 'week' | 'month'
@@ -97,7 +98,7 @@ export function PayrollPage() {
                       {r.staffId === SECRETARY_ID ? <SecretaryFace className="size-7" /> : <Avatar avatar={r.avatar} name={r.name} className="size-7" />}
                       <div>
                         <div className="font-medium">{r.name}</div>
-                        <div className="text-muted-foreground text-xs">{r.role}</div>
+                        <div className="text-muted-foreground text-xs">{roleLabel(r.role)}</div>
                       </div>
                     </div>
                   </td>

@@ -13,7 +13,7 @@ import type { TutorialInput, TutorialScenario, TutorialSnapshot } from './tutori
 import type { BoardCleanupPlan } from './boardCleanup'
 import type { CustomMcp, CustomMcpInput } from './customMcp'
 import { COMPANY_LEVELS, companyLevelOf } from './officeLevel.ts'
-import type { I18nText, LangSetting } from './i18n/index.ts'
+import type { I18nArg, I18nText, LangSetting } from './i18n/index.ts'
 
 export type StaffKind = 'hired' | 'external'
 export type StaffStatus = 'idle' | 'working' | 'waiting' | 'offline' | 'error'
@@ -32,6 +32,8 @@ export interface Approval {
   staffId: string
   toolName: string
   summary: string
+  /** summary를 화면 언어로 다시 만들 키+인자 (컴퓨터 조작 등). 없으면(예전 결재·원문 그대로인 요약) summary를 보인다 */
+  summaryI18n?: I18nArg
   createdAt: number
   /** 직원의 질문(AskUserQuestion)이면 질문 목록 — 승인·반려 대신 답을 고른다 */
   questions?: StaffQuestion[]
@@ -345,6 +347,8 @@ export interface LogEntry {
   ts: number
   type: LogType
   text: string
+  /** 있으면 화면에서 이 키로 다시 번역한다 (없으면 text 그대로 — 예전 기록·원문 오류) */
+  textI18n?: I18nArg
   attachments?: Attachment[]
 }
 
@@ -622,6 +626,8 @@ export interface AutoHandled {
   toolName: string
   /** 승인한 도구 요약, 또는 "질문 → 답" */
   summary: string
+  /** summary를 화면 언어로 다시 만들 키+인자. 없으면(예전 기록) summary를 보인다 */
+  summaryI18n?: I18nArg
   /** 요약 집계용 (수정·명령·기타). 질문은 'other' */
   category: AutoKind
 }

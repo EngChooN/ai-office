@@ -12,6 +12,7 @@ import { LabSection } from './LabSection'
 import { Avatar, StatusDot } from './StaffCard'
 import { RefDocsEditor } from './RefDocsEditor'
 import { t } from '@shared/i18n'
+import { roleLabel } from '@shared/roleLabel'
 
 /** 조직도: 팀(부서)을 만들고 직원을 배치하고 팀장을 임명한다 */
 export function OrgPage() {
@@ -88,7 +89,7 @@ function MemberRow({ staff, children }: { staff: Staff; children?: React.ReactNo
         <Avatar avatar={staff.avatar} name={staff.name} teamId={staff.teamId} className="size-8" />
         <div className="min-w-0 flex-1">
           <div className="truncate text-sm font-medium">{staff.name}</div>
-          <div className="text-muted-foreground truncate text-xs">{staff.role}</div>
+          <div className="text-muted-foreground truncate text-xs">{roleLabel(staff.role)}</div>
         </div>
       </button>
       <StatusDot staff={staff} />

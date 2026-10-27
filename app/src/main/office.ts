@@ -6,7 +6,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { app } from 'electron'
 import { z } from 'zod'
-import { fmtDate, getLang, resolveLang, setLang, t, tx, type Lang } from '../shared/i18n/index.ts'
+import { fmtDate, getLang, resolveLang, setLang, t, tk, tr as trI18n, tx, type I18nArg, type Lang } from '../shared/i18n/index.ts'
 import {
   companyFromXp,
   COMPANY_LEVELS,
@@ -88,11 +88,12 @@ import * as db from './db'
 import { legacyLevelOfXp } from './isoMigrate'
 import type { GridItem, SeatSetPart } from '../shared/iso/furniture'
 import { ExternalWatcher, upgradeAskHook } from './external'
+import { loadDemoLive } from './demoLive'
 import { customMcpList, equipmentCatalog, mcpConfigs, saveCustomMcpList, setMcpProbe } from './equipment'
 import { parseCustomMcp, removeCustomMcp, upsertCustomMcp, type CustomMcpInput } from '../shared/customMcp.ts'
 import { browserMcpConfig } from './browser'
 import { computerMcpConfig } from './computer'
-import { COMPUTER_EQUIPMENT } from '../shared/computerTools.ts'
+import { COMPUTER_EQUIPMENT, computerSummaryI18n } from '../shared/computerTools.ts'
 import { BROWSER_EQUIPMENT } from '../shared/browserTools.ts'
 import { parseTranslations, pendingDescriptions, slashAction, toStaffCommands, translationPrompt, type RawCommand, type StaffCommand } from '../shared/slashCommands.ts'
 import { listManuals, removeManual, saveManual } from './manuals'
@@ -216,6 +217,8 @@ export class Office extends EventEmitter<{
   private planUsage: PlanUsage[] = []
   /** Codex 사용률 (보류·알림 판정에는 쓰지 않는다 — Claude 직원 흐름과 분리) */
   private codexUsage: PlanUsage[] = []
+  /** 촬영용 데모(CLAUDE_OFFICE_DEMO=1)가 채운 결재 — 세션이 없으니 누르면 카드만 처리한다 */
+  private demoApprovalIds = new Set<string>()
   private shop!: ShopState
   /** 레벨업 보상을 어디까지 챙겼는지 (매 갱신마다 DB를 두드리지 않게) */
   private rewardedLevel = 0
@@ -468,6 +471,7 @@ export class Office extends EventEmitter<{
       console.error('[office] upgradeAskHook', e)
     }
     this.resumeTasks()
+    this.applyDemoLive()
     this.tutorial.load()
     // 앱이 꺼져 있는 동안 기간이 끝났으면 켜자마자 요약한다
     this.syncAutoWindow()
@@ -548,7 +552,7 @@ export class Office extends EventEmitter<{
       s.cwdSource = dir.source
       this.manager.resetSession(s.id)
       this.commands.delete(s.id) // 폴더마다 스킬·명령이 다르다
-      this.log(s.id, 'status', t('log.cwdChanged', { dir: dir.cwd }))
+      this.log(s.id, 'status', tk('log.cwdChanged', { dir: dir.cwd }))
     }
   }
 
@@ -676,7 +680,7 @@ export class Office extends EventEmitter<{
       const team = this.teams.get(input.teamId)
       if (team && !team.leadId) this.updateTeam(team.id, { leadId: id })
     }
-    this.log(id, 'status', t('log.hired', { role: input.role }))
+    this.log(id, 'status', tk('log.hired', { role: input.role }))
     this.postChat(id, t('chat.hiredGreeting', { role: input.role, name: input.name }))
     this.scheduleEmit()
     return live
@@ -827,13 +831,13 @@ export class Office extends EventEmitter<{
     const s = this.hired.get(staffId)
     if (!s) return
     if (text?.trim()) {
-      this.log(staffId, 'status', t('log.interrupted'))
+      this.log(staffId, 'status', tk('log.interrupted'))
       this.log(staffId, 'instruction', text, attachments)
       await this.manager.interrupt(staffId, { text, attachments })
       return
     }
     await this.manager.interrupt(staffId)
-    this.log(staffId, 'status', t('log.stopped'))
+    this.log(staffId, 'status', tk('log.stopped'))
   }
 
   /** 중단된 직원의 업무 카드는 할 일로 되돌리고, 기획 하위 업무였으면 기획도 멈춰 둔다 (다음 단계가 저절로 시작되지 않게) */
@@ -873,6 +877,24 @@ export class Office extends EventEmitter<{
     this.postChat('me', `⏸ "${t.title}" 기획을 멈췄어요. 업무 보드에서 "다시 진행"을 누르면 이어서 해요.`.slice(0, CHAT_TEXT_MAX))
   }
 
+  /** 촬영용 데모: demo-seed가 남긴 실시간 상태(직원 상태·결재·사용률·터미널 세션)를 채운다. 꺼져 있으면 아무것도 안 한다 */
+  private applyDemoLive() {
+    const demo = loadDemoLive(app.getPath('userData'))
+    if (!demo) return
+    for (const [id, live] of demo.staff) {
+      const s = this.hired.get(id)
+      if (!s) continue
+      s.status = live.status
+      s.activity = live.activity
+      s.approvals = live.approvals
+      for (const a of live.approvals) this.demoApprovalIds.add(a.id)
+    }
+    this.planUsage = demo.planUsage
+    this.codexUsage = demo.codexUsage
+    this.watcher.setDemoSessions(demo.external)
+    this.scheduleEmit()
+  }
+
   /** 세션 쪽에서 사라진 결재는 카드도 지운다 (안 지우면 눌러도 반응 없는 카드가 남는다) */
   private dropApproval(approvalId: string, reason: string) {
     for (const s of this.hired.values()) {
@@ -894,7 +916,7 @@ export class Office extends EventEmitter<{
       this.settleChat({ id: approvalId, result: 'skipped' })
       return true
     }
-    if (!this.manager.decide(approvalId, allow)) {
+    if (!this.manager.decide(approvalId, allow) && !this.demoApprovalIds.delete(approvalId)) {
       this.dropApproval(approvalId, '이미 끝난 결재')
       return false
     }
@@ -902,7 +924,7 @@ export class Office extends EventEmitter<{
       const a = s.approvals.find((x) => x.id === approvalId)
       if (!a) continue
       s.approvals = s.approvals.filter((x) => x.id !== approvalId)
-      this.log(s.id, 'approval', `${via ? `${via} ` : ''}${allow ? t('log.approved') : t('log.rejected')}: ${a.toolName} ${a.summary}`)
+      this.log(s.id, 'approval', { list: [via ? `${via} ` : '', tk(allow ? 'log.approved' : 'log.rejected'), `: ${a.toolName} `, a.summaryI18n ?? a.summary], sep: '' })
       this.patch(s.id, { status: s.approvals.length ? 'waiting' : 'working' })
       // 질문을 반려 = 넘기기 (답 없이 알아서 판단)
       this.settleChat({ id: approvalId, result: a.questions ? 'skipped' : allow ? 'approved' : 'rejected' })
@@ -912,7 +934,7 @@ export class Office extends EventEmitter<{
 
   answerQuestion(approvalId: string, answers: Record<string, string>, via = '') {
     if (this.textAsks.has(approvalId)) return this.closeTextAsk(approvalId, answers, via)
-    if (!this.watcher.answer(approvalId, answers) && !this.manager.answer(approvalId, answers)) return false
+    if (!this.watcher.answer(approvalId, answers) && !this.manager.answer(approvalId, answers) && !this.demoApprovalIds.delete(approvalId)) return false
     this.settleChat({ id: approvalId, result: 'answered', answer: answersText(answers) })
     for (const s of this.hired.values()) {
       const a = s.approvals.find((x) => x.id === approvalId)
@@ -940,7 +962,7 @@ export class Office extends EventEmitter<{
     if (s) {
       const a = s.approvals.find((x) => x.id === approvalId)
       s.approvals = s.approvals.filter((x) => x.id !== approvalId)
-      this.log(s.id, 'approval', `${via ? `${via} ` : ''}${answers ? `답변: ${answersText(answers)}` : t('log.rejected')}: ${a?.summary ?? ask.question}`)
+      this.log(s.id, 'approval', { list: [via ? `${via} ` : '', answers ? { list: [tk('log.answered'), `: ${answersText(answers)}`], sep: '' } : tk('log.rejected'), ': ', a ? (a.summaryI18n ?? a.summary) : ask.question], sep: '' })
       this.patch(s.id, { status: s.approvals.length ? 'waiting' : 'idle', activity: '' })
     }
     this.settleChat(answers ? { id: approvalId, result: 'answered', answer: answersText(answers) } : { id: approvalId, result: 'skipped' })
@@ -1196,7 +1218,7 @@ export class Office extends EventEmitter<{
     if (questions?.length) this.askedInTurn.add(staffId)
     // 대표가 만든 "앞으로 항상 승인" 규칙 — 자동결재 기간과 상관없이 (위험 명령은 matchRule이 늘 거른다)
     if (!questions?.length && matchRule(this.rules, staffId, toolName, input)) {
-      this.log(staffId, 'approval', t('log.ruleApprove', { tool: toolName, summary }))
+      this.log(staffId, 'approval', tk('log.ruleApprove', { tool: toolName, summary }))
       return Promise.resolve({})
     }
     const s = this.hired.get(staffId)
@@ -1209,21 +1231,23 @@ export class Office extends EventEmitter<{
     if (questions?.length) {
       // 질문을 받은 때부터 답까지 걸린 시간을 기록에 남긴다 (QA: 대신 답하기 지연 측정)
       const askedAt = Date.now()
-      const took = () => `${Math.round((Date.now() - askedAt) / 1000)}초`
+      const tookSec = () => Math.round((Date.now() - askedAt) / 1000)
+      const took = () => `${tookSec()}초`
       return this.answerWhileAway(this.liveStaff(s), questions).then((answers) => {
         // 비서가 답하지 못했으면(위험한 질문·근거 없음·실패) 결재함에 올려 대표를 기다린다 — hired.ts는 거절된 약속을 평소 결재로 받는다
         if (!answers) {
           this.auto.counts = { ...this.auto.counts, waited: this.auto.counts.waited + 1 }
           this.saveAutoSoon()
-          this.log(staffId, 'approval', t('log.autoWait', { took: took() }))
+          this.log(staffId, 'approval', tk('log.autoWait', { took: tk('log.sec', { n: tookSec() }) }))
           throw new Error('대표를 기다림')
         }
         const text = Object.entries(answers)
           .map(([q, a]) => `${q} → ${a}`)
           .join(' / ')
         this.auto.counts = { ...this.auto.counts, answered: this.auto.counts.answered + 1 }
-        record({ kind: 'answer', toolName, summary: `${text} (${took()})`, category: 'other' })
-        this.log(staffId, 'approval', t('log.autoAnswer', { took: took(), text }))
+        const sec = Math.round((Date.now() - askedAt) / 1000)
+        record({ kind: 'answer', toolName, summary: `${text} (${took()})`, summaryI18n: { key: 'autoApprove.answerTook', params: { text: maskSecrets(text), sec } }, category: 'other' })
+        this.log(staffId, 'approval', tk('log.autoAnswer', { took: tk('log.sec', { n: tookSec() }), text }))
         return { answers }
       })
     }
@@ -1253,8 +1277,11 @@ export class Office extends EventEmitter<{
     this.auto.counts = { ...this.auto.counts, [category]: this.auto.counts[category] + 1 }
     // 자동 승인한 MCP 호출은 인자를 2KB까지 남긴다 (L1 — 짧은 요약으로 묻히지 않게)
     const logSummary = toolName.startsWith('mcp__') ? `${summary} ${JSON.stringify(input)}`.slice(0, AUTO_MCP_SUMMARY_MAX) : summary
-    record({ kind: 'approval', toolName, summary: logSummary, category })
-    this.log(staffId, 'approval', t('log.autoApprove', { tool: toolName, summary }))
+    // 컴퓨터 조작 요약은 키로도 남겨 화면 언어로 다시 번역한다 (뒤에 붙는 인자 JSON은 원문 그대로)
+    const computer = computerSummaryI18n(toolName, input)
+    const summaryI18n: I18nArg | undefined = computer ? { list: [computer, maskSecrets(logSummary.slice(summary.length))], sep: '' } : undefined
+    record({ kind: 'approval', toolName, summary: logSummary, summaryI18n, category })
+    this.log(staffId, 'approval', tk('log.autoApprove', { tool: toolName, summary: summaryI18n ?? summary }))
     return Promise.resolve({})
   }
 
@@ -1275,7 +1302,7 @@ export class Office extends EventEmitter<{
     if (!this.rules.some((r) => isSameRule(r, { ...draft, staffId: s.id }))) {
       this.rules = [...this.rules, { id: crypto.randomUUID(), staffId: s.id, toolName: draft.toolName, patterns: draft.patterns, createdAt: Date.now() }]
       db.saveApprovalRules(this.rules)
-      this.log(s.id, 'approval', t('log.ruleAdded', { rule: ruleLabel(draft) }))
+      this.log(s.id, 'approval', tk('log.ruleAdded', { rule: ruleLabel(draft) }))
       this.notifyRemoteChange('notify.remoteRule')
     }
     const covered = s.approvals.filter((a) => a.alwaysRule && draftCovered(this.rules, s.id, a.alwaysRule)).map((a) => a.id)
@@ -1509,7 +1536,7 @@ export class Office extends EventEmitter<{
             const target = candidates.find((m) => m.name === member)
             if (!target) return text(t('staff.tool.notFound', { name: member }))
             const lead = this.hired.get(staffId)!
-            this.log(staffId, 'delegate', t('log.delegate', { name: target.name, text: instruction }))
+            this.log(staffId, 'delegate', tk('log.delegate', { name: target.name, text: instruction }))
             this.postChat(staffId, `@${target.name} ${instruction}`.slice(0, CHAT_TEXT_MAX))
             this.instruct(target.id, t('staff.msg.delegated', { lead: lead.name, instruction }), { kind: 'delegate', leadId: staffId })
             return text(t('staff.tool.delegate.done', { name: target.name }))
@@ -1522,7 +1549,7 @@ export class Office extends EventEmitter<{
           async ({ title, body, tags }) => {
             try {
               const entry = this.saveKnowledge({ kind: 'learning', title, body, tags }, this.hired.get(staffId) ?? null)
-              this.log(staffId, 'status', t('log.learningSaved', { title: entry.title }))
+              this.log(staffId, 'status', tk('log.learningSaved', { title: entry.title }))
               return text(t('staff.tool.learning.done'))
             } catch {
               return text(t('staff.tool.learning.invalid'))
@@ -1762,7 +1789,7 @@ export class Office extends EventEmitter<{
     db.saveSessionId(staff.id, s.sessionId)
     const stored = this.hired.get(staff.id)!
     stored.sessionId = s.sessionId
-    this.log(staff.id, 'status', t('log.externalHired'))
+    this.log(staff.id, 'status', tk('log.externalHired'))
     this.scheduleEmit()
     return this.liveStaff(stored)
   }
@@ -1777,7 +1804,7 @@ export class Office extends EventEmitter<{
     db.saveSessionId(clone.id, fork.sessionId)
     const stored = this.hired.get(clone.id)!
     stored.sessionId = fork.sessionId
-    this.log(clone.id, 'status', t('log.cloned', { name: s.name }))
+    this.log(clone.id, 'status', tk('log.cloned', { name: s.name }))
     this.instruct(clone.id, text, { kind: 'user' }, attachments)
     return this.liveStaff(stored)
   }
@@ -2066,6 +2093,11 @@ export class Office extends EventEmitter<{
   setEquipment(staffId: string, equipment: Equipment) {
     const s = this.hired.get(staffId)
     if (!s) return
+    // 칸이 빠진 값(비서·휴대폰·옛 호출)이 와도 지금 값으로 채운다 — disallowedTools가 비면 다음 지시가 'filter' 오류로 멈췄다
+    const given = Object.fromEntries(Object.entries(equipment ?? {}).filter(([, v]) => v !== undefined && v !== null)) as Partial<Equipment>
+    equipment = { ...DEFAULT_EQUIPMENT, ...s.equipment, ...given }
+    for (const k of ['mcpServers', 'allowedTools', 'disallowedTools'] as const) if (!Array.isArray(equipment[k])) equipment[k] = s.equipment[k] ?? []
+    if (equipment.skills !== 'all' && !Array.isArray(equipment.skills)) equipment.skills = s.equipment.skills ?? 'all'
     // 휴대폰이 보낸 값은 Bash 허용을 걸러 내고 "위험 명령 금지"를 못 빼게 한다 (PC 쪽 방어 — 가져온 장비와 같은 규칙)
     if (isRemoteCall()) {
       equipment = remoteSafeEquipment(s.equipment, equipment)
@@ -2215,7 +2247,7 @@ export class Office extends EventEmitter<{
       void this.persistWork(staffId)
     }
     if (r.ok && this.hired.has(staffId)) {
-      this.log(staffId, 'commit', t('log.commit', { text: message.split('\n')[0] }))
+      this.log(staffId, 'commit', tk('log.commit', { text: message.split('\n')[0] }))
       this.postChat(staffId, `✅ 커밋을 결재받았어요: ${message.split('\n')[0]}`)
     }
     return r
@@ -2226,7 +2258,7 @@ export class Office extends EventEmitter<{
     if (!cwd) return { ok: false, output: '작업 폴더를 찾을 수 없습니다.' }
     const r = await pushAndPr(cwd, title, body)
     if (r.ok && this.hired.has(staffId)) {
-      this.log(staffId, 'commit', t('log.pr', { text: title }))
+      this.log(staffId, 'commit', tk('log.pr', { text: title }))
       this.postChat(staffId, `🚀 PR을 올렸어요: ${title}`)
     }
     return r
@@ -2510,7 +2542,7 @@ export class Office extends EventEmitter<{
     if (isBusyWithTask) {
       this.taskQueue.set(staffId, [...(this.taskQueue.get(staffId) ?? []).filter((q) => q.taskId !== taskId), { taskId, context }])
       this.saveTask({ ...task, assigneeId: staffId, status: 'doing', result: '', plan: task.parentId ? task.plan : null, updatedAt: Date.now() })
-      this.log(staffId, 'status', t('log.queued', { title: task.title }))
+      this.log(staffId, 'status', tk('log.queued', { title: task.title }))
       return
     }
     // 다시 돌리는 카드면 지난 보고·기획안을 비우고 새로 시작한다
@@ -3259,7 +3291,7 @@ export class Office extends EventEmitter<{
     if (this.heldJobs.some((j) => j.kind === job.kind && j.id === job.id)) return true
     const isFirst = this.heldJobs.length === 0
     this.heldJobs = [...this.heldJobs, job]
-    this.log(job.staffId, 'status', t('log.planHeld', { label: job.label }))
+    this.log(job.staffId, 'status', tk('log.planHeld', { label: job.label }))
     if (isFirst) {
       const body = t('notify.planHeldBody', { percent: Math.round(hold.percent ?? 100), when: fmtDate(hold.resumeAt ?? 0, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) })
       this.emit('notify', { title: t('notify.planHeld'), body, staffId: '' })
@@ -3489,11 +3521,14 @@ export class Office extends EventEmitter<{
     this.scheduleEmit()
   }
 
-  private log(staffId: string, type: LogType, text: string, attachments?: Attachment[]) {
+  /** text가 글자면 그대로, I18nArg(키+인자)면 지금 언어로 풀어 text에 넣고 키는 textI18n에 함께 저장한다 */
+  private log(staffId: string, type: LogType, text: Exclude<I18nArg, number>, attachments?: Attachment[]) {
+    const i18n = typeof text === 'string' ? undefined : text
+    if (typeof text !== 'string') text = trI18n(text)
     const c = this.counters.get(staffId) ?? {}
     c[type] = (c[type] ?? 0) + 1
     this.counters.set(staffId, c)
-    this.emit('log', db.insertLog(staffId, type, remoteMarked(type, text), attachments))
+    this.emit('log', db.insertLog(staffId, type, remoteMarked(type, text), attachments, i18n))
     this.scheduleEmit()
   }
 

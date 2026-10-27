@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useOffice } from '@/store'
 import { t } from '@shared/i18n'
+import { roleLabel } from '@shared/roleLabel'
 
 /** 직원 내보내기: 고용 직원을 여러 명 고르고 파일 하나로 저장한다 (main의 pack:exportStaff) */
 export function StaffExportDialog({ open, onOpenChange, initialId }: { open: boolean; onOpenChange: (open: boolean) => void; initialId: string | null }) {
@@ -41,7 +42,7 @@ export function StaffExportDialog({ open, onOpenChange, initialId }: { open: boo
               <label className="hover:bg-accent flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm">
                 <input type="checkbox" checked={picked.includes(s.id)} onChange={() => toggle(s.id)} />
                 <span className="font-medium">{s.name}</span>
-                <span className="text-muted-foreground text-xs">{s.role}</span>
+                <span className="text-muted-foreground text-xs">{roleLabel(s.role)}</span>
               </label>
             </li>
           ))}

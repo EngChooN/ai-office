@@ -6,10 +6,11 @@ import { cn } from '@/lib/utils'
 import { useOffice } from '@/store'
 import { BUDGET_WARN_RATIO, FEED_TYPES, formatAgo, formatElapsed, usageRatio, type AttentionItem, type AttentionKind, type SummaryKey } from '@shared/dashboard'
 import type { BudgetPeriod, LogEntry, Payslip, Staff } from '@shared/types'
-import { t, fmtNumber, type TKey } from '@shared/i18n'
+import { t, trOr, fmtNumber, type TKey } from '@shared/i18n'
 import { PlanHoldBanner, PlanUsageCard } from './PlanUsageCard'
 import { Avatar } from './StaffCard'
 import { formatTokens, STATUS_META, useNow } from './status'
+import { toolDisplayName } from '@shared/computerTools'
 
 const NOW_TICK_MS = 60_000
 const ATTENTION_VISIBLE = 3
@@ -231,7 +232,7 @@ function AttentionRow({ item, staff, now, isGuarded }: { item: AttentionItem; st
   const isInlineApproval = item.kind === 'approval' && !isLongApproval
   const body =
     item.kind === 'approval'
-      ? `${item.approval?.toolName ?? ''} · ${summary}`
+      ? `${toolDisplayName(item.approval?.toolName ?? '')} · ${summary}`
       : item.kind === 'question'
         ? item.approval?.questions?.[0]?.question
         : item.kind === 'error'
@@ -407,7 +408,7 @@ export function ActivityFeed({ staffById }: { staffById: Map<string, Staff> }) {
             <button key={`${l.id}-${l.ts}`} type="button" onClick={() => s && select(s.id)} className="hover:bg-accent flex w-full min-w-0 items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs">
               {s ? <Avatar avatar={s.avatar} name={s.name} teamId={s.teamId} className="size-5" /> : <span className="bg-muted size-5 shrink-0 rounded-full" />}
               <span className="shrink-0 font-medium">{s?.name ?? t('common.formerStaff')}</span>
-              <span className={cn('min-w-0 flex-1 truncate', l.type === 'error' ? 'text-status-error' : 'text-muted-foreground')}>{l.text.replace(/\s+/g, ' ')}</span>
+              <span className={cn('min-w-0 flex-1 truncate', l.type === 'error' ? 'text-status-error' : 'text-muted-foreground')}>{trOr(l.textI18n, l.text).replace(/\s+/g, ' ')}</span>
               <span className="text-muted-foreground shrink-0 text-[11px] tabular-nums">{formatAgo(l.ts, now)}</span>
             </button>
           )

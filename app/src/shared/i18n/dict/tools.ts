@@ -168,4 +168,18 @@ export default {
     ja: '今の会話が記憶領域 (コンテキスト) をどれだけ使っているか表示します',
     zh: '显示当前对话占用了多少记忆空间 (上下文)',
   },
+  // 컴퓨터 조작 결재 카드 — 도구 이름·action을 쉬운 말로 ("컴퓨터 조작 · 클릭 (20, 12)")
+  'computer.tool': { ko: '컴퓨터 조작', en: 'Computer control', ja: 'コンピューター操作', zh: '电脑操作' },
+  'computer.action.left_click': { ko: '클릭', en: 'Click', ja: 'クリック', zh: '点击' },
+  'computer.action.right_click': { ko: '오른쪽 클릭', en: 'Right-click', ja: '右クリック', zh: '右键点击' },
+  'computer.action.middle_click': { ko: '가운데 클릭', en: 'Middle-click', ja: '中クリック', zh: '中键点击' },
+  'computer.action.double_click': { ko: '더블클릭', en: 'Double-click', ja: 'ダブルクリック', zh: '双击' },
+  'computer.action.triple_click': { ko: '세 번 클릭', en: 'Triple-click', ja: 'トリプルクリック', zh: '三击' },
+  'computer.action.left_click_drag': { ko: '끌어 놓기', en: 'Drag', ja: 'ドラッグ', zh: '拖动' },
+  'computer.action.mouse_move': { ko: '마우스 이동', en: 'Move mouse', ja: 'マウス移動', zh: '移动鼠标' },
+  'computer.action.type': { ko: '글자 입력', en: 'Type', ja: '文字入力', zh: '输入文字' },
+  'computer.action.key': { ko: '키 누르기', en: 'Press key', ja: 'キー入力', zh: '按键' },
+  'computer.action.scroll': { ko: '스크롤', en: 'Scroll', ja: 'スクロール', zh: '滚动' },
+  'computer.action.get_screenshot': { ko: '화면 보기', en: 'View screen', ja: '画面を見る', zh: '查看屏幕' },
+  'computer.action.get_cursor_position': { ko: '커서 위치 보기', en: 'Check cursor position', ja: 'カーソル位置を見る', zh: '查看光标位置' },
 } satisfies Record<string, Entry>

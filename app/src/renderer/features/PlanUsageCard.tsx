@@ -7,6 +7,8 @@ import { fmtDate, t, type TKey } from '@shared/i18n'
 import { PLAN_WINDOW_LABEL, type PlanUsage } from '@shared/types'
 
 const ORDER = Object.keys(PLAN_WINDOW_LABEL)
+/** 선택자가 매번 새 배열을 돌려주면 zustand가 무한 렌더에 빠진다 — 빈 값은 늘 같은 배열로 */
+const NO_USAGE: PlanUsage[] = []
 /** 한도 종류 이름 — 모르는 종류는 받은 값 그대로 */
 const typeLabel = (type: string) => (type in PLAN_WINDOW_LABEL ? t(`planUsage.window.${type}` as TKey) : type)
 /** 대시보드(compact)에선 기본 한도 두 줄만 */
@@ -79,7 +81,7 @@ export function PlanUsageCard({ isCompact = false }: { isCompact?: boolean }) {
   const list = useOffice((s) => s.planUsage).filter((u) => !isCompact || COMPACT_TYPES.has(u.type))
   const sorted = [...list].sort((a, b) => (ORDER.indexOf(a.type) + 1 || 99) - (ORDER.indexOf(b.type) + 1 || 99))
   const updatedAt = Math.max(0, ...list.map((u) => u.updatedAt))
-  const codex = useOffice((s) => s.codexUsage ?? []).filter((u) => !isCompact || COMPACT_TYPES.has(u.type) || u.type === 'thirty_day')
+  const codex = useOffice((s) => s.codexUsage ?? NO_USAGE).filter((u) => !isCompact || COMPACT_TYPES.has(u.type) || u.type === 'thirty_day')
   const sortedCodex = [...codex].sort((a, b) => (ORDER.indexOf(a.type) + 1 || 99) - (ORDER.indexOf(b.type) + 1 || 99))
   const [isChecking, setIsChecking] = useState(false)
   const note = t('planUsage.note')

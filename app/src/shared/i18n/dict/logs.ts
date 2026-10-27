@@ -37,6 +37,8 @@ export default {
   'chat.hiredGreeting': { ko: '안녕하세요, {role} {name}입니다. 잘 부탁드려요!', en: "Hi, I'm {name}, the new {role}. Nice to meet you all!", ja: 'はじめまして、{role}の{name}です。よろしくお願いします！', zh: '大家好，我是{role}{name}，请多关照！' },
   'log.interrupted': { ko: '하던 일을 멈추고 새 지시를 받았습니다.', en: 'Stopped what I was doing and took a new instruction.', ja: '作業を中断して新しい指示を受けました。', zh: '已停下手头工作并接收新指示。' },
   'log.stopped': { ko: '업무를 중단시켰습니다.', en: 'Task was stopped.', ja: '業務を中断しました。', zh: '任务已中止。' },
+  'log.sec': { ko: '{n}초', en: '{n}s', ja: '{n}秒', zh: '{n}秒' },
+  'log.answered': { ko: '답변', en: 'Answer', ja: '回答', zh: '回答' },
   'log.approved': { ko: '승인', en: 'Approved', ja: '承認', zh: '批准' },
   'log.rejected': { ko: '반려', en: 'Rejected', ja: '却下', zh: '驳回' },
   'log.autoWait': { ko: '🤖 자동결재: 이 질문은 대표님 답을 기다려요 ({took} 만에 판정)', en: '🤖 Auto-approve: this question waits for your answer (decided in {took})', ja: '🤖 自動承認: この質問は代表の回答を待ちます（{took}で判定）', zh: '🤖 自动审批：此问题等待你的回答（{took} 内判定）' },

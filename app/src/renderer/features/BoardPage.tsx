@@ -19,6 +19,7 @@ import { RunCard } from './RunCard'
 import { useTutorialStep, useTutorialTaskId } from './Tutorial'
 import { Avatar, PracticeBadge } from './StaffCard'
 import { formatCost, formatTokens } from './status'
+import { roleLabel } from '@shared/roleLabel'
 
 const COLUMNS: { status: TaskStatus; label: TKey; hint: TKey | null }[] = [
   {
@@ -324,7 +325,7 @@ function TaskCard({ task }: { task: Task }) {
             <option value="">{t('board.pickAssignee')}</option>
             {candidates.map((s) => (
               <option key={s.id} value={s.id}>
-                {s.name} · {s.role}
+                {s.name} · {roleLabel(s.role)}
               </option>
             ))}
           </NativeSelect>
@@ -468,7 +469,7 @@ function TodoAssign({ task, candidates }: { task: Task; candidates: { id: string
         <option value="">{t('board.orAssignOne')}</option>
         {candidates.map((s) => (
           <option key={s.id} value={s.id}>
-            {s.name} · {s.role}
+            {s.name} · {roleLabel(s.role)}
           </option>
         ))}
       </NativeSelect>
