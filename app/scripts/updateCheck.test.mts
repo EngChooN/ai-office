@@ -1,7 +1,7 @@
 // 업데이트 알림: 버전 비교·알림 여부·설치 파일 고르기·Release 응답 해석 단위 테스트 — pnpm test
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { ASSET_NAMES, assetTargetFor, compareVersions, isNewerVersion, parseRelease, parseVersion, pickAsset, pickDownloadUrl, pickLanguageSection, shouldNotify, shouldRecheck, summarizeNotes, UPDATE_CHECK_INTERVAL_MS, UPDATE_RECHECK_GAP_MS } from '../src/shared/updateCheck.ts'
+import { ASSET_NAMES, assetTargetFor, compareVersions, isNewerVersion, LEGACY_ASSET_NAMES, parseRelease, parseVersion, pickAsset, pickDownloadUrl, pickLanguageSection, shouldNotify, shouldRecheck, summarizeNotes, UPDATE_CHECK_INTERVAL_MS, UPDATE_RECHECK_GAP_MS } from '../src/shared/updateCheck.ts'
 
 const sign = (n: number | null) => (n === null ? null : Math.sign(n))
 
@@ -55,6 +55,14 @@ test('assetTargetFor / pickDownloadUrl: 플랫폼별 고정 파일 이름으로 
   assert.equal(pickDownloadUrl([{ name: ASSET_NAMES.mac, browser_download_url: 'https://evil.example/x.dmg' }], 'mac'), null, 'GitHub 주소만')
   assert.equal(pickDownloadUrl(assets.slice(1), 'mac'), null, '파일이 없으면 null')
   assert.equal(pickDownloadUrl('nope', 'mac'), null)
+})
+
+test('pickDownloadUrl: 새 이름 파일이 없으면 옛 이름(Claude-Office-*)으로 찾고, 둘 다 있으면 새 이름을 쓴다', () => {
+  const url = (name: string) => `https://github.com/EngChooN/ai-office/releases/download/v0.14.0/${name}`
+  const legacyOnly = [{ name: LEGACY_ASSET_NAMES.win, browser_download_url: url(LEGACY_ASSET_NAMES.win) }]
+  assert.equal(pickDownloadUrl(legacyOnly, 'win'), url(LEGACY_ASSET_NAMES.win), '옛 이름 대체')
+  const both = [...legacyOnly, { name: ASSET_NAMES.win, browser_download_url: url(ASSET_NAMES.win) }]
+  assert.equal(pickDownloadUrl(both, 'win'), url(ASSET_NAMES.win), '새 이름 우선')
 })
 
 test('parseRelease: 응답 해석 · 초안/미리보기/이상한 응답은 null', () => {

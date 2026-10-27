@@ -32,11 +32,15 @@ class UpdateCheckTest {
 
     @Test
     fun release() {
-        val json = """{"tag_name":"v0.12.0","html_url":"https://github.com/EngChooN/claude-office/releases/tag/v0.12.0",
-          "body":"## 변경\n- **새 기능** [링크](http://x)","assets":[{"name":"Claude-Office-android.apk","browser_download_url":"https://github.com/EngChooN/claude-office/releases/download/v0.12.0/Claude-Office-android.apk"}]}"""
+        val json = """{"tag_name":"v0.12.0","html_url":"https://github.com/EngChooN/ai-office/releases/tag/v0.12.0",
+          "body":"## 변경\n- **새 기능** [링크](http://x)","assets":[{"name":"AI-Office-android.apk","browser_download_url":"https://github.com/EngChooN/ai-office/releases/download/v0.12.0/AI-Office-android.apk"}]}"""
         val r = parseRelease(json)!!
         assertEquals("0.12.0", r.version)
-        assertTrue(r.downloadUrl.endsWith("Claude-Office-android.apk"))
+        assertTrue(r.downloadUrl.endsWith("AI-Office-android.apk"))
+        // 새 이름 파일이 없는 옛 Release는 옛 이름으로 찾는다
+        val legacy = """{"tag_name":"v0.12.0","html_url":"https://github.com/EngChooN/ai-office/releases/tag/v0.12.0",
+          "assets":[{"name":"Claude-Office-android.apk","browser_download_url":"https://github.com/EngChooN/ai-office/releases/download/v0.12.0/Claude-Office-android.apk"}]}"""
+        assertTrue(parseRelease(legacy)!!.downloadUrl.endsWith("Claude-Office-android.apk"))
         assertEquals("변경\n• 새 기능 링크", r.notes)
         assertNull(parseRelease("{}"))
         assertNull(parseRelease("not json"))

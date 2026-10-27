@@ -7,6 +7,11 @@ Writing rules
 - Write from the user's point of view, describing "what you can now do." Do not use technical names (file paths, program or library names, English abbreviations). If one is truly needed, put it once in parentheses after a plain-language explanation.
 - Development details (how it was built, where files are) go in `SPEC.md` and `docs/changelog-dev.md`.
 
+## [미정] (설치본 미빌드)
+
+### Improvements
+- The repository name has been changed to ai-office.
+
 ## [0.14.0] - 2026-10-27
 
 ### New features

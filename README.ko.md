@@ -8,7 +8,7 @@ AI 세션들(현재는 Claude Code)을 **직원**으로 고용해 하나의 사�
 - 스택: Electron Forge + Vite · React 19 · Zustand · Tailwind 4 + shadcn/ui · Phaser 4 · SQLite(`node:sqlite`) · Claude Agent SDK
 
 ## 설치 (0.14.0)
-- `app/out/make/dmg/arm64/AI Office.dmg` 를 열어 Applications로 드래그
+- `app/out/make/dmg/arm64/AI-Office.dmg` 를 열어 Applications로 드래그
 - Apple Silicon 전용 · 서명/공증 없음 → 처음 열 때 "확인되지 않은 개발자" 경고가 나오면 시스템 설정 › 개인정보 보호 및 보안 › "그래도 열기"
 - 필요 조건: 그 맥에서 Claude Code에 로그인되어 있을 것 (직원은 그 계정으로 일하고 비용도 그 계정에 청구)
 - 다시 빌드: `cd app && pnpm make`

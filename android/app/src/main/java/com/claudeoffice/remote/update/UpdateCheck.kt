@@ -8,8 +8,10 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.Json
 
-const val RELEASE_API_URL = "https://api.github.com/repos/EngChooN/claude-office/releases/latest"
-const val APK_NAME = "Claude-Office-android.apk"
+const val RELEASE_API_URL = "https://api.github.com/repos/EngChooN/ai-office/releases/latest"
+const val APK_NAME = "AI-Office-android.apk"
+/** 옛 이름(Claude Office 시절 앱이 찾는 이름). 새 이름 파일이 없는 Release에서 대신 찾는다 */
+const val LEGACY_APK_NAME = "Claude-Office-android.apk"
 const val CHECK_INTERVAL_MS = 6L * 60 * 60 * 1000
 
 data class ReleaseInfo(
@@ -103,9 +105,11 @@ fun parseRelease(json: String, lang: String = "en"): ReleaseInfo? {
     val tag = str(obj, "tag_name") ?: return null
     val version = tag.trim().removePrefix("v")
     if (parse(version) == null) return null
-    val apk = (obj["assets"] as? JsonArray)?.firstNotNullOfOrNull { a ->
-        (a as? JsonObject)?.takeIf { str(it, "name") == APK_NAME }?.let { str(it, "browser_download_url") }
-    }?.takeIf { isGithubUrl(it) }
-    val page = str(obj, "html_url")?.takeIf { isGithubUrl(it) } ?: "https://github.com/EngChooN/claude-office/releases/latest"
+    val assets = (obj["assets"] as? JsonArray).orEmpty()
+    fun assetUrl(name: String) = assets.firstNotNullOfOrNull { a ->
+        (a as? JsonObject)?.takeIf { str(it, "name") == name }?.let { str(it, "browser_download_url") }
+    }
+    val apk = (assetUrl(APK_NAME) ?: assetUrl(LEGACY_APK_NAME))?.takeIf { isGithubUrl(it) }
+    val page = str(obj, "html_url")?.takeIf { isGithubUrl(it) } ?: "https://github.com/EngChooN/ai-office/releases/latest"
     return ReleaseInfo(version, summarizeNotes(str(obj, "body"), lang), apk ?: page)
 }

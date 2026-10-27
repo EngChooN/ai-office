@@ -8,30 +8,30 @@
    주소가 비어 있으면 버튼에 '준비 중'이 보입니다. */
 var DOWNLOADS = {
   // 최신 Release의 고정 파일 이름으로 연결 — 새 버전은 같은 이름으로 Release에 올리면 됨
-  mac: 'https://github.com/EngChooN/claude-office/releases/latest/download/Claude-Office-mac-arm64.dmg',
-  win: 'https://github.com/EngChooN/claude-office/releases/latest/download/Claude-Office-win-x64.zip',
-  android: 'https://github.com/EngChooN/claude-office/releases/latest/download/Claude-Office-android.apk',
-  github: 'https://github.com/EngChooN/claude-office',
+  mac: 'https://github.com/EngChooN/ai-office/releases/latest/download/AI-Office-mac-arm64.dmg',
+  win: 'https://github.com/EngChooN/ai-office/releases/latest/download/AI-Office-win-x64.zip',
+  android: 'https://github.com/EngChooN/ai-office/releases/latest/download/AI-Office-android.apk',
+  github: 'https://github.com/EngChooN/ai-office',
   changelog: '',  // 변경 기록 페이지 주소 (비우면 GitHub 저장소의 CHANGELOG.md)
   license: 'MIT', // 라이선스 이름
   version: '0.14.0', // 기본값. 페이지가 열리면 GitHub 최신 Release의 tag_name으로 바뀜 (실패·시간 초과면 이 값)
-  latestApi: 'https://api.github.com/repos/EngChooN/claude-office/releases/latest'
+  latestApi: 'https://api.github.com/repos/EngChooN/ai-office/releases/latest'
 };
 </script>
 <!-- 공유 미리보기: 크롤러는 JS를 돌리지 않으니 정적 기본값(한국어)을 둔다. 언어를 바꾸면 render()가 제목·설명을 바꾼다 -->
 <title>AI Office — Claude와 GPT 직원을 함께 고용하는 AI 사무실</title>
 <meta name="description" content="Claude와 GPT 직원을 함께 뽑아 일을 맡기고, 결재하고, 보고받는 무료 오픈소스 데스크톱 앱. 명령어 창도, 어려운 설정도 필요 없습니다.">
 <meta name="theme-color" content="#0b0c10">
-<link rel="canonical" href="https://engchoon.github.io/claude-office/">
+<link rel="canonical" href="https://engchoon.github.io/ai-office/">
 <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
 <link rel="icon" type="image/png" sizes="512x512" href="assets/icon.png">
 <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="AI Office">
-<meta property="og:url" content="https://engchoon.github.io/claude-office/">
+<meta property="og:url" content="https://engchoon.github.io/ai-office/">
 <meta property="og:title" content="AI Office — Claude와 GPT 직원을 함께 고용하는 AI 사무실">
 <meta property="og:description" content="Claude와 GPT 직원을 함께 뽑아 일을 맡기고, 결재하고, 보고받는 무료 오픈소스 데스크톱 앱. 명령어 창도, 어려운 설정도 필요 없습니다.">
-<meta property="og:image" content="https://engchoon.github.io/claude-office/assets/og.png">
+<meta property="og:image" content="https://engchoon.github.io/ai-office/assets/og.png">
 <meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -43,9 +43,9 @@ var DOWNLOADS = {
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="AI Office — Claude와 GPT 직원을 함께 고용하는 AI 사무실">
 <meta name="twitter:description" content="Claude와 GPT 직원을 함께 뽑아 일을 맡기고, 결재하고, 보고받는 무료 오픈소스 데스크톱 앱. 명령어 창도, 어려운 설정도 필요 없습니다.">
-<meta name="twitter:image" content="https://engchoon.github.io/claude-office/assets/og.png">
+<meta name="twitter:image" content="https://engchoon.github.io/ai-office/assets/og.png">
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"SoftwareApplication","name":"AI Office","url":"https://engchoon.github.io/claude-office/","image":"https://engchoon.github.io/claude-office/assets/og.png","applicationCategory":"BusinessApplication","operatingSystem":"macOS, Windows, Android","softwareVersion":"0.14.0","license":"https://opensource.org/licenses/MIT","downloadUrl":"https://github.com/EngChooN/claude-office/releases/latest","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"inLanguage":["ko","en","ja","zh"],"description":"Claude와 GPT 직원을 함께 뽑아 일을 맡기고, 결재하고, 보고받는 무료 오픈소스 데스크톱 앱."}
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"AI Office","url":"https://engchoon.github.io/ai-office/","image":"https://engchoon.github.io/ai-office/assets/og.png","applicationCategory":"BusinessApplication","operatingSystem":"macOS, Windows, Android","softwareVersion":"0.14.0","license":"https://opensource.org/licenses/MIT","downloadUrl":"https://github.com/EngChooN/ai-office/releases/latest","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"inLanguage":["ko","en","ja","zh"],"description":"Claude와 GPT 직원을 함께 뽑아 일을 맡기고, 결재하고, 보고받는 무료 오픈소스 데스크톱 앱."}
 </script>
 <style>
 :root{

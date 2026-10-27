@@ -3,7 +3,7 @@
 
 import type { Lang } from './i18n/index.ts'
 
-export const RELEASE_API_URL = 'https://api.github.com/repos/EngChooN/claude-office/releases/latest'
+export const RELEASE_API_URL = 'https://api.github.com/repos/EngChooN/ai-office/releases/latest'
 /** 앱을 켤 때 한 번 확인한 뒤 이 간격으로 다시 확인한다 (인증 없는 API 한도는 시간당 60회) */
 export const UPDATE_CHECK_INTERVAL_MS = 60 * 60 * 1000
 /** 창 포커스·잠자기에서 깨어날 때는 마지막 확인 뒤 이만큼 지났을 때만 다시 확인한다 */
@@ -17,8 +17,14 @@ export function shouldRecheck(lastAttemptAt: number | null, now: number, gap = U
   return lastAttemptAt === null || now - lastAttemptAt >= gap
 }
 
-/** Release에 올리는 설치 파일 이름 (고정) */
+/** Release에 올리는 설치 파일 이름 (고정). 저장소 개명(ai-office) 뒤 규칙 */
 export const ASSET_NAMES = {
+  mac: 'AI-Office-mac-arm64.dmg',
+  win: 'AI-Office-win-x64.zip',
+  android: 'AI-Office-android.apk',
+} as const
+/** 옛 이름(Claude Office 시절). 옛 앱이 이 이름으로 찾으므로 Release에 함께 올리고, 새 이름 파일이 없을 때 대신 찾는다 */
+export const LEGACY_ASSET_NAMES = {
   mac: 'Claude-Office-mac-arm64.dmg',
   win: 'Claude-Office-win-x64.zip',
   android: 'Claude-Office-android.apk',
@@ -133,10 +139,11 @@ export function assetTargetFor(platform: string, arch: string): AssetTarget | nu
 /** 브라우저로 열 주소는 GitHub 것만 받는다 (응답이 이상해도 엉뚱한 주소를 열지 않게) */
 const isGithubUrl = (url: unknown): url is string => typeof url === 'string' && /^https:\/\/github\.com\//.test(url)
 
-/** assets[]에서 파일 이름으로 설치 파일을 찾는다 (주소·크기·sha256). sha256은 GitHub 응답의 digest("sha256:…")에서만 읽는다 */
+/** assets[]에서 파일 이름으로 설치 파일을 찾는다 (주소·크기·sha256). 새 이름을 먼저 보고, 없으면 옛 이름을 본다. sha256은 GitHub 응답의 digest("sha256:…")에서만 읽는다 */
 export function pickAsset(assets: unknown, target: AssetTarget | null): ReleaseAsset | null {
   if (!target || !Array.isArray(assets)) return null
-  const asset = assets.find((a) => (a as { name?: unknown })?.name === ASSET_NAMES[target]) as
+  const named = (name: string) => assets.find((a) => (a as { name?: unknown })?.name === name)
+  const asset = (named(ASSET_NAMES[target]) ?? named(LEGACY_ASSET_NAMES[target])) as
     | { browser_download_url?: unknown; size?: unknown; digest?: unknown }
     | undefined
   if (!asset || !isGithubUrl(asset.browser_download_url)) return null

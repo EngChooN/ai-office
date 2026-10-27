@@ -8,7 +8,7 @@
 - 技术栈：Electron Forge + Vite · React 19 · Zustand · Tailwind 4 + shadcn/ui · Phaser 4 · SQLite（`node:sqlite`）· Claude Agent SDK
 
 ## 安装 (0.14.0)
-- 打开 `app/out/make/dmg/arm64/AI Office.dmg`，拖到 Applications 文件夹
+- 打开 `app/out/make/dmg/arm64/AI-Office.dmg`，拖到 Applications 文件夹
 - 仅限 Apple Silicon · 未签名/未公证 → 首次打开时若出现“无法验证开发者”提示，请前往 系统设置 › 隐私与安全性 › “仍要打开”
 - 前提条件：该 Mac 上已登录 Claude Code（员工使用该账户工作，费用也计入该账户）
 - 重新构建：`cd app && pnpm make`

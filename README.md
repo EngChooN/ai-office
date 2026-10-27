@@ -8,7 +8,7 @@ A personal PoC (Electron desktop app) that turns AI sessions (currently Claude C
 - Stack: Electron Forge + Vite · React 19 · Zustand · Tailwind 4 + shadcn/ui · Phaser 4 · SQLite (`node:sqlite`) · Claude Agent SDK
 
 ## Installation (0.14.0)
-- Open `app/out/make/dmg/arm64/AI Office.dmg` and drag it into Applications
+- Open `app/out/make/dmg/arm64/AI-Office.dmg` and drag it into Applications
 - Apple Silicon only · Not signed or notarized → if you see an "unidentified developer" warning the first time you open it, go to System Settings › Privacy & Security › "Open Anyway"
 - Requirement: Claude Code must be signed in on that Mac (staff work under that account, and usage is billed to it)
 - Rebuild: `cd app && pnpm make`

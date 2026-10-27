@@ -8,7 +8,7 @@ AI セッション（現在は Claude Code）を**社員**として採用し、�
 - スタック: Electron Forge + Vite · React 19 · Zustand · Tailwind 4 + shadcn/ui · Phaser 4 · SQLite（`node:sqlite`）· Claude Agent SDK
 
 ## インストール (0.14.0)
-- `app/out/make/dmg/arm64/AI Office.dmg` を開き、Applications にドラッグします
+- `app/out/make/dmg/arm64/AI-Office.dmg` を開き、Applications にドラッグします
 - Apple Silicon 専用 · 署名・公証なし → 初回起動時に「開発元を確認できない」と表示されたら、システム設定 › プライバシーとセキュリティ › 「このまま開く」
 - 必要条件: その Mac で Claude Code にログインしていること（社員はそのアカウントで働き、料金もそのアカウントに請求されます）
 - 再ビルド: `cd app && pnpm make`

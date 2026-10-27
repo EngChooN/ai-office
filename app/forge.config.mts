@@ -108,7 +108,7 @@ const config: ForgeConfig = {
     },
   },
   // 윈도우는 설치 없이 풀어서 실행하는 zip (설치형 Squirrel·서명은 확인 후 추가)
-  makers: [new MakerDMG({ name: 'AI Office', format: 'ULFO', icon: 'build/icon.icns' }), new MakerZIP({}, ['darwin', 'win32'])],
+  makers: [new MakerDMG({ name: 'AI-Office', format: 'ULFO', icon: 'build/icon.icns' }), new MakerZIP({}, ['darwin', 'win32'])],
   plugins: [
     new VitePlugin({
       build: [
