@@ -5,6 +5,7 @@ package com.claudeoffice.remote.net
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.intOrNull
 
 data class FirebaseConfig(val projectId: String, val appId: String, val senderId: String)
@@ -21,6 +22,8 @@ data class QrPayload(
     val pv: Int? = null,
     /** 예약 필드. 1.0.0은 읽기만 하고 쓰지 않는다 (푸시는 2단계) */
     val firebase: FirebaseConfig?,
+    /** 같은 네트워크 전용 모드 (QR의 lo:true). 이때 host는 PC의 내부 주소이고 외부 주소는 쓰지 않는다 */
+    val isLanOnly: Boolean = false,
 )
 
 sealed interface QrParse {
@@ -85,5 +88,6 @@ fun parseQr(text: String): QrParse {
     // lan: 선택. 틀린 값이면 무시하고 host로만 연결한다
     val lan = obj["lan"].strictString()?.takeIf(::isPrivateIpv4)
     val pv = obj["pv"].strictInt()?.takeIf { it >= 1 }
-    return QrParse.Ok(QrPayload(v, host, port, token, spki, lan, pv, firebase))
+    val isLanOnly = (obj["lo"] as? JsonPrimitive)?.takeIf { !it.isString }?.booleanOrNull == true
+    return QrParse.Ok(QrPayload(v, host, port, token, spki, lan, pv, firebase, isLanOnly))
 }

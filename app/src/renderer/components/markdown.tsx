@@ -44,7 +44,7 @@ const COMPONENTS: Components = {
 const REMARK_PLUGINS = [remarkGfm, remarkCjkFriendly]
 
 const VIEW_LINK = '#view='
-const VIEWS = new Set<View>(['secretary', 'map', 'dashboard', 'org', 'board', 'inbox', 'chat', 'meeting', 'manuals', 'schedule', 'report', 'payroll', 'settings', 'updates', 'shop'])
+const VIEWS = new Set<View>(['secretary', 'map', 'dashboard', 'org', 'board', 'inbox', 'chat', 'meeting', 'manuals', 'knowledge', 'gallery', 'schedule', 'report', 'payroll', 'settings', 'updates', 'shop'])
 function openView(view: string) {
   const s = useOffice.getState()
   // 직원 고용은 화면이 아니라 창이라 따로

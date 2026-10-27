@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { InfoIcon, RefreshCwIcon } from 'lucide-react'
+import { HourglassIcon, InfoIcon, PlayIcon, RefreshCwIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useOffice } from '@/store'
@@ -48,6 +48,29 @@ function Row({ usage, isCompact }: { usage: PlanUsage; isCompact: boolean }) {
         <div className={cn('h-full rounded-full', isOver ? 'bg-status-error' : isWarn ? 'bg-status-waiting' : 'bg-primary')} style={{ width: `${Math.min(100, isOver ? 100 : (pct ?? 0))}%` }} />
       </div>
     </div>
+  )
+}
+
+/** 플랜 한도가 높아 보류 중인 일 — 회복 시각과 [바로 시작]. 보류 중이 아니면 숨긴다 (상황판) */
+export function PlanHoldBanner({ className }: { className?: string }) {
+  const hold = useOffice((s) => s.planHold)
+  if (!hold?.isHeld) return null
+  const names = hold.items.slice(0, 3).map((i) => i.label).join(', ')
+  return (
+    <section className={cn('border-status-waiting/40 bg-status-waiting/10 flex flex-col gap-2 rounded-xl border p-3', className)}>
+      <div className="flex items-center gap-2 text-xs font-semibold">
+        <HourglassIcon className="size-3.5" /> {t('planHold.title', { percent: Math.round(hold.percent ?? 100) })}
+      </div>
+      <p className="text-muted-foreground text-xs">
+        {hold.resumeAt ? t('planHold.resume', { time: resetText(hold.resumeAt) }) : t('planHold.resumeUnknown')}
+        {hold.items.length > 0 && ` · ${t('planHold.items', { n: hold.items.length })}: ${names}${hold.items.length > 3 ? '…' : ''}`}
+      </p>
+      {hold.items.length > 0 && (
+        <Button size="sm" variant="secondary" className="h-7 self-start text-xs" onClick={() => void window.office.releasePlanHold()}>
+          <PlayIcon className="size-3.5" /> {t('planHold.startNow')}
+        </Button>
+      )}
+    </section>
   )
 }
 

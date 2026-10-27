@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
 import { DoorOpenIcon, MaximizeIcon, MinusIcon, PlusIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { MOD_KEY } from '@/lib/platform'
-import { IS_TOUCH } from '@/shell'
+import { IS_MOBILE_SHELL, IS_TOUCH } from '@/shell'
 import { useOffice, useViewLevel, viewLevelOf } from '@/store'
 import { buildFloors, MAX_LEVEL, officeOf, staffFloor } from '@shared/officeLevel'
 import { COMPANY_LEVELS, isMeetingLive } from '@shared/types'
@@ -12,6 +12,7 @@ import { dioramaFit, dioramaLayout, isOnOffice } from './exteriorLayout'
 import { isNightTime } from '@shared/dayNight'
 import { officeStage } from './officeStage'
 import { DecorDrawer } from './DecorDrawer'
+import { DemoDayBanner, DemoDayNowButton } from '@/features/DemoStage'
 import { isReducedMotion } from '@/lib/reducedMotion'
 import { t } from '@shared/i18n'
 import { levelTitle } from '@shared/i18n/names'
@@ -328,6 +329,7 @@ function Hud() {
       >
         {isDecorating ? t('map.decorEnd') : t('map.decorStart')}
       </button>
+      {!IS_MOBILE_SHELL && !isDecorating && <DemoDayNowButton />}
       {isDrawerOpen && <DecorDrawer />}
     </div>
   )
@@ -370,6 +372,7 @@ export function OfficeMap() {
         <OfficeExterior />
       )}
       <Hud />
+      {!IS_MOBILE_SHELL && <DemoDayBanner />}
       {isInside && (
         <>
           <div className="absolute right-3 bottom-3 flex flex-col overflow-hidden rounded-lg border border-white/10 bg-[#1a1d28]/90 shadow-lg">

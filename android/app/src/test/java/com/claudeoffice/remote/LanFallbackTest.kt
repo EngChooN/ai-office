@@ -132,7 +132,7 @@ class LanFallbackTest {
         assertEquals(ApiError.RemoteOff, r.error)
         assertEquals(listOf(Route.LAN, Route.EXTERNAL), r.tried.map { it.route })
         val text = triedText(r.tried)!!
-        assertTrue(text, text.startsWith("같은 와이파이 주소(127.0.0.1:") && text.contains("·외부 주소(") && text.endsWith("모두 닿지 않았어요"))
+        assertTrue(text, text.startsWith("같은 와이파이·VPN 주소(127.0.0.1:") && text.contains("·외부 주소(") && text.endsWith("모두 닿지 않았어요"))
         assertFalse(text, text.contains(token))
     }
 

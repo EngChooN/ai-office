@@ -33,7 +33,7 @@ import okhttp3.Response
 import okhttp3.RequestBody.Companion.toRequestBody
 
 /** 연결 정보 (QR에서 온 값). 토큰은 SecureStore가 Keystore로 암호화해 보관한다. lan은 같은 와이파이용 사설 IPv4(선택) */
-data class Connection(val host: String, val port: Int, val token: String, val spki: String, val lan: String? = null)
+data class Connection(val host: String, val port: Int, val token: String, val spki: String, val lan: String? = null, val isLanOnly: Boolean = false)
 
 /** PC에 닿는 길: 같은 와이파이 주소(QR lan) 또는 외부 주소(QR host). 둘 다 같은 지문으로 고정한다 */
 enum class Route { LAN, EXTERNAL }
@@ -43,10 +43,13 @@ data class Endpoint(val route: Route, val host: String, val port: Int) {
     val label get() = if (':' in host) "[$host]:$port" else "$host:$port"
 }
 
-fun Connection.endpoints(): List<Endpoint> = listOfNotNull(
-    lan?.takeIf { it != host }?.let { Endpoint(Route.LAN, it, port) },
-    Endpoint(Route.EXTERNAL, host, port),
-)
+/** 전용 모드면 외부 주소는 후보에서 뺀다 (PC가 바깥 접속을 닫아 둔다). 내부 주소는 lan, 없으면 host */
+fun Connection.endpoints(): List<Endpoint> =
+    if (isLanOnly) listOf(Endpoint(Route.LAN, lan ?: host, port))
+    else listOfNotNull(
+        lan?.takeIf { it != host }?.let { Endpoint(Route.LAN, it, port) },
+        Endpoint(Route.EXTERNAL, host, port),
+    )
 
 /** 마지막으로 성공한 길을 기억한다 (다음 조회·백그라운드 조회도 그 길부터) */
 interface RouteMemory {
@@ -57,6 +60,11 @@ class InMemoryRoute(override var preferred: Route? = null) : RouteMemory
 
 /** 같은 와이파이 주소는 짧게만 기다린다 — 밖에 있으면 금방 포기하고 외부 주소로 간다 */
 const val LAN_CONNECT_TIMEOUT_SEC = 2L
+
+/** 전용 모드는 내부 주소가 유일한 길이다 — VPN처럼 느린 길도 기다린다 */
+const val LAN_ONLY_CONNECT_TIMEOUT_SEC = 5L
+
+fun Connection.lanConnectTimeoutSec(): Long = if (isLanOnly) LAN_ONLY_CONNECT_TIMEOUT_SEC else LAN_CONNECT_TIMEOUT_SEC
 
 /** v2 호출은 PC에서 최대 120초 (4-5절) */
 const val V2_CALL_READ_SEC = 130L
@@ -227,7 +235,7 @@ class RemoteClient(
     private val jsonType = "application/json; charset=utf-8".toMediaType()
     private val all = endpoints
     // 두 클라이언트 모두 같은 지문으로 고정한다 — 연결 시간 제한만 다르다
-    private val lanHttp by lazy { pinnedClient(conn.spki, LAN_CONNECT_TIMEOUT_SEC) }
+    private val lanHttp by lazy { pinnedClient(conn.spki, conn.lanConnectTimeoutSec()) }
     private val externalHttp by lazy { pinnedClient(conn.spki) }
 
     private fun http(e: Endpoint) = if (e.route == Route.LAN) lanHttp else externalHttp
@@ -238,12 +246,12 @@ class RemoteClient(
     private val callDispatcher = okhttp3.Dispatcher().apply { maxRequestsPerHost = V2_MAX_CONCURRENT; maxRequests = V2_MAX_CONCURRENT }
     private val v2Slots = kotlinx.coroutines.sync.Semaphore(V2_MAX_CONCURRENT)
     private val lanCallHttp by lazy {
-        pinnedClient(conn.spki, LAN_CONNECT_TIMEOUT_SEC, V2_CALL_READ_SEC, V2_CALL_TOTAL_SEC).newBuilder().dispatcher(callDispatcher).build()
+        pinnedClient(conn.spki, conn.lanConnectTimeoutSec(), V2_CALL_READ_SEC, V2_CALL_TOTAL_SEC).newBuilder().dispatcher(callDispatcher).build()
     }
     private val externalCallHttp by lazy {
         pinnedClient(conn.spki, readTimeoutSec = V2_CALL_READ_SEC, callTimeoutSec = V2_CALL_TOTAL_SEC).newBuilder().dispatcher(callDispatcher).build()
     }
-    private val lanStreamHttp by lazy { pinnedClient(conn.spki, LAN_CONNECT_TIMEOUT_SEC, SSE_SILENCE_SEC, 0) }
+    private val lanStreamHttp by lazy { pinnedClient(conn.spki, conn.lanConnectTimeoutSec(), SSE_SILENCE_SEC, 0) }
     private val externalStreamHttp by lazy { pinnedClient(conn.spki, readTimeoutSec = SSE_SILENCE_SEC, callTimeoutSec = 0) }
     private fun callHttp(e: Endpoint) = if (e.route == Route.LAN) lanCallHttp else externalCallHttp
     private fun streamHttp(e: Endpoint) = if (e.route == Route.LAN) lanStreamHttp else externalStreamHttp

@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
-import { GitCommitIcon, GitPullRequestIcon, RefreshCwIcon, SparklesIcon } from 'lucide-react'
+import { GitCommitIcon, GitPullRequestIcon, RefreshCwIcon, SparklesIcon, Undo2Icon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import { NotOnWindows } from '@/components/not-on-windows'
-import type { Staff, WorkChanges } from '@shared/types'
+import type { Staff, WorkChanges, WorkRevertInfo } from '@shared/types'
 import { t, type TKey } from '@shared/i18n'
 import { shortPath } from './status'
 
@@ -24,14 +25,27 @@ export function ReviewTab({ staff }: { staff: Staff }) {
   const [prTitle, setPrTitle] = useState('')
   const [isBusy, setIsBusy] = useState(false)
   const [output, setOutput] = useState('')
+  const [revert, setRevert] = useState<WorkRevertInfo | null>(null)
+  const [isConfirming, setIsConfirming] = useState(false)
   const isHired = staff.kind === 'hired'
 
-  const load = useCallback(() => void window.office.workChanges(staff.id).then(setChanges), [staff.id])
+  const load = useCallback(() => {
+    void window.office.workChanges(staff.id).then(setChanges)
+    if (isHired) void window.office.workRevertInfo(staff.id).then(setRevert)
+  }, [staff.id, isHired])
   useEffect(load, [load, staff.status])
 
   const run = async (job: () => Promise<{ ok: boolean; output: string }>) => {
     setIsBusy(true)
     const r = await job()
+    setOutput(`${r.ok ? '✅' : '⚠️'} ${r.output}`)
+    setIsBusy(false)
+    load()
+  }
+  const handleRevert = async () => {
+    setIsConfirming(false)
+    setIsBusy(true)
+    const r = await window.office.revertWork(staff.id)
     setOutput(`${r.ok ? '✅' : '⚠️'} ${r.output}`)
     setIsBusy(false)
     load()
@@ -73,6 +87,25 @@ export function ReviewTab({ staff }: { staff: Staff }) {
         </Button>
       </div>
       <div className="min-h-0 flex-1 overflow-auto">
+        {isHired && revert && (
+          <div className="flex flex-col gap-2 border-b px-4 py-2 text-xs">
+            {!revert.available ? (
+              <p className="text-muted-foreground">{t('review.revert.noBase')}</p>
+            ) : revert.files.length === 0 && revert.skipped.length === 0 ? (
+              <p className="text-muted-foreground">{t('review.revert.none')}</p>
+            ) : (
+              <>
+                <div className="flex items-center gap-2">
+                  <span className="min-w-0 flex-1">{t('review.revert.summary', { n: revert.files.length, add: revert.files.reduce((a, f) => a + f.additions, 0), del: revert.files.reduce((a, f) => a + f.deletions, 0) })}</span>
+                  <Button size="sm" variant="outline" onClick={() => setIsConfirming(true)} disabled={isBusy || revert.files.length === 0 || staff.status === 'working' || staff.status === 'waiting'}>
+                    <Undo2Icon /> {t('review.revert.button')}
+                  </Button>
+                </div>
+                {revert.skipped.length > 0 && <p className="text-muted-foreground">{t('review.revert.skipped', { n: revert.skipped.length })}</p>}
+              </>
+            )}
+          </div>
+        )}
         {changes.files.length === 0 && <p className="text-muted-foreground p-4 text-xs">{t('review.noChanges')}</p>}
         {changes.files.length > 0 && (
           <ul className="border-b px-4 py-2 text-xs">
@@ -115,6 +148,29 @@ export function ReviewTab({ staff }: { staff: Staff }) {
           {output && <pre className="bg-muted selectable max-h-24 overflow-auto rounded p-2 text-[11px] whitespace-pre-wrap">{output}</pre>}
         </footer>
       )}
+      <Dialog open={isConfirming} onOpenChange={setIsConfirming}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{t('review.revert.confirmTitle')}</DialogTitle>
+            <DialogDescription>{t('review.revert.confirmBody', { n: revert?.files.length ?? 0 })}</DialogDescription>
+          </DialogHeader>
+          <ul className="selectable max-h-48 overflow-auto rounded border p-2 font-mono text-[11px]">
+            {revert?.files.map((f) => (
+              <li key={f.path} className="truncate">
+                {f.status} {f.path}
+              </li>
+            ))}
+          </ul>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsConfirming(false)}>
+              {t('common.cancel')}
+            </Button>
+            <Button variant="destructive" onClick={handleRevert}>
+              {t('review.revert.confirm')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </section>
   )
 }

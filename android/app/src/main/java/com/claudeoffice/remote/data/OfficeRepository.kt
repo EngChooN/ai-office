@@ -19,6 +19,7 @@ import com.claudeoffice.remote.net.Route
 import com.claudeoffice.remote.net.DecisionsResponse
 import com.claudeoffice.remote.net.QrPayload
 import com.claudeoffice.remote.net.RemoteClient
+import com.claudeoffice.remote.net.refreshedFromHello
 import com.claudeoffice.remote.net.StatusResponse
 import com.claudeoffice.remote.store.AppPrefs
 import com.claudeoffice.remote.store.SecureStore
@@ -89,6 +90,8 @@ data class OfficeState(
     /** 지금 쓰는 길 (같은 와이파이 / 외부) */
     val route: Route? = null,
     val v2: V2Mode = V2Mode.UNKNOWN,
+    /** 같은 네트워크 전용 모드로 연결돼 있다 (닿지 않을 때 문구가 달라진다) */
+    val isLanOnly: Boolean = false,
 ) {
     val serverNow get() = System.currentTimeMillis() + clockOffset
     val canAct get() = gate == null && reach == Reach.OK
@@ -166,6 +169,7 @@ class OfficeRepository(private val context: Context) {
             address = prefs.displayAddress,
             serverVersion = prefs.serverVersion,
             v2 = if (prefs.v2Active) V2Mode.ACTIVE else V2Mode.UNKNOWN,
+            isLanOnly = conn?.isLanOnly == true,
         )
         return base.copy(gate = gateFromPrefs(System.currentTimeMillis() + offset))
     }
@@ -187,7 +191,7 @@ class OfficeRepository(private val context: Context) {
 
     /** 스캔한 QR로 연결을 시도한다. GET /v1/status가 성공해야 저장한다 */
     suspend fun connect(qr: QrPayload): ConnectResult {
-        val candidate = Connection(qr.host, qr.port, qr.token, qr.spki, qr.lan)
+        val candidate = Connection(qr.host, qr.port, qr.token, qr.spki, qr.lan, qr.isLanOnly)
         // 저장 전이라 기억한 길은 임시로 두고, 성공하면 prefs에 옮긴다 (prefs.clear() 뒤에)
         val firstRoute = InMemoryRoute()
         val c = RemoteClient(candidate, ::isPhoneOnline, firstRoute)
@@ -208,6 +212,7 @@ class OfficeRepository(private val context: Context) {
                     clockOffset = prefs.clockOffset,
                     address = prefs.displayAddress,
                     serverVersion = prefs.serverVersion,
+                    isLanOnly = candidate.isLanOnly,
                 )
                 PollWorker.schedule(context)
                 refreshDecisions()
@@ -221,7 +226,7 @@ class OfficeRepository(private val context: Context) {
                     prefs.clear()
                     client = newClient(candidate)
                     prefs.displayAddress = displayAddress(candidate)
-                    _state.update { it.copy(address = prefs.displayAddress) }
+                    _state.update { it.copy(address = prefs.displayAddress, isLanOnly = candidate.isLanOnly) }
                     applyError(r.error, r.tried)
                 }
                 ConnectResult.Failed(r.error, r.tried)
@@ -495,7 +500,21 @@ class OfficeRepository(private val context: Context) {
 
     suspend fun v2Call(method: String, args: kotlinx.serialization.json.JsonArray, confirm: Boolean, key: String, capabilities: Set<String> = emptySet()): ApiResult<kotlinx.serialization.json.JsonElement> {
         val c = client ?: return ApiResult.Fail(ApiError.Unauthorized)
-        return c.v2Call(method, args, confirm, key, capabilities).also { if (it is ApiResult.Fail) applyV2Error(it.error, it.tried) else markReachable() }
+        return c.v2Call(method, args, confirm, key, capabilities).also {
+            if (it is ApiResult.Fail) applyV2Error(it.error, it.tried) else markReachable()
+            if (method == "hello" && it is ApiResult.Ok) applyHello(it.value)
+        }
+    }
+
+    /** hello가 알려 준 전용 모드·내부 주소로 저장값을 갱신한다 (QR 재스캔 없이 따라간다) */
+    @Synchronized
+    private fun applyHello(result: kotlinx.serialization.json.JsonElement) {
+        val updated = conn?.refreshedFromHello(result) ?: return
+        secure.save(updated)
+        conn = updated
+        client = newClient(updated)
+        prefs.displayAddress = displayAddress(updated)
+        _state.update { it.copy(address = prefs.displayAddress, isLanOnly = updated.isLanOnly) }
     }
 
     suspend fun v2Upload(name: String, mime: String, bytes: ByteArray): ApiResult<kotlinx.serialization.json.JsonElement> {

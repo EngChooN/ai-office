@@ -1,7 +1,9 @@
 // 비서 도구가 돌려주는 글을 짧게 (QA: 질문 한 건에 12만~27만 토큰 — snapshot 60KB를 통째로 넘겼다)
 // JSON 대신 필요한 칸만 한 줄씩. 질문에 맞는 부분(section)만, 기간 요약은 미리 묶어서. electron 없음 (scripts/secretary.test.mts)
 
-import type { AutoApproveState, AutoHandled, DailyRecord, LogEntry, OfficeSnapshot, Task } from '../shared/types.ts'
+import type { OfficeMethod } from '../shared/officeApiShape.ts'
+import { t } from '../shared/i18n/index.ts'
+import type { AutoApproveState, AutoHandled, DailyRecord, LogEntry, Manual, OfficeSnapshot, SecretaryCompare, Task } from '../shared/types.ts'
 
 /** 도구 결과 한 번의 상한 (글자) */
 export const COMPACT_MAX = 6000
@@ -21,7 +23,7 @@ const TASK_STATUS: Record<string, string> = { todo: '할 일', doing: '진행 �
 
 export const capText = (t: string, max = COMPACT_MAX) => (t.length > max ? `${t.slice(0, max)}\n…(더 있음 — 범위를 좁혀 다시 조회하세요)` : t)
 
-export type OverviewSection = 'all' | 'people' | 'approvals' | 'tasks' | 'org' | 'settings'
+export type OverviewSection = 'all' | 'people' | 'approvals' | 'tasks' | 'org' | 'settings' | 'schedules'
 
 /** 사무실 현황을 질문에 맞는 부분만 (기본: 사람 + 결재 대기) */
 export function compactOverview(snap: OfficeSnapshot, section: OverviewSection = 'all', now = Date.now()): string {
@@ -56,6 +58,11 @@ export function compactOverview(snap: OfficeSnapshot, section: OverviewSection =
     out.push('## 랩')
     for (const l of snap.labs) out.push(`- ${l.name} [${l.id}] · 리드 ${name(l.leadId) || '없음'} · 멤버 ${l.memberIds.map(name).filter(Boolean).join(', ') || '없음'} · 목표: ${clip(l.goal, 80)}${l.cwd ? ` · 폴더 ${l.cwd}` : ''}`)
   }
+  if (section === 'schedules') {
+    out.push(`## 예약 업무 (${snap.schedules.length}개)`)
+    for (const x of snap.schedules.slice(0, 40)) out.push(`- [${x.id}] ${clip(x.label, 60)} · ${name(x.staffId) || '퇴사자'} · ${x.time} · ${weekdaysText(x.weekdays)} · ${x.enabled ? '켬' : '끔'} · 지시: ${clip(x.instruction, 100)}`)
+    if (!snap.schedules.length) out.push('없어요. 새로 만들려면 saveSchedule로 제안하세요.')
+  }
   if (section === 'settings') {
     const st = snap.settings
     out.push(
@@ -67,6 +74,9 @@ export function compactOverview(snap: OfficeSnapshot, section: OverviewSection =
   }
   return capText(out.join('\n'))
 }
+
+const DAY = ['일', '월', '화', '수', '목', '금', '토']
+const weekdaysText = (days: number[]) => (days.length >= 7 ? '매일' : days.length ? [...days].sort().map((d) => DAY[d] ?? '?').join('·') : '요일 없음')
 
 function autoText(a: AutoApproveState, now: number) {
   if (a.isActive) return `켜져 있음${a.endsAt ? ` (${Math.max(0, Math.round((a.endsAt - now) / 60_000))}분 남음)` : ''} · 대신 승인 ${a.counts.edit + a.counts.command + a.counts.other} · 대신 답함 ${a.counts.answered} · 기다리게 함 ${a.counts.waited ?? 0}`
@@ -81,7 +91,9 @@ export function compactStaffDetail(snap: OfficeSnapshot, staffId: string, record
     `## ${s.name} [${s.id}] ${s.role}`,
     `- ${STATUS[s.status] ?? s.status} ${ago(s.statusSince, now)}${s.activity ? ` · ${clip(s.activity, 80)}` : ''}`,
     `- 팀 ${snap.teams.find((t) => t.id === s.teamId)?.name ?? '없음'} · 모델 ${s.model} · 결재 방식 ${s.approvalMode === 'acceptEdits' ? '파일 수정 자율' : '모두 결재'} · 작업 폴더 ${s.cwdSource === 'none' ? '지정 없음' : s.cwd}`,
+    `- 장비 (setEquipment에 그대로 넘기는 값): 연결 도구 ${(s.equipment.mcpServers ?? []).join(', ') || '없음'} · 스킬 ${s.equipment.skills === 'all' ? '전부' : s.equipment.skills.join(', ') || '없음'} · 월 예산 ${s.equipment.monthlyBudgetUsd ? `$${s.equipment.monthlyBudgetUsd}` : '제한 없음'}`,
     `- 결재 없이 쓰는 도구: ${s.equipment.allowedTools.join(', ') || '없음'} · 막는 도구: ${s.equipment.disallowedTools.join(', ') || '없음'}`,
+    `- 참고 문서: ${s.refDocs?.join(', ') || '없음'}`,
     `- 오늘 완료 ${s.todayDone} · 이번 세션 비용 $${s.costUsd.toFixed(2)}`,
     '### 업무 지침 (원문 그대로)',
     s.systemPrompt || '(비어 있음)',
@@ -156,4 +168,48 @@ export function guideLines(body: string, query?: string): string {
   scored.sort((a, b) => b.n - a.n || a.i - b.i)
   const picked = scored.slice(0, 12).sort((a, b) => a.i - b.i)
   return capText(picked.map((x) => (lines[x.i].length > 700 ? `${lines[x.i].slice(0, 700)}…` : lines[x.i])).join('\n') || '찾는 말이 든 줄이 없어요. 다른 말로 찾아 보세요.')
+}
+
+/** 매뉴얼 한 개 전문 — 본문과 프로세스 단계를 그대로 (합치기·고치기에 쓴다). 길면 잘라 알린다 */
+export const MANUAL_BODY_MAX = 20_000
+export function compactManual(m: Manual): string {
+  const body = m.body.length > MANUAL_BODY_MAX ? `${m.body.slice(0, MANUAL_BODY_MAX)}\n…(본문이 길어 ${MANUAL_BODY_MAX}자까지만 보여 드렸어요)` : m.body
+  const lines = [`## ${m.name} (${m.kind === 'process' ? '프로세스' : '개인'}, ${m.scope === 'user' ? '내 매뉴얼' : `프로젝트 ${m.projectDir ?? ''}`})`, `- 경로(previousPath·deleteManual에 쓰는 값): ${m.path}`, `- 설명: ${m.description}`, '### 본문 (원문 그대로)', body || '(비어 있음)']
+  if (m.steps.length) {
+    lines.push('### 프로세스 단계')
+    for (const [i, st] of m.steps.entries()) lines.push(`${i + 1}. [${st.id}] ${st.title} · 담당 ${st.role}${st.needsMyCheck ? ' · 내 확인' : ''}${st.onRevise ? ` · 되돌림→${st.onRevise}(최대 ${st.maxLoops}번)` : ''}\n   ${st.instruction}`)
+  }
+  return lines.join('\n')
+}
+
+/** 확인 카드의 글 비교를 실제 값으로 만든다 — 모델이 쓴 글이 아니라 앱이 가진 지금 글 ↔ 바꿀 글 */
+export function compareSteps(snap: OfficeSnapshot, manuals: Manual[], steps: { method: OfficeMethod; args: unknown[] }[]): SecretaryCompare[] {
+  const text = (label: string, before: string | undefined, after: unknown): SecretaryCompare[] => (typeof after === 'string' ? [{ kind: 'text', label, before: before ?? '', after }] : [])
+  return steps.flatMap(({ method, args }) => {
+    const [a0, a1] = args as [unknown, Record<string, unknown> | string | undefined]
+    const patch = typeof a1 === 'object' && a1 ? a1 : {}
+    if (method === 'saveManual' && a0 && typeof a0 === 'object') {
+      const m = a0 as { name?: unknown; scope?: unknown; body?: unknown }
+      // 고치기·이름 바꾸기는 previousPath, 같은 이름·범위로 덮어쓰기는 그 매뉴얼이 원문
+      const before = typeof a1 === 'string' ? manuals.find((x) => x.path === a1) : manuals.find((x) => x.name === m.name && x.scope === m.scope)
+      return text(t('secretary.compareLabel.manual', { name: String(m.name ?? '') }), before?.body, m.body)
+    }
+    if (method === 'deleteManual' && typeof a0 === 'string') {
+      const gone = manuals.find((x) => x.path === a0)
+      return gone ? text(t('secretary.compareLabel.manualDelete', { name: gone.name }), gone.body, '') : []
+    }
+    if (method === 'updateStaff') {
+      const who = snap.staff.find((x) => x.id === a0)
+      return who ? text(t('secretary.compareLabel.staffPrompt', { name: who.name }), who.systemPrompt, patch.systemPrompt) : []
+    }
+    if (method === 'updateTask') {
+      const task = snap.tasks.find((x) => x.id === a0)
+      return task ? text(`업무 카드 ${task.title} 설명`, task.detail, patch.detail) : []
+    }
+    if (method === 'updateLab') {
+      const lab = snap.labs.find((x) => x.id === a0)
+      return lab ? text(`${lab.name} 목표`, lab.goal, patch.goal) : []
+    }
+    return []
+  })
 }

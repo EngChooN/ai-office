@@ -185,7 +185,7 @@
     <string name="instruct_sent">Delivered to %1$s</string>
     <string name="unlock_at">Unlocks at %1$s. It will reconnect automatically then.</string>
     <string name="last_connected">Last connected %1$s</string>
-    <string name="tried_lan">same Wi-Fi address</string>
+    <string name="tried_lan">same Wi-Fi/VPN address</string>
     <string name="tried_ext">external address</string>
     <string name="tried_one">Couldn\'t reach %1$s</string>
     <string name="tried_many">Couldn\'t reach any of: %1$s</string>
@@ -220,4 +220,7 @@
     <string name="update_up_to_date">You\'re on the latest version</string>
     <string name="update_available">Version %1$s is available</string>
     <string name="update_failed">Couldn\'t check</string>
+    <string name="state_connfail_unreach_lo">You can connect only while on the same Wi-Fi or the company VPN. Check your Wi-Fi or VPN, then try again.</string>
+    <string name="state_unreach_body_lo">This may be because:\n· You can connect only while on the same Wi-Fi or the company VPN\n· Your PC is asleep or off\n· Claude Office is not running</string>
+    <string name="qr_unreach_default_lo">Couldn\'t reach your PC. You can connect only while on the same Wi-Fi or the company VPN.</string>
 </resources>

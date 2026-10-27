@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import { CrownIcon, FlaskConicalIcon, FolderOpenIcon, PresentationIcon, Trash2Icon } from 'lucide-react'
+import { CrownIcon, DownloadIcon, FlaskConicalIcon, FolderOpenIcon, PresentationIcon, Trash2Icon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { NativeSelect } from '@/components/ui/select'
@@ -146,6 +146,14 @@ function LabCard({ lab, staff, teams }: { lab: Lab; staff: Staff[]; teams: Team[
     setMeetingPreset({ topic: t('lab.meetingTopic', { name: lab.name }), participantIds: lab.memberIds })
     setView('meeting')
   }
+  const handleExport = async () => {
+    try {
+      const r = await window.officePack?.exportLab(lab.id)
+      if (r) window.alert(r.message)
+    } catch {
+      window.alert(t('pack.err.write'))
+    }
+  }
   const handleDelete = () => {
     if (window.confirm(t('lab.disbandConfirm', { name: lab.name }))) void window.office.deleteLab(lab.id)
   }
@@ -157,6 +165,11 @@ function LabCard({ lab, staff, teams }: { lab: Lab; staff: Staff[]; teams: Team[
           LAB
         </span>
         <span className="flex-1 truncate font-semibold">{lab.name}</span>
+        {window.officePack && (
+          <Button variant="ghost" size="icon" className="size-7" onClick={() => void handleExport()} aria-label={t('pack.lab.export')} title={t('pack.lab.export')}>
+            <DownloadIcon className="size-3.5" />
+          </Button>
+        )}
         <Button variant="ghost" size="icon" className="size-7" onClick={handleMeeting} aria-label={t('lab.meetingAria')}>
           <PresentationIcon className="size-3.5" />
         </Button>

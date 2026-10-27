@@ -9,6 +9,9 @@ export const REMOTE_MARK = '📱 원격'
 
 const store = new AsyncLocalStorage<true>()
 
+/** 지금 처리 중인 동작이 원격(휴대폰)에서 부른 것인지 */
+export const isRemoteCall = () => store.getStore() === true
+
 export const runAsRemote = <T>(fn: () => T): T => store.run(true, fn)
 
 /**

@@ -2,8 +2,11 @@ import { useEffect, useLayoutEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { useOffice, useWorkMode, type View } from '@/store'
 import { MOD_KEY, osText } from '@/lib/platform'
+import { cn } from '@/lib/utils'
 import { t } from '@shared/i18n'
 import type { TKey } from '@shared/i18n'
+
+type Chapter = 'office' | 'work' | 'review' | 'company'
 
 interface TourStep {
   target: string
@@ -13,42 +16,70 @@ interface TourStep {
   body: TKey
   /** 이 단계를 보여 주기 전에 열어 둘 화면 */
   view?: View
+  /** 묶이는 장 (사무실 / 일 시키기 / 결재·결과 / 회사 운영) */
+  chapter: Chapter
 }
 
+const CHAPTERS: { id: Chapter; label: TKey }[] = [
+  { id: 'office', label: 'coachTour.chapter.office' },
+  { id: 'work', label: 'coachTour.chapter.work' },
+  { id: 'review', label: 'coachTour.chapter.review' },
+  { id: 'company', label: 'coachTour.chapter.company' },
+]
+
 const STEPS: TourStep[] = [
-  { target: 'nav-map', view: 'map', icon: '🏢', title: 'coachTour.map.title', body: 'coachTour.map.body' },
-  { target: 'hud', view: 'map', icon: '📈', title: 'coachTour.hud.title', body: 'coachTour.hud.body' },
-  { target: 'hire', icon: '🧑‍💼', title: 'coachTour.hire.title', body: 'coachTour.hire.body' },
-  { target: 'nav-dashboard', icon: '🗂️', title: 'coachTour.dashboard.title', body: 'coachTour.dashboard.body' },
-  { target: 'nav-org', icon: '🧭', title: 'coachTour.org.title', body: 'coachTour.org.body' },
-  { target: 'nav-board', icon: '📋', title: 'coachTour.board.title', body: 'coachTour.board.body' },
-  { target: 'nav-inbox', icon: '✅', title: 'coachTour.inbox.title', body: 'coachTour.inbox.body' },
-  { target: 'nav-chat', icon: '💬', title: 'coachTour.chat.title', body: 'coachTour.chat.body' },
-  { target: 'nav-meeting', icon: '🗣️', title: 'coachTour.meeting.title', body: 'coachTour.meeting.body' },
-  { target: 'nav-manuals', icon: '📘', title: 'coachTour.manuals.title', body: 'coachTour.manuals.body' },
-  { target: 'nav-schedule', icon: '⏰', title: 'coachTour.schedule.title', body: 'coachTour.schedule.body' },
-  { target: 'nav-report', icon: '📑', title: 'coachTour.report.title', body: 'coachTour.report.body' },
-  { target: 'nav-payroll', icon: '💳', title: 'coachTour.payroll.title', body: 'coachTour.payroll.body' },
-  { target: 'nav-shop', icon: '🛍️', title: 'coachTour.shop.title', body: 'coachTour.shop.body' },
-  { target: 'nav-settings', icon: '⚙️', title: 'coachTour.settings.title', body: 'coachTour.settings.body' },
-  { target: 'nav-updates', icon: '📣', title: 'coachTour.updates.title', body: 'coachTour.updates.body' },
-  { target: 'hire', icon: '🚀', title: 'coachTour.firstHire.title', body: 'coachTour.firstHire.body' },
+  { chapter: 'office', target: 'nav-map', view: 'map', icon: '🏢', title: 'coachTour.map.title', body: 'coachTour.map.body' },
+  { chapter: 'office', target: 'hud', view: 'map', icon: '📈', title: 'coachTour.hud.title', body: 'coachTour.hud.body' },
+  { chapter: 'office', target: 'hire', icon: '🧑‍💼', title: 'coachTour.hire.title', body: 'coachTour.hire.body' },
+  { chapter: 'office', target: 'nav-dashboard', icon: '🗂️', title: 'coachTour.dashboard.title', body: 'coachTour.dashboard.body' },
+  { chapter: 'office', target: 'nav-org', icon: '🧭', title: 'coachTour.org.title', body: 'coachTour.org.body' },
+  { chapter: 'work', target: 'nav-board', icon: '📋', title: 'coachTour.board.title', body: 'coachTour.board.body' },
+  { chapter: 'work', target: 'nav-chat', icon: '💬', title: 'coachTour.chat.title', body: 'coachTour.chat.body' },
+  { chapter: 'work', target: 'nav-meeting', icon: '🗣️', title: 'coachTour.meeting.title', body: 'coachTour.meeting.body' },
+  { chapter: 'work', target: 'nav-manuals', icon: '📘', title: 'coachTour.manuals.title', body: 'coachTour.manuals.body' },
+  { chapter: 'work', target: 'nav-schedule', icon: '⏰', title: 'coachTour.schedule.title', body: 'coachTour.schedule.body' },
+  { chapter: 'review', target: 'nav-inbox', icon: '✅', title: 'coachTour.inbox.title', body: 'coachTour.inbox.body' },
+  { chapter: 'review', target: 'nav-report', icon: '📑', title: 'coachTour.report.title', body: 'coachTour.report.body' },
+  { chapter: 'review', target: 'nav-payroll', icon: '💳', title: 'coachTour.payroll.title', body: 'coachTour.payroll.body' },
+  { chapter: 'company', target: 'nav-shop', icon: '🛍️', title: 'coachTour.shop.title', body: 'coachTour.shop.body' },
+  { chapter: 'company', target: 'nav-settings', icon: '⚙️', title: 'coachTour.settings.title', body: 'coachTour.settings.body' },
+  { chapter: 'company', target: 'nav-updates', icon: '📣', title: 'coachTour.updates.title', body: 'coachTour.updates.body' },
+  { chapter: 'company', target: 'hire', icon: '🚀', title: 'coachTour.firstHire.title', body: 'coachTour.firstHire.body' },
 ]
 /** 업무 모드에서 숨긴 화면을 설명하는 단계 */
 const GAME_TARGETS = new Set(['nav-map', 'hud', 'nav-shop'])
 const PAD = 6
-const TIP_W = 300
+const TIP_W = 340
 const TIP_GAP = 14
 
-/** 메뉴별 코치마크: 대상만 밝게 비추고 옆에 설명을 띄운다 */
-export function CoachTour({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+/** data-tour 대상의 화면 위치를 따라간다 (화면 전환·창 크기 변경) — 튜토리얼 안내 줄도 같이 쓴다 */
+export function useTourTarget(target: string | null) {
+  const [rect, setRect] = useState<DOMRect | null>(null)
+  useLayoutEffect(() => {
+    if (!target) return setRect(null)
+    const update = () => setRect(document.querySelector(`[data-tour="${target}"]`)?.getBoundingClientRect() ?? null)
+    update()
+    const timer = setInterval(update, 300)
+    window.addEventListener('resize', update)
+    return () => {
+      clearInterval(timer)
+      window.removeEventListener('resize', update)
+    }
+  }, [target])
+  return rect
+}
+
+/**
+ * 메뉴별 코치마크: 대상만 밝게 비추고 옆에 설명을 띄운다. 17단계를 4개 장으로 묶어 장마다 건너뛸 수 있다.
+ * onClose(isFinished) — 끝까지 봤거나 마지막 장을 건너뛰면 true (다음에 시나리오 선택을 띄운다), 그만 보기면 false
+ */
+export function CoachTour({ isOpen, onClose }: { isOpen: boolean; onClose: (isFinished: boolean) => void }) {
   const setView = useOffice((s) => s.setView)
-  const setHireOpen = useOffice((s) => s.setHireOpen)
   const isWorkMode = useWorkMode()
   const steps = useMemo(() => (isWorkMode ? STEPS.filter((s) => !GAME_TARGETS.has(s.target)) : STEPS), [isWorkMode])
   const [index, setIndex] = useState(0)
-  const [rect, setRect] = useState<DOMRect | null>(null)
   const step = steps[Math.min(index, steps.length - 1)]
+  const rect = useTourTarget(isOpen ? step.target : null)
 
   useEffect(() => {
     if (isOpen) setIndex(0)
@@ -58,34 +89,30 @@ export function CoachTour({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
     if (isOpen && step.view) setView(step.view)
   }, [isOpen, step, setView])
 
-  // 대상 위치를 따라간다 (화면 전환·창 크기 변경)
-  useLayoutEffect(() => {
-    if (!isOpen) return
-    const update = () => setRect(document.querySelector(`[data-tour="${step.target}"]`)?.getBoundingClientRect() ?? null)
-    update()
-    const timer = setInterval(update, 300)
-    window.addEventListener('resize', update)
-    return () => {
-      clearInterval(timer)
-      window.removeEventListener('resize', update)
-    }
-  }, [isOpen, step])
-
   if (!isOpen) return null
   const isLast = index >= steps.length - 1
-  const next = () => {
-    if (!isLast) return setIndex(index + 1)
-    onClose()
+  const finish = () => {
+    onClose(true)
     setView('map')
-    setHireOpen(true)
   }
+  const next = () => (isLast ? finish() : setIndex(index + 1))
+  // 지금 장의 단계들 (업무 모드에서 빠진 단계는 세지 않는다)
+  const chapterNo = CHAPTERS.findIndex((c) => c.id === step.chapter)
+  const inChapter = steps.filter((s) => s.chapter === step.chapter)
+  const posInChapter = inChapter.indexOf(step)
+  const skipChapter = () => {
+    const nextIndex = steps.findIndex((s, i) => i > index && s.chapter !== step.chapter)
+    if (nextIndex < 0) return finish()
+    setIndex(nextIndex)
+  }
+  const chapters = CHAPTERS.filter((c) => steps.some((s) => s.chapter === c.id))
 
   // 설명 상자는 대상 오른쪽(공간이 없으면 왼쪽·아래)에 둔다
   const tip = (() => {
     if (!rect) return { left: window.innerWidth / 2 - TIP_W / 2, top: window.innerHeight / 2 - 80 }
     const right = rect.right + TIP_GAP
-    if (right + TIP_W < window.innerWidth) return { left: right, top: Math.min(rect.top, window.innerHeight - 220) }
-    if (rect.left - TIP_GAP - TIP_W > 0) return { left: rect.left - TIP_GAP - TIP_W, top: Math.min(rect.top, window.innerHeight - 220) }
+    if (right + TIP_W < window.innerWidth) return { left: right, top: Math.min(rect.top, window.innerHeight - 260) }
+    if (rect.left - TIP_GAP - TIP_W > 0) return { left: rect.left - TIP_GAP - TIP_W, top: Math.min(rect.top, window.innerHeight - 260) }
     return { left: Math.max(12, rect.right - TIP_W), top: rect.bottom + TIP_GAP }
   })()
 
@@ -100,25 +127,40 @@ export function CoachTour({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
         <div className="fixed inset-0 bg-black/60" />
       )}
       <div className="bg-background fixed flex flex-col gap-3 rounded-xl border p-4 shadow-2xl transition-all duration-300" style={{ ...tip, width: TIP_W }}>
-        <div className="text-muted-foreground text-[11px]">
-          {index + 1} / {steps.length}
+        {/* 장 표시: 지난 장·지금 장·남은 장을 막대로 */}
+        <div className="flex flex-col gap-1.5">
+          <div className="flex gap-1">
+            {chapters.map((c) => {
+              const no = CHAPTERS.indexOf(c)
+              return <span key={c.id} title={t(c.label)} className={cn('h-1 flex-1 rounded-full', no < chapterNo ? 'bg-primary/50' : no === chapterNo ? 'bg-primary' : 'bg-muted')} />
+            })}
+          </div>
+          <div className="text-muted-foreground flex text-[11px]">
+            <span className="font-semibold">{t('coachTour.chapterOf', { n: chapters.indexOf(CHAPTERS[chapterNo]) + 1, name: t(CHAPTERS[chapterNo].label) })}</span>
+            <span className="ml-auto tabular-nums">
+              {posInChapter + 1} / {inChapter.length}
+            </span>
+          </div>
         </div>
         <div className="font-semibold">
           {step.icon} {t(step.title)}
         </div>
         <p className="text-muted-foreground text-sm">{t(step.body, { modKey: MOD_KEY, trayPlace: osText(t('coachTour.trayPlace.mac'), t('coachTour.trayPlace.win')) })}</p>
-        <div className="flex items-center gap-2">
-          <Button size="sm" variant="ghost" onClick={onClose}>
+        <div className="flex items-center gap-1">
+          <Button size="sm" variant="ghost" className="px-2" onClick={() => onClose(false)}>
             {t('coachTour.stop')}
           </Button>
-          <div className="ml-auto flex gap-2">
+          <Button size="sm" variant="ghost" className="px-2" onClick={skipChapter}>
+            {t('coachTour.skipChapter')}
+          </Button>
+          <div className="ml-auto flex gap-1.5">
             {index > 0 && (
               <Button size="sm" variant="outline" onClick={() => setIndex(index - 1)}>
                 {t('coachTour.prev')}
               </Button>
             )}
             <Button size="sm" onClick={next}>
-              {isLast ? t('coachTour.hireStaff') : t('coachTour.next')}
+              {isLast ? t('coachTour.finish') : t('coachTour.next')}
             </Button>
           </div>
         </div>

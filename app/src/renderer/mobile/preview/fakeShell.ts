@@ -6,6 +6,7 @@
 import { APP_VERSION } from '@/lib/changelog'
 import { companyFromXp, DEFAULT_EQUIPMENT, DEFAULT_SETTINGS, type ChatMessage, type OfficeSnapshot, type Staff } from '@shared/types'
 import type { GridItem } from '@shared/iso/furniture'
+import type { KnowledgeInput } from '@shared/knowledge'
 import { LANGS, type Lang } from '@shared/i18n'
 import { DEMO_CHAT, DEMO_LAB, DEMO_LIVE, DEMO_MEETING, DEMO_STAFF, DEMO_TASKS, DEMO_TEAMS } from './demoData'
 
@@ -260,6 +261,8 @@ const remoteStatus = {
   host: '',
   connectHost: '203.0.113.10',
   isLanOnly: false,
+  lanOnly: false,
+  isLanNoticePending: false,
   fingerprint: 'sha256/abc',
   upnp: { state: 'ok', externalAddress: '203.0.113.10', isCarrierShared: false, isDoubleNat: false },
   error: null,
@@ -369,10 +372,14 @@ const impl: Record<string, (...args: never[]) => unknown> = {
   hooksStatus: () => ({ installed: false, isAskInstalled: false, port: 47823 }),
   claudeStatus: () => ({ isLoggedIn: true, email: 'me@example.com', authMethod: 'claude.ai', hasTerminalClaude: true }),
   equipmentCatalog: () => ({ mcpServers: [], skills: [] }),
+  refreshEquipment: () => ({ mcpServers: [], skills: [] }),
+  customMcpList: () => [],
   listAgentTemplates: () => [],
   missingFiles: () => [],
+  workRevertInfo: () => ({ available: false, startedAt: 0, files: [], skipped: [] }),
   workChanges: () => ({ cwd: '/Users/me/x', isGit: true, branch: 'main', files: [], diff: '', hasGh: true, ahead: 0 }),
   refreshPlanUsage: () => snapshot.planUsage,
+  releasePlanHold: async () => {},
   // decor=1: 칸 배치를 고정 데이터에 바로 반영하고 snapshot 이벤트로 알린다 (PC 메인 검사는 하지 않음)
   placeGridItem: (itemId: string, floor: number, gx: number, gy: number, rot: number) => {
     const uid = crypto.randomUUID()
@@ -388,6 +395,16 @@ const impl: Record<string, (...args: never[]) => unknown> = {
   },
   restoreGridItems: (items: GridItem[]) => setGrid([...snapshot.shop.grid, ...items.filter((i) => !snapshot.shop.grid.some((g) => g.uid === i.uid))]),
   storeItem: (uid: string) => setGrid(snapshot.shop.grid.filter((g) => g.uid !== uid)),
+  approveAlways: async () => true,
+  approvalRules: async () => [],
+  deleteApprovalRule: async () => {},
+  knowledgeList: async () => [],
+  saveKnowledge: async (input: KnowledgeInput) => ({ id: input.id ?? 'k1', kind: input.kind, title: input.title, body: input.body, tags: input.tags ?? [], staffId: null, staffName: '', docPath: input.docPath ?? null, createdAt: now, updatedAt: now }),
+  deleteKnowledge: async () => {},
+  galleryList: async () => [],
+  deleteGalleryEntry: async () => {},
+  runDemoDayNow: async () => {},
+  demoReact: async () => {},
   autoApproveLog: () =>
     params.get('auto') === '1'
       ? [

@@ -1,8 +1,11 @@
 import { dialog, shell } from 'electron'
 import type { AutoApprovePlan } from '../shared/autoApprove'
+import type { DemoReaction } from '../shared/gallery'
+import type { KnowledgeInput } from '../shared/knowledge'
 import type { Zone } from '../shared/economy'
 import type { GridItem } from '../shared/iso/furniture'
 import type { OfficeMethod } from '../shared/officeApiShape'
+import type { TutorialInput, TutorialScenario } from '../shared/tutorial'
 import { HOOK_PORT, type Attachment } from '../shared/types'
 import { listAgentTemplates } from './agents'
 import { findById, saveUploads } from './attachments'
@@ -25,6 +28,8 @@ export function createOfficeHandlers(office: Office, remoteApi: () => RemoteServ
     regenerateRemoteQr: () => remoteApi().regenerate(),
     remoteQr: () => remoteApi().qr(),
     setRemoteHost: (host: string) => remoteApi().setHost(host),
+    setRemoteLanOnly: (isLanOnly: boolean) => remoteApi().setLanOnly(isLanOnly),
+    dismissRemoteLanNotice: () => remoteApi().dismissLanNotice(),
     hire: (input: Parameters<Office['hire']>[0]) => office.hire(input),
     fire: (id: string) => office.fire(id),
     updateStaff: (id: string, patch: Parameters<Office['updateStaff']>[1]) => office.updateStaff(id, patch),
@@ -55,10 +60,22 @@ export function createOfficeHandlers(office: Office, remoteApi: () => RemoteServ
     createTeam: (name: string, color: string) => office.createTeam(name, color),
     updateTeam: (id: string, patch: Parameters<Office['updateTeam']>[1]) => office.updateTeam(id, patch),
     deleteTeam: (id: string) => office.deleteTeam(id),
-    createTask: (input: Parameters<Office['createTask']>[0]) => office.createTask(input),
+    mergeTeams: (fromId: string, intoId: string) => office.mergeTeams(fromId, intoId),
+    moveStaff: (id: string, move: Parameters<Office['moveStaff']>[1]) => office.moveStaff(id, move),
+    createTask: (input: Parameters<Office['createTask']>[0]) => {
+      const task = office.createTask(input)
+      // 튜토리얼 '카드 만들기' 단계면 사용자가 만든 이 카드를 연습 카드로 삼는다
+      office.tutorial.notify('taskCreated', task.id)
+      return task
+    },
+    tutorialStart: (scenario: TutorialScenario) => office.tutorial.start(scenario),
+    tutorialAct: (input: TutorialInput) => office.tutorial.act(input),
+    tutorialCleanup: () => office.tutorial.cleanup(),
     updateTask: (id: string, patch: Parameters<Office['updateTask']>[1]) => office.updateTask(id, patch),
     assignTask: (taskId: string, staffId: string) => office.assignTask(taskId, staffId),
     deleteTask: (id: string) => office.deleteTask(id),
+    mergeTasks: (keepId: string, mergeIds: string[]) => office.mergeTasks(keepId, mergeIds),
+    boardCleanupPlan: () => office.boardCleanupPlan(),
     startMeeting: (input: Parameters<Office['startMeeting']>[0]) => office.startMeeting(input),
     answerMeetingDecision: (meetingId: string, decisionId: string, answer: string) => office.answerMeetingDecision(meetingId, decisionId, answer),
     endMeeting: (meetingId: string, mode: 'wrapup' | 'discard') => office.endMeeting(meetingId, mode),
@@ -69,6 +86,16 @@ export function createOfficeHandlers(office: Office, remoteApi: () => RemoteServ
     autoApproveStatus: () => office.autoApproveStatus(),
     setAutoApprove: (plan: AutoApprovePlan) => office.setAutoApprove(plan),
     autoApproveLog: () => office.autoApproveLog(),
+    approveAlways: (approvalId: string) => office.approveAlways(approvalId),
+    approvalRules: () => office.approvalRules(),
+    deleteApprovalRule: (ruleId: string) => office.deleteApprovalRule(ruleId),
+    knowledgeList: () => office.knowledgeList(),
+    saveKnowledge: (input: KnowledgeInput) => office.saveKnowledge(input),
+    deleteKnowledge: (id: string) => office.deleteKnowledge(id),
+    galleryList: () => office.galleryList(),
+    deleteGalleryEntry: (id: string) => office.deleteGalleryEntry(id),
+    runDemoDayNow: () => office.runDemoDayNow(),
+    demoReact: (meetingId: string, staffId: string, kind: DemoReaction, text?: string) => office.demoReact(meetingId, staffId, kind, text),
     refreshPlanUsage: () => office.refreshPlanUsage(),
     ledger: () => office.ledger(),
     buyItem: (itemId: string) => office.buyItem(itemId),
@@ -88,9 +115,11 @@ export function createOfficeHandlers(office: Office, remoteApi: () => RemoteServ
     saveSchedule: (s: Parameters<Office['saveSchedule']>[0]) => office.saveSchedule(s),
     deleteSchedule: (id: string) => office.deleteSchedule(id),
     runScheduleNow: (id: string) => office.runScheduleNow(id),
+    releasePlanHold: () => office.releasePlanHold(),
     chatHistory: () => office.chatHistory(),
     sendChat: (text: string, attachments?: Parameters<Office['sendChat']>[1]) => office.sendChat(text, attachments ?? []),
     timeline: (since: number) => office.timeline(since),
+    staffActivity: (id: string) => office.staffActivity(id),
     dailyReport: (date: number) => office.dailyReport(date),
     payslip: (month: string) => office.payslip(month),
     updateSettings: (patch: Parameters<Office['updateSettings']>[0]) => office.updateSettings(patch),
@@ -112,11 +141,17 @@ export function createOfficeHandlers(office: Office, remoteApi: () => RemoteServ
     fireExternal: (id: string) => office.fireExternal(id),
     recruitExternal: (id: string, input: Parameters<Office['recruitExternal']>[1]) => office.recruitExternal(id, input),
     equipmentCatalog: (cwd: string) => office.equipmentCatalog(cwd),
+    refreshEquipment: (cwd: string) => office.refreshEquipment(cwd),
+    customMcpList: () => office.customMcpList(),
+    saveCustomMcp: (input: Parameters<Office['saveCustomMcp']>[0], prevName?: string) => office.saveCustomMcp(input, prevName),
+    deleteCustomMcp: (name: string) => office.deleteCustomMcp(name),
     loadStaffCommands: (staffId: string) => office.loadStaffCommands(staffId),
     setEquipment: (id: string, eq: Parameters<Office['setEquipment']>[1]) => office.setEquipment(id, eq),
     workChanges: (id: string) => office.workChanges(id),
     suggestCommitMessage: (id: string) => office.suggestCommitMessage(id),
     commitChanges: (id: string, message: string) => office.commitChanges(id, message),
+    workRevertInfo: (id: string) => office.workRevertInfo(id),
+    revertWork: (id: string) => office.revertWork(id),
     pushAndCreatePr: (id: string, title: string, body: string) => office.pushAndCreatePr(id, title, body),
     // 비서: 실행(secretaryRun)은 대표가 카드에서 누른 것 — 카드 안의 단계는 이 표의 다른 처리 함수로 돈다
     secretaryAsk: (text: string) => secretary().ask(text),

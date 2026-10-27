@@ -26,7 +26,7 @@ const MESSAGE_MAX = 300
 export const BODY_LIMITS = { v1: BODY_MAX_BYTES, v2Call: V2_CALL_BODY_MAX }
 
 /**
- * R = 그대로 · S = PC 파일·명령에 영향(PC 화면과 같은 검사) · P = PC 전용(422 pc_only) · C = 이 폰 연결이 끊김(confirm 필요) · U = 올리기 경로로(400 use_upload)
+ * R = 그대로 · S = PC 파일·명령에 영향(원격용 제한: V2_FIELDS로 위험 필드를 빼고 restrict가 안전한 값으로 채운다) · P = PC 전용(422 pc_only) · C = 이 폰 연결이 끊김(confirm 필요) · U = 올리기 경로로(400 use_upload)
  */
 export type V2Class = 'R' | 'S' | 'P' | 'C' | 'U'
 export type PcOnlyAlternative = 'enter_path' | 'download_file' | 'open_on_pc'
@@ -54,7 +54,14 @@ export const V2_METHODS: Record<OfficeMethod, MethodSpec> = {
   regenerateRemoteQr: { cls: 'C', args: '' },
   remoteQr: P('open_on_pc'),
   setRemoteHost: R('s'),
+  // 전용 모드를 끄면 밖에서 붙을 수 있게 되므로 휴대폰에서는 바꾸지 못한다
+  setRemoteLanOnly: P('open_on_pc', 'b'),
+  dismissRemoteLanNotice: P('open_on_pc'),
   snapshot: R(),
+  // 첫 업무 튜토리얼: 모의 진행(AI 호출 없음)이라 휴대폰에서도 그대로
+  tutorialStart: R('s'),
+  tutorialAct: R('o'),
+  tutorialCleanup: R(),
   hire: S('o'),
   fire: R('s'),
   updateStaff: S('s o'),
@@ -69,11 +76,13 @@ export const V2_METHODS: Record<OfficeMethod, MethodSpec> = {
   listAgentTemplates: S('s'),
   pickFolder: P('enter_path'),
   hooksStatus: R(),
-  setHooksInstalled: S('b'),
-  setAskHookInstalled: S('b'),
+  setHooksInstalled: P('open_on_pc', 'b'),
+  setAskHookInstalled: P('open_on_pc', 'b'),
   createTeam: R('s s'),
   updateTeam: R('s o'),
   deleteTeam: R('s'),
+  mergeTeams: R('s s'),
+  moveStaff: R('s o'),
   createLab: S('o'),
   updateLab: S('s o'),
   deleteLab: R('s'),
@@ -81,8 +90,13 @@ export const V2_METHODS: Record<OfficeMethod, MethodSpec> = {
   pickFiles: P('enter_path'),
   missingFiles: S('S'),
   fireExternal: S('s'),
-  recruitExternal: R('s o'),
+  recruitExternal: S('s o'),
   equipmentCatalog: S('s'),
+  // 연결 도구 확인·직접 추가는 PC에서만 (보안 — 폰에서 PC에 실행할 명령을 심지 못하게, 목록엔 비밀값이 있다)
+  refreshEquipment: P('open_on_pc', 's'),
+  customMcpList: P('open_on_pc'),
+  saveCustomMcp: P('open_on_pc', 'o s?'),
+  deleteCustomMcp: P('open_on_pc', 's'),
   setEquipment: R('s o'),
   claudeStatus: R(),
   openClaudeLogin: P('open_on_pc'),
@@ -99,11 +113,15 @@ export const V2_METHODS: Record<OfficeMethod, MethodSpec> = {
   workChanges: S('s'),
   suggestCommitMessage: R('s'),
   commitChanges: S('s s'),
+  workRevertInfo: S('s'),
+  revertWork: P('open_on_pc', 's'),
   pushAndCreatePr: S('s s s'),
   createTask: R('o', ['0.attachments']),
   updateTask: R('s o'),
   assignTask: R('s s'),
   deleteTask: R('s'),
+  mergeTasks: R('s S'),
+  boardCleanupPlan: R(),
   startMeeting: R('o'),
   answerMeetingDecision: R('s s s'),
   endMeeting: R('s s'),
@@ -115,6 +133,20 @@ export const V2_METHODS: Record<OfficeMethod, MethodSpec> = {
   autoApproveStatus: R(),
   setAutoApprove: R('o'),
   autoApproveLog: R(),
+  // 앞으로 항상 승인 규칙: 결재처럼 휴대폰에서도 만들고 지운다
+  approveAlways: R('s'),
+  approvalRules: R(),
+  deleteApprovalRule: R('s'),
+  // 회사 지식 창고: 보기·고치기·지우기 (연결 문서 경로는 글자로만 저장하고 열지 않는다)
+  knowledgeList: R(),
+  saveKnowledge: R('o'),
+  deleteKnowledge: R('s'),
+  // 결과물 갤러리·데모데이: 보기·지우기·지금 열기 (AI 호출 없이 회의실 연출과 단체방 요약만)
+  galleryList: R(),
+  deleteGalleryEntry: R('s'),
+  runDemoDayNow: R(),
+  // 반응은 휴대폰에서도 (발표장 화면 자체는 PC 전용이라 휴대폰은 회의 기록을 본다)
+  demoReact: R('s s s s?'),
   refreshPlanUsage: R(),
   ledger: R(),
   buyItem: R('s'),
@@ -134,9 +166,11 @@ export const V2_METHODS: Record<OfficeMethod, MethodSpec> = {
   saveSchedule: R('o'),
   deleteSchedule: R('s'),
   runScheduleNow: R('s'),
+  releasePlanHold: R(),
   chatHistory: R(),
   sendChat: R('s a?', [1]),
   timeline: R('n'),
+  staffActivity: R('s'),
   dailyReport: R('n'),
   payslip: R('s'),
   updateSettings: S('o'),
@@ -153,30 +187,38 @@ export const V2_METHODS: Record<OfficeMethod, MethodSpec> = {
 type ObjectArg<M extends OfficeMethod, I extends number> = NonNullable<Parameters<OfficeApi[M]>[I]>
 /** 그 자리 타입의 필드를 빠짐없이·더하지 않고 적게 한다 (OfficeApi 타입이 바뀌면 tsc가 알려 준다) */
 const fieldsOf = <M extends OfficeMethod, I extends number>(_method: M, _index: I, fields: Record<keyof ObjectArg<M, I>, true>) => Object.keys(fields)
+/** 원격에서 일부러 뺀 필드(excluded)를 적은 목록 — 뺀 이름을 코드에 남겨 두고, 나머지는 빠짐없이 적게 한다 */
+const fieldsExcept = <M extends OfficeMethod, I extends number, X extends keyof ObjectArg<M, I>>(_method: M, _index: I, _excluded: readonly X[], fields: Record<Exclude<keyof ObjectArg<M, I>, X>, true>) => Object.keys(fields)
 
 /**
  * 객체를 받는 자리마다 남길 필드 (폰이 보낸 나머지 필드는 버린다 — 병합 메서드에 id·첨부 path 같은 필드가 끼어들지 않게).
  * 한 단계(맨 위 필드)만 고른다. answerQuestion(질문 → 답 표)은 키가 질문이라 고르지 않는다
  */
 export const V2_FIELDS: Partial<Record<OfficeMethod, Record<number, string[]>>> = {
-  hire: { 0: fieldsOf('hire', 0, { name: true, role: true, avatar: true, model: true, cwd: true, systemPrompt: true, approvalMode: true, teamId: true, labIds: true }) },
-  updateStaff: { 1: fieldsOf('updateStaff', 1, { teamId: true, name: true, role: true, model: true, avatar: true, systemPrompt: true, cwd: true }) },
+  // 원격은 작업 폴더·승인 방식을 정하지 못한다 (restrict가 기본 폴더와 'ask'로 채운다)
+  hire: { 0: fieldsExcept('hire', 0, ['cwd', 'approvalMode'], { name: true, role: true, avatar: true, model: true, systemPrompt: true, teamId: true, labIds: true }) },
+  updateStaff: { 1: fieldsExcept('updateStaff', 1, ['cwd'], { teamId: true, name: true, role: true, model: true, avatar: true, systemPrompt: true }) },
   updateTeam: { 1: fieldsOf('updateTeam', 1, { name: true, color: true, leadId: true, floor: true }) },
   createLab: { 0: fieldsOf('createLab', 0, { name: true, color: true, goal: true, cwd: true, leadId: true, memberIds: true, manuals: true }) },
   updateLab: { 1: fieldsOf('updateLab', 1, { name: true, color: true, goal: true, cwd: true, leadId: true, memberIds: true, manuals: true }) },
   setRefDocs: { 0: fieldsOf('setRefDocs', 0, { kind: true, id: true }) },
-  recruitExternal: { 1: fieldsOf('recruitExternal', 1, { role: true, model: true, teamId: true, approvalMode: true }) },
-  setEquipment: { 1: fieldsOf('setEquipment', 1, { mcpServers: true, skills: true, allowedTools: true, disallowedTools: true, monthlyBudgetUsd: true }) },
+  recruitExternal: { 1: fieldsExcept('recruitExternal', 1, ['approvalMode'], { role: true, model: true, teamId: true }) },
+  // 원격은 MCP·스킬·예산만 — Bash 같은 허용·금지 도구는 PC에서만
+  setEquipment: { 1: fieldsExcept('setEquipment', 1, ['allowedTools', 'disallowedTools'], { mcpServers: true, skills: true, monthlyBudgetUsd: true, lightModelOff: true }) },
   saveManual: { 0: fieldsOf('saveManual', 0, { name: true, description: true, kind: true, scope: true, projectDir: true, body: true, steps: true }) },
   startRun: { 0: fieldsOf('startRun', 0, { manualName: true, scope: true, input: true, attachments: true, taskId: true }) },
   createTask: { 0: fieldsOf('createTask', 0, { title: true, detail: true, teamId: true, labId: true, attachments: true }) },
+  moveStaff: { 1: fieldsOf('moveStaff', 1, { teamId: true, joinLabIds: true, leaveLabIds: true }) },
   updateTask: { 1: fieldsOf('updateTask', 1, { title: true, detail: true, status: true, teamId: true, labId: true, assigneeId: true }) },
   setAutoApprove: { 0: fieldsOf('setAutoApprove', 0, { mode: true, hours: true, start: true, end: true }) },
+  saveKnowledge: { 0: fieldsOf('saveKnowledge', 0, { id: true, kind: true, title: true, body: true, tags: true, docPath: true }) },
   startMeeting: { 0: fieldsOf('startMeeting', 0, { topic: true, participantIds: true, rounds: true }) },
+  // 진행 입력은 종류마다 필드가 달라(view는 화면 이름만 더) 공통 키로 고를 수 없어 직접 적는다
+  tutorialAct: { 0: ['type', 'view'] },
   saveSchedule: { 0: fieldsOf('saveSchedule', 0, { id: true, staffId: true, label: true, time: true, weekdays: true, instruction: true, enabled: true }) },
-  secretaryRun: { 1: fieldsOf('secretaryRun', 1, { fromStep: true, edits: true, revised: true }) },
+  secretaryRun: { 1: fieldsOf('secretaryRun', 1, { fromStep: true, edits: true, revised: true, excluded: true }) },
   updateSettings: {
-    0: fieldsOf('updateSettings', 0, { monthlyBudgetUsd: true, tokenBudget: true, theme: true, dayNight: true, plants: true, isChatterOn: true, workHours: true, layout: true, isTrayOn: true, isOnboarded: true, isWorkMode: true, isFullAccessNoticeSeen: true, language: true }),
+    0: fieldsOf('updateSettings', 0, { monthlyBudgetUsd: true, tokenBudget: true, theme: true, dayNight: true, plants: true, isChatterOn: true, workHours: true, layout: true, isTrayOn: true, launchAtLogin: true, isOnboarded: true, defaultCwd: true, isWorkMode: true, isFullAccessNoticeSeen: true, language: true, demoDay: true }),
   },
 }
 
@@ -396,6 +438,8 @@ export interface V2CallDeps {
   /** PC 화면과 같은 처리 함수 표 (officeHandlers) */
   call(method: OfficeMethod, args: unknown[]): unknown
   attachment: AttachmentLookup
+  /** S 분류(PC 파일·명령에 영향) 호출의 인자를 원격용으로 제한한다 (없으면 그대로) */
+  restrict?(method: OfficeMethod, args: unknown[]): unknown[]
   /** 매뉴얼 경로 검사용: 지금 있는 매뉴얼의 path 목록 */
   manualPaths(): Promise<string[]>
   /** 원격 설정: 지금 포트 (포트를 바꾸는 setRemoteEnabled인지 판단) */
@@ -446,7 +490,7 @@ export async function handleV2Call(body: unknown, deps: V2CallDeps): Promise<V2C
   // 객체 인자는 메서드별 허용 필드만 (첨부는 그다음 id로 저장소 값으로 바꾼다)
   const resolved = resolveAttachments(pickFields(name, rawArgs), spec, deps.attachment)
   if ('bad' in resolved) return { response: v2Fail('invalid_attachment', { method, message: `${resolved.bad}의 첨부를 다시 올려 주세요` }) }
-  const args = resolved.args
+  const args = spec.cls === 'S' && deps.restrict ? deps.restrict(name, resolved.args) : resolved.args
 
   // 매뉴얼은 지금 있는 매뉴얼의 경로만 (폰이 아무 파일 경로나 지우거나 덮어쓰지 못하게)
   if (name === 'deleteManual' || (name === 'saveManual' && typeof args[1] === 'string')) {

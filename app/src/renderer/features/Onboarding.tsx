@@ -1,19 +1,22 @@
 import { useCallback, useEffect, useState } from 'react'
-import { CheckCircle2Icon, CircleAlertIcon, CopyIcon, ExternalLinkIcon, Loader2Icon, LogInIcon, RefreshCwIcon } from 'lucide-react'
+import { CheckCircle2Icon, CircleAlertIcon, CopyIcon, ExternalLinkIcon, FolderOpenIcon, Loader2Icon, LogInIcon, RefreshCwIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { IS_WINDOWS, osText } from '@/lib/platform'
 import { useOffice } from '@/store'
 import type { ClaudeStatus } from '@shared/types'
 import { Avatar } from './StaffCard'
+import { shortPath } from './status'
 import { t } from '@shared/i18n'
 
 // 공식 설치 명령: 맥은 터미널, 윈도우는 PowerShell에 붙여 넣는다
 const INSTALL_COMMAND = osText('curl -fsSL https://claude.ai/install.sh | bash', 'irm https://claude.ai/install.ps1 | iex')
 const DOCS_URL = 'https://docs.claude.com/en/docs/claude-code/setup'
 const WELCOME_AVATARS = [1, 13, 5, 18, 2, 22]
-const STEPS = ['welcome', 'setup', 'ready'] as const
+// 준비 점검은 설치 → 로그인 → 작업 폴더를 한 단계씩 (막히면 그 자리의 버튼으로 해결)
+const STEPS = ['welcome', 'install', 'login', 'folder', 'ready'] as const
 type Step = (typeof STEPS)[number]
+const CHECK_STEPS: Step[] = ['install', 'login', 'folder']
 
 function StepDots({ step }: { step: Step }) {
   return (
@@ -43,7 +46,36 @@ function CheckRow({ isOk, isLoading, title, children }: { isOk: boolean; isLoadi
   )
 }
 
-/** 첫 실행 안내: 앱 소개 → Claude 로그인 점검(필요하면 로그인·설치 안내) → 둘러보기(코치마크) */
+/** 점검 단계 머리말 — "1/3 설치 확인" */
+function CheckHeader({ step, title, desc }: { step: Step; title: string; desc: string }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="text-muted-foreground text-xs tabular-nums">{t('onboarding.checkStep', { n: CHECK_STEPS.indexOf(step) + 1, total: CHECK_STEPS.length })}</span>
+      <h1 className="text-xl font-bold">{title}</h1>
+      <p className="text-muted-foreground text-sm">{desc}</p>
+    </div>
+  )
+}
+
+/** 점검 단계 아래: 이전 / 다음 (아직 안 됐으면 "나중에 할게요"로 넘어간다) */
+function CheckFooter({ step, isOk, onMove }: { step: Step; isOk: boolean; onMove: (step: Step) => void }) {
+  const i = STEPS.indexOf(step)
+  return (
+    <div className="flex items-center justify-between">
+      <StepDots step={step} />
+      <div className="flex gap-2">
+        <Button variant="ghost" onClick={() => onMove(STEPS[i - 1])}>
+          {t('onboarding.prev')}
+        </Button>
+        <Button variant={isOk ? 'default' : 'outline'} onClick={() => onMove(STEPS[i + 1])}>
+          {isOk ? t('onboarding.next') : t('onboarding.later')}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+/** 첫 실행 안내: 앱 소개 → 준비 점검 마법사(설치·로그인·작업 폴더) → 둘러보기(코치마크) */
 export function Onboarding({ onStartTour }: { onStartTour: () => void }) {
   const isOnboarded = useOffice((s) => s.settings.isOnboarded)
   const isLoaded = useOffice((s) => s.isLoaded)
@@ -51,6 +83,7 @@ export function Onboarding({ onStartTour }: { onStartTour: () => void }) {
   const [status, setStatus] = useState<ClaudeStatus | null>(null)
   const [isChecking, setIsChecking] = useState(false)
   const [isCopied, setIsCopied] = useState(false)
+  const defaultCwd = useOffice((s) => s.settings.defaultCwd)
 
   const check = useCallback(async () => {
     setIsChecking(true)
@@ -59,15 +92,16 @@ export function Onboarding({ onStartTour }: { onStartTour: () => void }) {
   }, [])
 
   useEffect(() => {
-    if (step === 'setup' && !status) void check()
+    if ((step === 'install' || step === 'login') && !status) void check()
   }, [step, status, check])
 
-  // 로그인 창을 띄운 뒤에는 로그인될 때까지 조용히 다시 확인한다
+  // 설치 명령을 붙여 넣거나 로그인 창을 띄운 뒤에는 될 때까지 조용히 다시 확인한다
+  const isWaitingFix = (step === 'install' && status?.hasTerminalClaude === false) || (step === 'login' && status?.isLoggedIn === false)
   useEffect(() => {
-    if (step !== 'setup' || status?.isLoggedIn !== false) return
-    const timer = setInterval(() => void window.office.claudeStatus().then((s) => s.isLoggedIn && setStatus(s)), 4000)
+    if (!isWaitingFix) return
+    const timer = setInterval(() => void window.office.claudeStatus().then(setStatus), 4000)
     return () => clearInterval(timer)
-  }, [step, status?.isLoggedIn])
+  }, [isWaitingFix])
 
   if (!isLoaded || isOnboarded) return null
 
@@ -75,6 +109,10 @@ export function Onboarding({ onStartTour }: { onStartTour: () => void }) {
   const handleCopy = () => {
     void navigator.clipboard.writeText(INSTALL_COMMAND)
     setIsCopied(true)
+  }
+  const handlePickFolder = async () => {
+    const dir = await window.office.pickFolder()
+    if (dir) void window.office.updateSettings({ defaultCwd: dir })
   }
   const handleTour = () => {
     finish()
@@ -124,27 +162,44 @@ export function Onboarding({ onStartTour }: { onStartTour: () => void }) {
                 <Button variant="ghost" onClick={finish}>
                   {t('onboarding.skip')}
                 </Button>
-                <Button onClick={() => setStep('setup')}>{t('onboarding.start')}</Button>
+                <Button onClick={() => setStep('install')}>{t('onboarding.start')}</Button>
               </div>
             </div>
           </>
         )}
 
-        {step === 'setup' && (
+        {step === 'install' && (
           <>
-            <div className="flex flex-col gap-1">
-              <h1 className="text-xl font-bold">{t('onboarding.setup.title')}</h1>
-              <p className="text-muted-foreground text-sm">{t('onboarding.setup.desc')}</p>
-            </div>
+            <CheckHeader step={step} title={t('onboarding.install.title')} desc={t('onboarding.install.desc')} />
             <CheckRow isOk title={t('onboarding.engine.title')}>
               <span className="text-muted-foreground text-xs">{t('onboarding.engine.desc')}</span>
             </CheckRow>
+            <CheckRow isOk={Boolean(status?.hasTerminalClaude)} isLoading={isChecking && !status} title={status?.hasTerminalClaude ? t('onboarding.terminal.installed') : t('onboarding.terminal.title')}>
+              <span className="text-muted-foreground text-xs">{t('onboarding.terminal.desc')}</span>
+              {status && !status.hasTerminalClaude && (
+                <div className="flex flex-wrap items-center gap-2">
+                  {IS_WINDOWS && <span className="text-muted-foreground w-full text-xs">{t('onboarding.terminal.winHint')}</span>}
+                  <code className="bg-muted rounded px-2 py-1 text-xs">{INSTALL_COMMAND}</code>
+                  <Button size="sm" variant="outline" onClick={handleCopy}>
+                    <CopyIcon /> {isCopied ? t('onboarding.copied') : t('onboarding.copy')}
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => window.open(DOCS_URL)}>
+                    <ExternalLinkIcon /> {t('onboarding.installGuide')}
+                  </Button>
+                </div>
+              )}
+            </CheckRow>
+            <CheckFooter step={step} isOk={Boolean(status?.hasTerminalClaude)} onMove={setStep} />
+          </>
+        )}
+
+        {step === 'login' && (
+          <>
+            <CheckHeader step={step} title={t('onboarding.loginStep.title')} desc={t('onboarding.loginStep.desc')} />
             <CheckRow isOk={Boolean(status?.isLoggedIn)} isLoading={isChecking && !status} title={status?.isLoggedIn ? t('onboarding.login.done', { email: status.email ?? '' }) : t('onboarding.login.needed')}>
               {status && !status.isLoggedIn && (
                 <>
-                  <span className="text-muted-foreground text-xs">
-                    {t('onboarding.login.desc')}
-                  </span>
+                  <span className="text-muted-foreground text-xs">{t('onboarding.login.desc')}</span>
                   <ol className="text-muted-foreground list-decimal space-y-0.5 pl-4 text-xs">
                     <li>{t('onboarding.login.step1', { window: osText(t('onboarding.login.window.mac'), t('onboarding.login.window.win')) })}</li>
                     <li>{t('onboarding.login.step2')}</li>
@@ -161,32 +216,19 @@ export function Onboarding({ onStartTour }: { onStartTour: () => void }) {
                 </>
               )}
             </CheckRow>
-            <CheckRow isOk={Boolean(status?.hasTerminalClaude)} isLoading={isChecking && !status} title={status?.hasTerminalClaude ? t('onboarding.terminal.installed') : t('onboarding.terminal.title')}>
-              <span className="text-muted-foreground text-xs">
-                {t('onboarding.terminal.desc')}
-              </span>
-              {status && !status.hasTerminalClaude && (
-                <div className="flex flex-wrap items-center gap-2">
-                  {IS_WINDOWS && <span className="text-muted-foreground w-full text-xs">{t('onboarding.terminal.winHint')}</span>}
-                  <code className="bg-muted rounded px-2 py-1 text-xs">{INSTALL_COMMAND}</code>
-                  <Button size="sm" variant="outline" onClick={handleCopy}>
-                    <CopyIcon /> {isCopied ? t('onboarding.copied') : t('onboarding.copy')}
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={() => window.open(DOCS_URL)}>
-                    <ExternalLinkIcon /> {t('onboarding.installGuide')}
-                  </Button>
-                </div>
-              )}
+            <CheckFooter step={step} isOk={Boolean(status?.isLoggedIn)} onMove={setStep} />
+          </>
+        )}
+
+        {step === 'folder' && (
+          <>
+            <CheckHeader step={step} title={t('onboarding.folder.title')} desc={t('onboarding.folder.desc')} />
+            <CheckRow isOk={Boolean(defaultCwd)} title={defaultCwd ? t('onboarding.folder.done', { path: shortPath(defaultCwd) }) : t('onboarding.folder.none')}>
+              <Button size="sm" variant={defaultCwd ? 'outline' : 'default'} onClick={() => void handlePickFolder()} className="w-fit">
+                <FolderOpenIcon /> {defaultCwd ? t('onboarding.folder.change') : t('onboarding.folder.pick')}
+              </Button>
             </CheckRow>
-            <div className="flex items-center justify-between">
-              <StepDots step={step} />
-              <div className="flex gap-2">
-                <Button variant="ghost" onClick={() => setStep('welcome')}>
-                  {t('onboarding.prev')}
-                </Button>
-                <Button onClick={() => setStep('ready')}>{status?.isLoggedIn ? t('onboarding.next') : t('onboarding.loginLater')}</Button>
-              </div>
-            </div>
+            <CheckFooter step={step} isOk={Boolean(defaultCwd)} onMove={setStep} />
           </>
         )}
 

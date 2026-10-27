@@ -1,5 +1,5 @@
 import { memo, useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
-import { ArrowUpIcon, CheckIcon, CircleStopIcon, SendIcon, SquareTerminalIcon, UserMinusIcon, XIcon, ZapIcon } from 'lucide-react'
+import { ArrowUpIcon, CheckIcon, CircleStopIcon, DownloadIcon, SendIcon, SquareTerminalIcon, UserMinusIcon, XIcon, ZapIcon } from 'lucide-react'
 import { NativeSelect } from '@/components/ui/select'
 import { AttachButton, AttachmentView, DraftAttachments, useDraftAttachments } from '@/components/attachments'
 import { Button } from '@/components/ui/button'
@@ -15,6 +15,7 @@ import { EquipmentTab } from './EquipmentTab'
 import { QuestionBox, StopWorkButton } from './QuestionBox'
 import { RefDocsEditor } from './RefDocsEditor'
 import { ReviewTab } from './ReviewTab'
+import { StaffExportDialog } from './StaffExportDialog'
 import { LiveMiniView } from './LiveMiniView'
 import { Avatar, StatusDot } from './StaffCard'
 import { formatCost, formatTokens, shortPath, workDirLabel } from './status'
@@ -335,6 +336,7 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
   const handleFire = () => {
     if (window.confirm(t('staffPanel.fire.confirm', { name: staff.name }))) void window.office.fire(staff.id)
   }
+  const [isExportOpen, setExportOpen] = useState(false)
 
   return (
     <aside
@@ -543,9 +545,15 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
             <Button size="sm" variant="ghost" className="h-8 px-2 text-xs" onClick={() => openSlash('command')} title={t('slashMenu.buttonTitle')}>
               {t('slashMenu.button')}
             </Button>
+            {window.officePack && (
+              <Button size="sm" variant="ghost" className="h-8 px-2 text-xs" onClick={() => setExportOpen(true)}>
+                <DownloadIcon /> {t('pack.export.button')}
+              </Button>
+            )}
             <Button size="sm" variant="ghost" className="text-muted-foreground ml-auto" onClick={handleFire}>
               <UserMinusIcon /> {t('staffPanel.fire.button')}
             </Button>
+            <StaffExportDialog open={isExportOpen} onOpenChange={setExportOpen} initialId={staff.id} />
           </div>
         </footer>
       ) : (

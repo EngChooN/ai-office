@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { OFFICE_METHODS } from '../src/shared/officeApiShape.ts'
-import { CARD_TTL_MS, methodsOfKind, SECRETARY_SELF_METHODS, SECRETARY_TOOLS } from '../src/shared/secretaryTools.ts'
+import { BATCH_ITEMS_MAX, BATCH_METHOD, CARD_TTL_MS, cleanCompares, COMPARE_MAX, methodsOfKind, SECRETARY_SELF_METHODS, SECRETARY_TOOLS, signatureGuide } from '../src/shared/secretaryTools.ts'
 import { SecretaryDesk, type DeskDeps, type EditTarget } from '../src/main/secretaryCore.ts'
 
 const NOW = 1_800_000_000_000
@@ -37,17 +37,17 @@ function setup(over: Partial<DeskDeps> = {}) {
 
 const hireArgs = (name: string) => [{ name, role: '프론트엔드 개발', avatar: 3, model: 'default', cwd: '', systemPrompt: '', approvalMode: 'ask', teamId: '$1.id' }]
 
-test('분류표: OfficeApi 메서드 전부를 조회 20·변경 41·제외 29(+비서 자신 4)으로 빠짐없이', () => {
+test('분류표: OfficeApi 메서드 전부를 조회 26·변경 60·제외 31(+비서 자신 4)으로 빠짐없이', () => {
   assert.deepEqual(Object.keys(SECRETARY_TOOLS).sort(), [...OFFICE_METHODS].sort())
-  assert.equal(methodsOfKind('read').length, 20)
-  assert.equal(methodsOfKind('change').length, 41)
-  assert.equal(methodsOfKind('exclude').length, 29 + SECRETARY_SELF_METHODS.length)
-  // 연결·보안·상점·코드 저장은 비서 도구에 없다
-  for (const m of ['regenerateRemoteQr', 'setRemoteEnabled', 'commitChanges', 'pushAndCreatePr', 'buyItem', 'placeGridItem', 'moveGridItem', 'stowAllGrid', 'restoreGridItems', 'pickFolder', 'setHooksInstalled', 'fireExternal', 'secretaryRun']) assert.equal(SECRETARY_TOOLS[m as keyof typeof SECRETARY_TOOLS].kind, 'exclude', m)
-  for (const m of ['fire', 'deleteTeam', 'deleteLab', 'deleteManual']) assert.equal(SECRETARY_TOOLS[m as keyof typeof SECRETARY_TOOLS].risk, 'danger', m)
+  assert.equal(methodsOfKind('read').length, 26)
+  assert.equal(methodsOfKind('change').length, 60)
+  assert.equal(methodsOfKind('exclude').length, 31 + SECRETARY_SELF_METHODS.length)
+  // 연결·보안·상점 구매·바닥/벽·미션 보상·직원 장식·코드 저장은 비서 도구에 없다
+  for (const m of ['regenerateRemoteQr', 'setRemoteEnabled', 'commitChanges', 'revertWork', 'pushAndCreatePr', 'buyItem', 'applySurface', 'claimMission', 'setGear', 'pickFolder', 'setHooksInstalled', 'fireExternal', 'secretaryRun']) assert.equal(SECRETARY_TOOLS[m as keyof typeof SECRETARY_TOOLS].kind, 'exclude', m)
+  for (const m of ['fire', 'deleteTeam', 'mergeTeams', 'deleteLab', 'deleteManual']) assert.equal(SECRETARY_TOOLS[m as keyof typeof SECRETARY_TOOLS].risk, 'danger', m)
 })
 
-test('확인 없이는 실행 불가: 바꾸는 41개 모두 제안만 만들고 처리 함수를 부르지 않는다', () => {
+test('확인 없이는 실행 불가: 바꾸는 60개 모두 제안만 만들고 처리 함수를 부르지 않는다', () => {
   const { desk, calls } = setup()
   for (const m of methodsOfKind('change')) {
     // 인자 모양은 맞지 않아도 된다 — 맞든 틀리든 처리 함수는 불리지 않아야 한다
@@ -444,7 +444,7 @@ const now = 1_800_000_000_000
 const snapFixture = () =>
   ({
     staff: [
-      { id: 's1', kind: 'hired', name: '오큐에이', role: 'QA', teamId: 't1', status: 'working', statusSince: now - 5 * 60_000, activity: 'Bash', approvals: [], systemPrompt: '버그를 찾는다\n'.repeat(5), cwd: '/w', cwdSource: 'own', model: 'default', approvalMode: 'ask', equipment: { allowedTools: [], disallowedTools: [] }, todayDone: 2, costUsd: 0.1 },
+      { id: 's1', kind: 'hired', name: '오큐에이', role: 'QA', teamId: 't1', status: 'working', statusSince: now - 5 * 60_000, activity: 'Bash', approvals: [], systemPrompt: '버그를 찾는다\n'.repeat(5), cwd: '/w', cwdSource: 'own', model: 'default', approvalMode: 'ask', equipment: { mcpServers: [], skills: [], allowedTools: [], disallowedTools: [], monthlyBudgetUsd: 0 }, todayDone: 2, costUsd: 0.1 },
       {
         id: 's2', kind: 'hired', name: '이디자', role: '디자이너', teamId: null, status: 'waiting', statusSince: now - 60_000, activity: '', todayDone: 0, costUsd: 0,
         approvals: [{ id: 'ap1', staffId: 's2', toolName: 'AskUserQuestion', summary: '버튼 색?', createdAt: now - 60_000, questions: [{ question: '버튼 색?', header: '', multiSelect: false, options: [{ label: '파랑', description: '' }] }] }],
@@ -506,4 +506,183 @@ test('토큰: 지금 현황 요약을 질문에 미리 넣어 상태 질문은 �
   assert.match(sec, /wrapDocument\('지금 사무실 \(요약 — 이걸로 답할 수 있으면 다시 조회하지 않는다\)', compactOverview\(this\.office\.snapshot\(\), 'all'\)\)/)
   assert.match(sec, /const COMMON_CHANGES = new Set<string>\(\[/)
   assert.match(sec, /그 밖: \$\{changeMethods\.filter\(\(m\) => !COMMON_CHANGES\.has\(m\)\)/)
+})
+
+// ── 묶음 단계 · 비교 보기 (비서 공통 기반) ──
+
+const closeTask = (id: string) => ({ method: 'updateTask', args: [id, { status: 'done' }] })
+
+test('묶음: OfficeApi 메서드가 아닌 카드 형식 — 항목은 변경 메서드만, 인자 모양을 항목마다 확인한다', () => {
+  assert.equal(Object.hasOwn(SECRETARY_TOOLS, BATCH_METHOD), false)
+  assert.match(signatureGuide(), new RegExp(`- ${BATCH_METHOD}:`))
+  const { desk, calls } = setup()
+  const r = desk.propose({ steps: [{ method: BATCH_METHOD, label: '오래된 카드 닫기', items: Array.from({ length: 12 }, (_, i) => closeTask(`t${i}`)) }, { method: 'createTeam', args: ['정리팀', '#4a7fe0'] }] })
+  assert.ok('card' in r)
+  const [batch] = r.card.steps
+  assert.equal(batch.method, BATCH_METHOD)
+  assert.equal(batch.label, '여러 항목 한 번에 — 오래된 카드 닫기')
+  assert.equal(batch.detail, '12개 항목')
+  assert.equal(batch.items?.length, 12)
+  assert.deepEqual(batch.items?.[0].args, ['t0', { status: 'done' }])
+  assert.equal(batch.items?.[0].status, 'pending')
+  assert.deepEqual(calls, [], '제안만 만든다')
+
+  const bad = (steps: Parameters<typeof desk.propose>[0]['steps']) => desk.propose({ steps })
+  assert.ok('error' in bad([{ method: BATCH_METHOD, items: [] }]), '빈 묶음')
+  assert.ok('error' in bad([{ method: BATCH_METHOD, items: Array.from({ length: BATCH_ITEMS_MAX + 1 }, () => closeTask('t')) }]), '항목 상한')
+  assert.ok('error' in bad([{ method: BATCH_METHOD, items: [{ method: BATCH_METHOD, args: [] }] }]), '묶음 안 묶음')
+  assert.ok('error' in bad([{ method: BATCH_METHOD, items: [{ method: 'snapshot', args: [] }] }]), '조회 항목')
+  assert.ok('error' in bad([{ method: BATCH_METHOD, items: [{ method: 'buyItem', args: ['desk'] }] }]), '제외 메서드 항목')
+  assert.ok('error' in bad([{ method: BATCH_METHOD, items: [{ method: 'updateTask', args: [1, 2] }] }]), '항목 인자 모양')
+  assert.ok('error' in bad([{ method: 'createTask', args: [{ title: 't', detail: '', teamId: null }] }, { method: BATCH_METHOD, items: [{ method: 'assignTask', args: ['$1.id', 's1'] }] }]), '항목은 앞 단계 참조 불가')
+  assert.ok('error' in bad([{ method: BATCH_METHOD, items: [closeTask('t1')] }, { method: 'assignTask', args: ['$1.id', 's1'] }]), '묶음 단계는 참조 불가')
+  // 위험한 일은 한 번에 여러 개 하지 않는다 (권한을 넓히지 않게)
+  for (const m of ['fire', 'deleteTeam', 'deleteLab', 'deleteManual']) assert.ok('error' in bad([{ method: BATCH_METHOD, items: [{ method: m, args: ['x'] }] }]), m)
+})
+
+test('묶음 [실행]: 뺀 항목은 하지 않고, 한 항목이 실패해도 나머지는 하고, [이어서 하기]는 실패한 항목만 다시', async () => {
+  let isBroken = true
+  const { desk, calls } = setup({
+    call: (method, args) => {
+      calls.push({ method, args })
+      if (method === 'updateTask' && args[0] === 't2' && isBroken) throw new Error('카드를 찾지 못했어요')
+      return undefined
+    },
+  })
+  const r = desk.propose({ steps: [{ method: BATCH_METHOD, items: ['t1', 't2', 't3', 't4'].map(closeTask) }, { method: 'sendChat', args: ['정리했어요'] }] })
+  assert.ok('card' in r)
+  const done = await desk.run(r.card.id, { excluded: { 1: [3] } })
+  const items = done?.steps[0].items ?? []
+  assert.deepEqual(items.map((it) => it.status), ['done', 'failed', 'skipped', 'done'])
+  assert.equal(items[2].isExcluded, true)
+  assert.deepEqual(done?.steps.map((s) => s.status), ['failed', 'skipped'], '묶음이 실패하면 뒤 단계는 건너뛴다')
+  assert.equal(done?.steps[0].error, '카드를 찾지 못했어요')
+  assert.deepEqual(calls.map((c) => c.args[0]), ['t1', 't2', 't4'])
+
+  isBroken = false
+  calls.length = 0
+  const again = await desk.run(r.card.id, { fromStep: 1, excluded: { 1: [] } })
+  assert.equal(again?.status, 'done')
+  assert.deepEqual(again?.steps[0].items?.map((it) => it.status), ['done', 'done', 'skipped', 'done'], '뺀 항목은 이어서 하기에서도 뺀 대로')
+  assert.deepEqual(calls.map((c) => c.method === 'sendChat' ? 'chat' : c.args[0]), ['t2', 'chat'])
+})
+
+test('묶음: 항목을 모두 빼면 그 단계는 건너뜀으로 끝난다', async () => {
+  const { desk, calls } = setup()
+  const r = desk.propose({ steps: [{ method: BATCH_METHOD, items: ['t1', 't2'].map(closeTask) }] })
+  assert.ok('card' in r)
+  const done = await desk.run(r.card.id, { excluded: { 1: [1, 2] } })
+  assert.equal(done?.steps[0].status, 'skipped')
+  assert.deepEqual(calls, [])
+})
+
+const PNG = (n: number) => `data:image/png;base64,${'A'.repeat(n)}`
+
+test('비교 보기: 앱이 붙인 글 비교가 카드에 실리고, 그림은 data URL·크기만 받고, 끝난 카드에선 그림을 지운다', async () => {
+  // 글 비교는 앱(compareOf)이 실제 값으로 만든다 — 같은 글·잘못된 그림은 빠진다
+  assert.deepEqual(cleanCompares([{ kind: 'text', label: 'a', before: '같음', after: '같음' }]), [])
+  assert.deepEqual(cleanCompares([{ kind: 'image', label: 'a', before: 'https://example.com/a.png', after: PNG(8) }]), [])
+  assert.deepEqual(cleanCompares([{ kind: 'image', label: 'a', before: PNG(8), after: PNG(500_000) }]), [])
+  assert.deepEqual(cleanCompares([{ kind: 'html', label: 'a', before: 'x', after: 'y' }]), [])
+  assert.equal(cleanCompares(Array.from({ length: COMPARE_MAX + 2 }, (_, i) => ({ kind: 'text', label: `${i}`, before: 'a', after: 'b' }))).length, COMPARE_MAX)
+
+  const seen: { method: string }[][] = []
+  const { desk } = setup({
+    compareOf: (steps) => {
+      seen.push(steps)
+      return steps.flatMap((x) => (x.method === 'updateTask' ? [{ kind: 'text' as const, label: `카드 ${x.args[0]}`, before: '옛 설명', after: '새 설명' }] : []))
+    },
+  })
+  const r = desk.propose({ steps: [{ method: BATCH_METHOD, items: [closeTask('t1')] }, { method: 'createTeam', args: ['a', '#000'] }] })
+  assert.ok('card' in r)
+  assert.deepEqual(seen[0].map((x) => x.method), ['updateTask', 'createTeam'], '묶음 항목도 펼쳐서 준다')
+  assert.deepEqual(r.card.compares, [{ kind: 'text', label: '카드 t1', before: '옛 설명', after: '새 설명' }])
+
+  // 오래 걸리는 그림은 나중에 — 실행 전 카드에만
+  const withImage = desk.attachCompares(r.card.id, [{ kind: 'image', label: '1층 배치', before: PNG(8), after: PNG(12) }])
+  assert.equal(withImage?.compares?.length, 2)
+  const done = await desk.run(r.card.id)
+  assert.equal(done?.status, 'done')
+  assert.deepEqual(done?.compares?.[1], { kind: 'image', label: '1층 배치', before: '', after: '' })
+  assert.equal(done?.compares?.[0].before, '옛 설명', '글 비교는 남긴다')
+  assert.equal(desk.attachCompares(r.card.id, [{ kind: 'text', label: 'x', before: 'a', after: 'b' }]), null)
+})
+
+// ── 업무 보드 정리 · 팀/랩 구성 ──
+
+test('보드 정리·팀/랩 구성: 분류와 인자 모양 — 정리안은 조회, 합치기·이동은 확인 카드, 팀 합치기는 위험이라 묶을 수 없다', async () => {
+  const { describeStep } = await import('../src/main/secretaryDescribe.ts')
+  assert.equal(SECRETARY_TOOLS.boardCleanupPlan.kind, 'read')
+  assert.deepEqual(['mergeTasks', 'moveStaff', 'mergeTeams'].map((m) => SECRETARY_TOOLS[m as keyof typeof SECRETARY_TOOLS].risk), ['caution', 'normal', 'danger'])
+  const { desk, calls } = setup()
+  const ok = desk.propose({
+    steps: [
+      { method: BATCH_METHOD, label: '중복 카드 합치기', items: [{ method: 'mergeTasks', args: ['t1', ['t2', 't3']] }] },
+      { method: BATCH_METHOD, label: '직원 배치', items: [{ method: 'moveStaff', args: ['s1', { teamId: 'team-b', joinLabIds: ['lab-1'], leaveLabIds: [] }] }, { method: 'moveStaff', args: ['s2', { teamId: null }] }] },
+    ],
+  })
+  assert.ok('card' in ok)
+  assert.equal(ok.card.steps[1].items?.length, 2)
+  const merge = desk.propose({ steps: [{ method: 'mergeTeams', args: ['team-a', 'team-b'] }] })
+  assert.ok('card' in merge)
+  assert.equal(merge.card.risk, 'danger')
+  assert.ok('error' in desk.propose({ steps: [{ method: BATCH_METHOD, items: [{ method: 'mergeTeams', args: ['a', 'b'] }] }] }), '팀 합치기는 묶음에 못 넣는다')
+  assert.ok('error' in desk.propose({ steps: [{ method: 'mergeTasks', args: ['t1', 't2'] }] }), '합칠 카드는 배열')
+  assert.ok('error' in desk.propose({ steps: [{ method: 'moveStaff', args: ['s1', 'team-b'] }] }), '이동은 객체 하나')
+  assert.deepEqual(calls, [], '제안만 만든다')
+  const names: Record<string, string> = { t1: '로그인', t2: '로그인 2', 'team-a': '디자인팀', 'team-b': '개발팀', s1: '최코드', 'lab-1': '오피스 랩' }
+  const nameOf = (id: string) => names[id] ?? null
+  assert.match(describeStep('mergeTasks', ['t1', ['t2']], nameOf), /남길 카드: 로그인\n합칠 카드: 로그인 2/)
+  assert.match(describeStep('mergeTeams', ['team-a', 'team-b'], nameOf), /없앨 팀: 디자인팀\n옮길 팀: 개발팀/)
+  assert.match(describeStep('moveStaff', ['s1', { teamId: 'team-b', joinLabIds: ['lab-1'] }], nameOf), /대상: 최코드\n팀: 개발팀\n넣을 랩: 오피스 랩/)
+})
+
+test('보드 정리안의 단계는 그대로 propose 할 수 있다 (묶음 형식·인자 모양이 카드 검사를 통과)', async () => {
+  const { planBoardCleanup } = await import('../src/shared/boardCleanup.ts')
+  const day = 86_400_000
+  const base = { detail: '', assigneeId: null, teamId: null, labId: null, result: '', createdAt: NOW - 40 * day, updatedAt: NOW - 40 * day }
+  const { steps } = planBoardCleanup({
+    tasks: [
+      { ...base, id: 'old', title: '오래된 일', status: 'todo' },
+      { ...base, id: 'd1', title: '중복', status: 'todo', updatedAt: NOW },
+      { ...base, id: 'd2', title: '중복', status: 'todo', updatedAt: NOW },
+      { ...base, id: 'free', title: '팀 없음', status: 'review', assigneeId: 's1', updatedAt: NOW },
+      { ...base, id: 'stuck', title: '멈춤', status: 'doing', updatedAt: NOW },
+    ],
+    staff: [{ id: 's1', teamId: 'team-a' }],
+    labs: [],
+    busyTaskIds: new Set(),
+    now: NOW,
+  })
+  assert.equal(steps.length, 4)
+  const { desk } = setup()
+  const r = desk.propose({ steps })
+  assert.ok('card' in r, 'error' in r ? r.error : '')
+  assert.equal(r.card.risk, 'caution', '합치기(카드 지움)가 들어 있어 주의')
+})
+
+test('꾸미기: 가지고 있는 가구 배치 8개는 확인 카드 · 사기·바닥/벽·미션·장식은 제외하고 이유와 상점 화면을 알려 준다', async () => {
+  const decor = ['placeItem', 'moveItem', 'storeItem', 'placeGridItem', 'moveGridItem', 'setGridItemOn', 'stowAllGrid', 'restoreGridItems'] as const
+  for (const m of decor) assert.equal(SECRETARY_TOOLS[m].kind, 'change', m)
+  assert.equal(SECRETARY_TOOLS.stowAllGrid.risk, 'caution')
+  const { EXCLUDE_HINTS, SECRETARY_SIGNATURES } = await import('../src/shared/secretaryTools.ts')
+  for (const m of decor) assert.ok(SECRETARY_SIGNATURES[m], `${m} 인자 모양`)
+  const { desk, calls } = setup()
+  for (const m of ['buyItem', 'applySurface', 'claimMission', 'setGear'] as const) {
+    assert.equal(SECRETARY_TOOLS[m].kind, 'exclude', m)
+    assert.match(EXCLUDE_HINTS[m] ?? '', /#view=shop/, m)
+    const r = desk.propose({ steps: [{ method: m, args: ['x'] }] })
+    assert.ok('error' in r && r.error.includes('#view=shop'), `${m}: 상점 화면 안내`)
+    await assert.rejects(desk.read(m, ['x']), /상점/)
+  }
+  // 묶음 항목으로도 사기는 안 된다
+  const inBatch = desk.propose({ steps: [{ method: BATCH_METHOD, items: [{ method: 'placeGridItem', args: ['fern', 1, 2, 3, 0] }, { method: 'buyItem', args: ['desk'] }] }] })
+  assert.ok('error' in inBatch && inBatch.error.includes('#view=shop'))
+  // 인자 모양: 칸 놓기 (itemId, floor, gx, gy, rot) · 전부 치우기 (floor, keepSeats)
+  assert.ok('error' in desk.propose({ steps: [{ method: 'placeGridItem', args: ['fern', 1, 2] }] }))
+  assert.ok('error' in desk.propose({ steps: [{ method: 'stowAllGrid', args: [0, 'yes'] }] }))
+  const ok = desk.propose({ steps: [{ method: 'stowAllGrid', args: [0, true] }, { method: BATCH_METHOD, items: [{ method: 'placeGridItem', args: ['fern', 1, 2, 3, 0] }, { method: 'moveGridItem', args: ['u1', 1, 4, 4, 1] }] }] })
+  assert.ok('card' in ok, 'error' in ok ? ok.error : '')
+  assert.equal(ok.card.risk, 'caution')
+  assert.deepEqual(calls, [])
 })

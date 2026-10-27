@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { APP_VERSION, releasesFor } from '@/lib/changelog'
 import { useLang } from '@/lib/i18n'
+import { whatsNewAction } from '@/lib/whatsNew'
 import { useOffice } from '@/store'
 import { t } from '@shared/i18n'
 import { ReleaseNotes } from './UpdatesPage'
@@ -34,19 +35,25 @@ const setIsOpen = (isOpen: boolean) => useWhatsNewStore.setState({ isOpen })
 /** 업데이트 소식 창이 지금 열려 있는지 */
 export const useIsWhatsNewOpen = () => useWhatsNewStore((s) => s.isOpen)
 
-/** 업데이트 뒤 처음 켜면 이번 버전의 새로워진 점을 한 번 보여 준다 (처음 설치한 사람은 첫 실행 안내가 대신한다) */
-export function WhatsNew() {
-  const isOnboarded = useOffice((s) => s.isLoaded && s.settings.isOnboarded)
+/**
+ * 업데이트 뒤 처음 켜면 이번 버전의 새로워진 점을 한 번 보여 준다 (처음 설치한 사람은 첫 실행 안내가 대신한다).
+ * isBusy: 코치마크·튜토리얼 선택이 떠 있으면 닫힌 뒤로 미룬다 (튜토리얼 진행 중인지는 여기서 본다)
+ */
+export function WhatsNew({ isBusy }: { isBusy: boolean }) {
+  const isLoaded = useOffice((s) => s.isLoaded)
+  const isOnboarded = useOffice((s) => s.settings.isOnboarded)
+  const isTutorialOn = useOffice((s) => Boolean(s.tutorial?.scenario))
   const setView = useOffice((s) => s.setView)
   const isOpen = useIsWhatsNewOpen()
   const lang = useLang()
   const release = releasesFor(lang).find((r) => r.version === APP_VERSION)
 
   useEffect(() => {
-    if (!isOnboarded) return
-    if (readSeen() !== APP_VERSION && release) setIsOpen(true)
-    else writeSeen()
-  }, [isOnboarded, release])
+    if (isOpen) return
+    const action = whatsNewAction({ isLoaded, isOnboarded, isBusy: isBusy || isTutorialOn, seen: readSeen(), version: APP_VERSION, hasRelease: Boolean(release) })
+    if (action === 'open') setIsOpen(true)
+    else if (action === 'markSeen') writeSeen()
+  }, [isOpen, isLoaded, isOnboarded, isBusy, isTutorialOn, release])
 
   const close = () => {
     writeSeen()

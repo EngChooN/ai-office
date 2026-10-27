@@ -7,7 +7,7 @@ import { useOffice } from '@/store'
 import { BUDGET_WARN_RATIO, FEED_TYPES, formatAgo, formatElapsed, usageRatio, type AttentionItem, type AttentionKind, type SummaryKey } from '@shared/dashboard'
 import type { BudgetPeriod, LogEntry, Payslip, Staff } from '@shared/types'
 import { t, fmtNumber, type TKey } from '@shared/i18n'
-import { PlanUsageCard } from './PlanUsageCard'
+import { PlanHoldBanner, PlanUsageCard } from './PlanUsageCard'
 import { Avatar } from './StaffCard'
 import { formatTokens, STATUS_META, useNow } from './status'
 
@@ -358,6 +358,7 @@ export function UsageCard({ slip }: { slip: Payslip | null }) {
           <p className="text-muted-foreground text-xs">{t('dashboardPanels.loading')}</p>
         )}
       </section>
+      <PlanHoldBanner />
       <PlanUsageCard isCompact />
     </div>
   )

@@ -1,7 +1,10 @@
 import { execFile } from 'node:child_process'
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
 import { promisify } from 'node:util'
 import type { ChangeFile, WorkChanges } from '../shared/types'
-import { toolEnv, WHICH } from './platform'
+import { toolEnv, WHICH } from './platform.ts'
 
 // 작업 결과 검토: 직원 작업 폴더의 git 변경을 보여 주고, 사용자가 결재하면 커밋·푸시·PR까지 한다
 
@@ -13,6 +16,81 @@ const env = toolEnv()
 async function git(cwd: string, ...args: string[]) {
   const { stdout } = await run('git', args, { cwd, timeout: GIT_TIMEOUT_MS, maxBuffer: 20 * 1024 * 1024, env })
   return stdout
+}
+
+// ── 작업 전 스냅샷과 되돌리기 ────────────────────────────
+// 작업 폴더 전체(새 파일 포함, .gitignore 제외)를 임시 인덱스로 git 트리 객체 하나에 담는다.
+// 브랜치·스테이징·작업 폴더는 건드리지 않는다. 되돌릴 때는 이 트리와 지금 트리의 차이 중 허용된 파일만 되돌린다.
+
+/** git 저장소 맨 위 폴더 (트리 안 경로의 기준) */
+export async function repoRoot(cwd: string): Promise<string | null> {
+  try {
+    return (await git(cwd, 'rev-parse', '--show-toplevel')).trim() || null
+  } catch {
+    return null
+  }
+}
+
+/** 지금 작업 폴더 상태를 트리 해시로 남긴다. git 폴더가 아니면 null */
+export async function snapshotTree(cwd: string): Promise<string | null> {
+  const tmp = path.join(os.tmpdir(), `claude-office-index-${process.pid}-${Math.random().toString(36).slice(2)}`)
+  try {
+    const realIndex = path.resolve(cwd, (await git(cwd, 'rev-parse', '--git-path', 'index')).trim())
+    // 진짜 인덱스를 복사하면 파일 상태 캐시가 남아 큰 저장소에서도 빠르다
+    if (fs.existsSync(realIndex)) fs.copyFileSync(realIndex, tmp)
+    const tmpEnv = { ...env, GIT_INDEX_FILE: tmp }
+    const opts = { cwd, timeout: GIT_TIMEOUT_MS, maxBuffer: 20 * 1024 * 1024, env: tmpEnv }
+    if (!fs.existsSync(tmp)) await run('git', ['read-tree', 'HEAD'], opts).catch(() => undefined)
+    await run('git', ['add', '-A'], opts)
+    const { stdout } = await run('git', ['write-tree'], opts)
+    return stdout.trim() || null
+  } catch {
+    return null
+  } finally {
+    fs.rmSync(tmp, { force: true })
+  }
+}
+
+/** 두 트리 사이에서 바뀐 파일 (이름 바꾸기는 삭제 + 추가로 본다) */
+export async function treeDiff(cwd: string, from: string, to: string): Promise<ChangeFile[]> {
+  const [names, nums] = await Promise.all([git(cwd, 'diff-tree', '-r', '--no-renames', '--name-status', '-z', from, to), git(cwd, 'diff-tree', '-r', '--no-renames', '--numstat', '-z', from, to)])
+  const counts = new Map<string, [number, number]>()
+  const numParts = nums.split('\0').filter(Boolean)
+  for (const part of numParts) {
+    const [a, d, ...rest] = part.split('\t')
+    if (rest.length) counts.set(rest.join('\t'), [Number(a) || 0, Number(d) || 0])
+  }
+  const files: ChangeFile[] = []
+  const nameParts = names.split('\0').filter(Boolean)
+  for (let i = 0; i + 1 < nameParts.length; i += 2) {
+    const status = nameParts[i]
+    const [additions, deletions] = counts.get(nameParts[i + 1]) ?? [0, 0]
+    files.push({ path: nameParts[i + 1], status: status === 'A' ? 'A' : status === 'D' ? 'D' : 'M', additions, deletions })
+  }
+  return files
+}
+
+/** 기준 트리 모습으로 파일을 되돌린다. 기준에 없던 파일은 지운다. 작업 폴더 밖 경로는 건드리지 않는다 */
+export async function restoreFiles(cwd: string, base: string, files: string[]) {
+  const root = path.resolve(cwd)
+  let restored = 0
+  const failed: string[] = []
+  for (const rel of files) {
+    const abs = path.resolve(root, rel)
+    if (!abs.startsWith(root + path.sep)) {
+      failed.push(rel)
+      continue
+    }
+    try {
+      const inBase = await git(cwd, 'cat-file', '-e', `${base}:${rel}`).then(() => true, () => false)
+      if (inBase) await git(cwd, '--literal-pathspecs', 'restore', `--source=${base}`, '--worktree', '--', rel)
+      else fs.rmSync(abs, { force: true })
+      restored++
+    } catch {
+      failed.push(rel)
+    }
+  }
+  return { restored, failed }
 }
 
 async function hasCommand(cmd: string) {

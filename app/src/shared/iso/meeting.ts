@@ -91,6 +91,16 @@ export function meetingLayoutOfTier(tier: MeetingTier): MeetingLayout {
   return out
 }
 
+/**
+ * 참석 순서(order)의 의자 — 층 칸 좌표. 가구(파티션 등)가 놓여 막힌 의자는 건너뛰고 다음 의자를 쓴다.
+ * x0 = 회의실 왼쪽 칸. 앉을 의자가 모자라면 null (회의실 빈 칸에 선다)
+ */
+export function meetingSeatFor(l: MeetingLayout, x0: number, order: number, isFree: (gx: number, gy: number) => boolean): MeetingSeat | null {
+  if (order < 0) return null
+  const free = l.seats.map((s) => ({ ...s, gx: x0 + s.gx })).filter((s) => isFree(s.gx, s.gy))
+  return free[order] ?? null
+}
+
 /** 레벨의 회의실 배치 */
 export const meetingLayoutOf = (level: number) => meetingLayoutOfTier(meetingRoomOf(level).tier as MeetingTier)
 

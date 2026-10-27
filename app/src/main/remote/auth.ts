@@ -25,6 +25,22 @@ export const newToken = () => crypto.randomBytes(TOKEN_BYTES).toString('base64ur
 
 export const hashToken = (token: string) => crypto.createHash('sha256').update(token, 'utf8').digest('hex')
 
+/**
+ * 연결·잠금을 셀 때 쓰는 주소 키: IPv4는 그대로, IPv6는 앞 64비트(/64)로 묶는다.
+ * IPv6는 한 사람이 /64 안의 주소를 마음대로 바꿀 수 있어 주소 단위로 세면 한도·잠금을 피해 간다
+ */
+export function ipKey(ip: string) {
+  const addr = ip.replace(/^::ffff:/i, '').replace(/%.*$/, '')
+  if (!addr.includes(':') || addr.endsWith('/64')) return addr
+  const [head, tail, ...more] = addr.split('::')
+  if (more.length > 0 || /[^0-9a-f:]/i.test(addr)) return addr
+  const h = head === '' ? [] : head.split(':')
+  const t = tail === undefined || tail === '' ? [] : tail.split(':')
+  const groups = tail === undefined ? h : [...h, ...Array(Math.max(0, 8 - h.length - t.length)).fill('0'), ...t]
+  if (groups.length !== 8 || groups.some((g) => g.length < 1 || g.length > 4)) return addr
+  return `${groups.slice(0, 4).map((g) => g.toLowerCase().padStart(4, '0')).join(':')}::/64`
+}
+
 /** 해시끼리 상수 시간 비교 (길이가 다르면 바로 false — 해시라 길이로 알 수 있는 것은 없다) */
 export function sameHash(a: string, b: string) {
   const x = Buffer.from(a, 'hex')
@@ -79,7 +95,7 @@ export class AuthGuard {
 
   /** 이 IP가 잠겨 있으면 풀리는 시각 (전체 잠금은 없다 — 누구나 주인을 잠가 버릴 수 있어서, 전체 한도는 알림만) */
   lockedUntil(ip: string, now: number) {
-    const until = this.ipLocks.get(ip) ?? 0
+    const until = this.ipLocks.get(ipKey(ip)) ?? 0
     return until > now ? until : null
   }
 
@@ -107,7 +123,8 @@ export class AuthGuard {
    * 요청 하나를 인증한다. 잠금 중이면 토큰이 맞아도 auth_locked (맞는지 알려 주는 통로가 되지 않게).
    * 실패 횟수에는 "Bearer 형식은 맞는데 토큰이 틀린" 요청만 센다 — 헤더가 없거나 형식이 틀린 요청(token = null)·폐기된 토큰·잠금 응답은 세지 않는다
    */
-  check(token: string | null, ip: string, now: number): AuthResult {
+  check(token: string | null, rawIp: string, now: number): AuthResult {
+    const ip = ipKey(rawIp)
     if (++this.checks % SWEEP_EVERY === 0) this.sweep(now)
     const until = this.lockedUntil(ip, now)
     if (until) return { ok: false, code: 'auth_locked', retryAt: until }

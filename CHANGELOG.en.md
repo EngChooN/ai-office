@@ -7,6 +7,44 @@ Writing rules
 - Write from the user's point of view, describing "what you can now do." Do not use technical names (file paths, program or library names, English abbreviations). If one is truly needed, put it once in parentheses after a plain-language explanation.
 - Development details (how it was built, where files are) go in `SPEC.md` and `docs/changelog-dev.md`.
 
+## [0.13.0] - 2026-10-27
+
+### New features
+- **Update the app from inside the app.** When a new version comes out, press "Update now" and the app downloads it, installs it, and reopens by itself. Before installing, the app briefly closes, and staff who are working pause. You are told this first.
+- **"Always approve" lets matching requests go through automatically.** Create a rule from an approval card, and the same kind of request won't ask you again. Risky commands and anything that sends data outside can't be turned into rules. You can review and delete rules in Settings.
+- **Revert changed files in one step.** Before a staff member starts a new job, the app remembers the current state and shows how many files changed. Press "Revert to before the task" to restore the files they changed. Files that another staff member also edited are left alone.
+- **Launch automatically when you log in.** Turn it on in Settings and the app starts quietly, without a window, when you log in. On Windows, a window appears only if the notification area icon is turned off.
+- **Result gallery and Demo Day.** Finished work gathers in a gallery you can filter by period, staff member, or lab. Demo Day runs on a set day and time, and you can also open it anytime with "Open Demo Day now" (or /demoday in the group chat). It moves to a presentation hall, where each staff member walks from the audience to the podium and presents briefly with photos of their work, followed by applause. For each presentation you can react with 👏 applause, 🏆 MVP of the day (one per Demo Day), or 💬 a short comment. Applause and MVP stay on the staff card as praise badges, and comments are saved to the company knowledge store. A summary is posted to the group chat afterward. On your phone you can watch the meeting record instead of the hall. Turn off AI presentations and it uses 0 tokens.
+- **A company knowledge store.** Lessons learned by staff, feedback on plans, and decisions made in meetings are saved automatically. When a new task starts, the three most relevant items are passed along with the instructions. You can browse, search, edit, and delete them by type.
+- **Export and import staff and labs as files.** Save several staff members and a lab setup into one file, and import it on another computer. Work folders and reference documents are not included. Imports are checked first; if there is a problem, you are shown the reason and nothing is created.
+- **Hire from the staff market.** From "Staff Market" at the top of the hiring window, pick one of six ready-made staff and hire them right away.
+- **Limit phone connections to "same network only".** When on, phones connect only over the same Wi-Fi or company VPN, and no router port is opened. It is on by default for new installs, and existing users are asked once on first launch. If you turn it on and later off, you need to scan the QR code again on your phone to connect from outside. The Android app supports this mode too.
+- **Finish the tour and pick "Try one full cycle" to practice hands-on.** Choose "Assign a task" (post a card, approve the plan, get the result) or "Hold a meeting" (hear opinions and turn decisions into task cards) and try it in a practice company. Practice staff don't use AI, and you can skip straight to hiring real staff. Practice records are cleared automatically when you hire your first real staff member.
+- **Add connectors from a staff member's Equipment tab.** You can add and edit them only on this computer, not from your phone.
+- **Ask the secretary to tidy your task board.** It proposes closing old cards, merging cards with the same title, setting teams and labs, and fixing statuses in one go, and applies them after you confirm.
+- **The secretary can change teams and labs by voice.** Move a staff member to another team, move several at once, merge two teams into one, or change a lab's setup. Hard-to-undo steps like merging are shown on a card for you to confirm first.
+- **The secretary can read and edit manuals.** It reads a whole manual and explains it, and proposes edits or merging several manuals into one on a card that shows the before and after side by side.
+- **The secretary can manage staff.** It checks a staff member's work instructions and shows a suggested revision on a comparison card, looks up scheduled tasks, sets reference documents, and checks and hands out equipment.
+- **The secretary can decorate the office for you.** Say "remove all the furniture" and it puts everything away; you can undo that within 10 minutes. Say "arrange it nicely" and it shows a before-and-after floor plan and applies it only after you confirm. Buying furniture and changing floors or walls are still done in the shop, and the secretary links you there.
+- **When the secretary can't do something, it tells you why and where to do it.** It gives the reason in one line and a link to the screen where you can do it yourself.
+
+### Improvements
+- **You can ask the secretary "why did they stop?"** It checks the employee's last activity, current state, pending approvals and questions, recent tool use and errors, and queued cards, then tells you whether they are stuck or just thinking. It only looks and never changes anything.
+- **Questions asked in plain text now reach the approval inbox.** If a staff member ends a message with a question instead of using the question tool, it shows up in the approval inbox so you can answer by choosing. The same question isn't posted twice.
+- **When your plan usage nearly runs out, work pauses for a while.** Above 95% usage, scheduled tasks and automatic progress on sub-tasks of a plan pause, and you are notified. They resume automatically once the reset time passes. Tasks you start yourself keep going. From the status board, "Start now" lets you start paused work immediately.
+- **Find staff by name on the dashboard and filter by status.** Choose All, Needs attention, Working, or Waiting. Clicking the summary line applies the same filter.
+- **Each task card shows its tokens and cost.** Tokens used and cost appear on the card. Cards created earlier have no record.
+- **A setup checklist guides you on first launch.** It checks the installation, sign-in, and work folder in order, and offers a button to fix whatever is stuck. You can skip it and do it later.
+- **Saves tokens in long conversations.** When a conversation grows long, the staff member continues in a new conversation with the previous report handed over. Short, simple tasks are handled in a lighter way, and this can be turned off per staff member. The payslip shows an estimate of tokens saved.
+- **Stronger phone security.** A phone can no longer run PC commands without approval, and the global manual shared by all staff can be created and edited only on the PC. Turning "same network only" back on closes any router port opened earlier.
+- **When you reopen the app, cards in progress go back to To Do.** Approved plans continue from the next step. Cards in Review or Done stay as they are.
+- **Phones no longer need a new QR code when the PC's address or connection mode changes.** While the phone can still reach the PC, it picks up the new address and mode automatically.
+
+### Bug fixes
+- **Fixed the What's New window covering the tutorial.** The window no longer pops up while the tutorial is running.
+- **Fixed front-row staff being hidden behind meeting-room chair backs.** Lower chair backs now show seated staff's heads and shoulders.
+- **Fixed the app freezing on the tutorial selection screen.** It no longer freezes before the tutorial has started.
+
 ## [0.12.2] - 2026-10-26
 
 ### New features

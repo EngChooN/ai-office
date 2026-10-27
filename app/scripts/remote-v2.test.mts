@@ -37,7 +37,7 @@ test('분류표: OfficeApi 메서드와 빠짐없이 같은 이름 (더하거나
   assert.equal(new Set(OFFICE_METHODS).size, OFFICE_METHODS.length)
   const count: Record<string, number> = {}
   for (const s of Object.values(V2_METHODS)) count[s.cls] = (count[s.cls] ?? 0) + 1
-  assert.deepEqual(count, { R: 68, S: 17, P: 6, C: 2, U: 1 })
+  assert.deepEqual(count, { R: 86, S: 17, P: 15, C: 2, U: 1 })
   // PC 전용은 모두 대신할 길(alternative)을 알려 준다
   for (const [name, s] of Object.entries(V2_METHODS)) if (s.cls === 'P') assert.ok(s.alternative, name)
 })
@@ -89,6 +89,9 @@ test('pc_only: PC 전용 동작은 부르지 않고 422와 대신할 길', async
     ['resumeInTerminal', 'open_on_pc'],
     ['openClaudeLogin', 'open_on_pc'],
     ['remoteQr', 'open_on_pc'],
+    ['revertWork', 'open_on_pc'],
+    ['setHooksInstalled', 'open_on_pc'],
+    ['setAskHookInstalled', 'open_on_pc'],
   ]) {
     const r = await call({ method, args: [] })
     assert.deepEqual([r.response.status, r.response.body.error, r.response.body.alternative, r.calls.length], [422, 'pc_only', alternative, 0], method)
@@ -625,8 +628,9 @@ test('L2: 객체 인자는 메서드별 허용 필드만 — updateTask에 id·�
   const task = await call({ method: 'createTask', args: [{ title: 't', detail: '', teamId: null, id: 'x', attachments: [{ id: ATT_ID, path: '/etc/passwd' }] }] })
   assert.deepEqual(task.calls[0].args[0], { title: 't', detail: '', teamId: null, attachments: [ATT] })
   assert.deepEqual(pickFields('updateSettings', [{ theme: 'dark', remote: { isEnabled: true } }]), [{ theme: 'dark' }])
-  // 객체를 받는 자리는 모두 허용 필드 표가 있다 (answerQuestion은 질문 → 답 표라 제외)
+  // 객체를 받는 자리는 모두 허용 필드 표가 있다 (answerQuestion은 질문 → 답 표라 제외, PC 전용 P는 폰에서 실행되지 않아 제외)
   for (const [name, spec] of Object.entries(V2_METHODS)) {
+    if (spec.cls === 'P') continue
     spec.args.split(' ').forEach((slot, i) => {
       if (slot.replace(/[?~]/g, '') !== 'o' || name === 'answerQuestion') return
       assert.ok((V2_FIELDS as Record<string, Record<number, string[]>>)[name]?.[i], `${name} args[${i}]`)
@@ -775,7 +779,8 @@ test('capabilities: 같은 토큰으로 예전 폰과 새 폰이 함께 붙어�
 
     // 새 폰이 hello를 보내도 아무것도 저장하지 않는다 — 예전 폰의 스트림·응답은 그대로 줄어든다
     const hello = await v2call(port, t.token, { method: 'hello', args: [{ capabilities: ['iso-office', 'zzz'] }] }, NEW)
-    assert.deepEqual([hello.status, hello.body.protocolVersion, hello.body.result], [200, 2, { capabilities: ['iso-office'] }])
+    // 전용 모드 필드(lo·lan)가 함께 온다 — 값은 이 PC의 카드에 달려 있어 모양만 본다
+    assert.deepEqual([hello.status, hello.body.protocolVersion, hello.body.result.capabilities, typeof hello.body.result.lo], [200, 2, ['iso-office'], 'boolean'])
     assert.equal((await v2call(port, t.token, { method: 'hello', args: ['iso-office'] })).body.error, 'invalid_args')
     assert.equal((await v2call(port, t.token, { method: 'snapshot' })).body.result.company.level, 10)
     assert.equal((await v2call(port, t.token, { method: 'snapshot' }, NEW)).body.result.company.level, 14)

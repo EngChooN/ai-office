@@ -26,11 +26,16 @@ const INLINE_MIME = /^(image\/(png|jpeg|gif|webp)|application\/pdf|text\/plain)$
 export interface V2Office {
   /** OfficeApi 메서드 부르기 (원격 표시가 붙은 채로) */
   call(method: OfficeMethod, args: unknown[]): unknown
+  /** S 분류 호출의 인자를 원격용으로 제한 */
+  restrict?(method: OfficeMethod, args: unknown[]): unknown[]
   /** 첨부 저장소에서 id로 찾기 (PC 화면이 올린 것과 같은 곳) */
   attachment: AttachmentLookup
   /** 첨부 저장소에 새 파일 넣기 (이름·mime은 PC 화면과 같은 규칙으로 고친다) */
   saveUpload(name: string, mime: string, data: Buffer): Attachment
 }
+
+/** hello 답에 넣는 전용 모드 필드 (lan은 모를 때 생략) */
+const lanFields = (i: { lo: boolean; lan: string | null }) => ({ lo: i.lo, ...(i.lan ? { lan: i.lan } : {}) })
 
 export interface V2RouteContext {
   guard: AuthGuard
@@ -40,6 +45,8 @@ export interface V2RouteContext {
   now(): number
   isReady(): boolean
   currentPort(): number
+  /** 전용 모드 여부와 지금 이 PC의 내부 주소 (hello 답에 실어 앱이 주소를 자동으로 고치게 한다) */
+  lanInfo?(): { lo: boolean; lan: string | null }
 }
 
 const json = (res: ServerResponse, r: RemoteResponse, extraHeaders: Record<string, string> = {}) => {
@@ -75,7 +82,7 @@ export class V2Routes {
   }
 
   /** 본문을 직접 다루는 경로를 맡는다 (SSE·파일 받기·첨부 올리기). /v2/call과 v1은 false → 서버의 JSON 처리로 */
-  stream(req: IncomingMessage, res: ServerResponse, { ip, access }: { ip: string; access: AccessLogger }): boolean {
+  stream(req: IncomingMessage, res: ServerResponse, { ip, access, markAuthed }: { ip: string; access: AccessLogger; markAuthed?: () => void }): boolean {
     const path = (req.url ?? '/').split('?')[0]
     const isEvents = path === '/v2/events'
     const file = path.match(FILE_PATH)
@@ -93,6 +100,7 @@ export class V2Routes {
       if (isUpload) res.on('finish', () => req.socket.destroy())
       return true
     }
+    markAuthed?.()
     const allow = isUpload ? 'POST' : 'GET'
     if (req.method !== allow) {
       reply(v2Fail('method_not_allowed', { allow }))
@@ -224,7 +232,7 @@ export class V2Routes {
       const rawArgs = (body as { args?: unknown }).args ?? []
       const accepted = Array.isArray(rawArgs) ? acceptHello(rawArgs) : null
       if (!accepted) return v2Fail('invalid_args', { method, message: 'args[0]은 { capabilities: 문자열 배열 }이어야 해요' })
-      return { status: 200, headers: {}, body: { protocolVersion: V2_PROTOCOL_VERSION, serverTime: this.ctx.now(), ok: true, result: { capabilities: accepted } } }
+      return { status: 200, headers: {}, body: { protocolVersion: V2_PROTOCOL_VERSION, serverTime: this.ctx.now(), ok: true, result: { capabilities: accepted, ...(this.ctx.lanInfo ? lanFields(this.ctx.lanInfo()) : {}) } } }
     }
 
     // 같은 요청 다시 보내기: (토큰, 키)마다 한 번만 처리
@@ -246,6 +254,7 @@ export class V2Routes {
     try {
       const { response, after } = await handleV2Call(body, {
         call: (m, args) => this.ctx.office.call(m, args),
+        restrict: this.ctx.office.restrict,
         attachment: this.ctx.office.attachment,
         manualPaths: async () => ((await this.ctx.office.call('listManuals', [])) as { path: string }[]).map((m) => m.path),
         currentPort: this.ctx.currentPort,

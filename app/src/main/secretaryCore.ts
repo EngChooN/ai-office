@@ -2,8 +2,8 @@
 // 비서 세션의 도구는 "제안 만들기"만 한다. 실제 실행은 대표가 카드에서 [실행]을 눌러 run()이 불릴 때뿐이다 (같은 officeHandlers 경로)
 
 import type { OfficeMethod } from '../shared/officeApiShape.ts'
-import { CARD_STEPS_MAX, CARD_TTL_MS, cardRisk, isChangeMethod, isReadMethod, SECRETARY_SIGNATURES, SECRETARY_TOOLS } from '../shared/secretaryTools.ts'
-import type { SecretaryCard, SecretaryRunOptions, SecretaryStep } from '../shared/types.ts'
+import { BATCH_ITEMS_MAX, BATCH_LABEL, BATCH_METHOD, CARD_STEPS_MAX, CARD_TTL_MS, cardRisk, cleanCompares, excludeMessage, isChangeMethod, isReadMethod, SECRETARY_SIGNATURES, SECRETARY_TOOLS } from '../shared/secretaryTools.ts'
+import type { SecretaryBatchItem, SecretaryCard, SecretaryCompare, SecretaryRunOptions, SecretaryStep, SecretaryStepStatus } from '../shared/types.ts'
 import path from 'node:path'
 import { checkArgs, V2_METHODS } from './remote/v2.ts'
 import { describeStep, maxRisk, stepRisk, type NameOf } from './secretaryDescribe.ts'
@@ -28,14 +28,35 @@ export interface DeskDeps {
   isLimited?(): boolean
   /** 카드를 만들 때 미리 보는 주의할 점 (이름 겹침·대상 없음 등) */
   precheck?(steps: { method: OfficeMethod; args: unknown[] }[]): string[]
+  /** 카드를 만들 때 앱이 붙이는 글 비교 (예: 매뉴얼 저장 → 지금 본문 ↔ 새 본문). 묶음 항목도 펼쳐서 준다. 그림처럼 오래 걸리는 것은 attachCompares로 */
+  compareOf?(steps: { method: OfficeMethod; args: unknown[] }[]): SecretaryCompare[]
   /** 카드가 바뀌면 (저장·화면 갱신) */
   cardChanged(card: SecretaryCard): void
 }
 
+interface ProposeCall {
+  method: string
+  args?: unknown[]
+  label?: string
+  detail?: string
+}
+
 export interface ProposeInput {
   title?: string
-  steps: { method: string; args?: unknown[]; label?: string; detail?: string }[]
+  /** method가 "batch"인 단계는 items에 항목을 담는다 (BATCH_GUIDE) */
+  steps: (ProposeCall & { items?: ProposeCall[] })[]
   warnings?: string[]
+}
+
+/** 끝난 카드 — 비교 그림을 지운다 (상태 스냅샷이 폰까지 가므로 크게 두지 않는다) */
+const SETTLED: ReadonlySet<SecretaryCard['status']> = new Set(['done', 'cancelled', 'expired', 'replaced', 'stale'])
+const dropImages = (card: SecretaryCard): SecretaryCard =>
+  card.compares?.some((c) => c.kind === 'image' && c.before) ? { ...card, compares: card.compares.map((c) => (c.kind === 'image' ? { ...c, before: '', after: '' } : c)) } : card
+
+/** 묶음 단계의 상태: 실패가 하나라도 있으면 실패 · 모두 뺐으면 건너뜀 · 아니면 끝 */
+function batchStatus(items: SecretaryBatchItem[]): SecretaryStepStatus {
+  if (items.some((it) => it.status === 'failed')) return 'failed'
+  return items.every((it) => it.isExcluded || it.status === 'skipped') ? 'skipped' : 'done'
 }
 
 export interface ProposeEditInput {
@@ -134,7 +155,17 @@ export class SecretaryDesk {
 
   /** 저장해 둔 카드를 다시 올린다 (앱을 다시 켰을 때 — 실행 중이던 카드는 실패로) */
   restore(card: SecretaryCard, target?: EditTarget) {
-    const c = card.status === 'running' ? { ...card, status: 'failed' as const, steps: card.steps.map((s) => (s.status === 'running' ? { ...s, status: 'failed' as const, error: '앱이 꺼져서 끝까지 못 했어요' } : s)) } : card
+    const stopped = '앱이 꺼져서 끝까지 못 했어요'
+    const c =
+      card.status === 'running'
+        ? {
+            ...card,
+            status: 'failed' as const,
+            steps: card.steps.map((s) =>
+              s.status === 'running' ? { ...s, status: 'failed' as const, error: stopped, ...(s.items ? { items: s.items.map((it) => (it.status === 'running' ? { ...it, status: 'failed' as const, error: stopped } : it)) } : {}) } : s,
+            ),
+          }
+        : card
     this.cards.set(c.id, c)
     if (target) this.editTargets.set(c.id, target)
   }
@@ -149,7 +180,7 @@ export class SecretaryDesk {
 
   /** 조회 도구: 조회 메서드만 바로 부른다. 바꾸는 메서드·제외 메서드는 거절 */
   async read(method: string, args: unknown[] = []): Promise<unknown> {
-    if (!isReadMethod(method)) throw new Error(isChangeMethod(method) ? `"${method}"는 바꾸는 일이라 바로 할 수 없어요. propose로 확인 카드를 만들어 주세요.` : `"${method}"는 비서가 쓸 수 없는 기능이에요.`)
+    if (!isReadMethod(method)) throw new Error(isChangeMethod(method) ? `"${method}"는 바꾸는 일이라 바로 할 수 없어요. propose로 확인 카드를 만들어 주세요.` : excludeMessage(method))
     const bad = checkArgs(V2_METHODS[method].args, args)
     if (bad) throw new Error(`${bad}의 값이 맞지 않아요. 인자 모양: ${method}${SECRETARY_SIGNATURES[method] ?? ''}`)
     // 폴더를 받는 조회는 직원·랩 작업 폴더 안만 (모델이 고른 아무 경로나 읽지 않게 — 한리뷰 M2)
@@ -183,18 +214,25 @@ export class SecretaryDesk {
     const built: SecretaryStep[] = []
     for (const [i, s] of steps.entries()) {
       const no = i + 1
-      if (!isChangeMethod(s.method)) return { error: `${no}번 "${s.method}": ${isReadMethod(s.method) ? '조회는 카드 없이 read로 바로 하세요' : '비서가 쓸 수 없는 기능이에요'}` }
-      const args = Array.isArray(s.args) ? s.args : []
-      for (const ref of refsIn(args)) if (ref.step < 1 || ref.step >= no) return { error: `${no}번: 참조 $${ref.step}는 앞 단계만 가리킬 수 있어요` }
-      const bad = checkArgs(V2_METHODS[s.method].args, args)
-      if (bad) return { error: `${no}번 "${s.method}": ${bad}의 값이 맞지 않아요. 인자 모양: ${s.method}${SECRETARY_SIGNATURES[s.method] ?? ''}` }
-      // 카드 본문은 앱이 실제 인자로 만든다 (모델 글은 note로만 — 한리뷰 H1). 지시 문장 같은 값은 줄이지 않는다
-      const note = [s.label, s.detail].map((x) => x?.trim()).filter(Boolean).join(' · ')
-      built.push({ ...this.stepView(s.method, args), method: s.method, label: SECRETARY_TOOLS[s.method].label ?? s.method, args, status: 'pending', ...(note ? { note: clip(note) } : {}) })
+      if (s.method === BATCH_METHOD) {
+        const r = this.buildBatch(no, s)
+        if ('error' in r) return r
+        built.push(r.step)
+        continue
+      }
+      const r = this.buildCall(`${no}번`, s)
+      if ('error' in r) return r
+      for (const ref of refsIn(r.call.args)) {
+        if (ref.step < 1 || ref.step >= no) return { error: `${no}번: 참조 $${ref.step}는 앞 단계만 가리킬 수 있어요` }
+        if (built[ref.step - 1].items) return { error: `${no}번: 묶음 단계($${ref.step})는 참조할 수 없어요` }
+      }
+      built.push({ ...r.call, status: 'pending' })
     }
-    // 주의할 점은 앱이 확인한 것만 (모델이 적은 말은 notes로 따로)
-    const warnings = [...new Set([...built.flatMap((s) => (s.riskReason ? [s.riskReason] : [])), ...(this.deps.precheck?.(built.map((s) => ({ method: s.method as OfficeMethod, args: s.args }))) ?? [])])].map((w) => clip(w))
+    // 주의할 점은 앱이 확인한 것만 (모델이 적은 말은 notes로 따로). 묶음은 항목으로 펼쳐서 본다
+    const calls = built.flatMap((s) => s.items ?? [s]).map((s) => ({ method: s.method as OfficeMethod, args: s.args }))
+    const warnings = [...new Set([...built.flatMap((s) => (s.items ?? [s]).flatMap((x) => (x.riskReason ? [x.riskReason] : []))), ...(this.deps.precheck?.(calls) ?? [])])].map((w) => clip(w))
     const notes = (input.warnings ?? []).map((w) => clip(w))
+    const compares = cleanCompares(this.deps.compareOf?.(calls) ?? [])
     const card: SecretaryCard = {
       id: this.deps.newId(),
       kind: 'confirm',
@@ -203,12 +241,66 @@ export class SecretaryDesk {
       risk: maxRisk(built.map((s) => s.risk ?? 'normal')),
       warnings,
       ...(notes.length ? { notes } : {}),
+      ...(compares.length ? { compares } : {}),
       status: 'pending',
       createdAt: this.deps.now(),
     }
     this.cards.set(card.id, card)
     this.deps.cardChanged(card)
     return { card }
+  }
+
+  /** 변경 호출 하나 — 메서드·인자 모양을 확인하고 본문은 앱이 실제 인자로 만든다 (모델 글은 note로만 — 한리뷰 H1) */
+  private buildCall(where: string, s: ProposeCall): { call: Omit<SecretaryStep, 'status' | 'items'> } | { error: string } {
+    if (!isChangeMethod(s.method)) return { error: `${where} ${isReadMethod(s.method) ? `"${s.method}": 조회는 카드 없이 read로 바로 하세요` : excludeMessage(s.method)}` }
+    const args = Array.isArray(s.args) ? s.args : []
+    const bad = checkArgs(V2_METHODS[s.method].args, args)
+    if (bad) return { error: `${where} "${s.method}": ${bad}의 값이 맞지 않아요. 인자 모양: ${s.method}${SECRETARY_SIGNATURES[s.method] ?? ''}` }
+    // 지시 문장 같은 값은 줄이지 않는다
+    const note = [s.label, s.detail].map((x) => x?.trim()).filter(Boolean).join(' · ')
+    return { call: { ...this.stepView(s.method, args), method: s.method, label: SECRETARY_TOOLS[s.method].label ?? s.method, args, ...(note ? { note: clip(note) } : {}) } }
+  }
+
+  /** 묶음 단계 — 항목은 변경 메서드만, 앞 단계 참조 없이. 위험도는 항목 중 가장 높은 것 */
+  private buildBatch(no: number, s: ProposeInput['steps'][number]): { step: SecretaryStep } | { error: string } {
+    const list = s.items ?? []
+    if (list.length === 0) return { error: `${no}번 묶음: 항목이 없어요` }
+    if (list.length > BATCH_ITEMS_MAX) return { error: `${no}번 묶음: 항목은 ${BATCH_ITEMS_MAX}개까지예요. 나눠서 제안해 주세요.` }
+    const items: SecretaryBatchItem[] = []
+    for (const [j, it] of list.entries()) {
+      const where = `${no}번 묶음의 ${j + 1}번 항목`
+      if (it.method === BATCH_METHOD) return { error: `${where}: 묶음 안에 묶음을 넣을 수 없어요` }
+      const r = this.buildCall(where, it)
+      if ('error' in r) return r
+      if (refsIn(r.call.args).length) return { error: `${where}: 묶음 항목은 앞 단계를 참조할 수 없어요` }
+      // 위험한 일(해고·삭제 등)은 한 번에 여러 개 하지 않는다 — 하나씩 카드로 (권한을 넓히지 않게)
+      if (r.call.risk === 'danger' || SECRETARY_TOOLS[it.method as OfficeMethod]?.risk === 'danger') return { error: `${where} "${it.method}": 위험한 일은 묶을 수 없어요. 따로 카드로 제안해 주세요.` }
+      // 묶음 항목은 [고치기] 대상이 아니다 (빼기만)
+      const { editable: _, ...call } = r.call
+      items.push({ ...call, status: 'pending' })
+    }
+    const risk = maxRisk(items.map((it) => it.risk ?? 'normal'))
+    const name = s.label?.trim()
+    return {
+      step: {
+        method: BATCH_METHOD,
+        label: name ? `${BATCH_LABEL} — ${clip(name, 60)}` : BATCH_LABEL,
+        detail: `${items.length}개 항목`,
+        args: [],
+        status: 'pending',
+        risk,
+        ...(s.detail?.trim() ? { note: clip(s.detail.trim()) } : {}),
+        items,
+      },
+    }
+  }
+
+  /** 오래 걸려 나중에 만든 비교 보기(전 ↔ 후 그림 등)를 아직 실행 전인 카드에 붙인다 */
+  attachCompares(cardId: string, compares: SecretaryCompare[]): SecretaryCard | null {
+    const card = this.cards.get(cardId)
+    if (!card || card.status !== 'pending') return null
+    const merged = cleanCompares([...(card.compares ?? []), ...compares])
+    return this.update({ ...card, compares: merged })
   }
 
   /** 첨삭 비교 카드 — 적용은 [적용]을 눌렀을 때만 */
@@ -241,7 +333,8 @@ export class SecretaryDesk {
     this.update({ ...card, status: 'cancelled' })
   }
 
-  private update(card: SecretaryCard) {
+  private update(next: SecretaryCard) {
+    const card = SETTLED.has(next.status) ? dropImages(next) : next
     this.cards.set(card.id, card)
     this.deps.cardChanged(card)
     return card
@@ -289,9 +382,24 @@ export class SecretaryDesk {
       Object.assign(step, this.stepView(step.method as OfficeMethod, step.args))
     }
 
+    // 묶음에서 뺀 항목 (처음 실행 때만 — 이어서 하기는 그때 뺀 대로)
+    if (!isContinue)
+      for (const [no, offs] of Object.entries(options.excluded ?? {})) {
+        const step = steps[Number(no) - 1]
+        if (!step?.items || !Array.isArray(offs)) continue
+        const off = new Set(offs.map(Number))
+        step.items = step.items.map((it, j) => (off.has(j + 1) ? { ...it, isExcluded: true } : it))
+      }
+
     const start = isContinue ? Math.max(0, (options.fromStep ?? 1) - 1) : 0
+    const reset = (s: SecretaryStep): SecretaryStep => ({
+      ...s,
+      status: 'pending',
+      error: undefined,
+      ...(s.items ? { items: s.items.map((it) => (it.status === 'done' || it.isExcluded ? it : { ...it, status: 'pending' as const, error: undefined })) } : {}),
+    })
     // 두 번 누르기 막기: 기다리기 전에 실행 중으로 바꾼다
-    let current = this.update({ ...card, edit, steps: steps.map((s, i) => (i >= start && s.status !== 'done' ? { ...s, status: 'pending', error: undefined } : s)), status: 'running' })
+    let current = this.update({ ...card, edit, steps: steps.map((s, i) => (i >= start && s.status !== 'done' ? reset(s) : s)), status: 'running' })
     let isFailed = false
     for (let i = start; i < current.steps.length; i++) {
       const step = current.steps[i]
@@ -304,6 +412,13 @@ export class SecretaryDesk {
         continue
       }
       set({ status: 'running' })
+      if (step.items) {
+        const items = await this.runBatch(step.items, (next) => set({ items: next }))
+        const status = batchStatus(items)
+        isFailed = status === 'failed'
+        set({ status, items, ...(isFailed ? { error: items.find((it) => it.status === 'failed')?.error } : {}) })
+        continue
+      }
       try {
         const args = resolveRefs(step.args, current.steps.map((s) => s.result)) as unknown[]
         const result = await this.deps.call(step.method as OfficeMethod, args)
@@ -315,6 +430,31 @@ export class SecretaryDesk {
       }
     }
     return this.update({ ...current, status: isFailed ? 'failed' : 'done' })
+  }
+
+  /** 묶음 항목을 위에서 아래로 — 뺀 항목은 건너뛰고, 하나가 실패해도 나머지는 한다 (서로 기대지 않는 정리 작업이라) */
+  private async runBatch(items: SecretaryBatchItem[], onChange: (items: SecretaryBatchItem[]) => void) {
+    let list = items.map((it) => ({ ...it }))
+    const set = (j: number, patch: Partial<SecretaryBatchItem>) => {
+      list = list.map((it, k) => (k === j ? { ...it, ...patch } : it))
+      onChange(list)
+    }
+    for (const [j, it] of list.entries()) {
+      if (it.status === 'done') continue
+      if (it.isExcluded) {
+        set(j, { status: 'skipped' })
+        continue
+      }
+      set(j, { status: 'running' })
+      try {
+        const result = await this.deps.call(it.method as OfficeMethod, it.args)
+        if (result === false) throw new Error('이미 처리됐거나 대상을 찾지 못했어요')
+        set(j, { status: 'done' })
+      } catch (e) {
+        set(j, { status: 'failed', error: clip(e instanceof Error ? e.message : String(e), 160) })
+      }
+    }
+    return list
   }
 }
 

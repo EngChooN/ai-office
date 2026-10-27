@@ -20,7 +20,7 @@ class SecureStore(context: Context) {
     private val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
     @Serializable
-    private data class Stored(val host: String, val port: Int, val token: String, val spki: String, val lan: String? = null)
+    private data class Stored(val host: String, val port: Int, val token: String, val spki: String, val lan: String? = null, val lo: Boolean = false)
 
     @Synchronized
     fun load(): Connection? {
@@ -31,7 +31,7 @@ class SecureStore(context: Context) {
             cipher.init(Cipher.DECRYPT_MODE, key() ?: return null, GCMParameterSpec(128, bytes, 0, IV_BYTES))
             val plain = cipher.doFinal(bytes, IV_BYTES, bytes.size - IV_BYTES)
             val s = Json.decodeFromString(Stored.serializer(), plain.toString(Charsets.UTF_8))
-            Connection(s.host, s.port, s.token, s.spki, s.lan)
+            Connection(s.host, s.port, s.token, s.spki, s.lan, s.lo)
         } catch (_: Exception) {
             // 키가 사라졌거나(기기 초기화·복원) 손상됨 → 연결 정보 없음으로 본다
             null
@@ -40,7 +40,7 @@ class SecureStore(context: Context) {
 
     @Synchronized
     fun save(conn: Connection) {
-        val plain = Json.encodeToString(Stored.serializer(), Stored(conn.host, conn.port, conn.token, conn.spki, conn.lan))
+        val plain = Json.encodeToString(Stored.serializer(), Stored(conn.host, conn.port, conn.token, conn.spki, conn.lan, conn.isLanOnly))
         val cipher = Cipher.getInstance(TRANSFORMATION)
         cipher.init(Cipher.ENCRYPT_MODE, key() ?: createKey())
         val out = cipher.iv + cipher.doFinal(plain.toByteArray(Charsets.UTF_8))

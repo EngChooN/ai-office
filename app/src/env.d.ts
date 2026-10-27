@@ -2,6 +2,7 @@
 /// <reference types="vite/client" />
 import type { OfficeApi } from './shared/types'
 import type { OfficeUpdateApi } from './shared/updateCheck'
+import type { OfficePackApi } from './shared/staffPack'
 
 declare global {
   interface Window {
@@ -10,6 +11,8 @@ declare global {
     officeWindow?: { onShown(cb: (isShown: boolean) => void): () => void }
     /** 앱 업데이트 확인 (preload — 모바일 빌드에는 없다) */
     officeUpdate?: OfficeUpdateApi
+    /** 직원·랩 파일과 직원 마켓 (preload — 모바일 빌드에는 없다) */
+    officePack?: OfficePackApi
     /** 안드로이드 셸이 넣는 메시지 통로 (모바일 빌드만, docs/specs/android-bridge.md) */
     OfficeBridge?: { postMessage(text: string): void; onmessage: ((e: { data: string }) => void) | null }
   }

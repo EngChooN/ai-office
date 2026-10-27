@@ -6,7 +6,7 @@ import { useOffice } from '@/store'
 import type { Payslip } from '@shared/types'
 import { Avatar } from './StaffCard'
 import { formatTokens } from './status'
-import { PlanUsageCard } from './PlanUsageCard'
+import { PlanHoldBanner, PlanUsageCard } from './PlanUsageCard'
 import { SecretaryFace } from './secretary/SecretaryFace'
 import { SECRETARY_ID } from '@shared/types'
 import { t, type TKey } from '@shared/i18n'
@@ -41,6 +41,7 @@ export function PayrollPage() {
       description={t('payroll.desc')}
       actions={range === 'month' && <Input type="month" value={month} onChange={(e) => setMonth(e.target.value)} className="w-40" />}
     >
+      <PlanHoldBanner className="mb-4 max-w-3xl" />
       <PlanUsageCard />
 
       <div className="mb-3 flex max-w-3xl items-center gap-2">
@@ -58,7 +59,10 @@ export function PayrollPage() {
             </button>
           ))}
         </div>
-        <span className="text-muted-foreground ml-auto text-sm tabular-nums">{t('payroll.total', { n: formatTokens(total) })}</span>
+        <span className="text-muted-foreground ml-auto text-sm tabular-nums">
+          {(slip?.savedTokens ?? 0) > 0 && <span className="mr-3">{t('payroll.saved', { n: formatTokens(slip!.savedTokens) })}</span>}
+          {t('payroll.total', { n: formatTokens(total) })}
+        </span>
       </div>
 
       {/* 휴대폰: 표는 가로로 밀어서 보고 직원 칸은 고정 */}

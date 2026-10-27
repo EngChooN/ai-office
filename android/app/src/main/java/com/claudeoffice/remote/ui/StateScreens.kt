@@ -174,7 +174,7 @@ private fun LockedScreen(retryAt: Long, clockOffset: Long, onRetry: () -> Unit, 
 
 /** A 원격 꺼짐 / B 절전·PC 응답 없음 (탭은 유지) */
 @Composable
-fun ReachScreen(reach: Reach, lastSuccessAt: Long, tried: List<Endpoint>, onRetry: () -> Unit) {
+fun ReachScreen(reach: Reach, lastSuccessAt: Long, tried: List<Endpoint>, isLanOnly: Boolean = false, onRetry: () -> Unit) {
     val c = Office.colors
     val last = listOfNotNull(triedText(tried), if (lastSuccessAt > 0) S.get(R.string.last_connected, clock(lastSuccessAt)) else null)
         .joinToString("\n").ifEmpty { null }
@@ -189,7 +189,7 @@ fun ReachScreen(reach: Reach, lastSuccessAt: Long, tried: List<Endpoint>, onRetr
         else -> StateScreen(
             icon = Icons.Outlined.Bedtime, iconColor = c.statusIdle,
             title = S.get(R.string.state_unreach_title),
-            body = S.get(R.string.state_unreach_body),
+            body = S.get(if (isLanOnly) R.string.state_unreach_body_lo else R.string.state_unreach_body),
             note = listOfNotNull(last, S.get(R.string.state_unreach_next)).joinToString("\n"),
         ) { OutlineButton(S.get(R.string.btn_retry), onRetry, Modifier.fillMaxWidth()) }
     }
@@ -217,6 +217,7 @@ fun ConnectFailedScreen(
     onScan: () -> Unit,
     onBackToPrevious: (() -> Unit)? = null,
     tried: List<Endpoint> = emptyList(),
+    isLanOnly: Boolean = false,
 ) {
     val c = Office.colors
     val triedNote = triedText(tried)
@@ -229,7 +230,7 @@ fun ConnectFailedScreen(
             ApiError.NeedsAppUpdate -> S.get(R.string.qr_needs_app_update)
             ApiError.NeedsPcUpdate -> S.get(R.string.qr_needs_pc_update)
             ApiError.PhoneOffline -> S.get(R.string.phone_offline_short)
-            else -> S.get(R.string.qr_unreach_default)
+            else -> S.get(if (isLanOnly) R.string.qr_unreach_default_lo else R.string.qr_unreach_default)
         }
         StateScreen(
             icon = Icons.Outlined.ErrorOutline, iconColor = c.statusWaiting,
@@ -267,7 +268,7 @@ fun ConnectFailedScreen(
             body = if (error == ApiError.RemoteOff) {
                 S.get(R.string.state_connfail_remoteoff)
             } else {
-                S.get(R.string.state_connfail_unreach)
+                S.get(if (isLanOnly) R.string.state_connfail_unreach_lo else R.string.state_connfail_unreach)
             },
             note = triedNote,
         ) {

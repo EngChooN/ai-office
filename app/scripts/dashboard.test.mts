@@ -1,7 +1,7 @@
 // 대시보드 상황판 계산 단위 테스트 — pnpm test
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { attentionItems, countByStatus, currentTask, formatAgo, formatElapsed, initials, usageRatio } from '../src/shared/dashboard.ts'
+import { attentionItems, countByStatus, matchesStaffFilter, currentTask, formatAgo, formatElapsed, initials, usageRatio } from '../src/shared/dashboard.ts'
 
 const MIN = 60_000
 
@@ -62,4 +62,13 @@ test('맡은 업무: 진행 중 가장 최근 것 + 나머지 수', () => {
 test('사용 비율: 한도가 없으면 null', () => {
   assert.equal(usageRatio(50, 100), 0.5)
   assert.equal(usageRatio(50, 0), null)
+})
+
+test('직원 목록 거르기: 이름 검색(대소문자·공백 무시)과 상태 필터를 함께 적용', () => {
+  const kim = { name: 'Kim 개발', status: 'working' as const }
+  assert.equal(matchesStaffFilter(kim, '', null), true)
+  assert.equal(matchesStaffFilter(kim, '  kim ', null), true)
+  assert.equal(matchesStaffFilter(kim, '개발', 'working'), true)
+  assert.equal(matchesStaffFilter(kim, '개발', 'waiting'), false)
+  assert.equal(matchesStaffFilter(kim, '박', null), false)
 })

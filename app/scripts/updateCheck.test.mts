@@ -1,7 +1,7 @@
 // 업데이트 알림: 버전 비교·알림 여부·설치 파일 고르기·Release 응답 해석 단위 테스트 — pnpm test
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { ASSET_NAMES, assetTargetFor, compareVersions, isNewerVersion, parseRelease, parseVersion, pickDownloadUrl, pickLanguageSection, shouldNotify, shouldRecheck, summarizeNotes, UPDATE_CHECK_INTERVAL_MS, UPDATE_RECHECK_GAP_MS } from '../src/shared/updateCheck.ts'
+import { ASSET_NAMES, assetTargetFor, compareVersions, isNewerVersion, parseRelease, parseVersion, pickAsset, pickDownloadUrl, pickLanguageSection, shouldNotify, shouldRecheck, summarizeNotes, UPDATE_CHECK_INTERVAL_MS, UPDATE_RECHECK_GAP_MS } from '../src/shared/updateCheck.ts'
 
 const sign = (n: number | null) => (n === null ? null : Math.sign(n))
 
@@ -69,6 +69,7 @@ test('parseRelease: 응답 해석 · 초안/미리보기/이상한 응답은 nul
     version: '0.12.0',
     body: json.body,
     downloadUrl: 'https://github.com/a/b/releases/download/v0.12.0/Claude-Office-win-x64.zip',
+    asset: { url: 'https://github.com/a/b/releases/download/v0.12.0/Claude-Office-win-x64.zip', size: null, sha256: null },
     pageUrl: json.html_url,
   })
   assert.equal(parseRelease(json, 'mac')?.downloadUrl, null, '내 파일이 없으면 Release 페이지로 대신')
@@ -119,4 +120,14 @@ test('shouldRecheck: 포커스·깨어남 때는 마지막 확인 뒤 30분이 �
   assert.equal(shouldRecheck(now - UPDATE_RECHECK_GAP_MS, now), true)
   assert.equal(shouldRecheck(now - 5 * 60 * 60 * 1000, now), true) // 잠자기로 오래 밀린 경우
   assert.equal(UPDATE_CHECK_INTERVAL_MS, 60 * 60 * 1000)
+})
+
+test('pickAsset: 크기와 sha256(digest)를 읽고, 형식이 다르면 sha256은 null', () => {
+  const hex = 'a'.repeat(64)
+  const url = `https://github.com/a/b/releases/download/v0.13.0/${ASSET_NAMES.mac}`
+  const asset = (extra: object) => [{ name: ASSET_NAMES.mac, browser_download_url: url, ...extra }]
+  assert.deepEqual(pickAsset(asset({ size: 1234, digest: `sha256:${hex.toUpperCase()}` }), 'mac'), { url, size: 1234, sha256: hex })
+  assert.deepEqual(pickAsset(asset({ size: 0, digest: 'md5:abc' }), 'mac'), { url, size: null, sha256: null })
+  assert.deepEqual(pickAsset(asset({}), 'mac'), { url, size: null, sha256: null })
+  assert.equal(pickAsset(asset({ size: 1 }), null), null)
 })

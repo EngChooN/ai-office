@@ -16,6 +16,7 @@ import { fmtDate, t, type TKey } from '@shared/i18n'
 import { Avatar } from './StaffCard'
 import { Markdown } from '@/components/markdown'
 import { QuestionBox } from './QuestionBox'
+import { AlwaysApproveButton } from './AutoApprove'
 
 const MENTION_MAX = 6
 const KIND_ORDER: MentionKind[] = ['all', 'team', 'lab', 'staff']
@@ -122,7 +123,7 @@ const Bubble = memo(function Bubble({
               <AttachmentView attachments={m.attachments} />
             </div>
           ) : null}
-          {m.approval && <ApprovalActions link={m.approval} pending={pendingApproval} />}
+          {m.approval && <ApprovalActions link={m.approval} pending={pendingApproval} staffName={senderName} />}
         </div>
         <span className="text-muted-foreground text-[10px]">{fmtDate(m.ts, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
       </div>
@@ -131,7 +132,7 @@ const Bubble = memo(function Bubble({
 })
 
 /** 결재 요청·질문 말풍선 아래: 기다리는 중이면 결재함과 같은 버튼, 처리됐으면 결과 */
-function ApprovalActions({ link, pending }: { link: ChatApproval; pending: Approval | undefined }) {
+function ApprovalActions({ link, pending, staffName }: { link: ChatApproval; pending: Approval | undefined; staffName: string }) {
   const view = chatApprovalView(link, pending)
   if (view.kind === 'done')
     return <p className="text-muted-foreground mt-2 border-t pt-2 text-xs break-words">{view.result ? t(RESULT_LABEL[view.result], { answer: view.answer ?? '' }) : t('chat.approval.done')}</p>
@@ -147,6 +148,7 @@ function ApprovalActions({ link, pending }: { link: ChatApproval; pending: Appro
       <Button size="sm" onClick={() => void window.office.decide(a.id, true)}>
         <CheckIcon /> {t('inbox.approve')}
       </Button>
+      <AlwaysApproveButton approval={a} staffName={staffName} />
       <Button size="sm" variant="outline" onClick={() => void window.office.decide(a.id, false)}>
         {t('inbox.reject')}
       </Button>

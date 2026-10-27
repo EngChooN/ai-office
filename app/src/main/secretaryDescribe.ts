@@ -3,6 +3,10 @@
 
 import type { OfficeMethod } from '../shared/officeApiShape.ts'
 import { SECRETARY_TOOLS, type SecretaryRisk } from '../shared/secretaryTools.ts'
+import { furnitureName } from './secretaryDecor.ts'
+
+/** 가구 방향 (화면 기준 — 사무실 화면의 돌리기 표시와 같다) */
+const ROT = ['↙', '↖', '↗', '↘']
 
 /** id → 이름 (직원·팀·랩·업무 카드·결재). 모르면 null */
 export type NameOf = (id: string) => string | null
@@ -65,10 +69,12 @@ const FIELD_LABEL: Record<string, string> = {
   kind: '종류',
   projectDir: '프로젝트 폴더',
   floor: '층',
+  joinLabIds: '넣을 랩',
+  leaveLabIds: '뺄 랩',
 }
 
 const ID_FIELDS = new Set(['teamId', 'labId', 'leadId', 'assigneeId', 'staffId', 'id'])
-const ID_LIST_FIELDS = new Set(['labIds', 'memberIds', 'participantIds', 'staffIds', 'taskIds', 'teamIds'])
+const ID_LIST_FIELDS = new Set(['joinLabIds', 'leaveLabIds', 'labIds', 'memberIds', 'participantIds', 'staffIds', 'taskIds', 'teamIds'])
 const WEEKDAY = ['일', '월', '화', '수', '목', '금', '토']
 const APPROVAL_MODE: Record<string, string> = { ask: '모두 결재', acceptEdits: '파일 수정은 자율(결재 없이)' }
 
@@ -163,6 +169,34 @@ export function describeStep(method: OfficeMethod, args: unknown[], nameOf: Name
       break
     case 'startTasks':
       lines.push(`업무: ${valueText('taskIds', a0, nameOf)}`)
+      break
+    case 'mergeTasks':
+      lines.push(`남길 카드: ${idText(a0, nameOf)}`, `합칠 카드: ${valueText('taskIds', a1, nameOf)} (설명은 남길 카드에 덧붙이고 지워요)`)
+      break
+    case 'mergeTeams':
+      lines.push(`없앨 팀: ${idText(a0, nameOf)}`, `옮길 팀: ${idText(a1, nameOf)} (직원·카드를 모두 옮긴 뒤 없애요)`)
+      break
+    // 꾸미기 (가지고 있는 가구만 — 사는 일은 비서 도구에 없다)
+    case 'placeGridItem':
+      lines.push(`가구: ${furnitureName(String(a0))}`, `${String(a1)}층 ${String(a2)},${String(args[3])}칸 · 방향 ${ROT[Number(args[4])] ?? String(args[4])}`)
+      break
+    case 'moveGridItem':
+      lines.push(`가구: ${idText(a0, nameOf)}`, `→ ${String(a1)}층 ${String(a2)},${String(args[3])}칸 · 방향 ${ROT[Number(args[4])] ?? String(args[4])}`)
+      break
+    case 'placeItem':
+      lines.push(`가구: ${furnitureName(String(a0))}`, '1층 첫 빈자리에 놓아요')
+      break
+    case 'storeItem':
+      lines.push(`서랍에 넣을 가구: ${idText(a0, nameOf)}`)
+      break
+    case 'setGridItemOn':
+      lines.push(`소품: ${idText(a0, nameOf)}`, a1 ? '→ 켜기' : '→ 끄기')
+      break
+    case 'stowAllGrid':
+      lines.push(`범위: ${Number(a0) > 0 ? `${String(a0)}층` : '건물 전체'}`, a1 ? '직원 책상·의자는 남겨요' : '책상·의자까지 모두 서랍으로', '파는 게 아니라 서랍에 넣어요. 끝나면 되돌리기 카드를 올려요')
+      break
+    case 'restoreGridItems':
+      lines.push(`되놓을 가구: ${Array.isArray(a0) ? a0.length : 0}개 (치우기 전 자리로 — 그사이 막힌 자리는 건너뛰어요)`)
       break
     default: {
       // 첫 인자가 id면 대상 이름, 객체 인자는 칸마다

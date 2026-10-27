@@ -6,7 +6,7 @@ import { useOffice } from '@/store'
 import { currentTask } from '@shared/dashboard'
 import type { Staff } from '@shared/types'
 import { t } from '@shared/i18n'
-import { Avatar, Elapsed, LeadMark, StatusDot } from './StaffCard'
+import { Avatar, Elapsed, LeadMark, PracticeBadge, StatusDot } from './StaffCard'
 
 interface Props {
   staff: Staff
@@ -41,6 +41,7 @@ export function StaffRow({ staff, isLead = false, isSelected, onSelect }: Props)
         <div className="flex items-center gap-1.5 text-sm font-semibold">
           {isLead && <LeadMark />}
           <span className="min-w-0 truncate">{staff.name}</span>
+          {staff.isPractice && <PracticeBadge />}
         </div>
         <div className="text-muted-foreground truncate text-xs">{staff.role}</div>
       </div>

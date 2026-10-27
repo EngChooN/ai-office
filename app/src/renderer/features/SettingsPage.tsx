@@ -10,7 +10,7 @@ import { NotOnWindows } from '@/components/not-on-windows'
 import { RemoteSection } from './RemoteSection'
 import { COMPANY_LEVELS, type DayNight, type HooksStatus, type Settings, type ThemeId } from '@shared/types'
 import { officeOf } from '@shared/officeLevel'
-import { AutoApproveSection } from './AutoApprove'
+import { ApprovalRulesList, AutoApproveSection } from './AutoApprove'
 import { UpdateSection } from './AppUpdate'
 import { updateActions } from '@/lib/update'
 import { LANG_NAMES, LANGS, t, type LangSetting, type TKey } from '@shared/i18n'
@@ -75,6 +75,7 @@ export function SettingsPage() {
   const [isBusy, setIsBusy] = useState(false)
   const update = (patch: Partial<Settings>) => void window.office.updateSettings(patch)
   const requestTour = useOffice((s) => s.requestTour)
+  const hasPractice = useOffice((s) => Boolean(s.tutorial?.hasPractice))
 
   useEffect(() => {
     void window.office.hooksStatus().then(setHooks)
@@ -113,6 +114,9 @@ export function SettingsPage() {
       </Section>
       <Section title={t('settingsPage.autoApprove.title')} description={t('settingsPage.autoApprove.desc')}>
         <AutoApproveSection />
+      </Section>
+      <Section title={t('rule.title')} description={t('rule.desc')}>
+        <ApprovalRulesList />
       </Section>
       <Section title={t('settingsPage.theme.title')}>
         <div className="flex flex-wrap gap-3">
@@ -169,6 +173,12 @@ export function SettingsPage() {
           <input type="checkbox" checked={settings.isTrayOn} onChange={(e) => update({ isTrayOn: e.target.checked })} /> {t('settingsPage.tray.toggle', { place: trayPlace() })}
         </label>
       </Section>
+      {/* 개발 실행에서는 등록되지 않는다 (설치본만 로그인 항목에 들어간다) */}
+      <Section title={t('settingsPage.login.title')} description={t('settingsPage.login.desc')}>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={settings.launchAtLogin} onChange={(e) => update({ launchAtLogin: e.target.checked })} /> {t('settingsPage.login.toggle')}
+        </label>
+      </Section>
       <Section title={t('settingsPage.remote.title')} description={t('settingsPage.remote.desc')}>
         <RemoteSection />
       </Section>
@@ -185,6 +195,11 @@ export function SettingsPage() {
           <Button variant="outline" size="sm" onClick={requestTour}>
             {t('settingsPage.guide.tour')}
           </Button>
+          {hasPractice && (
+            <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={() => void window.office.tutorialCleanup()}>
+              {t('tutorial.done.cleanup')}
+            </Button>
+          )}
         </div>
       </Section>
       <Section title={t('settingsPage.layout.title')} description={t('settingsPage.layout.desc')}>

@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react'
-import { CircleDashedIcon, FlaskConicalIcon, FolderIcon, LayoutGridIcon, ListIcon, UserPlusIcon, UsersIcon, XIcon } from 'lucide-react'
+import { CircleDashedIcon, FlaskConicalIcon, FolderIcon, LayoutGridIcon, ListIcon, SearchIcon, UserPlusIcon, UsersIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { useOffice, useWorkMode } from '@/store'
-import { attentionItems, BUDGET_WARN_RATIO, countByStatus, type SummaryKey } from '@shared/dashboard'
+import { attentionItems, BUDGET_WARN_RATIO, countByStatus, matchesStaffFilter, type SummaryKey } from '@shared/dashboard'
 import type { Staff } from '@shared/types'
 import { t } from '@shared/i18n'
 import { ActivityFeed, AttentionCard, SummaryRow, UsageCard, usePayslip } from './DashboardPanels'
@@ -19,6 +19,8 @@ const byUrgency = (a: Staff, b: Staff) => STATUS_ORDER[a.status] - STATUS_ORDER[
 type GroupKind = 'team' | 'lab' | 'project' | 'none'
 const GROUP_ICON = { team: UsersIcon, lab: FlaskConicalIcon, project: FolderIcon, none: CircleDashedIcon } as const
 const GROUP_EMOJI: Record<GroupKind, string> = { team: '', lab: '🧪 ', project: '📁 ', none: '' }
+/** 직원 목록 상태 필터 (오류는 오류가 있을 때만 붙는다) */
+const STATUS_FILTERS: SummaryKey[] = ['waiting', 'working', 'idle']
 
 /** 위에 상황판(요약 줄·확인 필요·사용량·최근 활동), 아래에 팀(외부 직원은 프로젝트)별 직원 카드를 긴급한 순으로 */
 export function Dashboard() {
@@ -33,6 +35,7 @@ export function Dashboard() {
   const planUsage = useOffice((s) => s.planUsage)
   const [groupBy, setGroupBy] = useState<'team' | 'lab'>('team')
   const [filter, setFilter] = useState<SummaryKey | null>(null)
+  const [query, setQuery] = useState('')
   const [staffView, setStaffView] = useStaffView()
 
   const staffById = useMemo(() => new Map(staff.map((s) => [s.id, s])), [staff])
@@ -57,8 +60,14 @@ export function Dashboard() {
     ...labs.map((l): Group => ({ key: l.id, kind: 'lab', label: l.name, color: l.color, leadId: l.leadId, members: staff.filter((s) => l.memberIds.includes(s.id)) })),
     { key: 'none', kind: 'none', label: t('dashboard.group.noLab'), color: null, leadId: null, members: staff.filter((s) => s.kind === 'hired' && s.labIds.length === 0) },
   ]
-  // 요약 줄에서 고른 상태만 남긴다 (상황판은 그대로, 직원 격자에만 적용)
-  const groups = (groupBy === 'team' ? byTeam : byLab).map((g) => ({ ...g, members: filter ? g.members.filter((s) => s.status === filter) : g.members })).filter((g) => g.members.length > 0)
+  // 이름 검색·상태 필터(요약 줄에서 골라도 같다)는 직원 격자에만 적용한다 — 상황판은 그대로
+  const groups = (groupBy === 'team' ? byTeam : byLab).map((g) => ({ ...g, members: g.members.filter((s) => matchesStaffFilter(s, query, filter)) })).filter((g) => g.members.length > 0)
+  const isFiltered = filter !== null || query.trim() !== ''
+  const clearFilter = () => {
+    setFilter(null)
+    setQuery('')
+  }
+  const statusFilters = counts.error > 0 || filter === 'error' ? [...STATUS_FILTERS, 'error' as const] : STATUS_FILTERS
   const hasHired = staff.some((s) => s.kind === 'hired')
 
   return (
@@ -84,14 +93,23 @@ export function Dashboard() {
         <div className="flex min-w-0 flex-col gap-4">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-sm font-semibold">{t('dashboard.staffTitle')}</h2>
-            {filter && (
-              <Badge variant="outline" className="gap-1">
-                {t('dashboard.filterOnly', { status: STATUS_META[filter].label })}
-                <button type="button" aria-label={t('dashboard.clearFilter')} onClick={() => setFilter(null)} className="hover:text-foreground">
-                  <XIcon className="size-3" />
+            <div className="relative">
+              <SearchIcon className="text-muted-foreground pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2" />
+              <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('dashboard.searchName')} aria-label={t('dashboard.searchName')} className="h-7 w-40 pl-7 text-xs" />
+            </div>
+            <div className="bg-muted flex w-fit rounded-lg p-0.5">
+              {[null, ...statusFilters].map((st) => (
+                <button
+                  key={st ?? 'all'}
+                  type="button"
+                  aria-pressed={filter === st}
+                  onClick={() => setFilter(st)}
+                  className={cn('rounded-md px-2.5 py-1 text-xs font-medium', filter === st ? 'bg-background shadow-sm' : 'text-muted-foreground')}
+                >
+                  {st ? STATUS_META[st].label : t('dashboard.filterAll')}
                 </button>
-              </Badge>
-            )}
+              ))}
+            </div>
             <div className="bg-muted ml-auto flex w-fit rounded-lg p-0.5">
               {(['team', 'lab'] as const).map((g) => (
                 <button
@@ -125,10 +143,10 @@ export function Dashboard() {
               })}
             </div>
           </div>
-          {filter && groups.length === 0 && (
+          {isFiltered && groups.length === 0 && (
             <div className="text-muted-foreground flex flex-col items-start gap-3 rounded-xl border border-dashed p-6 text-sm">
               {t('dashboard.empty.noMatch')}
-              <Button size="sm" variant="outline" onClick={() => setFilter(null)}>
+              <Button size="sm" variant="outline" onClick={clearFilter}>
                 {t('dashboard.clearFilter')}
               </Button>
             </div>

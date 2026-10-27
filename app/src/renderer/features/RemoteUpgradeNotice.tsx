@@ -58,3 +58,57 @@ export function RemoteUpgradeNotice() {
     </Dialog>
   )
 }
+
+// 0.13.0 같은 네트워크 전용 모드 안내 (한 번만): 예전 사용자는 지금처럼 밖에서도 붙으므로 새 옵션을 알리고 켜기를 권한다
+// 원격이 꺼져 있으면 띄우지 않고 본 것으로 둔다 (설정 › 휴대폰 연결의 토글 설명이 같은 내용을 알린다). 위 안내가 먼저 닫힌 뒤에 띄운다
+export function RemoteLanNotice() {
+  const isLoaded = useOffice((s) => s.isLoaded)
+  const isUpgradeSeen = useOffice((s) => s.settings.isFullAccessNoticeSeen)
+  const [isOpen, setIsOpen] = useState(false)
+  const [isBusy, setIsBusy] = useState(false)
+  const isChecked = useRef(false)
+
+  useEffect(() => {
+    if (!isLoaded || !isUpgradeSeen || isChecked.current) return
+    isChecked.current = true
+    void window.office.remoteStatus().then((s) => {
+      if (!s.isLanNoticePending) return
+      if (s.isEnabled) setIsOpen(true)
+      else void window.office.dismissRemoteLanNotice()
+    })
+  }, [isLoaded, isUpgradeSeen])
+
+  const close = () => {
+    setIsOpen(false)
+    void window.office.dismissRemoteLanNotice()
+  }
+  const handleTurnOn = async () => {
+    setIsBusy(true)
+    // 켜면 main이 안내도 본 것으로 저장한다
+    await window.office.setRemoteLanOnly(true)
+    setIsBusy(false)
+    setIsOpen(false)
+  }
+
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => !open && close()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <ShieldAlertIcon className="text-status-waiting size-4" /> {t('remoteLan.title')}
+          </DialogTitle>
+          <DialogDescription className="text-foreground">{t('remoteLan.body')}</DialogDescription>
+        </DialogHeader>
+        <p className="text-muted-foreground text-xs">{t('remote.lanMode.changed')}</p>
+        <DialogFooter>
+          <Button variant="outline" disabled={isBusy} onClick={close}>
+            {t('remoteLan.later')}
+          </Button>
+          <Button disabled={isBusy} onClick={() => void handleTurnOn()}>
+            {t('remoteLan.turnOn')}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}

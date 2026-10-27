@@ -38,6 +38,8 @@ export const updateActions = {
   isAvailable: Boolean(bridge),
   check: () => bridge?.check().then(receive),
   download: () => void bridge?.download(),
+  /** 앱 안에서 내려받아 설치하고 다시 연다 (성공하면 앱이 꺼진다) */
+  install: () => void bridge?.install().then(receive),
   /** [나중에]: 그 버전은 다시 알리지 않는다 */
   skip: (version: string) => {
     useUpdateStore.setState({ isNoticeOpen: false })

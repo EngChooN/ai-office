@@ -3,6 +3,8 @@ import { BoardPage } from '@/features/BoardPage'
 import { ChatPage } from '@/features/ChatPage'
 import { Dashboard } from '@/features/Dashboard'
 import { InboxPage } from '@/features/InboxPage'
+import { KnowledgePage } from '@/features/KnowledgePage'
+import { GalleryPage } from '@/features/GalleryPage'
 import { ManualsPage } from '@/features/ManualsPage'
 import { MeetingPage } from '@/features/MeetingPage'
 import { OrgPage } from '@/features/OrgPage'
@@ -28,6 +30,8 @@ export const PAGES: Record<View, () => React.JSX.Element> = {
   chat: ChatPage,
   meeting: MeetingPage,
   manuals: ManualsPage,
+  knowledge: KnowledgePage,
+  gallery: GalleryPage,
   schedule: SchedulePage,
   report: ReportPage,
   payroll: PayrollPage,

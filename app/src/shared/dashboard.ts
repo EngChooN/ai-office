@@ -43,6 +43,13 @@ export function initials(name: string) {
 
 export type SummaryKey = 'working' | 'waiting' | 'error' | 'idle'
 
+/** 직원 목록 거르기: 이름에 검색어가 들어 있고(대소문자·앞뒤 공백 무시) 고른 상태와 같으면 남긴다 */
+export function matchesStaffFilter(s: Pick<Staff, 'name' | 'status'>, query: string, status: SummaryKey | null): boolean {
+  if (status && s.status !== status) return false
+  const q = query.trim().toLowerCase()
+  return !q || s.name.toLowerCase().includes(q)
+}
+
 /** 요약 줄 상태별 인원. 퇴근(offline)은 세지 않는다 */
 export function countByStatus(staff: Pick<Staff, 'status'>[]): Record<SummaryKey, number> {
   const counts: Record<SummaryKey, number> = { working: 0, waiting: 0, error: 0, idle: 0 }

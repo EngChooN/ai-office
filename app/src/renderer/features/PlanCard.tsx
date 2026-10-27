@@ -8,17 +8,22 @@ import { useOffice } from '@/store'
 import { t } from '@shared/i18n'
 import type { Task } from '@shared/types'
 import { Avatar } from './StaffCard'
+import { useTutorialTaskId } from './Tutorial'
 
 /** 리드의 기획안: 기획서와 하위 업무 안을 보고 승인(배정)하거나 피드백과 함께 다시 */
 export function PlanCard({ task, isCompact = false }: { task: Task; isCompact?: boolean }) {
   const staff = useOffice((s) => s.staff)
   const [feedback, setFeedback] = useState('')
+  const [isReviseBlocked, setIsReviseBlocked] = useState(false)
+  const isTutorialTask = useTutorialTaskId() === task.id
   const plan = task.plan
   if (!plan) return null
   const lead = staff.find((s) => s.id === task.assigneeId)
   const isWaiting = plan.status === 'waiting'
 
   const handleReview = (isApproved: boolean) => {
+    // 연습 기획안은 대본에 [다시] 흐름이 없다 — 안내만 띄운다
+    if (task.isPractice && !isApproved) return setIsReviseBlocked(true)
     void window.office.reviewPlan(task.id, isApproved, feedback.trim())
     setFeedback('')
   }
@@ -57,8 +62,9 @@ export function PlanCard({ task, isCompact = false }: { task: Task; isCompact?: 
       {isWaiting && (
         <div className="flex flex-col gap-2 border-t pt-3">
           <Textarea value={feedback} onChange={(e) => setFeedback(e.target.value)} placeholder={t('planCard.feedbackPlaceholder')} className="min-h-12 text-xs" />
+          {isReviseBlocked && <p className="text-muted-foreground text-xs">ℹ️ {t('tutorial.task.reviseBlocked')}</p>}
           <div className="flex gap-2">
-            <Button size="sm" onClick={() => handleReview(true)}>
+            <Button size="sm" onClick={() => handleReview(true)} data-tour={isTutorialTask ? 'tut-approve' : undefined}>
               <CheckIcon /> {t('planCard.approve')}
             </Button>
             <Button size="sm" variant="outline" onClick={() => handleReview(false)}>

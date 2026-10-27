@@ -1,4 +1,4 @@
-import { SparklesIcon, BookOpenIcon, BanknoteIcon, StoreIcon, CalendarClockIcon, ClipboardCheckIcon, FileTextIcon, KanbanIcon, LayoutGridIcon, MapIcon, MessagesSquareIcon, NetworkIcon, PresentationIcon, SettingsIcon } from 'lucide-react'
+import { SparklesIcon, BookOpenIcon, LibraryIcon, GalleryHorizontalEndIcon, BanknoteIcon, StoreIcon, CalendarClockIcon, ClipboardCheckIcon, FileTextIcon, KanbanIcon, LayoutGridIcon, MapIcon, MessagesSquareIcon, NetworkIcon, PresentationIcon, SettingsIcon } from 'lucide-react'
 import { useOffice, type View } from '@/store'
 import { pendingMeetingDecisions } from '@shared/meetingDecisions'
 import { t, type TKey } from '@shared/i18n'
@@ -25,6 +25,8 @@ export const NAV_ITEMS: { view: View; readonly label: string; icon: typeof MapIc
   item('chat', 'nav.chat', MessagesSquareIcon),
   item('meeting', 'nav.meeting', PresentationIcon),
   item('manuals', 'nav.manuals', BookOpenIcon),
+  item('knowledge', 'nav.knowledge', LibraryIcon),
+  item('gallery', 'nav.gallery', GalleryHorizontalEndIcon),
   item('schedule', 'nav.schedule', CalendarClockIcon),
   item('report', 'nav.report', FileTextIcon),
   item('payroll', 'nav.payroll', BanknoteIcon),

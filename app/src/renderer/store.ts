@@ -5,7 +5,7 @@ import { clampFloor } from '@shared/officeLevel'
 import { applyLanguage } from '@/lib/i18n'
 import { t } from '@shared/i18n'
 
-export type View = 'secretary' | 'map' | 'dashboard' | 'org' | 'board' | 'inbox' | 'chat' | 'meeting' | 'manuals' | 'schedule' | 'report' | 'payroll' | 'settings' | 'updates' | 'shop'
+export type View = 'secretary' | 'map' | 'dashboard' | 'org' | 'board' | 'inbox' | 'chat' | 'meeting' | 'manuals' | 'knowledge' | 'gallery' | 'schedule' | 'report' | 'payroll' | 'settings' | 'updates' | 'shop'
 
 interface OfficeState extends OfficeSnapshot {
   selectedId: string | null
@@ -31,6 +31,9 @@ interface OfficeState extends OfficeSnapshot {
   viewFloor: number
   /** 외관을 지나 건물 안에 들어와 있는지 */
   isInside: boolean
+  /** 발표장 화면에 띄운 데모데이 회의 (null = 닫힘) */
+  demoStageId: string | null
+  setDemoStageId(id: string | null): void
   setPreviewLevel(level: number | null): void
   setViewFloor(floor: number): void
   setInside(v: boolean): void
@@ -87,6 +90,8 @@ export const useOffice = create<OfficeState>((set) => ({
   previewLevel: null,
   viewFloor: 1,
   isInside: false,
+  demoStageId: null,
+  setDemoStageId: (demoStageId) => set({ demoStageId }),
   setPreviewLevel: (previewLevel) => set((s) => ({ previewLevel, viewFloor: clampFloor(s.viewFloor, viewLevelOf({ ...s, previewLevel })) })),
   setViewFloor: (floor) => set((s) => ({ viewFloor: clampFloor(floor, viewLevelOf(s)) })),
   setInside: (isInside) => set({ isInside }),

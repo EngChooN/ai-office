@@ -7,6 +7,7 @@ import { Office } from './office'
 import { OfficeTray } from './tray'
 import { createOfficeHandlers, type OfficeHandlers } from './officeHandlers'
 import { runAsRemote } from './remoteContext'
+import { restrictRemoteArgs } from './remoteGuard'
 import { IS_WINDOWS } from './platform'
 import { RemoteService } from './remote/service.ts'
 import { loadRemoteKeys, saveRemoteKeys } from './remote/keystore.ts'
@@ -15,6 +16,8 @@ import { Secretary } from './secretary'
 import { SECRETARY_FOCUS } from '../shared/types'
 import { t } from '../shared/i18n/index.ts'
 import { registerUpdates, type UpdateChecker } from './updates'
+import { registerPack } from './staffPack'
+import { startedHidden, syncLoginItem } from './loginItem'
 
 registerAttachmentScheme()
 const office = new Office()
@@ -45,6 +48,7 @@ function createRemote() {
     v2: {
       // 원격 표시(📱 원격)를 단 채로 PC 화면과 같은 처리 함수를 부른다
       call: (method, args) => runAsRemote(() => (handlers![method] as (...a: unknown[]) => unknown)(...args)),
+      restrict: (method, args) => restrictRemoteArgs(method, args, { defaultCwd: office.snapshot().settings.defaultCwd ?? '' }),
       attachment: attachmentById,
       saveUpload,
     },
@@ -129,13 +133,15 @@ const tray = new OfficeTray(
   },
 )
 
-function createWindow() {
+/** isHidden: 로그인 자동 실행으로 켜졌을 때 창을 띄우지 않는다 (Dock·트레이로 다시 연다) */
+function createWindow(isHidden = false) {
   win = new BrowserWindow({
     width: 1360,
     height: 860,
     minWidth: 1024,
     minHeight: 680,
     title: 'Claude Office',
+    show: !isHidden,
     // 맥은 신호등만 남기고, 윈도우는 오른쪽 위 창 버튼을 상단 바(h-11 = 44px) 위에 겹쳐 그린다 (색은 --background 근사값)
     ...(IS_WINDOWS ? { titleBarStyle: 'hidden', titleBarOverlay: { color: '#111318', symbolColor: '#e8ecf4', height: 44 } } : { titleBarStyle: 'hiddenInset' }),
     backgroundColor: '#0f1115',
@@ -166,6 +172,7 @@ function registerIpc() {
   for (const [name, fn] of Object.entries(handlers)) ipcMain.handle(`office:${name}`, (_e, ...args) => (fn as (...a: unknown[]) => unknown)(...args))
 
   office.on('snapshot', (s) => {
+    syncLoginItem(s.settings.launchAtLogin)
     win?.webContents.send('office:onSnapshot', s)
     tray.update(s)
     remote?.publish('snapshot', s)
@@ -210,10 +217,15 @@ app.whenReady().then(() => {
   office.start()
   void remote.init()
   updates = registerUpdates(() => win)
-  createWindow()
+  registerPack(() => office, () => win)
+  // 로그인으로 켜졌으면 창을 띄우지 않는다 — 윈도우는 트레이를 끈 경우 보일 곳이 없어 띄운다
+  const isHidden = startedHidden() && (process.platform === 'darwin' || office.snapshot().settings.isTrayOn)
+  createWindow(isHidden)
+  syncLoginItem(office.snapshot().settings.launchAtLogin)
   updates.start()
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    else win?.show()
   })
 })
 

@@ -110,6 +110,21 @@ export default {
     ja: '[自動チェック] 報告に残りの仕事がありますが、いま任されている仕事がありません。今すぐ delegate か add_task で任せてください。代表の判断を待っている場合は何もせず、一行だけで返答してください。',
     zh: '[自动检查] 汇报中还有剩余工作，但目前没有已交办的任务。请现在用 delegate 或 add_task 交办。如果正在等待代表决定，请不要做任何操作，只用一句话回复。',
   },
+  'staff.msg.textAnswer': {
+    ko: '[대표 답변] 질문: {question}\n답: {answer}\n이 답으로 이어서 진행하세요.',
+    en: '[Owner’s answer] Question: {question}\nAnswer: {answer}\nContinue with this answer.',
+    ja: '[代表の回答] 質問: {question}\n回答: {answer}\nこの回答で続けてください。',
+    zh: '[代表回复] 问题：{question}\n回答：{answer}\n请按此回答继续。',
+  },
+  'log.planHeld': { ko: '플랜 한도가 거의 차서 보류: {label}', en: 'Held because the plan limit is nearly full: {label}', ja: 'プラン上限が近いため保留: {label}', zh: '套餐额度将满，已暂缓：{label}' },
+  'notify.planHeld': { ko: '플랜 한도 대기', en: 'Waiting for plan limit', ja: 'プラン上限で待機', zh: '等待套餐额度' },
+  'notify.planHeldBody': {
+    ko: '플랜 사용률이 {percent}%라 예약 업무와 기획 자동 진행을 {when}까지 보류해요. 회복되면 자동으로 이어 가요. 급하면 상황판의 [바로 시작]을 누르세요.',
+    en: 'Plan usage is at {percent}%, so scheduled work and automatic plan steps are on hold until {when}. They resume automatically once the limit recovers. If it is urgent, press [Start now] on the status board.',
+    ja: 'プラン使用率が{percent}%のため、予約業務と企画の自動進行を{when}まで保留します。回復すると自動で再開します。急ぐ場合は状況ボードの[今すぐ開始]を押してください。',
+    zh: '套餐使用率已达 {percent}%，预约任务和规划的自动推进将暂缓到 {when}。额度恢复后会自动继续。若很紧急，请点击状态看板的“立即开始”。',
+  },
+  'notify.planResumed': { ko: '플랜 한도가 풀려 보류했던 일 {n}건을 시작했어요.', en: 'The plan limit recovered — started {n} held item(s).', ja: 'プラン上限が回復したため、保留していた{n}件を開始しました。', zh: '套餐额度已恢复，已开始 {n} 项暂缓的任务。' },
   'staff.msg.backgroundNudge': {
     ko: '[자동 점검] 끝나지 않은 백그라운드 작업이 있습니다. 끝날 때까지 기다려 마무리하세요. (남은 작업: {tasks})',
     en: '[Auto check] There are background tasks that have not finished. Wait until they finish and wrap up. (Remaining: {tasks})',

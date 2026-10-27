@@ -4,8 +4,9 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useNow } from '@/features/status'
 import { CARD_TTL_MS } from '@shared/secretaryTools'
-import { applyHunks, changeCount, diffHunks, diffWords, type Hunk } from '@shared/textDiff'
+import { applyHunks, changeCount, diffHunks, type Hunk } from '@shared/textDiff'
 import type { SecretaryCard } from '@shared/types'
+import { Words } from './CompareView'
 import { requestSecretaryDraft } from './draft'
 import { t } from '@shared/i18n'
 
@@ -13,29 +14,6 @@ import { t } from '@shared/i18n'
 // [적용]·[일부 적용]은 확인 카드와 같은 길(secretaryRun)로, 그사이 원문이 바뀌었으면 main이 멈춘다
 
 type Change = Extract<Hunk, { kind: 'change' }>
-
-function Words({ before, after, side }: { before: string; after: string; side: 'del' | 'add' }) {
-  const ops = diffWords(before, after)
-  return (
-    <>
-      {ops.map((op, i) =>
-        op.type === 'same' ? (
-          <span key={i}>{op.text}</span>
-        ) : op.type === side ? (
-          side === 'del' ? (
-            <del key={i} className="text-status-error">
-              {op.text}
-            </del>
-          ) : (
-            <ins key={i} className="text-status-working underline underline-offset-2">
-              {op.text}
-            </ins>
-          )
-        ) : null,
-      )}
-    </>
-  )
-}
 
 function Column({ title, hunks, side, isChangesOnly, chosen, onToggle }: { title: string; hunks: Hunk[]; side: 'del' | 'add'; isChangesOnly: boolean; chosen?: Set<number>; onToggle?: (id: number) => void }) {
   return (

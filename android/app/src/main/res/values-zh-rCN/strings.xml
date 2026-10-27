@@ -185,7 +185,7 @@
     <string name="instruct_sent">已转达给 %1$s</string>
     <string name="unlock_at">将在 %1$s 解锁，届时会自动重新连接。</string>
     <string name="last_connected">上次连接 %1$s</string>
-    <string name="tried_lan">同一 Wi-Fi 地址</string>
+    <string name="tried_lan">同一 Wi-Fi/VPN 地址</string>
     <string name="tried_ext">外部地址</string>
     <string name="tried_one">无法连接到 %1$s</string>
     <string name="tried_many">以下均无法连接：%1$s</string>
@@ -220,4 +220,7 @@
     <string name="update_up_to_date">已是最新版本</string>
     <string name="update_available">有新版本 %1$s</string>
     <string name="update_failed">无法检查</string>
+    <string name="state_connfail_unreach_lo">仅在连接同一 Wi-Fi 或公司 VPN 时才能连接。请检查 Wi-Fi 或 VPN 后重试。</string>
+    <string name="state_unreach_body_lo">可能的原因：\n· 仅在连接同一 Wi-Fi 或公司 VPN 时才能连接\n· 电脑处于睡眠状态或已关机\n· Claude Office 未运行</string>
+    <string name="qr_unreach_default_lo">无法连接到电脑。仅在连接同一 Wi-Fi 或公司 VPN 时才能连接。</string>
 </resources>

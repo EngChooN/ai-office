@@ -769,11 +769,11 @@ test('L4: 저장된 키를 읽지 못하면(복호화 실패) 새로 만들고 P
 test('N2: 1000번 실패해도 PC 알림은 10분에 1번, 다음 알림에 그 사이 횟수를 합친다', () => {
   const calls: [string, number][] = []
   const guard = new AuthGuard({ tokenHash: hashToken(newToken()), revoked: [] }, (scope, _until, count) => void calls.push([scope, count]))
-  let t = NOW
-  for (let i = 0; i < 1000; i++) guard.check('w'.repeat(43), `2001:db8::${i}`, (t += 5))
+  let t = NOW // 주소는 서로 다른 /64로 — 같은 /64는 한 곳으로 센다 (remote-hardening 테스트)
+  for (let i = 0; i < 1000; i++) guard.check('w'.repeat(43), `2001:db8:${i.toString(16)}::1`, (t += 5))
   assert.deepEqual(calls, [['global', AUTH_LIMITS.GLOBAL_FAILURES_MAX]])
   // 10분이 지나 다시 한도를 넘으면 그 사이 쌓인 것까지 합쳐 한 번
-  for (let i = 0; i < AUTH_LIMITS.GLOBAL_FAILURES_MAX; i++) guard.check('w'.repeat(43), `2001:db8::1:${i}`, t + AUTH_LIMITS.ALERT_INTERVAL_MS + i)
+  for (let i = 0; i < AUTH_LIMITS.GLOBAL_FAILURES_MAX; i++) guard.check('w'.repeat(43), `2001:db9:${i.toString(16)}::1`, t + AUTH_LIMITS.ALERT_INTERVAL_MS + i)
   assert.equal(calls.length, 2)
   // 첫 알림 뒤 참았던 980번 + 새로 넘긴 20번
   assert.equal(calls[1][1], 1000)

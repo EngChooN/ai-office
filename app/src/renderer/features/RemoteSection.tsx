@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils'
 import { fmtDate, t } from '@shared/i18n'
 import type { AccessEntry, RemoteQr, RemoteStatus } from '@shared/types'
 
-// 설정 › 휴대폰 연결: 켜기·끄기, 첫 연결 가이드(켜기 → 포트 → 공유기 → 주소 → QR), QR 다시 만들기, 지문, 최근 접속 기록
+// 설정 › 휴대폰 연결: 켜기·끄기, 같은 네트워크 전용 모드, 첫 연결 가이드(켜기 → 포트 → 공유기 → 주소 → QR), QR 다시 만들기, 지문, 최근 접속 기록
 // 화면에는 토큰 원문·해시가 오지 않는다. QR 그림만 잠깐 받아 보여 주고 5분 뒤 가린다
 
 const STEP_KEYS = ['remote.step.on', 'remote.step.port', 'remote.step.router', 'remote.step.address', 'remote.step.qr'] as const
@@ -35,6 +35,7 @@ export function RemoteSection() {
   const [status, setStatus] = useRemoteStatus()
   const [isGuideOpen, setIsGuideOpen] = useState(false)
   const [guideStep, setGuideStep] = useState(0)
+  const [isLanModeChanged, setIsLanModeChanged] = useState(false)
   if (!status) return null
 
   const openGuide = (step = 0) => {
@@ -50,12 +51,25 @@ export function RemoteSection() {
     setStatus(await window.office.regenerateRemoteQr())
     openGuide(4)
   }
+  const handleLanMode = async (isLanOnly: boolean) => {
+    setStatus(await window.office.setRemoteLanOnly(isLanOnly))
+    // 주소가 바뀌므로 이미 연결해 둔 휴대폰은 QR을 다시 찍어야 할 수 있다
+    if (status.isEnabled) setIsLanModeChanged(true)
+  }
 
   return (
     <>
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" checked={status.isEnabled} onChange={(e) => void handleToggle(e.target.checked)} /> {t('remote.enable')}
       </label>
+      <label className="flex items-start gap-2 text-sm">
+        <input type="checkbox" className="mt-1" checked={status.lanOnly} onChange={(e) => void handleLanMode(e.target.checked)} />
+        <span>
+          {t('remote.lanMode')}
+          <span className="text-muted-foreground block text-xs">{status.lanOnly ? t('remote.lanMode.on') : t('remote.lanMode.off')}</span>
+        </span>
+      </label>
+      {isLanModeChanged && <Banner tone="warning">{t('remote.lanMode.changed')}</Banner>}
       {status.isEnabled && (
         <p className="flex flex-wrap items-center gap-x-1.5 text-xs">
           <span className={status.isListening ? 'text-status-working' : 'text-status-error'}>● {status.isListening ? t('remote.on') : t('remote.notOpen')}</span>
@@ -70,6 +84,7 @@ export function RemoteSection() {
       )}
       {status.error === 'port_in_use' && <Banner tone="error">{t('remote.error.portInUse', { port: status.port })}</Banner>}
       {status.error === 'start_failed' && <Banner tone="error">{t('remote.error.startFailed')}</Banner>}
+      {status.error === 'no_network' && <Banner tone="warning">{t('remote.error.noNetwork')}</Banner>}
       {status.isKeyRegenerated && <Banner tone="warning">{t('remote.keyRegenerated')}</Banner>}
       {status.lockedUntil && (
         <Banner tone="warning">{t('remote.locked', { time: timeText(status.lockedUntil) })}</Banner>
@@ -169,7 +184,8 @@ function RemoteGuide({
     setIsBusy(false)
     // 이 가이드에서 "모두 조작할 수 있어요"를 읽고 켰으니 업데이트 안내(RemoteUpgradeNotice)는 띄우지 않는다
     if (next.isEnabled) void window.office.updateSettings({ isFullAccessNoticeSeen: true })
-    if (next.isListening) setStep(2)
+    // 전용 모드는 공유기 포트를 열지 않고 주소도 내부 주소만 쓰므로 공유기·주소 단계를 건너뛴다
+    if (next.isListening) setStep(status.lanOnly ? 4 : 2)
   }
   const handleHost = async (value: string) => {
     setStatus(await window.office.setRemoteHost(value))
@@ -202,7 +218,7 @@ function RemoteGuide({
               <b>{t('remote.guide.readFirst')}</b>
               <br />
               {t('remote.guide.warnQr')}
-              <br />· {t('remote.guide.warnPort')}
+              <br />· {status.lanOnly ? t('remote.lanMode.on') : t('remote.guide.warnPort')}
             </Banner>
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={isAcknowledged} onChange={(e) => setIsAcknowledged(e.target.checked)} /> {t('remote.guide.ack')}
@@ -237,7 +253,7 @@ function RemoteGuide({
                 {t('remote.guide.prev')}
               </Button>
               <Button onClick={() => void handleOpenPort()} disabled={!isPortValid || isBusy}>
-                {isBusy && <Loader2Icon className="animate-spin" />} {t('remote.guide.tryRouter')}
+                {isBusy && <Loader2Icon className="animate-spin" />} {status.lanOnly ? t('remote.guide.open') : t('remote.guide.tryRouter')}
               </Button>
             </DialogFooter>
           </div>
@@ -393,7 +409,7 @@ function QrStep({ status, setStatus, onClose }: { status: RemoteStatus; setStatu
         </Banner>
       )}
       {!status.connectHost && <Banner tone="error">{t('remote.qr.noHost')}</Banner>}
-      {status.isLanOnly && <Banner tone="warning">{t('remote.qr.lanOnly')}</Banner>}
+      {status.isLanOnly && !status.lanOnly && <Banner tone="warning">{t('remote.qr.lanOnly')}</Banner>}
       <div className="text-muted-foreground flex items-start gap-2 text-xs">
         <ShieldAlertIcon className="mt-0.5 size-3.5 shrink-0" />
         {t('remote.qr.keyWarning')}

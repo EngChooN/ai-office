@@ -5,8 +5,9 @@ import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { useNow } from '@/features/status'
 import { CARD_TTL_MS } from '@shared/secretaryTools'
-import type { SecretaryCard, SecretaryStep } from '@shared/types'
+import type { SecretaryBatchItem, SecretaryCard, SecretaryStep } from '@shared/types'
 import { t, type TKey } from '@shared/i18n'
+import { CompareList } from './CompareView'
 
 // 확인 카드 (secretary-ui.md 4-1~4-3): 기획 카드 틀 + 하위 업무 줄. [실행]을 눌러야만 앱이 실행한다 (main secretaryCore)
 
@@ -15,6 +16,30 @@ const NOT_REPEATABLE = new Set(['hire', 'createTeam', 'createLab', 'createTask',
 
 /** 위험 카드의 동사 버튼 */
 const DANGER_VERB: Record<string, TKey> = { fire: 'secretary.danger.fire', deleteTeam: 'secretary.danger.deleteTeam', deleteLab: 'secretary.danger.deleteLab', deleteManual: 'secretary.danger.deleteManual' }
+
+/** 묶음 항목 한 줄: 실행 전에는 체크(빼기), 실행 뒤에는 결과 표시 */
+function BatchItem({ item, isChoosing, isOn, onToggle }: { item: SecretaryBatchItem; isChoosing: boolean; isOn: boolean; onToggle: () => void }) {
+  const isOff = isChoosing ? !isOn : item.isExcluded
+  return (
+    <li className={cn('flex items-start gap-1.5 text-[11px]', isOff && 'opacity-50')}>
+      {isChoosing ? (
+        <input type="checkbox" checked={isOn} onChange={onToggle} aria-label={t('secretary.batch.include')} className="mt-0.5 shrink-0" />
+      ) : item.status === 'done' ? (
+        <CheckIcon className="text-status-working size-3.5 shrink-0" aria-label={t('secretary.step.done')} />
+      ) : item.status === 'failed' ? (
+        <XIcon className="text-status-error size-3.5 shrink-0" aria-label={t('secretary.step.failed')} />
+      ) : (
+        <MinusIcon className={cn('size-3.5 shrink-0', item.status === 'running' ? 'text-primary animate-pulse' : 'text-muted-foreground')} aria-label={item.isExcluded ? t('secretary.batch.excluded') : t('secretary.step.skipped')} />
+      )}
+      <div className="flex min-w-0 flex-1 flex-col">
+        <span className={cn('break-words', item.risk === 'caution' && 'text-status-waiting', isOff && 'line-through')}>
+          <span className="font-medium">{item.label}</span> {item.detail && <span className="selectable whitespace-pre-wrap">{item.detail}</span>}
+        </span>
+        {item.status === 'failed' && item.error && <span className="text-status-error">{item.error}</span>}
+      </div>
+    </li>
+  )
+}
 
 function StepMark({ step, no }: { step: SecretaryStep; no: number }) {
   if (step.status === 'done') return <CheckIcon className="text-status-working size-5 shrink-0" aria-label={t('secretary.step.done')} />
@@ -28,6 +53,8 @@ export function ConfirmCard({ card }: { card: SecretaryCard }) {
   const [isEditing, setIsEditing] = useState(false)
   const [edits, setEdits] = useState<Record<number, Record<string, string>>>({})
   const [isSending, setIsSending] = useState(false)
+  // 묶음에서 뺀 항목: 단계 번호 → 항목 번호들 (1부터 — secretaryRun의 excluded와 같은 모양)
+  const [excluded, setExcluded] = useState<Record<number, number[]>>({})
   const isPending = card.status === 'pending'
   const isExpired = card.status === 'expired' || (isPending && now - card.createdAt > CARD_TTL_MS)
   const isDanger = card.risk === 'danger'
@@ -38,14 +65,23 @@ export function ConfirmCard({ card }: { card: SecretaryCard }) {
   const run = async (fromStep?: number) => {
     setIsSending(true)
     try {
-      await window.office.secretaryRun(card.id, fromStep ? { fromStep } : Object.keys(edits).length ? { edits } : undefined)
+      const hasEdits = Object.keys(edits).length > 0
+      const hasExcluded = Object.values(excluded).some((n) => n.length > 0)
+      await window.office.secretaryRun(card.id, fromStep ? { fromStep } : hasEdits || hasExcluded ? { ...(hasEdits ? { edits } : {}), ...(hasExcluded ? { excluded } : {}) } : undefined)
     } finally {
       setIsSending(false)
       setIsEditing(false)
     }
   }
   const setEdit = (no: number, name: string, value: string) => setEdits((e) => ({ ...e, [no]: { ...e[no], [name]: value } }))
-  const dangerKey = card.steps.map((s) => DANGER_VERB[s.method]).find(Boolean)
+  const toggleItem = (no: number, itemNo: number) =>
+    setExcluded((e) => {
+      const off = e[no] ?? []
+      return { ...e, [no]: off.includes(itemNo) ? off.filter((n) => n !== itemNo) : [...off, itemNo] }
+    })
+  // 고를 수 있는 항목이 모두 빠지면 실행할 게 없다
+  const isAllExcluded = card.steps.every((s, i) => s.items && (excluded[i + 1]?.length ?? 0) >= s.items.length)
+  const dangerKey = card.steps.flatMap((s) => s.items ?? [s]).map((s) => DANGER_VERB[s.method]).find(Boolean)
   const dangerVerb = dangerKey ? t(dangerKey) : t('secretary.run')
 
   const summary =
@@ -86,7 +122,19 @@ export function ConfirmCard({ card }: { card: SecretaryCard }) {
               {/* 비서(모델)가 붙인 설명은 보조로만 */}
               {s.note && <span className="text-muted-foreground text-[11px] break-words">{t('secretary.stepNote', { note: s.note })}</span>}
               {s.status === 'failed' && s.error && <span className="text-status-error text-[11px]">{s.error}</span>}
-              {s.status === 'skipped' && <span className="text-muted-foreground text-[11px]">{t('secretary.step.skippedNote')}</span>}
+              {s.status === 'skipped' && !s.items && <span className="text-muted-foreground text-[11px]">{t('secretary.step.skippedNote')}</span>}
+              {s.items && (
+                <>
+                  {isPending && !isExpired && s.items.length > 1 && (
+                    <span className="text-muted-foreground text-[11px]">{t('secretary.batch.chosen', { total: s.items.length, n: s.items.length - (excluded[i + 1]?.length ?? 0) })}</span>
+                  )}
+                  <ul className="flex max-h-72 flex-col gap-1 overflow-y-auto">
+                    {s.items.map((it, j) => (
+                      <BatchItem key={j} item={it} isChoosing={isPending && !isExpired} isOn={!excluded[i + 1]?.includes(j + 1)} onToggle={() => toggleItem(i + 1, j + 1)} />
+                    ))}
+                  </ul>
+                </>
+              )}
               {isEditing && s.editable && (
                 <div className="grid grid-cols-1 gap-1.5 @md:grid-cols-2">
                   {Object.entries(s.editable).map(([name, value]) => (
@@ -101,6 +149,7 @@ export function ConfirmCard({ card }: { card: SecretaryCard }) {
           </li>
         ))}
       </ol>
+      {card.compares && card.compares.length > 0 && <CompareList compares={card.compares} />}
       {card.notes && card.notes.length > 0 && isPending && (
         <p className="text-muted-foreground text-[11px]">{t('secretary.memo', { notes: card.notes.join(' · ') })}</p>
       )}
@@ -124,7 +173,7 @@ export function ConfirmCard({ card }: { card: SecretaryCard }) {
               {isEditing ? t('secretary.editClose') : t('secretary.edit')}
             </Button>
           )}
-          <Button size="sm" variant={isDanger ? 'destructive' : 'default'} disabled={isSending} onClick={() => void run()}>
+          <Button size="sm" variant={isDanger ? 'destructive' : 'default'} disabled={isSending || isAllExcluded} onClick={() => void run()}>
             {!isDanger && <CheckIcon />} {isSending ? t('secretary.running') : isDanger ? dangerVerb : t('secretary.run')}
           </Button>
         </div>

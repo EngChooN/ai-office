@@ -185,7 +185,7 @@
     <string name="instruct_sent">%1$sさんに伝えました</string>
     <string name="unlock_at">%1$sに解除されます。そのとき自動で再接続します。</string>
     <string name="last_connected">最終接続 %1$s</string>
-    <string name="tried_lan">同じWi-Fiアドレス</string>
+    <string name="tried_lan">同じWi-Fi・VPNアドレス</string>
     <string name="tried_ext">外部アドレス</string>
     <string name="tried_one">%1$sに届きませんでした</string>
     <string name="tried_many">%1$s のいずれにも届きませんでした</string>
@@ -220,4 +220,7 @@
     <string name="update_up_to_date">最新バージョンです</string>
     <string name="update_available">新しいバージョン %1$s があります</string>
     <string name="update_failed">確認できませんでした</string>
+    <string name="state_connfail_unreach_lo">同じWi-Fiまたは社内VPNに接続している間だけ接続できます。Wi-FiやVPNを確認してから、もう一度お試しください。</string>
+    <string name="state_unreach_body_lo">次のような場合があります。\n· 同じWi-Fiまたは社内VPNに接続している間だけ接続できます\n· PCがスリープ中または電源オフです\n· Claude Officeが終了しています</string>
+    <string name="qr_unreach_default_lo">PCに届きませんでした。同じWi-Fiまたは社内VPNに接続している間だけ接続できます。</string>
 </resources>

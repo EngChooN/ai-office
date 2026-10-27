@@ -9,8 +9,10 @@ import { useShallow } from 'zustand/react/shallow'
 import { useOffice } from '@/store'
 import { isMeetingLive, type Meeting, type MeetingDecision } from '@shared/types'
 import { t, fmtDate, type TKey } from '@shared/i18n'
-import { Avatar } from './StaffCard'
+import { Avatar, PracticeBadge } from './StaffCard'
+import { useTutorialMeetingId, useTutorialStep } from './Tutorial'
 import { Markdown } from '@/components/markdown'
+import { AttachmentView } from '@/components/attachments'
 import { buildGroups, groupState, toggleGroup, type PickGroup } from './meetingPick'
 import { meetingRoomOf, nextMeetingRoomLevel } from '@shared/officeLevel'
 import { decisionView, type DecisionState } from '@shared/meetingDecisions'
@@ -41,6 +43,9 @@ export function MeetingPage() {
   const labs = useOffice((s) => s.labs)
   const groups = useMemo(() => buildGroups(staff, teams, labs), [staff, teams, labs])
   const [notice, setNotice] = useState<string | null>(null)
+  // 튜토리얼에서 회의 시작을 건너뛰었어도 '할 일로 올리기' 단계에선 연습 회의를 펼쳐 둔다
+  const tutorialMeetingId = useTutorialMeetingId()
+  const isTodoStep = useTutorialStep() === 'b3'
   // 회의실이 클수록(회사 레벨) 더 많이 부를 수 있다
   const level = useOffice((s) => s.company.level)
   const capacity = meetingRoomOf(level).capacity
@@ -132,7 +137,7 @@ export function MeetingPage() {
               {t('meeting.roundN', { n: r })}
             </button>
           ))}
-          <Button type="submit" size="sm" className="ml-auto" disabled={!topic.trim() || picked.length < 2 || Boolean(running)}>
+          <Button type="submit" size="sm" className="ml-auto" disabled={!topic.trim() || picked.length < 2 || Boolean(running)} data-tour="tut-meeting-start">
             <PresentationIcon /> {running ? t('meeting.inProgress') : t('meeting.start')}
           </Button>
         </div>
@@ -140,7 +145,7 @@ export function MeetingPage() {
 
       <div className="flex max-w-3xl flex-col gap-3">
         {meetings.map((m) => (
-          <MeetingCard key={m.id} meeting={m} isOpen={openId === m.id || isMeetingLive(m)} onToggle={() => setOpenId(openId === m.id ? null : m.id)} />
+          <MeetingCard key={m.id} meeting={m} isOpen={openId === m.id || isMeetingLive(m) || (isTodoStep && m.id === tutorialMeetingId)} onToggle={() => setOpenId(openId === m.id ? null : m.id)} />
         ))}
       </div>
     </Page>
@@ -180,6 +185,9 @@ function GroupChip({ group: g, picked, max, isFull, divider, onClick }: { group:
 
 function MeetingCard({ meeting: m, isOpen, onToggle }: { meeting: Meeting; isOpen: boolean; onToggle: () => void }) {
   const staff = useOffice((s) => s.staff)
+  // 튜토리얼 회의: 결정을 할 일로 올리는 단계에서만 버튼을 보인다
+  const isTutorialMeeting = useTutorialMeetingId() === m.id
+  const tutorialStep = useTutorialStep()
   return (
     <div className="bg-card rounded-xl border">
       <button type="button" onClick={onToggle} className="flex w-full items-center gap-3 p-4 text-left">
@@ -193,10 +201,12 @@ function MeetingCard({ meeting: m, isOpen, onToggle }: { meeting: Meeting; isOpe
         >
           {t(STATUS_LABEL[m.status])}
         </span>
+        {m.isPractice && <PracticeBadge className="text-[11px]" />}
         <span className="flex-1 font-medium">{m.topic}</span>
         <span className="text-muted-foreground text-xs">{fmtDate(m.createdAt, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
       </button>
-      {isMeetingLive(m) && <EndMeetingButtons meetingId={m.id} className="px-4 pb-3" />}
+      {/* 연습 회의는 대본이 끝내므로 끝내기 버튼을 두지 않는다 */}
+      {isMeetingLive(m) && !m.isPractice && <EndMeetingButtons meetingId={m.id} className="px-4 pb-3" />}
       {isOpen && (
         <div className="flex flex-col gap-3 border-t p-4">
           {m.messages.map((msg, i) => {
@@ -207,6 +217,11 @@ function MeetingCard({ meeting: m, isOpen, onToggle }: { meeting: Meeting; isOpe
                 <div className="min-w-0">
                   <div className="text-muted-foreground text-xs">{msg.name}</div>
                   <Markdown className="text-sm">{msg.text}</Markdown>
+                  {msg.attachments?.length ? (
+                    <div className="mt-1.5">
+                      <AttachmentView attachments={msg.attachments} />
+                    </div>
+                  ) : null}
                 </div>
               </div>
             )
@@ -219,6 +234,11 @@ function MeetingCard({ meeting: m, isOpen, onToggle }: { meeting: Meeting; isOpe
             <div className="bg-muted rounded-lg p-3 text-sm">
               <div className="mb-1 text-xs font-semibold">{t('meeting.minutes')}</div>
               <Markdown>{m.summary}</Markdown>
+              {isTutorialMeeting && tutorialStep === 'b3' && (
+                <Button size="sm" className="mt-2" onClick={() => void window.office.tutorialAct({ type: 'createTodos' })} data-tour="tut-todos">
+                  {t('tutorial.meeting.createTodos')}
+                </Button>
+              )}
             </div>
           )}
         </div>

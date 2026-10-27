@@ -1,16 +1,18 @@
 import { useEffect, useRef, useState } from 'react'
-import { BotIcon, CheckIcon, MessageCircleQuestionIcon } from 'lucide-react'
+import { BotIcon, CheckCheckIcon, CheckIcon, MessageCircleQuestionIcon, Trash2Icon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { useOffice } from '@/store'
 import { AUTO_DAILY_DEFAULT, AUTO_HOURS, formatRemaining, type AutoApprovePlan } from '@shared/autoApprove'
+import { ruleLabel, type ApprovalRule } from '@shared/approvalRules'
 import { maskSecrets } from '@shared/redact'
-import type { AutoHandled } from '@shared/types'
+import type { Approval, AutoHandled } from '@shared/types'
 import { useNow } from './status'
 import { fmtDate, t } from '@shared/i18n'
 
 // 자동결재(대표 부재 중) 화면 3곳: 설정 칸 · 상단 바 표시 · 결재함 "자동 처리됨" 목록
+// + "앞으로 항상 승인" 규칙: 결재 승인 옆 버튼 · 설정의 규칙 목록 (approveAlways·approvalRules·deleteApprovalRule)
 // 상태는 스냅샷 autoApprove, 목록은 autoApproveLog(), 켜고 끄기는 setAutoApprove(plan) — 휴대폰 앱도 같은 컴포넌트
 
 /**
@@ -200,5 +202,58 @@ export function AutoHandledList() {
         ))}
       </ul>
     </details>
+  )
+}
+
+/** 결재 승인 옆 "앞으로 자동 승인" — 이 직원의 같은 종류 요청을 규칙으로 넘긴다. 위험 명령·질문이면 버튼이 없다 */
+export function AlwaysApproveButton({ approval, staffName }: { approval: Approval; staffName: string }) {
+  const [isBusy, setIsBusy] = useState(false)
+  if (!approval.alwaysRule) return null
+  const rule = ruleLabel(approval.alwaysRule)
+  const handleClick = async () => {
+    if (!window.confirm(t('rule.confirm', { name: staffName, rule }))) return
+    setIsBusy(true)
+    await window.office.approveAlways(approval.id)
+    setIsBusy(false)
+  }
+  return (
+    <Button size="sm" variant="ghost" className="text-xs" disabled={isBusy} title={t('rule.buttonHint', { name: staffName, rule })} onClick={() => void handleClick()}>
+      <CheckCheckIcon /> {t('rule.button')}
+    </Button>
+  )
+}
+
+/** 설정 › 자동결재 아래: 만들어 둔 "앞으로 항상 승인" 규칙 보기·지우기 */
+export function ApprovalRulesList() {
+  const staff = useOffice((s) => s.staff)
+  const [rules, setRules] = useState<ApprovalRule[]>([])
+  const refresh = () => void window.office.approvalRules().then(setRules)
+  useEffect(refresh, [])
+  const nameOf = (id: string) => staff.find((s) => s.id === id)?.name ?? '—'
+  const handleDelete = async (r: ApprovalRule) => {
+    if (!window.confirm(t('rule.confirmDelete', { name: nameOf(r.staffId), rule: ruleLabel(r) }))) return
+    await window.office.deleteApprovalRule(r.id)
+    refresh()
+  }
+  return (
+    <div className="flex flex-col gap-2 text-sm">
+      <p className="text-muted-foreground text-xs">{t('rule.listHelp')}</p>
+      {rules.length === 0 ? (
+        <p className="text-muted-foreground text-xs">{t('rule.empty')}</p>
+      ) : (
+        <ul className="flex flex-col divide-y rounded-lg border text-xs">
+          {rules.map((r) => (
+            <li key={r.id} className="flex items-center gap-2 px-3 py-1.5">
+              <span className="w-20 shrink-0 truncate font-medium">{nameOf(r.staffId)}</span>
+              <span className="min-w-0 flex-1 font-mono break-all">{ruleLabel(r)}</span>
+              <span className="text-muted-foreground shrink-0 tabular-nums">{fmtDate(r.createdAt, { month: 'numeric', day: 'numeric' })}</span>
+              <Button size="icon" variant="ghost" className="size-7" aria-label={t('rule.delete')} onClick={() => void handleDelete(r)}>
+                <Trash2Icon className="size-3.5" />
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   )
 }

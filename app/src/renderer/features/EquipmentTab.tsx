@@ -4,8 +4,7 @@ import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import type { Equipment, EquipmentCatalog, Staff } from '@shared/types'
 import { READ_ONLY_BASH, RISKY_BASH } from '@shared/bashPolicy'
-import { BROWSER_EQUIPMENT } from '@shared/browserTools'
-import { osText } from '@/lib/platform'
+import { McpSection } from './McpSection'
 import { NotOnWindows } from '@/components/not-on-windows'
 import { t } from '@shared/i18n'
 import type { TKey } from '@shared/i18n'
@@ -30,7 +29,7 @@ function Chip({ isOn, onClick, children, title, disabled }: { isOn: boolean; onC
   )
 }
 
-/** 장비 지급: MCP 서버·스킬·도구 권한. 바꾸면 다음 지시부터 새 장비로 일한다 */
+/** 장비 지급: 연결 도구(MCP)·스킬·도구 권한. 바꾸면 다음 지시부터 새 장비로 일한다 */
 export function EquipmentTab({ staff }: { staff: Staff }) {
   const [catalog, setCatalog] = useState<EquipmentCatalog | null>(null)
   const [eq, setEq] = useState<Equipment>(staff.equipment)
@@ -40,8 +39,6 @@ export function EquipmentTab({ staff }: { staff: Staff }) {
     void window.office.equipmentCatalog(staff.cwd).then(setCatalog)
   }, [staff.cwd])
 
-  // 브라우저는 결재를 꼭 거치므로 "MCP 도구 자동 허용"에서 뺀다
-  const userMcp = eq.mcpServers.filter((n) => n !== BROWSER_EQUIPMENT)
   const toggleIn = (list: string[], v: string) => (list.includes(v) ? list.filter((x) => x !== v) : [...list, v])
   const presetOn = (p: (typeof TOOL_PRESETS)[number]) => (p.allow ?? []).every((tool) => eq.allowedTools.includes(tool)) && (p.deny ?? []).every((tool) => eq.disallowedTools.includes(tool))
   const togglePreset = (p: (typeof TOOL_PRESETS)[number]) => {
@@ -58,38 +55,7 @@ export function EquipmentTab({ staff }: { staff: Staff }) {
 
   return (
     <section className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-4 text-sm">
-      <div className="flex flex-col gap-2">
-        <h3 className="text-xs font-semibold">🔌 {t('equipment.mcp.title')}</h3>
-        {catalog?.mcpServers.every((m) => m.isBuiltin) && <p className="text-muted-foreground text-xs">{t('equipment.mcp.empty', { device: osText(t('equipment.device.mac'), t('equipment.device.win')) })}</p>}
-        <div className="flex flex-col gap-1">
-          {catalog?.mcpServers.map((m) => {
-            const isOn = eq.mcpServers.includes(m.name)
-            const toggle = () => setEq((e) => ({ ...e, mcpServers: toggleIn(e.mcpServers, m.name) }))
-            // 앱 기본 장비(브라우저): 이 컴퓨터에서 못 쓰면 켤 수 없고 이유를 보여 준다 (켜져 있던 건 끌 수 있게)
-            return m.isBuiltin ? (
-              <Chip key={m.name} isOn={isOn} onClick={toggle} disabled={Boolean(m.unavailable) && !isOn}>
-                <span className="font-medium">🌐 {t('equip.browser.name')}</span> <span className="text-muted-foreground">· {t('equip.browser.source')}</span>
-                <div className={cn('text-[11px]', m.unavailable ? 'text-status-waiting' : 'text-muted-foreground')}>{m.unavailable ?? t('equip.browser.desc')}</div>
-              </Chip>
-            ) : (
-              <Chip key={m.name} isOn={isOn} onClick={toggle} title={m.detail}>
-                <span className="font-medium">{m.name}</span> <span className="text-muted-foreground">· {m.source}</span>
-                <div className="text-muted-foreground truncate font-mono text-[10px]">{m.detail}</div>
-              </Chip>
-            )
-          })}
-        </div>
-        {userMcp.length > 0 && (
-          <label className="text-muted-foreground flex items-center gap-2 text-xs">
-            <input
-              type="checkbox"
-              checked={userMcp.every((n) => eq.allowedTools.includes(n))}
-              onChange={(e) => setEq((x) => ({ ...x, allowedTools: e.target.checked ? [...new Set([...x.allowedTools, ...userMcp])] : x.allowedTools.filter((tool) => !userMcp.includes(tool)) }))}
-            />
-            {t('equipment.mcp.autoAllow')}
-          </label>
-        )}
-      </div>
+      <McpSection cwd={staff.cwd} eq={eq} setEq={setEq} catalog={catalog} setCatalog={setCatalog} />
 
       <div className="flex flex-col gap-2">
         <h3 className="text-xs font-semibold">🧰 {t('equipment.skills.title')}</h3>
@@ -112,6 +78,11 @@ export function EquipmentTab({ staff }: { staff: Staff }) {
           </div>
         )}
       </div>
+
+      <label className="flex items-center gap-2 text-xs">
+        <input type="checkbox" checked={!eq.lightModelOff} onChange={(e) => setEq((x) => ({ ...x, lightModelOff: !e.target.checked }))} />
+        {t('equipment.lightModel')}
+      </label>
 
       <div className="flex flex-col gap-2">
         <h3 className="text-xs font-semibold">🛡️ {t('equipment.tools.title')}</h3>

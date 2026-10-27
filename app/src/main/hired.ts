@@ -6,6 +6,7 @@ import type { Approval, Attachment, Staff, StaffQuestion } from '../shared/types
 import { findRiskyCommand, isBashPolicyMark, isReadOnlyCommand, READ_ONLY_BASH, RISKY_BASH } from '../shared/bashPolicy'
 import { HIRED_ENV, toQuestions } from './external'
 import { isRefDocRead } from '../shared/refDocs'
+import { ruleDraftFor } from '../shared/approvalRules'
 import { t } from '../shared/i18n/index.ts'
 import os from 'node:os'
 import fs from 'node:fs'
@@ -32,6 +33,25 @@ export function claudeBinaryPath() {
 }
 
 const ACTIVITY_MAX = 80
+/** 새 업무 카드를 받을 때 새 대화로 넘기는 최소 문맥 (이보다 짧으면 넘겨도 아끼는 게 없다) */
+const CARD_ROTATE_MIN_TOKENS = 20_000
+/** 인수인계 글이 차지하는 토큰 (직전 보고 상한 4000자 안팎) */
+const HANDOFF_TOKENS = 2_000
+/** 한 번 지시에 모델을 부르는 평균 횟수 — 아낀 양은 "문맥 × 이 횟수"로 보수적으로 추정한다 */
+const SAVED_CALLS_PER_TURN = 5
+/** 시스템 프롬프트에 덧붙이는 글 전체·직원 지침 길이 상한 (글자) */
+const PROMPT_MAX = 8000
+const PERSONA_MAX = 4000
+const capPrompt = (text: string, max: number) => (text.length > max ? `${text.slice(0, max)}\n…` : text)
+
+/** 간단한 업무로 보는 업무 카드: 짧고, 분류·요약·정리 말이 있고, 만들기·고치기 말이 없다 */
+const LIGHT_WORDS = /분류|요약|정리|취합|집계|번역|classif|summar|tidy|organi[sz]e|translat|分類|要約|整理|分类|摘要/i
+const HEAVY_WORDS = /구현|수정|개발|코드|버그|리뷰|테스트|설계|디버|리팩|implement|refactor|debug|\bfix\b|\bcode\b|\bbuild\b|review|test|design|実装|修正|开发|修复/i
+const LIGHT_TEXT_MAX = 800
+export function isLightTask(text: string) {
+  const mark = `[${t('staff.msg.boardMark')}]`
+  return text.startsWith(mark) && text.length <= LIGHT_TEXT_MAX && LIGHT_WORDS.test(text) && !HEAVY_WORDS.test(text)
+}
 const MODEL_ID: Record<Staff['model'], string | undefined> = {
   default: undefined,
   opus: 'opus',
@@ -54,6 +74,14 @@ export interface HiredHooks {
   cancelApproval(approvalId: string): void
   /** backgroundTasks: 턴이 끝날 때 세션에 아직 돌고 있는 백그라운드 작업 설명 (끝나도 직원을 다시 깨우지 않으니 점검용) */
   finished(staffId: string, summary: string, backgroundTasks: string[]): void
+  /** 손이 빈 직원이 새 지시를 받아 일을 시작함 (작업 전 상태를 기록하는 시점) */
+  workStarted(staffId: string): void
+  /** 직원이 파일 수정 도구로 건드린 파일 경로 (같은 폴더를 쓰는 다른 직원의 변경과 가르는 용도) */
+  touched(staffId: string, filePath: string): void
+  /** 한 턴에 쓴 토큰·비용 (업무 카드별 비용에 더한다) */
+  usage(staffId: string, delta: { cost: number; tokensIn: number; tokensOut: number }): void
+  /** 앱 구조로 아낀 토큰(추정)을 급여 명세서용으로 기록 */
+  saved(staffId: string, tokens: number): void
   /** 대표가 하던 일을 멈춤 (보고 없이 끝남) */
   stopped(staffId: string): void
   /** 사무실 MCP 도구(팀 조회·위임·보드). 직원마다 같은 서버를 붙이고 권한은 도구 안에서 판단한다 */
@@ -70,6 +98,7 @@ export interface HiredHooks {
 
 const OFFICE_TOOL_PREFIX = 'mcp__office__'
 const QUESTION_TOOL = 'AskUserQuestion'
+const EDIT_TOOLS = new Set(['Edit', 'Write', 'MultiEdit', 'NotebookEdit'])
 
 /** 직원 1명 = 스트리밍 입력 query 1개. 지시가 오면 큐에 넣고, 결재는 canUseTool에서 대기한다 */
 class Worker {
@@ -91,6 +120,8 @@ class Worker {
   private baseline: { cost: number; tokensIn: number; tokensOut: number }
   /** 직전에 모델을 부를 때 보낸 문맥 크기 (null: 아직 모름 — 앱을 켠 뒤 첫 지시 때 기록 끝부분에서 읽는다) */
   private contextTokens: number | null = null
+  /** 지금 세션이 쓰는 모델 (간단한 업무 카드는 직원 모델 대신 가벼운 모델) */
+  private modelNow: Staff['model']
   /** 새 대화로 넘길 때 인수인계로 붙일 직전 보고 */
   private lastReport = ''
   /** 보낸 /명령 이름 (결과가 올 때까지) — /compact처럼 모델이 돌지 않는 명령도 끝난 보고로 친다 */
@@ -106,13 +137,27 @@ class Worker {
   ) {
     // 이어받는 세션의 첫 result는 이전 누적을 포함하므로, 이미 기록한 값부터 차감한다
     this.baseline = { cost: staff.costUsd, tokensIn: staff.tokensIn, tokensOut: staff.tokensOut }
+    this.modelNow = staff.model
   }
 
-  send(text: string, attachments: Attachment[] = []) {
+  private pickModel(text: string): Staff['model'] {
+    const s = this.staff
+    return s.equipment.lightModelOff || s.model === 'haiku' || !isLightTask(text) ? s.model : 'haiku'
+  }
+
+  /** fresh: 업무 카드를 새로 받는 지시 — 이전 대화가 길지 않아도 새 대화로 시작하고 직전 보고만 넘긴다 */
+  send(text: string, attachments: Attachment[] = [], fresh = false) {
     const slash = parseSlash(text)
     if (slash && !this.isRunning) this.slashPending = slash.name
     // 손이 빈 상태에서 받은 새 지시만 — 일하는 중 끼어든 말은 같은 대화에 이어야 한다. /명령은 앞에 인수인계를 붙이면 명령이 깨지므로 넘기지 않는다
-    if (!this.isRunning && !slash) text = this.rotateIfLong(text)
+    // 모델 판정은 인수인계를 붙이기 전 원문 지시로 한다 (붙인 뒤엔 길이·단어 규칙이 깨진다)
+    const light = !this.isRunning && !slash ? this.pickModel(text) : this.modelNow
+    if (!this.isRunning && !slash) text = this.rotateIfLong(text, fresh)
+    if (light !== this.modelNow) {
+      this.modelNow = light
+      void this.q?.setModel(MODEL_ID[light])
+    }
+    if (!this.isRunning && !slash) this.hooks.workStarted(this.staff.id)
     this.inbox.push({ type: 'user', message: { role: 'user', content: toContent(text, attachments) }, parent_tool_use_id: null })
     this.wake?.()
     if (!this.q) this.start()
@@ -153,7 +198,7 @@ class Worker {
   }
 
   /** 대화가 길어졌으면 새 대화로 시작하고, 지시 앞에 직전 보고를 인수인계로 붙인다 (이전 대화는 기록에 그대로 남는다) */
-  private rotateIfLong(text: string) {
+  private rotateIfLong(text: string, fresh: boolean) {
     const sessionId = this.staff.sessionId
     if (!sessionId) return text
     if (this.contextTokens === null) {
@@ -162,7 +207,9 @@ class Worker {
       this.contextTokens = tail.contextTokens
       if (!this.lastReport) this.lastReport = tail.lastText
     }
-    if (this.contextTokens < CONTEXT_ROTATE_TOKENS) return text
+    // 새 업무 카드는 짧은 이전 대화도 넘기지 않는다 (인수인계 몫 정도는 남겨 두고 세 본다)
+    if (this.contextTokens < (fresh ? CARD_ROTATE_MIN_TOKENS : CONTEXT_ROTATE_TOKENS)) return text
+    this.hooks.saved(this.staff.id, (this.contextTokens - HANDOFF_TOKENS) * SAVED_CALLS_PER_TURN)
     this.hooks.log(this.staff.id, 'status', t('log.rotated', { k: Math.round(this.contextTokens / 1000) }))
     this.resetSession()
     this.hooks.update(this.staff.id, { sessionId: null })
@@ -193,6 +240,7 @@ class Worker {
 
   /** 다음 지시 때 새 설정으로 다시 열리도록 세션을 닫는다 (결재 대기는 취소) */
   private closeSession() {
+    this.modelNow = this.staff.model
     for (const id of this.pending.keys()) this.hooks.cancelApproval(id)
     for (const resolve of this.pending.values()) resolve({ behavior: 'deny', message: t('staff.deny.equip'), interrupt: true })
     this.pending.clear()
@@ -264,18 +312,22 @@ class Worker {
       options: {
         cwd: s.cwd,
         pathToClaudeCodeExecutable: CLAUDE_BINARY,
-        model: MODEL_ID[s.model],
+        model: MODEL_ID[this.modelNow],
         resume: s.sessionId ?? undefined,
         permissionMode: s.approvalMode === 'acceptEdits' ? 'acceptEdits' : 'default',
         systemPrompt: {
           type: 'preset',
           preset: 'claude_code',
-          append: [t('staff.identity', { name: s.name, role: s.role }), t('staff.language'), this.hooks.context(s.id), refDocs.prompt, browserGuide, s.systemPrompt].filter(Boolean).join('\n'),
+          append: capPrompt([t('staff.identity', { name: s.name, role: s.role }), t('staff.language'), this.hooks.context(s.id), refDocs.prompt, browserGuide, capPrompt(s.systemPrompt, PERSONA_MAX)].filter(Boolean).join('\n'), PROMPT_MAX),
         },
         settingSources: ['user', 'project', 'local'],
         // 고용 직원 표시: 사용자 설정의 "질문 받기" hook이 이 세션은 건너뛴다 (질문은 canUseTool → 결재함·대신 답하기로)
         env: { ...process.env, [HIRED_ENV]: '1' },
         mcpServers: { ...mcpServers, office: this.hooks.officeTools(s.id) },
+        // 사용자·프로젝트 .mcp.json과 claude.ai 커넥터(Gmail·Slack 등)는 붙이지 않는다 — 장비 탭에서 켠 것만 (도구 설명이 매 호출마다 문맥에 실린다)
+        // 플러그인·Claude Desktop·직접 추가 MCP도 strict에선 SDK가 읽지 않으므로 equipment가 설정을 읽어 위 mcpServers로 넘긴다.
+        // claude.ai 커넥터는 mcpServers로 넘길 수 있는 형식(stdio·http·sse·sdk)이 아니라 붙일 수 없다 (장비 탭에 '불러올 수 없음')
+        strictMcpConfig: true,
         skills: s.equipment.skills,
         disallowedTools: s.equipment.disallowedTools.filter((t) => !isBashPolicyMark(t)),
         canUseTool: (toolName, input, { signal }) => {
@@ -347,6 +399,8 @@ class Worker {
       summary: questions ? questions.map((q) => q.question).join(' / ') : summarizeInput(input),
       createdAt: Date.now(),
       questions,
+      // 결재 카드의 "앞으로 항상 승인" — 위험 명령·질문이면 붙지 않는다
+      alwaysRule: questions ? undefined : (ruleDraftFor(toolName, input) ?? undefined),
     }
     return new Promise<PermissionResult>((resolve) => {
       this.pending.set(approval.id, resolve)
@@ -405,6 +459,11 @@ class Worker {
           this.hooks.log(id, 'reply', b.text)
           this.hooks.update(id, { activity: b.text.replace(/\s+/g, ' ').slice(0, ACTIVITY_MAX) })
         }
+        if (b.type === 'tool_use' && EDIT_TOOLS.has(b.name)) {
+          const input = b.input as Record<string, unknown>
+          const file = input.file_path ?? input.notebook_path
+          if (typeof file === 'string') this.hooks.touched(id, file)
+        }
       }
       return
     }
@@ -424,6 +483,7 @@ class Worker {
       }
       this.baseline = { cost: m.total_cost_usd, ...totals }
       insertUsage(id, delta.cost, delta.tokensIn, delta.tokensOut)
+      this.hooks.usage(id, delta)
       this.staff.costUsd += delta.cost
       this.staff.tokensIn += delta.tokensIn
       this.staff.tokensOut += delta.tokensOut
@@ -558,8 +618,8 @@ export class HiredStaffManager {
     this.workers.delete(staffId)
   }
 
-  instruct(staffId: string, text: string, attachments: Attachment[] = []) {
-    this.workers.get(staffId)?.send(text, attachments)
+  instruct(staffId: string, text: string, attachments: Attachment[] = [], fresh = false) {
+    this.workers.get(staffId)?.send(text, attachments, fresh)
   }
 
   interrupt(staffId: string, followUp?: { text: string; attachments: Attachment[] }) {
@@ -590,5 +650,39 @@ export class HiredStaffManager {
 
   stopAll() {
     for (const w of this.workers.values()) w.stop()
+  }
+}
+
+/**
+ * 연결 도구 확인: 장비 제한 없이 Claude를 잠깐 띄워 MCP 서버 상태(claude.ai 커넥터 목록·인증 필요)를 묻고 닫는다.
+ * 지시를 보내지 않아 모델 비용은 들지 않는다. 한 번도 못 받으면 null (그때까지 받은 마지막 목록을 돌려준다)
+ */
+export async function probeMcpStatus(cwd: string, timeoutMs = 20_000) {
+  let release = () => {}
+  const idle = new Promise<void>((r) => (release = r))
+  async function* nothing(): AsyncGenerator<SDKUserMessage> {
+    await idle
+  }
+  const probe = sdk.query({
+    prompt: nothing(),
+    options: { cwd, pathToClaudeCodeExecutable: CLAUDE_BINARY, persistSession: false, settingSources: ['user', 'project', 'local'], env: { ...process.env, [HIRED_ENV]: '1' } },
+  })
+  // claude.ai 커넥터는 띄우고 1~2초 뒤에야 목록에 오른다 — 3초가 지나고 연결 중(pending)이 없고 두 번 연달아 같으면 끝
+  const startedAt = Date.now()
+  let last: Awaited<ReturnType<Query['mcpServerStatus']>> | null = null
+  try {
+    while (Date.now() - startedAt < timeoutMs) {
+      const now = await probe.mcpServerStatus()
+      const same = last !== null && last.map((m) => `${m.name}:${m.status}`).join() === now.map((m) => `${m.name}:${m.status}`).join()
+      last = now
+      if (Date.now() - startedAt >= 3000 && same && now.every((m) => m.status !== 'pending')) break
+      await new Promise((r) => setTimeout(r, 1000))
+    }
+    return last
+  } catch {
+    return last
+  } finally {
+    release()
+    probe.close()
   }
 }

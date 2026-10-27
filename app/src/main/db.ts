@@ -1,5 +1,8 @@
 import { DatabaseSync } from 'node:sqlite'
 import type { AutoApproveConfig } from '../shared/autoApprove'
+import type { ApprovalRule } from '../shared/approvalRules'
+import type { KnowledgeEntry } from '../shared/knowledge'
+import type { GalleryEntry, Praise } from '../shared/gallery'
 import { app } from 'electron'
 import path from 'node:path'
 import {
@@ -52,6 +55,9 @@ export function openDb() {
       id INTEGER PRIMARY KEY AUTOINCREMENT, staff_id TEXT NOT NULL, ts INTEGER NOT NULL,
       cost_usd REAL NOT NULL, tokens_in INTEGER NOT NULL, tokens_out INTEGER NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS saving (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, staff_id TEXT NOT NULL, ts INTEGER NOT NULL, tokens INTEGER NOT NULL
+    );
     CREATE TABLE IF NOT EXISTS team (
       id TEXT PRIMARY KEY, name TEXT NOT NULL, color TEXT NOT NULL, lead_id TEXT, created_at INTEGER NOT NULL
     );
@@ -68,6 +74,8 @@ export function openDb() {
     CREATE TABLE IF NOT EXISTS setting (key TEXT PRIMARY KEY, value TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS translation (key TEXT PRIMARY KEY, text TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS lab (id TEXT PRIMARY KEY, data TEXT NOT NULL, created_at INTEGER NOT NULL);
+    CREATE TABLE IF NOT EXISTS knowledge (id TEXT PRIMARY KEY, data TEXT NOT NULL, updated_at INTEGER NOT NULL);
+    CREATE TABLE IF NOT EXISTS gallery (id TEXT PRIMARY KEY, data TEXT NOT NULL, finished_at INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS run (id TEXT PRIMARY KEY, data TEXT NOT NULL, created_at INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS secretary_message (
       id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER NOT NULL, role TEXT NOT NULL, text TEXT NOT NULL, card TEXT, target TEXT, tokens INTEGER, is_error INTEGER
@@ -81,17 +89,23 @@ export function openDb() {
   if (!staffCols.includes('equipment')) db.exec('ALTER TABLE staff ADD COLUMN equipment TEXT')
   // 참고 문서(JSON 배열). 랩은 data JSON 안에 함께 저장된다
   if (!staffCols.includes('ref_docs')) db.exec('ALTER TABLE staff ADD COLUMN ref_docs TEXT')
+  // 튜토리얼 연습 회사 표시 (1 = 연습 — 정리할 때 이 표시로 지운다). 직원·팀·카드는 열, 랩·회의는 data JSON 안에
+  if (!staffCols.includes('is_practice')) db.exec('ALTER TABLE staff ADD COLUMN is_practice INTEGER')
   const taskCols = (db.prepare('PRAGMA table_info(task)').all() as { name: string }[]).map((c) => c.name)
   if (!taskCols.includes('lab_id')) db.exec('ALTER TABLE task ADD COLUMN lab_id TEXT')
   if (!taskCols.includes('parent_id')) db.exec('ALTER TABLE task ADD COLUMN parent_id TEXT')
   if (!taskCols.includes('plan')) db.exec('ALTER TABLE task ADD COLUMN plan TEXT')
   if (!taskCols.includes('meeting_id')) db.exec('ALTER TABLE task ADD COLUMN meeting_id TEXT')
+  // 카드별 토큰·비용 (JSON)
+  if (!taskCols.includes('usage')) db.exec('ALTER TABLE task ADD COLUMN usage TEXT')
+  if (!taskCols.includes('is_practice')) db.exec('ALTER TABLE task ADD COLUMN is_practice INTEGER')
   // 첨부(JSON 배열)는 로그·단체방·업무 카드에 붙는다
   const teamCols = (db.prepare('PRAGMA table_info(team)').all() as { name: string }[]).map((c) => c.name)
   if (!teamCols.includes('manuals')) db.exec('ALTER TABLE team ADD COLUMN manuals TEXT')
   if (!teamCols.includes('ref_docs')) db.exec('ALTER TABLE team ADD COLUMN ref_docs TEXT')
   // 팀 자리가 있는 층 (NULL = 1층)
   if (!teamCols.includes('floor')) db.exec('ALTER TABLE team ADD COLUMN floor INTEGER')
+  if (!teamCols.includes('is_practice')) db.exec('ALTER TABLE team ADD COLUMN is_practice INTEGER')
   for (const table of ['log', 'chat', 'task']) {
     const cols = (db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).map((c) => c.name)
     if (!cols.includes('attachments')) db.exec(`ALTER TABLE ${table} ADD COLUMN attachments TEXT`)
@@ -124,6 +138,7 @@ interface StaffRow {
   team_id: string | null
   equipment: string | null
   ref_docs: string | null
+  is_practice: number | null
 }
 
 export type StoredStaff = Omit<Staff, 'stats' | 'meetingId' | 'labIds' | 'statusSince' | 'todayDone'>
@@ -155,15 +170,16 @@ export function loadHiredStaff(): StoredStaff[] {
       tokensOut: total.tokensOut,
       deskIndex: r.desk_index,
       hiredAt: r.hired_at,
+      ...(r.is_practice ? { isPractice: true } : {}),
     }
   })
 }
 
-export function insertStaff(id: string, input: HireInput, deskIndex: number, hiredAt: number) {
+export function insertStaff(id: string, input: HireInput, deskIndex: number, hiredAt: number, isPractice = false) {
   run(
-    `INSERT INTO staff (id, name, role, avatar, model, cwd, system_prompt, approval_mode, session_id, desk_index, hired_at, team_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?)`,
-    id, input.name, input.role, input.avatar, input.model, input.cwd, input.systemPrompt, input.approvalMode, deskIndex, hiredAt, input.teamId,
+    `INSERT INTO staff (id, name, role, avatar, model, cwd, system_prompt, approval_mode, session_id, desk_index, hired_at, team_id, is_practice)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?)`,
+    id, input.name, input.role, input.avatar, input.model, input.cwd, input.systemPrompt, input.approvalMode, deskIndex, hiredAt, input.teamId, isPractice ? 1 : null,
   )
 }
 
@@ -233,6 +249,15 @@ export function logCounts(): { staffId: string; type: LogType; n: number }[] {
   }))
 }
 
+/** 앱 구조로 아낀 토큰(추정)을 기록한다 */
+export function insertSaving(staffId: string, tokens: number) {
+  if (tokens > 0) run('INSERT INTO saving (staff_id, ts, tokens) VALUES (?, ?, ?)', staffId, Date.now(), Math.round(tokens))
+}
+
+export function savedTokensBetween(since: number, until: number) {
+  return get<{ t: number }>('SELECT COALESCE(SUM(tokens), 0) t FROM saving WHERE ts >= ? AND ts < ?', since, until)!.t
+}
+
 export function insertUsage(staffId: string, costUsd: number, tokensIn: number, tokensOut: number) {
   run('INSERT INTO usage (staff_id, ts, cost_usd, tokens_in, tokens_out) VALUES (?, ?, ?, ?, ?)', staffId, Date.now(), costUsd, tokensIn, tokensOut)
 }
@@ -268,7 +293,7 @@ export function resultCountBetween(staffId: string, since: number, until: number
 // ── 팀 ──────────────────────────────────────────────────
 
 export function loadTeams(): Team[] {
-  return all<{ id: string; name: string; color: string; lead_id: string | null; manuals: string | null; ref_docs: string | null; floor: number | null }>('SELECT * FROM team ORDER BY created_at').map((r) => ({
+  return all<{ id: string; name: string; color: string; lead_id: string | null; manuals: string | null; ref_docs: string | null; floor: number | null; is_practice: number | null }>('SELECT * FROM team ORDER BY created_at').map((r) => ({
     id: r.id,
     name: r.name,
     color: r.color,
@@ -277,11 +302,12 @@ export function loadTeams(): Team[] {
     manuals: parseList(r.manuals),
     refDocs: parseList(r.ref_docs),
     floor: r.floor ?? 1,
+    ...(r.is_practice ? { isPractice: true } : {}),
   }))
 }
 
 export function insertTeam(t: Team) {
-  run('INSERT INTO team (id, name, color, lead_id, created_at) VALUES (?, ?, ?, ?, ?)', t.id, t.name, t.color, t.leadId, Date.now())
+  run('INSERT INTO team (id, name, color, lead_id, created_at, is_practice) VALUES (?, ?, ?, ?, ?, ?)', t.id, t.name, t.color, t.leadId, Date.now(), t.isPractice ? 1 : null)
 }
 
 export function updateTeamRow(t: Team) {
@@ -314,6 +340,8 @@ interface TaskRow {
   parent_id: string | null
   plan: string | null
   meeting_id: string | null
+  usage: string | null
+  is_practice: number | null
 }
 
 export function loadTasks(): Task[] {
@@ -332,17 +360,19 @@ export function loadTasks(): Task[] {
     parentId: r.parent_id,
     plan: r.plan ? (JSON.parse(r.plan) as Task['plan']) : null,
     meetingId: r.meeting_id ?? null,
+    usage: r.usage ? (JSON.parse(r.usage) as Task['usage']) : undefined,
+    ...(r.is_practice ? { isPractice: true } : {}),
   }))
 }
 
 export function upsertTask(t: Task) {
   run(
-    `INSERT INTO task (id, title, detail, status, assignee_id, team_id, result, created_at, updated_at, lab_id, attachments, parent_id, plan, meeting_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO task (id, title, detail, status, assignee_id, team_id, result, created_at, updated_at, lab_id, attachments, parent_id, plan, meeting_id, usage, is_practice) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET title = excluded.title, detail = excluded.detail, status = excluded.status, assignee_id = excluded.assignee_id,
        team_id = excluded.team_id, result = excluded.result, updated_at = excluded.updated_at, lab_id = excluded.lab_id, attachments = excluded.attachments,
-       parent_id = excluded.parent_id, plan = excluded.plan, meeting_id = excluded.meeting_id`,
+       parent_id = excluded.parent_id, plan = excluded.plan, meeting_id = excluded.meeting_id, usage = excluded.usage, is_practice = excluded.is_practice`,
     t.id, t.title, t.detail, t.status, t.assigneeId, t.teamId, t.result, t.createdAt, t.updatedAt, t.labId, t.attachments?.length ? JSON.stringify(t.attachments) : null,
-    t.parentId ?? null, t.plan ? JSON.stringify(t.plan) : null, t.meetingId ?? null,
+    t.parentId ?? null, t.plan ? JSON.stringify(t.plan) : null, t.meetingId ?? null, t.usage ? JSON.stringify(t.usage) : null, t.isPractice ? 1 : null,
   )
 }
 
@@ -358,6 +388,31 @@ export function loadMeetings(limit: number): Meeting[] {
 
 export function saveMeeting(m: Meeting) {
   run('INSERT INTO meeting (id, data, created_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data', m.id, JSON.stringify(m), m.createdAt)
+}
+
+export function deleteMeetingRow(id: string) {
+  run('DELETE FROM meeting WHERE id = ?', id)
+}
+
+// ── 튜토리얼 ────────────────────────────────────────────
+
+/** 튜토리얼 진행 상태 (앱을 다시 켜도 이어진다) */
+export function loadTutorial<T>(): T | null {
+  const row = get<{ value: string }>("SELECT value FROM setting WHERE key = 'tutorial'")
+  return row ? (JSON.parse(row.value) as T) : null
+}
+
+export function saveTutorial(v: unknown) {
+  run("INSERT INTO setting (key, value) VALUES ('tutorial', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", JSON.stringify(v))
+}
+
+/** 연습 직원이 남긴 기록·단체방 글·사용량을 지운다 (직원 행은 deleteStaff로) */
+export function deleteStaffTraces(ids: string[]) {
+  for (const id of ids) {
+    run('DELETE FROM log WHERE staff_id = ?', id)
+    run('DELETE FROM chat WHERE sender = ?', id)
+    run('DELETE FROM usage WHERE staff_id = ?', id)
+  }
 }
 
 // ── 예약 업무 ───────────────────────────────────────────
@@ -516,6 +571,15 @@ export function saveTranslation(key: string, text: string) {
   run('INSERT INTO translation (key, text) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET text = excluded.text', key, text)
 }
 
+/** 장비 탭에서 직접 추가한 연결 도구(MCP) — JSON 배열 그대로 (검사·복원은 shared/customMcp) */
+export function loadCustomMcpRaw(): string | null {
+  return get<{ value: string }>("SELECT value FROM setting WHERE key = 'customMcp'")?.value || null
+}
+
+export function saveCustomMcpRaw(json: string) {
+  run("INSERT INTO setting (key, value) VALUES ('customMcp', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", json)
+}
+
 /** 업데이트 알림에서 [나중에]로 건너뛴 버전 (없으면 null) */
 export function loadSkippedUpdate(): string | null {
   return get<{ value: string }>("SELECT value FROM setting WHERE key = 'skippedUpdate'")?.value || null
@@ -551,6 +615,63 @@ export function loadAutoApprove(): Partial<StoredAutoApprove> {
 
 export function saveAutoApprove(v: StoredAutoApprove) {
   run("INSERT INTO setting (key, value) VALUES ('autoApprove', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", JSON.stringify(v))
+}
+
+/** "앞으로 항상 승인" 규칙 */
+export function loadApprovalRules(): ApprovalRule[] {
+  const row = get<{ value: string }>("SELECT value FROM setting WHERE key = 'approvalRules'")
+  return row ? (JSON.parse(row.value) as ApprovalRule[]) : []
+}
+
+export function saveApprovalRules(rules: ApprovalRule[]) {
+  run("INSERT INTO setting (key, value) VALUES ('approvalRules', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", JSON.stringify(rules))
+}
+
+/** 회사 지식 창고 (최근에 고친 순) */
+export function loadKnowledge(): KnowledgeEntry[] {
+  return all<{ data: string }>('SELECT data FROM knowledge ORDER BY updated_at DESC').map((r) => JSON.parse(r.data) as KnowledgeEntry)
+}
+
+export function saveKnowledgeRow(e: KnowledgeEntry) {
+  run('INSERT INTO knowledge (id, data, updated_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data, updated_at = excluded.updated_at', e.id, JSON.stringify(e), e.updatedAt)
+}
+
+export function deleteKnowledgeRow(id: string) {
+  run('DELETE FROM knowledge WHERE id = ?', id)
+}
+
+// ── 결과물 갤러리·데모데이 ──────────────────────────────
+
+export function loadGallery(): GalleryEntry[] {
+  return all<{ data: string }>('SELECT data FROM gallery ORDER BY finished_at DESC').map((r) => JSON.parse(r.data) as GalleryEntry)
+}
+
+export function saveGalleryRow(e: GalleryEntry) {
+  run('INSERT INTO gallery (id, data, finished_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data, finished_at = excluded.finished_at', e.id, JSON.stringify(e), e.finishedAt)
+}
+
+export function deleteGalleryRow(id: string) {
+  run('DELETE FROM gallery WHERE id = ?', id)
+}
+
+/** 마지막으로 데모데이를 연 날짜·시각 (같은 날 두 번 열지 않고, 다음 데모데이는 그 뒤에 끝낸 업무만 보여 준다) */
+export function loadDemoDayLast(): { date: string; at: number } | null {
+  const row = get<{ value: string }>("SELECT value FROM setting WHERE key = 'demoDayLast'")
+  return row ? (JSON.parse(row.value) as { date: string; at: number }) : null
+}
+
+export function saveDemoDayLast(v: { date: string; at: number }) {
+  run("INSERT INTO setting (key, value) VALUES ('demoDayLast', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", JSON.stringify(v))
+}
+
+/** 직원별 데모데이 칭찬 배지 (박수·MVP 누적) */
+export function loadPraise(): Record<string, Praise> {
+  const row = get<{ value: string }>("SELECT value FROM setting WHERE key = 'praise'")
+  return row ? (JSON.parse(row.value) as Record<string, Praise>) : {}
+}
+
+export function savePraise(v: Record<string, Praise>) {
+  run("INSERT INTO setting (key, value) VALUES ('praise', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", JSON.stringify(v))
 }
 
 /** 원격 접속 설정 (토큰 해시·폐기 목록 포함 — Settings와 따로 둬서 화면으로 가지 않는다) */

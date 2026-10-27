@@ -5,7 +5,8 @@
 import { app, ipcMain, powerMonitor, shell, type BrowserWindow } from 'electron'
 import { loadSkippedUpdate, saveSkippedUpdate } from './db'
 import { getLang, onLangChange } from '../shared/i18n/index.ts'
-import { assetTargetFor, parseRelease, RELEASE_API_URL, shouldNotify, shouldRecheck, summarizeNotes, UPDATE_CHECK_INTERVAL_MS, type ReleaseInfo, type UpdateStatus } from '../shared/updateCheck.ts'
+import { assetTargetFor, parseRelease, RELEASE_API_URL, shouldNotify, shouldRecheck, summarizeNotes, UPDATE_CHECK_INTERVAL_MS, type InstallStatus, type ReleaseInfo, type UpdateStatus } from '../shared/updateCheck.ts'
+import { canInstallHere, InstallFailure, launchReplacer, prepareInstall } from './appInstall'
 
 const FETCH_TIMEOUT_MS = 15_000
 
@@ -29,6 +30,8 @@ export class UpdateChecker {
   private attemptedAt: number | null = null
   private skippedVersion = loadSkippedUpdate()
   private inflight: Promise<UpdateStatus> | null = null
+  private install: InstallStatus = { phase: 'idle', progress: null, installError: null }
+  private isInstalling = false
   private timer: NodeJS.Timeout | null = null
   private offLang: (() => void) | null = null
 
@@ -59,6 +62,8 @@ export class UpdateChecker {
       latest: this.release && this.state === 'available' ? { version: this.release.version, notes: summarizeNotes(this.release.body, getLang()) } : null,
       skippedVersion: this.skippedVersion,
       checkedAt: this.checkedAt,
+      canInstall: this.state === 'available' && !!this.release && canInstallHere(this.release.asset),
+      install: this.install,
     }
   }
 
@@ -103,6 +108,34 @@ export class UpdateChecker {
     await shell.openExternal(this.release.downloadUrl ?? this.release.pageUrl)
   }
 
+  /** 앱 안에서 내려받아 설치하고 다시 연다. 성공하면 앱이 꺼진다. 이 기기에서 못 하면 Release 페이지 다운로드로 대신한다 */
+  async installNow(): Promise<UpdateStatus> {
+    const release = this.release
+    if (this.state !== 'available' || !release || this.isInstalling) return this.status()
+    if (!canInstallHere(release.asset)) {
+      await this.openDownload()
+      return this.status()
+    }
+    this.isInstalling = true
+    this.setInstall({ phase: 'downloading', progress: 0, installError: null })
+    try {
+      const plan = await prepareInstall(release, (phase, progress) => this.setInstall({ phase, progress, installError: null }))
+      // 바꿔 끼우기는 이 앱이 꺼진 뒤 별도 프로세스가 한다 — 응답을 먼저 보내고 끈다
+      await launchReplacer(plan)
+      setImmediate(() => app.quit())
+    } catch (e) {
+      this.isInstalling = false
+      const installError = e instanceof InstallFailure ? e.code : 'prepare'
+      this.setInstall({ phase: 'failed', progress: null, installError })
+    }
+    return this.status()
+  }
+
+  private setInstall(install: InstallStatus) {
+    this.install = install
+    this.emit()
+  }
+
   private setState(state: UpdateStatus['state']) {
     this.state = state
     this.emit()
@@ -119,6 +152,7 @@ export function registerUpdates(getWin: () => BrowserWindow | null) {
   ipcMain.handle('update:status', () => checker.status())
   ipcMain.handle('update:check', () => checker.check(true))
   ipcMain.handle('update:download', () => checker.openDownload())
+  ipcMain.handle('update:install', () => checker.installNow())
   ipcMain.handle('update:skip', (_e, version: unknown) => (typeof version === 'string' ? checker.skip(version) : checker.status()))
   return checker
 }

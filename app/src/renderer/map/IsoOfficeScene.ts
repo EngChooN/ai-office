@@ -15,10 +15,10 @@ import { roomOf } from '@shared/iso/levels'
 import { buildWalkMap, entranceOf, findPath, reachable, waitCellFor, type WalkMap } from '@shared/iso/path'
 import { assignSeats, autoSeats, isAutoSeat, seatsOf, type Seat, type SeatMemory } from '@shared/iso/seats'
 import { depthOrder, edgeBox, hidesMover, placeMovers, type IsoBox } from '@shared/iso/depth'
-import { meetingLayoutOf, type MeetingLayout } from '@shared/iso/meeting'
+import { meetingLayoutOf, meetingSeatFor, type MeetingLayout } from '@shared/iso/meeting'
 import { setAutoOff, useSeatStatus } from './iso/seatStatus'
 import { ITEM_ACTIONS } from '@shared/iso/actions'
-import { HALL_SIT_Z, MEETING_CHAIR, PODIUM_KEY, WALL_FADE_ALPHA, ZONE_FLOOR_KINDS, artHallRow, artMeetingRoom, artMeetingTable, artPodium, artPlanEdges, artZoneFloor, drawItem, drawPerson, drawPet, PET_HOMES, type PetKind, type PetPose, drawPersonShadow, drawPlanRoom, finishKey, finishLabel, finishOf, hallRowKey, meetingTableKey, planRoomTextureKey, withSurfaces, zoneFloorKey, type Finish, type MeetingTableKind, type ZoneFloor, seatHeight, toCanvas, type ArtBox, type ItemArt, type Look, type PersonDir, type PersonPose } from './iso/isoArt'
+import { HALL_SIT_Z, MEETING_CHAIR, artMeetingChair, isSplitChair, PODIUM_KEY, WALL_FADE_ALPHA, ZONE_FLOOR_KINDS, artHallRow, artMeetingRoom, artMeetingTable, artPodium, artPlanEdges, artZoneFloor, drawItem, drawPerson, drawPet, PET_HOMES, type PetKind, type PetPose, drawPersonShadow, drawPlanRoom, finishKey, finishLabel, finishOf, hallRowKey, meetingTableKey, planRoomTextureKey, withSurfaces, zoneFloorKey, type Finish, type MeetingTableKind, type ZoneFloor, seatHeight, toCanvas, type ArtBox, type ItemArt, type Look, type PersonDir, type PersonPose } from './iso/isoArt'
 import { playLevelUpFx } from './iso/levelUpFx'
 import { pinchStep } from './gestures'
 import { isNightTime } from '@shared/dayNight'
@@ -203,7 +203,7 @@ const pickZoned = (spots: Spot[]) => {
   return spots[spots.length - 1]
 }
 /** 앱 생김새(부품 번호) → 칸 사무실 직원 그림 색 */
-const isoLook = (avatar: number): Look => {
+export const isoLook = (avatar: number): Look => {
   const l = decodeLook(avatar)
   return { h: HAIR_COLORS[l.hairColor % HAIR_COLORS.length][0], s: SKINS[l.skin % SKINS.length], c: TOP_COLORS[l.topColor % TOP_COLORS.length][0], p: PANTS[l.pants % PANTS.length] }
 }
@@ -537,7 +537,10 @@ export class IsoOfficeScene extends Phaser.Scene {
         for (const role of ['seat', 'back'] as const) this.fixedParts.push(this.placeArt(pixels(hallRowKey(role, r.n), artHallRow(role, r.n)), fixedItem(`hall-row-${role}`, x0 + r.gx, r.gy)))
     } else {
       const chair = MEETING_CHAIR[kind]
-      for (const s of l.seats) this.fixedParts.push(...this.drawFurniture(fixedItem(chair, x0 + s.gx, s.gy, s.face)))
+      // 등받이가 카메라 쪽인 의자는 등받이를 낮춘 그림 — 등지고 앉은 직원의 머리·어깨가 보이게
+      for (const s of l.seats)
+        for (const role of ['seat', 'back'] as const)
+          this.fixedParts.push(this.placeArt(pixels(`iso-meet-chair-${chair}-r${s.face}-${role}`, artMeetingChair(chair, s.face, role)), fixedItem(chair, x0 + s.gx, s.gy, s.face)))
     }
   }
 
@@ -802,7 +805,7 @@ export class IsoOfficeScene extends Phaser.Scene {
 
   private drawFurniture(item: GridItem): FurnPart[] {
     // 의자는 좌석·등받이 두 장 — 앉은 직원을 그 사이에 끼운다 (등받이 없는 의자는 한 장)
-    const roles: ('seat' | 'back' | undefined)[] = specOf(item.itemId).kind === 'chair' ? ['seat', 'back'] : [undefined]
+    const roles: ('seat' | 'back' | undefined)[] = isSplitChair(item.itemId) ? ['seat', 'back'] : [undefined]
     return roles.flatMap((role) => {
       const key = this.itemTexture(item.itemId, item.rot, role)
       return role === 'back' && !this.artMeta.get(key)!.h ? [] : [this.placeArt(key, item)]
@@ -974,16 +977,17 @@ export class IsoOfficeScene extends Phaser.Scene {
     const cells = this.fixed.filter((t) => t.kind === 'meeting' || t.kind === 'meetingDoor')
     const x0 = Math.min(...cells.map((t) => t.gx))
     const order = this.meetingOf(a.staff.id)?.participantIds.indexOf(a.staff.id) ?? -1
-    const seat = order >= 0 ? l.seats[order] : undefined
+    const isFree = (gx: number, gy: number) => !this.walk?.blocked[cellKey(this.room, gx, gy)]
+    const seat = meetingSeatFor(l, x0, order, isFree)
     if (seat) {
       const chair = l.tier === 'hall' ? null : MEETING_CHAIR[l.tier === 'wood' ? 'pine' : (l.tier as MeetingTableKind)]
       const sitZ = chair ? (seatHeight(chair) ?? SIT_Z) : HALL_SIT_Z
-      return this.moveTo(a, { gx: x0 + seat.gx, gy: seat.gy, mode: 'meeting', isSitting: true, sitZ, face: seat.face }, isWalking)
+      return this.moveTo(a, { gx: seat.gx, gy: seat.gy, mode: 'meeting', isSitting: true, sitZ, face: seat.face }, isWalking)
     }
     const taken = new Set([...this.actors.values()].filter((x) => x !== a && (x.mode === 'meeting' || x.goal?.mode === 'meeting')).map((x) => (x.goal ? `${x.goal.gx},${x.goal.gy}` : `${Math.floor(x.x)},${Math.floor(x.y)}`)))
     const solid = new Set(l.solid.map((c) => `${x0 + c.gx},${c.gy}`))
     const seats = new Set(l.seats.map((c) => `${x0 + c.gx},${c.gy}`))
-    const cell = cells.find((c) => c.kind === 'meeting' && !solid.has(`${c.gx},${c.gy}`) && !seats.has(`${c.gx},${c.gy}`) && !taken.has(`${c.gx},${c.gy}`))
+    const cell = cells.find((c) => c.kind === 'meeting' && isFree(c.gx, c.gy) && !solid.has(`${c.gx},${c.gy}`) && !seats.has(`${c.gx},${c.gy}`) && !taken.has(`${c.gx},${c.gy}`))
     if (!cell) return
     const mid = this.meetingCenter()
     this.moveTo(a, { gx: cell.gx, gy: cell.gy, mode: 'meeting', isSitting: false, face: facingOf(mid.gx - (cell.gx + 0.5), mid.gy - (cell.gy + 0.5)) }, isWalking)

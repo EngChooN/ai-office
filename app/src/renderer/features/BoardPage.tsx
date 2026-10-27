@@ -1,4 +1,4 @@
-import { useState, type DragEvent, type FormEvent } from 'react'
+import { useEffect, useState, type DragEvent, type FormEvent } from 'react'
 import { PlayIcon, PlusIcon, SquareIcon, Trash2Icon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -16,7 +16,9 @@ import { t, type TKey } from '@shared/i18n'
 import type { Task, TaskStatus } from '@shared/types'
 import { PlanCard } from './PlanCard'
 import { RunCard } from './RunCard'
-import { Avatar } from './StaffCard'
+import { useTutorialStep, useTutorialTaskId } from './Tutorial'
+import { Avatar, PracticeBadge } from './StaffCard'
+import { formatCost, formatTokens } from './status'
 
 const COLUMNS: { status: TaskStatus; label: TKey; hint: TKey | null }[] = [
   {
@@ -42,6 +44,13 @@ export function BoardPage() {
   const [labId, setLabId] = useState('')
   /** 보드 필터: 전체 또는 특정 랩 */
   const [labFilter, setLabFilter] = useState('')
+  // 튜토리얼 '카드 만들기' 단계: 대본의 제목·설명을 미리 채운다
+  const tutorialStep = useTutorialStep()
+  useEffect(() => {
+    if (tutorialStep !== 'a2') return
+    setTitle((v) => v || t('tutorial.task.card.title'))
+    setDetail((v) => v || t('tutorial.task.card.detail'))
+  }, [tutorialStep])
 
   const draftFiles = useDraftAttachments()
   const handleCreate = async (e: FormEvent) => {
@@ -88,7 +97,7 @@ export function BoardPage() {
               </option>
             ))}
           </NativeSelect>
-          <Button type="submit" disabled={!title.trim()}>
+          <Button type="submit" disabled={!title.trim()} data-tour="tut-add">
             <PlusIcon /> {t('board.add')}
           </Button>
         </div>
@@ -166,6 +175,12 @@ function TaskCard({ task }: { task: Task }) {
   const lab = useOffice((s) => s.labs.find((l) => l.id === task.labId))
   const assignee = staff.find((s) => s.id === task.assigneeId)
   const [isOpen, setIsOpen] = useState(false)
+  // 튜토리얼 연습 카드면 누를 곳에 표시를 붙이고, 결과를 열면 엔진에 알린다
+  const isTutorialTask = useTutorialTaskId() === task.id
+  const openDetail = () => {
+    setIsOpen(true)
+    if (isTutorialTask && task.result) void window.office.tutorialAct({ type: 'resultOpened' })
+  }
   const preview = task.result || task.detail
   const parent = useOffice((s) => s.tasks.find((x) => x.id === task.parentId))
   const children = useOffice(useShallow((s) => s.tasks.filter((x) => x.parentId === task.id)))
@@ -211,7 +226,7 @@ function TaskCard({ task }: { task: Task }) {
   return (
     <article draggable onDragStart={(e) => e.dataTransfer.setData(DRAG_TYPE, task.id)} className="bg-card flex min-w-0 shrink-0 cursor-grab flex-col gap-2 rounded-lg border p-3 text-sm shadow-sm">
       <div className="flex items-start gap-2">
-        <button type="button" onClick={() => setIsOpen(true)} className="min-w-0 flex-1 text-left font-medium break-words hover:underline">
+        <button type="button" onClick={openDetail} className="min-w-0 flex-1 text-left font-medium break-words hover:underline">
           {task.title}
         </button>
         <button type="button" onClick={() => void window.office.deleteTask(task.id)} className="text-muted-foreground hover:text-foreground" aria-label={t('common.delete')}>
@@ -224,8 +239,9 @@ function TaskCard({ task }: { task: Task }) {
           {planLabel && <span className={cn('rounded px-1.5 font-semibold', task.plan?.status === 'waiting' ? 'bg-status-waiting text-black' : 'bg-primary/15 text-primary')}>{planLabel}</span>}
         </div>
       )}
-      {(team || lab) && (
-        <div className="flex gap-1">
+      {(team || lab || task.isPractice) && (
+        <div className="flex flex-wrap gap-1">
+          {task.isPractice && <PracticeBadge className="w-fit" />}
           {team && (
             <span className="w-fit rounded px-1.5 text-[10px] font-semibold text-white" style={{ background: team.color }}>
               {team.name}
@@ -243,12 +259,16 @@ function TaskCard({ task }: { task: Task }) {
         // 카드에는 앞부분만, 누르면 상세 창에서 전체를 본다
         <button
           type="button"
-          onClick={() => setIsOpen(true)}
+          onClick={openDetail}
+          data-tour={isTutorialTask && task.status === 'review' ? 'tut-result' : undefined}
           className={cn('relative max-h-24 overflow-hidden rounded p-2 text-left text-xs', task.result ? 'bg-muted' : 'text-muted-foreground border')}
         >
           <Markdown className="pointer-events-none">{preview}</Markdown>
           {task.result && <span className="from-muted pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-gradient-to-t" />}
         </button>
+      )}
+      {task.usage && (
+        <span className="text-muted-foreground text-[10px] tabular-nums">{t('board.card.usage', { tokens: formatTokens(task.usage.tokens), cost: formatCost(task.usage.costUsd) })}</span>
       )}
       <TaskDetail task={task} isOpen={isOpen} onOpenChange={setIsOpen} />
       {/* 휴대폰: 카드 끌어 옮기기가 터치에서 안 되니 칸을 골라 옮긴다 */}
@@ -303,7 +323,13 @@ function TaskCard({ task }: { task: Task }) {
               </option>
             ))}
           </NativeSelect>
-          <Button size="sm" className="h-7 px-2 text-xs" disabled={!task.assigneeId} onClick={() => task.assigneeId && void window.office.assignTask(task.id, task.assigneeId)}>
+          <Button
+            size="sm"
+            className="h-7 px-2 text-xs"
+            disabled={!task.assigneeId}
+            onClick={() => task.assigneeId && void window.office.assignTask(task.id, task.assigneeId)}
+            data-tour={isTutorialTask ? 'tut-start' : undefined}
+          >
             {t('board.start')}
           </Button>
         </div>
@@ -336,7 +362,7 @@ function TaskCard({ task }: { task: Task }) {
         </div>
       )}
       {task.status === 'review' && (
-        <Button size="sm" variant="secondary" onClick={() => void window.office.updateTask(task.id, { status: 'done' })}>
+        <Button size="sm" variant="secondary" onClick={() => void window.office.updateTask(task.id, { status: 'done' })} data-tour={isTutorialTask ? 'tut-done' : undefined}>
           {t('board.reviewDone')}
         </Button>
       )}

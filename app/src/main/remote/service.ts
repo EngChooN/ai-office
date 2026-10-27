@@ -2,10 +2,11 @@
 // electron에 기대지 않는다 — 저장(DB·키 파일)·PC 알림은 밖에서 넣어 준다 (index.ts). 그래서 테스트가 그대로 띄워 볼 수 있다
 
 import os from 'node:os'
-import { AuthGuard, type AuthState } from './auth.ts'
+import { AuthGuard, sameHash, type AuthState } from './auth.ts'
 import { createSelfSignedCert, spkiFingerprint } from './cert.ts'
 import { handleRequest, type RemoteOfficePort } from './handler.ts'
-import { isLanAddress, isValidQrPayload, lanForQr, qrImage } from './qr.ts'
+import { isValidQrPayload, lanForQr, qrImage } from './qr.ts'
+import { isAllowedClient, pickLanAddress, readDefaultGateway } from './lan.ts'
 import { RemoteServer } from './server.ts'
 import { shapeFor } from './capabilities.ts'
 import { EventHub, type HubEvent } from './events.ts'
@@ -19,6 +20,8 @@ const ACCESS_KEEP = 20
 /** QR(토큰 원문)을 화면에 보여 주는 시간 — 지나면 메모리에서도 지운다 */
 export const QR_SHOW_MS = 5 * 60_000
 const LEASE_RENEW_MS = 30 * 60_000
+/** 전용 모드에서 네트워크 카드 주소가 바뀌었는지 보는 간격 */
+export const NETWORK_WATCH_MS = 5000
 
 /** DB에 저장하는 원격 설정 (Settings와 따로 둔다 — Settings는 스냅샷으로 화면에 가므로 토큰 해시가 새 나간다) */
 export interface RemoteConfig extends AuthState {
@@ -28,9 +31,13 @@ export interface RemoteConfig extends AuthState {
   host: string
   /** 지금 토큰으로 휴대폰이 붙은 적이 있는지 — 없으면 켤 때 새 토큰을 내서 QR을 바로 보여 준다 (끊을 휴대폰이 없으니까) */
   isTokenUsed: boolean
+  /** 같은 네트워크 전용 모드 — 공유기 포트를 열지 않고, 고른 내부 주소에만 귀를 열며, 사설 대역 밖의 연결은 끊는다. 신규 설치(저장된 설정 없음)는 true, 예전 설정은 false 유지 */
+  lanOnly: boolean
+  /** 예전 사용자에게 전용 모드 안내를 이미 보여 줬는지 (신규 설치는 처음부터 true) */
+  isLanNoticeSeen: boolean
 }
 
-export const DEFAULT_REMOTE_CONFIG: RemoteConfig = { isEnabled: false, port: DEFAULT_REMOTE_PORT, host: '', tokenHash: null, revoked: [], isTokenUsed: false }
+export const DEFAULT_REMOTE_CONFIG: RemoteConfig = { isEnabled: false, port: DEFAULT_REMOTE_PORT, host: '', tokenHash: null, revoked: [], isTokenUsed: false, lanOnly: false, isLanNoticeSeen: false }
 /** 앱을 끝낼 때 공유기 매핑 해제를 기다리는 최대 시간 */
 export const SHUTDOWN_WAIT_MS = 3000
 
@@ -50,8 +57,14 @@ export interface RemoteDeps {
   /** 공유기 포트 열기 (테스트에서 끈다) */
   upnp?: { find: typeof upnp.findGateway; add: typeof upnp.addPortMapping; remove: typeof upnp.deletePortMapping; external: typeof upnp.externalAddress } | null
   now?(): number
-  /** 서버가 귀를 여는 주소 (테스트는 127.0.0.1) */
+  /** 서버가 귀를 여는 주소 (테스트는 127.0.0.1). 비우면 모든 주소, 전용 모드면 고른 내부 주소 */
   listenHost?: string
+  /** 네트워크 카드 목록 (테스트가 가짜를 넣는다) */
+  networkInterfaces?: () => NodeJS.Dict<os.NetworkInterfaceInfo[]>
+  /** 기본 게이트웨이(공유기) 주소 읽기 — 못 읽으면 null (테스트가 가짜를 넣는다) */
+  gateway?: () => Promise<string | null>
+  /** 카드 주소 변화 확인 간격 */
+  networkWatchMs?: number
   /** 원격 v2: PC 화면과 같은 처리 함수 표·첨부 저장소 (없으면 v2는 404) */
   v2?: V2Office | null
 }
@@ -63,12 +76,6 @@ function isUsableCert(certPem: string) {
   } catch {
     return false
   }
-}
-
-/** 이 PC의 내부 IPv4 주소 (같은 와이파이용) — 사설 주소(192.168·10·172.16~31)를 먼저 고르고, 없으면 처음 보이는 IPv4 */
-function lanAddress() {
-  const all = Object.values(os.networkInterfaces()).flatMap((list) => (list ?? []).filter((a) => a.family === 'IPv4' && !a.internal).map((a) => a.address))
-  return all.find((ip) => isLanAddress(ip)) ?? all[0] ?? null
 }
 
 export class RemoteService {
@@ -87,6 +94,11 @@ export class RemoteService {
   /** 저장된 키를 못 읽어 새로 만들었는지 (PC 화면에 "새 QR로 다시 연결" 안내) */
   private isKeyRegenerated = false
   private deps: RemoteDeps
+  /** 전용 모드: 지금 귀를 연 내부 주소·읽어 둔 공유기 주소·주소 변화 감시 */
+  private boundLan: string | null = null
+  private gatewayIp: string | null = null
+  private watchTimer: ReturnType<typeof setInterval> | null = null
+  private isGatewayWarned = false
 
   /** v2 이벤트 스트림 (SSE) */
   private hub: EventHub
@@ -97,13 +109,18 @@ export class RemoteService {
     this.deps = { ...deps, changed: () => (deps.changed(), this.hub?.publish('remoteStatus', this.status())) }
     // 예전 "휴대폰에서 모든 기능 쓰기" 값(isFullAccess)이 저장돼 있어도 버린다 — 원격이 켜져 있으면 v2를 바로 쓴다 (대표 결정, v2 규격 12-1절)
     const { isFullAccess: _dropped, ...saved } = deps.loadConfig() as Partial<RemoteConfig> & { isFullAccess?: unknown }
-    this.config = { ...DEFAULT_REMOTE_CONFIG, ...saved }
+    // 저장된 원격 설정이 없는 신규 설치만 전용 모드로 시작한다. 예전 설정(lanOnly 없음)은 지금처럼 밖에서도 붙고, 안내를 한 번 보여 준다
+    const isFresh = Object.keys(saved).length === 0
+    this.config = { ...DEFAULT_REMOTE_CONFIG, ...saved, lanOnly: saved.lanOnly ?? isFresh, isLanNoticeSeen: saved.isLanNoticeSeen ?? isFresh }
     this.guard = this.newGuard()
     const v2 = deps.v2
     this.hub = new EventHub({
       snapshot: () => v2?.call('snapshot', []) ?? null,
       remoteStatus: () => this.status(),
-      isTokenValid: (tokenHash) => Boolean(this.guard.current.tokenHash) && tokenHash === this.guard.current.tokenHash,
+      isTokenValid: (tokenHash) => {
+        const current = this.guard.current.tokenHash
+        return Boolean(current) && sameHash(tokenHash, current as string)
+      },
       // 예전 폰 화면(연결할 때 iso-office를 알리지 않음)에는 회사 레벨을 10까지만 (A4: 11 이상이면 화면이 멈춘다)
       shape: (event, data, capabilities) => (event === 'snapshot' ? shapeFor(capabilities, data) : data),
       now: () => this.now(),
@@ -116,6 +133,7 @@ export class RemoteService {
           now: () => this.now(),
           isReady: () => this.isReady,
           currentPort: () => this.config.port,
+          lanInfo: () => ({ lo: this.config.lanOnly, lan: this.lanHost() }),
         })
       : null
   }
@@ -148,6 +166,16 @@ export class RemoteService {
 
   /** 앱을 켤 때: 지난번에 켜 두었으면 다시 연다 (기본은 꺼짐) */
   async init() {
+    // 전용 모드인데 지난 실행(밖에서도 붙던 때)의 공유기 포트 매핑이 남아 있을 수 있어 한 번 닫는다 (실패는 무시)
+    if (this.config.lanOnly && this.deps.upnp) {
+      const u = this.deps.upnp
+      try {
+        const gw = await u.find()
+        if (gw) await u.remove(gw, this.config.port)
+      } catch {
+        // 공유기가 없거나 거부해도 시작은 계속한다
+      }
+    }
     if (this.config.isEnabled) await this.open()
   }
 
@@ -160,6 +188,8 @@ export class RemoteService {
       host: this.config.host,
       connectHost: connectHost?.host ?? null,
       isLanOnly: connectHost?.isLan ?? false,
+      lanOnly: this.config.lanOnly,
+      isLanNoticePending: !this.config.lanOnly && !this.config.isLanNoticeSeen,
       fingerprint: this.keys ? spkiFingerprint(this.keys.certPem) : null,
       upnp: this.upnpState,
       error: this.error,
@@ -173,6 +203,11 @@ export class RemoteService {
   }
 
   private connectHost(): { host: string; isLan: boolean } | null {
+    // 전용 모드는 직접 입력·공유기 외부 주소를 쓰지 않는다 — 내부 주소만
+    if (this.config.lanOnly) {
+      const lan = this.lanHost()
+      return lan ? { host: lan, isLan: true } : null
+    }
     if (this.config.host) return { host: this.config.host, isLan: false }
     if (this.upnpState.state === 'ok' && this.upnpState.externalAddress) return { host: this.upnpState.externalAddress, isLan: false }
     const lan = this.lanHost()
@@ -181,7 +216,12 @@ export class RemoteService {
 
   /** 같은 와이파이 주소: 공유기와 이야기할 때 쓴 이 PC의 주소(UPnP가 찾은 것)가 가장 정확하고, 없으면 네트워크 카드에서 고른다 */
   private lanHost() {
-    return this.gateway?.localAddress ?? lanAddress()
+    if (this.config.lanOnly) return this.pickLan()
+    return this.gateway?.localAddress ?? this.pickLan()
+  }
+
+  private pickLan() {
+    return pickLanAddress((this.deps.networkInterfaces ?? os.networkInterfaces)())
   }
 
   /** 원격 켜기. 처음이면 인증서 키쌍과 토큰을 만들고 QR을 보여 줄 수 있게 한다 */
@@ -190,7 +230,7 @@ export class RemoteService {
     // 이미 켜져 있으면: 포트가 같으면 공유기 설정만 다시 시도, 다르면 닫고 새 포트로 연다
     const isSamePort = port === this.config.port
     if (this.server.isListening && isSamePort) {
-      if (this.upnpState.state !== 'ok' && this.upnpState.state !== 'trying') await this.mapPort()
+      if (!this.config.lanOnly && this.upnpState.state !== 'ok' && this.upnpState.state !== 'trying') await this.mapPort()
       return this.status()
     }
     if (this.server.isListening) await this.close()
@@ -210,6 +250,31 @@ export class RemoteService {
     this.save()
     this.hub.closeAll('remote_disabled')
     await this.close()
+    return this.status()
+  }
+
+  /**
+   * 같은 네트워크 전용 모드 켜기·끄기. 켜면 열린 공유기 매핑을 닫고 내부 주소에만 다시 귀를 연다(토큰은 그대로, 열린 연결은 끊긴다).
+   * 끄면 모든 주소에 다시 열고 공유기 포트를 다시 시도한다
+   */
+  async setLanOnly(isLanOnly: boolean) {
+    if (this.config.lanOnly === isLanOnly) return this.status()
+    this.config = { ...this.config, lanOnly: isLanOnly, isLanNoticeSeen: true }
+    this.save()
+    if (this.server.isListening || this.error === 'no_network') {
+      this.hub.closeAll('remote_disabled')
+      await this.close()
+      await this.open()
+    }
+    return this.status()
+  }
+
+  /** 예전 사용자에게 보여 주는 첫 실행 안내를 닫는다 (다시 보이지 않게) */
+  dismissLanNotice() {
+    if (!this.config.isLanNoticeSeen) {
+      this.config = { ...this.config, isLanNoticeSeen: true }
+      this.save()
+    }
     return this.status()
   }
 
@@ -242,7 +307,7 @@ export class RemoteService {
     // 같은 와이파이의 휴대폰은 lan으로 먼저 붙는다 (공유기가 외부 주소로 되돌아 들어오기를 못 하는 집이 많다)
     const lan = lanForQr(host, this.lanHost())
     // pv = 이 PC가 아는 가장 높은 프로토콜 (v2 규격 2-1절). v는 1.0.x 앱이 거부하지 않게 계속 1
-    const payload = { v: 1, host, port: this.config.port, token: shown.token, spki: spkiFingerprint(this.keys.certPem), ...(lan ? { lan } : {}), ...(this.v2 ? { pv: 2 } : {}) }
+    const payload = { v: 1, host, port: this.config.port, token: shown.token, spki: spkiFingerprint(this.keys.certPem), ...(lan ? { lan } : {}), ...(this.v2 ? { pv: 2 } : {}), ...(this.config.lanOnly ? { lo: true } : {}) }
     if (!isValidQrPayload(payload)) return null
     return { image: qrImage(payload), host, lan: lan ?? null, port: payload.port, until: shown.until }
   }
@@ -287,17 +352,64 @@ export class RemoteService {
       this.save()
     }
     await this.listen()
-    if (this.server.isListening) void this.mapPort()
+    if (this.config.lanOnly) this.startWatch()
+    else if (this.server.isListening) void this.mapPort()
   }
+
+  /** 전용 모드: 게이트웨이를 읽어 두고(못 읽으면 사설 대역만 적용) 카드 주소가 바뀌는지 몇 초마다 본다 */
+  private async refreshGateway() {
+    this.gatewayIp = await (this.deps.gateway ?? readDefaultGateway)().catch(() => null)
+    if (!this.gatewayIp && !this.isGatewayWarned) {
+      this.isGatewayWarned = true
+      console.warn('[remote] 공유기(기본 게이트웨이) 주소를 읽지 못해 사설 대역 필터만 적용해요')
+    }
+  }
+
+  private startWatch() {
+    if (this.watchTimer) return
+    this.watchTimer = setInterval(() => void this.checkNetwork(), this.deps.networkWatchMs ?? NETWORK_WATCH_MS)
+    this.watchTimer.unref?.()
+  }
+
+  private stopWatch() {
+    if (this.watchTimer) clearInterval(this.watchTimer)
+    this.watchTimer = null
+  }
+
+  /** 전용 모드에서 내부 주소가 바뀌었으면 새 주소로 다시 귀를 연다 (토큰·QR 유지, 열린 연결은 끊긴다). 감시 타이머가 부르고, 테스트도 직접 부른다 */
+  async checkNetwork() {
+    if (!this.config.lanOnly || !this.config.isEnabled || this.isChecking) return
+    this.isChecking = true
+    try {
+      const now = this.pickLan()
+      if (now === this.boundLan && this.server.isListening) return
+      this.hub.closeAll('remote_disabled')
+      await this.server.stop()
+      await this.listen()
+    } finally {
+      this.isChecking = false
+    }
+  }
+  private isChecking = false
 
   private async listen() {
     this.error = null
+    // 전용 모드는 고른 내부 주소 하나에만 귀를 연다 (없으면 열지 않고 감시가 주소가 생기길 기다린다)
+    const lan = this.config.lanOnly ? this.pickLan() : null
+    const host = this.config.lanOnly ? (this.deps.listenHost ?? lan) : this.deps.listenHost
+    this.boundLan = lan
+    if (this.config.lanOnly) await this.refreshGateway()
+    if (this.config.lanOnly && !lan) {
+      this.error = 'no_network'
+      return this.deps.changed()
+    }
     try {
       await this.server.start({
         keyPem: this.keys!.keyPem,
         certPem: this.keys!.certPem,
         port: this.config.port,
-        host: this.deps.listenHost,
+        host: host ?? undefined,
+        isAllowed: this.config.lanOnly ? (ip) => isAllowedClient(ip, this.gatewayIp) : undefined,
         handle: (req) =>
           req.url.startsWith('/v2/') && this.v2
             ? this.v2.call(req)
@@ -319,6 +431,7 @@ export class RemoteService {
   }
 
   private async close() {
+    this.stopWatch()
     if (this.renewTimer) clearInterval(this.renewTimer)
     this.renewTimer = null
     await this.server.stop()

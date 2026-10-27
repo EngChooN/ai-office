@@ -1,5 +1,5 @@
 // 업데이트 알림 — GitHub Release 응답 해석·버전 비교 (순수 함수, main·renderer·테스트가 같이 쓴다)
-// 서버 없이 공개 API(인증 없음)를 읽는다. 자동 설치는 하지 않고 다운로드 주소만 고른다 (앱 서명이 없어서)
+// 서버 없이 공개 API(인증 없음)를 읽는다. 설치 파일 주소·크기·sha256을 고르고, 실제 내려받기·설치는 main/appInstall.ts가 한다
 
 import type { Lang } from './i18n/index.ts'
 
@@ -25,6 +25,13 @@ export const ASSET_NAMES = {
 } as const
 export type AssetTarget = keyof typeof ASSET_NAMES
 
+/** GitHub Release의 설치 파일 한 개 — 주소, 크기, sha256(GitHub가 준 값이 없으면 null) */
+export interface ReleaseAsset {
+  url: string
+  size: number | null
+  sha256: string | null
+}
+
 export interface ReleaseInfo {
   /** 앞의 v를 뗀 버전 (0.12.0) */
   version: string
@@ -32,8 +39,19 @@ export interface ReleaseInfo {
   body: string
   /** 이 기기용 설치 파일 주소 — 없으면 null (Release 페이지로 대신 연다) */
   downloadUrl: string | null
+  /** 이 기기용 설치 파일 정보 — 앱 안에서 내려받아 설치할 때 쓴다 */
+  asset: ReleaseAsset | null
   /** Release 페이지 주소 */
   pageUrl: string
+}
+
+/** 앱 안 설치 진행 상태. idle: 안 함 · downloading: 내려받는 중 · preparing: 검사·풀기 중 · failed: 실패 (이유는 installError) */
+export interface InstallStatus {
+  phase: 'idle' | 'downloading' | 'preparing' | 'failed'
+  /** 내려받은 비율 0~100 (모르면 null) */
+  progress: number | null
+  /** download: 내려받기 실패 · verify: 파일 검사(크기·sha256) 불일치 · prepare: 설치 파일을 풀거나 버전을 확인하지 못함 */
+  installError: 'download' | 'verify' | 'prepare' | null
 }
 
 /** 설정 화면·배지가 보는 상태 (main → renderer) */
@@ -45,6 +63,9 @@ export interface UpdateStatus {
   /** [나중에]로 건너뛴 버전 */
   skippedVersion: string | null
   checkedAt: number | null
+  /** 이 앱이 이 기기에서 앱 안에서 바로 설치할 수 있는지 (설치 파일이 있고, 설치된 위치를 쓸 수 있을 때) */
+  canInstall: boolean
+  install: InstallStatus
 }
 
 /** preload가 여는 업데이트 통로 (데스크톱만 — 모바일 빌드에는 없다) */
@@ -53,6 +74,8 @@ export interface OfficeUpdateApi {
   check(): Promise<UpdateStatus>
   /** 고른 설치 파일을 기본 브라우저로 연다 (주소는 main이 가진 것만 쓴다) */
   download(): Promise<void>
+  /** 앱 안에서 내려받아 검사한 뒤 앱을 다시 열며 바꾼다. 성공하면 앱이 꺼진다 */
+  install(): Promise<UpdateStatus>
   skip(version: string): Promise<UpdateStatus>
   onStatus(cb: (status: UpdateStatus) => void): () => void
 }
@@ -110,11 +133,24 @@ export function assetTargetFor(platform: string, arch: string): AssetTarget | nu
 /** 브라우저로 열 주소는 GitHub 것만 받는다 (응답이 이상해도 엉뚱한 주소를 열지 않게) */
 const isGithubUrl = (url: unknown): url is string => typeof url === 'string' && /^https:\/\/github\.com\//.test(url)
 
+/** assets[]에서 파일 이름으로 설치 파일을 찾는다 (주소·크기·sha256). sha256은 GitHub 응답의 digest("sha256:…")에서만 읽는다 */
+export function pickAsset(assets: unknown, target: AssetTarget | null): ReleaseAsset | null {
+  if (!target || !Array.isArray(assets)) return null
+  const asset = assets.find((a) => (a as { name?: unknown })?.name === ASSET_NAMES[target]) as
+    | { browser_download_url?: unknown; size?: unknown; digest?: unknown }
+    | undefined
+  if (!asset || !isGithubUrl(asset.browser_download_url)) return null
+  const digest = typeof asset.digest === 'string' ? /^sha256:([0-9a-f]{64})$/i.exec(asset.digest.trim()) : null
+  return {
+    url: asset.browser_download_url,
+    size: typeof asset.size === 'number' && Number.isSafeInteger(asset.size) && asset.size > 0 ? asset.size : null,
+    sha256: digest ? digest[1].toLowerCase() : null,
+  }
+}
+
 /** assets[]에서 파일 이름으로 다운로드 주소를 찾는다 */
 export function pickDownloadUrl(assets: unknown, target: AssetTarget | null): string | null {
-  if (!target || !Array.isArray(assets)) return null
-  const asset = assets.find((a) => (a as { name?: unknown })?.name === ASSET_NAMES[target]) as { browser_download_url?: unknown } | undefined
-  return isGithubUrl(asset?.browser_download_url) ? asset.browser_download_url : null
+  return pickAsset(assets, target)?.url ?? null
 }
 
 const NOTES_MAX_LINES = 8
@@ -178,10 +214,12 @@ export function parseRelease(json: unknown, target: AssetTarget | null): Release
   const r = json as { tag_name?: unknown; body?: unknown; html_url?: unknown; assets?: unknown; draft?: unknown; prerelease?: unknown }
   if (r.draft === true || r.prerelease === true) return null
   if (typeof r.tag_name !== 'string' || !parseVersion(r.tag_name) || !isGithubUrl(r.html_url)) return null
+  const asset = pickAsset(r.assets, target)
   return {
     version: r.tag_name.trim().replace(/^v/, ''),
     body: typeof r.body === 'string' ? r.body : '',
-    downloadUrl: pickDownloadUrl(r.assets, target),
+    downloadUrl: asset?.url ?? null,
+    asset,
     pageUrl: r.html_url,
   }
 }

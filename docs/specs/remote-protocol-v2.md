@@ -149,7 +149,7 @@ OfficeApi는 **메서드 84개 + 값 1개(`platform`) + 이벤트 5개**다(구�
 - 표의 **첨부** 열의 "첨부 인자"는 `Attachment[]`를 받는 자리다(7절의 `id`만 믿는 규칙이 적용된다).
 - "판정 409"는 PC 화면 서버 쪽에서 **이미 처리됐는지 알 수 있는** 호출이다. 처리되지 않았으면 v1처럼 `409 already_decided`를 준다.
 
-### 5-2. PC 전용 호출 (6개)
+### 5-2. PC 전용 호출 (7개)
 | 메서드 | 이유 | `alternative` 힌트 | 폰 화면에서의 대신 |
 |---|---|---|---|
 | `pickFolder` | PC의 폴더 고르기 창 | `enter_path` | 경로를 **직접 입력**하거나 **최근 폴더**에서 고른다(앱이 `snapshot`의 직원·랩 `cwd` 값을 모아 만듦) |
@@ -158,6 +158,7 @@ OfficeApi는 **메서드 84개 + 값 1개(`platform`) + 이벤트 5개**다(구�
 | `resumeInTerminal` | PC의 터미널을 연다 | `open_on_pc` | "PC에서 열어 주세요" 안내 |
 | `openClaudeLogin` | PC의 로그인 터미널을 연다 | `open_on_pc` | "PC에서 열어 주세요" 안내 |
 | `remoteQr` | 토큰이 든 QR을 폰에 내려 주지 않는다(3절) | `open_on_pc` | "PC 화면에서 QR을 만드세요" 안내 |
+| `revertWork` | 파일을 되돌리는(취소 불가) 동작은 PC 확인 창에서만 | `open_on_pc` | "PC에서 열어 주세요" 안내 |
 - **화면 캡처:** OfficeApi에는 캡처 메서드가 **없다**(`capture_screen`은 직원이 쓰는 사무실 도구다). 그래서 이 표에 없고 v2에서 할 일도 없다.
 - `pc_only` 응답:
 ```json
@@ -189,8 +190,8 @@ OfficeApi는 **메서드 84개 + 값 1개(`platform`) + 이벤트 5개**다(구�
 | 17 | `listAgentTemplates` | S | | `cwd` 폴더를 읽는다 |
 | 18 | `pickFolder` | P | | `enter_path` |
 | 19 | `hooksStatus` | R | | |
-| 20 | `setHooksInstalled` | S | | PC의 Claude 설정 파일을 고친다 |
-| 21 | `setAskHookInstalled` | S | | PC의 Claude 설정 파일을 고친다 |
+| 20 | `setHooksInstalled` | P | `open_on_pc` | PC의 Claude 설정 파일을 고친다 (0.13.0: S → P) |
+| 21 | `setAskHookInstalled` | P | `open_on_pc` | PC의 Claude 설정 파일을 고친다 (0.13.0: S → P) |
 | 22 | `createTeam` | R | | |
 | 23 | `updateTeam` | R | | |
 | 24 | `deleteTeam` | R | | |
@@ -201,7 +202,7 @@ OfficeApi는 **메서드 84개 + 값 1개(`platform`) + 이벤트 5개**다(구�
 | 29 | `pickFiles` | P | | `enter_path` |
 | 30 | `missingFiles` | S | | 파일이 있는지 확인(PC 파일 존재 여부를 알려 줌) |
 | 31 | `fireExternal` | S | | 외부 프로세스를 종료한다 |
-| 32 | `recruitExternal` | R | | |
+| 32 | `recruitExternal` | S | | 0.13.0: R → S. 승인 방식은 원격에서 못 정해 늘 `ask` |
 | 33 | `equipmentCatalog` | S | | `cwd`의 설정을 읽는다 |
 | 34 | `setEquipment` | R | | |
 | 35 | `claudeStatus` | R | | 오래 걸릴 수 있음 |
@@ -219,6 +220,8 @@ OfficeApi는 **메서드 84개 + 값 1개(`platform`) + 이벤트 5개**다(구�
 | 47 | `workChanges` | S | | 소스 변경 내용(diff)을 읽는다. 응답이 클 수 있음 |
 | 48 | `suggestCommitMessage` | R | | |
 | 49 | `commitChanges` | S | | PC에서 git commit |
+| 94 | `workRevertInfo` | S | | 작업 시작 시점 이후 이 직원이 바꾼 파일 `WorkRevertInfo`(`available`·`startedAt`·`files`·`skipped`). 같은 폴더의 다른 직원이 바꾼 파일은 `skipped` |
+| 95 | `revertWork` | P | `open_on_pc` | 그 파일들을 작업 시작 시점으로 되돌린다(새 파일은 삭제, 취소 불가) — 휴대폰에선 못 하고 PC 확인 창에서만 |
 | 50 | `pushAndCreatePr` | S | | PC에서 git push·PR 만들기(외부 서비스에 보냄) |
 | 51 | `createTask` | R | 첨부 인자 | |
 | 52 | `updateTask` | R | | |
@@ -256,8 +259,18 @@ OfficeApi는 **메서드 84개 + 값 1개(`platform`) + 이벤트 5개**다(구�
 | 84 | `autoApproveLog` | R | | 자동결재가 대신 처리한 목록(최근 것부터) |
 | 85 | `loadStaffCommands` | R | | 직원의 /명령어 목록을 (없으면) 불러온다. 결과는 스냅샷 `staffCommands[직원 id]`(`StaffCommand[]`: name·description·argumentHint·isBuiltin). 직원 세션을 잠깐 띄우므로 몇 초 걸릴 수 있음. 거르기 규칙은 `shared/slashCommands.ts`의 `matchCommands`(이름 앞부분 → 이름 안 → 설명). `instruct`·`sendChat`의 `/명령`은 PC와 같게 처리(막힌 명령은 안내, `/clear`는 새 대화) |
 | 86 | `setGridItemOn` | R | | 눌러서 켜고 끄는 소품(연출 B, `shared/iso/propMotion.ts` `isToggleable`)을 켜거나 끈다 `(uid, isOn)`. `shop.grid[].isOn`으로 저장(꺼짐은 필드 없음). B가 아닌 가구·없는 uid는 400 invalid_args. 예전 PC(iso-office 모름)에는 보내지 않음 |
+| 87 | `releasePlanHold` | R | | 플랜 한도가 높아 보류 중인 예약·기획 하위 업무를 지금 시작한다. 스냅샷 `planHold`(`isHeld`·`resumeAt`·`items`)가 보류 상태. 옛 PC엔 `planHold`가 없다 |
+| 88 | `approveAlways` | R | | 결재를 승인하면서 "앞으로 항상 승인" 규칙을 만든다 `(approvalId)` → 불리언. 결재의 `alwaysRule`(`toolName`·`patterns`)이 있을 때만(위험 명령·질문이면 없음 → false). 같은 규칙에 들어가는 그 직원의 다른 대기 결재도 함께 승인 |
+| 89 | `approvalRules` | R | | 규칙 목록 `ApprovalRule[]`(`id`·`staffId`·`toolName`·`patterns`·`createdAt`). Bash는 `patterns`(명령 머리, 예 `npm test`)가 모두 들어가야 맞고, 다른 도구는 빈 배열 = 그 도구 전부. 위험 명령·외부 전송은 규칙이 있어도 결재 |
+| 90 | `deleteApprovalRule` | R | | 규칙 지우기 `(ruleId)` |
+| 91 | `knowledgeList` | R | | 회사 지식 창고 `KnowledgeEntry[]`(최근에 고친 순): `kind`(`learning`·`feedback`·`decision`)·`title`·`body`·`tags`·`staffName`·`docPath` |
+| 92 | `saveKnowledge` | R | | 쓰기·고치기 `{ id?, kind, title, body, tags?, docPath? }` — 허용 필드는 이 여섯. 제목·내용이 비었거나 `docPath`가 전체 경로가 아니면 400 invalid_args |
+| 93 | `deleteKnowledge` | R | | 지식 지우기 `(id)` |
+| 96 | `galleryList` | R | | 결과물 갤러리 `GalleryEntry[]`(최근에 끝낸 순): 업무 카드가 "검토"로 넘어갈 때 앱이 만든다. `id`(= 업무 카드 id)·`title`·`staffId`·`staffName`·`teamId`·`labId`·`summary`(보고 앞부분)·`links`·`images`(첨부)·`files`(`path`·`added`·`removed`)·`finishedAt`. 필터(직원·랩·기간)는 앱이 `shared/gallery.ts`의 `filterGallery`로 |
+| 97 | `deleteGalleryEntry` | R | | 갤러리에서 한 장 지우기 `(id)` — 업무 카드는 그대로 |
+| 98 | `runDemoDayNow` | R | | 데모데이를 지금 연다: 지난 데모데이 이후 끝낸 업무로 회의실 발표(`Meeting.kind = 'demo'`, AI 호출 없음)를 하고 단체방에 짧은 요약 + 갤러리 링크(`#view=gallery`)를 올린다. 정기 일정은 설정 `demoDay`(`isEnabled`·`weekday` 0=일~6=토·`time` HH:MM) |
 
-개수: **R 58 · S 17 · P 6 · C 2 · U 1 = 84**. 코드는 `app/src/main/remote/v2.ts`의 `V2_METHODS: Record<OfficeMethod, …>` 한 표 — 메서드가 빠지거나 남으면 tsc가 실패하고, `scripts/remote-v2.test.mts`가 이름·개수를 다시 확인한다.
+개수: **R 84 · S 17 · P 15 · C 2 · U 1 = 119** (`setRemoteLanOnly`·`dismissRemoteLanNotice`는 P — 전용 모드를 끄면 밖에서 붙게 되므로 폰에서는 못 바꾼다). 코드는 `app/src/main/remote/v2.ts`의 `V2_METHODS: Record<OfficeMethod, …>` 한 표 — 메서드가 빠지거나 남으면 tsc가 실패하고, `scripts/remote-v2.test.mts`가 이름·개수를 다시 확인한다.
 
 ### 5-4. 응답 크기와 압축
 - 요청에 `Accept-Encoding: gzip`이 있으면 서버는 `/v2/call` 응답을 gzip으로 보내도 된다(`Content-Encoding: gzip`). SSE는 압축하지 않는다.
@@ -460,4 +473,6 @@ v1 7절의 코드를 **그대로** 쓰고, v2에서 더해지는 것만 아래�
 | 2026-10-23 | `setRemoteFullAccess` 삭제(5절 82 → 81개, P 7 → 6). 폰이 부르면 `404 unknown_method`. `RemoteStatus.isFullAccess`는 `true` 고정으로 유지 (강백엔) |
 | 2026-10-23 | 대표 결정·보안 리뷰 반영(강백엔): 전체 기능 스위치 폐지(12-1, `fullAccess` 항상 true, `v2_disabled` 폐지, 2-1·2-3·3·8·9절). 인증 전 본문 읽지 않기(3·4-1·9절), 객체 인자 허용 필드(4-1), 포트 바꾸기 확인 문구·저장(4-4), `remoteStatus`도 500ms 묶기(8-3), `/v2/*` 오류의 `protocolVersion: 2`. 주소당 연결 8개(v1 3-3-1) |
 | 2026-10-23 | 구현(데스크톱 0.9.0 예정, 정리드): 82번째 메서드 `setRemoteFullAccess`(P) 추가. 12-1절은 권고안(별도 스위치·기본 꺼짐)으로 구현 — 대표 확정 대기 |
+| 2026-10-26 | 원격 보안 보강(0.13.0): `setEquipment`에서 `allowedTools`·`disallowedTools` 제외, `hire`·`updateStaff`·`recruitExternal`의 `cwd`·`approvalMode` 제외(S가 기본 폴더·`ask`로 채움), `setHooksInstalled`·`setAskHookInstalled` S → P, `recruitExternal` R → S, 원격 `setAutoApprove`는 끄기만, 원격 `approveAlways`는 Bash 규칙 미생성, 프로젝트 매뉴얼은 랩 폴더만. 폰이 보내던 값은 무시된다 (강백엔) |
 | 2026-10-23 | 최초 작성(v2). OfficeApi 81개 메서드 분류, `/v2/call`·`/v2/events`(SSE)·`/v2/attachments`·`/v2/files/{id}`, 발견(`supportedProtocols`·`fullAccess`·QR `pv`), 호환 표, 보안 모델(전체 조작 스위치 권고) |
+| 2026-10-26 | 같은 네트워크 전용 모드: QR 선택 필드 `lo:true`(PROTOCOL_VERSION 그대로), `hello` 결과에 `lo`·`lan`(현재 내부 주소) 추가 — 앱 자동 갱신용, 모르는 앱은 무시 |

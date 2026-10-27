@@ -5,6 +5,13 @@ import type { GridItem } from './iso/furniture'
 import type { RefDocReject } from './refDocs'
 import type { AutoApproveConfig, AutoApprovePlan, AutoKind } from './autoApprove'
 import type { StaffCommand } from './slashCommands'
+import type { PlanHoldState } from './planHold'
+import type { ApprovalRule, ApprovalRuleDraft } from './approvalRules'
+import type { KnowledgeEntry, KnowledgeInput } from './knowledge'
+import type { DemoDayConfig, DemoReaction, DemoStage, GalleryEntry, Praise } from './gallery'
+import type { TutorialInput, TutorialScenario, TutorialSnapshot } from './tutorial'
+import type { BoardCleanupPlan } from './boardCleanup'
+import type { CustomMcp, CustomMcpInput } from './customMcp'
 import { COMPANY_LEVELS, companyLevelOf } from './officeLevel.ts'
 import type { LangSetting } from './i18n/index.ts'
 
@@ -21,6 +28,8 @@ export interface Approval {
   createdAt: number
   /** 직원의 질문(AskUserQuestion)이면 질문 목록 — 승인·반려 대신 답을 고른다 */
   questions?: StaffQuestion[]
+  /** "앞으로 항상 승인"으로 만들 수 있는 규칙 (위험 명령·질문이면 없음) */
+  alwaysRule?: ApprovalRuleDraft
 }
 
 export interface StaffQuestion {
@@ -78,6 +87,10 @@ export interface Staff {
   statusSince: number
   /** 오늘 완료한 업무 수 */
   todayDone: number
+  /** 데모데이 칭찬 배지 (박수·MVP 누적, 없으면 0) */
+  praise?: Praise
+  /** 튜토리얼 연습 회사 데이터 — '연습 회사 정리'와 첫 실제 고용 때 지운다 */
+  isPractice?: boolean
 }
 
 /** 부서. 고용 직원 팀은 사용자가 만들고, 외부 직원은 프로젝트 폴더별 가상 팀(proj:)으로 묶는다 */
@@ -93,6 +106,8 @@ export interface Team {
   refDocs?: string[]
   /** 팀 자리가 있는 층 (없으면 1층). 이 레벨에 없는 층이면 그릴 때 1층으로 보정한다 */
   floor?: number
+  /** 튜토리얼 연습 회사 데이터 — '연습 회사 정리'와 첫 실제 고용 때 지운다 */
+  isPractice?: boolean
 }
 
 export type RefDocTarget = { kind: 'staff' | 'team' | 'lab'; id: string }
@@ -114,6 +129,8 @@ export interface Lab {
   manuals?: string[]
   /** 랩 멤버 모두가 작업 전에 읽는 참고 문서 */
   refDocs?: string[]
+  /** 튜토리얼 연습 회사 데이터 — '연습 회사 정리'와 첫 실제 고용 때 지운다 */
+  isPractice?: boolean
 }
 
 /** 업무 매뉴얼 = Claude Code 스킬. 개인 매뉴얼은 직원에게, 프로세스 매뉴얼은 팀·랩에 교육한다 */
@@ -198,6 +215,8 @@ export interface Equipment {
   disallowedTools: string[]
   /** 0이면 제한 없음 */
   monthlyBudgetUsd: number
+  /** true면 간단한 업무(분류·요약·정리)도 직원의 모델 그대로 쓴다 (기본: 가벼운 모델로 자동 전환) */
+  lightModelOff?: boolean
 }
 
 export interface EquipmentCatalog {
@@ -205,8 +224,31 @@ export interface EquipmentCatalog {
    * 첫 줄은 앱 기본 장비 '브라우저'(name = BROWSER_EQUIPMENT, isBuiltin) — 사용자 MCP 카탈로그와 별개로 늘 있다.
    * unavailable: 이 컴퓨터에서 쓸 수 없는 이유(쉬운 말). 있으면 칩을 끄고 이 문장을 보여 준다
    */
-  mcpServers: { name: string; source: string; detail: string; isBuiltin?: boolean; unavailable?: string }[]
+  mcpServers: EquipmentMcp[]
   skills: { name: string; source: string; description: string }[]
+  /** refreshEquipment에서 Claude에 묻지 못해 지난 확인 결과로 돌려줬는지 */
+  isProbeFailed?: boolean
+}
+
+/** 연결 도구 출처: Claude Desktop · ~/.claude/settings.json · 플러그인 · 내 계정(~/.claude.json) · 이 폴더(로컬) · 프로젝트 .mcp.json · 직접 추가 · claude.ai 커넥터 */
+export type McpSourceKind = 'builtin' | 'desktop' | 'settings' | 'plugin' | 'user' | 'local' | 'project' | 'custom' | 'claudeai'
+/** needsAuth: 로그인(OAuth)이 필요 · claudeai: claude.ai 커넥터라 붙일 수 없음 · badConfig: 설정 형식을 알 수 없음 */
+export type McpStatusReason = 'needsAuth' | 'claudeai' | 'badConfig'
+
+export interface EquipmentMcp {
+  name: string
+  /** 출처 이름 (화면 언어로) */
+  source: string
+  /** 명령 또는 URL — 비밀값(env·headers)은 싣지 않는다 */
+  detail: string
+  isBuiltin?: boolean
+  unavailable?: string
+  sourceKind?: McpSourceKind
+  /** ok = 사용 가능 · auth = 인증 필요(지급은 된다) · unsupported = 불러올 수 없음(지급 불가) */
+  status?: 'ok' | 'auth' | 'unsupported'
+  reason?: McpStatusReason
+  /** 이유 문장 (화면 언어로) */
+  reasonText?: string
 }
 
 export const DEFAULT_EQUIPMENT: Equipment = { mcpServers: [], skills: 'all', allowedTools: [], disallowedTools: [], monthlyBudgetUsd: 0 }
@@ -248,6 +290,18 @@ export interface WorkChanges {
   ahead: number
 }
 
+/** 작업 시작 시점 이후 이 직원이 바꾼 파일 (변경 탭의 요약과 '작업 전으로 되돌리기') */
+export interface WorkRevertInfo {
+  /** 작업 시작 시점 기록이 있고 git 폴더일 때만 true */
+  available: boolean
+  /** 작업을 시작한 시각 (ms) */
+  startedAt: number
+  /** 되돌릴 파일 */
+  files: ChangeFile[]
+  /** 같은 폴더의 다른 직원도 바꿔서 건드리지 않을 파일 경로 */
+  skipped: string[]
+}
+
 export type LogType = 'instruction' | 'reply' | 'tool' | 'approval' | 'status' | 'result' | 'error' | 'delegate' | 'commit'
 
 export interface LogEntry {
@@ -257,6 +311,22 @@ export interface LogEntry {
   type: LogType
   text: string
   attachments?: Attachment[]
+}
+
+/** 멈춘 직원 진단 — 직원 세션 활동 한 장 (읽기 전용) */
+export interface StaffActivity {
+  staffId: string
+  name: string
+  status: StaffStatus
+  statusSince: number
+  activity: string
+  /** 최근 24시간 기록의 마지막 시각 (없으면 null) */
+  lastActivityAt: number | null
+  idleMs: number | null
+  pendingApprovals: { id: string; toolName: string; summary: string; createdAt: number; isQuestion: boolean }[]
+  recentTools: { ts: number; text: string }[]
+  recentErrors: { ts: number; text: string }[]
+  queue: { taskId: string; title: string }[]
 }
 
 export type TaskStatus = 'todo' | 'doing' | 'review' | 'done'
@@ -279,6 +349,15 @@ export interface Task {
   plan?: TaskPlan | null
   /** 회의 결과 카드면 그 회의 — 기획안을 올릴 때 결정 섹션을 이 회의의 원본으로 덮어쓴다 */
   meetingId?: string | null
+  /** 이 카드를 하는 동안 담당 직원이 쓴 토큰·비용 (맡은 동안의 턴만 센다) */
+  usage?: TaskUsage
+  /** 튜토리얼 연습 회사 데이터 — '연습 회사 정리'와 첫 실제 고용 때 지운다 */
+  isPractice?: boolean
+}
+
+export interface TaskUsage {
+  tokens: number
+  costUsd: number
 }
 
 export interface PlanSubtask {
@@ -312,6 +391,8 @@ export interface MeetingMessage {
   name: string
   text: string
   ts: number
+  /** 발표에 곁들인 작업물 사진 (데모데이) */
+  attachments?: Attachment[]
 }
 
 /** 회의 중 참석자가 대표(사용자)에게 묻는 결정 */
@@ -355,6 +436,12 @@ export interface Meeting {
   messages: MeetingMessage[]
   summary: string
   createdAt: number
+  /** demo = 데모데이 (앱이 결과물 갤러리로 만든 발표 — AI 호출 없음) */
+  kind?: 'demo'
+  /** 데모데이 발표장 연출용 진행 상태 (kind demo일 때만) */
+  demo?: DemoStage
+  /** 튜토리얼 연습 회사 데이터 — '연습 회사 정리'와 첫 실제 고용 때 지운다 */
+  isPractice?: boolean
 }
 
 export interface Schedule {
@@ -435,14 +522,20 @@ export interface Settings {
   layout: Record<string, { dx: number; dy: number }>
   /** 메뉴바 아이콘 */
   isTrayOn: boolean
+  /** 로그인할 때 앱을 자동으로 켠다 (창은 숨기고 켠다 — 예약 업무가 돌도록) */
+  launchAtLogin: boolean
   /** 첫 실행 안내를 마쳤는지 */
   isOnboarded: boolean
+  /** 첫 실행 마법사에서 고른 기본 작업 폴더 — 고용 창의 폴더 칸을 미리 채운다 ('' = 없음) */
+  defaultCwd: string
   /** 업무 모드: 회사에 띄워 둘 때 게임 요소(자금·상점·레벨·말풍선)를 숨기고 대시보드로 시작한다 */
   isWorkMode: boolean
   /** 0.9.0 안내("이제 연결된 휴대폰이 PC를 전부 조작할 수 있어요")를 봤는지 — 한 번만 띄운다 */
   isFullAccessNoticeSeen: boolean
   /** 앱 언어 — 'auto'면 기기 언어를 따른다(지원하지 않으면 영어). 직원 안내문·안드로이드 앱도 이 값을 읽는다 */
   language: LangSetting
+  /** 데모데이: 매주 정한 시간에 회의실에서 결과물을 보여 주고 단체방에 요약 */
+  demoDay: DemoDayConfig
 }
 
 export interface OfficeSnapshot {
@@ -458,6 +551,8 @@ export interface OfficeSnapshot {
   monthCostUsd: number
   /** Claude 구독 사용률 (직원이 일할 때 Claude가 알려 준 마지막 값) */
   planUsage: PlanUsage[]
+  /** 플랜 한도가 높아 보류 중인 일 (옛 main이면 없을 수 있다) */
+  planHold?: PlanHoldState
   /** 회사 자금 잔액 (원) */
   funds: number
   shop: ShopState
@@ -469,6 +564,8 @@ export interface OfficeSnapshot {
   secretary?: SecretaryState
   /** 직원별 /명령어 자동완성 목록 (세션을 연 적 있는 직원만 — 없으면 loadStaffCommands로 불러온다). 막힌 기본 명령은 이미 빠져 있다 */
   staffCommands?: Record<string, StaffCommand[]>
+  /** 첫 업무 튜토리얼 진행 상태 (옛 main이면 없다) */
+  tutorial?: TutorialSnapshot
 }
 
 /** 자동결재가 대신 처리한 한 건 (결재함 "자동 처리됨" 목록) */
@@ -574,6 +671,8 @@ export interface Payslip {
   totalTokens: number
   /** 일·주는 지금 기준, 월은 조회한 달 기준 */
   periods: PeriodUsage[]
+  /** 앱 구조(새 대화 인수인계 등)로 아낀 토큰 — 추정치 */
+  savedTokens: number
 }
 
 export interface HooksStatus {
@@ -609,10 +708,14 @@ export interface RemoteStatus {
   connectHost: string | null
   /** 내부 주소밖에 몰라 같은 와이파이에서만 붙을 수 있는지 */
   isLanOnly: boolean
+  /** 같은 네트워크 전용 모드 설정 (isLanOnly와 달리 사용자가 고른 모드 — 켜면 공유기 포트를 열지 않고 내부 주소에만 귀를 연다) */
+  lanOnly: boolean
+  /** 예전 사용자에게 전용 모드 안내를 아직 안 보여 줬는지 (true면 한 번 보여 주고 dismissRemoteLanNotice 호출) */
+  isLanNoticePending: boolean
   fingerprint: string | null
   upnp: UpnpState
   /** 켜기 실패 (포트를 이미 다른 프로그램이 씀 등) */
-  error: 'port_in_use' | 'start_failed' | null
+  error: 'port_in_use' | 'start_failed' | 'no_network' | null
   /** 잠금(한 곳 또는 전체)이 걸려 있으면 가장 늦게 풀리는 시각 */
   lockedUntil: number | null
   recentAccess: AccessEntry[]
@@ -647,6 +750,8 @@ export interface OfficeApi {
   regenerateRemoteQr(): Promise<RemoteStatus>
   remoteQr(): Promise<RemoteQr | null>
   setRemoteHost(host: string): Promise<RemoteStatus>
+  setRemoteLanOnly(isLanOnly: boolean): Promise<RemoteStatus>
+  dismissRemoteLanNotice(): Promise<RemoteStatus>
 
   /** 비서 (docs/specs/secretary.md): 말 보내기 · 확인 카드 실행(첨삭은 고른 수정본·고친 값과 함께) · 카드 취소 · 대화 지우기. 대화는 스냅샷 secretary로 받는다 */
   secretaryAsk(text: string): Promise<void>
@@ -655,6 +760,10 @@ export interface OfficeApi {
   secretaryClear(): Promise<void>
   onRemoteStatus(cb: (status: RemoteStatus) => void): () => void
   snapshot(): Promise<OfficeSnapshot>
+  /** 첫 업무 튜토리얼 (모의 진행 — AI 호출 없음): 시나리오 시작(연습 회사가 없으면 만든다) · 진행(화면이 본 일·건너뛰기·지금 보기·끝내기) · 연습 회사 정리 */
+  tutorialStart(scenario: TutorialScenario): Promise<void>
+  tutorialAct(input: TutorialInput): Promise<void>
+  tutorialCleanup(): Promise<void>
   hire(input: HireInput): Promise<Staff>
   fire(staffId: string): Promise<void>
   updateStaff(staffId: string, patch: { teamId?: string | null; name?: string; role?: string; model?: ModelChoice; avatar?: number; systemPrompt?: string; cwd?: string }): Promise<void>
@@ -679,10 +788,14 @@ export interface OfficeApi {
   createTeam(name: string, color: string): Promise<Team>
   updateTeam(teamId: string, patch: { name?: string; color?: string; leadId?: string | null; floor?: number }): Promise<void>
   deleteTeam(teamId: string): Promise<void>
+  /** from 팀의 직원·카드를 into 팀으로 옮기고 from 팀을 없앤다 (한 번에) */
+  mergeTeams(fromTeamId: string, intoTeamId: string): Promise<{ movedStaff: number; movedTasks: number }>
+  /** 직원 배치 바꾸기: 팀 옮기기와 랩 넣고 빼기를 한 번에 (랩은 지금 멤버에 더하고 빼기만 — 다른 멤버는 그대로) */
+  moveStaff(staffId: string, move: { teamId?: string | null; joinLabIds?: string[]; leaveLabIds?: string[] }): Promise<void>
 
   // 참고 문서는 setRefDocs로만 바꾼다 (경로 검사·상한·세션 다시 열기를 한 곳에서)
-  createLab(input: Omit<Lab, 'id' | 'refDocs'>): Promise<Lab>
-  updateLab(labId: string, patch: Partial<Omit<Lab, 'id' | 'refDocs'>>): Promise<void>
+  createLab(input: Omit<Lab, 'id' | 'refDocs' | 'isPractice'>): Promise<Lab>
+  updateLab(labId: string, patch: Partial<Omit<Lab, 'id' | 'refDocs' | 'isPractice'>>): Promise<void>
   deleteLab(labId: string): Promise<void>
 
   /** 참고 문서 목록 전체를 저장한다. 저장된(정규화된) 목록과 받지 않은 입력을 돌려준다 */
@@ -696,6 +809,13 @@ export interface OfficeApi {
   recruitExternal(staffId: string, input: { role: string; model: ModelChoice; teamId: string | null; approvalMode: ApprovalMode }): Promise<Staff | null>
 
   equipmentCatalog(cwd: string): Promise<EquipmentCatalog>
+  /** claude.ai 커넥터·인증 상태를 다시 확인하고(잠깐 Claude를 띄워 묻는다) 목록을 돌려준다 */
+  refreshEquipment(cwd: string): Promise<EquipmentCatalog>
+  /** 직접 추가한 연결 도구 (편집용 — env·headers 포함이라 PC 전용) */
+  customMcpList(): Promise<CustomMcp[]>
+  /** 직접 추가·수정 (prevName = 고칠 항목 이름). 형식이 틀리면 invalid_args */
+  saveCustomMcp(input: CustomMcpInput, prevName?: string): Promise<CustomMcp[]>
+  deleteCustomMcp(name: string): Promise<CustomMcp[]>
   setEquipment(staffId: string, equipment: Equipment): Promise<void>
 
   claudeStatus(): Promise<ClaudeStatus>
@@ -720,12 +840,20 @@ export interface OfficeApi {
   workChanges(staffId: string): Promise<WorkChanges>
   suggestCommitMessage(staffId: string): Promise<string>
   commitChanges(staffId: string, message: string): Promise<{ ok: boolean; output: string }>
+  /** 작업 시작 시점 이후 이 직원이 바꾼 파일 요약 */
+  workRevertInfo(staffId: string): Promise<WorkRevertInfo>
+  /** 이 직원이 바꾼 파일만 작업 시작 시점으로 되돌린다 (다른 직원이 바꾼 파일은 그대로) */
+  revertWork(staffId: string): Promise<{ ok: boolean; output: string; restored: number }>
   pushAndCreatePr(staffId: string, title: string, body: string): Promise<{ ok: boolean; output: string }>
 
   createTask(input: { title: string; detail: string; teamId: string | null; labId?: string | null; attachments?: Attachment[] }): Promise<Task>
   updateTask(taskId: string, patch: Partial<Pick<Task, 'title' | 'detail' | 'status' | 'teamId' | 'labId' | 'assigneeId'>>): Promise<void>
   assignTask(taskId: string, staffId: string): Promise<void>
   deleteTask(taskId: string): Promise<void>
+  /** 중복 카드를 keep 카드 하나로: 설명·첨부를 keep에 덧붙이고 나머지는 지운다 (시작 안 한 카드만) */
+  mergeTasks(keepId: string, mergeIds: string[]): Promise<void>
+  /** 업무 보드 정리안 — 비서 확인 카드의 묶음 단계 모양 (실행하지 않음, 연습 카드 제외) */
+  boardCleanupPlan(): Promise<BoardCleanupPlan>
 
   startMeeting(input: { topic: string; participantIds: string[]; rounds: number }): Promise<Meeting>
   answerMeetingDecision(meetingId: string, decisionId: string, answer: string): Promise<void>
@@ -742,6 +870,21 @@ export interface OfficeApi {
   autoApproveStatus(): Promise<AutoApproveState>
   setAutoApprove(plan: AutoApprovePlan): Promise<AutoApproveState>
   autoApproveLog(): Promise<AutoHandled[]>
+  /** 이 결재를 승인하고 같은 직원의 같은 종류 요청은 앞으로 자동 승인 (규칙을 만들 수 없는 결재면 false) */
+  approveAlways(approvalId: string): Promise<boolean>
+  /** "앞으로 항상 승인" 규칙 목록 · 지우기 */
+  approvalRules(): Promise<ApprovalRule[]>
+  deleteApprovalRule(ruleId: string): Promise<void>
+  /** 회사 지식 창고: 목록(최근 순) · 쓰기/고치기(id가 있으면) · 지우기 */
+  knowledgeList(): Promise<KnowledgeEntry[]>
+  saveKnowledge(input: KnowledgeInput): Promise<KnowledgeEntry>
+  deleteKnowledge(id: string): Promise<void>
+  /** 결과물 갤러리: 끝난 업무 카드(최근 순) · 지우기 · 데모데이 지금 열기 */
+  galleryList(): Promise<GalleryEntry[]>
+  deleteGalleryEntry(id: string): Promise<void>
+  runDemoDayNow(): Promise<void>
+  /** 데모데이 발표에 대표가 반응: 박수·MVP(회의당 1명)·한마디(지식 창고 피드백) */
+  demoReact(meetingId: string, staffId: string, kind: DemoReaction, text?: string): Promise<void>
   /** haiku를 한 번 짧게 불러 Claude 플랜 사용률을 지금 값으로 받아 온다 */
   refreshPlanUsage(): Promise<PlanUsage[]>
   /** 회사 자금 입출금 내역 (최근 순) */
@@ -774,11 +917,15 @@ export interface OfficeApi {
   saveSchedule(schedule: Omit<Schedule, 'lastRunDate'>): Promise<void>
   deleteSchedule(scheduleId: string): Promise<void>
   runScheduleNow(scheduleId: string): Promise<void>
+  /** 한도 때문에 보류 중인 예약·보드 업무를 지금 시작한다 (회복 시각까지는 다시 보류하지 않는다) */
+  releasePlanHold(): Promise<void>
 
   chatHistory(): Promise<ChatMessage[]>
   sendChat(text: string, attachments?: Attachment[]): Promise<void>
 
   timeline(sinceMs: number): Promise<LogEntry[]>
+  /** 직원 한 명의 세션 활동 (마지막 활동·상태·대기 결재·최근 도구·오류·대기열) — 읽기 전용 */
+  staffActivity(staffId: string): Promise<StaffActivity>
   dailyReport(dateMs: number): Promise<string>
   payslip(month: string): Promise<Payslip>
   updateSettings(patch: Partial<Settings>): Promise<void>
@@ -805,15 +952,18 @@ export const DEFAULT_SETTINGS: Settings = {
   workHours: { isEnabled: false, start: '09:00', end: '19:00' },
   layout: {},
   isTrayOn: true,
+  launchAtLogin: false,
   isOnboarded: false,
+  defaultCwd: '',
   isWorkMode: false,
   isFullAccessNoticeSeen: false,
   language: 'auto',
+  demoDay: { isEnabled: false, weekday: 5, time: '17:00', isAi: true },
 }
 
 /** 저장된(또는 옛 버전) 설정의 빈 칸을 기본값으로 채운다 — 토큰 예산이 없던 설정은 USD 예산은 두고 토큰 한도를 "제한 없음"으로 */
 export function withSettingsDefaults(saved: Partial<Settings>): Settings {
-  return { ...DEFAULT_SETTINGS, ...saved, tokenBudget: { ...DEFAULT_SETTINGS.tokenBudget, ...saved.tokenBudget } }
+  return { ...DEFAULT_SETTINGS, ...saved, tokenBudget: { ...DEFAULT_SETTINGS.tokenBudget, ...saved.tokenBudget }, demoDay: { ...DEFAULT_SETTINGS.demoDay, ...saved.demoDay } }
 }
 
 /** 토큰 수 짧게 (999,950 이상은 반올림하면 1000.0K가 되므로 M으로 올린다) */
@@ -870,6 +1020,36 @@ export interface SecretaryStep {
   /** 이 단계의 위험도와 이유 (인자 값으로 정한다) */
   risk?: 'normal' | 'caution' | 'danger'
   riskReason?: string
+  /** 묶음 단계(method "batch")의 항목들 — 카드에서 항목마다 뺄 수 있다. 실행은 위에서 아래로, 한 항목이 실패해도 나머지는 한다 */
+  items?: SecretaryBatchItem[]
+}
+
+/** 묶음 단계의 한 항목 = OfficeApi 호출 하나 (앞 단계를 참조하지 않는다) */
+export interface SecretaryBatchItem {
+  method: string
+  label: string
+  /** 앱이 실제 인자로 만든 한 줄 */
+  detail: string
+  args: unknown[]
+  status: SecretaryStepStatus
+  error?: string
+  note?: string
+  risk?: 'normal' | 'caution' | 'danger'
+  riskReason?: string
+  /** 대표가 카드에서 뺀 항목 — 실행하지 않는다 (이어서 하기에서도) */
+  isExcluded?: boolean
+}
+
+/**
+ * 확인 카드에 붙이는 비교 보기 — 앱이 실제 값으로 만든다 (모델이 적은 글이 아니다).
+ * text: 원문 ↔ 수정본 · image: 전 ↔ 후 그림 (data:image/png|jpeg|webp;base64). 끝난 카드에서는 그림을 지운다(src가 빈 글)
+ */
+export interface SecretaryCompare {
+  kind: 'text' | 'image'
+  /** 무엇을 비교하는지 (예: "매뉴얼 feature-flow", "1층 배치") */
+  label: string
+  before: string
+  after: string
 }
 
 export interface SecretaryEdit {
@@ -896,6 +1076,8 @@ export interface SecretaryCard {
   status: 'pending' | 'running' | 'done' | 'failed' | 'cancelled' | 'expired' | 'replaced' | 'stale'
   createdAt: number
   edit?: SecretaryEdit
+  /** 원문 ↔ 수정본 · 전 ↔ 후 비교 보기 (확인 카드에 함께 보인다) */
+  compares?: SecretaryCompare[]
 }
 
 export interface SecretaryRunOptions {
@@ -905,6 +1087,8 @@ export interface SecretaryRunOptions {
   edits?: Record<number, Record<string, string>>
   /** 첨삭 [일부 적용]으로 고른 최종 글 */
   revised?: string
+  /** 묶음 단계에서 뺀 항목: 단계 번호 → 항목 번호들 (모두 1부터) */
+  excluded?: Record<number, number[]>
 }
 
 export interface SecretaryMessage {

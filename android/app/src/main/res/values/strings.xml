@@ -186,7 +186,7 @@
     <string name="instruct_sent">%1$s 님에게 전달했어요</string>
     <string name="unlock_at">%1$s에 풀려요. 그때 자동으로 다시 연결해요.</string>
     <string name="last_connected">마지막 연결 %1$s</string>
-    <string name="tried_lan">같은 와이파이 주소</string>
+    <string name="tried_lan">같은 와이파이·VPN 주소</string>
     <string name="tried_ext">외부 주소</string>
     <string name="tried_one">%1$s에 닿지 않았어요</string>
     <string name="tried_many">%1$s 모두 닿지 않았어요</string>
@@ -221,4 +221,7 @@
     <string name="update_up_to_date">최신 버전이에요</string>
     <string name="update_available">새 버전 %1$s이 있어요</string>
     <string name="update_failed">확인하지 못했어요</string>
+    <string name="state_connfail_unreach_lo">같은 와이파이나 회사 VPN에 연결된 상태에서만 접속할 수 있어요. 와이파이·VPN을 확인한 뒤 다시 시도해 주세요.</string>
+    <string name="state_unreach_body_lo">이런 경우일 수 있어요.\n· 같은 와이파이나 회사 VPN에 연결된 상태에서만 접속할 수 있어요\n· PC가 잠자기 중이거나 꺼져 있어요\n· Claude Office가 꺼져 있어요</string>
+    <string name="qr_unreach_default_lo">PC에 닿지 않았어요. 같은 와이파이나 회사 VPN에 연결된 상태에서만 접속할 수 있어요.</string>
 </resources>

@@ -3,13 +3,15 @@ import { BellIcon, SparklesIcon, UserPlusIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CoachTour } from '@/features/CoachTour'
 import { Onboarding } from '@/features/Onboarding'
+import { TutorialDone, TutorialGuide, TutorialPicker } from '@/features/Tutorial'
 import { HireDialog } from '@/features/HireDialog'
 import { Sidebar } from '@/features/Sidebar'
 import { StaffPanel } from '@/features/StaffPanel'
 import { LevelUp } from '@/features/LevelUp'
+import { DemoStage } from '@/features/DemoStage'
 import { WhatsNew } from '@/features/WhatsNew'
 import { UpdateNotice } from '@/features/AppUpdate'
-import { RemoteUpgradeNotice } from '@/features/RemoteUpgradeNotice'
+import { RemoteLanNotice, RemoteUpgradeNotice } from '@/features/RemoteUpgradeNotice'
 import { QuickSecretary } from '@/features/secretary/QuickSecretary'
 import { AutoApproveBadge } from '@/features/AutoApprove'
 import { MOD_KEY } from '@/lib/platform'
@@ -32,6 +34,8 @@ export default function App() {
 
 function AppBody() {
   const [isTourOpen, setIsTourOpen] = useState(false)
+  // 코치마크를 끝까지 보면 "한 사이클 해 보기" 선택을 띄운다
+  const [isPickerOpen, setIsPickerOpen] = useState(false)
   const tourRequest = useOffice((s) => s.tourRequest)
   useEffect(() => {
     if (tourRequest) setIsTourOpen(true)
@@ -54,13 +58,25 @@ function AppBody() {
     <>
       <HireDialog />
       <Onboarding onStartTour={() => setIsTourOpen(true)} />
-      <CoachTour isOpen={isTourOpen} onClose={() => setIsTourOpen(false)} />
-      <WhatsNew />
+      <CoachTour
+        isOpen={isTourOpen}
+        onClose={(isFinished) => {
+          setIsTourOpen(false)
+          setIsPickerOpen(isFinished)
+        }}
+      />
+      <TutorialPicker isOpen={isPickerOpen} onClose={() => setIsPickerOpen(false)} />
+      <TutorialGuide />
+      <TutorialDone />
+      <WhatsNew isBusy={isTourOpen || isPickerOpen} />
       <UpdateNotice />
       <LevelUp />
       {!isPhone && <QuickSecretary />}
       {/* PC 주인에게만 (휴대폰에서 QR을 다시 만들면 그 휴대폰이 끊긴다) */}
       {!IS_MOBILE_SHELL && <RemoteUpgradeNotice />}
+      {!IS_MOBILE_SHELL && <RemoteLanNotice />}
+      {/* 발표장 화면은 PC 전용 (휴대폰은 회의실 기록으로 본다) */}
+      {!IS_MOBILE_SHELL && <DemoStage />}
     </>
   )
   if (!IS_MOBILE_SHELL) return <DesktopShell>{overlays}</DesktopShell>

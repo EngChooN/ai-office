@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { FolderOpenIcon } from 'lucide-react'
+import { FileUpIcon, FolderOpenIcon, StoreIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -13,6 +13,7 @@ import { useOffice, useWorkMode } from '@/store'
 import { NativeSelect } from '@/components/ui/select'
 import { ROLE_PRESETS, type AgentTemplate, type ApprovalMode, type HireInput, type ModelChoice } from '@shared/types'
 import { shortPath } from './status'
+import { StaffMarketDialog } from './StaffMarketDialog'
 import { t } from '@shared/i18n'
 
 // 화면 문구가 들어 있어 렌더할 때 만든다 (언어 바뀜 반영)
@@ -60,7 +61,7 @@ export function HireDialog() {
   const isOpen = useOffice((s) => s.hireOpen)
   const setHireOpen = useOffice((s) => s.setHireOpen)
   const select = useOffice((s) => s.select)
-  const teams = useOffice(useShallow((s) => s.teams.filter((team) => team.kind === 'hired')))
+  const teams = useOffice(useShallow((s) => s.teams.filter((team) => team.kind === 'hired' && !team.isPractice)))
   const labs = useOffice((s) => s.labs)
   const isWorkMode = useWorkMode()
   const [form, setForm] = useState<HireInput>(emptyForm)
@@ -70,10 +71,14 @@ export function HireDialog() {
   const [baseLook, setBaseLook] = useState<Look>(() => randomLook())
   const [isLookEdited, setIsLookEdited] = useState(false)
   const avatar = isLookEdited ? form.avatar : encodeLook({ ...baseLook, ...roleLook(form.role) })
+  // 직원 마켓·파일 가져오기는 PC 앱에서만 (모바일 빌드에는 없다)
+  const hasPack = typeof window.officePack !== 'undefined'
+  const [isMarketOpen, setMarketOpen] = useState(false)
 
   useEffect(() => {
     if (isOpen) {
-      setForm(emptyForm())
+      // 첫 실행 마법사에서 고른 기본 작업 폴더로 시작한다
+      setForm({ ...emptyForm(), cwd: useOffice.getState().settings.defaultCwd })
       setIsCustomRole(false)
       setTemplates([])
       setBaseLook(randomLook())
@@ -92,6 +97,21 @@ export function HireDialog() {
     const dir = await window.office.pickFolder()
     if (dir) update({ cwd: dir })
   }
+  const handleImport = async () => {
+    const pack = window.officePack
+    if (!pack) return
+    try {
+      const r = await pack.importFile()
+      if (!r) return // 파일 고르기를 취소했다
+      window.alert(r.message)
+      if (r.ok) {
+        setHireOpen(false)
+        if (r.staffIds[0]) select(r.staffIds[0])
+      }
+    } catch {
+      window.alert(t('pack.err.hire'))
+    }
+  }
   const handleTemplate = (tpl: AgentTemplate) => {
     setIsCustomRole(true)
     update({ role: tpl.name, model: tpl.model, systemPrompt: tpl.prompt })
@@ -107,11 +127,29 @@ export function HireDialog() {
   return (
     <Dialog open={isOpen} onOpenChange={setHireOpen}>
       <DialogContent className="max-w-xl">
+        <StaffMarketDialog open={isMarketOpen} onOpenChange={setMarketOpen} onHired={(id) => {
+          setHireOpen(false)
+          select(id)
+        }} />
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
           <DialogHeader>
             <DialogTitle>{t('hire.title')}</DialogTitle>
             <DialogDescription>{t('hire.desc')}</DialogDescription>
           </DialogHeader>
+
+          {hasPack && (
+            <div className="flex flex-col gap-2 rounded-lg border p-3">
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" variant="outline" size="sm" onClick={() => setMarketOpen(true)}>
+                  <StoreIcon /> {t('pack.hire.market')}
+                </Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => void handleImport()}>
+                  <FileUpIcon /> {t('pack.hire.import')}
+                </Button>
+              </div>
+              <span className="text-muted-foreground text-xs">{t('pack.hire.hint')}</span>
+            </div>
+          )}
 
           {/* 업무 모드에선 아바타가 이니셜 원이라 고르지 않는다 (직무 소품을 얹은 무작위 모습으로 고용) */}
           {!isWorkMode && (

@@ -58,6 +58,11 @@ export function Avatar({ avatar, className, name, teamId }: { avatar: number; cl
 }
 
 /** 팀장·랩 리드 표시. 업무 모드면 ★ 대신 "리드" 글자 */
+/** 튜토리얼 연습 데이터 꼬리표 (직원·카드·회의 공용) */
+export function PracticeBadge({ className }: { className?: string }) {
+  return <span className={cn('bg-status-waiting shrink-0 rounded px-1.5 text-[10px] font-semibold text-black', className)}>{t('tutorial.badge.practice')}</span>
+}
+
 export function LeadMark() {
   const isWorkMode = useWorkMode()
   if (!isWorkMode) return <span className="shrink-0 text-yellow-400">★</span>
@@ -120,6 +125,7 @@ export function StaffCard({ staff, isLead = false, isSelected, onSelect }: Props
           <div className="flex items-center gap-1.5 font-semibold">
             {isLead && <LeadMark />}
             <span className="min-w-0 truncate">{staff.name}</span>
+            {staff.isPractice && <PracticeBadge />}
           </div>
           <div className="text-muted-foreground truncate text-xs">{staff.role}</div>
         </div>
@@ -147,6 +153,12 @@ export function StaffCard({ staff, isLead = false, isSelected, onSelect }: Props
       )}
       <div className="flex items-center gap-2">
         {staff.approvals.length > 0 && <Badge className="bg-status-waiting text-black">{t('staffCard.approvals', { n: staff.approvals.length })}</Badge>}
+        {/* 데모데이 칭찬 배지 (대표 박수·MVP 누적) */}
+        {!!(staff.praise?.claps || staff.praise?.mvps) && (
+          <Badge variant="outline" title={t('staffCard.praise', { claps: staff.praise.claps, mvps: staff.praise.mvps })}>
+            {staff.praise.mvps > 0 && `🏆${staff.praise.mvps} `}👏{staff.praise.claps}
+          </Badge>
+        )}
         {staff.kind === 'external' ? (
           <Badge variant="outline">{t('staffCard.external')}</Badge>
         ) : (

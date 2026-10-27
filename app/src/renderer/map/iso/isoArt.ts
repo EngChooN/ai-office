@@ -2086,6 +2086,19 @@ export function artMeetingRoom(w: number, d: number, doorX: number, floor: Floor
 export type MeetingTableKind = 'folding' | 'pine' | 'oak' | 'walnut' | 'board'
 /** 단계별 의자 (있는 품목 그림). 강당은 좌석 줄(artHallRow)이라 없다 */
 export const MEETING_CHAIR: Record<MeetingTableKind, string> = { folding: 'lv-folding-chair', pine: 'chair-wood', oak: 'chair', walnut: 'chair-mesh', board: 'chair-leather' }
+const MEETING_CHAIR_IDS: ReadonlySet<string> = new Set(Object.values(MEETING_CHAIR))
+/** 좌석·등받이 두 장으로 나눠 그릴 의자 — 앉은 직원을 그 사이에 끼운다. 회의실 의자(가죽·메쉬·원목)는 가구 표의 의자가 아니어도 나눈다 */
+export const isSplitChair = (itemId: string) => specOf(itemId).kind === 'chair' || MEETING_CHAIR_IDS.has(itemId)
+/** 등받이가 카메라 쪽(동·남)을 향하는 방향 — 앉은 직원이 등받이 뒤에 그려진다 */
+export const isCameraBack = (r: Rot) => r === 1 || r === 2
+/** 카메라 쪽 회의 의자의 등받이 윗면 높이 (아트 px) — 등지고 앉은 직원의 어깨(≈15)부터 보이게 */
+export const MEETING_LOW_BACK_TOP = 15
+/** 회의실 의자 한 장 — 등받이가 카메라 쪽이면 등받이를 낮춰 앉은 직원의 머리·어깨가 보이게 한다. 일반 의자 그림은 그대로 */
+export function artMeetingChair(itemId: string, r: Rot, role: 'seat' | 'back'): ItemPixels {
+  if (!isCameraBack(r)) return artItem(itemId, r, role)
+  const lower = (p: Part): Part => (p.role === 'back' ? { ...p, h: Math.max(1, Math.min(p.h, MEETING_LOW_BACK_TOP - p.z)) } : p)
+  return artItemPatched(itemId, r, (def) => ({ ...def, parts: def.parts.map(lower).filter((p) => (p.role ?? 'seat') === role) }))
+}
 const tableCup = (x: number, y: number, z: number, c: string = K.paper) => b(x, y, 0.12, 0.12, z, 3, c)
 const tablePaper = (x: number, y: number, z: number) => b(x, y, 0.3, 0.22, z, 0, K.paper)
 const tableLaptop = (x: number, y: number, z: number) => [b(x, y, 0.34, 0.24, z, 1, '#c8ccd6'), b(x, y, 0.34, 0.04, z + 1, 7, '#c8ccd6')]
@@ -2174,6 +2187,276 @@ export const artHallRow = (role: 'seat' | 'back', n = 5) => artDef(hallRowDef(n)
 export const hallRowKey = (role: 'seat' | 'back', n = 5) => `meet-hall-${n}-${role}`
 /** 강당 좌석에 앉은 직원 높이 (아트 px) */
 export const HALL_SIT_Z = 9
+
+// ── 데모데이 발표장 (docs/specs/demo-stage-art.md · 이디자): 사무실 맵과 따로 그리는 무대 화면 ──
+// 칸 좌표는 발표장 로컬(왼쪽 뒤 칸 = (0,0)). 텍스처 키: 배경 `stage-hall` · 조각 `stage-{key}` · 조명 `stage-spot`
+//   이펙트 `stage-fx-{trophy|clap0|clap1|heart|star|crown}` · 전환 막 `stage-curtain-{w}x{h}` · 객석은 강당 좌석 줄 `meet-hall-6-{seat|back}`
+/** 발표장 배치 (칸). 무대는 뒤쪽 3줄, 객석은 6석 × 3줄, 양옆 통로 */
+export const STAGE = {
+  cols: 10,
+  rows: 8,
+  /** 벽 높이 (아트 px) — 사무실 벽(48)보다 높여 강당 느낌을 낸다 */
+  wallH: 64,
+  platform: { x: 1, y: 0, w: 8, d: 3, h: 8 },
+  /** 연단 오른쪽 발표자 자리(몸 전체가 보인다) · 다음 차례 대기 자리 (무대 위 z = 8) */
+  speaker: { gx: 7.0, gy: 1.35 },
+  waiting: { gx: 2.4, gy: 2.3 },
+  /** 왼쪽 통로 → 무대로 오르는 길 (아래 칸부터) */
+  stairs: [
+    { gx: 1.7, gy: 3.9, z: 0 },
+    { gx: 1.7, gy: 3.52, z: 3 },
+    { gx: 1.7, gy: 3.17, z: 6 },
+    { gx: 1.7, gy: 2.6, z: 8 },
+  ],
+  seatRows: [4, 5, 6],
+  seatX: 2,
+  seatsPerRow: 6,
+  /** 객석(18석)이 차면 맨 뒤에 서서 본다 */
+  standY: 7.4,
+} as const
+
+/** 발표장 색 — 저녁 강당: 남색 벽·보라 카펫·붉은 막 (A 파스텔 K를 그대로 섞는다) */
+export const STAGE_COLORS = {
+  wall: '#3a4a6a',
+  wallD: '#33415e',
+  wallLine: '#2c3752',
+  cap: '#4a5a7c',
+  carpet: '#4f5d82',
+  carpetL: '#566590',
+  runner: '#d0605a',
+  runnerD: '#b54e49',
+  curtain: '#c4484a',
+  curtainD: '#9a3438',
+  curtainL: '#de6a66',
+  skirt: '#2e3448',
+  screenOff: '#26304a',
+  sconce: '#ffe6a6',
+  beam: '#fff3c8',
+  gold: '#f2c94c',
+  goldL: '#fbe49a',
+  goldD: '#c79a2e',
+  skin: '#f6c9a4',
+  skinD: '#e0a77f',
+  /** 객석을 어둡게 덮는 막 (장면이 알파 0.35로 깐다) */
+  dim: '#1c2238',
+} as const
+/** 박수·MVP 때 흩날리는 종이 꽃가루 색 (장면이 2×1 · 1×2 아트 px 사각형으로 뿌린다) */
+export const STAGE_CONFETTI = [K.orange, K.yellow, K.mint, K.pink, K.sky, K.purple] as const
+
+const stageOrigin = (): Pt => [STAGE.rows * HW + WALL_T * HW + 4, STAGE.wallH + 4 + 2]
+const SCREEN = { x: 2.5, w: 5, y: 0.1, z: 20, h: 32 }
+
+/** 발표장 배경 한 장: 뒤·왼쪽 벽(벽등·몰딩) + 카펫 바닥(양옆 통로 러너) + 막 장식 + 대형 스크린(꺼진 화면). 직원·조각은 이 위에 */
+export function artStageHall(): { cv: Cv; o: Pt } {
+  const { cols, rows, wallH: H } = STAGE
+  const C2 = STAGE_COLORS
+  const pad = 4
+  const cv = new Cv((cols + rows) * HW + WALL_T * 2 * HW + pad * 2, (cols + rows) * HH + H + SLAB + pad * 2 + 4)
+  const o = stageOrigin()
+  const wall = (q: Q): Fill => {
+    const along = q.face === 'S' ? q.gx : q.gy
+    if (q.z > H - 4) return C2.cap
+    if (q.z < 12) return frac(along) < 0.05 ? C2.wallLine : C2.wallD // 아래 판벽
+    if (q.z < 13) return K.gold // 판벽 위 금색 띠
+    // 벽등: 두 칸마다 (칸 1·3·5…) 따뜻한 점 + 둘레 은은한 빛
+    const s = Math.abs(frac(along / 2) - 0.5)
+    const dz = Math.abs(q.z - 40)
+    if (s < 0.03 && dz < 1.5) return C2.sconce
+    if (s < 0.1 && dz < 5) return mix(C2.wall, C2.sconce, 0.22)
+    return frac(along) < 0.03 ? C2.wallLine : C2.wall
+  }
+  drawBox(cv, o, { x: -WALL_T, y: -WALL_T, w: WALL_T, d: WALL_T, z: -SLAB, h: H + SLAB, top: C2.cap, S: C2.wallD, E: C2.wallD })
+  drawBox(cv, o, { x: 0, y: -WALL_T, w: cols, d: WALL_T, z: -SLAB, h: H + SLAB, top: C2.cap, S: wall, E: C2.wallD })
+  drawBox(cv, o, { x: -WALL_T, y: 0, w: WALL_T, d: rows, z: -SLAB, h: H + SLAB, top: C2.cap, S: C2.wallD, E: wall })
+  const runner = (gx: number) => (gx >= 1 && gx < 2) || (gx >= 8 && gx < 9)
+  drawBox(cv, o, {
+    x: 0,
+    y: 0,
+    w: cols,
+    d: rows,
+    z: -SLAB,
+    h: SLAB,
+    noHi: true,
+    top: (q) => (q.gy > 3 && runner(q.gx) ? (frac(q.gx) < 0.08 || frac(q.gx) > 0.92 ? C2.runnerD : C2.runner) : (Math.floor(q.gx * 2) + Math.floor(q.gy * 2)) % 2 ? C2.carpetL : C2.carpet),
+    S: mix(C2.wall, S.sh, 0.2),
+    E: mix(C2.wall, S.sh, 0.2),
+  })
+  // 스크린 위 막 장식 (아래 가장자리 금 술)
+  drawBox(cv, o, { x: 1, y: 0, w: 8, d: 0.12, z: 54, h: 9, top: C2.curtainD, E: C2.curtainD, S: (q) => (q.v < 0.18 ? (frac(q.u * 40) < 0.5 ? K.gold : null) : frac(q.u * 16) < 0.25 ? C2.curtainD : C2.curtain) })
+  // 대형 스크린: 테두리 + 꺼진 화면 (슬라이드는 장면이 stageScreenQuad에 기울여 얹는다)
+  drawBox(cv, o, { x: SCREEN.x, y: 0, w: SCREEN.w, d: SCREEN.y, z: SCREEN.z, h: SCREEN.h, top: K.dark, E: K.dark, S: (q) => (q.u < 0.03 || q.u > 0.97 || q.v < 0.06 || q.v > 0.94 ? K.dark : C2.screenOff) })
+  outline(cv)
+  return { cv, o }
+}
+
+/** 스크린 화면(테두리 안) 네 꼭짓점 — artStageHall 텍스처 안 아트 px, [왼위, 오위, 오아래, 왼아래]. 가로 변은 오른쪽으로 갈수록 0.5씩 내려간다 */
+export function stageScreenQuad(): [number, number][] {
+  const o = stageOrigin()
+  const { x, w, y, z, h } = SCREEN
+  const [x0, x1, z0, z1] = [x + w * 0.03, x + w * 0.97, z + h * 0.06, z + h * 0.94]
+  return [P(o, x0, y, z1), P(o, x1, y, z1), P(o, x1, y, z0), P(o, x0, y, z0)]
+}
+
+/** 발표장 조각: 직원과 깊이 정렬해 그린다. at = 조각 로컬 (0,0)이 놓이는 발표장 칸 (box는 조각 로컬) */
+export interface StagePiece extends ItemPixels {
+  key: 'platform' | 'curtainL' | 'curtainR' | 'lectern'
+  at: { gx: number; gy: number }
+}
+
+function stagePiece(key: StagePiece['key'], at: StagePiece['at'], parts: Part[], flat = false): StagePiece {
+  const W = Math.max(1, Math.ceil(Math.max(...parts.map((p) => p.x + p.w)) - 1e-6))
+  const D = Math.max(1, Math.ceil(Math.max(...parts.map((p) => p.y + p.d)) - 1e-6))
+  return { ...artDef({ name: key, W, D, parts, flat }, 0), key, at }
+}
+
+/** 막 주름: 세로 줄무늬 명암 + 아래 금 단 */
+const curtainFolds = (n: number) => (q: Q): Fill => {
+  if (q.v < 0.04) return K.gold
+  const f = frac(q.u * n)
+  return f < 0.18 ? STAGE_COLORS.curtainD : f < 0.42 ? STAGE_COLORS.curtain : f < 0.58 ? STAGE_COLORS.curtainL : STAGE_COLORS.curtain
+}
+
+/** 무대 8×3(높이 8, 앞단 주황 띠·바닥 조명·왼쪽 계단) · 뒤 양옆 붉은 막 · 연단(금 명판·마이크) */
+export function artStagePieces(): StagePiece[] {
+  const C2 = STAGE_COLORS
+  const { w, d, h } = STAGE.platform
+  const skirt = (n: number) => (q: Q): Fill => (q.v > 0.78 ? K.orange : frac(q.u * n) < 0.06 ? mix(C2.skirt, S.sh, 0.4) : C2.skirt)
+  const boards = (q: Q): Fill => {
+    if (q.gy > d - 0.06) return K.orange
+    if (frac(q.gy * 3) < 0.06) return K.woodD
+    return frac(q.gx / 2 + Math.floor(q.gy * 3) * 0.37) < 0.02 ? K.woodD : K.wood
+  }
+  const lamps: Part[] = []
+  for (let x = 1.6; x < w - 0.2; x += 0.9) lamps.push(b(x, d - 0.18, 0.16, 0.12, h, 2, K.dark, { top: K.yellow, S: C2.beam }))
+  const curtain = [b(0, 0, 0.45, 1, 0, 60, C2.curtain, { top: C2.curtainD, S: curtainFolds(2), E: curtainFolds(5) })]
+  return [
+    stagePiece('platform', { gx: STAGE.platform.x, gy: STAGE.platform.y }, [
+      b(0, 0, w, d, 0, h, C2.skirt, { top: boards, S: skirt(16), E: skirt(6) }),
+      // 계단 두 칸 (무대 앞 왼쪽, 통로 쪽)
+      b(0.2, d, 1, 0.35, 0, 6, K.wood, { top: K.woodL, S: K.woodD, E: K.woodD }),
+      b(0.2, d + 0.35, 1, 0.35, 0, 3, K.wood, { top: K.woodL, S: K.woodD, E: K.woodD }),
+      ...lamps,
+    ]),
+    stagePiece('curtainL', { gx: 1, gy: 0 }, curtain, true),
+    stagePiece('curtainR', { gx: 8.55, gy: 0 }, curtain, true),
+    stagePiece(
+      'lectern',
+      { gx: 5.95, gy: 1.5 },
+      [
+        b(0, 0, 0.7, 0.6, h, 2, K.walnut),
+        b(0.05, 0.05, 0.6, 0.5, h + 2, 12, K.walnutT, { top: K.woodL, S: (q) => (Math.abs(q.u - 0.5) < 0.24 && q.v > 0.5 && q.v < 0.78 ? K.gold : q.v > 0.88 ? K.orange : K.walnutT) }),
+        b(0.02, 0.02, 0.66, 0.56, h + 14, 2, K.woodL),
+        // 마이크는 발표자 쪽(오른쪽)으로
+        b(0.56, 0.2, 0.05, 0.05, h + 16, 6, K.metal),
+        b(0.54, 0.18, 0.09, 0.09, h + 22, 2, K.dark),
+      ],
+      true,
+    ),
+  ]
+}
+
+/** 객석 자리 n개 — 가운데부터 채운다 (6석 × 3줄, 넘치면 맨 뒤에 선다). 앉은 직원은 등(back)을 보이고 z = HALL_SIT_Z */
+export function stageSeats(n: number): { gx: number; gy: number; z: number; isSeated: boolean }[] {
+  const order = [2, 3, 1, 4, 0, 5]
+  const cap = STAGE.seatRows.length * STAGE.seatsPerRow
+  return Array.from({ length: n }, (_, i) => {
+    if (i >= cap) return { gx: 1.6 + ((i - cap) % 7) * 1.1, gy: STAGE.standY + Math.floor((i - cap) / 7) * 0.3, z: 0, isSeated: false }
+    return { gx: STAGE.seatX + order[i % 6] + 0.5, gy: STAGE.seatRows[Math.floor(i / 6)] + 0.41, z: HALL_SIT_Z, isSeated: true }
+  })
+}
+
+/** 무대 조명 한 줄기: 위에서 내려오는 반투명 원뿔 + 바닥 빛 웅덩이. o = 웅덩이 가운데(발 위치). 장면은 ADD 섞기로 얹는다 */
+export function artStageSpot(): { cv: Cv; o: Pt } {
+  const cv = new Cv(44, 96)
+  const [cx, fy] = [22, 86]
+  const beam = C(STAGE_COLORS.beam)
+  for (let y = 0; y < fy; y++) {
+    const half = 4 + (16 * y) / fy
+    const a = Math.round(40 + (36 * y) / fy)
+    for (let x = Math.ceil(cx - half); x <= Math.floor(cx + half); x++) cv.set(x, y, [beam[0], beam[1], beam[2], Math.abs(x - cx) > half - 1.5 ? a - 16 : a])
+  }
+  for (let y = -8; y <= 8; y++) for (let x = -20; x <= 20; x++) if ((x * x) / 400 + (y * y) / 64 <= 1) cv.set(cx + x, fy + y, [beam[0], beam[1], beam[2], (x * x) / 400 + (y * y) / 64 < 0.45 ? 110 : 80])
+  return { cv, o: [cx, fy] }
+}
+
+/** 칸 그림(행 문자열) → 픽셀 + 외곽선 */
+function pixmap(rows: string[], col: Record<string, Color>) {
+  const cv = new Cv(rows[0].length + 2, rows.length + 2)
+  rows.forEach((row, y) => [...row].forEach((k, x) => col[k] && cv.set(x + 1, y + 1, C(col[k]))))
+  outline(cv)
+  return cv
+}
+
+/** MVP 트로피 20×24 — 금 컵(손잡이·별) + 월넛 받침(금 명판). 아래 가운데가 바닥 */
+export function artStageTrophy() {
+  const { gold, goldL, goldD } = STAGE_COLORS
+  const cv = new Cv(20, 24)
+  const cx = 9.5
+  const row = (y: number, hw: number, c: (x: number, l: number, r: number) => Color) => {
+    for (let x = Math.ceil(cx - hw); x <= Math.floor(cx + hw); x++) cv.set(x, y, C(c(x, cx - hw, cx + hw)))
+  }
+  const tone = (x: number, l: number, r: number) => (x < l + (r - l) * 0.3 ? goldL : x > l + (r - l) * 0.75 ? goldD : gold)
+  // 손잡이 고리 (두 겹)
+  for (const s of [-1, 1])
+    for (const r of [2.6, 2.0])
+      for (let i = 0; i <= 30; i++) {
+        const t = (i / 30) * Math.PI
+        cv.set(cx + s * (5.2 + Math.sin(t) * r), 4.2 + (1 - Math.cos(t)) * 2.4, C(s < 0 ? goldL : goldD))
+      }
+  for (let y = 2; y <= 11; y++) row(y, 1 + 5.5 * Math.sqrt(Math.max(0, 1 - ((y - 2) / 10) ** 2)), (x, l, r) => (y === 2 ? goldL : x === Math.ceil(l) + 1 && y > 3 && y < 9 ? WHITE : tone(x, l, r)))
+  for (const [x, y] of [[0, 5], [-1, 6], [0, 6], [1, 6], [0, 7]]) cv.set(Math.floor(cx) + x, y, C(goldD)) // 컵의 별
+  for (let y = 12; y <= 14; y++) row(y, y === 13 ? 1.6 : 0.6, tone)
+  for (let y = 15; y <= 16; y++) row(y, 4, tone)
+  for (let y = 17; y <= 21; y++) row(y, 5.5, (x) => (y > 17 && y < 21 && Math.abs(x - cx) < 2.6 ? gold : K.walnut))
+  outline(cv)
+  return cv
+}
+
+/** 박수 손 16×14 두 장 (0 = 벌림, 1 = 마주침 + 반짝 선) — 객석 머리 위에서 번갈아 보인다 */
+export function artStageClap(frame: 0 | 1) {
+  const { skin, skinD } = STAGE_COLORS
+  const cv = new Cv(18, 16)
+  const hand = (hx: number, tilt: number) => {
+    for (let y = -5; y <= 5; y++)
+      for (let x = -3; x <= 3; x++) {
+        const u = x - tilt * y * 0.35
+        if ((u * u) / 7 + (y * y) / 25 <= 1) cv.set(hx + x, 10 + y, C(u * tilt > 1 ? skinD : skin))
+      }
+  }
+  hand(frame ? 7 : 5, 1)
+  hand(frame ? 10 : 12, -1)
+  outline(cv)
+  if (frame) for (const [a, z] of [[[8.5, 0], [8.5, 2]], [[3, 2], [4, 3]], [[14, 2], [13, 3]]] as Pt[][]) line(cv, a, z, K.yellow)
+  return cv
+}
+
+/** 칭찬 하트 9×8 (한마디) */
+export const artStageHeart = () =>
+  pixmap(['.pp...pp.', 'pwpp.pppp', 'pwppppppp', 'ppppppppp', '.ppppppp.', '..ppppp..', '...ppp...', '....p....'], { p: K.pink, w: WHITE })
+
+/** 반짝 별 9×9 (박수·MVP 때 떠오른다) */
+export const artStageStar = () =>
+  pixmap(['....y....', '....y....', '...yyy...', 'yyyywyyyy', '.yyyyyyy.', '..yyyyy..', '..yy.yy..', '.yy...yy.', '.y.....y.'], { y: K.yellow, w: WHITE })
+
+/** MVP 왕관 11×5 — MVP 직원 머리 위에 붙는다 */
+export const artStageCrown = () =>
+  pixmap(['G....G....G', 'GG..GGG..GG', 'GGGGGGGGGGG', 'GrGGGbGGGrG', 'ggggggggggg'], { G: STAGE_COLORS.gold, g: STAGE_COLORS.goldD, r: K.red, b: K.blue })
+
+/** 장면 전환용 막 한 폭 (평면, w×h 아트 px) — 양쪽에서 닫혔다 열린다. 주름 10px · 아래 금 술 5px */
+export function artStageCurtainPanel(w: number, h: number) {
+  const { curtain, curtainD, curtainL, goldD } = STAGE_COLORS
+  const cv = new Cv(w, h)
+  for (let y = 0; y < cv.h; y++)
+    for (let x = 0; x < cv.w; x++) {
+      if (y >= cv.h - 5) {
+        if (y < cv.h - 2 || x % 2 === 0) cv.set(x, y, C(y === cv.h - 5 ? goldD : K.gold))
+        continue
+      }
+      const t = Math.cos(frac(x / 10) * Math.PI * 2)
+      cv.set(x, y, t > 0.55 ? mix(curtain, curtainL, (t - 0.55) * 1.6) : t < -0.4 ? mix(curtain, curtainD, (-t - 0.4) * 1.6) : C(curtain))
+    }
+  return cv
+}
 
 // ── 바닥·벽 재질 (M1~M5, 문서 6절 · 김기획 레벨표 2-2절) ──────
 type LevelFloorMat = 'concrete' | 'vinyl' | 'tile' | 'carpet' | 'wood' | 'herring' | 'terrazzo' | 'marble' | 'marbleGold'

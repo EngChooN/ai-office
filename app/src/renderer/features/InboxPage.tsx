@@ -8,7 +8,7 @@ import { PlanCard } from './PlanCard'
 import { QuestionBox, StopWorkButton } from './QuestionBox'
 import { RunCard } from './RunCard'
 import { Avatar } from './StaffCard'
-import { AutoHandledList } from './AutoApprove'
+import { AlwaysApproveButton, AutoHandledList } from './AutoApprove'
 import { shortPath, workDirLabel } from './status'
 import { fmtDate, t } from '@shared/i18n'
 
@@ -112,6 +112,7 @@ export function InboxPage() {
                 <Button size="sm" onClick={() => void window.office.decide(a.id, true)}>
                   <CheckIcon /> {t('inbox.approve')}
                 </Button>
+                <AlwaysApproveButton approval={a} staffName={a.staff.name} />
                 <Button size="sm" variant="outline" onClick={() => void window.office.decide(a.id, false)}>
                   {t('inbox.reject')}
                 </Button>

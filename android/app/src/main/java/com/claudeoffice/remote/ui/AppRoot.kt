@@ -169,6 +169,7 @@ fun AppRoot(repo: OfficeRepository, launch: LaunchRequest?, onLaunchHandled: () 
                     // 쓰던 연결이 살아 있으면 그대로 두고 돌아갈 수 있게 한다
                     onBackToPrevious = if (state.gate == null) ({ onboarding = null }) else null,
                     tried = step.tried,
+                    isLanOnly = step.qr.isLanOnly,
                 )
                 Onboarding.QrNeedsUpdate -> GateScreen(Gate.NeedsAppUpdate, 0, onScan = { onboarding = Onboarding.Scan }, onRetry = { onboarding = Onboarding.Scan }, onSettings = null)
                 Onboarding.Connected -> ConnectedScreen(state.address) { onboarding = null }
@@ -295,7 +296,7 @@ private fun MainRoot(repo: OfficeRepository, requestedTab: Tab?, onTab: (Tab) ->
             Box(Modifier.weight(1f)) {
                 when {
                     tab == Tab.SETTINGS -> SettingsTab(state, onForget = { repo.forget() })
-                    isUnreachable -> ReachScreen(state.reach, state.lastSuccessAt, state.tried) { scope.launch { repo.retry() } }
+                    isUnreachable -> ReachScreen(state.reach, state.lastSuccessAt, state.tried, state.isLanOnly) { scope.launch { repo.retry() } }
                     tab == Tab.STAFF -> Box(Modifier.alpha(if (state.reach == Reach.PHONE_OFFLINE) 0.6f else 1f)) {
                         StaffTab(
                             state, repo::refresh,

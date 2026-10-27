@@ -14,6 +14,8 @@ export interface QrPayload {
   lan?: string
   /** 이 PC가 제공하는 가장 높은 프로토콜 버전 (선택 — v2 규격 2-1절. 없으면 v1만) */
   pv?: number
+  /** 같은 네트워크 전용 모드 (선택 — true면 host가 내부 주소이고 밖에서는 붙을 수 없다. 앱은 이 값을 보고 안내한다. 모르는 앱은 무시) */
+  lo?: boolean
 }
 
 const HOST = /^(?:[A-Za-z0-9.-]{1,255}|\[?[0-9A-Fa-f:.]{2,45}\]?)$/
@@ -32,7 +34,7 @@ export function isValidQrPayload(p: QrPayload) {
 }
 
 /** QR 내용 — lan이 있으면 맨 뒤에 붙인다 (모르는 앱은 무시한다) */
-export const qrText = (p: QrPayload) => JSON.stringify({ v: p.v, host: p.host, port: p.port, token: p.token, spki: p.spki, ...(p.lan ? { lan: p.lan } : {}), ...(p.pv ? { pv: p.pv } : {}) })
+export const qrText = (p: QrPayload) => JSON.stringify({ v: p.v, host: p.host, port: p.port, token: p.token, spki: p.spki, ...(p.lan ? { lan: p.lan } : {}), ...(p.pv ? { pv: p.pv } : {}), ...(p.lo ? { lo: true } : {}) })
 
 /** QR에 넣을 같은 와이파이 주소: 사설 IPv4이고 외부 주소(host)와 다를 때만 */
 export const lanForQr = (host: string, lan: string | null) => (lan && isLanAddress(lan) && lan !== host ? lan : undefined)
