@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils'
 import { useNow } from '@/features/status'
 import { CARD_TTL_MS } from '@shared/secretaryTools'
 import type { SecretaryBatchItem, SecretaryCard, SecretaryStep } from '@shared/types'
-import { t, type TKey } from '@shared/i18n'
+import { t, tr, type TKey } from '@shared/i18n'
 import { CompareList } from './CompareView'
 
 // 확인 카드 (secretary-ui.md 4-1~4-3): 기획 카드 틀 + 하위 업무 줄. [실행]을 눌러야만 앱이 실행한다 (main secretaryCore)
@@ -16,6 +16,10 @@ const NOT_REPEATABLE = new Set(['hire', 'createTeam', 'createLab', 'createTask',
 
 /** 위험 카드의 동사 버튼 */
 const DANGER_VERB: Record<string, TKey> = { fire: 'secretary.danger.fire', deleteTeam: 'secretary.danger.deleteTeam', deleteLab: 'secretary.danger.deleteLab', deleteManual: 'secretary.danger.deleteManual' }
+
+/** 단계 이름·내용을 지금 언어로 — 키가 없는 예전 카드는 저장된 글자 그대로 */
+const labelOf = (s: SecretaryStep | SecretaryBatchItem) => (s.labelI18n ? tr(s.labelI18n) : s.label)
+const detailOf = (s: SecretaryStep | SecretaryBatchItem) => (s.detailI18n ? s.detailI18n.map((l) => tr(l)).join('\n') : s.detail)
 
 /** 묶음 항목 한 줄: 실행 전에는 체크(빼기), 실행 뒤에는 결과 표시 */
 function BatchItem({ item, isChoosing, isOn, onToggle }: { item: SecretaryBatchItem; isChoosing: boolean; isOn: boolean; onToggle: () => void }) {
@@ -33,7 +37,7 @@ function BatchItem({ item, isChoosing, isOn, onToggle }: { item: SecretaryBatchI
       )}
       <div className="flex min-w-0 flex-1 flex-col">
         <span className={cn('break-words', item.risk === 'caution' && 'text-status-waiting', isOff && 'line-through')}>
-          <span className="font-medium">{item.label}</span> {item.detail && <span className="selectable whitespace-pre-wrap">{item.detail}</span>}
+          <span className="font-medium">{labelOf(item)}</span> {item.detail && <span className="selectable whitespace-pre-wrap">{detailOf(item)}</span>}
         </span>
         {item.status === 'failed' && item.error && <span className="text-status-error">{item.error}</span>}
       </div>
@@ -116,9 +120,9 @@ export function ConfirmCard({ card }: { card: SecretaryCard }) {
           <li key={i} className={cn('flex gap-2 rounded-lg border p-2', s.status === 'skipped' && 'opacity-60')}>
             <StepMark step={s} no={i + 1} />
             <div className="flex min-w-0 flex-1 flex-col gap-1">
-              <span className={cn('text-xs font-medium break-words', s.risk === 'caution' && 'text-status-waiting', s.risk === 'danger' && 'text-status-error')}>{s.label}</span>
+              <span className={cn('text-xs font-medium break-words', s.risk === 'caution' && 'text-status-waiting', s.risk === 'danger' && 'text-status-error')}>{labelOf(s)}</span>
               {/* 앱이 실제 인자로 만든 내용 — 실행될 지시 문장·시간·폴더·권한 값을 줄이지 않고 보인다 */}
-              {s.detail && <span className="selectable text-[11px] break-words whitespace-pre-wrap">{s.detail}</span>}
+              {s.detail && <span className="selectable text-[11px] break-words whitespace-pre-wrap">{detailOf(s)}</span>}
               {/* 비서(모델)가 붙인 설명은 보조로만 */}
               {s.note && <span className="text-muted-foreground text-[11px] break-words">{t('secretary.stepNote', { note: s.note })}</span>}
               {s.status === 'failed' && s.error && <span className="text-status-error text-[11px]">{s.error}</span>}

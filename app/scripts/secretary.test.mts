@@ -6,6 +6,8 @@ import { test } from 'node:test'
 import { OFFICE_METHODS } from '../src/shared/officeApiShape.ts'
 import { BATCH_ITEMS_MAX, BATCH_METHOD, CARD_TTL_MS, cleanCompares, COMPARE_MAX, methodsOfKind, SECRETARY_SELF_METHODS, SECRETARY_TOOLS, signatureGuide } from '../src/shared/secretaryTools.ts'
 import { SecretaryDesk, type DeskDeps, type EditTarget } from '../src/main/secretaryCore.ts'
+import { DICT } from '../src/shared/i18n/dict/index.ts'
+import { tr } from '../src/shared/i18n/index.ts'
 
 const NOW = 1_800_000_000_000
 
@@ -523,6 +525,11 @@ test('묶음: OfficeApi 메서드가 아닌 카드 형식 — 항목은 변경 �
   assert.equal(batch.method, BATCH_METHOD)
   assert.equal(batch.label, '여러 항목 한 번에 — 오래된 카드 닫기')
   assert.equal(batch.detail, '12개 항목')
+  // 화면은 저장된 키+인자로 그때 언어로 (이름은 그대로)
+  assert.equal(tr(batch.labelI18n!, 'en'), 'Several items at once — 오래된 카드 닫기')
+  assert.equal(tr(batch.detailI18n![0], 'ja'), '12件')
+  assert.equal(tr(batch.items![0].labelI18n!, 'en'), 'Edit task card')
+  assert.match(batch.items![0].detailI18n!.map((l) => tr(l, 'en')).join('\n'), /^Target: /)
   assert.equal(batch.items?.length, 12)
   assert.deepEqual(batch.items?.[0].args, ['t0', { status: 'done' }])
   assert.equal(batch.items?.[0].status, 'pending')
@@ -686,4 +693,9 @@ test('꾸미기: 가지고 있는 가구 배치 8개는 확인 카드 · 사기�
   assert.ok('card' in ok, 'error' in ok ? ok.error : '')
   assert.equal(ok.card.risk, 'caution')
   assert.deepEqual(calls, [])
+})
+
+test('확인 카드 단계 이름: 변경 메서드마다 사전 키(secretary.tool.<메서드>)가 있다', () => {
+  const missing = methodsOfKind('change').filter((m) => !Object.hasOwn(DICT, `secretary.tool.${m}`))
+  assert.deepEqual(missing, [])
 })

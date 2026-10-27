@@ -4,9 +4,10 @@
 import type { OfficeMethod } from '../shared/officeApiShape.ts'
 import { BATCH_ITEMS_MAX, BATCH_LABEL, BATCH_METHOD, CARD_STEPS_MAX, CARD_TTL_MS, cardRisk, cleanCompares, excludeMessage, isChangeMethod, isReadMethod, SECRETARY_SIGNATURES, SECRETARY_TOOLS } from '../shared/secretaryTools.ts'
 import type { SecretaryBatchItem, SecretaryCard, SecretaryCompare, SecretaryRunOptions, SecretaryStep, SecretaryStepStatus } from '../shared/types.ts'
+import type { I18nText } from '../shared/i18n/index.ts'
 import path from 'node:path'
 import { checkArgs, V2_METHODS } from './remote/v2.ts'
-import { describeStep, maxRisk, stepRisk, type NameOf } from './secretaryDescribe.ts'
+import { describeLines, linesText, maxRisk, stepRisk, type NameOf } from './secretaryDescribe.ts'
 
 /** 첨삭 대상: 어떤 값을 다듬는지 (적용 직전 원문이 그대로인지 확인한다) */
 export type EditTarget = { kind: 'staffPrompt'; staffId: string } | { kind: 'taskDetail'; taskId: string } | { kind: 'manualBody'; name: string; scope: string } | { kind: 'labGoal'; labId: string }
@@ -74,6 +75,8 @@ const AI_READ_INTERVAL_MS = 10 * 60_000
 const REF = /^\$(\d+)\.([A-Za-z_][\w.]*)$/
 const TEXT_MAX = 200
 const clip = (t: string, n = TEXT_MAX) => (t.length > n ? `${t.slice(0, n)}…` : t)
+/** 카드 단계 이름을 화면 언어로 (사전 secretary.tool.<메서드>) */
+const toolLabel = (method: string): I18nText => ({ key: `secretary.tool.${method}`, fallback: SECRETARY_TOOLS[method as OfficeMethod]?.label ?? method })
 
 /** "$2.id" 같은 참조를 모두 찾는다 */
 function refsIn(v: unknown, out: { step: number; path: string }[] = []) {
@@ -203,7 +206,8 @@ export class SecretaryDesk {
   /** 단계의 본문·위험도·고칠 값 — 실제 인자로 (고친 뒤에도 다시 만든다) */
   private stepView(method: OfficeMethod, args: unknown[]) {
     const { risk, reason } = stepRisk(method, args)
-    return { detail: describeStep(method, args, this.deps.nameOf ?? (() => null)), risk, ...(reason ? { riskReason: reason } : {}), editable: editableOf(method, args) }
+    const lines = describeLines(method, args, this.deps.nameOf ?? (() => null))
+    return { detail: linesText(lines), detailI18n: lines, risk, ...(reason ? { riskReason: reason } : {}), editable: editableOf(method, args) }
   }
 
   /** 확인 카드 만들기 — 실행하지 않는다 */
@@ -258,7 +262,7 @@ export class SecretaryDesk {
     if (bad) return { error: `${where} "${s.method}": ${bad}의 값이 맞지 않아요. 인자 모양: ${s.method}${SECRETARY_SIGNATURES[s.method] ?? ''}` }
     // 지시 문장 같은 값은 줄이지 않는다
     const note = [s.label, s.detail].map((x) => x?.trim()).filter(Boolean).join(' · ')
-    return { call: { ...this.stepView(s.method, args), method: s.method, label: SECRETARY_TOOLS[s.method].label ?? s.method, args, ...(note ? { note: clip(note) } : {}) } }
+    return { call: { ...this.stepView(s.method, args), method: s.method, label: SECRETARY_TOOLS[s.method].label ?? s.method, labelI18n: toolLabel(s.method), args, ...(note ? { note: clip(note) } : {}) } }
   }
 
   /** 묶음 단계 — 항목은 변경 메서드만, 앞 단계 참조 없이. 위험도는 항목 중 가장 높은 것 */
@@ -286,6 +290,8 @@ export class SecretaryDesk {
         method: BATCH_METHOD,
         label: name ? `${BATCH_LABEL} — ${clip(name, 60)}` : BATCH_LABEL,
         detail: `${items.length}개 항목`,
+        labelI18n: name ? { key: 'secretary.batchLabelNamed', params: { name: clip(name, 60) } } : { key: 'secretary.batchLabel' },
+        detailI18n: [{ key: 'secretary.batchCount', params: { n: items.length } }],
         args: [],
         status: 'pending',
         risk,
@@ -314,7 +320,7 @@ export class SecretaryDesk {
       id: this.deps.newId(),
       kind: 'edit',
       title: `${clip(input.targetLabel, 60)} 다듬기`,
-      steps: [{ method, label: `${SECRETARY_TOOLS[method].label ?? method} — ${clip(input.targetLabel, 60)}`, detail: '', args, status: 'pending' }],
+      steps: [{ method, label: `${SECRETARY_TOOLS[method].label ?? method} — ${clip(input.targetLabel, 60)}`, labelI18n: { key: 'secretary.labelNamed', params: { label: toolLabel(method), name: clip(input.targetLabel, 60) } }, detail: '', args, status: 'pending' }],
       risk: 'normal',
       warnings: [],
       status: 'pending',

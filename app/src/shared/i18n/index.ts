@@ -68,3 +68,21 @@ export function tx(key: string, fallback: string, vars?: TVars, lang: Lang = cur
   const e = (DICT as Record<string, Record<Lang, string> | undefined>)[key]
   return fill(e?.[lang] || fallback, vars)
 }
+
+/** 저장해 두고 보일 때 번역하는 글 = 사전 키 + 인자. 인자 안에 또 번역할 글·목록을 넣을 수 있다 (이름·사용자 입력은 그냥 글자로) */
+export interface I18nText {
+  key: string
+  params?: Record<string, I18nArg>
+  /** 키가 사전에 없을 때 보일 원문 (가구 이름처럼 키를 id로 만든 경우) */
+  fallback?: string
+}
+export type I18nArg = string | number | I18nText | { list: I18nArg[]; sep: string }
+
+/** 저장된 I18nText를 지금 언어(또는 준 언어)로 */
+export function tr(v: I18nArg, lang: Lang = current): string {
+  if (typeof v === 'string') return v
+  if (typeof v === 'number') return String(v)
+  if ('list' in v) return v.list.map((x) => tr(x, lang)).join(v.sep)
+  const vars = v.params && Object.fromEntries(Object.entries(v.params).map(([k, x]) => [k, tr(x, lang)]))
+  return v.fallback === undefined ? t(v.key as TKey, vars, lang) : tx(v.key, v.fallback, vars, lang)
+}

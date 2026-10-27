@@ -1,9 +1,12 @@
 // 확인 카드에 보일 글을 앱이 실제 인자로 만든다 (한리뷰 H1) — 모델이 쓴 설명은 보조로만
 // 실행될 값(지시 문장 전체·시간·폴더·권한)을 숨기지 않고, 위험한 값이면 위험도를 코드로 올린다. electron 없음 (테스트에서 그대로)
+// 줄마다 사전 키+인자(I18nText)로 만들어 카드에 같이 저장한다 — 화면은 그때 언어로, detail 글자는 한국어로
 
 import type { OfficeMethod } from '../shared/officeApiShape.ts'
 import { SECRETARY_TOOLS, type SecretaryRisk } from '../shared/secretaryTools.ts'
-import { furnitureName } from './secretaryDecor.ts'
+import { shopItem } from '../shared/economy.ts'
+import { tr, type I18nArg, type I18nText } from '../shared/i18n/index.ts'
+import type { TKey } from '../shared/i18n/dict/index.ts'
 
 /** 가구 방향 (화면 기준 — 사무실 화면의 돌리기 표시와 같다) */
 const ROT = ['↙', '↖', '↗', '↘']
@@ -11,208 +14,183 @@ const ROT = ['↙', '↖', '↗', '↘']
 /** id → 이름 (직원·팀·랩·업무 카드·결재). 모르면 null */
 export type NameOf = (id: string) => string | null
 
-const SETTING_LABEL: Record<string, string> = {
-  monthlyBudgetUsd: '월 비용 예산($)',
-  tokenBudget: '토큰 한도(일·주·월)',
-  theme: '테마',
-  dayNight: '낮과 밤',
-  plants: '화분',
-  isChatterOn: '휴게실 수다',
-  workHours: '근무시간',
-  layout: '소품 배치',
-  isTrayOn: '메뉴바 아이콘',
-  isOnboarded: '첫 실행 안내 마침',
-  isWorkMode: '업무 모드',
-  isFullAccessNoticeSeen: '휴대폰 안내 봄',
-  isProviderBannerSeen: 'GPT 직원 안내 봄',
-}
+/** 사전 키 이름: secretary.setting.<키> */
+const SETTING_KEYS = new Set(['monthlyBudgetUsd', 'tokenBudget', 'theme', 'dayNight', 'plants', 'isChatterOn', 'workHours', 'layout', 'isTrayOn', 'isOnboarded', 'isWorkMode', 'isFullAccessNoticeSeen', 'isProviderBannerSeen'])
 /** 이 설정은 바꿔도 꾸미기라 보통 */
 const COSMETIC_SETTINGS = new Set(['theme', 'dayNight', 'plants', 'isChatterOn', 'layout'])
 
-const FIELD_LABEL: Record<string, string> = {
-  name: '이름',
-  role: '직무',
-  title: '제목',
-  detail: '설명',
-  topic: '주제',
-  goal: '목표',
-  cwd: '작업 폴더',
-  model: '모델',
-  avatar: '모습 번호',
-  systemPrompt: '업무 지침',
-  approvalMode: '결재 방식',
-  teamId: '팀',
-  labId: '랩',
-  labIds: '랩',
-  leadId: '리드',
-  memberIds: '멤버',
-  participantIds: '참석자',
-  assigneeId: '담당',
-  status: '칸',
-  rounds: '발언 바퀴',
-  color: '색',
-  time: '시각',
-  weekdays: '요일',
-  instruction: '지시',
-  enabled: '사용',
-  staffId: '직원',
-  label: '이름',
-  mcpServers: 'MCP 서버',
-  skills: '스킬',
-  allowedTools: '결재 없이 쓰는 도구',
-  disallowedTools: '막는 도구',
-  monthlyBudgetUsd: '월 예산($)',
-  manualName: '매뉴얼',
-  input: '입력',
-  scope: '범위',
-  body: '본문',
-  description: '설명',
-  kind: '종류',
-  projectDir: '프로젝트 폴더',
-  floor: '층',
-  joinLabIds: '넣을 랩',
-  leaveLabIds: '뺄 랩',
-}
+/** 사전 키 이름: secretary.field.<키> */
+const FIELD_KEYS = new Set([
+  'name', 'role', 'title', 'detail', 'topic', 'goal', 'cwd', 'model', 'avatar', 'systemPrompt', 'approvalMode', 'teamId', 'labId', 'labIds', 'leadId', 'memberIds', 'participantIds', 'assigneeId', 'status', 'rounds', 'color', 'time', 'weekdays', 'instruction', 'enabled', 'staffId', 'label', 'mcpServers', 'skills', 'allowedTools', 'disallowedTools', 'monthlyBudgetUsd', 'manualName', 'input', 'scope', 'body', 'description', 'kind', 'projectDir', 'floor', 'joinLabIds', 'leaveLabIds',
+])
 
 const ID_FIELDS = new Set(['teamId', 'labId', 'leadId', 'assigneeId', 'staffId', 'id'])
 const ID_LIST_FIELDS = new Set(['joinLabIds', 'leaveLabIds', 'labIds', 'memberIds', 'participantIds', 'staffIds', 'taskIds', 'teamIds'])
-const WEEKDAY = ['일', '월', '화', '수', '목', '금', '토']
-const APPROVAL_MODE: Record<string, string> = { ask: '모두 결재', acceptEdits: '파일 수정은 자율(결재 없이)' }
+const APPROVAL_MODES = new Set(['ask', 'acceptEdits'])
 
-const ref = (v: string) => (/^\$\d+\./.test(v) ? `${v.slice(1).split('.')[0]}번에서 만든 것` : null)
+const L = (key: TKey, params?: Record<string, I18nArg>): I18nText => (params ? { key, params } : { key })
+const list = (items: I18nArg[], sep = ', '): I18nArg => (items.length ? { list: items, sep } : L('secretary.v.none'))
+const quote = (v: unknown) => `"${String(v)}"`
+const fieldLabel = (k: string): I18nArg => (FIELD_KEYS.has(k) ? L(`secretary.field.${k}` as TKey) : k)
+const settingLabel = (k: string): I18nArg => (SETTING_KEYS.has(k) ? L(`secretary.setting.${k}` as TKey) : fieldLabel(k))
+/** "이름: 값" 한 줄 */
+const kv = (label: I18nArg, value: I18nArg) => L('secretary.d.kv', { label, value })
 
-function idText(v: unknown, nameOf: NameOf) {
-  if (typeof v !== 'string') return v === null ? '없음' : String(v)
+const ref = (v: string) => (/^\$\d+\./.test(v) ? L('secretary.v.ref', { n: v.slice(1).split('.')[0] }) : null)
+
+function idText(v: unknown, nameOf: NameOf): I18nArg {
+  if (typeof v !== 'string') return v === null ? L('secretary.v.none') : String(v)
   return ref(v) ?? nameOf(v) ?? v
 }
 
 /** 값 하나를 사람이 읽는 글로 (글자는 줄이지 않는다 — 실제로 보내질 문장이므로) */
-function valueText(key: string, v: unknown, nameOf: NameOf): string {
+function valueText(key: string, v: unknown, nameOf: NameOf): I18nArg {
   if (ID_FIELDS.has(key)) return idText(v, nameOf)
-  if (ID_LIST_FIELDS.has(key) && Array.isArray(v)) return v.length ? v.map((x) => idText(x, nameOf)).join(', ') : '없음'
-  if (key === 'approvalMode' && typeof v === 'string') return APPROVAL_MODE[v] ?? v
-  if (key === 'weekdays' && Array.isArray(v)) return v.map((d) => WEEKDAY[Number(d)] ?? d).join('·')
-  if (key === 'cwd' || key === 'projectDir') return v ? String(v) : '지정 없음'
-  if (typeof v === 'boolean') return v ? '켬' : '끔'
-  if (typeof v === 'string') return v === '' ? '(비어 있음)' : `"${v}"`
-  if (Array.isArray(v)) return v.length ? v.map((x) => (typeof x === 'string' ? x : JSON.stringify(x))).join(', ') : '없음'
-  if (v && typeof v === 'object') return Object.entries(v).map(([k, x]) => `${FIELD_LABEL[k] ?? k} ${valueText(k, x, nameOf)}`).join(' · ')
+  if (ID_LIST_FIELDS.has(key) && Array.isArray(v)) return list(v.map((x) => idText(x, nameOf)))
+  if (key === 'approvalMode' && typeof v === 'string') return APPROVAL_MODES.has(v) ? L(`secretary.v.approval.${v}` as TKey) : v
+  if (key === 'weekdays' && Array.isArray(v)) return { list: v.map((d) => (Number(d) >= 0 && Number(d) <= 6 ? L(`secretary.v.weekday.${Number(d)}` as TKey) : String(d))), sep: '·' }
+  if (key === 'cwd' || key === 'projectDir') return v ? String(v) : L('secretary.v.noFolder')
+  if (typeof v === 'boolean') return L(v ? 'secretary.v.on' : 'secretary.v.off')
+  if (typeof v === 'string') return v === '' ? L('secretary.v.empty') : quote(v)
+  if (Array.isArray(v)) return list(v.map((x) => (typeof x === 'string' ? x : JSON.stringify(x))))
+  if (v && typeof v === 'object') return { list: Object.entries(v).map(([k, x]) => L('secretary.d.pair', { label: fieldLabel(k), value: valueText(k, x, nameOf) })), sep: ' · ' }
   return String(v)
 }
 
-function objectLines(o: Record<string, unknown>, nameOf: NameOf, labels: Record<string, string> = FIELD_LABEL) {
+function objectLines(o: Record<string, unknown>, nameOf: NameOf, label: (k: string) => I18nArg = fieldLabel) {
   return Object.entries(o)
     .filter(([, v]) => v !== undefined)
-    .map(([k, v]) => `${labels[k] ?? k}: ${valueText(k, v, nameOf)}`)
+    .map(([k, v]) => kv(label(k), valueText(k, v, nameOf)))
 }
 
-/** 확인 카드 단계의 내용: 실제로 실행될 인자를 줄마다 (id는 이름으로) */
-export function describeStep(method: OfficeMethod, args: unknown[], nameOf: NameOf): string {
+const furniture = (id: unknown): I18nText => ({ key: `item.${String(id)}.name`, fallback: shopItem(String(id))?.name ?? String(id) })
+const gridSpot = (args: unknown[]) => ({ floor: String(args[1]), x: String(args[2]), y: String(args[3]), rot: ROT[Number(args[4])] ?? String(args[4]) })
+
+/** 확인 카드 단계의 내용: 실제로 실행될 인자를 줄마다 (id는 이름으로) — 사전 키+인자 */
+export function describeLines(method: OfficeMethod, args: unknown[], nameOf: NameOf): I18nText[] {
   const [a0, a1, a2] = args
   const obj = (v: unknown) => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : {})
-  const lines: string[] = []
+  const id = (v: unknown) => idText(v, nameOf)
+  const lines: I18nText[] = []
   switch (method) {
     case 'instruct':
     case 'interrupt':
     case 'forkExternal':
-      lines.push(`받는 사람: ${idText(a0, nameOf)}`, `보낼 지시: ${a1 === undefined || a1 === null ? '(없음 — 멈추기만)' : `"${String(a1)}"`}`)
+      lines.push(L('secretary.d.recipient', { who: id(a0) }), L('secretary.d.order', { text: a1 === undefined || a1 === null ? L('secretary.v.stopOnly') : quote(a1) }))
       break
     case 'sendChat':
-      lines.push(`보낼 말: "${String(a0)}"`)
+      lines.push(L('secretary.d.chat', { text: quote(a0) }))
       break
     case 'decide':
-      lines.push(`결재: ${idText(a0, nameOf)}`, `→ ${a1 ? '승인' : '반려'}`)
+      lines.push(L('secretary.d.approval', { target: id(a0) }), L(a1 ? 'secretary.d.approve' : 'secretary.d.reject'))
       break
     case 'answerQuestion':
-      lines.push(`질문: ${idText(a0, nameOf)}`, ...Object.entries(obj(a1)).map(([q, a]) => `${q} → "${String(a)}"`))
+      lines.push(L('secretary.d.question', { target: id(a0) }), ...Object.entries(obj(a1)).map(([q, a]) => L('secretary.d.answer', { q, a: quote(a) })))
       break
     case 'reviewPlan':
-      lines.push(`기획: ${idText(a0, nameOf)}`, `→ ${a1 ? '승인하고 배정' : '다시'}`, ...(a2 ? [`의견: "${String(a2)}"`] : []))
+      lines.push(L('secretary.d.plan', { target: id(a0) }), L(a1 ? 'secretary.d.planApprove' : 'secretary.d.redo'), ...(a2 ? [L('secretary.d.opinion', { text: quote(a2) })] : []))
       break
     case 'setAutoApprove': {
       const p = obj(a0)
-      lines.push(p.mode === 'off' ? '자동결재 끄기' : p.mode === 'hours' ? `지금부터 ${p.hours}시간 동안 자동결재` : p.mode === 'daily' ? `매일 ${p.start}부터 ${p.end}까지 자동결재` : `자동결재: ${valueText('', p, nameOf)}`)
-      if (p.mode !== 'off') lines.push('그동안 직원의 파일 수정·명령을 대표 대신 승인해요')
+      lines.push(
+        p.mode === 'off'
+          ? L('secretary.d.autoOff')
+          : p.mode === 'hours'
+            ? L('secretary.d.autoHours', { hours: String(p.hours) })
+            : p.mode === 'daily'
+              ? L('secretary.d.autoDaily', { start: String(p.start), end: String(p.end) })
+              : L('secretary.d.autoOther', { value: valueText('', p, nameOf) }),
+      )
+      if (p.mode !== 'off') lines.push(L('secretary.d.autoNote'))
       break
     }
     case 'updateSettings':
-      lines.push(...objectLines(obj(a0), nameOf, { ...FIELD_LABEL, ...SETTING_LABEL }))
+      lines.push(...objectLines(obj(a0), nameOf, settingLabel))
       break
     case 'createTeam':
-      lines.push(`이름: "${String(a0)}"`, `색: ${String(a1)}`)
+      lines.push(kv(fieldLabel('name'), quote(a0)), kv(fieldLabel('color'), String(a1)))
       break
     case 'assignTask':
-      lines.push(`업무: ${idText(a0, nameOf)}`, `담당: ${idText(a1, nameOf)} (맡기면 바로 지시가 나가요)`)
+      lines.push(L('secretary.d.task', { target: id(a0) }), L('secretary.d.assignee', { who: id(a1) }))
       break
     case 'trainStaff':
-      lines.push(`매뉴얼: ${String(a0)}`, `직원: ${valueText('staffIds', a1, nameOf)}`)
+      lines.push(kv(fieldLabel('manualName'), String(a0)), kv(fieldLabel('staffId'), valueText('staffIds', a1, nameOf)))
       break
     case 'trainGroups':
-      lines.push(`매뉴얼: ${String(a0)}`, `랩: ${valueText('labIds', a1, nameOf)}`, `팀: ${valueText('teamIds', a2, nameOf)}`)
+      lines.push(kv(fieldLabel('manualName'), String(a0)), kv(fieldLabel('labIds'), valueText('labIds', a1, nameOf)), kv(fieldLabel('teamId'), valueText('teamIds', a2, nameOf)))
       break
     case 'setRefDocs':
-      lines.push(`대상: ${idText(obj(a0).id, nameOf)}`, `문서: ${valueText('', a1, nameOf)}`)
+      lines.push(L('secretary.d.target', { target: id(obj(a0).id) }), L('secretary.d.docs', { list: valueText('', a1, nameOf) }))
       break
     case 'saveManual':
-      lines.push(...objectLines(obj(a0), nameOf), ...(a1 ? [`덮어쓸 파일: ${String(a1)}`] : []))
+      lines.push(...objectLines(obj(a0), nameOf), ...(a1 ? [L('secretary.d.overwrite', { file: String(a1) })] : []))
       break
     case 'deleteManual':
-      lines.push(`지울 파일: ${String(a0)}`)
+      lines.push(L('secretary.d.deleteFile', { file: String(a0) }))
       break
     case 'endMeeting':
-      lines.push(`회의: ${idText(a0, nameOf)}`, a1 === 'discard' ? '회의록 없이 끝내기' : '정리해서 끝내기')
+      lines.push(L('secretary.d.meeting', { target: id(a0) }), L(a1 === 'discard' ? 'secretary.d.endDiscard' : 'secretary.d.endSummarize'))
       break
     case 'answerMeetingDecision':
-      lines.push(`회의: ${idText(a0, nameOf)}`, `답: "${String(a2)}"`)
+      lines.push(L('secretary.d.meeting', { target: id(a0) }), L('secretary.d.meetingAnswer', { text: quote(a2) }))
       break
     case 'reviewRun':
-      lines.push(`프로세스: ${idText(a0, nameOf)}`, `→ ${a1 ? '통과' : '다시'}`, ...(a2 ? [`의견: "${String(a2)}"`] : []))
+      lines.push(L('secretary.d.run', { target: id(a0) }), L(a1 ? 'secretary.d.pass' : 'secretary.d.redo'), ...(a2 ? [L('secretary.d.opinion', { text: quote(a2) })] : []))
       break
     case 'startTasks':
-      lines.push(`업무: ${valueText('taskIds', a0, nameOf)}`)
+      lines.push(L('secretary.d.task', { target: valueText('taskIds', a0, nameOf) }))
       break
     case 'mergeTasks':
-      lines.push(`남길 카드: ${idText(a0, nameOf)}`, `합칠 카드: ${valueText('taskIds', a1, nameOf)} (설명은 남길 카드에 덧붙이고 지워요)`)
+      lines.push(L('secretary.d.keepCard', { target: id(a0) }), L('secretary.d.mergeCards', { list: valueText('taskIds', a1, nameOf) }))
       break
     case 'mergeTeams':
-      lines.push(`없앨 팀: ${idText(a0, nameOf)}`, `옮길 팀: ${idText(a1, nameOf)} (직원·카드를 모두 옮긴 뒤 없애요)`)
+      lines.push(L('secretary.d.removeTeam', { target: id(a0) }), L('secretary.d.intoTeam', { target: id(a1) }))
       break
     // 꾸미기 (가지고 있는 가구만 — 사는 일은 비서 도구에 없다)
     case 'placeGridItem':
-      lines.push(`가구: ${furnitureName(String(a0))}`, `${String(a1)}층 ${String(a2)},${String(args[3])}칸 · 방향 ${ROT[Number(args[4])] ?? String(args[4])}`)
+      lines.push(L('secretary.d.furniture', { name: furniture(a0) }), L('secretary.d.gridSpot', gridSpot(args)))
       break
     case 'moveGridItem':
-      lines.push(`가구: ${idText(a0, nameOf)}`, `→ ${String(a1)}층 ${String(a2)},${String(args[3])}칸 · 방향 ${ROT[Number(args[4])] ?? String(args[4])}`)
+      lines.push(L('secretary.d.furniture', { name: id(a0) }), L('secretary.d.gridMove', gridSpot(args)))
       break
     case 'placeItem':
-      lines.push(`가구: ${furnitureName(String(a0))}`, '1층 첫 빈자리에 놓아요')
+      lines.push(L('secretary.d.furniture', { name: furniture(a0) }), L('secretary.d.placeFirst'))
       break
     case 'storeItem':
-      lines.push(`서랍에 넣을 가구: ${idText(a0, nameOf)}`)
+      lines.push(L('secretary.d.store', { target: id(a0) }))
       break
     case 'setGridItemOn':
-      lines.push(`소품: ${idText(a0, nameOf)}`, a1 ? '→ 켜기' : '→ 끄기')
+      lines.push(L('secretary.d.prop', { target: id(a0) }), L(a1 ? 'secretary.d.turnOn' : 'secretary.d.turnOff'))
       break
     case 'stowAllGrid':
-      lines.push(`범위: ${Number(a0) > 0 ? `${String(a0)}층` : '건물 전체'}`, a1 ? '직원 책상·의자는 남겨요' : '책상·의자까지 모두 서랍으로', '파는 게 아니라 서랍에 넣어요. 끝나면 되돌리기 카드를 올려요')
+      lines.push(
+        L('secretary.d.scope', { scope: Number(a0) > 0 ? L('secretary.v.floor', { n: String(a0) }) : L('secretary.v.wholeBuilding') }),
+        L(a1 ? 'secretary.d.keepDesks' : 'secretary.d.stowDesks'),
+        L('secretary.d.stowNote'),
+      )
       break
     case 'moveSeatSet':
-      lines.push('책상 세트(책상+의자)를 옮겨요')
+      lines.push(L('secretary.d.moveSeatSet'))
       break
     case 'restoreGridItems':
-      lines.push(`되놓을 가구: ${Array.isArray(a0) ? a0.length : 0}개 (치우기 전 자리로 — 그사이 막힌 자리는 건너뛰어요)`)
+      lines.push(L('secretary.d.restore', { n: Array.isArray(a0) ? a0.length : 0 }))
       break
     default: {
       // 첫 인자가 id면 대상 이름, 객체 인자는 칸마다
       for (const [i, a] of args.entries()) {
-        if (typeof a === 'string' && i === 0) lines.push(`대상: ${idText(a, nameOf)}`)
+        if (typeof a === 'string' && i === 0) lines.push(L('secretary.d.target', { target: id(a) }))
         else if (a && typeof a === 'object' && !Array.isArray(a)) lines.push(...objectLines(a as Record<string, unknown>, nameOf))
-        else lines.push(valueText('', a, nameOf))
+        else lines.push(L('secretary.d.plain', { value: valueText('', a, nameOf) }))
       }
     }
   }
-  return lines.join('\n')
+  return lines
 }
+
+/** 카드 detail 글자 (한국어 — 예전 카드·모델에게 보이는 값과 같은 모양) */
+export const linesText = (lines: I18nText[]) => lines.map((l) => tr(l, 'ko')).join('\n')
+
+export const describeStep = (method: OfficeMethod, args: unknown[], nameOf: NameOf): string => linesText(describeLines(method, args, nameOf))
 
 const ORDER: SecretaryRisk[] = ['normal', 'caution', 'danger']
 const max = (a: SecretaryRisk, b: SecretaryRisk) => (ORDER.indexOf(b) > ORDER.indexOf(a) ? b : a)

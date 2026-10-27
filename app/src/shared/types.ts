@@ -13,7 +13,7 @@ import type { TutorialInput, TutorialScenario, TutorialSnapshot } from './tutori
 import type { BoardCleanupPlan } from './boardCleanup'
 import type { CustomMcp, CustomMcpInput } from './customMcp'
 import { COMPANY_LEVELS, companyLevelOf } from './officeLevel.ts'
-import type { LangSetting } from './i18n/index.ts'
+import type { I18nText, LangSetting } from './i18n/index.ts'
 
 export type StaffKind = 'hired' | 'external'
 export type StaffStatus = 'idle' | 'working' | 'waiting' | 'offline' | 'error'
@@ -1082,6 +1082,9 @@ export interface SecretaryStep {
   label: string
   /** 핵심 값 한 줄 */
   detail: string
+  /** label·detail을 화면 언어로 보이기 위한 키+인자 (detail은 줄마다). 없는 예전 카드는 label·detail 글자 그대로 */
+  labelI18n?: I18nText
+  detailI18n?: I18nText[]
   args: unknown[]
   status: SecretaryStepStatus
   error?: string
@@ -1104,6 +1107,8 @@ export interface SecretaryBatchItem {
   label: string
   /** 앱이 실제 인자로 만든 한 줄 */
   detail: string
+  labelI18n?: I18nText
+  detailI18n?: I18nText[]
   args: unknown[]
   status: SecretaryStepStatus
   error?: string
