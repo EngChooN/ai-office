@@ -24,6 +24,13 @@ test('내부 AI 공급자: 감지 전·한쪽만 ready·둘 다 ready', () => {
   assert.deepEqual(internalProviders('codex', both('loggedOut', 'loggedOut')), ['claude'])
 })
 
+test('내부 AI 공급자: Claude를 확인 못 함(시간 초과)이어도 후보에서 빠지지 않는다', () => {
+  assert.deepEqual(internalProviders('auto', both('unknown', 'ready')), ['claude', 'codex'])
+  assert.deepEqual(internalProviders('codex', both('unknown', 'ready')), ['codex', 'claude'])
+  assert.deepEqual(internalProviders('auto', both('unknown', 'unknown')), ['claude'])
+  assert.deepEqual(internalProviders('codex', both('ready', 'unknown')), ['claude'])
+})
+
 test('tier → Codex 모델: light는 가벼운 모델, standard는 기본', () => {
   const models = ['gpt-6-sol', 'gpt-6-luna', 'gpt-5.6-terra']
   assert.equal(codexTierModel('light', models, 'gpt-6-sol'), 'gpt-6-luna')

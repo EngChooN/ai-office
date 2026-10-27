@@ -7,7 +7,8 @@ import type { AiTier } from './types.ts'
  * 설정이 가리키는 쪽이 ready면 그쪽이 먼저, 다른 쪽이 ready면 폴백으로 뒤에 붙는다. 설정한 쪽이 안 되면 ready인 쪽만 */
 export function internalProviders(setting: InternalAi, status: ProvidersStatus | null): AiProvider[] {
   if (!status) return ['claude']
-  const ready = (['claude', 'codex'] as const).filter((p) => status[p].state === 'ready')
+  // Claude를 확인 못 했으면(시간 초과) 감지 전처럼 후보로 둔다 — 응답이 늦었다고 내부 AI에서 빠지면 안 된다
+  const ready = (['claude', 'codex'] as const).filter((p) => status[p].state === 'ready' || (p === 'claude' && status[p].state === 'unknown'))
   if (!ready.length) return ['claude']
   // auto는 Claude 우선 (기존 사용자 동작 유지)
   const first: AiProvider = setting === 'codex' ? 'codex' : 'claude'

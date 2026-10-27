@@ -16,9 +16,16 @@ export function isRunFailure(e: unknown): boolean {
   return typeof x?.code === 'string' || Boolean(x?.killed) || Boolean(x?.signal)
 }
 
-/** `claude auth status` 의 JSON → 상태. 실행 파일이 없으면 'missing', 실행 실패(isBroken)는 'broken', 그 밖의 확인 실패는 로그아웃으로 본다 */
-export function classifyClaude(binaryExists: boolean, statusJson: unknown, error = '', isBroken = false): ProviderStatus {
+/** 시간 초과로 끊겼는지 (execFile timeout은 killed + signal) — 고장이 아니라 '확인 못 함'으로 본다 */
+export function isTimedOut(e: unknown): boolean {
+  const x = e as { killed?: boolean; signal?: unknown } | null
+  return Boolean(x?.killed && x?.signal)
+}
+
+/** `claude auth status` 의 JSON → 상태. 실행 파일이 없으면 'missing', 시간 초과는 'unknown', 실행 실패(isBroken)는 'broken', 그 밖의 확인 실패는 로그아웃으로 본다 */
+export function classifyClaude(binaryExists: boolean, statusJson: unknown, error = '', isBroken = false, isTimeout = false): ProviderStatus {
   if (!binaryExists) return blank('missing', error)
+  if (isTimeout) return blank('unknown', error)
   if (isBroken) return blank('broken', error)
   const s = (statusJson ?? {}) as { loggedIn?: boolean; email?: string; authMethod?: string; subscriptionType?: string }
   if (!s.loggedIn) return blank('loggedOut', error)

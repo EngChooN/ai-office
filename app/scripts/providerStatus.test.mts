@@ -2,11 +2,12 @@
 // 실제 번들 실행은 AI_OFFICE_CODEX_BIN 에 codex-app-server 경로를 주면 같이 확인한다.
 
 import assert from 'node:assert/strict'
+import { execFile } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { test } from 'node:test'
-import { classifyClaude, classifyCodex, isRunFailure, keepPrevOnUnknown, probeCodex } from '../src/main/ai/providerStatus.ts'
+import { classifyClaude, classifyCodex, isRunFailure, isTimedOut, keepPrevOnUnknown, probeCodex } from '../src/main/ai/providerStatus.ts'
 
 test('Claude: 실행 파일 없음 / 로그아웃 / 준비됨(플랜 포함)', () => {
   assert.equal(classifyClaude(false, null).state, 'missing')
@@ -21,6 +22,47 @@ test('Claude: 실행 실패는 broken, 실행 파일이 없으면 broken보다 m
   assert.deepEqual([b.state, b.error], ['broken', 'spawn EBADARCH'])
   assert.equal(classifyClaude(false, null, 'x', true).state, 'missing')
   assert.equal(classifyClaude(true, null, 'exit 1', false).state, 'loggedOut')
+})
+
+/** setup.ts 의 Claude 확인과 같은 경로: execFile 오류 → classifyClaude */
+const runClaude = (file: string, timeout: number) =>
+  new Promise<ReturnType<typeof classifyClaude>>((resolve) => {
+    execFile(file, ['auth', 'status'], { timeout }, (e, stdout) => {
+      try {
+        if (e) throw e
+        resolve(classifyClaude(true, JSON.parse(stdout)))
+      } catch (err) {
+        resolve(classifyClaude(true, null, String(err), isRunFailure(err), isTimedOut(err)))
+      }
+    })
+  })
+
+test('Claude: 시간 초과는 broken이 아니라 unknown, 못 띄움·바로 종료는 broken·로그아웃', { skip: process.platform === 'win32' }, async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'co-claude-'))
+  const slow = path.join(dir, 'slow')
+  fs.writeFileSync(slow, `#!${process.execPath}\nsetTimeout(() => {}, 60000)\n`, { mode: 0o755 })
+  assert.equal((await runClaude(slow, 300)).state, 'unknown')
+  const bad = path.join(dir, 'bad')
+  fs.writeFileSync(bad, 'not executable', { mode: 0o644 }) // EACCES
+  assert.equal((await runClaude(bad, 3000)).state, 'broken')
+  const garbage = path.join(dir, 'garbage')
+  fs.writeFileSync(garbage, `#!${process.execPath}\nprocess.stdout.write('not json')\n`, { mode: 0o755 })
+  assert.equal((await runClaude(garbage, 3000)).state, 'broken') // 출력 해석 불가
+  const exit1 = path.join(dir, 'exit1')
+  fs.writeFileSync(exit1, `#!${process.execPath}\nprocess.exit(1)\n`, { mode: 0o755 })
+  assert.equal((await runClaude(exit1, 3000)).state, 'loggedOut')
+})
+
+test('Claude: 시간 초과면 직전 상태 유지, 직전이 없으면 unknown, 실행 오류는 그대로 broken', () => {
+  const ready = classifyClaude(true, { loggedIn: true, email: 'a@b.c', subscriptionType: 'max' })
+  const timeout = classifyClaude(true, null, 'timed out', true, true)
+  assert.equal(timeout.state, 'unknown')
+  assert.deepEqual(keepPrevOnUnknown(ready, timeout), ready)
+  assert.equal(keepPrevOnUnknown(classifyClaude(true, { loggedIn: false }), timeout).state, 'loggedOut')
+  assert.equal(keepPrevOnUnknown(null, timeout).state, 'unknown')
+  assert.equal(keepPrevOnUnknown(ready, classifyClaude(true, null, 'spawn EACCES', true)).state, 'broken')
+  assert.equal(isTimedOut(Object.assign(new Error('x'), { killed: true, signal: 'SIGTERM' })), true)
+  assert.equal(isTimedOut(Object.assign(new Error('x'), { code: 'ENOENT' })), false)
 })
 
 test('isRunFailure: 못 띄움·시간 초과·해석 불가는 실패, 숫자 종료 코드는 아니다', () => {

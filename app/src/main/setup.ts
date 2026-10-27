@@ -8,7 +8,7 @@ import type { ClaudeStatus, ProvidersStatus } from '../shared/types'
 import { claudeBinaryPath } from './ai/claude'
 import { codexBinaryPath } from './ai/codex'
 import { loginCodex } from './ai/codexLogin'
-import { classifyClaude, isRunFailure, keepPrevOnUnknown, probeCodex } from './ai/providerStatus'
+import { classifyClaude, isRunFailure, isTimedOut, keepPrevOnUnknown, probeCodex } from './ai/providerStatus'
 import { IS_WINDOWS, toolEnv, WHICH } from './platform'
 
 // 첫 실행 점검: 로그인 상태 확인과 로그인 창 띄우기
@@ -45,11 +45,11 @@ export async function providerStatus(): Promise<ProvidersStatus> {
       const { stdout } = await run(bin, ['auth', 'status'], { timeout: STATUS_TIMEOUT_MS })
       return classifyClaude(true, JSON.parse(stdout))
     } catch (e) {
-      return classifyClaude(true, null, e instanceof Error ? e.message : String(e), isRunFailure(e))
+      return classifyClaude(true, null, e instanceof Error ? e.message : String(e), isRunFailure(e), isTimedOut(e))
     }
   })()
   const [c, x] = await Promise.all([claude, probeCodex(codexBinaryPath())])
-  lastProviders = { claude: c, codex: keepPrevOnUnknown(lastProviders?.codex, x) }
+  lastProviders = { claude: keepPrevOnUnknown(lastProviders?.claude, c), codex: keepPrevOnUnknown(lastProviders?.codex, x) }
   return lastProviders
 }
 
