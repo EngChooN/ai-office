@@ -54,11 +54,13 @@ var DOWNLOADS = {
   --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial;
 }
 *{box-sizing:border-box;margin:0;padding:0}
+[hidden]{display:none!important}
 html{scroll-behavior:smooth}
 body{background:var(--bg);color:var(--fg);line-height:1.6;-webkit-font-smoothing:antialiased;
   font-family:var(--sans),"Apple SD Gothic Neo","Malgun Gothic","Hiragino Sans","PingFang SC","Microsoft YaHei","Noto Sans CJK KR",system-ui,sans-serif}
 html:lang(ko) body{font-family:var(--sans),"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR","Noto Sans CJK KR",system-ui,sans-serif;word-break:keep-all}
-html:lang(ja) body{font-family:var(--sans),"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic UI","Yu Gothic",Meiryo,"Noto Sans JP","Noto Sans CJK JP",system-ui,sans-serif;line-break:strict}
+html:lang(ja) body{font-family:var(--sans),"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic UI","Yu Gothic",Meiryo,"Noto Sans JP","Noto Sans CJK JP",system-ui,sans-serif;line-break:strict;word-break:auto-phrase}
+.nw{display:inline-block;white-space:nowrap}
 html:lang(zh-CN) body{font-family:var(--sans),"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans SC","Noto Sans CJK SC",system-ui,sans-serif}
 a{color:inherit;text-decoration:none}
 img{max-width:100%;height:auto;display:block}
@@ -105,13 +107,6 @@ h2{font-size:clamp(26px,3.6vw,40px);line-height:1.2;font-weight:700;letter-spaci
 .shot{margin:72px auto 0;max-width:1100px;border:1px solid var(--line2);border-radius:14px;overflow:hidden;background:var(--panel);box-shadow:0 40px 120px -20px rgba(124,156,255,.16),0 20px 60px rgba(0,0,0,.5)}
 .shot img{width:100%;height:auto;aspect-ratio:1360/860;object-fit:contain}
 
-/* 기능 */
-.features{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--line);border-radius:14px;overflow:hidden;gap:1px;background:var(--line)}
-.feat{background:var(--bg);padding:32px 28px}
-.feat svg{width:22px;height:22px;color:var(--accent);margin-bottom:18px}
-.feat h3{font-size:17px;font-weight:600;margin-bottom:8px;letter-spacing:-.01em}
-.feat p{font-size:15px;color:var(--muted)}
-
 /* 기능: 큰 캡처 + 글이 좌우 번갈아 나오는 줄 */
 .rows{display:flex;flex-direction:column;gap:104px}
 .row{display:grid;grid-template-columns:5fr 7fr;gap:56px;align-items:center}
@@ -125,7 +120,6 @@ h2{font-size:clamp(26px,3.6vw,40px);line-height:1.2;font-weight:700;letter-spaci
 .row p{font-size:16px;color:var(--muted);max-width:440px}
 .row figure{border-radius:14px;box-shadow:0 30px 80px -24px rgba(124,156,255,.14),0 16px 40px rgba(0,0,0,.45)}
 .row figure img{aspect-ratio:1360/860}
-.features.more{grid-template-columns:repeat(3,1fr);margin-top:104px}
 
 /* 화면 (휴대폰) */
 .shots{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;align-items:start;max-width:920px;margin:0 auto}
@@ -196,13 +190,6 @@ footer .links .off{color:var(--dim);pointer-events:none}
 .step .say{margin-top:16px;font-size:13.5px;color:var(--fg);background:rgba(124,156,255,.1);border:1px solid rgba(124,156,255,.25);border-radius:10px 10px 10px 2px;padding:9px 12px}
 .step:not(:last-child):after{content:"";position:absolute;top:44px;right:-13px;width:10px;height:10px;border-top:2px solid var(--line2);border-right:2px solid var(--line2);transform:rotate(45deg)}
 
-/* 기능 카드 */
-.feat{transition:background .2s}
-.feat:hover{background:var(--panel)}
-.feat svg{box-sizing:content-box;padding:9px;border-radius:10px;background:rgba(124,156,255,.1);border:1px solid rgba(124,156,255,.2)}
-.feat:nth-child(3n+2) svg{color:var(--accent2);background:rgba(94,234,212,.08);border-color:rgba(94,234,212,.2)}
-.feat:nth-child(3n) svg{color:#f6a77c;background:rgba(246,167,124,.08);border-color:rgba(246,167,124,.2)}
-
 /* 화면·다운로드 */
 figure{transition:transform .25s,border-color .25s}
 figure:hover{transform:translateY(-4px);border-color:#454c60}
@@ -215,19 +202,31 @@ figure:hover{transform:translateY(-4px);border-color:#454c60}
 .final .box{border:1px solid var(--line2);border-radius:20px;padding:64px 24px;background:radial-gradient(500px 220px at 50% 0%,rgba(124,156,255,.18),transparent 70%),var(--panel)}
 .final .sub{margin:12px auto 28px}
 
-/* 0.14.0: 배지 강조·베타/새 기능 알약·겹친 사진·레벨 막대·휴대폰 보조 줄 */
+/* 0.14.0: 배지 강조·베타/새 기능 알약·레벨 막대·휴대폰 보조 줄 */
 .badge em{font-style:normal;color:var(--accent2);font-weight:600}
 .pill{display:inline-block;vertical-align:middle;margin-left:8px;padding:2px 8px;border-radius:99px;font-size:12px;font-weight:600;letter-spacing:0;white-space:nowrap;
   color:var(--accent2);background:rgba(94,234,212,.08);border:1px solid rgba(94,234,212,.25)}
-.features.more{grid-template-columns:repeat(2,1fr)}
-.features.one{grid-template-columns:1fr;margin-top:72px}
-.row figure.stack{position:relative;overflow:visible;border:0;background:none;box-shadow:none}
-.stack img{border:1px solid var(--line2);border-radius:12px;box-shadow:0 30px 80px -24px rgba(124,156,255,.14),0 16px 40px rgba(0,0,0,.45)}
-.stack .over{position:absolute;width:58%;right:-4%;bottom:-10%}
 .lvbar{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--dim);margin-bottom:16px}
 .lvbar i{flex:1;max-width:220px;height:6px;border-radius:99px;background:linear-gradient(90deg,var(--accent),var(--accent2) 65%,var(--line2) 65%)}
 .ph-note{margin:28px auto 0;text-align:center;font-size:14px}
 .dlc li.note{color:var(--dim);font-size:13px}
+
+/* 캡처 위 번호 점과 아래 설명 줄 — 이미지에 굽지 않고 HTML로 (언어만 바꿔 같은 위치) */
+.pic{position:relative}
+.pic img{cursor:zoom-in}
+.pic img:focus-visible{outline:3px solid #d97757;outline-offset:3px}
+.dot{position:absolute;transform:translate(-50%,-50%);display:grid;place-items:center;width:24px;height:24px;border-radius:50%;pointer-events:none;
+  font-size:12.5px;font-weight:700;color:#0b0c10;background:var(--accent2);box-shadow:0 0 0 3px rgba(11,12,16,.75),0 4px 14px rgba(0,0,0,.5)}
+.co{list-style:none;display:grid;gap:6px;padding:14px 16px;border-top:1px solid var(--line);font-size:13.5px;color:var(--muted);text-align:left}
+.co li{display:flex;gap:10px;align-items:baseline}
+.co li:before{content:attr(data-n);flex:none;display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;font-size:11px;font-weight:700;color:#0b0c10;background:var(--accent2)}
+/* 움직이는 화면: 해당 언어 영상이 없으면 정지 캡처를 보여 준다 */
+.vid video{display:block;width:100%;height:auto;aspect-ratio:1360/860;background:var(--panel)}
+#how .vid{max-width:960px;margin:48px auto 0}
+/* 크게 보기 */
+#zoom{margin:auto;max-width:96vw;max-height:96vh;padding:0;border:1px solid var(--line2);border-radius:10px;background:var(--panel);cursor:zoom-out}
+#zoom::backdrop{background:rgba(5,6,9,.88)}
+#zoom img{max-width:96vw;max-height:96vh;width:auto;height:auto}
 
 /* 스크롤 등장 */
 .rv{opacity:0;transform:translateY(18px);transition:opacity .6s ease,transform .6s ease}
@@ -236,33 +235,27 @@ figure:hover{transform:translateY(-4px);border-color:#454c60}
   .rv{opacity:1;transform:none;transition:none}
   .hero .appicon{animation:none}
   figure:hover,.dlc:hover{transform:none}
+  html{scroll-behavior:auto}
 }
 
 @media (max-width:960px){
   .top nav{display:none}
   .steps{grid-template-columns:1fr}
   .step:after{display:none}
-  .features{grid-template-columns:1fr 1fr}
-  .features.more{grid-template-columns:1fr}
   .dls{grid-template-columns:1fr}
   .rows{gap:72px}
   .row,.row:nth-child(even){grid-template-columns:1fr;gap:24px}
   .row:nth-child(even) .txt{order:0}
   .row p{max-width:640px}
-  .features.more{margin-top:72px}
   .shots{gap:14px}
-  .features.one{margin-top:56px}
-}
-@media (max-width:640px){
-  .stack .over{display:none}
 }
 @media (max-width:600px){
   section{padding:80px 0}
   .wrap{padding:0 18px}
   .hero{padding-top:64px}
   .hero .appicon{width:68px;height:68px}
-  .features{grid-template-columns:1fr}
-  .feat{padding:26px 22px}
+  html:lang(ja) h1{font-size:30px}
+  .dot{width:18px;height:18px;font-size:10.5px;box-shadow:0 0 0 2px rgba(11,12,16,.75)}
   .cta .btn{flex:1 1 100%}
   .shot{margin-top:48px;border-radius:10px}
   .row figure{border-radius:10px}
@@ -302,7 +295,7 @@ figure:hover{transform:translateY(-4px);border-color:#454c60}
   <p class="lead" data-i18n="hero.lead"></p>
   <div class="cta" id="cta"></div>
   <p class="also" id="also"></p>
-  <div class="shot"><div class="chrome"><i></i><i></i><i></i><span>AI Office</span></div><img src="assets/screens/ko/office.webp" data-shot="office" data-i18n-alt="alt.office" width="1360" height="860"></div>
+  <div class="shot"><div class="chrome"><i></i><i></i><i></i><span>AI Office</span></div><div class="pic" data-co="office"><img src="assets/screens/ko/office.webp" data-shot="office" data-i18n-alt="alt.office" width="1360" height="860"></div></div>
 </div></section>
 
 <section id="how"><div class="wrap">
@@ -316,6 +309,7 @@ figure:hover{transform:translateY(-4px);border-color:#454c60}
     <div class="step rv"><h3 data-i18n="s2.t"></h3><p data-i18n="s2.p"></p><div class="say" data-i18n="s2.say"></div></div>
     <div class="step rv"><h3 data-i18n="s3.t"></h3><p data-i18n="s3.p"></p><div class="say" data-i18n="s3.say"></div></div>
   </div>
+  <figure class="pc vid rv" data-video="approval-flow"><video muted loop playsinline preload="none" data-i18n-label="alt.vid1"></video><figcaption data-i18n="cap.vid1"></figcaption></figure>
 </div></section>
 
 <section id="features"><div class="wrap">
@@ -325,16 +319,14 @@ figure:hover{transform:translateY(-4px);border-color:#454c60}
     <p class="sub" data-i18n="feat.sub"></p>
   </div>
   <div class="rows">
-    <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0114 0M19 8v6M16 11h6"/></svg></span><h3><span data-i18n="f1.t"></span><span class="pill" data-i18n="tag.beta"></span></h3><p data-i18n="f1.p"></p></div><figure class="stack"><img src="assets/screens/ko/staff-mix.webp" data-shot="staff-mix" data-i18n-alt="alt.f1" loading="lazy" width="1360" height="860"><img class="over" src="assets/screens/ko/providers.webp" data-shot="providers" data-i18n-alt="alt.f1b" loading="lazy" width="1360" height="860"></figure></div>
-    <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 3v2h6V3M8.5 13l2.5 2.5 5-5"/></svg></span><h3 data-i18n="f3.t"></h3><p data-i18n="f3.p"></p></div><figure><img src="assets/screens/ko/inbox.webp" data-shot="inbox" data-i18n-alt="alt.f3" loading="lazy" width="1360" height="860"></figure></div>
-    <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/><path d="M11 9l3 3-1.2.3.8 1.7"/></svg></span><h3><span data-i18n="f6.t"></span><span class="pill" data-i18n="tag.new"></span></h3><p data-i18n="f6.p"></p></div><figure><img src="assets/screens/ko/computer.webp" data-shot="computer" data-i18n-alt="alt.f6" loading="lazy" width="1360" height="860"></figure></div>
-    <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.7 1.8 1.8.7-1.8.7L19 20l-.7-1.8-1.8-.7 1.8-.7z"/></svg></span><h3><span data-i18n="f7.t"></span><span class="pill" data-i18n="tag.new"></span></h3><p data-i18n="f7.p"></p></div><figure><img src="assets/screens/ko/secretary.webp" data-shot="secretary" data-i18n-alt="alt.f7" loading="lazy" width="1360" height="860"></figure></div>
-    <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 01-11.6 7.1L4 20l1-4.6A8 8 0 1121 12z"/><path d="M8.5 11h7M8.5 14h4"/></svg></span><h3 data-i18n="f2.t"></h3><p data-i18n="f2.p"></p></div><figure><img src="assets/screens/ko/chat.webp" data-shot="chat" data-i18n-alt="alt.f2" loading="lazy" width="1360" height="860"></figure></div>
-    <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 6-7"/></svg></span><h3 data-i18n="f8.t"></h3><p data-i18n="f8.p"></p></div><figure><img src="assets/screens/ko/dashboard.webp" data-shot="dashboard" data-i18n-alt="alt.f8" loading="lazy" width="1360" height="860"></figure></div>
-  </div>
-  <div class="features more">
-    <div class="feat rv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="5" height="16" rx="1.5"/><rect x="10" y="4" width="5" height="11" rx="1.5"/><rect x="17" y="4" width="4" height="7" rx="1.5"/></svg><h3 data-i18n="f4.t"></h3><p data-i18n="f4.p"></p></div>
-    <div class="feat rv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="9" r="3"/><circle cx="16" cy="9" r="3"/><path d="M2 20a6 6 0 0112 0M10 20a6 6 0 0112 0"/></svg><h3 data-i18n="f5.t"></h3><p data-i18n="f5.p"></p></div>
+    <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0114 0M19 8v6M16 11h6"/></svg></span><h3><span data-i18n="f1.t"></span><span class="pill" data-i18n="tag.beta"></span></h3><p data-i18n="f1.p"></p></div><figure><div class="pic" data-co="staff-mix"><img src="assets/screens/ko/staff-mix.webp" data-shot="staff-mix" data-i18n-alt="alt.f1" loading="lazy" width="1360" height="860"></div></figure></div>
+    <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 01-11.6 7.1L4 20l1-4.6A8 8 0 1121 12z"/><path d="M8.5 11h7M8.5 14h4"/></svg></span><h3 data-i18n="f2.t"></h3><p data-i18n="f2.p"></p></div><figure><div class="pic" data-co="chat"><img src="assets/screens/ko/chat.webp" data-shot="chat" data-i18n-alt="alt.f2" loading="lazy" width="1360" height="860"></div></figure></div>
+    <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 3v2h6V3M8.5 13l2.5 2.5 5-5"/></svg></span><h3 data-i18n="f3.t"></h3><p data-i18n="f3.p"></p></div><figure><div class="pic" data-co="inbox"><img src="assets/screens/ko/inbox.webp" data-shot="inbox" data-i18n-alt="alt.f3" loading="lazy" width="1360" height="860"></div></figure></div>
+    <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="5" height="16" rx="1.5"/><rect x="10" y="4" width="5" height="11" rx="1.5"/><rect x="17" y="4" width="4" height="7" rx="1.5"/></svg></span><h3 data-i18n="f4.t"></h3><p data-i18n="f4.p"></p></div><figure><div class="pic" data-co="board"><img src="assets/screens/ko/board.webp" data-shot="board" data-i18n-alt="alt.f4" loading="lazy" width="1360" height="860"></div></figure></div>
+    <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="9" r="3"/><circle cx="16" cy="9" r="3"/><path d="M2 20a6 6 0 0112 0M10 20a6 6 0 0112 0"/></svg></span><h3 data-i18n="f5.t"></h3><p data-i18n="f5.p"></p></div><figure><div class="pic" data-co="meeting"><img src="assets/screens/ko/meeting.webp" data-shot="meeting" data-i18n-alt="alt.f5" loading="lazy" width="1360" height="860"></div></figure></div>
+    <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/><path d="M11 9l3 3-1.2.3.8 1.7"/></svg></span><h3><span data-i18n="f6.t"></span><span class="pill" data-i18n="tag.new"></span></h3><p data-i18n="f6.p"></p></div><figure class="vid" data-video="computer-approval"><video muted loop playsinline preload="none" data-i18n-label="alt.f6"></video><div class="pic" data-co="computer"><img src="assets/screens/ko/computer.webp" data-shot="computer" data-i18n-alt="alt.f6" loading="lazy" width="1360" height="860"></div></figure></div>
+    <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.7 1.8 1.8.7-1.8.7L19 20l-.7-1.8-1.8-.7 1.8-.7z"/></svg></span><h3><span data-i18n="f7.t"></span><span class="pill" data-i18n="tag.new"></span></h3><p data-i18n="f7.p"></p></div><figure><div class="pic" data-co="secretary"><img src="assets/screens/ko/secretary.webp" data-shot="secretary" data-i18n-alt="alt.f7" loading="lazy" width="1360" height="860"></div></figure></div>
+    <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 6-7"/></svg></span><h3 data-i18n="f8.t"></h3><p data-i18n="f8.p"></p></div><figure><div class="pic" data-co="dashboard"><img src="assets/screens/ko/dashboard.webp" data-shot="dashboard" data-i18n-alt="alt.f8" loading="lazy" width="1360" height="860"></div></figure></div>
   </div>
 </div></section>
 
@@ -345,11 +337,9 @@ figure:hover{transform:translateY(-4px);border-color:#454c60}
     <p class="sub" data-i18n="grow.sub"></p>
   </div>
   <div class="rows">
-    <div class="row rv"><div class="txt"><div class="lvbar"><span>Lv.1</span><i></i><span>Lv.20</span></div><h3 data-i18n="g1.t"></h3><p data-i18n="g1.p"></p></div><figure><img src="assets/screens/ko/exterior.webp" data-shot="exterior" data-i18n-alt="alt.g1" loading="lazy" width="1360" height="860"></figure></div>
-    <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V10l8-6 8 6v11"/><path d="M9 21v-6h6v6M12 4V2"/></svg></span><h3 data-i18n="g2.t"></h3><p data-i18n="g2.p"></p></div><figure><img src="assets/screens/ko/decorate.webp" data-shot="decorate" data-i18n-alt="alt.g2" loading="lazy" width="1360" height="860"></figure></div>
-  </div>
-  <div class="features one">
-    <div class="feat rv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v4M8 22h8"/></svg><h3 data-i18n="g3.t"></h3><p data-i18n="g3.p"></p></div>
+    <div class="row rv"><div class="txt"><div class="lvbar"><span>Lv.1</span><i></i><span>Lv.20</span></div><h3 data-i18n="g1.t"></h3><p data-i18n="g1.p"></p></div><figure><div class="pic"><img src="assets/screens/ko/exterior.webp" data-shot="exterior" data-i18n-alt="alt.g1" loading="lazy" width="1360" height="860"></div></figure></div>
+    <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V10l8-6 8 6v11"/><path d="M9 21v-6h6v6M12 4V2"/></svg></span><h3 data-i18n="g2.t"></h3><p data-i18n="g2.p"></p></div><figure><div class="pic" data-co="decorate"><img src="assets/screens/ko/decorate.webp" data-shot="decorate" data-i18n-alt="alt.g2" loading="lazy" width="1360" height="860"></div></figure></div>
+    <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v4M8 22h8"/></svg></span><h3 data-i18n="g3.t"></h3><p data-i18n="g3.p"></p></div><figure><div class="pic" data-co="demoday"><img src="assets/screens/ko/demoday.webp" data-shot="demoday" data-i18n-alt="alt.g3" loading="lazy" width="1360" height="860"></div></figure></div>
   </div>
 </div></section>
 
@@ -413,6 +403,8 @@ figure:hover{transform:translateY(-4px);border-color:#454c60}
   </div>
 </div></footer>
 
+<dialog id="zoom"><img alt=""></dialog>
+
 <script>
 var I18N = {
   ko: {
@@ -420,7 +412,7 @@ var I18N = {
     'meta.desc': 'Claude와 GPT 직원을 함께 뽑아 일을 맡기고, 결재하고, 보고받는 무료 오픈소스 데스크톱 앱. 명령어 창도, 어려운 설정도 필요 없습니다.',
     'nav.how': '사용법', 'nav.features': '기능', 'nav.grow': '꾸미기', 'nav.screens': '휴대폰', 'nav.download': '다운로드', 'nav.faq': 'FAQ',
     'badge.oss': '무료 · 오픈소스 · <em>새로 GPT 직원</em>',
-    'hero.title': '코드를 몰라도,<br><em>Claude와 GPT 직원</em>을 함께 고용하세요',
+    'hero.title': '코드를 몰라도,<br><em>AI 직원</em>을 함께 고용하세요',
     'hero.lead': 'Claude 직원과 GPT 직원을 한 사무실에 뽑아 일을 맡기세요. 중요한 일은 결재함에서 확인하고, 끝나면 보고를 받아요. 명령어 창도, 어려운 설정도 필요 없습니다.',
     'btn.download': '{os}용 다운로드', 'btn.soon': '준비 중', 'btn.also': '다른 플랫폼:',
     'os.mac': 'Mac', 'os.win': 'Windows', 'os.android': '안드로이드',
@@ -440,15 +432,30 @@ var I18N = {
     'f7.t': '비서와 튜토리얼', 'f7.p': '처음엔 둘러보기가 사무실 쓰는 법을 안내하고, ‘한 사이클 해 보기’로 업무 맡기기·회의 열기를 따라 해 볼 수 있어요. 그다음부터는 비서에게 말로 부탁하세요 — 팀 옮기기, 업무 보드 정리, 사무실 꾸미기, 직원 점검까지 해 줘요. 직원이 왜 멈췄는지도 물어볼 수 있어요.',
     'f8.t': '사용량과 급여 명세서, 터미널 세션 보기', 'f8.p': '누가 일하고 누가 확인을 기다리는지 한눈에 보고, 직원별 사용량과 Claude·GPT 각각의 플랜 사용량을 카드로 확인해요. 사용량이 거의 다 차면 예약 업무를 잠시 멈춰 알려 줘요. 터미널에서 따로 돌리던 Claude·GPT 작업도 사무실에서 ‘일하는 중’으로 볼 수 있어요.',
     'alt.office': 'AI Office 사무실 화면 — 책상 세트와 레벨 가구로 꾸민 층',
-    'alt.f1': '직원 고용 창에서 AI를 Codex(GPT, 베타)로 고른 화면', 'alt.f1b': 'AI 공급자 설정에서 Claude와 GPT 계정이 모두 준비된 화면',
-    'alt.f2': '단체방에서 @이름으로 일을 시키고 직원이 답하는 화면', 'alt.f3': 'GPT 직원의 파일 쓰기와 Claude 직원의 명령 실행 요청이 올라온 결재함',
+    'alt.f1': '직원 고용 창에서 AI를 Codex(GPT, 베타)로 고른 화면',
+    'alt.f2': '단체방에서 @이름으로 일을 시키고 직원이 답하는 화면', 'alt.f3': '결재함에 질문·클릭·명령 실행 요청이 모인 화면',
+    'alt.f4': '업무 보드와 팀장이 나눈 계획(기획 확인 대기)', 'alt.f5': '회의실에서 직원들이 돌아가며 발언하는 화면',
     'alt.f6': '직원이 화면을 보고 클릭 승인을 기다리는 결재 카드', 'alt.f7': '비서에게 업무 보드 정리를 부탁하자 실행 전 확인 카드가 뜬 화면',
     'alt.f8': '직원별 사용량과 Claude·GPT 사용량 카드가 보이는 대시보드',
+    'alt.vid1': '단체방에서 지시하자 결재 요청이 올라오고, 결재함에서 승인하는 움직이는 화면',
+    'cap.vid1': '<b>실제 화면</b> — 단체방에서 지시 → 결재함에 요청 → 승인',
+    // 캡처 위 번호 점 설명 (점 위치는 아래 CALLOUTS)
+    'co.office': ['직원이 자리에서 일해요', '지금 무엇을 하는지 한눈에', '회사가 커지면 층이 늘어요'],
+    'co.staff-mix': ['직원마다 Claude 또는 GPT', 'GPT 직원은 베타예요'],
+    'co.chat': ['@이름으로 바로 지시', '진행 상황이 대화로'],
+    'co.inbox': ['무엇을 하려는지 먼저 보여 줘요', '눌러서 승인, 또는 반려', '자주 하는 건 자동 승인, 마음에 안 들면 되돌리기'],
+    'co.board': ['계획을 먼저 확인받아요', '단계마다 알맞은 직원에게 배정'],
+    'co.meeting': ['직원들이 돌아가며 발언', '서로 다른 관점의 의견', '결정은 곧바로 할 일 카드로'],
+    'co.computer': ['클릭·입력은 승인 뒤에만', '장비를 지급한 직원만 쓸 수 있어요'],
+    'co.secretary': ['말로 부탁하면 돼요', '바꾸기 전과 후를 나란히', '못 하는 일도 방법을 알려 줘요'],
+    'co.dashboard': ['누가 일하고 누가 기다리는지', 'Claude·GPT 한도를 각각 확인'],
+    'co.decorate': ['새 가구가 레벨마다 열려요', '책상 세트를 돌려 놓아요', '칸막이로 팀 공간을 나눠요'],
+    'co.demoday': ['끝낸 일을 스크린으로 발표해요', '직원이 무대에 올라요'],
     'grow.eyebrow': '꾸미기', 'grow.title': '일할수록 자라는 회사', 'grow.sub': '직원이 일하면 회사 레벨이 올라 사무실이 넓어지고, 새 가구가 열려요.',
     'g1.t': '레벨과 사무실', 'g1.p': '차고에서 5층 타워까지 커져요. 레벨 11~20에서는 새 가구·소품 20종이 열리고, 레벨 15부터는 레벨마다 전설 품목이 하나씩 있어요. 업무 모드에서는 이런 요소를 숨길 수 있어요.',
     'g2.t': '내 맘대로 꾸미기', 'g2.p': '상점에서 가구·벽지·칸막이·고양이와 강아지를 사서 꾸며요. 책상과 의자는 한 세트로 돌려 놓고, 직원 자리에 앉힐 수 있어요. 커피머신·수족관 같은 소품은 움직이고 반응해요. “알아서 예쁘게 배치해줘”는 비서에게 맡기세요.',
     'g3.t': '데모데이', 'g3.p': '정해진 요일과 시간에 직원들이 무대에 올라 끝낸 일을 발표해요. 결과물은 갤러리에 모여 기간·직원·랩으로 골라 볼 수 있어요.',
-    'alt.g1': '레벨이 오른 회사 건물 외관', 'alt.g2': '꾸미기 모드에서 레벨 전용 가구 탭을 연 화면',
+    'alt.g1': '레벨이 오른 회사 건물 외관', 'alt.g2': '꾸미기 모드에서 레벨 전용 가구 탭을 연 화면', 'alt.g3': '데모데이 무대와 뒷벽 발표 스크린',
     'scr.eyebrow': '휴대폰', 'scr.title': '자리를 비워도 손안에서',
     'scr.sub': '안드로이드 앱을 PC와 연결하면 대시보드·결재함·단체방을 휴대폰에서 그대로 쓸 수 있어요. 집 밖에서도 연결돼요.',
     'cap.dash': '<b>대시보드</b> — 확인이 필요한 일을 바로 결재', 'cap.inbox': '<b>결재함</b> — 밖에서도 승인·반려', 'cap.chat': '<b>단체방</b> — 말로 지시하고 보고받기',
@@ -476,7 +483,7 @@ var I18N = {
     'meta.desc': 'A free, open-source desktop app to hire Claude and GPT staff, hand out work, approve, and get reports. No command line, no hard setup.',
     'nav.how': 'How it works', 'nav.features': 'Features', 'nav.grow': 'Grow', 'nav.screens': 'Phone', 'nav.download': 'Download', 'nav.faq': 'FAQ',
     'badge.oss': 'Free · Open source · <em>New: GPT staff</em>',
-    'hero.title': 'No code needed.<br>Hire <em>Claude and GPT staff</em> together.',
+    'hero.title': 'No code needed.<br>Hire <em>AI staff</em> together.',
     'hero.lead': 'Put Claude staff and GPT staff in one office and hand out the work. Approve the important parts in your inbox and get a report when it’s done. No command line, no hard setup.',
     'btn.download': 'Download for {os}', 'btn.soon': 'Coming soon', 'btn.also': 'Also available for',
     'os.mac': 'Mac', 'os.win': 'Windows', 'os.android': 'Android',
@@ -496,15 +503,29 @@ var I18N = {
     'f7.t': 'Secretary and tutorial', 'f7.p': 'A first-run tour shows you around, and “Try one full cycle” lets you practice handing off a task or running a meeting. After that, just ask the secretary: move people between teams, tidy the task board, redecorate, review staff instructions — even “why did they stop?”',
     'f8.t': 'Usage, payroll and terminal sessions', 'f8.p': 'See at a glance who’s working and who’s waiting, with per-employee usage and a card for each of your Claude and GPT plans. When usage runs near the limit, scheduled work pauses and you’re told. Claude and GPT sessions you started in a terminal also show up as “working” in the office.',
     'alt.office': 'AI Office floor decorated with desk sets and level furniture',
-    'alt.f1': 'Hiring window with Codex (GPT, beta) chosen as the AI', 'alt.f1b': 'AI provider settings with both Claude and GPT ready',
-    'alt.f2': 'Giving work with @name in the group chat and getting a reply', 'alt.f3': 'Approval inbox with a file edit from a GPT employee and a command from a Claude employee',
+    'alt.f1': 'Hiring window with Codex (GPT, beta) chosen as the AI',
+    'alt.f2': 'Giving work with @name in the group chat and getting a reply', 'alt.f3': 'The approval inbox with a question, a click, and a command request',
+    'alt.f4': 'The task board and a lead’s plan awaiting approval', 'alt.f5': 'Staff taking turns speaking in the meeting room',
     'alt.f6': 'An approval card asking to approve a click on the screen', 'alt.f7': 'Asking the secretary to tidy the task board, with a confirmation card before it runs',
     'alt.f8': 'A dashboard with per-employee usage and Claude/GPT usage cards',
+    'alt.vid1': 'Animated screen: an order in the group chat becomes an approval request, approved from the inbox',
+    'cap.vid1': '<b>Real screen</b> — order in the group chat → request in the inbox → approved',
+    'co.office': ['Staff work at their desks', 'See what each is doing at a glance', 'More floors as you grow'],
+    'co.staff-mix': ['Claude or GPT, per employee', 'GPT staff are in beta'],
+    'co.chat': ['Just @mention to assign', 'Progress shows up in chat'],
+    'co.inbox': ['See what they plan to do first', 'Approve or reject in one click', 'Auto-approve routine asks; undo if unhappy'],
+    'co.board': ['The plan comes to you first', 'Each step goes to the right person'],
+    'co.meeting': ['Staff take turns speaking', 'Different viewpoints on the table', 'Decisions become to-do cards'],
+    'co.computer': ['Clicks and typing only after approval', 'Only staff given the kit can use it'],
+    'co.secretary': ['Just ask in plain words', 'Before and after, side by side', 'If it can’t, it tells you what to do'],
+    'co.dashboard': ['Who’s working, who’s waiting', 'Claude and GPT limits, side by side'],
+    'co.decorate': ['New furniture unlocks each level', 'Rotate a desk set', 'Divide spaces with partitions'],
+    'co.demoday': ['Results shown on the big screen', 'Staff step on stage'],
     'grow.eyebrow': 'Grow', 'grow.title': 'A company that grows as you work', 'grow.sub': 'Staff work, the company levels up, the office expands, and new furniture unlocks.',
     'g1.t': 'Levels and floors', 'g1.p': 'From a garage up to a five-floor tower. Levels 11–20 unlock 20 new pieces of furniture and decor, with one legendary item per level from level 15. Work mode can hide all of this.',
     'g2.t': 'Decorate your way', 'g2.p': 'Buy furniture, wallpaper, partitions, cats and dogs in the shop. Rotate a desk and chair as one set and assign it to a person. Props like the coffee machine and aquarium move and react. Or ask the secretary to “arrange it nicely for me.”',
     'g3.t': 'Demo Day', 'g3.p': 'On a set day and time, staff step on stage and present what they finished. Results gather in a gallery you can filter by period, person, or lab.',
-    'alt.g1': 'The company building after leveling up', 'alt.g2': 'Decorate mode with the level-only furniture tab open',
+    'alt.g1': 'The company building after leveling up', 'alt.g2': 'Decorate mode with the level-only furniture tab open', 'alt.g3': 'The demo day stage and the presentation screen',
     'scr.eyebrow': 'Phone', 'scr.title': 'Away from your desk, still in your hand',
     'scr.sub': 'Link the Android app to your PC and use the dashboard, approval inbox, and group chat from your phone — even outside your home network.',
     'cap.dash': '<b>Dashboard</b> — approve what needs you, right away', 'cap.inbox': '<b>Approval inbox</b> — approve or reject from anywhere', 'cap.chat': '<b>Group chat</b> — give orders and get reports',
@@ -532,7 +553,7 @@ var I18N = {
     'meta.desc': 'ClaudeとGPTの社員を雇い、仕事を任せ、承認し、報告を受ける無料のオープンソースデスクトップアプリ。コマンド画面も難しい設定も不要です。',
     'nav.how': '使い方', 'nav.features': '機能', 'nav.grow': '育てる', 'nav.screens': 'スマホ', 'nav.download': 'ダウンロード', 'nav.faq': 'FAQ',
     'badge.oss': '無料 · オープンソース · <em>新登場：GPT社員</em>',
-    'hero.title': 'コードを知らなくても、<br><em>ClaudeとGPTの社員</em>をまとめて雇えます',
+    'hero.title': '<span class="nw">コードを知らなくても、</span><br><em>AI社員</em>を<span class="nw">まとめて雇えます</span>',
     'hero.lead': 'ClaudeとGPTの社員を一つのオフィスに迎えて、仕事を任せましょう。大事な作業は承認箱で確認し、終わったら報告が届きます。コマンド画面も難しい設定も不要です。',
     'btn.download': '{os} 版をダウンロード', 'btn.soon': '準備中', 'btn.also': 'ほかのプラットフォーム：',
     'os.mac': 'Mac', 'os.win': 'Windows', 'os.android': 'Android',
@@ -552,15 +573,29 @@ var I18N = {
     'f7.t': '秘書とチュートリアル', 'f7.p': '最初はツアーで使い方を案内し、「ひととおり体験」で仕事の依頼や会議の開催を真似して試せます。その後は秘書に話しかけるだけ。チームの異動、業務ボードの整理、オフィスの模様替え、社員の点検までお任せです。なぜ止まったのかも聞けます。',
     'f8.t': '使用量と給与明細、ターミナルの作業も', 'f8.p': '誰が働き、誰が確認待ちかをひと目で確認。社員ごとの使用量と、ClaudeとGPTそれぞれのプラン使用量をカードで見られます。使用量が上限に近づくと予約作業を一時停止してお知らせします。ターミナルで別に動かしているClaude・GPTの作業も、オフィスで「作業中」として見えます。',
     'alt.office': 'AI Office のオフィス画面 — 机セットとレベル家具で飾ったフロア',
-    'alt.f1': '社員の採用画面でAIにCodex（GPT・ベータ）を選んだところ', 'alt.f1b': 'ClaudeとGPTのアカウントが両方準備済みのAI提供元設定',
-    'alt.f2': 'グループチャットで@名前を使って仕事を頼み、社員が返事する画面', 'alt.f3': 'GPT社員のファイル書き込みとClaude社員のコマンド実行の依頼が届いた承認箱',
+    'alt.f1': '社員の採用画面でAIにCodex（GPT・ベータ）を選んだところ',
+    'alt.f2': 'グループチャットで@名前を使って仕事を頼み、社員が返事する画面', 'alt.f3': '質問・クリック・コマンド実行の依頼が集まった承認箱',
+    'alt.f4': '業務ボードと、リーダーが分けた計画（確認待ち）', 'alt.f5': '会議室で社員が順番に発言する画面',
     'alt.f6': '画面を見てクリックの承認を待つ承認カード', 'alt.f7': '秘書に業務ボードの整理を頼み、実行前の確認カードが出た画面',
     'alt.f8': '社員別の使用量とClaude・GPTの使用量カードがあるダッシュボード',
+    'alt.vid1': 'グループチャットで指示すると承認の依頼が届き、承認箱で承認する動く画面',
+    'cap.vid1': '<b>実際の画面</b> — グループチャットで指示 → 承認箱に依頼 → 承認',
+    'co.office': ['社員が席で働いています', '今何をしているかひと目で', '成長するとフロアが増えます'],
+    'co.staff-mix': ['社員ごとにClaudeかGPT', 'GPT社員はベータ版です'],
+    'co.chat': ['@名前ですぐ指示', '進み具合がチャットに'],
+    'co.inbox': ['やろうとしていることを先に表示', 'ワンクリックで承認・却下', 'よくあるものは自動承認、気に入らなければ元に戻す'],
+    'co.board': ['まず計画を確認します', '段階ごとに適した社員へ割り当て'],
+    'co.meeting': ['社員が順番に発言', '異なる視点の意見', '決定はそのままやることカードに'],
+    'co.computer': ['クリック・入力は承認後のみ', '装備を支給された社員だけが使えます'],
+    'co.secretary': ['話しかけるだけでOK', '変更前と後を並べて確認', 'できないときは方法を案内'],
+    'co.dashboard': ['誰が働き、誰が待っているか', 'ClaudeとGPTの上限をそれぞれ確認'],
+    'co.decorate': ['レベルごとに新しい家具が解放', '机セットを回転して配置', 'パーテーションで空間を分ける'],
+    'co.demoday': ['完了した仕事をスクリーンで発表', '社員がステージへ'],
     'grow.eyebrow': '育てる', 'grow.title': '働くほど育つ会社', 'grow.sub': '社員が働くと会社のレベルが上がり、オフィスが広がって新しい家具が解放されます。',
     'g1.t': 'レベルとオフィス', 'g1.p': 'ガレージから5階建てのタワーまで成長します。レベル11〜20では新しい家具・小物20種が解放され、レベル15からは毎レベル伝説級のアイテムが1つ登場します。業務モードでは非表示にできます。',
     'g2.t': '好きなように飾る', 'g2.p': 'ショップで家具・壁紙・パーテーション・猫や犬を買って飾れます。机と椅子はセットで回転でき、社員の席に置けます。コーヒーマシンや水槽などの小物は動いて反応します。「いい感じに配置して」は秘書にお任せ。',
     'g3.t': 'デモデイ', 'g3.p': '決めた曜日と時間に、社員がステージに上がって完了した仕事を発表します。成果物はギャラリーに集まり、期間・社員・ラボで絞り込めます。',
-    'alt.g1': 'レベルが上がった会社の建物の外観', 'alt.g2': '模様替えモードでレベル限定家具のタブを開いた画面',
+    'alt.g1': 'レベルが上がった会社の建物の外観', 'alt.g2': '模様替えモードでレベル限定家具のタブを開いた画面', 'alt.g3': 'デモデイのステージと発表スクリーン',
     'scr.eyebrow': 'スマホ', 'scr.title': '席を離れても手のひらで',
     'scr.sub': 'AndroidアプリをPCとつなぐと、ダッシュボード・承認箱・グループチャットをスマホでそのまま使えます。外出先からでも接続できます。',
     'cap.dash': '<b>ダッシュボード</b> — 確認が必要な作業をすぐ承認', 'cap.inbox': '<b>承認箱</b> — 外出先でも承認・却下', 'cap.chat': '<b>グループチャット</b> — 話して指示し、報告を受ける',
@@ -588,7 +623,7 @@ var I18N = {
     'meta.desc': '可同时雇用 Claude 和 GPT 员工、分配任务、审批并接收汇报的免费开源桌面应用。无需命令行，无需复杂设置。',
     'nav.how': '用法', 'nav.features': '功能', 'nav.grow': '成长', 'nav.screens': '手机', 'nav.download': '下载', 'nav.faq': '常见问题',
     'badge.oss': '免费 · 开源 · <em>新增 GPT 员工</em>',
-    'hero.title': '不懂代码也没关系，<br>一起雇用 <em>Claude 和 GPT 员工</em>',
+    'hero.title': '不懂代码也没关系，<br>一起雇用 <em>AI 员工</em>',
     'hero.lead': '把 Claude 员工和 GPT 员工请进同一间办公室，放心交给他们工作。重要的事在审批箱确认，完成后收到汇报。无需命令行，无需复杂设置。',
     'btn.download': '下载 {os} 版', 'btn.soon': '即将推出', 'btn.also': '其他平台：',
     'os.mac': 'Mac', 'os.win': 'Windows', 'os.android': 'Android',
@@ -608,15 +643,29 @@ var I18N = {
     'f7.t': '秘书与新手引导', 'f7.p': '首次使用有导览带你熟悉办公室，“完整体验一轮”可以跟着练习分配任务和召开会议。之后直接对秘书说就行：调整团队、整理任务看板、布置办公室、检查员工指令都能办，还能问“他为什么停下了”。',
     'f8.t': '用量与工资单，终端会话也能看', 'f8.p': '一眼看清谁在工作、谁在等你确认，员工用量以及 Claude 和 GPT 各自的套餐用量都以卡片显示。用量快满时会暂停定时任务并提醒你。在终端里另外运行的 Claude、GPT 工作，也会在办公室里显示为“工作中”。',
     'alt.office': 'AI Office 办公室界面 — 用桌椅套装和等级家具装饰的楼层',
-    'alt.f1': '在雇用员工窗口中把 AI 选为 Codex（GPT，测试版）', 'alt.f1b': 'Claude 与 GPT 账号均已就绪的 AI 提供方设置',
-    'alt.f2': '在群聊中用 @姓名 交代任务并得到回复的画面', 'alt.f3': '审批箱里有 GPT 员工的写文件请求和 Claude 员工的执行命令请求',
+    'alt.f1': '在雇用员工窗口中把 AI 选为 Codex（GPT，测试版）',
+    'alt.f2': '在群聊中用 @姓名 交代任务并得到回复的画面', 'alt.f3': '汇集提问、点击和命令执行请求的审批箱',
+    'alt.f4': '任务看板与组长拆分的计划（待确认）', 'alt.f5': '员工在会议室轮流发言的画面',
     'alt.f6': '员工查看屏幕后等待点击批准的审批卡片', 'alt.f7': '请秘书整理任务看板后，执行前弹出的确认卡片',
     'alt.f8': '显示员工用量及 Claude、GPT 用量卡片的仪表盘',
+    'alt.vid1': '在群聊下达指示后出现审批请求，并在审批箱批准的动态画面',
+    'cap.vid1': '<b>真实画面</b> — 群聊下达指示 → 审批箱收到请求 → 批准',
+    'co.office': ['员工在座位上工作', '谁在做什么一目了然', '公司壮大，楼层增加'],
+    'co.staff-mix': ['每位员工可选 Claude 或 GPT', 'GPT 员工为测试版'],
+    'co.chat': ['@姓名即可交代任务', '进度直接显示在对话里'],
+    'co.inbox': ['先告诉你准备做什么', '一键批准或驳回', '常规请求可自动批准，不满意可还原'],
+    'co.board': ['计划先交给你确认', '每个步骤分配给合适的人'],
+    'co.meeting': ['员工轮流发言', '不同角度的意见', '决定直接变成待办卡片'],
+    'co.computer': ['点击和输入须先获批准', '仅限配发装备的员工使用'],
+    'co.secretary': ['开口说就行', '修改前后并排对比', '做不到时会告诉你替代办法'],
+    'co.dashboard': ['谁在工作、谁在等待', '分别查看 Claude 与 GPT 额度'],
+    'co.decorate': ['每升一级解锁新家具', '旋转桌椅套装', '用隔断划分空间'],
+    'co.demoday': ['用大屏展示完成的工作', '员工登台'],
     'grow.eyebrow': '成长', 'grow.title': '越工作越壮大的公司', 'grow.sub': '员工工作后公司升级，办公室变大，解锁新的家具。',
     'g1.t': '等级与办公室', 'g1.p': '从车库一路成长为五层大楼。11~20 级会解锁 20 件新家具和摆设，从 15 级起每级还有一件传说级物品。办公模式下可以隐藏这些元素。',
     'g2.t': '随心装饰', 'g2.p': '在商店购买家具、壁纸、隔断和猫狗来装饰。桌椅可作为一套整体旋转，并分配给员工的座位。咖啡机、水族箱等摆设会动起来并有反应。“帮我漂亮地布置一下”也可以交给秘书。',
     'g3.t': '演示日', 'g3.p': '在设定的日期和时间，员工会登台展示完成的工作。成果汇集到画廊，可按时间、员工或实验室筛选。',
-    'alt.g1': '升级后的公司大楼外观', 'alt.g2': '装饰模式下打开等级专属家具标签页',
+    'alt.g1': '升级后的公司大楼外观', 'alt.g2': '装饰模式下打开等级专属家具标签页', 'alt.g3': '演示日舞台与发言大屏',
     'scr.eyebrow': '手机', 'scr.title': '离开座位也在掌心',
     'scr.sub': '把安卓应用与电脑连接后，仪表盘、审批箱和群聊都能在手机上使用。在外面也能连上。',
     'cap.dash': '<b>仪表盘</b> — 需要确认的事当场审批', 'cap.inbox': '<b>审批箱</b> — 在外面也能批准、驳回', 'cap.chat': '<b>群聊</b> — 开口交代，接收汇报',
@@ -649,6 +698,22 @@ var I18N = {
     android: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.6 9.5l1.7-3a.4.4 0 00-.7-.4l-1.8 3.1a10.6 10.6 0 00-9.6 0L5.4 6.1a.4.4 0 00-.7.4l1.7 3A9.9 9.9 0 001.5 17h21a9.9 9.9 0 00-4.9-7.5zM7 14.4a1 1 0 110-2 1 1 0 010 2zm10 0a1 1 0 110-2 1 1 0 010 2z"/></svg>'
   };
   var EXT = {mac:'.dmg', win:'.zip', android:'.apk'};
+  // 캡처 위 번호 점 위치 [가로 %, 세로 %] — 4개 언어 캡처가 같은 구도라 위치도 같다. 설명 글은 I18N의 'co.<이름>'
+  var CALLOUTS = {
+    office: [[46, 33], [49, 51], [85, 9]],
+    'staff-mix': [[29.5, 52], [44, 52]],
+    chat: [[61, 35], [25, 52]],
+    inbox: [[14.5, 60], [60, 58], [60, 81]],
+    board: [[36, 50], [14.5, 54]],
+    meeting: [[14.5, 60], [47, 66], [14.5, 83]],
+    computer: [[72.5, 30], [72.5, 59]],
+    secretary: [[68, 37], [30, 61], [75, 29]],
+    dashboard: [[28.5, 8], [64, 41]],
+    decorate: [[91.5, 19], [59.5, 50], [47, 44]],
+    demoday: [[52, 32], [54, 57]]
+  };
+  // 움직이는 화면(assets/video/<이름>.webm)이 있는 언어. 지금은 한국어 화면만 있어 다른 언어는 정지 캡처를 보여 준다
+  var VIDEO_LANGS = ['ko'];
   var ua = navigator.userAgent || '';
   var os = /Android/i.test(ua) ? 'android' : /iPhone|iPad|iPod/i.test(ua) ? '' : /Mac/i.test(ua) ? 'mac' : /Win/i.test(ua) ? 'win' : '';
   var changelog = D.changelog || (D.github ? D.github.replace(/\/$/, '') + '/blob/main/CHANGELOG.md' : '');
@@ -693,6 +758,37 @@ var I18N = {
     img.src = 'assets/screens/' + chain[0] + '/' + name + '.webp';
   }
 
+  // 번호 점과 설명 줄 자리를 한 번만 만든다 (글은 render가 채움)
+  function buildCallouts(){
+    document.querySelectorAll('[data-co]').forEach(function(pic){
+      var ol = document.createElement('ol');
+      ol.className = 'co';
+      CALLOUTS[pic.getAttribute('data-co')].forEach(function(p, n){
+        var dot = document.createElement('span');
+        dot.className = 'dot';
+        dot.textContent = n + 1;
+        dot.setAttribute('aria-hidden', 'true');
+        dot.style.left = p[0] + '%';
+        dot.style.top = p[1] + '%';
+        pic.appendChild(dot);
+        var li = document.createElement('li');
+        li.setAttribute('data-n', n + 1);
+        ol.appendChild(li);
+      });
+      pic.after(ol);
+    });
+  }
+
+  // 그 언어 영상이 있으면 영상, 없으면 정지 캡처(+번호 설명). 캡처가 없는 자리(사용법)는 통째로 숨김
+  function setVideo(fig, on){
+    var v = fig.querySelector('video'), pic = fig.querySelector('.pic'), name = fig.getAttribute('data-video');
+    if (on && !v.getAttribute('src')) { v.poster = 'assets/video/' + name + '-poster.webp'; v.src = 'assets/video/' + name + '.webm'; }
+    if (!on) v.pause();
+    v.hidden = !on;
+    if (pic) { pic.hidden = on; pic.nextElementSibling.hidden = on; }
+    else fig.hidden = !on;
+  }
+
   function render(lang){
     var t = I18N[lang];
     document.documentElement.lang = HTML_LANG[lang];
@@ -705,7 +801,13 @@ var I18N = {
     document.querySelectorAll('[data-i18n]').forEach(function(el){ el.innerHTML = t[el.getAttribute('data-i18n')]; });
     document.querySelectorAll('[data-i18n-alt]').forEach(function(el){ el.alt = t[el.getAttribute('data-i18n-alt')]; });
     document.querySelectorAll('[data-version]').forEach(function(el){ el.textContent = D.version; });
+    document.querySelectorAll('[data-i18n-label]').forEach(function(el){ el.setAttribute('aria-label', t[el.getAttribute('data-i18n-label')]); });
     document.querySelectorAll('[data-shot]').forEach(function(el){ setShot(el, lang); });
+    document.querySelectorAll('[data-co]').forEach(function(pic){
+      var lines = t['co.' + pic.getAttribute('data-co')];
+      pic.nextElementSibling.querySelectorAll('li').forEach(function(li, n){ li.textContent = lines[n]; });
+    });
+    document.querySelectorAll('[data-video]').forEach(function(fig){ setVideo(fig, VIDEO_LANGS.indexOf(lang) >= 0); });
 
     // 첫 화면: 내 기기 다운로드 + GitHub, 나머지는 작은 링크
     var cta = document.getElementById('cta'), also = document.getElementById('also');
@@ -763,6 +865,38 @@ var I18N = {
     }, {rootMargin: '0px 0px -8% 0px'});
     rv.forEach(function(el, n){ el.style.transitionDelay = (n % 3) * 70 + 'ms'; io.observe(el); });
   } else rv.forEach(function(el){ el.classList.add('in'); });
+
+  // 영상: 소리 없이 반복, 화면에 보일 때만 재생. 움직임 줄이기 설정이면 자동 재생 대신 재생 버튼
+  var videos = document.querySelectorAll('[data-video] video');
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) videos.forEach(function(v){ v.controls = true; });
+  else if ('IntersectionObserver' in window) {
+    var vio = new IntersectionObserver(function(es){
+      es.forEach(function(e){
+        var v = e.target;
+        if (e.isIntersecting && !v.hidden) v.play().catch(function(){});
+        else v.pause();
+      });
+    }, {threshold: .3});
+    videos.forEach(function(v){ vio.observe(v); });
+  }
+
+  // 캡처 크게 보기 (2배 파일 그대로)
+  var zoom = document.getElementById('zoom'), zoomImg = zoom.querySelector('img');
+  function openZoom(img){
+    if (!zoom.showModal) return;
+    zoomImg.src = img.currentSrc || img.src;
+    zoomImg.alt = img.alt;
+    zoom.showModal();
+  }
+  document.querySelectorAll('.pic img').forEach(function(img){
+    img.tabIndex = 0;
+    img.setAttribute('role', 'button');
+    img.addEventListener('click', function(){ openZoom(img); });
+    img.addEventListener('keydown', function(e){ if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openZoom(img); } });
+  });
+  zoom.addEventListener('click', function(){ zoom.close(); });
+
+  buildCallouts();
   render(pickLang());
 
   // 버전: GitHub 최신 Release의 tag_name(v0.14.0 → 0.14.0). 실패·3초 초과·이상한 값이면 DOWNLOADS.version 그대로
