@@ -216,3 +216,23 @@ export function seatSetOf(items: readonly GridItem[], uid: string): GridItem[] {
   const chairs = items.filter((c) => c.floor === desk.floor && specOf(c.itemId).kind === 'chair' && facing(c)?.uid === desk.uid)
   return chairs.length === 1 && cellsOf(desk).length === 2 ? [desk, chairs[0]] : [it]
 }
+
+type SetPose = Pick<GridItem, 'itemId' | 'gx' | 'gy' | 'rot'>
+
+/** 책상 세트를 한 덩어리로 90°씩 돌린다 (dir 1 = 시계 방향). 둘을 감싼 칸 상자의 왼쪽 위를 그대로 두고 돌려, 의자는 계속 책상을 본다 */
+export function rotateSeatSet<D extends SetPose, C extends SetPose>(desk: D, chair: C, dir: 1 | -1): [D, C] {
+  const all = [...cellsOf(desk), ...cellsOf(chair)]
+  const x0 = Math.min(...all.map((c) => c.gx))
+  const y0 = Math.min(...all.map((c) => c.gy))
+  let depth = Math.max(...all.map((c) => c.gy)) - y0 + 1
+  let width = Math.max(...all.map((c) => c.gx)) - x0 + 1
+  // 상자 안 칸 (x, y) → 한 번 돌리면 (depth-1-y, x) — furniture.ts rotate와 같은 식
+  let poses = [desk, chair].map((p) => ({ cells: cellsOf(p).map((c) => [c.gx - x0, c.gy - y0] as [number, number]), rot: p.rot }))
+  for (let i = 0; i < (dir === 1 ? 1 : 3); i++) {
+    const d = depth
+    poses = poses.map((p) => ({ cells: p.cells.map(([x, y]) => [d - 1 - y, x] as [number, number]), rot: ((p.rot + 1) % 4) as Rot }))
+    ;[width, depth] = [depth, width]
+  }
+  const at = (p: SetPose, i: number) => ({ ...p, gx: x0 + Math.min(...poses[i].cells.map(([x]) => x)), gy: y0 + Math.min(...poses[i].cells.map(([, y]) => y)), rot: poses[i].rot })
+  return [at(desk, 0) as D, at(chair, 1) as C]
+}

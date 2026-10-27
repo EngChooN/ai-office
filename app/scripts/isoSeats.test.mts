@@ -205,3 +205,18 @@ test('moveSeatSet: 기본 자리(auto:)는 새 uid로 저장되고 저장 가구
   assert.throws(() => moveSeatSet(c, 8, 1, [{ uid: 'nd', itemId: 'desk', gx: 12, gy: 9, rot: 0 }, { uid: 'nc', itemId: 'chair', gx: 12, gy: 8, rot: 0 }]))
   assert.throws(() => moveSeatSet(EMPTY_SHOP, 8, 1, [{ uid: 'zz', itemId: 'desk', gx: 6, gy: 9, rot: 0 }]))
 })
+
+import { rotateSeatSet } from '../src/shared/iso/seats.ts'
+
+test('책상 세트 돌리기: 네 방향 모두 의자가 책상을 보고, 네 번 돌리면 제자리', () => {
+  let d: GridItem = { uid: 'd', itemId: 'desk', floor: 1, gx: 3, gy: 4, rot: 0 }
+  let c: GridItem = { uid: 'c', itemId: 'chair', floor: 1, gx: 3, gy: 3, rot: 0 }
+  for (let i = 0; i < 4; i++) {
+    ;[d, c] = rotateSeatSet(d, c, 1)
+    assert.deepEqual(seatSetOf([d, c], 'c').map((g) => g.uid).sort(), ['c', 'd'], `rot ${d.rot}`)
+    assert.equal(seatsOf([d, c])[0].hasDesk, true)
+  }
+  assert.deepEqual([d, c].map(({ gx, gy, rot }) => [gx, gy, rot]), [[3, 4, 0], [3, 3, 0]])
+  const [d1, c1] = rotateSeatSet(...rotateSeatSet(d, c, 1), -1)
+  assert.deepEqual([d1, c1], [d, c])
+})

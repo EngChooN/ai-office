@@ -9,7 +9,7 @@ import { cellsOf, sizeOf, specOf, type GridItem, type Rot, type SeatSetPart } fr
 import { isInside } from '@shared/iso/grid'
 import { roomOf } from '@shared/iso/levels'
 import { canPlace, REASON_TEXT, type FloorState } from '@shared/iso/place'
-import { isAutoSeat, seatSetOf, seatsOf } from '@shared/iso/seats'
+import { isAutoSeat, rotateSeatSet, seatSetOf, seatsOf } from '@shared/iso/seats'
 import { setAutoOff, useSeatStatus } from './seatStatus'
 import { isReducedMotion } from '@/lib/reducedMotion'
 import type { IsoOfficeScene } from '../IsoOfficeScene'
@@ -25,7 +25,7 @@ export interface DecorHold {
   reason: string | null
   uid: string | null
   /** 책상 세트로 옮기는 중이면 함께 가는 의자 (itemId·uid는 책상). 책상 칸에서 dx·dy만큼 떨어져 따라간다 */
-  partner?: { uid: string; itemId: string; dx: number; dy: number } | null
+  partner?: { uid: string; itemId: string; dx: number; dy: number; rot: Rot } | null
 }
 
 interface DecorUi {
@@ -161,7 +161,7 @@ export class DecorController {
     if (set.length === 2) {
       const [desk, chair] = set
       this.scene.setItemHidden([desk.uid, chair.uid])
-      return this.hold({ itemId: desk.itemId, rot: desk.rot, gx: desk.gx, gy: desk.gy, ok: false, reason: null, uid: desk.uid, partner: { uid: chair.uid, itemId: chair.itemId, dx: chair.gx - desk.gx, dy: chair.gy - desk.gy } })
+      return this.hold({ itemId: desk.itemId, rot: desk.rot, gx: desk.gx, gy: desk.gy, ok: false, reason: null, uid: desk.uid, partner: { uid: chair.uid, itemId: chair.itemId, dx: chair.gx - desk.gx, dy: chair.gy - desk.gy, rot: chair.rot } })
     }
     this.scene.setItemHidden(uid)
     this.hold({ itemId: it.itemId, rot: it.rot, gx: it.gx, gy: it.gy, ok: false, reason: null, uid })
@@ -171,14 +171,39 @@ export class DecorController {
   rotate(dir: 1 | -1 = 1) {
     const { hold, selected } = useDecor.getState()
     const turn = (r: Rot) => ((r + dir + 4) % 4) as Rot
-    if (hold?.partner) return this.say('책상 세트는 돌릴 수 없어요')
+    if (hold?.partner) {
+      const p = hold.partner
+      const [desk, chair] = rotateSeatSet(hold, { itemId: p.itemId, gx: hold.gx + p.dx, gy: hold.gy + p.dy, rot: p.rot }, dir)
+      return this.hold({ ...desk, partner: { ...p, dx: chair.gx - desk.gx, dy: chair.gy - desk.gy, rot: chair.rot } })
+    }
     if (hold) return this.hold({ ...hold, rot: turn(hold.rot) })
     if (!selected) return
-    if (isAutoSeat(selected.uid) || seatSetOf(this.sceneItems(), selected.uid).length === 2) return this.say('책상 세트는 돌릴 수 없어요')
+    const set = seatSetOf(this.sceneItems(), selected.uid)
+    if (set.length === 2) return this.rotateSet(set[0], set[1], dir)
+    if (isAutoSeat(selected.uid)) return this.say('이 자리는 돌릴 수 없어요')
     const pose = { ...selected, rot: turn(selected.rot) }
     const r = canPlace(this.floorState(), pose, selected.uid)
     if (!r.ok) return this.say(REASON_TEXT[r.reason])
     void this.save(() => window.office.moveGridItem(selected.uid, selected.floor, pose.gx, pose.gy, pose.rot), () => this.select({ ...selected, rot: pose.rot }))
+  }
+
+  /** 고른 책상 세트를 제자리에서 돌려 바로 저장 — 기본 자리는 새 uid로 저장 가구가 되고, 앉은 직원은 새 의자로 따라간다 */
+  private rotateSet(desk: GridItem, chair: GridItem, dir: 1 | -1) {
+    if (this.isBusy) return
+    const [d, c] = rotateSeatSet(desk, chair, dir)
+    const base = this.floorState()
+    const rest = base.items.filter((g) => g.uid !== desk.uid && g.uid !== chair.uid)
+    const check = canPlace({ ...base, items: rest }, d)
+    const r = check.ok ? canPlace({ ...base, items: [...rest, d] }, c) : check
+    if (!r.ok) return this.say(REASON_TEXT[r.reason])
+    const parts: SeatSetPart[] = [d, c].map((g) => ({ uid: g.uid, itemId: g.itemId, gx: g.gx, gy: g.gy, rot: g.rot, ...(isAutoSeat(g.uid) ? { toUid: crypto.randomUUID() } : {}) }))
+    const [pd, pc] = parts
+    if (pc.toUid) this.scene.moveSeatMemory(pc.uid, pc.toUid)
+    void this.save(
+      () => window.office.moveSeatSet(desk.floor, parts),
+      () => this.select({ ...d, uid: pd.toUid ?? d.uid }),
+      () => pc.toUid && this.scene.moveSeatMemory(pc.toUid, pc.uid),
+    )
   }
 
   /** ② 방향키로 한 칸씩 */
@@ -210,7 +235,7 @@ export class DecorController {
     const p = hold.partner!
     const parts: SeatSetPart[] = [
       { uid: hold.uid!, itemId: hold.itemId, gx: hold.gx, gy: hold.gy, rot: hold.rot, ...(isAutoSeat(hold.uid!) ? { toUid: crypto.randomUUID() } : {}) },
-      { uid: p.uid, itemId: p.itemId, gx: hold.gx + p.dx, gy: hold.gy + p.dy, rot: this.sceneItems().find((g) => g.uid === p.uid)?.rot ?? 0, ...(isAutoSeat(p.uid) ? { toUid: crypto.randomUUID() } : {}) },
+      { uid: p.uid, itemId: p.itemId, gx: hold.gx + p.dx, gy: hold.gy + p.dy, rot: p.rot, ...(isAutoSeat(p.uid) ? { toUid: crypto.randomUUID() } : {}) },
     ]
     const chair = parts[1]
     if (chair.toUid) this.scene.moveSeatMemory(chair.uid, chair.toUid)
@@ -388,10 +413,8 @@ export class DecorController {
   /** 책상 세트를 들고 있을 때: 책상 → 의자 순으로 놓을 수 있는지 보고 둘 다 그린다 */
   private holdSet(h: DecorHold) {
     const p = h.partner!
-    const chairNow = this.sceneItems().find((g) => g.uid === p.uid)
-    const rot = chairNow?.rot ?? 0
     const desk = { itemId: h.itemId, gx: h.gx, gy: h.gy, rot: h.rot }
-    const chair = { itemId: p.itemId, gx: h.gx + p.dx, gy: h.gy + p.dy, rot }
+    const chair = { itemId: p.itemId, gx: h.gx + p.dx, gy: h.gy + p.dy, rot: p.rot }
     const base = this.floorState()
     const rest = base.items.filter((g) => g.uid !== h.uid && g.uid !== p.uid)
     const deskCheck = canPlace({ ...base, items: rest }, desk)
