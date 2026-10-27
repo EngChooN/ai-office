@@ -177,6 +177,11 @@ function TaskCard({ task }: { task: Task }) {
   const [isOpen, setIsOpen] = useState(false)
   // 튜토리얼 연습 카드면 누를 곳에 표시를 붙이고, 결과를 열면 엔진에 알린다
   const isTutorialTask = useTutorialTaskId() === task.id
+  // 마지막 단계('검토 완료')는 보드 열의 버튼이라, 열어 둔 상세 창이 가리지 않게 닫는다
+  const tutorialStepNow = useTutorialStep()
+  useEffect(() => {
+    if (isTutorialTask && tutorialStepNow === 'a7') setIsOpen(false)
+  }, [isTutorialTask, tutorialStepNow])
   const openDetail = () => {
     setIsOpen(true)
     if (isTutorialTask && task.result) void window.office.tutorialAct({ type: 'resultOpened' })
