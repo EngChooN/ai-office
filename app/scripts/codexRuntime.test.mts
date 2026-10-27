@@ -9,6 +9,12 @@ import { findCodexRollout, readCodexTail } from '../src/main/ai/codexSession.ts'
 
 const usage = (o: Partial<{ inputTokens: number; cachedInputTokens: number; cacheWriteInputTokens: number; outputTokens: number }>) => ({ inputTokens: 0, cachedInputTokens: 0, cacheWriteInputTokens: 0, outputTokens: 0, ...o })
 
+test('캐시 쓰기 토큰은 입력 토큰에 포함돼 있어 한 번만 센다', () => {
+  const luna = priceFor('gpt-6-luna')
+  const cost = codexCostUsd('gpt-6-luna', usage({ inputTokens: 1_000_000, cachedInputTokens: 500_000, cacheWriteInputTokens: 200_000 }))
+  assert.ok(Math.abs(cost - (500_000 * luna.input + 500_000 * luna.cachedInput) / 1e6) < 1e-9)
+})
+
 test('단가표: 캐시분은 싼 단가, 모르는 모델은 중간 단가', () => {
   const luna = priceFor('gpt-6-luna')
   const cost = codexCostUsd('gpt-6-luna', usage({ inputTokens: 1_000_000, cachedInputTokens: 600_000, outputTokens: 100_000 }))

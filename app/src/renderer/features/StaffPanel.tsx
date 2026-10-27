@@ -330,8 +330,10 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
   const handleSlashPick = (i: number, isEnter = false) => {
     if (i >= manualChoices.length) {
       const command = slashCommands[i - manualChoices.length]
-      if (isEnter && runsOnEnter(command)) return void handleSend(false, `/${command.name}`)
-      return setDraft(`/${command.name} `)
+      // Codex는 스킬을 '$이름'으로 부른다(번들 app-server 확인) — 메뉴는 '/'로 열어도 넣는 건 '$이름'
+      const mark = staff.provider === 'codex' ? '$' : '/'
+      if (isEnter && runsOnEnter(command)) return void handleSend(false, `${mark}${command.name}`)
+      return setDraft(`${mark}${command.name} `)
     }
     setPickedManual(manualChoices[i])
     setDraft('')

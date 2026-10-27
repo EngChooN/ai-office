@@ -134,7 +134,7 @@ export function translateNotification(method: string, params: Json, state: Codex
         text: status === 'completed' ? str(final?.text) : '',
         numTurns: 1,
         costUsd: codexCostUsd(state.model, state.usage),
-        tokensIn: state.usage.inputTokens + state.usage.cacheWriteInputTokens,
+        tokensIn: state.usage.inputTokens,
         tokensOut: state.usage.outputTokens,
       },
     ]

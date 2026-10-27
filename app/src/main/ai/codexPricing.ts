@@ -24,10 +24,11 @@ const FALLBACK: Price = { input: 1.25, cachedInput: 0.125, output: 10 }
 
 export const priceFor = (model: string | undefined): Price => (model && PRICES[model]) || FALLBACK
 
-/** inputTokens에는 캐시 읽기가 포함돼 있다 — 캐시분은 싼 단가로 따로 센다. 캐시 쓰기는 입력 단가 */
+/** inputTokens에는 캐시 읽기·쓰기가 포함돼 있다(input_tokens_details) — 읽기는 싼 단가, 쓰기는 입력 단가로 따로 센다 */
 export function codexCostUsd(model: string | undefined, u: CodexUsage) {
   const p = priceFor(model)
   const cached = Math.min(u.cachedInputTokens, u.inputTokens)
-  const fresh = Math.max(0, u.inputTokens - cached)
-  return (fresh * p.input + u.cacheWriteInputTokens * p.input + cached * p.cachedInput + u.outputTokens * p.output) / 1_000_000
+  const written = Math.min(u.cacheWriteInputTokens, u.inputTokens - cached)
+  const fresh = Math.max(0, u.inputTokens - cached - written)
+  return ((fresh + written) * p.input + cached * p.cachedInput + u.outputTokens * p.output) / 1_000_000
 }
