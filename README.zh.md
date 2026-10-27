@@ -2,15 +2,15 @@
 
 # AI Office
 
-把 AI 会话（目前是 Claude Code）聘为**员工**，像一间办公室一样一起查看和指挥的个人 PoC（Electron 桌面应用）。旧名称为 Claude Office，首次启动时会自动复制已有数据（旧文件夹保持不动）。
+同时**雇用** Claude 员工和 GPT 员工，像一间办公室一样分配工作、审批、接收汇报的免费开源桌面应用（Electron）。员工是 Claude Code 或 Codex（GPT）会话。旧名称为 Claude Office，首次启动时会自动复制已有数据（旧文件夹保持不动）。
 
 - 状态：**0.14.0**（2026-10-27）— GPT 员工（测试版）· 办公室地图（团队区域、会议室、休息室）· 团队/组长委派 · 任务看板 · 审批箱 · 群聊 · 会议 · 定时任务 · 报告 · 工资单 · 布置
-- 技术栈：Electron Forge + Vite · React 19 · Zustand · Tailwind 4 + shadcn/ui · Phaser 4 · SQLite（`node:sqlite`）· Claude Agent SDK
+- 技术栈：Electron Forge + Vite · React 19 · Zustand · Tailwind 4 + shadcn/ui · Phaser 4 · SQLite（`node:sqlite`）· Claude Agent SDK · Codex app-server（GPT 员工）
 
 ## 安装 (0.14.0)
 - 打开 `app/out/make/dmg/arm64/AI-Office.dmg`，拖到 Applications 文件夹
 - 仅限 Apple Silicon · 未签名/未公证 → 首次打开时若出现“无法验证开发者”提示，请前往 系统设置 › 隐私与安全性 › “仍要打开”
-- 前提条件：该 Mac 上已登录 Claude Code（员工使用该账户工作，费用也计入该账户）
+- 前提条件：该 Mac 上已登录 Claude（Claude Code）或 GPT（ChatGPT · Codex）中的至少一个。两者都连接时可按员工选择（员工使用该账户工作，费用也计入该账户）
 - 重新构建：`cd app && pnpm make`
 
 ## Windows（第一阶段 · 试用版）
@@ -32,15 +32,15 @@ cd app
 pnpm install
 pnpm start
 ```
-- 登录：无需单独的 API 密钥，直接使用本机 Claude Code 的登录状态。
+- 登录：无需单独的 API 密钥，直接使用本机 Claude Code 和 Codex 的登录状态。各提供方的连接状态可在设置中查看。
 - 数据：`~/Library/Application Support/AI Office/office.db`
 - 一个数据文件夹只能由一个应用使用（`office.lock`）。若已启动安装版，开发版会显示“已经在运行”并退出。要在保持安装版运行的同时启动开发版或 QA，请指定其他文件夹：`CLAUDE_OFFICE_USER_DATA=~/claude-office-dev pnpm start`
 
 ## 两类员工
 | | 雇用员工 | 外部员工 |
 |---|---|---|
-| 身份 | 应用通过 Agent SDK 启动的会话 | 在终端或桌面应用中已在运行的会话 |
-| 状态 | 实时（流） | 每 2 秒轮询 `~/.claude/sessions` 注册表（+ 可选开启的 hooks） |
+| 身份 | 应用启动的会话（Claude：Agent SDK · GPT：Codex app-server） | 在终端或桌面应用中已在运行的 Claude Code、Codex 会话 |
+| 状态 | 实时（流） | Claude：每 2 秒轮询 `~/.claude/sessions` 注册表（+ 可选开启的 hooks）· Codex：通过 `~/.codex/sessions` 记录文件仅查看 |
 | 指令·审批 | 在应用中 | 在原窗口中 |
 | 今日工作 | 应用数据库 | 对话记录 jsonl |
 

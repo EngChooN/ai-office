@@ -2,15 +2,15 @@
 
 # AI Office
 
-A personal PoC (Electron desktop app) that turns AI sessions (currently Claude Code) into **staff** you can hire, direct and review together, like one office. (Formerly named Claude Office — existing data is copied automatically on first launch; the old folder is left untouched.)
+A free, open-source desktop app (Electron) where you **hire** Claude staff and GPT staff together and run them like one office: hand out work, approve, and get reports. Staff are Claude Code or Codex (GPT) sessions. (Formerly named Claude Office — existing data is copied automatically on first launch; the old folder is left untouched.)
 
 - Status: **0.14.0** (2026-10-27) — GPT staff (beta) · Office map (team zones, meeting rooms, lounge) · Team / team-lead delegation · Task board · Approval inbox · Group chat · Meetings · Scheduled tasks · Reports · Payslips · Decorating
-- Stack: Electron Forge + Vite · React 19 · Zustand · Tailwind 4 + shadcn/ui · Phaser 4 · SQLite (`node:sqlite`) · Claude Agent SDK
+- Stack: Electron Forge + Vite · React 19 · Zustand · Tailwind 4 + shadcn/ui · Phaser 4 · SQLite (`node:sqlite`) · Claude Agent SDK · Codex app-server (GPT staff)
 
 ## Installation (0.14.0)
 - Open `app/out/make/dmg/arm64/AI-Office.dmg` and drag it into Applications
 - Apple Silicon only · Not signed or notarized → if you see an "unidentified developer" warning the first time you open it, go to System Settings › Privacy & Security › "Open Anyway"
-- Requirement: Claude Code must be signed in on that Mac (staff work under that account, and usage is billed to it)
+- Requirement: at least one of Claude (Claude Code) or GPT (ChatGPT · Codex) must be signed in on that Mac. With both connected you choose per employee (staff work under that account, and usage is billed to it)
 - Rebuild: `cd app && pnpm make`
 
 ## Windows (first release · beta)
@@ -32,15 +32,15 @@ cd app
 pnpm install
 pnpm start
 ```
-- Sign-in: no separate API key is needed; it uses the Claude Code sign-in on this Mac as is.
+- Sign-in: no separate API key is needed; it uses the Claude Code and Codex sign-ins on this Mac as is. Connection status per provider is shown in Settings.
 - Data: `~/Library/Application Support/AI Office/office.db`
 - One data folder can be used by only one app at a time (`office.lock`). If the installed app is running, the dev app shows "already running" and quits. To run the dev app or QA while the installed app is open, give it a different folder: `CLAUDE_OFFICE_USER_DATA=~/claude-office-dev pnpm start`
 
 ## Two kinds of staff
 | | Hired staff | External staff |
 |---|---|---|
-| Identity | A session the app starts with the Agent SDK | A session already running in a terminal or desktop app |
-| Status | Real-time (stream) | Polls the `~/.claude/sessions` registry every 2 seconds (+ opt-in hooks) |
+| Identity | A session the app starts (Claude: Agent SDK · GPT: Codex app-server) | A Claude Code or Codex session already running in a terminal or desktop app |
+| Status | Real-time (stream) | Claude: polls the `~/.claude/sessions` registry every 2 seconds (+ opt-in hooks) · Codex: view-only from `~/.codex/sessions` log files |
 | Instructions & approvals | In the app | In the original window |
 | Today's work | App DB | Transcript jsonl |
 

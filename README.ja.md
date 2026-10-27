@@ -2,15 +2,15 @@
 
 # AI Office
 
-AI セッション（現在は Claude Code）を**社員**として採用し、ひとつのオフィスのように見て指示できる個人向け PoC（Electron デスクトップアプリ）です。旧名称は Claude Office で、初回起動時に既存データを自動コピーします（旧フォルダーはそのまま残ります）。
+Claude の社員と GPT の社員を一緒に**採用**し、ひとつのオフィスのように仕事を任せ、承認し、報告を受ける無料・オープンソースのデスクトップアプリ（Electron）です。社員は Claude Code または Codex（GPT）のセッションです。旧名称は Claude Office で、初回起動時に既存データを自動コピーします（旧フォルダーはそのまま残ります）。
 
 - 状態: **0.14.0**（2026-10-27）— GPT社員（ベータ）· オフィスマップ（チームエリア・会議室・休憩室）· チーム／チームリーダーへの委任 · タスクボード · 承認箱 · グループチャット · 会議 · 予約タスク · レポート · 給与明細 · 模様替え
-- スタック: Electron Forge + Vite · React 19 · Zustand · Tailwind 4 + shadcn/ui · Phaser 4 · SQLite（`node:sqlite`）· Claude Agent SDK
+- スタック: Electron Forge + Vite · React 19 · Zustand · Tailwind 4 + shadcn/ui · Phaser 4 · SQLite（`node:sqlite`）· Claude Agent SDK · Codex app-server（GPT 社員）
 
 ## インストール (0.14.0)
 - `app/out/make/dmg/arm64/AI-Office.dmg` を開き、Applications にドラッグします
 - Apple Silicon 専用 · 署名・公証なし → 初回起動時に「開発元を確認できない」と表示されたら、システム設定 › プライバシーとセキュリティ › 「このまま開く」
-- 必要条件: その Mac で Claude Code にログインしていること（社員はそのアカウントで働き、料金もそのアカウントに請求されます）
+- 必要条件: その Mac で Claude（Claude Code）または GPT（ChatGPT・Codex）のどちらか1つ以上にログインしていること。両方つなぐと社員ごとに選べます（社員はそのアカウントで働き、料金もそのアカウントに請求されます）
 - 再ビルド: `cd app && pnpm make`
 
 ## Windows（第1弾 · 試験版）
@@ -32,15 +32,15 @@ cd app
 pnpm install
 pnpm start
 ```
-- ログイン: 別途 API キーは不要で、この Mac の Claude Code のログインをそのまま使います。
+- ログイン: 別途 API キーは不要で、この Mac の Claude Code・Codex のログインをそのまま使います。接続状態は設定でプロバイダーごとに確認できます。
 - データ: `~/Library/Application Support/AI Office/office.db`
 - 1つのデータフォルダは1つのアプリだけが使います（`office.lock`）。インストール版が起動していると、開発版は「すでに起動しています」と表示して終了します。インストール版を起動したまま開発版や QA を動かすには、別のフォルダを指定します: `CLAUDE_OFFICE_USER_DATA=~/claude-office-dev pnpm start`
 
 ## 社員の2種類
 | | 雇用社員 | 外部社員 |
 |---|---|---|
-| 正体 | アプリが Agent SDK で起動したセッション | ターミナル・デスクトップアプリで既に実行中のセッション |
-| 状態 | リアルタイム（ストリーム） | `~/.claude/sessions` レジストリを2秒ごとにポーリング（+ オプトインの hooks） |
+| 正体 | アプリが起動したセッション（Claude: Agent SDK · GPT: Codex app-server） | ターミナル・デスクトップアプリで既に実行中の Claude Code・Codex セッション |
+| 状態 | リアルタイム（ストリーム） | Claude: `~/.claude/sessions` レジストリを2秒ごとにポーリング（+ オプトインの hooks）· Codex: `~/.codex/sessions` の記録ファイルで閲覧のみ |
 | 指示・承認 | アプリで | 元のウィンドウで |
 | 今日の作業 | アプリ DB | トランスクリプト jsonl |
 

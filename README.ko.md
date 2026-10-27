@@ -2,15 +2,15 @@
 
 # AI Office
 
-AI 세션들(현재는 Claude Code)을 **직원**으로 고용해 하나의 사무실처럼 보고·부리는 개인 PoC (Electron 데스크톱 앱). 예전 이름은 Claude Office이며, 첫 실행 때 기존 데이터를 자동으로 복사해 옵니다(옛 폴더는 그대로 둡니다).
+Claude 직원과 GPT 직원을 함께 **고용**해 하나의 사무실처럼 일을 맡기고, 결재하고, 보고받는 무료 오픈소스 데스크톱 앱 (Electron). 직원은 Claude Code 또는 Codex(GPT) 세션입니다. 예전 이름은 Claude Office이며, 첫 실행 때 기존 데이터를 자동으로 복사해 옵니다(옛 폴더는 그대로 둡니다).
 
 - 상태: **0.14.0** (2026-10-27) — GPT 직원(베타) · 사무실 맵(팀 구역·회의실·휴게실) · 팀/팀장 위임 · 업무 보드 · 결재함 · 단체방 · 회의 · 예약 업무 · 보고서 · 급여 명세서 · 꾸미기
-- 스택: Electron Forge + Vite · React 19 · Zustand · Tailwind 4 + shadcn/ui · Phaser 4 · SQLite(`node:sqlite`) · Claude Agent SDK
+- 스택: Electron Forge + Vite · React 19 · Zustand · Tailwind 4 + shadcn/ui · Phaser 4 · SQLite(`node:sqlite`) · Claude Agent SDK · Codex app-server(GPT 직원)
 
 ## 설치 (0.14.0)
 - `app/out/make/dmg/arm64/AI-Office.dmg` 를 열어 Applications로 드래그
 - Apple Silicon 전용 · 서명/공증 없음 → 처음 열 때 "확인되지 않은 개발자" 경고가 나오면 시스템 설정 › 개인정보 보호 및 보안 › "그래도 열기"
-- 필요 조건: 그 맥에서 Claude Code에 로그인되어 있을 것 (직원은 그 계정으로 일하고 비용도 그 계정에 청구)
+- 필요 조건: 그 맥에서 Claude(Claude Code) 또는 GPT(ChatGPT·Codex) 중 하나 이상에 로그인되어 있을 것. 둘 다 연결하면 직원마다 고를 수 있다 (직원은 그 계정으로 일하고 비용도 그 계정에 청구)
 - 다시 빌드: `cd app && pnpm make`
 
 ## 윈도우 (1차 · 시험판)
@@ -32,15 +32,15 @@ cd app
 pnpm install
 pnpm start
 ```
-- 로그인: 별도 API 키 없이 이 맥의 Claude Code 로그인을 그대로 쓴다.
+- 로그인: 별도 API 키 없이 이 맥의 Claude Code·Codex 로그인을 그대로 쓴다. 연결 상태는 설정에서 공급자별로 본다.
 - 데이터: `~/Library/Application Support/AI Office/office.db`
 - 데이터 폴더 하나는 한 앱만 쓴다(`office.lock`). 설치본이 켜져 있으면 개발 앱은 "이미 켜져 있어요"를 띄우고 꺼진다. 설치본을 켠 채 개발 앱·QA를 띄우려면 다른 폴더를 준다: `CLAUDE_OFFICE_USER_DATA=~/claude-office-dev pnpm start`
 
 ## 직원 두 종류
 | | 고용 직원 | 외부 직원 |
 |---|---|---|
-| 정체 | 앱이 Agent SDK로 띄운 세션 | 터미널·데스크톱 앱에서 이미 실행 중인 세션 |
-| 상태 | 실시간 (스트림) | `~/.claude/sessions` 레지스트리 2초 폴링 (+ 옵트인 hooks) |
+| 정체 | 앱이 띄운 세션 (Claude: Agent SDK · GPT: Codex app-server) | 터미널·데스크톱 앱에서 이미 실행 중인 Claude Code·Codex 세션 |
+| 상태 | 실시간 (스트림) | Claude: `~/.claude/sessions` 레지스트리 2초 폴링 (+ 옵트인 hooks) · Codex: `~/.codex/sessions` 기록 파일로 보기 전용 |
 | 지시·결재 | 앱에서 | 원래 창에서 |
 | 오늘 한 일 | 앱 DB | 트랜스크립트 jsonl |
 
