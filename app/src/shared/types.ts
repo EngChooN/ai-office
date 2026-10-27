@@ -284,8 +284,8 @@ export interface ClaudeStatus {
   hasTerminalClaude: boolean
 }
 
-/** 공급자 준비 상태: 실행 파일이 없음 · 있으나 실행/버전 조회 실패 · 로그인 안 됨 · 쓸 수 있음 */
-export type ProviderState = 'missing' | 'broken' | 'loggedOut' | 'ready'
+/** 공급자 준비 상태: 실행 파일이 없음 · 있으나 실행/버전 조회 실패 · 로그인 안 됨 · 쓸 수 있음 · 확인 못 함(시간 초과, 직전 상태도 없음) */
+export type ProviderState = 'missing' | 'broken' | 'loggedOut' | 'ready' | 'unknown'
 
 /** 공급자(Claude·Codex) 한 곳의 설치·로그인 상태 */
 export interface ProviderStatus {

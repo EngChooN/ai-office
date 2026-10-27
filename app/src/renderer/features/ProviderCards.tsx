@@ -13,10 +13,10 @@ export const PROVIDERS: AiProvider[] = ['claude', 'codex']
 /** 설정 화면 'AI 공급자' 칸 — 안내 띠가 여기로 스크롤한다 */
 export const PROVIDER_SECTION_ID = 'settings-providers'
 export const PROVIDER_NAME: Record<AiProvider, string> = { claude: 'Claude', codex: 'Codex' }
-const STATE_KEY: Record<ProviderStatus['state'], TKey> = { missing: 'provider.state.missing', broken: 'provider.state.broken', loggedOut: 'provider.state.loggedOut', ready: 'provider.state.ready' }
+const STATE_KEY: Record<ProviderStatus['state'], TKey> = { missing: 'provider.state.missing', broken: 'provider.state.broken', loggedOut: 'provider.state.loggedOut', ready: 'provider.state.ready', unknown: 'provider.state.unknown' }
 const DESC_KEY: Record<AiProvider, Record<ProviderStatus['state'], TKey>> = {
-  claude: { missing: 'provider.claude.missing', broken: 'provider.claude.broken', loggedOut: 'provider.claude.loggedOut', ready: 'provider.claude.ready' },
-  codex: { missing: 'provider.codex.missing', broken: 'provider.codex.broken', loggedOut: 'provider.codex.loggedOut', ready: 'provider.codex.ready' },
+  claude: { missing: 'provider.claude.missing', broken: 'provider.claude.broken', loggedOut: 'provider.claude.loggedOut', ready: 'provider.claude.ready', unknown: 'provider.claude.unknown' },
+  codex: { missing: 'provider.codex.missing', broken: 'provider.codex.broken', loggedOut: 'provider.codex.loggedOut', ready: 'provider.codex.ready', unknown: 'provider.codex.unknown' },
 }
 
 /** 둘 중 하나라도 준비됐는지 — 온보딩 게이트의 통과 조건 */

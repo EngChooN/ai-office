@@ -53,6 +53,11 @@ export function classifyCodex(account: CodexAccountResult | null, models: CodexM
   }
 }
 
+/** 이번 확인 결과가 '확인 못 함'이면 직전 상태를 그대로 쓴다 (직전 상태가 없으면 '확인 못 함' 그대로) */
+export function keepPrevOnUnknown(prev: ProviderStatus | null | undefined, next: ProviderStatus): ProviderStatus {
+  return next.state === 'unknown' && prev ? prev : next
+}
+
 /** Codex app-server를 stdio로 띄워 account/read, model/list를 읽고 바로 끝낸다 */
 export function probeCodex(binary: string, timeoutMs = CODEX_TIMEOUT_MS): Promise<ProviderStatus> {
   if (!fs.existsSync(binary)) return Promise.resolve(blank('missing'))
@@ -76,7 +81,8 @@ export function probeCodex(binary: string, timeoutMs = CODEX_TIMEOUT_MS): Promis
       child.kill()
       resolve(s)
     }
-    const timer = setTimeout(() => finish(blank('broken', 'Codex 응답 시간 초과')), timeoutMs)
+    // 시간 초과는 실행 오류가 아니다 (느린 네트워크 등) — '확인 못 함'으로 두고 부르는 쪽이 직전 상태를 유지한다
+    const timer = setTimeout(() => finish(blank('unknown', 'Codex 응답 시간 초과')), timeoutMs)
     const send = (o: object) => child.stdin.write(`${JSON.stringify(o)}\n`)
     const call = (method: string, params?: object) =>
       new Promise<unknown>((res) => {

@@ -6,7 +6,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { test } from 'node:test'
-import { classifyClaude, classifyCodex, isRunFailure, probeCodex } from '../src/main/ai/providerStatus.ts'
+import { classifyClaude, classifyCodex, isRunFailure, keepPrevOnUnknown, probeCodex } from '../src/main/ai/providerStatus.ts'
 
 test('Claude: 실행 파일 없음 / 로그아웃 / 준비됨(플랜 포함)', () => {
   assert.equal(classifyClaude(false, null).state, 'missing')
@@ -70,13 +70,24 @@ test('probeCodex: 가짜 서버로 로그아웃·준비됨 판별', { skip: proc
   assert.deepEqual([ready.state, ready.plan, ready.defaultModel], ['ready', 'plus', 'm1'])
 })
 
-test('probeCodex: 응답 없는 서버는 시간 초과로 끝난다', { skip: process.platform === 'win32' }, async () => {
+test('probeCodex: 응답 없는 서버는 시간 초과 → broken이 아니라 unknown(확인 못 함)', { skip: process.platform === 'win32' }, async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'co-codex-'))
   const file = path.join(dir, 'codex-app-server')
   fs.writeFileSync(file, `#!${process.execPath}\nsetTimeout(() => {}, 60000)\n`, { mode: 0o755 })
   const s = await probeCodex(file, 300)
-  assert.equal(s.state, 'broken')
+  assert.equal(s.state, 'unknown')
   assert.match(s.error, /시간 초과/)
+})
+
+test('keepPrevOnUnknown: 시간 초과면 직전 상태 유지, 직전이 없으면 unknown, 실행 오류(broken)는 그대로 반영', () => {
+  const ready = classifyCodex({ account: { type: 'chatgpt', email: 'e@x', planType: 'plus' } }, { data: [{ id: 'm1', isDefault: true }] })
+  const timeout = { ...ready, state: 'unknown' as const, account: '', plan: '', models: [], defaultModel: '', error: 'Codex 응답 시간 초과' }
+  const broken = { ...timeout, state: 'broken' as const, error: 'spawn EACCES' }
+  assert.deepEqual(keepPrevOnUnknown(ready, timeout), ready)
+  assert.equal(keepPrevOnUnknown(classifyCodex({ account: null }, null), timeout).state, 'loggedOut')
+  assert.equal(keepPrevOnUnknown(null, timeout).state, 'unknown')
+  assert.equal(keepPrevOnUnknown(undefined, timeout).state, 'unknown')
+  assert.equal(keepPrevOnUnknown(ready, broken).state, 'broken')
 })
 
 test('probeCodex: 실행 파일이 있어도 못 띄우거나 바로 죽으면 broken', { skip: process.platform === 'win32' }, async () => {

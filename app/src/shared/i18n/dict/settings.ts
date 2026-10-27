@@ -23,6 +23,7 @@ export default {
   'provider.state.broken': { ko: '실행 실패', en: 'Failed to run', ja: '実行に失敗', zh: '运行失败' },
   'provider.state.loggedOut': { ko: '로그인 필요', en: 'Sign-in needed', ja: 'ログインが必要', zh: '需要登录' },
   'provider.state.ready': { ko: '준비됨', en: 'Ready', ja: '準備完了', zh: '已就绪' },
+  'provider.state.unknown': { ko: '확인 못 함', en: "Couldn't check", ja: '確認できず', zh: '无法确认' },
   'provider.claude.missing': {
     ko: '앱에 들어 있는 Claude 실행 파일을 찾지 못했어요. 앱을 다시 설치해 주세요.',
     en: "Couldn't find the Claude program bundled with the app. Please reinstall the app.",
@@ -40,6 +41,12 @@ export default {
     en: 'Sign in with a Claude Pro/Max subscription or an Anthropic Console (API) account to hire Claude staff.',
     ja: 'Claude Pro・MaxのサブスクリプションまたはAnthropic Console（API）アカウントでログインすると、Claudeスタッフを雇えます。',
     zh: '使用 Claude Pro/Max 订阅或 Anthropic Console（API）账号登录后，即可雇用 Claude 员工。',
+  },
+  'provider.claude.unknown': {
+    ko: 'Claude 상태를 확인하지 못했어요. 잠시 뒤 다시 확인해 주세요.',
+    en: "Couldn't check Claude's status. Please try again in a moment.",
+    ja: 'Claudeの状態を確認できませんでした。しばらくしてからもう一度確認してください。',
+    zh: '无法确认 Claude 的状态。请稍后重试。',
   },
   'provider.claude.ready': { ko: 'Claude 직원을 고용할 수 있어요.', en: 'You can hire Claude staff.', ja: 'Claudeスタッフを雇えます。', zh: '可以雇用 Claude 员工。' },
   'provider.codex.missing': {
@@ -59,6 +66,12 @@ export default {
     en: 'Sign in with a ChatGPT account to hire GPT staff as well. This is optional.',
     ja: 'ChatGPTアカウントでログインするとGPTスタッフも雇えます。任意です。',
     zh: '使用 ChatGPT 账号登录后，也可以雇用 GPT 员工。此项为可选。',
+  },
+  'provider.codex.unknown': {
+    ko: 'Codex 응답이 늦어 상태를 확인하지 못했어요. 인터넷 연결을 확인하고 다시 확인해 보세요.',
+    en: "Codex took too long to respond, so its status couldn't be checked. Check your internet connection and try again.",
+    ja: 'Codexの応答が遅く、状態を確認できませんでした。インターネット接続を確認して、もう一度確認してください。',
+    zh: 'Codex 响应超时，无法确认状态。请检查网络连接后重试。',
   },
   'provider.codex.ready': { ko: 'GPT 직원을 고용할 수 있어요.', en: 'You can hire GPT staff.', ja: 'GPTスタッフを雇えます。', zh: '可以雇用 GPT 员工。' },
   'provider.codex.login': { ko: 'ChatGPT로 로그인', en: 'Sign in with ChatGPT', ja: 'ChatGPTでログイン', zh: '使用 ChatGPT 登录' },
