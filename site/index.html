@@ -14,12 +14,13 @@ var DOWNLOADS = {
   github: 'https://github.com/EngChooN/claude-office',
   changelog: '',  // 변경 기록 페이지 주소 (비우면 GitHub 저장소의 CHANGELOG.md)
   license: 'MIT', // 라이선스 이름
-  version: '0.12.0'
+  version: '0.14.0', // 기본값. 페이지가 열리면 GitHub 최신 Release의 tag_name으로 바뀜 (실패·시간 초과면 이 값)
+  latestApi: 'https://api.github.com/repos/EngChooN/claude-office/releases/latest'
 };
 </script>
 <!-- 공유 미리보기: 크롤러는 JS를 돌리지 않으니 정적 기본값(한국어)을 둔다. 언어를 바꾸면 render()가 제목·설명을 바꾼다 -->
-<title>AI Office — 코드를 몰라도, AI 직원에게 일을 맡기세요</title>
-<meta name="description" content="AI를 직원 고용·업무 지시·결재·보고라는 익숙한 사무실 방식으로 쓰는 무료 오픈소스 데스크톱 앱. 명령어 창도, 어려운 설정도 필요 없습니다.">
+<title>AI Office — Claude와 GPT 직원을 함께 고용하는 AI 사무실</title>
+<meta name="description" content="Claude와 GPT 직원을 함께 뽑아 일을 맡기고, 결재하고, 보고받는 무료 오픈소스 데스크톱 앱. 명령어 창도, 어려운 설정도 필요 없습니다.">
 <meta name="theme-color" content="#0b0c10">
 <link rel="canonical" href="https://engchoon.github.io/claude-office/">
 <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
@@ -28,8 +29,8 @@ var DOWNLOADS = {
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="AI Office">
 <meta property="og:url" content="https://engchoon.github.io/claude-office/">
-<meta property="og:title" content="AI Office — 코드를 몰라도, AI 직원에게 일을 맡기세요">
-<meta property="og:description" content="AI를 직원 고용·업무 지시·결재·보고라는 익숙한 사무실 방식으로 쓰는 무료 오픈소스 데스크톱 앱. 명령어 창도, 어려운 설정도 필요 없습니다.">
+<meta property="og:title" content="AI Office — Claude와 GPT 직원을 함께 고용하는 AI 사무실">
+<meta property="og:description" content="Claude와 GPT 직원을 함께 뽑아 일을 맡기고, 결재하고, 보고받는 무료 오픈소스 데스크톱 앱. 명령어 창도, 어려운 설정도 필요 없습니다.">
 <meta property="og:image" content="https://engchoon.github.io/claude-office/assets/og.png">
 <meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
@@ -40,11 +41,11 @@ var DOWNLOADS = {
 <meta property="og:locale:alternate" content="ja_JP">
 <meta property="og:locale:alternate" content="zh_CN">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="AI Office — 코드를 몰라도, AI 직원에게 일을 맡기세요">
-<meta name="twitter:description" content="AI를 직원 고용·업무 지시·결재·보고라는 익숙한 사무실 방식으로 쓰는 무료 오픈소스 데스크톱 앱. 명령어 창도, 어려운 설정도 필요 없습니다.">
+<meta name="twitter:title" content="AI Office — Claude와 GPT 직원을 함께 고용하는 AI 사무실">
+<meta name="twitter:description" content="Claude와 GPT 직원을 함께 뽑아 일을 맡기고, 결재하고, 보고받는 무료 오픈소스 데스크톱 앱. 명령어 창도, 어려운 설정도 필요 없습니다.">
 <meta name="twitter:image" content="https://engchoon.github.io/claude-office/assets/og.png">
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"SoftwareApplication","name":"AI Office","url":"https://engchoon.github.io/claude-office/","image":"https://engchoon.github.io/claude-office/assets/og.png","applicationCategory":"BusinessApplication","operatingSystem":"macOS, Windows, Android","softwareVersion":"0.12.0","license":"https://opensource.org/licenses/MIT","downloadUrl":"https://github.com/EngChooN/claude-office/releases/latest","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"inLanguage":["ko","en","ja","zh"],"description":"AI를 직원 고용·업무 지시·결재·보고라는 익숙한 사무실 방식으로 쓰는 무료 오픈소스 데스크톱 앱."}
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"AI Office","url":"https://engchoon.github.io/claude-office/","image":"https://engchoon.github.io/claude-office/assets/og.png","applicationCategory":"BusinessApplication","operatingSystem":"macOS, Windows, Android","softwareVersion":"0.14.0","license":"https://opensource.org/licenses/MIT","downloadUrl":"https://github.com/EngChooN/claude-office/releases/latest","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"inLanguage":["ko","en","ja","zh"],"description":"Claude와 GPT 직원을 함께 뽑아 일을 맡기고, 결재하고, 보고받는 무료 오픈소스 데스크톱 앱."}
 </script>
 <style>
 :root{
@@ -214,6 +215,20 @@ figure:hover{transform:translateY(-4px);border-color:#454c60}
 .final .box{border:1px solid var(--line2);border-radius:20px;padding:64px 24px;background:radial-gradient(500px 220px at 50% 0%,rgba(124,156,255,.18),transparent 70%),var(--panel)}
 .final .sub{margin:12px auto 28px}
 
+/* 0.14.0: 배지 강조·베타/새 기능 알약·겹친 사진·레벨 막대·휴대폰 보조 줄 */
+.badge em{font-style:normal;color:var(--accent2);font-weight:600}
+.pill{display:inline-block;vertical-align:middle;margin-left:8px;padding:2px 8px;border-radius:99px;font-size:12px;font-weight:600;letter-spacing:0;white-space:nowrap;
+  color:var(--accent2);background:rgba(94,234,212,.08);border:1px solid rgba(94,234,212,.25)}
+.features.more{grid-template-columns:repeat(2,1fr)}
+.features.one{grid-template-columns:1fr;margin-top:72px}
+.row figure.stack{position:relative;overflow:visible;border:0;background:none;box-shadow:none}
+.stack img{border:1px solid var(--line2);border-radius:12px;box-shadow:0 30px 80px -24px rgba(124,156,255,.14),0 16px 40px rgba(0,0,0,.45)}
+.stack .over{position:absolute;width:58%;right:-4%;bottom:-10%}
+.lvbar{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--dim);margin-bottom:16px}
+.lvbar i{flex:1;max-width:220px;height:6px;border-radius:99px;background:linear-gradient(90deg,var(--accent),var(--accent2) 65%,var(--line2) 65%)}
+.ph-note{margin:28px auto 0;text-align:center;font-size:14px}
+.dlc li.note{color:var(--dim);font-size:13px}
+
 /* 스크롤 등장 */
 .rv{opacity:0;transform:translateY(18px);transition:opacity .6s ease,transform .6s ease}
 .rv.in{opacity:1;transform:none}
@@ -236,6 +251,10 @@ figure:hover{transform:translateY(-4px);border-color:#454c60}
   .row p{max-width:640px}
   .features.more{margin-top:72px}
   .shots{gap:14px}
+  .features.one{margin-top:56px}
+}
+@media (max-width:640px){
+  .stack .over{display:none}
 }
 @media (max-width:600px){
   section{padding:80px 0}
@@ -263,6 +282,7 @@ figure:hover{transform:translateY(-4px);border-color:#454c60}
   <nav>
     <a href="#how" data-i18n="nav.how"></a>
     <a href="#features" data-i18n="nav.features"></a>
+    <a href="#grow" data-i18n="nav.grow"></a>
     <a href="#screens" data-i18n="nav.screens"></a>
     <a href="#download" data-i18n="nav.download"></a>
     <a href="#faq" data-i18n="nav.faq"></a>
@@ -282,7 +302,7 @@ figure:hover{transform:translateY(-4px);border-color:#454c60}
   <p class="lead" data-i18n="hero.lead"></p>
   <div class="cta" id="cta"></div>
   <p class="also" id="also"></p>
-  <div class="shot"><div class="chrome"><i></i><i></i><i></i><span>AI Office</span></div><img src="assets/screens/ko/office.png" data-shot="office" data-i18n-alt="alt.office" width="1360" height="860"></div>
+  <div class="shot"><div class="chrome"><i></i><i></i><i></i><span>AI Office</span></div><img src="assets/screens/ko/office.webp" data-shot="office" data-i18n-alt="alt.office" width="1360" height="860"></div>
 </div></section>
 
 <section id="how"><div class="wrap">
@@ -305,17 +325,31 @@ figure:hover{transform:translateY(-4px);border-color:#454c60}
     <p class="sub" data-i18n="feat.sub"></p>
   </div>
   <div class="rows">
-    <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0114 0M19 8v6M16 11h6"/></svg></span><h3 data-i18n="f1.t"></h3><p data-i18n="f1.p"></p></div><figure><img src="assets/screens/ko/chat.png" data-shot="chat" data-i18n-alt="alt.f1" loading="lazy" width="1360" height="860"></figure></div>
-    <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 3v2h6V3M8.5 13l2.5 2.5 5-5"/></svg></span><h3 data-i18n="f2.t"></h3><p data-i18n="f2.p"></p></div><figure><img src="assets/screens/ko/inbox.png" data-shot="inbox" data-i18n-alt="alt.f2" loading="lazy" width="1360" height="860"></figure></div>
-    <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="5" height="16" rx="1.5"/><rect x="10" y="4" width="5" height="11" rx="1.5"/><rect x="17" y="4" width="4" height="7" rx="1.5"/></svg></span><h3 data-i18n="f3.t"></h3><p data-i18n="f3.p"></p></div><figure><img src="assets/screens/ko/board.png" data-shot="board" data-i18n-alt="alt.f3" loading="lazy" width="1360" height="860"></figure></div>
-    <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 01-11.6 7.1L4 20l1-4.6A8 8 0 1121 12z"/><path d="M8.5 11h7M8.5 14h4"/></svg></span><h3 data-i18n="f4.t"></h3><p data-i18n="f4.p"></p></div><figure><img src="assets/screens/ko/meeting.png" data-shot="meeting" data-i18n-alt="alt.f4" loading="lazy" width="1360" height="860"></figure></div>
-    <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 6-7"/></svg></span><h3 data-i18n="f5.t"></h3><p data-i18n="f5.p"></p></div><figure><img src="assets/screens/ko/dashboard.png" data-shot="dashboard" data-i18n-alt="alt.f5" loading="lazy" width="1360" height="860"></figure></div>
-    <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V10l8-6 8 6v11"/><path d="M9 21v-6h6v6M12 4V2"/></svg></span><h3 data-i18n="f7.t"></h3><p data-i18n="f7.p"></p></div><figure><img src="assets/screens/ko/exterior.png" data-shot="exterior" data-i18n-alt="alt.f7" loading="lazy" width="1360" height="860"></figure></div>
+    <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0114 0M19 8v6M16 11h6"/></svg></span><h3><span data-i18n="f1.t"></span><span class="pill" data-i18n="tag.beta"></span></h3><p data-i18n="f1.p"></p></div><figure class="stack"><img src="assets/screens/ko/staff-mix.webp" data-shot="staff-mix" data-i18n-alt="alt.f1" loading="lazy" width="1360" height="860"><img class="over" src="assets/screens/ko/providers.webp" data-shot="providers" data-i18n-alt="alt.f1b" loading="lazy" width="1360" height="860"></figure></div>
+    <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 3v2h6V3M8.5 13l2.5 2.5 5-5"/></svg></span><h3 data-i18n="f3.t"></h3><p data-i18n="f3.p"></p></div><figure><img src="assets/screens/ko/inbox.webp" data-shot="inbox" data-i18n-alt="alt.f3" loading="lazy" width="1360" height="860"></figure></div>
+    <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/><path d="M11 9l3 3-1.2.3.8 1.7"/></svg></span><h3><span data-i18n="f6.t"></span><span class="pill" data-i18n="tag.new"></span></h3><p data-i18n="f6.p"></p></div><figure><img src="assets/screens/ko/computer.webp" data-shot="computer" data-i18n-alt="alt.f6" loading="lazy" width="1360" height="860"></figure></div>
+    <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.7 1.8 1.8.7-1.8.7L19 20l-.7-1.8-1.8-.7 1.8-.7z"/></svg></span><h3><span data-i18n="f7.t"></span><span class="pill" data-i18n="tag.new"></span></h3><p data-i18n="f7.p"></p></div><figure><img src="assets/screens/ko/secretary.webp" data-shot="secretary" data-i18n-alt="alt.f7" loading="lazy" width="1360" height="860"></figure></div>
+    <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 01-11.6 7.1L4 20l1-4.6A8 8 0 1121 12z"/><path d="M8.5 11h7M8.5 14h4"/></svg></span><h3 data-i18n="f2.t"></h3><p data-i18n="f2.p"></p></div><figure><img src="assets/screens/ko/chat.webp" data-shot="chat" data-i18n-alt="alt.f2" loading="lazy" width="1360" height="860"></figure></div>
+    <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 6-7"/></svg></span><h3 data-i18n="f8.t"></h3><p data-i18n="f8.p"></p></div><figure><img src="assets/screens/ko/dashboard.webp" data-shot="dashboard" data-i18n-alt="alt.f8" loading="lazy" width="1360" height="860"></figure></div>
   </div>
   <div class="features more">
-    <div class="feat rv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/></svg><h3 data-i18n="f6.t"></h3><p data-i18n="f6.p"></p></div>
-    <div class="feat rv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 010 18M12 3a14 14 0 000 18"/></svg><h3 data-i18n="f8.t"></h3><p data-i18n="f8.p"></p></div>
-    <div class="feat rv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M8 15l2 2 4-4"/></svg><h3 data-i18n="f9.t"></h3><p data-i18n="f9.p"></p></div>
+    <div class="feat rv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="5" height="16" rx="1.5"/><rect x="10" y="4" width="5" height="11" rx="1.5"/><rect x="17" y="4" width="4" height="7" rx="1.5"/></svg><h3 data-i18n="f4.t"></h3><p data-i18n="f4.p"></p></div>
+    <div class="feat rv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="9" r="3"/><circle cx="16" cy="9" r="3"/><path d="M2 20a6 6 0 0112 0M10 20a6 6 0 0112 0"/></svg><h3 data-i18n="f5.t"></h3><p data-i18n="f5.p"></p></div>
+  </div>
+</div></section>
+
+<section id="grow"><div class="wrap">
+  <div class="head rv">
+    <div class="eyebrow" data-i18n="grow.eyebrow"></div>
+    <h2 data-i18n="grow.title"></h2>
+    <p class="sub" data-i18n="grow.sub"></p>
+  </div>
+  <div class="rows">
+    <div class="row rv"><div class="txt"><div class="lvbar"><span>Lv.1</span><i></i><span>Lv.20</span></div><h3 data-i18n="g1.t"></h3><p data-i18n="g1.p"></p></div><figure><img src="assets/screens/ko/exterior.webp" data-shot="exterior" data-i18n-alt="alt.g1" loading="lazy" width="1360" height="860"></figure></div>
+    <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V10l8-6 8 6v11"/><path d="M9 21v-6h6v6M12 4V2"/></svg></span><h3 data-i18n="g2.t"></h3><p data-i18n="g2.p"></p></div><figure><img src="assets/screens/ko/decorate.webp" data-shot="decorate" data-i18n-alt="alt.g2" loading="lazy" width="1360" height="860"></figure></div>
+  </div>
+  <div class="features one">
+    <div class="feat rv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v4M8 22h8"/></svg><h3 data-i18n="g3.t"></h3><p data-i18n="g3.p"></p></div>
   </div>
 </div></section>
 
@@ -326,10 +360,11 @@ figure:hover{transform:translateY(-4px);border-color:#454c60}
     <p class="sub" data-i18n="scr.sub"></p>
   </div>
   <div class="shots">
-    <figure class="ph rv"><img src="assets/screens/ko/phone-dashboard.png" data-shot="phone-dashboard" data-i18n-alt="alt.dash" loading="lazy" width="390" height="844"><figcaption data-i18n="cap.dash"></figcaption></figure>
-    <figure class="ph rv"><img src="assets/screens/ko/phone-inbox.png" data-shot="phone-inbox" data-i18n-alt="alt.inbox" loading="lazy" width="390" height="844"><figcaption data-i18n="cap.inbox"></figcaption></figure>
-    <figure class="ph rv"><img src="assets/screens/ko/phone-chat.png" data-shot="phone-chat" data-i18n-alt="alt.chat" loading="lazy" width="390" height="844"><figcaption data-i18n="cap.chat"></figcaption></figure>
+    <figure class="ph rv"><img src="assets/screens/ko/phone-dashboard.webp" data-shot="phone-dashboard" data-i18n-alt="alt.dash" loading="lazy" width="390" height="844"><figcaption data-i18n="cap.dash"></figcaption></figure>
+    <figure class="ph rv"><img src="assets/screens/ko/phone-inbox.webp" data-shot="phone-inbox" data-i18n-alt="alt.inbox" loading="lazy" width="390" height="844"><figcaption data-i18n="cap.inbox"></figcaption></figure>
+    <figure class="ph rv"><img src="assets/screens/ko/phone-chat.webp" data-shot="phone-chat" data-i18n-alt="alt.chat" loading="lazy" width="390" height="844"><figcaption data-i18n="cap.chat"></figcaption></figure>
   </div>
+  <p class="sub ph-note" data-i18n="ph.note"></p>
 </div></section>
 
 <section id="download"><div class="wrap">
@@ -339,7 +374,7 @@ figure:hover{transform:translateY(-4px);border-color:#454c60}
     <p class="sub" data-i18n="dl.sub"></p>
   </div>
   <div class="dls" id="dls">
-    <div class="dlc rv" data-os="mac"><h3 data-os-title></h3><ul><li data-i18n="mac.1"></li><li data-i18n="mac.2"></li><li data-i18n="mac.3"></li></ul><a data-dl></a></div>
+    <div class="dlc rv" data-os="mac"><h3 data-os-title></h3><ul><li data-i18n="mac.1"></li><li data-i18n="mac.2"></li><li data-i18n="mac.3"></li><li class="note" data-i18n="mac.4"></li></ul><a data-dl></a></div>
     <div class="dlc rv" data-os="win"><h3 data-os-title></h3><ul><li data-i18n="win.1"></li><li data-i18n="win.2"></li><li data-i18n="win.3"></li></ul><a data-dl></a></div>
     <div class="dlc rv" data-os="android"><h3 data-os-title></h3><ul><li data-i18n="and.1"></li><li data-i18n="and.2"></li><li data-i18n="and.3"></li></ul><a data-dl></a></div>
   </div>
@@ -358,6 +393,8 @@ figure:hover{transform:translateY(-4px);border-color:#454c60}
     <details><summary data-i18n="q5"></summary><p data-i18n="a5"></p></details>
     <details><summary data-i18n="q6"></summary><p data-i18n="a6"></p></details>
     <details><summary data-i18n="q7"></summary><p data-i18n="a7"></p></details>
+    <details><summary data-i18n="q8"></summary><p data-i18n="a8"></p></details>
+    <details><summary data-i18n="q9"></summary><p data-i18n="a9"></p></details>
   </div>
 </div></section>
 
@@ -379,195 +416,227 @@ figure:hover{transform:translateY(-4px);border-color:#454c60}
 <script>
 var I18N = {
   ko: {
-    'meta.title': 'AI Office — 코드를 몰라도, AI 직원에게 일을 맡기세요',
-    'meta.desc': 'AI를 직원 고용·업무 지시·결재·보고라는 익숙한 사무실 방식으로 쓰는 무료 오픈소스 데스크톱 앱. 명령어 창도, 어려운 설정도 필요 없습니다.',
-    'nav.features': '기능', 'nav.screens': '화면', 'nav.download': '다운로드', 'nav.faq': 'FAQ',
-    'nav.how': '사용법',
-    'how.eyebrow': '사용법', 'how.title': '세 단계면 충분해요', 'how.sub': '사람에게 일을 맡기듯 하면 됩니다. 뽑고, 말하고, 확인만 하세요.',
-    's1.t': '직원 뽑기', 's1.p': '직무와 모습을 고르면 자리에 앉아 바로 일할 준비를 해요.', 's1.say': '마케터 ‘한소라’를 뽑았어요',
-    's2.t': '말로 시키기', 's2.p': '단체방에서 이름을 부르거나 팀장에게 큰 일을 통째로 맡겨요.', 's2.say': '@한소라 다음 주 뉴스레터 초안 부탁해요',
-    's3.t': '결재하고 보고받기', 's3.p': '중요한 일은 결재함에서 승인하고, 끝나면 보고가 올라와요.', 's3.say': '초안 올렸어요. 확인 부탁드려요!',
-    'end.title': '오늘 첫 직원을 뽑아 보세요', 'end.sub': '무료이고, 설치하고 몇 분이면 첫 업무를 맡길 수 있어요.', 'end.btn': '무료로 받기',
-    'badge.oss': '무료 · 오픈소스',
-    'hero.title': '코드를 몰라도,<br><em>AI 직원</em>에게 일을 맡기세요',
-    'hero.lead': 'AI를 직원 고용 · 업무 지시 · 결재 · 보고라는 익숙한 사무실 방식으로 쓰는 데스크톱 앱입니다. 명령어 창도, 어려운 설정도 필요 없습니다.',
+    'meta.title': 'AI Office — Claude와 GPT 직원을 함께 고용하는 AI 사무실',
+    'meta.desc': 'Claude와 GPT 직원을 함께 뽑아 일을 맡기고, 결재하고, 보고받는 무료 오픈소스 데스크톱 앱. 명령어 창도, 어려운 설정도 필요 없습니다.',
+    'nav.how': '사용법', 'nav.features': '기능', 'nav.grow': '꾸미기', 'nav.screens': '휴대폰', 'nav.download': '다운로드', 'nav.faq': 'FAQ',
+    'badge.oss': '무료 · 오픈소스 · <em>새로 GPT 직원</em>',
+    'hero.title': '코드를 몰라도,<br><em>AI 직원</em>을 함께 고용하세요',
+    'hero.lead': 'Claude 직원과 GPT 직원을 한 사무실에 뽑아 일을 맡기세요. 중요한 일은 결재함에서 확인하고, 끝나면 보고를 받아요. 명령어 창도, 어려운 설정도 필요 없습니다.',
     'btn.download': '{os}용 다운로드', 'btn.soon': '준비 중', 'btn.also': '다른 플랫폼:',
     'os.mac': 'Mac', 'os.win': 'Windows', 'os.android': '안드로이드',
+    'how.eyebrow': '사용법', 'how.title': '세 단계면 충분해요', 'how.sub': '사람에게 일을 맡기듯 하면 됩니다. 뽑고, 말하고, 확인만 하세요.',
+    's1.t': '직원 뽑기', 's1.p': '직무와 모습, 그리고 Claude나 GPT 중 어느 쪽 직원으로 뽑을지 고르세요. 자리에 앉으면 바로 일할 준비를 해요.', 's1.say': '마케터 ‘한소라’(GPT)를 뽑았어요',
+    's2.t': '말로 시키기', 's2.p': '단체방에서 이름을 부르거나, 팀장에게 큰 일을 통째로 맡겨요.', 's2.say': '@한소라 다음 주 뉴스레터 초안 부탁해요',
+    's3.t': '결재하고 보고받기', 's3.p': '중요한 일은 결재함에서 승인하고, 끝나면 보고가 올라와요.', 's3.say': '초안 올렸어요. 확인 부탁드려요!',
     'feat.eyebrow': '주요 기능', 'feat.title': '이미 아는 방식으로, 사무실처럼',
     'feat.sub': 'AI 세션 하나는 직원 한 명, 확인창은 결재함, 작업 기록은 업무 보고, 사용량은 급여 명세서가 됩니다.',
-    'f1.t': '뽑고, 말로 시키기', 'f1.p': '직무와 모습을 고르면 바로 일할 준비 끝. 단체방에서 @이름 · @팀 · @전체로 부르거나, 아무도 안 부르면 일에 맞는 직원이 받아요.',
-    'f2.t': '중요한 일은 결재로', 'f2.p': '파일을 바꾸거나 명령을 실행하는 일은 결재함에 먼저 올라옵니다. 얼마나 맡길지는 내가 정하고, 위험한 명령은 항상 막아요.',
-    'f3.t': '팀장이 나눠서 진행', 'f3.p': '큰 일을 팀장에게 주면 계획을 세워 나누고, 확인을 받은 뒤 순서대로 진행해 보고합니다. 진행 상황은 업무 보드에서.',
-    'f4.t': '단체방과 회의실', 'f4.p': '보고와 허락 요청이 채팅으로 흐릅니다. 회의실에서는 직원들이 돌아가며 의견을 내고 회의록과 할 일이 자동으로 정리돼요.',
-    'f5.t': '대시보드와 급여 명세서', 'f5.p': '누가 일하고 누가 확인을 기다리는지 한눈에 보고, 직원별 사용량과 Claude 플랜 사용률을 확인해요.',
-    'f6.t': '휴대폰으로도 결재', 'f6.p': '안드로이드 앱을 QR로 PC와 연결하면 밖에서도 결재하고 지시할 수 있어요. 회사 화면용 업무 모드도 있습니다.',
-    'f7.t': '일할수록 자라는 회사', 'f7.p': '직원이 일하면 회사 레벨이 올라 사무실이 넓어지고, 차고에서 5층 타워까지 커져요. 상점에서 가구·벽지·고양이와 강아지를 사서 꾸밀 수 있어요. 업무 모드에서는 이런 요소를 숨겨요.',
-    'f8.t': '4개 언어 지원', 'f8.p': '한국어 · 영어 · 일본어 · 중국어로 쓸 수 있어요. 설정에서 바꾸면 다시 켜지 않아도 바로 적용되고, 휴대폰 앱도 같은 언어를 지원해요.',
-    'f9.t': '예약 업무와 참고 문서', 'f9.p': '매일·매주 할 일을 예약해 두면 정해진 시간에 직원이 알아서 해요. 직원이 일하기 전에 먼저 읽을 문서와 업무 매뉴얼도 등록할 수 있어요.',
+    'tag.beta': '베타', 'tag.new': '새 기능',
+    'f1.t': 'Claude와 GPT 직원을 함께', 'f1.p': '직원마다 Claude와 GPT 중 어느 쪽 두뇌로 일할지 고를 수 있어요. 한 사무실에서 두 종류 직원이 같이 일하고, 일에 어울리는 직원을 추천도 해 줘요. 둘 중 하나만 있어도 바로 시작할 수 있고, GPT 직원은 아직 베타예요.',
+    'f2.t': '뽑고, 말로 시키기', 'f2.p': '직무와 모습을 고르면 바로 일할 준비 끝. 단체방에서 @이름 · @팀 · @전체로 부르거나, 아무도 안 부르면 일에 맞는 직원이 받아요. 준비된 직원 여섯 명을 직원 마켓에서 바로 뽑을 수도 있어요.',
+    'f3.t': '중요한 일은 결재로, 되돌리기까지', 'f3.p': '파일을 바꾸거나 명령을 실행하는 일은 결재함에 먼저 올라옵니다. 얼마나 맡길지는 내가 정하고, 위험한 명령은 항상 막아요. 마음에 안 들면 ‘작업 전으로 되돌리기’ 한 번으로 직원이 바꾼 파일을 돌려 놓아요.',
+    'f4.t': '팀장이 나눠서 진행', 'f4.p': '큰 일을 팀장에게 주면 계획을 세워 나누고, 확인을 받은 뒤 순서대로 진행해 보고합니다. 진행 상황은 업무 보드에서, 카드마다 쓴 비용도 볼 수 있어요.',
+    'f5.t': '단체방과 회의실', 'f5.p': '보고와 허락 요청이 채팅으로 흐르고, 결재함이나 단체방에서 바로 승인하거나 답할 수 있어요. 회의실에서는 직원들이 돌아가며 의견을 내고, 회의록과 할 일이 자동으로 정리돼요.',
+    'f6.t': '컴퓨터 조작 장비', 'f6.p': '장비를 지급받은 직원은 내 화면을 보고 마우스와 키보드로 직접 작업해요. 화면을 보는 건 바로, 클릭하거나 글을 입력하는 건 결재함에서 내가 승인한 뒤에만 해요. 브라우저를 열어 사이트를 확인하는 장비도 있어요.',
+    'f7.t': '비서와 튜토리얼', 'f7.p': '처음엔 둘러보기가 사무실 쓰는 법을 안내하고, ‘한 사이클 해 보기’로 업무 맡기기·회의 열기를 따라 해 볼 수 있어요. 그다음부터는 비서에게 말로 부탁하세요 — 팀 옮기기, 업무 보드 정리, 사무실 꾸미기, 직원 점검까지 해 줘요. 직원이 왜 멈췄는지도 물어볼 수 있어요.',
+    'f8.t': '사용량과 급여 명세서, 터미널 세션 보기', 'f8.p': '누가 일하고 누가 확인을 기다리는지 한눈에 보고, 직원별 사용량과 Claude·GPT 각각의 플랜 사용량을 카드로 확인해요. 사용량이 거의 다 차면 예약 업무를 잠시 멈춰 알려 줘요. 터미널에서 따로 돌리던 Claude·GPT 작업도 사무실에서 ‘일하는 중’으로 볼 수 있어요.',
+    'alt.office': 'AI Office 사무실 화면 — 책상 세트와 레벨 가구로 꾸민 층',
+    'alt.f1': '직원 고용 창에서 AI를 Codex(GPT, 베타)로 고른 화면', 'alt.f1b': 'AI 공급자 설정에서 Claude와 GPT 계정이 모두 준비된 화면',
+    'alt.f2': '단체방에서 @이름으로 일을 시키고 직원이 답하는 화면', 'alt.f3': 'GPT 직원의 파일 쓰기와 Claude 직원의 명령 실행 요청이 올라온 결재함',
+    'alt.f6': '직원이 화면을 보고 클릭 승인을 기다리는 결재 카드', 'alt.f7': '비서에게 업무 보드 정리를 부탁하자 실행 전 확인 카드가 뜬 화면',
+    'alt.f8': '직원별 사용량과 Claude·GPT 사용량 카드가 보이는 대시보드',
+    'grow.eyebrow': '꾸미기', 'grow.title': '일할수록 자라는 회사', 'grow.sub': '직원이 일하면 회사 레벨이 올라 사무실이 넓어지고, 새 가구가 열려요.',
+    'g1.t': '레벨과 사무실', 'g1.p': '차고에서 5층 타워까지 커져요. 레벨 11~20에서는 새 가구·소품 20종이 열리고, 레벨 15부터는 레벨마다 전설 품목이 하나씩 있어요. 업무 모드에서는 이런 요소를 숨길 수 있어요.',
+    'g2.t': '내 맘대로 꾸미기', 'g2.p': '상점에서 가구·벽지·칸막이·고양이와 강아지를 사서 꾸며요. 책상과 의자는 한 세트로 돌려 놓고, 직원 자리에 앉힐 수 있어요. 커피머신·수족관 같은 소품은 움직이고 반응해요. “알아서 예쁘게 배치해줘”는 비서에게 맡기세요.',
+    'g3.t': '데모데이', 'g3.p': '정해진 요일과 시간에 직원들이 무대에 올라 끝낸 일을 발표해요. 결과물은 갤러리에 모여 기간·직원·랩으로 골라 볼 수 있어요.',
+    'alt.g1': '레벨이 오른 회사 건물 외관', 'alt.g2': '꾸미기 모드에서 레벨 전용 가구 탭을 연 화면',
     'scr.eyebrow': '휴대폰', 'scr.title': '자리를 비워도 손안에서',
-    'scr.sub': '안드로이드 앱을 PC와 연결하면 대시보드·결재함·단체방을 휴대폰에서 그대로 쓸 수 있어요.',
-    'cap.office': '<b>사무실</b> — 직원들이 자리에서 일하고, 층을 오가며 볼 수 있어요',
-    'cap.dash': '<b>대시보드</b> — 확인이 필요한 일을 바로 결재',
-    'cap.chat': '<b>단체방</b> — 말로 지시하고 보고받기',
-    'alt.office': 'AI Office 사무실 화면', 'alt.dash': '휴대폰 대시보드 화면', 'alt.chat': '휴대폰 단체방 화면',
-    'cap.inbox': '<b>결재함</b> — 밖에서도 승인·반려', 'alt.inbox': '휴대폰 결재함 화면',
-    'alt.f1': '단체방에서 @이름으로 일을 시키고 직원이 답하는 화면', 'alt.f2': '결재함에 회의 결정·질문·명령 실행 요청이 모인 화면', 'alt.f3': '업무 보드와 팀장이 나눈 계획(기획 확인 대기)', 'alt.f4': '회의실에서 직원들이 돌아가며 발언하는 화면', 'alt.f5': '대시보드: 작업 중·확인 필요 요약과 최근 활동', 'alt.f7': '거리에서 본 회사 건물',
-    'dl.eyebrow': '다운로드', 'dl.title': '무료로 받아 보세요', 'dl.sub': '그 컴퓨터에 Claude Code가 로그인되어 있어야 합니다.', 'dl.mine': '내 기기',
-    'mac.1': 'Apple Silicon(M1 이후) 전용', 'mac.2': 'dmg를 열어 응용 프로그램 폴더로 끌어다 놓기', 'mac.3': '처음 열 때 경고가 나오면 시스템 설정 › 개인정보 보호 및 보안 › "그래도 열기"',
-    'win.1': '시험판 · 64비트 · .zip 압축을 풀고 AI Office.exe 실행', 'win.2': '"Windows의 PC 보호" 창이 뜨면 "추가 정보 › 실행"', 'win.3': '외부 직원 알림·화면 캡처는 아직 Mac 전용',
+    'scr.sub': '안드로이드 앱을 PC와 연결하면 대시보드·결재함·단체방을 휴대폰에서 그대로 쓸 수 있어요. 집 밖에서도 연결돼요.',
+    'cap.dash': '<b>대시보드</b> — 확인이 필요한 일을 바로 결재', 'cap.inbox': '<b>결재함</b> — 밖에서도 승인·반려', 'cap.chat': '<b>단체방</b> — 말로 지시하고 보고받기',
+    'alt.dash': '휴대폰 대시보드 화면', 'alt.inbox': '휴대폰 결재함 화면', 'alt.chat': '휴대폰 단체방 화면',
+    'ph.note': '공유기 설정을 바꾸지 않고, 내 기기끼리만 이어지는 개인 전용 연결(Tailscale)로 안전하게 붙어요. 같은 와이파이에서만 쓰게 제한할 수도 있어요.',
+    'dl.eyebrow': '다운로드', 'dl.title': '무료로 받아 보세요', 'dl.sub': 'Claude 또는 GPT(ChatGPT) 계정 중 하나만 로그인돼 있으면 시작할 수 있어요.', 'dl.mine': '내 기기',
+    'mac.1': 'Apple Silicon(M1 이후) 전용', 'mac.2': 'dmg를 열어 응용 프로그램 폴더로 끌어다 놓기', 'mac.3': '처음 열 때 경고가 나오면 시스템 설정 › 개인정보 보호 및 보안 › "그래도 열기"', 'mac.4': '용량이 커요(GPT 직원 기능 포함, 약 350MB)',
+    'win.1': '시험판 · 64비트 · .zip 압축을 풀고 claude-office.exe 실행', 'win.2': '"Windows의 PC 보호" 창이 뜨면 "추가 정보 › 실행"', 'win.3': '외부 직원 알림·화면 캡처는 아직 Mac 전용',
     'and.1': 'PC 앱을 원격으로 쓰는 휴대폰 앱', 'and.2': 'PC의 설정 › 휴대폰 연결에서 켜고 QR로 연결', 'and.3': 'PC와 같은 버전을 쓰세요',
     'faq.title': '자주 묻는 질문',
-    'q1': '따로 가입하거나 API 키가 필요한가요?', 'a1': '아니요. 그 컴퓨터에 로그인된 Claude Code 계정을 그대로 씁니다. 직원들은 그 계정으로 일하고, 사용량도 그 계정에 잡힙니다.',
-    'q2': '개발을 전혀 몰라도 쓸 수 있나요?', 'a2': '네. 직원을 뽑고, 채팅으로 일을 시키고, 결재함에서 승인·반려만 하면 됩니다. 명령어를 입력할 일은 없습니다.',
-    'q3': '설치할 때 경고창이 떠요.', 'a3': '아직 앱에 서명을 하지 않아서 나오는 안내입니다. Mac은 시스템 설정 › 개인정보 보호 및 보안에서 "그래도 열기", Windows는 "추가 정보 › 실행"을 누르면 열립니다.',
-    'q4': '직원이 마음대로 파일을 바꾸지 않나요?', 'a4': '영향이 큰 일은 결재함에 먼저 올라오고, 승인해야 진행됩니다. 어디까지 알아서 하게 할지 정할 수 있고, 되돌리기 어려운 위험한 명령은 항상 막습니다.',
-    'q5': '내 데이터는 어디에 저장되나요?', 'a5': '직원·업무·대화 기록은 내 컴퓨터 안의 파일 하나에 저장됩니다. 휴대폰 연결은 기본으로 꺼져 있고, 켤 때만 연결할 수 있습니다.',
-    'q6': '휴대폰 앱만 따로 쓸 수 있나요?', 'a6': '아니요. 휴대폰 앱은 PC에서 켜 둔 AI Office를 원격으로 쓰는 앱이라 PC 앱이 켜져 있어야 합니다.',
-    'q7': '어떤 언어로 쓸 수 있나요?', 'a7': '한국어, 영어, 일본어, 중국어를 지원합니다. 처음에는 컴퓨터(휴대폰) 언어를 따르고, 지원하지 않는 언어면 영어로 시작해요. 설정 맨 위의 \'언어\'에서 언제든 바꿀 수 있습니다.',
+    'q1': '따로 가입하거나 API 키가 필요한가요?', 'a1': '아니요. 컴퓨터에 로그인된 Claude 또는 GPT(ChatGPT) 계정을 그대로 씁니다. 직원들은 그 계정으로 일하고, 사용량도 그 계정에 잡힙니다.',
+    'q2': 'Claude와 GPT 중 하나만 있어도 되나요?', 'a2': '네. 하나만 로그인해 있으면 바로 시작할 수 있고, 나머지는 설정에서 나중에 연결하면 돼요. 두 계정이 모두 있으면 직원마다 어느 쪽으로 일할지 고를 수 있어요. 아직 GPT 직원은 베타입니다.',
+    'q3': '개발을 전혀 몰라도 쓸 수 있나요?', 'a3': '네. 직원을 뽑고, 채팅으로 일을 시키고, 결재함에서 승인·반려만 하면 됩니다. 명령어를 입력할 일은 없습니다.',
+    'q4': '설치할 때 경고창이 떠요.', 'a4': '아직 앱에 서명을 하지 않아서 나오는 안내입니다. Mac은 시스템 설정 › 개인정보 보호 및 보안에서 "그래도 열기", Windows는 "추가 정보 › 실행"을 누르면 열립니다.',
+    'q5': '직원이 마음대로 파일을 바꾸지 않나요?', 'a5': '영향이 큰 일은 결재함에 먼저 올라오고, 승인해야 진행됩니다. 직원이 바꾼 파일은 ‘작업 전으로 되돌리기’로 한 번에 돌릴 수 있어요. 되돌리기 어려운 위험한 명령은 항상 막습니다.',
+    'q6': '내 데이터는 어디에 저장되나요?', 'a6': '직원·업무·대화 기록은 내 컴퓨터 안에 저장됩니다. 휴대폰 연결은 기본으로 꺼져 있고, 켤 때만 연결돼요. GPT 로그인 정보는 앱이 갖지 않고 로그인 도구가 관리해요.',
+    'q7': '직원이 내 컴퓨터 화면을 마음대로 조작하나요?', 'a7': '아니요. 장비를 지급받은 직원만 화면을 볼 수 있고, 클릭·입력은 결재함에서 승인해야만 합니다.',
+    'q8': '휴대폰 앱만 따로 쓸 수 있나요?', 'a8': '아니요. PC에서 켜 둔 AI Office를 원격으로 쓰는 앱이라 PC 앱이 켜져 있어야 합니다. 집 밖에서도 연결할 수 있어요.',
+    'q9': '어떤 언어로 쓸 수 있나요?', 'a9': '한국어, 영어, 일본어, 중국어를 지원합니다. 처음에는 컴퓨터(휴대폰) 언어를 따르고, 지원하지 않는 언어면 영어로 시작해요. 설정 맨 위의 \'언어\'에서 언제든 바꿀 수 있습니다.',
+    'end.title': '오늘 첫 직원을 뽑아 보세요', 'end.sub': '무료이고, 설치하고 몇 분이면 Claude든 GPT든 첫 업무를 맡길 수 있어요.', 'end.btn': '무료로 받기',
     'foot.license': '{license} 라이선스', 'foot.changelog': '변경 기록'
   },
   en: {
-    'meta.title': 'AI Office — Hand off work to AI teammates, no code required',
-    'meta.desc': 'A free, open-source desktop app that lets you work with AI the way you already run an office: hire, assign, approve and get reports. No terminal, no config files.',
-    'nav.features': 'Features', 'nav.screens': 'Screens', 'nav.download': 'Download', 'nav.faq': 'FAQ',
-    'nav.how': 'How it works',
-    'how.eyebrow': 'How it works', 'how.title': 'Three steps is all it takes', 'how.sub': 'Work with them like you would with people. Hire, ask, and approve.',
-    's1.t': 'Hire a teammate', 's1.p': 'Pick a role and a look — they take a desk and get ready to work.', 's1.say': 'You hired Sarah, a marketer',
-    's2.t': 'Ask in plain words', 's2.p': 'Mention them in the group chat, or hand a big job to a team lead.', 's2.say': '@Sarah Can you draft next week’s newsletter?',
-    's3.t': 'Approve and get reports', 's3.p': 'Approve what matters in your inbox, and get a report when it’s done.', 's3.say': 'Draft is up — take a look when you can!',
-    'end.title': 'Hire your first teammate today', 'end.sub': 'It’s free, and you can hand off your first task minutes after installing.', 'end.btn': 'Get it free',
-    'badge.oss': 'Free & Open Source',
-    'hero.title': 'Hand off work to <em>AI teammates</em>.<br>No code required.',
-    'hero.lead': 'AI Office turns AI sessions into a familiar office: hire teammates, assign work, approve requests and get reports. No terminal, no config files.',
+    'meta.title': 'AI Office — An AI office where you hire Claude and GPT staff together',
+    'meta.desc': 'A free, open-source desktop app to hire Claude and GPT staff, hand out work, approve, and get reports. No command line, no hard setup.',
+    'nav.how': 'How it works', 'nav.features': 'Features', 'nav.grow': 'Grow', 'nav.screens': 'Phone', 'nav.download': 'Download', 'nav.faq': 'FAQ',
+    'badge.oss': 'Free · Open source · <em>New: GPT staff</em>',
+    'hero.title': 'No code needed.<br>Hire <em>AI staff</em> together.',
+    'hero.lead': 'Put Claude staff and GPT staff in one office and hand out the work. Approve the important parts in your inbox and get a report when it’s done. No command line, no hard setup.',
     'btn.download': 'Download for {os}', 'btn.soon': 'Coming soon', 'btn.also': 'Also available for',
     'os.mac': 'Mac', 'os.win': 'Windows', 'os.android': 'Android',
-    'feat.eyebrow': 'Features', 'feat.title': 'Works the way an office works',
-    'feat.sub': 'Each AI session becomes a teammate, permission prompts become an approval inbox, logs become reports, and usage becomes payroll.',
-    'f1.t': 'Hire and just ask', 'f1.p': 'Pick a role and a look, and they’re ready to go. Mention @name, @team or @all in the group chat — or mention no one and the right teammate picks it up.',
-    'f2.t': 'Approvals for what matters', 'f2.p': 'Editing files or running commands lands in your approval inbox first. You decide how much to delegate, and risky commands are always blocked.',
-    'f3.t': 'Team leads split the work', 'f3.p': 'Give a big task to a team lead: they plan, split it up, check with you, run it in order and report back. Track it all on the task board.',
-    'f4.t': 'Group chat and meetings', 'f4.p': 'Reports and permission requests flow into chat. In the meeting room, teammates take turns sharing ideas, and minutes and action items are written for you.',
-    'f5.t': 'Dashboard and payroll', 'f5.p': 'See who’s working and who’s waiting on you at a glance, plus per-teammate usage and your Claude plan usage.',
-    'f6.t': 'Approve from your phone', 'f6.p': 'Pair the Android app with your PC via QR code to approve and assign work on the go. There’s also a Work Mode for office screens.',
-    'f7.t': 'A company that grows', 'f7.p': 'As your teammates work, your company levels up — the office expands from a garage to a five-story tower. Decorate with furniture, wallpaper, and even an office cat and dog from the shop. Work Mode hides all of this.',
-    'f8.t': 'Four languages', 'f8.p': 'Use it in Korean, English, Japanese, or Chinese. Switch in Settings and it applies instantly without a restart — the phone app supports the same languages.',
-    'f9.t': 'Scheduled work & reference docs', 'f9.p': 'Schedule daily or weekly tasks and teammates handle them on time. Register docs and work manuals for teammates to read before they start.',
-    'scr.eyebrow': 'On your phone', 'scr.title': 'Your office, in your pocket',
-    'scr.sub': 'Pair the Android app with your PC to use the dashboard, approvals and group chat on the go.',
-    'cap.office': '<b>Office</b> — teammates at their desks, floor by floor',
-    'cap.dash': '<b>Dashboard</b> — approve what needs you, right away',
-    'cap.chat': '<b>Group chat</b> — assign by talking, get reports back',
-    'alt.office': 'AI Office office view', 'alt.dash': 'Phone dashboard', 'alt.chat': 'Phone group chat',
-    'cap.inbox': '<b>Approvals</b> — approve or reject on the go', 'alt.inbox': 'Phone approvals',
-    'alt.f1': 'Group chat: assigning work with @name and a teammate replying', 'alt.f2': 'Approval inbox with a meeting decision, a question and a command request', 'alt.f3': 'Task board with a plan split up by the team lead, awaiting review', 'alt.f4': 'Meeting room with teammates taking turns to speak', 'alt.f5': 'Dashboard with a status summary and recent activity', 'alt.f7': 'The company building seen from the street',
-    'dl.eyebrow': 'Download', 'dl.title': 'Get it free', 'dl.sub': 'Requires Claude Code to be signed in on the same computer.', 'dl.mine': 'Your device',
-    'mac.1': 'Apple Silicon (M1 or later) only', 'mac.2': 'Open the .dmg and drag the app into Applications', 'mac.3': 'If you see a warning on first launch, go to System Settings › Privacy & Security › “Open Anyway”',
-    'win.1': 'Preview · 64-bit · unzip and run AI Office.exe', 'win.2': 'If “Windows protected your PC” appears, choose “More info › Run anyway”', 'win.3': 'External session alerts and screen capture are Mac-only for now',
+    'how.eyebrow': 'How it works', 'how.title': 'Three steps are enough', 'how.sub': 'Just like handing work to a person: hire, talk, and check.',
+    's1.t': 'Hire', 's1.p': 'Pick a role, a look, and whether the new hire is Claude or GPT. They sit down ready to work.', 's1.say': 'I hired Sora, a marketer (GPT)',
+    's2.t': 'Just say it', 's2.p': 'Call someone by name in the group chat, or give a big job to the team lead.', 's2.say': '@Sora, please draft next week’s newsletter',
+    's3.t': 'Approve and get reports', 's3.p': 'Approve the important things in your inbox, and a report arrives when it’s done.', 's3.say': 'Draft is up. Please take a look!',
+    'feat.eyebrow': 'Features', 'feat.title': 'Familiar, like a real office',
+    'feat.sub': 'One AI session is one employee, a confirm dialog is an approval inbox, a work log is a report, and usage is a payslip.',
+    'tag.beta': 'Beta', 'tag.new': 'New',
+    'f1.t': 'Claude and GPT staff, together', 'f1.p': 'Choose, per employee, whether they work on Claude or GPT. Both kinds work side by side in one office, and the app suggests who fits a task. One account is enough to start. GPT staff are still in beta.',
+    'f2.t': 'Hire and just ask', 'f2.p': 'Pick a role and a look and they’re ready. Call @name, @team, or @everyone in the group chat — or just ask, and the best-fit person picks it up. You can also hire from six ready-made staff in the staff market.',
+    'f3.t': 'Approvals for what matters, plus undo', 'f3.p': 'Anything that changes files or runs commands lands in your approval inbox first. You decide how much to delegate, and risky commands are always blocked. If you don’t like the result, one click on “Undo to before the task” restores the files they changed.',
+    'f4.t': 'Team leads split the work', 'f4.p': 'Give a big job to a team lead: they draft a plan, split it up, get your OK, then run it step by step and report. Follow along on the task board, with the cost shown on each card.',
+    'f5.t': 'Group chat and meetings', 'f5.p': 'Reports and permission requests flow through chat, and you can approve or reply right there. In the meeting room, staff take turns giving opinions, and the minutes and to-dos are written up for you.',
+    'f6.t': 'Computer control kit', 'f6.p': 'A staff member with the computer kit can look at your screen and work with the mouse and keyboard. Looking is instant; clicking and typing only happen after you approve in the inbox. There’s also a browser kit for checking websites.',
+    'f7.t': 'Secretary and tutorial', 'f7.p': 'A first-run tour shows you around, and “Try one full cycle” lets you practice handing off a task or running a meeting. After that, just ask the secretary: move people between teams, tidy the task board, redecorate, review staff instructions — even “why did they stop?”',
+    'f8.t': 'Usage, payroll and terminal sessions', 'f8.p': 'See at a glance who’s working and who’s waiting, with per-employee usage and a card for each of your Claude and GPT plans. When usage runs near the limit, scheduled work pauses and you’re told. Claude and GPT sessions you started in a terminal also show up as “working” in the office.',
+    'alt.office': 'AI Office floor decorated with desk sets and level furniture',
+    'alt.f1': 'Hiring window with Codex (GPT, beta) chosen as the AI', 'alt.f1b': 'AI provider settings with both Claude and GPT ready',
+    'alt.f2': 'Giving work with @name in the group chat and getting a reply', 'alt.f3': 'Approval inbox with a file edit from a GPT employee and a command from a Claude employee',
+    'alt.f6': 'An approval card asking to approve a click on the screen', 'alt.f7': 'Asking the secretary to tidy the task board, with a confirmation card before it runs',
+    'alt.f8': 'A dashboard with per-employee usage and Claude/GPT usage cards',
+    'grow.eyebrow': 'Grow', 'grow.title': 'A company that grows as you work', 'grow.sub': 'Staff work, the company levels up, the office expands, and new furniture unlocks.',
+    'g1.t': 'Levels and floors', 'g1.p': 'From a garage up to a five-floor tower. Levels 11–20 unlock 20 new pieces of furniture and decor, with one legendary item per level from level 15. Work mode can hide all of this.',
+    'g2.t': 'Decorate your way', 'g2.p': 'Buy furniture, wallpaper, partitions, cats and dogs in the shop. Rotate a desk and chair as one set and assign it to a person. Props like the coffee machine and aquarium move and react. Or ask the secretary to “arrange it nicely for me.”',
+    'g3.t': 'Demo Day', 'g3.p': 'On a set day and time, staff step on stage and present what they finished. Results gather in a gallery you can filter by period, person, or lab.',
+    'alt.g1': 'The company building after leveling up', 'alt.g2': 'Decorate mode with the level-only furniture tab open',
+    'scr.eyebrow': 'Phone', 'scr.title': 'Away from your desk, still in your hand',
+    'scr.sub': 'Link the Android app to your PC and use the dashboard, approval inbox, and group chat from your phone — even outside your home network.',
+    'cap.dash': '<b>Dashboard</b> — approve what needs you, right away', 'cap.inbox': '<b>Approval inbox</b> — approve or reject from anywhere', 'cap.chat': '<b>Group chat</b> — give orders and get reports',
+    'alt.dash': 'Phone dashboard', 'alt.inbox': 'Phone approval inbox', 'alt.chat': 'Phone group chat',
+    'ph.note': 'No router changes — it connects over a private link between your own devices (Tailscale). You can also limit it to the same Wi-Fi.',
+    'dl.eyebrow': 'Download', 'dl.title': 'Get it for free', 'dl.sub': 'One logged-in account, Claude or GPT (ChatGPT), is enough to start.', 'dl.mine': 'Your device',
+    'mac.1': 'Apple Silicon (M1 or later) only', 'mac.2': 'Open the .dmg and drag the app into Applications', 'mac.3': 'If you see a warning on first launch, go to System Settings › Privacy & Security › “Open Anyway”', 'mac.4': 'Larger download (includes GPT staff, about 350 MB)',
+    'win.1': 'Preview · 64-bit · unzip and run claude-office.exe', 'win.2': 'If “Windows protected your PC” appears, choose “More info › Run anyway”', 'win.3': 'External session alerts and screen capture are Mac-only for now',
     'and.1': 'A remote companion for the desktop app', 'and.2': 'Turn on Settings › Phone connection on your PC, then scan the QR code', 'and.3': 'Use the same version as your PC',
     'faq.title': 'Frequently asked questions',
-    'q1': 'Do I need a separate account or API key?', 'a1': 'No. It uses the Claude Code account already signed in on your computer. Teammates work under that account, and usage is counted there.',
-    'q2': 'Can I use it without any coding knowledge?', 'a2': 'Yes. Hire teammates, give them work in chat, and approve or decline in the inbox. You never have to type a command.',
-    'q3': 'I see a warning when installing.', 'a3': 'The app isn’t code-signed yet. On Mac, choose “Open Anyway” in System Settings › Privacy & Security. On Windows, choose “More info › Run anyway”.',
-    'q4': 'Will teammates change my files without asking?', 'a4': 'Anything with real impact goes to your approval inbox first and only runs once you approve. You choose how much they can do on their own, and hard-to-undo commands are always blocked.',
-    'q5': 'Where is my data stored?', 'a5': 'Teammates, tasks and chat history live in a single file on your own computer. Phone connection is off by default and only works when you turn it on.',
-    'q6': 'Can I use the phone app on its own?', 'a6': 'No. The phone app remotely controls AI Office running on your PC, so the desktop app needs to be open.',
-    'q7': 'Which languages are supported?', 'a7': 'Korean, English, Japanese, and Chinese. It starts in your computer’s (or phone’s) language, or English if that isn’t supported. You can change it anytime under Language at the top of Settings.',
+    'q1': 'Do I need to sign up or get an API key?', 'a1': 'No. It uses the Claude or GPT (ChatGPT) account already logged in on your computer. Staff work under that account and usage counts against it.',
+    'q2': 'Do I need both Claude and GPT?', 'a2': 'No. One logged-in account is enough to start; connect the other later in Settings. With both, you choose per employee which one they work on. GPT staff are still in beta.',
+    'q3': 'Can I use it with no dev background?', 'a3': 'Yes. Hire staff, give work in chat, and approve or reject in the inbox. You never type a command.',
+    'q4': 'I see a warning when installing.', 'a4': 'The app isn’t code-signed yet. On Mac, choose “Open Anyway” in System Settings › Privacy & Security. On Windows, choose “More info › Run anyway”.',
+    'q5': 'Won’t staff change my files on their own?', 'a5': 'High-impact actions go to the approval inbox first and only proceed once you approve. You can roll back everything they changed with “Undo to before the task,” and risky commands that can’t be undone are always blocked.',
+    'q6': 'Where is my data stored?', 'a6': 'Staff, tasks, and chats are stored on your computer. Phone connection is off by default and only connects when you turn it on. The app doesn’t hold your GPT sign-in; the login tool manages it.',
+    'q7': 'Can staff control my screen freely?', 'a7': 'No. Only staff given the computer kit can see your screen, and clicks and typing happen only after you approve them in the inbox.',
+    'q8': 'Can I use the phone app alone?', 'a8': 'No. It’s a remote for the AI Office running on your PC, so the PC app must be on. It also works away from home.',
+    'q9': 'Which languages are supported?', 'a9': 'Korean, English, Japanese, and Chinese. It starts in your computer’s (or phone’s) language, or English if that isn’t supported. You can change it anytime under Language at the top of Settings.',
+    'end.title': 'Hire your first employee today', 'end.sub': 'It’s free, and a few minutes after installing you can hand a first task to Claude or GPT.', 'end.btn': 'Get it free',
     'foot.license': '{license} License', 'foot.changelog': 'Changelog'
   },
   ja: {
-    'meta.title': 'AI Office — コードがわからなくても、AIスタッフに仕事を任せよう',
-    'meta.desc': 'AI を「採用・指示・承認・報告」というおなじみのオフィスのやり方で使える、無料・オープンソースのデスクトップアプリ。ターミナルも難しい設定も不要です。',
-    'nav.features': '機能', 'nav.screens': '画面', 'nav.download': 'ダウンロード', 'nav.faq': 'FAQ',
-    'nav.how': '使い方',
-    'how.eyebrow': '使い方', 'how.title': '3ステップで始められます', 'how.sub': '人に仕事を頼むのと同じです。採用して、話しかけて、確認するだけ。',
-    's1.t': 'スタッフを採用', 's1.p': '職種と見た目を選ぶと、席についてすぐに働く準備をします。', 's1.say': 'マーケターの「佐藤さくら」を採用しました',
-    's2.t': '言葉で頼む', 's2.p': 'グループチャットで名前を呼ぶか、大きな仕事をリーダーにまるごと任せます。', 's2.say': '@佐藤さくら 来週のニュースレター案をお願いします',
-    's3.t': '承認して報告を受ける', 's3.p': '大事なことは承認ボックスで承認し、終われば報告が届きます。', 's3.say': '案を上げました。ご確認ください！',
-    'end.title': '今日、最初のスタッフを採用しよう', 'end.sub': '無料で、インストールから数分で最初の仕事を任せられます。', 'end.btn': '無料でダウンロード',
-    'badge.oss': '無料・オープンソース',
-    'hero.title': 'コードがわからなくても、<br><em>AIスタッフ</em>に仕事を任せよう',
-    'hero.lead': 'AI を、スタッフの採用・仕事の指示・承認・報告というおなじみのオフィスのやり方で使えるデスクトップアプリです。ターミナルも難しい設定もいりません。',
+    'meta.title': 'AI Office — ClaudeとGPTの社員を一緒に雇うAIオフィス',
+    'meta.desc': 'ClaudeとGPTの社員を雇い、仕事を任せ、承認し、報告を受ける無料のオープンソースデスクトップアプリ。コマンド画面も難しい設定も不要です。',
+    'nav.how': '使い方', 'nav.features': '機能', 'nav.grow': '育てる', 'nav.screens': 'スマホ', 'nav.download': 'ダウンロード', 'nav.faq': 'FAQ',
+    'badge.oss': '無料 · オープンソース · <em>新登場：GPT社員</em>',
+    'hero.title': 'コードを知らなくても、<br><em>AI社員</em>をまとめて雇えます',
+    'hero.lead': 'ClaudeとGPTの社員を一つのオフィスに迎えて、仕事を任せましょう。大事な作業は承認箱で確認し、終わったら報告が届きます。コマンド画面も難しい設定も不要です。',
     'btn.download': '{os} 版をダウンロード', 'btn.soon': '準備中', 'btn.also': 'ほかのプラットフォーム：',
     'os.mac': 'Mac', 'os.win': 'Windows', 'os.android': 'Android',
-    'feat.eyebrow': '主な機能', 'feat.title': 'いつものオフィスのやり方で',
-    'feat.sub': 'AI のセッションはスタッフに、確認ダイアログは承認ボックスに、作業ログは業務報告に、使用量は給与明細になります。',
-    'f1.t': '採用して、話しかけるだけ', 'f1.p': '職種と見た目を選べば準備完了。グループチャットで @名前・@チーム・@全員 と呼びかけるか、誰も指名しなければ最適なスタッフが引き受けます。',
-    'f2.t': '大事なことは承認制', 'f2.p': 'ファイルの変更やコマンドの実行は、まず承認ボックスに届きます。どこまで任せるかは自分で決められ、危険なコマンドは常にブロックされます。',
-    'f3.t': 'リーダーが仕事を分担', 'f3.p': '大きな仕事をチームリーダーに渡すと、計画を立てて分担し、確認を取ってから順に進めて報告します。進み具合はタスクボードで。',
-    'f4.t': 'グループチャットと会議室', 'f4.p': '報告や許可の依頼はチャットに流れてきます。会議室ではスタッフが順番に意見を出し、議事録とToDoが自動でまとまります。',
-    'f5.t': 'ダッシュボードと給与明細', 'f5.p': '誰が作業中で、誰が確認待ちかがひと目でわかります。スタッフごとの使用量や Claude プランの使用率も確認できます。',
-    'f6.t': 'スマホからも承認', 'f6.p': 'Android アプリを QR コードで PC とつなげば、外出先でも承認や指示ができます。職場の画面向けの「業務モード」もあります。',
-    'f7.t': '働くほど成長する会社', 'f7.p': 'スタッフが働くと会社のレベルが上がってオフィスが広がり、ガレージから5階建てのタワーまで大きくなります。ショップで家具・壁紙・ネコやイヌを買って飾れます。業務モードではこうした要素を隠せます。',
-    'f8.t': '4言語に対応', 'f8.p': '韓国語・英語・日本語・中国語で使えます。設定で切り替えると再起動なしですぐ反映され、スマホアプリも同じ言語に対応しています。',
-    'f9.t': '予約業務と参考ドキュメント', 'f9.p': '毎日・毎週の作業を予約しておけば、決まった時間にスタッフが自動で行います。作業前に読ませたいドキュメントや業務マニュアルも登録できます。',
-    'scr.eyebrow': 'スマホ', 'scr.title': '席を離れても、手のひらで',
-    'scr.sub': 'Android アプリを PC とつなげば、ダッシュボード・承認箱・グループチャットをスマホでそのまま使えます。',
-    'cap.office': '<b>オフィス</b> — 席で働くスタッフを、フロアごとに',
-    'cap.dash': '<b>ダッシュボード</b> — 確認が必要なものをすぐ承認',
-    'cap.chat': '<b>グループチャット</b> — 話して指示、報告を受け取る',
-    'alt.office': 'AI Office のオフィス画面', 'alt.dash': 'スマホのダッシュボード画面', 'alt.chat': 'スマホのグループチャット画面',
-    'cap.inbox': '<b>承認箱</b> — 外出先でも承認・却下', 'alt.inbox': 'スマホの承認箱画面',
-    'alt.f1': 'グループチャットで @名前 で指示し、スタッフが返信する画面', 'alt.f2': '会議の決定・質問・コマンド実行の依頼が集まった承認箱', 'alt.f3': 'タスクボードと、リーダーが分担した計画（確認待ち）', 'alt.f4': '会議室でスタッフが順番に発言する画面', 'alt.f5': 'ダッシュボード：作業状況の概要と最近のアクティビティ', 'alt.f7': '通りから見た会社の建物',
-    'dl.eyebrow': 'ダウンロード', 'dl.title': '無料で使えます', 'dl.sub': '同じパソコンで Claude Code にログインしている必要があります。', 'dl.mine': 'お使いの端末',
-    'mac.1': 'Apple シリコン（M1 以降）専用', 'mac.2': '.dmg を開いて「アプリケーション」フォルダへドラッグ', 'mac.3': '初回起動で警告が出たら、システム設定 › プライバシーとセキュリティ ›「このまま開く」',
-    'win.1': 'プレビュー版・64 ビット・.zip を展開して AI Office.exe を実行', 'win.2': '「Windows によって PC が保護されました」と出たら「詳細情報 › 実行」', 'win.3': '外部セッションの通知と画面キャプチャは現在 Mac のみ',
+    'how.eyebrow': '使い方', 'how.title': '3ステップでOK', 'how.sub': '人に仕事を頼むのと同じです。雇って、話して、確認するだけ。',
+    's1.t': '雇う', 's1.p': '職種と見た目、そしてClaudeかGPTのどちらの社員にするかを選びます。席に着けばすぐ働けます。', 's1.say': 'マーケター「ソラ」（GPT）を雇いました',
+    's2.t': '話して頼む', 's2.p': 'グループチャットで名前を呼ぶか、大きな仕事はチームリーダーにまとめて任せます。', 's2.say': '@ソラ 来週のニュースレターの下書きをお願いします',
+    's3.t': '承認して報告を受ける', 's3.p': '大事な作業は承認箱で承認し、終わると報告が届きます。', 's3.say': '下書きを出しました。ご確認をお願いします！',
+    'feat.eyebrow': '主な機能', 'feat.title': '慣れた形で、オフィスのように',
+    'feat.sub': 'AIセッション1つが社員1人、確認画面は承認箱、作業記録は業務報告、使用量は給与明細になります。',
+    'tag.beta': 'ベータ', 'tag.new': '新機能',
+    'f1.t': 'ClaudeとGPTの社員を一緒に', 'f1.p': '社員ごとに、ClaudeとGPTのどちらで働くかを選べます。1つのオフィスで両方が一緒に働き、仕事に合う社員をおすすめもします。どちらか一方だけでも始められます。GPT社員はまだベータ版です。',
+    'f2.t': '雇って、話して頼む', 'f2.p': '職種と見た目を選べば準備完了。グループチャットで @名前・@チーム・@全員 と呼ぶか、誰も呼ばなければ合う社員が受けます。社員マーケットから用意済みの6人をすぐ雇うこともできます。',
+    'f3.t': '大事な作業は承認制、元に戻すことも', 'f3.p': 'ファイルを変えたりコマンドを実行する作業は、まず承認箱に届きます。どこまで任せるかは自分で決められ、危険なコマンドは常にブロックします。気に入らなければ「作業前に戻す」を押すだけで、社員が変えたファイルが元に戻ります。',
+    'f4.t': 'リーダーが分担して進める', 'f4.p': '大きな仕事をリーダーに渡すと、計画を立てて分担し、確認を受けてから順番に進めて報告します。進み具合は業務ボードで、カードごとの費用も見られます。',
+    'f5.t': 'グループチャットと会議室', 'f5.p': '報告や許可の依頼がチャットで流れ、その場で承認や返信ができます。会議室では社員が順番に意見を出し、議事録とやることが自動でまとまります。',
+    'f6.t': 'パソコン操作の装備', 'f6.p': '装備を支給された社員は、画面を見ながらマウスとキーボードで作業します。見るだけなら即座に、クリックや入力は承認箱で承認した後にだけ行います。サイトを開いて確認するブラウザ装備もあります。',
+    'f7.t': '秘書とチュートリアル', 'f7.p': '最初はツアーで使い方を案内し、「ひととおり体験」で仕事の依頼や会議の開催を真似して試せます。その後は秘書に話しかけるだけ。チームの異動、業務ボードの整理、オフィスの模様替え、社員の点検までお任せです。なぜ止まったのかも聞けます。',
+    'f8.t': '使用量と給与明細、ターミナルの作業も', 'f8.p': '誰が働き、誰が確認待ちかをひと目で確認。社員ごとの使用量と、ClaudeとGPTそれぞれのプラン使用量をカードで見られます。使用量が上限に近づくと予約作業を一時停止してお知らせします。ターミナルで別に動かしているClaude・GPTの作業も、オフィスで「作業中」として見えます。',
+    'alt.office': 'AI Office のオフィス画面 — 机セットとレベル家具で飾ったフロア',
+    'alt.f1': '社員の採用画面でAIにCodex（GPT・ベータ）を選んだところ', 'alt.f1b': 'ClaudeとGPTのアカウントが両方準備済みのAI提供元設定',
+    'alt.f2': 'グループチャットで@名前を使って仕事を頼み、社員が返事する画面', 'alt.f3': 'GPT社員のファイル書き込みとClaude社員のコマンド実行の依頼が届いた承認箱',
+    'alt.f6': '画面を見てクリックの承認を待つ承認カード', 'alt.f7': '秘書に業務ボードの整理を頼み、実行前の確認カードが出た画面',
+    'alt.f8': '社員別の使用量とClaude・GPTの使用量カードがあるダッシュボード',
+    'grow.eyebrow': '育てる', 'grow.title': '働くほど育つ会社', 'grow.sub': '社員が働くと会社のレベルが上がり、オフィスが広がって新しい家具が解放されます。',
+    'g1.t': 'レベルとオフィス', 'g1.p': 'ガレージから5階建てのタワーまで成長します。レベル11〜20では新しい家具・小物20種が解放され、レベル15からは毎レベル伝説級のアイテムが1つ登場します。業務モードでは非表示にできます。',
+    'g2.t': '好きなように飾る', 'g2.p': 'ショップで家具・壁紙・パーテーション・猫や犬を買って飾れます。机と椅子はセットで回転でき、社員の席に置けます。コーヒーマシンや水槽などの小物は動いて反応します。「いい感じに配置して」は秘書にお任せ。',
+    'g3.t': 'デモデイ', 'g3.p': '決めた曜日と時間に、社員がステージに上がって完了した仕事を発表します。成果物はギャラリーに集まり、期間・社員・ラボで絞り込めます。',
+    'alt.g1': 'レベルが上がった会社の建物の外観', 'alt.g2': '模様替えモードでレベル限定家具のタブを開いた画面',
+    'scr.eyebrow': 'スマホ', 'scr.title': '席を離れても手のひらで',
+    'scr.sub': 'AndroidアプリをPCとつなぐと、ダッシュボード・承認箱・グループチャットをスマホでそのまま使えます。外出先からでも接続できます。',
+    'cap.dash': '<b>ダッシュボード</b> — 確認が必要な作業をすぐ承認', 'cap.inbox': '<b>承認箱</b> — 外出先でも承認・却下', 'cap.chat': '<b>グループチャット</b> — 話して指示し、報告を受ける',
+    'alt.dash': 'スマホのダッシュボード画面', 'alt.inbox': 'スマホの承認箱画面', 'alt.chat': 'スマホのグループチャット画面',
+    'ph.note': 'ルーターの設定は不要で、自分の端末同士だけをつなぐ専用回線（Tailscale）で安全に接続します。同じWi-Fiだけに制限することもできます。',
+    'dl.eyebrow': 'ダウンロード', 'dl.title': '無料でどうぞ', 'dl.sub': 'ClaudeまたはGPT（ChatGPT）のアカウントのどちらか1つにログインしていれば始められます。', 'dl.mine': 'お使いの端末',
+    'mac.1': 'Apple シリコン（M1 以降）専用', 'mac.2': '.dmg を開いて「アプリケーション」フォルダへドラッグ', 'mac.3': '初回起動で警告が出たら、システム設定 › プライバシーとセキュリティ ›「このまま開く」', 'mac.4': 'ファイルサイズが大きめです（GPT社員機能を含む、約350MB）',
+    'win.1': 'プレビュー版・64 ビット・.zip を展開して claude-office.exe を実行', 'win.2': '「Windows によって PC が保護されました」と出たら「詳細情報 › 実行」', 'win.3': '外部セッションの通知と画面キャプチャは現在 Mac のみ',
     'and.1': 'PC アプリをリモートで使うスマホアプリ', 'and.2': 'PC の 設定 › スマホ連携 をオンにして QR コードで接続', 'and.3': 'PC と同じバージョンを使ってください',
     'faq.title': 'よくある質問',
-    'q1': '別途アカウント登録や API キーは必要ですか？', 'a1': 'いいえ。そのパソコンでログイン中の Claude Code アカウントをそのまま使います。スタッフはそのアカウントで働き、使用量もそのアカウントに計上されます。',
-    'q2': 'プログラミングの知識がなくても使えますか？', 'a2': 'はい。スタッフを採用し、チャットで仕事を頼み、承認ボックスで承認・却下するだけです。コマンドを入力する必要はありません。',
-    'q3': 'インストール時に警告が出ます。', 'a3': 'アプリにまだ署名をしていないために表示されます。Mac はシステム設定 › プライバシーとセキュリティで「このまま開く」、Windows は「詳細情報 › 実行」で開けます。',
-    'q4': 'スタッフが勝手にファイルを変更しませんか？', 'a4': '影響の大きい操作はまず承認ボックスに届き、承認するまで実行されません。どこまで任せるかを選べ、取り消しにくい危険なコマンドは常にブロックされます。',
-    'q5': 'データはどこに保存されますか？', 'a5': 'スタッフ・タスク・チャットの記録は、自分のパソコン内の 1 つのファイルに保存されます。スマホ連携は初期状態でオフで、オンにしたときだけ接続できます。',
-    'q6': 'スマホアプリだけで使えますか？', 'a6': 'いいえ。スマホアプリは PC で起動している AI Office をリモートで操作するアプリなので、PC アプリが起動している必要があります。',
-    'q7': 'どの言語で使えますか？', 'a7': '韓国語、英語、日本語、中国語に対応しています。最初はパソコン（スマホ）の言語に合わせ、対応していない言語の場合は英語で始まります。設定の一番上の「言語」でいつでも変更できます。',
+    'q1': '会員登録やAPIキーは必要ですか？', 'a1': 'いいえ。パソコンにログインしているClaudeまたはGPT（ChatGPT）のアカウントをそのまま使います。社員はそのアカウントで働き、使用量もそのアカウントにカウントされます。',
+    'q2': 'ClaudeとGPTの両方が必要ですか？', 'a2': 'いいえ。どちらか1つにログインしていれば始められ、もう一方は後から設定でつなげます。両方あれば、社員ごとにどちらで働くか選べます。GPT社員はまだベータ版です。',
+    'q3': '開発を全く知らなくても使えますか？', 'a3': 'はい。社員を雇い、チャットで仕事を頼み、承認箱で承認・却下するだけです。コマンドを入力する必要はありません。',
+    'q4': 'インストール時に警告が出ます。', 'a4': 'アプリにまだ署名をしていないために表示されます。Mac はシステム設定 › プライバシーとセキュリティで「このまま開く」、Windows は「詳細情報 › 実行」で開けます。',
+    'q5': '社員が勝手にファイルを変えませんか？', 'a5': '影響の大きい作業はまず承認箱に届き、承認して初めて進みます。社員が変えたファイルは「作業前に戻す」で一度に戻せます。元に戻せない危険なコマンドは常にブロックします。',
+    'q6': 'データはどこに保存されますか？', 'a6': '社員・業務・会話の記録はパソコン内に保存されます。スマホ接続は初期状態ではオフで、オンにしたときだけ接続できます。GPTのログイン情報はアプリではなくログイン用ツールが管理します。',
+    'q7': '社員が勝手にパソコンの画面を操作しませんか？', 'a7': 'いいえ。装備を支給された社員だけが画面を見られ、クリックや入力は承認箱で承認したときだけ行われます。',
+    'q8': 'スマホアプリだけで使えますか？', 'a8': 'いいえ。PCで起動中のAI Officeを遠隔操作するアプリなので、PCアプリを起動しておく必要があります。外出先からも接続できます。',
+    'q9': 'どの言語で使えますか？', 'a9': '韓国語、英語、日本語、中国語に対応しています。最初はパソコン（スマホ）の言語に合わせ、対応していない言語の場合は英語で始まります。設定の一番上の「言語」でいつでも変更できます。',
+    'end.title': '今日、最初の社員を雇いましょう', 'end.sub': '無料で、インストールして数分でClaudeにもGPTにも最初の仕事を任せられます。', 'end.btn': '無料で入手',
     'foot.license': '{license} ライセンス', 'foot.changelog': '更新履歴'
   },
   zh: {
-    'meta.title': 'AI Office — 不懂代码，也能把工作交给 AI 员工',
-    'meta.desc': '一款免费开源的桌面应用，用“招聘、派活、审批、汇报”这种熟悉的办公室方式来使用 AI。无需命令行，也无需复杂配置。',
-    'nav.features': '功能', 'nav.screens': '界面', 'nav.download': '下载', 'nav.faq': '常见问题',
-    'nav.how': '使用方法',
-    'how.eyebrow': '使用方法', 'how.title': '三步就能上手', 'how.sub': '就像把工作交给同事一样：招人、说一句、确认即可。',
-    's1.t': '招聘员工', 's1.p': '选好职位和形象，员工就会坐到工位上准备开工。', 's1.say': '已招聘市场专员“林晓”',
-    's2.t': '直接说', 's2.p': '在群聊里点名，或者把大任务整个交给组长。', 's2.say': '@林晓 帮忙起草下周的新闻简报',
-    's3.t': '审批并收到汇报', 's3.p': '重要的事在审批箱里批准，完成后会收到汇报。', 's3.say': '草稿已提交，请过目！',
-    'end.title': '今天就招聘第一位员工吧', 'end.sub': '完全免费，安装后几分钟就能交出第一项工作。', 'end.btn': '免费下载',
-    'badge.oss': '免费开源',
-    'hero.title': '不懂代码，<br>也能把工作交给 <em>AI 员工</em>',
-    'hero.lead': 'AI Office 用招聘员工、分派任务、审批、汇报这种熟悉的办公室方式来使用 AI。无需命令行，也无需复杂配置。',
+    'meta.title': 'AI Office — 同时雇用 Claude 和 GPT 员工的 AI 办公室',
+    'meta.desc': '可同时雇用 Claude 和 GPT 员工、分配任务、审批并接收汇报的免费开源桌面应用。无需命令行，无需复杂设置。',
+    'nav.how': '用法', 'nav.features': '功能', 'nav.grow': '成长', 'nav.screens': '手机', 'nav.download': '下载', 'nav.faq': '常见问题',
+    'badge.oss': '免费 · 开源 · <em>新增 GPT 员工</em>',
+    'hero.title': '不懂代码也没关系，<br>一起雇用 <em>AI 员工</em>',
+    'hero.lead': '把 Claude 员工和 GPT 员工请进同一间办公室，放心交给他们工作。重要的事在审批箱确认，完成后收到汇报。无需命令行，无需复杂设置。',
     'btn.download': '下载 {os} 版', 'btn.soon': '即将推出', 'btn.also': '其他平台：',
     'os.mac': 'Mac', 'os.win': 'Windows', 'os.android': 'Android',
-    'feat.eyebrow': '主要功能', 'feat.title': '像管理办公室一样简单',
-    'feat.sub': '每个 AI 会话就是一名员工：确认弹窗变成审批箱，工作记录变成工作汇报，用量变成工资单。',
-    'f1.t': '招人，然后直接说', 'f1.p': '选好职位和形象就能开工。在群聊里 @名字、@团队 或 @全员，不点名的话，最合适的员工会主动接手。',
-    'f2.t': '重要的事先审批', 'f2.p': '修改文件、执行命令等操作会先进入审批箱。放权多少由你决定，危险命令始终会被拦截。',
-    'f3.t': '组长拆分任务', 'f3.p': '把大任务交给组长，组长会制定计划、分配工作、征得你的确认后按顺序推进并汇报。进度在任务看板上一目了然。',
-    'f4.t': '群聊与会议室', 'f4.p': '汇报和权限请求都会出现在群聊里。在会议室，员工轮流发言，会议纪要和待办事项自动整理好。',
-    'f5.t': '仪表盘与工资单', 'f5.p': '谁在工作、谁在等你确认，一眼就能看清；还能查看每位员工的用量和 Claude 套餐使用率。',
-    'f6.t': '用手机也能审批', 'f6.p': '用二维码把 Android 应用和电脑连接起来，在外面也能审批和派活。还有适合办公室大屏的“工作模式”。',
-    'f7.t': '越工作越壮大的公司', 'f7.p': '员工工作得越多，公司等级越高，办公室也越大，从车库一路成长为五层大楼。可以在商店购买家具、壁纸，甚至办公室猫狗来装饰。工作模式下会隐藏这些元素。',
-    'f8.t': '支持4种语言', 'f8.p': '支持韩语、英语、日语和中文。在设置中切换后无需重启即可生效，手机应用也支持相同的语言。',
-    'f9.t': '定时任务与参考文档', 'f9.p': '预约每天或每周的工作，员工会按时自动完成。还可以登记员工开工前要先读的文档和工作手册。',
-    'scr.eyebrow': '手机', 'scr.title': '不在工位，也尽在掌握',
-    'scr.sub': '把 Android 应用和电脑连接起来，就能在手机上使用仪表盘、审批箱和群聊。',
-    'cap.office': '<b>办公室</b> — 员工在工位上工作，可逐层查看',
-    'cap.dash': '<b>仪表盘</b> — 需要你确认的事，马上审批',
-    'cap.chat': '<b>群聊</b> — 说一句就能派活，随时收到汇报',
-    'alt.office': 'AI Office 办公室界面', 'alt.dash': '手机仪表盘界面', 'alt.chat': '手机群聊界面',
-    'cap.inbox': '<b>审批箱</b> — 在外面也能批准或驳回', 'alt.inbox': '手机审批箱界面',
-    'alt.f1': '在群聊里用 @名字 派活、员工回复的界面', 'alt.f2': '汇集了会议决定、提问和命令执行请求的审批箱', 'alt.f3': '任务看板和组长拆分的计划（等待确认）', 'alt.f4': '会议室里员工轮流发言的界面', 'alt.f5': '仪表盘：工作状态概览和最近动态', 'alt.f7': '从街道上看到的公司大楼',
-    'dl.eyebrow': '下载', 'dl.title': '免费下载', 'dl.sub': '需要在同一台电脑上登录 Claude Code。', 'dl.mine': '你的设备',
-    'mac.1': '仅支持 Apple 芯片（M1 及以上）', 'mac.2': '打开 .dmg，把应用拖进“应用程序”文件夹', 'mac.3': '首次打开出现警告时，前往 系统设置 › 隐私与安全性 › “仍要打开”',
-    'win.1': '预览版 · 64 位 · 解压 .zip 后运行 AI Office.exe', 'win.2': '出现“Windows 已保护你的电脑”时，选择“更多信息 › 仍要运行”', 'win.3': '外部会话通知和截屏目前仅支持 Mac',
+    'how.eyebrow': '用法', 'how.title': '三步就够了', 'how.sub': '就像把工作交给同事：雇人、开口、确认。',
+    's1.t': '雇人', 's1.p': '选好职位、形象，以及雇 Claude 还是 GPT 员工。入座后马上就能开工。', 's1.say': '已雇用市场专员“Sora”（GPT）',
+    's2.t': '开口交代', 's2.p': '在群聊里点名，或把大任务整个交给组长。', 's2.say': '@Sora 麻烦起草下周的通讯稿',
+    's3.t': '审批并接收汇报', 's3.p': '重要的事在审批箱批准，完成后会收到汇报。', 's3.say': '草稿已提交，请确认！',
+    'feat.eyebrow': '主要功能', 'feat.title': '用熟悉的方式，像办公室一样',
+    'feat.sub': '一个 AI 会话就是一名员工，确认窗口是审批箱，工作记录是汇报，用量就是工资单。',
+    'tag.beta': '测试版', 'tag.new': '新功能',
+    'f1.t': 'Claude 与 GPT 员工一起工作', 'f1.p': '每位员工都可以选择用 Claude 还是 GPT 工作。两种员工在同一间办公室里协作，还会为任务推荐合适的人选。只有其中一个账号也能马上开始。GPT 员工目前为测试版。',
+    'f2.t': '雇人，开口交代', 'f2.p': '选好职位和形象即可开工。在群聊里用 @姓名、@团队、@全员 点名，不点名时由最合适的员工接手。也可以从员工市场里六位现成的员工中直接雇用。',
+    'f3.t': '重要的事先审批，还能还原', 'f3.p': '修改文件或执行命令的操作会先进入审批箱。放权到什么程度由你决定，危险命令始终会被拦下。结果不满意时，点一下“恢复到任务之前”，员工改动的文件就会还原。',
+    'f4.t': '组长拆分推进', 'f4.p': '把大任务交给组长，他会制定计划、拆分任务，经你确认后依次推进并汇报。进度看任务看板，每张卡片还显示所花费用。',
+    'f5.t': '群聊与会议室', 'f5.p': '汇报和许可请求通过聊天流转，可以直接在群聊里批准或回复。会议室里员工轮流发表意见，会议纪要和待办会自动整理好。',
+    'f6.t': '电脑操作装备', 'f6.p': '配发了装备的员工能看到你的屏幕，并用鼠标和键盘直接操作。查看屏幕无需审批，点击和输入则必须等你在审批箱批准后才会执行。还有可打开网页查看内容的浏览器装备。',
+    'f7.t': '秘书与新手引导', 'f7.p': '首次使用有导览带你熟悉办公室，“完整体验一轮”可以跟着练习分配任务和召开会议。之后直接对秘书说就行：调整团队、整理任务看板、布置办公室、检查员工指令都能办，还能问“他为什么停下了”。',
+    'f8.t': '用量与工资单，终端会话也能看', 'f8.p': '一眼看清谁在工作、谁在等你确认，员工用量以及 Claude 和 GPT 各自的套餐用量都以卡片显示。用量快满时会暂停定时任务并提醒你。在终端里另外运行的 Claude、GPT 工作，也会在办公室里显示为“工作中”。',
+    'alt.office': 'AI Office 办公室界面 — 用桌椅套装和等级家具装饰的楼层',
+    'alt.f1': '在雇用员工窗口中把 AI 选为 Codex（GPT，测试版）', 'alt.f1b': 'Claude 与 GPT 账号均已就绪的 AI 提供方设置',
+    'alt.f2': '在群聊中用 @姓名 交代任务并得到回复的画面', 'alt.f3': '审批箱里有 GPT 员工的写文件请求和 Claude 员工的执行命令请求',
+    'alt.f6': '员工查看屏幕后等待点击批准的审批卡片', 'alt.f7': '请秘书整理任务看板后，执行前弹出的确认卡片',
+    'alt.f8': '显示员工用量及 Claude、GPT 用量卡片的仪表盘',
+    'grow.eyebrow': '成长', 'grow.title': '越工作越壮大的公司', 'grow.sub': '员工工作后公司升级，办公室变大，解锁新的家具。',
+    'g1.t': '等级与办公室', 'g1.p': '从车库一路成长为五层大楼。11~20 级会解锁 20 件新家具和摆设，从 15 级起每级还有一件传说级物品。办公模式下可以隐藏这些元素。',
+    'g2.t': '随心装饰', 'g2.p': '在商店购买家具、壁纸、隔断和猫狗来装饰。桌椅可作为一套整体旋转，并分配给员工的座位。咖啡机、水族箱等摆设会动起来并有反应。“帮我漂亮地布置一下”也可以交给秘书。',
+    'g3.t': '演示日', 'g3.p': '在设定的日期和时间，员工会登台展示完成的工作。成果汇集到画廊，可按时间、员工或实验室筛选。',
+    'alt.g1': '升级后的公司大楼外观', 'alt.g2': '装饰模式下打开等级专属家具标签页',
+    'scr.eyebrow': '手机', 'scr.title': '离开座位也在掌心',
+    'scr.sub': '把安卓应用与电脑连接后，仪表盘、审批箱和群聊都能在手机上使用。在外面也能连上。',
+    'cap.dash': '<b>仪表盘</b> — 需要确认的事当场审批', 'cap.inbox': '<b>审批箱</b> — 在外面也能批准、驳回', 'cap.chat': '<b>群聊</b> — 开口交代，接收汇报',
+    'alt.dash': '手机仪表盘界面', 'alt.inbox': '手机审批箱界面', 'alt.chat': '手机群聊界面',
+    'ph.note': '无需改路由器设置，通过只连接你自己设备的专用网络（Tailscale）安全接入。也可以限制只能在同一 Wi-Fi 下使用。',
+    'dl.eyebrow': '下载', 'dl.title': '免费获取', 'dl.sub': '只要登录 Claude 或 GPT（ChatGPT）账号中的一个就能开始。', 'dl.mine': '你的设备',
+    'mac.1': '仅支持 Apple 芯片（M1 及以上）', 'mac.2': '打开 .dmg，把应用拖进“应用程序”文件夹', 'mac.3': '首次打开出现警告时，前往 系统设置 › 隐私与安全性 › “仍要打开”', 'mac.4': '体积较大（含 GPT 员工功能，约 350MB）',
+    'win.1': '预览版 · 64 位 · 解压 .zip 后运行 claude-office.exe', 'win.2': '出现“Windows 已保护你的电脑”时，选择“更多信息 › 仍要运行”', 'win.3': '外部会话通知和截屏目前仅支持 Mac',
     'and.1': '远程使用电脑端应用的手机应用', 'and.2': '在电脑的 设置 › 手机连接 中开启，然后扫描二维码', 'and.3': '请使用与电脑相同的版本',
     'faq.title': '常见问题',
-    'q1': '需要另外注册账号或 API 密钥吗？', 'a1': '不需要。直接使用这台电脑上已登录的 Claude Code 账号。员工用这个账号工作，用量也计入这个账号。',
-    'q2': '完全不懂开发也能用吗？', 'a2': '可以。招聘员工、在聊天里派活、在审批箱里批准或驳回就行，不需要输入任何命令。',
-    'q3': '安装时出现了警告。', 'a3': '这是因为应用还没有签名。Mac 上在 系统设置 › 隐私与安全性 中点“仍要打开”，Windows 上点“更多信息 › 仍要运行”即可。',
-    'q4': '员工会擅自修改我的文件吗？', 'a4': '影响较大的操作会先进入审批箱，批准后才会执行。你可以决定放权的范围，难以撤销的危险命令始终会被拦截。',
-    'q5': '我的数据存在哪里？', 'a5': '员工、任务和聊天记录都保存在你自己电脑上的一个文件里。手机连接默认关闭，只有开启后才能连接。',
-    'q6': '可以只用手机应用吗？', 'a6': '不可以。手机应用是远程操作电脑上正在运行的 AI Office，因此电脑端应用需要保持打开。',
-    'q7': '支持哪些语言？', 'a7': '支持韩语、英语、日语和中文。默认跟随电脑（手机）的语言，不支持时以英语启动。随时可在设置顶部的“语言”中更改。',
+    'q1': '需要注册或 API 密钥吗？', 'a1': '不需要。直接使用电脑上已登录的 Claude 或 GPT（ChatGPT）账号。员工用该账号工作，用量也计入该账号。',
+    'q2': '必须同时有 Claude 和 GPT 吗？', 'a2': '不必。登录其中一个就能开始，另一个可以以后在设置里连接。两个都有时，可以为每位员工选择用哪一个。GPT 员工目前为测试版。',
+    'q3': '完全不懂开发也能用吗？', 'a3': '可以。雇人、在聊天里交代任务、在审批箱批准或驳回即可，不需要输入命令。',
+    'q4': '安装时出现了警告。', 'a4': '这是因为应用还没有签名。Mac 上在 系统设置 › 隐私与安全性 中点“仍要打开”，Windows 上点“更多信息 › 仍要运行”即可。',
+    'q5': '员工会擅自修改文件吗？', 'a5': '影响较大的操作会先进入审批箱，批准后才会进行。员工改动的文件可以用“恢复到任务之前”一次还原。无法撤销的危险命令始终会被拦截。',
+    'q6': '我的数据存放在哪里？', 'a6': '员工、任务和聊天记录都存放在你的电脑里。手机连接默认关闭，开启后才可连接。GPT 登录信息不由应用保管，而由登录工具管理。',
+    'q7': '员工会随意操作我的屏幕吗？', 'a7': '不会。只有配发了装备的员工才能看到屏幕，点击和输入必须经你在审批箱批准。',
+    'q8': '可以只用手机应用吗？', 'a8': '不可以。手机应用是远程使用电脑上运行的 AI Office，所以电脑端必须保持开启。在外面也能连接。',
+    'q9': '支持哪些语言？', 'a9': '支持韩语、英语、日语和中文。默认跟随电脑（手机）的语言，不支持时以英语启动。随时可在设置顶部的“语言”中更改。',
+    'end.title': '今天就雇用第一位员工吧', 'end.sub': '免费使用，安装后几分钟就能把第一项任务交给 Claude 或 GPT。', 'end.btn': '免费获取',
     'foot.license': '{license} 许可证', 'foot.changelog': '更新日志'
   }
 };
@@ -618,10 +687,10 @@ var I18N = {
     var gen = img._shotGen = (img._shotGen || 0) + 1;
     img.onerror = function(){
       if (gen !== img._shotGen) return;
-      if (++i < chain.length) img.src = 'assets/screens/' + chain[i] + '/' + name + '.png';
+      if (++i < chain.length) img.src = 'assets/screens/' + chain[i] + '/' + name + '.webp';
       else img.onerror = null;
     };
-    img.src = 'assets/screens/' + chain[0] + '/' + name + '.png';
+    img.src = 'assets/screens/' + chain[0] + '/' + name + '.webp';
   }
 
   function render(lang){
@@ -695,6 +764,24 @@ var I18N = {
     rv.forEach(function(el, n){ el.style.transitionDelay = (n % 3) * 70 + 'ms'; io.observe(el); });
   } else rv.forEach(function(el){ el.classList.add('in'); });
   render(pickLang());
+
+  // 버전: GitHub 최신 Release의 tag_name(v0.14.0 → 0.14.0). 실패·3초 초과·이상한 값이면 DOWNLOADS.version 그대로
+  function showVersion(v){
+    D.version = v;
+    document.querySelectorAll('[data-version]').forEach(function(el){ el.textContent = v; });
+  }
+  if (D.latestApi && window.fetch) {
+    var ctrl = window.AbortController ? new AbortController() : null;
+    var timer = setTimeout(function(){ if (ctrl) ctrl.abort(); }, 3000);
+    fetch(D.latestApi, {headers: {Accept: 'application/vnd.github+json'}, signal: ctrl ? ctrl.signal : undefined})
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(j){
+        var v = j && String(j.tag_name || '').replace(/^v/i, '');
+        if (/^\d+\.\d+\.\d+([-.][0-9A-Za-z.-]+)?$/.test(v)) showVersion(v);
+      })
+      .catch(function(){})
+      .then(function(){ clearTimeout(timer); });
+  }
 })();
 </script>
 </body>

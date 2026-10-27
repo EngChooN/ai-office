@@ -35,8 +35,8 @@
 ## 4. 빌드·설치 순서
 1. 위 판단 → 번호 결정, 3번 항목 수정
 2. `cd app && pnpm typecheck && pnpm test` (통과해야 빌드)
-3. 맥 `pnpm make` → `app/out/make/dmg/arm64/Claude Office.dmg` / 윈도우 `pnpm make:win` → `app/out/make/zip/win32/x64/*.zip`
-4. 맥은 `/Applications/Claude Office.app` 교체 후 `CFBundleShortVersionString`이 새 버전인지 확인
+3. 맥 `pnpm make` → `app/out/make/dmg/arm64/AI Office.dmg` / 윈도우 `pnpm make:win` → `app/out/make/zip/win32/x64/*.zip`
+4. 맥은 `/Applications/AI Office.app` 교체 후 `CFBundleShortVersionString`이 새 버전인지 확인
 - 이 맥은 쉘에 node가 없을 수 있어 nvm의 node 경로(예: v24)와 `~/Library/pnpm`을 PATH에 넣어 실행.
 - 실행 중인 앱이 있으면 종료 여부를 먼저 확인(작업 중인 세션이 날아갈 수 있음).
 - **맥 서명(권한 유지):** 맥 빌드는 로그인 키체인의 자체 서명 인증서 `Claude Office Local Signing`으로 서명합니다. 같은 인증서면 업데이트 뒤에도 화면 기록·손쉬운 사용 권한이 유지됩니다. 인증서가 없으면 ad-hoc으로 빌드됩니다(권한을 다시 물음). 한 번만 만듭니다(개인 키는 저장소·공유 폴더에 두지 않음):
@@ -58,7 +58,7 @@
 
 | 플랫폼 | Release에 올릴 이름 | 빌드 산출물 (복사해서 이름 변경) |
 |---|---|---|
-| Mac (Apple Silicon) | `Claude-Office-mac-arm64.dmg` | `app/out/make/dmg/arm64/Claude Office.dmg` |
+| Mac (Apple Silicon) | `Claude-Office-mac-arm64.dmg` | `app/out/make/dmg/arm64/AI Office.dmg` |
 | Windows (x64) | `Claude-Office-win-x64.zip` | `app/out/make/zip/win32/x64/*.zip` |
 | Android | `Claude-Office-android.apk` | `android/app/build/outputs/apk/release/app-release.apk` |
 
