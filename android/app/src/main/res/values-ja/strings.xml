@@ -138,6 +138,10 @@
     <string name="btn_go_back">戻る</string>
     <string name="cd_close">閉じる</string>
     <string name="qr_not_ours">AI OfficeのQRではありません</string>
+    <string name="qr_zoom_1x">1倍</string>
+    <string name="qr_zoom_2x">2倍</string>
+    <string name="qr_from_gallery">写真から</string>
+    <string name="qr_paste">貼り付け</string>
     <string name="qr_aim">PC画面のQRコードを枠内に合わせてください</string>
     <string name="connecting_pc">PCに接続しています…</string>
     <string name="onb_done_title">PCのオフィスに接続しました</string>

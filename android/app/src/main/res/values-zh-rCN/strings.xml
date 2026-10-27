@@ -138,6 +138,10 @@
     <string name="btn_go_back">返回</string>
     <string name="cd_close">关闭</string>
     <string name="qr_not_ours">这不是 AI Office 的二维码</string>
+    <string name="qr_zoom_1x">1倍</string>
+    <string name="qr_zoom_2x">2倍</string>
+    <string name="qr_from_gallery">从相册</string>
+    <string name="qr_paste">粘贴</string>
     <string name="qr_aim">请将电脑屏幕上的二维码对准方框</string>
     <string name="connecting_pc">正在连接电脑…</string>
     <string name="onb_done_title">已连接到我的电脑办公室</string>

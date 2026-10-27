@@ -138,6 +138,10 @@
     <string name="btn_go_back">돌아가기</string>
     <string name="cd_close">닫기</string>
     <string name="qr_not_ours">AI Office QR이 아니에요</string>
+    <string name="qr_zoom_1x">1배</string>
+    <string name="qr_zoom_2x">2배</string>
+    <string name="qr_from_gallery">갤러리 사진</string>
+    <string name="qr_paste">붙여넣기</string>
     <string name="qr_aim">PC 화면의 QR 코드를 네모 안에 맞춰 주세요</string>
     <string name="connecting_pc">PC에 연결하고 있어요…</string>
     <string name="onb_done_title">내 PC 사무실에 연결했어요</string>

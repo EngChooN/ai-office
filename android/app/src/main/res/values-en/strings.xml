@@ -138,6 +138,10 @@
     <string name="btn_go_back">Go back</string>
     <string name="cd_close">Close</string>
     <string name="qr_not_ours">This is not a AI Office QR</string>
+    <string name="qr_zoom_1x">1x</string>
+    <string name="qr_zoom_2x">2x</string>
+    <string name="qr_from_gallery">From photo</string>
+    <string name="qr_paste">Paste</string>
     <string name="qr_aim">Fit the QR code on your PC screen inside the box</string>
     <string name="connecting_pc">Connecting to your PC…</string>
     <string name="onb_done_title">Connected to my PC office</string>
