@@ -8,7 +8,7 @@ declare global {
   interface Window {
     office: OfficeApi
     /** 데스크톱 창 상태 (preload — 모바일 빌드에는 없다) */
-    officeWindow?: { onShown(cb: (isShown: boolean) => void): () => void }
+    officeWindow?: { onShown(cb: (isShown: boolean) => void): () => void; isShown?(): Promise<boolean> }
     /** 앱 업데이트 확인 (preload — 모바일 빌드에는 없다) */
     officeUpdate?: OfficeUpdateApi
     /** 직원·랩 파일과 직원 마켓 (preload — 모바일 빌드에는 없다) */

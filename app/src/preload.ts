@@ -36,6 +36,7 @@ contextBridge.exposeInMainWorld('officeWindow', {
       ipcRenderer.off('window:shown', listener)
     }
   },
+  isShown: () => ipcRenderer.invoke('window:isShown'),
 })
 
 // 앱 업데이트 확인 (PC 앱 자신의 업데이트라 원격 v2와 상관없어 OfficeApi 밖에 둔다)

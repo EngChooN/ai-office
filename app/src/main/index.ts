@@ -181,6 +181,8 @@ function createWindow(isHidden = false) {
 function registerIpc() {
   handlers = createOfficeHandlers(office, remoteApi, () => secretary!)
   for (const [name, fn] of Object.entries(handlers)) ipcMain.handle(`office:${name}`, (_e, ...args) => (fn as (...a: unknown[]) => unknown)(...args))
+  // 화면을 다시 불러오면 지난 window:shown을 모른다 — 시작할 때 지금 값을 묻는다
+  ipcMain.handle('window:isShown', () => Boolean(win?.isVisible() && !win.isMinimized()))
 
   office.on('snapshot', (s) => {
     syncLoginItem(s.settings.launchAtLogin)

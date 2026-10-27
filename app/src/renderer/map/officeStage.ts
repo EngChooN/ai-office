@@ -14,6 +14,7 @@ import { buildFloors, officeOf, staffFloor } from '@shared/officeLevel'
 import { isMeetingLive } from '@shared/types'
 import { IsoOfficeScene } from './IsoOfficeScene'
 import { useFloorVisits } from './iso/floorVisits'
+import { afterNextRender } from './renderSignal'
 
 /** 미니 뷰 기본 크기 (CSS px) — 창은 이 비율로 그린다 */
 export const MINI_W = 200
@@ -272,8 +273,7 @@ class OfficeStage {
       // 예전처럼 지도를 열 때마다 전체 보기로 시작한다
       this.mainScene()?.fitView()
       // 장면이 만들어지고 첫 그리기까지 마친 뒤 알린다 — 그 전에 안으로 들어가면 아직 안 그려진 어두운 캔버스가 보인다
-      const g = this.game
-      g.events.once(Phaser.Core.Events.POST_RENDER, () => {
+      afterNextRender(this.game, Phaser.Core.Events.POST_RENDER, () => {
         if (this.mapHost === host) onReady?.()
       })
     })
@@ -563,6 +563,11 @@ class OfficeStage {
 
 export const officeStage = new OfficeStage()
 const offWindowShown = window.officeWindow?.onShown((isShown) => officeStage.setWindowShown(isShown))
+// 새로고침하면 지난 window:shown을 모르고 '보임'으로 시작한다 — 가려진 채 다시 불러와도 절전이 맞게 지금 값을 묻는다
+void window.officeWindow
+  ?.isShown?.()
+  .then((isShown) => officeStage.setWindowShown(isShown))
+  .catch(() => {})
 
 // 개발 중 모듈을 바꿔 끼우면 이전 게임을 치운다
 if (import.meta.hot)

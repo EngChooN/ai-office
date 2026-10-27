@@ -23,6 +23,8 @@ const area = (itemId: string) => specOf(itemId).size[0] * specOf(itemId).size[1]
 
 /** 그림은 한 번만 만든다 (카드가 다시 그려질 때마다 캔버스를 만들지 않게) */
 const thumbs = new Map<string, string>()
+/** 선택자가 매번 새 배열을 돌려주지 않게 */
+const NO_GRID: never[] = []
 const thumbOf = (itemId: string) => {
   if (!thumbs.has(itemId)) thumbs.set(itemId, drawThumb(itemId).toDataURL())
   return thumbs.get(itemId)!
@@ -206,7 +208,7 @@ function ActionBar() {
 
 /** 전부 치우기 확인 창: 범위·직원 자리 남기기·넣을 가구 수 */
 function ClearAsk() {
-  const grid = useOffice((s) => s.shop.grid ?? [])
+  const grid = useOffice((s) => s.shop.grid ?? NO_GRID)
   const viewFloor = useOffice((s) => s.viewFloor)
   const [scope, setScope] = useState<'floor' | 'all'>('all')
   const [keepSeats, setKeepSeats] = useState(true)
