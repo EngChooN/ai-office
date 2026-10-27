@@ -9,6 +9,7 @@ export const EXTERNAL_ACTIVE_MS = 10 * 60_000
 /** 마지막 기록이 이 시간 안이고 턴이 끝나지 않았으면 일하는 중 */
 const WORKING_MS = 90_000
 const TAIL_BYTES = 64_000
+const MAX_TAIL_BYTES = 16_000_000
 const HEAD_BYTES = 8_000
 
 export interface CodexExternalSession {
@@ -64,12 +65,22 @@ export function readExternalSession(file: string, now: number): CodexExternalSes
   // 끝부분에서 마지막 턴 이벤트: task_started 뒤에 task_complete·turn_aborted가 없으면 진행 중
   let open = false
   try {
-    const tail = readRange(file, Math.max(0, stat.size - TAIL_BYTES), Math.min(stat.size, TAIL_BYTES))
-    for (const line of tail.split('\n')) {
-      const e = parse(line)
-      const t = e?.type === 'event_msg' ? e.payload?.type : null
-      if (t === 'task_started') open = true
-      else if (t === 'task_complete' || t === 'turn_aborted') open = false
+    // 큰 도구 출력으로 턴 시작 줄이 끝부분 밖으로 밀려날 수 있어, 턴 이벤트가 나올 때까지 창을 두 배씩 넓힌다
+    for (let size = TAIL_BYTES; ; size *= 2) {
+      const len = Math.min(stat.size, size)
+      const tail = readRange(file, stat.size - len, len)
+      let last: string | null = null
+      for (const line of tail.split('\n')) {
+        if (!line.includes('"event_msg"')) continue
+        const e = parse(line)
+        const t = e?.type === 'event_msg' ? e.payload?.type : null
+        if (t === 'task_started' || t === 'turn_started') last = 'open'
+        else if (t === 'task_complete' || t === 'turn_complete' || t === 'turn_aborted') last = 'closed'
+      }
+      if (last || len >= stat.size || len >= MAX_TAIL_BYTES) {
+        open = last === 'open'
+        break
+      }
     }
   } catch {
     /* 못 읽으면 쉬는 중으로 */
