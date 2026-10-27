@@ -7,6 +7,7 @@ import { useOffice } from '@/store'
 import type { ClaudeStatus } from '@shared/types'
 import { Avatar } from './StaffCard'
 import { shortPath } from './status'
+import { isAnyReady, ProviderCards, RecheckButton, useProviders } from './ProviderCards'
 import { t } from '@shared/i18n'
 
 // 공식 설치 명령: 맥은 터미널, 윈도우는 PowerShell에 붙여 넣는다
@@ -58,7 +59,7 @@ function CheckHeader({ step, title, desc }: { step: Step; title: string; desc: s
 }
 
 /** 점검 단계 아래: 이전 / 다음 (아직 안 됐으면 "나중에 할게요"로 넘어간다) */
-function CheckFooter({ step, isOk, onMove }: { step: Step; isOk: boolean; onMove: (step: Step) => void }) {
+function CheckFooter({ step, isOk, isBlocked, onMove }: { step: Step; isOk: boolean; isBlocked?: boolean; onMove: (step: Step) => void }) {
   const i = STEPS.indexOf(step)
   return (
     <div className="flex items-center justify-between">
@@ -67,8 +68,9 @@ function CheckFooter({ step, isOk, onMove }: { step: Step; isOk: boolean; onMove
         <Button variant="ghost" onClick={() => onMove(STEPS[i - 1])}>
           {t('onboarding.prev')}
         </Button>
-        <Button variant={isOk ? 'default' : 'outline'} onClick={() => onMove(STEPS[i + 1])}>
-          {isOk ? t('onboarding.next') : t('onboarding.later')}
+        {/* 공급자가 하나도 준비되지 않으면 직원을 만들 수 없어 "나중에"를 두지 않는다 */}
+        <Button variant={isOk ? 'default' : 'outline'} onClick={() => onMove(STEPS[i + 1])} disabled={isBlocked}>
+          {isOk || isBlocked ? t('onboarding.next') : t('onboarding.later')}
         </Button>
       </div>
     </div>
@@ -84,6 +86,10 @@ export function Onboarding({ onStartTour }: { onStartTour: () => void }) {
   const [isChecking, setIsChecking] = useState(false)
   const [isCopied, setIsCopied] = useState(false)
   const defaultCwd = useOffice((s) => s.settings.defaultCwd)
+  // Claude가 로그인돼 있으면 Codex는 묻지 않는다 (Claude만 쓰는 사용자의 화면은 그대로)
+  const isClaudeOut = step === 'login' && status?.isLoggedIn === false
+  const providers = useProviders(isClaudeOut)
+  const isProviderReady = isAnyReady(providers.status)
 
   const check = useCallback(async () => {
     setIsChecking(true)
@@ -197,7 +203,32 @@ export function Onboarding({ onStartTour }: { onStartTour: () => void }) {
           </>
         )}
 
-        {step === 'login' && (
+        {step === 'login' && isClaudeOut && (
+          <>
+            <CheckHeader step={step} title={t('onboarding.provider.title')} desc={isProviderReady ? t('onboarding.provider.passDesc') : t('onboarding.provider.gateDesc')} />
+            <ProviderCards
+              status={providers.status}
+              isChecking={providers.isChecking}
+              claudeExtra={
+                <ol className="text-muted-foreground list-decimal space-y-0.5 pl-4 text-xs">
+                  <li>{t('onboarding.login.step1', { window: osText(t('onboarding.login.window.mac'), t('onboarding.login.window.win')) })}</li>
+                  <li>{t('onboarding.login.step2')}</li>
+                  <li>{t('onboarding.login.step3')}</li>
+                </ol>
+              }
+            />
+            <RecheckButton
+              isChecking={isChecking || providers.isChecking}
+              onCheck={() => {
+                void check()
+                void providers.check()
+              }}
+            />
+            <CheckFooter step={step} isOk={isProviderReady} isBlocked={Boolean(providers.status) && !isProviderReady} onMove={setStep} />
+          </>
+        )}
+
+        {step === 'login' && !isClaudeOut && (
           <>
             <CheckHeader step={step} title={t('onboarding.loginStep.title')} desc={t('onboarding.loginStep.desc')} />
             <CheckRow isOk={Boolean(status?.isLoggedIn)} isLoading={isChecking && !status} title={status?.isLoggedIn ? t('onboarding.login.done', { email: status.email ?? '' }) : t('onboarding.login.needed')}>

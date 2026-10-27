@@ -8,6 +8,7 @@ import { useOffice } from '@/store'
 import { IS_WINDOWS, osText, trayPlace } from '@/lib/platform'
 import { NotOnWindows } from '@/components/not-on-windows'
 import { RemoteSection } from './RemoteSection'
+import { ProviderSection } from './ProviderCards'
 import { COMPANY_LEVELS, type DayNight, type HooksStatus, type Settings, type ThemeId } from '@shared/types'
 import { officeOf } from '@shared/officeLevel'
 import { ApprovalRulesList, AutoApproveSection } from './AutoApprove'
@@ -106,6 +107,9 @@ export function SettingsPage() {
             </option>
           ))}
         </NativeSelect>
+      </Section>
+      <Section title={t('provider.section.title')} description={t('provider.section.desc')}>
+        <ProviderSection />
       </Section>
       <Section title={t('settingsPage.workMode.title')} description={t('settingsPage.workMode.desc')}>
         <label className="flex items-center gap-2 text-sm">
