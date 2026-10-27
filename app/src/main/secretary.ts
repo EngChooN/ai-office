@@ -8,12 +8,12 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { app } from 'electron'
 import { z } from 'zod'
-import type { Query, SDKMessage } from '@anthropic-ai/claude-agent-sdk'
 import type { OfficeMethod } from '../shared/officeApiShape'
 import { BATCH_GUIDE, BATCH_ITEMS_MAX, BATCH_METHOD, CARD_STEPS_MAX, methodsOfKind, SECRETARY_SIGNATURES } from '../shared/secretaryTools'
 import { EMPTY_SECRETARY, SECRETARY_ID, type AutoHandled, type DailyRecord, type LogEntry, type Manual, type OfficeSnapshot, type Payslip, type SecretaryCard, type SecretaryCompare, type SecretaryMessage, type SecretaryRunOptions, type SecretaryState, type Staff, type StaffActivity, type StaffQuestion } from '../shared/types'
 import * as db from './db'
-import { askOnce, claudeBinaryPath, sdk } from './hired'
+import { aiBackend, askOnce, type SecretaryEvent, type SecretaryRun } from './ai'
+import { sdk } from './ai/claude'
 import type { Office } from './office'
 import type { OfficeHandlers } from './officeHandlers'
 import { awayAnswers, decideAway, mustHoldQuestion, RateWindow, SecretaryDesk, wrapDocument, type EditTarget } from './secretaryCore'
@@ -132,7 +132,7 @@ export class Secretary {
   private isBusy = false
   private activity = ''
   /** 지금 답하는 질문의 query (질문 하나 = query 하나, 같은 세션을 이어서) */
-  private q: Query | null = null
+  private q: SecretaryRun | null = null
   /** 답을 기다리는 질문 (최대 QUEUE_MAX) */
   private queue: string[] = []
   private generation = 0
@@ -325,28 +325,21 @@ export class Secretary {
     const context = this.recentContext()
     // 지금 현황 요약을 미리 넣어 두면 "다들 뭐 해?" 같은 질문은 조회 없이 한 번에 답한다 (호출 수 = 토큰, QA)
     const status = wrapDocument('지금 사무실 (요약 — 이걸로 답할 수 있으면 다시 조회하지 않는다)', compactOverview(this.office.snapshot(), 'all'))
-    const q = sdk.query({
+    const q = aiBackend().secretary({
       prompt: [status, context, `대표의 새 질문: ${text}`].filter(Boolean).join('\n\n'),
-      options: {
-        cwd,
-        pathToClaudeCodeExecutable: app.isPackaged ? claudeBinaryPath() : undefined,
-        persistSession: false,
-        // 모델 고정(사용자 기본값이 비싼 모델일 수 있다)·턴·비용 상한 (한리뷰 M1)
-        model: SECRETARY_MODEL,
-        maxTurns: MAX_TURNS,
-        maxBudgetUsd: TURN_BUDGET_USD,
-        // 기본 도구(파일 읽기·쓰기·Bash·웹)는 하나도 주지 않는다 — 비서 MCP 도구만
-        tools: [],
-        settingSources: [],
-        mcpServers: { secretary: this.tools() },
-        systemPrompt: `${SYSTEM_PROMPT}\n\n${t('staff.language')}\n오늘은 ${now.getFullYear()}년 ${now.getMonth() + 1}월 ${now.getDate()}일 ${now.getHours()}시 ${now.getMinutes()}분입니다.`,
-        canUseTool: async (toolName) => (toolName.startsWith('mcp__secretary__') ? { behavior: 'allow' } : { behavior: 'deny', message: '비서는 이 도구를 쓸 수 없어요.' }),
-      },
+      system: `${SYSTEM_PROMPT}\n\n${t('staff.language')}\n오늘은 ${now.getFullYear()}년 ${now.getMonth() + 1}월 ${now.getDate()}일 ${now.getHours()}시 ${now.getMinutes()}분입니다.`,
+      cwd,
+      tier: 'standard',
+      model: SECRETARY_MODEL,
+      maxTurns: MAX_TURNS,
+      maxBudgetUsd: TURN_BUDGET_USD,
+      toolsName: 'secretary',
+      tools: this.tools(),
     })
     this.q = q
     const gen = this.generation
     try {
-      for await (const m of q) if (gen === this.generation) this.handle(m)
+      for await (const m of q.events) if (gen === this.generation) this.handle(m)
     } catch (e) {
       if (gen === this.generation) this.add({ role: 'secretary', text: '답하지 못했어요. 다시 보내 볼까요?', isError: true })
       console.error('[secretary]', e)
@@ -355,36 +348,32 @@ export class Secretary {
     }
   }
 
-  private handle(m: SDKMessage) {
-    if (m.type === 'assistant') {
-      for (const b of m.message.content) {
-        if (b.type === 'text' && b.text.trim()) this.add({ role: 'secretary', text: b.text.trim() })
-        if (b.type === 'tool_use') {
-          this.turnTools++
-          const input = b.input as { method?: string; doc?: string }
-          this.activity = b.name.endsWith('propose') || b.name.endsWith('propose_edit') ? '확인 카드를 만드는 중…' : b.name.endsWith('read_guide') ? '사용법을 찾아보는 중…' : b.name.endsWith('overview') ? '사무실 현황을 보는 중…' : b.name.endsWith('staff_detail') ? '직원 정보를 보는 중…' : b.name.endsWith('period_summary') ? '기간 기록을 모으는 중…' : b.name.endsWith('arrange_office') ? '배치안을 만드는 중…' : b.name.endsWith('office_layout') ? '사무실 배치를 보는 중…' : (ACTIVITY[input.method ?? ''] ?? '살펴보는 중…')
-          this.changed()
-        }
-      }
+  private handle(m: SecretaryEvent) {
+    if (m.type === 'text') {
+      this.add({ role: 'secretary', text: m.text })
       return
     }
-    if (m.type === 'result') {
-      // 질문마다 새 query라 누적값이 곧 이번 질문의 사용량
-      const totals = Object.values(m.modelUsage).reduce((acc, u) => ({ tokensIn: acc.tokensIn + u.inputTokens + u.cacheReadInputTokens + u.cacheCreationInputTokens, tokensOut: acc.tokensOut + u.outputTokens }), { tokensIn: 0, tokensOut: 0 })
-      const delta = { cost: m.total_cost_usd, ...totals }
-      db.insertUsage(SECRETARY_ID, delta.cost, delta.tokensIn, delta.tokensOut)
-      this.lastTurnTokens = delta.tokensIn + delta.tokensOut
-      // 도구를 여러 번 쓴 답만 "이번 답 n 토큰"
-      const last = [...this.messages].reverse().find((x) => x.role === 'secretary' && !x.card)
-      if (last) {
-        const next = { ...last, tokens: delta.tokensIn + delta.tokensOut }
-        this.messages = this.messages.map((x) => (x.id === last.id ? next : x))
-        db.updateSecretaryMessage(next)
-      }
-      if (m.subtype === 'error_max_turns' || m.subtype === 'error_max_budget_usd') this.add({ role: 'notice', text: '이번 질문은 일이 많아 여기서 멈췄어요. 나눠서 물어봐 주세요.' })
-      else if (m.subtype !== 'success') this.add({ role: 'secretary', text: '답하지 못했어요. 다시 보내 볼까요?', isError: true })
+    if (m.type === 'tool') {
+      this.turnTools++
+      const input = m.input as { method?: string; doc?: string }
+      this.activity = m.name.endsWith('propose') || m.name.endsWith('propose_edit') ? '확인 카드를 만드는 중…' : m.name.endsWith('read_guide') ? '사용법을 찾아보는 중…' : m.name.endsWith('overview') ? '사무실 현황을 보는 중…' : m.name.endsWith('staff_detail') ? '직원 정보를 보는 중…' : m.name.endsWith('period_summary') ? '기간 기록을 모으는 중…' : m.name.endsWith('arrange_office') ? '배치안을 만드는 중…' : m.name.endsWith('office_layout') ? '사무실 배치를 보는 중…' : (ACTIVITY[input.method ?? ''] ?? '살펴보는 중…')
       this.changed()
+      return
     }
+    // 질문마다 새 query라 누적값이 곧 이번 질문의 사용량
+    const delta = { cost: m.costUsd, tokensIn: m.tokensIn, tokensOut: m.tokensOut }
+    db.insertUsage(SECRETARY_ID, delta.cost, delta.tokensIn, delta.tokensOut)
+    this.lastTurnTokens = delta.tokensIn + delta.tokensOut
+    // 도구를 여러 번 쓴 답만 "이번 답 n 토큰"
+    const last = [...this.messages].reverse().find((x) => x.role === 'secretary' && !x.card)
+    if (last) {
+      const next = { ...last, tokens: delta.tokensIn + delta.tokensOut }
+      this.messages = this.messages.map((x) => (x.id === last.id ? next : x))
+      db.updateSecretaryMessage(next)
+    }
+    if (m.subtype === 'max_turns' || m.subtype === 'max_budget') this.add({ role: 'notice', text: '이번 질문은 일이 많아 여기서 멈췄어요. 나눠서 물어봐 주세요.' })
+    else if (m.subtype !== 'success') this.add({ role: 'secretary', text: '답하지 못했어요. 다시 보내 볼까요?', isError: true })
+    this.changed()
   }
 
   // ── 도구 ──────────────────────────────────────────────
@@ -676,7 +665,7 @@ export class Secretary {
         ...recent.map((l, i) => wrapDocument(`받은 지시 ${i + 1}`, l.text.slice(0, 1500))),
         wrapDocument('직원의 질문', JSON.stringify(questions.map((q) => ({ question: q.question, options: q.options.map((o) => o.label), multiSelect: q.multiSelect })))),
       ].join('\n\n')
-      const r = await askOnce({ prompt: context, system: AWAY_SYSTEM, model: 'haiku', cwd: app.getPath('userData'), abortController: abort })
+      const r = await askOnce({ prompt: context, system: AWAY_SYSTEM, tier: 'light', cwd: app.getPath('userData'), abortController: abort })
       db.insertUsage(SECRETARY_ID, r.costUsd, r.tokensIn, r.tokensOut)
       if (abort.signal.aborted) return wait('시간 초과')
       let parsed: { question?: string; decision?: string; answer?: string; basis?: string }[] = []

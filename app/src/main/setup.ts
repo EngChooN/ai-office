@@ -4,7 +4,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { promisify } from 'node:util'
 import type { ClaudeStatus } from '../shared/types'
-import { claudeBinaryPath } from './hired'
+import { claudeBinaryPath } from './ai/claude'
 import { IS_WINDOWS, toolEnv, WHICH } from './platform'
 
 // 첫 실행 점검: 로그인 상태 확인과 로그인 창 띄우기

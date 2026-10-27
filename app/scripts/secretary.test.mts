@@ -297,7 +297,8 @@ test('H2: 모델 입력의 믿을 수 없는 글은 문서 구역에 — 구역�
 
 test('M1: 비용 상한 — 모델 고정·질문마다 턴·비용 상한, 질문 빈도·밀린 질문 상한, AI 조회는 10분에 한 번·한도에 닿으면 쉼', async () => {
   const src = readApp('src/main/secretary.ts')
-  for (const re of [/model: SECRETARY_MODEL/, /maxTurns: MAX_TURNS/, /maxBudgetUsd: TURN_BUDGET_USD/, /QUEUE_MAX = 3/, /askRate\.take/, /awayRate\.take/, /persistSession: false/, /if \(this\.isLimited\(\)\) return wait/]) assert.match(src, re)
+  assert.match(readApp('src/main/ai/claude.ts'), /persistSession: false/)
+  for (const re of [/model: SECRETARY_MODEL/, /maxTurns: MAX_TURNS/, /maxBudgetUsd: TURN_BUDGET_USD/, /QUEUE_MAX = 3/, /askRate\.take/, /awayRate\.take/, /if \(this\.isLimited\(\)\) return wait/]) assert.match(src, re)
   const w = new RateWindow([{ ms: 60_000, max: 2 }])
   assert.deepEqual([w.take(0), w.take(1), w.take(2), w.take(60_001)], [true, true, false, true])
   let isLimited = false
@@ -374,7 +375,7 @@ test('B1: 비서가 하나라도 답하지 못하면 고정 답으로 넘기지 
 })
 
 test('B1: 시간이 넘으면 모델 호출도 멈춘다 (abortController)', () => {
-  assert.match(readApp('src/main/hired.ts'), /abortController: opts\.abortController/)
+  assert.match(readApp('src/main/ai/claude.ts'), /abortController: opts\.abortController/)
   assert.match(readApp('src/main/secretary.ts'), /setTimeout\(\(\) => abort\.abort\(\), AWAY_TIMEOUT_MS\)[\s\S]*abortController: abort/)
 })
 
@@ -409,7 +410,7 @@ test('지연 원인: 고용 직원 세션은 "질문 받기" hook을 건너뛴�
   const ext = readApp('src/main/external.ts')
   assert.match(ext, /export const ASK_COMMAND = `\[ -n "\$\$\{HIRED_ENV\}" \] \|\| curl /)
   assert.match(ext, /export function upgradeAskHook\(\)/)
-  assert.match(readApp('src/main/hired.ts'), /env: \{ \.\.\.process\.env, \[HIRED_ENV\]: '1' \}/)
+  assert.match(readApp('src/main/ai/claude.ts'), /env: \{ \.\.\.process\.env, \[HIRED_ENV\]: '1' \}/)
   assert.match(readApp('src/main/office.ts'), /upgradeAskHook\(\)/)
   // 셸에서 실제로: 표시가 있으면 기다리지 않고 바로 끝난다 (curl 대신 오래 걸리는 명령으로 확인)
   const cmd = '[ -n "$CLAUDE_OFFICE_HIRED" ] || sleep 5'
@@ -426,13 +427,13 @@ test('지연: 질문을 받은 때부터 답·보류까지 걸린 시간을 기�
   assert.match(office, /t\('log\.autoWait', \{ took: took\(\) \}\)/)
   const sec = readApp('src/main/secretary.ts')
   // askOnce = 한 번짜리 호출 (세션 저장 없음 · 턴 1 · 도구 없음), 60초는 질문을 받은 순간부터
-  assert.match(sec, /await askOnce\(\{ prompt: context, system: AWAY_SYSTEM, model: 'haiku'/)
-  assert.match(readApp('src/main/hired.ts'), /maxTurns: 1,\s*persistSession: false,/)
+  assert.match(sec, /await askOnce\(\{ prompt: context, system: AWAY_SYSTEM, tier: 'light'/)
+  assert.match(readApp('src/main/ai/claude.ts'), /maxTurns: 1,\s*persistSession: false,/)
 })
 
 test('토큰: 비서 질문은 매번 새로 부르고(세션 이어 쓰기 없음) 최근 대화 8개만 짧게 넘긴다', () => {
   const sec = readApp('src/main/secretary.ts')
-  assert.match(sec, /persistSession: false,/)
+  assert.match(readApp('src/main/ai/claude.ts'), /persistSession: false,/)
   assert.doesNotMatch(sec, /resume:/)
   assert.match(sec, /CONTEXT_MESSAGES = 8/)
   assert.match(sec, /wrapDocument\('앞 대화 \(참고만\)'/)

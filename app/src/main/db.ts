@@ -94,6 +94,8 @@ export function openDb() {
   if (!staffCols.includes('ref_docs')) db.exec('ALTER TABLE staff ADD COLUMN ref_docs TEXT')
   // 튜토리얼 연습 회사 표시 (1 = 연습 — 정리할 때 이 표시로 지운다). 직원·팀·카드는 열, 랩·회의는 data JSON 안에
   if (!staffCols.includes('is_practice')) db.exec('ALTER TABLE staff ADD COLUMN is_practice INTEGER')
+  // 모델 공급자 ('claude' | 'codex'). 기존 행은 자동으로 'claude'
+  if (!staffCols.includes('provider')) db.exec("ALTER TABLE staff ADD COLUMN provider TEXT NOT NULL DEFAULT 'claude'")
   const taskCols = (db.prepare('PRAGMA table_info(task)').all() as { name: string }[]).map((c) => c.name)
   if (!taskCols.includes('lab_id')) db.exec('ALTER TABLE task ADD COLUMN lab_id TEXT')
   if (!taskCols.includes('parent_id')) db.exec('ALTER TABLE task ADD COLUMN parent_id TEXT')
@@ -142,6 +144,7 @@ interface StaffRow {
   equipment: string | null
   ref_docs: string | null
   is_practice: number | null
+  provider: string | null
 }
 
 export type StoredStaff = Omit<Staff, 'stats' | 'meetingId' | 'labIds' | 'statusSince' | 'todayDone'>
@@ -155,6 +158,7 @@ export function loadHiredStaff(): StoredStaff[] {
       name: r.name,
       role: r.role,
       avatar: r.avatar,
+      provider: r.provider === 'codex' ? 'codex' : 'claude',
       model: r.model as Staff['model'],
       cwd: r.cwd,
       ownCwd: r.cwd,
@@ -180,9 +184,9 @@ export function loadHiredStaff(): StoredStaff[] {
 
 export function insertStaff(id: string, input: HireInput, deskIndex: number, hiredAt: number, isPractice = false) {
   run(
-    `INSERT INTO staff (id, name, role, avatar, model, cwd, system_prompt, approval_mode, session_id, desk_index, hired_at, team_id, is_practice)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?)`,
-    id, input.name, input.role, input.avatar, input.model, input.cwd, input.systemPrompt, input.approvalMode, deskIndex, hiredAt, input.teamId, isPractice ? 1 : null,
+    `INSERT INTO staff (id, name, role, avatar, model, cwd, system_prompt, approval_mode, session_id, desk_index, hired_at, team_id, is_practice, provider)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?)`,
+    id, input.name, input.role, input.avatar, input.model, input.cwd, input.systemPrompt, input.approvalMode, deskIndex, hiredAt, input.teamId, isPractice ? 1 : null, input.provider ?? 'claude',
   )
 }
 

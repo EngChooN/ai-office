@@ -1,37 +1,18 @@
-import { createRequire } from 'node:module'
 import path from 'node:path'
-import { app } from 'electron'
-import type { McpServerConfig, Query, SDKMessage, SDKRateLimitInfo, SDKUserMessage, PermissionResult } from '@anthropic-ai/claude-agent-sdk'
 import type { Approval, Attachment, Staff, StaffQuestion } from '../shared/types'
 import { findRiskyCommand, isBashPolicyMark, isReadOnlyCommand, READ_ONLY_BASH, RISKY_BASH } from '../shared/bashPolicy'
-import { HIRED_ENV, toQuestions } from './external'
+import { toQuestions } from './external'
 import { isRefDocRead } from '../shared/refDocs'
 import { ruleDraftFor } from '../shared/approvalRules'
 import { t } from '../shared/i18n/index.ts'
 import os from 'node:os'
-import fs from 'node:fs'
 import { insertUsage, saveSessionId } from './db'
-import { CONTEXT_ROTATE_TOKENS, contextOf, findSessionFile, handoffText, readSessionTail } from './sessionRotate'
-import { exeName } from './platform'
+import { CONTEXT_ROTATE_TOKENS, findSessionFile, handoffText, readSessionTail } from './sessionRotate'
 import { BROWSER_EQUIPMENT, browserVerdict } from '../shared/browserTools.ts'
 import { COMPUTER_EQUIPMENT, computerVerdict } from '../shared/computerTools.ts'
 import { parseSlash, type RawCommand } from '../shared/slashCommands.ts'
 import { browserOutputDir } from './browser'
-
-// SDK는 ESM 전용이라 externals로 두고 require(esm)로 불러온다
-export const sdk = createRequire(__filename)('@anthropic-ai/claude-agent-sdk') as typeof import('@anthropic-ai/claude-agent-sdk')
-
-/** 설치본에서는 asar 밖으로 풀어 둔 claude 실행 파일을 직접 가리킨다 (asar 안의 파일은 실행할 수 없다) */
-const CLAUDE_BINARY = app.isPackaged
-  ? path.join(process.resourcesPath, 'app.asar.unpacked', 'node_modules', '@anthropic-ai', `claude-agent-sdk-${process.platform}-${process.arch}`, exeName('claude'))
-  : undefined
-
-/** 앱에 들어 있는 claude CLI 경로 (로그인 확인·로그인 창 띄우기용) */
-export function claudeBinaryPath() {
-  if (CLAUDE_BINARY) return CLAUDE_BINARY
-  const pkg = createRequire(__filename).resolve(`@anthropic-ai/claude-agent-sdk-${process.platform}-${process.arch}/package.json`)
-  return path.join(path.dirname(pkg), exeName('claude'))
-}
+import { createRuntime, modelIdFor, type AgentRuntime, type RateLimitInfo, type RuntimeEvent, type RuntimeMcpServer, type ToolDecision } from './ai'
 
 const ACTIVITY_MAX = 80
 /** 새 업무 카드를 받을 때 새 대화로 넘기는 최소 문맥 (이보다 짧으면 넘겨도 아끼는 게 없다) */
@@ -53,13 +34,6 @@ export function isLightTask(text: string) {
   const mark = `[${t('staff.msg.boardMark')}]`
   return text.startsWith(mark) && text.length <= LIGHT_TEXT_MAX && LIGHT_WORDS.test(text) && !HEAVY_WORDS.test(text)
 }
-const MODEL_ID: Record<Staff['model'], string | undefined> = {
-  default: undefined,
-  opus: 'opus',
-  sonnet: 'sonnet',
-  haiku: 'haiku',
-}
-
 export interface HiredHooks {
   update(staffId: string, patch: Partial<Staff>): void
   log(staffId: string, type: 'reply' | 'tool' | 'result' | 'error' | 'status', text: string): void
@@ -70,7 +44,7 @@ export interface HiredHooks {
    */
   autoDecide(staffId: string, toolName: string, input: Record<string, unknown>, summary: string, questions?: StaffQuestion[]): Promise<{ answers?: Record<string, string> }> | null
   /** Claude 구독 사용률 알림 (값이 바뀔 때만 온다) */
-  rateLimit(info: SDKRateLimitInfo): void
+  rateLimit(info: RateLimitInfo): void
   /** 세션이 결재 요청을 거둬들임 (취소·세션 재시작) */
   cancelApproval(approvalId: string): void
   /** backgroundTasks: 턴이 끝날 때 세션에 아직 돌고 있는 백그라운드 작업 설명 (끝나도 직원을 다시 깨우지 않으니 점검용) */
@@ -86,7 +60,7 @@ export interface HiredHooks {
   /** 대표가 하던 일을 멈춤 (보고 없이 끝남) */
   stopped(staffId: string): void
   /** 사무실 MCP 도구(팀 조회·위임·보드). 직원마다 같은 서버를 붙이고 권한은 도구 안에서 판단한다 */
-  officeTools(staffId: string): McpServerConfig
+  officeTools(staffId: string): RuntimeMcpServer
   /** 세션 시작 시 덧붙이는 팀 맥락 */
   context(staffId: string): string
   /** 세션 시작 시 정하는 참고 문서: 프롬프트 안내와 결재 없이 읽을 경로 (둘이 어긋나지 않게 한 번에 받는다) */
@@ -94,24 +68,18 @@ export interface HiredHooks {
   /** 지급된 MCP 서버 설정 (장비) */
   /** 설정의 '직원 화면 캡처 허용' (꺼지면 장비로 지급받은 직원만 캡처) */
   isScreenCaptureOn(): boolean
-  equippedMcp(staffId: string): Record<string, McpServerConfig>
+  equippedMcp(staffId: string): Record<string, RuntimeMcpServer>
   /** 세션이 알려 준 /명령어 목록 (세션을 열 때·목록이 바뀔 때·미리 불러올 때). terminalOnly = 터미널 화면 전용 명령 이름 */
   commands(staffId: string, raw: RawCommand[], terminalOnly: string[]): void
 }
 
 const OFFICE_TOOL_PREFIX = 'mcp__office__'
 const QUESTION_TOOL = 'AskUserQuestion'
-const EDIT_TOOLS = new Set(['Edit', 'Write', 'MultiEdit', 'NotebookEdit'])
 
-/** 직원 1명 = 스트리밍 입력 query 1개. 지시가 오면 큐에 넣고, 결재는 canUseTool에서 대기한다 */
+/** 직원 1명 = 세션(AgentRuntime) 1개. 지시가 오면 세션에 넘기고, 결재는 canUseTool에서 대기한다 */
 class Worker {
-  private inbox: SDKUserMessage[] = []
-  private wake: (() => void) | null = null
-  private closed = false
-  /** 세션을 다시 열 때마다 올려서 이전 입력 스트림을 끝낸다 */
-  private generation = 0
-  private q: Query | null = null
-  private pending = new Map<string, (r: PermissionResult) => void>()
+  private rt: AgentRuntime
+  private pending = new Map<string, (r: ToolDecision) => void>()
   /** 답을 기다리는 질문 도구의 원래 입력 */
   private questionInputs = new Map<string, Record<string, unknown>>()
   /** 지시를 받아 결과가 나오기 전까지 — 이때 세션을 닫으면 하던 일이 끊긴다 */
@@ -141,6 +109,11 @@ class Worker {
     // 이어받는 세션의 첫 result는 이전 누적을 포함하므로, 이미 기록한 값부터 차감한다
     this.baseline = { cost: staff.costUsd, tokensIn: staff.tokensIn, tokensOut: staff.tokensOut }
     this.modelNow = staff.model
+    this.rt = createRuntime(staff.provider, (e) => this.handle(e))
+  }
+
+  private modelId(m: Staff['model']) {
+    return modelIdFor(this.staff.provider, m)
   }
 
   private pickModel(text: string): Staff['model'] {
@@ -158,12 +131,11 @@ class Worker {
     if (!this.isRunning && !slash) text = this.rotateIfLong(text, fresh)
     if (light !== this.modelNow) {
       this.modelNow = light
-      void this.q?.setModel(MODEL_ID[light])
+      this.rt.setModel(this.modelId(light))
     }
     if (!this.isRunning && !slash) this.hooks.workStarted(this.staff.id)
-    this.inbox.push({ type: 'user', message: { role: 'user', content: toContent(text, attachments) }, parent_tool_use_id: null })
-    this.wake?.()
-    if (!this.q) this.start()
+    this.rt.send(text, attachments)
+    if (!this.rt.isOpen) this.start()
     this.isRunning = true
     this.hooks.update(this.staff.id, { status: 'working', activity: '지시 확인 중' })
   }
@@ -189,14 +161,14 @@ class Worker {
   }
 
   async interrupt(followUp?: { text: string; attachments: Attachment[] }) {
-    if (!this.isRunning || !this.q) {
+    if (!this.isRunning || !this.rt.isOpen) {
       // 이미 손이 빈 직원이면 끊을 턴이 없다 — 붙들린 업무 카드만 정리한다
       if (followUp) this.send(followUp.text, followUp.attachments)
       else this.hooks.stopped(this.staff.id)
       return
     }
     this.stopping = followUp ? 'resume' : 'stop'
-    await this.q.interrupt()
+    await this.rt.interrupt()
     if (followUp) this.send(followUp.text, followUp.attachments)
   }
 
@@ -247,59 +219,23 @@ class Worker {
     for (const id of this.pending.keys()) this.hooks.cancelApproval(id)
     for (const resolve of this.pending.values()) resolve({ behavior: 'deny', message: t('staff.deny.equip'), interrupt: true })
     this.pending.clear()
-    this.generation++
-    this.wake?.()
-    this.q?.close()
-    this.q = null
+    this.rt.close()
   }
 
   stop() {
-    this.closed = true
-    this.wake?.()
     for (const resolve of this.pending.values()) resolve({ behavior: 'deny', message: t('staff.deny.fired'), interrupt: true })
     this.pending.clear()
-    this.q?.close()
+    this.rt.dispose()
   }
 
   /**
    * /명령어 목록을 불러온다. 세션이 열려 있으면 그 세션에 묻고, 없으면 같은 폴더·설정으로 잠깐 띄워 묻고 닫는다 (지시를 보내지 않아 비용이 들지 않는다)
    */
   async loadCommands() {
-    if (this.q) {
-      this.hooks.commands(this.staff.id, await this.q.supportedCommands(), this.terminalOnly)
-      return
-    }
-    let release = () => {}
-    const idle = new Promise<void>((r) => (release = r))
-    async function* nothing(): AsyncGenerator<SDKUserMessage> {
-      await idle
-    }
-    const probe = sdk.query({
-      prompt: nothing(),
-      options: {
-        cwd: this.staff.cwd,
-        pathToClaudeCodeExecutable: CLAUDE_BINARY,
-        persistSession: false,
-        settingSources: ['user', 'project', 'local'],
-        skills: this.staff.equipment.skills,
-        env: { ...process.env, [HIRED_ENV]: '1' },
-      },
-    })
-    try {
-      const raw = await probe.supportedCommands()
-      // 그사이 진짜 세션이 열렸으면 그쪽 목록이 더 정확하다
-      if (!this.q) this.hooks.commands(this.staff.id, raw, this.terminalOnly)
-    } finally {
-      release()
-      probe.close()
-    }
-  }
-
-  private async *messages(gen: number): AsyncGenerator<SDKUserMessage> {
-    while (!this.closed && gen === this.generation) {
-      if (this.inbox.length === 0) await new Promise<void>((r) => (this.wake = r))
-      while (this.inbox.length && gen === this.generation) yield this.inbox.shift()!
-    }
+    const wasOpen = this.rt.isOpen
+    const raw = await this.rt.loadCommands({ cwd: this.staff.cwd, skills: this.staff.equipment.skills })
+    // 그사이 진짜 세션이 열렸으면 그쪽 목록이 더 정확하다
+    if (wasOpen || !this.rt.isOpen) this.hooks.commands(this.staff.id, raw, this.terminalOnly)
   }
 
   private start() {
@@ -311,88 +247,51 @@ class Worker {
     const computerGuide = mcpServers[COMPUTER_EQUIPMENT] ? t('staff.computer.guide') : ''
     // 백그라운드 작업 목록은 CLI 프로세스 단위라 새로 열면 비운다
     this.backgroundTasks = []
-    this.q = sdk.query({
-      prompt: this.messages(this.generation),
-      options: {
-        cwd: s.cwd,
-        pathToClaudeCodeExecutable: CLAUDE_BINARY,
-        model: MODEL_ID[this.modelNow],
-        resume: s.sessionId ?? undefined,
-        permissionMode: s.approvalMode === 'acceptEdits' ? 'acceptEdits' : 'default',
-        systemPrompt: {
-          type: 'preset',
-          preset: 'claude_code',
-          append: capPrompt([t('staff.identity', { name: s.name, role: s.role }), t('staff.language'), this.hooks.context(s.id), refDocs.prompt, browserGuide, computerGuide, t('staff.captureGuide'), capPrompt(s.systemPrompt, PERSONA_MAX)].filter(Boolean).join('\n'), PROMPT_MAX),
-        },
-        settingSources: ['user', 'project', 'local'],
-        // 고용 직원 표시: 사용자 설정의 "질문 받기" hook이 이 세션은 건너뛴다 (질문은 canUseTool → 결재함·대신 답하기로)
-        env: { ...process.env, [HIRED_ENV]: '1' },
-        mcpServers: { ...mcpServers, office: this.hooks.officeTools(s.id) },
-        // 사용자·프로젝트 .mcp.json과 claude.ai 커넥터(Gmail·Slack 등)는 붙이지 않는다 — 장비 탭에서 켠 것만 (도구 설명이 매 호출마다 문맥에 실린다)
-        // 플러그인·Claude Desktop·직접 추가 MCP도 strict에선 SDK가 읽지 않으므로 equipment가 설정을 읽어 위 mcpServers로 넘긴다.
-        // claude.ai 커넥터는 mcpServers로 넘길 수 있는 형식(stdio·http·sse·sdk)이 아니라 붙일 수 없다 (장비 탭에 '불러올 수 없음')
-        strictMcpConfig: true,
-        skills: s.equipment.skills,
-        disallowedTools: s.equipment.disallowedTools.filter((t) => !isBashPolicyMark(t)),
-        canUseTool: (toolName, input, { signal }) => {
-          // 브라우저 조회(스냅샷·스크린샷·탭 목록)는 결재 없이. 이동·클릭·입력 등은 아래 평소 흐름(결재함·자동결재 판정)으로
-          if (browserVerdict(toolName, input) === 'allow' || computerVerdict(toolName, input) === 'allow') return Promise.resolve({ behavior: 'allow' })
-          const command = toolName === 'Bash' && typeof input.command === 'string' ? input.command : null
-          // 사무실 내부 도구(팀 조회·위임)와 장비로 허용한 도구는 결재 없이 쓴다
-          // 화면 캡처는 대표 화면이 그대로 찍히므로, 설정의 '직원 화면 캡처 허용'이 켜져 있으면(기본) 모두, 꺼지면 장비에서 "화면 캡처 자율"을 켠 직원만 결재 없이 찍는다
-          const isAllowed =
-            (toolName.startsWith(OFFICE_TOOL_PREFIX) && (toolName !== `${OFFICE_TOOL_PREFIX}capture_screen` || this.hooks.isScreenCaptureOn() || s.equipment.allowedTools.includes(toolName))) ||
-            s.equipment.allowedTools.some((t) => toolName === t || toolName.startsWith(`mcp__${t}__`)) ||
-            (command !== null && s.equipment.allowedTools.includes(READ_ONLY_BASH) && isReadOnlyCommand(command)) ||
-            // 등록된 참고 문서를 읽는 건 결재 없이 ("모두 결재" 직원도)
-            isRefDocRead(toolName, input, refDocPaths, os.homedir())
-          if (isAllowed) return Promise.resolve({ behavior: 'allow' })
-          const questions = toolName === QUESTION_TOOL ? toQuestions(input) : undefined
-          const auto = this.hooks.autoDecide(s.id, toolName, input, summarizeInput(input), questions)
-          if (!auto) return this.askApproval(toolName, input, signal, questions)
-          // 대신 답(비서 등)을 만들다 실패하면 평소처럼 대표를 기다린다
-          return auto.then(
-            (r): PermissionResult => (r.answers ? { behavior: 'allow', updatedInput: { ...input, answers: r.answers } } : { behavior: 'allow' }),
-            () => this.askApproval(toolName, input, signal, questions),
-          )
-        },
-        hooks: {
-          PreToolUse: [
-            {
-              hooks: [
-                async (input) => {
-                  if (input.hook_event_name === 'PreToolUse') {
-                    // "위험 명령 금지"는 결재 판단보다 앞서 막는다 (settings.json 허용 규칙·자율 장비로도 못 뚫게)
-                    const command = input.tool_name === 'Bash' ? (input.tool_input as { command?: unknown }).command : undefined
-                    const risky = typeof command === 'string' && s.equipment.disallowedTools.includes(RISKY_BASH) ? findRiskyCommand(command) : null
-                    if (risky) {
-                      this.hooks.log(s.id, 'tool', `막힘 (${risky}): ${command}`.slice(0, ACTIVITY_MAX))
-                      return {
-                        hookSpecificOutput: {
-                          hookEventName: 'PreToolUse',
-                          permissionDecision: 'deny',
-                          permissionDecisionReason: t('staff.deny.risky', { risky }),
-                        },
-                      }
-                    }
-                    const text = `${input.tool_name} ${summarizeInput(input.tool_input)}`.slice(0, ACTIVITY_MAX)
-                    this.hooks.update(s.id, { activity: text })
-                    this.hooks.log(s.id, 'tool', text)
-                  }
-                  return {}
-                },
-              ],
-            },
-          ],
-        },
+    this.rt.start({
+      cwd: s.cwd,
+      modelId: this.modelId(this.modelNow),
+      resumeId: s.sessionId,
+      approvalMode: s.approvalMode === 'acceptEdits' ? 'acceptEdits' : 'ask',
+      systemPromptAppend: capPrompt([t('staff.identity', { name: s.name, role: s.role }), t('staff.language'), this.hooks.context(s.id), refDocs.prompt, browserGuide, computerGuide, t('staff.captureGuide'), capPrompt(s.systemPrompt, PERSONA_MAX)].filter(Boolean).join('\n'), PROMPT_MAX),
+      mcpServers: { ...mcpServers, office: this.hooks.officeTools(s.id) },
+      skills: s.equipment.skills,
+      disallowedTools: s.equipment.disallowedTools.filter((t) => !isBashPolicyMark(t)),
+      canUseTool: (toolName, input, signal) => {
+        // 브라우저 조회(스냅샷·스크린샷·탭 목록)는 결재 없이. 이동·클릭·입력 등은 아래 평소 흐름(결재함·자동결재 판정)으로
+        if (browserVerdict(toolName, input) === 'allow' || computerVerdict(toolName, input) === 'allow') return Promise.resolve<ToolDecision>({ behavior: 'allow' })
+        const command = toolName === 'Bash' && typeof input.command === 'string' ? input.command : null
+        // 사무실 내부 도구(팀 조회·위임)와 장비로 허용한 도구는 결재 없이 쓴다
+        // 화면 캡처는 대표 화면이 그대로 찍히므로, 설정의 '직원 화면 캡처 허용'이 켜져 있으면(기본) 모두, 꺼지면 장비에서 "화면 캡처 자율"을 켠 직원만 결재 없이 찍는다
+        const isAllowed =
+          (toolName.startsWith(OFFICE_TOOL_PREFIX) && (toolName !== `${OFFICE_TOOL_PREFIX}capture_screen` || this.hooks.isScreenCaptureOn() || s.equipment.allowedTools.includes(toolName))) ||
+          s.equipment.allowedTools.some((t) => toolName === t || toolName.startsWith(`mcp__${t}__`)) ||
+          (command !== null && s.equipment.allowedTools.includes(READ_ONLY_BASH) && isReadOnlyCommand(command)) ||
+          // 등록된 참고 문서를 읽는 건 결재 없이 ("모두 결재" 직원도)
+          isRefDocRead(toolName, input, refDocPaths, os.homedir())
+        if (isAllowed) return Promise.resolve<ToolDecision>({ behavior: 'allow' })
+        const questions = toolName === QUESTION_TOOL ? toQuestions(input) : undefined
+        const auto = this.hooks.autoDecide(s.id, toolName, input, summarizeInput(input), questions)
+        if (!auto) return this.askApproval(toolName, input, signal, questions)
+        // 대신 답(비서 등)을 만들다 실패하면 평소처럼 대표를 기다린다
+        return auto.then(
+          (r): ToolDecision => (r.answers ? { behavior: 'allow', updatedInput: { ...input, answers: r.answers } } : { behavior: 'allow' }),
+          () => this.askApproval(toolName, input, signal, questions),
+        )
+      },
+      onToolUse: (toolName, toolInput) => {
+        // "위험 명령 금지"는 결재 판단보다 앞서 막는다 (settings.json 허용 규칙·자율 장비로도 못 뚫게)
+        const command = toolName === 'Bash' ? (toolInput as { command?: unknown }).command : undefined
+        const risky = typeof command === 'string' && s.equipment.disallowedTools.includes(RISKY_BASH) ? findRiskyCommand(command) : null
+        if (risky) {
+          this.hooks.log(s.id, 'tool', `막힘 (${risky}): ${command}`.slice(0, ACTIVITY_MAX))
+          return { deny: t('staff.deny.risky', { risky }) }
+        }
+        const text = `${toolName} ${summarizeInput(toolInput)}`.slice(0, ACTIVITY_MAX)
+        this.hooks.update(s.id, { activity: text })
+        this.hooks.log(s.id, 'tool', text)
+        return null
       },
     })
-    void this.consume(this.q)
-    const q = this.q
-    q.supportedCommands().then(
-      (raw) => this.q === q && this.hooks.commands(s.id, raw, this.terminalOnly),
-      () => {}, // 목록을 못 받아도 지시는 그대로 된다
-    )
   }
 
   private askApproval(toolName: string, input: Record<string, unknown>, signal: AbortSignal, questions?: StaffQuestion[]) {
@@ -406,7 +305,7 @@ class Worker {
       // 결재 카드의 "앞으로 항상 승인" — 위험 명령·질문이면 붙지 않는다
       alwaysRule: questions ? undefined : (ruleDraftFor(toolName, input) ?? undefined),
     }
-    return new Promise<PermissionResult>((resolve) => {
+    return new Promise<ToolDecision>((resolve) => {
       this.pending.set(approval.id, resolve)
       if (questions) this.questionInputs.set(approval.id, input)
       signal.addEventListener('abort', () => {
@@ -419,73 +318,58 @@ class Worker {
     })
   }
 
-  private async consume(q: Query) {
-    try {
-      for await (const m of q) this.handle(m)
-    } catch (e) {
-      this.isRunning = false
-      this.hooks.update(this.staff.id, { status: 'error', activity: String(e).slice(0, ACTIVITY_MAX) })
-      this.hooks.log(this.staff.id, 'error', String(e))
-    } finally {
-      if (this.q === q) this.q = null
-    }
-  }
-
-  private handle(m: SDKMessage) {
+  private handle(m: RuntimeEvent) {
     const id = this.staff.id
-    if (m.type === 'rate_limit_event') {
-      this.hooks.rateLimit(m.rate_limit_info)
+    if (m.type === 'error') {
+      this.isRunning = false
+      this.hooks.update(id, { status: 'error', activity: String(m.error).slice(0, ACTIVITY_MAX) })
+      this.hooks.log(id, 'error', String(m.error))
       return
     }
-    if (m.type === 'system' && m.subtype === 'commands_changed') {
+    if (m.type === 'rateLimit') {
+      this.hooks.rateLimit(m.info)
+      return
+    }
+    if (m.type === 'commands') {
       this.hooks.commands(id, m.commands, this.terminalOnly)
       return
     }
-    if (m.type === 'system' && m.subtype === 'background_tasks_changed') {
-      this.backgroundTasks = m.tasks.filter((task) => !task.ambient).map((task) => task.description)
+    if (m.type === 'backgroundTasks') {
+      this.backgroundTasks = m.tasks
       return
     }
-    if (m.type === 'system' && m.subtype === 'init') {
-      this.terminalOnly = m.terminal_slash_commands ?? []
-      if (m.session_id !== this.staff.sessionId) {
+    if (m.type === 'init') {
+      this.terminalOnly = m.terminalOnly
+      if (m.sessionId !== this.staff.sessionId) {
         if (this.staff.sessionId) this.baseline = { cost: 0, tokensIn: 0, tokensOut: 0 }
-        this.staff.sessionId = m.session_id
-        saveSessionId(id, m.session_id)
-        this.hooks.update(id, { sessionId: m.session_id })
+        this.staff.sessionId = m.sessionId
+        saveSessionId(id, m.sessionId)
+        this.hooks.update(id, { sessionId: m.sessionId })
       }
       return
     }
-    if (m.type === 'assistant') {
-      const ctx = contextOf(m.message.usage)
-      if (ctx) this.contextTokens = ctx
-      for (const b of m.message.content) {
-        if (b.type === 'text' && b.text.trim()) {
-          this.hooks.log(id, 'reply', b.text)
-          this.hooks.update(id, { activity: b.text.replace(/\s+/g, ' ').slice(0, ACTIVITY_MAX) })
-        }
-        if (b.type === 'tool_use' && EDIT_TOOLS.has(b.name)) {
-          const input = b.input as Record<string, unknown>
-          const file = input.file_path ?? input.notebook_path
-          if (typeof file === 'string') this.hooks.touched(id, file)
-        }
-      }
+    if (m.type === 'context') {
+      this.contextTokens = m.tokens
+      return
+    }
+    if (m.type === 'text') {
+      this.hooks.log(id, 'reply', m.text)
+      this.hooks.update(id, { activity: m.text.replace(/\s+/g, ' ').slice(0, ACTIVITY_MAX) })
+      return
+    }
+    if (m.type === 'fileTouched') {
+      this.hooks.touched(id, m.path)
       return
     }
     if (m.type === 'result') {
-      // total_cost_usd·modelUsage는 query 단위 누적값 → 직전 기록과의 차이만 저장
-      const totals = Object.values(m.modelUsage).reduce(
-        (acc, u) => ({
-          tokensIn: acc.tokensIn + u.inputTokens + u.cacheReadInputTokens + u.cacheCreationInputTokens,
-          tokensOut: acc.tokensOut + u.outputTokens,
-        }),
-        { tokensIn: 0, tokensOut: 0 },
-      )
+      // costUsd·tokens는 세션 단위 누적값 → 직전 기록과의 차이만 저장
+      const totals = { tokensIn: m.tokensIn, tokensOut: m.tokensOut }
       const delta = {
-        cost: Math.max(0, m.total_cost_usd - this.baseline.cost),
+        cost: Math.max(0, m.costUsd - this.baseline.cost),
         tokensIn: Math.max(0, totals.tokensIn - this.baseline.tokensIn),
         tokensOut: Math.max(0, totals.tokensOut - this.baseline.tokensOut),
       }
-      this.baseline = { cost: m.total_cost_usd, ...totals }
+      this.baseline = { cost: m.costUsd, ...totals }
       insertUsage(id, delta.cost, delta.tokensIn, delta.tokensOut)
       this.hooks.usage(id, delta)
       this.staff.costUsd += delta.cost
@@ -511,25 +395,25 @@ class Worker {
       // 이걸 완료로 치면 새 지시가 바로 끝난 것처럼 빈 보고가 가고, 일하는 중인데 대기로 보인다
       const slash = this.slashPending
       this.slashPending = null
-      if (!this.isRunning || (m.subtype === 'success' && m.num_turns === 0 && !slash)) {
+      if (!this.isRunning || (m.ok && m.numTurns === 0 && !slash)) {
         this.hooks.update(id, { costUsd: this.staff.costUsd, tokensIn: this.staff.tokensIn, tokensOut: this.staff.tokensOut })
         return
       }
 
-      const isError = m.subtype !== 'success'
+      const isError = !m.ok
       // /compact처럼 답 글이 없는 명령은 "실행했어요"로 보고한다
-      const summary = m.subtype === 'success' ? m.result || (slash ? t('slash.ran', { name: slash }) : '') : `오류로 중단 (${m.subtype})`
+      const summary = m.ok ? m.text || (slash ? t('slash.ran', { name: slash }) : '') : `오류로 중단 (${m.subtype})`
       if (!isError && summary.trim()) this.lastReport = summary
       // 성공 보고 본문은 이미 assistant 텍스트로 기록됐으므로 완료 로그는 짧게 남긴다
-      this.hooks.log(id, isError ? 'error' : 'result', isError ? summary : t('log.taskDone', { n: m.num_turns }))
+      this.hooks.log(id, isError ? 'error' : 'result', isError ? summary : t('log.taskDone', { n: m.numTurns }))
       this.hooks.update(id, {
-        status: isError ? 'error' : this.inbox.length ? 'working' : 'idle',
+        status: isError ? 'error' : this.rt.queued ? 'working' : 'idle',
         activity: isError ? summary : '',
         costUsd: this.staff.costUsd,
         tokensIn: this.staff.tokensIn,
         tokensOut: this.staff.tokensOut,
       })
-      this.isRunning = this.inbox.length > 0
+      this.isRunning = this.rt.queued > 0
       this.hooks.finished(id, summary, isError ? [] : this.backgroundTasks)
       this.applyPendingRestart()
     }
@@ -545,67 +429,11 @@ class Worker {
   }
 }
 
-const IMAGE_MAX_BYTES = 5 * 1024 * 1024
-const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'] as const
-type ImageType = (typeof IMAGE_TYPES)[number]
-
-/** 지시 + 첨부 → 메시지 내용. 이미지는 직원이 직접 보도록 이미지 블록으로, 나머지는 경로를 알려 읽게 한다 */
-function toContent(text: string, attachments: Attachment[]): SDKUserMessage['message']['content'] {
-  if (attachments.length === 0) return text
-  const images = attachments.filter((a) => (IMAGE_TYPES as readonly string[]).includes(a.mime) && a.size <= IMAGE_MAX_BYTES)
-  const files = attachments.filter((a) => !images.includes(a))
-  const note = [
-    text,
-    images.length ? `\n${t('staff.attach.images', { n: images.length, paths: images.map((a) => a.path).join(', ') })}` : '',
-    files.length ? `\n${t('staff.attach.files')}\n${files.map((a) => `- ${a.name}: ${a.path}`).join('\n')}` : '',
-  ].join('')
-  return [
-    { type: 'text', text: note },
-    ...images.map((a) => ({ type: 'image' as const, source: { type: 'base64' as const, media_type: a.mime as ImageType, data: fs.readFileSync(a.path).toString('base64') } })),
-  ]
-}
-
 function summarizeInput(input: unknown): string {
   if (!input || typeof input !== 'object') return ''
   const o = input as Record<string, unknown>
   const key = ['skill', 'command', 'file_path', 'path', 'pattern', 'url', 'query', 'description'].find((k) => typeof o[k] === 'string')
   return key ? String(o[key]) : JSON.stringify(o).slice(0, ACTIVITY_MAX)
-}
-
-/** 도구 없이 한 번만 답을 받는 호출 (회의 발언·보고서 요약). 비용은 호출한 쪽에서 기록한다 */
-export async function askOnce(opts: { prompt: string; system: string; model: Staff['model']; cwd: string; onRateLimit?: (info: SDKRateLimitInfo) => void; abortController?: AbortController }) {
-  const q = sdk.query({
-    prompt: opts.prompt,
-    options: {
-      cwd: opts.cwd,
-      pathToClaudeCodeExecutable: CLAUDE_BINARY,
-      model: MODEL_ID[opts.model],
-      tools: [],
-      maxTurns: 1,
-      persistSession: false,
-      // 기다리는 쪽이 시간 초과로 포기하면 호출도 멈춘다 (비서 대신 답하기)
-      abortController: opts.abortController,
-      permissionMode: 'dontAsk',
-      settingSources: [],
-      systemPrompt: opts.system,
-    },
-  })
-  let text = ''
-  let costUsd = 0
-  let tokensIn = 0
-  let tokensOut = 0
-  for await (const m of q) {
-    if (m.type === 'rate_limit_event') opts.onRateLimit?.(m.rate_limit_info)
-    if (m.type === 'result') {
-      if (m.subtype === 'success') text = m.result
-      costUsd = m.total_cost_usd
-      for (const u of Object.values(m.modelUsage)) {
-        tokensIn += u.inputTokens + u.cacheReadInputTokens + u.cacheCreationInputTokens
-        tokensOut += u.outputTokens
-      }
-    }
-  }
-  return { text: text.trim(), costUsd, tokensIn, tokensOut }
 }
 
 export class HiredStaffManager {
@@ -654,39 +482,5 @@ export class HiredStaffManager {
 
   stopAll() {
     for (const w of this.workers.values()) w.stop()
-  }
-}
-
-/**
- * 연결 도구 확인: 장비 제한 없이 Claude를 잠깐 띄워 MCP 서버 상태(claude.ai 커넥터 목록·인증 필요)를 묻고 닫는다.
- * 지시를 보내지 않아 모델 비용은 들지 않는다. 한 번도 못 받으면 null (그때까지 받은 마지막 목록을 돌려준다)
- */
-export async function probeMcpStatus(cwd: string, timeoutMs = 20_000) {
-  let release = () => {}
-  const idle = new Promise<void>((r) => (release = r))
-  async function* nothing(): AsyncGenerator<SDKUserMessage> {
-    await idle
-  }
-  const probe = sdk.query({
-    prompt: nothing(),
-    options: { cwd, pathToClaudeCodeExecutable: CLAUDE_BINARY, persistSession: false, settingSources: ['user', 'project', 'local'], env: { ...process.env, [HIRED_ENV]: '1' } },
-  })
-  // claude.ai 커넥터는 띄우고 1~2초 뒤에야 목록에 오른다 — 3초가 지나고 연결 중(pending)이 없고 두 번 연달아 같으면 끝
-  const startedAt = Date.now()
-  let last: Awaited<ReturnType<Query['mcpServerStatus']>> | null = null
-  try {
-    while (Date.now() - startedAt < timeoutMs) {
-      const now = await probe.mcpServerStatus()
-      const same = last !== null && last.map((m) => `${m.name}:${m.status}`).join() === now.map((m) => `${m.name}:${m.status}`).join()
-      last = now
-      if (Date.now() - startedAt >= 3000 && same && now.every((m) => m.status !== 'pending')) break
-      await new Promise((r) => setTimeout(r, 1000))
-    }
-    return last
-  } catch {
-    return last
-  } finally {
-    release()
-    probe.close()
   }
 }

@@ -17,6 +17,8 @@ import type { LangSetting } from './i18n/index.ts'
 
 export type StaffKind = 'hired' | 'external'
 export type StaffStatus = 'idle' | 'working' | 'waiting' | 'offline' | 'error'
+/** 직원·내부 AI를 돌리는 공급자 (고용 후 변경 불가) */
+export type AiProvider = 'claude' | 'codex'
 export type ModelChoice = 'default' | 'opus' | 'sonnet' | 'haiku'
 export type ApprovalMode = 'ask' | 'acceptEdits'
 
@@ -55,6 +57,8 @@ export interface Staff {
   name: string
   role: string
   avatar: number
+  /** 모델 공급자 (기본 'claude' — 기존 직원은 마이그레이션으로 자동) */
+  provider: AiProvider
   model: ModelChoice
   /** 실제 작업 폴더 (지정 안 하면 홈 폴더 — 어떤 프로젝트 일이든 맡길 수 있다) */
   cwd: string
@@ -627,6 +631,8 @@ export interface HireInput {
   name: string
   role: string
   avatar: number
+  /** 생략하면 'claude' */
+  provider?: AiProvider
   model: ModelChoice
   cwd: string
   systemPrompt: string

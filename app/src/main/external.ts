@@ -197,6 +197,7 @@ export class ExternalWatcher {
       this.staff.set(id, {
         id,
         kind: 'external',
+        provider: 'claude',
         name: e.name || path.basename(e.cwd),
         role: e.entrypoint === 'claude-desktop' ? t('external.roleDesktop') : t('external.roleTerminal'),
         avatar: hashOf(e.sessionId),

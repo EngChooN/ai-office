@@ -121,7 +121,9 @@ import {
   type ShopState,
   type Zone,
 } from '../shared/economy'
-import { askOnce, HiredStaffManager, probeMcpStatus, sdk } from './hired'
+import { HiredStaffManager } from './hired'
+import { askOnce } from './ai'
+import { probeMcpStatus, sdk } from './ai/claude'
 import { autoApprove, autoKindOf, autoStep, autoSummaryText, autoWindow, AWAY_ANSWER, formatRemaining, planToConfig, type AutoApprovePlan } from '../shared/autoApprove'
 import { commitAll, folderState, pushAndPr, repoRoot, restoreFiles, snapshotTree, treeDiff, workBaseStillValid, workChanges } from './review'
 import { readExternalDay } from './transcript'
@@ -634,6 +636,7 @@ export class Office extends EventEmitter<{
       id,
       kind: 'hired',
       ...input,
+      provider: input.provider ?? 'claude',
       ownCwd: input.cwd,
       sessionId: null,
       status: 'idle',
@@ -779,7 +782,7 @@ export class Office extends EventEmitter<{
     keys.forEach((k) => this.commandTextBusy.add(k))
     try {
       const { system, prompt } = translationPrompt(texts, lang)
-      const r = await askOnce({ prompt, system, model: 'haiku', cwd: os.homedir(), onRateLimit: (info) => this.onRateLimit(info) })
+      const r = await askOnce({ prompt, system, tier: 'light', cwd: os.homedir(), onRateLimit: (info) => this.onRateLimit(info) })
       this.recordUsage(staffId, r)
       const done = parseTranslations(texts, r.text)
       texts.forEach((text, i) => {
@@ -1815,6 +1818,7 @@ export class Office extends EventEmitter<{
     const roles = [...new Set([...this.hired.values()].map((x) => x.role))].join(', ')
     const r = await askOnce({
       cwd: s.cwd,
+      tier: 'standard',
       model: s.model,
       system: `당신은 ${s.name}(${s.role})입니다. ${s.systemPrompt}\n회사 업무 매뉴얼(Claude Code 스킬)을 작성합니다. 바로 따라 할 수 있게 구체적으로 씁니다.\n${t('staff.language')}`,
       prompt: [
@@ -2181,7 +2185,7 @@ export class Office extends EventEmitter<{
     if (!s || !changes.diff.trim()) return ''
     const r = await askOnce({
       cwd: s.cwd,
-      model: 'haiku',
+      tier: 'light',
       system: '커밋 메시지 작성자입니다. 첫 줄은 50자 안의 요약, 빈 줄 뒤에 필요하면 "- " 글머리표로 2~4줄. 메시지 본문만 출력합니다.',
       prompt: `다음 변경의 커밋 메시지를 한국어로 써 주세요.\n\n${changes.diff.slice(0, 30_000)}`,
     })
@@ -2413,7 +2417,7 @@ export class Office extends EventEmitter<{
   /** 사용률은 Claude를 부를 때만 오므로, 가장 짧은 호출(haiku 한 번)로 지금 값을 받아 온다 */
   async refreshPlanUsage() {
     // 비용은 1센트도 안 되고 특정 직원 몫이 아니라 급여 명세서에는 넣지 않는다
-    await askOnce({ prompt: '.', system: 'Reply with a single dot.', model: 'haiku', cwd: os.homedir(), onRateLimit: (info) => this.onRateLimit(info) })
+    await askOnce({ prompt: '.', system: 'Reply with a single dot.', tier: 'light', cwd: os.homedir(), onRateLimit: (info) => this.onRateLimit(info) })
     return this.planUsage
   }
 
@@ -2929,7 +2933,7 @@ export class Office extends EventEmitter<{
     try {
       const r = await this.askDemoOnce(meetingId, {
         cwd: os.homedir(),
-        model: 'haiku',
+        tier: 'light',
         system: `당신은 ${s.name}(${s.role})입니다. ${s.systemPrompt}\n데모데이 회의실에서 동료들에게 자기가 끝낸 일을 발표합니다. 2~4문장, 자기 말투로, 무엇을 했고 결과가 뭔지만 말하세요. 인사·목록·제목 없이 발표 문장만 출력합니다.\n${t('staff.language')}`,
         prompt: demoPresentInput(items),
         onRateLimit: (info) => this.onRateLimit(info),
@@ -2948,7 +2952,7 @@ export class Office extends EventEmitter<{
     try {
       const r = await this.askDemoOnce(meetingId, {
         cwd: os.homedir(),
-        model: 'haiku',
+        tier: 'light',
         system: `당신은 ${lead.name}(${lead.role})입니다. ${lead.systemPrompt}\n데모데이를 마치며 팀에 한 줄(한 문장) 총평을 합니다. 따뜻하고 구체적으로, 인사·목록 없이 문장만 출력합니다.\n${t('staff.language')}`,
         prompt: groups.map((g) => `${g.staffName}: ${g.items.slice(0, 3).map((e) => e.title).join(', ')}`).join('\n').slice(0, 1500) + `\n(총 ${count}건)`,
         onRateLimit: (info) => this.onRateLimit(info),
@@ -3014,7 +3018,8 @@ export class Office extends EventEmitter<{
           const canAsk = m.decisions.length < MEETING_DECISIONS_MAX
           const r = await askOnce({
             cwd: p.cwd,
-            model: p.model,
+            tier: 'standard',
+      model: p.model,
             system: [
               `당신은 ${p.name}(${p.role})입니다. ${p.systemPrompt}`,
               t('staff.language'),
@@ -3047,7 +3052,8 @@ export class Office extends EventEmitter<{
         const names = people.map((p) => `${p.name}(${p.role})`).join(', ')
         const r = await askOnce({
           cwd: chair.cwd,
-          model: chair.model,
+          tier: 'standard',
+      model: chair.model,
           system: '회의록 작성자입니다. 한국어로 간결하게 씁니다.',
           prompt: `회의 주제: ${m.topic}\n참석자: ${names}\n\n${transcript()}\n\n아래 형식으로 회의록을 써 주세요. 대표가 내린 결정·위임 결정은 앱이 따로 붙이니 쓰지 마세요.\n결론: (한두 문장)\n합의 사항:\n- (참석자끼리 합의한 내용, 없으면 "없음")\n할 일:\n- [할 일] 제목 (담당: 참석자 이름 중 한 명)\n할 일이 없으면 "할 일: 없음".`,
         })
@@ -3120,7 +3126,8 @@ export class Office extends EventEmitter<{
     try {
       const r = await askOnce({
         cwd: chair.cwd,
-        model: chair.model,
+        tier: 'standard',
+      model: chair.model,
         system: `당신은 ${chair.name}(${chair.role})이고 이 회의의 진행자입니다. ${chair.systemPrompt}\n${t('staff.language')}`,
         prompt: `회의 주제: ${m.topic}\n\n지금까지:\n${transcript}\n\n${delegatedPrompt(d.question, d.options)}`,
       })

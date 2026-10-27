@@ -23,6 +23,7 @@ const min = 60_000
 const params = new URLSearchParams(location.search)
 
 const mk = (id: string, name: string, role: string, avatar: number, teamId: string | null, status: Staff['status'], activity: string, extra: Partial<Staff> = {}): Staff => ({
+  provider: 'claude',
   id,
   kind: 'hired',
   name,
