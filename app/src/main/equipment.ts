@@ -1,10 +1,9 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import type { McpServerConfig } from '@anthropic-ai/claude-agent-sdk'
 import type { EquipmentCatalog, EquipmentMcp, McpSourceKind } from '../shared/types'
 import { BROWSER_EQUIPMENT } from '../shared/browserTools.ts'
-import { loadCustomMcp, type CustomMcp } from '../shared/customMcp.ts'
+import { loadCustomMcp, type CustomMcp, type McpConfig } from '../shared/customMcp.ts'
 import { t } from '../shared/i18n/index.ts'
 import type { TKey } from '../shared/i18n/index.ts'
 import { browserUnavailable } from './browser'
@@ -45,7 +44,7 @@ export function mcpEntries(cwd: string): McpEntry[] {
 
 /** 이름 → 직원 세션에 넘길 MCP 설정 (불러올 수 없는 것은 뺀다. 덮는 순서는 readMcpSources) */
 export function mcpConfigs(cwd: string) {
-  const out = new Map<string, { config: McpServerConfig; source: McpSourceKind }>()
+  const out = new Map<string, { config: McpConfig; source: McpSourceKind }>()
   for (const e of mcpEntries(cwd)) if (e.config && e.status !== 'unsupported') out.set(e.name, { config: e.config, source: e.kind })
   return out
 }

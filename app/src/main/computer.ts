@@ -1,5 +1,5 @@
 import { systemPreferences } from 'electron'
-import type { McpServerConfig } from '@anthropic-ai/claude-agent-sdk'
+import type { McpConfig } from '../shared/customMcp.ts'
 import { t } from '../shared/i18n/index.ts'
 import { findNpx } from './browser'
 import { toolEnv } from './platform'
@@ -28,7 +28,7 @@ export function computerPermissionNotice(): string | null {
 }
 
 /** 세션 mcpServers에 넣을 computer-use-mcp 설정. 맥이 아니거나 실행 환경이 없으면 null */
-export function computerMcpConfig(): McpServerConfig | null {
+export function computerMcpConfig(): McpConfig | null {
   const npx = findNpx()
   if (!npx || !isComputerSupported()) return null
   const env = { ...toolEnv(), PATH: [npx.dir, toolEnv().PATH].filter(Boolean).join(path.delimiter) } as Record<string, string>

@@ -18,6 +18,7 @@ import { t } from '../shared/i18n/index.ts'
 import { registerUpdates, type UpdateChecker } from './updates'
 import { registerPack } from './staffPack'
 import { startedHidden, syncLoginItem } from './loginItem'
+import { startLocalMcp, stopLocalMcp } from './mcp/localMcp'
 
 registerAttachmentScheme()
 const office = new Office()
@@ -206,12 +207,13 @@ function registerIpc() {
 // 윈도우 알림은 앱 ID가 있어야 이름과 함께 뜬다 (packagerConfig.appBundleId와 같게)
 if (IS_WINDOWS) app.setAppUserModelId('com.joonyoung.claude-office')
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   // 개발 실행 때도 Dock에 앱 아이콘을 보여 준다 (설치본은 번들 아이콘을 쓴다)
   if (!app.isPackaged) app.dock?.setIcon(path.join(app.getAppPath(), 'build', 'icon.png'))
   // 같은 데이터 폴더를 쓰는 다른 AI Office(설치본·개발 앱)가 켜져 있으면 DB를 열기 전에 멈춘다
   if (!acquireDataLock()) return quitForDataLock()
   openDb()
+  await startLocalMcp() // office·secretary 도구 서버 (직원 세션이 열리기 전에)
   serveAttachments()
   secretary = new Secretary(office, () => handlers!)
   office.secretaryState = () => secretary?.state()
@@ -241,6 +243,7 @@ app.on('before-quit', (e) => {
   secretary?.stop()
   updates?.stop()
   office.stop()
+  stopLocalMcp()
   if (!remote) return
   // 원격 포트와 공유기 매핑을 닫을 때까지 최대 3초 기다린 뒤 끝낸다 (매핑은 1시간 임대라 못 지워도 1시간 안에 사라진다)
   e.preventDefault()

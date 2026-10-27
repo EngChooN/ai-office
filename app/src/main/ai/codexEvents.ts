@@ -9,7 +9,9 @@ const obj = (v: unknown): Json => (v && typeof v === 'object' ? (v as Json) : {}
 const str = (v: unknown) => (typeof v === 'string' ? v : '')
 const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : 0)
 
-export const CODEX_APPROVAL_METHODS = ['item/commandExecution/requestApproval', 'item/fileChange/requestApproval'] as const
+/** MCP 도구 호출 승인은 MCP 'elicitation' 요청으로 온다 (_meta.codex_approval_kind = mcp_tool_call) */
+export const MCP_ELICITATION_METHOD = 'mcpServer/elicitation/request'
+export const CODEX_APPROVAL_METHODS = ['item/commandExecution/requestApproval', 'item/fileChange/requestApproval', MCP_ELICITATION_METHOD] as const
 
 /** 한 세션(스레드)의 변환 상태 */
 export interface CodexState {
@@ -64,13 +66,20 @@ export function approvalTool(method: string, params: Json, state: CodexState): {
     const paths = state.fileChanges.get(str(params.itemId)) ?? []
     return toolOfItem({ type: 'fileChange', changes: paths.map((path) => ({ path })) })
   }
+  if (method === MCP_ELICITATION_METHOD) {
+    const meta = obj(params._meta)
+    if (meta.codex_approval_kind !== 'mcp_tool_call') return null
+    // 도구 이름은 메시지(`Allow the <서버> MCP server to run tool "<도구>"?`)에만 있다
+    const tool = /run tool "(.+)"/.exec(str(params.message))?.[1]
+    return tool ? { toolName: `mcp__${str(params.serverName)}__${tool}`, input: obj(meta.tool_params) } : null
+  }
   return null
 }
 
 /** 결재 결과 → app-server 응답. 거절(+중단)이면 턴을 끊는 cancel */
-export function approvalResponse(d: ToolDecision) {
-  if (d.behavior === 'allow') return { decision: 'accept' }
-  return { decision: d.interrupt ? 'cancel' : 'decline' }
+export function approvalResponse(d: ToolDecision, method?: string) {
+  const answer = d.behavior === 'allow' ? 'accept' : d.interrupt ? 'cancel' : 'decline'
+  return method === MCP_ELICITATION_METHOD ? { action: answer, content: null } : { decision: answer }
 }
 
 /** 직원 결재 방식 → Codex 승인 정책. 파일 쓰기는 작업 폴더 안으로 가둔다 */

@@ -7,6 +7,7 @@ import type { Attachment } from '../../shared/types'
 import type { RawCommand } from '../../shared/slashCommands.ts'
 import { HIRED_ENV } from '../external'
 import { exeName } from '../platform'
+import { codexMcpConfig } from './codexMcp'
 import { approvalResponse, approvalSettings, approvalTool, newCodexState, pickModel, toolOfItem, translateNotification, CODEX_APPROVAL_METHODS, type CodexState } from './codexEvents'
 import type { AgentRuntime, RuntimeEvent, RuntimeStartOpts } from './types'
 
@@ -114,7 +115,9 @@ export class CodexRuntime implements AgentRuntime {
     try {
       const binary = codexBinaryPath()
       if (!fs.existsSync(binary)) throw new Error('Codex 실행 파일을 찾지 못했습니다')
-      const child = spawn(binary, [], { cwd: o.cwd, stdio: ['pipe', 'pipe', 'ignore'], windowsHide: true, env: { ...process.env, [HIRED_ENV]: '1' } })
+      // 장비·office MCP는 -c 인자로 넘기고 비밀 값은 환경 변수로 (사용자 config.toml의 MCP는 Codex가 따로 읽는다)
+      const mcp = codexMcpConfig(o.mcpServers)
+      const child = spawn(binary, mcp.args, { cwd: o.cwd, stdio: ['pipe', 'pipe', 'ignore'], windowsHide: true, env: { ...process.env, ...mcp.env, [HIRED_ENV]: '1' } })
       this.child = child
       let buf = ''
       child.stdout.on('data', (chunk: Buffer) => {
@@ -243,15 +246,15 @@ export class CodexRuntime implements AgentRuntime {
       return
     }
     const deny = this.denied.get(String(params.itemId))
-    if (deny) return void reply(approvalResponse({ behavior: 'deny', message: deny }))
+    if (deny) return void reply(approvalResponse({ behavior: 'deny', message: deny }, method))
     const tool = approvalTool(method, params, this.state)
-    if (!tool) return void reply(approvalResponse({ behavior: 'deny', message: '알 수 없는 승인 요청' }))
+    if (!tool) return void reply(approvalResponse({ behavior: 'deny', message: '알 수 없는 승인 요청' }, method))
     const ac = new AbortController()
     this.aborts.add(ac)
     try {
-      reply(approvalResponse(await this.opts.canUseTool(tool.toolName, tool.input, ac.signal)))
+      reply(approvalResponse(await this.opts.canUseTool(tool.toolName, tool.input, ac.signal), method))
     } catch {
-      reply(approvalResponse({ behavior: 'deny', message: '결재를 처리하지 못했습니다' }))
+      reply(approvalResponse({ behavior: 'deny', message: '결재를 처리하지 못했습니다' }, method))
     } finally {
       this.aborts.delete(ac)
     }

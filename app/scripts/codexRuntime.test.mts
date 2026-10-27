@@ -71,6 +71,15 @@ test('승인 매핑: 명령은 Bash, 파일 변경은 Edit, 모르는 요청은 
   assert.equal(toolOfItem({ type: 'agentMessage' }), null)
 })
 
+test('승인 매핑: MCP 도구 호출 elicitation은 mcp__서버__도구, 응답은 action', () => {
+  const st = newCodexState()
+  const params = { serverName: 'office', message: 'Allow the office MCP server to run tool "delegate"?', _meta: { codex_approval_kind: 'mcp_tool_call', tool_params: { member: 'a' } } }
+  assert.deepEqual(approvalTool('mcpServer/elicitation/request', params, st), { toolName: 'mcp__office__delegate', input: { member: 'a' } })
+  assert.equal(approvalTool('mcpServer/elicitation/request', { ...params, _meta: {} }, st), null)
+  assert.deepEqual(approvalResponse({ behavior: 'allow' }, 'mcpServer/elicitation/request'), { action: 'accept', content: null })
+  assert.deepEqual(approvalResponse({ behavior: 'deny', message: 'x', interrupt: true }, 'mcpServer/elicitation/request'), { action: 'cancel', content: null })
+})
+
 test('승인 응답: 허용=accept, 거절=decline, 거절+중단=cancel', () => {
   assert.deepEqual(approvalResponse({ behavior: 'allow' }), { decision: 'accept' })
   assert.deepEqual(approvalResponse({ behavior: 'deny', message: 'x' }), { decision: 'decline' })

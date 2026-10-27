@@ -13,7 +13,7 @@ import { BATCH_GUIDE, BATCH_ITEMS_MAX, BATCH_METHOD, CARD_STEPS_MAX, methodsOfKi
 import { EMPTY_SECRETARY, SECRETARY_ID, type AutoHandled, type DailyRecord, type LogEntry, type Manual, type OfficeSnapshot, type Payslip, type SecretaryCard, type SecretaryCompare, type SecretaryMessage, type SecretaryRunOptions, type SecretaryState, type Staff, type StaffActivity, type StaffQuestion } from '../shared/types'
 import * as db from './db'
 import { aiBackend, askOnce, type SecretaryEvent, type SecretaryRun } from './ai'
-import { sdk } from './ai/claude'
+import { defineTool, registerLocalMcp, type LocalMcpHandle } from './mcp/localMcp'
 import type { Office } from './office'
 import type { OfficeHandlers } from './officeHandlers'
 import { awayAnswers, decideAway, mustHoldQuestion, RateWindow, SecretaryDesk, wrapDocument, type EditTarget } from './secretaryCore'
@@ -325,6 +325,8 @@ export class Secretary {
     const context = this.recentContext()
     // 지금 현황 요약을 미리 넣어 두면 "다들 뭐 해?" 같은 질문은 조회 없이 한 번에 답한다 (호출 수 = 토큰, QA)
     const status = wrapDocument('지금 사무실 (요약 — 이걸로 답할 수 있으면 다시 조회하지 않는다)', compactOverview(this.office.snapshot(), 'all'))
+    // 질문마다 새 토큰 — 끝나면 폐기한다
+    const toolsHandle = this.tools()
     const q = aiBackend().secretary({
       prompt: [status, context, `대표의 새 질문: ${text}`].filter(Boolean).join('\n\n'),
       system: `${SYSTEM_PROMPT}\n\n${t('staff.language')}\n오늘은 ${now.getFullYear()}년 ${now.getMonth() + 1}월 ${now.getDate()}일 ${now.getHours()}시 ${now.getMinutes()}분입니다.`,
@@ -334,7 +336,7 @@ export class Secretary {
       maxTurns: MAX_TURNS,
       maxBudgetUsd: TURN_BUDGET_USD,
       toolsName: 'secretary',
-      tools: this.tools(),
+      tools: toolsHandle.config,
     })
     this.q = q
     const gen = this.generation
@@ -344,6 +346,7 @@ export class Secretary {
       if (gen === this.generation) this.add({ role: 'secretary', text: '답하지 못했어요. 다시 보내 볼까요?', isError: true })
       console.error('[secretary]', e)
     } finally {
+      toolsHandle.dispose()
       if (this.q === q) this.q = null
     }
   }
@@ -399,28 +402,26 @@ export class Secretary {
     return compactGeneric(result)
   }
 
-  private tools() {
+  private tools(): LocalMcpHandle {
     const text = (t: string) => ({ content: [{ type: 'text' as const, text: maskSecrets(t) }] })
     const doc = (name: string, body: string) => text(wrapDocument(name, body))
     const readMethods = methodsOfKind('read').filter((m) => m !== 'snapshot') as [OfficeMethod, ...OfficeMethod[]]
     const changeMethods = methodsOfKind('change') as [OfficeMethod, ...OfficeMethod[]]
     // 토큰: 자주 쓰는 것만 인자 모양을 싣고 나머지는 이름만 (틀리게 부르면 오류 답에 모양이 온다)
     const changeGuide = [...changeMethods.filter((m) => COMMON_CHANGES.has(m)).map((m) => `${m}${SECRETARY_SIGNATURES[m] ?? '()'}`), `그 밖: ${changeMethods.filter((m) => !COMMON_CHANGES.has(m)).join(', ')}`].join('\n')
-    return sdk.createSdkMcpServer({
-      name: 'secretary',
-      tools: [
-        sdk.tool(
+    return registerLocalMcp('secretary', 'secretary', [
+        defineTool(
           'overview',
           '사무실 현황을 짧게. section: all(직원+결재 대기, 기본) · people(직원 상태) · approvals(결재·질문·기획 대기와 id) · tasks(열린 업무 카드와 id) · org(팀·랩·멤버와 id) · schedules(예약 업무 전부와 id) · settings(설정·자동결재·이번 달 비용). 질문에 필요한 section만.',
           { section: z.enum(['all', 'people', 'approvals', 'tasks', 'org', 'settings', 'schedules']).optional() },
           async ({ section }) => doc(`현황: ${section ?? 'all'}`, compactOverview(this.office.snapshot(), section ?? 'all')),
         ),
-        sdk.tool('staff_detail', '직원 한 명 자세히: 업무 지침 원문(점검·첨삭용)·작업 폴더·결재 방식·장비(연결 도구·스킬·예산)·참고 문서·결재 대기·오늘 기록.', { staffId: z.string() }, async ({ staffId }) => {
+        defineTool('staff_detail', '직원 한 명 자세히: 업무 지침 원문(점검·첨삭용)·작업 폴더·결재 방식·장비(연결 도구·스킬·예산)·참고 문서·결재 대기·오늘 기록.', { staffId: z.string() }, async ({ staffId }) => {
           const snap = this.office.snapshot()
           const record = snap.staff.some((x) => x.id === staffId && x.kind === 'hired') ? this.office.getRecord(staffId) : null
           return doc('직원', compactStaffDetail(snap, staffId, record))
         }),
-        sdk.tool(
+        defineTool(
           'period_summary',
           '기간 요약 (밤사이·오늘·이번 주): 직원별 완료·보고·오류, 끝낸 업무 카드, 자동결재 요약(대신 승인·대신 답한 질문), 지금 결재함에 남은 질문. hours: 지금부터 몇 시간 전까지 (밤사이는 보통 14, 오늘은 자정부터면 생략하고 today: true).',
           { hours: z.number().min(1).max(168).optional(), today: z.boolean().optional() },
@@ -432,7 +433,7 @@ export class Secretary {
             return doc('기간 요약', compactPeriod({ since, until, snapshot: this.office.snapshot(), logs: this.office.timeline(since), autoLog: this.office.autoApproveLog() }))
           },
         ),
-        sdk.tool(
+        defineTool(
           'read',
           `그 밖의 조회 (바꾸지 않음): ${readMethods.join(', ')}. 인자: getRecord(staffId) · staffActivity(staffId)("OO 왜 멈췄어?"·일하는지 확인 — 마지막 활동·대기 결재·최근 오류·대기열을 보고 멈춤인지 오래 생각인지 답한다) · timeline(sinceMs) · dailyReport(dateMs) · payslip("YYYY-MM"). refreshPlanUsage·draftManual은 대표가 물었을 때만.`,
           { method: z.enum(readMethods), args: z.array(z.any()).optional().describe('인자 배열 (없으면 [])') },
@@ -445,7 +446,7 @@ export class Secretary {
             }
           },
         ),
-        sdk.tool(
+        defineTool(
           'propose',
           `무언가를 바꾸는 일을 확인 카드로 제안한다. 실행하지 않는다 — 대표가 카드에서 [실행]을 눌러야 실행된다. 앞 단계 결과는 "$1.id"처럼 참조. 메서드와 인자 모양(args 배열은 이 순서, 객체 인자는 객체 하나):\n${changeGuide}\n${BATCH_GUIDE}`,
           {
@@ -476,7 +477,7 @@ export class Secretary {
             return text(`확인 카드를 만들었어요 (${r.card.steps.length}단계${r.card.compares?.length ? `, 비교 보기 ${r.card.compares.length}개` : ''}). 아직 실행되지 않았어요 — 대표에게 "이렇게 할까요?"라고 짧게 알려 주세요.`)
           },
         ),
-        sdk.tool(
+        defineTool(
           'propose_edit',
           '글을 다듬은 수정본을 원문과 나란히 보여 주는 첨삭 카드. 적용은 대표가 한다. original은 staff_detail 등으로 조회한 원문 그대로.',
           {
@@ -499,7 +500,7 @@ export class Secretary {
             return text('첨삭 카드를 만들었어요. 대표가 [적용]을 눌러야 반영돼요.')
           },
         ),
-        sdk.tool(
+        defineTool(
           'read_manual',
           '매뉴얼 한 개의 본문 전체와 프로세스 단계를 원문 그대로 읽는다 (합치기·새로 쓰기·고치기 전에 반드시). 이름·범위는 read의 listManuals에서. 바꾸지 않는다.',
           { name: z.string(), scope: z.enum(['user', 'project']).optional(), projectDir: z.string().optional().describe('같은 이름이 프로젝트마다 있을 때') },
@@ -509,7 +510,7 @@ export class Secretary {
             return doc(`매뉴얼: ${name}`, found.map(compactManual).join('\n\n'))
           },
         ),
-        sdk.tool(
+        defineTool(
           'office_layout',
           '사무실 배치: 층마다 놓인 가구(uid·이름·칸·방향)와 서랍에 있는 가구. 가구를 놓기·옮기기·치우기 전에. floor를 주면 그 층만.',
           { floor: z.number().int().min(1).max(5).optional() },
@@ -518,7 +519,7 @@ export class Secretary {
             return doc('사무실 배치', layoutText(snap.shop, snap.company.level, floor ?? null))
           },
         ),
-        sdk.tool(
+        defineTool(
           'arrange_office',
           '"알아서 배치해줘": 가지고 있는 가구로 한 층의 배치안을 앱이 만들고, 지금 ↔ 바꾼 뒤 그림이 든 확인 카드를 바로 올린다(그 층을 비운 뒤 차례로 놓기). 실행은 대표가 한다. propose를 따로 부르지 않는다.',
           { floor: z.number().int().min(1).max(5).optional().describe('층 (없으면 1층)') },
@@ -541,11 +542,11 @@ export class Secretary {
             )
           },
         ),
-        sdk.tool('undo_stow', '"되돌려줘": 마지막으로 치운 가구를 원래 자리로 되돌리는 확인 카드를 다시 올린다 (알아서 배치 뒤라면 새 배치를 먼저 치운다).', {}, async () => {
+        defineTool('undo_stow', '"되돌려줘": 마지막으로 치운 가구를 원래 자리로 되돌리는 확인 카드를 다시 올린다 (알아서 배치 뒤라면 새 배치를 먼저 치운다).', {}, async () => {
           const card = this.proposeUndo()
           return text(card ? '되돌리기 카드를 올렸어요. 대표가 [실행]을 눌러야 되돌려져요.' : '최근에 치운 가구 기록이 없어요(앱을 다시 켜면 지워져요). 사무실 꾸미기에서 직접 다시 놓도록 [사무실 열기](#view=map)를 안내해 주세요.')
         }),
-        sdk.tool(
+        defineTool(
           'read_guide',
           '앱 사용법 근거: spec(기능별 구현 기록)·changelog(업데이트 소식, 쉬운 말)에서 query 낱말이 든 줄만. query 없이 부르면 목차만.',
           { doc: z.enum(['spec', 'changelog']), query: z.string().optional() },
@@ -555,8 +556,7 @@ export class Secretary {
             return doc(name, guideLines(fs.readFileSync(file, 'utf8'), query))
           },
         ),
-      ],
-    })
+    ])
   }
 
   // ── 첨삭 대상 ─────────────────────────────────────────

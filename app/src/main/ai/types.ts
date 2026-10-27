@@ -1,12 +1,20 @@
 // 공급자 중립 계약 — 직원 세션(AgentRuntime)과 앱 내부 AI(AiBackend). 구현은 공급자별 파일(claude.ts …)에 둔다.
-// M1 범위: MCP 서버 설정·사용률 정보는 아직 Claude SDK 모양을 그대로 쓴다 (Codex 연결 때 중립화).
-import type { McpServerConfig, SDKRateLimitInfo } from '@anthropic-ai/claude-agent-sdk'
+import type { McpConfig } from '../../shared/customMcp.ts'
 import type { AiProvider, Attachment, ModelChoice } from '../../shared/types'
 import type { RawCommand } from '../../shared/slashCommands.ts'
 
 export type { AiProvider }
-export type RuntimeMcpServer = McpServerConfig
-export type RateLimitInfo = SDKRateLimitInfo
+/** 직원 세션에 붙이는 MCP 서버 (stdio·http·sse — 공급자별 설정 형식으로는 각 런타임이 바꾼다) */
+export type RuntimeMcpServer = McpConfig
+
+/** 플랜 사용률 이벤트. 사용률은 0~1 비율, 리셋 시각은 초 단위. unifiedWindows는 창별 값(five_hour·seven_day …) */
+export interface RateLimitInfo {
+  status: 'allowed' | 'allowed_warning' | 'rejected'
+  resetsAt?: number
+  rateLimitType?: string
+  utilization?: number
+  unifiedWindows?: Record<string, { utilization?: number; resetsAt?: number }>
+}
 
 /** 도구 사용 판정 (결재 결과) */
 export type ToolDecision = { behavior: 'allow'; updatedInput?: Record<string, unknown> } | { behavior: 'deny'; message: string; interrupt?: boolean }

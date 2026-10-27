@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { app } from 'electron'
-import type { McpServerConfig } from '@anthropic-ai/claude-agent-sdk'
+import type { McpConfig } from '../shared/customMcp.ts'
 import { t } from '../shared/i18n/index.ts'
 import { IS_WINDOWS, toolEnv } from './platform'
 
@@ -70,7 +70,7 @@ export function browserOutputDir(staffId: string) {
 }
 
 /** 세션 mcpServers에 넣을 Playwright MCP 설정. 실행 환경이 없으면 null */
-export function browserMcpConfig(staffId: string): McpServerConfig | null {
+export function browserMcpConfig(staffId: string): McpConfig | null {
   const npx = findNpx()
   if (!npx) return null
   const profile = path.join(browserProfileDir(staffId), 'profile')

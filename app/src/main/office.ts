@@ -96,7 +96,6 @@ import { COMPUTER_EQUIPMENT } from '../shared/computerTools.ts'
 import { BROWSER_EQUIPMENT } from '../shared/browserTools.ts'
 import { parseTranslations, pendingDescriptions, slashAction, toStaffCommands, translationPrompt, type RawCommand, type StaffCommand } from '../shared/slashCommands.ts'
 import { listManuals, removeManual, saveManual } from './manuals'
-import type { SDKRateLimitInfo } from '@anthropic-ai/claude-agent-sdk'
 import {
   ACHIEVEMENTS,
   dailyMissions,
@@ -122,8 +121,9 @@ import {
   type Zone,
 } from '../shared/economy'
 import { HiredStaffManager } from './hired'
-import { askOnce } from './ai'
+import { askOnce, type RateLimitInfo } from './ai'
 import { probeMcpStatus, sdk } from './ai/claude'
+import { defineTool, registerLocalMcp, type LocalMcpHandle } from './mcp/localMcp'
 import { autoApprove, autoKindOf, autoStep, autoSummaryText, autoWindow, AWAY_ANSWER, formatRemaining, planToConfig, type AutoApprovePlan } from '../shared/autoApprove'
 import { commitAll, folderState, pushAndPr, repoRoot, restoreFiles, snapshotTree, treeDiff, workBaseStillValid, workChanges } from './review'
 import { readExternalDay } from './transcript'
@@ -833,6 +833,8 @@ export class Office extends EventEmitter<{
 
   /** 중단된 직원의 업무 카드는 할 일로 되돌리고, 기획 하위 업무였으면 기획도 멈춰 둔다 (다음 단계가 저절로 시작되지 않게) */
   private onStopped(staffId: string) {
+    this.officeMcp.get(staffId)?.dispose()
+    this.officeMcp.delete(staffId)
     void this.persistWork(staffId) // 마지막 수정까지 반영한 폴더 상태로 다시 저장
     const origins = this.origins.get(staffId) ?? []
     const queued = this.taskQueue.get(staffId) ?? []
@@ -1469,14 +1471,15 @@ export class Office extends EventEmitter<{
     return lines.join('\n')
   }
 
-  /** 직원 세션에 붙는 사무실 MCP 서버 */
+  /** 직원별 사무실 MCP 등록 (해고·종료 때 토큰을 폐기한다) */
+  private officeMcp = new Map<string, LocalMcpHandle>()
+
+  /** 직원 세션에 붙는 사무실 MCP 서버 (로컬 HTTP, 직원별 토큰) */
   private officeTools(staffId: string) {
     const text = (t: string) => ({ content: [{ type: 'text' as const, text: t }] })
     const describe = (m: db.StoredStaff) => `- ${m.name} (${m.role}): ${m.status}${m.activity ? ` — ${m.activity}` : ''}`
-    return sdk.createSdkMcpServer({
-      name: 'office',
-      tools: [
-        sdk.tool('team', t('staff.tool.team.desc'), {}, async () => {
+    const handle = registerLocalMcp(staffId, 'office', [
+        defineTool('team', t('staff.tool.team.desc'), {}, async () => {
           const team = this.teamOf(staffId)
           const parts: string[] = []
           if (team)
@@ -1491,7 +1494,7 @@ export class Office extends EventEmitter<{
           }
           return text(parts.join('\n\n') || t('staff.tool.team.none'))
         }),
-        sdk.tool(
+        defineTool(
           'delegate',
           t('staff.tool.delegate.desc'),
           { member: z.string().describe(t('staff.tool.delegate.member')), instruction: z.string().describe(t('staff.tool.delegate.instruction')) },
@@ -1507,7 +1510,7 @@ export class Office extends EventEmitter<{
             return text(t('staff.tool.delegate.done', { name: target.name }))
           },
         ),
-        sdk.tool(
+        defineTool(
           'save_learning',
           t('staff.tool.learning.desc'),
           { title: z.string().describe(t('staff.tool.learning.title')), body: z.string().describe(t('staff.tool.learning.body')), tags: z.array(z.string()).optional().describe(t('staff.tool.learning.tags')) },
@@ -1521,7 +1524,7 @@ export class Office extends EventEmitter<{
             }
           },
         ),
-        sdk.tool(
+        defineTool(
           'report_image',
           t('staff.tool.image.desc'),
           { path: z.string().describe(t('staff.tool.image.path')), caption: z.string().describe(t('staff.tool.caption')) },
@@ -1533,7 +1536,7 @@ export class Office extends EventEmitter<{
             return text(t('staff.tool.image.done'))
           },
         ),
-        sdk.tool(
+        defineTool(
           'capture_screen',
           t('staff.tool.screen.desc'),
           { caption: z.string().describe(t('staff.tool.caption')) },
@@ -1553,7 +1556,7 @@ export class Office extends EventEmitter<{
             return text(t('staff.tool.screen.done'))
           },
         ),
-        sdk.tool(
+        defineTool(
           'propose_plan',
           t('staff.tool.plan.desc'),
           {
@@ -1624,7 +1627,7 @@ export class Office extends EventEmitter<{
             return text(t('staff.tool.plan.asked', { note: absorbNote }))
           },
         ),
-        sdk.tool(
+        defineTool(
           'add_task',
           t('staff.tool.add.desc'),
           { title: z.string(), detail: z.string().optional(), assignee: z.string().optional().describe(t('staff.tool.add.assignee')) },
@@ -1639,8 +1642,9 @@ export class Office extends EventEmitter<{
             return text(t('staff.tool.add.assigned', { name: this.hired.get(toId)?.name ?? '', title: card.title, note: assignee && !named ? t('staff.tool.add.sentToLead', { name: assignee }) : '' }))
           },
         ),
-      ],
-    })
+    ])
+    this.officeMcp.set(staffId, handle)
+    return handle.config
   }
 
   // ── 랩 ────────────────────────────────────────────────
@@ -2396,8 +2400,8 @@ export class Office extends EventEmitter<{
    * 사용률은 0~1 비율, 리셋 시각은 초 단위로 온다.
    * 창별 값은 타입에 없는 unifiedWindows(five_hour·seven_day …)에 함께 오므로 그것을 우선 읽는다 (2026-10 CLI에서 확인)
    */
-  private onRateLimit(info: SDKRateLimitInfo) {
-    const windows = (info as SDKRateLimitInfo & { unifiedWindows?: Record<string, { utilization?: number; resetsAt?: number }> }).unifiedWindows
+  private onRateLimit(info: RateLimitInfo) {
+    const windows = info.unifiedWindows
     const entries = windows ? Object.entries(windows) : info.rateLimitType ? [[info.rateLimitType, { utilization: info.utilization, resetsAt: info.resetsAt }] as const] : []
     if (entries.length === 0) return
     const now = Date.now()
