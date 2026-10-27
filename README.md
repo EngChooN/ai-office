@@ -4,10 +4,10 @@
 
 A personal PoC (Electron desktop app) that turns AI sessions (currently Claude Code) into **staff** you can hire, direct and review together, like one office. (Formerly named Claude Office — existing data is copied automatically on first launch; the old folder is left untouched.)
 
-- Status: **0.13.2** (2026-10-27) — Office map (team zones, meeting rooms, lounge) · Team / team-lead delegation · Task board · Approval inbox · Group chat · Meetings · Scheduled tasks · Reports · Payslips · Decorating
+- Status: **0.14.0** (2026-10-27) — GPT staff (beta) · Office map (team zones, meeting rooms, lounge) · Team / team-lead delegation · Task board · Approval inbox · Group chat · Meetings · Scheduled tasks · Reports · Payslips · Decorating
 - Stack: Electron Forge + Vite · React 19 · Zustand · Tailwind 4 + shadcn/ui · Phaser 4 · SQLite (`node:sqlite`) · Claude Agent SDK
 
-## Installation (0.13.2)
+## Installation (0.14.0)
 - Open `app/out/make/dmg/arm64/AI Office.dmg` and drag it into Applications
 - Apple Silicon only · Not signed or notarized → if you see an "unidentified developer" warning the first time you open it, go to System Settings › Privacy & Security › "Open Anyway"
 - Requirement: Claude Code must be signed in on that Mac (staff work under that account, and usage is billed to it)
