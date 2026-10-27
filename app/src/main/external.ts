@@ -86,6 +86,8 @@ export class ExternalWatcher {
   private server: http.Server | null = null
   private asks = new Map<string, PendingAsk>()
   private codexScan: { at: number; list: CodexExternalSession[] } = { at: 0, list: [] }
+  /** 촬영용 데모 세션 (main/demoLive.ts) — 레지스트리에 없어도 이 앱 프로세스로 살아 있는 것처럼 '일하는 중'으로 보인다 */
+  private demoSessions: RegistryEntry[] = []
 
   constructor(
     private hooks: ExternalHooks,
@@ -178,8 +180,13 @@ export class ExternalWatcher {
     return [...this.staff.values()]
   }
 
+  setDemoSessions(list: { sessionId: string; cwd: string; name: string; startedAt: number }[]) {
+    this.demoSessions = list.map((e) => ({ ...e, pid: process.pid, status: 'busy', entrypoint: 'cli' }))
+    this.poll()
+  }
+
   private poll() {
-    const entries = readRegistry().filter((e) => isAlive(e.pid) && !this.isOwnSession(e.sessionId))
+    const entries = [...readRegistry(), ...this.demoSessions].filter((e) => isAlive(e.pid) && !this.isOwnSession(e.sessionId))
     const seen = new Set<string>()
     // 고용 직원 자리 + 이미 앉은 외부 직원 자리를 피해 빈 책상을 순서대로 배정한다
     const taken = this.takenDesks()

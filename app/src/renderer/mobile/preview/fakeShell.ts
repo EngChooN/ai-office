@@ -7,8 +7,8 @@ import { APP_VERSION } from '@/lib/changelog'
 import { companyFromXp, DEFAULT_EQUIPMENT, DEFAULT_SETTINGS, type ChatMessage, type OfficeSnapshot, type Staff } from '@shared/types'
 import type { GridItem, SeatSetPart } from '@shared/iso/furniture'
 import type { KnowledgeInput } from '@shared/knowledge'
-import { LANGS, type Lang } from '@shared/i18n'
-import { DEMO_CHAT, DEMO_LAB, DEMO_LIVE, DEMO_MEETING, DEMO_STAFF, DEMO_TASKS, DEMO_TEAMS } from './demoData'
+import { LANGS, t, type Lang } from '@shared/i18n'
+import { demoApprovalId, DEMO_CHAT, DEMO_EQUIPMENT, DEMO_EXTERNAL, DEMO_LAB, DEMO_LIVE, DEMO_MEETING, DEMO_PLAN_USAGE, DEMO_STAFF, DEMO_TASKS, DEMO_TEAMS } from './demoData'
 
 // 미리보기도 휴대폰처럼 손가락 기기로 친다 (단축키 문구·Enter 줄바꿈 확인용)
 const realMatchMedia = window.matchMedia.bind(window)
@@ -298,17 +298,26 @@ if (demo && LANGS.includes(demo)) {
     ...DEMO_STAFF.map((s) => {
       const live = DEMO_LIVE[s.id]
       const a = live.approval
-      return mk(s.id, s.name[demo], s.role[demo], s.avatar, s.teamId, live.status, a ? a.summary[demo] : (live.activity ?? ''), {
+      return mk(s.id, s.name[demo], s.role[demo], s.avatar, s.teamId, live.status, live.activity ?? (a ? a.summary[demo] : ''), {
+        provider: s.provider ?? 'claude',
         cwd: DEMO_LAB.cwd,
         ownCwd: DEMO_LAB.cwd,
         labIds: [DEMO_LAB.id],
         statusSince: now - 4 * min,
+        ...(DEMO_EQUIPMENT[s.id] ? { equipment: { ...DEFAULT_EQUIPMENT, mcpServers: DEMO_EQUIPMENT[s.id] } } : {}),
         approvals: a
-          ? [{ id: `a-${s.id}`, staffId: s.id, toolName: a.toolName, summary: a.summary[demo], createdAt: now - 4 * min, ...(a.options ? { questions: [{ question: a.summary[demo], header: '', multiSelect: false, options: a.options[demo].map((label) => ({ label, description: '' })) }] } : {}) }]
+          ? [{ id: demoApprovalId(s.id), staffId: s.id, toolName: a.toolName, summary: a.summary[demo], createdAt: now - 4 * min, ...(a.options ? { questions: [{ question: a.summary[demo], header: '', multiSelect: false, options: a.options[demo].map((label) => ({ label, description: '' })) }] } : {}) }]
           : [],
       })
     }),
+    // 터미널에서 돌아가는 외부 세션 ('일하는 중')
+    ...DEMO_EXTERNAL.map((e, i) =>
+      mk(`ext:${e.sessionId}`, e.name[demo], t('external.roleTerminal', undefined, demo), 11 + i, null, 'working', t('external.working', undefined, demo), { kind: 'external', cwd: e.cwd, ownCwd: e.cwd, labIds: [], sessionId: e.sessionId, costUsd: 0, tokensIn: 0, tokensOut: 0, statusSince: now - e.agoMin * min, todayDone: 0 }),
+    ),
   )
+  const usage = (list: (typeof DEMO_PLAN_USAGE)['claude']) => list.map((u) => ({ type: u.type, percent: u.percent, resetsAt: now + u.resetsInMin * min, status: 'allowed' as const, updatedAt: now - 2 * min }))
+  snapshot.planUsage = usage(DEMO_PLAN_USAGE.claude)
+  snapshot.codexUsage = usage(DEMO_PLAN_USAGE.codex)
   snapshot.teams = DEMO_TEAMS.map((t) => ({ id: t.id, name: t.name[demo], color: t.color, leadId: t.leadId, kind: 'hired' })) as unknown as OfficeSnapshot['teams']
   snapshot.labs = [{ id: DEMO_LAB.id, name: DEMO_LAB.name[demo], color: DEMO_LAB.color, goal: DEMO_LAB.goal[demo], cwd: DEMO_LAB.cwd, leadId: DEMO_LAB.leadId, memberIds: staff.map((s) => s.id) }]
   snapshot.tasks = DEMO_TASKS.map((t) => ({
@@ -343,7 +352,7 @@ if (demo && LANGS.includes(demo)) {
   snapshot.schedules = []
   snapshot.settings = { ...snapshot.settings, language: demo }
   snapshot.secretary = { ...snapshot.secretary!, messages: [] }
-  chat.splice(0, chat.length, ...DEMO_CHAT.map((c, i) => ({ id: i + 1, ts: now - c.ago * min, from: c.from, text: c.text[demo] }) as ChatMessage))
+  chat.splice(0, chat.length, ...DEMO_CHAT.map((c, i) => ({ id: i + 1, ts: now - c.ago * min, from: c.from, text: c.text[demo], ...(c.approvalOf ? { approval: { id: demoApprovalId(c.approvalOf) } } : {}) }) as ChatMessage))
   slip.rows = staff.slice(0, 6).map((s) => ({ staffId: s.id, name: s.name, role: s.role, avatar: s.avatar, costUsd: 3.21, tokensIn: 2_100_000, tokensOut: 180_000, tasksDone: 9 }))
 }
 

@@ -9,6 +9,7 @@ import { claudeBinaryPath } from './ai/claude'
 import { codexBinaryPath } from './ai/codex'
 import { loginCodex } from './ai/codexLogin'
 import { classifyClaude, isRunFailure, isTimedOut, keepPrevOnUnknown, probeCodex } from './ai/providerStatus'
+import { demoProviders } from './demoLive'
 import { IS_WINDOWS, toolEnv, WHICH } from './platform'
 
 // 첫 실행 점검: 로그인 상태 확인과 로그인 창 띄우기
@@ -38,6 +39,8 @@ export const lastProviderStatus = () => lastProviders
 
 /** 공급자(Claude·Codex)별 설치·로그인 상태 — 설정 화면 카드·온보딩 게이트용 */
 export async function providerStatus(): Promise<ProvidersStatus> {
+  const demo = demoProviders()
+  if (demo) return (lastProviders = demo)
   const bin = claudeBinaryPath()
   const claude = (async () => {
     if (!fs.existsSync(bin)) return classifyClaude(false, null)
