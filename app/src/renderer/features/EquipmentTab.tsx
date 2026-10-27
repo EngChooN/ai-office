@@ -55,7 +55,7 @@ export function EquipmentTab({ staff }: { staff: Staff }) {
 
   return (
     <section className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-4 text-sm">
-      <McpSection cwd={staff.cwd} eq={eq} setEq={setEq} catalog={catalog} setCatalog={setCatalog} />
+      <McpSection cwd={staff.cwd} eq={eq} setEq={setEq} catalog={catalog} setCatalog={setCatalog} provider={staff.provider} />
 
       <div className="flex flex-col gap-2">
         <h3 className="text-xs font-semibold">🧰 {t('equipment.skills.title')}</h3>

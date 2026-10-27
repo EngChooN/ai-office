@@ -1,6 +1,9 @@
-import type { AiProvider } from '../../shared/types'
+import type { AiProvider, InternalAi, ProvidersStatus } from '../../shared/types'
 import { CodexRuntime } from './codex'
+import { CodexBackend } from './codexBackend'
 import { ClaudeBackend, ClaudeRuntime, claudeModelId } from './claude'
+import { FallbackBackend } from './fallback'
+import { internalProviders } from './aiSelect'
 import type { AgentRuntime, AiBackend, AskOptions, RuntimeEvent } from './types'
 
 export type * from './types'
@@ -17,8 +20,15 @@ export function modelIdFor(provider: AiProvider, model: Parameters<typeof claude
   return provider === 'claude' ? claudeModelId(model) : undefined
 }
 
-// 앱 내부 AI가 쓸 공급자는 M2에서 설정(internalAi)·감지 결과로 고른다. 지금은 Claude 고정
-const backend = new ClaudeBackend()
+// 앱 내부 AI의 공급자 선택: 설정(internalAi)과 마지막 감지 결과를 main이 넘겨 준다. 넘기지 않으면 Claude 하나 (기존 동작)
+let config: { setting: () => InternalAi; status: () => ProvidersStatus | null } = { setting: () => 'claude', status: () => null }
+export function configureAi(c: typeof config) {
+  config = c
+}
+
+const backends: Record<AiProvider, AiBackend> = { claude: new ClaudeBackend(), codex: new CodexBackend() }
+
+const backend = new FallbackBackend(() => internalProviders(config.setting(), config.status()), (p) => backends[p])
 export function aiBackend(): AiBackend {
   return backend
 }

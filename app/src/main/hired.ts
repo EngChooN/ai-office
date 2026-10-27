@@ -1,5 +1,5 @@
 import path from 'node:path'
-import type { Approval, Attachment, Staff, StaffQuestion } from '../shared/types'
+import type { AiProvider, Approval, Attachment, Staff, StaffQuestion } from '../shared/types'
 import { findRiskyCommand, isBashPolicyMark, isReadOnlyCommand, READ_ONLY_BASH, RISKY_BASH } from '../shared/bashPolicy'
 import { toQuestions } from './external'
 import { isRefDocRead } from '../shared/refDocs'
@@ -45,7 +45,7 @@ export interface HiredHooks {
    */
   autoDecide(staffId: string, toolName: string, input: Record<string, unknown>, summary: string, questions?: StaffQuestion[]): Promise<{ answers?: Record<string, string> }> | null
   /** Claude 구독 사용률 알림 (값이 바뀔 때만 온다) */
-  rateLimit(info: RateLimitInfo): void
+  rateLimit(info: RateLimitInfo, provider: AiProvider): void
   /** 세션이 결재 요청을 거둬들임 (취소·세션 재시작) */
   cancelApproval(approvalId: string): void
   /** backgroundTasks: 턴이 끝날 때 세션에 아직 돌고 있는 백그라운드 작업 설명 (끝나도 직원을 다시 깨우지 않으니 점검용) */
@@ -256,6 +256,7 @@ class Worker {
       approvalMode: s.approvalMode === 'acceptEdits' ? 'acceptEdits' : 'ask',
       systemPromptAppend: capPrompt([t('staff.identity', { name: s.name, role: s.role }), t('staff.language'), this.hooks.context(s.id), refDocs.prompt, browserGuide, computerGuide, t('staff.captureGuide'), capPrompt(s.systemPrompt, PERSONA_MAX)].filter(Boolean).join('\n'), PROMPT_MAX),
       mcpServers: { ...mcpServers, office: this.hooks.officeTools(s.id) },
+      selectedMcp: s.equipment.mcpServers,
       skills: s.equipment.skills,
       disallowedTools: s.equipment.disallowedTools.filter((t) => !isBashPolicyMark(t)),
       canUseTool: (toolName, input, signal) => {
@@ -329,7 +330,7 @@ class Worker {
       return
     }
     if (m.type === 'rateLimit') {
-      this.hooks.rateLimit(m.info)
+      this.hooks.rateLimit(m.info, this.staff.provider)
       return
     }
     if (m.type === 'commands') {

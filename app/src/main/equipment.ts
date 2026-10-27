@@ -10,6 +10,7 @@ import { browserUnavailable } from './browser'
 import { COMPUTER_EQUIPMENT } from '../shared/computerTools.ts'
 import { computerPermissionNotice, computerUnavailable, isComputerSupported } from './computer'
 import * as db from './db'
+import { codexAssets } from './ai/codexAssets'
 import { readMcpSources, type McpEntry, type McpSourceInput } from './mcpSources'
 
 // 장비 창고: 이 컴퓨터에 설정된 MCP 서버(출처는 mcpSources)와 스킬을 모아 직원에게 지급할 수 있게 한다
@@ -49,6 +50,12 @@ export function mcpConfigs(cwd: string) {
   return out
 }
 
+/** Codex 설정(~/.codex/config.toml)의 MCP 서버 — 이름·전송 방식만 (설정 값은 읽지 않는다). Codex 직원에게만 쓸 수 있다: Codex가 자기 설정으로 직접 띄운다 */
+function codexMcpEntries(taken: Set<string>): EquipmentMcp[] {
+  // 같은 이름이 Claude 쪽에도 있으면 그 설정을 Codex 직원에게도 넘기므로 한 줄만 둔다
+  return codexAssets.mcp.filter((m) => !taken.has(m.name)).map((m) => ({ name: m.name, source: t('equip.source.codex'), detail: m.transport, sourceKind: 'codex' as const, status: 'ok' as const }))
+}
+
 function sourceLabel(e: McpEntry) {
   return e.kind === 'plugin' ? t('equip.source.plugin', { name: e.origin ?? '' }) : t(`equip.source.${e.kind}` as TKey)
 }
@@ -83,13 +90,15 @@ export function equipmentCatalog(cwd: string): EquipmentCatalog {
   const unavailable = browserUnavailable()
   // 앱 기본 장비 '브라우저'는 사용자 MCP 카탈로그와 별개로 늘 첫 줄에 (같은 이름의 사용자 MCP는 가린다)
   const browser = { name: BROWSER_EQUIPMENT, source: t('equip.browser.source'), detail: t('equip.browser.desc'), isBuiltin: true, ...(unavailable ? { unavailable } : {}) }
+  const claudeEntries = mcpEntries(cwd)
+    .filter((e) => e.name !== BROWSER_EQUIPMENT && e.name !== COMPUTER_EQUIPMENT)
+    .map((e) => ({ name: e.name, source: sourceLabel(e), detail: e.detail, sourceKind: e.kind, status: e.status, ...(e.reason ? { reason: e.reason, reasonText: t(`equip.reason.${e.reason}`) } : {}) }))
   const mcp: EquipmentMcp[] = [
     { ...browser, sourceKind: 'builtin', status: unavailable ? 'unsupported' : 'ok' },
     // 앱 기본 장비 '컴퓨터 조작'은 맥에서만 보인다
     ...(isComputerSupported() ? [computerEntry()] : []),
-    ...mcpEntries(cwd)
-      .filter((e) => e.name !== BROWSER_EQUIPMENT && e.name !== COMPUTER_EQUIPMENT)
-      .map((e) => ({ name: e.name, source: sourceLabel(e), detail: e.detail, sourceKind: e.kind, status: e.status, ...(e.reason ? { reason: e.reason, reasonText: t(`equip.reason.${e.reason}`) } : {}) })),
+    ...claudeEntries,
+    ...codexMcpEntries(new Set([BROWSER_EQUIPMENT, COMPUTER_EQUIPMENT, ...claudeEntries.map((e) => e.name)])),
   ]
   const userDir = path.join(HOME, '.claude', 'skills')
   const projectDir = path.join(cwd, '.claude', 'skills')

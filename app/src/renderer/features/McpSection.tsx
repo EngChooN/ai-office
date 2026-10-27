@@ -8,14 +8,14 @@ import { t } from '@shared/i18n'
 import { BROWSER_EQUIPMENT } from '@shared/browserTools'
 import { COMPUTER_EQUIPMENT } from '@shared/computerTools'
 import type { CustomMcp } from '@shared/customMcp'
-import type { Equipment, EquipmentCatalog, EquipmentMcp, McpSourceKind } from '@shared/types'
+import type { AiProvider, Equipment, EquipmentCatalog, EquipmentMcp, McpSourceKind } from '@shared/types'
 import { McpAddDialog, type McpAddTab } from './McpAddDialog'
 
 // 장비 탭 › 연결 도구: 한 줄에 상태 점·이름·켜기 스위치. 출처·명령·이유·고치기/삭제는 줄을 펼쳐서 본다 + 새로 고침 + 직접 추가
 // 휴대폰에서는 목록과 켜기만 (새로 고침·추가·고치기·삭제는 PC 전용 기능)
 
 /** 목록 순서(출처별) — claude.ai 커넥터는 맨 아래에 접어 둔다 */
-const GROUP_ORDER: McpSourceKind[] = ['builtin', 'user', 'local', 'project', 'plugin', 'custom', 'desktop', 'settings', 'claudeai']
+const GROUP_ORDER: McpSourceKind[] = ['builtin', 'user', 'local', 'project', 'plugin', 'custom', 'desktop', 'settings', 'codex', 'claudeai']
 const REFRESHED_SHOWN_MS = 3000
 
 type RefreshState = 'idle' | 'busy' | 'done' | 'failed'
@@ -38,16 +38,19 @@ export function McpSection({
   setEq,
   catalog,
   setCatalog,
+  provider = 'claude',
 }: {
   cwd: string
   eq: Equipment
   setEq: React.Dispatch<React.SetStateAction<Equipment>>
   catalog: EquipmentCatalog | null
   setCatalog: (c: EquipmentCatalog) => void
+  /** 직원의 공급자 — 연결할 수 없는 출처는 숨긴다 (Claude 직원: Codex 설정, Codex 직원: claude.ai 커넥터) */
+  provider?: AiProvider
 }) {
   const [refresh, setRefresh] = useState<RefreshState>('idle')
   const [dialog, setDialog] = useState<{ tab: McpAddTab; editing: CustomMcp | null } | null>(null)
-  const servers = catalog?.mcpServers ?? []
+  const servers = (catalog?.mcpServers ?? []).filter((m) => (provider === 'codex' ? m.sourceKind !== 'claudeai' : m.sourceKind !== 'codex'))
   const kindOf = (m: EquipmentMcp): McpSourceKind => (m.isBuiltin ? 'builtin' : (m.sourceKind ?? 'user'))
 
   const handleRefresh = async () => {

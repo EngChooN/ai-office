@@ -60,7 +60,7 @@ import {
 } from '../shared/types'
 import { buildStaffActivity } from '../shared/staffActivity'
 import { answersText } from '../shared/chatApproval'
-import { openResumeInTerminal } from './setup'
+import { lastProviderStatus, openResumeInTerminal } from './setup'
 import { decisionSections, decisionSectionsOf, decisionsContext, delegatedPrompt, parseDelegatedChoice, recordAnswer, recordDelegated, splitDecision, withDecisionSections } from '../shared/meetingDecisions'
 import { isAbsorbedOpen, matchAbsorbed, meetingCardItems, meetingResultCard, pickPlanCard } from '../shared/planTasks'
 import { shouldNudgeBackground, shouldNudgeLead } from '../shared/leadNudge'
@@ -123,6 +123,8 @@ import {
 import { HiredStaffManager } from './hired'
 import { askOnce, type RateLimitInfo } from './ai'
 import { probeMcpStatus, sdk } from './ai/claude'
+import { codexBinaryPath } from './ai/codex'
+import { readCodexRateLimits, refreshCodexAssets } from './ai/codexAssets'
 import { defineTool, registerLocalMcp, type LocalMcpHandle } from './mcp/localMcp'
 import { autoApprove, autoKindOf, autoStep, autoSummaryText, autoWindow, AWAY_ANSWER, formatRemaining, planToConfig, type AutoApprovePlan } from '../shared/autoApprove'
 import { commitAll, folderState, pushAndPr, repoRoot, restoreFiles, snapshotTree, treeDiff, workBaseStillValid, workChanges } from './review'
@@ -212,6 +214,8 @@ export class Office extends EventEmitter<{
   private commandText = new Map<string, string | null>()
   private commandTextBusy = new Set<string>()
   private planUsage: PlanUsage[] = []
+  /** Codex 사용률 (보류·알림 판정에는 쓰지 않는다 — Claude 직원 흐름과 분리) */
+  private codexUsage: PlanUsage[] = []
   private shop!: ShopState
   /** 레벨업 보상을 어디까지 챙겼는지 (매 갱신마다 DB를 두드리지 않게) */
   private rewardedLevel = 0
@@ -287,7 +291,7 @@ export class Office extends EventEmitter<{
       requestApproval: (a) => this.addApproval(a),
       autoDecide: (id, toolName, input, summary, questions) => this.autoDecide(id, toolName, input, summary, questions),
       cancelApproval: (id) => this.dropApproval(id, '취소됨'),
-      rateLimit: (info) => this.onRateLimit(info),
+      rateLimit: (info, provider) => (provider === 'codex' ? this.onCodexRateLimit(info) : this.onRateLimit(info)),
       finished: (id, summary, backgroundTasks) => this.onFinished(id, summary, backgroundTasks),
       stopped: (id) => this.onStopped(id),
       officeTools: (id) => this.officeTools(id),
@@ -513,6 +517,7 @@ export class Office extends EventEmitter<{
       settings: this.settings,
       monthCostUsd,
       planUsage: this.planUsage,
+      ...(this.codexUsage.length ? { codexUsage: this.codexUsage } : {}),
       planHold: this.planHoldState(),
       funds: this.funds(),
       claimable: this.claimableCount(),
@@ -1765,7 +1770,8 @@ export class Office extends EventEmitter<{
   /** 외부 직원의 대화를 복사(포크)한 분신을 고용해 지시한다. 원래 창의 대화·프로세스는 건드리지 않는다 */
   async forkExternal(staffId: string, text: string, attachments: Attachment[] = []) {
     const s = this.external.find((x) => x.id === staffId)
-    if (!s?.sessionId) return null
+    // Codex 외부 세션은 보기 전용 (분신 만들기는 Claude 세션 복사 기능)
+    if (!s?.sessionId || s.provider === 'codex') return null
     const fork = await sdk.forkSession(s.sessionId, { dir: s.cwd, title: `${s.name} (사무실 분신)` })
     const clone = this.hire({ name: `${s.name}·분신`, role: '분신', avatar: s.avatar, model: 'default', cwd: s.cwd, systemPrompt: '', approvalMode: 'ask', teamId: null })
     db.saveSessionId(clone.id, fork.sessionId)
@@ -2028,6 +2034,8 @@ export class Office extends EventEmitter<{
 
   /** claude.ai 커넥터·인증 상태를 Claude에 물어 다시 확인한다 (실패하면 지난 확인·기록으로 둔다) */
   async refreshEquipment(cwd: string) {
+    // Codex 설정의 MCP 서버·스킬도 같이 다시 읽는다 (Codex가 없거나 실패해도 Claude 쪽 확인은 계속)
+    if (lastProviderStatus()?.codex.state === 'ready') await refreshCodexAssets(codexBinaryPath(), [cwd || os.homedir()]).catch(() => {})
     const status = await probeMcpStatus(cwd || os.homedir())
     if (status) {
       setMcpProbe({
@@ -2400,17 +2408,37 @@ export class Office extends EventEmitter<{
    * 사용률은 0~1 비율, 리셋 시각은 초 단위로 온다.
    * 창별 값은 타입에 없는 unifiedWindows(five_hour·seven_day …)에 함께 오므로 그것을 우선 읽는다 (2026-10 CLI에서 확인)
    */
-  private onRateLimit(info: RateLimitInfo) {
+  private planEntries(info: RateLimitInfo): PlanUsage[] {
     const windows = info.unifiedWindows
     const entries = windows ? Object.entries(windows) : info.rateLimitType ? [[info.rateLimitType, { utilization: info.utilization, resetsAt: info.resetsAt }] as const] : []
-    if (entries.length === 0) return
     const now = Date.now()
-    const next = entries.map(([type, w]): PlanUsage => {
+    return entries.map(([type, w]): PlanUsage => {
       const percent = w.utilization === undefined ? null : Math.round(w.utilization * 1000) / 10
       // 막힌 창은 이벤트의 status가 알려 주고, 나머지는 사용률로 판단한다
       const status = type === info.rateLimitType ? info.status : percent !== null && percent >= 100 ? 'rejected' : 'allowed'
       return { type, percent, resetsAt: w.resetsAt ? w.resetsAt * 1000 : null, status, updatedAt: now }
     })
+  }
+
+  /** Codex 사용률: 창별 값만 카드에 올린다 (한도 보류·알림은 Claude 플랜 전용) */
+  private onCodexRateLimit(info: RateLimitInfo) {
+    const next = this.planEntries(info)
+    if (next.length === 0) return
+    // 플랜이 바뀌면 창 구성이 달라진다(무료 30일 ↔ 유료 5시간·주간) — 새 값으로 통째로 바꾼다
+    this.codexUsage = next
+    this.scheduleEmit()
+  }
+
+  /** Codex 사용량을 app-server에서 읽어 온다 (로그인 안 됐거나 못 읽으면 그대로 둔다) */
+  async refreshCodexUsage() {
+    if (lastProviderStatus()?.codex.state !== 'ready') return
+    const info = await readCodexRateLimits(codexBinaryPath()).catch(() => null)
+    if (info) this.onCodexRateLimit(info)
+  }
+
+  private onRateLimit(info: RateLimitInfo) {
+    const next = this.planEntries(info)
+    if (next.length === 0) return
     this.planUsage = [...this.planUsage.filter((p) => !next.some((n) => n.type === p.type)), ...next]
     db.savePlanUsage(this.planUsage)
     this.checkPlanUsage()
@@ -2421,6 +2449,7 @@ export class Office extends EventEmitter<{
   /** 사용률은 Claude를 부를 때만 오므로, 가장 짧은 호출(haiku 한 번)로 지금 값을 받아 온다 */
   async refreshPlanUsage() {
     // 비용은 1센트도 안 되고 특정 직원 몫이 아니라 급여 명세서에는 넣지 않는다
+    void this.refreshCodexUsage()
     await askOnce({ prompt: '.', system: 'Reply with a single dot.', tier: 'light', cwd: os.homedir(), onRateLimit: (info) => this.onRateLimit(info) })
     return this.planUsage
   }

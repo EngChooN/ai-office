@@ -19,6 +19,8 @@ export type StaffKind = 'hired' | 'external'
 export type StaffStatus = 'idle' | 'working' | 'waiting' | 'offline' | 'error'
 /** 직원·내부 AI를 돌리는 공급자 (고용 후 변경 불가) */
 export type AiProvider = 'claude' | 'codex'
+/** 앱 내부 AI(비서·요약)가 쓸 공급자 — auto는 쓸 수 있는 쪽 (둘 다면 Claude) */
+export type InternalAi = 'auto' | 'claude' | 'codex'
 export type ModelChoice = 'default' | 'opus' | 'sonnet' | 'haiku'
 export type ApprovalMode = 'ask' | 'acceptEdits'
 
@@ -235,7 +237,7 @@ export interface EquipmentCatalog {
 }
 
 /** 연결 도구 출처: Claude Desktop · ~/.claude/settings.json · 플러그인 · 내 계정(~/.claude.json) · 이 폴더(로컬) · 프로젝트 .mcp.json · 직접 추가 · claude.ai 커넥터 */
-export type McpSourceKind = 'builtin' | 'desktop' | 'settings' | 'plugin' | 'user' | 'local' | 'project' | 'custom' | 'claudeai'
+export type McpSourceKind = 'builtin' | 'desktop' | 'settings' | 'plugin' | 'user' | 'local' | 'project' | 'custom' | 'claudeai' | 'codex'
 /** needsAuth: 로그인(OAuth)이 필요 · claudeai: claude.ai 커넥터라 붙일 수 없음 · badConfig: 설정 형식을 알 수 없음 */
 export type McpStatusReason = 'needsAuth' | 'claudeai' | 'badConfig'
 
@@ -562,6 +564,10 @@ export interface Settings {
   isWorkMode: boolean
   /** 0.9.0 안내("이제 연결된 휴대폰이 PC를 전부 조작할 수 있어요")를 봤는지 — 한 번만 띄운다 */
   isFullAccessNoticeSeen: boolean
+  /** 0.14.0 안내 띠("GPT 직원도 고용할 수 있어요")를 닫거나 눌렀는지 — 업데이트한 사람에게 한 번만 띄운다 */
+  isProviderBannerSeen: boolean
+  /** 앱 내부 AI(비서·요약·회의 정리)의 공급자. 한쪽이 로그아웃·만료되면 다른 쪽으로 넘어간다 */
+  internalAi: InternalAi
   /** 앱 언어 — 'auto'면 기기 언어를 따른다(지원하지 않으면 영어). 직원 안내문·안드로이드 앱도 이 값을 읽는다 */
   language: LangSetting
   /** 데모데이: 매주 정한 시간에 회의실에서 결과물을 보여 주고 단체방에 요약 */
@@ -583,6 +589,8 @@ export interface OfficeSnapshot {
   monthCostUsd: number
   /** Claude 구독 사용률 (직원이 일할 때 Claude가 알려 준 마지막 값) */
   planUsage: PlanUsage[]
+  /** Codex(ChatGPT 플랜) 사용률 — 5시간·주간, 무료 플랜은 30일 하나. Codex에 로그인한 적이 없으면 없다 */
+  codexUsage?: PlanUsage[]
   /** 플랜 한도가 높아 보류 중인 일 (옛 main이면 없을 수 있다) */
   planHold?: PlanHoldState
   /** 회사 자금 잔액 (원) */
@@ -643,6 +651,7 @@ export interface PlanUsage {
 export const PLAN_WINDOW_LABEL: Record<string, string> = {
   five_hour: '5시간',
   seven_day: '7일',
+  thirty_day: '30일',
   seven_day_opus: '7일 · Opus',
   seven_day_sonnet: '7일 · Sonnet',
   seven_day_overage_included: '7일 (추가 사용 포함)',
@@ -1016,6 +1025,8 @@ export const DEFAULT_SETTINGS: Settings = {
   isFullAccessNoticeSeen: false,
   language: 'auto',
   demoDay: { isEnabled: false, weekday: 5, time: '17:00', isAi: true },
+  isProviderBannerSeen: false,
+  internalAi: 'claude',
   isStaffCaptureOn: true,
 }
 

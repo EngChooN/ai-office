@@ -43,6 +43,8 @@ export interface RuntimeStartOpts {
   /** 공급자 기본 지침 뒤에 덧붙이는 글 */
   systemPromptAppend: string
   mcpServers: Record<string, RuntimeMcpServer>
+  /** 장비 탭에서 고른 연결 도구 이름 전부 (공급자 자체 설정에 있는 서버를 포함 — 고르지 않은 것은 공급자가 끈다) */
+  selectedMcp: string[]
   skills: string[] | 'all' | undefined
   disallowedTools: string[]
   /** 도구 사용 전 결재 */

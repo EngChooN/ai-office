@@ -5,6 +5,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { DEFAULT_EQUIPMENT, HOOK_PORT, type Approval, type StaffQuestion, type StaffStatus } from '../shared/types'
 import type { StoredStaff as Staff } from './db'
+import { scanCodexSessions, type CodexExternalSession } from './ai/codexExternal'
 
 // 사무실 밖에서 띄운 Claude Code 세션 = "외부 직원". 설정 변경 없이 세션 레지스트리를 읽고,
 // 사용자가 hooks 연결을 켜면 권한 대기·도구 사용까지 실시간으로 받는다.
@@ -13,6 +14,9 @@ const CLAUDE_DIR = path.join(os.homedir(), '.claude')
 const REGISTRY_DIR = path.join(CLAUDE_DIR, 'sessions')
 const SETTINGS_PATH = path.join(CLAUDE_DIR, 'settings.json')
 const POLL_MS = 2000
+const CODEX_SESSIONS_DIR = path.join(os.homedir(), '.codex', 'sessions')
+/** Codex 세션 파일 훑기는 폴링 몇 번에 한 번만 */
+const CODEX_SCAN_MS = 6000
 const HOOK_EVENTS = ['UserPromptSubmit', 'PreToolUse', 'Notification', 'Stop', 'SessionEnd'] as const
 const HOOK_MARKER = `127.0.0.1:${HOOK_PORT}/hook`
 const HOOK_COMMAND = `curl -s -m 1 -X POST -H 'content-type: application/json' --data-binary @- http://${HOOK_MARKER} >/dev/null 2>&1 || true`
@@ -81,6 +85,7 @@ export class ExternalWatcher {
   private timer: NodeJS.Timeout | null = null
   private server: http.Server | null = null
   private asks = new Map<string, PendingAsk>()
+  private codexScan: { at: number; list: CodexExternalSession[] } = { at: 0, list: [] }
 
   constructor(
     private hooks: ExternalHooks,
@@ -219,8 +224,45 @@ export class ExternalWatcher {
         hiredAt: e.startedAt ?? Date.now(),
       })
     }
+    // Codex 터미널·앱 세션: 훅이 없어 기록 파일 상태로만 본다 (보기 전용)
+    for (const e of this.codexSessions()) {
+      const id = `ext:${e.threadId}`
+      if (seen.has(id) || this.isOwnSession(e.threadId)) continue
+      seen.add(id)
+      const prev = this.staff.get(id)
+      this.staff.set(id, {
+        id,
+        kind: 'external',
+        provider: 'codex',
+        name: path.basename(e.cwd),
+        role: 'Codex',
+        avatar: hashOf(e.threadId),
+        model: 'default',
+        cwd: e.cwd,
+        systemPrompt: '',
+        approvalMode: 'ask',
+        sessionId: e.threadId,
+        teamId: null,
+        equipment: DEFAULT_EQUIPMENT,
+        pid: null,
+        status: e.status === 'working' ? 'working' : 'idle',
+        activity: e.status === 'working' ? t('external.working') : '',
+        approvals: [],
+        costUsd: 0,
+        tokensIn: 0,
+        tokensOut: 0,
+        deskIndex: prev?.deskIndex ?? nextDesk(),
+        hiredAt: e.startedAt,
+      })
+    }
     for (const id of this.staff.keys()) if (!seen.has(id)) this.staff.delete(id)
     this.hooks.sync(this.list())
+  }
+
+  private codexSessions() {
+    const now = Date.now()
+    if (now - this.codexScan.at >= CODEX_SCAN_MS) this.codexScan = { at: now, list: scanCodexSessions(CODEX_SESSIONS_DIR, now) }
+    return this.codexScan.list
   }
 
   private onHook(p: HookPayload) {

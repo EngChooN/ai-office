@@ -816,6 +816,9 @@ function ExternalActions({ staff }: { staff: Staff }) {
     if (hired) select(hired.id)
   }
 
+  // Codex 터미널·앱 세션은 보기 전용 — 분신·채용(Claude 세션 복사·이어받기)·해고(프로세스 종료)는 연결할 수 없어 숨긴다
+  if (staff.provider === 'codex') return <footer className="text-muted-foreground border-t p-4 text-xs">{t('staffPanel.external.codexReadOnly')}</footer>
+
   return (
     <footer className="flex flex-col gap-2 border-t p-4 text-xs">
       <DraftAttachments files={orderFiles.files} onRemove={orderFiles.remove} />

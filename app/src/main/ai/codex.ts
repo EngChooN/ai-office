@@ -8,6 +8,7 @@ import type { RawCommand } from '../../shared/slashCommands.ts'
 import { HIRED_ENV } from '../external'
 import { exeName } from '../platform'
 import { codexMcpConfig } from './codexMcp'
+import { codexAssets, codexQuery, codexSkillRoots, parseRateLimits, parseSkills, skillsAsCommands } from './codexAssets'
 import { approvalResponse, approvalSettings, approvalTool, newCodexState, pickModel, toolOfItem, translateNotification, CODEX_APPROVAL_METHODS, type CodexState } from './codexEvents'
 import type { AgentRuntime, RuntimeEvent, RuntimeStartOpts } from './types'
 
@@ -60,6 +61,8 @@ export class CodexRuntime implements AgentRuntime {
   /** onToolUse가 막으라고 한 아이템 → 사유 (승인 요청에서 거절한다) */
   private denied = new Map<string, string>()
   private aborts = new Set<AbortController>()
+  private skillCleanup: (() => void) | null = null
+  private skillRoots: string[] = []
 
   constructor(private onEvent: (e: RuntimeEvent) => void) {}
 
@@ -90,6 +93,8 @@ export class CodexRuntime implements AgentRuntime {
     this.aborts.clear()
     this.child?.kill()
     this.child = null
+    this.skillCleanup?.()
+    this.skillCleanup = null
     this.threadId = null
     this.turnId = null
     this.turnActive = false
@@ -102,9 +107,10 @@ export class CodexRuntime implements AgentRuntime {
     this.close()
   }
 
-  /** Codex에는 슬래시 명령이 없다 — 스킬로 대체 (M2 연결 작업) */
-  async loadCommands(): Promise<RawCommand[]> {
-    return []
+  /** Codex에는 슬래시 명령이 없다 — 스킬 목록으로 대체한다 (프로젝트 스킬까지 보려고 작업 폴더로 한 번 묻는다) */
+  async loadCommands(opts: { cwd: string }): Promise<RawCommand[]> {
+    const [r] = await codexQuery(codexBinaryPath(), [['skills/list', { cwds: [opts.cwd] }]])
+    return skillsAsCommands(r ? parseSkills(r) : codexAssets.skills)
   }
 
   start(o: RuntimeStartOpts) {
@@ -116,7 +122,13 @@ export class CodexRuntime implements AgentRuntime {
       const binary = codexBinaryPath()
       if (!fs.existsSync(binary)) throw new Error('Codex 실행 파일을 찾지 못했습니다')
       // 장비·office MCP는 -c 인자로 넘기고 비밀 값은 환경 변수로 (사용자 config.toml의 MCP는 Codex가 따로 읽는다)
-      const mcp = codexMcpConfig(o.mcpServers)
+      // 사용자 Codex 설정의 MCP 서버는 장비로 고른 것만 켠다
+      const mcp = codexMcpConfig(o.mcpServers, codexAssets.mcp.filter((m) => !o.selectedMcp.includes(m.name)).map((m) => m.name))
+      // 장비의 Claude 형식 스킬을 Codex가 읽도록 (open에서 skills/extraRoots/set)
+      this.skillCleanup?.()
+      const skills = codexSkillRoots(o.cwd, o.skills)
+      this.skillRoots = skills.roots
+      this.skillCleanup = skills.cleanup
       const child = spawn(binary, mcp.args, { cwd: o.cwd, stdio: ['pipe', 'pipe', 'ignore'], windowsHide: true, env: { ...process.env, ...mcp.env, [HIRED_ENV]: '1' } })
       this.child = child
       let buf = ''
@@ -168,6 +180,9 @@ export class CodexRuntime implements AgentRuntime {
     await this.call('initialize', { clientInfo: CLIENT_INFO, capabilities: { experimentalApi: true } })
     if (!live()) return
     this.write({ method: 'initialized' })
+    // 스킬 루트는 실패해도 일은 계속 (스킬만 빠진다)
+    if (this.skillRoots.length) await this.call('skills/extraRoots/set', { extraRoots: this.skillRoots })
+    if (!live()) return
     const model = await this.resolveModel(this.modelId)
     if (!live()) return
     this.state.model = model
@@ -219,6 +234,11 @@ export class CodexRuntime implements AgentRuntime {
     if (method === 'turn/started') {
       this.turnActive = true
       this.turnId = String((params.turn as Json | undefined)?.id ?? '')
+    }
+    // 계정 사용량이 바뀌면 알려 준다 (app-server가 보내는 알림 — 없으면 새로 고침 때 읽는다)
+    if (method === 'account/rateLimits/updated') {
+      const info = parseRateLimits({ rateLimits: params.rateLimits, ordinaryUsageAllowed: true })
+      if (info) this.onEvent({ type: 'rateLimit', info })
     }
     if (method === 'item/started') this.onItemStarted(params.item as Json | undefined)
     for (const e of translateNotification(method, params, this.state)) this.onEvent(e)

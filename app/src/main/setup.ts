@@ -32,6 +32,10 @@ export async function claudeStatus(): Promise<ClaudeStatus> {
 
 /** 공급자(Claude·Codex)별 설치·로그인 상태 — 설정 화면 카드·온보딩 게이트용 */
 export async function providerStatus(): Promise<ProvidersStatus> {
+/** 마지막으로 감지한 공급자 상태 — 앱 내부 AI가 쓸 공급자·폴백을 정할 때 본다 (아직 모르면 null) */
+let lastProviders: ProvidersStatus | null = null
+export const lastProviderStatus = () => lastProviders
+
   const bin = claudeBinaryPath()
   const claude = (async () => {
     if (!fs.existsSync(bin)) return classifyClaude(false, null)
@@ -43,7 +47,8 @@ export async function providerStatus(): Promise<ProvidersStatus> {
     }
   })()
   const [c, x] = await Promise.all([claude, probeCodex(codexBinaryPath())])
-  return { claude: c, codex: x }
+  lastProviders = { claude: c, codex: x }
+  return lastProviders
 }
 
 async function whichClaude() {

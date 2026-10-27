@@ -20,7 +20,7 @@ export interface CodexMcpConfig {
 }
 
 /** 서버 목록 → 실행 인자·환경. 같은 이름은 뒤의 것이 덮는다 */
-export function codexMcpConfig(servers: Record<string, RuntimeMcpServer>): CodexMcpConfig {
+export function codexMcpConfig(servers: Record<string, RuntimeMcpServer>, disable: string[] = []): CodexMcpConfig {
   const args: string[] = []
   const env: Record<string, string> = {}
   const set = (name: string, key: string, value: string) => args.push('-c', `mcp_servers.${tomlKey(name)}.${key}=${value}`)
@@ -52,5 +52,7 @@ export function codexMcpConfig(servers: Record<string, RuntimeMcpServer>): Codex
     // 시작이 오래 걸려도(npx 첫 실행 등) 직원이 일을 시작할 수 있게
     set(name, 'startup_timeout_sec', '60')
   }
+  // 사용자 Codex 설정(config.toml)에 있는 서버 중 직원 장비로 고르지 않은 것은 이 세션에서만 끈다 (설정 파일은 건드리지 않는다)
+  for (const name of disable) if (!(name in servers)) args.push('-c', `mcp_servers.${tomlKey(name)}.enabled=false`)
   return { args, env }
 }

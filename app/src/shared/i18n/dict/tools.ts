@@ -49,6 +49,7 @@ export default {
   'equip.source.local': { ko: '이 폴더(로컬)', en: 'This folder (local)', ja: 'このフォルダ(ローカル)', zh: '此文件夹(本地)' },
   'equip.source.project': { ko: '프로젝트', en: 'Project', ja: 'プロジェクト', zh: '项目' },
   'equip.source.custom': { ko: '직접 추가', en: 'Added here', ja: '手動で追加', zh: '手动添加' },
+  'equip.source.codex': { ko: 'Codex 설정', en: 'Codex settings', ja: 'Codex 設定', zh: 'Codex 设置' },
   'equip.source.claudeai': { ko: 'claude.ai 커넥터', en: 'claude.ai connector', ja: 'claude.ai コネクタ', zh: 'claude.ai 连接器' },
   'equip.reason.needsAuth': {
     ko: '로그인이 필요해요. 터미널의 claude에서 /mcp로 인증한 뒤 새로 고침해 주세요.',

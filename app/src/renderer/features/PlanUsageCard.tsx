@@ -79,6 +79,8 @@ export function PlanUsageCard({ isCompact = false }: { isCompact?: boolean }) {
   const list = useOffice((s) => s.planUsage).filter((u) => !isCompact || COMPACT_TYPES.has(u.type))
   const sorted = [...list].sort((a, b) => (ORDER.indexOf(a.type) + 1 || 99) - (ORDER.indexOf(b.type) + 1 || 99))
   const updatedAt = Math.max(0, ...list.map((u) => u.updatedAt))
+  const codex = useOffice((s) => s.codexUsage ?? []).filter((u) => !isCompact || COMPACT_TYPES.has(u.type) || u.type === 'thirty_day')
+  const sortedCodex = [...codex].sort((a, b) => (ORDER.indexOf(a.type) + 1 || 99) - (ORDER.indexOf(b.type) + 1 || 99))
   const [isChecking, setIsChecking] = useState(false)
   const note = t('planUsage.note')
   const handleRefresh = async () => {
@@ -123,6 +125,15 @@ export function PlanUsageCard({ isCompact = false }: { isCompact?: boolean }) {
         <p className="text-muted-foreground text-xs">{t('planUsage.empty')}</p>
       ) : (
         sorted.map((u) => <Row key={u.type} usage={u} isCompact={isCompact} />)
+      )}
+      {/* Codex(GPT)에 로그인한 사람만 — 무료 플랜은 30일 창 하나, 유료는 5시간·주간 */}
+      {sortedCodex.length > 0 && (
+        <div className="flex flex-col gap-3 border-t pt-3">
+          <h3 className="text-sm font-semibold">{t('planUsage.titleCodex')}</h3>
+          {sortedCodex.map((u) => (
+            <Row key={`codex-${u.type}`} usage={u} isCompact={isCompact} />
+          ))}
+        </div>
       )}
       {!isCompact && <p className="text-muted-foreground text-[11px]">{note}</p>}
     </section>
