@@ -33,7 +33,7 @@ import okhttp3.Response
 import okhttp3.RequestBody.Companion.toRequestBody
 
 /** 연결 정보 (QR에서 온 값). 토큰은 SecureStore가 Keystore로 암호화해 보관한다. lan은 같은 와이파이용 사설 IPv4(선택) */
-data class Connection(val host: String, val port: Int, val token: String, val spki: String, val lan: String? = null, val isLanOnly: Boolean = false)
+data class Connection(val host: String, val port: Int, val token: String, val spki: String, val lan: String? = null, val isLanOnly: Boolean = false, val isTailscale: Boolean = false)
 
 /** PC에 닿는 길: 같은 와이파이 주소(QR lan) 또는 외부 주소(QR host). 둘 다 같은 지문으로 고정한다 */
 enum class Route { LAN, EXTERNAL }
@@ -45,7 +45,9 @@ data class Endpoint(val route: Route, val host: String, val port: Int) {
 
 /** 전용 모드면 외부 주소는 후보에서 뺀다 (PC가 바깥 접속을 닫아 둔다). 내부 주소는 lan, 없으면 host */
 fun Connection.endpoints(): List<Endpoint> =
-    if (isLanOnly) listOf(Endpoint(Route.LAN, lan ?: host, port))
+    // Tailscale 모드: PC가 100.64/10 주소만 받으므로 host 하나뿐이다 (lan은 건너뛴다). 연결 대기는 외부 길과 같은 10초
+    if (isTailscale) listOf(Endpoint(Route.EXTERNAL, host, port))
+    else if (isLanOnly) listOf(Endpoint(Route.LAN, lan ?: host, port))
     else listOfNotNull(
         lan?.takeIf { it != host }?.let { Endpoint(Route.LAN, it, port) },
         Endpoint(Route.EXTERNAL, host, port),

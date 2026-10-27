@@ -223,4 +223,7 @@
     <string name="state_connfail_unreach_lo">You can connect only while on the same Wi-Fi or the company VPN. Check your Wi-Fi or VPN, then try again.</string>
     <string name="state_unreach_body_lo">This may be because:\n· You can connect only while on the same Wi-Fi or the company VPN\n· Your PC is asleep or off\n· Claude Office is not running</string>
     <string name="qr_unreach_default_lo">Couldn\'t reach your PC. You can connect only while on the same Wi-Fi or the company VPN.</string>
+    <string name="state_connfail_unreach_ts">Check that Tailscale is turned on on your phone and signed in with the same account as the PC.</string>
+    <string name="state_unreach_body_ts">This may be because:\n· Tailscale is off on your phone, or signed in with a different account than the PC\n· Your PC is asleep or off\n· Claude Office is not running</string>
+    <string name="qr_unreach_default_ts">Couldn\'t reach your PC. Check that Tailscale is on on your phone and uses the same account as the PC.</string>
 </resources>

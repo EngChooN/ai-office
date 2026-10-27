@@ -35,7 +35,7 @@ export interface V2Office {
 }
 
 /** hello 답에 넣는 전용 모드 필드 (lan은 모를 때 생략) */
-const lanFields = (i: { lo: boolean; lan: string | null }) => ({ lo: i.lo, ...(i.lan ? { lan: i.lan } : {}) })
+const lanFields = (i: { lo: boolean; lan: string | null; ts?: boolean; tsHost?: string | null }) => ({ lo: i.lo, ...(i.lan ? { lan: i.lan } : {}), ...(i.ts ? { ts: true } : {}), ...(i.ts && i.tsHost ? { tsHost: i.tsHost } : {}) })
 
 export interface V2RouteContext {
   guard: AuthGuard
@@ -46,7 +46,7 @@ export interface V2RouteContext {
   isReady(): boolean
   currentPort(): number
   /** 전용 모드 여부와 지금 이 PC의 내부 주소 (hello 답에 실어 앱이 주소를 자동으로 고치게 한다) */
-  lanInfo?(): { lo: boolean; lan: string | null }
+  lanInfo?(): { lo: boolean; lan: string | null; ts?: boolean; tsHost?: string | null }
 }
 
 const json = (res: ServerResponse, r: RemoteResponse, extraHeaders: Record<string, string> = {}) => {

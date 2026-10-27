@@ -16,6 +16,8 @@ export interface QrPayload {
   pv?: number
   /** 같은 네트워크 전용 모드 (선택 — true면 host가 내부 주소이고 밖에서는 붙을 수 없다. 앱은 이 값을 보고 안내한다. 모르는 앱은 무시) */
   lo?: boolean
+  /** Tailscale 모드 (선택 — true면 host가 100.64/10 주소이고 휴대폰 Tailscale이 켜져 있어야 붙는다. lan·lo와 함께 쓰지 않는다. 모르는 앱은 무시) */
+  ts?: boolean
 }
 
 const HOST = /^(?:[A-Za-z0-9.-]{1,255}|\[?[0-9A-Fa-f:.]{2,45}\]?)$/
@@ -26,15 +28,20 @@ const IPV4 = /^\d{1,3}(\.\d{1,3}){3}$/
 /** lan으로 쓸 수 있는 주소: 사설 IPv4(RFC1918)만 */
 export const isLanAddress = (ip: string) => IPV4.test(ip) && ip.split('.').every((n) => Number(n) <= 255) && isPrivateIpv4(ip)
 
+/** Tailscale 주소: 100.64.0.0/10 IPv4 (둘째 옥텟 64~127) */
+export const isTailscaleAddress = (ip: string) => IPV4.test(ip) && ip.split('.').every((n) => Number(n) <= 255) && Number(ip.split('.')[0]) === 100 && Number(ip.split('.')[1]) >= 64 && Number(ip.split('.')[1]) <= 127
+
 /** QR에 넣을 값이 규격에 맞는지 (주소 모양·포트 범위·토큰·지문, lan은 있으면 사설 IPv4이고 host와 달라야 한다) */
 export function isValidQrPayload(p: QrPayload) {
   const isLanOk = p.lan === undefined || (isLanAddress(p.lan) && p.lan !== p.host)
+  // ts가 있으면 true이고 host가 Tailscale 주소여야 하며, 이 모드는 100.x 밖의 연결을 끊으므로 lan·lo는 함께 못 쓴다
+  const isTsOk = p.ts === undefined || (p.ts === true && isTailscaleAddress(p.host) && p.lan === undefined && p.lo === undefined)
   const isPvOk = p.pv === undefined || (Number.isInteger(p.pv) && p.pv >= 1)
-  return isPvOk && p.v === PROTOCOL_VERSION && HOST.test(p.host) && Number.isInteger(p.port) && p.port >= 1024 && p.port <= 65535 && TOKEN.test(p.token) && SPKI.test(p.spki) && isLanOk
+  return isPvOk && p.v === PROTOCOL_VERSION && HOST.test(p.host) && Number.isInteger(p.port) && p.port >= 1024 && p.port <= 65535 && TOKEN.test(p.token) && SPKI.test(p.spki) && isLanOk && isTsOk
 }
 
-/** QR 내용 — lan이 있으면 맨 뒤에 붙인다 (모르는 앱은 무시한다) */
-export const qrText = (p: QrPayload) => JSON.stringify({ v: p.v, host: p.host, port: p.port, token: p.token, spki: p.spki, ...(p.lan ? { lan: p.lan } : {}), ...(p.pv ? { pv: p.pv } : {}), ...(p.lo ? { lo: true } : {}) })
+/** QR 내용 — lan·pv·lo·ts는 있을 때만 뒤에 붙인다 (모르는 앱은 무시한다) */
+export const qrText = (p: QrPayload) => JSON.stringify({ v: p.v, host: p.host, port: p.port, token: p.token, spki: p.spki, ...(p.lan ? { lan: p.lan } : {}), ...(p.pv ? { pv: p.pv } : {}), ...(p.lo ? { lo: true } : {}), ...(p.ts ? { ts: true } : {}) })
 
 /** QR에 넣을 같은 와이파이 주소: 사설 IPv4이고 외부 주소(host)와 다를 때만 */
 export const lanForQr = (host: string, lan: string | null) => (lan && isLanAddress(lan) && lan !== host ? lan : undefined)

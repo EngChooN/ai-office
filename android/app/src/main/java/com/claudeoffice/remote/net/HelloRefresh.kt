@@ -13,9 +13,14 @@ fun Connection.refreshedFromHello(result: JsonElement?): Connection? {
     val obj = result as? JsonObject ?: return null
     val lo = (obj["lo"] as? JsonPrimitive)?.takeIf { !it.isString }?.booleanOrNull
     val newLan = (obj["lan"] as? JsonPrimitive)?.takeIf { it.isString }?.content?.takeIf(::isPrivateIpv4)
+    // ts·tsHost: Tailscale 모드면 저장된 host를 PC의 지금 Tailscale 주소로 옮긴다 (QR 재스캔 없이)
+    val ts = (obj["ts"] as? JsonPrimitive)?.takeIf { !it.isString }?.booleanOrNull
+    val tsHost = (obj["tsHost"] as? JsonPrimitive)?.takeIf { it.isString }?.content?.takeIf(::isTailscaleIpv4)
+    if (ts == true && tsHost != null) return copy(host = tsHost, lan = null, isLanOnly = false, isTailscale = true).takeIf { it != this }
+    if (ts == false && isTailscale) return copy(isTailscale = false)
     if (lo == null && newLan == null) return null
     val isLanOnly = lo ?: this.isLanOnly
     // 전용 모드의 host는 PC의 내부 주소다 — 주소가 바뀌면 같이 옮긴다
-    val host = if (isLanOnly && newLan != null) newLan else host
+    val host = if (isLanOnly && newLan != null && !isTailscale) newLan else host
     return copy(host = host, lan = newLan ?: lan, isLanOnly = isLanOnly).takeIf { it != this }
 }

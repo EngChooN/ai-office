@@ -6,12 +6,12 @@ import { AuthGuard, sameHash, type AuthState } from './auth.ts'
 import { createSelfSignedCert, spkiFingerprint } from './cert.ts'
 import { handleRequest, type RemoteOfficePort } from './handler.ts'
 import { isValidQrPayload, lanForQr, qrImage } from './qr.ts'
-import { isAllowedClient, pickLanAddress, readDefaultGateway } from './lan.ts'
+import { detectTailscale, isAllowedClient, isTailscaleClient, pickLanAddress, readDefaultGateway, readTailscaleCli, type TsCliResult, type TsInfo } from './lan.ts'
 import { RemoteServer } from './server.ts'
 import { shapeFor } from './capabilities.ts'
 import { EventHub, type HubEvent } from './events.ts'
 import { V2Routes, type V2Office } from './v2routes.ts'
-import type { AccessEntry, RemoteQr, RemoteStatus, UpnpState } from '../../shared/types'
+import type { AccessEntry, RemoteMode, RemoteQr, RemoteStatus, UpnpState } from '../../shared/types'
 import * as upnp from './upnp.ts'
 
 /** 기본 포트 (규격 8절 예시값 · 기획서 D4 확정 전 임시) */
@@ -35,9 +35,13 @@ export interface RemoteConfig extends AuthState {
   lanOnly: boolean
   /** 예전 사용자에게 전용 모드 안내를 이미 보여 줬는지 (신규 설치는 처음부터 true) */
   isLanNoticeSeen: boolean
+  /** 연결 방식 — 없으면(예전 설정) lanOnly로 정한다: true면 lan, 아니면 router. 신규 설치는 tailscale. lanOnly도 mode === 'lan'으로 계속 같이 저장한다(옛 버전으로 되돌려도 같은 동작) */
+  mode?: RemoteMode
+  /** 예전 사용자에게 Tailscale 안내를 이미 보여 줬는지 (신규 설치는 처음부터 true) */
+  isTsNoticeSeen: boolean
 }
 
-export const DEFAULT_REMOTE_CONFIG: RemoteConfig = { isEnabled: false, port: DEFAULT_REMOTE_PORT, host: '', tokenHash: null, revoked: [], isTokenUsed: false, lanOnly: false, isLanNoticeSeen: false }
+export const DEFAULT_REMOTE_CONFIG: RemoteConfig = { isEnabled: false, port: DEFAULT_REMOTE_PORT, host: '', tokenHash: null, revoked: [], isTokenUsed: false, lanOnly: false, isLanNoticeSeen: false, isTsNoticeSeen: false }
 /** 앱을 끝낼 때 공유기 매핑 해제를 기다리는 최대 시간 */
 export const SHUTDOWN_WAIT_MS = 3000
 
@@ -65,6 +69,8 @@ export interface RemoteDeps {
   gateway?: () => Promise<string | null>
   /** 카드 주소 변화 확인 간격 */
   networkWatchMs?: number
+  /** Tailscale CLI(`tailscale status --json`) 읽기 — 테스트가 가짜를 넣는다 */
+  tailscaleCli?: () => Promise<TsCliResult>
   /** 원격 v2: PC 화면과 같은 처리 함수 표·첨부 저장소 (없으면 v2는 404) */
   v2?: V2Office | null
 }
@@ -99,6 +105,9 @@ export class RemoteService {
   private gatewayIp: string | null = null
   private watchTimer: ReturnType<typeof setInterval> | null = null
   private isGatewayWarned = false
+  /** Tailscale 모드: 마지막으로 읽은 상태·지금 귀를 연 Tailscale 주소 */
+  private ts: TsInfo = { state: 'notInstalled', address: null, name: null }
+  private boundTs: string | null = null
 
   /** v2 이벤트 스트림 (SSE) */
   private hub: EventHub
@@ -111,7 +120,11 @@ export class RemoteService {
     const { isFullAccess: _dropped, ...saved } = deps.loadConfig() as Partial<RemoteConfig> & { isFullAccess?: unknown }
     // 저장된 원격 설정이 없는 신규 설치만 전용 모드로 시작한다. 예전 설정(lanOnly 없음)은 지금처럼 밖에서도 붙고, 안내를 한 번 보여 준다
     const isFresh = Object.keys(saved).length === 0
-    this.config = { ...DEFAULT_REMOTE_CONFIG, ...saved, lanOnly: saved.lanOnly ?? isFresh, isLanNoticeSeen: saved.isLanNoticeSeen ?? isFresh }
+    // 연결 방식: 저장된 값 그대로, 없으면 신규 설치는 Tailscale, 예전 사용자는 쓰던 방식(lanOnly)을 유지하고 Tailscale 안내를 한 번 보여 준다 (자동으로 바꾸지 않는다)
+    // 세 값 밖(손상·수정된 파일)이면 저장된 mode를 버리고 lanOnly로 정한다 — 모르는 값이 모든 주소에 귀를 열지 않게
+    const isKnownMode = saved.mode === 'tailscale' || saved.mode === 'lan' || saved.mode === 'router'
+    const mode: RemoteMode = (isKnownMode ? saved.mode : undefined) ?? (isFresh ? 'tailscale' : saved.lanOnly ? 'lan' : 'router')
+    this.config = { ...DEFAULT_REMOTE_CONFIG, ...saved, mode, lanOnly: mode === 'lan', isLanNoticeSeen: saved.isLanNoticeSeen ?? isFresh, isTsNoticeSeen: saved.isTsNoticeSeen ?? isFresh }
     this.guard = this.newGuard()
     const v2 = deps.v2
     this.hub = new EventHub({
@@ -133,7 +146,7 @@ export class RemoteService {
           now: () => this.now(),
           isReady: () => this.isReady,
           currentPort: () => this.config.port,
-          lanInfo: () => ({ lo: this.config.lanOnly, lan: this.lanHost() }),
+          lanInfo: () => ({ lo: this.config.lanOnly, lan: this.lanHost(), ...(this.isTailscale ? { ts: true, tsHost: this.ts.address } : {}) }),
         })
       : null
   }
@@ -166,8 +179,8 @@ export class RemoteService {
 
   /** 앱을 켤 때: 지난번에 켜 두었으면 다시 연다 (기본은 꺼짐) */
   async init() {
-    // 전용 모드인데 지난 실행(밖에서도 붙던 때)의 공유기 포트 매핑이 남아 있을 수 있어 한 번 닫는다 (실패는 무시)
-    if (this.config.lanOnly && this.deps.upnp) {
+    // 전용·Tailscale 모드인데 지난 실행(밖에서도 붙던 때)의 공유기 포트 매핑이 남아 있을 수 있어 한 번 닫는다 (실패는 무시)
+    if (this.config.mode !== 'router' && this.deps.upnp) {
       const u = this.deps.upnp
       try {
         const gw = await u.find()
@@ -190,6 +203,11 @@ export class RemoteService {
       isLanOnly: connectHost?.isLan ?? false,
       lanOnly: this.config.lanOnly,
       isLanNoticePending: !this.config.lanOnly && !this.config.isLanNoticeSeen,
+      mode: this.mode,
+      tsState: this.ts.state,
+      tsAddress: this.ts.address,
+      tsName: this.ts.name,
+      isTsNoticePending: !this.isTailscale && !this.config.isTsNoticeSeen,
       fingerprint: this.keys ? spkiFingerprint(this.keys.certPem) : null,
       upnp: this.upnpState,
       error: this.error,
@@ -202,7 +220,17 @@ export class RemoteService {
     }
   }
 
+  private get mode(): RemoteMode {
+    return this.config.mode ?? 'router'
+  }
+
+  private get isTailscale() {
+    return this.mode === 'tailscale'
+  }
+
   private connectHost(): { host: string; isLan: boolean } | null {
+    // Tailscale 모드는 Tailscale 주소만 — 직접 입력·공유기 외부 주소·내부 주소는 쓰지 않는다
+    if (this.isTailscale) return this.ts.address ? { host: this.ts.address, isLan: false } : null
     // 전용 모드는 직접 입력·공유기 외부 주소를 쓰지 않는다 — 내부 주소만
     if (this.config.lanOnly) {
       const lan = this.lanHost()
@@ -216,6 +244,8 @@ export class RemoteService {
 
   /** 같은 와이파이 주소: 공유기와 이야기할 때 쓴 이 PC의 주소(UPnP가 찾은 것)가 가장 정확하고, 없으면 네트워크 카드에서 고른다 */
   private lanHost() {
+    // Tailscale 모드는 100.x 밖의 연결을 끊으므로 같은 와이파이 주소를 알리지 않는다
+    if (this.isTailscale) return null
     if (this.config.lanOnly) return this.pickLan()
     return this.gateway?.localAddress ?? this.pickLan()
   }
@@ -230,7 +260,7 @@ export class RemoteService {
     // 이미 켜져 있으면: 포트가 같으면 공유기 설정만 다시 시도, 다르면 닫고 새 포트로 연다
     const isSamePort = port === this.config.port
     if (this.server.isListening && isSamePort) {
-      if (!this.config.lanOnly && this.upnpState.state !== 'ok' && this.upnpState.state !== 'trying') await this.mapPort()
+      if (this.mode === 'router' && this.upnpState.state !== 'ok' && this.upnpState.state !== 'trying') await this.mapPort()
       return this.status()
     }
     if (this.server.isListening) await this.close()
@@ -254,12 +284,12 @@ export class RemoteService {
   }
 
   /**
-   * 같은 네트워크 전용 모드 켜기·끄기. 켜면 열린 공유기 매핑을 닫고 내부 주소에만 다시 귀를 연다(토큰은 그대로, 열린 연결은 끊긴다).
-   * 끄면 모든 주소에 다시 열고 공유기 포트를 다시 시도한다
+   * 연결 방식 바꾸기(tailscale · lan · router). 열린 연결은 끊기고 새 방식으로 다시 연다(토큰은 그대로).
+   * lan·tailscale은 열린 공유기 매핑을 닫고, router는 모든 주소에 열고 공유기 포트를 다시 시도한다
    */
-  async setLanOnly(isLanOnly: boolean) {
-    if (this.config.lanOnly === isLanOnly) return this.status()
-    this.config = { ...this.config, lanOnly: isLanOnly, isLanNoticeSeen: true }
+  async setMode(mode: RemoteMode) {
+    if (!['tailscale', 'lan', 'router'].includes(mode) || this.mode === mode) return this.status()
+    this.config = { ...this.config, mode, lanOnly: mode === 'lan', isLanNoticeSeen: true, isTsNoticeSeen: true }
     this.save()
     if (this.server.isListening || this.error === 'no_network') {
       this.hub.closeAll('remote_disabled')
@@ -267,6 +297,37 @@ export class RemoteService {
       await this.open()
     }
     return this.status()
+  }
+
+  /** 같은 네트워크 전용 모드 켜기·끄기 (옛 화면 호환) — 켜면 lan, 끄면 router */
+  setLanOnly(isLanOnly: boolean) {
+    if (this.config.lanOnly === isLanOnly) return Promise.resolve(this.status())
+    return this.setMode(isLanOnly ? 'lan' : 'router')
+  }
+
+  /** Tailscale 상태를 지금 다시 읽는다. 서버가 켜져 있고 주소가 바뀌었으면 다시 연다. 화면이 3초마다 부른다 */
+  async refreshTailscale() {
+    if (!this.isTailscale) return this.status()
+    if (this.config.isEnabled) await this.checkNetwork()
+    else await this.readTailscale()
+    return this.status()
+  }
+
+  /** Tailscale 안내(예전 사용자용)를 닫는다 (다시 보이지 않게) */
+  dismissTsNotice() {
+    if (!this.config.isTsNoticeSeen) {
+      this.config = { ...this.config, isTsNoticeSeen: true }
+      this.save()
+    }
+    return this.status()
+  }
+
+  private async readTailscale() {
+    const cli = await (this.deps.tailscaleCli ?? readTailscaleCli)().catch((): TsCliResult => ({ kind: 'failed' }))
+    const next = detectTailscale((this.deps.networkInterfaces ?? os.networkInterfaces)(), cli)
+    const isChanged = next.state !== this.ts.state || next.address !== this.ts.address || next.name !== this.ts.name
+    this.ts = next
+    if (isChanged) this.deps.changed()
   }
 
   /** 예전 사용자에게 보여 주는 첫 실행 안내를 닫는다 (다시 보이지 않게) */
@@ -306,8 +367,9 @@ export class RemoteService {
     if (!shown || shown.until <= this.now() || !this.keys || !host) return null
     // 같은 와이파이의 휴대폰은 lan으로 먼저 붙는다 (공유기가 외부 주소로 되돌아 들어오기를 못 하는 집이 많다)
     const lan = lanForQr(host, this.lanHost())
+    const isTs = this.isTailscale
     // pv = 이 PC가 아는 가장 높은 프로토콜 (v2 규격 2-1절). v는 1.0.x 앱이 거부하지 않게 계속 1
-    const payload = { v: 1, host, port: this.config.port, token: shown.token, spki: spkiFingerprint(this.keys.certPem), ...(lan ? { lan } : {}), ...(this.v2 ? { pv: 2 } : {}), ...(this.config.lanOnly ? { lo: true } : {}) }
+    const payload = { v: 1, host, port: this.config.port, token: shown.token, spki: spkiFingerprint(this.keys.certPem), ...(lan ? { lan } : {}), ...(this.v2 ? { pv: 2 } : {}), ...(this.config.lanOnly ? { lo: true } : {}), ...(isTs ? { ts: true } : {}) }
     if (!isValidQrPayload(payload)) return null
     return { image: qrImage(payload), host, lan: lan ?? null, port: payload.port, until: shown.until }
   }
@@ -352,7 +414,8 @@ export class RemoteService {
       this.save()
     }
     await this.listen()
-    if (this.config.lanOnly) this.startWatch()
+    // 전용·Tailscale 모드는 공유기 포트를 열지 않는다 (UPnP 끔) — 대신 주소 변화를 지켜본다
+    if (this.mode !== 'router') this.startWatch()
     else if (this.server.isListening) void this.mapPort()
   }
 
@@ -378,11 +441,18 @@ export class RemoteService {
 
   /** 전용 모드에서 내부 주소가 바뀌었으면 새 주소로 다시 귀를 연다 (토큰·QR 유지, 열린 연결은 끊긴다). 감시 타이머가 부르고, 테스트도 직접 부른다 */
   async checkNetwork() {
-    if (!this.config.lanOnly || !this.config.isEnabled || this.isChecking) return
+    if (this.mode === 'router' || !this.config.isEnabled || this.isChecking) return
     this.isChecking = true
     try {
-      const now = this.pickLan()
-      if (now === this.boundLan && this.server.isListening) return
+      let now: string | null
+      if (this.isTailscale) {
+        await this.readTailscale()
+        now = this.ts.address
+        if (now === this.boundTs && (this.server.isListening || !now)) return
+      } else {
+        now = this.pickLan()
+        if (now === this.boundLan && this.server.isListening) return
+      }
       this.hub.closeAll('remote_disabled')
       await this.server.stop()
       await this.listen()
@@ -395,9 +465,19 @@ export class RemoteService {
   private async listen() {
     this.error = null
     // 전용 모드는 고른 내부 주소 하나에만 귀를 연다 (없으면 열지 않고 감시가 주소가 생기길 기다린다)
+    // Tailscale 모드는 Tailscale 주소 하나에만 귀를 연다 (running이 아니면 열지 않고 감시가 켜지길 기다린다)
+    if (this.isTailscale) {
+      await this.readTailscale()
+      this.boundTs = this.ts.address
+      this.boundLan = null
+      if (!this.ts.address) {
+        this.error = 'no_network'
+        return this.deps.changed()
+      }
+    }
     const lan = this.config.lanOnly ? this.pickLan() : null
-    const host = this.config.lanOnly ? (this.deps.listenHost ?? lan) : this.deps.listenHost
-    this.boundLan = lan
+    const host = this.isTailscale ? (this.deps.listenHost ?? this.ts.address) : this.config.lanOnly ? (this.deps.listenHost ?? lan) : this.deps.listenHost
+    if (!this.isTailscale) this.boundLan = lan
     if (this.config.lanOnly) await this.refreshGateway()
     if (this.config.lanOnly && !lan) {
       this.error = 'no_network'
@@ -409,7 +489,7 @@ export class RemoteService {
         certPem: this.keys!.certPem,
         port: this.config.port,
         host: host ?? undefined,
-        isAllowed: this.config.lanOnly ? (ip) => isAllowedClient(ip, this.gatewayIp) : undefined,
+        isAllowed: this.isTailscale ? isTailscaleClient : this.config.lanOnly ? (ip) => isAllowedClient(ip, this.gatewayIp) : undefined,
         handle: (req) =>
           req.url.startsWith('/v2/') && this.v2
             ? this.v2.call(req)

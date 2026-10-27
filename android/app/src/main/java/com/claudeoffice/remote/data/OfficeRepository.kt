@@ -92,6 +92,7 @@ data class OfficeState(
     val v2: V2Mode = V2Mode.UNKNOWN,
     /** 같은 네트워크 전용 모드로 연결돼 있다 (닿지 않을 때 문구가 달라진다) */
     val isLanOnly: Boolean = false,
+    val isTailscale: Boolean = false,
 ) {
     val serverNow get() = System.currentTimeMillis() + clockOffset
     val canAct get() = gate == null && reach == Reach.OK
@@ -170,6 +171,7 @@ class OfficeRepository(private val context: Context) {
             serverVersion = prefs.serverVersion,
             v2 = if (prefs.v2Active) V2Mode.ACTIVE else V2Mode.UNKNOWN,
             isLanOnly = conn?.isLanOnly == true,
+            isTailscale = conn?.isTailscale == true,
         )
         return base.copy(gate = gateFromPrefs(System.currentTimeMillis() + offset))
     }
@@ -191,7 +193,7 @@ class OfficeRepository(private val context: Context) {
 
     /** 스캔한 QR로 연결을 시도한다. GET /v1/status가 성공해야 저장한다 */
     suspend fun connect(qr: QrPayload): ConnectResult {
-        val candidate = Connection(qr.host, qr.port, qr.token, qr.spki, qr.lan, qr.isLanOnly)
+        val candidate = Connection(qr.host, qr.port, qr.token, qr.spki, qr.lan, qr.isLanOnly, qr.isTailscale)
         // 저장 전이라 기억한 길은 임시로 두고, 성공하면 prefs에 옮긴다 (prefs.clear() 뒤에)
         val firstRoute = InMemoryRoute()
         val c = RemoteClient(candidate, ::isPhoneOnline, firstRoute)
@@ -213,6 +215,7 @@ class OfficeRepository(private val context: Context) {
                     address = prefs.displayAddress,
                     serverVersion = prefs.serverVersion,
                     isLanOnly = candidate.isLanOnly,
+                    isTailscale = candidate.isTailscale,
                 )
                 PollWorker.schedule(context)
                 refreshDecisions()
@@ -226,7 +229,7 @@ class OfficeRepository(private val context: Context) {
                     prefs.clear()
                     client = newClient(candidate)
                     prefs.displayAddress = displayAddress(candidate)
-                    _state.update { it.copy(address = prefs.displayAddress, isLanOnly = candidate.isLanOnly) }
+                    _state.update { it.copy(address = prefs.displayAddress, isLanOnly = candidate.isLanOnly, isTailscale = candidate.isTailscale) }
                     applyError(r.error, r.tried)
                 }
                 ConnectResult.Failed(r.error, r.tried)
@@ -514,7 +517,7 @@ class OfficeRepository(private val context: Context) {
         conn = updated
         client = newClient(updated)
         prefs.displayAddress = displayAddress(updated)
-        _state.update { it.copy(address = prefs.displayAddress, isLanOnly = updated.isLanOnly) }
+        _state.update { it.copy(address = prefs.displayAddress, isLanOnly = updated.isLanOnly, isTailscale = updated.isTailscale) }
     }
 
     suspend fun v2Upload(name: String, mime: String, bytes: ByteArray): ApiResult<kotlinx.serialization.json.JsonElement> {

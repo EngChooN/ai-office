@@ -88,8 +88,10 @@ function make(saved: Partial<RemoteConfig>, ifaces: () => any, over: Partial<Rem
 
 const wifi = { en0: [iface('192.168.0.20')] }
 
-test('기본값 분기: 저장된 설정이 없으면 전용 모드 + 안내 없음, 예전 설정은 해제 + 안내 대기', () => {
-  assert.equal(make({}, () => wifi).svc.status().lanOnly, true)
+test('기본값 분기: 저장된 설정이 없으면 Tailscale 모드 + 안내 없음, 예전 설정은 해제 + 안내 대기', () => {
+  // 신규 설치의 기본은 Tailscale 모드 (lanOnly는 false)
+  assert.equal(make({}, () => wifi).svc.status().mode, 'tailscale')
+  assert.equal(make({}, () => wifi).svc.status().lanOnly, false)
   assert.equal(make({}, () => wifi).svc.status().isLanNoticePending, false)
   const old = make({ isEnabled: true, port: 47900, host: '', tokenHash: 'x', revoked: [], isTokenUsed: true }, () => wifi)
   assert.equal(old.svc.status().lanOnly, false)

@@ -57,6 +57,10 @@ export const V2_METHODS: Record<OfficeMethod, MethodSpec> = {
   // 전용 모드를 끄면 밖에서 붙을 수 있게 되므로 휴대폰에서는 바꾸지 못한다
   setRemoteLanOnly: P('open_on_pc', 'b'),
   dismissRemoteLanNotice: P('open_on_pc'),
+  // 연결 방식은 밖에서 붙는 길을 바꾸므로 휴대폰에서는 바꾸지 못한다
+  setRemoteMode: P('open_on_pc', 's'),
+  refreshRemoteTailscale: P('open_on_pc'),
+  dismissRemoteTsNotice: P('open_on_pc'),
   snapshot: R(),
   // 첫 업무 튜토리얼: 모의 진행(AI 호출 없음)이라 휴대폰에서도 그대로
   tutorialStart: R('s'),

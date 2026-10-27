@@ -3,7 +3,8 @@
 
 import { execFile } from 'node:child_process'
 import type { NetworkInterfaceInfo } from 'node:os'
-import { isLanAddress } from './qr.ts'
+import { isLanAddress, isTailscaleAddress } from './qr.ts'
+import type { TsState } from '../../shared/types'
 
 /** 이 이름이면 VPN·가상 카드로 보고 실제 카드(와이파이·유선)를 먼저 고른다 */
 const VIRTUAL_NAME = /^(utun|tun|tap|ppp|ipsec|wg|zt|tailscale|docker|veth|br-|bridge|vmnet|vboxnet|awdl|llw|lo)\d*|vpn|tap-|wireguard|zerotier|tailscale|hyper-v|vethernet|vmware|virtualbox|loopback|docker|wsl/i
@@ -72,4 +73,76 @@ export async function readDefaultGateway(platform: NodeJS.Platform = process.pla
   } catch {
     return null
   }
+}
+
+// ── Tailscale 모드 ─────────────────────────────────────
+
+/** Tailscale 모드에서 연결을 받을지: 상대 주소가 100.64.0.0/10 IPv4일 때만 (루프백도 거절). TLS 시작 전에 건다 */
+export const isTailscaleClient = (ip: string) => isTailscaleAddress(plainIp(ip))
+
+/** 네트워크 카드 중 100.64/10 IPv4 주소 (Tailscale 카드). 없으면 null */
+export function pickTailscaleAddress(ifaces: Interfaces): string | null {
+  for (const list of Object.values(ifaces)) for (const a of list ?? []) if (a.family === 'IPv4' && !a.internal && isTailscaleAddress(a.address)) return a.address
+  return null
+}
+
+export interface TsInfo {
+  state: TsState
+  /** running일 때만 */
+  address: string | null
+  /** MagicDNS 이름 — 표시용 (QR에는 넣지 않는다) */
+  name: string | null
+}
+
+/** `tailscale status --json` 출력에서 필요한 값. 해석 못 하면 null */
+export function parseTailscaleStatus(out: string): { backendState: string; ips: string[]; dnsName: string | null } | null {
+  try {
+    const j = JSON.parse(out) as { BackendState?: unknown; Self?: { TailscaleIPs?: unknown; DNSName?: unknown } }
+    if (typeof j.BackendState !== 'string') return null
+    const ips = Array.isArray(j.Self?.TailscaleIPs) ? (j.Self.TailscaleIPs as unknown[]).filter((x): x is string => typeof x === 'string') : []
+    const dns = typeof j.Self?.DNSName === 'string' ? j.Self.DNSName.replace(/\.$/, '') : ''
+    return { backendState: j.BackendState, ips, dnsName: dns || null }
+  } catch {
+    return null
+  }
+}
+
+/** tailscale CLI 실행 결과: ok(출력) · missing(실행 파일 없음) · failed(있는데 실패·시간 초과) */
+export type TsCliResult = { kind: 'ok'; out: string } | { kind: 'missing' } | { kind: 'failed' }
+
+/** 상태를 읽고 판정한다. CLI가 없어도 카드에 100.x 주소가 있으면 running (앱스토어판 등). 못 읽으면 오류가 아니라 주소만으로 판단 */
+export function detectTailscale(ifaces: Interfaces, cli: TsCliResult): TsInfo {
+  const nic = pickTailscaleAddress(ifaces)
+  const parsed = cli.kind === 'ok' ? parseTailscaleStatus(cli.out) : null
+  if (parsed) {
+    if (parsed.backendState === 'NeedsLogin') return { state: 'needsLogin', address: null, name: null }
+    if (parsed.backendState === 'Running') {
+      const address = parsed.ips.find(isTailscaleAddress) ?? nic
+      return address ? { state: 'running', address, name: parsed.dnsName } : { state: 'stopped', address: null, name: null }
+    }
+    return { state: 'stopped', address: null, name: null }
+  }
+  if (nic) return { state: 'running', address: nic, name: null }
+  return { state: cli.kind === 'failed' ? 'stopped' : 'notInstalled', address: null, name: null }
+}
+
+/** tailscale 실행 파일 후보: PATH → 맥 앱 안 → 윈도우 Program Files */
+export function tailscaleCliPaths(platform: NodeJS.Platform = process.platform, env: NodeJS.ProcessEnv = process.env): string[] {
+  const list = ['tailscale']
+  if (platform === 'darwin') list.push('/Applications/Tailscale.app/Contents/MacOS/Tailscale')
+  if (platform === 'win32') list.push(`${env.ProgramFiles ?? 'C:\\Program Files'}\\Tailscale\\tailscale.exe`)
+  return list
+}
+
+/** `tailscale status --json`을 3초 제한으로 실행 (실행 파일이 없으면 다음 후보) */
+export async function readTailscaleCli(platform: NodeJS.Platform = process.platform): Promise<TsCliResult> {
+  let isFailed = false
+  for (const bin of tailscaleCliPaths(platform)) {
+    try {
+      return { kind: 'ok', out: await run(bin, ['status', '--json']) }
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code !== 'ENOENT') isFailed = true
+    }
+  }
+  return isFailed ? { kind: 'failed' } : { kind: 'missing' }
 }

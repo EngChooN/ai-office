@@ -476,3 +476,4 @@ v1 7절의 코드를 **그대로** 쓰고, v2에서 더해지는 것만 아래�
 | 2026-10-26 | 원격 보안 보강(0.13.0): `setEquipment`에서 `allowedTools`·`disallowedTools` 제외, `hire`·`updateStaff`·`recruitExternal`의 `cwd`·`approvalMode` 제외(S가 기본 폴더·`ask`로 채움), `setHooksInstalled`·`setAskHookInstalled` S → P, `recruitExternal` R → S, 원격 `setAutoApprove`는 끄기만, 원격 `approveAlways`는 Bash 규칙 미생성, 프로젝트 매뉴얼은 랩 폴더만. 폰이 보내던 값은 무시된다 (강백엔) |
 | 2026-10-23 | 최초 작성(v2). OfficeApi 81개 메서드 분류, `/v2/call`·`/v2/events`(SSE)·`/v2/attachments`·`/v2/files/{id}`, 발견(`supportedProtocols`·`fullAccess`·QR `pv`), 호환 표, 보안 모델(전체 조작 스위치 권고) |
 | 2026-10-26 | 같은 네트워크 전용 모드: QR 선택 필드 `lo:true`(PROTOCOL_VERSION 그대로), `hello` 결과에 `lo`·`lan`(현재 내부 주소) 추가 — 앱 자동 갱신용, 모르는 앱은 무시 |
+| 2026-10-27 | Tailscale 모드: QR 선택 필드 `ts:true`(v1 8절), `hello` 결과에 `ts`(boolean)·`tsHost`(현재 Tailscale 주소) 선택 필드 추가 — 앱이 host를 갱신, 모르는 앱은 무시. PROTOCOL_VERSION 그대로 — 초안, 대표 확인 전 |

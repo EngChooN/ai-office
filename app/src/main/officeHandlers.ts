@@ -6,7 +6,7 @@ import type { Zone } from '../shared/economy'
 import type { GridItem } from '../shared/iso/furniture'
 import type { OfficeMethod } from '../shared/officeApiShape'
 import type { TutorialInput, TutorialScenario } from '../shared/tutorial'
-import { HOOK_PORT, type Attachment } from '../shared/types'
+import { HOOK_PORT, type Attachment, type RemoteMode } from '../shared/types'
 import { listAgentTemplates } from './agents'
 import { findById, saveUploads } from './attachments'
 import { askHookInstalled, hooksInstalled, setAskHookInstalled, setHooksInstalled } from './external'
@@ -30,6 +30,9 @@ export function createOfficeHandlers(office: Office, remoteApi: () => RemoteServ
     setRemoteHost: (host: string) => remoteApi().setHost(host),
     setRemoteLanOnly: (isLanOnly: boolean) => remoteApi().setLanOnly(isLanOnly),
     dismissRemoteLanNotice: () => remoteApi().dismissLanNotice(),
+    setRemoteMode: (mode: RemoteMode) => remoteApi().setMode(mode),
+    refreshRemoteTailscale: () => remoteApi().refreshTailscale(),
+    dismissRemoteTsNotice: () => remoteApi().dismissTsNotice(),
     hire: (input: Parameters<Office['hire']>[0]) => office.hire(input),
     fire: (id: string) => office.fire(id),
     updateStaff: (id: string, patch: Parameters<Office['updateStaff']>[1]) => office.updateStaff(id, patch),

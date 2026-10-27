@@ -5,13 +5,20 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { fmtDate, t } from '@shared/i18n'
-import type { AccessEntry, RemoteQr, RemoteStatus } from '@shared/types'
+import type { AccessEntry, RemoteMode, RemoteQr, RemoteStatus } from '@shared/types'
 
-// 설정 › 휴대폰 연결: 켜기·끄기, 같은 네트워크 전용 모드, 첫 연결 가이드(켜기 → 포트 → 공유기 → 주소 → QR), QR 다시 만들기, 지문, 최근 접속 기록
+// 설정 › 휴대폰 연결: 켜기·끄기, 연결 방식(Tailscale·같은 네트워크 전용·고급 공유기 포트), Tailscale 단계 안내, 첫 연결 가이드(켜기 → 포트 → 공유기 → 주소 → QR), QR 다시 만들기, 지문, 최근 접속 기록
 // 화면에는 토큰 원문·해시가 오지 않는다. QR 그림만 잠깐 받아 보여 주고 5분 뒤 가린다
 
 const STEP_KEYS = ['remote.step.on', 'remote.step.port', 'remote.step.router', 'remote.step.address', 'remote.step.qr'] as const
 const RECENT_SHOWN = 5
+const TAILSCALE_DOWNLOAD_URL = 'https://tailscale.com/download'
+const TS_POLL_MS = 3000
+const MODES: { mode: RemoteMode; label: string; desc?: string }[] = [
+  { mode: 'tailscale', label: 'remote.mode.tailscale', desc: 'remote.mode.tailscale.desc' },
+  { mode: 'lan', label: 'remote.mode.lan', desc: 'remote.lanMode.on' },
+  { mode: 'router', label: 'remote.mode.router', desc: 'remote.mode.router.desc' },
+]
 const timeText = (ms: number) => fmtDate(ms, { hour: '2-digit', minute: '2-digit' })
 
 function useRemoteStatus() {
@@ -20,6 +27,15 @@ function useRemoteStatus() {
     void window.office.remoteStatus().then(setStatus)
     return window.office.onRemoteStatus(setStatus)
   }, [])
+  // Tailscale 방식이 열려 있는 동안 3초마다 상태를 다시 읽는다 (사용자가 로그인을 마치면 자동으로 다음 단계로)
+  const mode = status?.mode
+  useEffect(() => {
+    if (mode !== 'tailscale') return
+    const read = () => void window.office.refreshRemoteTailscale().then(setStatus)
+    read()
+    const timer = setInterval(read, TS_POLL_MS)
+    return () => clearInterval(timer)
+  }, [mode])
   return [status, setStatus] as const
 }
 
@@ -51,10 +67,15 @@ export function RemoteSection() {
     setStatus(await window.office.regenerateRemoteQr())
     openGuide(4)
   }
-  const handleLanMode = async (isLanOnly: boolean) => {
-    setStatus(await window.office.setRemoteLanOnly(isLanOnly))
+  const handleMode = async (mode: RemoteMode) => {
+    if (mode === status.mode) return
+    setStatus(await window.office.setRemoteMode(mode))
     // 주소가 바뀌므로 이미 연결해 둔 휴대폰은 QR을 다시 찍어야 할 수 있다
     if (status.isEnabled) setIsLanModeChanged(true)
+  }
+  const handleTsNotice = async (isSwitch: boolean) => {
+    if (isSwitch) await handleMode('tailscale')
+    setStatus(await window.office.dismissRemoteTsNotice())
   }
 
   return (
@@ -62,20 +83,39 @@ export function RemoteSection() {
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" checked={status.isEnabled} onChange={(e) => void handleToggle(e.target.checked)} /> {t('remote.enable')}
       </label>
-      <label className="flex items-start gap-2 text-sm">
-        <input type="checkbox" className="mt-1" checked={status.lanOnly} onChange={(e) => void handleLanMode(e.target.checked)} />
-        <span>
-          {t('remote.lanMode')}
-          <span className="text-muted-foreground block text-xs">{status.lanOnly ? t('remote.lanMode.on') : t('remote.lanMode.off')}</span>
-        </span>
-      </label>
-      {isLanModeChanged && <Banner tone="warning">{t('remote.lanMode.changed')}</Banner>}
+      {status.isTsNoticePending && status.mode !== 'tailscale' && (
+        <Banner tone="ok">
+          <p>{t('remote.ts.notice')}</p>
+          <div className="mt-1.5 flex gap-2">
+            <Button size="sm" onClick={() => void handleTsNotice(true)}>
+              {t('remote.ts.notice.switch')}
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => void handleTsNotice(false)}>
+              {t('remote.ts.notice.keep')}
+            </Button>
+          </div>
+        </Banner>
+      )}
+      <fieldset className="flex flex-col gap-1.5 text-sm">
+        <legend className="mb-1 text-xs font-medium">{t('remote.mode')}</legend>
+        {MODES.map((m) => (
+          <label key={m.mode} className="flex items-start gap-2">
+            <input type="radio" name="remote-mode" className="mt-1" checked={status.mode === m.mode} onChange={() => void handleMode(m.mode)} />
+            <span>
+              {t(m.label as 'remote.mode')}
+              {status.mode === m.mode && m.desc && <span className="text-muted-foreground block text-xs">{t(m.desc as 'remote.mode')}</span>}
+            </span>
+          </label>
+        ))}
+      </fieldset>
+      {isLanModeChanged && <Banner tone="warning">{t('remote.mode.changed')}</Banner>}
+      {status.mode === 'tailscale' && <TailscaleSteps status={status} setStatus={setStatus} />}
       {status.isEnabled && (
         <p className="flex flex-wrap items-center gap-x-1.5 text-xs">
           <span className={status.isListening ? 'text-status-working' : 'text-status-error'}>● {status.isListening ? t('remote.on') : t('remote.notOpen')}</span>
           {status.connectHost && (
             <span className="text-muted-foreground">
-              · {status.isLanOnly ? t('remote.lanAddress') : t('remote.externalAddress')} {status.connectHost}:{status.port}
+              · {status.mode === 'tailscale' ? t('remote.tsAddress') : status.isLanOnly ? t('remote.lanAddress') : t('remote.externalAddress')} {status.connectHost}:{status.port}
             </span>
           )}
           {!status.connectHost && <span className="text-muted-foreground">· {t('remote.portLabel', { port: status.port })}</span>}
@@ -84,7 +124,7 @@ export function RemoteSection() {
       )}
       {status.error === 'port_in_use' && <Banner tone="error">{t('remote.error.portInUse', { port: status.port })}</Banner>}
       {status.error === 'start_failed' && <Banner tone="error">{t('remote.error.startFailed')}</Banner>}
-      {status.error === 'no_network' && <Banner tone="warning">{t('remote.error.noNetwork')}</Banner>}
+      {status.error === 'no_network' && <Banner tone="warning">{status.mode === 'tailscale' ? t('remote.ts.error.waiting') : t('remote.error.noNetwork')}</Banner>}
       {status.isKeyRegenerated && <Banner tone="warning">{t('remote.keyRegenerated')}</Banner>}
       {status.lockedUntil && (
         <Banner tone="warning">{t('remote.locked', { time: timeText(status.lockedUntil) })}</Banner>
@@ -112,6 +152,37 @@ export function RemoteSection() {
       {status.recentAccess.length > 0 && <RecentAccess entries={status.recentAccess} />}
       <RemoteGuide status={status} setStatus={setStatus} isOpen={isGuideOpen} onOpenChange={setIsGuideOpen} step={guideStep} setStep={setGuideStep} />
     </>
+  )
+}
+
+/** Tailscale 방식 단계 안내: 상태 줄 + ① PC 설치·로그인 ② 휴대폰 ③ QR. Tailscale을 대신 설치하지는 않는다 */
+function TailscaleSteps({ status, setStatus }: { status: RemoteStatus; setStatus: (s: RemoteStatus) => void }) {
+  const isRunning = status.tsState === 'running'
+  const stateText = isRunning ? t('remote.ts.state.running', { address: status.tsAddress ?? '' }) : t(`remote.ts.state.${status.tsState}`)
+  const stepClass = (isCurrent: boolean, isDone: boolean) => cn(isCurrent && 'text-foreground font-medium', isDone && 'text-status-working', !isCurrent && !isDone && 'text-muted-foreground')
+  return (
+    <div className="flex flex-col gap-2 rounded-lg border p-2.5 text-xs">
+      <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <span className={isRunning ? 'text-status-working' : 'text-status-waiting'}>● {stateText}</span>
+        {!isRunning && status.tsState === 'notInstalled' && (
+          <Button size="sm" variant="outline" onClick={() => window.open(TAILSCALE_DOWNLOAD_URL)}>
+            {t('remote.ts.download')}
+          </Button>
+        )}
+        <Button size="sm" variant="ghost" onClick={() => void window.office.refreshRemoteTailscale().then(setStatus)}>
+          {t('remote.ts.recheck')}
+        </Button>
+      </p>
+      <ol className="flex flex-col gap-0.5">
+        <li className={stepClass(!isRunning, isRunning)}>
+          {isRunning ? '✓ ' : ''}
+          {t('remote.ts.step1')}
+        </li>
+        <li className={stepClass(isRunning, false)}>{t('remote.ts.step2')}</li>
+        <li className={stepClass(false, false)}>{t('remote.ts.step3')}</li>
+      </ol>
+      <p className="text-muted-foreground">{t('remote.ts.corp')}</p>
+    </div>
   )
 }
 
@@ -184,8 +255,8 @@ function RemoteGuide({
     setIsBusy(false)
     // 이 가이드에서 "모두 조작할 수 있어요"를 읽고 켰으니 업데이트 안내(RemoteUpgradeNotice)는 띄우지 않는다
     if (next.isEnabled) void window.office.updateSettings({ isFullAccessNoticeSeen: true })
-    // 전용 모드는 공유기 포트를 열지 않고 주소도 내부 주소만 쓰므로 공유기·주소 단계를 건너뛴다
-    if (next.isListening) setStep(status.lanOnly ? 4 : 2)
+    // Tailscale·전용 모드는 공유기 포트를 열지 않고 주소도 내부 주소만 쓰므로 공유기·주소 단계를 건너뛴다
+    if (next.isListening) setStep(status.mode === 'router' ? 2 : 4)
   }
   const handleHost = async (value: string) => {
     setStatus(await window.office.setRemoteHost(value))
@@ -218,7 +289,7 @@ function RemoteGuide({
               <b>{t('remote.guide.readFirst')}</b>
               <br />
               {t('remote.guide.warnQr')}
-              <br />· {status.lanOnly ? t('remote.lanMode.on') : t('remote.guide.warnPort')}
+              <br />· {status.mode === 'lan' ? t('remote.lanMode.on') : status.mode === 'tailscale' ? t('remote.mode.tailscale.desc') : t('remote.guide.warnPort')}
             </Banner>
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={isAcknowledged} onChange={(e) => setIsAcknowledged(e.target.checked)} /> {t('remote.guide.ack')}
@@ -253,7 +324,7 @@ function RemoteGuide({
                 {t('remote.guide.prev')}
               </Button>
               <Button onClick={() => void handleOpenPort()} disabled={!isPortValid || isBusy}>
-                {isBusy && <Loader2Icon className="animate-spin" />} {status.lanOnly ? t('remote.guide.open') : t('remote.guide.tryRouter')}
+                {isBusy && <Loader2Icon className="animate-spin" />} {status.mode === 'router' ? t('remote.guide.tryRouter') : t('remote.guide.open')}
               </Button>
             </DialogFooter>
           </div>
@@ -409,7 +480,7 @@ function QrStep({ status, setStatus, onClose }: { status: RemoteStatus; setStatu
         </Banner>
       )}
       {!status.connectHost && <Banner tone="error">{t('remote.qr.noHost')}</Banner>}
-      {status.isLanOnly && !status.lanOnly && <Banner tone="warning">{t('remote.qr.lanOnly')}</Banner>}
+      {status.isLanOnly && status.mode === 'router' && <Banner tone="warning">{t('remote.qr.lanOnly')}</Banner>}
       <div className="text-muted-foreground flex items-start gap-2 text-xs">
         <ShieldAlertIcon className="mt-0.5 size-3.5 shrink-0" />
         {t('remote.qr.keyWarning')}

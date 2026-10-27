@@ -223,4 +223,7 @@
     <string name="state_connfail_unreach_lo">仅在连接同一 Wi-Fi 或公司 VPN 时才能连接。请检查 Wi-Fi 或 VPN 后重试。</string>
     <string name="state_unreach_body_lo">可能的原因：\n· 仅在连接同一 Wi-Fi 或公司 VPN 时才能连接\n· 电脑处于睡眠状态或已关机\n· Claude Office 未运行</string>
     <string name="qr_unreach_default_lo">无法连接到电脑。仅在连接同一 Wi-Fi 或公司 VPN 时才能连接。</string>
+    <string name="state_connfail_unreach_ts">请确认手机上的 Tailscale 已开启，并与电脑使用同一账号登录。</string>
+    <string name="state_unreach_body_ts">可能的原因：\n· 手机上的 Tailscale 已关闭，或与电脑账号不同\n· 电脑处于睡眠状态或已关机\n· Claude Office 未运行</string>
+    <string name="qr_unreach_default_ts">无法连接到电脑。请确认手机上的 Tailscale 已开启，并与电脑使用同一账号。</string>
 </resources>

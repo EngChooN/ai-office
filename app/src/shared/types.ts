@@ -698,6 +698,11 @@ export interface AccessEntry {
 export type UpnpState =
   { state: 'off' } | { state: 'trying' } | { state: 'ok'; externalAddress: string | null; isCarrierShared: boolean; isDoubleNat: boolean } | { state: 'failed'; reason: 'no_gateway' | 'refused' }
 
+/** 원격 연결 방식: Tailscale(추천·신규 기본) · 같은 네트워크 전용 · 고급(공유기 포트 열기) */
+export type RemoteMode = 'tailscale' | 'lan' | 'router'
+/** Tailscale 상태: 설치 안 됨 · 로그인 필요 · 꺼짐 · 켜짐(주소 있음) */
+export type TsState = 'notInstalled' | 'needsLogin' | 'stopped' | 'running'
+
 /** 화면에 보내는 원격 상태 — 비밀(토큰·해시·키)은 없다 */
 export interface RemoteStatus {
   isEnabled: boolean
@@ -712,6 +717,16 @@ export interface RemoteStatus {
   lanOnly: boolean
   /** 예전 사용자에게 전용 모드 안내를 아직 안 보여 줬는지 (true면 한 번 보여 주고 dismissRemoteLanNotice 호출) */
   isLanNoticePending: boolean
+  /** 연결 방식 (lanOnly는 mode === 'lan'과 같다) */
+  mode: RemoteMode
+  /** Tailscale 상태 (mode가 tailscale일 때 3초마다 다시 읽는다 — refreshRemoteTailscale) */
+  tsState: TsState
+  /** running일 때 이 PC의 Tailscale 주소 (100.64/10) */
+  tsAddress: string | null
+  /** MagicDNS 이름 (표시용) */
+  tsName: string | null
+  /** 예전 사용자에게 Tailscale 안내를 아직 안 보여 줬는지 (true면 한 번 보여 주고 dismissRemoteTsNotice 호출) */
+  isTsNoticePending: boolean
   fingerprint: string | null
   upnp: UpnpState
   /** 켜기 실패 (포트를 이미 다른 프로그램이 씀 등) */
@@ -751,6 +766,11 @@ export interface OfficeApi {
   remoteQr(): Promise<RemoteQr | null>
   setRemoteHost(host: string): Promise<RemoteStatus>
   setRemoteLanOnly(isLanOnly: boolean): Promise<RemoteStatus>
+  /** 연결 방식 바꾸기. 열린 연결은 끊기고 새 주소로 다시 열린다 (토큰은 그대로) */
+  setRemoteMode(mode: RemoteMode): Promise<RemoteStatus>
+  /** Tailscale 상태를 지금 다시 읽고 상태를 돌려준다 (Tailscale 모드 화면이 3초마다 부른다) */
+  refreshRemoteTailscale(): Promise<RemoteStatus>
+  dismissRemoteTsNotice(): Promise<RemoteStatus>
   dismissRemoteLanNotice(): Promise<RemoteStatus>
 
   /** 비서 (docs/specs/secretary.md): 말 보내기 · 확인 카드 실행(첨삭은 고른 수정본·고친 값과 함께) · 카드 취소 · 대화 지우기. 대화는 스냅샷 secretary로 받는다 */
