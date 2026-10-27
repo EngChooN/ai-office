@@ -7,6 +7,7 @@ import { ruleDraftFor } from '../shared/approvalRules'
 import { t } from '../shared/i18n/index.ts'
 import os from 'node:os'
 import { insertUsage, saveSessionId } from './db'
+import { findCodexRollout, readCodexTail } from './ai/codexSession'
 import { CONTEXT_ROTATE_TOKENS, findSessionFile, handoffText, readSessionTail } from './sessionRotate'
 import { BROWSER_EQUIPMENT, browserVerdict } from '../shared/browserTools.ts'
 import { COMPUTER_EQUIPMENT, computerVerdict } from '../shared/computerTools.ts'
@@ -177,8 +178,9 @@ class Worker {
     const sessionId = this.staff.sessionId
     if (!sessionId) return text
     if (this.contextTokens === null) {
-      const file = findSessionFile(path.join(os.homedir(), '.claude', 'projects'), sessionId)
-      const tail = file ? readSessionTail(file) : { contextTokens: 0, lastText: '' }
+      const codex = this.staff.provider === 'codex'
+      const file = codex ? findCodexRollout(path.join(os.homedir(), '.codex', 'sessions'), sessionId) : findSessionFile(path.join(os.homedir(), '.claude', 'projects'), sessionId)
+      const tail = file ? (codex ? readCodexTail(file) : readSessionTail(file)) : { contextTokens: 0, lastText: '' }
       this.contextTokens = tail.contextTokens
       if (!this.lastReport) this.lastReport = tail.lastText
     }

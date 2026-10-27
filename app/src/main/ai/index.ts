@@ -1,12 +1,14 @@
 import type { AiProvider } from '../../shared/types'
+import { CodexRuntime } from './codex'
 import { ClaudeBackend, ClaudeRuntime, claudeModelId } from './claude'
 import type { AgentRuntime, AiBackend, AskOptions, RuntimeEvent } from './types'
 
 export type * from './types'
 
-/** 직원의 공급자에 맞는 세션을 만든다 (Codex는 M2) */
+/** 직원의 공급자에 맞는 세션을 만든다  */
 export function createRuntime(provider: AiProvider, onEvent: (e: RuntimeEvent) => void): AgentRuntime {
   if (provider === 'claude') return new ClaudeRuntime(onEvent)
+  if (provider === 'codex') return new CodexRuntime(onEvent)
   throw new Error(`지원하지 않는 공급자: ${provider}`)
 }
 
