@@ -423,7 +423,7 @@ const impl: Record<string, (...args: never[]) => unknown> = {
 }
 
 // PC 서버(v2 분류표)와 같은 응답
-const PC_ONLY: Record<string, string> = { pickFolder: 'enter_path', pickFiles: 'enter_path', openAttachment: 'download_file', resumeInTerminal: 'open_on_pc', openClaudeLogin: 'open_on_pc', remoteQr: 'open_on_pc', setRemoteFullAccess: 'open_on_pc' }
+const PC_ONLY: Record<string, string> = { pickFolder: 'enter_path', pickFiles: 'enter_path', openAttachment: 'download_file', resumeInTerminal: 'open_on_pc', openClaudeLogin: 'open_on_pc', openCodexLogin: 'open_on_pc', remoteQr: 'open_on_pc', setRemoteFullAccess: 'open_on_pc' }
 
 function setGrid(grid: OfficeSnapshot['shop']['grid']) {
   snapshot.shop = { ...snapshot.shop, grid }

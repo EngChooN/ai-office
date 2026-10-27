@@ -20,6 +20,7 @@ export default {
   'provider.beta': { ko: '베타', en: 'Beta', ja: 'ベータ', zh: '测试版' },
   'provider.state.checking': { ko: '확인 중', en: 'Checking', ja: '確認中', zh: '检查中' },
   'provider.state.missing': { ko: '설치 안 됨', en: 'Not installed', ja: '未インストール', zh: '未安装' },
+  'provider.state.broken': { ko: '실행 실패', en: 'Failed to run', ja: '実行に失敗', zh: '运行失败' },
   'provider.state.loggedOut': { ko: '로그인 필요', en: 'Sign-in needed', ja: 'ログインが必要', zh: '需要登录' },
   'provider.state.ready': { ko: '준비됨', en: 'Ready', ja: '準備完了', zh: '已就绪' },
   'provider.claude.missing': {
@@ -27,6 +28,12 @@ export default {
     en: "Couldn't find the Claude program bundled with the app. Please reinstall the app.",
     ja: 'アプリに内蔵のClaude実行ファイルが見つかりませんでした。アプリを再インストールしてください。',
     zh: '找不到应用内置的 Claude 程序。请重新安装应用。',
+  },
+  'provider.claude.broken': {
+    ko: 'Claude 실행 파일은 있지만 실행하지 못했어요. 다시 확인해 보시고, 계속되면 앱을 다시 설치해 주세요.',
+    en: "The Claude program is there but failed to run. Try again, and reinstall the app if it keeps happening.",
+    ja: 'Claude実行ファイルはありますが、実行できませんでした。もう一度確認し、続く場合はアプリを再インストールしてください。',
+    zh: 'Claude 程序存在但无法运行。请重试，若仍然如此，请重新安装应用。',
   },
   'provider.claude.loggedOut': {
     ko: 'Claude Pro·Max 구독이나 Anthropic Console(API) 계정으로 로그인하면 Claude 직원을 고용할 수 있어요.',
@@ -41,6 +48,12 @@ export default {
     ja: 'Codex実行ファイルが見つかりませんでした。つながなくてもClaudeスタッフはそのまま使えます。',
     zh: '找不到 Codex 程序。不连接也不影响 Claude 员工的使用。',
   },
+  'provider.codex.broken': {
+    ko: 'Codex 실행 파일은 있지만 실행하지 못했어요. 다시 확인해 보세요. Claude 직원은 그대로 쓸 수 있어요.',
+    en: "The Codex program is there but failed to run. Try again. Your Claude staff work fine without it.",
+    ja: 'Codex実行ファイルはありますが、実行できませんでした。もう一度確認してください。Claudeスタッフはそのまま使えます。',
+    zh: 'Codex 程序存在但无法运行。请重试。不影响 Claude 员工的使用。',
+  },
   'provider.codex.loggedOut': {
     ko: 'ChatGPT 계정으로 로그인하면 GPT 직원도 고용할 수 있어요. 선택 사항이에요.',
     en: 'Sign in with a ChatGPT account to hire GPT staff as well. This is optional.',
@@ -49,12 +62,15 @@ export default {
   },
   'provider.codex.ready': { ko: 'GPT 직원을 고용할 수 있어요.', en: 'You can hire GPT staff.', ja: 'GPTスタッフを雇えます。', zh: '可以雇用 GPT 员工。' },
   'provider.codex.login': { ko: 'ChatGPT로 로그인', en: 'Sign in with ChatGPT', ja: 'ChatGPTでログイン', zh: '使用 ChatGPT 登录' },
-  'provider.codex.loginSoon': {
-    ko: '앱 안에서 로그인하는 기능은 다음 업데이트에서 열려요.',
-    en: 'In-app sign-in arrives in the next update.',
-    ja: 'アプリ内ログインは次のアップデートで使えるようになります。',
-    zh: '应用内登录功能将在下次更新中开放。',
+  'provider.codex.loginWaiting': { ko: '브라우저에서 로그인해 주세요…', en: 'Finish signing in in your browser…', ja: 'ブラウザでログインしてください…', zh: '请在浏览器中完成登录…' },
+  'provider.codex.loginFailed': { ko: '로그인하지 못했어요: {error}', en: "Couldn't sign in: {error}", ja: 'ログインできませんでした: {error}', zh: '登录失败：{error}' },
+  'provider.banner.text': {
+    ko: 'GPT 직원도 고용할 수 있어요. 설정에서 Codex를 연결해 보세요.',
+    en: 'You can hire GPT staff too. Connect Codex in Settings.',
+    ja: 'GPTスタッフも雇えるようになりました。設定でCodexをつなげてみてください。',
+    zh: '现在也可以雇用 GPT 员工了。去设置里连接 Codex 吧。',
   },
+  'provider.banner.open': { ko: '연결하러 가기', en: 'Connect', ja: 'つなげる', zh: '去连接' },
   'onboarding.provider.title': { ko: 'AI 계정 연결', en: 'Connect an AI account', ja: 'AIアカウントの接続', zh: '连接 AI 账号' },
   'onboarding.provider.gateDesc': {
     ko: '직원을 움직일 AI 계정이 필요해요. Claude와 Codex 중 하나만 연결하면 넘어갈 수 있어요.',

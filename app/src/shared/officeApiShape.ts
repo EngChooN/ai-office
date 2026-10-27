@@ -72,6 +72,7 @@ export const OFFICE_METHODS = [
   'claudeStatus',
   'providerStatus',
   'openClaudeLogin',
+  'openCodexLogin',
   'resumeInTerminal',
   'forkExternal',
   'answerMeetingDecision',

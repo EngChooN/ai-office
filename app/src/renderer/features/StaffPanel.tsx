@@ -18,6 +18,7 @@ import { ReviewTab } from './ReviewTab'
 import { StaffExportDialog } from './StaffExportDialog'
 import { LiveMiniView } from './LiveMiniView'
 import { Avatar, StatusDot } from './StaffCard'
+import { useProviders } from './ProviderCards'
 import { formatCost, formatTokens, shortPath, workDirLabel } from './status'
 import { Markdown } from '@/components/markdown'
 import { JumpToBottom, useStickToBottom } from '@/components/stick-to-bottom'
@@ -127,7 +128,25 @@ const TAB_LABEL: Record<PanelTab, TKey> = {
 }
 const MODELS: ModelChoice[] = ['default', 'opus', 'sonnet', 'haiku']
 /** 기본 모델만 번역하고 모델 이름은 그대로 */
-const modelLabel = (model: Staff['model']) => (model === 'default' ? t('staffPanel.model.default') : { opus: 'Opus', sonnet: 'Sonnet', haiku: 'Haiku' }[model])
+const CLAUDE_MODEL_NAME: Record<string, string> = { opus: 'Opus', sonnet: 'Sonnet', haiku: 'Haiku' }
+const modelLabel = (model: Staff['model']) => (model === 'default' ? t('staffPanel.model.default') : (CLAUDE_MODEL_NAME[model] ?? model))
+
+/** 프로필의 모델 고르기 — Codex 직원은 Codex가 알려 준 모델 목록 (고른 모델이 목록에 없어도 남겨 둔다) */
+function ModelSelect({ staff }: { staff: Staff }) {
+  const isCodex = staff.provider === 'codex'
+  const { status } = useProviders(isCodex)
+  const codexModels = status?.codex.models ?? []
+  const options = isCodex ? ['default', ...codexModels, ...(staff.model === 'default' || codexModels.includes(staff.model) ? [] : [staff.model])] : MODELS
+  return (
+    <NativeSelect value={staff.model} onChange={(e) => void window.office.updateStaff(staff.id, { model: e.target.value as ModelChoice })}>
+      {options.map((m) => (
+        <option key={m} value={m}>
+          {modelLabel(m)}
+        </option>
+      ))}
+    </NativeSelect>
+  )
+}
 
 export function StaffPanel() {
   const staff = useOffice((s) => s.staff.find((x) => x.id === s.selectedId))
@@ -634,13 +653,7 @@ function Profile({ staff }: { staff: Staff }) {
       </div>
       <label className="flex flex-col gap-1 text-xs">
         <span className="text-muted-foreground">{t('staffPanel.profile.model')}</span>
-        <NativeSelect value={staff.model} onChange={(e) => void window.office.updateStaff(staff.id, { model: e.target.value as ModelChoice })}>
-          {MODELS.map((m) => (
-            <option key={m} value={m}>
-              {modelLabel(m)}
-            </option>
-          ))}
-        </NativeSelect>
+        <ModelSelect staff={staff} />
       </label>
       <label className="flex flex-col gap-1 text-xs">
         <span className="text-muted-foreground">{t('staffPanel.profile.team')} {team?.leadId === staff.id && (isWorkMode ? t('staffPanel.profile.lead') : t('staffPanel.profile.leader'))}</span>

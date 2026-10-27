@@ -8,7 +8,7 @@ import { useOffice } from '@/store'
 import { IS_WINDOWS, osText, trayPlace } from '@/lib/platform'
 import { NotOnWindows } from '@/components/not-on-windows'
 import { RemoteSection } from './RemoteSection'
-import { ProviderSection } from './ProviderCards'
+import { PROVIDER_SECTION_ID, ProviderSection } from './ProviderCards'
 import { COMPANY_LEVELS, type DayNight, type HooksStatus, type Settings, type ThemeId } from '@shared/types'
 import { officeOf } from '@shared/officeLevel'
 import { ApprovalRulesList, AutoApproveSection } from './AutoApprove'
@@ -57,9 +57,9 @@ function LevelPreview() {
   )
 }
 
-function Section({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
+function Section({ id, title, description, children }: { id?: string; title: string; description?: string; children: React.ReactNode }) {
   return (
-    <section className="bg-card flex max-w-3xl flex-col gap-3 rounded-xl border p-4">
+    <section id={id} className="bg-card flex max-w-3xl scroll-mt-4 flex-col gap-3 rounded-xl border p-4">
       <div>
         <h2 className="font-semibold">{title}</h2>
         {description && <p className="text-muted-foreground text-xs">{description}</p>}
@@ -108,7 +108,7 @@ export function SettingsPage() {
           ))}
         </NativeSelect>
       </Section>
-      <Section title={t('provider.section.title')} description={t('provider.section.desc')}>
+      <Section id={PROVIDER_SECTION_ID} title={t('provider.section.title')} description={t('provider.section.desc')}>
         <ProviderSection />
       </Section>
       <Section title={t('settingsPage.workMode.title')} description={t('settingsPage.workMode.desc')}>

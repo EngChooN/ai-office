@@ -105,6 +105,7 @@ export const V2_METHODS: Record<OfficeMethod, MethodSpec> = {
   claudeStatus: R(),
   providerStatus: R(),
   openClaudeLogin: P('open_on_pc'),
+  openCodexLogin: P('open_on_pc'),
   forkExternal: R('s s a?', [2]),
   listManuals: R(),
   saveManual: S('o s?'),

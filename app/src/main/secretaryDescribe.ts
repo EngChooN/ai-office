@@ -24,6 +24,7 @@ const SETTING_LABEL: Record<string, string> = {
   isOnboarded: '첫 실행 안내 마침',
   isWorkMode: '업무 모드',
   isFullAccessNoticeSeen: '휴대폰 안내 봄',
+  isProviderBannerSeen: 'GPT 직원 안내 봄',
 }
 /** 이 설정은 바꿔도 꾸미기라 보통 */
 const COSMETIC_SETTINGS = new Set(['theme', 'dayNight', 'plants', 'isChatterOn', 'layout'])

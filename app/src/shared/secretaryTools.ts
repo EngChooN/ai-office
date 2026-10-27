@@ -127,6 +127,7 @@ export const SECRETARY_TOOLS: Record<OfficeMethod, ToolSpec> = {
   openAttachment: exclude,
   saveAttachments: exclude,
   openClaudeLogin: exclude,
+  openCodexLogin: exclude,
   resumeInTerminal: exclude,
   remoteQr: exclude,
   regenerateRemoteQr: exclude,

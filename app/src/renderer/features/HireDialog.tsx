@@ -11,7 +11,9 @@ import { AvatarEditor } from './AvatarEditor'
 import { useShallow } from 'zustand/react/shallow'
 import { useOffice, useWorkMode } from '@/store'
 import { NativeSelect } from '@/components/ui/select'
-import { ROLE_PRESETS, type AgentTemplate, type ApprovalMode, type HireInput, type ModelChoice } from '@shared/types'
+import { ROLE_PRESETS, type AgentTemplate, type AiProvider, type ApprovalMode, type HireInput, type ModelChoice, type ProvidersStatus } from '@shared/types'
+import { Badge } from '@/components/ui/badge'
+import { PROVIDER_NAME, PROVIDERS, useProviders } from './ProviderCards'
 import { shortPath } from './status'
 import { StaffMarketDialog } from './StaffMarketDialog'
 import { showToast } from '@/lib/toast'
@@ -29,10 +31,44 @@ const approvalModes = (): { value: ApprovalMode; label: string; hint: string }[]
   { value: 'acceptEdits', label: t('hire.approval.acceptEdits'), hint: t('hire.approval.acceptEdits.hint') },
 ]
 
+/** 고용 창이 처음 고를 공급자: Claude가 준비됐으면 Claude, 아니면 준비된 Codex (아무것도 모르면 Claude — 지금 동작) */
+const defaultProvider = (s: ProvidersStatus | null): AiProvider => (s && s.claude.state !== 'ready' && s.codex.state === 'ready' ? 'codex' : 'claude')
+
+/** 공급자 고르기 — 준비된 쪽만 누를 수 있다. Codex에는 베타 표시 */
+function ProviderPicker({ status, value, onChange }: { status: ProvidersStatus | null; value: AiProvider; onChange: (p: AiProvider) => void }) {
+  return (
+    <div className="bg-muted flex w-fit rounded-lg p-0.5">
+      {PROVIDERS.map((p) => {
+        const isReady = status?.[p].state === 'ready'
+        return (
+          <button
+            key={p}
+            type="button"
+            disabled={!isReady}
+            onClick={() => onChange(p)}
+            className={cn(
+              'flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-50',
+              value === p ? 'bg-background shadow-sm' : 'text-muted-foreground',
+            )}
+          >
+            {PROVIDER_NAME[p]}
+            {p === 'codex' && (
+              <Badge variant="outline" className="text-muted-foreground px-1 py-0 text-[10px]">
+                {t('provider.beta')}
+              </Badge>
+            )}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 const emptyForm = (): HireInput => ({
   name: '',
   role: ROLE_PRESETS[0],
   avatar: 0,
+  provider: 'claude',
   model: 'default',
   cwd: '',
   systemPrompt: '',
@@ -76,24 +112,41 @@ export function HireDialog() {
   const hasPack = typeof window.officePack !== 'undefined'
   const isMarketOpen = useOffice((s) => s.isMarketOpen)
   const setMarketOpen = useOffice((s) => s.setMarketOpen)
+  const providers = useProviders(isOpen)
+  const provider = form.provider ?? 'claude'
+  const isCodex = provider === 'codex'
+  const codex = providers.status?.codex
+  // 고른 공급자가 준비 안 됐으면 고용하지 않는다 (상태를 아직 모르면 지금처럼 Claude로 고용)
+  const isProviderReady = providers.status ? providers.status[provider].state === 'ready' : provider === 'claude'
+  const notReady = PROVIDERS.filter((p) => providers.status && providers.status[p].state !== 'ready')
 
   useEffect(() => {
     if (isOpen) {
       // 첫 실행 마법사에서 고른 기본 작업 폴더로 시작한다
-      setForm({ ...emptyForm(), cwd: useOffice.getState().settings.defaultCwd })
+      setForm({ ...emptyForm(), provider: defaultProvider(providers.status), cwd: useOffice.getState().settings.defaultCwd })
       setIsCustomRole(false)
       setTemplates([])
       setBaseLook(randomLook())
       setIsLookEdited(false)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 열 때 한 번만 (상태가 나중에 오면 아래에서 맞춘다)
   }, [isOpen])
+
+  // 창을 연 뒤 상태가 도착했는데 고른 공급자가 준비 안 됐으면 준비된 쪽으로
+  useEffect(() => {
+    const s = providers.status
+    if (!isOpen || !s || s[form.provider ?? 'claude'].state === 'ready') return
+    const next = defaultProvider(s)
+    if (s[next].state === 'ready') setForm((f) => ({ ...f, provider: next, model: 'default' }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, providers.status])
 
   useEffect(() => {
     if (form.cwd) void window.office.listAgentTemplates(form.cwd).then(setTemplates)
   }, [form.cwd])
 
   const update = (patch: Partial<HireInput>) => setForm((f) => ({ ...f, ...patch }))
-  const isValid = form.name.trim() && form.role.trim()
+  const isValid = form.name.trim() && form.role.trim() && isProviderReady
 
   const handlePickFolder = async () => {
     const dir = await window.office.pickFolder()
@@ -117,7 +170,8 @@ export function HireDialog() {
   }
   const handleTemplate = (tpl: AgentTemplate) => {
     setIsCustomRole(true)
-    update({ role: tpl.name, model: tpl.model, systemPrompt: tpl.prompt })
+    // 에이전트 정의의 모델은 Claude 별칭이라 Codex 직원에게는 옮기지 않는다
+    update({ role: tpl.name, systemPrompt: tpl.prompt, ...(isCodex ? {} : { model: tpl.model }) })
   }
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -266,10 +320,31 @@ export function HireDialog() {
             {isCustomRole && <Input value={form.role} onChange={(e) => update({ role: e.target.value })} placeholder={t('hire.role.placeholder')} />}
           </div>
 
+          <div className="flex flex-col gap-2">
+            <Label>{t('hire.provider')}</Label>
+            <ProviderPicker status={providers.status} value={provider} onChange={(p) => p !== provider && update({ provider: p, model: 'default' })} />
+            <span className="text-muted-foreground text-xs">
+              {providers.isChecking && !providers.status
+                ? t('hire.provider.checking')
+                : [t('hire.provider.locked'), ...notReady.map((p) => t('hire.provider.notReady', { name: PROVIDER_NAME[p] }))].join(' ')}
+            </span>
+          </div>
+
           <div className="flex gap-6">
             <div className="flex flex-col gap-2">
               <Label>{t('hire.model')}</Label>
-              <Segmented options={models()} value={form.model} onChange={(model) => update({ model })} />
+              {isCodex ? (
+                <NativeSelect value={form.model} onChange={(e) => update({ model: e.target.value as ModelChoice })} className="w-48">
+                  <option value="default">{codex?.defaultModel ? t('hire.model.codexDefault', { model: codex.defaultModel }) : t('hire.model.default')}</option>
+                  {(codex?.models ?? []).map((m) => (
+                    <option key={m} value={m}>
+                      {m}
+                    </option>
+                  ))}
+                </NativeSelect>
+              ) : (
+                <Segmented options={models()} value={form.model} onChange={(model) => update({ model })} />
+              )}
             </div>
             <div className="flex flex-col gap-2">
               <Label>{t('hire.approval')}</Label>

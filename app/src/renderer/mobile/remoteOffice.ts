@@ -46,6 +46,7 @@ export interface RemoteHandlers {
 export const PC_ONLY_TEXT = {
   generic: 'PC에서 열어 주세요. 휴대폰에서는 할 수 없는 기능이에요.',
   resumeInTerminal: '터미널은 PC에서 열어 주세요.',
+  openCodexLogin: 'Codex 로그인은 PC에서 해 주세요. PC 화면의 AI Office 설정에서 연결할 수 있어요.',
   openClaudeLogin: 'Claude 로그인은 PC에서 해 주세요. PC 화면의 AI Office 첫 실행 안내를 따라 주세요.',
   remoteQr: '연결 QR은 PC 화면에서만 볼 수 있어요.',
   saved: '휴대폰의 다운로드 폴더에 저장했어요.',
@@ -173,6 +174,10 @@ export function createRemoteOffice(bridge: Bridge, h: RemoteHandlers): RemoteSes
     // 기존 오류 문구 자리(resumeError)에 그대로 보인다
     resumeInTerminal: async () => PC_ONLY_TEXT.resumeInTerminal,
     openClaudeLogin: async () => h.notice(PC_ONLY_TEXT.openClaudeLogin),
+    openCodexLogin: async () => {
+      h.notice(PC_ONLY_TEXT.openCodexLogin)
+      return ''
+    },
     remoteQr: async () => {
       h.notice(PC_ONLY_TEXT.remoteQr)
       return null

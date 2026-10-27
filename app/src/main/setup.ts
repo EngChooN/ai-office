@@ -3,10 +3,12 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { promisify } from 'node:util'
+import { shell } from 'electron'
 import type { ClaudeStatus, ProvidersStatus } from '../shared/types'
 import { claudeBinaryPath } from './ai/claude'
 import { codexBinaryPath } from './ai/codex'
-import { classifyClaude, probeCodex } from './ai/providerStatus'
+import { loginCodex } from './ai/codexLogin'
+import { classifyClaude, isRunFailure, probeCodex } from './ai/providerStatus'
 import { IS_WINDOWS, toolEnv, WHICH } from './platform'
 
 // 첫 실행 점검: 로그인 상태 확인과 로그인 창 띄우기
@@ -30,12 +32,12 @@ export async function claudeStatus(): Promise<ClaudeStatus> {
   }
 }
 
-/** 공급자(Claude·Codex)별 설치·로그인 상태 — 설정 화면 카드·온보딩 게이트용 */
-export async function providerStatus(): Promise<ProvidersStatus> {
 /** 마지막으로 감지한 공급자 상태 — 앱 내부 AI가 쓸 공급자·폴백을 정할 때 본다 (아직 모르면 null) */
 let lastProviders: ProvidersStatus | null = null
 export const lastProviderStatus = () => lastProviders
 
+/** 공급자(Claude·Codex)별 설치·로그인 상태 — 설정 화면 카드·온보딩 게이트용 */
+export async function providerStatus(): Promise<ProvidersStatus> {
   const bin = claudeBinaryPath()
   const claude = (async () => {
     if (!fs.existsSync(bin)) return classifyClaude(false, null)
@@ -43,7 +45,7 @@ export const lastProviderStatus = () => lastProviders
       const { stdout } = await run(bin, ['auth', 'status'], { timeout: STATUS_TIMEOUT_MS })
       return classifyClaude(true, JSON.parse(stdout))
     } catch (e) {
-      return classifyClaude(true, null, e instanceof Error ? e.message : String(e))
+      return classifyClaude(true, null, e instanceof Error ? e.message : String(e), isRunFailure(e))
     }
   })()
   const [c, x] = await Promise.all([claude, probeCodex(codexBinaryPath())])
@@ -76,6 +78,9 @@ export async function openClaudeLogin() {
   const script = `tell application "Terminal"\nactivate\ndo script "${cmd.replaceAll('\\', '\\\\').replaceAll('"', '\\"')}"\nend tell`
   await run('osascript', ['-e', script])
 }
+
+/** Codex는 앱이 직접 app-server로 로그인한다: 기본 브라우저가 열리고, 인증이 끝나면 성공('')으로 돌아온다 */
+export const openCodexLogin = () => loginCodex(codexBinaryPath(), (url) => shell.openExternal(url))
 
 /** 터미널에서 쓸 claude: 사용자가 설치한 것이 있으면 그것, 없으면 앱에 들어 있는 것 */
 function terminalClaude() {

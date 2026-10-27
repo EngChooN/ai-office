@@ -12,6 +12,7 @@ import { DemoStage } from '@/features/DemoStage'
 import { WhatsNew } from '@/features/WhatsNew'
 import { UpdateNotice } from '@/features/AppUpdate'
 import { RemoteLanNotice, RemoteUpgradeNotice } from '@/features/RemoteUpgradeNotice'
+import { ProviderBanner } from '@/features/ProviderBanner'
 import { QuickSecretary } from '@/features/secretary/QuickSecretary'
 import { AutoApproveBadge } from '@/features/AutoApprove'
 import { MOD_KEY } from '@/lib/platform'
@@ -136,6 +137,8 @@ function DesktopShell({ children }: { children?: React.ReactNode }) {
         </div>
       </header>
       {isLoaded && staff.length === 0 && <EmptyOfficeHint />}
+      {/* 공급자 연결은 PC에서 (휴대폰에서 누르면 휴대폰 설정 화면으로 가 버린다) */}
+      {!IS_MOBILE_SHELL && <ProviderBanner />}
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <Sidebar />
         <main className="min-h-0 min-w-0 flex-1">

@@ -6,7 +6,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { test } from 'node:test'
-import { classifyClaude, classifyCodex, probeCodex } from '../src/main/ai/providerStatus.ts'
+import { classifyClaude, classifyCodex, isRunFailure, probeCodex } from '../src/main/ai/providerStatus.ts'
 
 test('Claude: 실행 파일 없음 / 로그아웃 / 준비됨(플랜 포함)', () => {
   assert.equal(classifyClaude(false, null).state, 'missing')
@@ -14,6 +14,21 @@ test('Claude: 실행 파일 없음 / 로그아웃 / 준비됨(플랜 포함)', (
   assert.equal(classifyClaude(true, null, 'boom').error, 'boom')
   const ok = classifyClaude(true, { loggedIn: true, email: 'a@b.c', authMethod: 'claude.ai', subscriptionType: 'max' })
   assert.deepEqual([ok.state, ok.account, ok.authMethod, ok.plan], ['ready', 'a@b.c', 'claude.ai', 'max'])
+})
+
+test('Claude: 실행 실패는 broken, 실행 파일이 없으면 broken보다 missing이 먼저', () => {
+  const b = classifyClaude(true, null, 'spawn EBADARCH', true)
+  assert.deepEqual([b.state, b.error], ['broken', 'spawn EBADARCH'])
+  assert.equal(classifyClaude(false, null, 'x', true).state, 'missing')
+  assert.equal(classifyClaude(true, null, 'exit 1', false).state, 'loggedOut')
+})
+
+test('isRunFailure: 못 띄움·시간 초과·해석 불가는 실패, 숫자 종료 코드는 아니다', () => {
+  assert.equal(isRunFailure(Object.assign(new Error('x'), { code: 'EBADARCH' })), true)
+  assert.equal(isRunFailure(Object.assign(new Error('x'), { code: 'ENOENT' })), true)
+  assert.equal(isRunFailure(Object.assign(new Error('x'), { killed: true, signal: 'SIGTERM', code: null })), true)
+  assert.equal(isRunFailure(new SyntaxError('Unexpected token')), true)
+  assert.equal(isRunFailure(Object.assign(new Error('x'), { code: 1 })), false)
 })
 
 test('Codex: 계정 없음은 로그아웃, ChatGPT 로그인은 플랜·모델과 함께 준비됨', () => {
@@ -60,8 +75,18 @@ test('probeCodex: 응답 없는 서버는 시간 초과로 끝난다', { skip: p
   const file = path.join(dir, 'codex-app-server')
   fs.writeFileSync(file, `#!${process.execPath}\nsetTimeout(() => {}, 60000)\n`, { mode: 0o755 })
   const s = await probeCodex(file, 300)
-  assert.equal(s.state, 'loggedOut')
+  assert.equal(s.state, 'broken')
   assert.match(s.error, /시간 초과/)
+})
+
+test('probeCodex: 실행 파일이 있어도 못 띄우거나 바로 죽으면 broken', { skip: process.platform === 'win32' }, async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'co-codex-'))
+  const bad = path.join(dir, 'codex-app-server')
+  fs.writeFileSync(bad, 'not executable', { mode: 0o644 }) // EACCES
+  assert.equal((await probeCodex(bad)).state, 'broken')
+  const dying = path.join(dir, 'dying')
+  fs.writeFileSync(dying, `#!${process.execPath}\nprocess.exit(1)\n`, { mode: 0o755 })
+  assert.equal((await probeCodex(dying)).state, 'broken')
 })
 
 test('probeCodex: 실제 번들 (AI_OFFICE_CODEX_BIN 지정 시)', { skip: !process.env.AI_OFFICE_CODEX_BIN }, async () => {

@@ -9,9 +9,17 @@ const CODEX_TIMEOUT_MS = 15_000
 
 const blank = (state: ProviderStatus['state'], error = ''): ProviderStatus => ({ state, account: '', authMethod: '', plan: '', models: [], defaultModel: '', error })
 
-/** `claude auth status` 의 JSON → 상태. 실행 파일이 없으면 'missing', 확인 실패는 로그아웃으로 본다 */
-export function classifyClaude(binaryExists: boolean, statusJson: unknown, error = ''): ProviderStatus {
+/** 실행 자체가 실패했는지 — 못 띄움(ENOENT·EACCES·EBADARCH 등)·시간 초과·출력 해석 불가. 숫자 종료 코드(로그아웃이 1로 끝나는 경우)는 아니다 */
+export function isRunFailure(e: unknown): boolean {
+  if (e instanceof SyntaxError) return true
+  const x = e as { code?: unknown; killed?: boolean; signal?: unknown } | null
+  return typeof x?.code === 'string' || Boolean(x?.killed) || Boolean(x?.signal)
+}
+
+/** `claude auth status` 의 JSON → 상태. 실행 파일이 없으면 'missing', 실행 실패(isBroken)는 'broken', 그 밖의 확인 실패는 로그아웃으로 본다 */
+export function classifyClaude(binaryExists: boolean, statusJson: unknown, error = '', isBroken = false): ProviderStatus {
   if (!binaryExists) return blank('missing', error)
+  if (isBroken) return blank('broken', error)
   const s = (statusJson ?? {}) as { loggedIn?: boolean; email?: string; authMethod?: string; subscriptionType?: string }
   if (!s.loggedIn) return blank('loggedOut', error)
   return { ...blank('ready'), account: s.email ?? '', authMethod: s.authMethod ?? '', plan: s.subscriptionType ?? '' }
@@ -54,7 +62,7 @@ export function probeCodex(binary: string, timeoutMs = CODEX_TIMEOUT_MS): Promis
       child = spawn(binary, [], { stdio: ['pipe', 'pipe', 'ignore'], windowsHide: true })
     } catch (e) {
       // 다른 CPU용 실행 파일(EBADARCH) 등은 error 이벤트가 아니라 바로 던져진다
-      resolve(blank('missing', e instanceof Error ? e.message : String(e)))
+      resolve(blank('broken', e instanceof Error ? e.message : String(e)))
       return
     }
     let done = false
@@ -68,7 +76,7 @@ export function probeCodex(binary: string, timeoutMs = CODEX_TIMEOUT_MS): Promis
       child.kill()
       resolve(s)
     }
-    const timer = setTimeout(() => finish(blank('loggedOut', 'Codex 응답 시간 초과')), timeoutMs)
+    const timer = setTimeout(() => finish(blank('broken', 'Codex 응답 시간 초과')), timeoutMs)
     const send = (o: object) => child.stdin.write(`${JSON.stringify(o)}\n`)
     const call = (method: string, params?: object) =>
       new Promise<unknown>((res) => {
@@ -76,9 +84,9 @@ export function probeCodex(binary: string, timeoutMs = CODEX_TIMEOUT_MS): Promis
         pending.set(id, res)
         send({ id, method, ...(params ? { params } : {}) })
       })
-    child.on('error', (e) => finish(blank('missing', e.message)))
+    child.on('error', (e) => finish(blank('broken', e.message)))
     child.stdin.on('error', () => {}) // 먼저 끝난 프로세스에 쓰는 EPIPE는 exit 처리로 충분하다
-    child.on('exit', () => finish(blank('loggedOut', 'Codex가 먼저 종료됐습니다')))
+    child.on('exit', () => finish(blank('broken', 'Codex가 먼저 종료됐습니다')))
     child.stdout.on('data', (chunk: Buffer) => {
       buf += chunk.toString('utf8')
       let nl: number

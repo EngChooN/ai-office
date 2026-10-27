@@ -17,7 +17,8 @@ export function createRuntime(provider: AiProvider, onEvent: (e: RuntimeEvent) =
 
 /** 공급자 모델 id (undefined = 공급자 기본) */
 export function modelIdFor(provider: AiProvider, model: Parameters<typeof claudeModelId>[0]) {
-  return provider === 'claude' ? claudeModelId(model) : undefined
+  if (provider === 'claude') return claudeModelId(model)
+  return model === 'default' ? undefined : model
 }
 
 // 앱 내부 AI의 공급자 선택: 설정(internalAi)과 마지막 감지 결과를 main이 넘겨 준다. 넘기지 않으면 Claude 하나 (기존 동작)

@@ -879,6 +879,21 @@ export default {
     'hire.role.custom': { ko: '직접 입력', en: 'Custom', ja: '直接入力', zh: '自定义' },
     'hire.role.placeholder': { ko: '직무 이름', en: 'Role name', ja: '職務名', zh: '职务名称' },
     'hire.model': { ko: '모델', en: 'Model', ja: 'モデル', zh: '模型' },
+    'hire.provider': { ko: 'AI', en: 'AI', ja: 'AI', zh: 'AI' },
+    'hire.provider.locked': {
+      ko: '고용한 뒤에는 AI를 바꿀 수 없어요.',
+      en: "You can't change the AI after hiring.",
+      ja: '雇った後はAIを変更できません。',
+      zh: '雇用后无法更改 AI。',
+    },
+    'hire.provider.notReady': {
+      ko: '{name}는 아직 연결되지 않았어요. 설정의 AI 공급자에서 연결할 수 있어요.',
+      en: '{name} isn\'t connected yet. You can connect it under AI providers in Settings.',
+      ja: '{name}はまだ接続されていません。設定のAIプロバイダーで接続できます。',
+      zh: '{name} 尚未连接。可在设置的 AI 提供商中连接。',
+    },
+    'hire.provider.checking': { ko: '연결 상태를 확인하는 중…', en: 'Checking connections…', ja: '接続状態を確認中…', zh: '正在检查连接…' },
+    'hire.model.codexDefault': { ko: '기본 ({model})', en: 'Default ({model})', ja: 'デフォルト（{model}）', zh: '默认（{model}）' },
     'hire.approval': { ko: '결재 방식', en: 'Approval mode', ja: '承認方式', zh: '审批方式' },
     'hire.prompt': { ko: '업무 지침 (선택)', en: 'Work guidelines (optional)', ja: '業務指針（任意）', zh: '工作准则（可选）' },
     'hire.prompt.placeholder': {

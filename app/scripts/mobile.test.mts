@@ -51,7 +51,7 @@ function handlers(over: Partial<RemoteHandlers> = {}) {
   return { h, notices, confirms, paths }
 }
 
-const OVERRIDDEN = ['saveAttachments', 'openAttachment', 'pickFolder', 'pickFiles', 'resumeInTerminal', 'openClaudeLogin', 'remoteQr']
+const OVERRIDDEN = ['saveAttachments', 'openAttachment', 'pickFolder', 'pickFiles', 'resumeInTerminal', 'openClaudeLogin', 'openCodexLogin', 'remoteQr']
 
 // ── 어댑터 ────────────────────────────────────────────
 

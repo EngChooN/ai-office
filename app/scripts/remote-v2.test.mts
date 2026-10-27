@@ -37,7 +37,7 @@ test('분류표: OfficeApi 메서드와 빠짐없이 같은 이름 (더하거나
   assert.equal(new Set(OFFICE_METHODS).size, OFFICE_METHODS.length)
   const count: Record<string, number> = {}
   for (const s of Object.values(V2_METHODS)) count[s.cls] = (count[s.cls] ?? 0) + 1
-  assert.deepEqual(count, { R: 88, S: 17, P: 18, C: 2, U: 1 })
+  assert.deepEqual(count, { R: 88, S: 17, P: 19, C: 2, U: 1 })
   // PC 전용은 모두 대신할 길(alternative)을 알려 준다
   for (const [name, s] of Object.entries(V2_METHODS)) if (s.cls === 'P') assert.ok(s.alternative, name)
 })
@@ -88,6 +88,7 @@ test('pc_only: PC 전용 동작은 부르지 않고 422와 대신할 길', async
     ['openAttachment', 'download_file'],
     ['resumeInTerminal', 'open_on_pc'],
     ['openClaudeLogin', 'open_on_pc'],
+    ['openCodexLogin', 'open_on_pc'],
     ['remoteQr', 'open_on_pc'],
     ['revertWork', 'open_on_pc'],
     ['setHooksInstalled', 'open_on_pc'],

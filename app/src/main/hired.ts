@@ -119,7 +119,8 @@ class Worker {
 
   private pickModel(text: string): Staff['model'] {
     const s = this.staff
-    return s.equipment.lightModelOff || s.model === 'haiku' || !isLightTask(text) ? s.model : 'haiku'
+    // 가벼운 일 → Haiku 전환은 Claude 직원만 (Codex 모델 고르기는 M3 모델 추천에서)
+    return s.provider !== 'claude' || s.equipment.lightModelOff || s.model === 'haiku' || !isLightTask(text) ? s.model : 'haiku'
   }
 
   /** fresh: 업무 카드를 새로 받는 지시 — 이전 대화가 길지 않아도 새 대화로 시작하고 직전 보고만 넘긴다 */

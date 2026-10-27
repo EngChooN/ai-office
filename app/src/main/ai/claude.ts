@@ -4,7 +4,7 @@ import path from 'node:path'
 import fs from 'node:fs'
 import { app } from 'electron'
 import type { Query, SDKMessage, SDKUserMessage } from '@anthropic-ai/claude-agent-sdk'
-import type { Attachment, ModelChoice } from '../../shared/types'
+import type { Attachment, ClaudeModel, ModelChoice } from '../../shared/types'
 import type { RawCommand } from '../../shared/slashCommands.ts'
 import { t } from '../../shared/i18n/index.ts'
 import { HIRED_ENV } from '../external'
@@ -27,13 +27,14 @@ export function claudeBinaryPath() {
   return path.join(path.dirname(pkg), exeName('claude'))
 }
 
-const MODEL_ID: Record<ModelChoice, string | undefined> = {
+const MODEL_ID: Record<ClaudeModel, string | undefined> = {
   default: undefined,
   opus: 'opus',
   sonnet: 'sonnet',
   haiku: 'haiku',
 }
-export const claudeModelId = (m: ModelChoice) => MODEL_ID[m]
+/** Claude 별칭이 아니면(Codex 모델 id 등) 기본 모델 */
+export const claudeModelId = (m: ModelChoice) => (Object.hasOwn(MODEL_ID, m) ? MODEL_ID[m as ClaudeModel] : undefined)
 
 const IMAGE_MAX_BYTES = 5 * 1024 * 1024
 const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'] as const

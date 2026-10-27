@@ -21,7 +21,10 @@ export type StaffStatus = 'idle' | 'working' | 'waiting' | 'offline' | 'error'
 export type AiProvider = 'claude' | 'codex'
 /** 앱 내부 AI(비서·요약)가 쓸 공급자 — auto는 쓸 수 있는 쪽 (둘 다면 Claude) */
 export type InternalAi = 'auto' | 'claude' | 'codex'
-export type ModelChoice = 'default' | 'opus' | 'sonnet' | 'haiku'
+/** Claude 모델 별칭 */
+export type ClaudeModel = 'default' | 'opus' | 'sonnet' | 'haiku'
+/** 직원 모델: Claude는 별칭, Codex는 'default' 또는 model/list의 모델 id */
+export type ModelChoice = ClaudeModel | (string & {})
 export type ApprovalMode = 'ask' | 'acceptEdits'
 
 export interface Approval {
@@ -281,8 +284,8 @@ export interface ClaudeStatus {
   hasTerminalClaude: boolean
 }
 
-/** 공급자 준비 상태: 실행 파일이 없음 · 로그인 안 됨 · 쓸 수 있음 */
-export type ProviderState = 'missing' | 'loggedOut' | 'ready'
+/** 공급자 준비 상태: 실행 파일이 없음 · 있으나 실행/버전 조회 실패 · 로그인 안 됨 · 쓸 수 있음 */
+export type ProviderState = 'missing' | 'broken' | 'loggedOut' | 'ready'
 
 /** 공급자(Claude·Codex) 한 곳의 설치·로그인 상태 */
 export interface ProviderStatus {
@@ -884,6 +887,8 @@ export interface OfficeApi {
   claudeStatus(): Promise<ClaudeStatus>
   providerStatus(): Promise<ProvidersStatus>
   openClaudeLogin(): Promise<void>
+  /** Codex ChatGPT 로그인: 브라우저를 열고 인증이 끝날 때까지 기다린다. 성공이면 '', 실패면 사유 */
+  openCodexLogin(): Promise<string>
   /** 외부 직원의 대화를 복사한 분신에게 지시 (원래 창은 그대로) */
   forkExternal(staffId: string, text: string, attachments?: Attachment[]): Promise<Staff | null>
 
@@ -1023,10 +1028,10 @@ export const DEFAULT_SETTINGS: Settings = {
   defaultCwd: '',
   isWorkMode: false,
   isFullAccessNoticeSeen: false,
-  language: 'auto',
-  demoDay: { isEnabled: false, weekday: 5, time: '17:00', isAi: true },
   isProviderBannerSeen: false,
   internalAi: 'claude',
+  language: 'auto',
+  demoDay: { isEnabled: false, weekday: 5, time: '17:00', isAi: true },
   isStaffCaptureOn: true,
 }
 

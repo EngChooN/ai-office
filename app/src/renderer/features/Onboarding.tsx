@@ -209,6 +209,7 @@ export function Onboarding({ onStartTour }: { onStartTour: () => void }) {
             <ProviderCards
               status={providers.status}
               isChecking={providers.isChecking}
+              onRecheck={() => void providers.check()}
               claudeExtra={
                 <ol className="text-muted-foreground list-decimal space-y-0.5 pl-4 text-xs">
                   <li>{t('onboarding.login.step1', { window: osText(t('onboarding.login.window.mac'), t('onboarding.login.window.win')) })}</li>

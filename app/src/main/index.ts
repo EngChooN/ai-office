@@ -1,5 +1,6 @@
 import os from 'node:os'
 import { acquireDataLock, quitForDataLock } from './dataLock'
+import { cancelCodexLogin } from './ai/codexLogin'
 import { app, BrowserWindow, clipboard, dialog, ipcMain, Notification, shell } from 'electron'
 import path from 'node:path'
 import { loadRemoteConfig, openDb, saveRemoteConfig } from './db'
@@ -20,11 +21,11 @@ import { registerUpdates, type UpdateChecker } from './updates'
 import { registerPack } from './staffPack'
 import { startedHidden, syncLoginItem } from './loginItem'
 import { startLocalMcp, stopLocalMcp } from './mcp/localMcp'
-
 import { configureAi } from './ai'
 import { codexBinaryPath } from './ai/codex'
 import { refreshCodexAssets } from './ai/codexAssets'
 import { lastProviderStatus, providerStatus } from './setup'
+
 registerAttachmentScheme()
 const office = new Office()
 let win: BrowserWindow | null = null
@@ -219,12 +220,12 @@ app.whenReady().then(async () => {
   if (!acquireDataLock()) return quitForDataLock()
   openDb()
   await startLocalMcp() // office·secretary 도구 서버 (직원 세션이 열리기 전에)
-  serveAttachments()
   // 앱 내부 AI(비서·요약)는 설정과 마지막 감지 결과로 공급자를 고른다. 감지는 백그라운드로 한 번 돌려 둔다
   configureAi({ setting: () => office.snapshot().settings.internalAi, status: lastProviderStatus })
   void providerStatus()
     .then(() => Promise.all([refreshCodexAssets(codexBinaryPath(), [os.homedir()]), office.refreshCodexUsage()]))
     .catch(() => {})
+  serveAttachments()
   secretary = new Secretary(office, () => handlers!)
   office.secretaryState = () => secretary?.state()
   office.answerWhileAway = (staff, questions) => secretary!.answerWhileAway(staff, questions)
@@ -249,6 +250,7 @@ let isQuitting = false
 app.on('before-quit', (e) => {
   if (isQuitting) return
   isQuitting = true
+  cancelCodexLogin()
   tray.destroy()
   secretary?.stop()
   updates?.stop()
