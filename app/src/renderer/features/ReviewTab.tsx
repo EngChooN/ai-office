@@ -90,7 +90,7 @@ export function ReviewTab({ staff }: { staff: Staff }) {
         {isHired && revert && (
           <div className="flex flex-col gap-2 border-b px-4 py-2 text-xs">
             {!revert.available ? (
-              <p className="text-muted-foreground">{t('review.revert.noBase')}</p>
+              <p className="text-muted-foreground">{t(revert.stale ? 'review.revert.stale' : 'review.revert.noBase')}</p>
             ) : revert.files.length === 0 && revert.skipped.length === 0 ? (
               <p className="text-muted-foreground">{t('review.revert.none')}</p>
             ) : (

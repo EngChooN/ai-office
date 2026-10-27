@@ -91,6 +91,8 @@ export interface HiredHooks {
   /** 세션 시작 시 정하는 참고 문서: 프롬프트 안내와 결재 없이 읽을 경로 (둘이 어긋나지 않게 한 번에 받는다) */
   refDocs(staffId: string): { prompt: string; paths: string[] }
   /** 지급된 MCP 서버 설정 (장비) */
+  /** 설정의 '직원 화면 캡처 허용' (꺼지면 장비로 지급받은 직원만 캡처) */
+  isScreenCaptureOn(): boolean
   equippedMcp(staffId: string): Record<string, McpServerConfig>
   /** 세션이 알려 준 /명령어 목록 (세션을 열 때·목록이 바뀔 때·미리 불러올 때). terminalOnly = 터미널 화면 전용 명령 이름 */
   commands(staffId: string, raw: RawCommand[], terminalOnly: string[]): void
@@ -318,7 +320,7 @@ class Worker {
         systemPrompt: {
           type: 'preset',
           preset: 'claude_code',
-          append: capPrompt([t('staff.identity', { name: s.name, role: s.role }), t('staff.language'), this.hooks.context(s.id), refDocs.prompt, browserGuide, capPrompt(s.systemPrompt, PERSONA_MAX)].filter(Boolean).join('\n'), PROMPT_MAX),
+          append: capPrompt([t('staff.identity', { name: s.name, role: s.role }), t('staff.language'), this.hooks.context(s.id), refDocs.prompt, browserGuide, t('staff.captureGuide'), capPrompt(s.systemPrompt, PERSONA_MAX)].filter(Boolean).join('\n'), PROMPT_MAX),
         },
         settingSources: ['user', 'project', 'local'],
         // 고용 직원 표시: 사용자 설정의 "질문 받기" hook이 이 세션은 건너뛴다 (질문은 canUseTool → 결재함·대신 답하기로)
@@ -335,9 +337,9 @@ class Worker {
           if (browserVerdict(toolName, input) === 'allow') return Promise.resolve({ behavior: 'allow' })
           const command = toolName === 'Bash' && typeof input.command === 'string' ? input.command : null
           // 사무실 내부 도구(팀 조회·위임)와 장비로 허용한 도구는 결재 없이 쓴다
-          // 화면 캡처는 대표 화면이 그대로 찍히므로, 장비에서 "화면 캡처 자율"을 켠 직원만 결재 없이 찍는다
+          // 화면 캡처는 대표 화면이 그대로 찍히므로, 설정의 '직원 화면 캡처 허용'이 켜져 있으면(기본) 모두, 꺼지면 장비에서 "화면 캡처 자율"을 켠 직원만 결재 없이 찍는다
           const isAllowed =
-            (toolName.startsWith(OFFICE_TOOL_PREFIX) && (toolName !== `${OFFICE_TOOL_PREFIX}capture_screen` || s.equipment.allowedTools.includes(toolName))) ||
+            (toolName.startsWith(OFFICE_TOOL_PREFIX) && (toolName !== `${OFFICE_TOOL_PREFIX}capture_screen` || this.hooks.isScreenCaptureOn() || s.equipment.allowedTools.includes(toolName))) ||
             s.equipment.allowedTools.some((t) => toolName === t || toolName.startsWith(`mcp__${t}__`)) ||
             (command !== null && s.equipment.allowedTools.includes(READ_ONLY_BASH) && isReadOnlyCommand(command)) ||
             // 등록된 참고 문서를 읽는 건 결재 없이 ("모두 결재" 직원도)

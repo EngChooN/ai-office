@@ -2195,8 +2195,8 @@ export const HALL_SIT_Z = 9
 export const STAGE = {
   cols: 10,
   rows: 8,
-  /** 벽 높이 (아트 px) — 사무실 벽(48)보다 높여 강당 느낌을 낸다 */
-  wallH: 64,
+  /** 벽 높이 (아트 px) — 사무실 벽(48)보다 높여 강당 느낌을 낸다. 벽에 붙인 16:10 스크린이 크게 들어가도록 88 */
+  wallH: 88,
   platform: { x: 1, y: 0, w: 8, d: 3, h: 8 },
   /** 연단 오른쪽 발표자 자리(몸 전체가 보인다) · 다음 차례 대기 자리 (무대 위 z = 8) */
   speaker: { gx: 7.0, gy: 1.35 },
@@ -2244,7 +2244,16 @@ export const STAGE_COLORS = {
 export const STAGE_CONFETTI = [K.orange, K.yellow, K.mint, K.pink, K.sky, K.purple] as const
 
 const stageOrigin = (): Pt => [STAGE.rows * HW + WALL_T * HW + 4, STAGE.wallH + 4 + 2]
-const SCREEN = { x: 2.5, w: 5, y: 0.1, z: 20, h: 32 }
+/**
+ * 대형 스크린: 뒷벽(y=0 면)에 붙인 화면 (테두리 안쪽). x는 칸, z는 아트 px.
+ * 벽을 따라 잰 가로 길이 : 높이 = 16:10 — 슬라이드 카드도 이 변 길이 비로 잡힌다.
+ * 아래는 연단 뒤 끝(z 8) 바로 위, 위는 막 장식 아래까지. 가운데는 연단 가운데(x 5)
+ */
+const SCREEN_Z = [12, 74] as const
+const SCREEN_W = ((SCREEN_Z[1] - SCREEN_Z[0]) * 16) / 10 / Math.hypot(HW, HH)
+const SCREEN = { x0: 5 - SCREEN_W / 2, x1: 5 + SCREEN_W / 2, z0: SCREEN_Z[0], z1: SCREEN_Z[1], y: 0.1 }
+/** 테두리 두께 (아트 px): 바깥 검정 1 + 금속 1 + 안쪽 검정 1 */
+const SCREEN_FRAME = 3
 
 /** 발표장 배경 한 장: 뒤·왼쪽 벽(벽등·몰딩) + 카펫 바닥(양옆 통로 러너) + 막 장식 + 대형 스크린(꺼진 화면). 직원·조각은 이 위에 */
 export function artStageHall(): { cv: Cv; o: Pt } {
@@ -2282,18 +2291,33 @@ export function artStageHall(): { cv: Cv; o: Pt } {
     E: mix(C2.wall, S.sh, 0.2),
   })
   // 스크린 위 막 장식 (아래 가장자리 금 술)
-  drawBox(cv, o, { x: 1, y: 0, w: 8, d: 0.12, z: 54, h: 9, top: C2.curtainD, E: C2.curtainD, S: (q) => (q.v < 0.18 ? (frac(q.u * 40) < 0.5 ? K.gold : null) : frac(q.u * 16) < 0.25 ? C2.curtainD : C2.curtain) })
-  // 대형 스크린: 테두리 + 꺼진 화면 (슬라이드는 장면이 stageScreenQuad에 기울여 얹는다)
-  drawBox(cv, o, { x: SCREEN.x, y: 0, w: SCREEN.w, d: SCREEN.y, z: SCREEN.z, h: SCREEN.h, top: K.dark, E: K.dark, S: (q) => (q.u < 0.03 || q.u > 0.97 || q.v < 0.06 || q.v > 0.94 ? K.dark : C2.screenOff) })
+  drawBox(cv, o, { x: 1, y: 0, w: 8, d: 0.12, z: H - 10, h: 9, top: C2.curtainD, E: C2.curtainD, S: (q) => (q.v < 0.18 ? (frac(q.u * 40) < 0.5 ? K.gold : null) : frac(q.u * 16) < 0.25 ? C2.curtainD : C2.curtain) })
+  // 대형 스크린: 벽에 붙은 얇은 판 — 두 겹 테두리(검정·금속·검정) + 꺼진 화면 (슬라이드는 장면이 stageScreenQuad 자리를 뚫고 뒤에 깐다)
+  const { x0, x1, z0, z1, y } = SCREEN
+  const F = SCREEN_FRAME
+  drawBox(cv, o, {
+    x: x0 - F / HW,
+    y: 0,
+    w: x1 - x0 + (2 * F) / HW,
+    d: y,
+    z: z0 - F,
+    h: z1 - z0 + 2 * F,
+    top: K.dark,
+    E: K.dark,
+    S: (q) => {
+      // 화면 안쪽 가장자리까지 거리 (px, 음수 = 테두리)
+      const d = Math.min((q.gx - x0) * HW, (x1 - q.gx) * HW, q.z - z0, z1 - q.z)
+      return d >= 0 ? C2.screenOff : d >= -1 ? K.dark : d >= -2 ? K.metalL : K.dark
+    },
+  })
   outline(cv)
   return { cv, o }
 }
 
-/** 스크린 화면(테두리 안) 네 꼭짓점 — artStageHall 텍스처 안 아트 px, [왼위, 오위, 오아래, 왼아래]. 가로 변은 오른쪽으로 갈수록 0.5씩 내려간다 */
+/** 스크린 화면(테두리 안) 네 꼭짓점 — artStageHall 텍스처 안 아트 px, [왼위, 오위, 오아래, 왼아래]. 벽을 따라 가로 변은 오른쪽으로 갈수록 내려간다 */
 export function stageScreenQuad(): [number, number][] {
   const o = stageOrigin()
-  const { x, w, y, z, h } = SCREEN
-  const [x0, x1, z0, z1] = [x + w * 0.03, x + w * 0.97, z + h * 0.06, z + h * 0.94]
+  const { x0, x1, z0, z1, y } = SCREEN
   return [P(o, x0, y, z1), P(o, x1, y, z1), P(o, x1, y, z0), P(o, x0, y, z0)]
 }
 

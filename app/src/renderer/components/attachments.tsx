@@ -74,7 +74,9 @@ export function DraftAttachments({ files, onRemove }: { files: File[]; onRemove:
 }
 
 /** 보낸·받은 첨부 보기: 이미지는 썸네일(누르면 크게), 파일은 누르면 기본 앱으로 연다 */
-export function AttachmentView({ attachments, size = 'md' }: { attachments?: Attachment[]; size?: 'sm' | 'md' }) {
+const THUMB_CLASS = { sm: 'size-12', md: 'max-h-40 max-w-56', lg: 'max-h-80 max-w-full' } as const
+
+export function AttachmentView({ attachments, size = 'md' }: { attachments?: Attachment[]; size?: keyof typeof THUMB_CLASS }) {
   const [zoom, setZoom] = useState<Attachment | null>(null)
   if (!attachments?.length) return null
   return (
@@ -82,7 +84,7 @@ export function AttachmentView({ attachments, size = 'md' }: { attachments?: Att
       {attachments.map((a) =>
         isImageAttachment(a) ? (
           <button key={a.id} type="button" onClick={() => setZoom(a)} className="overflow-hidden rounded-md border">
-            <img src={attachmentUrl(a)} alt={a.name} className={cn('object-cover', size === 'sm' ? 'size-12' : 'max-h-40 max-w-56')} />
+            <img src={attachmentUrl(a)} alt={a.name} className={cn('object-cover', THUMB_CLASS[size])} />
           </button>
         ) : (
           <button key={a.id} type="button" onClick={() => void window.office.openAttachment(a.id)} className="bg-muted flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs">

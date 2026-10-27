@@ -33,10 +33,12 @@ import {
 import { EMPTY_SHOP, type LedgerEntry, type LedgerKind, type ShopState } from '../shared/economy'
 import type { RemoteConfig } from './remote/service.ts'
 import { settleGrid } from './shopGrid.ts'
+import { createWorkBaseStore } from './workBaseStore.ts'
 import { grantedLevels, grantedZones, runIsoMigration, runLevelGrants } from './isoMigrate.ts'
 
 // 사무실의 모든 영속 데이터는 사용자 데이터 폴더의 office.db 한 파일에 둔다
 let db: DatabaseSync
+let workBaseStore: ReturnType<typeof createWorkBaseStore>
 
 export function openDb() {
   db = new DatabaseSync(path.join(app.getPath('userData'), 'office.db'))
@@ -84,6 +86,7 @@ export function openDb() {
       id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER NOT NULL, amount INTEGER NOT NULL, kind TEXT NOT NULL, label TEXT NOT NULL, key TEXT UNIQUE
     );
   `)
+  workBaseStore = createWorkBaseStore(db)
   const staffCols = (db.prepare('PRAGMA table_info(staff)').all() as { name: string }[]).map((c) => c.name)
   if (!staffCols.includes('team_id')) db.exec('ALTER TABLE staff ADD COLUMN team_id TEXT')
   if (!staffCols.includes('equipment')) db.exec('ALTER TABLE staff ADD COLUMN equipment TEXT')
@@ -201,7 +204,12 @@ export function saveEquipment(id: string, equipment: Equipment) {
   run('UPDATE staff SET equipment = ? WHERE id = ?', JSON.stringify(equipment), id)
 }
 
+export const saveWorkBase = (...a: Parameters<typeof workBaseStore.save>) => workBaseStore.save(...a)
+export const removeWorkBase = (id: string) => workBaseStore.remove(id)
+export const loadWorkBases = () => workBaseStore.load()
+
 export function deleteStaff(id: string) {
+  workBaseStore.remove(id)
   run('DELETE FROM staff WHERE id = ?', id)
   run('DELETE FROM schedule WHERE staff_id = ?', id)
   run('UPDATE task SET assignee_id = NULL WHERE assignee_id = ?', id)

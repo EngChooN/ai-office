@@ -4,10 +4,10 @@
 
 A personal PoC (Electron desktop app) that turns your Claude Code sessions into **staff** you can watch and direct together, like one office.
 
-- Status: **0.13.0** (2026-10-26) — Office map (team zones, meeting rooms, lounge) · Team / team-lead delegation · Task board · Approval inbox · Group chat · Meetings · Scheduled tasks · Reports · Payslips · Decorating
+- Status: **0.13.1** (2026-10-27) — Office map (team zones, meeting rooms, lounge) · Team / team-lead delegation · Task board · Approval inbox · Group chat · Meetings · Scheduled tasks · Reports · Payslips · Decorating
 - Stack: Electron Forge + Vite · React 19 · Zustand · Tailwind 4 + shadcn/ui · Phaser 4 · SQLite (`node:sqlite`) · Claude Agent SDK
 
-## Installation (0.13.0)
+## Installation (0.13.1)
 - Open `app/out/make/dmg/arm64/Claude Office.dmg` and drag it into Applications
 - Apple Silicon only · Not signed or notarized → if you see an "unidentified developer" warning the first time you open it, go to System Settings › Privacy & Security › "Open Anyway"
 - Requirement: Claude Code must be signed in on that Mac (staff work under that account, and usage is billed to it)

@@ -149,6 +149,12 @@ export default {
     ja: '[サブタスク完了] 「{title}」のサブタスクがすべて終わりました。結果を確認・取りまとめて代表に最終報告してください。足りない点があれば自分で仕上げるか、delegate で追加で任せてください。',
     zh: '[子任务完成] “{title}”的子任务已全部完成。请检查并汇总结果，向代表做最终汇报。如有遗漏，请自行补完或用 delegate 追加交办。',
   },
+  'staff.captureGuide': {
+    ko: '화면·페이지를 만들거나 고쳤으면 끝날 때 결과 화면을 capture_screen(맥) 또는 report_image(그림 파일)로 1~2장만 찍어 보고에 붙이세요. 앱·작업 창 위주로, 다른 개인 창은 찍지 마세요.',
+    en: 'If you built or changed a screen or page, attach 1–2 shots of the final result via capture_screen (Mac) or report_image (image file). Focus on the app/work window; never capture other personal windows.',
+    ja: '画面やページを作成・修正したら、終了時に結果を capture_screen（Mac）または report_image（画像ファイル）で1〜2枚だけ撮って報告に添付。アプリ・作業ウィンドウ中心に、他の個人ウィンドウは撮らないこと。',
+    zh: '若做了或改了界面/页面，结束时用 capture_screen（Mac）或 report_image（图片文件）只截 1~2 张最终结果附在报告里。以应用/工作窗口为主，不要拍其他个人窗口。',
+  },
   'staff.leadGuide': {
     ko: [
       '당신은 이 업무의 리드입니다. 회사에서처럼 진행하세요:',

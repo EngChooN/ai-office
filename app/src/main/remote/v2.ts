@@ -222,7 +222,8 @@ export const V2_FIELDS: Partial<Record<OfficeMethod, Record<number, string[]>>> 
   saveSchedule: { 0: fieldsOf('saveSchedule', 0, { id: true, staffId: true, label: true, time: true, weekdays: true, instruction: true, enabled: true }) },
   secretaryRun: { 1: fieldsOf('secretaryRun', 1, { fromStep: true, edits: true, revised: true, excluded: true }) },
   updateSettings: {
-    0: fieldsOf('updateSettings', 0, { monthlyBudgetUsd: true, tokenBudget: true, theme: true, dayNight: true, plants: true, isChatterOn: true, workHours: true, layout: true, isTrayOn: true, launchAtLogin: true, isOnboarded: true, defaultCwd: true, isWorkMode: true, isFullAccessNoticeSeen: true, language: true, demoDay: true }),
+    // 화면 캡처 허용은 PC에서만 (폰에서 대표 화면 캡처 권한을 켜지 못하게)
+    0: fieldsExcept('updateSettings', 0, ['isStaffCaptureOn'], { monthlyBudgetUsd: true, tokenBudget: true, theme: true, dayNight: true, plants: true, isChatterOn: true, workHours: true, layout: true, isTrayOn: true, launchAtLogin: true, isOnboarded: true, defaultCwd: true, isWorkMode: true, isFullAccessNoticeSeen: true, language: true, demoDay: true }),
   },
 }
 

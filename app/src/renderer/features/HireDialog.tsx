@@ -14,6 +14,7 @@ import { NativeSelect } from '@/components/ui/select'
 import { ROLE_PRESETS, type AgentTemplate, type ApprovalMode, type HireInput, type ModelChoice } from '@shared/types'
 import { shortPath } from './status'
 import { StaffMarketDialog } from './StaffMarketDialog'
+import { showToast } from '@/lib/toast'
 import { t } from '@shared/i18n'
 
 // 화면 문구가 들어 있어 렌더할 때 만든다 (언어 바뀜 반영)
@@ -73,7 +74,8 @@ export function HireDialog() {
   const avatar = isLookEdited ? form.avatar : encodeLook({ ...baseLook, ...roleLook(form.role) })
   // 직원 마켓·파일 가져오기는 PC 앱에서만 (모바일 빌드에는 없다)
   const hasPack = typeof window.officePack !== 'undefined'
-  const [isMarketOpen, setMarketOpen] = useState(false)
+  const isMarketOpen = useOffice((s) => s.isMarketOpen)
+  const setMarketOpen = useOffice((s) => s.setMarketOpen)
 
   useEffect(() => {
     if (isOpen) {
@@ -103,7 +105,8 @@ export function HireDialog() {
     try {
       const r = await pack.importFile()
       if (!r) return // 파일 고르기를 취소했다
-      window.alert(r.message)
+      if (r.ok) showToast(r.message)
+      else window.alert(r.message)
       if (r.ok) {
         setHireOpen(false)
         if (r.staffIds[0]) select(r.staffIds[0])

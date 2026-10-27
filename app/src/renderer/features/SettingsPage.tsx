@@ -112,6 +112,11 @@ export function SettingsPage() {
           <input type="checkbox" checked={settings.isWorkMode} onChange={(e) => update({ isWorkMode: e.target.checked })} /> {t('settingsPage.workMode.toggle')}
         </label>
       </Section>
+      <Section title={t('settingsPage.staffCapture.title')} description={t('settingsPage.staffCapture.desc')}>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={settings.isStaffCaptureOn} onChange={(e) => update({ isStaffCaptureOn: e.target.checked })} /> {t('settingsPage.staffCapture.toggle')}
+        </label>
+      </Section>
       <Section title={t('settingsPage.autoApprove.title')} description={t('settingsPage.autoApprove.desc')}>
         <AutoApproveSection />
       </Section>

@@ -766,10 +766,12 @@ export default {
     'equipment.mcp.group.local': { ko: '이 폴더', en: 'This folder', ja: 'このフォルダ', zh: '此文件夹' },
     'equipment.mcp.group.project': { ko: '프로젝트 (.mcp.json)', en: 'Project (.mcp.json)', ja: 'プロジェクト (.mcp.json)', zh: '项目 (.mcp.json)' },
     'equipment.mcp.group.claudeaiNote': { ko: '켤 수 없음', en: "Can't turn on", ja: 'オンにできません', zh: '无法开启' },
+    'equipment.mcp.toCustom': { ko: '직접 추가로 →', en: 'Add it yourself →', ja: '手動で追加 →', zh: '手动添加 →' },
     'equipment.mcp.status.ok': { ko: '사용 가능', en: 'Available', ja: '使用可能', zh: '可用' },
     'equipment.mcp.status.auth': { ko: '인증 필요', en: 'Sign-in needed', ja: '認証が必要', zh: '需要认证' },
     'equipment.mcp.status.unsupported': { ko: '불러올 수 없음', en: "Can't load", ja: '読み込めません', zh: '无法加载' },
-    'equipment.mcp.toCustom': { ko: '직접 추가로 →', en: 'Add it yourself →', ja: '手動で追加 →', zh: '手动添加 →' },
+    'equipment.mcp.details': { ko: '자세히 보기', en: 'Show details', ja: '詳細を表示', zh: '查看详情' },
+    'equipment.mcp.source': { ko: '출처', en: 'Source', ja: '提供元', zh: '来源' },
     'equipment.mcp.edit': { ko: '고치기', en: 'Edit', ja: '編集', zh: '编辑' },
     'equipment.mcp.delete': { ko: '삭제', en: 'Delete', ja: '削除', zh: '删除' },
     'equipment.mcp.deleteConfirm': {

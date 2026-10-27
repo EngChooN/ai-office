@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
+import { memo, useEffect, useMemo, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { ArrowUpIcon, CheckIcon, CircleStopIcon, DownloadIcon, SendIcon, SquareTerminalIcon, UserMinusIcon, XIcon, ZapIcon } from 'lucide-react'
 import { NativeSelect } from '@/components/ui/select'
 import { AttachButton, AttachmentView, DraftAttachments, useDraftAttachments } from '@/components/attachments'
@@ -20,6 +20,7 @@ import { LiveMiniView } from './LiveMiniView'
 import { Avatar, StatusDot } from './StaffCard'
 import { formatCost, formatTokens, shortPath, workDirLabel } from './status'
 import { Markdown } from '@/components/markdown'
+import { JumpToBottom, useStickToBottom } from '@/components/stick-to-bottom'
 import { commandItem, manualItem, SlashMenu, usePersonalManuals, useSlashKeys, useStaffCommands, type SlashMode } from '@/components/slash-menu'
 import { matchCommands, runsOnEnter } from '@shared/slashCommands'
 import { mergeRefDocs, REF_DOCS_TOTAL } from '@shared/refDocs'
@@ -135,6 +136,8 @@ export function StaffPanel() {
   return <PanelBody key={staff.id} staff={staff} width={width} onResize={setWidth} />
 }
 
+const logKey = (l: LogEntry) => `${l.id}-${l.ts}`
+
 // 지시를 입력하는 동안 기록 줄이 다시 그려지지 않도록 한 줄씩 메모한다
 const LogRow = memo(function LogRow({ entry: l }: { entry: LogEntry }) {
   return (
@@ -148,7 +151,8 @@ const LogRow = memo(function LogRow({ entry: l }: { entry: LogEntry }) {
       </span>
       <span className={cn('w-[2.6em] shrink-0 font-medium', LOG_COLOR[l.type] ?? 'text-muted-foreground')}>{t(LOG_LABEL[l.type])}</span>
       <div className="flex min-w-0 flex-1 flex-col gap-1">
-        {l.type === 'reply' || l.type === 'result' ? <Markdown>{l.text}</Markdown> : <span className="selectable break-words whitespace-pre-wrap">{l.text}</span>}
+        {/* 지시는 대표가 엔터로 나눈 줄을 그대로 살린다 (마크다운은 한 줄 바꿈을 이어 붙인다) */}
+        {l.type === 'reply' || l.type === 'result' ? <Markdown>{l.text}</Markdown> : l.type === 'instruction' ? <Markdown className="[&_li]:whitespace-pre-line [&_p]:whitespace-pre-line">{l.text}</Markdown> : <span className="selectable break-words whitespace-pre-wrap">{l.text}</span>}
         <AttachmentView attachments={l.attachments} size="sm" />
       </div>
     </div>
@@ -201,7 +205,6 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
   const [record, setRecord] = useState<DailyRecord | null>(null)
   const [draft, setDraft] = useState('')
   const [tab, setTab] = useState<PanelTab>('work')
-  const logEndRef = useRef<HTMLDivElement>(null)
   const isHired = staff.kind === 'hired'
 
   useEffect(() => {
@@ -233,9 +236,8 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
     writeConversationOnly(isOn)
   }
 
-  useEffect(() => {
-    logEndRef.current?.scrollIntoView({ block: 'end' })
-  }, [logs.length, isConversationOnly])
+  // 직원을 바꾸면 패널째 새로 그려져(key) 바닥에서 시작한다
+  const logScroll = useStickToBottom(shownLogs, logKey, `${tab}:${isConversationOnly}`)
 
   const todayTokens = isHired ? null : record ? record.tokensIn + record.tokensOut : 0
   const handleClose = () => select(null)
@@ -246,6 +248,8 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
     const text = typed.trim().replace(/^\/\S*\s*/, (m) => (pickedManual ? '' : m))
     if (!text && draftFiles.files.length === 0) return
     setDraft('')
+    // 내가 보낸 지시는 위를 읽던 중이어도 바로 보이게
+    logScroll.scrollToBottom()
     const attachments = await draftFiles.upload()
     draftFiles.clear()
     const choice = pickedManual
@@ -473,13 +477,17 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
             </label>
           </div>
           {/* 가로 폰: 패널 전체를 밀어 올려 보도록 기록 칸 높이를 지킨다 */}
-          <section className="short:min-h-[70dvh] flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-4 pb-4" style={{ fontSize }}>
-            {shownLogs.length === 0 && <p className="text-muted-foreground">{t('staffPanel.log.empty')}</p>}
-            {shownLogs.map((l) => (
-              <LogRow key={`${l.id}-${l.ts}`} entry={l} />
-            ))}
-            <div ref={logEndRef} />
-          </section>
+          <div className="short:min-h-[70dvh] relative flex min-h-0 flex-1 flex-col">
+            <section ref={logScroll.ref} onScroll={logScroll.onScroll} className="min-h-0 flex-1 overflow-y-auto px-4 pb-4" style={{ fontSize }}>
+              <div ref={logScroll.contentRef} className="flex flex-col gap-2">
+                {shownLogs.length === 0 && <p className="text-muted-foreground">{t('staffPanel.log.empty')}</p>}
+                {shownLogs.map((l) => (
+                  <LogRow key={logKey(l)} entry={l} />
+                ))}
+              </div>
+            </section>
+            <JumpToBottom isNear={logScroll.isNear} unread={logScroll.unread} onClick={() => logScroll.scrollToBottom(true)} />
+          </div>
         </>
       )}
 

@@ -294,6 +294,8 @@ export interface WorkChanges {
 export interface WorkRevertInfo {
   /** 작업 시작 시점 기록이 있고 git 폴더일 때만 true */
   available: boolean
+  /** 앱이 꺼져 있는 동안 폴더(파일·커밋·브랜치)가 바뀌어 기록을 버렸으면 true */
+  stale?: boolean
   /** 작업을 시작한 시각 (ms) */
   startedAt: number
   /** 되돌릴 파일 */
@@ -536,6 +538,8 @@ export interface Settings {
   language: LangSetting
   /** 데모데이: 매주 정한 시간에 회의실에서 결과물을 보여 주고 단체방에 요약 */
   demoDay: DemoDayConfig
+  /** 직원이 일하며 화면을 캡처해 보고에 붙이는 걸 결재 없이 허용 (끄면 장비로 지급받은 직원만). 기본 켬 */
+  isStaffCaptureOn: boolean
 }
 
 export interface OfficeSnapshot {
@@ -979,6 +983,7 @@ export const DEFAULT_SETTINGS: Settings = {
   isFullAccessNoticeSeen: false,
   language: 'auto',
   demoDay: { isEnabled: false, weekday: 5, time: '17:00', isAi: true },
+  isStaffCaptureOn: true,
 }
 
 /** 저장된(또는 옛 버전) 설정의 빈 칸을 기본값으로 채운다 — 토큰 예산이 없던 설정은 USD 예산은 두고 토큰 한도를 "제한 없음"으로 */

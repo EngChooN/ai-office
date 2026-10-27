@@ -1,5 +1,5 @@
 // 결과물 갤러리·데모데이 — 끝난 업무 카드를 모으고, 매주 정한 시간에 짧게 요약한다 (AI 호출 없음)
-import type { Attachment } from './types'
+import type { Attachment, Meeting } from './types'
 import { t } from './i18n/index.ts'
 
 /** 끝난 업무 한 장 (업무 카드가 "검토"로 넘어갈 때 앱이 만든다 — 같은 카드를 다시 끝내면 덮어쓴다) */
@@ -13,6 +13,8 @@ export interface GalleryEntry {
   labId: string | null
   /** 직원 보고 앞부분 */
   summary: string
+  /** 직원 보고 전체 (상세 창에 보여 준다 — 예전 항목엔 없어 summary로 대신한다) */
+  body?: string
   /** 보고에 나온 주소 */
   links: string[]
   /** 그 업무를 하는 동안 직원이 올린 캡처·그림 */
@@ -43,6 +45,8 @@ export type GalleryPeriod = 'week' | 'month' | 'all'
 
 export const GALLERY_MAX = 300
 export const GALLERY_SUMMARY_MAX = 400
+/** 전체 본문 저장 상한 (글자) */
+export const GALLERY_BODY_MAX = 20000
 export const GALLERY_LINKS_MAX = 5
 export const GALLERY_IMAGES_MAX = 4
 export const GALLERY_FILES_MAX = 30
@@ -74,6 +78,12 @@ export function summarize(text: string, max = GALLERY_SUMMARY_MAX): string {
     .join('\n')
     .trim()
   return body.length > max ? `${body.slice(0, max).trimEnd()}…` : body
+}
+
+/** 보고 전체를 상한까지만 저장 (넘으면 …) */
+export function galleryBody(text: string, max = GALLERY_BODY_MAX): string {
+  const b = text.trim()
+  return b.length > max ? `${b.slice(0, max).trimEnd()}…` : b
 }
 
 export interface GalleryFilter {
@@ -182,6 +192,73 @@ export function cleanSpeech(text: string, max = DEMO_SPEECH_MAX): string | null 
   return body.length > max ? `${body.slice(0, max).trimEnd()}…` : body
 }
 
+/** 발표장 대화창에 띄울 평문: 마크다운 기호를 걷고 한 줄에 한 덩어리 (저장된 기록은 그대로 두고 화면에서만 쓴다) */
+export function plainSpeech(text: string): string {
+  return text
+    .split('\n')
+    .flatMap((raw) => {
+      const line = raw.trim()
+      // 코드 울타리·가로줄·표 구분선은 통째로 뺀다
+      if (/^(```|~~~)/.test(line) || /^([-*_]\s*){3,}$/.test(line) || /^\|?\s*:?-{3,}/.test(line)) return []
+      const body = line
+        .replace(/^#{1,6}\s+/, '')
+        .replace(/^>\s?/, '')
+        .replace(/^[-*+]\s+(\[[ xX]\]\s+)?/, '')
+        .replace(/^\|(.*)\|$/, (_, cells: string) => cells.split('|').map((c) => c.trim()).filter(Boolean).join(' · '))
+        .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
+        .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+        .replace(/(\*\*|__)(.+?)\1/g, '$2')
+        .replace(/(^|[^\w*])[*_]([^*_\s][^*_]*?)[*_](?![\w*])/g, '$1$2')
+        .replace(/~~(.+?)~~/g, '$1')
+        .replace(/`+([^`]*)`+/g, '$1')
+        .trim()
+      return body ? [body] : []
+    })
+    .join('\n')
+}
+
+/** 대화창 폭에 맞춰 줄을 나눈다 — 띄어쓰기에서 끊고, 띄어쓰기 없이 길면 글자에서 끊는다. measure = 글자 폭 */
+export function wrapSpeech(text: string, maxWidth: number, measure: (s: string) => number): string[] {
+  return text.split('\n').flatMap((para) => {
+    const lines: string[] = []
+    let line = ''
+    for (const ch of para) {
+      if (!line && ch === ' ') continue
+      if (measure(line + ch) <= maxWidth || !line) {
+        line += ch
+        continue
+      }
+      const space = line.lastIndexOf(' ')
+      if (ch !== ' ' && space > 0) {
+        lines.push(line.slice(0, space))
+        line = line.slice(space + 1) + ch
+      } else {
+        lines.push(line.trimEnd())
+        line = ch === ' ' ? '' : ch
+      }
+    }
+    if (line.trim()) lines.push(line.trimEnd())
+    return lines
+  })
+}
+
+/** 대화창 한 쪽의 글자 수 목록과 지금 시각으로 보일 쪽·글자 수를 정한다.
+ *  발표 시간(durationMs)을 쪽 수로 나눠 저절로 넘기고(늦게 열어도 지난 만큼 넘어가 있다), 사용자가 넘긴 쪽(skip)이 더 앞서면 그 쪽을 그 시각부터 친다.
+ *  한 쪽은 그 몫의 60% 안에 다 치도록 타자 속도를 올린다 */
+export function speechPageAt(pageLengths: number[], o: { startedAt: number; durationMs: number; now: number; msPerChar: number; skip?: { page: number; at: number } | null }) {
+  const count = Math.max(1, pageLengths.length)
+  const slice = Math.max(1, o.durationMs) / count
+  const autoPage = Math.min(count - 1, Math.max(0, Math.floor((o.now - o.startedAt) / slice)))
+  // 넘긴 쪽에 시간이 따라와도 처음부터 다시 치지 않게, 둘 중 먼저 시작한 시각을 쓴다
+  const isSkipped = !!o.skip && o.skip.page >= autoPage
+  const page = isSkipped ? Math.min(count - 1, o.skip!.page) : autoPage
+  const pageStart = isSkipped ? Math.min(o.skip!.at, o.startedAt + page * slice) : o.startedAt + page * slice
+  const length = pageLengths[page] ?? 0
+  const msPerChar = Math.min(o.msPerChar, (slice * 0.6) / Math.max(1, length))
+  const shown = Math.min(length, Math.max(0, Math.floor((o.now - pageStart) / msPerChar)))
+  return { page, shown, isLast: page === count - 1, typedAt: pageStart + length * msPerChar }
+}
+
 /** 발표장 진행 단계: 입장(연단으로 걸어 나옴) → 발표(타이핑) → 박수 → (마지막) 총평 */
 export type DemoPhase = 'enter' | 'present' | 'clap' | 'remark'
 
@@ -233,4 +310,22 @@ export const NO_PRAISE: Praise = { claps: 0, mvps: 0 }
 export function addPraise(p: Praise | undefined, kind: DemoReaction): Praise {
   const cur = p ?? NO_PRAISE
   return kind === 'clap' ? { ...cur, claps: cur.claps + 1 } : kind === 'mvp' ? { ...cur, mvps: cur.mvps + 1 } : cur
+}
+
+/** 앱을 켤 때 진행 중으로 남은 회의를 닫는다 — 데모데이는 '끝남'(진행 표시 제거), 일반 회의는 '실패'. 이미 끝난 회의는 그대로 돌려준다 */
+export function settleStaleMeeting(m: Meeting, now: number): Meeting {
+  if (m.status !== 'running' && m.status !== 'waiting') return m
+  if (m.kind !== 'demo') return { ...m, status: 'failed' }
+  return { ...m, status: 'done', ...(m.demo ? { demo: { ...m.demo, presenterId: null, phase: 'remark' as DemoPhase, slides: [], cardTitle: '', startedAt: now, durationMs: 0 } } : {}) }
+}
+
+/** 데모데이를 마무리할 때의 결과 — discard면 '중단'이고 총평도 버린다, wrapup이면 총평 없이 끝, 신호가 없으면 총평까지 */
+export function demoOutcome<R>(stop: 'wrapup' | 'discard' | undefined, remark: R | null): { status: 'done' | 'stopped'; remark: R | null; isSaved: boolean } {
+  if (stop === 'discard') return { status: 'stopped', remark: null, isSaved: false }
+  return { status: 'done', remark: stop ? null : remark, isSaved: true }
+}
+
+/** 끝내기 신호(AbortController)가 오면 오래 걸리는 호출을 기다리지 않고 바로 거절로 빠져나온다 */
+export function abortable<T>(p: Promise<T>, ac: AbortController): Promise<T> {
+  return Promise.race([p, new Promise<never>((_, rej) => (ac.signal.aborted ? rej(new Error('aborted')) : ac.signal.addEventListener('abort', () => rej(new Error('aborted')), { once: true })))])
 }

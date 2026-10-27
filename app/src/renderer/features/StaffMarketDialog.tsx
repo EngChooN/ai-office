@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import type { PackMarketItem } from '@shared/staffPack'
+import { showToast } from '@/lib/toast'
 import { t } from '@shared/i18n'
 
 /** 기본 제공 직원 목록. [채용]은 파일 가져오기와 같은 검증·채용 길을 탄다 (main의 pack:hireMarket) */
@@ -19,7 +20,8 @@ export function StaffMarketDialog({ open, onOpenChange, onHired }: { open: boole
     setBusyId(id)
     try {
       const r = await pack.hireMarket(id)
-      window.alert(r.message)
+      if (r.ok) showToast(r.message)
+      else window.alert(r.message)
       if (r.ok) {
         onOpenChange(false)
         if (r.staffIds[0]) onHired(r.staffIds[0])

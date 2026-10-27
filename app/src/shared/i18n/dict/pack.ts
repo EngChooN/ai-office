@@ -3,6 +3,8 @@ import type { Entry } from './index.ts'
 /** 직원·랩 파일(내보내기·가져오기)과 기본 직원 마켓 */
 export default {
   // ── 고용 창 진입 ──
+  'market.bring': { ko: '직원 마켓에서 데려오기', en: 'Bring someone from the staff market', ja: '社員マーケットから迎える', zh: '从员工市场招募' },
+  'market.empty.hint': { ko: '아직 사무실에 직원이 없어요. 직원 마켓에서 바로 데려올 수 있어요.', en: 'No one is in the office yet. You can bring someone straight from the staff market.', ja: 'まだオフィスに社員がいません。社員マーケットからすぐに迎えられます。', zh: '办公室里还没有员工。可以直接从员工市场招募。' },
   'pack.hire.market': { ko: '직원 마켓', en: 'Staff market', ja: '社員マーケット', zh: '员工市场' },
   'pack.hire.import': { ko: '파일에서 가져오기', en: 'Import from file', ja: 'ファイルから読み込む', zh: '从文件导入' },
   'pack.hire.hint': {

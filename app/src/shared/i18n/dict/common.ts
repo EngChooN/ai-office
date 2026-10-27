@@ -9,4 +9,6 @@ export default {
   'common.delete': { ko: '삭제', en: 'Delete', ja: '削除', zh: '删除' },
   'common.me': { ko: '나', en: 'Me', ja: '自分', zh: '我' },
   'common.formerStaff': { ko: '퇴사자', en: 'Former staff', ja: '退職者', zh: '已离职员工' },
+  'common.toBottom': { ko: '맨 아래로', en: 'Jump to latest', ja: '最新へ', zh: '回到底部' },
+  'common.newMessages': { ko: '새 메시지 {count}', en: '{count} new', ja: '新着 {count}', zh: '{count} 条新消息' },
 } satisfies Record<string, Entry>

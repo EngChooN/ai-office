@@ -51,6 +51,36 @@ export async function snapshotTree(cwd: string): Promise<string | null> {
   }
 }
 
+/** 저장 시점의 폴더 상태: HEAD·브랜치·작업 트리 해시. 앱을 다시 켠 뒤 기록이 아직 유효한지 가리는 데 쓴다 */
+export interface FolderState {
+  head: string
+  branch: string
+  snap: string
+}
+
+export async function folderState(cwd: string): Promise<FolderState | null> {
+  try {
+    const head = (await git(cwd, 'rev-parse', 'HEAD').catch(() => '')).trim()
+    const branch = (await git(cwd, 'rev-parse', '--abbrev-ref', 'HEAD').catch(() => '')).trim()
+    const snap = await snapshotTree(cwd)
+    return snap ? { head, branch, snap } : null
+  } catch {
+    return null
+  }
+}
+
+/** 불러온 기록을 그대로 써도 되는가: 폴더가 있고, 기준 트리 객체가 있고, HEAD·브랜치·작업 트리가 저장 때와 같아야 한다 */
+export async function workBaseStillValid(base: { cwd: string; root: string; tree: string; state?: FolderState }): Promise<boolean> {
+  try {
+    if (!base.state || !fs.existsSync(base.cwd) || !fs.existsSync(base.root)) return false
+    await git(base.root, 'cat-file', '-e', `${base.tree}^{tree}`)
+    const now = await folderState(base.cwd)
+    return !!now && now.head === base.state.head && now.branch === base.state.branch && now.snap === base.state.snap
+  } catch {
+    return false
+  }
+}
+
 /** 두 트리 사이에서 바뀐 파일 (이름 바꾸기는 삭제 + 추가로 본다) */
 export async function treeDiff(cwd: string, from: string, to: string): Promise<ChangeFile[]> {
   const [names, nums] = await Promise.all([git(cwd, 'diff-tree', '-r', '--no-renames', '--name-status', '-z', from, to), git(cwd, 'diff-tree', '-r', '--no-renames', '--numstat', '-z', from, to)])

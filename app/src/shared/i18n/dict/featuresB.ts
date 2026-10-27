@@ -517,6 +517,14 @@ export default {
     zh: '在公司使用时请开启。将隐藏办公室地图、资金、商店、等级等游戏元素，打开应用时先显示仪表盘。',
   },
   'settingsPage.workMode.toggle': { ko: '업무 모드 사용', en: 'Use work mode', ja: '業務モードを使う', zh: '使用工作模式' },
+  'settingsPage.staffCapture.title': { ko: '직원 화면 캡처', en: 'Staff screen capture', ja: 'スタッフの画面キャプチャ', zh: '员工屏幕截图' },
+  'settingsPage.staffCapture.desc': {
+    ko: '직원이 화면·페이지 작업을 끝낼 때 결과 화면을 캡처해 보고에 붙여요. 대표 화면이 그대로 찍히므로, 끄면 장비로 지급받은 직원만 캡처해요. (맥 전용)',
+    en: 'When staff finish screen or page work, they capture the result and attach it to their report. This captures your actual screen, so turning it off limits capture to staff equipped with it. (Mac only)',
+    ja: 'スタッフが画面・ページの作業を終えるとき、結果画面をキャプチャして報告に添付します。画面がそのまま撮られるため、オフにすると装備で支給されたスタッフだけがキャプチャできます。（Mac のみ）',
+    zh: '员工完成界面/页面工作后，会截取结果画面并附在报告中。截图会拍到你的实际屏幕，关闭后仅限通过装备获得该权限的员工截图。（仅限 Mac）',
+  },
+  'settingsPage.staffCapture.toggle': { ko: '직원 화면 캡처 허용', en: 'Allow staff screen capture', ja: 'スタッフの画面キャプチャを許可', zh: '允许员工截图' },
   'settingsPage.autoApprove.title': { ko: '자동결재 (자리 비울 때)', en: 'Auto-approve (while away)', ja: '自動決裁（席を外すとき）', zh: '自动审批（离开时）' },
   'settingsPage.autoApprove.desc': {
     ko: '정해 둔 시간 동안 직원의 결재를 대신 승인해서 일이 멈추지 않게 해요.',
@@ -928,6 +936,7 @@ export default {
   'review.refresh': { ko: '새로고침', en: 'Refresh', ja: '更新', zh: '刷新' },
   'review.revert.summary': { ko: '이 직원이 작업 시작 후 바꾼 파일 {n}개 (+{add} −{del})', en: 'Files this employee changed since starting: {n} (+{add} −{del})', ja: '作業開始後にこの社員が変更したファイル {n} 件（+{add} −{del}）', zh: '该员工开始工作后修改的文件：{n} 个（+{add} −{del}）' },
   'review.revert.none': { ko: '작업을 시작한 뒤 바뀐 파일이 없어요.', en: 'No files changed since the work started.', ja: '作業開始後に変更されたファイルはありません。', zh: '开始工作后没有文件变更。' },
+  'review.revert.stale': { ko: '앱이 꺼진 사이 폴더의 파일·커밋·브랜치가 바뀌어서 안전하게 되돌릴 수 없어요.', en: 'Files, commits or the branch changed while the app was off, so it cannot be reverted safely.', ja: 'アプリの停止中にフォルダのファイル・コミット・ブランチが変わったため、安全に元に戻せません。', zh: '应用关闭期间文件夹中的文件、提交或分支发生了变化，无法安全还原。' },
   'review.revert.noBase': { ko: '작업 시작 기록이 없어 되돌릴 수 없어요. (앱을 다시 켰거나 아직 일을 시작하지 않았어요)', en: 'No start-of-work record, so nothing can be reverted (the app was restarted or no work has started).', ja: '作業開始の記録がないため元に戻せません（アプリを再起動したか、まだ作業を始めていません）。', zh: '没有开始工作的记录，无法还原（应用已重启或尚未开始工作）。' },
   'review.revert.button': { ko: '작업 전으로 되돌리기', en: 'Revert to before work', ja: '作業前に戻す', zh: '还原到工作前' },
   'review.revert.skipped': { ko: '다른 직원도 바꾼 파일 {n}개는 건드리지 않아요.', en: '{n} files also changed by other employees will be left alone.', ja: '他の社員も変更したファイル {n} 件には手を付けません。', zh: '其他员工也修改过的 {n} 个文件不会被改动。' },

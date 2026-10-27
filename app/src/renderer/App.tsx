@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { BellIcon, SparklesIcon, UserPlusIcon } from 'lucide-react'
+import { BellIcon, SparklesIcon, StoreIcon, UserPlusIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CoachTour } from '@/features/CoachTour'
 import { Onboarding } from '@/features/Onboarding'
@@ -23,6 +23,7 @@ import { PAGES } from '@/layout/pages'
 import { useLayout } from '@/layout/useLayout'
 import { useLang } from '@/lib/i18n'
 import { connectOffice, useOffice, useWorkMode } from './store'
+import { ToastHost } from '@/lib/toast'
 import { t } from '@shared/i18n'
 
 export default function App() {
@@ -93,6 +94,7 @@ function DesktopShell({ children }: { children?: React.ReactNode }) {
   const view = useOffice((s) => s.view)
   const setView = useOffice((s) => s.setView)
   const staff = useOffice((s) => s.staff)
+  const isLoaded = useOffice((s) => s.isLoaded)
   const funds = useOffice((s) => s.funds)
   const isWorkMode = useWorkMode()
   const planUsage = useOffice((s) => s.planUsage)
@@ -133,6 +135,7 @@ function DesktopShell({ children }: { children?: React.ReactNode }) {
           </Button>
         </div>
       </header>
+      {isLoaded && staff.length === 0 && <EmptyOfficeHint />}
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <Sidebar />
         <main className="min-h-0 min-w-0 flex-1">
@@ -141,6 +144,22 @@ function DesktopShell({ children }: { children?: React.ReactNode }) {
         <StaffPanel />
       </div>
       {children}
+      <ToastHost />
+    </div>
+  )
+}
+
+/** 사무실에 직원이 없을 때: 직원 마켓으로 안내 */
+function EmptyOfficeHint() {
+  const openMarket = useOffice((s) => s.openMarket)
+  if (typeof window.officePack === 'undefined') return null
+  return (
+    <div className="bg-accent/50 flex shrink-0 items-center gap-3 border-b px-4 py-2 text-sm">
+      <StoreIcon className="size-4 shrink-0" />
+      <span>{t('market.empty.hint')}</span>
+      <Button size="sm" className="ml-auto" onClick={openMarket}>
+        {t('market.bring')}
+      </Button>
     </div>
   )
 }

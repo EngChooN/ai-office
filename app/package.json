@@ -1,7 +1,7 @@
 {
   "name": "claude-office",
   "productName": "Claude Office",
-  "version": "0.13.0",
+  "version": "0.13.1",
   "private": true,
   "description": "내 Claude Code 세션을 사무실처럼 보는 앱",
   "license": "MIT",

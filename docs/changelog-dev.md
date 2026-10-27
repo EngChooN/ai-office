@@ -2,6 +2,22 @@
 
 버전은 SemVer. 기능 크기 기준으로 올린다. 버전마다 **새 기능 / 개선 / 버그 수정**으로 나눠 적는다(앱의 "업데이트 소식"이 이 파일을 그대로 보여 준다).
 
+## [0.13.1] - 2026-10-27
+
+### 새 기능
+- 휴대폰 Tailscale 방식 연결 (커밋 `c923a7e`): 포트포워딩 없이 외부망 접속. 안드로이드 `remote/` 패키지(`RemoteClient`·`OfficeRepository`·`HelloRefresh`)와 `LanOnlyTest`.
+- 직원 화면 캡처 허용 설정(기본 켬): `hooks.isScreenCaptureOn()`이 켜져 있으면 `capture_screen`을 결재 없이 허용, 꺼지면 장비 `allowedTools`에 든 직원만. 설정 키 `settingsPage.staffCapture.*`(4개 언어).
+- 결과 캡처 안내를 직접 지시·위임·기획 하위 업무 모든 지시에 적용.
+
+### 개선
+- 데모데이 무대: 16:9 무대 상자(`DemoStage.tsx`의 `STAGE_ASPECT`)에 캔버스·슬라이드·대화창을 맞추고, '다음 말 보기'·'스크린 크게 보기'(Esc 닫기) 추가. 발표 스크린은 뒷벽(`isoArt.ts` 벽 스크린, 16:10)으로 이동.
+- 되돌리기 기록을 `main/workBaseStore.ts`(office.db `work_base` 표, 직원별 JSON)에 저장해 재시작 뒤에도 되돌리기 가능. 되돌리기 전 폴더 변경 여부(`review.revert.stale`) 확인.
+- 채팅 맨 아래 고정 `components/stick-to-bottom.tsx`(새 메시지 수·'맨 아래로'), 토스트 `renderer/lib/toast.tsx`, 스위치 `components/ui/switch.tsx`.
+- 갤러리 상세: 결과 전체 보기·캡처 확대(`gallery.detail.*`).
+
+### 버그 수정
+- 튜토리얼 9/9: 마지막 단계에서 결과 상세 창이 '검토 완료' 강조를 가리던 문제 (커밋 `84a9148`).
+
 ## [0.13.0] - (출시 전)
 
 ### 새 기능

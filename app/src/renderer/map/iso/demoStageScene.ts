@@ -71,6 +71,8 @@ interface Actor {
   dir: PersonDir
   /** 단체 인사 때 내려가는 깊이 (세계 px) */
   bow: number
+  /** 지난 프레임에 그린 그림 키 — 같으면 다시 넣지 않는다 */
+  key: string
 }
 
 const STEP_S = 0.28
@@ -81,8 +83,14 @@ const DIM_ALPHA = 0.35
 const SPOT_ALPHA = 0.9
 const FX_DEPTH = 55_000
 const BOW_GAP = 0.75
+/** 카메라에 담을 범위 (발표장 텍스처 아트 px): 왼쪽은 맨 뒤 선 객석 끝, 아래는 객석 맨 뒷줄 발 아래까지. 오른쪽은 텍스처 끝 */
+const VIEW = { left: 30, top: 2, bottom: STAGE.wallH + 138 }
 const FINALE_MS = 3_200
 const hex = (c: string) => Phaser.Display.Color.HexStringToColor(c).color
+
+/** 그림은 한 번만 만든다 — 발표장을 다시 열어도 같은 캔버스를 쓴다 */
+const artCache = new Map<string, HTMLCanvasElement>()
+const cachedArt = (key: string, make: () => HTMLCanvasElement) => artCache.get(key) ?? artCache.set(key, make()).get(key)!
 
 export class DemoStageScene extends Phaser.Scene {
   private o: Origin = { x: 0, y: 0 }
@@ -92,6 +100,10 @@ export class DemoStageScene extends Phaser.Scene {
   private statics: { obj: Phaser.GameObjects.Image; box: IsoBox }[] = []
   private dim!: Phaser.GameObjects.Graphics
   private spot!: Phaser.GameObjects.Image
+  private spotBreath!: Phaser.Tweens.Tween
+  private isLit = false
+  /** 누가 움직였을 때만 깊이를 다시 정한다 */
+  private isDepthDirty = true
   private crown!: Phaser.GameObjects.Image
   private state: StageState | null = null
   private prev: StageState | null = null
@@ -134,9 +146,11 @@ export class DemoStageScene extends Phaser.Scene {
 
   create() {
     const hall = artStageHall()
-    const hallCanvas = toCanvas(hall.cv)
-    punchScreen(hallCanvas)
-    this.addArt('stage-hall', hallCanvas)
+    const hallCanvas = this.addArt('stage-hall', () => {
+      const canvas = toCanvas(hall.cv)
+      punchScreen(canvas)
+      return canvas
+    })
     this.worldW = hallCanvas.width
     this.worldH = hallCanvas.height
     this.o = { x: hall.o[0] * PIXEL, y: hall.o[1] * PIXEL }
@@ -155,17 +169,18 @@ export class DemoStageScene extends Phaser.Scene {
     this.dim.fillStyle(hex(STAGE_COLORS.dim), 1).fillRect(0, front, this.worldW, this.worldH - front)
 
     const spot = artStageSpot()
-    this.addArt('stage-spot', toCanvas(spot.cv))
+    this.addArt('stage-spot', () => toCanvas(spot.cv))
     this.spot = this.add.image(0, 0, 'stage-spot').setOrigin(spot.o[0] / spot.cv.w, spot.o[1] / spot.cv.h).setBlendMode(Phaser.BlendModes.ADD).setAlpha(0)
-    this.tweens.add({ targets: this.spot, scaleX: 1.02, duration: 1_200, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' })
+    // 조명이 켜져 있을 때만 숨 쉰다
+    this.spotBreath = this.tweens.add({ targets: this.spot, scaleX: 1.02, duration: 1_200, yoyo: true, repeat: -1, ease: 'Sine.easeInOut', paused: true })
 
-    this.addArt('stage-shadow', toCanvas(artPersonShadow()))
-    this.addArt('stage-fx-clap0', toCanvas(artStageClap(0)))
-    this.addArt('stage-fx-clap1', toCanvas(artStageClap(1)))
-    this.addArt('stage-fx-star', toCanvas(artStageStar()))
-    this.addArt('stage-fx-heart', toCanvas(artStageHeart()))
-    this.addArt('stage-fx-trophy', toCanvas(artStageTrophy()))
-    this.addArt('stage-fx-crown', toCanvas(artStageCrown()))
+    this.addArt('stage-shadow', () => toCanvas(artPersonShadow()))
+    this.addArt('stage-fx-clap0', () => toCanvas(artStageClap(0)))
+    this.addArt('stage-fx-clap1', () => toCanvas(artStageClap(1)))
+    this.addArt('stage-fx-star', () => toCanvas(artStageStar()))
+    this.addArt('stage-fx-heart', () => toCanvas(artStageHeart()))
+    this.addArt('stage-fx-trophy', () => toCanvas(artStageTrophy()))
+    this.addArt('stage-fx-crown', () => toCanvas(artStageCrown()))
     this.crown = this.add.image(0, 0, 'stage-fx-crown').setOrigin(0.5, 1).setDepth(FX_DEPTH).setVisible(false)
 
     this.fit()
@@ -174,25 +189,34 @@ export class DemoStageScene extends Phaser.Scene {
     if (this.state) this.apply()
   }
 
-  private addArt(key: string, canvas: HTMLCanvasElement) {
+  private addArt(key: string, make: () => HTMLCanvasElement) {
+    const canvas = cachedArt(key, make)
     if (!this.textures.exists(key)) this.textures.addImage(key, canvas as unknown as HTMLImageElement)
+    return canvas
   }
 
   private addStatic(key: string, cv: Cv, o: [number, number], box: ArtBox, at: { gx: number; gy: number }) {
-    this.addArt(key, toCanvas(cv))
+    this.addArt(key, () => toCanvas(cv))
     const p = this.world({ ...at, z: 0 })
     const obj = this.add.image(p.x, p.y, key).setOrigin(o[0] / cv.w, o[1] / cv.h)
     this.statics.push({ obj, box: { ...box, x: box.x + at.gx, y: box.y + at.gy } })
   }
 
-  /** 무대 전체가 보이게 맞추고, 화면에 DOM 겹칠 자리를 알린다 */
+  /**
+   * 무대 전체가 보이게 맞추고, 화면에 DOM 겹칠 자리를 알린다.
+   * 캔버스는 기기 px(CSS px × 배율)라 DOM 자리는 배율로 나눈다. 그림 한 칸이 기기 px 정수배가 되게 줌을 내려 맞춘다 (칸마다 굵기가 달라 보이지 않게)
+   */
   private fit() {
     const cam = this.cameras.main
-    const zoom = Math.min(cam.width / this.worldW, cam.height / this.worldH) * 0.96
-    const cx = this.worldW / 2
-    const cy = this.worldH / 2
+    const ratio = this.game.canvas.width / (parseFloat(this.game.canvas.style.width) || this.game.canvas.width)
+    // 빈 왼쪽 벽 끝·바닥 앞 모서리는 잘라 내고 스크린~객석만 꽉 차게 (그만큼 스크린이 커진다)
+    const [vx0, vy0, vx1, vy1] = [VIEW.left * PIXEL, VIEW.top * PIXEL, this.worldW, Math.min(this.worldH, VIEW.bottom * PIXEL)]
+    const raw = Math.min(cam.width / (vx1 - vx0), cam.height / (vy1 - vy0)) * 0.98
+    const zoom = raw * PIXEL >= 2 ? Math.floor(raw * PIXEL) / PIXEL : raw
+    const cx = (vx0 + vx1) / 2
+    const cy = (vy0 + vy1) / 2
     cam.setZoom(zoom).centerOn(cx, cy)
-    const toScreen = (x: number, y: number) => ({ x: (x - cx) * zoom + cam.width / 2, y: (y - cy) * zoom + cam.height / 2 })
+    const toScreen = (x: number, y: number) => ({ x: ((x - cx) * zoom + cam.width / 2) / ratio, y: ((y - cy) * zoom + cam.height / 2) / ratio })
     const head = this.world({ ...STAGE.speaker, z: STAGE.platform.h + HEAD_Z })
     this.onLayout({ quad: stageScreenQuad().map(([x, y]) => toScreen(x * PIXEL, y * PIXEL)), head: toScreen(head.x, head.y) })
   }
@@ -219,9 +243,16 @@ export class DemoStageScene extends Phaser.Scene {
       this.audienceClap()
       this.stageStars()
     }
+    // 메시지가 올 때마다 스냅샷이 오므로 조명이 바뀔 때만 움직인다
     const isLit = !next.isDone && (next.phase === 'present' || next.phase === 'remark')
-    this.tweens.add({ targets: this.dim, alpha: isLit ? DIM_ALPHA : 0, duration: isLit ? 400 : 300 })
-    this.tweens.add({ targets: this.spot, alpha: isLit ? SPOT_ALPHA : 0, duration: 300 })
+    if (isLit !== this.isLit) {
+      this.isLit = isLit
+      this.tweens.killTweensOf(this.dim)
+      this.tweens.add({ targets: this.dim, alpha: isLit ? DIM_ALPHA : 0, duration: isLit ? 400 : 300 })
+      this.tweens.add({ targets: this.spot, alpha: isLit ? SPOT_ALPHA : 0, duration: 300 })
+      if (isLit) this.spotBreath.resume()
+      else this.spotBreath.pause()
+    }
     if (next.isDone && !prev?.isDone) this.finale()
   }
 
@@ -232,7 +263,8 @@ export class DemoStageScene extends Phaser.Scene {
       const seat = seats[i] ?? stageSeats(i + 1)[i]
       const img = this.add.image(0, 0, this.personKey(m.avatar, 'sit', 'back')).setOrigin(0.5, 1)
       const shadow = this.add.image(0, 0, 'stage-shadow')
-      this.actors.set(m.id, { id: m.id, avatar: m.avatar, img, shadow, seat, at: { ...seat }, path: [], dir: 'back', bow: 0 })
+      this.actors.set(m.id, { id: m.id, avatar: m.avatar, img, shadow, seat, at: { ...seat }, path: [], dir: 'back', bow: 0, key: '' })
+      this.isDepthDirty = true
     })
   }
 
@@ -243,7 +275,7 @@ export class DemoStageScene extends Phaser.Scene {
 
   private personKey(avatar: number, pose: PersonPose, dir: PersonDir) {
     const key = `stage-p${avatar}-${pose}-${dir}`
-    if (!this.textures.exists(key)) this.addArt(key, toCanvas(artPerson(pose, dir, isoLook(avatar))))
+    if (!this.textures.exists(key)) this.addArt(key, () => toCanvas(artPerson(pose, dir, isoLook(avatar))))
     return key
   }
 
@@ -253,6 +285,8 @@ export class DemoStageScene extends Phaser.Scene {
     if (isInstant) {
       a.at = { ...path[path.length - 1] }
       a.path = []
+      a.key = ''
+      this.isDepthDirty = true
     } else a.path = [...path]
   }
 
@@ -261,13 +295,17 @@ export class DemoStageScene extends Phaser.Scene {
   update(_time: number, deltaMs: number) {
     const dt = Math.min(0.1, deltaMs / 1000)
     this.walkClock += dt
-    for (const a of this.actors.values()) this.stepActor(a, dt)
-    this.sortDepth()
+    for (const a of this.actors.values()) if (this.stepActor(a, dt)) this.isDepthDirty = true
+    if (this.isDepthDirty) this.sortDepth()
+    this.isDepthDirty = false
     this.placeSpotAndCrown()
     this.stepConfetti(dt)
   }
 
+  /** 걸었으면 true. 서 있는 사람은 그림·자리가 그대로면 건드리지 않는다 */
   private stepActor(a: Actor, dt: number) {
+    const wasWalking = a.path.length > 0
+    if (!wasWalking && a.key && a.img.y === this.world(a.at).y + a.bow) return false
     let budget = dt / STEP_S
     while (budget > 0 && a.path.length) {
       const to = a.path[0]
@@ -284,8 +322,12 @@ export class DemoStageScene extends Phaser.Scene {
     if (!isWalking) a.dir = isHome ? 'back' : 'front'
     const pose: PersonPose = isWalking ? (Math.floor(this.walkClock / WALK_FRAME_S) % 2 ? 'walk2' : 'walk1') : isHome && a.seat.isSeated ? 'sit' : 'stand'
     const foot = this.world(a.at)
-    a.img.setTexture(this.personKey(a.avatar, pose, a.dir)).setPosition(foot.x, foot.y + a.bow)
+    const key = this.personKey(a.avatar, pose, a.dir)
+    if (key !== a.key) a.img.setTexture(key)
+    a.key = key
+    a.img.setPosition(foot.x, foot.y + a.bow)
     a.shadow.setPosition(foot.x, foot.y)
+    return wasWalking
   }
 
   private sortDepth() {

@@ -106,6 +106,10 @@ export function Onboarding({ onStartTour }: { onStartTour: () => void }) {
   if (!isLoaded || isOnboarded) return null
 
   const finish = () => void window.office.updateSettings({ isOnboarded: true })
+  const handleMarket = () => {
+    finish()
+    useOffice.getState().openMarket()
+  }
   const handleCopy = () => {
     void navigator.clipboard.writeText(INSTALL_COMMAND)
     setIsCopied(true)
@@ -242,6 +246,11 @@ export function Onboarding({ onStartTour }: { onStartTour: () => void }) {
             <div className="flex items-center justify-between">
               <StepDots step={step} />
               <div className="flex gap-2">
+                {typeof window.officePack !== 'undefined' && (
+                  <Button variant="outline" onClick={handleMarket}>
+                    {t('market.bring')}
+                  </Button>
+                )}
                 <Button variant="ghost" onClick={finish}>
                   {t('onboarding.startNow')}
                 </Button>

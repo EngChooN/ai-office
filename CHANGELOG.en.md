@@ -7,6 +7,25 @@ Writing rules
 - Write from the user's point of view, describing "what you can now do." Do not use technical names (file paths, program or library names, English abbreviations). If one is truly needed, put it once in parentheses after a plain-language explanation.
 - Development details (how it was built, where files are) go in `SPEC.md` and `docs/changelog-dev.md`.
 
+## [0.13.1] - 2026-10-27
+
+### New features
+- **You can now connect to your PC from your phone outside your home or office.** No router port needs to be opened; it uses Tailscale (a private network).
+- **New "Allow staff screen capture" setting.** It is on by default, so staff attach screenshots when they report results. When it is off, only staff who were given the equipment can capture.
+
+### Improvements
+- **Staff are asked to capture the result screen in every task report.** This applies to tasks you assign directly, tasks handed to a team lead, and subtasks in plans.
+- **The presenter screen moved to the back wall and now uses a 16:10 ratio.**
+- **On the demo day stage, you can use "Next line" and "View screen larger".** Close the enlarged view by clicking it or pressing Esc.
+- **When you scroll up in the chat and new messages arrive, a "N new" count and a "Jump to latest" button appear.**
+- **You can still undo the last task after restarting the app.** The pre-work state is saved.
+- **If files changed while the app was closed, you are told that undo is not safe.**
+- **In the gallery, open the full result and click a screenshot to view it larger.**
+- **Notification messages and the on/off switch look cleaner.**
+
+### Bug fixes
+- **Fixed the result window covering the "Review complete" highlight in the last tutorial step.**
+
 ## [0.13.0] - 2026-10-27
 
 ### New features

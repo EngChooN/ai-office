@@ -100,6 +100,8 @@ class OfficeStage {
   private isOnBattery = false
   /** 창이 최소화·숨김이면 false — 그동안은 지도도 미니 뷰도 그리지 않는다 */
   private isWindowShown = true
+  /** 발표장처럼 화면 전체를 덮는 장면이 떠 있으면 true — 안 보이는 지도는 그리지 않는다 */
+  private isCovered = false
 
   /** 화면 배율이 바뀌면(창을 다른 해상도 모니터로 옮김) 알려 주는 질의 — 바뀔 때마다 새 배율로 다시 건다 */
   private dprQuery: MediaQueryList | null = null
@@ -128,6 +130,11 @@ class OfficeStage {
   setWindowShown(isShown: boolean) {
     if (this.isWindowShown === isShown) return
     this.isWindowShown = isShown
+    this.updateLoop()
+  }
+  setCovered(isCovered: boolean) {
+    if (this.isCovered === isCovered) return
+    this.isCovered = isCovered
     this.updateLoop()
   }
   private fpsOf(v: View) {
@@ -235,7 +242,7 @@ class OfficeStage {
   private updateLoop() {
     const game = this.game
     if (!game) return
-    const isIdle = !this.isWindowShown || (!this.mapHost && this.views.size === 0)
+    const isIdle = !this.isWindowShown || this.isCovered || (!this.mapHost && this.views.size === 0)
     if (isIdle) {
       if (game.loop.running) game.loop.sleep()
       return

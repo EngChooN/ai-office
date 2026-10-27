@@ -11,6 +11,8 @@ interface OfficeState extends OfficeSnapshot {
   selectedId: string | null
   view: View
   hireOpen: boolean
+  /** 직원 마켓 창 (채용 창 안에서 열린다 — openMarket은 채용 창과 함께 연다) */
+  isMarketOpen: boolean
   liveLogs: LogEntry[]
   chat: ChatMessage[]
   /** 랩 회의 열기 등에서 회의실 화면에 미리 채울 참석자 */
@@ -43,6 +45,8 @@ interface OfficeState extends OfficeSnapshot {
   select(id: string | null): void
   setView(view: View): void
   setHireOpen(open: boolean): void
+  setMarketOpen(open: boolean): void
+  openMarket(): void
   /** 비서 빠른 창(⌘K·메뉴바 "비서에게 말하기") */
   isQuickSecretaryOpen: boolean
   setQuickSecretaryOpen(open: boolean): void
@@ -78,6 +82,7 @@ export const useOffice = create<OfficeState>((set) => ({
   selectedId: null,
   view: 'map',
   hireOpen: false,
+  isMarketOpen: false,
   liveLogs: [],
   chat: [],
   meetingPreset: null,
@@ -110,7 +115,9 @@ export const useOffice = create<OfficeState>((set) => ({
     }),
   select: (selectedId) => set({ selectedId }),
   setView: (view) => set((s) => ({ view: shownView(view, s.settings.isWorkMode) })),
-  setHireOpen: (hireOpen) => set({ hireOpen }),
+  setHireOpen: (hireOpen) => set(hireOpen ? { hireOpen } : { hireOpen, isMarketOpen: false }),
+  setMarketOpen: (isMarketOpen) => set({ isMarketOpen }),
+  openMarket: () => set({ hireOpen: true, isMarketOpen: true }),
   isQuickSecretaryOpen: false,
   setQuickSecretaryOpen: (isQuickSecretaryOpen) => set({ isQuickSecretaryOpen }),
   pushLog: (entry) => set((s) => ({ liveLogs: [...s.liveLogs.slice(-LIVE_LOG_MAX + 1), entry] })),

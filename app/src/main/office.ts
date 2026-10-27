@@ -71,7 +71,7 @@ import { mergeRefDocs, normalizeRefDocPath, refDocKey, refDocsPrompt, sanitizeRe
 import { draftCovered, isSameRule, matchRule, ruleLabel, type ApprovalRule } from '../shared/approvalRules'
 import { KNOWLEDGE_MAX, knowledgeBrief, normalizeKnowledge, pickKnowledge, type KnowledgeEntry, type KnowledgeInput } from '../shared/knowledge'
 import { maskSecrets } from '../shared/redact'
-import { addPraise, cleanSpeech, dateKeyOf, DEMO_COMMENT_MAX, DEMO_REACTIONS, demoPhaseMs, type DemoPhase, type DemoReaction, type DemoStage, type Praise, demoCoverImages, demoEntries, demoImages, demoLine, demoPresentInput, demoSummary, extractLinks, GALLERY_FILES_MAX, GALLERY_IMAGES_MAX, GALLERY_MAX, groupByStaff, isDemoDue, summarize, type GalleryEntry } from '../shared/gallery'
+import { abortable, demoOutcome, addPraise, cleanSpeech, settleStaleMeeting, dateKeyOf, DEMO_COMMENT_MAX, DEMO_REACTIONS, demoPhaseMs, type DemoPhase, type DemoReaction, type DemoStage, type Praise, demoCoverImages, demoEntries, demoImages, demoLine, demoPresentInput, demoSummary, extractLinks, GALLERY_FILES_MAX, GALLERY_IMAGES_MAX, GALLERY_MAX, galleryBody, groupByStaff, isDemoDue, summarize, type GalleryEntry } from '../shared/gallery'
 import { InvalidArgsError } from '../shared/errors'
 import { planBoardCleanup, type BoardCleanupPlan } from '../shared/boardCleanup'
 import { plansToAdvanceOnStart, shouldReopenForAnswer, tasksToReturnToTodo } from '../shared/taskResume'
@@ -121,7 +121,7 @@ import {
 } from '../shared/economy'
 import { askOnce, HiredStaffManager, probeMcpStatus, sdk } from './hired'
 import { autoApprove, autoKindOf, autoStep, autoSummaryText, autoWindow, AWAY_ANSWER, formatRemaining, planToConfig, type AutoApprovePlan } from '../shared/autoApprove'
-import { commitAll, pushAndPr, repoRoot, restoreFiles, snapshotTree, treeDiff, workChanges } from './review'
+import { commitAll, folderState, pushAndPr, repoRoot, restoreFiles, snapshotTree, treeDiff, workBaseStillValid, workChanges } from './review'
 import { readExternalDay } from './transcript'
 import { Tutorial } from './tutorial'
 
@@ -144,6 +144,7 @@ const LEDGER_DAYS = 60
 const LEDGER_MAX = 300
 /** 새로 꺼낸 가구를 놓는 자리 (맵 좌표) */
 const MEETING_KEEP = 20
+const DEMO_AI_TIMEOUT_MS = 30_000
 /** 데모데이 발표: 직원 한 명당 머무는 시간 (회의실 연출) */
 const RUN_KEEP = 40
 /** 프로세스 단계 지시에 넘겨주는 이전 단계 결과 길이 */
@@ -227,6 +228,10 @@ export class Office extends EventEmitter<{
   private pendingDecisions = new Map<string, (answer: string, ended?: boolean) => void>()
   /** 대표가 끝내라고 한 회의 — 지금 발언이 끝나면 멈춘다 */
   private meetingStops = new Map<string, 'wrapup' | 'discard'>()
+  /** 데모데이가 진행 중인지 (두 번째 시작을 막는다) */
+  private isDemoRunning = false
+  /** 데모데이 회의별 진행 중인 AI 호출 — 끝내기 때 바로 끊는다 */
+  private demoAborts = new Map<string, Set<AbortController>>()
   private budgetWarned = new Set<string>()
   private manager: HiredStaffManager
   /** 첫 업무 튜토리얼 (모의 진행 — 연습 직원은 세션 없이 대본대로) */
@@ -294,6 +299,7 @@ export class Office extends EventEmitter<{
         const listed = merged.docs.filter((d) => !cwd || ![`${cwd}/CLAUDE.md`, `${cwd}\\CLAUDE.md`].some((p) => refDocKey(p) === refDocKey(d.path)))
         return { prompt: refDocsPrompt({ ...merged, docs: listed }), paths: merged.docs.map((d) => d.path) }
       },
+      isScreenCaptureOn: () => this.settings.isStaffCaptureOn,
       equippedMcp: (id) => {
         const s = this.hired.get(id)
         if (!s) return {}
@@ -397,8 +403,26 @@ export class Office extends EventEmitter<{
     this.shop = db.loadShop()
     this.companyLevelMax = db.loadCompanyLevelMax()
     for (const s of db.loadSchedules()) this.schedules.set(s.id, s)
-    this.meetings = db.loadMeetings(MEETING_KEEP).map((m) => (m.status === 'running' || m.status === 'waiting' ? { ...m, status: m.kind === 'demo' ? 'done' : 'failed' } : m))
+    this.meetings = db.loadMeetings(MEETING_KEEP).map((m) => {
+      const settled = settleStaleMeeting(m, Date.now())
+      // 데모데이는 닫은 결과를 저장까지 해서 다시 켜도 진행 표시(3/7 등)가 남지 않게 한다
+      if (settled !== m && m.kind === 'demo') db.saveMeeting(settled)
+      return settled
+    })
     for (const { staffId, type, n } of db.logCounts()) this.counters.set(staffId, { ...this.counters.get(staffId), [type]: n })
+    // 저장해 둔 되돌리기 기록은 폴더가 그대로일 때만 복원한다 (꺼져 있는 동안 파일·커밋·브랜치가 바뀌었으면 버린다)
+    const storedBases = [...db.loadWorkBases()]
+    this.workBaseCheck = Promise.all(
+      storedBases.map(async ([id, { touched, ...base }]) => {
+        if (await workBaseStillValid(base)) {
+          this.workBases.set(id, base)
+          if (touched.length) this.touchedFiles.set(id, new Set(touched))
+        } else {
+          this.staleWork.add(id)
+          db.removeWorkBase(id)
+        }
+      }),
+    ).then(() => undefined)
     for (const s of db.loadHiredStaff()) {
       this.hired.set(s.id, s)
       // 익힌 매뉴얼 목록에 중복이 저장된 직원은 한 번 정리해 둔다
@@ -660,6 +684,9 @@ export class Office extends EventEmitter<{
     this.hired.delete(staffId)
     this.commands.delete(staffId)
     db.deleteStaff(staffId)
+    this.workBases.delete(staffId)
+    this.staleWork.delete(staffId)
+    this.touchedFiles.delete(staffId)
     for (const t of this.teams.values()) if (t.leadId === staffId) t.leadId = null
     for (const l of this.labs.values()) {
       if (l.memberIds.includes(staffId) || l.leadId === staffId) this.saveLabObj({ ...l, memberIds: l.memberIds.filter((m) => m !== staffId), leadId: l.leadId === staffId ? null : l.leadId })
@@ -796,6 +823,7 @@ export class Office extends EventEmitter<{
 
   /** 중단된 직원의 업무 카드는 할 일로 되돌리고, 기획 하위 업무였으면 기획도 멈춰 둔다 (다음 단계가 저절로 시작되지 않게) */
   private onStopped(staffId: string) {
+    void this.persistWork(staffId) // 마지막 수정까지 반영한 폴더 상태로 다시 저장
     const origins = this.origins.get(staffId) ?? []
     const queued = this.taskQueue.get(staffId) ?? []
     this.origins.set(staffId, [])
@@ -956,6 +984,7 @@ export class Office extends EventEmitter<{
   }
 
   private onFinished(staffId: string, summary: string, backgroundTasks: string[] = []) {
+    void this.persistWork(staffId) // 마지막 수정까지 반영한 폴더 상태로 다시 저장
     const s = this.hired.get(staffId)
     if (!s) return
     const isAutoCheckTurn = this.autoChecked.delete(staffId)
@@ -2049,8 +2078,19 @@ export class Office extends EventEmitter<{
     return cwd ? workChanges(cwd) : { cwd: '', isGit: false, branch: '', files: [], diff: '', hasGh: false, ahead: 0 }
   }
 
-  // 작업 전 되돌리기: 직원별로 "일을 시작한 시점의 폴더 상태"(git 트리)와 직접 고친 파일을 기억한다 (앱을 끄면 사라짐)
-  private workBases = new Map<string, { cwd: string; root: string; tree: string; at: number }>()
+  // 작업 전 되돌리기: 직원별로 "일을 시작한 시점의 폴더 상태"(git 트리)와 직접 고친 파일을 기억한다 (office.db에 저장해 앱을 다시 켜도 남는다)
+  private workBases = new Map<string, { cwd: string; root: string; tree: string; at: number; state?: { head: string; branch: string; snap: string } }>()
+  private workBaseCheck: Promise<void> = Promise.resolve()
+  /** 앱을 다시 켜는 사이 폴더가 바뀌어 기록을 버린 직원 */
+  private staleWork = new Set<string>()
+  private async persistWork(staffId: string) {
+    const base = this.workBases.get(staffId)
+    if (!base) return db.removeWorkBase(staffId)
+    const touched = [...(this.touchedFiles.get(staffId) ?? [])]
+    const state = (await folderState(base.cwd)) ?? undefined
+    // 기다리는 사이 기록이 지워졌으면 되살리지 않는다
+    if (this.workBases.get(staffId) === base) db.saveWorkBase(staffId, { ...base, state }, touched)
+  }
   private touchedFiles = new Map<string, Set<string>>()
 
   /** 손이 빈 직원이 새 일을 받을 때 호출. 이전 일의 변경이 아직 남아 있으면 그 시점을 그대로 둔다 (그래야 한꺼번에 되돌릴 수 있다) */
@@ -2065,6 +2105,8 @@ export class Office extends EventEmitter<{
       if (prev && prev.cwd === cwd && (await treeDiff(root, prev.tree, now)).length > 0) return
       this.workBases.set(staffId, { cwd, root, tree: now, at: Date.now() })
       this.touchedFiles.delete(staffId)
+      await this.persistWork(staffId)
+      this.staleWork.delete(staffId)
     } catch {
       // 기록하지 못하면 되돌리기만 쓸 수 없다
     }
@@ -2079,11 +2121,13 @@ export class Office extends EventEmitter<{
     const set = this.touchedFiles.get(staffId) ?? new Set<string>()
     set.add(rel.split(path.sep).join('/'))
     this.touchedFiles.set(staffId, set)
+    void this.persistWork(staffId)
   }
 
   /** 되돌릴 파일과 건드리지 않을 파일. 같은 폴더를 쓰는 다른 직원이 있으면 이 직원이 직접 고친 파일만, 다른 직원도 고친 파일은 제외 */
   private async revertPlan(staffId: string) {
-    const none = { available: false, startedAt: 0, files: [] as ChangeFile[], skipped: [] as string[], base: '', cwd: '', root: '' }
+    await this.workBaseCheck
+    const none = { available: false, stale: this.staleWork.has(staffId), startedAt: 0, files: [] as ChangeFile[], skipped: [] as string[], base: '', cwd: '', root: '' }
     const base = this.workBases.get(staffId)
     if (!base || !fs.existsSync(base.cwd)) return none
     const now = await snapshotTree(base.cwd)
@@ -2100,12 +2144,12 @@ export class Office extends EventEmitter<{
       else if (mine.has(f.path) && !othersTouched.has(f.path)) files.push(f)
       else skipped.push(f.path)
     }
-    return { available: true, startedAt: base.at, files, skipped, base: base.tree, cwd: base.cwd, root: base.root }
+    return { available: true, stale: false, startedAt: base.at, files, skipped, base: base.tree, cwd: base.cwd, root: base.root }
   }
 
   async workRevertInfo(staffId: string): Promise<WorkRevertInfo> {
-    const { available, startedAt, files, skipped } = await this.revertPlan(staffId)
-    return { available, startedAt, files, skipped }
+    const { available, stale, startedAt, files, skipped } = await this.revertPlan(staffId)
+    return { available, stale, startedAt, files, skipped }
   }
 
   async revertWork(staffId: string) {
@@ -2119,6 +2163,7 @@ export class Office extends EventEmitter<{
     const fresh = await snapshotTree(plan.cwd)
     if (fresh && r.failed.length === 0) this.workBases.set(staffId, { cwd: plan.cwd, root: plan.root, tree: fresh, at: Date.now() })
     this.touchedFiles.delete(staffId)
+    await this.persistWork(staffId)
     if (this.hired.has(staffId)) this.log(staffId, 'status', t('review.revert.log', { n: r.restored }))
     return { ok: r.failed.length === 0, output: r.failed.length ? t('review.revert.partial', { n: r.restored, failed: r.failed.join(', ') }) : t('review.revert.done', { n: r.restored }), restored: r.restored }
   }
@@ -2144,6 +2189,7 @@ export class Office extends EventEmitter<{
     if (r.ok) {
       this.workBases.delete(staffId)
       this.touchedFiles.delete(staffId)
+      void this.persistWork(staffId)
     }
     if (r.ok && this.hired.has(staffId)) {
       this.log(staffId, 'commit', t('log.commit', { text: message.split('\n')[0] }))
@@ -2680,6 +2726,7 @@ export class Office extends EventEmitter<{
         teamId: task.teamId ?? this.teamOf(s.id)?.id ?? null,
         labId: task.labId,
         summary: summarize(maskSecrets(report)),
+        body: galleryBody(maskSecrets(report)),
         links: extractLinks(report),
         images,
         files,
@@ -2705,7 +2752,7 @@ export class Office extends EventEmitter<{
 
   /** 데모데이: 지난번 이후 끝낸 업무를 직원별로 회의실에서 차례로 보여 주고(작업물 사진 첨부, 직원별 haiku 한 번 AI 발표 — 설정에서 끄면 정해진 문장·토큰 0), 단체방에 요약·대표 사진·갤러리 링크를 올린다 */
   private runDemoDay(now: Date) {
-    if (this.meetings.some((m) => m.kind === 'demo' && isMeetingLive(m))) return void this.postChat(OFFICE_SENDER, t('gallery.demo.already'))
+    if (this.isDemoRunning || this.meetings.some((m) => m.kind === 'demo' && isMeetingLive(m))) return void this.postChat(OFFICE_SENDER, t('gallery.demo.already'))
     const entries = demoEntries(this.gallery, this.demoDayLast?.at ?? null, now.getTime())
     this.demoDayLast = { date: dateKeyOf(now), at: now.getTime() }
     db.saveDemoDayLast(this.demoDayLast)
@@ -2733,7 +2780,11 @@ export class Office extends EventEmitter<{
     this.postChat('me', `🎬 ${t('gallery.demo.start')}`)
     this.scheduleEmit()
     const total = groups.length
-    const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
+    // 끝내기·중단 신호가 오면 남은 시간을 기다리지 않고 바로 깨어난다 (0.5초 단위로 확인, 타이머는 항상 정리)
+    const wait = async (ms: number) => {
+      const until = Date.now() + ms
+      while (Date.now() < until && isLive()) await new Promise<void>((r) => setTimeout(r, Math.min(500, Math.max(0, until - Date.now()))))
+    }
     const isLive = () => {
       const m = this.meetings.find((x) => x.id === meeting.id)
       return m && m.status === 'running' && !this.meetingStops.get(m.id) ? m : null
@@ -2744,13 +2795,31 @@ export class Office extends EventEmitter<{
       this.scheduleEmit()
     }
     const run = async () => {
+      this.isDemoRunning = true
+      try {
+        await body()
+      } finally {
+        this.isDemoRunning = false
+        // 오류·중단으로 빠져나왔는데 아직 진행 중이면 반드시 마무리한다
+        const m = this.meetings.find((x) => x.id === meeting.id)
+        this.meetingStops.delete(meeting.id)
+        if (m && m.status === 'running') {
+          m.status = 'done'
+          m.summary = m.summary || summary
+          if (m.demo) m.demo = { ...m.demo, presenterId: null, phase: 'remark', slides: [], cardTitle: '', startedAt: Date.now(), durationMs: 0 }
+          db.saveMeeting(m)
+          this.scheduleEmit()
+        }
+      }
+    }
+    const body = async () => {
       for (let i = 0; i < total; i++) {
         const g = groups[i]
         let m = isLive()
         if (!m) break
         const slides = demoImages(g.items)
         // 걸어 나오는 동안 발표 문장을 미리 만든다 (haiku 한 번)
-        const speech = this.demoSpeech(g.staffId, g.items)
+        const speech = this.demoSpeech(meeting.id, g.staffId, g.items)
         setStage(m, { presenterId: g.staffId, phase: 'enter', slides, cardTitle: g.items[0]?.title ?? '', index: i + 1, total }, demoPhaseMs('enter'))
         const [text] = await Promise.all([speech, wait(demoPhaseMs('enter'))])
         m = isLive()
@@ -2765,11 +2834,11 @@ export class Office extends EventEmitter<{
       }
       let m = this.meetings.find((x) => x.id === meeting.id)
       if (!m || m.status !== 'running') return
-      const stop = this.meetingStops.get(m.id)
-      this.meetingStops.delete(m.id)
-      const remark = stop ? null : await this.demoLeadRemark(groups, entries.length)
+      // 끝내기 신호는 마무리할 때까지 지우지 않는다 (총평 AI·대기 도중에 들어온 신호도 반영하려고 다시 읽는다 — 지우는 건 run의 finally)
+      let remark = this.meetingStops.get(m.id) ? null : await this.demoLeadRemark(m.id, groups, entries.length)
       m = this.meetings.find((x) => x.id === meeting.id)
       if (!m || m.status !== 'running') return
+      if (this.meetingStops.get(m.id)) remark = null
       if (remark) {
         m.messages.push({ staffId: remark.id, name: remark.name, text: remark.text, ts: Date.now() })
         setStage(m, { presenterId: remark.id, phase: 'remark', slides: [], cardTitle: '' }, demoPhaseMs('remark'))
@@ -2777,11 +2846,14 @@ export class Office extends EventEmitter<{
         m = this.meetings.find((x) => x.id === meeting.id)
         if (!m || m.status !== 'running') return
       }
-      m.status = stop === 'discard' ? 'stopped' : 'done'
+      const stop = this.meetingStops.get(m.id)
+      const end = demoOutcome(stop, remark)
+      remark = end.remark
+      m.status = end.status
       m.summary = remark ? `${summary}\n\n💬 ${remark.name}: ${remark.text}` : summary
       if (m.demo) m.demo = { ...m.demo, presenterId: null, phase: 'remark', startedAt: Date.now(), durationMs: 0 }
       db.saveMeeting(m)
-      if (stop !== 'discard') this.postChat('me', `🎬 ${m.summary}\n${link}`.slice(0, CHAT_TEXT_MAX * 2), demoCoverImages(entries))
+      if (end.isSaved) this.postChat('me', `🎬 ${m.summary}\n${link}`.slice(0, CHAT_TEXT_MAX * 2), demoCoverImages(entries))
       this.scheduleEmit()
     }
     void run().catch((e) => console.error('[office] demoDay', e))
@@ -2815,13 +2887,30 @@ export class Office extends EventEmitter<{
     return this.settings.demoDay.isAi && !this.currentHold().isHeld
   }
 
+  /** 데모데이용 AI 호출 — 응답이 안 오면 DEMO_AI_TIMEOUT_MS 뒤에 끊고 실패로 처리한다 (진행이 영영 멈추지 않게) */
+  private async askDemoOnce(meetingId: string, opts: Omit<Parameters<typeof askOnce>[0], 'abortController'>) {
+    const ac = new AbortController()
+    const timer = setTimeout(() => ac.abort(), DEMO_AI_TIMEOUT_MS)
+    // 끝내기가 오면 endMeeting이 이 회의의 호출을 바로 끊는다
+    const set = this.demoAborts.get(meetingId) ?? new Set<AbortController>()
+    set.add(ac)
+    this.demoAborts.set(meetingId, set)
+    try {
+      return await abortable(askOnce({ ...opts, abortController: ac }), ac)
+    } finally {
+      clearTimeout(timer)
+      set.delete(ac)
+      if (!set.size) this.demoAborts.delete(meetingId)
+    }
+  }
+
   /** 직원 한 명의 발표 문장 — haiku 한 번 (입력은 갤러리 요약만). 꺼짐·보류·실패·빈 답이면 정해진 문장 */
-  private async demoSpeech(staffId: string, items: GalleryEntry[]): Promise<string> {
+  private async demoSpeech(meetingId: string, staffId: string, items: GalleryEntry[]): Promise<string> {
     const fallback = demoLine(items)
     const s = this.hired.get(staffId)
     if (!s || !this.canDemoAi()) return fallback
     try {
-      const r = await askOnce({
+      const r = await this.askDemoOnce(meetingId, {
         cwd: os.homedir(),
         model: 'haiku',
         system: `당신은 ${s.name}(${s.role})입니다. ${s.systemPrompt}\n데모데이 회의실에서 동료들에게 자기가 끝낸 일을 발표합니다. 2~4문장, 자기 말투로, 무엇을 했고 결과가 뭔지만 말하세요. 인사·목록·제목 없이 발표 문장만 출력합니다.\n${t('staff.language')}`,
@@ -2836,11 +2925,11 @@ export class Office extends EventEmitter<{
   }
 
   /** 리드의 한 줄 총평 (데모데이 끝). AI 꺼짐·보류·실패·리드 없음이면 null → 기존 요약만 */
-  private async demoLeadRemark(groups: { staffName: string; items: GalleryEntry[] }[], count: number): Promise<{ id: string; name: string; text: string } | null> {
+  private async demoLeadRemark(meetingId: string, groups: { staffName: string; items: GalleryEntry[] }[], count: number): Promise<{ id: string; name: string; text: string } | null> {
     const lead = [...this.teams.values()].map((tm) => (tm.leadId ? this.hired.get(tm.leadId) : undefined)).find(Boolean)
     if (!lead || !this.canDemoAi()) return null
     try {
-      const r = await askOnce({
+      const r = await this.askDemoOnce(meetingId, {
         cwd: os.homedir(),
         model: 'haiku',
         system: `당신은 ${lead.name}(${lead.role})입니다. ${lead.systemPrompt}\n데모데이를 마치며 팀에 한 줄(한 문장) 총평을 합니다. 따뜻하고 구체적으로, 인사·목록 없이 문장만 출력합니다.\n${t('staff.language')}`,
@@ -3053,6 +3142,7 @@ export class Office extends EventEmitter<{
       return
     }
     this.meetingStops.set(m.id, mode)
+    for (const ac of this.demoAborts.get(m.id) ?? []) ac.abort()
     for (const d of m.decisions ?? []) {
       const resolve = d.answer === null ? this.pendingDecisions.get(d.id) : undefined
       if (!resolve) continue

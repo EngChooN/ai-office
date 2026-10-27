@@ -1,7 +1,7 @@
 // 결과물 갤러리·데모데이: 링크·요약 다듬기, 필터, 데모데이 시각 판정과 짧은 요약 — npm test
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { demoEntries, demoSummary, extractLinks, filterGallery, isDemoDue, summarize, DEMO_LINES_MAX, cleanSpeech, demoCoverImages, demoImages, demoPresentInput, GALLERY_IMAGES_MAX, type DemoDayConfig, type GalleryEntry } from '../src/shared/gallery.ts'
+import { demoEntries, demoSummary, extractLinks, filterGallery, isDemoDue, summarize, DEMO_LINES_MAX, cleanSpeech, demoCoverImages, demoImages, demoPresentInput, GALLERY_IMAGES_MAX, galleryBody, GALLERY_BODY_MAX, type DemoDayConfig, type GalleryEntry } from '../src/shared/gallery.ts'
 import { setLang } from '../src/shared/i18n/index.ts'
 
 setLang('ko')
@@ -81,6 +81,37 @@ test('cleanSpeech: 코드 블록·따옴표 제거, 비면 null, 길면 자름',
   assert.equal(cleanSpeech('가'.repeat(10), 5), '가가가가가…')
 })
 
+test('plainSpeech: 마크다운 기호를 걷고 목록은 줄 단위로', async () => {
+  const { plainSpeech } = await import('../src/shared/gallery.ts')
+  assert.equal(plainSpeech('## 결과\n\n**로그인** 화면을 `고쳤어요`.\n- 첫째\n* [x] 둘째\n---\n[문서](http://a.b) 참고'), '결과\n로그인 화면을 고쳤어요.\n첫째\n둘째\n문서 참고')
+  assert.equal(plainSpeech('| 항목 | 값 |\n|---|---|\n| 속도 | 2배 |'), '항목 · 값\n속도 · 2배')
+  assert.equal(plainSpeech('> _강조_ 와 snake_case_name 그대로'), '강조 와 snake_case_name 그대로')
+  assert.equal(plainSpeech('```ts\nconst a = 1\n```'), 'const a = 1')
+})
+
+test('wrapSpeech: 띄어쓰기에서 끊고, 없으면 글자에서 끊는다', async () => {
+  const { wrapSpeech } = await import('../src/shared/gallery.ts')
+  const len = (s: string) => s.length
+  assert.deepEqual(wrapSpeech('가나 다라 마바', 5, len), ['가나 다라', '마바'])
+  assert.deepEqual(wrapSpeech('가나다라마바사', 3, len), ['가나다', '라마바', '사'])
+  assert.deepEqual(wrapSpeech('첫 줄\n둘째', 10, len), ['첫 줄', '둘째'])
+})
+
+test('speechPageAt: 시간으로 저절로 넘기고, 사용자가 넘긴 쪽은 그때부터 친다', async () => {
+  const { speechPageAt } = await import('../src/shared/gallery.ts')
+  const base = { startedAt: 0, durationMs: 9_000, msPerChar: 45 }
+  // 세 쪽이면 3초씩 — 늦게 열어도 지난 만큼 넘어가 있다
+  assert.equal(speechPageAt([10, 10, 10], { ...base, now: 0 }).page, 0)
+  assert.deepEqual(speechPageAt([10, 10, 10], { ...base, now: 3_100 }), { page: 1, shown: 2, isLast: false, typedAt: 3_450 })
+  assert.equal(speechPageAt([10, 10, 10], { ...base, now: 99_000 }).isLast, true)
+  // 1초에 둘째 쪽으로 넘기면 그 시각부터 치고, 시간이 그 쪽에 따라와도 다시 치지 않는다
+  const skip = { page: 1, at: 1_000 }
+  assert.deepEqual(speechPageAt([10, 10, 10], { ...base, now: 1_090, skip }).shown, 2)
+  assert.equal(speechPageAt([10, 10, 10], { ...base, now: 3_100, skip }).shown, 10)
+  // 쪽 몫이 짧으면 몫의 60% 안에 다 치도록 빨라진다
+  assert.ok(speechPageAt([200], { ...base, durationMs: 3_000, now: 1_800 }).shown === 200)
+})
+
 test('demoPhaseMs: 발표는 글자 수에 맞춰 늘고 상한·하한이 있다', async () => {
   const g = await import('../src/shared/gallery.ts')
   assert.equal(g.demoPhaseMs('present', ''), g.DEMO_PRESENT_MIN_MS)
@@ -96,4 +127,15 @@ test('addPraise: 박수·MVP만 세고 한마디는 그대로', async () => {
   p = addPraise(addPraise(p, 'clap'), 'mvp')
   assert.deepEqual(p, { claps: 2, mvps: 1 })
   assert.deepEqual(addPraise(p, 'comment'), p)
+})
+
+test('galleryBody: 상한까지만 저장, 짧으면 그대로', () => {
+  assert.equal(galleryBody('  안녕  '), '안녕')
+  assert.equal(galleryBody('가'.repeat(GALLERY_BODY_MAX + 5)).length, GALLERY_BODY_MAX + 1)
+  assert.equal(galleryBody('가나다라', 2), '가나…')
+})
+
+test('예전 항목(body 없음)도 그대로 다룬다', () => {
+  const old = entry('o', { summary: '요약' })
+  assert.equal(old.body, undefined)
 })

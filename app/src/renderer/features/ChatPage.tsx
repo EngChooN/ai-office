@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import { memo, useEffect, useMemo, useState, type KeyboardEvent } from 'react'
 import { CheckIcon, FlaskConicalIcon, MegaphoneIcon, SendIcon, UsersIcon } from 'lucide-react'
 import { useShallow } from 'zustand/react/shallow'
 import { Button } from '@/components/ui/button'
@@ -15,6 +15,7 @@ import { ALL_MENTION, mentionTargets, mentionToken, OFFICE_SENDER, parseMentions
 import { fmtDate, t, type TKey } from '@shared/i18n'
 import { Avatar } from './StaffCard'
 import { Markdown } from '@/components/markdown'
+import { JumpToBottom, useStickToBottom } from '@/components/stick-to-bottom'
 import { QuestionBox } from './QuestionBox'
 import { AlwaysApproveButton } from './AutoApprove'
 
@@ -45,6 +46,8 @@ export function ChatPage() {
   )
 }
 
+const chatKey = (m: ChatMessage) => String(m.id)
+
 // 입력 중엔 메시지 목록이 다시 그려지지 않도록 목록과 입력창을 나눠 각자 구독한다
 function MessageList() {
   const chat = useOffice((s) => s.chat)
@@ -52,32 +55,37 @@ function MessageList() {
   const select = useOffice((s) => s.select)
   // 아직 기다리는 결재·질문 — 말풍선에서 바로 처리한다
   const pendingById = useMemo(() => new Map(staff.flatMap((s) => s.approvals.map((a) => [a.id, a]))), [staff])
-  const endRef = useRef<HTMLDivElement>(null)
-
+  const scroll = useStickToBottom(chat, chatKey, 'chat')
+  // 내가 보낸 말은 위를 읽던 중이어도 바로 보이게
+  const last = chat.at(-1)
   useEffect(() => {
-    endRef.current?.scrollIntoView({ block: 'end' })
-  }, [chat.length])
+    if (last?.from === 'me') scroll.scrollToBottom()
+    // 새 말이 붙을 때만 본다 (상한 500에 닿아도 개수 대신 마지막 id로)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [last?.id])
 
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
-      <div className="mx-auto flex max-w-3xl flex-col gap-3">
-        {chat.map((m) => {
-          const sender = staff.find((s) => s.id === m.from)
-          return (
-            <Bubble
-              key={m.id}
-              message={m}
-              senderId={sender?.id}
-              senderName={sender?.name ?? t('common.formerStaff')}
-              senderAvatar={sender?.avatar ?? 0}
-              senderTeamId={sender?.teamId ?? null}
-              pendingApproval={m.approval && pendingById.get(m.approval.id)}
-              onSelect={select}
-            />
-          )
-        })}
-        <div ref={endRef} />
+    <div className="relative flex min-h-0 flex-1 flex-col">
+      <div ref={scroll.ref} onScroll={scroll.onScroll} className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
+        <div ref={scroll.contentRef} className="mx-auto flex max-w-3xl flex-col gap-3">
+          {chat.map((m) => {
+            const sender = staff.find((s) => s.id === m.from)
+            return (
+              <Bubble
+                key={m.id}
+                message={m}
+                senderId={sender?.id}
+                senderName={sender?.name ?? t('common.formerStaff')}
+                senderAvatar={sender?.avatar ?? 0}
+                senderTeamId={sender?.teamId ?? null}
+                pendingApproval={m.approval && pendingById.get(m.approval.id)}
+                onSelect={select}
+              />
+            )
+          })}
+        </div>
       </div>
+      <JumpToBottom isNear={scroll.isNear} unread={scroll.unread} onClick={() => scroll.scrollToBottom(true)} />
     </div>
   )
 }
