@@ -10,6 +10,7 @@ import {
   artMeetingRoom,
   artName,
   artPerson,
+  PERSON_DIRS,
   artPersonShadow,
   artRoom,
   artSize,
@@ -189,17 +190,17 @@ const groups = [
 const gearBase = (id: string) => (shopGear.includes(id) ? (id.startsWith('desk-') ? 'desk' : 'chair') : id)
 const itemsOut = groups.map((g) => ({ ...g, items: g.ids.map((id) => ({ id, name: artName(id), size: artSize(id), spec: specOf(gearBase(id)).size, art: hasArt(id), file: itemFile(id) })) }))
 
-// ── 3. 직원 (서기·걷기 2프레임·앉기 × 4방향, 3배) ─────────
-const peopleRows = [0, 1, 2].map((n) => {
-  const look = lookOf(n * 3)
+// ── 3. 직원 (서기·걷기 2프레임·앉기 × 4방향, 3배) — 줄마다 머리 모양·윗옷·얼굴·머리 소품을 돌려 모든 선택지가 한 번 이상 나온다 ──
+const peopleRows = Array.from({ length: 10 }, (_, n) => {
+  const look = lookOf(n)
   const cvs: Cv[] = []
   for (const pose of PERSON_POSES)
-    for (const [dir, flip] of [['front', false], ['front', true], ['back', false], ['back', true]] as const) {
+    for (const dir of PERSON_DIRS) {
       const p = artPerson(pose, dir, look)
       const sh = artPersonShadow()
       const cv = new Cv(p.w, p.h + 3)
       if (pose !== 'sit') cv.blit(sh, Math.round((p.w - sh.w) / 2), p.h - 4)
-      cv.blit(p, 0, 0, flip)
+      cv.blit(p, 0, 0)
       cvs.push(cv)
     }
   return row(cvs, 6)
@@ -278,7 +279,7 @@ const sheets: Record<string, string> = {
   'sheet-people-fixed': page(
     '직원 · 고정 칸 · 외관',
     '직원은 앞(↙)·뒤(↖)만 그리고 좌우 반전으로 ↘·↗ · 걷기 2프레임 · 앉기는 의자 좌석과 등받이 사이에 끼운다',
-    `<h2>직원 (3배 확대) — 서기 · 걷기1 · 걷기2 · 앉기, 각 ↙ ↘ ↖ ↗</h2><div class="grid">${fig(peopleFile, '머리·피부·옷 색은 shared/look.ts 팔레트', 1)}</div>
+    `<h2>직원 (3배 확대) — 서기 · 걷기1 · 걷기2 · 앉기, 각 ↙ ↘ ↖ ↗</h2><div class="grid">${fig(peopleFile, '머리·피부·옷 색은 shared/look.ts 팔레트. 위에서부터 줄 n = 머리 모양 n%8 · 윗옷 n%5 · 얼굴 n%5 · 머리 소품 n%6', 1)}</div>
 <h2>회의실 (바닥 + 유리 칸막이, 앞줄 문 칸은 비움)</h2><div class="grid">${fig(meetingFile, '4×3칸 예 · 칸막이는 조각마다 깊이 정렬', 0.5)}</div>
 <h2>외관 E1~E7</h2><div class="grid">${exterior.map((e) => fig(e.file, e.label, 1)).join('')}</div>`,
   ),

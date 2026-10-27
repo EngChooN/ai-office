@@ -21,7 +21,7 @@ import {
 import { COMPANY_LEVELS, companyFromXp } from '../src/shared/types.ts'
 import { isoLevelOf, roomOf } from '../src/shared/iso/levels.ts'
 import { boxOf } from '../src/shared/iso/grid.ts'
-import { ACHIEVEMENTS, SHOP_ITEMS } from '../src/shared/economy.ts'
+import { ACHIEVEMENTS, SHOP_ITEMS, SHOP_SETS } from '../src/shared/economy.ts'
 
 const LEVELS = Array.from({ length: MAX_LEVEL }, (_, i) => i + 1)
 
@@ -113,20 +113,52 @@ test('회사 레벨: 경험치로 계산하고, 한 번 오른 레벨 아래로 
   assert.equal(companyFromXp(460_000).progress, 1)
 })
 
-test('상점 minLevel은 같은 경험치 기준으로 옮겨 Lv.8을 넘지 않는다 (다시 잠기는 물건 없음, 새 레벨 전용 가구는 빼고)', () => {
-  for (const item of SHOP_ITEMS.filter((i) => i.category !== 'level')) assert.ok(item.minLevel >= 1 && item.minLevel <= 8, `${item.id} ${item.minLevel}`)
+// 0.14.0에 Lv.11~20 구간을 채우려고 새로 넣은 상점 가구 — 옮긴 옛 품목이 아니다
+const LV11_20_FURNITURE = ['air-purifier', 'massage-chair', 'magazine-rack', 'fireplace', 'yoga-mat', 'climbing-wall', 'cold-brew', 'drone-dock', 'cotton-candy', 'sushi-belt', 'spotlight', 'holo-globe', 'fire-pit', 'greenhouse', 'wine-cellar', 'planetarium', 'red-carpet', 'ai-core', 'helipad', 'diamond']
+
+test('상점 minLevel은 같은 경험치 기준으로 옮겨 Lv.8을 넘지 않는다 (다시 잠기는 물건 없음, 새 레벨 전용 가구·Lv.11~20 새 가구는 빼고)', () => {
+  for (const item of SHOP_ITEMS.filter((i) => i.category !== 'level' && !LV11_20_FURNITURE.includes(i.id))) assert.ok(item.minLevel >= 1 && item.minLevel <= 8, `${item.id} ${item.minLevel}`)
   assert.equal(SHOP_ITEMS.find((i) => i.id === 'wall-galaxy')?.minLevel, 8)
 })
 
-test('업적: 레벨 5·8·10은 그대로, 15·20 추가', () => {
-  const levels = ACHIEVEMENTS.filter((a) => a.metric === 'level').map((a) => [a.id, a.target])
+test('Lv.11~20 새 가구: 레벨마다 상점 가구가 두 개씩 열리고, Lv.15부터는 레벨마다 전설 품목이 있다', () => {
+  for (let lv = 11; lv <= 20; lv++) {
+    const opened = SHOP_ITEMS.filter((i) => i.category === 'furniture' && i.minLevel === lv)
+    assert.equal(opened.length, 2, `Lv.${lv}`)
+    assert.ok(opened.every((i) => LV11_20_FURNITURE.includes(i.id)), `Lv.${lv}`)
+    if (lv >= 15) assert.ok(opened.some((i) => i.rarity === 'legend'), `Lv.${lv} 전설`)
+  }
+})
+
+test('업적: 레벨 5·8·10은 그대로, Lv.11~20 구간에 12·14·15·16·18·20', () => {
+  const levels = ACHIEVEMENTS.filter((a) => a.metric === 'level')
+    .sort((a, b) => a.target - b.target)
+    .map((a) => [a.id, a.target])
   assert.deepEqual(levels, [
     ['level5', 5],
     ['level8', 8],
     ['level10', 10],
+    ['level12', 12],
+    ['level14', 14],
     ['level15', 15],
+    ['level16', 16],
+    ['level18', 18],
     ['level20', 20],
   ])
+})
+
+test('업적: id는 겹치지 않고, 같은 지표는 목표가 높을수록 보상도 크며, 모을 수 있는 수를 넘지 않는다', () => {
+  assert.equal(new Set(ACHIEVEMENTS.map((a) => a.id)).size, ACHIEVEMENTS.length)
+  for (const metric of new Set(ACHIEVEMENTS.map((a) => a.metric))) {
+    const tiers = ACHIEVEMENTS.filter((a) => a.metric === metric).sort((a, b) => a.target - b.target)
+    for (let i = 1; i < tiers.length; i++) {
+      assert.ok(tiers[i].target > tiers[i - 1].target, `${tiers[i].id} 목표`)
+      assert.ok(tiers[i].reward > tiers[i - 1].reward, `${tiers[i].id} 보상`)
+    }
+  }
+  const buyable = SHOP_ITEMS.filter((i) => i.category !== 'level').length
+  for (const a of ACHIEVEMENTS.filter((x) => x.metric === 'items')) assert.ok(a.target <= buyable, a.id)
+  for (const a of ACHIEVEMENTS.filter((x) => x.metric === 'sets')) assert.ok(a.target <= SHOP_SETS.length, a.id)
 })
 
 test('보던 층 보정: 이 레벨에 없는 층이면 1층', () => {

@@ -9,6 +9,37 @@ export default {
     ja: 'スタッフ専用の Chrome ウィンドウでサイトを開き、クリックや入力をします。移動・クリック・入力は決裁が必要です。',
     zh: '用员工专用的 Chrome 窗口打开网站并点击、输入。跳转、点击、输入需要审批。',
   },
+  'equip.computer.name': { ko: '컴퓨터 조작 (맥 전용)', en: 'Computer control (Mac only)', ja: 'コンピューター操作（Mac 専用）', zh: '电脑操作（仅限 Mac）' },
+  'equip.computer.desc': {
+    ko: '마우스 클릭·이동, 키 입력, 화면 스크린샷으로 이 컴퓨터의 앱 화면을 직접 다뤄요(맥 전용). 스크린샷만 결재 없이 찍고, 클릭·입력·이동은 결재를 받아요. 화면 전체가 보이니 꼭 필요한 직원에게만 지급하세요.',
+    en: "Controls app windows on this computer with mouse clicks and moves, key presses and screenshots (Mac only). Screenshots need no approval; clicking, typing and moving do. It can see the whole screen, so equip only staff who need it.",
+    ja: 'マウスのクリック・移動、キー入力、スクリーンショットでこのコンピューターのアプリ画面を直接操作します（Mac 専用）。スクリーンショットは決裁不要、クリック・入力・移動は決裁が必要です。画面全体が見えるため、必要なスタッフにだけ支給してください。',
+    zh: '通过鼠标点击与移动、键盘输入和截图直接操作这台电脑的应用界面（仅限 Mac）。截图无需审批，点击、输入、移动需要审批。它能看到整个屏幕，请只配给确实需要的员工。',
+  },
+  'equip.computer.needAccess': {
+    ko: '맥 설정 > 개인정보 보호 및 보안 > 손쉬운 사용에서 이 앱을 켜 주세요. 켜지 않으면 클릭·입력이 안 돼요.',
+    en: 'Turn this app on in macOS Settings > Privacy & Security > Accessibility. Without it, clicking and typing will not work.',
+    ja: 'Mac の設定 > プライバシーとセキュリティ > アクセシビリティでこのアプリをオンにしてください。オンにしないとクリック・入力できません。',
+    zh: '请在 Mac 设置 > 隐私与安全性 > 辅助功能中打开此应用。否则无法点击和输入。',
+  },
+  'equip.computer.needScreen': {
+    ko: '맥 설정 > 개인정보 보호 및 보안 > 화면 및 시스템 오디오 녹음에서 이 앱을 켜 주세요. 켜지 않으면 스크린샷이 안 찍혀요.',
+    en: 'Turn this app on in macOS Settings > Privacy & Security > Screen & System Audio Recording. Without it, screenshots will not work.',
+    ja: 'Mac の設定 > プライバシーとセキュリティ > 画面とシステムオーディオの録音でこのアプリをオンにしてください。オンにしないとスクリーンショットが撮れません。',
+    zh: '请在 Mac 设置 > 隐私与安全性 > 屏幕与系统音频录制中打开此应用。否则无法截图。',
+  },
+  'equip.computer.needBoth': {
+    ko: '맥 설정 > 개인정보 보호 및 보안에서 이 앱을 "손쉬운 사용"과 "화면 및 시스템 오디오 녹음" 둘 다 켜 주세요. 켜지 않으면 클릭·입력·스크린샷이 안 돼요.',
+    en: 'In macOS Settings > Privacy & Security, turn this app on under both "Accessibility" and "Screen & System Audio Recording". Without them, clicking, typing and screenshots will not work.',
+    ja: 'Mac の設定 > プライバシーとセキュリティで、このアプリを「アクセシビリティ」と「画面とシステムオーディオの録音」の両方でオンにしてください。オンにしないとクリック・入力・スクリーンショットができません。',
+    zh: '请在 Mac 设置 > 隐私与安全性中，将此应用在“辅助功能”和“屏幕与系统音频录制”中都打开。否则无法点击、输入和截图。',
+  },
+  'staff.computer.guide': {
+    ko: '컴퓨터 조작 도구(mcp__office-computer__computer)로 이 맥의 화면을 마우스·키보드로 다룰 수 있다. action: get_screenshot(결재 없음), mouse_move·left_click·type·key·scroll 등(대표 결재). 클릭하기 전에 먼저 get_screenshot으로 좌표를 확인하고, 앱·작업 창 위주로만 다루며 다른 개인 창은 건드리지 않는다. 동작하지 않으면 맥 손쉬운 사용·화면 기록 권한이 빠졌을 수 있으니 대표에게 알린다.',
+    en: "You can drive this Mac's screen with the mouse and keyboard through the computer tool (mcp__office-computer__computer). Actions: get_screenshot (no approval); mouse_move, left_click, type, key, scroll and so on (boss approval). Check coordinates with get_screenshot before clicking, stick to the app and work windows, and leave other personal windows alone. If it fails, macOS Accessibility or Screen Recording permission may be missing, so tell the boss.",
+    ja: 'コンピューター操作ツール(mcp__office-computer__computer)で、この Mac の画面をマウス・キーボードで操作できる。action: get_screenshot(決裁不要)、mouse_move・left_click・type・key・scroll など(代表の決裁)。クリックの前に get_screenshot で座標を確認し、アプリ・作業ウィンドウだけを扱い、他の個人ウィンドウには触れない。動かない場合は Mac のアクセシビリティ・画面収録の権限が足りない可能性があるので代表に伝える。',
+    zh: '可以用电脑操作工具(mcp__office-computer__computer)通过鼠标和键盘操作这台 Mac 的屏幕。action：get_screenshot(无需审批)，mouse_move、left_click、type、key、scroll 等(需负责人审批)。点击前先用 get_screenshot 确认坐标，只操作应用和工作窗口，不碰其他个人窗口。若无法使用，可能缺少 Mac 辅助功能或屏幕录制权限，请告知负责人。',
+  },
   'equip.browser.source': { ko: '앱 기본 장비', en: 'Built into the app', ja: 'アプリ標準の装備', zh: '应用内置装备' },
   // 연결 도구(MCP) 출처 — 장비 탭 칩 꼬리표
   'equip.source.desktop': { ko: 'Claude Desktop', en: 'Claude Desktop', ja: 'Claude Desktop', zh: 'Claude Desktop' },

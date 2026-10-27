@@ -1,4 +1,5 @@
 import { useSeatStatus } from './iso/seatStatus'
+import { headcountOf, useFloorVisits } from './iso/floorVisits'
 import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
 import { DoorOpenIcon, MaximizeIcon, MinusIcon, PlusIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -190,6 +191,7 @@ function Minimap() {
   const viewFloor = useOffice((s) => s.viewFloor)
   const setViewFloor = useOffice((s) => s.setViewFloor)
   const setInside = useOffice((s) => s.setInside)
+  const visits = useFloorVisits((s) => s.visits)
   const floors = useMemo(() => buildFloors(level, staff, teams, meetings.filter(isMeetingLive)), [level, staff, teams, meetings])
 
   return (
@@ -212,7 +214,7 @@ function Minimap() {
               className={cn('flex flex-col gap-0.5 rounded-md border px-2 py-1 text-left', f.floor === viewFloor ? 'border-primary bg-primary/20' : 'border-white/10 hover:bg-white/10')}
             >
               <span className="flex items-center justify-between font-mono font-bold">
-                {f.floor}F<span className="font-sans font-normal text-white/60">{t('map.peopleCount', { n: f.staff.length })}</span>
+                {f.floor}F<span className="font-sans font-normal text-white/60">{t('map.peopleCount', { n: headcountOf(f.floor, f.staff.map((x) => x.id), visits) })}</span>
               </span>
               <span className="truncate text-white/60">
                 {f.teams

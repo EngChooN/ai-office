@@ -101,7 +101,7 @@ export const useOffice = create<OfficeState>((set) => ({
   setViewFloor: (floor) => set((s) => ({ viewFloor: clampFloor(floor, viewLevelOf(s)) })),
   setInside: (isInside) => set({ isInside }),
   setMeetingPreset: (meetingPreset) => set({ meetingPreset }),
-  setDecorating: (isDecorating) => set({ isDecorating }),
+  setDecorating: (isDecorating) => set(isDecorating ? { isDecorating, selectedId: null } : { isDecorating }),
   setSnapshot: (snap) =>
     // 옛 main 프로세스가 보낸 스냅샷처럼 새 설정 칸(tokenBudget 등)이 비어 있어도 화면이 깨지지 않게 채운다
     // 업무 모드면 사무실 대신 대시보드로 시작하고, 사무실을 보던 중에 켜도 대시보드로 옮긴다

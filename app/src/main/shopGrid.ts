@@ -6,7 +6,7 @@ import { BlockedError, InvalidArgsError } from '../shared/errors.ts'
 import type { Rot } from '../shared/iso/furniture.ts'
 import { cellKey, isInside } from '../shared/iso/grid.ts'
 import { stowTargets } from '../shared/iso/stowTargets.ts'
-import { cellsOf, spotsOf, type GridItem } from '../shared/iso/furniture.ts'
+import { cellsOf, specOf, spotsOf, type GridItem, type SeatSetPart } from '../shared/iso/furniture.ts'
 import { isoLevelOf, roomOf } from '../shared/iso/levels.ts'
 import { canPlace, fixedTiles, type FloorState } from '../shared/iso/place.ts'
 import { isToggleable } from '../shared/iso/propMotion.ts'
@@ -38,6 +38,40 @@ export function moveGridItem(shop: ShopState, level: number, uid: string, floor:
   if (!cur) throw new InvalidArgsError('놓여 있는 가구가 아니에요')
   const r = checkPose(shop, level, cur.itemId, floor, gx, gy, rot, uid)
   return { ...shop, grid: shop.grid.map((g) => (g.uid === uid ? { ...g, floor, gx, gy, rot: r } : g)) }
+}
+
+/**
+ * 책상 세트(책상+의자) 옮기기. 저장 가구는 그 자리에서 옮기고, 아직 저장되지 않은 기본 자리(auto:)는 toUid로 저장 가구가 된다 —
+ * 기본 책상·의자는 서랍에서 꺼내는 가구가 아니라 소유 검사는 건너뛴다. 책상을 먼저 놓고 의자를 놓아 겹침·길 막힘을 본다 (autoSeats와 같은 순서)
+ */
+export function moveSeatSet(shop: ShopState, level: number, floor: number, parts: readonly SeatSetPart[]): ShopState {
+  if (!Array.isArray(parts) || parts.length < 1 || parts.length > 2) throw new InvalidArgsError('옮길 책상 세트가 올바르지 않아요')
+  const resolved = parts.map((p) => {
+    const cur = shop.grid.find((g) => g.uid === p.uid)
+    if (cur) return { uid: cur.uid, itemId: cur.itemId, isOn: cur.isOn, p }
+    if (typeof p.uid !== 'string' || !p.uid.startsWith('auto:') || typeof p.toUid !== 'string' || !p.toUid || shop.grid.some((g) => g.uid === p.toUid)) throw new InvalidArgsError('놓여 있는 가구가 아니에요')
+    if (p.itemId !== 'desk' && p.itemId !== 'chair') throw new InvalidArgsError('기본 자리는 책상·의자만 옮길 수 있어요')
+    return { uid: p.toUid, itemId: p.itemId, isOn: undefined, p }
+  })
+  if (new Set(resolved.map((r) => r.uid)).size !== resolved.length) throw new InvalidArgsError('같은 가구가 둘이에요')
+  resolved.sort((a, b) => Number(specOf(b.itemId).kind === 'desk') - Number(specOf(a.itemId).kind === 'desk'))
+  const moving = new Set(parts.map((p) => p.uid))
+  let items = shop.grid.filter((g) => !moving.has(g.uid))
+  const placed: GridItem[] = []
+  for (const r of resolved) {
+    const { gx, gy, rot } = r.p
+    if (![floor, gx, gy].every(Number.isInteger) || ![0, 1, 2, 3].includes(rot)) throw new InvalidArgsError('층·칸은 정수, 방향은 0~3이어야 해요')
+    if (floor < 1 || floor > isoLevelOf(level).floors) throw new BlockedError('out_of_bounds', '아직 없는 층이에요')
+    const it: GridItem = { uid: r.uid, itemId: r.itemId, floor, gx, gy, rot: rot as Rot, ...(r.isOn ? { isOn: true } : {}) }
+    const res = canPlace({ level, floor, items }, it)
+    if (!res.ok) throw new BlockedError(res.reason)
+    items = [...items, it]
+    placed.push(it)
+  }
+  const byUid = new Map(placed.map((g) => [g.uid, g]))
+  const old = new Map(parts.map((p, i) => [p.uid, resolved.find((r) => r.p === p)!.uid]))
+  const next = shop.grid.map((g) => (old.has(g.uid) ? byUid.get(old.get(g.uid)!)! : g))
+  return { ...shop, grid: [...next, ...placed.filter((g) => !next.includes(g))] }
 }
 
 /** 눌러서 켜고 끄는 소품(연출 B)의 켜짐 상태. 꺼짐은 필드를 지운다 (저장값을 작게) */

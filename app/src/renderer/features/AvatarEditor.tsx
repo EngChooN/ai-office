@@ -41,15 +41,15 @@ function PartSelect({ options, value, onPick }: { options: readonly string[]; va
   )
 }
 
-/** 생김새 고르기: 부품별로 고르거나 🎲로 무작위. 직무를 넘기면 무작위에 직무 기본 소품을 얹는다 (onRandom을 주면 무작위는 부모가 정한다) */
-export function AvatarEditor({ value, onChange, onRandom, role = '' }: { value: number; onChange: (avatar: number) => void; onRandom?: () => void; role?: string }) {
+/** 생김새 고르기: 부품별로 고르거나 🎲로 무작위. 무작위는 옷·옷 색까지 전부 새로 뽑는다 (직무 기본 옷을 얹지 않는다) */
+export function AvatarEditor({ value, onChange }: { value: number; onChange: (avatar: number) => void }) {
   const look = decodeLook(value)
   const set = (patch: Partial<Look>) => onChange(encodeLook({ ...look, ...patch }))
   return (
     <div className="flex gap-3">
       <div className="flex shrink-0 flex-col items-center gap-2">
         <img src={avatarUrl(value)} alt="" className="bg-muted size-20 rounded-lg object-contain p-1 [image-rendering:pixelated]" />
-        <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={() => (onRandom ? onRandom() : onChange(encodeLook(randomLook(role))))}>
+        <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={() => onChange(encodeLook(randomLook()))}>
           <DicesIcon /> {t('avatar.random')}
         </Button>
       </div>

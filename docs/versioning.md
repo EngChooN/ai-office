@@ -39,6 +39,12 @@
 4. 맥은 `/Applications/Claude Office.app` 교체 후 `CFBundleShortVersionString`이 새 버전인지 확인
 - 이 맥은 쉘에 node가 없을 수 있어 nvm의 node 경로(예: v24)와 `~/Library/pnpm`을 PATH에 넣어 실행.
 - 실행 중인 앱이 있으면 종료 여부를 먼저 확인(작업 중인 세션이 날아갈 수 있음).
+- **맥 서명(권한 유지):** 맥 빌드는 로그인 키체인의 자체 서명 인증서 `Claude Office Local Signing`으로 서명합니다. 같은 인증서면 업데이트 뒤에도 화면 기록·손쉬운 사용 권한이 유지됩니다. 인증서가 없으면 ad-hoc으로 빌드됩니다(권한을 다시 물음). 한 번만 만듭니다(개인 키는 저장소·공유 폴더에 두지 않음):
+  1. 임시 폴더(저장소 밖)에서 `openssl req -x509 -newkey rsa:2048 -nodes -days 3650 -keyout key.pem -out cert.pem -subj "/CN=Claude Office Local Signing" -addext "extendedKeyUsage=critical,codeSigning" -addext "keyUsage=critical,digitalSignature"`
+  2. `openssl pkcs12 -export -inkey key.pem -in cert.pem -name "Claude Office Local Signing" -passout pass:<임의> -keypbe PBE-SHA1-3DES -certpbe PBE-SHA1-3DES -macalg sha1 -out cert.p12`
+  3. `security import cert.p12 -k ~/Library/Keychains/login.keychain-db -P <임의> -T /usr/bin/codesign` → `security add-trusted-cert -d -r trustRoot -p codeSign -k ~/Library/Keychains/login.keychain-db cert.pem`
+  4. `key.pem`·`cert.p12`를 지우고, `security find-identity -v -p codesigning`에 이름이 보이는지 확인.
+  - 확인: `codesign -d -r- "Claude Office.app"`의 designated requirement가 빌드마다 같아야 합니다. 서명 훅은 `app/forge.config.mts`(`LOCAL_SIGN_IDENTITY`).
 
 ## 5. 기록 남기기
 - 버전을 올린 이유(어떤 기능 때문에 마이너/패치인지)를 최종 보고에 한 줄로 적습니다.

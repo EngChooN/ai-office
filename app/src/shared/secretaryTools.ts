@@ -111,8 +111,10 @@ export const SECRETARY_TOOLS: Record<OfficeMethod, ToolSpec> = {
   stowAllGrid: change('가구 전부 서랍에 넣기', 'caution'),
   restoreGridItems: change('치운 가구 되돌리기'),
 
-  // ── 제외 (31) — PC 화면이 필요하거나 연결·보안, 되돌릴 수 없는 외부 전송, 사용자가 즐기는 부분 ──
+  // ── 제외 (32) — PC 화면이 필요하거나 연결·보안, 되돌릴 수 없는 외부 전송, 사용자가 즐기는 부분 ──
   pickFolder: exclude,
+  // 책상 세트 옮기기는 꾸미기 화면 전용 — 비서는 moveGridItem으로 하나씩
+  moveSeatSet: exclude,
   // 채팅 자동완성용 (직원 세션을 잠깐 띄운다) — 비서에게는 필요 없다
   loadStaffCommands: exclude,
   // 연결 도구: 확인은 Claude를 잠깐 띄우고, 직접 추가 목록엔 비밀값(env·headers)이 있고, 추가·삭제는 PC에 명령을 심는 일이라 대표가 장비 탭에서만

@@ -3,6 +3,7 @@
 
 import { InvalidArgsError } from './errors.ts'
 import { BROWSER_EQUIPMENT } from './browserTools.ts'
+import { COMPUTER_EQUIPMENT } from './computerTools.ts'
 import { t } from './i18n/index.ts'
 import type { TKey } from './i18n/index.ts'
 
@@ -32,7 +33,7 @@ const NAME_RE = /^[A-Za-z0-9_-]{1,64}$/
 const ENV_KEY_RE = /^[A-Za-z_][A-Za-z0-9_]*$/
 const HEADER_KEY_RE = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/
 /** 사무실 내부 도구·앱 기본 장비와 이름이 겹치면 안 된다 */
-const RESERVED = new Set(['office', BROWSER_EQUIPMENT])
+const RESERVED = new Set(['office', BROWSER_EQUIPMENT, COMPUTER_EQUIPMENT])
 
 const fail = (key: TKey, vars?: Record<string, string | number>): never => {
   throw new InvalidArgsError(t(key, vars))

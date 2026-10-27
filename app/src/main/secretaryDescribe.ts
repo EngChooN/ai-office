@@ -195,6 +195,9 @@ export function describeStep(method: OfficeMethod, args: unknown[], nameOf: Name
     case 'stowAllGrid':
       lines.push(`범위: ${Number(a0) > 0 ? `${String(a0)}층` : '건물 전체'}`, a1 ? '직원 책상·의자는 남겨요' : '책상·의자까지 모두 서랍으로', '파는 게 아니라 서랍에 넣어요. 끝나면 되돌리기 카드를 올려요')
       break
+    case 'moveSeatSet':
+      lines.push('책상 세트(책상+의자)를 옮겨요')
+      break
     case 'restoreGridItems':
       lines.push(`되놓을 가구: ${Array.isArray(a0) ? a0.length : 0}개 (치우기 전 자리로 — 그사이 막힌 자리는 건너뛰어요)`)
       break

@@ -4,10 +4,10 @@
 
 把你的 Claude Code 会话变成**员工**，像一间办公室一样一起查看和指挥的个人 PoC（Electron 桌面应用）。
 
-- 状态：**0.13.1**（2026-10-27）— 办公室地图（团队区域、会议室、休息室）· 团队/组长委派 · 任务看板 · 审批箱 · 群聊 · 会议 · 定时任务 · 报告 · 工资单 · 布置
+- 状态：**0.13.2**（2026-10-27）— 办公室地图（团队区域、会议室、休息室）· 团队/组长委派 · 任务看板 · 审批箱 · 群聊 · 会议 · 定时任务 · 报告 · 工资单 · 布置
 - 技术栈：Electron Forge + Vite · React 19 · Zustand · Tailwind 4 + shadcn/ui · Phaser 4 · SQLite（`node:sqlite`）· Claude Agent SDK
 
-## 安装 (0.13.1)
+## 安装 (0.13.2)
 - 打开 `app/out/make/dmg/arm64/Claude Office.dmg`，拖到 Applications 文件夹
 - 仅限 Apple Silicon · 未签名/未公证 → 首次打开时若出现“无法验证开发者”提示，请前往 系统设置 › 隐私与安全性 › “仍要打开”
 - 前提条件：该 Mac 上已登录 Claude Code（员工使用该账户工作，费用也计入该账户）

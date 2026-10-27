@@ -40,7 +40,7 @@ function nodeDirs() {
 let found: { command: string; prefix: string[]; dir: string } | null = null
 
 /** npx와 node가 같이 있는 폴더를 찾는다 (npx는 node로 도는 스크립트라 둘 다 필요). 찾으면 기억하고, 못 찾으면 다음에 다시 본다(그사이 설치할 수 있다) */
-function findNpx() {
+export function findNpx() {
   if (found) return found
   const searchPath = (toolEnv().PATH ?? '').split(path.delimiter)
   const dirs = [...searchPath, ...nodeDirs()].filter(Boolean)

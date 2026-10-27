@@ -155,7 +155,11 @@ function createWindow(isHidden = false) {
     if (url.startsWith('https://')) void shell.openExternal(url)
     return { action: 'deny' }
   })
-  win.on('closed', () => (win = null))
+  win.on('closed', () => {
+    win = null
+    // 끝낼 때는 다음에 켤 때 settleStaleMeeting이 닫는다
+    if (!isQuitting) office.endLiveDemos()
+  })
   // 최소화·숨김 동안 화면이 사무실 그림(지도·미니 뷰)을 멈추게 알린다 — backgroundThrottling을 꺼서 화면은 스스로 알 수 없다
   // 이벤트 순간에는 isMinimized()·isVisible()이 아직 안 바뀌어 있을 수 있어 이벤트로 값을 정한다
   // 맥은 다른 창에 완전히 가려져도(occlusion) hide·show가 온다 — 가려진 동안도 멈춘다

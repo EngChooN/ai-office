@@ -8,6 +8,8 @@ import { loadCustomMcp, type CustomMcp } from '../shared/customMcp.ts'
 import { t } from '../shared/i18n/index.ts'
 import type { TKey } from '../shared/i18n/index.ts'
 import { browserUnavailable } from './browser'
+import { COMPUTER_EQUIPMENT } from '../shared/computerTools.ts'
+import { computerPermissionNotice, computerUnavailable, isComputerSupported } from './computer'
 import * as db from './db'
 import { readMcpSources, type McpEntry, type McpSourceInput } from './mcpSources'
 
@@ -72,14 +74,22 @@ function listSkills(dir: string, source: string) {
   }
 }
 
+function computerEntry(): EquipmentMcp {
+  const unavailable = computerUnavailable()
+  const notice = computerPermissionNotice()
+  return { name: COMPUTER_EQUIPMENT, source: t('equip.browser.source'), detail: t('equip.computer.desc'), isBuiltin: true, sourceKind: 'builtin', status: unavailable ? 'unsupported' : 'ok', ...(unavailable ? { unavailable } : {}), ...(notice ? { notice } : {}) }
+}
+
 export function equipmentCatalog(cwd: string): EquipmentCatalog {
   const unavailable = browserUnavailable()
   // 앱 기본 장비 '브라우저'는 사용자 MCP 카탈로그와 별개로 늘 첫 줄에 (같은 이름의 사용자 MCP는 가린다)
   const browser = { name: BROWSER_EQUIPMENT, source: t('equip.browser.source'), detail: t('equip.browser.desc'), isBuiltin: true, ...(unavailable ? { unavailable } : {}) }
   const mcp: EquipmentMcp[] = [
     { ...browser, sourceKind: 'builtin', status: unavailable ? 'unsupported' : 'ok' },
+    // 앱 기본 장비 '컴퓨터 조작'은 맥에서만 보인다
+    ...(isComputerSupported() ? [computerEntry()] : []),
     ...mcpEntries(cwd)
-      .filter((e) => e.name !== BROWSER_EQUIPMENT)
+      .filter((e) => e.name !== BROWSER_EQUIPMENT && e.name !== COMPUTER_EQUIPMENT)
       .map((e) => ({ name: e.name, source: sourceLabel(e), detail: e.detail, sourceKind: e.kind, status: e.status, ...(e.reason ? { reason: e.reason, reasonText: t(`equip.reason.${e.reason}`) } : {}) })),
   ]
   const userDir = path.join(HOME, '.claude', 'skills')

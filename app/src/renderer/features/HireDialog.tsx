@@ -68,7 +68,7 @@ export function HireDialog() {
   const [form, setForm] = useState<HireInput>(emptyForm)
   const [templates, setTemplates] = useState<AgentTemplate[]>([])
   const [isCustomRole, setIsCustomRole] = useState(false)
-  // 생김새를 직접 고치기 전까지는 무작위 바탕에 고른 직무의 기본 옷·소품을 입힌다
+  // 생김새를 직접 고치거나 🎲를 누르기 전까지는 무작위 바탕에 고른 직무의 기본 옷·소품을 입힌다
   const [baseLook, setBaseLook] = useState<Look>(() => randomLook())
   const [isLookEdited, setIsLookEdited] = useState(false)
   const avatar = isLookEdited ? form.avatar : encodeLook({ ...baseLook, ...roleLook(form.role) })
@@ -160,14 +160,9 @@ export function HireDialog() {
               <Label>{t('hire.look')}</Label>
               <AvatarEditor
                 value={avatar}
-                role={form.role}
                 onChange={(next) => {
                   update({ avatar: next })
                   setIsLookEdited(true)
-                }}
-                onRandom={() => {
-                  setBaseLook(randomLook())
-                  setIsLookEdited(false)
                 }}
               />
             </div>

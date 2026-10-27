@@ -3,6 +3,7 @@
 
 import { findRiskyCommand } from './bashPolicy.ts'
 import { browserVerdict } from './browserTools.ts'
+import { computerVerdict } from './computerTools.ts'
 import { base, gitSubcommand, lexSegments, resolveCommand, type Segment } from './commandScan.ts'
 import { t } from './i18n/index.ts'
 
@@ -186,6 +187,9 @@ export function autoApprove(tool: string, input: Record<string, unknown>): AutoV
   // 브라우저 장비: 조회만 허용, 이동·클릭·입력·업로드·제출은 대표를 기다린다 (결재 판정과 같은 기준 — browserTools)
   const browser = browserVerdict(tool, input)
   if (browser) return browser
+  // 컴퓨터 조작 장비: 화면 보기만 허용, 이동·클릭·입력·스크롤은 대표를 기다린다 (computerTools)
+  const computer = computerVerdict(tool, input)
+  if (computer) return computer
   if (tool.startsWith('mcp__')) {
     const name = tool.slice(tool.indexOf('__', 5) + 2)
     // 이름의 모든 낱말을 본다 (camelCase·_·- 로 쪼갬). 쓰기 동사가 하나라도 섞이면 기다린다 (A5 — get_or_create 등)

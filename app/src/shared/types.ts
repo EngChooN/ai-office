@@ -1,7 +1,7 @@
 // main ↔ renderer 공용 타입
 
 import type { LedgerRow, MissionsView, ShopState, Zone } from './economy'
-import type { GridItem } from './iso/furniture'
+import type { GridItem, SeatSetPart } from './iso/furniture'
 import type { RefDocReject } from './refDocs'
 import type { AutoApproveConfig, AutoApprovePlan, AutoKind } from './autoApprove'
 import type { StaffCommand } from './slashCommands'
@@ -243,6 +243,8 @@ export interface EquipmentMcp {
   detail: string
   isBuiltin?: boolean
   unavailable?: string
+  /** 쓸 수는 있지만 먼저 해 둘 일 (맥 권한 안내 등) */
+  notice?: string
   sourceKind?: McpSourceKind
   /** ok = 사용 가능 · auth = 인증 필요(지급은 된다) · unsupported = 불러올 수 없음(지급 불가) */
   status?: 'ok' | 'auth' | 'unsupported'
@@ -931,6 +933,8 @@ export interface OfficeApi {
   stowAllGrid(floor: number, keepSeats: boolean): Promise<GridItem[]>
   /** 전부 치우기 되돌리기: 치우기 전 가구를 다시 놓는다 */
   restoreGridItems(items: GridItem[]): Promise<void>
+  /** 책상 세트(책상+의자)를 한 번에 옮긴다. 아직 저장되지 않은 기본 자리(uid가 auto:로 시작)는 새 uid(toUid)로 저장 가구가 된다 */
+  moveSeatSet(floor: number, parts: SeatSetPart[]): Promise<void>
   /** 직원 책상·의자 적용 (null = 기본) */
   setGear(staffId: string, slot: 'desk' | 'chair', itemId: string | null): Promise<void>
   missions(): Promise<MissionsView>

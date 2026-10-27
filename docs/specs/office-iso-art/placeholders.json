@@ -1,5 +1,10 @@
 {
   "placeholders": [],
   "sizeMismatch": [],
-  "unused": []
+  "unused": [
+    "zone-low-table",
+    "zone-bistro",
+    "zone-high-table",
+    "zone-menu-board"
+  ]
 }

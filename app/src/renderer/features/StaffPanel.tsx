@@ -594,7 +594,7 @@ function Profile({ staff }: { staff: Staff }) {
   ]
   return (
     <section className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
-      {!isWorkMode && <AvatarEditor value={staff.avatar} role={staff.role} onChange={(avatar) => void window.office.updateStaff(staff.id, { avatar })} />}
+      {!isWorkMode && <AvatarEditor value={staff.avatar} onChange={(avatar) => void window.office.updateStaff(staff.id, { avatar })} />}
       <NameRole key={`${staff.name}\n${staff.role}`} staff={staff} />
       {!isWorkMode && (
         <div className="flex flex-col gap-2">

@@ -3,7 +3,7 @@ import type { AutoApprovePlan } from '../shared/autoApprove'
 import type { DemoReaction } from '../shared/gallery'
 import type { KnowledgeInput } from '../shared/knowledge'
 import type { Zone } from '../shared/economy'
-import type { GridItem } from '../shared/iso/furniture'
+import type { GridItem, SeatSetPart } from '../shared/iso/furniture'
 import type { OfficeMethod } from '../shared/officeApiShape'
 import type { TutorialInput, TutorialScenario } from '../shared/tutorial'
 import { HOOK_PORT, type Attachment, type RemoteMode } from '../shared/types'
@@ -111,6 +111,7 @@ export function createOfficeHandlers(office: Office, remoteApi: () => RemoteServ
     setGridItemOn: (uid: string, isOn: boolean) => office.setGridItemOn(uid, isOn),
     stowAllGrid: (floor: number, keepSeats: boolean) => office.stowAllGrid(floor, keepSeats),
     restoreGridItems: (items: GridItem[]) => office.restoreGridItems(items),
+    moveSeatSet: (floor: number, parts: SeatSetPart[]) => office.moveSeatSet(floor, parts),
     setGear: (staffId: string, slot: 'desk' | 'chair', itemId: string | null) => office.setGear(staffId, slot, itemId),
     missions: () => office.missions(),
     claimMission: (key: string) => office.claimMission(key),

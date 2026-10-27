@@ -5,7 +5,7 @@
 
 import { APP_VERSION } from '@/lib/changelog'
 import { companyFromXp, DEFAULT_EQUIPMENT, DEFAULT_SETTINGS, type ChatMessage, type OfficeSnapshot, type Staff } from '@shared/types'
-import type { GridItem } from '@shared/iso/furniture'
+import type { GridItem, SeatSetPart } from '@shared/iso/furniture'
 import type { KnowledgeInput } from '@shared/knowledge'
 import { LANGS, type Lang } from '@shared/i18n'
 import { DEMO_CHAT, DEMO_LAB, DEMO_LIVE, DEMO_MEETING, DEMO_STAFF, DEMO_TASKS, DEMO_TEAMS } from './demoData'
@@ -394,6 +394,8 @@ const impl: Record<string, (...args: never[]) => unknown> = {
     return out
   },
   restoreGridItems: (items: GridItem[]) => setGrid([...snapshot.shop.grid, ...items.filter((i) => !snapshot.shop.grid.some((g) => g.uid === i.uid))]),
+  moveSeatSet: (floor: number, parts: SeatSetPart[]) =>
+    setGrid([...snapshot.shop.grid.filter((g) => !parts.some((p) => p.uid === g.uid)), ...parts.map((p) => ({ uid: p.toUid ?? p.uid, itemId: snapshot.shop.grid.find((g) => g.uid === p.uid)?.itemId ?? p.itemId, floor, gx: p.gx, gy: p.gy, rot: p.rot }))]),
   storeItem: (uid: string) => setGrid(snapshot.shop.grid.filter((g) => g.uid !== uid)),
   approveAlways: async () => true,
   approvalRules: async () => [],

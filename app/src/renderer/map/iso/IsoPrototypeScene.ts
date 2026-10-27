@@ -10,7 +10,7 @@ import { roomOf } from '@shared/iso/levels'
 import { buildWalkMap, findPath, type WalkMap } from '@shared/iso/path'
 import { seatsOf, type Seat } from '@shared/iso/seats'
 import { depthOrder, type IsoBox } from '@shared/iso/depth'
-import { drawItem, drawPersonSet, drawPersonShadow, drawRoom, finishOf, lookOf, roomTextureKey, STAGE_FINISH, type ArtBox, type Finish, type Material } from './isoArt'
+import { drawItem, drawPersonSet, drawPersonShadow, personDirOf, drawRoom, finishOf, lookOf, roomTextureKey, STAGE_FINISH, type ArtBox, type Finish, type Material } from './isoArt'
 
 /** 시제품 서랍 품목 (지금 그림이 있는 넷) */
 export const KINDS = ['desk', 'chair', 'sofa-green', 'monstera'] as const
@@ -710,13 +710,12 @@ export class IsoPrototypeScene extends Phaser.Scene {
 
   private drawStaff(s: Staff) {
     const isSit = s.state === 'sit'
-    // 보는 방향: r0 ↙ 앞 · r1 ↖ 뒤 · r2 ↗ 뒤+반전 · r3 ↘ 앞+반전
-    const dir = s.facing === 1 || s.facing === 2 ? 'back' : 'front'
+    // 보는 방향: r0 ↙ · r1 ↖ · r2 ↗ · r3 ↘ — 방향마다 따로 그린 그림 (반전 없음)
+    const dir = personDirOf(s.facing)
     const pose = isSit ? 'sit' : s.state === 'walk' ? (Math.floor(s.frame / FRAME_SEC) % 2 ? 'walk2' : 'walk1') : 'stand'
     const p = this.world(s.x, s.y, isSit ? 9 : 0)
     s.sprite
       .setTexture(`${pose}-${s.n}-${dir}`)
-      .setFlipX(s.facing === 2 || s.facing === 3)
       .setPosition(p.x, p.y + PIXEL)
     const f = this.world(s.x, s.y)
     s.shadow.setPosition(f.x, f.y).setVisible(!isSit)

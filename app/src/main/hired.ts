@@ -14,6 +14,7 @@ import { insertUsage, saveSessionId } from './db'
 import { CONTEXT_ROTATE_TOKENS, contextOf, findSessionFile, handoffText, readSessionTail } from './sessionRotate'
 import { exeName } from './platform'
 import { BROWSER_EQUIPMENT, browserVerdict } from '../shared/browserTools.ts'
+import { COMPUTER_EQUIPMENT, computerVerdict } from '../shared/computerTools.ts'
 import { parseSlash, type RawCommand } from '../shared/slashCommands.ts'
 import { browserOutputDir } from './browser'
 
@@ -307,6 +308,7 @@ class Worker {
     const refDocPaths = new Set(refDocs.paths)
     const mcpServers = this.hooks.equippedMcp(s.id)
     const browserGuide = mcpServers[BROWSER_EQUIPMENT] ? t('staff.browser.guide', { dir: browserOutputDir(s.id) }) : ''
+    const computerGuide = mcpServers[COMPUTER_EQUIPMENT] ? t('staff.computer.guide') : ''
     // 백그라운드 작업 목록은 CLI 프로세스 단위라 새로 열면 비운다
     this.backgroundTasks = []
     this.q = sdk.query({
@@ -320,7 +322,7 @@ class Worker {
         systemPrompt: {
           type: 'preset',
           preset: 'claude_code',
-          append: capPrompt([t('staff.identity', { name: s.name, role: s.role }), t('staff.language'), this.hooks.context(s.id), refDocs.prompt, browserGuide, t('staff.captureGuide'), capPrompt(s.systemPrompt, PERSONA_MAX)].filter(Boolean).join('\n'), PROMPT_MAX),
+          append: capPrompt([t('staff.identity', { name: s.name, role: s.role }), t('staff.language'), this.hooks.context(s.id), refDocs.prompt, browserGuide, computerGuide, t('staff.captureGuide'), capPrompt(s.systemPrompt, PERSONA_MAX)].filter(Boolean).join('\n'), PROMPT_MAX),
         },
         settingSources: ['user', 'project', 'local'],
         // 고용 직원 표시: 사용자 설정의 "질문 받기" hook이 이 세션은 건너뛴다 (질문은 canUseTool → 결재함·대신 답하기로)
@@ -334,7 +336,7 @@ class Worker {
         disallowedTools: s.equipment.disallowedTools.filter((t) => !isBashPolicyMark(t)),
         canUseTool: (toolName, input, { signal }) => {
           // 브라우저 조회(스냅샷·스크린샷·탭 목록)는 결재 없이. 이동·클릭·입력 등은 아래 평소 흐름(결재함·자동결재 판정)으로
-          if (browserVerdict(toolName, input) === 'allow') return Promise.resolve({ behavior: 'allow' })
+          if (browserVerdict(toolName, input) === 'allow' || computerVerdict(toolName, input) === 'allow') return Promise.resolve({ behavior: 'allow' })
           const command = toolName === 'Bash' && typeof input.command === 'string' ? input.command : null
           // 사무실 내부 도구(팀 조회·위임)와 장비로 허용한 도구는 결재 없이 쓴다
           // 화면 캡처는 대표 화면이 그대로 찍히므로, 설정의 '직원 화면 캡처 허용'이 켜져 있으면(기본) 모두, 꺼지면 장비에서 "화면 캡처 자율"을 켠 직원만 결재 없이 찍는다

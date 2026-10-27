@@ -173,3 +173,35 @@ test('통로 칸이 모자라면 남은 빈 칸에 채운다 (놓기 검사는 �
     cur = [...cur, it]
   }
 })
+
+// ── 책상 세트 옮기기 (0.14.0) ──
+import { moveSeatSet } from '../src/main/shopGrid.ts'
+import { seatSetOf } from '../src/shared/iso/seats.ts'
+import { EMPTY_SHOP } from '../src/shared/economy.ts'
+
+test('책상 세트: 책상·의자 어느 쪽을 눌러도 같은 둘, 의자 둘이 보는 책상은 하나만', () => {
+  const desk = { uid: 'd', itemId: 'desk', floor: 1, gx: 4, gy: 5, rot: 0 as const }
+  const chair = { uid: 'c', itemId: 'chair', floor: 1, gx: 4, gy: 4, rot: 0 as const }
+  assert.deepEqual(seatSetOf([desk, chair], 'c').map((g) => g.uid).sort(), ['c', 'd'])
+  assert.deepEqual(seatSetOf([desk, chair], 'd').map((g) => g.uid).sort(), ['c', 'd'])
+  const chair2 = { ...chair, uid: 'c2', gx: 5 }
+  assert.deepEqual(seatSetOf([desk, chair, chair2], 'd').map((g) => g.uid), ['d'])
+})
+
+test('moveSeatSet: 기본 자리(auto:)는 새 uid로 저장되고 저장 가구는 그대로 옮긴다', () => {
+  const parts = [
+    { uid: 'auto:1:6,8d', toUid: 'nd', itemId: 'desk', gx: 6, gy: 9, rot: 0 as const },
+    { uid: 'auto:1:6,8c', toUid: 'nc', itemId: 'chair', gx: 6, gy: 8, rot: 0 as const },
+  ]
+  const a = moveSeatSet(EMPTY_SHOP, 8, 1, parts)
+  assert.deepEqual(a.grid.map((g) => [g.uid, g.itemId, g.gx, g.gy]), [['nd', 'desk', 6, 9], ['nc', 'chair', 6, 8]])
+  const b = moveSeatSet(a, 8, 1, [
+    { uid: 'nd', itemId: 'desk', gx: 8, gy: 9, rot: 0 },
+    { uid: 'nc', itemId: 'chair', gx: 8, gy: 8, rot: 0 },
+  ])
+  assert.deepEqual(b.grid.map((g) => [g.uid, g.gx]), [['nd', 8], ['nc', 8]])
+  // 겹침은 기존 규칙대로 거절
+  const c = { ...b, grid: [...b.grid, { uid: 'x', itemId: 'desk', floor: 1, gx: 12, gy: 9, rot: 0 as const }] }
+  assert.throws(() => moveSeatSet(c, 8, 1, [{ uid: 'nd', itemId: 'desk', gx: 12, gy: 9, rot: 0 }, { uid: 'nc', itemId: 'chair', gx: 12, gy: 8, rot: 0 }]))
+  assert.throws(() => moveSeatSet(EMPTY_SHOP, 8, 1, [{ uid: 'zz', itemId: 'desk', gx: 6, gy: 9, rot: 0 }]))
+})

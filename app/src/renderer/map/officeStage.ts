@@ -13,6 +13,7 @@ import { useOffice, viewLevelOf } from '@/store'
 import { buildFloors, officeOf, staffFloor } from '@shared/officeLevel'
 import { isMeetingLive } from '@shared/types'
 import { IsoOfficeScene } from './IsoOfficeScene'
+import { useFloorVisits } from './iso/floorVisits'
 
 /** 미니 뷰 기본 크기 (CSS px) — 창은 이 비율로 그린다 */
 export const MINI_W = 200
@@ -400,9 +401,9 @@ class OfficeStage {
         }
       }
       if (!scene) {
-        // 3) 그 직원 자리가 있는 층 장면을 깨운다 (지도가 그 층을 보면 지도 장면)
+        // 3) 그 직원이 있는 층(다른 층에 놀러 갔으면 그 층, 아니면 자리 층) 장면을 깨운다 (지도가 그 층을 보면 지도 장면)
         const s = st.staff.find((x) => x.id === v.staffId)
-        const f = s ? staffFloor(s, st.teams, level, undefined, st.staff) : mainFloor
+        const f = useFloorVisits.getState().visits[v.staffId]?.floor ?? (s ? staffFloor(s, st.teams, level, undefined, st.staff) : mainFloor)
         scene = sceneOfFloor(f)
       }
       if (scene && scene.fixedFloor !== null) needFloors.add(scene.fixedFloor)

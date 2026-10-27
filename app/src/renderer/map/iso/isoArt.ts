@@ -11,7 +11,7 @@ import { HH, HW, PIXEL, SLAB, WALL_H, WALL_T, type Room } from '../../../shared/
 import { CellKind, edgesOf, kindAt, type EdgeSide } from '../../../shared/iso/plan.ts'
 import { edgeBox } from '../../../shared/iso/depth.ts'
 import { specOf, type Rot } from '../../../shared/iso/furniture.ts'
-import { HAIR_COLORS, PANTS, SKINS, TOP_COLORS } from '../../../shared/look.ts'
+import { FACE_ITEMS, HAIR_COLORS, HAIR_STYLES, HEAD_ITEMS, PANTS, SKINS, TOP_COLORS, TOPS } from '../../../shared/look.ts'
 import { itemName } from '../../../shared/i18n/names.ts'
 
 type RGBA = [number, number, number, number]
@@ -1729,6 +1729,245 @@ const ITEMS: Record<string, ItemDef> = {
       b(0.3, 1.05, 1.4, 0.8, 0, 0, '#dfe3ea'),
     ],
   },
+  // ── Lv.11~20 상점 가구·소품 (0.14.0): 레벨마다 두 개씩 새로 열린다 ──
+  // Lv.11
+  'massage-chair': {
+    name: '안마 의자',
+    W: 1,
+    D: 1,
+    sitZ: 9,
+    parts: [
+      b(0.1, 0.1, 0.8, 0.76, 0, 3, K.dark, { role: 'seat' }),
+      b(0.12, 0.2, 0.76, 0.66, 3, 6, '#5b3f35', { role: 'seat' }),
+      b(0.24, 0.3, 0.52, 0.52, 9, 1, '#7a5646', { role: 'seat' }),
+      b(0.1, 0.24, 0.14, 0.62, 9, 7, '#5b3f35', { role: 'seat' }),
+      b(0.76, 0.24, 0.14, 0.62, 9, 7, '#5b3f35', { role: 'seat' }),
+      b(0.3, 0.86, 0.4, 0.12, 0, 6, '#5b3f35', { role: 'seat' }),
+      b(0.14, 0.1, 0.72, 0.2, 9, 20, '#5b3f35', { role: 'back', S: (q) => (inRect(q, 0.2, 0.8, 0.2, 0.9) && frac(q.v * 5) < 0.2 ? '#7a5646' : '#5b3f35') }),
+    ],
+  },
+  'air-purifier': {
+    name: '공기청정기',
+    W: 1,
+    D: 1,
+    parts: [
+      b(0.3, 0.3, 0.4, 0.4, 0, 24, K.white, {
+        S: (q) => (q.v > 0.1 && q.v < 0.7 && frac(q.v * 10) < 0.35 ? K.steel : K.white),
+        E: (q) => (q.v > 0.1 && q.v < 0.7 && frac(q.v * 10) < 0.35 ? K.steel : K.white),
+        top: (q) => (Math.hypot(q.u - 0.5, q.v - 0.5) < 0.2 ? K.mint : K.white),
+      }),
+    ],
+  },
+  // Lv.12
+  'magazine-rack': {
+    name: '잡지꽂이',
+    W: 1,
+    D: 1,
+    parts: [
+      b(0.2, 0.3, 0.6, 0.4, 0, 2, K.walnut),
+      b(0.2, 0.3, 0.06, 0.4, 2, 16, K.walnut),
+      b(0.74, 0.3, 0.06, 0.4, 2, 16, K.walnut),
+      ...[K.red, K.blue, K.yellow].map((c, i) => b(0.28 + i * 0.15, 0.36, 0.12, 0.1, 2, 14 - i * 2, c)),
+      b(0.26, 0.52, 0.48, 0.06, 2, 10, K.walnutT),
+    ],
+  },
+  fireplace: {
+    name: '벽난로',
+    W: 2,
+    D: 1,
+    parts: [
+      b(0.05, 0.1, 1.9, 0.6, 0, 26, '#c97b5a', {
+        S: (q) => {
+          if (inRect(q, 0.25, 0.75, 0, 0.6)) return q.v < 0.25 ? (frac(q.u * 6) < 0.5 ? K.orange : K.yellow) : q.v < 0.4 && Math.abs(q.u - 0.5) < 0.12 ? K.yellow : K.dark
+          return frac(q.v * 6) < 0.08 || frac(q.u * 5 + (Math.floor(q.v * 6) % 2) * 0.5) < 0.04 ? '#a85f45' : '#c97b5a'
+        },
+      }),
+      b(0, 0.06, 2, 0.72, 26, 3, K.stone),
+      b(0.3, 0.2, 0.16, 0.16, 29, 6, K.gold),
+      b(1.5, 0.22, 0.2, 0.12, 29, 8, K.paper),
+    ],
+  },
+  // Lv.13
+  'yoga-mat': {
+    name: '요가 매트',
+    W: 1,
+    D: 2,
+    flat: true,
+    parts: [b(0.2, 0.1, 0.6, 1.8, 0, 0, K.purple, { top: (q) => (q.u < 0.06 || q.u > 0.94 ? '#7f6bc0' : frac(q.v * 8) < 0.06 ? '#b5a5e6' : K.purple) })],
+  },
+  'climbing-wall': {
+    name: '클라이밍 벽',
+    W: 2,
+    D: 1,
+    parts: [
+      b(0.05, 0.1, 1.9, 0.3, 0, 46, '#e8e0d4', {
+        S: (q) => {
+          const k = noise(Math.floor(q.u * 9), Math.floor(q.v * 12))
+          const isHold = k > 0.7 && Math.abs(frac(q.u * 9) - 0.5) < 0.25 && Math.abs(frac(q.v * 12) - 0.5) < 0.25
+          return isHold ? [K.red, K.blue, K.yellow, K.green, K.orange][Math.floor(k * 37) % 5] : '#e8e0d4'
+        },
+      }),
+      b(0.05, 0.4, 1.9, 0.56, 0, 3, K.blue),
+    ],
+  },
+  // Lv.14
+  'cold-brew': {
+    name: '콜드브루 타워',
+    W: 1,
+    D: 1,
+    parts: [
+      b(0.2, 0.2, 0.6, 0.6, 0, 3, K.walnut),
+      ...[0.24, 0.7].flatMap((x) => [b(x, 0.24, 0.06, 0.06, 3, 34, K.walnut), b(x, 0.7, 0.06, 0.06, 3, 34, K.walnut)]),
+      b(0.38, 0.38, 0.24, 0.24, 3, 7, '#6b3e26'),
+      b(0.46, 0.46, 0.08, 0.08, 10, 8, K.skyL),
+      b(0.36, 0.36, 0.28, 0.28, 18, 6, '#8a5a3c'),
+      b(0.36, 0.36, 0.28, 0.28, 26, 8, K.sky),
+      b(0.2, 0.2, 0.6, 0.6, 37, 2, K.walnut),
+    ],
+  },
+  'drone-dock': {
+    name: '드론 거치대',
+    W: 1,
+    D: 1,
+    parts: [
+      b(0.2, 0.2, 0.6, 0.6, 0, 10, K.dark, {
+        top: (q) => (Math.abs(Math.hypot(q.u - 0.5, q.v - 0.5) - 0.27) < 0.03 ? K.yellow : K.dark),
+        S: (q) => (inRect(q, 0.3, 0.7, 0.4, 0.7) ? K.green : K.dark),
+      }),
+      b(0.38, 0.38, 0.24, 0.24, 18, 3, K.white),
+      ...[0.22, 0.62].flatMap((x) => [b(x, 0.22, 0.16, 0.16, 19, 1, K.metalL), b(x, 0.62, 0.16, 0.16, 19, 1, K.metalL)]),
+    ],
+  },
+  // Lv.15
+  'sushi-belt': {
+    name: '회전초밥 레일',
+    W: 3,
+    D: 1,
+    parts: [
+      b(0.05, 0.15, 2.9, 0.7, 0, 12, K.woodL, { S: (q) => (q.v > 0.85 ? K.woodD : K.woodL) }),
+      b(0.05, 0.15, 2.9, 0.7, 12, 2, K.steel, { top: (q) => (q.v > 0.25 && q.v < 0.75 ? (frac(q.u * 12) < 0.1 ? K.metalL : K.steel) : K.metal) }),
+      ...[0.3, 0.9, 1.5, 2.1, 2.6].flatMap((x, i) => [b(x, 0.36, 0.22, 0.28, 14, 2, [K.red, K.blue, K.yellow, K.green, K.pink][i]), b(x + 0.04, 0.42, 0.14, 0.16, 16, 2, i % 2 ? '#f08a6a' : K.paper)]),
+    ],
+  },
+  'cotton-candy': {
+    name: '솜사탕 기계',
+    W: 1,
+    D: 1,
+    extraH: 10,
+    parts: [b(0.2, 0.25, 0.6, 0.5, 0, 16, K.pink, { S: (q) => (frac(q.u * 5) < 0.5 ? K.pink : K.paper) }), b(0.24, 0.29, 0.52, 0.42, 16, 6, K.steel)],
+    after: (a) => ball(a, 0.5, 0.5, 26, 5, '#fbd3e0'),
+  },
+  // Lv.16
+  'holo-globe': {
+    name: '홀로그램 지구본',
+    W: 1,
+    D: 1,
+    extraH: 18,
+    parts: [b(0.25, 0.25, 0.5, 0.5, 0, 8, K.dark, { top: (q) => (Math.hypot(q.u - 0.5, q.v - 0.5) < 0.3 ? K.screen : K.dark) })],
+    after: (a) => ball(a, 0.5, 0.5, 18, 7, K.sky, (dx, dy) => (Math.abs(dy) < 0.12 || Math.abs(dx) < 0.1 ? K.skyL : noise(Math.round(dx * 5) + 9, Math.round(dy * 5) + 9) > 0.6 ? '#7fd8b0' : null)),
+  },
+  spotlight: {
+    name: '무대 조명',
+    W: 1,
+    D: 1,
+    parts: [
+      b(0.2, 0.6, 0.06, 0.06, 0, 22, K.metal),
+      b(0.74, 0.6, 0.06, 0.06, 0, 22, K.metal),
+      b(0.47, 0.2, 0.06, 0.06, 0, 22, K.metal),
+      b(0.3, 0.3, 0.4, 0.4, 22, 10, K.dark, { S: (q) => (Math.hypot(q.u - 0.5, q.v - 0.5) < 0.32 ? K.yellow : K.dark) }),
+    ],
+  },
+  // Lv.17
+  greenhouse: {
+    name: '미니 온실',
+    W: 2,
+    D: 2,
+    parts: [
+      b(0.08, 0.08, 1.84, 1.84, 0, 4, K.woodD),
+      b(0.1, 0.1, 1.8, 1.8, 4, 30, K.skyL, { S: glassFace(K.white), E: glassFace(K.white), N: glassFace(K.white), W: glassFace(K.white), top: (q) => (frac(q.u * 4) < 0.06 || frac(q.v * 4) < 0.06 ? K.white : K.skyL) }),
+    ],
+    after: (a) => {
+      leaves(a, 0.7, 0.9, 6, [[0, -5, 5], [-5, -2, 4], [5, -2, 4]])
+      leaves(a, 1.3, 1.3, 6, [[0, -4, 4], [-4, -1, 3]], [K.pink, '#f6c0cc', '#fbe0e6'])
+    },
+  },
+  'fire-pit': {
+    name: '불멍 화로',
+    W: 1,
+    D: 1,
+    parts: [
+      b(0.15, 0.15, 0.7, 0.7, 0, 7, K.dark, { top: (q) => (Math.hypot(q.u - 0.5, q.v - 0.5) < 0.3 ? (n32(q.u, q.v) > 0.5 ? K.orange : K.red) : K.metal) }),
+      b(0.4, 0.42, 0.2, 0.16, 7, 5, K.orange),
+      b(0.45, 0.46, 0.1, 0.08, 12, 4, K.yellow),
+    ],
+  },
+  // Lv.18
+  planetarium: {
+    name: '플라네타리움',
+    W: 2,
+    D: 2,
+    extraH: 14,
+    parts: [b(0.1, 0.1, 1.8, 1.8, 0, 4, K.navy, { top: (q) => (n32(q.gx, q.gy) > 0.9 ? K.yellow : K.navy) }), b(0.85, 0.85, 0.3, 0.3, 4, 10, K.metal)],
+    after: (a) => ball(a, 1, 1, 24, 9, K.dark, (dx, dy) => (noise(Math.round(dx * 8) + 20, Math.round(dy * 8) + 20) > 0.85 ? K.yellow : null)),
+  },
+  'wine-cellar': {
+    name: '와인 셀러',
+    W: 1,
+    D: 1,
+    parts: [b(0.15, 0.2, 0.7, 0.6, 0, 30, K.dark, { S: (q) => (inRect(q, 0.1, 0.9, 0.08, 0.92) ? (frac(q.v * 6) < 0.5 && Math.abs(frac(q.u * 4) - 0.5) < 0.25 ? '#8a2a3a' : '#2a2f40') : K.dark) })],
+  },
+  // Lv.19
+  'ai-core': {
+    name: 'AI 코어',
+    W: 1,
+    D: 1,
+    parts: [
+      b(0.18, 0.2, 0.64, 0.6, 0, 40, K.dark, {
+        S: (q) => (q.u < 0.08 || q.u > 0.92 || frac(q.v * 10) < 0.15 ? K.metal : frac(q.u * 6 + q.v * 3) < 0.2 ? K.green : frac(q.u * 6) < 0.5 ? K.navy : K.dark),
+        E: (q) => (frac(q.v * 10) < 0.15 ? K.metal : K.dark),
+        top: K.metal,
+      }),
+      b(0.38, 0.38, 0.24, 0.24, 40, 3, K.orange),
+    ],
+  },
+  'red-carpet': {
+    name: '레드 카펫',
+    W: 1,
+    D: 3,
+    flat: true,
+    parts: [b(0.15, 0, 0.7, 3, 0, 0, K.red, { top: (q) => (q.u < 0.08 || q.u > 0.92 ? K.gold : '#c8443a') })],
+  },
+  // Lv.20
+  diamond: {
+    name: '거대 다이아몬드',
+    W: 1,
+    D: 1,
+    parts: [
+      b(0.2, 0.2, 0.6, 0.6, 0, 10, K.gold, { top: mix(K.gold, WHITE, 0.3) }),
+      b(0.34, 0.34, 0.32, 0.32, 10, 4, K.skyL),
+      b(0.28, 0.28, 0.44, 0.44, 14, 6, K.sky, { S: (q) => (frac((q.u + q.v) * 3) < 0.5 ? K.skyL : K.sky), E: (q) => (frac((q.u - q.v) * 3) < 0.5 ? K.white : K.sky), top: K.skyL }),
+      b(0.36, 0.36, 0.28, 0.28, 20, 4, K.skyL),
+    ],
+  },
+  helipad: {
+    name: '헬리패드',
+    W: 2,
+    D: 2,
+    flat: true,
+    parts: [
+      b(0, 0, 2, 2, 0, 0, K.dark, {
+        top: (q) => {
+          const u = q.u - 0.5
+          const v = q.v - 0.5
+          const d = Math.hypot(u, v)
+          if (d > 0.48) return null
+          if (d > 0.42) return K.yellow
+          const isH = ((Math.abs(u + 0.12) < 0.04 || Math.abs(u - 0.12) < 0.04) && Math.abs(v) < 0.2) || (Math.abs(v) < 0.035 && Math.abs(u) < 0.12)
+          return isH ? K.paper : '#4a5068'
+        },
+      }),
+    ],
+  },
   // 파티션·가벽 (docs/specs/partition-items.md): 칸 가운데 얇은 판. 낮음은 24px(앉은 직원 머리 높이), 높음은 40px(서 있는 직원을 다 가린다 — 장면이 WALL_FADE로 비친다)
   'partition-low-fabric': partition('낮은 패브릭 파티션', 2, 22, '#aaa9ad', fabricFace('#aaa9ad')),
   'partition-low-glass': partition('낮은 유리 파티션', 3, 22, '#eef1f5', glassPanel, 7),
@@ -3228,7 +3467,8 @@ export function artZoneFloor(kind: ZoneFloor, w: number, d: number): ItemPixels 
   return { cv, o, box: { x: 0, y: 0, w, d, z: 0, h: 0 }, w, d, isPlaceholder: false }
 }
 
-// ── 직원 (아트 16×26, 앞모습 ↙ / 뒷모습 ↖ — 좌우 반전으로 ↘·↗) ──
+// ── 직원 (아트 16×26, 4방향: 앞 ↙ · 뒤 ↖ · 오른앞 ↘ · 오른뒤 ↗) ──
+// 오른쪽 두 방향은 반전하지 않고 따로 그린다 — 몸 방향(얼굴·귀·발끝)만 바뀌고 빛(머리 하이라이트·옷 그늘)은 화면 기준 같은 쪽에 남는다
 const FRONT = [
   '....hhhhhh....',
   '..hhhhhhhhhh..',
@@ -3281,14 +3521,85 @@ const BACK = [
   '..bbbb..bbbb..',
   '..bbbbb.bbbbb.',
 ]
+/** 오른앞 ↘: 얼굴이 오른쪽, 왼쪽 귀가 보인다. 머리 하이라이트는 왼쪽 위, 옷 그늘은 오른쪽 그대로 */
+const FRONT_R = [
+  '....hhhhhh....',
+  '..hhhhhhhhhh..',
+  '.hhhHHhhhhhhh.',
+  '.hhhhhHHhhhhh.',
+  '.hhhhhhssshhh.',
+  '.hhhssssssshh.',
+  '.hshssesssesh.',
+  '.hshssesssesh.',
+  '.hhhsrsssssrh.',
+  '..hhsssmmsss..',
+  '....sssssss...',
+  '.......ss.....',
+  '...cccwwccc...',
+  '..ccccwwcccC..',
+  '.scccccccCCCs.',
+  '.scccccccCCCs.',
+  '..ccccccccCC..',
+  '..pppppppppp..',
+  '..pppp.ppppp..',
+  '..pppp..pppp..',
+  '..pppp..pppp..',
+  '..pppp..pppp..',
+  '..bbbb..bbbb..',
+  '..bbbbb.bbbbb.',
+]
+/** 오른뒤 ↗: 뒤통수 아래 왼쪽 볼이 보인다. 하이라이트는 오른쪽 위, 옷 그늘은 왼쪽 그대로 */
+const BACK_R = [
+  '....hhhhhh....',
+  '..hhhhhhhhhh..',
+  '.hhhhhhhHHhhh.',
+  '.hhhhhhhhHHhh.',
+  '.hhhhhhhhhhhh.',
+  '.hhhhhhhhhhhh.',
+  '.hhhhhhhhhhhh.',
+  '.shhhhhhhhhhh.',
+  '.sshhhhhhhhh..',
+  '..hhhhhhhhhh..',
+  '...hhhhhhhh...',
+  '......ss......',
+  '....ccccccc...',
+  '..CCcccccccc..',
+  '.sCCccccccccs.',
+  '.sCCccccccccs.',
+  '..CCcccccccc..',
+  '..pppppppppp..',
+  '..ppppp.pppp..',
+  '..pppp..pppp..',
+  '..pppp..pppp..',
+  '..pppp..pppp..',
+  '..bbbb..bbbb..',
+  '.bbbbb.bbbbb..',
+]
 // 걷기: 다리 줄을 바꾼 두 프레임 (지금 사무실의 walk1/walk2 방식) + 팔을 다리와 반대로 한 줄 흔든다
 const legs6 = (rows: string[], a: string[]) => [...rows.slice(0, 18), ...a]
 const swing = (rows: string[], left: boolean) => rows.map((r, i) => (i === 15 ? (left ? `.${r.slice(1, 12)}.${r.slice(13)}`.replace(/^\./, '.') : r) : i === 16 ? (left ? `s${r.slice(1)}` : `${r.slice(0, 13)}s`) : r))
+// 오른쪽 방향 다리는 왼쪽 방향 다리 줄을 좌우로 뒤집어 쓴다 (몸통 위는 위에서 따로 그림)
+const mirrorLegs = (rows: string[]) => rows.map((r) => [...r].reverse().join(''))
+const FRONT_LEGS = [
+  ['..pppp..pppp..', '..pppp...ppp..', '..ppp....ppp..', '..bbbb...ppp..', '.bbbbb...bbb..', '.........bbbb.'],
+  ['..pppp..pppp..', '..ppp...pppp..', '..ppp....ppp..', '..ppp...bbbb..', '..bbb...bbbbb.', '.bbbb.........'],
+]
+const BACK_LEGS = [
+  ['..pppp..pppp..', '..pppp...ppp..', '..ppp....ppp..', '..bbbb...ppp..', '..bbbb...bbb..', '.........bbbb.'],
+  ['..pppp..pppp..', '..ppp...pppp..', '..ppp....ppp..', '..ppp...bbbb..', '..bbb...bbbb..', '..bbbb........'],
+]
 const WALK = {
-  front: [swing(legs6(FRONT, ['..pppp..pppp..', '..pppp...ppp..', '..ppp....ppp..', '..bbbb...ppp..', '.bbbbb...bbb..', '.........bbbb.']), true), swing(legs6(FRONT, ['..pppp..pppp..', '..ppp...pppp..', '..ppp....ppp..', '..ppp...bbbb..', '..bbb...bbbbb.', '.bbbb.........']), false)],
-  back: [swing(legs6(BACK, ['..pppp..pppp..', '..pppp...ppp..', '..ppp....ppp..', '..bbbb...ppp..', '..bbbb...bbb..', '.........bbbb.']), false), swing(legs6(BACK, ['..pppp..pppp..', '..ppp...pppp..', '..ppp....ppp..', '..ppp...bbbb..', '..bbb...bbbb..', '..bbbb........']), true)],
+  front: [swing(legs6(FRONT, FRONT_LEGS[0]), true), swing(legs6(FRONT, FRONT_LEGS[1]), false)],
+  back: [swing(legs6(BACK, BACK_LEGS[0]), false), swing(legs6(BACK, BACK_LEGS[1]), true)],
+  frontRight: [swing(legs6(FRONT_R, mirrorLegs(FRONT_LEGS[0])), false), swing(legs6(FRONT_R, mirrorLegs(FRONT_LEGS[1])), true)],
+  backRight: [swing(legs6(BACK_R, mirrorLegs(BACK_LEGS[0])), true), swing(legs6(BACK_R, mirrorLegs(BACK_LEGS[1])), false)],
 }
-const SIT = { front: [...FRONT.slice(0, 17), '..pppppppppp..', '.pppppppppp...', '.bbbb.bbbb....'], back: [...BACK.slice(0, 17), '..pppppppppp..'] }
+const SIT = {
+  front: [...FRONT.slice(0, 17), '..pppppppppp..', '.pppppppppp...', '.bbbb.bbbb....'],
+  back: [...BACK.slice(0, 17), '..pppppppppp..'],
+  frontRight: [...FRONT_R.slice(0, 17), '..pppppppppp..', '...pppppppppp.', '....bbbb.bbbb.'],
+  backRight: [...BACK_R.slice(0, 17), '..pppppppppp..'],
+}
 
 export interface Look {
   h: string
@@ -3297,24 +3608,151 @@ export interface Look {
   p: string
   /** 신발 */
   b?: string
+  /** 아래 번호는 shared/look.ts 목록 순서 (없으면 0 = 기본 그림) — HAIR_STYLES */
+  hair?: number
+  /** TOPS (티셔츠·후드티·셔츠·넥타이·카디건·정장) */
+  top?: number
+  /** FACE_ITEMS (없음·안경·선글라스·수염·콧수염) */
+  face?: number
+  /** HEAD_ITEMS (없음·헤드셋·모자·비니·머리핀·베레모) */
+  head?: number
 }
-/** n번째 직원 색 — 지금 앱의 머리·피부·윗옷·바지 팔레트(shared/look.ts)를 돌려 쓴다 */
-export const lookOf = (n: number): Look => ({ h: HAIR_COLORS[(n * 3) % HAIR_COLORS.length][0], s: SKINS[(n * 5) % SKINS.length], c: TOP_COLORS[n % TOP_COLORS.length][0], p: PANTS[(n * 7) % PANTS.length] })
+/** n번째 직원 — 지금 앱의 머리·피부·윗옷·바지 팔레트(shared/look.ts)를 돌려 쓰고, 머리 모양·옷·소품도 돌아가며 입힌다 */
+export const lookOf = (n: number): Look => ({
+  h: HAIR_COLORS[(n * 3) % HAIR_COLORS.length][0],
+  s: SKINS[(n * 5) % SKINS.length],
+  c: TOP_COLORS[n % TOP_COLORS.length][0],
+  p: PANTS[(n * 7) % PANTS.length],
+  hair: n % HAIR_STYLES.length,
+  top: n % TOPS.length,
+  face: n % FACE_ITEMS.length,
+  head: n % HEAD_ITEMS.length,
+})
+
+// ── 직원 외관: 기본 그림(앞 ↙·뒤 ↖) 위에 칸 조각을 덧그린다. 오른쪽 두 방향은 조각을 좌우로 뒤집어 쓴다 ──
+/** [줄, 시작 칸, 끝 칸, 색 글자] — '.'은 지운다 */
+type Span = [y: number, x0: number, x1: number, k: string]
+type Wear = { front?: Span[]; back?: Span[] }
+const ART_W = 14
+const paintSpans = (rows: string[], spans: Span[], flip: boolean) => {
+  const g = rows.map((r) => [...r])
+  for (const [y, x0, x1, k] of spans) {
+    if (!g[y]) continue
+    for (let x = x0; x <= x1; x++) {
+      const at = flip ? ART_W - 1 - x : x
+      if (at >= 0 && at < ART_W) g[y][at] = k
+    }
+  }
+  return g.map((r) => r.join(''))
+}
+/** 머리 모양 (0 짧은 머리 = 기본 그림) */
+const HAIR_WEAR: Wear[] = [
+  {},
+  // 1 긴 머리: 뒤로 어깨까지
+  { front: [[9, 1, 1, 'h'], [9, 10, 12, 'h'], [10, 1, 2, 'h'], [10, 9, 12, 'h'], [11, 9, 12, 'h'], [12, 10, 12, 'h'], [13, 10, 11, 'h']], back: [[10, 2, 11, 'h'], [11, 2, 11, 'h'], [12, 2, 11, 'h'], [13, 3, 10, 'h'], [14, 4, 9, 'h']] },
+  // 2 단발 앞머리: 이마를 덮고 턱선에서 네모나게
+  { front: [[4, 1, 12, 'h'], [5, 3, 3, 'h'], [5, 5, 5, 'h'], [5, 7, 7, 'h'], [5, 9, 9, 'h'], [9, 1, 1, 'h'], [9, 10, 12, 'h'], [10, 1, 2, 'h'], [10, 9, 12, 'h']], back: [[9, 1, 12, 'h'], [10, 1, 12, 'h']] },
+  // 3 포니테일: 뒤통수에서 묶어 늘어뜨린다
+  { front: [[3, 12, 12, 'y'], [3, 13, 13, 'h'], [4, 13, 13, 'h'], [5, 13, 13, 'h'], [6, 13, 13, 'h'], [7, 12, 13, 'h'], [8, 12, 12, 'h']], back: [[10, 6, 7, 'y'], [11, 6, 7, 'h'], [12, 6, 7, 'h'], [13, 6, 7, 'h'], [14, 7, 7, 'h']] },
+  // 4 삐죽 머리: 정수리가 들쭉날쭉
+  { front: [[0, 0, 13, '.'], [0, 2, 2, 'h'], [0, 5, 5, 'h'], [0, 8, 8, 'h'], [0, 11, 11, 'h'], [1, 1, 12, 'h'], [2, 0, 0, 'h'], [3, 13, 13, 'h'], [4, 4, 4, 'h']], back: [[0, 0, 13, '.'], [0, 2, 2, 'h'], [0, 5, 5, 'h'], [0, 8, 8, 'h'], [0, 11, 11, 'h'], [1, 1, 12, 'h'], [2, 0, 0, 'h'], [3, 13, 13, 'h']] },
+  // 5 풍성한 머리: 양옆·위로 한 칸씩 부푼다
+  { front: [[0, 3, 10, 'h'], [1, 1, 12, 'h'], [2, 0, 0, 'h'], [2, 13, 13, 'h'], [3, 0, 0, 'h'], [3, 13, 13, 'h'], [4, 0, 0, 'h'], [4, 13, 13, 'h'], [5, 0, 0, 'h'], [5, 13, 13, 'h'], [6, 0, 0, 'h'], [6, 13, 13, 'h'], [7, 0, 0, 'h'], [7, 13, 13, 'h'], [8, 13, 13, 'h'], [9, 10, 12, 'h'], [10, 10, 11, 'h']], back: [[0, 3, 10, 'h'], [1, 1, 12, 'h'], [2, 0, 13, 'h'], [3, 0, 13, 'h'], [4, 0, 13, 'h'], [5, 0, 13, 'h'], [6, 0, 13, 'h'], [7, 0, 0, 'h'], [7, 13, 13, 'h'], [8, 1, 1, 'h'], [10, 2, 11, 'h']] },
+  // 6 옆 가르마: 얼굴 쪽으로 쓸어 넘긴 앞머리
+  { front: [[1, 4, 8, 'H'], [2, 3, 4, 'H'], [4, 1, 7, 'h'], [5, 2, 4, 'h'], [3, 1, 3, 'h']], back: [[1, 4, 8, 'H'], [2, 3, 4, 'H'], [2, 8, 9, 'h'], [3, 8, 9, 'h']] },
+  // 7 짧게 민 머리: 아래 shave()로 머리색을 옅게 + 윗줄을 깎는다
+  { front: [[0, 0, 13, '.'], [1, 2, 2, '.'], [1, 11, 11, '.'], [9, 10, 11, '.']], back: [[0, 0, 13, '.'], [1, 2, 2, '.'], [1, 11, 11, '.']] },
+]
+/** 머리 소품 */
+const HEAD_WEAR: Wear[] = [
+  {},
+  // 1 헤드셋: 머리띠 + 뒤통수 쪽 귀덮개 + 입으로 오는 마이크 (뒤에서는 귀덮개 둘)
+  { front: [[0, 4, 9, 'j'], [1, 10, 11, 'j'], [2, 12, 12, 'j'], [3, 12, 12, 'j'], [4, 11, 13, 'j'], [5, 11, 13, 'j'], [5, 12, 12, 'y'], [6, 11, 13, 'j'], [7, 10, 10, 'j'], [8, 9, 9, 'j']], back: [[0, 4, 9, 'j'], [1, 2, 3, 'j'], [1, 10, 11, 'j'], [2, 1, 1, 'j'], [3, 1, 1, 'j'], [2, 12, 12, 'j'], [3, 12, 12, 'j'], [4, 0, 1, 'j'], [5, 0, 1, 'j'], [6, 0, 1, 'j'], [4, 12, 13, 'j'], [5, 12, 13, 'j'], [6, 12, 13, 'j']] },
+  // 2 모자: 얼굴 쪽으로 챙이 나온 캡 (뒤에서는 조절 끈)
+  { front: [[0, 3, 10, 'q'], [1, 1, 12, 'q'], [2, 1, 12, 'q'], [3, 0, 6, 'Q']], back: [[0, 3, 10, 'q'], [1, 1, 12, 'q'], [2, 1, 12, 'q'], [3, 5, 8, 'Q']] },
+  // 3 비니: 머리를 덮는 니트 + 접단 + 방울
+  { front: [[0, 4, 9, 'v'], [0, 6, 7, 'w'], [1, 2, 11, 'v'], [2, 1, 12, 'v'], [3, 1, 12, 'V']], back: [[0, 4, 9, 'v'], [0, 6, 7, 'w'], [1, 2, 11, 'v'], [2, 1, 12, 'v'], [3, 1, 12, 'V']] },
+  // 4 머리핀
+  { front: [[3, 9, 10, 'y']], back: [[3, 9, 10, 'y']] },
+  // 5 베레모: 납작하고 뒤로 기울어 머리보다 넓다
+  { front: [[0, 3, 11, 't'], [1, 1, 13, 't'], [2, 2, 12, 'T']], back: [[0, 2, 10, 't'], [1, 0, 12, 't'], [2, 1, 11, 'T']] },
+]
+/** 얼굴 소품 — 얼굴이 보이는 앞 방향만 */
+const FACE_WEAR: Span[][] = [
+  [],
+  // 1 안경: 눈을 둘러싼 테 + 다리
+  [[6, 2, 2, 'g'], [6, 4, 6, 'g'], [6, 8, 9, 'g'], [7, 2, 2, 'g'], [7, 4, 4, 'g'], [7, 6, 6, 'g'], [7, 8, 8, 'g']],
+  // 2 선글라스: 까만 알 두 줄
+  [[6, 2, 9, 'k'], [7, 2, 4, 'k'], [7, 6, 8, 'k'], [6, 3, 3, 'L'], [6, 7, 7, 'L']],
+  // 3 수염: 입 둘레·턱
+  [[8, 2, 2, 'h'], [8, 9, 9, 'h'], [9, 2, 4, 'h'], [9, 7, 9, 'h'], [10, 3, 9, 'h']],
+  // 4 콧수염
+  [[8, 4, 7, 'h']],
+]
+/** 윗옷 (0 티셔츠 = 기본 그림). 가운데 기준 좌우 대칭이라 오른쪽 방향도 같은 칸 */
+const TOP_WEAR: (Wear & { sleeve?: boolean })[] = [
+  {},
+  // 1 후드티: 목둘레 모자 + 끈 + 앞주머니
+  { sleeve: true, front: [[11, 3, 4, 'C'], [11, 9, 10, 'C'], [12, 5, 8, 'C'], [13, 5, 5, 'w'], [14, 5, 5, 'w'], [13, 8, 8, 'w'], [14, 8, 8, 'w'], [16, 4, 9, 'C']], back: [[11, 4, 9, 'c'], [12, 4, 9, 'C'], [13, 5, 8, 'C']] },
+  // 2 셔츠·넥타이: 흰 깃 + 넥타이 + 벨트
+  { sleeve: true, front: [[12, 5, 8, 'w'], [13, 6, 7, 'n'], [14, 6, 7, 'n'], [15, 6, 7, 'n'], [16, 2, 11, 'K']], back: [[12, 4, 9, 'w'], [16, 2, 11, 'K']] },
+  // 3 카디건: 앞이 트여 흰 속옷이 보이고 단추, 엉덩이까지
+  { sleeve: true, front: [[12, 5, 8, 'w'], [13, 6, 7, 'w'], [14, 6, 7, 'w'], [15, 6, 7, 'w'], [16, 6, 7, 'w'], [14, 5, 5, 'C'], [16, 5, 5, 'C'], [17, 2, 4, 'c'], [17, 9, 11, 'c']], back: [[17, 2, 11, 'c']] },
+  // 4 정장: 흰 셔츠 V + 넥타이 + 깃, 재킷 자락이 길다
+  { sleeve: true, front: [[12, 5, 8, 'w'], [13, 5, 5, 'C'], [13, 8, 8, 'C'], [13, 6, 7, 'n'], [14, 6, 7, 'n'], [14, 5, 5, 'C'], [14, 8, 8, 'C'], [17, 2, 11, 'c'], [17, 6, 7, 'C']], back: [[12, 5, 8, 'w'], [17, 2, 11, 'c'], [17, 6, 6, 'C']] },
+]
+/** 긴소매: 팔(몸통 밖 피부 칸)의 맨 아래 한 칸(손)만 남기고 옷색으로 */
+const longSleeves = (rows: string[]) => {
+  const g = rows.map((r) => [...r])
+  for (const side of [[0, 1], [12, 13]])
+    for (const x of side) {
+      const ys = [12, 13, 14, 15, 16, 17].filter((y) => g[y]?.[x] === 's')
+      for (const y of ys.slice(0, -1)) g[y][x] = 'c'
+    }
+  return g.map((r) => r.join(''))
+}
+/** 짧게 민 머리: 머리 칸을 옅은 빡빡이 색으로 */
+const shave = (rows: string[]) => rows.map((r, y) => (y <= 10 ? r.replace(/[hH]/g, 'u') : r))
+const wearOf = <T,>(list: T[], n: number | undefined) => list[(((n ?? 0) % list.length) + list.length) % list.length]
+/** 기본 그림에 머리 모양 → 윗옷 → 머리 소품 → 얼굴 소품 순으로 덧그린다 */
+function dress(rows: string[], dir: PersonDir, look: Look) {
+  const isFront = dir === 'front' || dir === 'frontRight'
+  const flip = dir === 'frontRight' || dir === 'backRight'
+  const side = (w: Wear) => (isFront ? w.front : w.back) ?? []
+  const hair = wearOf(HAIR_WEAR, look.hair)
+  let out = paintSpans(rows, side(hair), flip)
+  if (wearOf(HAIR_WEAR, look.hair) === HAIR_WEAR[7]) out = shave(out)
+  const top = wearOf(TOP_WEAR, look.top)
+  if (top.sleeve) out = longSleeves(out)
+  out = paintSpans(out, side(top), flip)
+  out = paintSpans(out, side(wearOf(HEAD_WEAR, look.head)), flip)
+  if (isFront) out = paintSpans(out, wearOf(FACE_WEAR, look.face), flip)
+  return out
+}
 
 export type PersonPose = 'stand' | 'walk1' | 'walk2' | 'sit'
-export type PersonDir = 'front' | 'back'
+/** front ↙ · back ↖ · frontRight ↘ · backRight ↗ */
+export type PersonDir = 'front' | 'back' | 'frontRight' | 'backRight'
 export const PERSON_POSES: PersonPose[] = ['stand', 'walk1', 'walk2', 'sit']
+export const PERSON_DIRS: PersonDir[] = ['front', 'back', 'frontRight', 'backRight']
+/** 칸 방향(r0 ↙ · r1 ↖ · r2 ↗ · r3 ↘) → 직원 그림 방향 */
+export const personDirOf = (facing: Rot): PersonDir => (['front', 'back', 'backRight', 'frontRight'] as const)[facing]
 const ROWS: Record<PersonPose, Record<PersonDir, string[]>> = {
-  stand: { front: FRONT, back: BACK },
-  walk1: { front: WALK.front[0], back: WALK.back[0] },
-  walk2: { front: WALK.front[1], back: WALK.back[1] },
+  stand: { front: FRONT, back: BACK, frontRight: FRONT_R, backRight: BACK_R },
+  walk1: { front: WALK.front[0], back: WALK.back[0], frontRight: WALK.frontRight[0], backRight: WALK.backRight[0] },
+  walk2: { front: WALK.front[1], back: WALK.back[1], frontRight: WALK.frontRight[1], backRight: WALK.backRight[1] },
   sit: SIT,
 }
 
 /** 직원 한 장 (픽셀, 16 × 줄 수+2). 아래 가장자리 = 발끝, 가로 가운데 = 발 위치 */
 export function artPerson(pose: PersonPose, dir: PersonDir, look: Look) {
-  const rows = ROWS[pose][dir]
-  const col: Record<string, Color> = { h: look.h, H: mix(look.h, WHITE, 0.3), s: look.s, e: '#2a2230', r: '#f4a0a0', m: '#c2706a', c: look.c, C: mix(look.c, S.sh, 0.3), w: '#ffffff', p: look.p, b: look.b ?? '#3a3040' }
+  const rows = dress(ROWS[pose][dir], dir, look)
+  const col: Record<string, Color> = {
+    h: look.h, H: mix(look.h, WHITE, 0.3), s: look.s, e: '#2a2230', r: '#f4a0a0', m: '#c2706a', c: look.c, C: mix(look.c, S.sh, 0.3), w: '#ffffff', p: look.p, b: look.b ?? '#3a3040',
+    // 외관 소품: 빡빡이·안경테·선글라스·헤드셋·렌즈·포인트·캡·비니·베레모·넥타이·벨트
+    u: mix(look.h, look.s, 0.45), g: '#8a90aa', k: '#22232c', j: '#d8dbe6', L: '#bfe4ff', y: '#f06a8a',
+    q: '#d24a4a', Q: mix('#d24a4a', S.sh, 0.35), v: '#f0a040', V: mix('#f0a040', S.sh, 0.3), t: '#3a5ac8', T: mix('#3a5ac8', S.sh, 0.35), n: '#c03a48', K: '#2a2a34',
+  }
   const cv = new Cv(16, rows.length + 2)
   rows.forEach((row, y) => [...row].forEach((k, x) => col[k] && cv.set(x + 1, y + 1, C(col[k]))))
   outline(cv)
@@ -3324,10 +3762,10 @@ export function artPerson(pose: PersonPose, dir: PersonDir, look: Look) {
 /** 직원 한 장 (화면 캔버스) — 장면은 쓰는 자세부터 한 장씩 만든다 */
 export const drawPerson = (pose: PersonPose, dir: PersonDir, look: Look) => toCanvas(artPerson(pose, dir, look))
 
-/** 직원 그림 묶음: 서기·걷기 2프레임·앉기 × 앞/뒤 (화면 캔버스, 키 = `{pose}-{dir}`) */
+/** 직원 그림 묶음: 서기·걷기 2프레임·앉기 × 4방향 (화면 캔버스, 키 = `{pose}-{dir}`) */
 export function drawPersonSet(look: Look) {
   const out: Record<string, HTMLCanvasElement> = {}
-  for (const pose of PERSON_POSES) for (const dir of ['front', 'back'] as PersonDir[]) out[`${pose}-${dir}`] = toCanvas(artPerson(pose, dir, look))
+  for (const pose of PERSON_POSES) for (const dir of PERSON_DIRS) out[`${pose}-${dir}`] = toCanvas(artPerson(pose, dir, look))
   return out
 }
 

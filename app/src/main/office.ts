@@ -86,11 +86,13 @@ import { pickStaffPatch, type StaffPatch } from './staffPatch'
 import { isRemoteCall, REMOTE_MARK, remoteMarked } from './remoteContext'
 import * as db from './db'
 import { legacyLevelOfXp } from './isoMigrate'
-import type { GridItem } from '../shared/iso/furniture'
+import type { GridItem, SeatSetPart } from '../shared/iso/furniture'
 import { ExternalWatcher, upgradeAskHook } from './external'
 import { customMcpList, equipmentCatalog, mcpConfigs, saveCustomMcpList, setMcpProbe } from './equipment'
 import { parseCustomMcp, removeCustomMcp, upsertCustomMcp, type CustomMcpInput } from '../shared/customMcp.ts'
 import { browserMcpConfig } from './browser'
+import { computerMcpConfig } from './computer'
+import { COMPUTER_EQUIPMENT } from '../shared/computerTools.ts'
 import { BROWSER_EQUIPMENT } from '../shared/browserTools.ts'
 import { parseTranslations, pendingDescriptions, slashAction, toStaffCommands, translationPrompt, type RawCommand, type StaffCommand } from '../shared/slashCommands.ts'
 import { listManuals, removeManual, saveManual } from './manuals'
@@ -309,6 +311,11 @@ export class Office extends EventEmitter<{
             // 기본 장비 '브라우저': 직원별 프로필로 Playwright MCP를 붙인다 (실행 환경이 없으면 빼고 연다)
             if (name === BROWSER_EQUIPMENT) {
               const config = browserMcpConfig(s.id)
+              return config ? [[name, config]] : []
+            }
+            // 기본 장비 '컴퓨터 조작'(맥 전용)
+            if (name === COMPUTER_EQUIPMENT) {
+              const config = computerMcpConfig()
               return config ? [[name, config]] : []
             }
             return catalog.has(name) ? [[name, catalog.get(name)!.config]] : []
@@ -2303,6 +2310,11 @@ export class Office extends EventEmitter<{
     this.saveShopState(shopGrid.restoreGrid(this.shop, this.company().level, items))
   }
 
+  /** 책상 세트 옮기기 (책상+의자 한 번에). 겹침·길 막힘은 놓기와 같은 규칙 */
+  moveSeatSet(floor: number, parts: SeatSetPart[]) {
+    this.saveShopState(shopGrid.moveSeatSet(this.shop, this.company().level, floor, parts))
+  }
+
   setGear(staffId: string, slot: 'desk' | 'chair', itemId: string | null) {
     if (itemId && (!this.shop.owned[itemId] || shopItem(itemId)?.category !== slot)) return
     this.saveShopState({ ...this.shop, gear: { ...this.shop.gear, [staffId]: { ...this.shop.gear[staffId], [slot]: itemId ?? undefined } } })
@@ -2857,6 +2869,11 @@ export class Office extends EventEmitter<{
       this.scheduleEmit()
     }
     void run().catch((e) => console.error('[office] demoDay', e))
+  }
+
+  /** 창을 닫으면(맥 Dock·윈도우 트레이에 남아 PC는 계속 돈다) 진행 중인 데모데이를 정리해 끝낸다 — 다시 열었을 때 발표가 이어지지 않게 */
+  endLiveDemos() {
+    for (const m of this.meetings) if (m.kind === 'demo' && isMeetingLive(m)) this.endMeeting(m.id, 'wrapup')
   }
 
   /** 대표 반응: 박수·MVP는 칭찬 배지(회의당 MVP 1명, 단체방 축하), 한마디는 지식 창고 피드백. AI 호출 없음 */

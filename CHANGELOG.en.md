@@ -7,6 +7,23 @@ Writing rules
 - Write from the user's point of view, describing "what you can now do." Do not use technical names (file paths, program or library names, English abbreviations). If one is truly needed, put it once in parentheses after a plain-language explanation.
 - Development details (how it was built, where files are) go in `SPEC.md` and `docs/changelog-dev.md`.
 
+## [0.13.2] - 2026-10-27
+
+### New features
+- You can give staff a 'computer control' equipment. Equipped staff can look at your screen and work with the mouse and keyboard. Viewing the screen needs no approval; mouse and keyboard actions need approval in the approval inbox.
+- **You can place a desk from the shop at a staff member's seat, or remove it.**
+- **You can buy 20 new furniture and decor items at levels 11 to 20.** Two unlock at each level, and the number of floors does not change. From level 15, each level has one legendary item.
+
+### Improvements
+- **When you assign work to a staff member on another floor, they return to their own floor to work.**
+- **You can click desks while decorating.**
+- **Appearance changes show on screen right away.**
+- **You can select furniture that overlaps.**
+
+### Bug fixes
+- **A moved desk set stays where you moved it.**
+- **Demo Day runs to the end, and the finished state is kept after restarting the app.**
+
 ## [0.13.1] - 2026-10-27
 
 ### New features

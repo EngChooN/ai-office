@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 import { IS_MOBILE_SHELL } from '@/shell'
 import { t } from '@shared/i18n'
 import { BROWSER_EQUIPMENT } from '@shared/browserTools'
+import { COMPUTER_EQUIPMENT } from '@shared/computerTools'
 import type { CustomMcp } from '@shared/customMcp'
 import type { Equipment, EquipmentCatalog, EquipmentMcp, McpSourceKind } from '@shared/types'
 import { McpAddDialog, type McpAddTab } from './McpAddDialog'
@@ -72,8 +73,8 @@ export function McpSection({
     reloadCatalog()
   }
 
-  // 브라우저는 결재를 꼭 거치므로 "결재 없이 쓰기"에서 뺀다
-  const userMcp = eq.mcpServers.filter((n) => n !== BROWSER_EQUIPMENT)
+  // 브라우저·컴퓨터 조작은 결재를 꼭 거치므로 "결재 없이 쓰기"에서 뺀다
+  const userMcp = eq.mcpServers.filter((n) => n !== BROWSER_EQUIPMENT && n !== COMPUTER_EQUIPMENT)
   const isEmpty = servers.every((m) => m.isBuiltin)
 
   const toggle = (name: string) => setEq((e) => ({ ...e, mcpServers: e.mcpServers.includes(name) ? e.mcpServers.filter((x) => x !== name) : [...e.mcpServers, name] }))
@@ -202,8 +203,8 @@ function McpRow({
   const [isOpen, setIsOpen] = useState(false)
   const status = statusOf(m)
   const isDisabled = status === 'unsupported' && !isOn
-  const reason = m.isBuiltin ? (m.unavailable ?? t('equip.browser.desc')) : m.reasonText
-  const name = m.isBuiltin ? `🌐 ${t('equip.browser.name')}` : m.name
+  const reason = m.isBuiltin ? (m.unavailable ?? (m.name === COMPUTER_EQUIPMENT ? t('equip.computer.desc') : t('equip.browser.desc'))) : m.reasonText
+  const name = m.isBuiltin ? (m.name === COMPUTER_EQUIPMENT ? `🖱️ ${t('equip.computer.name')}` : `🌐 ${t('equip.browser.name')}`) : m.name
   return (
     <div className="text-xs">
       <div className="flex items-center gap-2 px-2 py-1.5">
@@ -223,6 +224,7 @@ function McpRow({
           </span>
           {m.detail && <code className="font-mono text-[10px] break-all">{m.detail}</code>}
           {isReasonShown && reason && <span className={cn(!(m.isBuiltin && !m.unavailable) && 'text-status-waiting')}>{reason}</span>}
+          {m.notice && <span className="text-status-waiting">{m.notice}</span>}
           {(onEdit || onDelete) && (
             <div className="flex gap-1">
               {onEdit && (

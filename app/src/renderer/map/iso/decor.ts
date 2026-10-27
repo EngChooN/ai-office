@@ -5,11 +5,11 @@ import * as Phaser from 'phaser'
 import { create } from 'zustand'
 import { useOffice, viewLevelOf } from '@/store'
 import { drawerCount } from '@shared/economy'
-import { cellsOf, sizeOf, specOf, type GridItem, type Rot } from '@shared/iso/furniture'
+import { cellsOf, sizeOf, specOf, type GridItem, type Rot, type SeatSetPart } from '@shared/iso/furniture'
 import { isInside } from '@shared/iso/grid'
 import { roomOf } from '@shared/iso/levels'
 import { canPlace, REASON_TEXT, type FloorState } from '@shared/iso/place'
-import { seatsOf } from '@shared/iso/seats'
+import { isAutoSeat, seatSetOf, seatsOf } from '@shared/iso/seats'
 import { setAutoOff, useSeatStatus } from './seatStatus'
 import { isReducedMotion } from '@/lib/reducedMotion'
 import type { IsoOfficeScene } from '../IsoOfficeScene'
@@ -24,6 +24,8 @@ export interface DecorHold {
   /** 빨강 이유 한 줄 */
   reason: string | null
   uid: string | null
+  /** 책상 세트로 옮기는 중이면 함께 가는 의자 (itemId·uid는 책상). 책상 칸에서 dx·dy만큼 떨어져 따라간다 */
+  partner?: { uid: string; itemId: string; dx: number; dy: number } | null
 }
 
 interface DecorUi {
@@ -73,6 +75,7 @@ export class DecorController {
   private readonly marks: Phaser.GameObjects.Graphics
   private readonly lines: Phaser.GameObjects.Graphics
   private ghost: Phaser.GameObjects.Image | null = null
+  private ghost2: Phaser.GameObjects.Image | null = null
   private readonly color = { ok: tokenColor('--status-working'), bad: tokenColor('--status-error'), pick: tokenColor('--primary'), line: tokenColor('--muted-foreground') }
   private press: { x: number; y: number; isMoved: boolean; isTouch: boolean; uid: string | null; timer: number | null } | null = null
   private isBusy = false
@@ -124,7 +127,7 @@ export class DecorController {
     if (isDecorating) this.drawGrid()
     useDecor.setState({ autoSeats: this.scene.autoSeatCount })
     // 고른 가구가 없어졌으면(다른 기기에서 넣음 등) 고르기를 푼다
-    if (ui.selected && !this.gridItems().some((g) => g.uid === ui.selected!.uid)) this.select(null)
+    if (ui.selected && !this.sceneItems().some((g) => g.uid === ui.selected!.uid)) this.select(null)
     if (ui.hold) this.hold(ui.hold)
     else this.drawSelected()
     if (isDecorating && ui.pendingTake) {
@@ -148,9 +151,18 @@ export class DecorController {
 
   /** ⑥ 놓인 가구를 들어 옮기기 시작 */
   pickUp(uid: string) {
-    const it = this.gridItems().find((g) => g.uid === uid)
+    const items = this.sceneItems()
+    const it = items.find((g) => g.uid === uid)
     if (!it) return
+    const set = seatSetOf(items, uid)
+    // 기본 자리는 책상·의자 한 벌로만 옮길 수 있다
+    if (isAutoSeat(uid) && set.length < 2) return this.say('이 자리는 옮길 수 없어요')
     this.select(null)
+    if (set.length === 2) {
+      const [desk, chair] = set
+      this.scene.setItemHidden([desk.uid, chair.uid])
+      return this.hold({ itemId: desk.itemId, rot: desk.rot, gx: desk.gx, gy: desk.gy, ok: false, reason: null, uid: desk.uid, partner: { uid: chair.uid, itemId: chair.itemId, dx: chair.gx - desk.gx, dy: chair.gy - desk.gy } })
+    }
     this.scene.setItemHidden(uid)
     this.hold({ itemId: it.itemId, rot: it.rot, gx: it.gx, gy: it.gy, ok: false, reason: null, uid })
   }
@@ -159,8 +171,10 @@ export class DecorController {
   rotate(dir: 1 | -1 = 1) {
     const { hold, selected } = useDecor.getState()
     const turn = (r: Rot) => ((r + dir + 4) % 4) as Rot
+    if (hold?.partner) return this.say('책상 세트는 돌릴 수 없어요')
     if (hold) return this.hold({ ...hold, rot: turn(hold.rot) })
     if (!selected) return
+    if (isAutoSeat(selected.uid) || seatSetOf(this.sceneItems(), selected.uid).length === 2) return this.say('책상 세트는 돌릴 수 없어요')
     const pose = { ...selected, rot: turn(selected.rot) }
     const r = canPlace(this.floorState(), pose, selected.uid)
     if (!r.ok) return this.say(REASON_TEXT[r.reason])
@@ -183,11 +197,28 @@ export class DecorController {
     }
     const floor = this.scene.currentFloor
     const left = drawerCount(useOffice.getState().shop, hold.itemId)
+    if (hold.partner) return this.confirmSet(hold, floor)
     const call: () => Promise<unknown> = hold.uid ? () => window.office.moveGridItem(hold.uid!, floor, hold.gx, hold.gy, hold.rot) : () => window.office.placeGridItem(hold.itemId, floor, hold.gx, hold.gy, hold.rot)
     void this.save(call, () => {
       this.drop()
       if (again && !hold.uid && left > 1) this.take(hold.itemId)
     })
+  }
+
+  /** 책상 세트 확정 — 기본 자리는 새 uid로 저장 가구가 되고, 앉은 직원은 새 의자로 따라간다 */
+  private confirmSet(hold: DecorHold, floor: number) {
+    const p = hold.partner!
+    const parts: SeatSetPart[] = [
+      { uid: hold.uid!, itemId: hold.itemId, gx: hold.gx, gy: hold.gy, rot: hold.rot, ...(isAutoSeat(hold.uid!) ? { toUid: crypto.randomUUID() } : {}) },
+      { uid: p.uid, itemId: p.itemId, gx: hold.gx + p.dx, gy: hold.gy + p.dy, rot: this.sceneItems().find((g) => g.uid === p.uid)?.rot ?? 0, ...(isAutoSeat(p.uid) ? { toUid: crypto.randomUUID() } : {}) },
+    ]
+    const chair = parts[1]
+    if (chair.toUid) this.scene.moveSeatMemory(chair.uid, chair.toUid)
+    void this.save(
+      () => window.office.moveSeatSet(floor, parts),
+      () => this.drop(),
+      () => chair.toUid && this.scene.moveSeatMemory(chair.toUid, chair.uid),
+    )
   }
 
   /** ⑤ 취소: 옮기던 가구는 제자리로, 꺼낸 가구는 서랍으로 (저장할 것 없음) */
@@ -200,6 +231,7 @@ export class DecorController {
     const { hold, selected } = useDecor.getState()
     const uid = hold?.uid ?? selected?.uid
     if (!uid) return this.cancel()
+    if (isAutoSeat(uid)) return this.say('기본 자리는 서랍에 넣을 수 없어요')
     const it = this.gridItems().find((g) => g.uid === uid)
     if (!it) return
     if (!isConfirmed && specOf(it.itemId).kind === 'chair') {
@@ -337,8 +369,11 @@ export class DecorController {
   private hold(h: DecorHold) {
     const pose = { itemId: h.itemId, gx: h.gx, gy: h.gy, rot: h.rot }
     const check = canPlace(this.floorState(), pose, h.uid ?? undefined)
+    if (h.partner) return this.holdSet(h)
     const next = { ...h, ok: check.ok, reason: check.ok ? null : REASON_TEXT[check.reason] }
     useDecor.setState({ hold: next })
+    this.ghost2?.destroy()
+    this.ghost2 = null
 
     const art = this.scene.itemArt(h.itemId, h.rot)
     const p = this.scene.worldOf(h.gx, h.gy)
@@ -350,10 +385,37 @@ export class DecorController {
     this.paint(cells, (k) => (bad.has(k) ? this.color.bad : this.color.ok))
   }
 
+  /** 책상 세트를 들고 있을 때: 책상 → 의자 순으로 놓을 수 있는지 보고 둘 다 그린다 */
+  private holdSet(h: DecorHold) {
+    const p = h.partner!
+    const chairNow = this.sceneItems().find((g) => g.uid === p.uid)
+    const rot = chairNow?.rot ?? 0
+    const desk = { itemId: h.itemId, gx: h.gx, gy: h.gy, rot: h.rot }
+    const chair = { itemId: p.itemId, gx: h.gx + p.dx, gy: h.gy + p.dy, rot }
+    const base = this.floorState()
+    const rest = base.items.filter((g) => g.uid !== h.uid && g.uid !== p.uid)
+    const deskCheck = canPlace({ ...base, items: rest }, desk)
+    const chairCheck = deskCheck.ok ? canPlace({ ...base, items: [...rest, { ...desk, uid: h.uid!, floor: base.floor }] }, chair) : deskCheck
+    useDecor.setState({ hold: { ...h, ok: chairCheck.ok, reason: chairCheck.ok ? null : REASON_TEXT[chairCheck.reason] } })
+    const draw = (pose: typeof desk, ghost: 'ghost' | 'ghost2') => {
+      const art = this.scene.itemArt(pose.itemId, pose.rot)
+      const w = this.scene.worldOf(pose.gx, pose.gy)
+      const img = (this[ghost] ??= this.scene.add.image(0, 0, art.key).setDepth(DEPTH.ghost).setAlpha(0.72))
+      img.setTexture(art.key).setOrigin(art.ax, art.ay).setPosition(w.x, w.y)
+    }
+    draw(desk, 'ghost')
+    draw(chair, 'ghost2')
+    const bad = new Set(chairCheck.ok ? [] : chairCheck.tiles.map(([x, y]) => `${x},${y}`))
+    const cells = [...cellsOf(desk), ...cellsOf(chair), ...(chairCheck.ok ? [] : chairCheck.tiles.map(([gx, gy]) => ({ gx, gy })))]
+    this.paint(cells, (k) => (bad.has(k) ? this.color.bad : this.color.ok))
+  }
+
   private drawSelected() {
     const { hold, selected } = useDecor.getState()
     if (hold) return
-    this.paint(selected && selected.floor === this.scene.currentFloor ? cellsOf(selected) : [], () => this.color.pick)
+    const set = selected ? seatSetOf(this.sceneItems(), selected.uid) : []
+    const cells = selected && selected.floor === this.scene.currentFloor ? (set.length ? set : [selected]).flatMap(cellsOf) : []
+    this.paint(cells, () => this.color.pick)
   }
 
   private paint(cells: { gx: number; gy: number }[], colorOf: (key: string) => number) {
@@ -412,6 +474,8 @@ export class DecorController {
     useDecor.setState({ hold: null })
     this.ghost?.destroy()
     this.ghost = null
+    this.ghost2?.destroy()
+    this.ghost2 = null
     this.marks.clear()
     this.lines.clear()
   }
@@ -445,6 +509,11 @@ export class DecorController {
     return useOffice.getState().shop.grid ?? []
   }
 
+  /** 이 층에 보이는 가구 — 저장된 것 + 기본 자리(저장하지 않는 가상 책상·의자) */
+  private sceneItems() {
+    return this.scene.floorItemsShown
+  }
+
   private floorItems() {
     return this.gridItems().filter((g) => g.floor === this.scene.currentFloor)
   }
@@ -464,10 +533,13 @@ export class DecorController {
     if (gx !== hold.gx || gy !== hold.gy) this.hold({ ...hold, gx, gy })
   }
 
-  /** 칸을 차지한 놓인 가구 (object 먼저 — 러그 위 가구를 고른다) */
+  /** 눌린 가구 — 그림 먼저, 없으면 칸을 차지한 놓인 가구 (object 먼저 — 러그 위 가구를 고른다) */
   private itemAt(wx: number, wy: number) {
+    // 가구 그림을 눌러도 고른다 (겹치면 앞쪽) — 못 맞히면 차지한 칸으로
+    const art = this.scene.itemAtPoint(wx, wy)
+    if (art) return art
     const { gx, gy } = this.scene.cellAt(wx, wy)
-    const hits = this.floorItems().filter((g) => cellsOf(g).some((c) => c.gx === gx && c.gy === gy))
+    const hits = this.sceneItems().filter((g) => cellsOf(g).some((c) => c.gx === gx && c.gy === gy))
     return hits.find((g) => specOf(g.itemId).layer === 'object') ?? hits[0]
   }
 

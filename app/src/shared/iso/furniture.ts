@@ -40,6 +40,16 @@ export interface GridItem {
   isOn?: boolean
 }
 
+/** 책상 세트 옮기기의 한 부분 (책상 또는 의자). uid가 저장 가구면 그 가구를 옮기고, 기본 자리(auto:)면 toUid로 새로 저장한다 */
+export interface SeatSetPart {
+  uid: string
+  toUid?: string
+  itemId: string
+  gx: number
+  gy: number
+  rot: Rot
+}
+
 /** 놓기 검사·차지 칸 계산에 필요한 만큼 */
 export type GridPose = Pick<GridItem, 'itemId' | 'gx' | 'gy' | 'rot'>
 
@@ -85,6 +95,16 @@ export const FURNITURE: Record<string, FurnitureSpec> = {
   piano: front(2, 2, 'piano'),
   aquarium: front(2, 1, 'aquarium'),
   trophy: front(2, 1),
+  // Lv.11~20 상점 가구 (0.14.0) — 1×1은 기본값이라 뺐다
+  'massage-chair': seat(1),
+  fireplace: spec(2, 1),
+  'yoga-mat': rug(1, 2),
+  'climbing-wall': spec(2, 1),
+  'sushi-belt': front(3, 1),
+  greenhouse: spec(2, 2),
+  planetarium: spec(2, 2),
+  'red-carpet': rug(1, 3),
+  helipad: rug(2, 2),
   'partition-low-fabric': divider(2, false),
   'partition-low-glass': divider(3, false),
   'partition-wall-white': divider(1, true),

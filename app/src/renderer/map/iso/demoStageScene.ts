@@ -5,6 +5,7 @@
 import * as Phaser from 'phaser'
 import { PIXEL, toWorld, type Origin } from '@shared/iso/grid'
 import { depthOrder, type IsoBox } from '@shared/iso/depth'
+import { walkAlong } from '@shared/iso/walkAlong'
 import type { DemoPhase, DemoReaction } from '@shared/gallery'
 import { isReducedMotion } from '@/lib/reducedMotion'
 import { isoLook } from '../IsoOfficeScene'
@@ -306,16 +307,10 @@ export class DemoStageScene extends Phaser.Scene {
   private stepActor(a: Actor, dt: number) {
     const wasWalking = a.path.length > 0
     if (!wasWalking && a.key && a.img.y === this.world(a.at).y + a.bow) return false
-    let budget = dt / STEP_S
-    while (budget > 0 && a.path.length) {
-      const to = a.path[0]
-      const dist = Math.hypot(to.gx - a.at.gx, to.gy - a.at.gy) || 0.001
-      const u = Math.min(1, budget / dist)
-      if (to.gx + to.gy !== a.at.gx + a.at.gy) a.dir = to.gx + to.gy < a.at.gx + a.at.gy ? 'back' : 'front'
-      a.at = { gx: a.at.gx + (to.gx - a.at.gx) * u, gy: a.at.gy + (to.gy - a.at.gy) * u, z: a.at.z + (to.z - a.at.z) * u }
-      budget -= dist * u
-      if (u >= 1) a.path.shift()
-    }
+    if (wasWalking) ({ at: a.at, path: a.path } = walkAlong(a.at, a.path, dt / STEP_S))
+    // 걷는 중이면 지금 구간 쪽을 본다 (다 왔으면 아래에서 자리·무대 기준으로 정한다)
+    const to = a.path[0]
+    if (to && to.gx + to.gy !== a.at.gx + a.at.gy) a.dir = to.gx + to.gy < a.at.gx + a.at.gy ? 'back' : 'front'
     const isWalking = a.path.length > 0
     const isHome = !isWalking && near(a.at, a.seat)
     // 자리에선 무대를 보고(등), 무대 위에선 객석을 본다(앞)

@@ -196,3 +196,23 @@ export function autoSeats(state: FloorState, need: number, prev: readonly GridIt
   for (let gy = 0; gy < rows - 1 && out.length < need * 2; gy++) for (let gx = 0; gx < cols - 1 && out.length < need * 2; gx++) tryPut(gx, gy)
   return out
 }
+
+/**
+ * 책상 세트: 책상(kind 'desk', 2×1) 하나와 그 책상을 보고 앉는 의자 하나 — 책상 쪽에서도 의자 쪽에서도 같은 둘을 돌려준다.
+ * 책상 하나를 여러 의자가 보거나 세트가 아니면 눌린 가구 하나만 돌려준다 (옮기기를 하나씩)
+ */
+export function seatSetOf(items: readonly GridItem[], uid: string): GridItem[] {
+  const it = items.find((g) => g.uid === uid)
+  if (!it) return []
+  const facing = (chair: GridItem) => {
+    const s = spotsOf(chair).find((p) => p.use === 'sit')
+    if (!s) return null
+    const [dx, dy] = FACE_STEP[s.face]
+    return items.find((d) => d.floor === chair.floor && specOf(d.itemId).kind === 'desk' && cellsOf(d).some((c) => c.gx === s.gx + dx && c.gy === s.gy + dy)) ?? null
+  }
+  const kind = specOf(it.itemId).kind
+  const desk = kind === 'desk' ? it : kind === 'chair' ? facing(it) : null
+  if (!desk) return [it]
+  const chairs = items.filter((c) => c.floor === desk.floor && specOf(c.itemId).kind === 'chair' && facing(c)?.uid === desk.uid)
+  return chairs.length === 1 && cellsOf(desk).length === 2 ? [desk, chairs[0]] : [it]
+}

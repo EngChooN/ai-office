@@ -104,6 +104,7 @@ export const OFFICE_METHODS = [
   'setGridItemOn',
   'stowAllGrid',
   'restoreGridItems',
+  'moveSeatSet',
   'setGear',
   'missions',
   'claimMission',

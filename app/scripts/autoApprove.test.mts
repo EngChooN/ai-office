@@ -4,6 +4,7 @@ import { test } from 'node:test'
 import { autoApprove, autoKindOf, autoStep, autoSummaryText, autoWindow, commandWaits, formatRemaining, planToConfig } from '../src/shared/autoApprove.ts'
 import { findRiskyCommand } from '../src/shared/bashPolicy.ts'
 import { BROWSER_EQUIPMENT, browserVerdict } from '../src/shared/browserTools.ts'
+import { COMPUTER_EQUIPMENT, computerVerdict } from '../src/shared/computerTools.ts'
 import { buildTrayMenu, menuKey, type TrayMenuActions } from '../src/main/trayMenu.ts'
 import { AUTO_APPROVE_OFF, type OfficeSnapshot, type Staff } from '../src/shared/types.ts'
 
@@ -376,4 +377,15 @@ test('브라우저 장비: 조회는 허용, 이동·클릭·입력·업로드·
   // 다른 MCP 서버의 같은 이름 도구는 브라우저 판정이 아니라 평소 MCP 규칙을 따른다
   assert.equal(browserVerdict('mcp__playwright__browser_snapshot', {}), null)
   assert.equal(browserVerdict('mcp__office__capture_screen', {}), null)
+})
+
+test('컴퓨터 조작 장비: 화면 보기만 허용, 이동·클릭·입력·스크롤은 결재를 기다린다', () => {
+  const c = `mcp__${COMPUTER_EQUIPMENT}__computer`
+  for (const action of ['get_screenshot', 'get_cursor_position']) assert.equal(computerVerdict(c, { action }), 'allow', action)
+  for (const action of ['mouse_move', 'left_click', 'right_click', 'double_click', 'left_click_drag', 'type', 'key', 'scroll', 'new_action']) assert.equal(computerVerdict(c, { action }), 'wait', action)
+  assert.equal(computerVerdict(c, {}), 'wait')
+  assert.equal(computerVerdict(`mcp__${COMPUTER_EQUIPMENT}__other`, { action: 'get_screenshot' }), 'wait')
+  assert.equal(computerVerdict('mcp__computer-use__computer', { action: 'get_screenshot' }), null)
+  // 자동결재 중에도 조작은 기다리고, 스크린샷은 통과한다
+  assert.equal(computerVerdict(c, { action: 'left_click' }), 'wait')
 })

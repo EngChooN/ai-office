@@ -2,6 +2,21 @@
 
 버전은 SemVer. 기능 크기 기준으로 올린다. 버전마다 **새 기능 / 개선 / 버그 수정**으로 나눠 적는다(앱의 "업데이트 소식"이 이 파일을 그대로 보여 준다).
 
+## [0.13.2] - 2026-10-27
+
+### 새 기능
+- 컴퓨터 조작 장비(`office-computer` MCP): `app/src/main/computer.ts`(장비 등록·권한 설정), `app/src/shared/computerTools.ts`(도구 판정). 화면 보기는 결재 없이, 이동·클릭·입력·스크롤은 결재함으로 보내며 자동결재 규칙과 같은 기준을 쓴다.
+- 레벨 11~20 상점 가구·소품 20종: `app/src/shared/economy.ts` 가격·해금, `app/src/shared/iso/`와 `isoArt.ts` 그림. 설계는 `docs/specs/office-iso-levels.md`의 'Lv.11~20 상점 가구·소품' 절.
+- 다른 층 방문 상태: `app/src/renderer/map/iso/floorVisits.ts`(화면에서만 보관, 저장·동기화 없음). 일을 맡기면 직원이 자기 층으로 돌아온다.
+- 데모데이 발표장 걷기: `app/src/shared/iso/walkAlong.ts`(순수 함수, 장면과 테스트가 같이 씀). 남은 걸음을 0으로 만들어 항상 끝나게 했다.
+
+### 개선
+- 꾸미기 중 책상 클릭, 겹친 가구 선택, 생김새 즉시 반영을 장면(`IsoOfficeScene.ts`, `OfficeMap.tsx`)에서 처리.
+
+### 버그 수정
+- 책상 세트 이동 상태 유지, 데모데이 종료 상태가 재시작 뒤에도 유지되도록 수정(세부 위치는 커밋 diff 참고).
+- 맥 서명: 하위 실행 파일(`claude`)을 다시 서명할 때 원래 엔타이틀먼트와 hardened runtime을 보존(`app/forge.config.mts` `signNested`). 빠지면 JIT가 막힐 수 있었다.
+
 ## [0.13.1] - 2026-10-27
 
 ### 새 기능

@@ -9,7 +9,7 @@ import type { ShopState } from '@shared/economy'
 import { isMeetingLive, type Meeting, type Settings, type Staff, type Team } from '@shared/types'
 import { decodeLook, HAIR_COLORS, PANTS, SKINS, TOP_COLORS } from '@shared/look'
 import { PIXEL, TILE_H, TILE_W, cellKey, isInside, miniFocus, toGrid, toWorld, type Cell, type Room } from '@shared/iso/grid'
-import { cellsOf, facingOf, specOf, spotsOf, type GridItem, type Rot } from '@shared/iso/furniture'
+import { cellsOf, FACE_STEP, facingOf, specOf, spotsOf, type GridItem, type Rot } from '@shared/iso/furniture'
 import { fixedTiles, nextSeatCap, seatCapOf, type FixedTile, type FloorState } from '@shared/iso/place'
 import { roomOf } from '@shared/iso/levels'
 import { buildWalkMap, entranceOf, findPath, reachable, waitCellFor, type WalkMap } from '@shared/iso/path'
@@ -18,13 +18,14 @@ import { depthOrder, edgeBox, hidesMover, placeMovers, type IsoBox } from '@shar
 import { meetingLayoutOf, meetingSeatFor, type MeetingLayout } from '@shared/iso/meeting'
 import { setAutoOff, useSeatStatus } from './iso/seatStatus'
 import { ITEM_ACTIONS } from '@shared/iso/actions'
-import { HALL_SIT_Z, MEETING_CHAIR, artMeetingChair, isSplitChair, PODIUM_KEY, WALL_FADE_ALPHA, ZONE_FLOOR_KINDS, artHallRow, artMeetingRoom, artMeetingTable, artPodium, artPlanEdges, artZoneFloor, drawItem, drawPerson, drawPet, PET_HOMES, type PetKind, type PetPose, drawPersonShadow, drawPlanRoom, finishKey, finishLabel, finishOf, hallRowKey, meetingTableKey, planRoomTextureKey, withSurfaces, zoneFloorKey, type Finish, type MeetingTableKind, type ZoneFloor, seatHeight, toCanvas, type ArtBox, type ItemArt, type Look, type PersonDir, type PersonPose } from './iso/isoArt'
+import { HALL_SIT_Z, MEETING_CHAIR, artMeetingChair, isSplitChair, PODIUM_KEY, WALL_FADE_ALPHA, ZONE_FLOOR_KINDS, artHallRow, artMeetingRoom, artMeetingTable, artPodium, artPlanEdges, artZoneFloor, drawItem, drawPerson, drawPet, PET_HOMES, type PetKind, type PetPose, drawPersonShadow, drawPlanRoom, PERSON_DIRS, personDirOf, finishKey, finishLabel, finishOf, hallRowKey, meetingTableKey, planRoomTextureKey, withSurfaces, zoneFloorKey, type Finish, type MeetingTableKind, type ZoneFloor, seatHeight, toCanvas, type ArtBox, type ItemArt, type Look, type PersonDir, type PersonPose } from './iso/isoArt'
 import { playLevelUpFx } from './iso/levelUpFx'
 import { pinchStep } from './gestures'
 import { isNightTime } from '@shared/dayNight'
 import { DecorController, useDecor } from './iso/decor'
 import { MotionPlayer } from './iso/motionPlayer'
 import { workersOf } from '@shared/iso/propMotion'
+import { endVisit, headcountOf, startVisit, takeCameBack, useFloorVisits, type Visit } from './iso/floorVisits'
 
 /** 세계 여백 (화면 px). 위쪽은 뒷벽 위로 이름표·말풍선 자리 */
 const MARGIN = 40
@@ -70,13 +71,19 @@ const DEPTH = { floor: -10_000, night: 50_000, levelUp: 55_000, label: 60_000, t
 const STATUS_LABEL: Record<Staff['status'], string> = { working: '작업 중', waiting: '확인 필요', idle: '대기', offline: '퇴근', error: '오류' }
 const EMOTES: Partial<Record<string, string>> = { 'working>idle': '✅', 'idle>working': '💡', '*>waiting': '🙋', '*>error': '💦' }
 /** 쉬는 직원이 고르는 행동 비율 (칸 사무실에 맞게 줄인 값) */
-const PLAN_WEIGHTS: ['desk' | 'fun' | 'rest' | 'office' | 'wander', number][] = [
+const PLAN_WEIGHTS: ['desk' | 'fun' | 'rest' | 'office' | 'wander' | 'visit', number][] = [
   ['desk', 34],
   ['fun', 22],
   ['rest', 18],
   ['office', 10],
   ['wander', 16],
+  ['visit', 6],
 ]
+/** 다른 층에 놀러 가 머무는 시간 */
+const VISIT_MIN_MS = 60_000
+const VISIT_MAX_MS = 150_000
+/** 놀러 간 층이 화면에 없으면 이만큼 더 지나서 돌려보낸다 (그 층 장면이 계단으로 걸어 나가게 할 몫) */
+const VISIT_GRACE_MS = 30_000
 
 /** 구역 가중치 (같은 종류 안에서 구역 안 자리를 이만큼 더 고른다) · 구역별 말풍선 (구역 id 앞부분 = 바닥 종류) */
 const ZONE_WEIGHT = 2
@@ -93,7 +100,8 @@ const ZONE_SAY: Partial<Record<string, string[]>> = {
   ceo: ['대표님 자리 구경…'],
 }
 
-type Mode = 'desk' | 'away' | 'meeting' | 'home' | 'wait'
+/** leave: 다른 층으로 가려고(또는 놀러 왔다 돌아가려고) 계단으로 걷는 중 */
+type Mode = 'desk' | 'away' | 'meeting' | 'home' | 'wait' | 'leave'
 type Category = 'fun' | 'rest' | 'office'
 
 /** 쉬는 직원이 찾아가는 자리 (기술 설계 6-3절) — x·y 대신 칸, face는 rot */
@@ -182,6 +190,8 @@ interface FurnPart {
   img: Phaser.GameObjects.Image
   box: ArtBox
   item: GridItem
+  /** 직원 상점 책상·의자(gear)로 바꿔 그린 품목 id (없으면 item 그대로) */
+  skin?: string
   /** 그릴 때의 바닥 (원점이 바뀌면 다시 그린다) */
   floorKey: string
   /** 뒤에 직원이 가려지면 반투명으로 하는 안쪽 벽 조각 (G3 A) */
@@ -202,15 +212,15 @@ const pickZoned = (spots: Spot[]) => {
   }
   return spots[spots.length - 1]
 }
-/** 앱 생김새(부품 번호) → 칸 사무실 직원 그림 색 */
+/** 앱 생김새(부품 번호) → 칸 사무실 직원 그림 (색 + 머리 모양·윗옷·얼굴·머리 소품). 텍스처 키는 avatar 번호라 생김새를 바꾸면 새 그림이 된다 */
 export const isoLook = (avatar: number): Look => {
   const l = decodeLook(avatar)
-  return { h: HAIR_COLORS[l.hairColor % HAIR_COLORS.length][0], s: SKINS[l.skin % SKINS.length], c: TOP_COLORS[l.topColor % TOP_COLORS.length][0], p: PANTS[l.pants % PANTS.length] }
+  return { h: HAIR_COLORS[l.hairColor % HAIR_COLORS.length][0], s: SKINS[l.skin % SKINS.length], c: TOP_COLORS[l.topColor % TOP_COLORS.length][0], p: PANTS[l.pants % PANTS.length], hair: l.hairStyle, top: l.top, face: l.face, head: l.head }
 }
 /** 그림 캔버스를 텍스처로. addCanvas(CanvasTexture)는 만들 때 getImageData로 픽셀을 다시 읽어 폰에서 느리다 — 그림은 고치지 않으니 보통 텍스처로 */
 const addArt = (textures: Phaser.Textures.TextureManager, key: string, canvas: HTMLCanvasElement) => textures.addImage(key, canvas as unknown as HTMLImageElement)
 type ArtMeta = ArtBox & { ax: number; ay: number }
-const PERSON_FRAMES: [PersonPose, PersonDir][] = (['stand', 'sit', 'walk1', 'walk2'] as const).flatMap((p) => [[p, 'front'], [p, 'back']] as [PersonPose, PersonDir][])
+const PERSON_FRAMES: [PersonPose, PersonDir][] = (['stand', 'sit', 'walk1', 'walk2'] as const).flatMap((p) => PERSON_DIRS.map((d) => [p, d] as [PersonPose, PersonDir]))
 /** 한 프레임에 미리 그려 둘 직원 그림 수 (쓰는 자세는 바로, 나머지는 프레임 사이에) */
 const WARM_PER_FRAME = 2
 /** 안 쓰게 된 방 그림을 지우기 전 기다리는 시간 — 레벨업 연출(2.8초)이 예전 방 그림을 덮어 쓰는 동안은 둔다 */
@@ -253,6 +263,8 @@ export class IsoOfficeScene extends Phaser.Scene {
   private warmQueue: [number, PersonPose, PersonDir][] = []
   private walk!: WalkMap
   private seatOf = new Map<string, Seat>()
+  /** 가구 uid → 앉은 직원이 쓰는 상점 책상·의자(gear) 품목 id */
+  private skinOf = new Map<string, string>()
   /** 직전 자리 배정 (직원 id → 자리) — 의자를 옮기거나 더해도 다른 직원이 자리를 바꾸지 않게 */
   private seatMemory: SeatMemory = new Map()
   /** 층마다 직전 기본 자리 — 가구를 놓아도 남은 기본 자리는 그 자리에 */
@@ -262,6 +274,10 @@ export class IsoOfficeScene extends Phaser.Scene {
   private spots: Spot[] = []
   private hereMeetings: Meeting[] = []
   private awayMeeting = new Map<string, number>()
+  /** 다른 층에서 놀러 와 이 층에 있는 직원 id */
+  private guests = new Set<string>()
+  /** 층마다 자리가 있는 직원 id (놀러 갈 층 고르기) */
+  private homeIdsByFloor: string[][] = []
   private actors = new Map<string, Actor>()
   private pets = new Map<string, Pet>()
   private isFirstSync = true
@@ -280,7 +296,7 @@ export class IsoOfficeScene extends Phaser.Scene {
   /** 소품 연출 (지도 장면에만 — 미니 뷰는 멈춘 그림) */
   private motion: MotionPlayer | null = null
   /** 꾸미기로 들고 있는 놓인 가구 — 그림을 숨긴다 */
-  private hiddenUid: string | null = null
+  private hiddenUids: ReadonlySet<string> = new Set()
 
   constructor(opts: { key?: string; floor?: number } = {}) {
     super(opts.key ?? 'office')
@@ -335,6 +351,15 @@ export class IsoOfficeScene extends Phaser.Scene {
       if (this.sys.isSleeping()) this.isSyncPending = true
       else syncNow()
     })
+    const unsubscribeOffice = this.unsubscribe
+    const unsubscribeVisits = useFloorVisits.subscribe(() => {
+      if (this.sys.isSleeping()) this.isSyncPending = true
+      else syncNow()
+    })
+    this.unsubscribe = () => {
+      unsubscribeOffice()
+      unsubscribeVisits()
+    }
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.unsubscribe?.())
     this.events.once(Phaser.Scenes.Events.DESTROY, () => this.unsubscribe?.())
     // 캡처·시험 스크립트용: 주소 쿼리로 켰을 때만 지도 장면을 창에 걸어 둔다
@@ -365,12 +390,17 @@ export class IsoOfficeScene extends Phaser.Scene {
     // 같은 레벨·층에서 벽지·바닥재만 바꿨으면 다시 굽기만 하고 레벨업 연출·카메라 맞추기는 하지 않는다
     const isRoomChanged = this.bakeFloor(state.shop.surfaces) && !(this.level === prev.level && !isFloorChanged && !this.isFirstSync)
 
+    // 자리는 이 층 직원 몫으로 정하고, 그리는 건 놀러 나간 사람을 빼고 놀러 온 사람을 더한다
+    const { visits } = useFloorVisits.getState()
+    this.homeIdsByFloor = floors.map((f) => f.staff.map((s) => s.id))
+    this.guests = new Set(allStaff.filter((s) => visits[s.id]?.floor === this.floor).map((s) => s.id))
     const staff = here.staff
     this.layoutFurniture(state.shop, staff, teams, allStaff)
     this.overlay.setSize(this.world.w, this.world.h).setFillStyle(0x0a1030, isNightTime(settings) ? 0.2 : 0)
 
+    const shown = [...staff.filter((s) => !visits[s.id]), ...allStaff.filter((s) => this.guests.has(s.id))]
     const seen = new Set<string>()
-    for (const s of staff) {
+    for (const s of shown) {
       seen.add(s.id)
       const actor = this.actors.get(s.id) ?? this.createActor(s)
       const prev = actor.staff
@@ -566,7 +596,7 @@ export class IsoOfficeScene extends Phaser.Scene {
     // 전부 치우기로 비운 사무실은 기본 자리를 깔지 않는다. 건물 어디든 책상·의자가 다시 놓이면 평소대로
     if (useSeatStatus.getState().isAutoOff && grid.some((it) => ['desk', 'chair'].includes(specOf(it.itemId).kind))) setAutoOff(false)
     const isAutoOff = useSeatStatus.getState().isAutoOff
-    const seatInput = JSON.stringify([this.floorKey, this.floor, isAutoOff, placed, staff.map((s) => [s.id, s.teamId, s.hiredAt]), teams.map((t) => [t.id, t.kind, t.leadId])])
+    const seatInput = JSON.stringify([this.floorKey, this.floor, isAutoOff, placed, staff.map((s) => [s.id, s.teamId, s.hiredAt]), teams.map((t) => [t.id, t.kind, t.leadId]), shop.gear ?? {}])
     if (seatInput === this.seatInputKey) return
     this.seatInputKey = seatInput
     const state: FloorState = { level: this.level, floor: this.floor, items: placed, room: this.room, fixed: this.fixed }
@@ -583,24 +613,25 @@ export class IsoOfficeScene extends Phaser.Scene {
     // 다른 층 직원의 기억은 남겨 둔다 (층을 오가도 자리 그대로)
     this.seatMemory = new Map([...this.seatMemory, ...plan.memory])
     this.seatOf = plan.seats
+    this.skinOf = this.gearSkins(items, staff, shop.gear ?? {})
     if (this.fixedFloor === null) {
       const cap = seatCapOf(this.level, this.floor)
       useSeatStatus.setState({ short: staff.filter((s) => !plan.seats.has(s.id)).length, cap, next: nextSeatCap(this.level, this.floor) })
     }
-    const key = JSON.stringify([this.floorKey, items])
+    const key = JSON.stringify([this.floorKey, items, [...this.skinOf]])
     if (key === this.itemsKey) return
     this.itemsKey = key
     this.items = items
     // 그대로인 가구 그림은 둔다. 바닥을 새로 구웠으면(원점이 바뀜) 모두 다시 그린다
-    const keep = new Set(items.map((it) => `${this.floorKey}|${it.uid}|${it.itemId}|${it.gx}|${it.gy}|${it.rot}`))
+    const keep = new Set(items.map((it) => `${this.floorKey}|${it.uid}|${it.itemId}|${it.gx}|${it.gy}|${it.rot}|${this.skinOf.get(it.uid) ?? ''}`))
     for (const [id, parts] of this.parts) {
       const it = parts[0]?.item
-      if (it && keep.has(`${parts[0].floorKey}|${id}|${it.itemId}|${it.gx}|${it.gy}|${it.rot}`)) continue
+      if (it && keep.has(`${parts[0].floorKey}|${id}|${it.itemId}|${it.gx}|${it.gy}|${it.rot}|${parts[0].skin ?? ''}`)) continue
       for (const p of parts) p.img.destroy()
       this.parts.delete(id)
     }
-    for (const it of items) if (!this.parts.has(it.uid)) this.parts.set(it.uid, this.drawFurniture(it))
-    this.setItemHidden(this.hiddenUid)
+    for (const it of items) if (!this.parts.has(it.uid)) this.parts.set(it.uid, this.drawFurniture(it, this.skinOf.get(it.uid)))
+    this.setItemHidden([...this.hiddenUids])
     this.walk = buildWalkMap(this.room, items, this.fixed)
     this.buildSpots()
     this.syncPets()
@@ -747,7 +778,7 @@ export class IsoOfficeScene extends Phaser.Scene {
       const frame = Math.floor(p.t / (walking ? PET_FRAME_S : PET_REST_FRAME_S)) % 2
       const pose = `${walking ? 'walk' : 'rest'}${frame}` as PetPose
       const foot = this.wpt(p.x, p.y, p.z)
-      const visible = this.hiddenUid !== p.uid
+      const visible = !this.hiddenUids.has(p.uid)
       p.img.setTexture(this.petTexture(p.kind, pose)).setFlipX(p.flip).setPosition(foot.x, foot.y).setVisible(visible)
       const ground = this.wpt(p.x, p.y)
       p.shadow.setPosition(ground.x, ground.y).setVisible(visible && p.z < 1)
@@ -803,12 +834,29 @@ export class IsoOfficeScene extends Phaser.Scene {
     return { img, box: { x: m.x, y: m.y, w: m.w, d: m.d, z: m.z, h: m.h }, item, floorKey: this.floorKey }
   }
 
-  private drawFurniture(item: GridItem): FurnPart[] {
+  /** 앉은 직원이 상점에서 산 책상·의자를 배정받았으면 그 의자·마주 보는 책상을 그 그림으로 바꾼다 (한 가구에 여럿이면 먼저 배정된 직원) */
+  private gearSkins(items: GridItem[], staff: Staff[], gear: ShopState['gear']) {
+    const skins = new Map<string, string>()
+    for (const s of staff) {
+      const g = gear[s.id]
+      const seat = this.seatOf.get(s.id)
+      if (!g || !seat) continue
+      if (g.chair && !skins.has(seat.uid) && items.some((i) => i.uid === seat.uid)) skins.set(seat.uid, g.chair)
+      if (g.desk) {
+        const [dx, dy] = FACE_STEP[seat.face]
+        const desk = items.find((i) => specOf(i.itemId).kind === 'desk' && cellsOf(i).some((c) => c.gx === seat.gx + dx && c.gy === seat.gy + dy))
+        if (desk && !skins.has(desk.uid)) skins.set(desk.uid, g.desk)
+      }
+    }
+    return skins
+  }
+
+  private drawFurniture(item: GridItem, skin?: string): FurnPart[] {
     // 의자는 좌석·등받이 두 장 — 앉은 직원을 그 사이에 끼운다 (등받이 없는 의자는 한 장)
     const roles: ('seat' | 'back' | undefined)[] = isSplitChair(item.itemId) ? ['seat', 'back'] : [undefined]
     return roles.flatMap((role) => {
-      const key = this.itemTexture(item.itemId, item.rot, role)
-      return role === 'back' && !this.artMeta.get(key)!.h ? [] : [this.placeArt(key, item)]
+      const key = this.itemTexture(skin ?? item.itemId, item.rot, role)
+      return role === 'back' && !this.artMeta.get(key)!.h ? [] : [{ ...this.placeArt(key, item), skin }]
     })
   }
 
@@ -851,7 +899,11 @@ export class IsoOfficeScene extends Phaser.Scene {
     const emote = this.crisp(this.add.text(0, -58, '', { fontFamily: FONT, fontSize: '16px' }).setOrigin(0.5, 1).setAlpha(0))
     const label = this.add.container(0, 0, [name, bubble, emote]).setDepth(DEPTH.label)
     container.setInteractive({ useHandCursor: true, hitArea: new Phaser.Geom.Rectangle(-16, -54, 32, 58), hitAreaCallback: Phaser.Geom.Rectangle.Contains })
-    container.on('pointerdown', () => useOffice.getState().select(s.id))
+    container.on('pointerdown', () => {
+      // 꾸미기 중엔 가구 선택이 우선 — 직원 패널이 열리면 선택창이 밀려 엉뚱한 버튼을 누르게 된다
+      const st = useOffice.getState()
+      if (!st.isDecorating) st.select(s.id)
+    })
     container.on('pointerover', () => (this.hoverId = s.id))
     container.on('pointerout', () => {
       if (this.hoverId === s.id) this.hoverId = null
@@ -888,7 +940,14 @@ export class IsoOfficeScene extends Phaser.Scene {
       prevStatus: s.status,
     }
     this.actors.set(s.id, a)
-    if (this.isFirstSync || s.kind === 'external') {
+    const isGuest = this.guests.has(s.id)
+    if (isGuest || takeCameBack(s.id)) {
+      // 다른 층에서 왔다(놀러 왔거나 돌아왔다) — 계단에서 나타난다
+      const at = this.stairsCell(this.entrance()) ?? this.entrance()
+      this.setCell(a, at.gx, at.gy)
+      if (isGuest) this.plan(a, true)
+      else this.goDesk(a, true)
+    } else if (this.isFirstSync || s.kind === 'external') {
       // 처음 그릴 때는 걷지 않고 하던 일 자리에 바로 둔다
       if (s.meetingId && this.meetingOf(s.id)) this.goMeeting(a, false)
       else if (isBusy(s) || !this.plan(a, false)) this.goDesk(a, false)
@@ -919,6 +978,11 @@ export class IsoOfficeScene extends Phaser.Scene {
   /** 상태 변화: 일이 오면 자리로, 회의는 회의실로, 일이 끝나면 잠시 뒤 쉬러 간다 */
   private react(a: Actor, prev: Staff) {
     const s = a.staff
+    // 놀러 온 직원은 일·회의가 생기면 계단으로 나가 자기 층으로 돌아간다
+    if (this.guests.has(s.id)) {
+      if (s.status !== 'idle' || s.meetingId) this.leaveFloor(a)
+      return
+    }
     if (s.meetingId && this.meetingOf(s.id)) {
       if (a.mode !== 'meeting' && a.goal?.mode !== 'meeting') this.goMeeting(a, true)
       return
@@ -940,7 +1004,7 @@ export class IsoOfficeScene extends Phaser.Scene {
   /** 의자 품목마다 앉는 높이가 다르다 (바 의자 등) */
   private sitZOf(uid: string) {
     const it = this.items.find((x) => x.uid === uid)
-    return (it && seatHeight(it.itemId)) ?? SIT_Z
+    return (it && seatHeight(this.skinOf.get(uid) ?? it.itemId)) ?? SIT_Z
   }
 
   /** 자기 자리(배정된 의자)로. 자리가 없으면 출입구 옆에서 기다린다 */
@@ -1014,6 +1078,13 @@ export class IsoOfficeScene extends Phaser.Scene {
         break
       }
     }
+    const isGuest = this.guests.has(a.staff.id)
+    if (choice === 'visit') {
+      if (!isGuest && isWalking && this.goVisit(a)) return true
+      choice = 'wander'
+    }
+    // 놀러 온 층에는 자기 자리가 없다
+    if (choice === 'desk' && isGuest) choice = 'wander'
     if (choice !== 'desk' && choice !== 'wander') {
       const free = this.spots.filter((s) => s.category === choice && !s.takenBy)
       const spot = free.length ? pickZoned(free) : undefined
@@ -1035,8 +1106,53 @@ export class IsoOfficeScene extends Phaser.Scene {
         return true
       }
     }
+    if (isGuest) return true
     if (a.mode !== 'desk' || a.goal) this.goDesk(a, isWalking)
     return Boolean(a.seat)
+  }
+
+  /** 계단·엘리베이터 앞 칸 (from에서 닿는 칸 중 가장 가까운). 층이 하나뿐이면 null */
+  private stairsCell(from: Cell): Cell | null {
+    const stairs = this.fixed.filter((t) => t.kind === 'stairs')
+    if (!stairs.length || !this.walk) return null
+    return this.nearestReachable(from, { gx: Math.max(...stairs.map((t) => t.gx)), gy: Math.max(...stairs.map((t) => t.gy)) })
+  }
+
+  /** 다른 층에 놀러 간다: 계단까지 걸어가 사라진다. 사람이 가장 적은 층으로 (같으면 아무 데나) */
+  private goVisit(a: Actor) {
+    if (a.staff.status !== 'idle' || a.staff.meetingId) return false
+    const { visits } = useFloorVisits.getState()
+    const others = this.homeIdsByFloor.map((ids, i) => ({ floor: i + 1, n: headcountOf(i + 1, ids, visits) })).filter((f) => f.floor !== this.floor)
+    if (!others.length) return false
+    const least = Math.min(...others.map((f) => f.n))
+    const to = pick(others.filter((f) => f.n === least)).floor
+    return this.leaveFloor(a, () => {
+      if (a.staff.status === 'idle' && !a.staff.meetingId) startVisit(a.staff.id, to, Date.now() + rand(VISIT_MIN_MS, VISIT_MAX_MS))
+      else this.goDesk(a, true)
+    })
+  }
+
+  /** 화면에 없는 층에 놀러 간 직원 정리 (지도 장면만): 일·회의가 생겼거나 시간이 지났거나 그 층이 없어졌으면 바로 돌려보낸다 */
+  private settleVisits(allStaff: Staff[], visits: Record<string, Visit>) {
+    for (const [id, v] of Object.entries(visits)) {
+      if (v.floor === this.floor) continue
+      const s = allStaff.find((x) => x.id === id)
+      if (!s || s.status !== 'idle' || s.meetingId || Date.now() >= v.until + VISIT_GRACE_MS || v.floor > this.homeIdsByFloor.length) endVisit(id)
+    }
+  }
+
+  /** 계단으로 걸어가 도착하면 onGone (기본: 놀러 온 직원이 자기 층으로 돌아간다). 이미 가는 중이거나 계단이 없으면 false */
+  private leaveFloor(a: Actor, onGone = () => endVisit(a.staff.id)) {
+    if (a.goal?.mode === 'leave' || (a.mode === 'leave' && !a.goal)) return true
+    const cell = this.stairsCell({ gx: Math.floor(a.x), gy: Math.floor(a.y) })
+    if (!cell) {
+      if (this.guests.has(a.staff.id)) onGone()
+      return false
+    }
+    this.release(a)
+    // 도착한 프레임에 이 직원을 지우면 같은 프레임의 draw가 지운 그림을 만진다 — 다음 프레임으로 미룬다
+    this.walkTo(a, { ...cell, mode: 'leave', isSitting: false, face: 1, onArrive: () => this.time.delayedCall(0, onGone) })
+    return true
   }
 
   private arriveAt(a: Actor, spot: Spot) {
@@ -1167,13 +1283,17 @@ export class IsoOfficeScene extends Phaser.Scene {
     const now = this.time.now
     const state = useOffice.getState()
     const isOffHours = this.isOffHours(state.settings)
+    const { visits } = useFloorVisits.getState()
+    if (this.fixedFloor === null) this.settleVisits(state.staff, visits)
     for (const a of this.actors.values()) {
       const s = a.staff
       const isResting = !isBusy(s) && !s.meetingId && a.mode !== 'meeting'
       const isWalking = a.path.length > 0
-      if (isResting && isOffHours && a.mode !== 'home' && a.goal?.mode !== 'home') this.goHome(a)
+      const visit = this.guests.has(s.id) ? visits[s.id] : undefined
+      if (visit && (isOffHours || Date.now() >= visit.until)) this.leaveFloor(a)
+      else if (isResting && isOffHours && a.mode !== 'home' && a.goal?.mode !== 'home') this.goHome(a)
       else if (a.mode === 'home' && !isOffHours) this.comeBack(a)
-      else if (isResting && a.mode !== 'home' && !isWalking && !a.goal && now >= a.nextPlanAt && a.chatUntil < now) this.plan(a, true)
+      else if (isResting && a.mode !== 'home' && a.mode !== 'leave' && !isWalking && !a.goal && now >= a.nextPlanAt && a.chatUntil < now) this.plan(a, true)
       this.applyLook(a, s.id === state.selectedId)
     }
     this.updateTooltip()
@@ -1265,10 +1385,10 @@ export class IsoOfficeScene extends Phaser.Scene {
 
   private draw(a: Actor) {
     const isWalking = a.path.length > 0
-    // 보는 방향: r0 ↙ 앞 · r1 ↖ 뒤 · r2 ↗ 뒤+반전 · r3 ↘ 앞+반전
-    const dir = a.facing === 1 || a.facing === 2 ? 'back' : 'front'
+    // 보는 방향: r0 ↙ · r1 ↖ · r2 ↗ · r3 ↘ — 방향마다 따로 그린 그림 (반전 없음)
+    const dir = personDirOf(a.facing)
     const pose = a.isSitting ? 'sit' : isWalking ? (Math.floor(a.walkT / WALK_FRAME_S) % 2 ? 'walk2' : 'walk1') : 'stand'
-    a.body.setTexture(this.personTexture(a.staff.avatar, pose, dir)).setFlipX(a.facing === 2 || a.facing === 3)
+    a.body.setTexture(this.personTexture(a.staff.avatar, pose, dir))
     const foot = this.wpt(a.x, a.y)
     const lift = a.isSitting ? a.sitZ * PIXEL : 0
     a.container.setPosition(foot.x, foot.y)
@@ -1534,10 +1654,37 @@ export class IsoOfficeScene extends Phaser.Scene {
     return { key, ax: m.ax, ay: m.ay }
   }
 
-  /** 들어 옮기는 가구는 제자리 그림을 숨긴다 (null이면 모두 보임) */
-  setItemHidden(uid: string | null) {
-    this.hiddenUid = uid
-    for (const [id, parts] of this.parts) for (const p of parts) p.img.setVisible(id !== uid)
+  /** 들어 옮기는 가구는 제자리 그림을 숨긴다 (세트면 여럿, null이면 모두 보임) */
+  setItemHidden(uids: string | string[] | null) {
+    this.hiddenUids = new Set(uids === null ? [] : Array.isArray(uids) ? uids : [uids])
+    for (const [id, parts] of this.parts) for (const p of parts) p.img.setVisible(!this.hiddenUids.has(id))
+  }
+
+  /** 이 층에 보이는 가구 (기본 자리 포함) */
+  get floorItemsShown() {
+    return this.items
+  }
+
+  /** 세계 좌표 아래 가구 그림 — 그림의 투명하지 않은 점을 눌렀을 때. 겹치면 앞(깊이가 큰) 것 */
+  itemAtPoint(wx: number, wy: number): GridItem | null {
+    let best: { item: GridItem; depth: number } | null = null
+    for (const [id, parts] of this.parts) {
+      if (this.hiddenUids.has(id)) continue
+      for (const { img, item } of parts) {
+        if (!img.visible || item.floor !== this.floor) continue
+        const x = Math.floor(wx - (img.x - img.originX * img.width))
+        const y = Math.floor(wy - (img.y - img.originY * img.height))
+        if (x < 0 || y < 0 || x >= img.width || y >= img.height) continue
+        if (this.textures.getPixelAlpha(x, y, img.texture.key) < 24) continue
+        if (!best || img.depth > best.depth) best = { item, depth: img.depth }
+      }
+    }
+    return best?.item ?? null
+  }
+
+  /** 자리 기억의 의자를 새 의자로 옮긴다 (기본 자리를 저장 가구로 바꿀 때 직원이 그 자리에 그대로 앉도록) */
+  moveSeatMemory(fromUid: string, toUid: string) {
+    this.seatMemory = new Map([...this.seatMemory].map(([id, m]) => [id, m.seat.startsWith(`${fromUid}#`) ? { ...m, seat: `${toUid}${m.seat.slice(fromUid.length)}` } : m]))
   }
 
   /** 놓인 가구를 몇 번 깜빡인다 (서랍의 "모두 놓음" 카드) */
