@@ -54,6 +54,7 @@ export class CodexRuntime implements AgentRuntime {
   private threadId: string | null = null
   private turnId: string | null = null
   private turnActive = false
+  private interruptPending = false
   /** 세션을 다시 열 때마다 올려서 이전 프로세스의 늦은 이벤트를 버린다 */
   private generation = 0
   private nextId = 0
@@ -79,7 +80,11 @@ export class CodexRuntime implements AgentRuntime {
   }
 
   async interrupt() {
-    if (!this.threadId || !this.turnId) return
+    // 기다리던 결재는 먼저 걷는다 (Claude SDK는 중단 때 canUseTool 신호를 끊는다 — 안 하면 결재함에 남는다)
+    this.abortApprovals()
+    if (!this.threadId || !this.turnActive) return
+    // turn/start 응답 전이라 turnId가 아직 없으면 turn/started를 받는 대로 중단한다
+    if (!this.turnId) return void (this.interruptPending = true)
     await this.call('turn/interrupt', { threadId: this.threadId, turnId: this.turnId }).catch(() => {})
   }
 
@@ -98,8 +103,14 @@ export class CodexRuntime implements AgentRuntime {
     this.threadId = null
     this.turnId = null
     this.turnActive = false
+    this.interruptPending = false
     for (const r of this.pending.values()) r({ error: { message: 'closed' } })
     this.pending.clear()
+  }
+
+  private abortApprovals() {
+    for (const a of this.aborts) a.abort()
+    this.aborts.clear()
   }
 
   dispose() {
@@ -234,6 +245,10 @@ export class CodexRuntime implements AgentRuntime {
     if (method === 'turn/started') {
       this.turnActive = true
       this.turnId = String((params.turn as Json | undefined)?.id ?? '')
+      if (this.interruptPending) {
+        this.interruptPending = false
+        void this.interrupt()
+      }
     }
     // 계정 사용량이 바뀌면 알려 준다 (app-server가 보내는 알림 — 없으면 새로 고침 때 읽는다)
     if (method === 'account/rateLimits/updated') {
@@ -245,6 +260,8 @@ export class CodexRuntime implements AgentRuntime {
     if (method === 'turn/completed') {
       this.turnActive = false
       this.turnId = null
+      this.interruptPending = false
+      this.abortApprovals()
       this.denied.clear()
       void this.pump()
     }
