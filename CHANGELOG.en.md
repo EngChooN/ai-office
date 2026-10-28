@@ -9,8 +9,13 @@ Writing rules
 
 ## [미정] (설치본 미빌드)
 
+## [0.14.1] - 2026-10-28
+
 ### Improvements
-- The repository name has been changed to ai-office.
+- In meetings, meeting minutes, task delegation decisions and Demo Day, each staff member now speaks with its own AI (Claude or GPT). If that AI is not connected, the app's default AI speaks instead, and the meeting record shows that this happened.
+
+### Bug fixes
+- After the secretary finishes an answer, it no longer shows "stopped" or "could not answer" by mistake when a cost or turn limit is reached.
 
 ## [0.14.0] - 2026-10-27
 
