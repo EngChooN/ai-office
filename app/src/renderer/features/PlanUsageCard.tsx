@@ -76,13 +76,15 @@ export function PlanHoldBanner({ className }: { className?: string }) {
   )
 }
 
-/** Claude 플랜 사용률(참고) — Claude가 토큰 수 대신 사용률과 리셋 시각만 알려 주므로 그대로 보여 준다. compact = 대시보드 칸 (5시간·7일만, 바깥 간격은 부모가 준다) */
+/** 엔진(Claude·Codex) 플랜 사용률(참고) — 엔진이 토큰 수 대신 사용률과 리셋 시각만 알려 주므로 그대로 보여 준다. compact = 대시보드 칸 (5시간·7일만, 바깥 간격은 부모가 준다) */
 export function PlanUsageCard({ isCompact = false }: { isCompact?: boolean }) {
   const list = useOffice((s) => s.planUsage).filter((u) => !isCompact || COMPACT_TYPES.has(u.type))
   const sorted = [...list].sort((a, b) => (ORDER.indexOf(a.type) + 1 || 99) - (ORDER.indexOf(b.type) + 1 || 99))
   const updatedAt = Math.max(0, ...list.map((u) => u.updatedAt))
   const codex = useOffice((s) => s.codexUsage ?? NO_USAGE).filter((u) => !isCompact || COMPACT_TYPES.has(u.type) || u.type === 'thirty_day')
   const sortedCodex = [...codex].sort((a, b) => (ORDER.indexOf(a.type) + 1 || 99) - (ORDER.indexOf(b.type) + 1 || 99))
+  // Codex만 연결된 사람에겐 빈 Claude 칸이 쓸모없다 — Claude 값이 없고 Codex 값이 있으면 숨긴다
+  const isClaudeShown = sorted.length > 0 || sortedCodex.length === 0
   const [isChecking, setIsChecking] = useState(false)
   const note = t('planUsage.note')
   const handleRefresh = async () => {
@@ -121,16 +123,19 @@ export function PlanUsageCard({ isCompact = false }: { isCompact?: boolean }) {
           {!isCompact && ` ${t('planUsage.refresh')}`}
         </Button>
       </header>
-      {sorted.length === 0 && isCompact ? (
-        <p className="text-muted-foreground text-xs">{t('planUsage.emptyCompact')}</p>
-      ) : sorted.length === 0 ? (
-        <p className="text-muted-foreground text-xs">{t('planUsage.empty')}</p>
-      ) : (
-        sorted.map((u) => <Row key={u.type} usage={u} isCompact={isCompact} />)
+      {isClaudeShown && (
+        <div className="flex flex-col gap-3">
+          <h3 className="text-sm font-semibold">{t('planUsage.titleClaude')}</h3>
+          {sorted.length === 0 ? (
+            <p className="text-muted-foreground text-xs">{t(isCompact ? 'planUsage.emptyCompact' : 'planUsage.empty')}</p>
+          ) : (
+            sorted.map((u) => <Row key={u.type} usage={u} isCompact={isCompact} />)
+          )}
+        </div>
       )}
       {/* Codex(GPT)에 로그인한 사람만 — 무료 플랜은 30일 창 하나, 유료는 5시간·주간 */}
       {sortedCodex.length > 0 && (
-        <div className="flex flex-col gap-3 border-t pt-3">
+        <div className={cn('flex flex-col gap-3', isClaudeShown && 'border-t pt-3')}>
           <h3 className="text-sm font-semibold">{t('planUsage.titleCodex')}</h3>
           {sortedCodex.map((u) => (
             <Row key={`codex-${u.type}`} usage={u} isCompact={isCompact} />

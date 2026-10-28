@@ -416,7 +416,7 @@ export default {
   'planCard.stop': { ko: '이 일 그만두기', en: 'Stop this task', ja: 'この仕事をやめる', zh: '停止此任务' },
   'planUsage.window.five_hour': { ko: '5시간', en: '5 hours', ja: '5時間', zh: '5 小时' },
   'planUsage.window.thirty_day': { ko: '30일', en: '30 days', ja: '30日', zh: '30 天' },
-  'planUsage.titleCodex': { ko: 'GPT(Codex) 플랜 사용률', en: 'GPT (Codex) plan usage', ja: 'GPT（Codex）プラン使用率', zh: 'GPT（Codex）套餐使用率' },
+  'planUsage.titleCodex': { ko: 'GPT(Codex)', en: 'GPT (Codex)', ja: 'GPT（Codex）', zh: 'GPT（Codex）' },
   'planUsage.window.seven_day': { ko: '7일', en: '7 days', ja: '7日', zh: '7 天' },
   'planUsage.window.seven_day_opus': { ko: '7일 · Opus', en: '7 days · Opus', ja: '7日 · Opus', zh: '7 天 · Opus' },
   'planUsage.window.seven_day_sonnet': { ko: '7일 · Sonnet', en: '7 days · Sonnet', ja: '7日 · Sonnet', zh: '7 天 · Sonnet' },
@@ -440,7 +440,8 @@ export default {
   'planUsage.resetAt': { ko: '{time} 리셋', en: 'Resets {time}', ja: '{time}にリセット', zh: '{time} 重置' },
   'planUsage.limitReached': { ko: '한도 도달', en: 'Limit reached', ja: '上限に到達', zh: '已达上限' },
   'planUsage.resetUnknown': { ko: '리셋 시각 모름', en: 'Reset time unknown', ja: 'リセット時刻不明', zh: '重置时间未知' },
-  'planUsage.title': { ko: 'Claude 플랜 사용률', en: 'Claude plan usage', ja: 'Claudeプラン使用率', zh: 'Claude 套餐使用率' },
+  'planUsage.title': { ko: '플랜 사용률', en: 'Plan usage', ja: 'プラン使用率', zh: '套餐使用率' },
+  'planUsage.titleClaude': { ko: 'Claude', en: 'Claude', ja: 'Claude', zh: 'Claude' },
   'planUsage.forReference': { ko: '참고용', en: 'For reference', ja: '参考用', zh: '仅供参考' },
   'planUsage.asOf': { ko: '{time} 기준', en: 'As of {time}', ja: '{time}時点', zh: '截至 {time}' },
   'planUsage.refreshTitle': {
@@ -457,12 +458,12 @@ export default {
     zh: '暂无数据。员工开始工作后会显示。',
   },
   'planUsage.empty': {
-    ko: '아직 받은 값이 없어요. "지금 확인"을 누르거나 고용 직원이 일하면 Claude가 알려 주는 사용률이 여기 표시돼요 (Claude 구독으로 로그인했을 때만).',
-    en: 'No data yet. Press "Check now" or let your staff work, and the usage Claude reports will show here (only when signed in with a Claude subscription).',
-    ja: 'まだ値がありません。「今すぐ確認」を押すか、スタッフが作業すると、Claudeが知らせる使用率がここに表示されます（Claudeのサブスクリプションでログインしている場合のみ）。',
-    zh: '暂无数据。点击"立即查看"或让员工工作后，Claude 提供的使用率会显示在这里（仅限使用 Claude 订阅登录时）。',
+    ko: '아직 받은 값이 없어요. "지금 확인"을 누르거나 고용 직원이 일하면 엔진이 알려 주는 사용률이 여기 표시돼요 (구독 플랜으로 로그인했을 때만).',
+    en: 'No data yet. Press "Check now" or let your staff work, and the usage the engine reports will show here (only when signed in with a subscription plan).',
+    ja: 'まだ値がありません。「今すぐ確認」を押すか、スタッフが作業すると、エンジンが知らせる使用率がここに表示されます（サブスクリプションプランでログインしている場合のみ）。',
+    zh: '暂无数据。点击"立即查看"或让员工工作后，引擎提供的使用率会显示在这里（仅限使用订阅套餐登录时）。',
   },
-  'planUsage.chipTitle': { ko: 'Claude 플랜 사용률 — 급여 명세서에서 자세히', en: 'Claude plan usage — see details in Payroll', ja: 'Claudeプラン使用率 — 詳しくは給与明細で', zh: 'Claude 套餐使用率 — 详情见工资单' },
+  'planUsage.chipTitle': { ko: '플랜 사용률 — 급여 명세서에서 자세히', en: 'Plan usage — see details in Payroll', ja: 'プラン使用率 — 詳しくは給与明細で', zh: '套餐使用率 — 详情见工资单' },
   'planUsage.chip': { ko: '플랜', en: 'Plan', ja: 'プラン', zh: '套餐' },
   // settings
   // 메뉴 (nav.ts)
@@ -699,7 +700,7 @@ export default {
   'whatsNew.history': { ko: '전체 업데이트 이력', en: 'Full update history', ja: 'すべての更新履歴', zh: '全部更新记录' },
   // shop
   'payroll.title': { ko: '급여 명세서', en: 'Payroll', ja: '給与明細', zh: '工资单' },
-  'payroll.desc': { ko: 'Claude 플랜 사용률과, 직원마다 쓴 토큰이에요. 실제 한도는 플랜 사용률로 정해지고, 80%·100%에 닿으면 알려 드려요.', en: 'Your Claude plan usage and the tokens each staff member used. The real limit is set by plan usage, and we\'ll let you know when it reaches 80% and 100%.', ja: 'Claude プランの使用率と、スタッフごとに使ったトークンです。実際の上限はプランの使用率で決まり、80%・100% に達するとお知らせします。', zh: 'Claude 套餐使用率，以及每位员工使用的 token。实际上限由套餐使用率决定，达到 80%、100% 时会提醒您。' },
+  'payroll.desc': { ko: 'AI 플랜 사용률과, 직원마다 쓴 토큰이에요. 실제 한도는 플랜 사용률로 정해지고, 80%·100%에 닿으면 알려 드려요.', en: 'Your AI plan usage and the tokens each staff member used. The real limit is set by plan usage, and we\'ll let you know when it reaches 80% and 100%.', ja: 'AIプランの使用率と、スタッフごとに使ったトークンです。実際の上限はプランの使用率で決まり、80%・100% に達するとお知らせします。', zh: 'AI 套餐使用率，以及每位员工使用的 token。实际上限由套餐使用率决定，达到 80%、100% 时会提醒您。' },
   'payroll.range.label': { ko: '기간', en: 'Period', ja: '期間', zh: '时间段' },
   'payroll.range.day': { ko: '오늘', en: 'Today', ja: '今日', zh: '今天' },
   'payroll.range.week': { ko: '이번 주', en: 'This week', ja: '今週', zh: '本周' },
@@ -1002,10 +1003,10 @@ export default {
   // slashMenu — '/' 자동완성 (직원 채팅·단체방·휴대폰)
   'slashMenu.button': { ko: '/ 명령', en: '/ Commands', ja: '/ コマンド', zh: '/ 命令' },
   'slashMenu.buttonTitle': {
-    ko: 'Claude 기본 명령·스킬 고르기 (/ 입력)',
-    en: 'Pick a Claude built-in command or skill (type /)',
-    ja: 'Claude の標準コマンド・スキルを選ぶ (/ を入力)',
-    zh: '选择 Claude 内置命令或技能 (输入 /)',
+    ko: 'AI 기본 명령·스킬 고르기 (/ 입력)',
+    en: 'Pick an AI built-in command or skill (type /)',
+    ja: 'AI の標準コマンド・スキルを選ぶ (/ を入力)',
+    zh: '选择 AI 内置命令或技能 (输入 /)',
   },
   'slashMenu.manualButton': { ko: '📘 매뉴얼', en: '📘 Manuals', ja: '📘 マニュアル', zh: '📘 手册' },
   'slashMenu.manualButtonTitle': {
@@ -1015,7 +1016,7 @@ export default {
     zh: '用我的业务手册或实验室/团队流程分配工作',
   },
   'slashMenu.group.manual': { ko: '내 매뉴얼', en: 'My manuals', ja: 'マイマニュアル', zh: '我的手册' },
-  'slashMenu.group.command': { ko: 'Claude 명령', en: 'Claude commands', ja: 'Claude コマンド', zh: 'Claude 命令' },
+  'slashMenu.group.command': { ko: 'AI 명령', en: 'AI commands', ja: 'AI コマンド', zh: 'AI 命令' },
   'slashMenu.tag.manual': { ko: '매뉴얼', en: 'Manual', ja: 'マニュアル', zh: '手册' },
   'slashMenu.emptyManual': {
     ko: '맞는 매뉴얼이 없어요. 매뉴얼실에서 교육하거나 랩·팀 프로세스를 만들어 보세요.',

@@ -2503,6 +2503,12 @@ export class Office extends EventEmitter<{
 
   /** 사용률은 Claude를 부를 때만 오므로, 가장 짧은 호출(haiku 한 번)로 지금 값을 받아 온다 */
   async refreshPlanUsage() {
+    // Claude가 연결 안 된 사람(Codex만)은 Claude 사용률이 없다 — 앱 기본 AI(GPT)를 헛되이 부르지 않고 Codex 값만 읽는다
+    const claude = lastProviderStatus()?.claude.state
+    if (claude === 'missing' || claude === 'broken' || claude === 'loggedOut') {
+      await this.refreshCodexUsage()
+      return this.planUsage
+    }
     // 비용은 1센트도 안 되고 특정 직원 몫이 아니라 급여 명세서에는 넣지 않는다
     void this.refreshCodexUsage()
     await askOnce({ prompt: '.', system: 'Reply with a single dot.', tier: 'light', cwd: os.homedir(), onRateLimit: (info) => this.onRateLimit(info) })
@@ -3521,7 +3527,7 @@ export class Office extends EventEmitter<{
     for (const id of this.commands.keys()) void this.translateCommands(id)
   }
 
-  /** 실제 한도는 Claude 플랜이 정한다 — 앱이 정한 토큰·비용 한도 대신 플랜 사용률이 80%·100%를 넘을 때 알린다 */
+  /** 실제 한도는 엔진(Claude·Codex) 플랜이 정한다 — 앱이 정한 토큰·비용 한도 대신 플랜 사용률이 80%·100%를 넘을 때 알린다 */
   private checkPlanUsage(provider: AiProvider = 'claude') {
     for (const p of provider === 'codex' ? this.codexUsage : this.planUsage) {
       if (p.percent === null) continue
@@ -3529,7 +3535,7 @@ export class Office extends EventEmitter<{
         `plan:${provider === 'codex' ? 'codex:' : ''}${p.type}:${p.resetsAt ?? 0}`,
         p.percent / 100,
         (ratio) =>
-          (provider === 'codex' ? 'Codex · ' : '') + t('notify.planUsageBody', { window: tx(`planUsage.window.${p.type}`, PLAN_WINDOW_LABEL[p.type] ?? p.type), percent: Math.round(ratio * 100) }) + (p.resetsAt ? t('notify.planReset', { when: fmtDate(p.resetsAt, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) }) : ''),
+          (provider === 'codex' ? 'Codex · ' : 'Claude · ') + t('notify.planUsageBody', { window: tx(`planUsage.window.${p.type}`, PLAN_WINDOW_LABEL[p.type] ?? p.type), percent: Math.round(ratio * 100) }) + (p.resetsAt ? t('notify.planReset', { when: fmtDate(p.resetsAt, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) }) : ''),
       )
     }
   }

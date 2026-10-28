@@ -50,7 +50,7 @@ export function EquipmentTab({ staff }: { staff: Staff }) {
       disallowedTools: on ? e.disallowedTools.filter((tool) => !p.deny?.includes(tool)) : [...new Set([...e.disallowedTools.filter((tool) => !p.allow?.includes(tool)), ...(p.deny ?? [])])],
     }))
   }
-  // 월 예산은 없앴다 (실제 한도는 Claude 플랜이 정한다) — 예전에 정한 값도 지운다
+  // 월 예산은 없앴다 (실제 한도는 엔진 플랜 사용률이 정한다) — 예전에 정한 값도 지운다
   const handleSave = () => void window.office.setEquipment(staff.id, { ...eq, monthlyBudgetUsd: 0 })
 
   return (
@@ -79,10 +79,13 @@ export function EquipmentTab({ staff }: { staff: Staff }) {
         )}
       </div>
 
-      <label className="flex items-center gap-2 text-xs">
-        <input type="checkbox" checked={!eq.lightModelOff} onChange={(e) => setEq((x) => ({ ...x, lightModelOff: !e.target.checked }))} />
-        {t('equipment.lightModel')}
-      </label>
+      {/* 가벼운 모델(Haiku) 자동 전환은 Claude 직원만 — GPT 직원에겐 효과가 없어 숨긴다 (hired.ts pickModel) */}
+      {staff.provider === 'claude' && (
+        <label className="flex items-center gap-2 text-xs">
+          <input type="checkbox" checked={!eq.lightModelOff} onChange={(e) => setEq((x) => ({ ...x, lightModelOff: !e.target.checked }))} />
+          {t('equipment.lightModel')}
+        </label>
+      )}
 
       <div className="flex flex-col gap-2">
         <h3 className="text-xs font-semibold">🛡️ {t('equipment.tools.title')}</h3>

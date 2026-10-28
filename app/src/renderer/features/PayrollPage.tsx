@@ -21,7 +21,7 @@ const thisMonth = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
 }
 
-/** 급여 명세서: 실제 한도인 Claude 플랜 사용률 + 직원별로 쓴 토큰 (앱이 정하던 토큰·비용 한도는 없앴다) */
+/** 급여 명세서: 실제 한도인 엔진(Claude·Codex) 플랜 사용률 + 직원별로 쓴 토큰 (앱이 정하던 토큰·비용 한도는 없앴다) */
 export function PayrollPage() {
   const monthCost = useOffice((s) => s.monthCostUsd)
   const [range, setRange] = useState<Range>('month')

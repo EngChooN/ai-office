@@ -86,10 +86,14 @@ export function Onboarding({ onStartTour }: { onStartTour: () => void }) {
   const [isChecking, setIsChecking] = useState(false)
   const [isCopied, setIsCopied] = useState(false)
   const defaultCwd = useOffice((s) => s.settings.defaultCwd)
-  // Claude가 로그인돼 있으면 Codex는 묻지 않는다 (Claude만 쓰는 사용자의 화면은 그대로)
+  // Claude가 준비돼 있으면 Codex는 묻지 않는다 (Claude만 쓰는 사용자의 화면은 그대로)
   const isClaudeOut = step === 'login' && status?.isLoggedIn === false
-  const providers = useProviders(isClaudeOut)
+  const isTerminalMissing = step === 'install' && status?.hasTerminalClaude === false
+  const providers = useProviders(isClaudeOut || isTerminalMissing)
   const isProviderReady = isAnyReady(providers.status)
+  // GPT(Codex)가 이미 준비됐으면 터미널용 Claude Code는 정말 선택 — 설치를 기다리지 않고 넘어간다
+  const isCodexReady = providers.status?.codex.state === 'ready'
+  const isInstallOk = Boolean(status?.hasTerminalClaude) || isCodexReady
 
   const check = useCallback(async () => {
     setIsChecking(true)
@@ -102,7 +106,7 @@ export function Onboarding({ onStartTour }: { onStartTour: () => void }) {
   }, [step, status, check])
 
   // 설치 명령을 붙여 넣거나 로그인 창을 띄운 뒤에는 될 때까지 조용히 다시 확인한다
-  const isWaitingFix = (step === 'install' && status?.hasTerminalClaude === false) || (step === 'login' && status?.isLoggedIn === false)
+  const isWaitingFix = (isTerminalMissing && !isCodexReady) || (step === 'login' && status?.isLoggedIn === false)
   useEffect(() => {
     if (!isWaitingFix) return
     const timer = setInterval(() => void window.office.claudeStatus().then(setStatus), 4000)
@@ -184,8 +188,9 @@ export function Onboarding({ onStartTour }: { onStartTour: () => void }) {
             <CheckRow isOk title={t('onboarding.engine.title')}>
               <span className="text-muted-foreground text-xs">{t('onboarding.engine.desc')}</span>
             </CheckRow>
-            <CheckRow isOk={Boolean(status?.hasTerminalClaude)} isLoading={isChecking && !status} title={status?.hasTerminalClaude ? t('onboarding.terminal.installed') : t('onboarding.terminal.title')}>
+            <CheckRow isOk={isInstallOk} isLoading={isChecking && !status} title={status?.hasTerminalClaude ? t('onboarding.terminal.installed') : t('onboarding.terminal.title')}>
               <span className="text-muted-foreground text-xs">{t('onboarding.terminal.desc')}</span>
+              {isTerminalMissing && isCodexReady && <span className="text-muted-foreground text-xs">{t('onboarding.terminal.codexReady')}</span>}
               {status && !status.hasTerminalClaude && (
                 <div className="flex flex-wrap items-center gap-2">
                   {IS_WINDOWS && <span className="text-muted-foreground w-full text-xs">{t('onboarding.terminal.winHint')}</span>}
@@ -199,7 +204,7 @@ export function Onboarding({ onStartTour }: { onStartTour: () => void }) {
                 </div>
               )}
             </CheckRow>
-            <CheckFooter step={step} isOk={Boolean(status?.hasTerminalClaude)} onMove={setStep} />
+            <CheckFooter step={step} isOk={isInstallOk} onMove={setStep} />
           </>
         )}
 

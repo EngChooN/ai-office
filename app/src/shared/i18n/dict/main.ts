@@ -99,6 +99,6 @@ export default {
   'notify.remoteAuto': { ko: '자동결재를 껐어요.', en: 'Auto-approval was turned off.', ja: '自動承認をオフにしました。', zh: '已关闭自动审批。' },
   'notify.remoteRule': { ko: '"앞으로 항상 승인" 규칙이 바뀌었어요. 설정에서 확인해 주세요.', en: 'An "always approve" rule changed. Please check it in settings.', ja: '「今後は常に承認」ルールが変更されました。設定で確認してください。', zh: '“始终批准”规则已更改，请在设置中确认。' },
   'notify.planUsage': { ko: '📊 플랜 사용률', en: '📊 Plan usage', ja: '📊 プラン使用率', zh: '📊 套餐使用率' },
-  'notify.planUsageBody': { ko: 'Claude 플랜 사용률 {window} {percent}%', en: 'Claude plan usage {window} {percent}%', ja: 'Claudeプラン使用率 {window} {percent}%', zh: 'Claude 套餐使用率 {window} {percent}%' },
+  'notify.planUsageBody': { ko: '플랜 사용률 {window} {percent}%', en: 'Plan usage {window} {percent}%', ja: 'プラン使用率 {window} {percent}%', zh: '套餐使用率 {window} {percent}%' },
   'notify.planReset': { ko: ' · {when}에 초기화', en: ' · resets {when}', ja: ' · {when}にリセット', zh: ' · {when} 重置' },
 } satisfies Record<string, Entry>

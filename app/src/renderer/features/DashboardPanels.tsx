@@ -342,7 +342,7 @@ export function AttentionCard({ items, staffById }: { items: AttentionItem[]; st
 
 // ── 사용량·한도 ─────────────────────────────────────────
 
-/** Claude 플랜 사용률(실제 한도) + 쓴 토큰(오늘·이번 주·이번 달) */
+/** 엔진(Claude·Codex) 플랜 사용률(실제 한도) + 쓴 토큰(오늘·이번 주·이번 달) */
 export function UsageCard({ slip }: { slip: Payslip | null }) {
   return (
     <div className="flex min-w-0 flex-col gap-3">

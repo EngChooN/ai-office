@@ -235,10 +235,10 @@ export default {
   },
   'manuals.title': { ko: '매뉴얼실', en: 'Manuals', ja: 'マニュアル室', zh: '手册室' },
   'manuals.description': {
-    ko: '업무 매뉴얼은 Claude Code 스킬이에요. 개인 매뉴얼은 한 사람이 하는 일의 순서, 프로세스 매뉴얼은 여러 사람이 차례로 넘겨받는 흐름이에요. 직원은 교육받은 매뉴얼만 써요.',
-    en: 'Work manuals are Claude Code skills. A personal manual is the steps one person follows; a process manual is a flow handed from person to person. Staff only use manuals they\'ve been trained on.',
-    ja: '業務マニュアルは Claude Code のスキルです。個人マニュアルは一人が行う作業の手順、プロセスマニュアルは複数人が順番に引き継ぐ流れです。スタッフは研修を受けたマニュアルだけを使います。',
-    zh: '工作手册就是 Claude Code 技能。个人手册是一个人做事的步骤,流程手册是多人依次交接的流程。员工只会使用培训过的手册。',
+    ko: '업무 매뉴얼은 AI 엔진(Claude Code·Codex)의 스킬이에요. 개인 매뉴얼은 한 사람이 하는 일의 순서, 프로세스 매뉴얼은 여러 사람이 차례로 넘겨받는 흐름이에요. 직원은 교육받은 매뉴얼만 써요.',
+    en: 'Work manuals are skills for the AI engine (Claude Code, Codex). A personal manual is the steps one person follows; a process manual is a flow handed from person to person. Staff only use manuals they\'ve been trained on.',
+    ja: '業務マニュアルは AI エンジン（Claude Code・Codex）のスキルです。個人マニュアルは一人が行う作業の手順、プロセスマニュアルは複数人が順番に引き継ぐ流れです。スタッフは研修を受けたマニュアルだけを使います。',
+    zh: '工作手册就是 AI 引擎（Claude Code、Codex）的技能。个人手册是一个人做事的步骤,流程手册是多人依次交接的流程。员工只会使用培训过的手册。',
   },
   'manuals.section.process': { ko: '🔁 프로세스 매뉴얼 — 팀·랩에 교육', en: '🔁 Process manuals — trained to teams & labs', ja: '🔁 プロセスマニュアル — チーム・ラボに研修', zh: '🔁 流程手册 — 培训给团队·实验室' },
   'manuals.section.personal': { ko: '📘 개인 매뉴얼 — 직원에게 교육', en: '📘 Personal manuals — trained to staff', ja: '📘 個人マニュアル — スタッフに研修', zh: '📘 个人手册 — 培训给员工' },
@@ -482,8 +482,8 @@ export default {
 
     // Onboarding.tsx
     'onboarding.welcome.title': { ko: 'AI Office에 오신 걸 환영해요', en: 'Welcome to AI Office', ja: 'AI Officeへようこそ', zh: '欢迎来到 AI Office' },
-    'onboarding.welcome.introBefore': { ko: 'AI(Claude)를 ', en: 'Your own office where you ', ja: 'AI（Claude）を', zh: '这是你专属的办公室，在这里你可以把 AI（Claude）' },
-    'onboarding.welcome.introBold': { ko: '직원처럼 고용', en: 'hire AI (Claude) like staff', ja: 'スタッフのように雇用', zh: '像员工一样雇用' },
+    'onboarding.welcome.introBefore': { ko: 'AI(Claude·GPT)를 ', en: 'Your own office where you ', ja: 'AI（Claude・GPT）を', zh: '这是你专属的办公室，在这里你可以把 AI（Claude、GPT）' },
+    'onboarding.welcome.introBold': { ko: '직원처럼 고용', en: 'hire AI (Claude, GPT) like staff', ja: 'スタッフのように雇用', zh: '像员工一样雇用' },
     'onboarding.welcome.introAfter': { ko: '해서 일을 맡기는 나만의 사무실이에요.', en: ' and hand them work.', ja: 'して仕事を任せる、自分だけのオフィスです。', zh: '，并把工作交给它。' },
     'onboarding.welcome.introLine2': {
       ko: '터미널이나 코드를 몰라도, 게임처럼 보고 누르면서 AI와 일할 수 있어요.',
@@ -544,10 +544,10 @@ export default {
     'onboarding.checkStep': { ko: '준비 점검 {n}/{total}', en: 'Setup check {n}/{total}', ja: '準備チェック {n}/{total}', zh: '准备检查 {n}/{total}' },
     'onboarding.install.title': { ko: '설치 확인', en: 'Check installation', ja: 'インストールの確認', zh: '检查安装' },
     'onboarding.install.desc': {
-      ko: '직원이 쓰는 엔진은 앱에 들어 있어요. 터미널용 Claude Code는 로그인과 터미널에서 이어 보기에 쓰여요.',
-      en: 'The engine your staff use is built into the app. Claude Code for terminal is used to sign in and to continue sessions in a terminal.',
-      ja: 'スタッフが使うエンジンはアプリに含まれています。ターミナル用 Claude Code はログインとターミナルでの続き作業に使います。',
-      zh: '员工使用的引擎已内置在应用中。终端版 Claude Code 用于登录以及在终端中继续会话。',
+      ko: '직원이 쓰는 엔진은 앱에 들어 있어요. 터미널용 Claude Code는 Claude 로그인과 터미널에서 이어 보기에 쓰여요. GPT(Codex)만 쓴다면 없어도 돼요.',
+      en: 'The engine your staff use is built into the app. Claude Code for terminal is used to sign in to Claude and to continue sessions in a terminal. If you only use GPT (Codex), you do not need it.',
+      ja: 'スタッフが使うエンジンはアプリに含まれています。ターミナル用 Claude Code は Claude へのログインとターミナルでの続き作業に使います。GPT（Codex）だけを使うなら不要です。',
+      zh: '员工使用的引擎已内置在应用中。终端版 Claude Code 用于登录 Claude 以及在终端中继续会话。如果只用 GPT（Codex），可以不装。',
     },
     'onboarding.loginStep.title': { ko: 'Claude 로그인', en: 'Sign in to Claude', ja: 'Claude にログイン', zh: '登录 Claude' },
     'onboarding.loginStep.desc': {
@@ -568,7 +568,7 @@ export default {
     'onboarding.folder.pick': { ko: '폴더 고르기', en: 'Choose folder', ja: 'フォルダーを選ぶ', zh: '选择文件夹' },
     'onboarding.folder.change': { ko: '다른 폴더로', en: 'Choose another', ja: '別のフォルダーにする', zh: '换一个文件夹' },
     'onboarding.later': { ko: '나중에 할게요', en: "I'll do it later", ja: '後でやります', zh: '稍后再说' },
-    'onboarding.engine.title': { ko: 'Claude Code 엔진', en: 'Claude Code engine', ja: 'Claude Code エンジン', zh: 'Claude Code 引擎' },
+    'onboarding.engine.title': { ko: '직원 AI 엔진', en: 'Staff AI engine', ja: 'スタッフのAIエンジン', zh: '员工 AI 引擎' },
     'onboarding.engine.desc': {
       ko: '앱에 들어 있어서 따로 설치할 필요가 없어요.',
       en: 'It is built into the app, so there is nothing extra to install.',
@@ -607,6 +607,12 @@ export default {
       en: 'You do not need it if you only use the office app. Install it if you also want to use Claude Code directly in a terminal. Sessions opened that way appear in the office as "external staff".',
       ja: 'オフィスアプリだけを使うなら不要です。ターミナルでもClaude Codeを直接使いたい場合はインストールしてください。そうして開いたセッションはオフィスに「外部スタッフ」として表示されます。',
       zh: '如果只用办公室应用，可以不装。如果还想在终端中直接使用 Claude Code，请安装它。以这种方式打开的会话会以"外部员工"的身份出现在办公室中。',
+    },
+    'onboarding.terminal.codexReady': {
+      ko: 'GPT(Codex)가 이미 준비돼 있어서 설치하지 않고 넘어가도 돼요. Claude 직원도 쓰고 싶을 때 설치하세요.',
+      en: 'GPT (Codex) is already set up, so you can skip this. Install it when you also want Claude staff.',
+      ja: 'GPT（Codex）の準備ができているので、インストールせずに進めます。Claude のスタッフも使いたくなったらインストールしてください。',
+      zh: 'GPT（Codex）已准备就绪，可以跳过安装。想同时使用 Claude 员工时再安装。',
     },
     'onboarding.terminal.winHint': {
       ko: '시작 메뉴에서 PowerShell을 열고 아래 명령을 붙여 넣으세요.',

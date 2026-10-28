@@ -99,6 +99,7 @@ function DesktopShell({ children }: { children?: React.ReactNode }) {
   const funds = useOffice((s) => s.funds)
   const isWorkMode = useWorkMode()
   const planUsage = useOffice((s) => s.planUsage)
+  const codexUsage = useOffice((s) => s.codexUsage)
   const setHireOpen = useOffice((s) => s.setHireOpen)
 
   const waitingCount = staff.filter((s) => s.status === 'waiting').length
@@ -119,8 +120,8 @@ function DesktopShell({ children }: { children?: React.ReactNode }) {
             💰 {formatWon(funds)}
           </button>
         )}
-        {/* 실제 한도는 Claude 플랜 사용률 (앱이 환산하던 $·예산 대신) */}
-        <PlanUsageChip usage={planUsage} onOpen={() => setView('payroll')} />
+        {/* 실제 한도는 엔진 플랜 사용률 (앱이 환산하던 $·예산 대신) — Claude 값이 없으면(Codex만) Codex 값으로 */}
+        <PlanUsageChip usage={planUsage.length ? planUsage : (codexUsage ?? planUsage)} onOpen={() => setView('payroll')} />
         <div className="ml-auto flex items-center gap-1 [-webkit-app-region:no-drag]">
           <AutoApproveBadge />
           {waitingCount > 0 && (
