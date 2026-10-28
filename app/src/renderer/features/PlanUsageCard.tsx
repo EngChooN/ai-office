@@ -15,14 +15,15 @@ const typeLabel = (type: string) => (type in PLAN_WINDOW_LABEL ? t(`planUsage.wi
 const COMPACT_TYPES = new Set(['five_hour', 'seven_day'])
 const WARN_PERCENT = 80
 const MINUTE_MS = 60_000
-const HOUR_MS = 60 * MINUTE_MS
 
 /** "2시간 10분 뒤" 같은 남은 시간 */
 function untilText(at: number) {
   const ms = at - Date.now()
   if (ms <= 0) return t('planUsage.resetDone')
-  const h = Math.floor(ms / HOUR_MS)
-  const m = Math.round((ms % HOUR_MS) / MINUTE_MS)
+  // 분을 먼저 반올림해야 59.5분이 '1시간 60분'이 되지 않고 다음 시간으로 넘어간다
+  const totalMin = Math.round(ms / MINUTE_MS)
+  const h = Math.floor(totalMin / 60)
+  const m = totalMin % 60
   if (h >= 24) return t('planUsage.inDaysHours', { d: Math.floor(h / 24), h: h % 24 })
   return h ? t('planUsage.inHoursMinutes', { h, m }) : t('planUsage.inMinutes', { m })
 }
