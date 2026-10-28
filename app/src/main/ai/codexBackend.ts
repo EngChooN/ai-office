@@ -26,6 +26,8 @@ export interface OneShotOpts {
   system: string
   prompt: string
   tier: AiTier
+  /** 직원의 GPT 모델 id (목록에 있을 때만) */
+  modelId?: string
   mcpServers?: Record<string, RuntimeMcpServer>
   /** MCP 도구 호출 승인: true면 허용. 명령·파일 변경 승인은 항상 거절한다 */
   allowTool?: (toolName: string) => boolean
@@ -140,7 +142,7 @@ export function runCodexOneShot(o: OneShotOpts): Promise<void> {
       write({ method: 'initialized' })
       const list = ((await call('model/list', {})).result as { data?: { id: string; isDefault?: boolean; hidden?: boolean }[] } | undefined)?.data ?? []
       const visible = list.filter((x) => !x.hidden)
-      const model = codexTierModel(o.tier, visible.map((x) => x.id), (visible.find((x) => x.isDefault) ?? visible[0])?.id ?? '')
+      const model = o.modelId && visible.some((x) => x.id === o.modelId) ? o.modelId : codexTierModel(o.tier, visible.map((x) => x.id), (visible.find((x) => x.isDefault) ?? visible[0])?.id ?? '')
       state.model = model
       const t = await call('thread/start', { cwd: o.cwd, model, // MCP 도구를 쓸 때만 승인 요청을 받아야 도구 호출이 열린다(never면 막힌다). 명령·파일 변경 승인은 아래에서 모두 거절
         approvalPolicy: o.mcpServers && Object.keys(o.mcpServers).length ? 'on-request' : 'never', sandbox: 'read-only', developerInstructions: o.system, ephemeral: true })
@@ -167,6 +169,7 @@ export class CodexBackend implements AiBackend {
       system: opts.system,
       prompt: opts.prompt,
       tier: opts.tier,
+      modelId: opts.modelId,
       signal: opts.abortController?.signal,
       onEvent: (e) => {
         if (e.type === 'result') {

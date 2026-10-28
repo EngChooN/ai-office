@@ -122,7 +122,7 @@ import {
   type Zone,
 } from '../shared/economy'
 import { HiredStaffManager } from './hired'
-import { askOnce, type RateLimitInfo } from './ai'
+import { askAsProvider, askOnce, type RateLimitInfo } from './ai'
 import { probeMcpStatus, sdk } from './ai/claude'
 import { codexBinaryPath } from './ai/codex'
 import { readCodexRateLimits, refreshCodexAssets } from './ai/codexAssets'
@@ -2974,7 +2974,7 @@ export class Office extends EventEmitter<{
   }
 
   /** 데모데이용 AI 호출 — 응답이 안 오면 DEMO_AI_TIMEOUT_MS 뒤에 끊고 실패로 처리한다 (진행이 영영 멈추지 않게) */
-  private async askDemoOnce(meetingId: string, opts: Omit<Parameters<typeof askOnce>[0], 'abortController'>) {
+  private async askDemoOnce(meetingId: string, staff: db.StoredStaff, opts: Omit<Parameters<typeof askOnce>[0], 'abortController'>) {
     const ac = new AbortController()
     const timer = setTimeout(() => ac.abort(), DEMO_AI_TIMEOUT_MS)
     // 끝내기가 오면 endMeeting이 이 회의의 호출을 바로 끊는다
@@ -2982,7 +2982,7 @@ export class Office extends EventEmitter<{
     set.add(ac)
     this.demoAborts.set(meetingId, set)
     try {
-      return await abortable(askOnce({ ...opts, abortController: ac }), ac)
+      return await abortable(askAsProvider(staff.provider, staff.model, { ...opts, abortController: ac }), ac)
     } finally {
       clearTimeout(timer)
       set.delete(ac)
@@ -2996,7 +2996,7 @@ export class Office extends EventEmitter<{
     const s = this.hired.get(staffId)
     if (!s || !this.canDemoAi()) return fallback
     try {
-      const r = await this.askDemoOnce(meetingId, {
+      const r = await this.askDemoOnce(meetingId, s, {
         cwd: os.homedir(),
         tier: 'light',
         system: `당신은 ${s.name}(${s.role})입니다. ${s.systemPrompt}\n데모데이 회의실에서 동료들에게 자기가 끝낸 일을 발표합니다. 2~4문장, 자기 말투로, 무엇을 했고 결과가 뭔지만 말하세요. 인사·목록·제목 없이 발표 문장만 출력합니다.\n${t('staff.language')}`,
@@ -3015,7 +3015,7 @@ export class Office extends EventEmitter<{
     const lead = [...this.teams.values()].map((tm) => (tm.leadId ? this.hired.get(tm.leadId) : undefined)).find(Boolean)
     if (!lead || !this.canDemoAi()) return null
     try {
-      const r = await this.askDemoOnce(meetingId, {
+      const r = await this.askDemoOnce(meetingId, lead, {
         cwd: os.homedir(),
         tier: 'light',
         system: `당신은 ${lead.name}(${lead.role})입니다. ${lead.systemPrompt}\n데모데이를 마치며 팀에 한 줄(한 문장) 총평을 합니다. 따뜻하고 구체적으로, 인사·목록 없이 문장만 출력합니다.\n${t('staff.language')}`,
@@ -3081,10 +3081,9 @@ export class Office extends EventEmitter<{
           if (this.meetingStops.has(m.id)) break rounds
           this.patch(p.id, { activity: '회의 중 발언 준비' })
           const canAsk = m.decisions.length < MEETING_DECISIONS_MAX
-          const r = await askOnce({
+          const r = await askAsProvider(p.provider, p.model, {
             cwd: p.cwd,
             tier: 'standard',
-      model: p.model,
             system: [
               `당신은 ${p.name}(${p.role})입니다. ${p.systemPrompt}`,
               t('staff.language'),
@@ -3097,7 +3096,7 @@ export class Office extends EventEmitter<{
           })
           this.recordUsage(p.id, r)
           const { text, decision } = splitDecision(r.text)
-          m.messages.push({ staffId: p.id, name: p.name, text: text || '(발언 없음)', ts: Date.now() })
+          m.messages.push({ staffId: p.id, name: p.name, text: (text || '(발언 없음)') + (r.usedFallback ? t('meeting.fallbackNote') : ''), ts: Date.now() })
           this.patch(p.id, { activity: text.slice(0, 80) })
           db.saveMeeting(m)
           this.scheduleEmit()
@@ -3115,10 +3114,9 @@ export class Office extends EventEmitter<{
         m.summary = '대표가 회의를 중간에 끝냈어요.'
       } else if (chair) {
         const names = people.map((p) => `${p.name}(${p.role})`).join(', ')
-        const r = await askOnce({
+        const r = await askAsProvider(chair.provider, chair.model, {
           cwd: chair.cwd,
           tier: 'standard',
-      model: chair.model,
           system: '회의록 작성자입니다. 한국어로 간결하게 씁니다.',
           prompt: `회의 주제: ${m.topic}\n참석자: ${names}\n\n${transcript()}\n\n아래 형식으로 회의록을 써 주세요. 대표가 내린 결정·위임 결정은 앱이 따로 붙이니 쓰지 마세요.\n결론: (한두 문장)\n합의 사항:\n- (참석자끼리 합의한 내용, 없으면 "없음")\n할 일:\n- [할 일] 제목 (담당: 참석자 이름 중 한 명)\n할 일이 없으면 "할 일: 없음".`,
         })
@@ -3189,10 +3187,9 @@ export class Office extends EventEmitter<{
     this.patch(chair.id, { activity: '위임된 결정 정하는 중' })
     this.scheduleEmit()
     try {
-      const r = await askOnce({
+      const r = await askAsProvider(chair.provider, chair.model, {
         cwd: chair.cwd,
         tier: 'standard',
-      model: chair.model,
         system: `당신은 ${chair.name}(${chair.role})이고 이 회의의 진행자입니다. ${chair.systemPrompt}\n${t('staff.language')}`,
         prompt: `회의 주제: ${m.topic}\n\n지금까지:\n${transcript}\n\n${delegatedPrompt(d.question, d.options)}`,
       })

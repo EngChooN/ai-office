@@ -2,6 +2,7 @@ import type { Entry } from './index.ts'
 
 /** 메뉴바·알림·네이티브 창 (main 프로세스가 직접 띄우는 글자) */
 export default {
+  'meeting.fallbackNote': { ko: ' (연결이 안 돼 앱 기본 AI가 대신 말했어요)', en: ' (provider not connected — the app default AI spoke instead)', ja: '（接続できないためアプリ既定のAIが代わりに発言）', zh: '（未连接，由应用默认 AI 代为发言）' },
   'tray.tooltipAttention': { ko: '확인 필요 {n}', en: 'Needs attention {n}', ja: '要確認 {n}', zh: '待确认 {n}' },
   'tray.tooltipAuto': { ko: '자동결재 중', en: 'Auto-approving', ja: '自動承認中', zh: '自动审批中' },
   'tray.autoActive': { ko: '🤖 자동결재 중 · 남은 {left}', en: '🤖 Auto-approving · {left} left', ja: '🤖 自動承認中 · 残り{left}', zh: '🤖 自动审批中 · 剩余 {left}' },

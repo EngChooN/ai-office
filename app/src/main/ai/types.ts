@@ -82,6 +82,8 @@ export interface AskOptions {
   tier: AiTier
   /** 특정 직원의 모델로 돌려야 할 때의 힌트 (Claude 별칭) */
   model?: ModelChoice
+  /** Codex 직원의 모델 id — 쓸 수 있는 모델 목록에 있을 때만 쓰고, 없으면 tier 기본 */
+  modelId?: string
   cwd: string
   onRateLimit?: (info: RateLimitInfo) => void
   abortController?: AbortController
