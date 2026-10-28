@@ -703,7 +703,7 @@ export class Office extends EventEmitter<{
     if (!s.sessionId) return '아직 대화가 없어요. 한 번 지시한 뒤에 열 수 있어요.'
     if (s.status === 'working' || s.status === 'waiting') return '일하는 중에는 열 수 없어요. 일이 끝난 뒤에 열어 주세요.'
     this.manager.restart(staffId)
-    await openResumeInTerminal(s.cwd, s.sessionId)
+    await openResumeInTerminal(s.cwd, s.sessionId, s.provider)
     return ''
   }
 
@@ -1792,7 +1792,8 @@ export class Office extends EventEmitter<{
   /** 외부 세션을 사무실 직원으로 데려와 같은 대화를 이어받는다. 원래 프로세스는 먼저 끝낸다 */
   recruitExternal(staffId: string, input: { role: string; model: ModelChoice; teamId: string | null; approvalMode: ApprovalMode }) {
     const s = this.external.find((x) => x.id === staffId)
-    if (!s?.sessionId) return null
+    // Codex 외부 세션은 영입할 수 없다 (Claude 세션 이어받기 기능)
+    if (!s?.sessionId || s.provider === 'codex') return null
     if (s.pid) {
       try {
         process.kill(s.pid, 'SIGTERM')
@@ -1800,7 +1801,7 @@ export class Office extends EventEmitter<{
         // 이미 끝난 프로세스
       }
     }
-    const staff = this.hire({ name: s.name, role: input.role, avatar: s.avatar, model: input.model, cwd: s.cwd, systemPrompt: '', approvalMode: input.approvalMode, teamId: input.teamId })
+    const staff = this.hire({ name: s.name, role: input.role, avatar: s.avatar, model: input.model, provider: s.provider ?? 'claude', cwd: s.cwd, systemPrompt: '', approvalMode: input.approvalMode, teamId: input.teamId })
     db.saveSessionId(staff.id, s.sessionId)
     const stored = this.hired.get(staff.id)!
     stored.sessionId = s.sessionId

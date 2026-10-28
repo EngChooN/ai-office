@@ -91,16 +91,18 @@ function terminalClaude() {
 }
 
 /** 사무실 직원의 대화를 Claude Code(터미널)에서 이어서 연다. 세션은 시작한 폴더 기준으로 저장돼 있어 그 폴더에서 --resume 한다 */
-export async function openResumeInTerminal(cwd: string, sessionId: string) {
-  const bin = terminalClaude()
+export async function openResumeInTerminal(cwd: string, sessionId: string, provider: 'claude' | 'codex' = 'claude') {
+  const isCodex = provider === 'codex'
+  const bin = isCodex ? codexBinaryPath() : terminalClaude()
+  const args = isCodex ? ['resume', sessionId] : ['--resume', sessionId]
   if (IS_WINDOWS) {
-    const child = spawn(bin, ['--resume', sessionId], { cwd, detached: true, stdio: 'ignore', env: toolEnv() })
+    const child = spawn(bin, args, { cwd, detached: true, stdio: 'ignore', env: toolEnv() })
     child.on('error', (e) => console.error('[setup] 이어서 열 창을 열지 못했습니다:', e))
     child.unref()
     return
   }
   const quote = (v: string) => `'${v.replaceAll("'", "'\\''")}'`
-  const cmd = `cd ${quote(cwd)} && ${quote(bin)} --resume ${quote(sessionId)}`
+  const cmd = `cd ${quote(cwd)} && ${quote(bin)} ${args.map(quote).join(' ')}`
   const script = `tell application "Terminal"\nactivate\ndo script "${cmd.replaceAll('\\', '\\\\').replaceAll('"', '\\"')}"\nend tell`
   await run('osascript', ['-e', script])
 }

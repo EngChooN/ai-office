@@ -357,7 +357,7 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
     try {
       setResumeError(await window.office.resumeInTerminal(staff.id))
     } catch {
-      setResumeError(t('staffPanel.resume.error'))
+      setResumeError(t('staffPanel.resume.error', { engine: staff.provider === 'codex' ? 'Codex' : 'Claude Code' }))
     }
   }
   const handleFire = () => {
@@ -394,7 +394,7 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
               title={
                 isBusy
                   ? t('staffPanel.resume.busyTitle')
-                  : t('staffPanel.resume.title')
+                  : t('staffPanel.resume.title', { engine: staff.provider === 'codex' ? 'Codex' : 'Claude Code' })
               }
               className="text-primary mt-1 flex items-center gap-1 text-xs hover:underline disabled:text-muted-foreground disabled:no-underline"
             >
