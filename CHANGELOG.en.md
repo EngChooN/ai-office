@@ -9,6 +9,23 @@ Writing rules
 
 ## [미정] (설치본 미빌드)
 
+## [0.14.2] - 2026-10-28
+
+### New features
+- You can ask the secretary to hire GPT staff. On the hiring card, choose Claude or GPT as the AI engine, and the app checks right away that the model matches the engine.
+- "Continue in terminal" for GPT staff now opens with the Codex tool installed on your computer. If Codex is not installed, the app shows install instructions.
+
+### Improvements
+- GPT staff follow the same tool limits as Claude staff. Web search is blocked, dangerous commands do not run, and shell commands ask for approval in the approval inbox before they run.
+- Bringing in outside sessions, hiring from the phone, and export/import keep each staff member's engine (Claude or GPT).
+- When a plan limit is reached, the pause and the notice are handled separately for each engine.
+- Codex outside sessions now show "What I did today." The equipment list can be refreshed.
+- If you use only Codex, the wording, onboarding and usage card are shown the same way regardless of engine. Empty Claude sections are hidden when you use only Codex.
+
+### Bug fixes
+- Fixed the remaining time in usage showing wrongly as "1 hour 60 minutes."
+- Staff whose engine and model did not match are now corrected automatically when they are turned on.
+
 ## [0.14.1] - 2026-10-28
 
 ### Improvements

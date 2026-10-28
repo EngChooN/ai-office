@@ -4,10 +4,10 @@
 
 同时**雇用** Claude 员工和 GPT 员工，像一间办公室一样分配工作、审批、接收汇报的免费开源桌面应用（Electron）。员工是 Claude Code 或 Codex（GPT）会话。旧名称为 Claude Office，首次启动时会自动复制已有数据（旧文件夹保持不动）。
 
-- 状态：**0.14.1**（2026-10-28）— GPT 员工（测试版）· 办公室地图（团队区域、会议室、休息室）· 团队/组长委派 · 任务看板 · 审批箱 · 群聊 · 会议 · 定时任务 · 报告 · 工资单 · 布置
+- 状态：**0.14.2**（2026-10-28）— GPT 员工（测试版）· 办公室地图（团队区域、会议室、休息室）· 团队/组长委派 · 任务看板 · 审批箱 · 群聊 · 会议 · 定时任务 · 报告 · 工资单 · 布置
 - 技术栈：Electron Forge + Vite · React 19 · Zustand · Tailwind 4 + shadcn/ui · Phaser 4 · SQLite（`node:sqlite`）· Claude Agent SDK · Codex app-server（GPT 员工）
 
-## 安装 (0.14.1)
+## 安装 (0.14.2)
 - 打开 `app/out/make/dmg/arm64/AI-Office.dmg`，拖到 Applications 文件夹
 - 仅限 Apple Silicon · 未签名/未公证 → 首次打开时若出现“无法验证开发者”提示，请前往 系统设置 › 隐私与安全性 › “仍要打开”
 - 前提条件：该 Mac 上已登录 Claude（Claude Code）或 GPT（ChatGPT · Codex）中的至少一个。两者都连接时可按员工选择（员工使用该账户工作，费用也计入该账户）
