@@ -82,9 +82,13 @@ export function approvalResponse(d: ToolDecision, method?: string) {
   return method === MCP_ELICITATION_METHOD ? { action: answer, content: null } : { decision: answer }
 }
 
-/** 직원 결재 방식 → Codex 승인 정책. 파일 쓰기는 작업 폴더 안으로 가둔다 */
-export function approvalSettings(mode: 'ask' | 'acceptEdits') {
-  return { approvalPolicy: mode === 'acceptEdits' ? 'on-request' : 'untrusted', sandbox: 'workspace-write' } as const
+/**
+ * 직원 결재 방식 → Codex 승인 정책. 파일 쓰기는 작업 폴더 안으로 가둔다.
+ * Claude의 acceptEdits는 파일 수정만 자동이고 셸은 묻는다 — Codex의 on-request는 셸을 묻지 않고 돌리므로 두 방식 모두 untrusted로 두고,
+ * acceptEdits의 파일 수정 자동 승인은 승인 요청을 받는 쪽(codex.ts onRequest)에서 한다
+ */
+export function approvalSettings(_mode: 'ask' | 'acceptEdits') {
+  return { approvalPolicy: 'untrusted', sandbox: 'workspace-write' } as const
 }
 
 /** model/list 결과에서 모델을 고른다: 요청한 모델이 목록에 있으면 그것, 아니면 기본(isDefault), 그것도 없으면 첫 번째 */

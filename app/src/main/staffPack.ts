@@ -49,7 +49,7 @@ function applyPack(office: Office, pack: PackFile, excluded: string[]): PackResu
     }
   }
   const hired: Staff[] = pack.staff.map((s) => {
-    const staff = office.hire({ name: s.name, role: s.role, avatar: s.avatar, model: s.model, cwd, systemPrompt: s.systemPrompt, approvalMode: 'ask', teamId: null, labIds: [] })
+    const staff = office.hire({ name: s.name, role: s.role, avatar: s.avatar, provider: s.provider, model: s.model, cwd, systemPrompt: s.systemPrompt, approvalMode: 'ask', teamId: null, labIds: [] })
     // 검증에서 이미 맞췄지만, 결재를 건너뛰는 값이 들어가지 않게 채용 직전에 한 번 더 맞춘다
     office.setEquipment(staff.id, importSafeEquipment(s.equipment))
     return staff
@@ -77,6 +77,7 @@ function hireMarket(office: Office, id: string): PackResult {
     name: t(`pack.market.${tpl.id}.name` as TKey),
     role: tpl.role,
     avatar: encodeLook(randomLook(tpl.role)),
+    provider: 'claude',
     model: tpl.model,
     approvalMode: 'ask',
     systemPrompt: tpl.systemPrompt,
@@ -93,7 +94,7 @@ function toExportStaff(office: Office, s: Staff): PackExportStaff {
     .listManuals()
     .filter((m) => m.kind === 'personal' && (s.equipment.skills === 'all' || s.equipment.skills.includes(m.name)))
     .map((m) => ({ name: m.name, description: m.description, body: m.body }))
-  return { name: s.name, role: s.role, avatar: s.avatar, model: s.model, approvalMode: s.approvalMode, systemPrompt: s.systemPrompt, equipment: s.equipment, manuals }
+  return { name: s.name, role: s.role, avatar: s.avatar, provider: s.provider, model: s.model, approvalMode: s.approvalMode, systemPrompt: s.systemPrompt, equipment: s.equipment, manuals }
 }
 
 /** 저장 대화상자 → 파일 쓰기. 취소하면 null */

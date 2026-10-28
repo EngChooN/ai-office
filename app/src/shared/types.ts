@@ -882,7 +882,7 @@ export interface OfficeApi {
 
   equipmentCatalog(cwd: string): Promise<EquipmentCatalog>
   /** claude.ai 커넥터·인증 상태를 다시 확인하고(잠깐 Claude를 띄워 묻는다) 목록을 돌려준다 */
-  refreshEquipment(cwd: string): Promise<EquipmentCatalog>
+  refreshEquipment(cwd: string, provider?: AiProvider): Promise<EquipmentCatalog>
   /** 직접 추가한 연결 도구 (편집용 — env·headers 포함이라 PC 전용) */
   customMcpList(): Promise<CustomMcp[]>
   /** 직접 추가·수정 (prevName = 고칠 항목 이름). 형식이 틀리면 invalid_args */

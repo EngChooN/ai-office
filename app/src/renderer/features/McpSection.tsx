@@ -56,7 +56,7 @@ export function McpSection({
   const handleRefresh = async () => {
     setRefresh('busy')
     try {
-      const next = await window.office.refreshEquipment(cwd)
+      const next = await window.office.refreshEquipment(cwd, provider)
       setCatalog(next)
       setRefresh(next.isProbeFailed ? 'failed' : 'done')
     } catch {

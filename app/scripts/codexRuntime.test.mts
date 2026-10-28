@@ -91,7 +91,7 @@ test('승인 응답: 허용=accept, 거절=decline, 거절+중단=cancel', () =>
   assert.deepEqual(approvalResponse({ behavior: 'deny', message: 'x' }), { decision: 'decline' })
   assert.deepEqual(approvalResponse({ behavior: 'deny', message: 'x', interrupt: true }), { decision: 'cancel' })
   assert.deepEqual(approvalSettings('ask'), { approvalPolicy: 'untrusted', sandbox: 'workspace-write' })
-  assert.deepEqual(approvalSettings('acceptEdits'), { approvalPolicy: 'on-request', sandbox: 'workspace-write' })
+  assert.deepEqual(approvalSettings('acceptEdits'), { approvalPolicy: 'untrusted', sandbox: 'workspace-write' })
 })
 
 test('모델 고르기: 요청값 > 기본 > 첫 번째, 숨김 제외', () => {

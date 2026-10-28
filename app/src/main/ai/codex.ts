@@ -61,6 +61,8 @@ export class CodexRuntime implements AgentRuntime {
   private pending = new Map<number, (r: Rpc) => void>()
   /** onToolUse가 막으라고 한 아이템 → 사유 (승인 요청에서 거절한다) */
   private denied = new Map<string, string>()
+  /** 승인 요청이 도착한 항목 — 막아야 하는 도구가 승인 없이 돌고 있는지 가려낸다 */
+  private asked = new Set<string>()
   private aborts = new Set<AbortController>()
   private skillCleanup: (() => void) | null = null
   private skillRoots: string[] = []
@@ -140,7 +142,9 @@ export class CodexRuntime implements AgentRuntime {
       const skills = codexSkillRoots(o.cwd, o.skills)
       this.skillRoots = skills.roots
       this.skillCleanup = skills.cleanup
-      const child = spawn(binary, mcp.args, { cwd: o.cwd, stdio: ['pipe', 'pipe', 'ignore'], windowsHide: true, env: { ...process.env, ...mcp.env, [HIRED_ENV]: '1' } })
+      // 장비에서 웹을 막았으면 Codex 웹 검색도 끈다
+      const noWeb = o.disallowedTools.some((x) => x === 'WebSearch' || x === 'WebFetch')
+      const child = spawn(binary, noWeb ? [...mcp.args, '-c', 'web_search="disabled"'] : mcp.args, { cwd: o.cwd, stdio: ['pipe', 'pipe', 'ignore'], windowsHide: true, env: { ...process.env, ...mcp.env, [HIRED_ENV]: '1' } })
       this.child = child
       let buf = ''
       child.stdout.on('data', (chunk: Buffer) => {
@@ -263,6 +267,7 @@ export class CodexRuntime implements AgentRuntime {
       this.interruptPending = false
       this.abortApprovals()
       this.denied.clear()
+      this.asked.clear()
       void this.pump()
     }
   }
@@ -272,7 +277,14 @@ export class CodexRuntime implements AgentRuntime {
     const tool = item ? toolOfItem(item) : null
     if (!item || !tool || !this.opts) return
     const verdict = this.opts.onToolUse(tool.toolName, tool.input)
-    if (verdict) this.denied.set(String(item.id), verdict.deny)
+    if (!verdict) return
+    const id = String(item.id)
+    this.denied.set(id, verdict.deny)
+    // 승인 정책상 묻지 않고 도는 도구(읽기 명령·웹 검색 등)는 승인 응답으로 막을 수 없으니, 요청이 오지 않으면 턴을 끊는다
+    const gen = this.generation
+    setTimeout(() => {
+      if (gen === this.generation && this.turnActive && this.denied.has(id) && !this.asked.has(id)) void this.interrupt()
+    }, 1500)
   }
 
   /** 서버→클라이언트 요청: 승인은 결재 흐름으로, 모르는 요청은 오류로 돌려준다 */
@@ -282,10 +294,13 @@ export class CodexRuntime implements AgentRuntime {
       if (gen === this.generation) this.write({ id, error: { code: -32601, message: `지원하지 않는 요청: ${method}` } })
       return
     }
+    this.asked.add(String(params.itemId))
     const deny = this.denied.get(String(params.itemId))
     if (deny) return void reply(approvalResponse({ behavior: 'deny', message: deny }, method))
     const tool = approvalTool(method, params, this.state)
     if (!tool) return void reply(approvalResponse({ behavior: 'deny', message: '알 수 없는 승인 요청' }, method))
+    // 결재 방식 '파일 수정 자동 승인'(Claude acceptEdits와 같은 수준): 파일 수정만 바로 허용하고 셸·기타는 평소 결재로
+    if (this.opts.approvalMode === 'acceptEdits' && tool.toolName === 'Edit') return void reply(approvalResponse({ behavior: 'allow' }, method))
     const ac = new AbortController()
     this.aborts.add(ac)
     try {

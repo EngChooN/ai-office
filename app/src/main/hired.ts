@@ -286,6 +286,12 @@ class Worker {
         // "위험 명령 금지"는 결재 판단보다 앞서 막는다 (settings.json 허용 규칙·자율 장비로도 못 뚫게)
         const command = toolName === 'Bash' ? (toolInput as { command?: unknown }).command : undefined
         const risky = typeof command === 'string' && s.equipment.disallowedTools.includes(RISKY_BASH) ? findRiskyCommand(command) : null
+        // GPT 엔진은 disallowedTools를 엔진이 알지 못하니 여기서 막는다 (도구 이름은 Claude 이름으로 맞춰져 온다)
+        const barred = s.provider === 'codex' ? s.equipment.disallowedTools.find((x) => !isBashPolicyMark(x) && (toolName === x || toolName.startsWith(`mcp__${x}__`))) : undefined
+        if (barred) {
+          this.hooks.log(s.id, 'tool', `막힘 (${barred}): ${toolName}`.slice(0, ACTIVITY_MAX))
+          return { deny: t('staff.deny.risky', { risky: barred }) }
+        }
         if (risky) {
           this.hooks.log(s.id, 'tool', `막힘 (${risky}): ${command}`.slice(0, ACTIVITY_MAX))
           return { deny: t('staff.deny.risky', { risky }) }

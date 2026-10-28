@@ -47,6 +47,7 @@ import {
   type StaffStats,
   type Task,
   type TaskPlan,
+  type AiProvider,
   type PlanUsage,
   type Team,
   type RefDocsSaveResult,
@@ -130,7 +131,7 @@ import { readCodexRateLimits, refreshCodexAssets } from './ai/codexAssets'
 import { defineTool, registerLocalMcp, type LocalMcpHandle } from './mcp/localMcp'
 import { autoApprove, autoKindOf, autoStep, autoSummaryText, autoWindow, AWAY_ANSWER, formatRemaining, planToConfig, type AutoApprovePlan } from '../shared/autoApprove'
 import { commitAll, folderState, pushAndPr, repoRoot, restoreFiles, snapshotTree, treeDiff, workBaseStillValid, workChanges } from './review'
-import { readExternalDay } from './transcript'
+import { readCodexExternalDay, readExternalDay } from './transcript'
 import { Tutorial } from './tutorial'
 
 const SCHEDULE_TICK_MS = 30_000
@@ -1034,7 +1035,8 @@ export class Office extends EventEmitter<{
     if (hired) return { staffId, logs: db.logsSince(staffId, since), ...db.usageSince(staffId, since) }
     const ext = this.external.find((s) => s.id === staffId)
     if (!ext?.sessionId) return { staffId, logs: [], costUsd: 0, tokensIn: 0, tokensOut: 0 }
-    return { staffId, costUsd: 0, ...readExternalDay(staffId, ext.cwd, ext.sessionId, since) }
+    // Codex 세션은 ~/.codex/sessions, Claude 세션은 ~/.claude/projects 기록에서 읽는다
+    return { staffId, costUsd: 0, ...(ext.provider === 'codex' ? readCodexExternalDay(staffId, ext.sessionId, since) : readExternalDay(staffId, ext.cwd, ext.sessionId, since)) }
   }
 
   private onFinished(staffId: string, summary: string, backgroundTasks: string[] = []) {
@@ -2076,9 +2078,12 @@ export class Office extends EventEmitter<{
   }
 
   /** claude.ai 커넥터·인증 상태를 Claude에 물어 다시 확인한다 (실패하면 지난 확인·기록으로 둔다) */
-  async refreshEquipment(cwd: string) {
+  async refreshEquipment(cwd: string, provider?: AiProvider) {
     // Codex 설정의 MCP 서버·스킬도 같이 다시 읽는다 (Codex가 없거나 실패해도 Claude 쪽 확인은 계속)
     if (lastProviderStatus()?.codex.state === 'ready') await refreshCodexAssets(codexBinaryPath(), [cwd || os.homedir()]).catch(() => {})
+    // claude.ai 커넥터는 Claude에만 있다 — GPT 직원 탭이거나 Claude가 준비되지 않았으면 Claude를 부르지 않는다 (Codex 기준으로 끝)
+    const ps = lastProviderStatus()
+    if (provider === 'codex' || (ps && ps.claude.state !== 'ready' && ps.codex.state === 'ready')) return equipmentCatalog(cwd)
     const status = await probeMcpStatus(cwd || os.homedir())
     if (status) {
       setMcpProbe({
@@ -2468,12 +2473,14 @@ export class Office extends EventEmitter<{
     })
   }
 
-  /** Codex 사용률: 창별 값만 카드에 올린다 (한도 보류·알림은 Claude 플랜 전용) */
+  /** Codex 사용률: 카드에 올리고, GPT 직원의 한도 보류·80/100% 알림에도 쓴다 */
   private onCodexRateLimit(info: RateLimitInfo) {
     const next = this.planEntries(info)
     if (next.length === 0) return
     // 플랜이 바뀌면 창 구성이 달라진다(무료 30일 ↔ 유료 5시간·주간) — 새 값으로 통째로 바꾼다
     this.codexUsage = next
+    this.checkPlanUsage('codex')
+    this.releaseHeldIfRecovered()
     this.scheduleEmit()
   }
 
@@ -2986,7 +2993,7 @@ export class Office extends EventEmitter<{
 
   /** AI 발표를 쓸 수 있는지: 설정이 켜져 있고 플랜 사용량 보류 중이 아닐 때 */
   private canDemoAi() {
-    return this.settings.demoDay.isAi && !this.currentHold().isHeld
+    return this.settings.demoDay.isAi && !this.anyHold().isHeld
   }
 
   /** 데모데이용 AI 호출 — 응답이 안 오면 DEMO_AI_TIMEOUT_MS 뒤에 끊고 실패로 처리한다 (진행이 영영 멈추지 않게) */
@@ -3289,17 +3296,28 @@ export class Office extends EventEmitter<{
 
   // ── 플랜 한도 보류 ────────────────────────────────────
 
-  private currentHold() {
-    return planHold(this.planUsage, Date.now(), this.holdBypassUntil)
+  /** 그 엔진의 사용량으로 본 보류 — Claude 직원은 Claude 플랜, GPT 직원은 Codex 한도 */
+  private currentHold(provider: AiProvider = 'claude') {
+    return planHold(provider === 'codex' ? this.codexUsage : this.planUsage, Date.now(), this.holdBypassUntil)
+  }
+
+  /** 상황판·시연용: 어느 엔진이든 막혔으면 보류로 본다 (Claude를 먼저) */
+  private anyHold() {
+    const c = this.currentHold('claude')
+    return c.isHeld ? c : this.currentHold('codex')
+  }
+
+  private jobProvider(staffId: string): AiProvider {
+    return this.hired.get(staffId)?.provider ?? 'claude'
   }
 
   private planHoldState(): PlanHoldState {
-    return { ...this.currentHold(), items: this.heldJobs.map(({ parentId: _p, ...item }) => item) }
+    return { ...this.anyHold(), items: this.heldJobs.map(({ parentId: _p, ...item }) => item) }
   }
 
   /** 보류해야 하면 목록에 넣고 true (처음 보류될 때 단체방에 한 번 알린다) */
   private holdJob(job: HeldItem & { parentId?: string }) {
-    const hold = this.currentHold()
+    const hold = this.currentHold(this.jobProvider(job.staffId))
     if (!hold.isHeld) return false
     if (this.heldJobs.some((j) => j.kind === job.kind && j.id === job.id)) return true
     const isFirst = this.heldJobs.length === 0
@@ -3316,9 +3334,11 @@ export class Office extends EventEmitter<{
 
   /** 한도가 회복됐으면 보류했던 일을 시작한다 */
   private releaseHeldIfRecovered() {
-    if (this.heldJobs.length === 0 || this.currentHold().isHeld) return
-    const jobs = this.heldJobs
-    this.heldJobs = []
+    if (this.heldJobs.length === 0) return
+    // 엔진마다 한도가 따로라서, 막힌 엔진의 일은 남기고 회복된 엔진의 일만 시작한다
+    const jobs = this.heldJobs.filter((j) => !this.currentHold(this.jobProvider(j.staffId)).isHeld)
+    if (jobs.length === 0) return
+    this.heldJobs = this.heldJobs.filter((j) => !jobs.includes(j))
     const today = dateKey(new Date())
     for (const j of jobs) {
       if (j.kind === 'schedule') {
@@ -3332,8 +3352,9 @@ export class Office extends EventEmitter<{
 
   /** 대표가 "바로 시작": 보류 중인 일을 지금 시작하고, 원래 회복 시각까지는 다시 보류하지 않는다 */
   releasePlanHold() {
-    const hold = this.currentHold()
-    if (hold.resumeAt) this.holdBypassUntil = hold.resumeAt
+    const resumes = [this.currentHold('claude'), this.currentHold('codex')].map((h) => h.resumeAt ?? 0)
+    const resumeAt = Math.max(...resumes)
+    if (resumeAt) this.holdBypassUntil = resumeAt
     this.releaseHeldIfRecovered()
   }
 
@@ -3501,14 +3522,14 @@ export class Office extends EventEmitter<{
   }
 
   /** 실제 한도는 Claude 플랜이 정한다 — 앱이 정한 토큰·비용 한도 대신 플랜 사용률이 80%·100%를 넘을 때 알린다 */
-  private checkPlanUsage() {
-    for (const p of this.planUsage) {
+  private checkPlanUsage(provider: AiProvider = 'claude') {
+    for (const p of provider === 'codex' ? this.codexUsage : this.planUsage) {
       if (p.percent === null) continue
       this.warnBudget(
-        `plan:${p.type}:${p.resetsAt ?? 0}`,
+        `plan:${provider === 'codex' ? 'codex:' : ''}${p.type}:${p.resetsAt ?? 0}`,
         p.percent / 100,
         (ratio) =>
-          t('notify.planUsageBody', { window: tx(`planUsage.window.${p.type}`, PLAN_WINDOW_LABEL[p.type] ?? p.type), percent: Math.round(ratio * 100) }) + (p.resetsAt ? t('notify.planReset', { when: fmtDate(p.resetsAt, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) }) : ''),
+          (provider === 'codex' ? 'Codex · ' : '') + t('notify.planUsageBody', { window: tx(`planUsage.window.${p.type}`, PLAN_WINDOW_LABEL[p.type] ?? p.type), percent: Math.round(ratio * 100) }) + (p.resetsAt ? t('notify.planReset', { when: fmtDate(p.resetsAt, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) }) : ''),
       )
     }
   }

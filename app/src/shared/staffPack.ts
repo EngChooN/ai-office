@@ -1,6 +1,6 @@
 import { READ_ONLY_BASH, RISKY_BASH } from './bashPolicy.ts'
 import { AVATAR_LIMIT, canonicalAvatar } from './look.ts'
-import { ROLE_PRESETS, type ApprovalMode, type Equipment, type ModelChoice } from './types.ts'
+import { ROLE_PRESETS, type AiProvider, type ApprovalMode, type Equipment, type ModelChoice } from './types.ts'
 
 // 직원·랩 묶음 파일 (내보내기/가져오기, 기본 직원 마켓). 순수 함수만 둔다 — 파일 입출력·채용은 main/staffPack*.ts
 // 파일에는 작업 폴더·참고 문서 같은 이 컴퓨터의 경로를 넣지 않고, 가져올 때 경로 필드가 있으면 통째로 거절한다
@@ -23,6 +23,7 @@ export const PACK_LIMITS = {
 } as const
 
 const MODELS: readonly ModelChoice[] = ['default', 'opus', 'sonnet', 'haiku']
+const GPT_MODEL_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/
 const ROLES: ReadonlySet<string> = new Set(ROLE_PRESETS)
 // 매뉴얼 이름 규칙은 main/manuals.ts의 NAME_RE와 같다 (main 쪽은 파일을 쓰므로 여기서 따로 둔다)
 const MANUAL_NAME_RE = /^[a-z0-9][a-z0-9-]{1,62}$/
@@ -50,6 +51,8 @@ export interface PackStaff {
   name: string
   role: string
   avatar: number
+  /** 엔진 — 예전 파일에는 없고, 없으면 claude */
+  provider: AiProvider
   model: ModelChoice
   /** 가져온 직원은 늘 결재를 받는다 */
   approvalMode: 'ask'
@@ -215,13 +218,18 @@ function readEquipment(raw: unknown): PackEquipment {
 function readStaff(raw: unknown): PackStaff {
   if (!isObj(raw)) return fail('pack.err.shape')
   if (typeof raw.role !== 'string' || !ROLES.has(raw.role.trim())) return fail('pack.err.role', { role: String(raw.role ?? '').slice(0, 30) })
-  if (typeof raw.model !== 'string' || !MODELS.includes(raw.model as ModelChoice)) return fail('pack.err.model', { model: String(raw.model ?? '').slice(0, 30) })
+  if (raw.provider !== undefined && raw.provider !== 'claude' && raw.provider !== 'codex') return fail('pack.err.model', { model: String(raw.provider).slice(0, 30) })
+  const provider: AiProvider = raw.provider === 'codex' ? 'codex' : 'claude'
+  // Claude는 별칭만, GPT는 모델 이름 모양만 본다 (실제로 쓸 수 있는지는 엔진이 정한다)
+  const modelOk = typeof raw.model === 'string' && (provider === 'codex' ? raw.model === 'default' || GPT_MODEL_RE.test(raw.model) : MODELS.includes(raw.model as ModelChoice))
+  if (!modelOk) return fail('pack.err.model', { model: String(raw.model ?? '').slice(0, 30) })
   if (typeof raw.avatar !== 'number' || !Number.isInteger(raw.avatar) || raw.avatar < 0 || raw.avatar >= AVATAR_LIMIT) return fail('pack.err.avatar')
   if (raw.manuals !== undefined && (!Array.isArray(raw.manuals) || raw.manuals.length > PACK_LIMITS.manualsPerStaff)) return fail('pack.err.manualCount')
   return {
     name: text(raw.name, 'pack.err.staffName', PACK_LIMITS.nameMax, 1),
     role: raw.role.trim(),
     avatar: raw.avatar,
+    provider,
     model: raw.model as ModelChoice,
     // 파일에 적힌 결재 방식은 따르지 않는다
     approvalMode: 'ask',
@@ -305,6 +313,7 @@ export interface PackExportStaff {
   name: string
   role: string
   avatar: number
+  provider?: AiProvider
   model: ModelChoice
   approvalMode: ApprovalMode
   systemPrompt: string
@@ -321,6 +330,7 @@ export function buildPackText(staff: PackExportStaff[], lab?: PackLab): { ok: tr
       name: s.name,
       role: s.role,
       avatar: canonicalAvatar(s.avatar),
+      provider: s.provider ?? 'claude',
       model: s.model,
       systemPrompt: s.systemPrompt,
       equipment: {
