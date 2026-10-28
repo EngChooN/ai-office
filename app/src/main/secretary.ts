@@ -139,6 +139,8 @@ export class Secretary {
   /** 마지막 질문 한 건에 쓴 토큰 (측정용) */
   lastTurnTokens = 0
   private turnTools = 0
+  /** 이번 질문의 마지막 이벤트가 답 글이었는지 (상한에 걸려도 답을 끝냈는지 판단) */
+  private endedWithText = false
   private askRate = new RateWindow(ASK_LIMITS)
   private awayRate = new RateWindow(AWAY_LIMITS)
   /** 실행 중인 카드가 치운 가구 (카드가 끝나면 되돌리기 카드로 넘긴다) */
@@ -300,6 +302,7 @@ export class Secretary {
     this.isBusy = true
     this.activity = '생각하는 중…'
     this.turnTools = 0
+    this.endedWithText = false
     this.changed()
     await this.answer(text)
     if (gen === this.generation) void this.next()
@@ -340,10 +343,16 @@ export class Secretary {
     })
     this.q = q
     const gen = this.generation
+    let gotResult = false
     try {
-      for await (const m of q.events) if (gen === this.generation) this.handle(m)
+      for await (const m of q.events) {
+        if (gen !== this.generation) continue
+        if (m.type === 'result') gotResult = true
+        this.handle(m)
+      }
     } catch (e) {
-      if (gen === this.generation) this.add({ role: 'secretary', text: '답하지 못했어요. 다시 보내 볼까요?', isError: true })
+      // 결과를 이미 받은 뒤 프로세스가 오류로 끝나는 경우(상한 도달 시 SDK가 던진다)는 이미 안내했으니 또 띄우지 않는다
+      if (gen === this.generation && !gotResult) this.add({ role: 'secretary', text: '답하지 못했어요. 다시 보내 볼까요?', isError: true })
       console.error('[secretary]', e)
     } finally {
       toolsHandle.dispose()
@@ -354,9 +363,11 @@ export class Secretary {
   private handle(m: SecretaryEvent) {
     if (m.type === 'text') {
       this.add({ role: 'secretary', text: m.text })
+      this.endedWithText = true
       return
     }
     if (m.type === 'tool') {
+      this.endedWithText = false
       this.turnTools++
       const input = m.input as { method?: string; doc?: string }
       this.activity = m.name.endsWith('propose') || m.name.endsWith('propose_edit') ? '확인 카드를 만드는 중…' : m.name.endsWith('read_guide') ? '사용법을 찾아보는 중…' : m.name.endsWith('overview') ? '사무실 현황을 보는 중…' : m.name.endsWith('staff_detail') ? '직원 정보를 보는 중…' : m.name.endsWith('period_summary') ? '기간 기록을 모으는 중…' : m.name.endsWith('arrange_office') ? '배치안을 만드는 중…' : m.name.endsWith('office_layout') ? '사무실 배치를 보는 중…' : (ACTIVITY[input.method ?? ''] ?? '살펴보는 중…')
@@ -374,8 +385,11 @@ export class Secretary {
       this.messages = this.messages.map((x) => (x.id === last.id ? next : x))
       db.updateSecretaryMessage(next)
     }
-    if (m.subtype === 'max_turns' || m.subtype === 'max_budget') this.add({ role: 'notice', text: '이번 질문은 일이 많아 여기서 멈췄어요. 나눠서 물어봐 주세요.' })
-    else if (m.subtype !== 'success') this.add({ role: 'secretary', text: '답하지 못했어요. 다시 보내 볼까요?', isError: true })
+    // 상한에 걸렸어도 마지막이 도구 없이 끝난 답이면 답은 다 한 것 — "멈췄어요"를 붙이지 않는다
+    const limited = m.subtype === 'max_turns' || m.subtype === 'max_budget'
+    if (limited) {
+      if (!this.endedWithText) this.add({ role: 'notice', text: '이번 질문은 일이 많아 여기서 멈췄어요. 나눠서 물어봐 주세요.' })
+    } else if (m.subtype !== 'success') this.add({ role: 'secretary', text: '답하지 못했어요. 다시 보내 볼까요?', isError: true })
     this.changed()
   }
 
