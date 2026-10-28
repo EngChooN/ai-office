@@ -80,6 +80,7 @@ export async function openClaudeLogin() {
   const cmd = `'${claudeBinaryPath().replaceAll("'", "'\\''")}' auth login`
   const script = `tell application "Terminal"\nactivate\ndo script "${cmd.replaceAll('\\', '\\\\').replaceAll('"', '\\"')}"\nend tell`
   await run('osascript', ['-e', script])
+  return true
 }
 
 /** Codex는 앱이 직접 app-server로 로그인한다: 기본 브라우저가 열리고, 인증이 끝나면 성공('')으로 돌아온다 */
@@ -90,19 +91,38 @@ function terminalClaude() {
   return TERMINAL_CLAUDE_PATHS.find((p) => fs.existsSync(p)) ?? claudeBinaryPath()
 }
 
+const TERMINAL_CODEX_PATHS = IS_WINDOWS
+  ? [path.join(process.env.APPDATA ?? path.join(HOME, 'AppData', 'Roaming'), 'npm', 'codex.cmd'), path.join(HOME, '.local', 'bin', 'codex.exe')]
+  : [path.join(HOME, '.local', 'bin', 'codex'), path.join(HOME, '.npm-global', 'bin', 'codex'), '/opt/homebrew/bin/codex', '/usr/local/bin/codex']
+
+/** 사용자 PC에 설치된 codex CLI (앱 번들의 codex-app-server는 resume을 못 한다). 흔한 설치 위치 → PATH 순, 없으면 null */
+export async function findCodexCli(): Promise<string | null> {
+  const known = TERMINAL_CODEX_PATHS.find((p) => fs.existsSync(p))
+  if (known) return known
+  try {
+    // 맥은 로그인 셸의 PATH(.zshrc 등)까지 봐야 해서 zsh로 찾는다
+    const { stdout } = IS_WINDOWS ? await run(WHICH, ['codex'], { timeout: STATUS_TIMEOUT_MS, env: toolEnv() }) : await run('/bin/zsh', ['-lc', 'command -v codex'], { timeout: STATUS_TIMEOUT_MS })
+    return stdout.split(/\r?\n/).map((l) => l.trim()).find(Boolean) ?? null
+  } catch {
+    return null
+  }
+}
+
 /** 사무실 직원의 대화를 Claude Code(터미널)에서 이어서 연다. 세션은 시작한 폴더 기준으로 저장돼 있어 그 폴더에서 --resume 한다 */
-export async function openResumeInTerminal(cwd: string, sessionId: string, provider: 'claude' | 'codex' = 'claude') {
+export async function openResumeInTerminal(cwd: string, sessionId: string, provider: 'claude' | 'codex' = 'claude'): Promise<boolean> {
   const isCodex = provider === 'codex'
-  const bin = isCodex ? codexBinaryPath() : terminalClaude()
+  const bin = isCodex ? await findCodexCli() : terminalClaude()
+  if (!bin) return false
   const args = isCodex ? ['resume', sessionId] : ['--resume', sessionId]
   if (IS_WINDOWS) {
-    const child = spawn(bin, args, { cwd, detached: true, stdio: 'ignore', env: toolEnv() })
+    const child = spawn(bin, args, { cwd, detached: true, stdio: 'ignore', env: toolEnv(), shell: /\.(cmd|bat)$/i.test(bin) })
     child.on('error', (e) => console.error('[setup] 이어서 열 창을 열지 못했습니다:', e))
     child.unref()
-    return
+    return true
   }
   const quote = (v: string) => `'${v.replaceAll("'", "'\\''")}'`
   const cmd = `cd ${quote(cwd)} && ${quote(bin)} ${args.map(quote).join(' ')}`
   const script = `tell application "Terminal"\nactivate\ndo script "${cmd.replaceAll('\\', '\\\\').replaceAll('"', '\\"')}"\nend tell`
   await run('osascript', ['-e', script])
+  return true
 }

@@ -62,7 +62,7 @@ import {
 import { buildStaffActivity } from '../shared/staffActivity'
 import { answersText } from '../shared/chatApproval'
 import { defaultProvider, fitEngineModel, isEngineMismatch } from '../shared/engineModel'
-import { lastProviderStatus, openResumeInTerminal } from './setup'
+import { findCodexCli, lastProviderStatus, openResumeInTerminal } from './setup'
 import { decisionSections, decisionSectionsOf, decisionsContext, delegatedPrompt, parseDelegatedChoice, recordAnswer, recordDelegated, splitDecision, withDecisionSections } from '../shared/meetingDecisions'
 import { isAbsorbedOpen, matchAbsorbed, meetingCardItems, meetingResultCard, pickPlanCard } from '../shared/planTasks'
 import { shouldNudgeBackground, shouldNudgeLead } from '../shared/leadNudge'
@@ -703,6 +703,8 @@ export class Office extends EventEmitter<{
     if (!s) return '고용 직원만 열 수 있어요.'
     if (!s.sessionId) return '아직 대화가 없어요. 한 번 지시한 뒤에 열 수 있어요.'
     if (s.status === 'working' || s.status === 'waiting') return '일하는 중에는 열 수 없어요. 일이 끝난 뒤에 열어 주세요.'
+    // 열 수 없으면(Codex CLI 없음) 사무실 쪽 세션은 그대로 둔다
+    if (s.provider === 'codex' && !(await findCodexCli())) return t('staffPanel.resume.codexMissing')
     this.manager.restart(staffId)
     await openResumeInTerminal(s.cwd, s.sessionId, s.provider)
     return ''
