@@ -150,6 +150,7 @@ export default {
   'secretary.field.topic': { ko: '주제', en: 'Topic', ja: 'テーマ', zh: '主题' },
   'secretary.field.goal': { ko: '목표', en: 'Goal', ja: '目標', zh: '目标' },
   'secretary.field.cwd': { ko: '작업 폴더', en: 'Work folder', ja: '作業フォルダ', zh: '工作文件夹' },
+  'secretary.field.provider': { ko: '엔진', en: 'Engine', ja: 'エンジン', zh: '引擎' },
   'secretary.field.model': { ko: '모델', en: 'Model', ja: 'モデル', zh: '模型' },
   'secretary.field.avatar': { ko: '모습 번호', en: 'Look no.', ja: '見た目番号', zh: '形象编号' },
   'secretary.field.systemPrompt': { ko: '업무 지침', en: 'Work guidelines', ja: '業務指針', zh: '工作指南' },

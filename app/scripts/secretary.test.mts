@@ -85,7 +85,7 @@ test('[실행]: 위에서 아래로, 앞 단계 결과를 "$1.id"로 이어받�
   // 단계 이름은 코드가 정하고, 모델이 붙인 대상 이름은 보조 설명(note)으로만
   assert.equal(r.card.steps[0].label, '팀 만들기')
   assert.equal(r.card.steps[0].note, '개발팀')
-  assert.deepEqual(r.card.steps[1].editable, { 이름: '김프론트', 직무: '프론트엔드 개발', '작업 폴더': '' })
+  assert.deepEqual(r.card.steps[1].editable, { 이름: '김프론트', 직무: '프론트엔드 개발', '작업 폴더': '', 엔진: 'claude', 모델: 'default' })
   const [first, second] = await Promise.all([desk.run(r.card.id), desk.run(r.card.id)])
   assert.equal(first?.status, 'done')
   assert.equal(second?.status, 'running')
@@ -465,7 +465,7 @@ const snapFixture = () =>
 
 test('토큰: 현황은 질문에 맞는 부분만 짧은 줄로 — 외부 세션은 수만, 업무 설명 전문은 넣지 않는다', () => {
   const all = compactOverview(snapFixture(), 'all', now)
-  assert.match(all, /오큐에이 \[s1\] QA · QA팀 · 일하는 중 5분째/)
+  assert.match(all, /오큐에이 \[s1\] QA · 엔진 Claude · QA팀 · 일하는 중 5분째/)
   assert.match(all, /\[ap1\] 이디자 · 질문: 버튼 색\? \(파랑\)/)
   assert.match(all, /외부 세션 30/)
   assert.doesNotMatch(all, /외부0/)

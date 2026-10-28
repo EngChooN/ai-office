@@ -14,6 +14,7 @@ import { NativeSelect } from '@/components/ui/select'
 import { ROLE_PRESETS, type AgentTemplate, type AiProvider, type ApprovalMode, type HireInput, type ModelChoice, type ProvidersStatus } from '@shared/types'
 import { Badge } from '@/components/ui/badge'
 import { PROVIDER_NAME, PROVIDERS, useProviders } from './ProviderCards'
+import { defaultProvider } from '@shared/engineModel'
 import { shortPath } from './status'
 import { StaffMarketDialog } from './StaffMarketDialog'
 import { showToast } from '@/lib/toast'
@@ -32,8 +33,6 @@ const approvalModes = (): { value: ApprovalMode; label: string; hint: string }[]
   { value: 'acceptEdits', label: t('hire.approval.acceptEdits'), hint: t('hire.approval.acceptEdits.hint') },
 ]
 
-/** 고용 창이 처음 고를 공급자: Claude가 준비됐으면 Claude, 아니면 준비된 Codex (아무것도 모르면 Claude — 지금 동작) */
-const defaultProvider = (s: ProvidersStatus | null): AiProvider => (s && s.claude.state !== 'ready' && s.codex.state === 'ready' ? 'codex' : 'claude')
 
 /** 공급자 고르기 — 준비된 쪽만 누를 수 있다. Codex에는 베타 표시 */
 function ProviderPicker({ status, value, onChange }: { status: ProvidersStatus | null; value: AiProvider; onChange: (p: AiProvider) => void }) {

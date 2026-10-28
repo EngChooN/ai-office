@@ -21,7 +21,7 @@ const COSMETIC_SETTINGS = new Set(['theme', 'dayNight', 'plants', 'isChatterOn',
 
 /** 사전 키 이름: secretary.field.<키> */
 const FIELD_KEYS = new Set([
-  'name', 'role', 'title', 'detail', 'topic', 'goal', 'cwd', 'model', 'avatar', 'systemPrompt', 'approvalMode', 'teamId', 'labId', 'labIds', 'leadId', 'memberIds', 'participantIds', 'assigneeId', 'status', 'rounds', 'color', 'time', 'weekdays', 'instruction', 'enabled', 'staffId', 'label', 'mcpServers', 'skills', 'allowedTools', 'disallowedTools', 'monthlyBudgetUsd', 'manualName', 'input', 'scope', 'body', 'description', 'kind', 'projectDir', 'floor', 'joinLabIds', 'leaveLabIds',
+  'name', 'role', 'title', 'detail', 'topic', 'goal', 'cwd', 'provider', 'model', 'avatar', 'systemPrompt', 'approvalMode', 'teamId', 'labId', 'labIds', 'leadId', 'memberIds', 'participantIds', 'assigneeId', 'status', 'rounds', 'color', 'time', 'weekdays', 'instruction', 'enabled', 'staffId', 'label', 'mcpServers', 'skills', 'allowedTools', 'disallowedTools', 'monthlyBudgetUsd', 'manualName', 'input', 'scope', 'body', 'description', 'kind', 'projectDir', 'floor', 'joinLabIds', 'leaveLabIds',
 ])
 
 const ID_FIELDS = new Set(['teamId', 'labId', 'leadId', 'assigneeId', 'staffId', 'id'])
@@ -49,6 +49,7 @@ function valueText(key: string, v: unknown, nameOf: NameOf): I18nArg {
   if (ID_LIST_FIELDS.has(key) && Array.isArray(v)) return list(v.map((x) => idText(x, nameOf)))
   if (key === 'approvalMode' && typeof v === 'string') return APPROVAL_MODES.has(v) ? L(`secretary.v.approval.${v}` as TKey) : v
   if (key === 'weekdays' && Array.isArray(v)) return { list: v.map((d) => (Number(d) >= 0 && Number(d) <= 6 ? L(`secretary.v.weekday.${Number(d)}` as TKey) : String(d))), sep: '·' }
+  if (key === 'provider' && typeof v === 'string') return v === 'codex' ? 'GPT' : v === 'claude' ? 'Claude' : v
   if (key === 'cwd' || key === 'projectDir') return v ? String(v) : L('secretary.v.noFolder')
   if (typeof v === 'boolean') return L(v ? 'secretary.v.on' : 'secretary.v.off')
   if (typeof v === 'string') return v === '' ? L('secretary.v.empty') : quote(v)

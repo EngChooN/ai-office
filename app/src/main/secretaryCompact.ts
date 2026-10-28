@@ -38,7 +38,7 @@ export function compactOverview(snap: OfficeSnapshot, section: OverviewSection =
     .join(' · ')
   if (section === 'all' || section === 'people') {
     out.push(`## 직원 (고용 ${hired.length}명: ${counts || '없음'}${snap.staff.length > hired.length ? ` · 외부 세션 ${snap.staff.length - hired.length}` : ''})`)
-    for (const s of hired) out.push(`- ${s.name} [${s.id}] ${s.role}${team(s.teamId) ? ` · ${team(s.teamId)}` : ''} · ${STATUS[s.status] ?? s.status} ${ago(s.statusSince, now)}${s.activity ? ` · ${clip(s.activity, 60)}` : ''}${s.approvals.length ? ` · 대기 ${s.approvals.length}` : ''}`)
+    for (const s of hired) out.push(`- ${s.name} [${s.id}] ${s.role} · 엔진 ${s.provider === 'codex' ? 'GPT' : 'Claude'}${team(s.teamId) ? ` · ${team(s.teamId)}` : ''} · ${STATUS[s.status] ?? s.status} ${ago(s.statusSince, now)}${s.activity ? ` · ${clip(s.activity, 60)}` : ''}${s.approvals.length ? ` · 대기 ${s.approvals.length}` : ''}`)
   }
   if (section === 'all' || section === 'approvals') {
     const approvals = snap.staff.flatMap((s) => s.approvals.map((a) => ({ a, s })))

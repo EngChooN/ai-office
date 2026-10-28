@@ -33,6 +33,8 @@ const TOOL_RESULT_MAX = 60_000
 /** 대신 답하기 상한 — 그동안 직원이 멈춰 있으므로 짧게. 넘으면 예전 고정 답으로 바로 넘긴다 (QA: 2~3분 걸림) */
 const AWAY_TIMEOUT_MS = 60_000
 /** 비용 상한 (한리뷰 M1): 모델 고정 · 질문 하나에 도구 턴·비용 · 질문 빈도 · 밀린 질문 · 세션을 이어 쓰는 기간·횟수 · 대신 답하기 빈도 */
+import { lastProviderStatus } from './setup'
+import { engineGuide } from '../shared/engineModel'
 const SECRETARY_MODEL = 'sonnet'
 const MAX_TURNS = 12
 const TURN_BUDGET_USD = 0.5
@@ -75,7 +77,7 @@ const SYSTEM_PROMPT = `당신은 AI Office의 비서입니다. 대표(사용자)
     - "알아서 (예쁘게) 배치해줘": arrange_office(층)을 부릅니다. 앱이 가진 가구로 배치안을 만들어 전↔후 그림이 든 카드를 올립니다(책상·의자 짝, 길 막힘 없이, 회의실·계단·구역 가구는 그대로). 카드를 따로 만들지 말고 도구가 돌려준 요약만 짧게 전합니다. 층을 말하지 않았으면 1층.
     - 사기(상점 구매)·바닥과 벽 바꾸기·미션 보상 받기·직원 책상/의자 장식은 하지 않습니다. 이유 한 줄(사기는 회사 돈을 쓰는 일, 나머지는 대표가 고르는 부분)과 함께 [상점 열기](#view=shop)에서 직접 하도록 안내합니다.
   - 글을 바꾸는 단계(매뉴얼 본문·업무 지침·업무 설명·랩 목표)는 앱이 카드에 지금 글 ↔ 바꿀 글 비교를 붙입니다. 같은 내용을 답에 다시 옮겨 적지 않습니다.
-  - 고용 값을 대표가 말하지 않았으면 묻지 말고 기본값(avatar 아무 수, model "default", cwd "", systemPrompt "", approvalMode "ask")으로. 카드에서 대표가 고칩니다. 업무 맡기기는 createTask → assignTask("$1.id", 직원 id).
+  - 고용 값을 대표가 말하지 않았으면 묻지 말고 기본값(avatar 아무 수, provider 생략(앱이 연결된 엔진으로 정함), model "default", cwd "", systemPrompt "", approvalMode "ask")으로. 카드에서 대표가 고칩니다. 업무 맡기기는 createTask → assignTask("$1.id", 직원 id).
   - 매뉴얼: 목록은 read의 listManuals(한 줄 설명뿐), 본문 전체와 프로세스 단계는 read_manual(이름)로 읽습니다. 합치기·새로 쓰기·고치기 전에는 반드시 원문을 read_manual로 읽고, 읽지 않은 내용을 지어 쓰지 않습니다. 바꾸는 일은 saveManual 단계로 제안합니다(고치기·이름 바꾸기는 두 번째 인자에 원래 경로). 여러 매뉴얼을 하나로 합치면 saveManual(합친 새 매뉴얼) 다음에 deleteManual(없앨 원본 경로)을 같은 카드에 둡니다. 카드에 원문 ↔ 수정본 비교가 붙고, 지울 매뉴얼의 본문도 보입니다. 지우는 단계는 위험 등급이라 대표가 확인합니다. 합친 내용에서 달라지거나 하나로 통일한 점은 답에 짧게 적습니다(예: 한쪽에만 있던 확인 단계).
   - 직원 관리(결재 규칙·직원 권한은 넓히지 않습니다):
     - 업무 지침 점검: staff_detail로 지침 원문을 읽고, 고칠 점(모호한 말·빠진 규칙·서로 어긋나는 말)을 답에 먼저 3~5줄로 정리한 뒤, 고친 전문을 updateStaff(staffId, { systemPrompt })로 제안합니다. 카드에 지금 지침 ↔ 고친 지침 비교가 붙습니다. 고칠 점이 없으면 카드를 만들지 않고 그렇게 답합니다.
@@ -332,7 +334,7 @@ export class Secretary {
     const toolsHandle = this.tools()
     const q = aiBackend().secretary({
       prompt: [status, context, `대표의 새 질문: ${text}`].filter(Boolean).join('\n\n'),
-      system: `${SYSTEM_PROMPT}\n\n${t('staff.language')}\n오늘은 ${now.getFullYear()}년 ${now.getMonth() + 1}월 ${now.getDate()}일 ${now.getHours()}시 ${now.getMinutes()}분입니다.`,
+      system: `${SYSTEM_PROMPT}${engineGuide(lastProviderStatus())}\n\n${t('staff.language')}\n오늘은 ${now.getFullYear()}년 ${now.getMonth() + 1}월 ${now.getDate()}일 ${now.getHours()}시 ${now.getMinutes()}분입니다.`,
       cwd,
       tier: 'standard',
       model: SECRETARY_MODEL,

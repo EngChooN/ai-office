@@ -7,6 +7,8 @@ import { useNow } from '@/features/status'
 import { CARD_TTL_MS } from '@shared/secretaryTools'
 import type { SecretaryBatchItem, SecretaryCard, SecretaryStep } from '@shared/types'
 import { t, tr, type TKey } from '@shared/i18n'
+import { NativeSelect } from '@/components/ui/select'
+import { useProviders } from '../ProviderCards'
 import { CompareList } from './CompareView'
 
 // 확인 카드 (secretary-ui.md 4-1~4-3): 기획 카드 틀 + 하위 업무 줄. [실행]을 눌러야만 앱이 실행한다 (main secretaryCore)
@@ -57,6 +59,7 @@ export function ConfirmCard({ card }: { card: SecretaryCard }) {
   const [isEditing, setIsEditing] = useState(false)
   const [edits, setEdits] = useState<Record<number, Record<string, string>>>({})
   const [isSending, setIsSending] = useState(false)
+  const { status: providers } = useProviders(isEditing)
   // 묶음에서 뺀 항목: 단계 번호 → 항목 번호들 (1부터 — secretaryRun의 excluded와 같은 모양)
   const [excluded, setExcluded] = useState<Record<number, number[]>>({})
   const isPending = card.status === 'pending'
@@ -141,12 +144,32 @@ export function ConfirmCard({ card }: { card: SecretaryCard }) {
               )}
               {isEditing && s.editable && (
                 <div className="grid grid-cols-1 gap-1.5 @md:grid-cols-2">
-                  {Object.entries(s.editable).map(([name, value]) => (
-                    <label key={name} className="text-muted-foreground flex items-center gap-1.5 text-[11px]">
-                      <span className="w-14 shrink-0">{name}</span>
-                      <Input value={edits[i + 1]?.[name] ?? value} onChange={(e) => setEdit(i + 1, name, e.target.value)} placeholder={name === '작업 폴더' ? t('secretary.cwdEmpty') : undefined} className="h-7 text-xs" />
-                    </label>
-                  ))}
+                  {Object.entries(s.editable).map(([name, value]) => {
+                    const engine = edits[i + 1]?.엔진 ?? s.editable?.엔진
+                    const models = engine === 'codex' ? ['default', ...(providers?.codex.models ?? [])] : ['default', 'opus', 'sonnet', 'haiku']
+                    const cur = edits[i + 1]?.[name] ?? value
+                    return (
+                      <label key={name} className="text-muted-foreground flex items-center gap-1.5 text-[11px]">
+                        <span className="w-14 shrink-0">{name}</span>
+                        {name === '엔진' ? (
+                          <NativeSelect value={cur} onChange={(e) => setEdits((ed) => ({ ...ed, [i + 1]: { ...ed[i + 1], 엔진: e.target.value, ...(s.editable?.모델 !== undefined ? { 모델: 'default' } : {}) } }))}>
+                            <option value="claude">Claude</option>
+                            <option value="codex">GPT</option>
+                          </NativeSelect>
+                        ) : name === '모델' ? (
+                          <NativeSelect value={cur} onChange={(e) => setEdit(i + 1, name, e.target.value)}>
+                            {(models.includes(cur) ? models : [...models, cur]).map((m) => (
+                              <option key={m} value={m}>
+                                {m === 'default' ? t('staffPanel.model.default') : m}
+                              </option>
+                            ))}
+                          </NativeSelect>
+                        ) : (
+                          <Input value={cur} onChange={(e) => setEdit(i + 1, name, e.target.value)} placeholder={name === '작업 폴더' ? t('secretary.cwdEmpty') : undefined} className="h-7 text-xs" />
+                        )}
+                      </label>
+                    )
+                  })}
                 </div>
               )}
             </div>

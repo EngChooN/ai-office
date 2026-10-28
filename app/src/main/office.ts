@@ -60,6 +60,7 @@ import {
 } from '../shared/types'
 import { buildStaffActivity } from '../shared/staffActivity'
 import { answersText } from '../shared/chatApproval'
+import { defaultProvider, fitEngineModel, isEngineMismatch } from '../shared/engineModel'
 import { lastProviderStatus, openResumeInTerminal } from './setup'
 import { decisionSections, decisionSectionsOf, decisionsContext, delegatedPrompt, parseDelegatedChoice, recordAnswer, recordDelegated, splitDecision, withDecisionSections } from '../shared/meetingDecisions'
 import { isAbsorbedOpen, matchAbsorbed, meetingCardItems, meetingResultCard, pickPlanCard } from '../shared/planTasks'
@@ -440,6 +441,13 @@ export class Office extends EventEmitter<{
       }),
     ).then(() => undefined)
     for (const s of db.loadHiredStaff()) {
+      // 엔진과 모델이 어긋난 직원(예: Claude 엔진에 GPT 모델)은 바로잡는다
+      if (isEngineMismatch(s.provider, s.model)) {
+        const fit = fitEngineModel(s.provider, s.model, [])
+        s.provider = fit.provider
+        s.model = fit.model
+        db.fixStaffEngine(s.id, fit.provider, fit.model)
+      }
       this.hired.set(s.id, s)
       // 익힌 매뉴얼 목록에 중복이 저장된 직원은 한 번 정리해 둔다
       if (Array.isArray(s.equipment.skills) && new Set(s.equipment.skills).size !== s.equipment.skills.length) {
@@ -637,6 +645,8 @@ export class Office extends EventEmitter<{
   /** isPractice: 튜토리얼 연습 직원 (세션·인사·기록 없음). 첫 실제 고용이면 남아 있는 연습 회사를 먼저 지운다 */
   hire(input: HireInput, isPractice = false): Staff {
     if (!isPractice && this.hasPracticeData()) this.tutorial.cleanup()
+    const fit = fitEngineModel(input.provider ?? defaultProvider(lastProviderStatus()), input.model, lastProviderStatus()?.codex.models ?? [])
+    input = { ...input, ...fit }
     const id = crypto.randomUUID()
     const hiredAt = Date.now()
     const deskIndex = this.nextDesk()
@@ -721,6 +731,11 @@ export class Office extends EventEmitter<{
     if (!s) return
     // 결재 방식·장비 같은 다른 필드가 섞여 들어와도(비서 카드) 반영하지 않는다
     const patch = pickStaffPatch(input)
+    // 엔진은 고용 뒤 못 바꾸니, 모델이 엔진에 안 맞으면 기본 모델로
+    if (patch.model !== undefined) {
+      const fit = fitEngineModel(s.provider, patch.model, lastProviderStatus()?.codex.models ?? [])
+      patch.model = fit.provider === s.provider ? fit.model : 'default'
+    }
     db.updateStaffRow(staffId, patch)
     if (patch.teamId !== undefined && patch.teamId !== s.teamId) {
       for (const t of this.teams.values()) if (t.leadId === staffId && t.id !== patch.teamId) this.updateTeam(t.id, { leadId: null })

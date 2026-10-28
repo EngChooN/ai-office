@@ -203,6 +203,10 @@ export function updateStaffRow(id: string, patch: { teamId?: string | null; name
   if (patch.systemPrompt !== undefined) run('UPDATE staff SET system_prompt = ? WHERE id = ?', patch.systemPrompt, id)
 }
 
+export function fixStaffEngine(id: string, provider: string, model: string) {
+  run('UPDATE staff SET provider = ?, model = ? WHERE id = ?', provider, model, id)
+}
+
 export function saveStaffRefDocs(id: string, docs: string[]) {
   run('UPDATE staff SET ref_docs = ? WHERE id = ?', JSON.stringify(docs), id)
 }

@@ -260,7 +260,7 @@ export const SECRETARY_SIGNATURES: Partial<Record<OfficeMethod, string>> = {
   refreshPlanUsage: '()',
   draftManual: '(staffId, request, kind: "personal"|"process")',
   boardCleanupPlan: '() → { steps, omitted } — steps를 그대로 propose 단계로',
-  hire: '({ name, role, avatar: number, model: "default"|"opus"|"sonnet"|"haiku", cwd, systemPrompt, approvalMode: "ask"|"acceptEdits", teamId: string|null, labIds?: string[] })',
+  hire: '({ name, role, avatar: number, provider?: "claude"|"codex", model: "default"|"opus"|"sonnet"|"haiku"|(GPT 모델 id), cwd, systemPrompt, approvalMode: "ask"|"acceptEdits", teamId: string|null, labIds?: string[] })',
   updateStaff: '(staffId, { teamId?, name?, role?, model?, avatar?, systemPrompt?, cwd? })',
   instruct: '(staffId, text)',
   interrupt: '(staffId, text?)',

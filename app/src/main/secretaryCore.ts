@@ -111,9 +111,9 @@ function pickResult(r: unknown): Record<string, string> | undefined {
 }
 
 // 카드에서 고칠 수 있는 글자 값 (이름 → 인자 안 자리)
-type Slot = { index: number; field?: string }
+type Slot = { index: number; field?: string; fallback?: string }
 const EDITABLE: Partial<Record<OfficeMethod, Record<string, Slot>>> = {
-  hire: { 이름: { index: 0, field: 'name' }, 직무: { index: 0, field: 'role' }, '작업 폴더': { index: 0, field: 'cwd' } },
+  hire: { 이름: { index: 0, field: 'name' }, 직무: { index: 0, field: 'role' }, '작업 폴더': { index: 0, field: 'cwd' }, 엔진: { index: 0, field: 'provider', fallback: 'claude' }, 모델: { index: 0, field: 'model', fallback: 'default' } },
   createTeam: { 이름: { index: 0 } },
   createLab: { 이름: { index: 0, field: 'name' }, 목표: { index: 0, field: 'goal' } },
   createTask: { 제목: { index: 0, field: 'title' }, 설명: { index: 0, field: 'detail' } },
@@ -139,7 +139,7 @@ function editableOf(method: OfficeMethod, args: unknown[]) {
   if (!slots) return undefined
   const out: Record<string, string> = {}
   for (const [name, slot] of Object.entries(slots)) {
-    const v = readSlot(args, slot)
+    const v = readSlot(args, slot) ?? slot.fallback
     // 앞 단계 참조는 고칠 값이 아니다
     if (v !== undefined && !REF.test(v)) out[name] = v
   }
