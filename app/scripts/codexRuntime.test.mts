@@ -125,3 +125,8 @@ test('세션 기록: 롤아웃 파일 찾기 + 끝에서 문맥 크기·마지�
   assert.deepEqual(readCodexTail(file), { contextTokens: 222, lastText: '마지막 보고' })
   assert.deepEqual(readCodexTail(path.join(dir, '없음.jsonl')), { contextTokens: 0, lastText: '' })
 })
+
+test('내장 앱 도구의 웹 검색(codex_apps web_run)은 WebSearch로 본다', () => {
+  assert.equal(toolOfItem({ type: 'mcpToolCall', server: 'codex_apps', tool: 'search_service.web_run', arguments: {} })?.toolName, 'WebSearch')
+  assert.equal(toolOfItem({ type: 'mcpToolCall', server: 'figma', tool: 'get', arguments: {} })?.toolName, 'mcp__figma__get')
+})

@@ -142,9 +142,9 @@ export class CodexRuntime implements AgentRuntime {
       const skills = codexSkillRoots(o.cwd, o.skills)
       this.skillRoots = skills.roots
       this.skillCleanup = skills.cleanup
-      // 장비에서 웹을 막았으면 Codex 웹 검색도 끈다
+      // 장비에서 웹을 막았으면 Codex 웹 검색을 끈다. 내장 앱 도구(codex_apps)의 web_run으로도 검색이 되므로 features.apps도 함께 끈다 (실제 Codex 0.164로 확인)
       const noWeb = o.disallowedTools.some((x) => x === 'WebSearch' || x === 'WebFetch')
-      const child = spawn(binary, noWeb ? [...mcp.args, '-c', 'web_search="disabled"'] : mcp.args, { cwd: o.cwd, stdio: ['pipe', 'pipe', 'ignore'], windowsHide: true, env: { ...process.env, ...mcp.env, [HIRED_ENV]: '1' } })
+      const child = spawn(binary, noWeb ? [...mcp.args, '-c', 'web_search="disabled"', '-c', 'features.apps=false'] : mcp.args, { cwd: o.cwd, stdio: ['pipe', 'pipe', 'ignore'], windowsHide: true, env: { ...process.env, ...mcp.env, [HIRED_ENV]: '1' } })
       this.child = child
       let buf = ''
       child.stdout.on('data', (chunk: Buffer) => {

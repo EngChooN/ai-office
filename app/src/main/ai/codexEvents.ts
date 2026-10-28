@@ -45,6 +45,8 @@ export function toolOfItem(item: Json): { toolName: string; input: Record<string
       return { toolName: 'Edit', input: { file_path: paths[0] ?? '', ...(paths.length > 1 ? { files: paths } : {}) } }
     }
     case 'mcpToolCall':
+      // 내장 앱 도구의 웹 검색(codex_apps.search_service.web_run)은 웹 검색으로 본다 — '웹 없음' 장비가 막을 수 있게
+      if (str(item.server) === 'codex_apps' && /web/i.test(str(item.tool))) return { toolName: 'WebSearch', input: obj(item.arguments) }
       return { toolName: `mcp__${str(item.server)}__${str(item.tool)}`, input: obj(item.arguments) }
     case 'webSearch':
       return { toolName: 'WebSearch', input: { query: str(item.query) } }
