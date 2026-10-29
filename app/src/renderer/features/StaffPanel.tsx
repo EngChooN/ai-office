@@ -561,7 +561,8 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
             <SlashMenu query={slashQuery} items={slashItems} active={slashKeys.active} onPick={handleSlashPick} emptyText={slashMode === 'manual' ? t('slashMenu.emptyManual') : undefined} />
           )}
           {/* 입력 상자 안: 왼쪽 첨부, 오른쪽 보내기. 일하는 중이면 비어 있을 땐 "멈추기", 글을 쓰면 "끝나면 보내기"·"지금 끼어들기" 두 갈래를 글자로 보여 준다 */}
-          <div className="border-input focus-within:ring-ring/50 flex items-end gap-1 rounded-lg border px-1.5 py-1 focus-within:ring-2">
+          {/* 포커스 표시는 감싸개 하나에만 (공용 입력란과 같은 토큰). 안쪽 textarea는 shadow-none으로 끈다 */}
+          <div className="border-input flex items-end gap-1 rounded-lg border px-1.5 py-1 focus-within:border-(--focus-border) focus-within:shadow-(--focus-ring)">
             <AttachButton onPick={draftFiles.add} className="shrink-0" />
             <Textarea
               value={draft}
@@ -573,7 +574,7 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
                   ? t('staffPanel.composer.busyPlaceholder', { keys: `${STOP_HINT}${NEWLINE_HINT}` })
                   : t('staffPanel.composer.placeholder', { name: staff.name, keys: `${SEND_HINT}${NEWLINE_HINT}` })
               }
-              className="field-sizing-content max-h-40 min-h-8 min-w-0 flex-1 resize-none border-0 px-1 py-1.5 focus-visible:ring-0"
+              className="field-sizing-content max-h-40 min-h-8 min-w-0 flex-1 resize-none border-0 px-1 py-1.5 focus-visible:shadow-none"
               style={{ fontSize }}
             />
             {isBusy && !hasDraft ? (

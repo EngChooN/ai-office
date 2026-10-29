@@ -128,6 +128,8 @@ class EventStream(
             }
         } catch (_: java.io.IOException) {
             // 45초 무소식(읽기 시간 초과)·네트워크 끊김 → 다시 연결
+        } catch (_: IllegalStateException) {
+            // stop()·reconnectNow()가 다른 스레드에서 스트림을 닫으면 okio가 "closed"를 던진다 (사진 선택 창으로 앱이 가려질 때 등)
         }
         null
     }

@@ -258,6 +258,28 @@ class V2ShellTest {
         scope.cancel()
     }
 
+    @Test fun eventStreamStopWhileReadingDoesNotCrash() = runBlocking {
+        // 사진 선택 창이 앱을 가리면(ON_STOP) stop()이 읽는 중인 스트림을 닫는다 — okio "closed"가 새어 나와 앱이 꺼지던 버그
+        // 이벤트를 처리하는 사이에 닫혀, 다음 줄을 읽을 때 "closed"가 나는 순서를 그대로 만든다
+        server.enqueue(MockResponse().setHeader("Content-Type", "text/event-stream").setBody("event: hello\ndata: {}\n\nevent: chat\ndata: {}\n\n"))
+        val crashes = CopyOnWriteArrayList<Throwable>()
+        var stream: EventStream? = null
+        var isStopped = false
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO + kotlinx.coroutines.CoroutineExceptionHandler { _, e -> crashes += e })
+        val c = client()
+        stream = EventStream({ c }, object : EventSink {
+            override fun onEvent(name: String, data: String) {}
+            override fun onHello(resync: Boolean) { stream!!.stop(); isStopped = true }
+            override fun onState(state: String, reason: String?) {}
+            override fun onFatal(error: ApiError) {}
+        }, scope)
+        stream.start()
+        withTimeout(10_000) { while (!isStopped) delay(20) }
+        delay(500)
+        assertTrue(crashes.toString(), crashes.isEmpty())
+        scope.cancel()
+    }
+
     @Test fun eventStreamCarriesCapabilitiesOnEveryReconnect() = runBlocking {
         // 이벤트 스트림은 연결 단위로 판정하므로 다시 붙을 때도 헤더를 싣는다
         server.enqueue(MockResponse().setHeader("Content-Type", "text/event-stream").setBody("id: ep:1\nevent: chat\ndata: {}\n\n"))
