@@ -4,7 +4,7 @@ import type { Readable, Writable } from 'node:stream'
 import { HIRED_ENV } from '../external'
 import { codexBinaryPath } from './codex'
 import { codexMcpConfig } from './codexMcp'
-import { approvalResponse, approvalTool, CODEX_APPROVAL_METHODS, newCodexState, toolOfItem, translateNotification, type CodexState } from './codexEvents'
+import { approvalResponse, approvalTool, CODEX_APPROVAL_METHODS, endedBeforeFinal, newCodexState, toolOfItem, translateNotification, type CodexState } from './codexEvents'
 import { codexCostUsd } from './codexPricing'
 import { codexTierModel } from './aiSelect'
 import type { AiBackend, AskOptions, AskResult, RuntimeEvent, RuntimeMcpServer, SecretaryEvent, SecretaryRun, SecretaryRunOpts, AiTier } from './types'
@@ -42,7 +42,11 @@ export interface OneShotOpts {
   webSearch?: boolean
   /** true면 쉘 도구(shell·unified_exec)와 플러그인을 아예 빼고 띄운다 (비서 세션) */
   noShell?: boolean
+  /** true면 예고·도구 호출만 하고 최종 답 없이 턴이 끝났을 때 같은 스레드에서 이어 쓰게 한다(최대 2번). GPT가 "확인해 볼게요"만 하고 멈추는 일 방지 (비서) */
+  requireFinal?: boolean
 }
+
+const FINAL_NUDGE = '아직 최종 답을 하지 않았습니다. 필요한 조회는 도구로 마치고, 대표에게 전할 답을 한 번에 써 주세요. 예고만 하고 끝내지 마세요.'
 
 /** 웹 검색 설정 인자. 끌 때는 내장 앱 도구(codex_apps)의 web_run으로도 검색되므로 features.apps도 함께 끈다 (codex.ts 직원 세션과 같다) */
 const webSearchArgs = (on: boolean | undefined) => (on === undefined ? [] : on ? ['-c', 'web_search="live"'] : ['-c', 'web_search="disabled"', '-c', 'features.apps=false'])
@@ -68,6 +72,7 @@ export function runCodexOneShot(o: OneShotOpts): Promise<void> {
     let turnId = ''
     let toolCalls = 0
     let stopped = false
+    let nudges = 0
     const state = newCodexState()
     const pending = new Map<number, (r: Rpc) => void>()
     let nextId = 0
@@ -128,6 +133,15 @@ export function runCodexOneShot(o: OneShotOpts): Promise<void> {
         if (!tool) return write({ id: m.id, error: { code: -32601, message: `지원하지 않는 요청: ${method}` } })
         const allowed = tool.toolName.startsWith('mcp__') && (o.allowTool?.(tool.toolName) ?? false)
         write({ id: m.id, result: approvalResponse(allowed ? { behavior: 'allow' } : { behavior: 'deny', message: '이 도구는 쓸 수 없어요.' }, method) })
+        return
+      }
+      if (o.requireFinal && nudges < 2 && threadId && endedBeforeFinal(method, params, state)) {
+        nudges++
+        state.awaitingFinal = false
+        turnId = ''
+        void call('turn/start', { threadId, model: state.model, input: [{ type: 'text', text: FINAL_NUDGE, text_elements: [] }] }).then((r) => {
+          if (r.error) end(new Error(r.error.message ?? '지시를 보내지 못했습니다'))
+        })
         return
       }
       if (method === 'turn/started') turnId = String((params.turn as Json | undefined)?.id ?? '')
@@ -214,6 +228,7 @@ export class CodexBackend implements AiBackend {
       allowTool: (name) => name.startsWith(prefix),
       webSearch: o.webSearch,
       noShell: true,
+      requireFinal: true,
       signal: ac.signal,
       onToolStart: (name, input) => push({ type: 'tool', name, input }),
       shouldStop: ({ toolCalls, costUsd }) => {

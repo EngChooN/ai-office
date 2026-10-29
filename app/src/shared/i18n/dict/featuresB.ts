@@ -476,6 +476,7 @@ export default {
   },
   'planUsage.chipTitle': { ko: '플랜 사용률 — 급여 명세서에서 자세히', en: 'Plan usage — see details in Payroll', ja: 'プラン使用率 — 詳しくは給与明細で', zh: '套餐使用率 — 详情见工资单' },
   'planUsage.chip': { ko: '플랜', en: 'Plan', ja: 'プラン', zh: '套餐' },
+  'planUsage.chipCodex': { ko: 'GPT', en: 'GPT', ja: 'GPT', zh: 'GPT' },
   // settings
   // 메뉴 (nav.ts)
   'nav.secretary': { ko: '비서', en: 'Assistant', ja: '秘書', zh: '秘书' },

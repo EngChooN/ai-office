@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { useOffice } from '@/store'
 import { fmtDate, t, type TKey } from '@shared/i18n'
-import { PLAN_WINDOW_LABEL, type PlanUsage } from '@shared/types'
+import type { ChipEngine } from '@shared/planUsageChip'
+import { PLAN_WINDOW_LABEL, type AiProvider, type PlanUsage } from '@shared/types'
 
 const ORDER = Object.keys(PLAN_WINDOW_LABEL)
 /** 선택자가 매번 새 배열을 돌려주면 zustand가 무한 렌더에 빠진다 — 빈 값은 늘 같은 배열로 */
@@ -148,17 +149,31 @@ export function PlanUsageCard({ isCompact = false }: { isCompact?: boolean }) {
   )
 }
 
-/** 상단 바: 기본 한도(5시간·7일) 사용률 한 줄. 누르면 급여 명세서로. 아직 값이 없으면 숨긴다 */
-export function PlanUsageChip({ usage, onOpen }: { usage: PlanUsage[]; onOpen: () => void }) {
-  const shown = usage.filter((u) => COMPACT_TYPES.has(u.type) && u.percent !== null).sort((a, b) => ORDER.indexOf(a.type) - ORDER.indexOf(b.type))
-  if (shown.length === 0) return null
+/** 상단 바: 엔진별 기본 한도 사용률 한 줄 — 두 엔진을 다 쓰면 엔진 이름을 붙여 둘 다. 누르면 급여 명세서로. 아직 값이 없으면 숨긴다 */
+export function PlanUsageChip({ engines, onOpen }: { engines: ChipEngine[]; onOpen: () => void }) {
+  if (engines.length === 0) return null
+  const isLabeled = engines.length > 1
+  const engineName = (p: AiProvider) => t(p === 'codex' ? 'planUsage.chipCodex' : 'planUsage.titleClaude')
+  // 좁은 폭에선 말줄임 — 전체 값은 툴팁으로
+  const full = engines.map((e) => (isLabeled ? `${engineName(e.provider)} ` : '') + e.usage.map((u) => `${typeLabel(u.type)} ${Math.round(u.percent ?? 0)}%`).join(' · ')).join(' | ')
   return (
-    <button type="button" onClick={onOpen} title={t('planUsage.chipTitle')} className="text-muted-foreground text-xs tabular-nums [-webkit-app-region:no-drag] hover:underline">
-      {t('planUsage.chip')}{' '}
-      {shown.map((u, i) => (
-        <span key={u.type} className={cn((u.percent ?? 0) >= WARN_PERCENT && 'text-status-waiting', (u.percent ?? 0) >= 100 && 'text-status-error')}>
-          {i > 0 && ' · '}
-          {typeLabel(u.type)} {Math.round(u.percent ?? 0)}%
+    <button
+      type="button"
+      onClick={onOpen}
+      title={`${t('planUsage.chipTitle')}\n${full}`}
+      className="text-muted-foreground min-w-0 truncate text-xs whitespace-nowrap tabular-nums [-webkit-app-region:no-drag] hover:underline"
+    >
+      {isLabeled ? '' : `${t('planUsage.chip')} `}
+      {engines.map((e, i) => (
+        <span key={e.provider}>
+          {i > 0 && ' | '}
+          {isLabeled && <span className="text-foreground/80">{engineName(e.provider)} </span>}
+          {e.usage.map((u, j) => (
+            <span key={u.type} className={cn((u.percent ?? 0) >= WARN_PERCENT && 'text-status-waiting', (u.percent ?? 0) >= 100 && 'text-status-error')}>
+              {j > 0 && '·'}
+              {typeLabel(u.type)} {Math.round(u.percent ?? 0)}%
+            </span>
+          ))}
         </span>
       ))}
     </button>

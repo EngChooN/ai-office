@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { BellIcon, SparklesIcon, StoreIcon, UserPlusIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CoachTour } from '@/features/CoachTour'
@@ -18,6 +18,7 @@ import { AutoApproveBadge } from '@/features/AutoApprove'
 import { MOD_KEY } from '@/lib/platform'
 import { IS_MOBILE_SHELL } from '@/shell'
 import { PlanUsageChip } from '@/features/PlanUsageCard'
+import { chipEngines } from '@shared/planUsageChip'
 import { formatWon } from '@shared/economy'
 import { PhoneShell } from '@/layout/PhoneShell'
 import { PAGES } from '@/layout/pages'
@@ -99,6 +100,10 @@ function DesktopShell({ children }: { children?: React.ReactNode }) {
   const isWorkMode = useWorkMode()
   const planUsage = useOffice((s) => s.planUsage)
   const codexUsage = useOffice((s) => s.codexUsage)
+  const usageEngines = useMemo(
+    () => chipEngines({ claude: planUsage, codex: codexUsage ?? [] }, new Set(staff.map((s) => s.provider))),
+    [planUsage, codexUsage, staff],
+  )
   const setHireOpen = useOffice((s) => s.setHireOpen)
 
   const waitingCount = staff.filter((s) => s.status === 'waiting').length
@@ -108,20 +113,20 @@ function DesktopShell({ children }: { children?: React.ReactNode }) {
     <div className="flex h-full flex-col">
       {/* 상단 바를 창 드래그 영역으로 쓴다. 맥은 왼쪽 신호등 자리, 윈도우는 오른쪽 위 창 버튼(최소화·최대화·닫기) 자리를 비운다 */}
       <header className="flex h-11 shrink-0 items-center gap-3 border-b pr-3 pl-20 [-webkit-app-region:drag] win:pr-[144px] win:pl-3 android:pl-3">
-        <span className="font-semibold">AI Office</span>
+        <span className="shrink-0 font-semibold">AI Office</span>
         {!isWorkMode && (
           <button
             type="button"
             onClick={() => setView('shop')}
-            className="bg-accent rounded-full px-2.5 py-0.5 text-xs font-semibold tabular-nums [-webkit-app-region:no-drag]"
+            className="bg-accent shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold tabular-nums [-webkit-app-region:no-drag]"
             title={t('shell.funds.title')}
           >
             💰 {formatWon(funds)}
           </button>
         )}
-        {/* 실제 한도는 엔진 플랜 사용률 (앱이 환산하던 $·예산 대신) — Claude 값이 없으면(Codex만) Codex 값으로 */}
-        <PlanUsageChip usage={planUsage.length ? planUsage : (codexUsage ?? planUsage)} onOpen={() => setView('payroll')} />
-        <div className="ml-auto flex items-center gap-1 [-webkit-app-region:no-drag]">
+        {/* 실제 한도는 엔진 플랜 사용률 (앱이 환산하던 $·예산 대신) — 직원이 쓰는 엔진만, 둘 다면 엔진 이름을 붙여 */}
+        <PlanUsageChip engines={usageEngines} onOpen={() => setView('payroll')} />
+        <div className="ml-auto flex shrink-0 items-center gap-1 [-webkit-app-region:no-drag]">
           <AutoApproveBadge />
           {waitingCount > 0 && (
             <Button size="sm" variant="outline" className="border-status-waiting text-status-waiting" onClick={() => setView('inbox')}>

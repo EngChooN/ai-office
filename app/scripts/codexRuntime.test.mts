@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { test } from 'node:test'
-import { approvalResponse, approvalSettings, approvalTool, commandText, newCodexState, pickModel, toolOfItem, translateNotification } from '../src/main/ai/codexEvents.ts'
+import { approvalResponse, approvalSettings, approvalTool, commandText, endedBeforeFinal, newCodexState, pickModel, toolOfItem, translateNotification } from '../src/main/ai/codexEvents.ts'
 import { codexCostUsd, priceFor } from '../src/main/ai/codexPricing.ts'
 import { findCodexRollout, readCodexTail } from '../src/main/ai/codexSession.ts'
 
@@ -129,4 +129,25 @@ test('세션 기록: 롤아웃 파일 찾기 + 끝에서 문맥 크기·마지�
 test('내장 앱 도구의 웹 검색(codex_apps web_run)은 WebSearch로 본다', () => {
   assert.equal(toolOfItem({ type: 'mcpToolCall', server: 'codex_apps', tool: 'search_service.web_run', arguments: {} })?.toolName, 'WebSearch')
   assert.equal(toolOfItem({ type: 'mcpToolCall', server: 'figma', tool: 'get', arguments: {} })?.toolName, 'mcp__figma__get')
+})
+
+test('비서: 예고(commentary)만 하고 턴이 끝나면 최종 답 없이 끝난 것으로 본다 (GPT가 "확인해 볼게요"만 하던 버그)', () => {
+  const done = { turn: { status: 'completed', items: [] } }
+  const msg = (phase: string, text: string) => ({ item: { type: 'agentMessage', phase, text } })
+  // 예고 → 도구 → 턴 끝: 도구 뒤 최종 답이 없다
+  const a = newCodexState()
+  translateNotification('item/completed', msg('commentary', '구성원과 현재 모델을 확인해 볼게요.'), a)
+  translateNotification('item/started', { item: { type: 'mcpToolCall', server: 'secretary', tool: 'overview' } }, a)
+  assert.equal(endedBeforeFinal('turn/completed', done, a), true)
+  // 예고만 하고 도구 없이 끝나도 마찬가지
+  const b = newCodexState()
+  translateNotification('item/completed', msg('commentary', '확인해 볼게요.'), b)
+  assert.equal(endedBeforeFinal('turn/completed', done, b), true)
+  // 도구 뒤 최종 답이 마지막 메시지면 정상 종료
+  translateNotification('item/completed', msg('final_answer', '바꿀 모델은 없어요.'), a)
+  assert.equal(endedBeforeFinal('turn/completed', done, a), false)
+  // 실패·중단된 턴은 이어 쓰지 않는다
+  const c = newCodexState()
+  translateNotification('item/completed', msg('commentary', '확인해 볼게요.'), c)
+  assert.equal(endedBeforeFinal('turn/completed', { turn: { status: 'interrupted' } }, c), false)
 })

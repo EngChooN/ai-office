@@ -20,12 +20,15 @@ export interface CodexState {
   usage: CodexUsage
   /** 진행 중인 파일 변경 아이템 → 바뀌는 경로 (승인 요청에는 경로가 없다) */
   fileChanges: Map<string, string[]>
+  /** 마지막 도구 호출·예고(commentary) 뒤에 최종 답(final_answer)이 아직 없다 — 이 상태로 턴이 끝나면 예고만 하고 멈춘 것 */
+  awaitingFinal: boolean
 }
 
 export const newCodexState = (model?: string): CodexState => ({
   model,
   usage: { inputTokens: 0, cachedInputTokens: 0, cacheWriteInputTokens: 0, outputTokens: 0 },
   fileChanges: new Map(),
+  awaitingFinal: false,
 })
 
 const usageOf = (v: unknown): CodexUsage => {
@@ -103,15 +106,22 @@ export function pickModel(list: { id: string; isDefault?: boolean; hidden?: bool
 /** 한 턴의 상태 → result 이벤트의 subtype */
 export const turnSubtype = (status: string) => (status === 'completed' ? 'success' : status === 'interrupted' ? 'interrupted' : 'error')
 
+const TOOL_ITEMS = ['mcpToolCall', 'commandExecution', 'fileChange', 'webSearch']
+
+/** 도구 호출이나 예고(commentary) 뒤 최종 답 없이 턴이 완료됐는가 */
+export const endedBeforeFinal = (method: string, params: Json, state: CodexState) => method === 'turn/completed' && str(obj(params.turn).status) === 'completed' && state.awaitingFinal
+
 /** 알림 하나 → 중립 이벤트들 (상태는 state에 쌓는다) */
 export function translateNotification(method: string, params: Json, state: CodexState): RuntimeEvent[] {
   if (method === 'item/started') {
     const item = obj(params.item)
     if (item.type === 'fileChange') state.fileChanges.set(str(item.id), changePaths(item))
+    if (TOOL_ITEMS.includes(str(item.type))) state.awaitingFinal = true
     return []
   }
   if (method === 'item/completed') {
     const item = obj(params.item)
+    if (item.type === 'agentMessage' && str(item.text).trim()) state.awaitingFinal = item.phase === 'commentary'
     if (item.type === 'agentMessage') return str(item.text).trim() ? [{ type: 'text', text: str(item.text) }] : []
     if (item.type === 'fileChange') {
       const paths = changePaths(item)
