@@ -37,6 +37,11 @@ jobs:
         run: pnpm typecheck
       - name: Codex 번들 받기
         run: node scripts/fetch-codex.mts win32-x64
+      - name: 진단 - winstaller vendor
+        shell: pwsh
+        run: |
+          Get-ChildItem node_modules/electron-winstaller/vendor | Select-Object Name, Length | Format-Table | Out-String
+          & node_modules/electron-winstaller/vendor/7z-x64.exe | Select-Object -First 3
       - name: 설치 파일 만들기
         run: pnpm make:win
       - name: 산출물 확인
