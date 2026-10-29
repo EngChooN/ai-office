@@ -2,6 +2,22 @@
 
 버전은 SemVer. 기능 크기 기준으로 올린다. 버전마다 **새 기능 / 개선 / 버그 수정**으로 나눠 적는다(앱의 "업데이트 소식"이 이 파일을 그대로 보여 준다).
 
+## [0.14.4] - 2026-10-29
+
+### 새 기능
+- 윈도우 Squirrel 설치 파일(`AI-Office-win-x64-Setup.exe`): `@electron-forge/maker-squirrel`, 사용자 폴더 설치·바로가기·관리자 권한 없음. 맥 dmg·zip은 그대로. 맥에는 wine이 없어 GitHub Actions `win-installer`(windows-latest)로 빌드하고 설치·실행·제거 스모크 테스트까지 한다. 첫 실행 Squirrel 이벤트는 `squirrelEvents.ts`가 처리.
+- 층별 계단 그림(1층 up · 꼭대기 down+구멍·난간 · 중간 both).
+
+### 개선
+- 상단바 플랜 사용률 Claude|GPT 병기.
+- 윈도우 앱 안 업데이트: Setup.exe 받아 크기·sha256 검사 후 실행하고 앱 종료(옛 zip 덮어쓰기 스크립트 제거). zip 사용자용 안내(`update.install.zipNotice`). 윈도우 옛 이름 폴백 제거.
+- README·소개 사이트·versioning 문서를 Setup.exe 기준으로.
+
+### 버그 수정
+- GPT 비서가 최종 답 없이 턴을 끝내면 같은 스레드에서 최대 2번 이어 쓰게 함(`requireFinal`).
+- 윈도우 업데이트 뒤 앱이 안 열리고 업데이트 창이 반복되던 문제: 덮어쓰기 실패를 삼키고 옛 버전을 다시 열던 zip 방식을 설치형으로 교체.
+- 0.14.3 중국어 변경 기록 분류 제목 통일.
+
 ## [0.14.3] - 2026-10-29
 
 ### 새 기능

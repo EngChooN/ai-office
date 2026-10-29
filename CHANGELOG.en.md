@@ -9,6 +9,25 @@ Writing rules
 
 ## [미정] (설치본 미빌드)
 
+## [0.14.4] - 2026-10-29
+
+### New features
+- A Windows installer (Setup.exe) is now available. It installs into your user folder and adds Start menu and desktop shortcuts. No admin rights are needed.
+- Floor-specific stair graphics were added. The ground floor shows stairs going up, the top floor shows stairs going down (with an opening and railing), and middle floors show stairs going both ways.
+
+### Improvements
+- The plan usage in the top bar now shows Claude and GPT together. If you use both engines, each one is labeled, and the text is shortened with an ellipsis in narrow windows.
+- In-app updates on Windows now download and run the installer (Setup.exe). When the installation finishes, the new version opens automatically.
+- Windows users who ran the app from an unzipped folder now see a notice in the update window that the app is switching to the installed version. Your settings and history carry over, and you can delete the old folder afterward.
+- README, the introduction site, and the distribution docs were updated for the installer.
+- Please note: the Windows zip file is no longer published starting with this version. If you used the old zip app, download Setup.exe from the Release page, install it, and then delete the old folder. Your settings and history carry over.
+- Please note: the installer is not signed, so a warning window (SmartScreen) appears the first time you open it. Click "More info › Run anyway."
+
+### Bug fixes
+- Fixed the GPT secretary stopping after only saying "Let me check." If a turn ends without a final answer, it now continues in the same conversation and writes the answer.
+- Fixed the app not reopening after an update on Windows, and the update window appearing again and again. The installer now installs and opens the new version.
+- Corrected the section titles in the 0.14.3 Chinese changelog.
+
 ## [0.14.3] - 2026-10-29
 
 ### New features
