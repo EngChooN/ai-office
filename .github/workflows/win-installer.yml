@@ -37,11 +37,13 @@ jobs:
         run: pnpm typecheck
       - name: Codex 번들 받기
         run: node scripts/fetch-codex.mts win32-x64
-      - name: 진단 - winstaller vendor
+      - name: Squirrel 7z 준비
+        # electron-winstaller 5.4는 7z-x64.exe만 싣는데 Squirrel.exe는 7z.exe(+7z.dll)를 찾아 "file not found"로 죽는다
         shell: pwsh
         run: |
-          Get-ChildItem node_modules/electron-winstaller/vendor | Select-Object Name, Length | Format-Table | Out-String
-          & node_modules/electron-winstaller/vendor/7z-x64.exe | Select-Object -First 3
+          $v = 'node_modules/electron-winstaller/vendor'
+          Copy-Item "$v/7z-x64.exe" "$v/7z.exe"
+          Copy-Item "$v/7z-x64.dll" "$v/7z.dll"
       - name: 설치 파일 만들기
         run: pnpm make:win
       - name: 산출물 확인
