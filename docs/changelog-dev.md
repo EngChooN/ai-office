@@ -2,6 +2,13 @@
 
 버전은 SemVer. 기능 크기 기준으로 올린다. 버전마다 **새 기능 / 개선 / 버그 수정**으로 나눠 적는다(앱의 "업데이트 소식"이 이 파일을 그대로 보여 준다).
 
+## [0.15.1] - 2026-10-29
+
+### 버그 수정
+- 안드로이드 `EventStream.kt`: `stop()`·`reconnectNow()`가 다른 스레드에서 읽는 중인 스트림을 닫으면 okio가 `IllegalStateException("closed")`를 던져 앱이 꺼지던 문제. `IOException`과 같이 `IllegalStateException`도 잡아 재연결 흐름으로 넘김(사진 선택 창이 앱을 가려 ON_STOP이 올 때 재현). 회귀 테스트 `eventStreamStopWhileReadingDoesNotCrash`(`V2ShellTest`).
+- PC `StaffPanel.tsx` 입력란: 감싸개의 `focus-within:ring-2`와 안쪽 `Textarea`의 포커스 그림자가 겹쳐 테두리가 두 겹으로 보이던 문제. 감싸개에만 `--focus-border`·`--focus-ring` 토큰을 쓰고 `Textarea`는 `focus-visible:shadow-none`.
+- 안드로이드 `versionCode` 29.
+
 ## [0.15.0] - 2026-10-29
 
 ### 새 기능

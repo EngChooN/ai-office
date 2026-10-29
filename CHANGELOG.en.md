@@ -9,6 +9,15 @@ Writing rules
 
 ## [미정] (설치본 미빌드)
 
+## [0.15.1] - 2026-10-29
+
+### Bug fixes
+- Fixed the Android app suddenly closing when you opened the photo picker to attach a picture. The error happened when the live connection closed the moment the picker covered the app.
+- Fixed the focus outline of the input box in the staff chat looking doubled when selected. Now only the outer border is highlighted.
+
+### Improvements
+- Differences by device: the Android fix applies only to the phone app. The PC app only gets the input outline fix.
+
 ## [0.15.0] - 2026-10-29
 
 ### New features

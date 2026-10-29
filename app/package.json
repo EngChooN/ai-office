@@ -1,7 +1,7 @@
 {
   "name": "claude-office",
   "productName": "AI Office",
-  "version": "0.15.0",
+  "version": "0.15.1",
   "private": true,
   "description": "AI 직원을 고용해 일을 맡기는 사무실 앱",
   "license": "MIT",
