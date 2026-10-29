@@ -4,6 +4,7 @@ import os from 'node:os'
 import path from 'node:path'
 import type { ForgeConfig } from '@electron-forge/shared-types'
 import { MakerDMG } from '@electron-forge/maker-dmg'
+import { MakerSquirrel } from '@electron-forge/maker-squirrel'
 import { MakerZIP } from '@electron-forge/maker-zip'
 import { VitePlugin } from '@electron-forge/plugin-vite'
 import { FusesPlugin } from '@electron-forge/plugin-fuses'
@@ -107,8 +108,22 @@ const config: ForgeConfig = {
       }
     },
   },
-  // 윈도우는 설치 없이 풀어서 실행하는 zip (설치형 Squirrel·서명은 확인 후 추가)
-  makers: [new MakerDMG({ name: 'AI-Office', format: 'ULFO', icon: 'build/icon.icns' }), new MakerZIP({}, ['darwin', 'win32'])],
+  // 맥: dmg(+업데이트용 zip) · 윈도우: Squirrel 설치 파일(사용자 폴더에 설치, 관리자 권한 없음).
+  // 윈도우 설치 파일은 wine 없이는 맥에서 못 만든다 — GitHub Actions(.github/workflows/win-installer.yml)의 windows 러너에서 만든다.
+  makers: [
+    new MakerDMG({ name: 'AI-Office', format: 'ULFO', icon: 'build/icon.icns' }),
+    new MakerSquirrel({
+      name: 'AI_Office',
+      title: 'AI Office',
+      authors: 'joonyoungcho',
+      exe: 'claude-office.exe',
+      setupExe: 'AI-Office-win-x64-Setup.exe',
+      setupIcon: path.resolve(import.meta.dirname, 'build', 'icon.ico'),
+      iconUrl: 'https://raw.githubusercontent.com/EngChooN/ai-office/main/app/build/icon.ico',
+      noMsi: true,
+    }),
+    new MakerZIP({}, ['darwin']),
+  ],
   plugins: [
     new VitePlugin({
       build: [

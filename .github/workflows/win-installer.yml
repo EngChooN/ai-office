@@ -1,0 +1,89 @@
+# 윈도우 설치 파일(Squirrel Setup.exe)을 windows 러너에서 만들고, 설치 → 실행 → 제거 스모크 테스트까지 한다.
+# 맥에는 wine이 없어 윈도우 설치 파일을 못 만들기 때문에 여기서 만든다. 결과는 아티팩트로만 낸다(릴리즈 업로드는 하지 않음).
+name: Windows installer
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['app/**', '.github/workflows/win-installer.yml']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: win-installer-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: app/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: 타입 검사
+        run: pnpm typecheck
+      - name: Codex 번들 받기
+        run: node scripts/fetch-codex.mts win32-x64
+      - name: 설치 파일 만들기
+        run: pnpm make:win
+      - name: 산출물 확인
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem -Recurse out/make -Filter 'AI-Office-win-x64-Setup.exe'
+          if (-not $setup) { Get-ChildItem -Recurse out/make | Select-Object FullName; throw 'AI-Office-win-x64-Setup.exe 없음' }
+          "{0} ({1:N1} MB)" -f $setup.FullName, ($setup.Length / 1MB)
+      - name: 설치 후 실행 스모크 테스트
+        shell: pwsh
+        run: |
+          $setup = (Get-ChildItem -Recurse out/make -Filter 'AI-Office-win-x64-Setup.exe').FullName
+          $root = Join-Path $env:LOCALAPPDATA 'AI_Office'
+          Start-Process -FilePath $setup -ArgumentList '--silent' -Wait
+          # 설치는 비동기로 끝난다 — 설치 폴더에 실행 파일이 생길 때까지 기다린다
+          $exe = $null
+          for ($i = 0; $i -lt 60 -and -not $exe; $i++) {
+            $exe = Get-ChildItem -Path $root -Recurse -Filter 'claude-office.exe' -ErrorAction SilentlyContinue | Where-Object { $_.FullName -match 'app-' } | Select-Object -First 1
+            if (-not $exe) { Start-Sleep -Seconds 2 }
+          }
+          if (-not $exe) { throw "설치 실패: $root 아래에 claude-office.exe 없음" }
+          "설치됨: $($exe.FullName)"
+          if (-not (Test-Path (Join-Path $root 'Update.exe'))) { throw 'Update.exe 없음' }
+          # 바로가기: --squirrel-install 이벤트 처리(squirrelEvents.ts)가 만든다
+          $start = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs'
+          $desk = [Environment]::GetFolderPath('Desktop')
+          $lnk = @(Get-ChildItem -Path $start, $desk -Recurse -Filter '*.lnk' -ErrorAction SilentlyContinue | Where-Object { $_.Name -like 'AI*Office*' })
+          "바로가기: " + (($lnk | ForEach-Object FullName) -join ', ')
+          if ($lnk.Count -lt 1) { throw '바로가기 생성 실패' }
+          # 실행: 설치 직후 자동 실행되기도 하므로 없으면 직접 띄우고, 20초 뒤에도 살아 있어야 한다
+          Start-Sleep -Seconds 5
+          if (-not (Get-Process -Name 'claude-office' -ErrorAction SilentlyContinue)) { Start-Process -FilePath $exe.FullName }
+          Start-Sleep -Seconds 20
+          $procs = Get-Process -Name 'claude-office' -ErrorAction SilentlyContinue
+          if (-not $procs) { throw '앱이 실행되지 않았거나 바로 종료됨' }
+          "실행 중 프로세스 $($procs.Count)개"
+          $procs | Stop-Process -Force
+          # 제거 — 바로가기까지 지워져야 한다
+          Start-Process -FilePath (Join-Path $root 'Update.exe') -ArgumentList '--uninstall', '-s' -Wait
+          Start-Sleep -Seconds 5
+          $left = @(Get-ChildItem -Path $start, $desk -Recurse -Filter '*.lnk' -ErrorAction SilentlyContinue | Where-Object { $_.Name -like 'AI*Office*' })
+          if ($left.Count -gt 0) { throw '제거 후에도 바로가기가 남음' }
+          '스모크 테스트 통과'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AI-Office-win-x64-Setup
+          path: |
+            app/out/make/squirrel.windows/x64/AI-Office-win-x64-Setup.exe
+          if-no-files-found: error
+          retention-days: 14

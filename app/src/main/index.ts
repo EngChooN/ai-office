@@ -1,3 +1,4 @@
+import './squirrelEvents' // Squirrel 설치·업데이트·제거 실행이면 바로가기만 처리하고 종료 — 다른 모듈보다 먼저 평가돼야 한다
 import os from 'node:os'
 import { acquireDataLock, quitForDataLock } from './dataLock'
 import { cancelCodexLogin } from './ai/codexLogin'
