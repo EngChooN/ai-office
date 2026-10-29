@@ -6,7 +6,7 @@ import { app, ipcMain, powerMonitor, shell, type BrowserWindow } from 'electron'
 import { loadSkippedUpdate, saveSkippedUpdate } from './db'
 import { getLang, onLangChange } from '../shared/i18n/index.ts'
 import { assetTargetFor, parseRelease, RELEASE_API_URL, shouldNotify, shouldRecheck, summarizeNotes, UPDATE_CHECK_INTERVAL_MS, type InstallStatus, type ReleaseInfo, type UpdateStatus } from '../shared/updateCheck.ts'
-import { canInstallHere, InstallFailure, launchReplacer, prepareInstall } from './appInstall'
+import { canInstallHere, InstallFailure, isWinZipInstall, launchReplacer, prepareInstall } from './appInstall'
 
 const FETCH_TIMEOUT_MS = 15_000
 
@@ -63,6 +63,7 @@ export class UpdateChecker {
       skippedVersion: this.skippedVersion,
       checkedAt: this.checkedAt,
       canInstall: this.state === 'available' && !!this.release && canInstallHere(this.release.asset),
+      isWinZip: isWinZipInstall(),
       install: this.install,
     }
   }
@@ -120,7 +121,7 @@ export class UpdateChecker {
     this.setInstall({ phase: 'downloading', progress: 0, installError: null })
     try {
       const plan = await prepareInstall(release, (phase, progress) => this.setInstall({ phase, progress, installError: null }))
-      // 바꿔 끼우기는 이 앱이 꺼진 뒤 별도 프로세스가 한다 — 응답을 먼저 보내고 끈다
+      // 바꿔 끼우기(맥)·설치 파일 실행(윈도우)은 별도 프로세스가 한다 — 띄운 뒤 응답을 먼저 보내고 끈다
       await launchReplacer(plan)
       setImmediate(() => app.quit())
     } catch (e) {

@@ -13,6 +13,7 @@ function ReleaseSummary({ notes }: { notes: string }) {
 
 /** 앱 안 설치 확인 — 앱이 꺼진다는 것을 먼저 알린다 */
 function InstallConfirm({ version, open, onOpenChange }: { version: string; open: boolean; onOpenChange: (open: boolean) => void }) {
+  const isWinZip = useUpdateStore((s) => s.status?.isWinZip)
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
@@ -20,6 +21,7 @@ function InstallConfirm({ version, open, onOpenChange }: { version: string; open
           <DialogTitle>{t('update.install.confirmTitle', { version })}</DialogTitle>
           <DialogDescription>{t('update.install.confirmDesc')}</DialogDescription>
         </DialogHeader>
+        {isWinZip && <p className="text-muted-foreground text-sm">{t('update.install.zipNotice')}</p>}
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             {t('update.install.cancel')}

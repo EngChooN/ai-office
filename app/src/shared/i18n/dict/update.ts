@@ -28,6 +28,12 @@ export default {
     ja: '新しいバージョンを取得してインストールし、アプリを再起動します。アプリがしばらく終了し、作業中のスタッフの作業は止まります。作業が終わってから行うことをおすすめします。',
     zh: '应用会下载并安装新版本，然后重新打开。应用会短暂关闭，正在工作的员工会停止工作。建议在他们完成工作后再操作。',
   },
+  'update.install.zipNotice': {
+    ko: '지금은 압축 파일(zip)로 푼 앱을 쓰고 있어요. 이번 업데이트부터 설치형으로 바뀌어 사용자 폴더에 새로 설치되고, 바로가기도 만들어져요. 설정과 기록은 그대로 이어지며, 끝난 뒤 예전에 풀어 둔 폴더는 지워도 돼요.',
+    en: "You're currently running the app from an unzipped folder. This update switches to the installed version: it installs into your user folder and creates shortcuts. Your settings and history carry over, and once it's done you can delete the old unzipped folder.",
+    ja: '現在は zip を展開したアプリを使っています。今回のアップデートからインストール型に切り替わり、ユーザーフォルダーに新しくインストールされ、ショートカットも作成されます。設定と履歴はそのまま引き継がれ、完了後は以前に展開したフォルダーを削除して構いません。',
+    zh: '你目前使用的是解压 zip 后的应用。本次更新起将切换为安装版：会安装到用户文件夹并创建快捷方式。设置和记录会保留，完成后可删除之前解压的旧文件夹。',
+  },
   'update.install.confirm': { ko: '업데이트하고 다시 열기', en: 'Update and reopen', ja: 'アップデートして再起動', zh: '更新并重新打开' },
   'update.install.cancel': { ko: '취소', en: 'Cancel', ja: 'キャンセル', zh: '取消' },
   'update.install.downloading': { ko: '내려받는 중 {pct}%', en: 'Downloading {pct}%', ja: 'ダウンロード中 {pct}%', zh: '正在下载 {pct}%' },

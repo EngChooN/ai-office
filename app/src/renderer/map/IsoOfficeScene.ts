@@ -525,7 +525,8 @@ export class IsoOfficeScene extends Phaser.Scene {
     if (meeting.length) this.bakeMeeting(layout, meetingFloor, bake, fixedItem, pixels)
     const stairs = this.fixed.filter((t) => t.kind === 'stairs')
     if (stairs.length) {
-      const id = levelRowOf(this.level).elevator ? 'fixed-elevator' : 'fixed-stairs'
+      const top = officeOf(this.level).floors
+      const id = levelRowOf(this.level).elevator ? 'fixed-elevator' : this.floor <= 1 ? 'fixed-stairs-up' : this.floor >= top ? 'fixed-stairs-down' : 'fixed-stairs-both'
       const it = fixedItem(id, Math.min(...stairs.map((t) => t.gx)), Math.min(...stairs.map((t) => t.gy)))
       this.fixedParts.push(this.placeArt(this.itemTexture(id, 0), it))
     }

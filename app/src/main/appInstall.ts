@@ -1,7 +1,8 @@
 // 앱 안에서 설치 — 내려받기 → 크기·sha256 검사 → 새 앱 풀기 → 앱이 꺼진 뒤 설치 위치에 바꿔 끼우고 다시 열기
 // Electron 자동 업데이트(Squirrel.Mac)는 앱 서명이 맞아야 해서 서명 없는 맥에서 쓸 수 없어 직접 한다.
 // 설치 파일은 앱이 HTTPS로 직접 받으므로 브라우저 검역 표시(quarantine)가 붙지 않는다. 대신 GitHub가 준 sha256으로 파일이 온전한지 본다.
-// 윈도우는 PowerShell로 풀고 바꾼다 (실행 중인 exe는 덮어쓸 수 없어 앱이 꺼진 뒤에 바꾼다). 윈도우 쪽은 이 기기에서 검증하지 못했다.
+// 윈도우는 Squirrel 설치 파일(AI-Office-win-x64-Setup.exe)을 받아 검사한 뒤 실행하고 앱을 끈다. 설치 파일이 사용자 폴더에 새 버전을 깔고 자동으로 연다 —
+// 실행 중인 exe를 덮어쓰지 않으므로 옛 zip 방식의 '덮어쓰기 실패 → 옛 버전 재실행'이 없고, zip으로 쓰던 사용자도 같은 길로 설치형으로 넘어온다. 윈도우 쪽은 이 기기에서 검증하지 못했다.
 import { app } from 'electron'
 import { execFile, spawn } from 'node:child_process'
 import { accessSync, constants, createReadStream, createWriteStream, existsSync, promises as fs } from 'node:fs'
@@ -33,10 +34,21 @@ export function installedLocation(): string | null {
   return null
 }
 
-/** 이 기기에서 앱 안 설치를 할 수 있는지: 설치 파일과 sha256이 있고, 설치 위치의 상위 폴더에 쓸 수 있어야 한다 */
+/** 윈도우 설치형(Squirrel) 실행인지 — 실행 파일이 든 app-버전 폴더 한 단계 위에 Update.exe가 있다 */
+export function isSquirrelInstall(): boolean {
+  return process.platform === 'win32' && app.isPackaged && existsSync(path.resolve(path.dirname(process.execPath), '..', 'Update.exe'))
+}
+
+/** 윈도우에서 zip을 풀어 쓰는 중인지 (설치형이 아님) — 다음 업데이트 때 설치형으로 넘어가며 옛 폴더는 지워도 된다고 안내한다 */
+export function isWinZipInstall(): boolean {
+  return process.platform === 'win32' && app.isPackaged && !isSquirrelInstall()
+}
+
+/** 이 기기에서 앱 안 설치를 할 수 있는지: 설치 파일과 sha256이 있어야 한다. 맥은 설치 위치의 상위 폴더에 쓸 수 있어야 하고, 윈도우는 설치 파일이 사용자 폴더에 깔아 쓰기 검사가 필요 없다 */
 export function canInstallHere(asset: ReleaseAsset | null): boolean {
   const where = installedLocation()
   if (!asset?.sha256 || !where) return false
+  if (process.platform === 'win32') return asset.url.toLowerCase().endsWith('-setup.exe')
   try {
     accessSync(path.dirname(where), constants.W_OK)
     return true
@@ -110,23 +122,7 @@ async function prepareMac(dmg: string, staged: string, version: string) {
   return staged
 }
 
-/** 윈도우: zip을 풀고 실행 파일이 든 폴더를 찾는다. 경로는 환경 변수로 넘겨 명령 문자열에 끼워 넣지 않는다 */
-async function prepareWin(zip: string, dest: string) {
-  try {
-    await run('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', 'Expand-Archive -LiteralPath $env:CO_ZIP -DestinationPath $env:CO_DEST -Force'], {
-      env: { ...process.env, CO_ZIP: zip, CO_DEST: dest },
-    })
-  } catch {
-    throw new InstallFailure('prepare')
-  }
-  for (const name of await fs.readdir(dest)) {
-    const folder = path.join(dest, name)
-    if (existsSync(path.join(folder, 'claude-office.exe'))) return folder
-  }
-  throw new InstallFailure('prepare')
-}
-
-/** 내려받기·검사·풀기까지 한다. 바꿔 끼우는 일은 앱이 꺼진 뒤 launchReplacer가 한다 */
+/** 내려받기·검사까지 한다(맥은 새 .app 꺼내기까지). 바꿔 끼우거나 설치하는 일은 launchReplacer가 한다 */
 export async function prepareInstall(release: ReleaseInfo, onPhase: (phase: 'downloading' | 'preparing', pct: number | null) => void): Promise<{ source: string; target: string }> {
   const asset = release.asset
   const target = installedLocation()
@@ -139,9 +135,8 @@ export async function prepareInstall(release: ReleaseInfo, onPhase: (phase: 'dow
   await download(asset, file, (pct) => onPhase('downloading', pct))
   onPhase('preparing', null)
   await verify(file, asset)
-  const staged = path.join(staging, 'new')
-  if (process.platform === 'darwin') return { source: await prepareMac(file, staged, release.version), target }
-  return { source: await prepareWin(file, staged), target }
+  if (process.platform === 'darwin') return { source: await prepareMac(file, path.join(staging, 'new'), release.version), target }
+  return { source: file, target }
 }
 
 /** 앱이 꺼진 뒤 설치 위치를 새 것으로 바꾸고 다시 연다. 바꾸다 실패하면 예전 것을 되돌린다 */
@@ -155,27 +150,20 @@ fi
 /usr/bin/open "$target"
 `
 
-export function launchReplacer(plan: { source: string; target: string }) {
+export function launchReplacer(plan: { source: string; target: string }): Promise<void> | void {
   const { source, target } = plan
   if (process.platform === 'darwin') {
     const child = spawn('/bin/sh', ['-c', MAC_SWAP_SCRIPT, 'sh', String(process.pid), target, source, `${target}.update-old`], { detached: true, stdio: 'ignore' })
     child.unref()
     return
   }
-  const script = path.join(app.getPath('temp'), 'claude-office-update', 'replace-app.ps1')
-  // 기다리는 동안 실패해도 새 파일을 덮고 다시 연다. 덮기가 실패하면 예전 파일로 남는다
-  const body = [
-    'param([int]$ProcId, [string]$Source, [string]$Target)',
-    'try { Wait-Process -Id $ProcId -Timeout 120 -ErrorAction SilentlyContinue } catch {}',
-    'try { Copy-Item -Path (Join-Path $Source "*") -Destination $Target -Recurse -Force } catch {}',
-    'Start-Process -FilePath (Join-Path $Target "claude-office.exe")',
-  ].join('\r\n')
-  return fs.mkdir(path.dirname(script), { recursive: true }).then(() => fs.writeFile(script, body)).then(() => {
-    const child = spawn('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File', script, '-ProcId', String(process.pid), '-Source', source, '-Target', target], {
-      detached: true,
-      stdio: 'ignore',
-      windowsHide: true,
+  // 윈도우: 설치 파일을 따로 띄우고 앱을 끈다. 설치 파일이 새 버전을 깔고 연다. 못 띄우면 실패로 알린다 (옛 방식은 실패를 삼켜 옛 버전이 다시 열렸다)
+  return new Promise<void>((resolve, reject) => {
+    const child = spawn(source, [], { detached: true, stdio: 'ignore' })
+    child.once('error', () => reject(new InstallFailure('prepare')))
+    child.once('spawn', () => {
+      child.unref()
+      resolve()
     })
-    child.unref()
   })
 }

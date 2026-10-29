@@ -412,6 +412,30 @@ function rotPt(x: number, y: number, r: Rot, W: number, D: number): [number, num
 
 // 부품 만들기 도우미
 const b = (x: number, y: number, w: number, d: number, z: number, h: number, c: Color, more: Partial<Part> = {}): Part => ({ x, y, w, d, z, h, c, ...more })
+
+/** 고정 계단: 올라가는 단(뒤쪽일수록 높다)과 오른쪽 난간. 폭 w칸 */
+const stairsUp = (w: number): Part[] => [
+  ...Array.from({ length: 8 }, (_, i) => b(0, 2 - (i + 1) * 0.25, w, 0.25, 0, (i + 1) * 6, K.stoneD, { top: K.stone })),
+  ...Array.from({ length: 8 }, (_, i) => b(w, 2.06 - (i + 1) * 0.25, 0.06, 0.06, (i + 1) * 6, 12, K.metal)),
+]
+
+/** 고정 계단: 바닥에 뚫린 구멍 + 뒤로 내려가는 단(뒤쪽일수록 어둡다) + 양옆 난간. x에서 폭 w칸 */
+const stairsDown = (x: number, w: number, tall = false): Part[] => {
+  const rail = tall ? 14 : 12
+  return [
+    b(x, 0.05, w, 1.9, 0, 0, K.dark, {
+      top: (q) => {
+        if (q.u < 0.06 || q.u > 0.94 || q.v < 0.04) return K.metal
+        const k = Math.min(7, Math.floor((1 - q.v) * 8))
+        return k % 2 ? '#4a5068' : '#2b2f42'
+      },
+    }),
+    ...[0.05, 1.7, 1.95].flatMap((y) => [b(x - 0.03, y - 0.03, 0.06, 0.06, 0, rail, K.metal), b(x + w - 0.03, y - 0.03, 0.06, 0.06, 0, rail, K.metal)]),
+    b(x - 0.02, 0.02, 0.04, 1.96, rail, 2, K.metalL),
+    b(x + w - 0.02, 0.02, 0.04, 1.96, rail, 2, K.metalL),
+  ]
+}
+
 /** 네 다리: (x0,y0)~(x1,y1) 바깥 모서리 안쪽에 s칸 굵기 */
 const legs = (x0: number, y0: number, x1: number, y1: number, s: number, h: number, c: Color) =>
   [
@@ -1705,13 +1729,29 @@ const ITEMS: Record<string, ItemDef> = {
     parts: [b(0.06, 0.06, 0.88, 0.88, 0, 0, K.orange, { top: (q) => (q.u < 0.08 || q.u > 0.92 || q.v < 0.08 || q.v > 0.92 ? '#c8693e' : Math.abs(q.u - 0.5) < 0.08 && q.v > 0.2 && q.v < 0.8 ? '#fbe0c8' : Math.abs(Math.abs(q.u - 0.5) - (q.v - 0.2) * 0.6) < 0.06 && q.v < 0.5 ? '#fbe0c8' : K.orange) })],
   },
   'fixed-stairs': {
-    name: '계단',
+    name: '계단 (올라감)',
     W: 2,
     D: 2,
-    parts: [
-      ...Array.from({ length: 8 }, (_, i) => b(0, 2 - (i + 1) * 0.25, 1.2, 0.25, 0, (i + 1) * 6, K.stoneD, { top: K.stone })),
-      ...Array.from({ length: 8 }, (_, i) => b(1.2, 2.06 - (i + 1) * 0.25, 0.06, 0.06, (i + 1) * 6, 12, K.metal)),
-    ],
+    parts: stairsUp(1.2),
+  },
+  'fixed-stairs-up': {
+    name: '계단 (올라감)',
+    W: 2,
+    D: 2,
+    parts: stairsUp(1.2),
+  },
+  'fixed-stairs-down': {
+    name: '계단 (내려감)',
+    W: 2,
+    D: 2,
+    flat: true,
+    parts: stairsDown(0.1, 1.5),
+  },
+  'fixed-stairs-both': {
+    name: '계단 (오르내림)',
+    W: 2,
+    D: 2,
+    parts: [...stairsUp(0.8), ...stairsDown(1.1, 0.8, true)],
   },
   'fixed-elevator': {
     name: '엘리베이터',

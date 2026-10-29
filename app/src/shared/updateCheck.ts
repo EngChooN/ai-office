@@ -20,15 +20,15 @@ export function shouldRecheck(lastAttemptAt: number | null, now: number, gap = U
 /** Release에 올리는 설치 파일 이름 (고정). 저장소 개명(ai-office) 뒤 규칙 */
 export const ASSET_NAMES = {
   mac: 'AI-Office-mac-arm64.dmg',
-  win: 'AI-Office-win-x64.zip',
+  win: 'AI-Office-win-x64-Setup.exe',
   android: 'AI-Office-android.apk',
 } as const
-/** 옛 이름(Claude Office 시절). 옛 앱이 이 이름으로 찾으므로 Release에 함께 올리고, 새 이름 파일이 없을 때 대신 찾는다 */
-export const LEGACY_ASSET_NAMES = {
+/** 옛 이름(Claude Office 시절). 옛 앱이 이 이름으로 찾으므로 Release에 함께 올리고, 새 이름 파일이 없을 때 대신 찾는다.
+ * 윈도우는 없다 — 옛 zip은 설치형 업데이트에 쓸 수 없어 대신 고르지 않는다 (옛 앱은 Release 페이지로 안내된다) */
+export const LEGACY_ASSET_NAMES: Partial<Record<AssetTarget, string>> = {
   mac: 'Claude-Office-mac-arm64.dmg',
-  win: 'Claude-Office-win-x64.zip',
   android: 'Claude-Office-android.apk',
-} as const
+}
 export type AssetTarget = keyof typeof ASSET_NAMES
 
 /** GitHub Release의 설치 파일 한 개 — 주소, 크기, sha256(GitHub가 준 값이 없으면 null) */
@@ -51,7 +51,7 @@ export interface ReleaseInfo {
   pageUrl: string
 }
 
-/** 앱 안 설치 진행 상태. idle: 안 함 · downloading: 내려받는 중 · preparing: 검사·풀기 중 · failed: 실패 (이유는 installError) */
+/** 앱 안 설치 진행 상태. idle: 안 함 · downloading: 내려받는 중 · preparing: 검사 중 · failed: 실패 (이유는 installError) */
 export interface InstallStatus {
   phase: 'idle' | 'downloading' | 'preparing' | 'failed'
   /** 내려받은 비율 0~100 (모르면 null) */
@@ -71,6 +71,8 @@ export interface UpdateStatus {
   checkedAt: number | null
   /** 이 앱이 이 기기에서 앱 안에서 바로 설치할 수 있는지 (설치 파일이 있고, 설치된 위치를 쓸 수 있을 때) */
   canInstall: boolean
+  /** 윈도우에서 zip을 풀어 쓰는 중 — 업데이트하면 설치형으로 넘어가며 옛 폴더는 지워도 된다 */
+  isWinZip: boolean
   install: InstallStatus
 }
 
@@ -143,7 +145,7 @@ const isGithubUrl = (url: unknown): url is string => typeof url === 'string' && 
 export function pickAsset(assets: unknown, target: AssetTarget | null): ReleaseAsset | null {
   if (!target || !Array.isArray(assets)) return null
   const named = (name: string) => assets.find((a) => (a as { name?: unknown })?.name === name)
-  const asset = (named(ASSET_NAMES[target]) ?? named(LEGACY_ASSET_NAMES[target])) as
+  const asset = (named(ASSET_NAMES[target]) ?? (LEGACY_ASSET_NAMES[target] ? named(LEGACY_ASSET_NAMES[target]) : undefined)) as
     | { browser_download_url?: unknown; size?: unknown; digest?: unknown }
     | undefined
   if (!asset || !isGithubUrl(asset.browser_download_url)) return null

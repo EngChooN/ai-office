@@ -9,7 +9,7 @@
 var DOWNLOADS = {
   // 최신 Release의 고정 파일 이름으로 연결 — 새 버전은 같은 이름으로 Release에 올리면 됨
   mac: 'https://github.com/EngChooN/ai-office/releases/latest/download/AI-Office-mac-arm64.dmg',
-  win: 'https://github.com/EngChooN/ai-office/releases/latest/download/AI-Office-win-x64.zip',
+  win: 'https://github.com/EngChooN/ai-office/releases/latest/download/AI-Office-win-x64-Setup.exe',
   android: 'https://github.com/EngChooN/ai-office/releases/latest/download/AI-Office-android.apk',
   github: 'https://github.com/EngChooN/ai-office',
   feedback: 'https://github.com/EngChooN/ai-office/issues/new', // 앱 설정의 [피드백 보내기]와 같은 주소
@@ -403,7 +403,7 @@ figure:hover{transform:translateY(-4px);border-color:#454c60}
   </div>
   <div class="dls" id="dls">
     <div class="dlc rv" data-os="mac"><h3 data-os-title></h3><ul><li data-i18n="mac.1"><!--p-->Apple Silicon(M1 이후) 전용<!--/p--></li><li data-i18n="mac.2"><!--p-->dmg를 열어 응용 프로그램 폴더로 끌어다 놓기<!--/p--></li><li data-i18n="mac.3"><!--p-->처음 열 때 경고가 나오면 시스템 설정 › 개인정보 보호 및 보안 › "그래도 열기"<!--/p--></li><li class="note" data-i18n="mac.4"><!--p-->용량이 커요(GPT 직원 기능 포함, 약 350MB)<!--/p--></li></ul><a data-dl></a></div>
-    <div class="dlc rv" data-os="win"><h3 data-os-title></h3><ul><li data-i18n="win.1"><!--p-->시험판 · 64비트 · .zip 압축을 풀고 claude-office.exe 실행<!--/p--></li><li data-i18n="win.2"><!--p-->"Windows의 PC 보호" 창이 뜨면 "추가 정보 › 실행"<!--/p--></li><li data-i18n="win.3"><!--p-->외부 직원 알림·화면 캡처는 아직 Mac 전용<!--/p--></li></ul><a data-dl></a></div>
+    <div class="dlc rv" data-os="win"><h3 data-os-title></h3><ul><li data-i18n="win.1"><!--p-->시험판 · 64비트 · Setup.exe를 실행해 설치 (이전 zip 사용자는 설치 후 옛 폴더 삭제)<!--/p--></li><li data-i18n="win.2"><!--p-->"Windows의 PC 보호" 창이 뜨면 "추가 정보 › 실행"<!--/p--></li><li data-i18n="win.3"><!--p-->외부 직원 알림·화면 캡처는 아직 Mac 전용<!--/p--></li></ul><a data-dl></a></div>
     <div class="dlc rv" data-os="android"><h3 data-os-title></h3><ul><li data-i18n="and.1"><!--p-->PC 앱을 원격으로 쓰는 휴대폰 앱<!--/p--></li><li data-i18n="and.2"><!--p-->PC의 설정 › 휴대폰 연결에서 켜고 QR로 연결<!--/p--></li><li data-i18n="and.3"><!--p-->PC와 같은 버전을 쓰세요<!--/p--></li></ul><a data-dl></a></div>
   </div>
 </div></section>
@@ -514,7 +514,7 @@ var I18N = {
     'ph.note': '공유기 설정을 바꾸지 않고, 내 기기끼리만 이어지는 개인 전용 연결(Tailscale)로 안전하게 붙어요. 같은 와이파이에서만 쓰게 제한할 수도 있어요.',
     'dl.eyebrow': '다운로드', 'dl.title': '무료로 받아 보세요', 'dl.sub': 'Claude 또는 GPT(ChatGPT) 계정 중 하나만 로그인돼 있으면 시작할 수 있어요.', 'dl.mine': '내 기기',
     'mac.1': 'Apple Silicon(M1 이후) 전용', 'mac.2': 'dmg를 열어 응용 프로그램 폴더로 끌어다 놓기', 'mac.3': '처음 열 때 경고가 나오면 시스템 설정 › 개인정보 보호 및 보안 › "그래도 열기"', 'mac.4': '용량이 커요(GPT 직원 기능 포함, 약 350MB)',
-    'win.1': '시험판 · 64비트 · .zip 압축을 풀고 claude-office.exe 실행', 'win.2': '"Windows의 PC 보호" 창이 뜨면 "추가 정보 › 실행"', 'win.3': '외부 직원 알림·화면 캡처는 아직 Mac 전용',
+    'win.1': '시험판 · 64비트 · Setup.exe를 실행해 설치 (이전 zip 사용자는 설치 후 옛 폴더 삭제)', 'win.2': '"Windows의 PC 보호" 창이 뜨면 "추가 정보 › 실행"', 'win.3': '외부 직원 알림·화면 캡처는 아직 Mac 전용',
     'and.1': 'PC 앱을 원격으로 쓰는 휴대폰 앱', 'and.2': 'PC의 설정 › 휴대폰 연결에서 켜고 QR로 연결', 'and.3': 'PC와 같은 버전을 쓰세요',
     'faq.title': '자주 묻는 질문',
     'q1': '따로 가입하거나 API 키가 필요한가요?', 'a1': '아니요. 컴퓨터에 로그인된 Claude 또는 GPT(ChatGPT) 계정을 그대로 씁니다. 직원들은 그 계정으로 일하고, 사용량도 그 계정에 잡힙니다.',
@@ -587,7 +587,7 @@ var I18N = {
     'ph.note': 'No router changes — it connects over a private link between your own devices (Tailscale). You can also limit it to the same Wi-Fi.',
     'dl.eyebrow': 'Download', 'dl.title': 'Get it for free', 'dl.sub': 'One logged-in account, Claude or GPT (ChatGPT), is enough to start.', 'dl.mine': 'Your device',
     'mac.1': 'Apple Silicon (M1 or later) only', 'mac.2': 'Open the .dmg and drag the app into Applications', 'mac.3': 'If you see a warning on first launch, go to System Settings › Privacy & Security › “Open Anyway”', 'mac.4': 'Larger download (includes GPT staff, about 350 MB)',
-    'win.1': 'Preview · 64-bit · unzip and run claude-office.exe', 'win.2': 'If “Windows protected your PC” appears, choose “More info › Run anyway”', 'win.3': 'External session alerts and screen capture are Mac-only for now',
+    'win.1': 'Preview · 64-bit · run Setup.exe to install (old zip users: delete the old folder afterward)', 'win.2': 'If “Windows protected your PC” appears, choose “More info › Run anyway”', 'win.3': 'External session alerts and screen capture are Mac-only for now',
     'and.1': 'A remote companion for the desktop app', 'and.2': 'Turn on Settings › Phone connection on your PC, then scan the QR code', 'and.3': 'Use the same version as your PC',
     'faq.title': 'Frequently asked questions',
     'q1': 'Do I need to sign up or get an API key?', 'a1': 'No. It uses the Claude or GPT (ChatGPT) account already logged in on your computer. Staff work under that account and usage counts against it.',
@@ -660,7 +660,7 @@ var I18N = {
     'ph.note': 'ルーターの設定は不要で、自分の端末同士だけをつなぐ専用回線（Tailscale）で安全に接続します。同じWi-Fiだけに制限することもできます。',
     'dl.eyebrow': 'ダウンロード', 'dl.title': '無料でどうぞ', 'dl.sub': 'ClaudeまたはGPT（ChatGPT）のアカウントのどちらか1つにログインしていれば始められます。', 'dl.mine': 'お使いの端末',
     'mac.1': 'Apple シリコン（M1 以降）専用', 'mac.2': '.dmg を開いて「アプリケーション」フォルダへドラッグ', 'mac.3': '初回起動で警告が出たら、システム設定 › プライバシーとセキュリティ ›「このまま開く」', 'mac.4': 'ファイルサイズが大きめです（GPT社員機能を含む、約350MB）',
-    'win.1': 'プレビュー版・64 ビット・.zip を展開して claude-office.exe を実行', 'win.2': '「Windows によって PC が保護されました」と出たら「詳細情報 › 実行」', 'win.3': '外部セッションの通知と画面キャプチャは現在 Mac のみ',
+    'win.1': 'プレビュー版・64 ビット・Setup.exe を実行してインストール（以前の zip 利用者はインストール後に古いフォルダを削除）', 'win.2': '「Windows によって PC が保護されました」と出たら「詳細情報 › 実行」', 'win.3': '外部セッションの通知と画面キャプチャは現在 Mac のみ',
     'and.1': 'PC アプリをリモートで使うスマホアプリ', 'and.2': 'PC の 設定 › スマホ連携 をオンにして QR コードで接続', 'and.3': 'PC と同じバージョンを使ってください',
     'faq.title': 'よくある質問',
     'q1': '会員登録やAPIキーは必要ですか？', 'a1': 'いいえ。パソコンにログインしているClaudeまたはGPT（ChatGPT）のアカウントをそのまま使います。社員はそのアカウントで働き、使用量もそのアカウントにカウントされます。',
@@ -733,7 +733,7 @@ var I18N = {
     'ph.note': '无需改路由器设置，通过只连接你自己设备的专用网络（Tailscale）安全接入。也可以限制只能在同一 Wi-Fi 下使用。',
     'dl.eyebrow': '下载', 'dl.title': '免费获取', 'dl.sub': '只要登录 Claude 或 GPT（ChatGPT）账号中的一个就能开始。', 'dl.mine': '你的设备',
     'mac.1': '仅支持 Apple 芯片（M1 及以上）', 'mac.2': '打开 .dmg，把应用拖进“应用程序”文件夹', 'mac.3': '首次打开出现警告时，前往 系统设置 › 隐私与安全性 › “仍要打开”', 'mac.4': '体积较大（含 GPT 员工功能，约 350MB）',
-    'win.1': '预览版 · 64 位 · 解压 .zip 后运行 claude-office.exe', 'win.2': '出现“Windows 已保护你的电脑”时，选择“更多信息 › 仍要运行”', 'win.3': '外部会话通知和截屏目前仅支持 Mac',
+    'win.1': '预览版 · 64 位 · 运行 Setup.exe 安装（之前用 zip 的用户安装后删除旧文件夹）', 'win.2': '出现“Windows 已保护你的电脑”时，选择“更多信息 › 仍要运行”', 'win.3': '外部会话通知和截屏目前仅支持 Mac',
     'and.1': '远程使用电脑端应用的手机应用', 'and.2': '在电脑的 设置 › 手机连接 中开启，然后扫描二维码', 'and.3': '请使用与电脑相同的版本',
     'faq.title': '常见问题',
     'q1': '需要注册或 API 密钥吗？', 'a1': '不需要。直接使用电脑上已登录的 Claude 或 GPT（ChatGPT）账号。员工用该账号工作，用量也计入该账号。',
@@ -757,7 +757,7 @@ var I18N = {
     win: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 5.5l7.4-1v7.1H3V5.5zm0 13l7.4 1v-7H3v6zm8.3 1.1L21 21v-8.4h-9.7v7zm0-15.2v7.2H21V3l-9.7 1.4z"/></svg>',
     android: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.6 9.5l1.7-3a.4.4 0 00-.7-.4l-1.8 3.1a10.6 10.6 0 00-9.6 0L5.4 6.1a.4.4 0 00-.7.4l1.7 3A9.9 9.9 0 001.5 17h21a9.9 9.9 0 00-4.9-7.5zM7 14.4a1 1 0 110-2 1 1 0 010 2zm10 0a1 1 0 110-2 1 1 0 010 2z"/></svg>'
   };
-  var EXT = {mac:'.dmg', win:'.zip', android:'.apk'};
+  var EXT = {mac:'.dmg', win:'.exe', android:'.apk'};
   // 캡처 위 번호 점 위치 [가로 %, 세로 %] — 4개 언어 캡처가 같은 구도라 위치도 같다. 설명 글은 I18N의 'co.<이름>'
   var CALLOUTS = {
     office: [[46, 33], [49, 51], [85, 9]],

@@ -29,7 +29,7 @@ const GROUPS = [
   { id: 'shop', title: '상점 가구', ids: SHOP_ITEMS.filter((i) => i.category === 'furniture').map((i) => i.id) },
   { id: 'gear', title: '상점 책상·의자 (gear)', ids: SHOP_ITEMS.filter((i) => i.category === 'desk' || i.category === 'chair').map((i) => i.id) },
   { id: 'prop', title: '고정 소품 prop-*', ids: PROP_KEYS.map((k) => `prop-${k}`) },
-  { id: 'base', title: '기본 자리 · 고정 칸', ids: ['desk', 'chair', 'plant', 'fixed-stairs', 'fixed-elevator', 'fixed-entrance'] },
+  { id: 'base', title: '기본 자리 · 고정 칸', ids: ['desk', 'chair', 'plant', 'fixed-stairs-up', 'fixed-stairs-down', 'fixed-stairs-both', 'fixed-elevator', 'fixed-entrance'] },
 ] as const
 type Tab = (typeof GROUPS)[number]['id'] | 'rooms' | 'people'
 

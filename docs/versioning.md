@@ -35,7 +35,7 @@
 ## 4. 빌드·설치 순서
 1. 위 판단 → 번호 결정, 3번 항목 수정
 2. `cd app && pnpm typecheck && pnpm test` (통과해야 빌드)
-3. 맥 `pnpm make` → `app/out/make/dmg/arm64/AI-Office.dmg` / 윈도우 `pnpm make:win` → `app/out/make/zip/win32/x64/*.zip`
+3. 맥 `pnpm make` → `app/out/make/dmg/arm64/AI-Office.dmg` / 윈도우는 GitHub Actions `win-installer`로 빌드 → `AI-Office-win-x64-Setup.exe` 아티팩트
 4. 맥은 `/Applications/AI Office.app` 교체 후 `CFBundleShortVersionString`이 새 버전인지 확인
 - 이 맥은 쉘에 node가 없을 수 있어 nvm의 node 경로(예: v24)와 `~/Library/pnpm`을 PATH에 넣어 실행.
 - 실행 중인 앱이 있으면 종료 여부를 먼저 확인(작업 중인 세션이 날아갈 수 있음).
@@ -59,10 +59,10 @@
 | 플랫폼 | 릴리즈 파일 이름 | 빌드 산출물 (복사해서 이름 변경) |
 |---|---|---|
 | Mac (Apple Silicon) | `AI-Office-mac-arm64.dmg` | `app/out/make/dmg/arm64/AI-Office.dmg` |
-| Windows (x64) | `AI-Office-win-x64.zip` | `app/out/make/zip/win32/x64/AI Office-win32-x64-<버전>.zip` |
+| Windows (x64) | `AI-Office-win-x64-Setup.exe` | `app/out/make/squirrel.windows/x64/AI-Office-win-x64-Setup.exe` (맥에서는 못 만듦 — GitHub Actions `win-installer` 아티팩트를 받아 사용) |
 | Android | `AI-Office-android.apk` | `android/app/build/outputs/apk/release/app-release.apk` |
 
-- **체크리스트(릴리즈마다):** 파일 3개가 모두 올라갔는지, 복사본과 같은 바이트인지(sha256 확인) 확인합니다. 설치 파일 용량(맥 약 330MB, 윈도우 약 410MB)과 업로드 시간도 확인합니다. 옛 이름 파일이 릴리즈에 남아 있으면 지웁니다(0.14.1 이후 정책).
+- **체크리스트(릴리즈마다):** 파일 3개가 모두 올라갔는지, 복사본과 같은 바이트인지(sha256 확인) 확인합니다. 설치 파일 용량(맥 약 330MB, 윈도우 약 400MB)과 업로드 시간도 확인합니다. 옛 이름 파일이 릴리즈에 남아 있으면 지웁니다(0.14.1 이후 정책).
 
 - **공개 화면 일괄 점검(배포 전마다):** 아래 공개 화면이 이번 버전의 이름·문구와 맞는지 확인합니다.
   1. 소개 사이트(`site/index.html`) 메타: `title`·og·twitter·schema
@@ -79,7 +79,9 @@
   ~/.local/gh-cli/gh_2.103.2_macOS_arm64/bin/gh release create vX.Y.Z \
     --repo EngChooN/ai-office --title "AI Office X.Y.Z" \
     --notes-file <notes.md> \
-    <AI-Office-mac-arm64.dmg> <AI-Office-win-x64.zip> <AI-Office-android.apk>
+    <AI-Office-mac-arm64.dmg> <AI-Office-win-x64-Setup.exe> <AI-Office-android.apk>
   ```
 - **순서:** 번호 결정 → 3번 항목 수정 → 4번 빌드·검증 → 파일 3개를 새 이름으로 복사(저장소 밖 임시 폴더) → notes 파일 작성 → `gh release create`.
 - **주의:** `gh release create`는 공개 작업이라(태그 생성·파일 공개) 실행 전에 리드 확인을 받습니다. 잘못 올렸으면 `gh release delete vX.Y.Z --cleanup-tag`로 되돌립니다.
+
+- **윈도우 옛 zip 앱:** 이미 배포된 옛 앱은 `AI-Office-win-x64.zip`을 찾는다. 2026-10-29 대표 결정: 전환 배포에 zip은 올리지 않는다(Setup.exe만). 옛 zip 앱은 Release 페이지 안내를 따라 Setup.exe를 직접 받아 설치하고, 옛 폴더는 지운다. 릴리즈 본문에 이 안내를 꼭 넣는다.

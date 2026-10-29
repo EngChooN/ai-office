@@ -59,10 +59,29 @@ test('assetTargetFor / pickDownloadUrl: 플랫폼별 고정 파일 이름으로 
 
 test('pickDownloadUrl: 새 이름 파일이 없으면 옛 이름(Claude-Office-*)으로 찾고, 둘 다 있으면 새 이름을 쓴다', () => {
   const url = (name: string) => `https://github.com/EngChooN/ai-office/releases/download/v0.14.0/${name}`
-  const legacyOnly = [{ name: LEGACY_ASSET_NAMES.win, browser_download_url: url(LEGACY_ASSET_NAMES.win) }]
-  assert.equal(pickDownloadUrl(legacyOnly, 'win'), url(LEGACY_ASSET_NAMES.win), '옛 이름 대체')
-  const both = [...legacyOnly, { name: ASSET_NAMES.win, browser_download_url: url(ASSET_NAMES.win) }]
-  assert.equal(pickDownloadUrl(both, 'win'), url(ASSET_NAMES.win), '새 이름 우선')
+  const legacyOnly = [{ name: LEGACY_ASSET_NAMES.mac!, browser_download_url: url(LEGACY_ASSET_NAMES.mac!) }]
+  assert.equal(pickDownloadUrl(legacyOnly, 'mac'), url(LEGACY_ASSET_NAMES.mac!), '옛 이름 대체')
+  const both = [...legacyOnly, { name: ASSET_NAMES.mac, browser_download_url: url(ASSET_NAMES.mac) }]
+  assert.equal(pickDownloadUrl(both, 'mac'), url(ASSET_NAMES.mac), '새 이름 우선')
+})
+
+test('윈도우: Setup.exe만 고른다 — 옛 zip(AI-Office·Claude-Office)은 설치형 업데이트에 못 써서 고르지 않는다', () => {
+  const url = (name: string) => `https://github.com/EngChooN/ai-office/releases/download/v0.15.0/${name}`
+  const digest = `sha256:${'a'.repeat(64)}`
+  assert.equal(ASSET_NAMES.win, 'AI-Office-win-x64-Setup.exe')
+  const zips = ['AI-Office-win-x64.zip', 'Claude-Office-win-x64.zip'].map((name) => ({ name, browser_download_url: url(name) }))
+  assert.equal(pickAsset(zips, 'win'), null, 'zip뿐이면 없음 → Release 페이지 안내')
+  const withSetup = [...zips, { name: ASSET_NAMES.win, browser_download_url: url(ASSET_NAMES.win), size: 400, digest }]
+  assert.deepEqual(pickAsset(withSetup, 'win'), { url: url(ASSET_NAMES.win), size: 400, sha256: 'a'.repeat(64) })
+})
+
+test('업데이트 창이 반복되지 않는 조건: 설치된 새 버전은 알리지 않고, 건너뛴 버전은 조용하며, 더 새 버전은 다시 알린다', () => {
+  assert.equal(shouldNotify('0.15.0', '0.15.0', null), false, '업데이트 후 같은 버전')
+  assert.equal(shouldNotify('0.15.0', '0.15.1', null), false, '앞선 버전은 알리지 않음')
+  assert.equal(shouldNotify('0.15.0', '0.14.3', '0.15.0'), false, '건너뜀')
+  assert.equal(shouldNotify('0.15.1', '0.14.3', '0.15.0'), true, '더 새 버전')
+  assert.equal(shouldNotify('0.15.0', '0.14.3', null), true)
+  assert.equal(shouldNotify('0.15.0', '0.9.9', null), true, '숫자 비교 (문자열 비교였다면 0.9.9가 더 큼)')
 })
 
 test('parseRelease: 응답 해석 · 초안/미리보기/이상한 응답은 null', () => {
@@ -70,14 +89,14 @@ test('parseRelease: 응답 해석 · 초안/미리보기/이상한 응답은 nul
     tag_name: 'v0.12.0',
     html_url: 'https://github.com/EngChooN/claude-office/releases/tag/v0.12.0',
     body: '## 새 기능\n- **업데이트 알림**\n- [링크](https://x.y)',
-    assets: [{ name: ASSET_NAMES.win, browser_download_url: 'https://github.com/a/b/releases/download/v0.12.0/Claude-Office-win-x64.zip' }],
+    assets: [{ name: ASSET_NAMES.win, browser_download_url: 'https://github.com/a/b/releases/download/v0.12.0/AI-Office-win-x64-Setup.exe' }],
   }
   const r = parseRelease(json, 'win')
   assert.deepEqual(r, {
     version: '0.12.0',
     body: json.body,
-    downloadUrl: 'https://github.com/a/b/releases/download/v0.12.0/Claude-Office-win-x64.zip',
-    asset: { url: 'https://github.com/a/b/releases/download/v0.12.0/Claude-Office-win-x64.zip', size: null, sha256: null },
+    downloadUrl: 'https://github.com/a/b/releases/download/v0.12.0/AI-Office-win-x64-Setup.exe',
+    asset: { url: 'https://github.com/a/b/releases/download/v0.12.0/AI-Office-win-x64-Setup.exe', size: null, sha256: null },
     pageUrl: json.html_url,
   })
   assert.equal(parseRelease(json, 'mac')?.downloadUrl, null, '내 파일이 없으면 Release 페이지로 대신')

@@ -115,7 +115,7 @@ const config: ForgeConfig = {
     new MakerSquirrel({
       name: 'AI_Office',
       title: 'AI Office',
-      authors: 'joonyoungcho',
+      authors: 'AI Office',
       exe: 'claude-office.exe',
       setupExe: 'AI-Office-win-x64-Setup.exe',
       setupIcon: path.resolve(import.meta.dirname, 'build', 'icon.ico'),
