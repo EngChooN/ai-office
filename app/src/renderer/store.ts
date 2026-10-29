@@ -3,6 +3,7 @@ import { AUTO_APPROVE_OFF, companyFromXp, DEFAULT_SETTINGS, SECRETARY_FOCUS, wit
 import { EMPTY_SHOP } from '@shared/economy'
 import { clampFloor } from '@shared/officeLevel'
 import { applyLanguage } from '@/lib/i18n'
+import { applyUiTheme } from '@/lib/uiTheme'
 import { t } from '@shared/i18n'
 
 export type View = 'secretary' | 'map' | 'dashboard' | 'org' | 'board' | 'inbox' | 'chat' | 'meeting' | 'manuals' | 'knowledge' | 'gallery' | 'schedule' | 'report' | 'payroll' | 'settings' | 'updates' | 'shop'
@@ -108,6 +109,7 @@ export const useOffice = create<OfficeState>((set) => ({
     set((s) => {
       const settings = withSettingsDefaults(snap.settings)
       applyLanguage(settings.language)
+      applyUiTheme(settings)
       const view = shownView(s.view, settings.isWorkMode)
       // 레벨이 내려가 보던 층이 없어지면 1층으로
       const viewFloor = clampFloor(s.viewFloor, viewLevelOf({ previewLevel: s.previewLevel, company: snap.company }))

@@ -121,10 +121,10 @@ export function CoachTour({ isOpen, onClose }: { isOpen: boolean; onClose: (isFi
       {rect ? (
         <div
           className="border-primary pointer-events-none fixed rounded-lg border-2 transition-all duration-300"
-          style={{ left: rect.left - PAD, top: rect.top - PAD, width: rect.width + PAD * 2, height: rect.height + PAD * 2, boxShadow: '0 0 0 9999px rgba(0,0,0,0.62)' }}
+          style={{ left: rect.left - PAD, top: rect.top - PAD, width: rect.width + PAD * 2, height: rect.height + PAD * 2, boxShadow: '0 0 0 9999px var(--overlay-bg)' }}
         />
       ) : (
-        <div className="fixed inset-0 bg-black/60" />
+        <div className="fixed inset-0 bg-overlay" />
       )}
       <div className="bg-background fixed flex flex-col gap-3 rounded-xl border p-4 shadow-2xl transition-all duration-300" style={{ ...tip, width: TIP_W }}>
         {/* 장 표시: 지난 장·지금 장·남은 장을 막대로 */}

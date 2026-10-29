@@ -195,7 +195,7 @@ function MeetingCard({ meeting: m, isOpen, onToggle }: { meeting: Meeting; isOpe
           className={cn(
             'rounded px-1.5 text-[11px] font-semibold',
             m.status === 'running' && 'bg-primary text-primary-foreground animate-pulse',
-            m.status === 'waiting' && 'bg-status-waiting animate-pulse text-black',
+            m.status === 'waiting' && 'bg-status-waiting animate-pulse text-background',
             !isMeetingLive(m) && 'bg-muted',
           )}
         >

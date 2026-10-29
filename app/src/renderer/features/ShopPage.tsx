@@ -49,8 +49,9 @@ const TAB_LABEL: Record<Tab, TKey> = {
 /** 벽지는 위쪽 벽이 있는 구역에만. 칸 사무실에는 휴게실 구역이 따로 없어 업무 구역(방 전체)·회의실만 (예전에 고른 휴게실 바닥은 저장값에 그대로 둔다) */
 const ZONES_FOR: Record<'wallpaper' | 'floor', Zone[]> = { wallpaper: ['work', 'meeting'], floor: ['work', 'meeting'] }
 const isSurface = (item: ShopItem) => item.category === 'wallpaper' || item.category === 'floor'
-const RARITY_STYLE: Record<Rarity, string> = { common: '', rare: 'border-sky-400/60', legend: 'border-amber-400 shadow-[0_0_12px_rgba(251,191,36,0.25)]' }
-const RARITY_TEXT: Record<Rarity, string> = { common: 'text-muted-foreground', rare: 'text-sky-400', legend: 'text-amber-400' }
+const RARITY_STYLE: Record<Rarity, string> = { common: '', rare: 'border-accent-a/60', legend: 'border-status-waiting shadow-[0_0_12px_color-mix(in_oklab,var(--status-waiting)_25%,transparent)]' }
+// 글자 토큰은 카드 바탕 기준으로 대비를 맞춘 색 → 배지 바탕도 bg-card로 (그림 위 반투명 검정이면 라이트에서 어두운 글자가 묻힌다)
+const RARITY_TEXT: Record<Rarity, string> = { common: 'text-muted-foreground', rare: 'text-accent-a', legend: 'text-status-waiting' }
 const NOTICE_MS = 3500
 
 /** 벽지·바닥 견본 (CSS 배경) */
@@ -133,7 +134,7 @@ export function ShopPage() {
         {TABS.map((tb) => (
           <button key={tb} type="button" onClick={() => setTab(tb)} className={cn('relative rounded-full border px-3 py-1 text-xs', tab === tb ? 'bg-primary text-primary-foreground border-primary' : 'hover:bg-accent')}>
             {t(TAB_LABEL[tb])}
-            {tb === 'missions' && claimable > 0 && <span className="bg-status-waiting absolute -top-1.5 -right-1.5 rounded-full px-1.5 text-[10px] font-semibold text-black">{claimable}</span>}
+            {tb === 'missions' && claimable > 0 && <span className="bg-status-waiting absolute -top-1.5 -right-1.5 rounded-full px-1.5 text-[10px] font-semibold text-background">{claimable}</span>}
           </button>
         ))}
       </div>
@@ -235,15 +236,15 @@ function ItemCard({ item, level, funds, onNotice }: CardProps & { item: ShopItem
       <div className="relative">
         <Preview item={item} />
         <div className="absolute top-1 left-1 flex gap-1">
-          {item.rarity !== 'common' && <span className={cn('rounded bg-black/60 px-1.5 text-[10px] font-semibold', RARITY_TEXT[item.rarity])}>{RARITY_LABEL[item.rarity]}</span>}
+          {item.rarity !== 'common' && <span className={cn('bg-card rounded px-1.5 text-[10px] font-semibold', RARITY_TEXT[item.rarity])}>{RARITY_LABEL[item.rarity]}</span>}
           {item.season && <span className="rounded bg-black/60 px-1.5 text-[10px] font-semibold text-orange-300">{t('shop.seasonLimited', { season: item.season.name })}</span>}
-          {isDeal && <span className="rounded bg-red-500 px-1.5 text-[10px] font-semibold text-white">-{Math.round((1 - price / item.price) * 100)}%</span>}
+          {isDeal && <span className="rounded bg-destructive px-1.5 text-[10px] font-semibold text-destructive-foreground">-{Math.round((1 - price / item.price) * 100)}%</span>}
         </div>
       </div>
       <div className="flex items-baseline gap-2">
         <span className="flex-1 truncate text-sm font-semibold">{item.name}</span>
         {isDeal && <span className="text-muted-foreground text-[11px] line-through">{formatWon(item.price)}</span>}
-        <span className={cn('text-xs font-semibold tabular-nums', isDeal && 'text-red-400')}>{formatWon(price)}</span>
+        <span className={cn('text-xs font-semibold tabular-nums', isDeal && 'text-destructive')}>{formatWon(price)}</span>
       </div>
       <p className="text-muted-foreground line-clamp-2 text-xs">{item.description}</p>
       {isLocked ? (
@@ -296,7 +297,7 @@ function Collection() {
           const isDone = isSetComplete(set, owned)
           const got = set.itemIds.filter((id) => owned[id]).length
           return (
-            <div key={set.id} className={cn('bg-card flex flex-col gap-2 rounded-xl border p-4', isDone && 'border-amber-400')}>
+            <div key={set.id} className={cn('bg-card flex flex-col gap-2 rounded-xl border p-4', isDone && 'border-status-waiting')}>
               <div className="flex items-baseline gap-2">
                 <span className="text-2xl">{set.emoji}</span>
                 <span className="flex-1 font-semibold">{set.name}</span>
@@ -312,7 +313,7 @@ function Collection() {
                   </span>
                 ))}
               </div>
-              <div className={cn('text-xs', isDone ? 'font-semibold text-amber-400' : 'text-muted-foreground')}>{isDone ? `🏆 ${t('shop.collection.done', { reward: formatWon(set.reward) })}` : t('shop.collection.reward', { reward: formatWon(set.reward) })}</div>
+              <div className={cn('text-xs', isDone ? 'font-semibold text-status-waiting' : 'text-muted-foreground')}>{isDone ? `🏆 ${t('shop.collection.done', { reward: formatWon(set.reward) })}` : t('shop.collection.reward', { reward: formatWon(set.reward) })}</div>
             </div>
           )
         })}

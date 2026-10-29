@@ -146,7 +146,7 @@ function OfficeExterior() {
           />
           {isHover && (
             <span
-              className="pointer-events-none absolute -translate-x-1/2 -translate-y-full rounded-md border border-white/10 bg-[#1a1d28]/90 px-2 py-0.5 text-xs whitespace-nowrap text-white shadow-lg"
+              className="pointer-events-none absolute -translate-x-1/2 -translate-y-full rounded-md border border-hud-border bg-hud px-2 py-0.5 text-xs whitespace-nowrap text-hud-foreground shadow-lg"
               style={{ left: at(layout.door.x + layout.door.w / 2), top: at(layout.door.y) - 10 }}
             >
               {t('map.enter')}
@@ -155,11 +155,11 @@ function OfficeExterior() {
         </div>
       )}
       <div className="absolute top-3 left-3 flex flex-col gap-2">
-        <div className="pointer-events-none rounded-lg border border-white/10 bg-[#1a1d28]/90 px-3 py-2 text-xs text-white shadow-lg">
+        <div className="pointer-events-none rounded-lg border border-hud-border bg-hud px-3 py-2 text-xs text-hud-foreground shadow-lg">
           <div className="font-semibold">
             Lv.{level} {COMPANY_LEVELS[level - 1]?.title}
           </div>
-          <div className="text-white/70">{t('map.buildingFloors', { floors })}</div>
+          <div className="text-hud-foreground/70">{t('map.buildingFloors', { floors })}</div>
         </div>
         {nextLevel && (
           <div className="relative w-fit" onMouseEnter={() => setIsPreviewOpen(true)} onMouseLeave={() => setIsPreviewOpen(false)}>
@@ -167,12 +167,12 @@ function OfficeExterior() {
               tabIndex={0}
               onFocus={() => setIsPreviewOpen(true)}
               onBlur={() => setIsPreviewOpen(false)}
-              className="block cursor-default rounded-md border border-white/10 bg-[#1a1d28]/80 px-2 py-1 text-[11px] text-white/80"
+              className="block cursor-default rounded-md border border-hud-border bg-hud px-2 py-1 text-[11px] text-hud-foreground/80"
             >
               {t('map.nextPreview')}
             </span>
             {isPreviewOpen && (
-              <div role="tooltip" className="absolute top-full left-0 z-10 mt-1 w-72 rounded-lg border border-white/10 bg-[#1a1d28]/95 p-2 text-[11px] text-white shadow-lg">
+              <div role="tooltip" className="absolute top-full left-0 z-10 mt-1 w-72 rounded-lg border border-hud-border bg-hud p-2 text-[11px] text-hud-foreground shadow-lg">
                 <img src={nextUrl} alt="" className="mb-1 block h-auto w-full rounded" style={{ imageRendering: 'pixelated' }} />
                 {t('map.nextPreviewLine', { level: nextLevel, title: levelTitle(nextLevel, COMPANY_LEVELS[nextLevel - 1].title), floors: officeOf(nextLevel).floors })}
               </div>
@@ -201,24 +201,24 @@ function Minimap() {
       <button
         type="button"
         onClick={() => setInside(false)}
-        className="flex w-fit items-center gap-1.5 rounded-lg border border-white/10 bg-[#1a1d28]/90 px-3 py-1.5 text-xs text-white shadow-lg hover:bg-[#1a1d28]"
+        className="flex w-fit items-center gap-1.5 rounded-lg border border-hud-border bg-hud px-3 py-1.5 text-xs text-hud-foreground shadow-lg hover:bg-card"
       >
         <DoorOpenIcon className="size-3.5" /> {t('map.exit')}
       </button>
       {floors.length > 1 && (
-        <nav aria-label={t('map.floorMinimap')} className="flex w-44 flex-col gap-1 rounded-lg border border-white/10 bg-[#1a1d28]/90 p-1.5 text-[11px] text-white shadow-lg">
+        <nav aria-label={t('map.floorMinimap')} className="flex w-44 flex-col gap-1 rounded-lg border border-hud-border bg-hud p-1.5 text-[11px] text-hud-foreground shadow-lg">
           {[...floors].reverse().map((f) => (
             <button
               key={f.floor}
               type="button"
               onClick={() => setViewFloor(f.floor)}
               aria-current={f.floor === viewFloor ? 'true' : undefined}
-              className={cn('flex flex-col gap-0.5 rounded-md border px-2 py-1 text-left', f.floor === viewFloor ? 'border-primary bg-primary/20' : 'border-white/10 hover:bg-white/10')}
+              className={cn('flex flex-col gap-0.5 rounded-md border px-2 py-1 text-left', f.floor === viewFloor ? 'border-primary bg-primary/20' : 'border-hud-border hover:bg-hud-foreground/10')}
             >
               <span className="flex items-center justify-between font-mono font-bold">
-                {f.floor}F<span className="font-sans font-normal text-white/60">{t('map.peopleCount', { n: headcountOf(f.floor, f.staff.map((x) => x.id), visits) })}</span>
+                {f.floor}F<span className="font-sans font-normal text-hud-foreground/60">{t('map.peopleCount', { n: headcountOf(f.floor, f.staff.map((x) => x.id), visits) })}</span>
               </span>
-              <span className="truncate text-white/60">
+              <span className="truncate text-hud-foreground/60">
                 {f.teams
                   .filter((t) => t.kind === 'hired')
                   .map((t) => t.name)
@@ -241,14 +241,14 @@ function FloorButtons() {
   const { floors } = officeOf(level)
   if (floors < 2) return null
   return (
-    <div role="group" aria-label={t('map.floorMove')} className="absolute top-1/2 right-3 flex -translate-y-1/2 flex-col gap-1 rounded-full border border-white/10 bg-[#1a1d28]/90 p-1 shadow-lg">
+    <div role="group" aria-label={t('map.floorMove')} className="absolute top-1/2 right-3 flex -translate-y-1/2 flex-col gap-1 rounded-full border border-hud-border bg-hud p-1 shadow-lg">
       {Array.from({ length: floors }, (_, i) => floors - i).map((floor) => (
         <button
           key={floor}
           type="button"
           onClick={() => setViewFloor(floor)}
           aria-pressed={floor === viewFloor}
-          className={cn('size-8 rounded-full font-mono text-xs font-bold', floor === viewFloor ? 'bg-primary text-primary-foreground' : 'text-white hover:bg-white/10')}
+          className={cn('size-8 rounded-full font-mono text-xs font-bold', floor === viewFloor ? 'bg-primary text-primary-foreground' : 'text-hud-foreground hover:bg-hud-foreground/10')}
         >
           {floor}
         </button>
@@ -280,7 +280,7 @@ function Hud() {
     setDecorating(!isDecorating)
   }
   const rows = [
-    { label: t('map.stat.staff'), value: staff.length, color: 'text-white' },
+    { label: t('map.stat.staff'), value: staff.length, color: 'text-hud-foreground' },
     { label: t('map.stat.working'), value: staff.filter((s) => s.status === 'working').length, color: 'text-status-working' },
     { label: t('map.stat.waiting'), value: staff.filter((s) => s.status === 'waiting').length, color: 'text-status-waiting' },
     { label: t('map.stat.idle'), value: staff.filter((s) => s.status === 'idle' && !s.meetingId).length, color: 'text-muted-foreground' },
@@ -290,7 +290,7 @@ function Hud() {
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className={cn('phone:flex hidden items-center gap-2 rounded-lg border border-white/10 bg-[#1a1d28]/90 px-3 py-1.5 font-mono text-[11px] shadow-lg', isOpen && 'phone:hidden')}
+        className={cn('phone:flex hidden items-center gap-2 rounded-lg border border-hud-border bg-hud px-3 py-1.5 font-mono text-[11px] shadow-lg', isOpen && 'phone:hidden')}
       >
         <span className="text-primary font-bold">{t('map.companyLevel', { level: company.level })}</span>
         <span className="text-status-waiting">{t('map.stat.waiting')} {rows[2].value}</span>
@@ -298,7 +298,7 @@ function Hud() {
       <div
         onClick={() => setIsOpen(false)}
         className={cn(
-          'pointer-events-none w-48 rounded-lg border border-white/10 bg-[#1a1d28]/90 px-3 py-2 font-mono text-[11px] leading-5 shadow-lg',
+          'pointer-events-none w-48 rounded-lg border border-hud-border bg-hud px-3 py-2 font-mono text-[11px] leading-5 shadow-lg',
           isOpen ? 'phone:pointer-events-auto' : 'phone:hidden',
           // 칸 사무실을 꾸미는 동안은 현황 대신 서랍을 버튼 아래에
           isDrawerOpen && 'hidden',
@@ -308,7 +308,7 @@ function Hud() {
           <span className="text-primary font-bold">{t('map.companyLevel', { level: company.level })}</span>
           <span className="text-muted-foreground">{levelTitle(company.level, company.title)}</span>
         </div>
-        <div className="my-1 h-1.5 overflow-hidden rounded-full bg-white/10">
+        <div className="my-1 h-1.5 overflow-hidden rounded-full bg-hud-foreground/10">
           <div className="bg-primary h-full" style={{ width: `${Math.round(company.progress * 100)}%` }} />
         </div>
         <div className="text-muted-foreground mb-1 text-[10px]">{company.progress < 1 ? t('map.nextXp', { xp: company.nextXp - company.xp }) : t('map.maxSize')}</div>
@@ -336,7 +336,7 @@ function Hud() {
           type="button"
           onClick={handleDecorate}
           disabled={isRecording}
-          className={`rounded-lg border px-3 py-1.5 text-xs shadow-lg disabled:opacity-50 ${isDecorating ? 'border-primary bg-primary text-primary-foreground' : 'border-white/10 bg-[#1a1d28]/90 text-white'}`}
+          className={`rounded-lg border px-3 py-1.5 text-xs shadow-lg disabled:opacity-50 ${isDecorating ? 'border-primary bg-primary text-primary-foreground' : 'border-hud-border bg-hud text-hud-foreground'}`}
         >
           {isDecorating ? t('map.decorEnd') : t('map.decorStart')}
         </button>
@@ -389,18 +389,18 @@ export function OfficeMap() {
       <SceneExportNotice />
       {isInside && (
         <>
-          <div className="absolute right-3 bottom-3 flex flex-col overflow-hidden rounded-lg border border-white/10 bg-[#1a1d28]/90 shadow-lg">
-            <button type="button" onClick={() => scene()?.zoomBy(ZOOM_STEP)} className="p-2 text-white hover:bg-white/10" aria-label={t('map.zoomIn')}>
+          <div className="absolute right-3 bottom-3 flex flex-col overflow-hidden rounded-lg border border-hud-border bg-hud shadow-lg">
+            <button type="button" onClick={() => scene()?.zoomBy(ZOOM_STEP)} className="p-2 text-hud-foreground hover:bg-hud-foreground/10" aria-label={t('map.zoomIn')}>
               <PlusIcon className="size-4" />
             </button>
-            <button type="button" onClick={() => scene()?.zoomBy(1 / ZOOM_STEP)} className="p-2 text-white hover:bg-white/10" aria-label={t('map.zoomOut')}>
+            <button type="button" onClick={() => scene()?.zoomBy(1 / ZOOM_STEP)} className="p-2 text-hud-foreground hover:bg-hud-foreground/10" aria-label={t('map.zoomOut')}>
               <MinusIcon className="size-4" />
             </button>
-            <button type="button" onClick={() => scene()?.fitView()} className="p-2 text-white hover:bg-white/10" aria-label={t('map.fitView')} title={t('map.fitView')}>
+            <button type="button" onClick={() => scene()?.fitView()} className="p-2 text-hud-foreground hover:bg-hud-foreground/10" aria-label={t('map.fitView')} title={t('map.fitView')}>
               <MaximizeIcon className="size-4" />
             </button>
           </div>
-          <div className="pointer-events-none absolute bottom-3 left-3 rounded-md bg-[#1a1d28]/80 px-2 py-1 text-[11px] text-white/70">{IS_TOUCH ? t('map.hintTouch') : t('map.hintDesktop', { mod: MOD_KEY })}</div>
+          <div className="pointer-events-none absolute bottom-3 left-3 rounded-md bg-hud px-2 py-1 text-[11px] text-hud-foreground/70">{IS_TOUCH ? t('map.hintTouch') : t('map.hintDesktop', { mod: MOD_KEY })}</div>
         </>
       )}
     </div>

@@ -15,6 +15,7 @@ export const PACK_MAX_BYTES = 1024 * 1024
 export const PACK_LIMITS = {
   staff: 50,
   nameMax: 40,
+  roleMax: 40,
   descMax: 300,
   promptMax: 8000,
   manualsPerStaff: 20,
@@ -26,7 +27,6 @@ export const PACK_LIMITS = {
 
 const MODELS: readonly ModelChoice[] = ['default', 'opus', 'sonnet', 'haiku']
 const GPT_MODEL_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/
-const ROLES: ReadonlySet<string> = new Set(ROLE_PRESETS)
 // 매뉴얼 이름 규칙은 main/manuals.ts의 NAME_RE와 같다 (main 쪽은 파일을 쓰므로 여기서 따로 둔다)
 const MANUAL_NAME_RE = /^[a-z0-9][a-z0-9-]{1,62}$/
 const COLOR_RE = /^#[0-9a-fA-F]{6}$/
@@ -218,7 +218,9 @@ function readEquipment(raw: unknown): PackEquipment {
 
 function readStaff(raw: unknown): PackStaff {
   if (!isObj(raw)) return fail('pack.err.shape')
-  if (typeof raw.role !== 'string' || !ROLES.has(raw.role.trim())) return fail('pack.err.role', { role: String(raw.role ?? '').slice(0, 30) })
+  // 직무는 고용 화면에서 직접 입력할 수 있으니 목록에 없는 이름도 받는다. 빈 값과 너무 긴 값만 막는다
+  const role = typeof raw.role === 'string' ? raw.role.trim() : ''
+  if (role.length < 1 || role.length > PACK_LIMITS.roleMax) return fail('pack.err.role', { role: String(raw.role ?? '').slice(0, 30) })
   if (raw.provider !== undefined && raw.provider !== 'claude' && raw.provider !== 'codex') return fail('pack.err.model', { model: String(raw.provider).slice(0, 30) })
   const provider: AiProvider = raw.provider === 'codex' ? 'codex' : 'claude'
   // Claude는 별칭만, GPT는 모델 이름 모양만 본다 (실제로 쓸 수 있는지는 엔진이 정한다)
@@ -228,7 +230,7 @@ function readStaff(raw: unknown): PackStaff {
   if (raw.manuals !== undefined && (!Array.isArray(raw.manuals) || raw.manuals.length > PACK_LIMITS.manualsPerStaff)) return fail('pack.err.manualCount')
   return {
     name: text(raw.name, 'pack.err.staffName', PACK_LIMITS.nameMax, 1),
-    role: raw.role.trim(),
+    role,
     avatar: raw.avatar,
     provider,
     model: raw.model as ModelChoice,

@@ -188,7 +188,7 @@ function Tab({ label, icon, isSelected, badge, onClick, tour }: { label: string;
       <span className={cn('rounded-full px-4 py-0.5', isSelected && 'bg-accent')}>{icon}</span>
       {/* 가로 폰은 아이콘만 (이름은 읽어 주기용으로 남긴다) */}
       <span className="short:sr-only truncate">{label}</span>
-      {Boolean(badge) && <span className="bg-status-waiting short:top-0.5 absolute top-1.5 left-1/2 ml-2 rounded-full px-1.5 text-[10px] font-semibold text-black">{badge}</span>}
+      {Boolean(badge) && <span className="bg-status-waiting short:top-0.5 absolute top-1.5 left-1/2 ml-2 rounded-full px-1.5 text-[10px] font-semibold text-background">{badge}</span>}
     </button>
   )
 }
@@ -229,7 +229,7 @@ function MoreSheet() {
             >
               <Icon className="size-4" />
               <span className="flex-1">{label}</span>
-              {Boolean(badges[v]) && <span className="bg-status-waiting rounded-full px-1.5 text-[10px] font-semibold text-black">{badges[v]}</span>}
+              {Boolean(badges[v]) && <span className="bg-status-waiting rounded-full px-1.5 text-[10px] font-semibold text-background">{badges[v]}</span>}
             </button>
           ))}
           <button

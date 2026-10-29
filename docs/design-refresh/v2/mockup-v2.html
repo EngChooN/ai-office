@@ -1,0 +1,72 @@
+<!doctype html><meta charset="utf-8"><title>AI Office 디자인 개편 시안 v2</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,'Apple SD Gothic Neo',sans-serif;background:#8a8f98;padding:18px 20px;width:2100px}
+h1{font-size:21px;color:#fff;margin:0 0 12px}.row{display:flex;gap:20px}
+.app{width:1010px;height:680px;border-radius:14px;overflow:hidden;background:var(--bg);color:var(--fg);font-size:12.5px;display:flex;flex-direction:column;position:relative}
+.mono{font-family:ui-monospace,Menlo,monospace}
+.top{height:44px;flex:none;display:flex;align-items:center;gap:10px;padding:0 14px;background:var(--bar);border-bottom:1px solid var(--bd)}
+.logo{font-weight:800;font-size:14px}.chip{padding:4px 9px;border-radius:99px;background:var(--sf);border:1px solid var(--bd);color:var(--mut);font-size:11.5px}
+.sp{flex:1}.pt{background:var(--pt);color:var(--ptfg);border-radius:var(--r);padding:6px 11px;font-weight:700}
+.cmd{display:flex;align-items:center;gap:8px;background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:7px 11px;color:var(--mut)}
+.cmd kbd{margin-left:auto;font:11px ui-monospace,monospace;background:var(--bg);border:1px solid var(--bd);border-radius:5px;padding:1px 5px}
+.card{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:9px 10px;box-shadow:var(--sh)}
+.tile{border-radius:var(--r);overflow:hidden;background:#1b1e25;position:relative;border:1px solid var(--bd)}
+.tile img{width:100%;height:100%;object-fit:contain;display:block}
+.av{width:26px;height:26px;border-radius:50%;flex:none}.nm{font-weight:700}.mut{color:var(--mut)}
+.f{display:flex;gap:8px;align-items:center}.col{display:flex;flex-direction:column;gap:8px}
+.step{display:flex;gap:4px;margin-top:6px}.step i{font-style:normal;font-size:10.5px;padding:2px 7px;border-radius:99px;background:var(--bg);border:1px solid var(--bd);color:var(--mut)}
+.step i.d{color:var(--ok);border-color:var(--ok)}.step i.c{background:var(--pt);color:var(--ptfg);border-color:var(--pt);font-weight:700}
+.log{font:11px/1.55 ui-monospace,Menlo,monospace;color:var(--mut);margin-top:6px;background:var(--bg);border-radius:6px;padding:5px 7px}
+.log b{color:var(--pt);font-weight:600}.th{font-style:italic;color:var(--fg);margin-top:5px}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.pulse{box-shadow:0 0 0 3px color-mix(in srgb,var(--ok) 30%,transparent)}
+h3{font-size:11px;letter-spacing:.05em;color:var(--mut);font-weight:700;text-transform:uppercase}
+.rail{width:54px;flex:none;background:var(--bar);border-right:1px solid var(--bd);display:flex;flex-direction:column;align-items:center;gap:10px;padding:12px 0}
+.rail i{width:32px;height:32px;border-radius:var(--r);background:var(--sf);border:1px solid var(--bd);display:grid;place-items:center;font-style:normal;font-size:15px}
+.rail i.on{background:var(--pt);border-color:var(--pt)}
+.btn2{border:1px solid var(--bd);border-radius:var(--r);padding:5px 10px;font-weight:600;background:var(--bg)}
+.btn2.ok{background:var(--ok);color:#fff;border-color:var(--ok)}
+.msg{max-width:78%;padding:9px 11px;border-radius:12px;background:var(--sf);border:1px solid var(--bd)}
+.msg.me{align-self:flex-end;background:var(--pt);color:var(--ptfg);border-color:var(--pt)}
+.k{flex:1;min-width:0;background:color-mix(in srgb,var(--sf) 55%,var(--bg));border:1px solid var(--bd);border-radius:var(--r);padding:8px;display:flex;flex-direction:column;gap:7px}
+</style>
+<body><h1 id="t"></h1><div class="row" id="r"></div>
+<script>
+const P={
+A:{name:'① 사무실 중심 + 실시간 AI 작업 피드 — 따뜻한 크림·테라코타',L:{bg:'#F8F3EA',bar:'#FFFBF3',sf:'#FFFFFF',fg:'#33291F',mut:'#8C7B69',bd:'#E6DAC6',pt:'#E2703A',ptfg:'#FFFFFF',ok:'#3FA566',warn:'#E0A02B',r:'10px',sh:'0 1px 3px #6b4c2a18'},
+D:{bg:'#1A1917',bar:'#201E1B',sf:'#272421',fg:'#F2EBE0',mut:'#A89B8A',bd:'#38342E',pt:'#F08A4B',ptfg:'#2A160A',ok:'#5CC283',warn:'#EFB84A',r:'10px',sh:'none'}},
+B:{name:'② 커맨드 센터 — 명령창 + 업무 흐름 보드 중심, 사무실은 작은 창 (차가운 슬레이트·블루)',L:{bg:'#EEF1F6',bar:'#FFFFFF',sf:'#FFFFFF',fg:'#1B2230',mut:'#667289',bd:'#D6DCE7',pt:'#2F6BFF',ptfg:'#FFFFFF',ok:'#1E9E6A',warn:'#D98A1F',r:'8px',sh:'0 1px 2px #1b223014'},
+D:{bg:'#0D1117',bar:'#12171F',sf:'#171D27',fg:'#E6EBF4',mut:'#8693A8',bd:'#252D3B',pt:'#5B8CFF',ptfg:'#07122B',ok:'#3DD598',warn:'#F2B84B',r:'8px',sh:'none'}},
+C:{name:'③ 대화형 — 채팅·결재가 중심, 사무실은 위쪽 띠 (라벤더·잉크)',L:{bg:'#F6F5FB',bar:'#FFFFFF',sf:'#FFFFFF',fg:'#221F33',mut:'#7A7694',bd:'#E1DEEF',pt:'#6C5CE7',ptfg:'#FFFFFF',ok:'#2FA67A',warn:'#D9962B',r:'14px',sh:'0 2px 8px #3a2f8a12'},
+D:{bg:'#14131C',bar:'#1A1925',sf:'#201F2D',fg:'#EDEBF8',mut:'#9893B5',bd:'#2E2C42',pt:'#9B8CFF',ptfg:'#150F3A',ok:'#4CD3A0',warn:'#EFB84A',r:'14px',sh:'none'}}};
+const key=(location.hash.slice(1)||'A');const d=P[key];t.textContent=d.name;
+const IMG='office-scene.png';
+const stf=[['김버전','#E2703A','개발'],['강백엔','#4F6BED','개발'],['이디자','#B05CC8','디자인'],['박기획','#3AA7A0','기획']];
+const av=i=>`<div class="av" style="background:${stf[i][1]}"></div>`;
+const steps=(a)=>['기획','디자인','개발','리뷰'].map((s,i)=>`<i class="${i<a?'d':i==a?'c':''}">${i<a?'✓ ':''}${s}</i>`).join('');
+function A(m){return `<div class="top"><span class="logo">AI Office</span><span class="chip">💰 ₩0</span><span class="chip">Lv.1 차고 창업</span><span class="sp"></span><span class="cmd" style="padding:5px 10px">✦ 비서 <kbd>⌘K</kbd></span><span class="pt">+ 직원 고용</span></div>
+<div style="flex:1;display:flex;min-height:0"><div class="rail"><i class="on">🏢</i><i>▦</i><i>☰</i><i>✅</i><i>💬</i><i>📄</i><i style="margin-top:auto">⚙</i></div>
+<div style="flex:1;padding:12px;display:flex;flex-direction:column;gap:10px;min-width:0"><div class="tile" style="flex:1"><img src="${IMG}"><div style="position:absolute;left:10px;top:10px" class="card f"><span class="dot pulse" style="background:var(--ok)"></span>작업 중 2 · 확인 필요 1 · 휴식 1</div></div>
+<div class="card f"><span style="font-size:16px">🔔</span><div><b>결재 대기 1건</b> <span class="mut">· 강백엔이 <span class="mono">pnpm test</span> 실행을 요청했어요</span></div><span class="sp"></span><span class="btn2">거절</span><span class="btn2 ok">승인</span></div></div>
+<div style="width:318px;flex:none;border-left:1px solid var(--bd);background:var(--bar);padding:12px;display:flex;flex-direction:column;gap:9px;overflow:hidden"><div class="f"><h3>실시간 작업</h3><span class="sp"></span><span class="chip" style="color:var(--ok)">● LIVE</span></div>
+<div class="card"><div class="f">${av(0)}<div><div class="nm">김버전</div><div class="mut">윈도우 Setup.exe 빌드</div></div></div><div class="th">💭 “Squirrel 아이콘 경로부터 확인하자”</div><div class="log"><b>Read</b> forge.config.mts<br><b>Edit</b> squirrelEvents.ts +42<br><b>Bash</b> pnpm typecheck …</div><div class="step">${steps(2)}</div></div>
+<div class="card"><div class="f">${av(1)}<div><div class="nm">강백엔</div><div class="mut">앱 내 업데이트 전환</div></div></div><div class="th">💭 “덮어쓰기 실패를 삼키는 게 원인이네”</div><div class="log"><b>Grep</b> Copy-Item<br><b>Bash</b> pnpm test <span style="color:var(--warn)">⏸ 승인 대기</span></div><div class="step">${steps(2)}</div></div>
+<div class="card"><div class="f">${av(2)}<div><div class="nm">이디자</div><div class="mut">시안 정리 완료</div></div><span class="sp"></span><span class="chip" style="color:var(--ok)">✓ 결과물 3</span></div></div></div></div>`}
+function B(m){const kc=(i,t,s,p)=>`<div class="card"><div class="f">${av(i)}<b>${t}</b></div><div class="mut" style="margin-top:4px">${s}</div>${p!=null?`<div style="height:5px;border-radius:9px;background:var(--bd);margin-top:7px"><u style="display:block;height:100%;width:${p}%;border-radius:9px;background:var(--pt)"></u></div>`:''}</div>`;
+return `<div class="top"><span class="logo">AI Office</span><div class="cmd" style="flex:1;max-width:560px;margin:0 auto"><span style="color:var(--pt)">✦</span>무엇을 시킬까요?  <span class="mut">예) “로그인 화면 시안 3개 만들어줘”</span><kbd>⌘K</kbd></div><span class="chip">💰 ₩0</span><span class="pt">+ 직원 고용</span></div>
+<div style="flex:1;display:flex;gap:12px;padding:12px;min-height:0"><div style="flex:1;display:flex;flex-direction:column;gap:10px;min-width:0"><div class="f"><h3>업무 흐름</h3><span class="chip">전체 8</span><span class="sp"></span><span class="chip">오늘 완료 5 · 평균 12분</span></div>
+<div style="flex:1;display:flex;gap:8px;min-height:0"><div class="k"><h3>대기 · 2</h3>${kc(3,'결제 화면 기획','우선순위 높음')}${kc(2,'온보딩 문구 정리','대기')}</div><div class="k"><h3 style="color:var(--pt)">진행 중 · 2</h3>${kc(0,'Setup.exe 빌드','Edit squirrelEvents.ts',72)}${kc(1,'앱 내 업데이트','Bash pnpm test',45)}</div><div class="k"><h3 style="color:var(--warn)">결재·리뷰 · 1</h3><div class="card" style="border-color:var(--warn)"><div class="f">${av(1)}<b>pnpm test 실행</b></div><div class="mut" style="margin:4px 0 7px">명령 실행 승인 필요</div><div class="f"><span class="btn2">거절</span><span class="btn2 ok">승인</span></div></div></div><div class="k"><h3 style="color:var(--ok)">완료 · 3</h3>${kc(2,'디자인 시안 v1','결과물 3개')}${kc(0,'README 갱신','커밋 대기')}</div></div>
+<div class="log" style="height:112px;margin:0;border:1px solid var(--bd);overflow:hidden"><div style="color:var(--mut);font-weight:700;margin-bottom:3px">▌ 실시간 로그</div>14:02:11 <b>김버전</b> Edit app/src/main/squirrelEvents.ts<br>14:02:14 <b>강백엔</b> 💭 덮어쓰기 실패를 삼키고 있다<br>14:02:19 <b>이디자</b> 결과물 3개 첨부 → 완료<br>14:02:23 <b>김버전</b> Bash pnpm typecheck … <span style="color:var(--ok)">통과</span><br>14:02:31 <b>강백엔</b> ⏸ pnpm test 승인 대기</div></div>
+<div style="width:288px;flex:none;display:flex;flex-direction:column;gap:10px"><div class="tile" style="height:210px"><img src="${IMG}"><span class="chip" style="position:absolute;left:8px;top:8px;background:var(--sf)">🏢 사무실</span></div><h3>직원</h3>${[0,1,2,3].map(i=>`<div class="card f" style="padding:7px 9px">${av(i)}<div><div class="nm">${stf[i][0]}</div><div class="mut" style="font-size:11px">${['빌드 스크립트 수정 중','테스트 실행 대기','시안 정리 완료','휴식'][i]}</div></div><span class="sp"></span><span class="dot" style="background:${['var(--ok)','var(--warn)','var(--ok)','var(--mut)'][i]}"></span></div>`).join('')}</div></div>`}
+function C(m){return `<div class="top"><span class="logo">AI Office</span><span class="chip">Lv.1 차고 창업</span><span class="sp"></span><span class="chip">💰 ₩0</span><span class="pt">+ 직원 고용</span></div>
+<div style="height:172px;flex:none;position:relative;border-bottom:1px solid var(--bd);background:#1b1e25"><img src="${IMG}" style="width:100%;height:100%;object-fit:contain"><div style="position:absolute;left:12px;bottom:10px" class="f"><span class="card f" style="padding:4px 9px;border-radius:99px"><span class="dot pulse" style="background:var(--ok)"></span>작업 중 2</span><span class="card" style="padding:4px 9px;border-radius:99px">⏸ 확인 필요 1</span><span class="card" style="padding:4px 9px;border-radius:99px">휴식 1</span></div></div>
+<div style="flex:1;display:flex;min-height:0"><div style="width:224px;flex:none;border-right:1px solid var(--bd);background:var(--bar);padding:10px;display:flex;flex-direction:column;gap:6px"><h3>대화</h3>${[['단체방 · 전체','#6C5CE7',''],['강백엔','#4F6BED','1'],['김버전','#E2703A',''],['이디자','#B05CC8',''],['박기획','#3AA7A0','']].map((c,i)=>`<div class="f" style="padding:7px;border-radius:var(--r);${i==1?'background:var(--sf);border:1px solid var(--bd)':''}"><div class="av" style="background:${c[1]}"></div><b style="font-weight:${i==1?700:500}">${c[0]}</b><span class="sp"></span>${c[2]?`<span class="chip" style="background:var(--pt);color:var(--ptfg);border:0">${c[2]}</span>`:''}</div>`).join('')}<h3 style="margin-top:8px">결재함</h3><div class="card" style="border-color:var(--warn)">⏸ pnpm test 실행<div class="mut" style="font-size:11px">강백엔 · 방금</div></div><div class="card mut">✓ 파일 수정 3건 자동 승인</div></div>
+<div style="flex:1;display:flex;flex-direction:column;min-width:0"><div class="f" style="padding:10px 16px;border-bottom:1px solid var(--bd)">${av(1)}<div><b>강백엔</b> <span class="mut">· 개발</span></div><span class="sp"></span><span class="chip" style="color:var(--ok)">● 작업 중</span></div>
+<div class="col" style="flex:1;padding:14px 16px;overflow:hidden;gap:10px"><div class="msg me">앱 안 업데이트를 Setup.exe 방식으로 바꿔줘. 테스트까지 돌려줘.</div>
+<div class="msg" style="max-width:86%"><div class="mut" style="font-size:11px;margin-bottom:4px">💭 생각 중 · 3단계</div><div class="step" style="margin:0 0 8px">${steps(2)}</div><div class="log" style="margin:0"><b>Read</b> appInstall.ts ✓<br><b>Edit</b> appInstall.ts +64 −88 ✓<br><b>Bash</b> pnpm test <span style="color:var(--warn)">⏸ 승인 필요</span></div></div>
+<div class="card" style="max-width:86%;border-color:var(--warn);align-self:flex-start"><div class="f"><span style="font-size:15px">🔔</span><b>명령 실행 승인</b></div><div class="log"><span class="mono">pnpm test</span> · app/ 폴더</div><div class="f" style="margin-top:8px"><span class="btn2">거절</span><span class="btn2 ok">승인</span><span class="btn2">항상 허용</span></div></div>
+<div class="msg" style="opacity:.75">📎 결과물 · <b>update-report.md</b> <span class="mut">(승인 후 이어서 진행)</span></div></div>
+<div style="padding:10px 16px"><div class="cmd" style="padding:10px 12px;border-radius:var(--r)">강백엔에게 메시지 보내기…<span class="pt" style="margin-left:auto;padding:4px 10px">보내기</span></div></div></div></div>`}
+r.innerHTML=['L','D'].map(m=>{const c=d[m];return `<div class="app" style="${Object.entries(c).map(([k,v])=>`--${k}:${v}`).join(';')}">${({A,B,C})[key](m)}</div>`}).join('');
+</script>

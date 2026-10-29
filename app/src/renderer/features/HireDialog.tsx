@@ -287,7 +287,7 @@ export function HireDialog() {
                 {t('hire.role.custom')}
               </button>
             </div>
-            {isCustomRole && <Input value={form.role} onChange={(e) => update({ role: e.target.value })} placeholder={t('hire.role.placeholder')} />}
+            {isCustomRole && <Input value={form.role} maxLength={40} onChange={(e) => update({ role: e.target.value })} placeholder={t('hire.role.placeholder')} />}
           </div>
 
           <div className="flex flex-col gap-2">

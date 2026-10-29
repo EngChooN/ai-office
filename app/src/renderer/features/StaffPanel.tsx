@@ -119,8 +119,8 @@ const LOG_COLOR: Partial<Record<LogType, string>> = {
   approval: 'text-status-waiting',
   result: 'text-status-working',
   error: 'text-status-error',
-  delegate: 'text-sky-400',
-  commit: 'text-violet-400',
+  delegate: 'text-accent-a',
+  commit: 'text-accent-b',
 }
 type PanelTab = 'work' | 'review' | 'equip' | 'profile'
 const TAB_LABEL: Record<PanelTab, TKey> = {
@@ -763,7 +763,7 @@ function NameRole({ staff }: { staff: Staff }) {
         </label>
         <label className="flex flex-col gap-1">
           <span className="text-muted-foreground">{t('staffPanel.profile.role')}</span>
-          <Input value={role} onChange={(e) => setRole(e.target.value)} onKeyDown={handleKeyDown} className="h-8 text-xs" />
+          <Input value={role} maxLength={40} onChange={(e) => setRole(e.target.value)} onKeyDown={handleKeyDown} className="h-8 text-xs" />
         </label>
       </div>
       {isDirty && (

@@ -179,7 +179,7 @@ export function Onboarding({ onStartTour }: { onStartTour: () => void }) {
   const staffName = firstTask.staff?.name ?? t('onboarding.firstTask.staffName')
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-6">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-overlay p-6">
       <div className="bg-background flex max-h-full w-full max-w-2xl flex-col gap-6 overflow-y-auto rounded-2xl border p-8 shadow-2xl">
         {step === 'welcome' && (
           <>

@@ -40,7 +40,7 @@ export function OrgPage() {
         <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('org.newTeam.placeholder')} className="max-w-xs" />
         <div className="flex gap-1">
           {TEAM_COLORS.map((c) => (
-            <button key={c} type="button" onClick={() => setColor(c)} className={cn('phone:size-8 size-6 rounded-full border-2', color === c ? 'border-white' : 'border-transparent')} style={{ background: c }} />
+            <button key={c} type="button" onClick={() => setColor(c)} className={cn('phone:size-8 size-6 rounded-full border-2', color === c ? 'border-foreground' : 'border-transparent')} style={{ background: c }} />
           ))}
         </div>
         <Button type="submit" size="sm" disabled={!name.trim()}>
@@ -142,7 +142,7 @@ function TeamCard({ team, members, teams }: { team: Team | null; members: Staff[
       </div>
       {team && (
         <label className="text-muted-foreground flex items-center gap-2 text-xs">
-          <CrownIcon className="size-3.5 text-yellow-400" /> {t('org.lead')}
+          <CrownIcon className="size-3.5 text-status-waiting" /> {t('org.lead')}
           <NativeSelect value={lead?.id ?? ''} onChange={(e) => handleLead(e.target.value)} className="h-7 flex-1 text-xs">
             <option value="">{t('org.lead.none')}</option>
             {members.map((m) => (

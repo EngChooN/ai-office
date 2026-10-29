@@ -2,7 +2,7 @@ import './squirrelEvents' // Squirrel 설치·업데이트·제거 실행이면 
 import os from 'node:os'
 import { acquireDataLock, quitForDataLock } from './dataLock'
 import { cancelCodexLogin } from './ai/codexLogin'
-import { app, BrowserWindow, clipboard, dialog, ipcMain, Notification, shell } from 'electron'
+import { app, BrowserWindow, clipboard, dialog, ipcMain, nativeTheme, Notification, shell } from 'electron'
 import path from 'node:path'
 import { loadRemoteConfig, openDb, saveRemoteConfig } from './db'
 import { attachmentById, registerAttachmentScheme, saveUpload, serveAttachments } from './attachments'
@@ -27,6 +27,7 @@ import { configureAi } from './ai'
 import { codexBinaryPath } from './ai/codex'
 import { refreshCodexAssets } from './ai/codexAssets'
 import { lastProviderStatus, providerStatus } from './setup'
+import { WINDOW_BG, type UiMode } from '../shared/uiTheme'
 
 registerAttachmentScheme()
 const office = new Office()
@@ -142,6 +143,21 @@ const tray = new OfficeTray(
   },
 )
 
+/** 바깥 UI 화면 모드를 nativeTheme에 맞춘다 — 화면의 prefers-color-scheme와 창 배경·윈도우 제목 표시줄 색이 같은 모드를 따른다 */
+function syncNativeTheme(mode: UiMode) {
+  if (nativeTheme.themeSource !== mode) nativeTheme.themeSource = mode
+}
+
+/** 지금 모드의 창 배경색 (첫 페인트 전·크기 바꿀 때 보이는 색) */
+const windowColors = () => WINDOW_BG[nativeTheme.shouldUseDarkColors ? 'dark' : 'light']
+
+function paintWindowChrome() {
+  if (!win) return
+  const c = windowColors()
+  win.setBackgroundColor(c.background)
+  if (IS_WINDOWS) win.setTitleBarOverlay({ color: c.background, symbolColor: c.symbol, height: 44 })
+}
+
 /** isHidden: 로그인 자동 실행으로 켜졌을 때 창을 띄우지 않는다 (Dock·트레이로 다시 연다) */
 function createWindow(isHidden = false) {
   win = new BrowserWindow({
@@ -151,9 +167,9 @@ function createWindow(isHidden = false) {
     minHeight: 680,
     title: 'AI Office',
     show: !isHidden,
-    // 맥은 신호등만 남기고, 윈도우는 오른쪽 위 창 버튼을 상단 바(h-11 = 44px) 위에 겹쳐 그린다 (색은 --background 근사값)
-    ...(IS_WINDOWS ? { titleBarStyle: 'hidden', titleBarOverlay: { color: '#111318', symbolColor: '#e8ecf4', height: 44 } } : { titleBarStyle: 'hiddenInset' }),
-    backgroundColor: '#0f1115',
+    // 맥은 신호등만 남기고, 윈도우는 오른쪽 위 창 버튼을 상단 바(h-11 = 44px) 위에 겹쳐 그린다 (색은 지금 모드의 --background, shared/uiTheme.ts WINDOW_BG)
+    ...(IS_WINDOWS ? { titleBarStyle: 'hidden', titleBarOverlay: { color: windowColors().background, symbolColor: windowColors().symbol, height: 44 } } : { titleBarStyle: 'hiddenInset' }),
+    backgroundColor: windowColors().background,
     // 다른 창에 가려져도 사무실 애니메이션·상태 갱신이 멈추지 않게 한다
     webPreferences: { preload: path.join(__dirname, 'preload.cjs'), backgroundThrottling: false },
   })
@@ -187,6 +203,7 @@ function registerIpc() {
   ipcMain.handle('window:isShown', () => Boolean(win?.isVisible() && !win.isMinimized()))
 
   office.on('snapshot', (s) => {
+    syncNativeTheme(s.settings.uiMode)
     syncLoginItem(s.settings.launchAtLogin)
     win?.webContents.send('office:onSnapshot', s)
     tray.update(s)
@@ -242,6 +259,9 @@ app.whenReady().then(async () => {
   registerSceneExport(() => win)
   // 로그인으로 켜졌으면 창을 띄우지 않는다 — 윈도우는 트레이를 끈 경우 보일 곳이 없어 띄운다
   const isHidden = startedHidden() && (process.platform === 'darwin' || office.snapshot().settings.isTrayOn)
+  syncNativeTheme(office.snapshot().settings.uiMode)
+  // 기기 모드가 바뀌거나 themeSource를 바꾸면 창 배경·제목 표시줄 색도 바꾼다
+  nativeTheme.on('updated', paintWindowChrome)
   createWindow(isHidden)
   syncLoginItem(office.snapshot().settings.launchAtLogin)
   updates.start()

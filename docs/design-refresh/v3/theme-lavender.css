@@ -1,0 +1,102 @@
+/* AI Office 디자인 시안 v3 — 「라벤더 소프트」(lavender)
+   색 변수 + 컴포넌트 모양만 덮어쓴다. 레이아웃·크기·배치는 그대로. 사무실(Phaser 캔버스) 색은 건드리지 않는다.
+   쓰는 법: <html data-theme="light|dark"> 로 모드를 고른다 (실제 적용 때는 index.css의 :root / .dark 변수로 옮긴다) */
+
+/* ===== light ===== */
+html[data-theme='light'] {
+  color-scheme: light;
+  --background: #F6F5FB; --foreground: #221F33;
+  --card: #FFFFFF; --card-foreground: #221F33;
+  --popover: #FFFFFF; --popover-foreground: #221F33;
+  --primary: #6C5CE7; --primary-foreground: #FFFFFF;
+  --secondary: #ECEAF6; --secondary-foreground: #221F33;
+  --muted: #ECEAF6; --muted-foreground: #66627F;
+  --accent: #E9E6FA; --accent-foreground: #221F33;
+  --border: #DEDAF0; --input: #CFCAE6; --ring: #8B7BFF;
+  --radius: 18px;
+  --v3-chrome: #FBFAFF; --v3-sidebar: #EFEDF8;
+  --v3-hud: rgba(255,255,255,.92); --v3-hud-fg: #221F33; --v3-hud-border: #DEDAF0;
+  --v3-shadow: 0 10px 28px -10px rgba(108,92,231,.28);
+  --status-working: #1C7C46; --status-waiting: #9A5B00; --status-idle: #6B6B62; --status-error: #C42B2B;
+}
+
+/* ── 공통 컴포넌트 모양 (레이아웃 속성은 건드리지 않는다) ── */
+html[data-theme='light'] header { background: var(--v3-chrome); border-bottom: 1px solid var(--border); }
+html[data-theme='light'] nav { background: var(--v3-sidebar); border-right: 1px solid var(--border); }
+html[data-theme='light'] nav > button { transition: background-color .15s, color .15s; }
+html[data-theme='light'] nav > button.bg-accent { font-weight: 600; }
+html[data-theme='light'] body { font-weight: 400; }
+html[data-theme='light'] [data-slot=button] { font-weight: 500; border-radius: 999px; }
+html[data-theme='light'] [data-slot=button].bg-primary { box-shadow: var(--v3-shadow);  }
+html[data-theme='light'] [data-slot=button].border { background-color: color-mix(in oklab, var(--card) 85%, transparent); border-width: 1px;  }
+/* 지도 위에 얹힌 패널·버튼(HUD): 스튜디오 카드처럼 */
+html[data-theme='light'] main [class*="1a1d28"] { background: var(--v3-hud) !important; color: var(--v3-hud-fg); border: 1px solid var(--v3-hud-border) !important; border-radius: calc(var(--radius) + 2px) !important; box-shadow: var(--v3-shadow) !important; backdrop-filter: blur(10px); }
+html[data-theme='light'] main [class*="1a1d28"] .text-white, html[data-theme='light'] main [class*="1a1d28"].text-white, html[data-theme='light'] main button[class*="1a1d28"] { color: var(--v3-hud-fg) !important; }
+html[data-theme='light'] main [class*="1a1d28"] [class*="text-white"], html[data-theme='light'] main [class*="1a1d28"] [class*="text-"][class*="/"] { color: var(--muted-foreground); }
+html[data-theme='light'] main .hover\:bg-white\/10:hover { background: color-mix(in oklab, var(--v3-hud-fg) 10%, transparent) !important; }
+html[data-theme='light'] main .absolute.bottom-3 button { color: var(--v3-hud-fg) !important; }
+/* 대화상자·입력창·칩·배지 */
+html[data-theme='light'] [role=dialog] { border: 1px solid var(--border); border-radius: calc(var(--radius) + 6px); box-shadow: var(--v3-shadow), 0 24px 60px -20px rgba(0,0,0,.5); background-color: var(--card); }
+html[data-theme='light'] [class*="bg-black/60"] { background: rgba(30,24,40,.38) !important; backdrop-filter: blur(2px); }
+html[data-theme='light'] textarea, html[data-theme='light'] input { border-width: 1px; border-radius: var(--radius); background-color: var(--background); transition: box-shadow .15s, border-color .15s; }
+html[data-theme='light'] [role=dialog] button.rounded-full { border-width: 1px; background: var(--secondary); font-weight: 500; }
+html[data-theme='light'] [role=dialog] button.rounded-full:hover { background: var(--accent); }
+html[data-theme='light'] header .bg-accent.rounded-full { background: var(--accent); border: 1px solid var(--border); }
+
+/* AI 느낌: 반짝이(sparkle) 그라데이션 — 주요 버튼, 비서 버튼, 활성 메뉴 */
+html[data-theme='light'] [data-slot=button].bg-primary { background-image: linear-gradient(135deg, #6C5CE7, color-mix(in oklab, #6C5CE7 55%, #FF7AC6)); border: 0; box-shadow: 0 6px 16px -6px color-mix(in oklab, #6C5CE7 70%, transparent); }
+html[data-theme='light'] header [data-slot=button].border { border-color: transparent; background: linear-gradient(var(--card), var(--card)) padding-box, linear-gradient(135deg, #8B7BFF, #FF7AC6) border-box; }
+html[data-theme='light'] nav > button.bg-accent { background-image: linear-gradient(90deg, color-mix(in oklab, #8B7BFF 22%, transparent), transparent); border-radius: 999px; }
+html[data-theme='light'] nav > button { border-radius: 999px; }
+html[data-theme='light'] [role=dialog] { background-image: radial-gradient(120% 60% at 50% -10%, color-mix(in oklab, #8B7BFF 16%, transparent), transparent 70%); }
+html[data-theme='light'] [role=dialog] textarea:focus-visible { box-shadow: 0 0 0 4px color-mix(in oklab, #8B7BFF 24%, transparent); border-color: #8B7BFF; }
+
+
+/* ===== dark ===== */
+html[data-theme='dark'] {
+  color-scheme: dark;
+  --background: #14131C; --foreground: #EDEBF8;
+  --card: #201F2D; --card-foreground: #EDEBF8;
+  --popover: #201F2D; --popover-foreground: #EDEBF8;
+  --primary: #9B8CFF; --primary-foreground: #1A1240;
+  --secondary: #292739; --secondary-foreground: #EDEBF8;
+  --muted: #292739; --muted-foreground: #A7A3C4;
+  --accent: #302D47; --accent-foreground: #EDEBF8;
+  --border: #34314A; --input: #413E5C; --ring: #9B8CFF;
+  --radius: 18px;
+  --v3-chrome: #181723; --v3-sidebar: #100F17;
+  --v3-hud: rgba(32,31,45,.92); --v3-hud-fg: #EDEBF8; --v3-hud-border: #34314A;
+  --v3-shadow: 0 10px 28px -10px rgba(0,0,0,.6);
+}
+
+/* ── 공통 컴포넌트 모양 (레이아웃 속성은 건드리지 않는다) ── */
+html[data-theme='dark'] header { background: var(--v3-chrome); border-bottom: 1px solid var(--border); }
+html[data-theme='dark'] nav { background: var(--v3-sidebar); border-right: 1px solid var(--border); }
+html[data-theme='dark'] nav > button { transition: background-color .15s, color .15s; }
+html[data-theme='dark'] nav > button.bg-accent { font-weight: 600; }
+html[data-theme='dark'] body { font-weight: 400; }
+html[data-theme='dark'] [data-slot=button] { font-weight: 500; border-radius: 999px; }
+html[data-theme='dark'] [data-slot=button].bg-primary { box-shadow: var(--v3-shadow);  }
+html[data-theme='dark'] [data-slot=button].border { background-color: color-mix(in oklab, var(--card) 85%, transparent); border-width: 1px;  }
+/* 지도 위에 얹힌 패널·버튼(HUD): 스튜디오 카드처럼 */
+html[data-theme='dark'] main [class*="1a1d28"] { background: var(--v3-hud) !important; color: var(--v3-hud-fg); border: 1px solid var(--v3-hud-border) !important; border-radius: calc(var(--radius) + 2px) !important; box-shadow: var(--v3-shadow) !important; backdrop-filter: blur(10px); }
+html[data-theme='dark'] main [class*="1a1d28"] .text-white, html[data-theme='dark'] main [class*="1a1d28"].text-white, html[data-theme='dark'] main button[class*="1a1d28"] { color: var(--v3-hud-fg) !important; }
+html[data-theme='dark'] main [class*="1a1d28"] [class*="text-white"], html[data-theme='dark'] main [class*="1a1d28"] [class*="text-"][class*="/"] { color: var(--muted-foreground); }
+html[data-theme='dark'] main .hover\:bg-white\/10:hover { background: color-mix(in oklab, var(--v3-hud-fg) 10%, transparent) !important; }
+html[data-theme='dark'] main .absolute.bottom-3 button { color: var(--v3-hud-fg) !important; }
+/* 대화상자·입력창·칩·배지 */
+html[data-theme='dark'] [role=dialog] { border: 1px solid var(--border); border-radius: calc(var(--radius) + 6px); box-shadow: var(--v3-shadow), 0 24px 60px -20px rgba(0,0,0,.5); background-color: var(--card); }
+html[data-theme='dark'] [class*="bg-black/60"] { background: rgba(0,0,0,.62) !important; backdrop-filter: blur(2px); }
+html[data-theme='dark'] textarea, html[data-theme='dark'] input { border-width: 1px; border-radius: var(--radius); background-color: color-mix(in oklab, var(--background) 60%, var(--card)); transition: box-shadow .15s, border-color .15s; }
+html[data-theme='dark'] [role=dialog] button.rounded-full { border-width: 1px; background: var(--muted); font-weight: 500; }
+html[data-theme='dark'] [role=dialog] button.rounded-full:hover { background: var(--accent); }
+html[data-theme='dark'] header .bg-accent.rounded-full { background: var(--accent); border: 1px solid var(--border); }
+
+/* AI 느낌: 반짝이(sparkle) 그라데이션 — 주요 버튼, 비서 버튼, 활성 메뉴 */
+html[data-theme='dark'] [data-slot=button].bg-primary { background-image: linear-gradient(135deg, #9B8CFF, color-mix(in oklab, #9B8CFF 55%, #FF7AC6)); border: 0; box-shadow: 0 6px 16px -6px color-mix(in oklab, #9B8CFF 70%, transparent); }
+html[data-theme='dark'] header [data-slot=button].border { border-color: transparent; background: linear-gradient(var(--card), var(--card)) padding-box, linear-gradient(135deg, #9B8CFF, #FF7AC6) border-box; }
+html[data-theme='dark'] nav > button.bg-accent { background-image: linear-gradient(90deg, color-mix(in oklab, #9B8CFF 22%, transparent), transparent); border-radius: 999px; }
+html[data-theme='dark'] nav > button { border-radius: 999px; }
+html[data-theme='dark'] [role=dialog] { background-image: radial-gradient(120% 60% at 50% -10%, color-mix(in oklab, #9B8CFF 16%, transparent), transparent 70%); }
+html[data-theme='dark'] [role=dialog] textarea:focus-visible { box-shadow: 0 0 0 4px color-mix(in oklab, #9B8CFF 24%, transparent); border-color: #9B8CFF; }
+

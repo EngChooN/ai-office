@@ -61,12 +61,12 @@ export function Avatar({ avatar, className, name, teamId }: { avatar: number; cl
 /** 팀장·랩 리드 표시. 업무 모드면 ★ 대신 "리드" 글자 */
 /** 튜토리얼 연습 데이터 꼬리표 (직원·카드·회의 공용) */
 export function PracticeBadge({ className }: { className?: string }) {
-  return <span className={cn('bg-status-waiting shrink-0 rounded px-1.5 text-[10px] font-semibold text-black', className)}>{t('tutorial.badge.practice')}</span>
+  return <span className={cn('bg-status-waiting shrink-0 rounded px-1.5 text-[10px] font-semibold text-background', className)}>{t('tutorial.badge.practice')}</span>
 }
 
 export function LeadMark() {
   const isWorkMode = useWorkMode()
-  if (!isWorkMode) return <span className="shrink-0 text-yellow-400">★</span>
+  if (!isWorkMode) return <span className="shrink-0 text-status-waiting">★</span>
   return (
     <Badge variant="outline" className="border-primary/40 text-primary h-4 shrink-0 px-1.5 text-[10px]">
       {t('staffCard.lead')}
@@ -153,7 +153,7 @@ export function StaffCard({ staff, isLead = false, isSelected, onSelect }: Props
         <div className="text-muted-foreground line-clamp-2 min-h-8 text-xs">{staff.activity || '—'}</div>
       )}
       <div className="flex items-center gap-2">
-        {staff.approvals.length > 0 && <Badge className="bg-status-waiting text-black">{t('staffCard.approvals', { n: staff.approvals.length })}</Badge>}
+        {staff.approvals.length > 0 && <Badge className="bg-status-waiting text-background">{t('staffCard.approvals', { n: staff.approvals.length })}</Badge>}
         {/* 데모데이 칭찬 배지 (대표 박수·MVP 누적) */}
         {!!(staff.praise?.claps || staff.praise?.mvps) && (
           <Badge variant="outline" title={t('staffCard.praise', { claps: staff.praise.claps, mvps: staff.praise.mvps })}>

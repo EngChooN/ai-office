@@ -13,7 +13,8 @@ function Page({ title, description, actions, className, children }: { title: str
         </div>
         {actions}
       </div>
-      <div className={cn('phone:p-4 min-h-0 flex-1 overflow-y-auto p-6', className)}>{children}</div>
+      {/* 맨 아래까지 내려도 마지막 카드가 창 끝에 붙지 않게 아래만 넉넉히 */}
+      <div className={cn('phone:p-4 phone:pb-8 min-h-0 flex-1 overflow-y-auto p-6 pb-12', className)}>{children}</div>
     </div>
   )
 }

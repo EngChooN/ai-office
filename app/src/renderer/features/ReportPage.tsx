@@ -26,8 +26,8 @@ const LOG_COLOR: Partial<Record<LogType, string>> = {
   approval: 'text-status-waiting',
   result: 'text-status-working',
   error: 'text-status-error',
-  delegate: 'text-sky-400',
-  commit: 'text-violet-400',
+  delegate: 'text-accent-a',
+  commit: 'text-accent-b',
 }
 const HIDE_TOOLS_KEY: LogType = 'tool'
 

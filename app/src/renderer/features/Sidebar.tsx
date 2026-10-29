@@ -32,7 +32,7 @@ export function Sidebar() {
         >
           <Icon className="size-4" />
           <span className="flex-1">{label}</span>
-          {Boolean(badges[v]) && <span className="bg-status-waiting shrink-0 rounded-full px-1.5 text-[10px] font-semibold text-black">{badges[v]}</span>}
+          {Boolean(badges[v]) && <span className="bg-status-waiting shrink-0 rounded-full px-1.5 text-[10px] font-semibold text-background">{badges[v]}</span>}
         </button>
       ))}
       <button
@@ -59,7 +59,7 @@ export function Sidebar() {
         <MegaphoneIcon className="size-3.5 shrink-0" />
         <span className="min-w-0 flex-1 truncate whitespace-nowrap" title={t('nav.updates')}>{t('nav.updates')}</span>
         {newVersion ? (
-          <span className="bg-status-waiting shrink-0 rounded-full px-1.5 text-[10px] font-semibold text-black" title={t('update.badge', { version: newVersion })}>
+          <span className="bg-status-waiting shrink-0 rounded-full px-1.5 text-[10px] font-semibold text-background" title={t('update.badge', { version: newVersion })}>
             {t('update.badgeShort')}
           </span>
         ) : (

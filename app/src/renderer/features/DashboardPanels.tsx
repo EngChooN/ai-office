@@ -300,11 +300,11 @@ export function AttentionCard({ items, staffById }: { items: AttentionItem[]; st
   }, [items])
   const shown = isExpanded ? items : items.slice(0, ATTENTION_VISIBLE)
   return (
-    <section className="bg-card flex min-w-0 flex-col rounded-xl border">
+    <section className="bg-card flex min-w-0 flex-col overflow-hidden rounded-xl border">
       <header className="flex items-center gap-2 px-4 pt-3 pb-2">
         <h2 className="text-sm font-semibold">{t('dashboardPanels.attentionTitle')}</h2>
         {items.length > 0 && (
-          <span className="bg-status-waiting rounded-full px-1.5 text-[10px] font-semibold text-black" aria-live="polite">
+          <span className="bg-status-waiting rounded-full px-1.5 text-[10px] font-semibold text-background" aria-live="polite">
             {items.length}
           </span>
         )}

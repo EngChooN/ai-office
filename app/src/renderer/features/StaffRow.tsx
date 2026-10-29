@@ -55,7 +55,7 @@ export function StaffRow({ staff, isLead = false, isSelected, onSelect }: Props)
         <span className={cn('truncate', !task && 'text-muted-foreground')}>{summary}</span>
         {task && task.more > 0 && <span className="text-muted-foreground shrink-0">+{task.more}</span>}
       </div>
-      {staff.approvals.length > 0 && <Badge className="bg-status-waiting shrink-0 text-black">{t('staffCard.approvals', { n: staff.approvals.length })}</Badge>}
+      {staff.approvals.length > 0 && <Badge className="bg-status-waiting shrink-0 text-background">{t('staffCard.approvals', { n: staff.approvals.length })}</Badge>}
       {staff.kind === 'external' && (
         <Badge variant="outline" className="shrink-0">
           {t('staffCard.external')}

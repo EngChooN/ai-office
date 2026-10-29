@@ -1,0 +1,160 @@
+{
+  "default": "lavender",
+  "themes": [
+    {
+      "id": "lavender",
+      "name": {
+        "ko": "라벤더",
+        "en": "Lavender",
+        "ja": "ラベンダー",
+        "zh": "薰衣草"
+      },
+      "gradient": {
+        "from": "#8B7BFF",
+        "to": "#FF7AC6",
+        "angle": 135
+      },
+      "accent": {
+        "light": {
+          "a": "#0B6DA1",
+          "b": "#5C4CE3"
+        },
+        "dark": {
+          "a": "#5CC8FF",
+          "b": "#B6A8FF"
+        }
+      },
+      "swatch": {
+        "light": "#6C5CE7",
+        "dark": "#9B8CFF",
+        "spark": "#FF7AC6",
+        "lightBg": "#F6F5FB",
+        "darkBg": "#14131C"
+      }
+    },
+    {
+      "id": "blue",
+      "name": {
+        "ko": "스카이",
+        "en": "Sky",
+        "ja": "スカイ",
+        "zh": "天空"
+      },
+      "gradient": {
+        "from": "#6C9BFF",
+        "to": "#35D0E0",
+        "angle": 135
+      },
+      "accent": {
+        "light": {
+          "a": "#0A7280",
+          "b": "#774BDF"
+        },
+        "dark": {
+          "a": "#4FD8E8",
+          "b": "#B79CFF"
+        }
+      },
+      "swatch": {
+        "light": "#2A67FF",
+        "dark": "#6C9BFF",
+        "spark": "#35D0E0",
+        "lightBg": "#F5F7FB",
+        "darkBg": "#13161C"
+      }
+    },
+    {
+      "id": "terracotta",
+      "name": {
+        "ko": "노을",
+        "en": "Sunset",
+        "ja": "夕焼け",
+        "zh": "晚霞"
+      },
+      "gradient": {
+        "from": "#FFB35C",
+        "to": "#E0642A",
+        "angle": 135
+      },
+      "accent": {
+        "light": {
+          "a": "#A9510E",
+          "b": "#1E7688"
+        },
+        "dark": {
+          "a": "#FFB35C",
+          "b": "#5CC8D8"
+        }
+      },
+      "swatch": {
+        "light": "#C1511D",
+        "dark": "#F08A4B",
+        "spark": "#FFB35C",
+        "lightBg": "#FBF8F5",
+        "darkBg": "#1C1713"
+      }
+    },
+    {
+      "id": "sage",
+      "name": {
+        "ko": "숲속",
+        "en": "Moss",
+        "ja": "モス",
+        "zh": "苔绿"
+      },
+      "gradient": {
+        "from": "#C8E86A",
+        "to": "#1F9A68",
+        "angle": 135
+      },
+      "accent": {
+        "light": {
+          "a": "#0E7881",
+          "b": "#7E57C2"
+        },
+        "dark": {
+          "a": "#5CD6C8",
+          "b": "#C3A6FF"
+        }
+      },
+      "swatch": {
+        "light": "#1B7F53",
+        "dark": "#4FD6A0",
+        "spark": "#C8E86A",
+        "lightBg": "#F5FBF8",
+        "darkBg": "#131C18"
+      }
+    },
+    {
+      "id": "rose",
+      "name": {
+        "ko": "벚꽃",
+        "en": "Blossom",
+        "ja": "ブロッサム",
+        "zh": "樱花"
+      },
+      "gradient": {
+        "from": "#FF9AB8",
+        "to": "#D6336C",
+        "angle": 135
+      },
+      "accent": {
+        "light": {
+          "a": "#7C3AED",
+          "b": "#0F708D"
+        },
+        "dark": {
+          "a": "#B79CFF",
+          "b": "#5CC8E8"
+        }
+      },
+      "swatch": {
+        "light": "#D6336C",
+        "dark": "#FF7FA8",
+        "spark": "#FFA45C",
+        "lightBg": "#FBF5F7",
+        "darkBg": "#1C1316"
+      }
+    }
+  ]
+}

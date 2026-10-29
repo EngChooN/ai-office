@@ -242,7 +242,7 @@ function TaskCard({ task }: { task: Task }) {
       {(parent || planLabel) && (
         <div className="flex flex-wrap gap-1 text-[10px]">
           {parent && <span className="bg-muted text-muted-foreground max-w-full truncate rounded px-1.5">↳ {parent.title}</span>}
-          {planLabel && <span className={cn('rounded px-1.5 font-semibold', task.plan?.status === 'waiting' ? 'bg-status-waiting text-black' : 'bg-primary/15 text-primary')}>{planLabel}</span>}
+          {planLabel && <span className={cn('rounded px-1.5 font-semibold', task.plan?.status === 'waiting' ? 'bg-status-waiting text-background' : 'bg-primary/15 text-primary')}>{planLabel}</span>}
         </div>
       )}
       {(team || lab || task.isPractice) && (

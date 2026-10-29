@@ -100,7 +100,7 @@ export function LabSection() {
           </div>
           <MemberPicker staff={staff} teams={teams} picked={picked} onToggle={toggle} />
           <label className="flex items-center gap-2 text-xs">
-            <CrownIcon className="size-3.5 text-yellow-400" /> {t('lab.labLead')}
+            <CrownIcon className="size-3.5 text-status-waiting" /> {t('lab.labLead')}
             <NativeSelect value={leadId} onChange={(e) => setLeadId(e.target.value)} className="h-7 w-40 text-xs">
               <option value="">{t('lab.noLead')}</option>
               {picked.map((id) => (
@@ -181,7 +181,7 @@ function LabCard({ lab, staff, teams }: { lab: Lab; staff: Staff[]; teams: Team[
       {lab.cwd && <p className="text-muted-foreground text-xs">📁 {shortPath(lab.cwd)}</p>}
       <RefDocsEditor target={{ kind: 'lab', id: lab.id }} docs={lab.refDocs ?? []} audience={t('lab.refDocsAudience')} isCollapsible suggestFrom={lab.cwd} />
       <label className="text-muted-foreground flex items-center gap-2 text-xs">
-        <CrownIcon className="size-3.5 text-yellow-400" /> {t('lab.lead')}
+        <CrownIcon className="size-3.5 text-status-waiting" /> {t('lab.lead')}
         <NativeSelect value={lab.leadId ?? ''} onChange={(e) => void window.office.updateLab(lab.id, { leadId: e.target.value || null })} className="h-7 flex-1 text-xs">
           <option value="">{t('lab.noLead')}</option>
           {members.map((m) => (

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { useOffice } from '@/store'
 import { providerBannerAction } from '@/lib/providerBanner'
 import { PROVIDER_SECTION_ID, useProviders } from './ProviderCards'
+import { requestSettingsSection } from './SettingsPage'
 import { t } from '@shared/i18n'
 
 // 0.14.0 안내 띠 (한 번만): 업데이트한 사람에게 GPT(Codex) 직원도 쓸 수 있다고 알린다. 닫거나 누르면 다시 띄우지 않는다
@@ -26,8 +27,8 @@ export function ProviderBanner() {
   const handleOpen = () => {
     markSeen()
     setView('settings')
-    // 설정 화면이 그려진 다음 'AI 공급자' 칸으로
-    requestAnimationFrame(() => document.getElementById(PROVIDER_SECTION_ID)?.scrollIntoView({ block: 'start', behavior: 'smooth' }))
+    // 설정의 'AI·업무' 분류로 바꾼 뒤 'AI 공급자' 칸으로
+    requestSettingsSection(PROVIDER_SECTION_ID)
   }
   return (
     <div className="bg-accent/50 flex shrink-0 items-center gap-3 border-b px-4 py-2 text-sm">

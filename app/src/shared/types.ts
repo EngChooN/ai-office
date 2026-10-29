@@ -14,6 +14,7 @@ import type { BoardCleanupPlan } from './boardCleanup'
 import type { CustomMcp, CustomMcpInput } from './customMcp'
 import type { PackResult } from './staffPack'
 import { COMPANY_LEVELS, companyLevelOf } from './officeLevel.ts'
+import { DEFAULT_UI_MODE, DEFAULT_UI_THEME, sanitizeUi, type UiMode, type UiThemeId } from './uiTheme.ts'
 import type { I18nArg, I18nText, LangSetting } from './i18n/index.ts'
 
 export type StaffKind = 'hired' | 'external'
@@ -557,8 +558,13 @@ export interface Settings {
   /** 월 비용 예산 — 토큰 예산과 함께 보조 지표로 남긴다 */
   monthlyBudgetUsd: number
   tokenBudget: TokenBudget
+  /** 사무실 그림(theme·dayNight) ≠ 바깥 UI(uiTheme·uiMode) — 이 둘은 지도 캔버스 그림만 바꾼다 */
   theme: ThemeId
   dayNight: DayNight
+  /** 바깥 UI 화면 모드 — 'system'이면 기기의 라이트·다크를 따른다 */
+  uiMode: UiMode
+  /** 바깥 UI 색 테마 (포인트 색만 바뀌고 버튼·카드 모양은 같다) */
+  uiTheme: UiThemeId
   plants: number
   /** 휴게실 수다 말풍선 */
   isChatterOn: boolean
@@ -1039,6 +1045,8 @@ export const DEFAULT_SETTINGS: Settings = {
   tokenBudget: { day: 0, week: 0, month: 0 },
   theme: 'wood',
   dayNight: 'auto',
+  uiMode: DEFAULT_UI_MODE,
+  uiTheme: DEFAULT_UI_THEME,
   plants: 3,
   isChatterOn: true,
   workHours: { isEnabled: false, start: '09:00', end: '19:00' },
@@ -1059,7 +1067,7 @@ export const DEFAULT_SETTINGS: Settings = {
 
 /** 저장된(또는 옛 버전) 설정의 빈 칸을 기본값으로 채운다 — 토큰 예산이 없던 설정은 USD 예산은 두고 토큰 한도를 "제한 없음"으로 */
 export function withSettingsDefaults(saved: Partial<Settings>): Settings {
-  return { ...DEFAULT_SETTINGS, ...saved, tokenBudget: { ...DEFAULT_SETTINGS.tokenBudget, ...saved.tokenBudget }, demoDay: { ...DEFAULT_SETTINGS.demoDay, ...saved.demoDay } }
+  return { ...DEFAULT_SETTINGS, ...saved, ...sanitizeUi(saved), tokenBudget: { ...DEFAULT_SETTINGS.tokenBudget, ...saved.tokenBudget }, demoDay: { ...DEFAULT_SETTINGS.demoDay, ...saved.demoDay } }
 }
 
 /** 토큰 수 짧게 (999,950 이상은 반올림하면 1000.0K가 되므로 M으로 올린다) */

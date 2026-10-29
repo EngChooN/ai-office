@@ -83,10 +83,15 @@ test('형식 이름과 버전을 확인한다', () => {
   assert.equal(reasonOf(['not', 'object']), 'pack.err.shape')
 })
 
-test('직무·모델은 앱이 아는 값만 허용하고, 사유에 값을 담는다', () => {
-  const role = validatePackObject(packOf([staffEntry({ role: '마법사' })]), known)
-  assert.equal(!role.ok && role.reason.key, 'pack.err.role')
-  assert.equal(!role.ok && role.reason.vars?.role, '마법사')
+test('직접 입력한 직무도 받고, 빈 직무·너무 긴 직무는 막는다', () => {
+  const custom = validatePackObject(packOf([staffEntry({ role: ' 마법사 ' })]), known)
+  assert.equal(custom.ok && custom.pack.staff[0].role, '마법사')
+  assert.equal(reasonOf(packOf([staffEntry({ role: '  ' })])), 'pack.err.role')
+  assert.equal(reasonOf(packOf([staffEntry({ role: 'ㄱ'.repeat(41) })])), 'pack.err.role')
+  assert.equal(reasonOf(packOf([staffEntry({ role: 3 })])), 'pack.err.role')
+})
+
+test('모델은 앱이 아는 값만 허용한다', () => {
   assert.equal(reasonOf(packOf([staffEntry({ model: 'gpt-x' })])), 'pack.err.model')
 })
 
@@ -270,4 +275,9 @@ test('파일 읽기·쓰기: 저장한 파일을 다시 읽어 검증하고, 크
   } finally {
     fs.rmSync(dir, { recursive: true, force: true })
   }
+})
+
+test('직접 입력한 직무의 직원도 내보낼 수 있다', () => {
+  const built = buildPackText([{ name: '영희', role: '마법사', avatar: 1, model: 'default', approvalMode: 'acceptEdits', systemPrompt: '', equipment: { mcpServers: [], skills: [], allowedTools: [], disallowedTools: [], monthlyBudgetUsd: 0 }, manuals: [] }])
+  assert.equal(built.ok, true)
 })

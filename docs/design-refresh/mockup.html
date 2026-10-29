@@ -1,0 +1,63 @@
+<!doctype html><meta charset="utf-8"><title>AI Office 디자인 개편 시안</title>
+<style>
+*{box-sizing:border-box;margin:0}
+body{font-family:-apple-system,'Apple SD Gothic Neo',sans-serif;background:#888;padding:20px;width:2000px}
+h1{font-size:22px;color:#fff;margin:0 0 12px}
+.row{display:flex;gap:20px}
+.app{width:970px;height:640px;border-radius:14px;overflow:hidden;display:flex;flex-direction:column;background:var(--bg);color:var(--fg);position:relative;font-size:13px}
+.top{height:46px;display:flex;align-items:center;gap:6px;padding:0 14px;background:var(--bar);border-bottom:1px solid var(--bd);backdrop-filter:blur(12px)}
+.logo{font-weight:800;font-size:15px;margin-right:10px;display:flex;gap:7px;align-items:center}
+.logo i{width:20px;height:20px;border-radius:var(--r);background:var(--pt);display:block}
+.tab{padding:6px 11px;border-radius:var(--r);color:var(--mut)}
+.tab.on{background:var(--pt);color:var(--ptfg);font-weight:700}
+.sp{flex:1}.pill{padding:5px 10px;border-radius:99px;background:var(--sf);border:1px solid var(--bd);color:var(--mut);font-size:12px}
+.main{flex:1;display:flex;min-height:0}
+.scene{flex:1;position:relative;background:var(--sc);overflow:hidden}
+.side{width:270px;background:var(--side);border-left:1px solid var(--bd);padding:12px;display:flex;flex-direction:column;gap:9px}
+.side h3{font-size:12px;color:var(--mut);letter-spacing:.04em;font-weight:700}
+.card{background:var(--sf);border:1px solid var(--bd);border-radius:calc(var(--r) + 2px);padding:10px;box-shadow:var(--sh)}
+.st{display:flex;gap:9px;align-items:center}
+.av{width:30px;height:30px;border-radius:50%;flex:none}
+.st b{font-size:13px;display:block}.st span{font-size:11px;color:var(--mut)}
+.dot{margin-left:auto;width:9px;height:9px;border-radius:50%}
+.bar{height:6px;border-radius:9px;background:var(--bd);margin-top:7px;overflow:hidden}.bar u{display:block;height:100%;background:var(--pt)}
+.btn{background:var(--pt);color:var(--ptfg);border-radius:var(--r);padding:8px;text-align:center;font-weight:700;margin-top:auto}
+.chat{background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);padding:8px;font-size:12px;color:var(--mut)}
+.badge{position:absolute;left:14px;top:12px;padding:6px 10px;background:var(--sf);border:1px solid var(--bd);border-radius:var(--r);font-size:12px;box-shadow:var(--sh)}
+.lbl{position:absolute;left:0;right:0;bottom:6px;text-align:center;font-size:12px;color:#fff;font-weight:700;text-shadow:0 1px 3px #0008}
+</style>
+<body><h1 id="t"></h1><div class="row" id="r"></div>
+<script>
+const D={
+A:{name:'A. 따뜻한 오피스 — 크림 종이와 테라코타, 아침 햇살이 드는 사무실',
+ light:{bg:'#FBF5EA',bar:'#FFFAF0',sf:'#FFFFFF',side:'#F6EEDF',fg:'#3A2D22',mut:'#8A7766',bd:'#E7DAC4',pt:'#E2703A',ptfg:'#FFFFFF',sc:'#F3E4C8',r:'10px',sh:'0 2px 6px #7a5a2a18',floor:['#E9C98F','#DDB878'],wall:['#F6DDB3','#EBCB98'],ok:'#4CAF6A',warn:'#F2B134'},
+ dark:{bg:'#241C16',bar:'#2D231B',sf:'#34291F',side:'#2A2119',fg:'#F5E9D6',mut:'#BBA68C',bd:'#473A2C',pt:'#F08A4B',ptfg:'#2A160A',sc:'#1D1611',r:'10px',sh:'0 2px 6px #0006',floor:['#8A6A44','#7A5C3A'],wall:['#A07F55','#8E6F49'],ok:'#6CC287',warn:'#F2B134'}},
+B:{name:'B. 차분한 뉴트럴·글래스 — 회청색 바탕에 반투명 유리 패널',
+ light:{bg:'#E8ECF1',bar:'#FFFFFFAA',sf:'#FFFFFFB3',side:'#F4F6F9CC',fg:'#1F2633',mut:'#6B7586',bd:'#D3D9E2',pt:'#4F6BED',ptfg:'#FFFFFF',sc:'linear-gradient(135deg,#DDE4EE,#EEF1F6)',r:'12px',sh:'0 4px 14px #2a3b5a14',floor:['#C9D1DD','#BCC6D4'],wall:['#E1E6EE','#D3DAE5'],ok:'#3FB07A',warn:'#E8A93A'},
+ dark:{bg:'#12151C',bar:'#1B2029AA',sf:'#FFFFFF10',side:'#171B2399',fg:'#E7EBF3',mut:'#8F9AAE',bd:'#FFFFFF1C',pt:'#7C93FF',ptfg:'#0E1430',sc:'linear-gradient(135deg,#171C28,#0F131B)',r:'12px',sh:'0 4px 14px #0007',floor:['#2C3547','#262E3F'],wall:['#3A4458','#313A4D'],ok:'#52C99A',warn:'#E8B04A'}},
+C:{name:'C. 선명한 게임풍 — 두꺼운 외곽선과 비비드 포인트, 퀘스트 로그 느낌',
+ light:{bg:'#FFF8E1',bar:'#FFD84D',sf:'#FFFFFF',side:'#FFEFB0',fg:'#231942',mut:'#6B5B95',bd:'#231942',pt:'#7B3FF2',ptfg:'#FFFFFF',sc:'#9ADCF5',r:'8px',sh:'3px 3px 0 #231942',floor:['#7FD18A','#6CC278'],wall:['#FFB6C9','#FF9DB8'],ok:'#18B26B',warn:'#FF9F1C',bw:'2px'},
+ dark:{bg:'#14102B',bar:'#2A1B66',sf:'#251B4D',side:'#1C1540',fg:'#FFF4D6',mut:'#B5A6F0',bd:'#8C6BFF',pt:'#FFD23F',ptfg:'#231942',sc:'#1B1244',r:'8px',sh:'3px 3px 0 #000',floor:['#2E7D5B','#276B4D'],wall:['#B13E7B','#9A3269'],ok:'#3DEB9A',warn:'#FF9F1C',bw:'2px'}}};
+const key=location.hash.slice(1)||'A';const d=D[key];t.textContent=d.name;
+const staff=[['김버전','개발 · 작업 중','#E2703A','ok',70],['강백엔','개발 · 작업 중','#4F6BED','ok',45],['이디자','디자인 · 확인 대기','#B05CC8','warn',20],['박기획','기획 · 대기','#3AA7A0','mut',5]];
+function room(c){const f=c.floor,w=c.wall;
+// iso 방: 바닥 마름모 + 뒷벽 2면 + 책상 블록(기존 아이소 그림은 유지된다는 가정의 대체 일러스트)
+let desks='';[[330,300],[430,350],[530,300],[430,250]].forEach(([x,y],i)=>{const col=['#E2703A','#4F6BED','#B05CC8','#3AA7A0'][i];
+desks+=`<g transform="translate(${x-20},${y-110})"><polygon points="0,20 40,0 80,20 40,40" fill="#fff" opacity=".92"/><polygon points="0,20 40,40 40,62 0,42" fill="#0002"/><polygon points="40,40 80,20 80,42 40,62" fill="#0004"/><polygon points="22,6 42,-4 52,2 32,12" fill="${col}"/><circle cx="40" cy="-14" r="9" fill="${col}"/></g>`});
+return `<svg viewBox="0 0 700 520" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" style="position:absolute;inset:0">
+<polygon points="350,60 640,205 350,350 60,205" fill="${f[0]}"/>
+<polygon points="350,60 640,205 640,135 350,-10" fill="${w[1]}"/><polygon points="350,60 60,205 60,135 350,-10" fill="${w[0]}"/>
+<polygon points="60,205 350,350 350,400 60,255" fill="#0003"/><polygon points="640,205 350,350 350,400 640,255" fill="#0005"/>
+<polygon points="350,60 640,205 350,350 60,205" fill="none" stroke="#fff3"/>
+<rect x="120" y="95" width="60" height="45" fill="#BEE6F7" stroke="#0003" transform="skewY(26)"/>
+<rect x="500" y="170" width="60" height="45" fill="#BEE6F7" stroke="#0003" transform="skewY(-26)"/>
+${desks}</svg>`}
+function app(mode){const c=d[mode];const v=Object.entries(c).filter(([k])=>!['floor','wall','ok','warn'].includes(k)).map(([k,x])=>`--${k}:${x}`).join(';')+';--bd2:'+c.bd;
+const bw=c.bw||'1px';
+return `<div class="app" style="${v};${key=='C'?'--bwx:2px':''}">
+<style>.app[style*="--bwx"] .card,.app[style*="--bwx"] .pill,.app[style*="--bwx"] .badge,.app[style*="--bwx"] .btn,.app[style*="--bwx"] .chat{border:2px solid var(--bd)}.app[style*="--bwx"] .top{border-bottom:3px solid var(--bd)}.app[style*="--bwx"] .btn{box-shadow:var(--sh)}</style>
+<div class="top"><div class="logo"><i></i>AI Office</div><span class="tab on">사무실</span><span class="tab">업무 보드</span><span class="tab">채팅</span><span class="tab">보고서</span><span class="tab">상점</span><span class="sp"></span><span class="pill">Lv.14 · ⭐ 2,480</span><span class="pill">${mode=='light'?'☀ 라이트':'🌙 다크'}</span></div>
+<div class="main"><div class="scene" style="background:${c.sc}">${room(c)}<div class="badge">🏢 2층 사무실 · 직원 4명</div><div class="lbl" style="color:${c.fg};text-shadow:none;opacity:.6">시안용 대체 일러스트 (실제 아이소 아트 유지)</div></div>
+<div class="side"><h3>직원</h3>${staff.map(s=>`<div class="card"><div class="st"><div class="av" style="background:${s[2]}"></div><div><b>${s[0]}</b><span>${s[1]}</span></div><i class="dot" style="background:${s[3]=='mut'?c.mut:c[s[3]]}"></i></div><div class="bar"><u style="width:${s[4]}%"></u></div></div>`).join('')}<h3>채팅</h3><div class="chat">이디자: 시안 3개 정리했어요. 확인 부탁드려요.</div><div class="btn">+ 새 업무 맡기기</div></div></div></div>`}
+r.innerHTML=app('light')+app('dark');
+</script>

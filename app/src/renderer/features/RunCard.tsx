@@ -13,9 +13,9 @@ import { roleLabel } from '@shared/roleLabel'
 
 const STATUS: Record<RunStatus, { label: TKey; className: string }> = {
   running: { label: 'runCard.status.running', className: 'bg-primary text-primary-foreground animate-pulse' },
-  checking: { label: 'runCard.status.checking', className: 'bg-status-waiting text-black animate-pulse' },
-  done: { label: 'runCard.status.done', className: 'bg-status-working text-black' },
-  failed: { label: 'runCard.status.failed', className: 'bg-status-error text-white' },
+  checking: { label: 'runCard.status.checking', className: 'bg-status-waiting text-background animate-pulse' },
+  done: { label: 'runCard.status.done', className: 'bg-status-working text-background' },
+  failed: { label: 'runCard.status.failed', className: 'bg-status-error text-background' },
   stopped: { label: 'runCard.status.stopped', className: 'bg-muted' },
 }
 const PREVIEW_MAX = 6000

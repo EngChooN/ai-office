@@ -1,0 +1,98 @@
+/* AI Office 디자인 시안 v3 — 「크림 테라코타」(cream)
+   색 변수 + 컴포넌트 모양만 덮어쓴다. 레이아웃·크기·배치는 그대로. 사무실(Phaser 캔버스) 색은 건드리지 않는다.
+   쓰는 법: <html data-theme="light|dark"> 로 모드를 고른다 (실제 적용 때는 index.css의 :root / .dark 변수로 옮긴다) */
+
+/* ===== light ===== */
+html[data-theme='light'] {
+  color-scheme: light;
+  --background: #F8F3EA; --foreground: #33291F;
+  --card: #FFFFFF; --card-foreground: #33291F;
+  --popover: #FFFFFF; --popover-foreground: #33291F;
+  --primary: #C9551F; --primary-foreground: #FFFFFF;
+  --secondary: #EFE7DA; --secondary-foreground: #33291F;
+  --muted: #EFE7DA; --muted-foreground: #75654F;
+  --accent: #F1E6D6; --accent-foreground: #33291F;
+  --border: #E4D8C5; --input: #D8CAB4; --ring: #E2703A;
+  --radius: 14px;
+  --v3-chrome: #FBF7F0; --v3-sidebar: #F2EADC;
+  --v3-hud: rgba(255,252,246,.94); --v3-hud-fg: #33291F; --v3-hud-border: #E4D8C5;
+  --v3-shadow: 0 6px 18px -6px rgba(120,80,40,.22), 0 1px 2px rgba(120,80,40,.10);
+  --status-working: #1C7C46; --status-waiting: #9A5B00; --status-idle: #6B6B62; --status-error: #C42B2B;
+}
+
+/* ── 공통 컴포넌트 모양 (레이아웃 속성은 건드리지 않는다) ── */
+html[data-theme='light'] header { background: var(--v3-chrome); border-bottom: 1px solid var(--border); }
+html[data-theme='light'] nav { background: var(--v3-sidebar); border-right: 1px solid var(--border); }
+html[data-theme='light'] nav > button { transition: background-color .15s, color .15s; }
+html[data-theme='light'] nav > button.bg-accent { font-weight: 650; }
+html[data-theme='light'] body { font-weight: 400; }
+html[data-theme='light'] [data-slot=button] { font-weight: 500; border-radius: 999px; }
+html[data-theme='light'] [data-slot=button].bg-primary { box-shadow: var(--v3-shadow);  }
+html[data-theme='light'] [data-slot=button].border { background-color: color-mix(in oklab, var(--card) 85%, transparent); border-width: 1px;  }
+/* 지도 위에 얹힌 패널·버튼(HUD): 스튜디오 카드처럼 */
+html[data-theme='light'] main [class*="1a1d28"] { background: var(--v3-hud) !important; color: var(--v3-hud-fg); border: 1px solid var(--v3-hud-border) !important; border-radius: calc(var(--radius) + 2px) !important; box-shadow: var(--v3-shadow) !important; backdrop-filter: blur(10px); }
+html[data-theme='light'] main [class*="1a1d28"] .text-white, html[data-theme='light'] main [class*="1a1d28"].text-white, html[data-theme='light'] main button[class*="1a1d28"] { color: var(--v3-hud-fg) !important; }
+html[data-theme='light'] main [class*="1a1d28"] [class*="text-white"], html[data-theme='light'] main [class*="1a1d28"] [class*="text-"][class*="/"] { color: var(--muted-foreground); }
+html[data-theme='light'] main .hover\:bg-white\/10:hover { background: color-mix(in oklab, var(--v3-hud-fg) 10%, transparent) !important; }
+html[data-theme='light'] main .absolute.bottom-3 button { color: var(--v3-hud-fg) !important; }
+/* 대화상자·입력창·칩·배지 */
+html[data-theme='light'] [role=dialog] { border: 1px solid var(--border); border-radius: calc(var(--radius) + 6px); box-shadow: var(--v3-shadow), 0 24px 60px -20px rgba(0,0,0,.5); background-color: var(--card); }
+html[data-theme='light'] [class*="bg-black/60"] { background: rgba(30,24,40,.38) !important; backdrop-filter: blur(2px); }
+html[data-theme='light'] textarea, html[data-theme='light'] input { border-width: 1px; border-radius: var(--radius); background-color: var(--background); transition: box-shadow .15s, border-color .15s; }
+html[data-theme='light'] [role=dialog] button.rounded-full { border-width: 1px; background: var(--secondary); font-weight: 500; }
+html[data-theme='light'] [role=dialog] button.rounded-full:hover { background: var(--accent); }
+html[data-theme='light'] header .bg-accent.rounded-full { background: var(--accent); border: 1px solid var(--border); }
+
+/* AI 느낌: 비서 버튼과 입력창에 따뜻한 숨쉬는 빛 */
+html[data-theme='light'] header [data-slot=button].border { border-color: color-mix(in oklab, #E2703A 55%, var(--border)); animation: v3-breathe 3.6s ease-in-out infinite; }
+html[data-theme='light'] [role=dialog] textarea:focus-visible { box-shadow: 0 0 0 4px color-mix(in oklab, #E2703A 22%, transparent); border-color: #E2703A; }
+@keyframes v3-breathe { 0%,100% { box-shadow: 0 0 0 0 color-mix(in oklab, #E2703A 0%, transparent); } 50% { box-shadow: 0 0 0 4px color-mix(in oklab, #E2703A 20%, transparent); } }
+html[data-theme='light'] nav > button.bg-accent { box-shadow: inset 3px 0 0 #E2703A; }
+
+
+/* ===== dark ===== */
+html[data-theme='dark'] {
+  color-scheme: dark;
+  --background: #1A1917; --foreground: #F2EBE0;
+  --card: #272421; --card-foreground: #F2EBE0;
+  --popover: #272421; --popover-foreground: #F2EBE0;
+  --primary: #F08A4B; --primary-foreground: #2A1608;
+  --secondary: #302C28; --secondary-foreground: #F2EBE0;
+  --muted: #302C28; --muted-foreground: #B3A898;
+  --accent: #352F29; --accent-foreground: #F2EBE0;
+  --border: #3A352F; --input: #46403A; --ring: #F08A4B;
+  --radius: 14px;
+  --v3-chrome: #1F1D1A; --v3-sidebar: #151413;
+  --v3-hud: rgba(39,36,33,.94); --v3-hud-fg: #F2EBE0; --v3-hud-border: #3A352F;
+  --v3-shadow: 0 8px 22px -8px rgba(0,0,0,.6);
+}
+
+/* ── 공통 컴포넌트 모양 (레이아웃 속성은 건드리지 않는다) ── */
+html[data-theme='dark'] header { background: var(--v3-chrome); border-bottom: 1px solid var(--border); }
+html[data-theme='dark'] nav { background: var(--v3-sidebar); border-right: 1px solid var(--border); }
+html[data-theme='dark'] nav > button { transition: background-color .15s, color .15s; }
+html[data-theme='dark'] nav > button.bg-accent { font-weight: 650; }
+html[data-theme='dark'] body { font-weight: 400; }
+html[data-theme='dark'] [data-slot=button] { font-weight: 500; border-radius: 999px; }
+html[data-theme='dark'] [data-slot=button].bg-primary { box-shadow: var(--v3-shadow);  }
+html[data-theme='dark'] [data-slot=button].border { background-color: color-mix(in oklab, var(--card) 85%, transparent); border-width: 1px;  }
+/* 지도 위에 얹힌 패널·버튼(HUD): 스튜디오 카드처럼 */
+html[data-theme='dark'] main [class*="1a1d28"] { background: var(--v3-hud) !important; color: var(--v3-hud-fg); border: 1px solid var(--v3-hud-border) !important; border-radius: calc(var(--radius) + 2px) !important; box-shadow: var(--v3-shadow) !important; backdrop-filter: blur(10px); }
+html[data-theme='dark'] main [class*="1a1d28"] .text-white, html[data-theme='dark'] main [class*="1a1d28"].text-white, html[data-theme='dark'] main button[class*="1a1d28"] { color: var(--v3-hud-fg) !important; }
+html[data-theme='dark'] main [class*="1a1d28"] [class*="text-white"], html[data-theme='dark'] main [class*="1a1d28"] [class*="text-"][class*="/"] { color: var(--muted-foreground); }
+html[data-theme='dark'] main .hover\:bg-white\/10:hover { background: color-mix(in oklab, var(--v3-hud-fg) 10%, transparent) !important; }
+html[data-theme='dark'] main .absolute.bottom-3 button { color: var(--v3-hud-fg) !important; }
+/* 대화상자·입력창·칩·배지 */
+html[data-theme='dark'] [role=dialog] { border: 1px solid var(--border); border-radius: calc(var(--radius) + 6px); box-shadow: var(--v3-shadow), 0 24px 60px -20px rgba(0,0,0,.5); background-color: var(--card); }
+html[data-theme='dark'] [class*="bg-black/60"] { background: rgba(0,0,0,.62) !important; backdrop-filter: blur(2px); }
+html[data-theme='dark'] textarea, html[data-theme='dark'] input { border-width: 1px; border-radius: var(--radius); background-color: color-mix(in oklab, var(--background) 60%, var(--card)); transition: box-shadow .15s, border-color .15s; }
+html[data-theme='dark'] [role=dialog] button.rounded-full { border-width: 1px; background: var(--muted); font-weight: 500; }
+html[data-theme='dark'] [role=dialog] button.rounded-full:hover { background: var(--accent); }
+html[data-theme='dark'] header .bg-accent.rounded-full { background: var(--accent); border: 1px solid var(--border); }
+
+/* AI 느낌: 비서 버튼과 입력창에 따뜻한 숨쉬는 빛 */
+html[data-theme='dark'] header [data-slot=button].border { border-color: color-mix(in oklab, #F08A4B 55%, var(--border)); animation: v3-breathe 3.6s ease-in-out infinite; }
+html[data-theme='dark'] [role=dialog] textarea:focus-visible { box-shadow: 0 0 0 4px color-mix(in oklab, #F08A4B 22%, transparent); border-color: #F08A4B; }
+@keyframes v3-breathe { 0%,100% { box-shadow: 0 0 0 0 color-mix(in oklab, #F08A4B 0%, transparent); } 50% { box-shadow: 0 0 0 4px color-mix(in oklab, #F08A4B 20%, transparent); } }
+html[data-theme='dark'] nav > button.bg-accent { box-shadow: inset 3px 0 0 #F08A4B; }
+

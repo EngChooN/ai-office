@@ -15,7 +15,7 @@ const STATUS_LABEL: Record<string, TKey> = { M: 'review.file.modified', A: 'revi
 
 /** diff 한 줄에 색을 입힌다 */
 function DiffLine({ line }: { line: string }) {
-  const color = line.startsWith('+') && !line.startsWith('+++') ? 'text-emerald-400 bg-emerald-500/10' : line.startsWith('-') && !line.startsWith('---') ? 'text-rose-400 bg-rose-500/10' : line.startsWith('@@') ? 'text-sky-400' : line.startsWith('diff --git') ? 'text-foreground font-semibold mt-2' : 'text-muted-foreground'
+  const color = line.startsWith('+') && !line.startsWith('+++') ? 'text-status-working bg-status-working/10' : line.startsWith('-') && !line.startsWith('---') ? 'text-status-error bg-status-error/10' : line.startsWith('@@') ? 'text-accent-a' : line.startsWith('diff --git') ? 'text-foreground font-semibold mt-2' : 'text-muted-foreground'
   return <div className={cn('px-2 whitespace-pre', color)}>{line || ' '}</div>
 }
 
@@ -120,8 +120,8 @@ export function ReviewTab({ staff }: { staff: Staff }) {
               <li key={f.path} className="flex gap-2 py-0.5">
                 <span className="text-muted-foreground w-12 shrink-0">{STATUS_LABEL[f.status] ? t(STATUS_LABEL[f.status]) : f.status}</span>
                 <span className="selectable min-w-0 flex-1 truncate font-mono">{f.path}</span>
-                <span className="text-emerald-400">+{f.additions}</span>
-                <span className="text-rose-400">-{f.deletions}</span>
+                <span className="text-status-working">+{f.additions}</span>
+                <span className="text-status-error">-{f.deletions}</span>
               </li>
             ))}
           </ul>

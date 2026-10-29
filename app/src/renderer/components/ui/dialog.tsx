@@ -11,10 +11,10 @@ const DialogClose = DialogPrimitive.Close
 function DialogContent({ className, children, ...props }: React.ComponentProps<typeof DialogPrimitive.Content>) {
   return (
     <DialogPrimitive.Portal>
-      <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/60" />
+      <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-overlay backdrop-blur-[10px]" />
       <DialogPrimitive.Content
         className={cn(
-          'bg-background fixed top-1/2 left-1/2 z-50 grid max-h-[85vh] w-full max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto rounded-xl border p-6 shadow-lg',
+          'bg-background fixed top-1/2 left-1/2 z-50 grid max-h-[85vh] w-full max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto rounded-[var(--radius-dialog)] border bg-[image:var(--grad-dialog-glow)] p-6 shadow-(--shadow-dialog)',
           // 휴대폰 앱(태블릿 배치): 키보드가 덮지 않게 키보드 위 영역의 가운데에
           'mobile:top-[calc((100%-var(--ime,0px))/2)] mobile:max-h-[calc(85dvh-var(--ime,0px))]',
           // 폰: 아래에서 올라오는 시트 (내용·버튼은 그대로), 키보드가 열리면 그 위로

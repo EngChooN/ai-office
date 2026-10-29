@@ -22,7 +22,7 @@ function Swatches({ colors, value, onPick }: { colors: readonly string[]; value:
           onClick={() => onPick(i)}
           aria-label={t('avatar.color', { n: i + 1 })}
           style={{ backgroundColor: c }}
-          className={cn('size-5 rounded-full border-2', value === i ? 'border-primary ring-primary/40 ring-2' : 'border-black/20')}
+          className={cn('size-5 rounded-full border-2', value === i ? 'border-primary ring-primary/40 ring-2' : 'border-foreground/20')}
         />
       ))}
     </div>
