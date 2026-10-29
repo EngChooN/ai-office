@@ -12,11 +12,17 @@ Writing rules
 ## [0.14.3] - 2026-10-29
 
 ### New features
+- You can export the office scene from the PC app. Save the office screen as a picture (PNG) or as a 10-second animated GIF, and choose whether to hide speech bubble text.
+- The feedback button in the sidebar opens a GitHub issue form with your app version and operating system already filled in.
+- The first-run guide has been redesigned. At the last step, a sample task is actually given to one staff member and the result is checked. If it fails, the app explains the cause (sign-in, usage limit, timeout, or network). If you skip it, a practice tutorial guides you. If you don't have Claude, the setup continues with GPT.
+- You can choose the AI engine (Claude or GPT) in the hire window and the staff marketplace. Recommended engines for each job are shown.
+- The introduction site now opens in English, Japanese, and Chinese. It is also organized to appear better in search.
 - You can open the staff marketplace in the phone app. Go straight in from the hire window button. If you have no staff yet, a notice appears. A notice also appears on first launch. Importing and exporting packs can only be done on the PC.
 - A demo day banner appears on the screen. Tap "Open now" to go straight into the presentation hall.
 - You can change the AI (Claude or GPT) that a staff member uses, later on.
 
 ### Improvements
+- The level-up celebration window no longer pops up over the first-run guide or the tutorial.
 - If the PC app is an older version, the phone shows an update notice.
 - "Undo work" is hidden on the phone. Please undo on the PC.
 - On the phone, PC-only settings show their current status only.
