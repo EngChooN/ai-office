@@ -9,6 +9,29 @@ Writing rules
 
 ## [미정] (설치본 미빌드)
 
+## [0.15.0] - 2026-10-29
+
+### New features
+- Six color themes were added: Lavender, Sky, Sunset, Moss, Blossom, and Mono. Pick one in Settings. Only the button and highlight colors change; the layout stays the same.
+- You can now choose the appearance: Match device, Light, or Dark. With Match device, the app follows your device as soon as it changes. The Windows title bar and window background follow the same mode. This is separate from the day/night look of the office scene.
+- The Settings screen now has categories on the left (General, AI & work, Office, Connections), and the right side shows only the items in the chosen category. On phones they appear as tabs across the top.
+- Staff whose role you typed yourself in the Hire window (up to 40 characters) can now be exported to and imported from a staff pack.
+
+### Improvements
+- Buttons are now pill-shaped, cards are rounder with softer shadows, inputs highlight their border when selected, and the background behind dialogs is blurred.
+- Fixed colors that were hard-coded in many screens (black, white, blue, yellow) now use the theme colors. Badges, office hover tips, and shop rarity labels stay readable in Light mode too.
+- The arrow on dropdown menus is now drawn inside the border instead of touching its edge.
+- Every screen now has generous space at the bottom so the last card no longer sticks to the edge of the window.
+- Reduced the flash of a dark screen when the app starts. It is now painted with your saved mode and theme from the start.
+- Differences by device: color themes and appearance can only be changed on the PC. In the phone app these choices are locked and a note says 'You can change this on the PC.' The phone screen follows the mode and theme chosen on the PC.
+- Please note: the look of the office scene (floor, furniture, day/night) does not change with the appearance or color theme. The office theme and day/night settings remain separate.
+- Please note: the Windows zip file is still not published. If you used the old zip app, download Setup.exe from the Release page, install it, and then delete the old folder. Your settings and history carry over.
+- Please note: the Windows installer is not signed, so a warning window (SmartScreen) appears the first time you open it. Click "More info › Run anyway."
+
+### Bug fixes
+- Fixed content near the corners looking clipped when hovering over a rounded card.
+- Fixed staff with a self-typed role being rejected as an 'unknown role' when exporting to or importing from a staff pack.
+
 ## [0.14.4] - 2026-10-29
 
 ### New features

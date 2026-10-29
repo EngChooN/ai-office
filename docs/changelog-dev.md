@@ -2,6 +2,23 @@
 
 버전은 SemVer. 기능 크기 기준으로 올린다. 버전마다 **새 기능 / 개선 / 버그 수정**으로 나눠 적는다(앱의 "업데이트 소식"이 이 파일을 그대로 보여 준다).
 
+## [0.15.0] - 2026-10-29
+
+### 새 기능
+- 바깥 UI 색 테마 6종(lavender·blue·terracotta·sage·rose·mono)과 화면 모드(system·light·dark): `Settings.uiMode`·`uiTheme`, `shared/uiTheme.ts`(`resolveMode`·`sanitizeUi`·`WINDOW_BG`), renderer `lib/uiTheme.ts`가 `<html data-theme data-mode>` 반영, 색은 `index.css` 토큰(`docs/design-refresh/themes/tokens.css` 기준). 첫 페인트 전 `index.html` 인라인 스크립트가 localStorage `office.uiTheme` 캐시로 칠함. main은 `nativeTheme.themeSource`·창 배경·윈도우 `titleBarOverlay` 색을 같은 모드로 맞춤. 사무실 그림 `theme`·`dayNight`와는 별개.
+- 설정 화면 개편: 왼쪽 분류(일반·AI·업무·사무실·연결), `requestSettingsSection`은 섹션이 속한 분류로 바꾼 뒤 스크롤. 폰은 위쪽 가로 탭.
+- 스태프 팩 직무에 직접 입력한 이름 허용(`PACK_LIMITS.roleMax` 40). 고용 창 직무 입력 `maxLength` 40.
+
+### 개선
+- ui 컴포넌트(button 알약·card 반경/그림자·input/textarea 포커스 링·select 꺾쇠(`--select-chevron`)·dialog 흐림 배경·badge)와 여러 화면의 고정 색(text-black·bg-[#1a1d28]·amber/sky/red 등)을 토큰(`hud`·`status-waiting`·`accent-a`·`destructive` 등)으로 교체.
+- `Page` 하단 여백(`pb-12`, 폰 `pb-8`).
+- 폰 원격 `updateSettings` 허용 목록에서 `uiMode`·`uiTheme` 제외(PC 전용), 폰 설정에서 선택 비활성 + `PcOnlyState`.
+- `uiTheme.test.mts` 추가, `staffPack.test.mts` 직무 검증 갱신.
+
+### 버그 수정
+- 둥근 카드 hover 때 모서리 클리핑.
+- 목록에 없는 직무의 직원을 팩으로 내보내기·가져오기 하면 `pack.err.role`로 거부되던 문제.
+
 ## [0.14.4] - 2026-10-29
 
 ### 새 기능
