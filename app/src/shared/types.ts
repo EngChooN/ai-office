@@ -12,6 +12,7 @@ import type { DemoDayConfig, DemoReaction, DemoStage, GalleryEntry, Praise } fro
 import type { TutorialInput, TutorialScenario, TutorialSnapshot } from './tutorial'
 import type { BoardCleanupPlan } from './boardCleanup'
 import type { CustomMcp, CustomMcpInput } from './customMcp'
+import type { PackResult } from './staffPack'
 import { COMPANY_LEVELS, companyLevelOf } from './officeLevel.ts'
 import type { I18nArg, I18nText, LangSetting } from './i18n/index.ts'
 
@@ -308,6 +309,12 @@ export interface ProviderStatus {
 
 export type ProvidersStatus = Record<AiProvider, ProviderStatus>
 
+/** 직원 엔진 바꾸기 결과 — error가 비면 바뀐 것(같은 엔진이면 아무것도 안 함). unsupported: 새 엔진에서 못 쓰는 지급된 연결 도구 */
+export interface EngineChangeResult {
+  error: string
+  unsupported?: string[]
+}
+
 export interface ChangeFile {
   path: string
   status: string
@@ -581,6 +588,8 @@ export interface Settings {
   demoDay: DemoDayConfig
   /** 직원이 일하며 화면을 캡처해 보고에 붙이는 걸 결재 없이 허용 (끄면 장비로 지급받은 직원만). 기본 켬 */
   isStaffCaptureOn: boolean
+  /** 비서가 웹 검색·웹 읽기로 최신 정보를 찾아 답한다 (Claude·GPT 비서 모두). 기본 켬 */
+  isSecretaryWebOn: boolean
 }
 
 export interface OfficeSnapshot {
@@ -810,6 +819,8 @@ export interface RemoteQr {
 export interface OfficeApi {
   /** 앱이 도는 OS (process.platform: 'darwin' · 'win32' …) — 화면 문구·여백을 OS에 맞춘다 */
   readonly platform: string
+  /** OS 버전 (macOS 15.1 · Windows 10.0.26100 …) — 피드백 이슈에 채운다. 휴대폰 원격 화면은 빈 문자열 */
+  readonly osVersion: string
 
   /** 원격 접속(휴대폰): 상태·켜기/끄기·QR 다시 만들기(이전 토큰 폐기)·지금 QR·연결 주소 */
   remoteStatus(): Promise<RemoteStatus>
@@ -837,6 +848,8 @@ export interface OfficeApi {
   tutorialAct(input: TutorialInput): Promise<void>
   tutorialCleanup(): Promise<void>
   hire(input: HireInput): Promise<Staff>
+  /** 직원 마켓 채용 (파일 가져오기와 같은 검증·채용 길). provider를 빼면 PC가 준비된 엔진으로 정한다 */
+  hireMarket(id: string, provider?: AiProvider): Promise<PackResult>
   fire(staffId: string): Promise<void>
   updateStaff(staffId: string, patch: { teamId?: string | null; name?: string; role?: string; model?: ModelChoice; avatar?: number; systemPrompt?: string; cwd?: string }): Promise<void>
   /** text가 /명령이면 세션에 그대로 보낸다. /clear는 새 대화로, 막힌 기본 명령은 보내지 않고 직원 기록에 안내를 남긴다 */
@@ -849,6 +862,8 @@ export interface OfficeApi {
   interrupt(staffId: string, text?: string, attachments?: Attachment[]): Promise<void>
   /** 직원 대화를 Claude Code(터미널)에서 이어서 연다. 못 열면 이유 문장, 열었으면 '' */
   resumeInTerminal(staffId: string): Promise<string>
+  /** 직원 엔진(Claude ↔ GPT)을 바꾼다. 쉬는 중·새 엔진 준비됐을 때만, 대화는 새로 시작 (PC 전용) */
+  changeEngine(staffId: string, provider: AiProvider): Promise<EngineChangeResult>
   decide(approvalId: string, allow: boolean): Promise<void>
   getRecord(staffId: string): Promise<DailyRecord>
   listAgentTemplates(cwd: string): Promise<AgentTemplate[]>
@@ -1039,6 +1054,7 @@ export const DEFAULT_SETTINGS: Settings = {
   language: 'auto',
   demoDay: { isEnabled: false, weekday: 5, time: '17:00', isAi: true },
   isStaffCaptureOn: true,
+  isSecretaryWebOn: true,
 }
 
 /** 저장된(또는 옛 버전) 설정의 빈 칸을 기본값으로 채운다 — 토큰 예산이 없던 설정은 USD 예산은 두고 토큰 한도를 "제한 없음"으로 */

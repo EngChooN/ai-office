@@ -48,13 +48,15 @@ export const SECRETARY_TOOLS: Record<OfficeMethod, ToolSpec> = {
   draftManual: read,
   boardCleanupPlan: read,
 
-  // ── 변경: 확인 카드 (60) ──
+  // ── 변경: 확인 카드 (61) ──
   hire: change('직원 고용'),
   updateStaff: change('직원 정보 바꾸기'),
   instruct: change('지시 보내기'),
   interrupt: change('하던 일 멈추기', 'caution'),
   setRefDocs: change('참고 문서 정하기'),
   setEquipment: change('장비 바꾸기', 'caution'),
+  // 대화가 새로 시작되므로 주의 — 화면과 같은 office.changeEngine (쉬는 중일 때만)
+  changeEngine: change('엔진 바꾸기', 'caution'),
   fire: change('퇴사', 'danger'),
   decide: change('결재'),
   answerQuestion: change('질문에 답하기'),
@@ -113,6 +115,8 @@ export const SECRETARY_TOOLS: Record<OfficeMethod, ToolSpec> = {
   restoreGridItems: change('치운 가구 되돌리기'),
 
   // ── 제외 (32) — PC 화면이 필요하거나 연결·보안, 되돌릴 수 없는 외부 전송, 사용자가 즐기는 부분 ──
+  // 마켓 채용은 사람이 마켓 창에서 고른다 (비서는 hire로 직접 고용한다)
+  hireMarket: exclude,
   pickFolder: exclude,
   // 책상 세트 옮기기는 꾸미기 화면 전용 — 비서는 moveGridItem으로 하나씩
   moveSeatSet: exclude,
@@ -266,6 +270,7 @@ export const SECRETARY_SIGNATURES: Partial<Record<OfficeMethod, string>> = {
   interrupt: '(staffId, text?)',
   setRefDocs: '({ kind: "staff"|"team"|"lab", id }, docs: string[])',
   setEquipment: '(staffId, { mcpServers: string[], skills: string[]|"all", allowedTools: string[], disallowedTools: string[], monthlyBudgetUsd: number }) — 전체 객체를 넘긴다: staff_detail의 지금 값에서 바꿀 칸만 고치고 allowedTools·disallowedTools는 그대로',
+  changeEngine: '(staffId, provider: "claude"|"codex") — 쉬는 직원만. 모델은 새 엔진 기본값, 대화(세션)는 새로 시작',
   fire: '(staffId)',
   decide: '(approvalId, allow: boolean)',
   answerQuestion: '(approvalId, answers: { 질문 문장: 답 })',

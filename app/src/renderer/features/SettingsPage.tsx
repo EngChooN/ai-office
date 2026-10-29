@@ -7,6 +7,8 @@ import { cn } from '@/lib/utils'
 import { useOffice } from '@/store'
 import { IS_WINDOWS, osText, trayPlace } from '@/lib/platform'
 import { NotOnWindows } from '@/components/not-on-windows'
+import { PcOnlyState } from '@/components/pc-only-state'
+import { IS_MOBILE_SHELL } from '@/shell'
 import { RemoteSection } from './RemoteSection'
 import { PROVIDER_SECTION_ID, ProviderSection } from './ProviderCards'
 import { COMPANY_LEVELS, type DayNight, type HooksStatus, type Settings, type ThemeId } from '@shared/types'
@@ -121,6 +123,11 @@ export function SettingsPage() {
           <input type="checkbox" checked={settings.isStaffCaptureOn} onChange={(e) => update({ isStaffCaptureOn: e.target.checked })} /> {t('settingsPage.staffCapture.toggle')}
         </label>
       </Section>
+      <Section title={t('settingsPage.secretaryWeb.title')} description={t('settingsPage.secretaryWeb.desc')}>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={settings.isSecretaryWebOn} onChange={(e) => update({ isSecretaryWebOn: e.target.checked })} /> {t('settingsPage.secretaryWeb.toggle')}
+        </label>
+      </Section>
       <Section title={t('settingsPage.autoApprove.title')} description={t('settingsPage.autoApprove.desc')}>
         <AutoApproveSection />
       </Section>
@@ -221,18 +228,26 @@ export function SettingsPage() {
         description={t('settingsPage.hooks.desc')}
       >
         <NotOnWindows reason={t('settingsPage.notOnWindows')} />
-        <Button onClick={handleHooks} disabled={!hooks || isBusy || IS_WINDOWS} variant={hooks?.installed ? 'outline' : 'default'} className="w-fit">
-          {hooks?.installed ? t('settingsPage.hooks.off') : t('settingsPage.hooks.on')}
-        </Button>
+        {IS_MOBILE_SHELL ? (
+          <PcOnlyState isOn={hooks?.installed} />
+        ) : (
+          <Button onClick={handleHooks} disabled={!hooks || isBusy || IS_WINDOWS} variant={hooks?.installed ? 'outline' : 'default'} className="w-fit">
+            {hooks?.installed ? t('settingsPage.hooks.off') : t('settingsPage.hooks.on')}
+          </Button>
+        )}
       </Section>
       <Section
         title={t('settingsPage.askHook.title')}
         description={t('settingsPage.askHook.desc')}
       >
         <NotOnWindows reason={t('settingsPage.notOnWindows')} />
-        <Button onClick={handleAskHook} disabled={!hooks || isBusy || IS_WINDOWS} variant={hooks?.isAskInstalled ? 'outline' : 'default'} className="w-fit">
-          {hooks?.isAskInstalled ? t('settingsPage.askHook.off') : t('settingsPage.askHook.on')}
-        </Button>
+        {IS_MOBILE_SHELL ? (
+          <PcOnlyState isOn={hooks?.isAskInstalled} />
+        ) : (
+          <Button onClick={handleAskHook} disabled={!hooks || isBusy || IS_WINDOWS} variant={hooks?.isAskInstalled ? 'outline' : 'default'} className="w-fit">
+            {hooks?.isAskInstalled ? t('settingsPage.askHook.off') : t('settingsPage.askHook.on')}
+          </Button>
+        )}
       </Section>
       {IS_DEV_BUILD && <LevelPreview />}
     </Page>

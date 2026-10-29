@@ -19,6 +19,7 @@ import { SECRETARY_FOCUS } from '../shared/types'
 import { t } from '../shared/i18n/index.ts'
 import { registerUpdates, type UpdateChecker } from './updates'
 import { registerPack } from './staffPack'
+import { registerSceneExport } from './sceneExport'
 import { startedHidden, syncLoginItem } from './loginItem'
 import { startLocalMcp, stopLocalMcp } from './mcp/localMcp'
 import { configureAi } from './ai'
@@ -216,10 +217,10 @@ function registerIpc() {
 if (IS_WINDOWS) app.setAppUserModelId('com.joonyoung.claude-office')
 
 app.whenReady().then(async () => {
-  // 개발 실행 때도 Dock에 앱 아이콘을 보여 준다 (설치본은 번들 아이콘을 쓴다)
-  if (!app.isPackaged) app.dock?.setIcon(path.join(app.getAppPath(), 'build', 'icon.png'))
   // 같은 데이터 폴더를 쓰는 다른 AI Office(설치본·개발 앱)가 켜져 있으면 DB를 열기 전에 멈춘다
   if (!acquireDataLock()) return quitForDataLock()
+  // 개발 실행 때도 Dock에 앱 아이콘을 보여 준다 (설치본은 번들 아이콘을 쓴다)
+  if (!app.isPackaged) app.dock?.setIcon(path.join(app.getAppPath(), 'build', 'icon.png'))
   openDb()
   await startLocalMcp() // office·secretary 도구 서버 (직원 세션이 열리기 전에)
   // 앱 내부 AI(비서·요약)는 설정과 마지막 감지 결과로 공급자를 고른다. 감지는 백그라운드로 한 번 돌려 둔다
@@ -237,6 +238,7 @@ app.whenReady().then(async () => {
   void remote.init()
   updates = registerUpdates(() => win)
   registerPack(() => office, () => win)
+  registerSceneExport(() => win)
   // 로그인으로 켜졌으면 창을 띄우지 않는다 — 윈도우는 트레이를 끈 경우 보일 곳이 없어 띄운다
   const isHidden = startedHidden() && (process.platform === 'darwin' || office.snapshot().settings.isTrayOn)
   createWindow(isHidden)

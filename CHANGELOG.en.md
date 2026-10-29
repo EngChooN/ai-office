@@ -9,6 +9,21 @@ Writing rules
 
 ## [미정] (설치본 미빌드)
 
+## [0.14.3] - 2026-10-29
+
+### New features
+- You can open the staff marketplace in the phone app. Go straight in from the hire window button. If you have no staff yet, a notice appears. A notice also appears on first launch. Importing and exporting packs can only be done on the PC.
+- A demo day banner appears on the screen. Tap "Open now" to go straight into the presentation hall.
+- You can change the AI (Claude or GPT) that a staff member uses, later on.
+
+### Improvements
+- If the PC app is an older version, the phone shows an update notice.
+- "Undo work" is hidden on the phone. Please undo on the PC.
+- On the phone, PC-only settings show their current status only.
+
+### Bug fixes
+- Fixed a problem where "Undo work" on the PC got stuck at "Processing" when the undo failed.
+
 ## [0.14.2] - 2026-10-28
 
 ### New features

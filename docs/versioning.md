@@ -54,15 +54,15 @@
 업데이트 알림은 서버 없이 GitHub Release를 읽습니다. 저장소는 `EngChooN/ai-office`(origin, 이전 이름 claude-office에서 개명)이고, 앱은 `https://api.github.com/repos/EngChooN/ai-office/releases/latest`를 인증 없이 조회합니다. 옛 API 주소(`repos/EngChooN/claude-office/...`)는 GitHub 리다이렉트로 계속 동작합니다. **옛 이름으로 새 저장소를 만들지 마세요**(리다이렉트가 끊깁니다).
 
 - **태그:** `vX.Y.Z` (예: `v0.11.1`). 앱은 `tag_name`을 현재 앱 버전과 semver로 비교해 더 높을 때만 알립니다. 태그 번호 = `app/package.json`의 `version` = 안드로이드 `versionName`.
-- **파일 이름 (새 규칙 + 옛 규칙, 둘 다 올림):** 앱은 이름으로 파일을 찾습니다. 새 앱은 새 이름을 먼저 찾고 없으면 옛 이름을 찾지만, **이미 깔린 옛 앱(0.13.x·0.14.0)은 옛 이름만 찾으므로** 릴리즈마다 두 벌을 함께 올립니다. 빌드 산출물 이름 그대로 올리지 말고, 복사해서 아래 이름으로 바꿔 올립니다.
+- **파일 이름 (새 이름만 올림):** 릴리즈에는 `AI-Office-*` 이름 파일 3개만 올립니다. 옛 이름(`Claude-Office-*`) 파일은 올리지 않습니다(0.14.1부터). 그래서 **0.13.x·0.14.0 앱은 옛 이름만 찾기 때문에 업데이트 파일을 찾지 못합니다.** 이 앱들은 새 버전을 직접 내려받아 설치해야 합니다. 빌드 산출물 이름 그대로 올리지 말고, 복사해서 아래 이름으로 바꿔 올립니다.
 
-| 플랫폼 | 새 이름 (먼저 올림) | 옛 이름 (함께 올림, 옛 앱용) | 빌드 산출물 (복사해서 이름 변경) |
-|---|---|---|---|
-| Mac (Apple Silicon) | `AI-Office-mac-arm64.dmg` | `Claude-Office-mac-arm64.dmg` | `app/out/make/dmg/arm64/AI-Office.dmg` |
-| Windows (x64) | `AI-Office-win-x64.zip` | `Claude-Office-win-x64.zip` | `app/out/make/zip/win32/x64/*.zip` |
-| Android | `AI-Office-android.apk` | `Claude-Office-android.apk` | `android/app/build/outputs/apk/release/app-release.apk` |
+| 플랫폼 | 릴리즈 파일 이름 | 빌드 산출물 (복사해서 이름 변경) |
+|---|---|---|
+| Mac (Apple Silicon) | `AI-Office-mac-arm64.dmg` | `app/out/make/dmg/arm64/AI-Office.dmg` |
+| Windows (x64) | `AI-Office-win-x64.zip` | `app/out/make/zip/win32/x64/AI Office-win32-x64-<버전>.zip` |
+| Android | `AI-Office-android.apk` | `android/app/build/outputs/apk/release/app-release.apk` |
 
-- **체크리스트(릴리즈마다):** 파일 6개(새 이름 3 + 옛 이름 3)가 모두 올라갔는지, 같은 바이트인지(복사본이므로 sha256 확인) 확인합니다. 옛 이름 파일은 옛 앱 업데이트용이므로 지우지 않습니다. 설치 파일 용량(맥 약 330MB, 윈도우 약 410MB)과 업로드 시간도 확인합니다.
+- **체크리스트(릴리즈마다):** 파일 3개가 모두 올라갔는지, 복사본과 같은 바이트인지(sha256 확인) 확인합니다. 설치 파일 용량(맥 약 330MB, 윈도우 약 410MB)과 업로드 시간도 확인합니다. 옛 이름 파일이 릴리즈에 남아 있으면 지웁니다(0.14.1 이후 정책).
 
 - **공개 화면 일괄 점검(배포 전마다):** 아래 공개 화면이 이번 버전의 이름·문구와 맞는지 확인합니다.
   1. 소개 사이트(`site/index.html`) 메타: `title`·og·twitter·schema
@@ -79,8 +79,7 @@
   ~/.local/gh-cli/gh_2.103.2_macOS_arm64/bin/gh release create vX.Y.Z \
     --repo EngChooN/ai-office --title "AI Office X.Y.Z" \
     --notes-file <notes.md> \
-    <AI-Office-mac-arm64.dmg> <AI-Office-win-x64.zip> <AI-Office-android.apk> \
-    <Claude-Office-mac-arm64.dmg> <Claude-Office-win-x64.zip> <Claude-Office-android.apk>
+    <AI-Office-mac-arm64.dmg> <AI-Office-win-x64.zip> <AI-Office-android.apk>
   ```
-- **순서:** 번호 결정 → 3번 항목 수정 → 4번 빌드·검증 → 파일 3개를 새 이름·옛 이름 두 벌(6개)로 복사(저장소 밖 임시 폴더) → notes 파일 작성 → `gh release create`.
+- **순서:** 번호 결정 → 3번 항목 수정 → 4번 빌드·검증 → 파일 3개를 새 이름으로 복사(저장소 밖 임시 폴더) → notes 파일 작성 → `gh release create`.
 - **주의:** `gh release create`는 공개 작업이라(태그 생성·파일 공개) 실행 전에 리드 확인을 받습니다. 잘못 올렸으면 `gh release delete vX.Y.Z --cleanup-tag`로 되돌립니다.

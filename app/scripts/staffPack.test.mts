@@ -11,6 +11,9 @@ import { AVATAR_LIMIT } from '../src/shared/look.ts'
 import { READ_ONLY_BASH, RISKY_BASH } from '../src/shared/bashPolicy.ts'
 import { PACK_FORMAT, PACK_LIMITS, PACK_MAX_BYTES, STAFF_MARKET, buildPackText, validatePackObject, validatePackText, type PackKnown } from '../src/shared/staffPack.ts'
 import { readPackFile, writePackFile } from '../src/main/staffPackFile.ts'
+import { fitEngineModel } from '../src/shared/engineModel.ts'
+import { ROLE_ENGINE, recommendedEngine } from '../src/shared/roleEngine.ts'
+import { ROLE_PRESETS } from '../src/shared/types.ts'
 
 setLang('ko')
 
@@ -220,6 +223,24 @@ test('기본 직원 마켓 항목은 모두 검증을 통과하고 번역 키가
       const entry = (DICT as Record<string, { ko: string; en: string; ja: string; zh: string } | undefined>)[`pack.market.${tpl.id}.${suffix}`]
       assert.ok(entry, `${tpl.id}.${suffix} 번역 키가 없어요`)
       for (const lang of ['ko', 'en', 'ja', 'zh'] as const) assert.ok(entry[lang].trim() !== '', `${tpl.id}.${suffix} ${lang} 번역이 비었어요`)
+    }
+  }
+})
+
+test('직무 추천 엔진: 마켓 직무는 모두 추천이 있고, 이유 문구가 4개 언어로 있으며, 고른 엔진으로도 검증을 통과한다', () => {
+  for (const role of Object.keys(ROLE_ENGINE)) assert.ok((ROLE_PRESETS as readonly string[]).includes(role), `${role}은 직무 목록에 없어요`)
+  assert.equal(recommendedEngine('자유 직무'), null)
+  for (const tpl of STAFF_MARKET) {
+    const rec = recommendedEngine(tpl.role)
+    assert.ok(rec, `${tpl.id} 추천 엔진이 없어요`)
+    const entry = (DICT as Record<string, { ko: string; en: string; ja: string; zh: string } | undefined>)[`engine.reason.${rec.slug}`]
+    assert.ok(entry, `engine.reason.${rec.slug} 번역 키가 없어요`)
+    for (const lang of ['ko', 'en', 'ja', 'zh'] as const) assert.ok(entry[lang].trim() !== '')
+    for (const provider of ['claude', 'codex'] as const) {
+      const fit = fitEngineModel(provider, tpl.model)
+      const r = validatePackObject(packOf([{ name: 'x', role: tpl.role, avatar: 7, provider: fit.provider, model: fit.model, approvalMode: tpl.approvalMode, systemPrompt: tpl.systemPrompt }]), known)
+      assert.equal(r.ok, true, `${tpl.id} ${provider} 검증 실패`)
+      if (r.ok) assert.equal(r.pack.staff[0].provider, provider)
     }
   }
 })

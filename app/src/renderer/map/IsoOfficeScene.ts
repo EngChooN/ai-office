@@ -284,6 +284,9 @@ export class IsoOfficeScene extends Phaser.Scene {
   private isFirstSync = true
   private isSyncPending = false
   private isUserCamera = false
+  /** 장면 내보내기 중 (setExportMode) */
+  private isRedacting = false
+  private isCameraLocked = false
   private hasFirstView = false
   private panFrom: { x: number; y: number } | null = null
   private pinchFrom: [{ x: number; y: number }, { x: number; y: number }] | null = null
@@ -1318,10 +1321,22 @@ export class IsoOfficeScene extends Phaser.Scene {
     this.setBubble(a, text)
   }
 
+  /**
+   * 장면 내보내기 중: 말풍선 글을 ···로 가리고(모양·이름표는 남김) 마우스 정보창을 끄고, 카메라 이동·확대를 막는다.
+   * 녹화는 이 캔버스를 그대로 찍으므로 그동안 사용자 화면에도 같이 적용된다 (gif-export-tech.md 1-3)
+   */
+  setExportMode(mode: { isRedacting: boolean; isCameraLocked: boolean }) {
+    this.isRedacting = mode.isRedacting
+    this.isCameraLocked = mode.isCameraLocked
+    // 다음 박자를 기다리지 않고 바로 — 첫 프레임부터 가려져 있어야 한다
+    const { selectedId } = useOffice.getState()
+    for (const a of this.actors.values()) this.applyLook(a, a.staff.id === selectedId)
+    this.updateTooltip()
+  }
   private setBubble(a: Actor, text: string) {
     a.bubble.setVisible(Boolean(text))
     if (!text) return
-    const label = text.length > BUBBLE_TEXT_MAX ? `${text.slice(0, BUBBLE_TEXT_MAX)}…` : text
+    const label = this.isRedacting ? '···' : text.length > BUBBLE_TEXT_MAX ? `${text.slice(0, BUBBLE_TEXT_MAX)}…` : text
     if (a.bubbleText.text === label) return
     a.bubbleText.setText(label)
     const b = a.bubbleText.getBounds()
@@ -1340,7 +1355,7 @@ export class IsoOfficeScene extends Phaser.Scene {
   }
 
   private updateTooltip() {
-    const a = this.hoverId ? this.actors.get(this.hoverId) : undefined
+    const a = this.hoverId && !this.isRedacting ? this.actors.get(this.hoverId) : undefined
     this.tooltip.setVisible(Boolean(a))
     if (!a) return
     const s = a.staff
@@ -1510,6 +1525,7 @@ export class IsoOfficeScene extends Phaser.Scene {
    * 여는 순간의 호출은 처음 보기(직원 구역)를 두고, 그 뒤 버튼은 늘 방 전체를 보인다
    */
   fitView() {
+    if (this.isCameraLocked) return
     const isOpening = performance.now() - this.viewportAt < OPENING_MS
     if (!isOpening) this.hasFirstView = true
     this.isUserCamera = false
@@ -1517,6 +1533,7 @@ export class IsoOfficeScene extends Phaser.Scene {
   }
 
   zoomBy(factor: number, at?: { x: number; y: number }) {
+    if (this.isCameraLocked) return
     const cam = this.cameras.main
     const next = Phaser.Math.Clamp(cam.zoom * factor, this.fitZoom() * ZOOM_MIN_OF_FIT, ZOOM_MAX * window.devicePixelRatio)
     const anchor = at ?? { x: cam.width / 2, y: cam.height / 2 }
@@ -1531,6 +1548,7 @@ export class IsoOfficeScene extends Phaser.Scene {
   }
 
   private panBy(dx: number, dy: number) {
+    if (this.isCameraLocked) return
     const cam = this.cameras.main
     cam.scrollX += dx / cam.zoom
     cam.scrollY += dy / cam.zoom

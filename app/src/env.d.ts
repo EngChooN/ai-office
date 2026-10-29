@@ -3,6 +3,7 @@
 import type { OfficeApi } from './shared/types'
 import type { OfficeUpdateApi } from './shared/updateCheck'
 import type { OfficePackApi } from './shared/staffPack'
+import type { OfficeSceneApi } from './shared/sceneExport'
 
 declare global {
   interface Window {
@@ -13,6 +14,8 @@ declare global {
     officeUpdate?: OfficeUpdateApi
     /** 직원·랩 파일과 직원 마켓 (preload — 모바일 빌드에는 없다) */
     officePack?: OfficePackApi
+    /** 사무실 장면 내보내기 저장 (preload — 모바일 빌드에는 없다) */
+    officeScene?: OfficeSceneApi
     /** 안드로이드 셸이 넣는 메시지 통로 (모바일 빌드만, docs/specs/android-bridge.md) */
     OfficeBridge?: { postMessage(text: string): void; onmessage: ((e: { data: string }) => void) | null }
   }

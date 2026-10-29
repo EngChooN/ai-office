@@ -9,7 +9,8 @@ import { cn } from '@/lib/utils'
 import { useShallow } from 'zustand/react/shallow'
 import { handleComposerKey, NEWLINE_HINT, SEND_HINT, STOP_HINT } from '@/lib/composerKeys'
 import { useOffice, useWorkMode } from '@/store'
-import { ROLE_PRESETS, type ApprovalMode, type DailyRecord, type LogEntry, type LogType, type ModelChoice, type Staff } from '@shared/types'
+import { ROLE_PRESETS, type AiProvider, type ApprovalMode, type DailyRecord, type LogEntry, type LogType, type ModelChoice, type Staff } from '@shared/types'
+import { ENGINE_NAME } from '@shared/engineModel'
 import { AvatarEditor } from './AvatarEditor'
 import { EquipmentTab } from './EquipmentTab'
 import { QuestionBox, StopWorkButton } from './QuestionBox'
@@ -147,6 +148,44 @@ function ModelSelect({ staff }: { staff: Staff }) {
         </option>
       ))}
     </NativeSelect>
+  )
+}
+
+const ENGINES: AiProvider[] = ['claude', 'codex']
+
+/** 프로필의 엔진 고르기 — 쉬는 중이고 연결된 엔진만, 바꾸기 전에 대화가 새로 시작된다고 확인받는다 (휴대폰도 원격으로 같은 길) */
+function EngineSelect({ staff }: { staff: Staff }) {
+  const { status } = useProviders()
+  const [note, setNote] = useState('')
+  const [isChanging, setIsChanging] = useState(false)
+  const isBusy = staff.status === 'working' || staff.status === 'waiting'
+  // 상태를 아직 모르면 막지 않는다 (바꿀 때 PC가 다시 확인한다)
+  const isReady = (p: AiProvider) => !status || status[p].state === 'ready'
+  const handleChange = async (provider: AiProvider) => {
+    if (!window.confirm(t('staffPanel.engine.confirm', { name: staff.name, to: ENGINE_NAME[provider] }))) return
+    setIsChanging(true)
+    try {
+      const r = await window.office.changeEngine(staff.id, provider)
+      setNote(r.error || (r.unsupported?.length ? t('staffPanel.engine.unsupported', { engine: ENGINE_NAME[provider], tools: r.unsupported.join(', ') }) : ''))
+    } catch {
+      // 예전 PC(changeEngine을 모름)·연결 끊김 — 처리 안 된 reject로 남기지 않는다
+      setNote(t('shell.pcUpdateFeature'))
+    } finally {
+      setIsChanging(false)
+    }
+  }
+  return (
+    <>
+      <NativeSelect value={staff.provider} disabled={isBusy || isChanging} onChange={(e) => void handleChange(e.target.value as AiProvider)}>
+        {ENGINES.map((p) => (
+          <option key={p} value={p} disabled={p !== staff.provider && !isReady(p)}>
+            {isReady(p) ? ENGINE_NAME[p] : t('staffPanel.engine.notReady', { engine: ENGINE_NAME[p] })}
+          </option>
+        ))}
+      </NativeSelect>
+      {isBusy && <span className="text-muted-foreground text-[11px]">{t('staffPanel.engine.busyHint')}</span>}
+      {note && <span className="text-muted-foreground text-[11px]">{note}</span>}
+    </>
   )
 }
 
@@ -655,6 +694,10 @@ function Profile({ staff }: { staff: Staff }) {
           )}
         </div>
       </div>
+      <label className="flex flex-col gap-1 text-xs">
+        <span className="text-muted-foreground">{t('staffPanel.profile.engine')}</span>
+        <EngineSelect staff={staff} />
+      </label>
       <label className="flex flex-col gap-1 text-xs">
         <span className="text-muted-foreground">{t('staffPanel.profile.model')}</span>
         <ModelSelect staff={staff} />

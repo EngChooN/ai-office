@@ -7,7 +7,7 @@ import path from 'node:path'
 import { test } from 'node:test'
 import { OFFICE_EVENTS, OFFICE_METHODS } from '../src/shared/officeApiShape.ts'
 import { createBridge, parseShellMessage, type Bridge, type BridgeRequest, type ShellMessage } from '../src/renderer/mobile/bridge.ts'
-import { createRemoteOffice, fillOldSnapshot, normalizeArgs, PC_ONLY_TEXT, pcUpdateText, RemoteCallError, SCREEN_CAPABILITIES, type RemoteHandlers } from '../src/renderer/mobile/remoteOffice.ts'
+import { createRemoteOffice, fillOldSnapshot, normalizeArgs, PC_ONLY_TEXT, pcUpdateFeatureText, pcUpdateText, RemoteCallError, SCREEN_CAPABILITIES, type RemoteHandlers } from '../src/renderer/mobile/remoteOffice.ts'
 import { recentFolders } from '../src/renderer/mobile/recentFolders.ts'
 import { pinchStep } from '../src/renderer/map/gestures.ts'
 import { createLayoutTracker } from '../src/renderer/layout/layoutState.ts'
@@ -188,6 +188,24 @@ test('어댑터: 확인 전에 보낸 칸 배치가 unknown_method면 그때 예
   await assert.rejects(s.office.placeGridItem('plant', 1, 0, 0, 0), (e: RemoteCallError) => e.code === 'pc_update_required')
   assert.equal(s.isoOffice(), false)
   assert.deepEqual(x.notices, [pcUpdateText()])
+})
+
+test('어댑터: 마켓 채용은 /v2/call로 가고, 예전 PC(unknown_method)면 같은 모양의 실패 결과로 "PC를 업데이트" 안내', async () => {
+  const ok = { ok: true, message: '채용했어요', staffIds: ['s1'] }
+  const f = fakeBridge((m) => (m.type === 'call' && m.method === 'hireMarket' ? ok : null))
+  const s = createRemoteOffice(f.bridge, handlers().h)
+  assert.deepEqual(await s.office.hireMarket('planner', 'codex'), ok)
+  assert.deepEqual(f.sent.at(-1), { type: 'call', method: 'hireMarket', args: ['planner', 'codex'] })
+  await s.office.hireMarket('planner')
+  assert.deepEqual(f.sent.at(-1), { type: 'call', method: 'hireMarket', args: ['planner'] })
+  const old = fakeBridge((m) => {
+    if (m.type === 'call' && m.method === 'hireMarket') throw { status: 404, code: 'unknown_method', message: '알 수 없는 메서드' }
+    return null
+  })
+  assert.deepEqual(await createRemoteOffice(old.bridge, handlers().h).office.hireMarket('planner'), { ok: false, message: pcUpdateFeatureText(), staffIds: [] })
+  // 가구 전용 문구("가구를 놓을 수 있어요")가 아니라 범용 문구 — 엔진 바꾸기 실패도 같은 문구
+  assert.notEqual(pcUpdateFeatureText(), pcUpdateText())
+  assert.match(read('src/renderer/features/StaffPanel.tsx'), /setNote\(t\('shell\.pcUpdateFeature'\)\)/)
 })
 
 test('설치: 새 PC로 확인되면 스냅샷을 다시 읽고(hello 전에 Lv.10으로 줄어 왔을 수 있음), 예전 PC면 꾸미기 서랍이 "PC를 업데이트" 안내', () => {

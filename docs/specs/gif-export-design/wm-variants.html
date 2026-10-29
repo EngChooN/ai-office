@@ -1,0 +1,50 @@
+<!doctype html><html lang="ko"><meta charset="utf-8"><style>
+*{box-sizing:border-box;margin:0}
+body{background:#14161c;color:#EEF0F5;font-family:"Pretendard","Apple SD Gothic Neo",system-ui,sans-serif;padding:24px 28px;width:1780px}
+h1{font-size:22px;font-weight:700}
+.sub{color:#AAB1C2;font-size:14px;margin:6px 0 18px}
+.grid{display:grid;grid-template-columns:120px 800px 800px;gap:14px 16px;align-items:start}
+.colh{font-size:14px;color:#AAB1C2;font-weight:600}
+.rowh b{display:block;font-size:20px}
+.rowh span{display:block;color:#AAB1C2;font-size:12px;line-height:18px;margin-top:6px}
+.rowh .rec{color:#ff8a4c;font-weight:700;font-size:12px}
+.scene{position:relative;width:800px;height:450px;overflow:hidden;border-radius:6px;background:#0B0C10}
+.scene img.bg{position:absolute}
+.in img.bg{width:1280px;left:-336px;top:-223px}
+.out img.bg{width:1117px;left:-144px;top:-246px;filter:brightness(.42) saturate(.8) hue-rotate(8deg)}
+.day img.bg{filter:brightness(1.35) saturate(1.1)}
+/* A 단색 상자 */
+.wmA{position:absolute;right:20px;bottom:20px;height:30px;display:flex;align-items:center;gap:6px;padding:0 10px 0 6px;background:#0B0C10;border:1px solid #2A2E3A;border-radius:8px;font-size:11px;white-space:nowrap}
+.wmA img,.wmC img{width:18px;height:18px;border-radius:4px}
+.wmA b{color:#fff}.wmA i{width:1px;height:12px;background:#3A3F4D}.wmA em{font-style:normal;color:#AAB1C2}
+/* B 하단 띠 */
+.b .bgwrap{position:absolute;inset:0 0 40px 0;overflow:hidden}
+.wmB{position:absolute;left:0;right:0;bottom:0;height:40px;background:#0B0C10;border-top:1px solid #2A2E3A;display:flex;align-items:center;justify-content:space-between;padding:0 20px;font-size:13px}
+.wmB span{display:flex;align-items:center;gap:8px;font-weight:700;color:#fff}.wmB img{width:22px;height:22px;border-radius:5px}
+.wmB em{font-style:normal;color:#AAB1C2}
+/* C 외곽선 글자 */
+.wmC{position:absolute;right:20px;bottom:20px;display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#fff;white-space:nowrap;
+ text-shadow:-1.5px 0 #0B0C10,1.5px 0 #0B0C10,0 -1.5px #0B0C10,0 1.5px #0B0C10,-1px -1px #0B0C10,1px 1px #0B0C10,-1px 1px #0B0C10,1px -1px #0B0C10}
+.wmC img{outline:2px solid #0B0C10}
+.wmC em{font-style:normal;font-weight:600}
+.zone{position:absolute;right:0;bottom:0;width:36%;height:16%;border:1.5px dashed #ff8a4c;border-right:0;border-bottom:0;pointer-events:none}
+.zone::after{content:"비움 구역";position:absolute;left:6px;top:4px;font-size:10px;color:#ff8a4c}
+.cap{font-size:12px;color:#AAB1C2;margin-top:6px}
+</style><body>
+<h1>사무실 장면 내보내기 — 워터마크 시안 3안 (16:9 · 출력 폭 W=800 기준 축척)</h1>
+<p class="sub">세 안 모두 불투명도 100%(반투명 없음) — GIF는 256색이라 반투명 상자가 움직이는 장면 위에서 프레임마다 다르게 디더링돼 지글거립니다. 왼쪽: 밝은 장면(실내·낮) / 오른쪽: 어두운 장면(외관·밤 — 밝기를 낮춰 흉내 냄). 주황 점선 = 마케팅 편집 시 비워 둘 구역(앱 내보내기는 워터마크가 위에 그려져 상관없음).</p>
+<div class="grid">
+ <div></div><div class="colh">밝은 장면 — 실내 Lv.4</div><div class="colh">어두운 장면 — 외관 밤 (Lv.20)</div>
+
+ <div class="rowh"><b>A안</b><span class="rec">★ 추천</span><span>단색 불투명 상자<br>오른쪽 아래 고정<br>높이 W×3.75%<br>불투명도 100%<br>색 5개 + 아이콘</span></div>
+ <div><div class="scene in day"><img class="bg" src="office.webp"><div class="zone"></div><div class="wmA"><img src="icon.png"><b>AI Office</b><i></i><em>engchoon.github.io/ai-office</em></div></div><div class="cap">밝은 바닥 위에서도 어두운 상자가 경계를 만들어 줘 글자 대비 15:1 이상 유지</div></div>
+ <div><div class="scene out"><img class="bg" src="exterior.webp"><div class="zone"></div><div class="wmA"><img src="icon.png"><b>AI Office</b><i></i><em>engchoon.github.io/ai-office</em></div></div><div class="cap">어두운 장면에선 테두리(#2A2E3A) 한 줄로 상자 윤곽이 보임</div></div>
+
+ <div class="rowh"><b>B안</b><span>하단 띠<br>장면 아래 별도 띠<br>높이 W×5%<br>불투명도 100%<br>장면을 안 가림</span></div>
+ <div><div class="scene in day b"><div class="bgwrap"><img class="bg" src="office.webp"></div><div class="wmB"><span><img src="icon.png">AI Office — AI 직원들이 일하는 사무실</span><em>engchoon.github.io/ai-office</em></div></div><div class="cap">어느 장면에서도 똑같이 읽힘 · 띠 만큼 장면이 줄어듦(16:9 유지 시 장면 높이 −5%)</div></div>
+ <div><div class="scene out b"><div class="bgwrap"><img class="bg" src="exterior.webp"></div><div class="wmB"><span><img src="icon.png">AI Office — AI 직원들이 일하는 사무실</span><em>engchoon.github.io/ai-office</em></div></div><div class="cap">어두운 장면에선 띠와 장면 경계가 흐려짐 → 위 테두리 1px 필요</div></div>
+
+ <div class="rowh"><b>C안</b><span>상자 없는 외곽선 글자<br>오른쪽 아래 고정<br>글자 W×1.5%<br>불투명도 100%<br>가장 덜 가림</span></div>
+ <div><div class="scene in day"><img class="bg" src="office.webp"><div class="wmC"><img src="icon.png">AI Office · <em>engchoon.github.io/ai-office</em></div></div><div class="cap">가장 깔끔하지만 화분·말풍선 같은 복잡한 무늬 위에선 주소가 흐려짐</div></div>
+ <div><div class="scene out"><img class="bg" src="exterior.webp"><div class="wmC"><img src="icon.png">AI Office · <em>engchoon.github.io/ai-office</em></div></div><div class="cap">960 GIF로 줄이면 외곽선이 1px 아래로 깨져 글자가 뭉개질 수 있음</div></div>
+</div></body></html>

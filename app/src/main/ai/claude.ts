@@ -15,6 +15,9 @@ import type { AgentRuntime, AiBackend, AskOptions, AskResult, RuntimeEvent, Runt
 // SDK는 ESM 전용이라 externals로 두고 require(esm)로 불러온다
 export const sdk = createRequire(__filename)('@anthropic-ai/claude-agent-sdk') as typeof import('@anthropic-ai/claude-agent-sdk')
 
+/** 비서에게 여는 기본 도구 — 읽기만 하므로 결재 없이 */
+const SECRETARY_WEB_TOOLS = ['WebSearch', 'WebFetch']
+
 /** 설치본에서는 asar 밖으로 풀어 둔 claude 실행 파일을 직접 가리킨다 (asar 안의 파일은 실행할 수 없다) */
 const CLAUDE_BINARY = app.isPackaged
   ? path.join(process.resourcesPath, 'app.asar.unpacked', 'node_modules', '@anthropic-ai', `claude-agent-sdk-${process.platform}-${process.arch}`, exeName('claude'))
@@ -279,12 +282,13 @@ export class ClaudeBackend implements AiBackend {
         model: claudeModelId(tierModel(o)),
         maxTurns: o.maxTurns,
         maxBudgetUsd: o.maxBudgetUsd,
-        // 기본 도구(파일 읽기·쓰기·Bash·웹)는 하나도 주지 않는다 — 비서 MCP 도구만
-        tools: [],
+        // 기본 도구(파일 읽기·쓰기·Bash)는 주지 않는다 — 비서 MCP 도구와, 설정이 켜져 있으면 웹 검색·웹 읽기만
+        tools: o.webSearch ? [...SECRETARY_WEB_TOOLS] : [],
         settingSources: [],
         mcpServers: { [o.toolsName]: o.tools },
         systemPrompt: o.system,
-        canUseTool: async (toolName) => (toolName.startsWith(`mcp__${o.toolsName}__`) ? { behavior: 'allow' } : { behavior: 'deny', message: '비서는 이 도구를 쓸 수 없어요.' }),
+        canUseTool: async (toolName) =>
+          toolName.startsWith(`mcp__${o.toolsName}__`) || (o.webSearch && SECRETARY_WEB_TOOLS.includes(toolName)) ? { behavior: 'allow' } : { behavior: 'deny', message: '비서는 이 도구를 쓸 수 없어요.' },
       },
     })
     async function* events(): AsyncGenerator<SecretaryEvent> {

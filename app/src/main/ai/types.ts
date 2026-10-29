@@ -106,6 +106,8 @@ export interface SecretaryRunOpts {
   /** 비서 도구 서버 이름 — 이 이름의 도구만 허용한다 */
   toolsName: string
   tools: RuntimeMcpServer
+  /** 웹 검색·웹 읽기를 연다 (설정 '비서 웹 검색'). 파일·명령 도구는 이와 상관없이 막는다 */
+  webSearch: boolean
 }
 export type SecretaryEvent =
   | { type: 'text'; text: string }

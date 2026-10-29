@@ -120,6 +120,8 @@ const EDITABLE: Partial<Record<OfficeMethod, Record<string, Slot>>> = {
   startMeeting: { 주제: { index: 0, field: 'topic' } },
   sendChat: { 내용: { index: 0 } },
   instruct: { 지시: { index: 1 } },
+  // 카드에서 엔진을 고르면 그 엔진의 기본 모델로 (모델은 고를 값이 아니다 — changeEngine이 정한다)
+  changeEngine: { 엔진: { index: 1 } },
 }
 
 function readSlot(args: unknown[], slot: Slot) {

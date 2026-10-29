@@ -358,6 +358,8 @@ if (demo && LANGS.includes(demo)) {
 
 const impl: Record<string, (...args: never[]) => unknown> = {
   snapshot: () => snapshot,
+  // 마켓 채용: PC처럼 같은 모양의 결과만 돌려준다 (직원은 늘리지 않는다)
+  hireMarket: (id: string) => ({ ok: true, message: `${t(`pack.market.${id}.name` as never)} 채용 (미리보기)`, staffIds: [] }),
   chatHistory: () => chat,
   remoteStatus: () => remoteStatus,
   listManuals: () => [
@@ -432,7 +434,7 @@ const impl: Record<string, (...args: never[]) => unknown> = {
 }
 
 // PC 서버(v2 분류표)와 같은 응답
-const PC_ONLY: Record<string, string> = { pickFolder: 'enter_path', pickFiles: 'enter_path', openAttachment: 'download_file', resumeInTerminal: 'open_on_pc', openClaudeLogin: 'open_on_pc', openCodexLogin: 'open_on_pc', remoteQr: 'open_on_pc', setRemoteFullAccess: 'open_on_pc' }
+const PC_ONLY: Record<string, string> = { pickFolder: 'enter_path', pickFiles: 'enter_path', openAttachment: 'download_file', resumeInTerminal: 'open_on_pc', openClaudeLogin: 'open_on_pc', openCodexLogin: 'open_on_pc', remoteQr: 'open_on_pc', setRemoteFullAccess: 'open_on_pc', setHooksInstalled: 'open_on_pc', setAskHookInstalled: 'open_on_pc', revertWork: 'open_on_pc', setRemoteMode: 'open_on_pc', refreshRemoteTailscale: 'open_on_pc', dismissRemoteTsNotice: 'open_on_pc' }
 
 function setGrid(grid: OfficeSnapshot['shop']['grid']) {
   snapshot.shop = { ...snapshot.shop, grid }
@@ -467,7 +469,7 @@ const port: Port = {
     if (msg.type === 'call') {
       // PC 서버처럼: hello는 아는 능력만 돌려주고, 예전 PC는 hello·칸 배치를 모른다 (office-iso-tech.md 4-3절)
       const isOldPc = params.get('pc') === 'old'
-      if (isOldPc && (msg.method === 'hello' || msg.method === 'placeGridItem' || msg.method === 'moveGridItem')) return fail(404, 'unknown_method', '알 수 없는 메서드예요')
+      if (isOldPc && (msg.method === 'hello' || msg.method === 'placeGridItem' || msg.method === 'moveGridItem' || msg.method === 'hireMarket')) return fail(404, 'unknown_method', '알 수 없는 메서드예요')
       if (msg.method === 'hello') return ok({ capabilities: (msg.args[0]?.capabilities ?? []).filter((c: string) => c === 'iso-office') })
       if (PC_ONLY[msg.method]) return fail(422, 'pc_only', '휴대폰에서는 할 수 없어요. PC에서 해 주세요', PC_ONLY[msg.method])
       const isCutting = msg.method === 'regenerateRemoteQr' || (msg.method === 'setRemoteEnabled' && msg.args[0] === false)

@@ -3,6 +3,7 @@ import type { OfficeApi } from './shared/types'
 import { OFFICE_EVENTS, OFFICE_METHODS } from './shared/officeApiShape'
 import type { OfficeUpdateApi, UpdateStatus } from './shared/updateCheck'
 import type { OfficePackApi } from './shared/staffPack'
+import type { OfficeSceneApi } from './shared/sceneExport'
 
 // 메서드는 office:<이름> invoke, on* 은 같은 이름 채널 구독으로 연결한다 (목록은 shared/officeApiShape — 원격 v2와 같은 목록)
 const METHODS = OFFICE_METHODS
@@ -10,6 +11,7 @@ const EVENTS = OFFICE_EVENTS
 
 const api = {
   platform: process.platform,
+  osVersion: process.getSystemVersion(),
   ...Object.fromEntries(METHODS.map((name) => [name, (...args: unknown[]) => ipcRenderer.invoke(`office:${name}`, ...args)])),
   ...Object.fromEntries(
     EVENTS.map((name) => [
@@ -56,12 +58,19 @@ const update: OfficeUpdateApi = {
 }
 contextBridge.exposeInMainWorld('officeUpdate', update)
 
-// 직원·랩 파일 내보내기/가져오기와 직원 마켓 (PC 전용 pack:* 채널 — 원격 v2와 상관없어 OfficeApi 밖에 둔다)
+// 직원·랩 파일 내보내기/가져오기 (파일 대화상자가 필요한 PC 전용 pack:* 채널 — OfficeApi 밖에 둔다. 마켓 채용은 OfficeApi.hireMarket)
 const pack: OfficePackApi = {
-  market: () => ipcRenderer.invoke('pack:market'),
-  hireMarket: (id) => ipcRenderer.invoke('pack:hireMarket', id),
   importFile: () => ipcRenderer.invoke('pack:import'),
   exportStaff: (ids) => ipcRenderer.invoke('pack:exportStaff', ids),
   exportLab: (labId) => ipcRenderer.invoke('pack:exportLab', labId),
 }
 contextBridge.exposeInMainWorld('officePack', pack)
+
+// 사무실 장면 내보내기(GIF·PNG) 저장 (PC 전용 scene:* 채널)
+const scene: OfficeSceneApi = {
+  save: (data, kind, target) => ipcRenderer.invoke('scene:save', data, kind, target),
+  folder: () => ipcRenderer.invoke('scene:folder'),
+  openFolder: (filePath) => ipcRenderer.invoke('scene:openFolder', filePath),
+  pickFolder: () => ipcRenderer.invoke('scene:pickFolder'),
+}
+contextBridge.exposeInMainWorld('officeScene', scene)

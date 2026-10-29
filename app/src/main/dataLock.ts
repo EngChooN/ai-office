@@ -68,6 +68,11 @@ export function acquireDataLock(): boolean {
 
 /** 잠금을 못 잡았을 때: 알리고 끝낸다 */
 export function quitForDataLock() {
+  // 개발 실행(직원이 QA·녹화로 띄우는 경우가 많다)은 창을 띄우지 않고 터미널에만 남긴다. 창은 사용자 화면에 계속 뜬다
+  if (!app.isPackaged) {
+    console.error(`[data] 데이터 폴더(${app.getPath('userData')})를 다른 AI Office가 쓰고 있어 끝냅니다. AI_OFFICE_USER_DATA로 다른 폴더를 지정해 띄우세요.`)
+    return app.exit(1)
+  }
   dialog.showErrorBox(
     'AI Office가 이미 켜져 있어요',
     `같은 데이터 폴더(${app.getPath('userData')})를 쓰는 다른 AI Office(옛 이름 Claude Office 포함)가 실행 중이에요. 그 앱을 끄고 다시 열어 주세요.\n\n개발용으로 따로 띄우려면 AI_OFFICE_USER_DATA 환경 변수로 다른 데이터 폴더를 지정하세요.`,

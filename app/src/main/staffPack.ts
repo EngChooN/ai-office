@@ -18,11 +18,12 @@ import {
   type PackReason,
   type PackResult,
   type PackStaff,
-  type PackMarketItem,
 } from '../shared/staffPack.ts'
+import { defaultProvider, fitEngineModel } from '../shared/engineModel.ts'
 import type { Staff } from '../shared/types.ts'
 import { equipmentCatalog } from './equipment'
 import type { Office } from './office'
+import { lastProviderStatus } from './setup'
 import { readPackFile, writePackFile } from './staffPackFile.ts'
 
 // 직원·랩 파일 채널 (pack:*). PC 화면에서만 쓰므로 OfficeApi·원격 v2 목록에는 넣지 않는다.
@@ -65,20 +66,20 @@ function applyPack(office: Office, pack: PackFile, excluded: string[]): PackResu
   return { ok: true, message: head + tail, staffIds: hired.map((s) => s.id) }
 }
 
-function marketItems(): PackMarketItem[] {
-  return STAFF_MARKET.map((m) => ({ id: m.id, name: t(`pack.market.${m.id}.name` as TKey), role: m.role, desc: t(`pack.market.${m.id}.desc` as TKey) }))
-}
-
-/** 마켓 항목도 파일과 같은 검증·채용 길을 탄다 */
-function hireMarket(office: Office, id: string): PackResult {
+/** 마켓 항목도 파일과 같은 검증·채용 길을 탄다. 엔진은 claude·codex만 받고, 없으면 준비된 엔진으로 정한다.
+ * 파일이 필요 없어 OfficeApi.hireMarket으로 PC 화면·휴대폰(원격 v2) 모두 부른다 (officeHandlers) */
+export function hireMarket(office: Office, id: string, provider: unknown): PackResult {
   const tpl = STAFF_MARKET.find((m) => m.id === id)
   if (!tpl) return failed({ key: 'pack.err.marketMissing' })
+  if (provider !== undefined && provider !== 'claude' && provider !== 'codex') return failed({ key: 'pack.err.provider' })
+  const status = lastProviderStatus()
+  const fit = fitEngineModel(provider ?? defaultProvider(status), tpl.model, status?.codex.models ?? [])
   const entry: PackStaff = {
     name: t(`pack.market.${tpl.id}.name` as TKey),
     role: tpl.role,
     avatar: encodeLook(randomLook(tpl.role)),
-    provider: 'claude',
-    model: tpl.model,
+    provider: fit.provider,
+    model: fit.model,
     approvalMode: 'ask',
     systemPrompt: tpl.systemPrompt,
     equipment: { mcpServers: [], skills: [], allowedTools: [], disallowedTools: [], monthlyBudgetUsd: 0 },
@@ -120,10 +121,6 @@ function exportStaff(office: Office, ids: string[]): PackExportStaff[] | PackRea
 }
 
 export function registerPack(getOffice: () => Office, getWin: () => BrowserWindow | null) {
-  ipcMain.handle('pack:market', () => marketItems())
-
-  ipcMain.handle('pack:hireMarket', (_e, id: unknown) => hireMarket(getOffice(), typeof id === 'string' ? id : ''))
-
   ipcMain.handle('pack:import', async (): Promise<PackResult | null> => {
     const office = getOffice()
     const win = getWin()

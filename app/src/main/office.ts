@@ -48,6 +48,7 @@ import {
   type Task,
   type TaskPlan,
   type AiProvider,
+  type EngineChangeResult,
   type PlanUsage,
   type Team,
   type RefDocsSaveResult,
@@ -61,8 +62,8 @@ import {
 } from '../shared/types'
 import { buildStaffActivity } from '../shared/staffActivity'
 import { answersText } from '../shared/chatApproval'
-import { defaultProvider, fitEngineModel, isEngineMismatch } from '../shared/engineModel'
-import { findCodexCli, lastProviderStatus, openResumeInTerminal } from './setup'
+import { defaultProvider, ENGINE_NAME, engineUnsupportedMcp, fitEngineModel, isEngineMismatch } from '../shared/engineModel'
+import { findCodexCli, lastProviderStatus, openResumeInTerminal, providerStatus } from './setup'
 import { decisionSections, decisionSectionsOf, decisionsContext, delegatedPrompt, parseDelegatedChoice, recordAnswer, recordDelegated, splitDecision, withDecisionSections } from '../shared/meetingDecisions'
 import { isAbsorbedOpen, matchAbsorbed, meetingCardItems, meetingResultCard, pickPlanCard } from '../shared/planTasks'
 import { shouldNudgeBackground, shouldNudgeLead } from '../shared/leadNudge'
@@ -729,12 +730,47 @@ export class Office extends EventEmitter<{
     this.scheduleEmit()
   }
 
+  /**
+   * 직원 엔진(Claude ↔ GPT)을 바꾼다 — 화면·비서 공통 입구. 쉬는 중이고 새 엔진이 준비(설치·로그인)됐을 때만.
+   * 모델은 새 엔진 기본값, 세션은 새로 시작(이전 대화는 다른 엔진으로 못 넘긴다). 장비는 그대로 두고 새 엔진에서 못 쓰는 연결 도구만 알린다
+   * (세션을 열 때 엔진에 맞는 것만 붙으므로 되돌리면 다시 쓰인다). 업무 기록·카드·이름·직무·지침·랩은 건드리지 않는다
+   */
+  async changeEngine(staffId: string, provider: AiProvider): Promise<EngineChangeResult> {
+    const s = this.hired.get(staffId)
+    if (!s || s.isPractice) return { error: t('engineChange.error.notHired') }
+    // 비서 카드의 엔진 칸은 글로 고칠 수 있어 엉뚱한 값이 올 수 있다
+    if (provider !== 'claude' && provider !== 'codex') return { error: t('engineChange.error.notReady', { engine: String(provider) }) }
+    if (s.provider === provider) return { error: '' }
+    // 상태를 묻는 사이 일을 받았을 수 있어 두 번 본다
+    const isBusy = () => s.status === 'working' || s.status === 'waiting'
+    if (isBusy()) return { error: t('engineChange.error.busy') }
+    const status = lastProviderStatus() ?? (await providerStatus().catch(() => null))
+    if (status?.[provider].state !== 'ready') return { error: t('engineChange.error.notReady', { engine: ENGINE_NAME[provider] }) }
+    if (isBusy()) return { error: t('engineChange.error.busy') }
+    const from = s.provider
+    const model = fitEngineModel(provider, 'default').model
+    db.fixStaffEngine(staffId, provider, model)
+    s.provider = provider
+    s.model = model
+    // Worker는 엔진별 런타임을 만들 때 고르므로 새로 만들고, 저장된 세션 id·누적 기준값을 비워 새 대화로 시작한다
+    this.manager.remove(staffId)
+    this.manager.add(this.liveStaff(s))
+    this.manager.resetSession(staffId)
+    this.commands.delete(staffId) // /명령어 목록은 엔진마다 다르다
+    const unsupported = engineUnsupportedMcp(equipmentCatalog(s.cwd), s.equipment.mcpServers, provider)
+    const vars = { name: s.name, from: ENGINE_NAME[from], to: ENGINE_NAME[provider] }
+    this.log(staffId, 'status', tk(unsupported.length ? 'log.engineChangedUnsupported' : 'log.engineChanged', { ...vars, tools: unsupported.join(', ') }))
+    this.postChat('me', t('chat.engineChanged', vars))
+    this.scheduleEmit()
+    return { error: '', unsupported }
+  }
+
   updateStaff(staffId: string, input: StaffPatch) {
     const s = this.hired.get(staffId)
     if (!s) return
     // 결재 방식·장비 같은 다른 필드가 섞여 들어와도(비서 카드) 반영하지 않는다
     const patch = pickStaffPatch(input)
-    // 엔진은 고용 뒤 못 바꾸니, 모델이 엔진에 안 맞으면 기본 모델로
+    // 엔진은 changeEngine으로만 바꾸니, 모델이 엔진에 안 맞으면 기본 모델로
     if (patch.model !== undefined) {
       const fit = fitEngineModel(s.provider, patch.model, lastProviderStatus()?.codex.models ?? [])
       patch.model = fit.provider === s.provider ? fit.model : 'default'

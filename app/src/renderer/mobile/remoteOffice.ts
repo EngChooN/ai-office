@@ -6,7 +6,8 @@
 // PC가 아는지는 연결될 때마다 hello로 확인한다 — 예전 PC(404·능력 없음)면 칸 배치를 보내지 않는다 (docs/specs/office-iso-tech.md 4-3절)
 
 import { OFFICE_EVENTS, OFFICE_METHODS, type OfficeEvent, type OfficeMethod } from '../../shared/officeApiShape.ts'
-import type { Attachment, OfficeApi, UploadFile } from '../../shared/types.ts'
+import type { AiProvider, Attachment, OfficeApi, UploadFile } from '../../shared/types.ts'
+import type { PackResult } from '../../shared/staffPack.ts'
 import type { Bridge, BridgeError } from './bridge.ts'
 import { t } from '../../shared/i18n/index.ts'
 
@@ -56,6 +57,8 @@ export const PC_ONLY_TEXT = {
 export const SCREEN_CAPABILITIES = ['iso-office'] as const
 /** PC가 예전 버전이라 칸 배치를 못 할 때 */
 export const pcUpdateText = () => t('shell.pcUpdate')
+/** PC가 예전 버전이라 가구 말고 다른 기능(마켓 채용·엔진 바꾸기 등)을 못 할 때 */
+export const pcUpdateFeatureText = () => t('shell.pcUpdateFeature')
 /** 칸 배치 메서드 — 예전 PC(iso-office 모름)에는 보내지 않는다 */
 const GRID_METHODS = new Set<OfficeMethod>(['placeGridItem', 'moveGridItem', 'setGridItemOn', 'stowAllGrid', 'restoreGridItems', 'moveSeatSet'])
 
@@ -183,6 +186,15 @@ export function createRemoteOffice(bridge: Bridge, h: RemoteHandlers): RemoteSes
       return null
     },
     ...Object.fromEntries([...GRID_METHODS].map((m) => [m, gridCall(m)])),
+    // 예전 PC는 마켓 채용을 모른다(404 unknown_method) — 같은 모양의 실패 결과로 "PC를 업데이트해 주세요"를 보여 준다
+    hireMarket: async (id: string, provider?: AiProvider): Promise<PackResult> => {
+      try {
+        return (await call('hireMarket', [id, provider])) as PackResult
+      } catch (e) {
+        if ((e as RemoteCallError).code !== 'unknown_method') throw e
+        return { ok: false, message: pcUpdateFeatureText(), staffIds: [] }
+      }
+    },
     snapshot: async (...args: unknown[]) => fillOldSnapshot(await call('snapshot', args)),
   }
 
@@ -209,6 +221,7 @@ export function createRemoteOffice(bridge: Bridge, h: RemoteHandlers): RemoteSes
 
   const office = {
     platform: 'android',
+    osVersion: '',
     ...Object.fromEntries(OFFICE_METHODS.map((m) => [m, overrides[m] ?? ((...args: unknown[]) => call(m, args))])),
     ...Object.fromEntries(OFFICE_EVENTS.map((e) => [e, subscribe(EVENT_NAME[e])])),
   } as unknown as OfficeApi

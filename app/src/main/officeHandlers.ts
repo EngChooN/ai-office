@@ -14,6 +14,7 @@ import type { Office } from './office'
 import type { RemoteService } from './remote/service.ts'
 import type { Secretary } from './secretary'
 import { claudeStatus, openClaudeLogin, openCodexLogin, providerStatus } from './setup'
+import { hireMarket } from './staffPack'
 
 // OfficeApi 메서드 하나 = 처리 함수 하나. PC 화면(IPC)과 휴대폰(원격 v2 /v2/call)이 이 표를 함께 쓴다 — 같은 코드 경로
 // 키는 OfficeMethod와 정확히 같아야 한다 (빠지거나 남으면 tsc 오류)
@@ -34,6 +35,7 @@ export function createOfficeHandlers(office: Office, remoteApi: () => RemoteServ
     refreshRemoteTailscale: () => remoteApi().refreshTailscale(),
     dismissRemoteTsNotice: () => remoteApi().dismissTsNotice(),
     hire: (input: Parameters<Office['hire']>[0]) => office.hire(input),
+    hireMarket: (id: string, provider?: unknown) => hireMarket(office, id, provider ?? undefined),
     fire: (id: string) => office.fire(id),
     updateStaff: (id: string, patch: Parameters<Office['updateStaff']>[1]) => office.updateStaff(id, patch),
     instruct: (id: string, text: string, attachments?: Parameters<Office['instruct']>[3]) => office.instruct(id, text, { kind: 'user' }, attachments ?? []),
@@ -44,6 +46,7 @@ export function createOfficeHandlers(office: Office, remoteApi: () => RemoteServ
     },
     interrupt: (id: string, text?: string, attachments?: Attachment[]) => office.interrupt(id, text, attachments),
     resumeInTerminal: (id: string) => office.resumeInTerminal(id),
+    changeEngine: (id: string, provider: Parameters<Office['changeEngine']>[1]) => office.changeEngine(id, provider),
     decide: (approvalId: string, allow: boolean) => office.decide(approvalId, allow),
     getRecord: (id: string) => office.getRecord(id),
     listAgentTemplates: (cwd: string) => listAgentTemplates(cwd),

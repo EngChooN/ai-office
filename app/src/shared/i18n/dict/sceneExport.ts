@@ -1,0 +1,45 @@
+import type { Entry } from './index.ts'
+
+/** 사무실 장면 내보내기 (GIF·PNG) — docs/specs/gif-export-design.md */
+export default {
+  'export.button': { ko: '내보내기', en: 'Export', ja: '書き出し', zh: '导出' },
+  'export.title': { ko: '사무실 장면 내보내기', en: 'Export office scene', ja: 'オフィスの場面を書き出す', zh: '导出办公室画面' },
+  'export.kind.png': { ko: '이미지(PNG)', en: 'Image (PNG)', ja: '画像(PNG)', zh: '图片 (PNG)' },
+  'export.kind.gif': { ko: '움직이는 GIF (10초)', en: 'Animated GIF (10s)', ja: '動くGIF(10秒)', zh: '动态 GIF(10 秒)' },
+  'export.hideBubbles': { ko: '말풍선 글 가리기 (이름표는 남아요)', en: 'Hide speech bubble text (name tags stay)', ja: '吹き出しの文字を隠す(名札は残ります)', zh: '隐藏气泡文字(保留名牌)' },
+  'export.recordNote': {
+    ko: '녹화하는 10초 동안 화면 이동·확대가 멈춰요.',
+    en: 'Panning and zooming pause during the 10-second recording.',
+    ja: '録画する10秒間は画面の移動・拡大が止まります。',
+    zh: '录制的 10 秒内无法移动或缩放画面。',
+  },
+  'export.folder': { ko: '저장 위치', en: 'Save to', ja: '保存先', zh: '保存位置' },
+  'export.folderDefault': { ko: '사진 › AI Office', en: 'Pictures › AI Office', ja: 'ピクチャ › AI Office', zh: '图片 › AI Office' },
+  'export.change': { ko: '바꾸기', en: 'Change', ja: '変更', zh: '更改' },
+  'export.start': { ko: '녹화 시작', en: 'Start recording', ja: '録画開始', zh: '开始录制' },
+  'export.recording': { ko: '녹화 중 {n}초', en: 'Recording {n}s', ja: '録画中 {n}秒', zh: '录制中 {n} 秒' },
+  'export.stop': { ko: '멈춤', en: 'Stop', ja: '停止', zh: '停止' },
+  'export.encoding': { ko: '만드는 중 {pct}%', en: 'Creating {pct}%', ja: '作成中 {pct}%', zh: '生成中 {pct}%' },
+  'export.done.gif': { ko: 'GIF를 저장했어요', en: 'GIF saved', ja: 'GIFを保存しました', zh: 'GIF 已保存' },
+  'export.done.png': { ko: '이미지를 저장했어요', en: 'Image saved', ja: '画像を保存しました', zh: '图片已保存' },
+  'export.doneShrunk': { ko: '5MB를 넘어 화질을 낮춰 저장했어요', en: 'Over 5MB, so saved at lower quality', ja: '5MBを超えたため画質を下げて保存しました', zh: '超过 5MB,已降低画质保存' },
+  'export.doneOver': {
+    ko: '화질을 낮춰도 5MB를 넘었어요. 올릴 곳에 따라 안 올라갈 수 있어요',
+    en: 'Still over 5MB at lower quality. Some sites may reject it',
+    ja: '画質を下げても5MBを超えました。投稿先によってはアップロードできないことがあります',
+    zh: '降低画质后仍超过 5MB,部分网站可能无法上传',
+  },
+  'export.failed': { ko: '저장하지 못했어요', en: "Couldn't save", ja: '保存できませんでした', zh: '无法保存' },
+  'export.err.noPermission': { ko: '이 폴더에 쓸 권한이 없어요', en: "You don't have permission to write to this folder", ja: 'このフォルダーに書き込む権限がありません', zh: '没有写入此文件夹的权限' },
+  'export.err.diskFull': { ko: '디스크 공간이 모자라요', en: 'Not enough disk space', ja: 'ディスクの空き容量が足りません', zh: '磁盘空间不足' },
+  'export.err.noFrame': {
+    ko: '사무실 장면을 찍지 못했어요. 사무실 화면을 연 채로 다시 해 보세요',
+    en: "Couldn't capture the office scene. Keep the office open and try again",
+    ja: 'オフィスの場面を撮れませんでした。オフィス画面を開いたままもう一度お試しください',
+    zh: '无法截取办公室画面。请保持办公室画面打开后重试',
+  },
+  'export.err.unknown': { ko: '잠시 뒤 다시 해 보세요', en: 'Please try again in a moment', ja: 'しばらくしてからもう一度お試しください', zh: '请稍后再试' },
+  'export.openFolder': { ko: '폴더 열기', en: 'Open folder', ja: 'フォルダーを開く', zh: '打开文件夹' },
+  'export.pickOther': { ko: '다른 폴더 고르기', en: 'Choose another folder', ja: '別のフォルダーを選ぶ', zh: '选择其他文件夹' },
+  'export.pickFolder': { ko: '저장할 폴더 고르기', en: 'Choose a folder to save to', ja: '保存するフォルダーを選択', zh: '选择保存的文件夹' },
+} satisfies Record<string, Entry>

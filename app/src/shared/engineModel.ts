@@ -1,4 +1,4 @@
-import type { AiProvider, ModelChoice, ProvidersStatus } from './types'
+import type { AiProvider, EquipmentCatalog, McpSourceKind, ModelChoice, ProvidersStatus } from './types'
 
 /** 엔진을 정하지 않았을 때 쓸 공급자: Claude가 준비됐으면 Claude, 아니면 준비된 Codex (모르면 Claude) */
 export const defaultProvider = (s: ProvidersStatus | null | undefined): AiProvider => (s && s.claude.state !== 'ready' && s.codex.state === 'ready' ? 'codex' : 'claude')
@@ -12,6 +12,16 @@ export function fitEngineModel(provider: AiProvider | undefined, model: ModelCho
   if (p === 'codex') return { provider: 'codex', model: CLAUDE_MODELS.has(model) ? 'default' : model }
   if (CLAUDE_MODELS.has(model)) return { provider: 'claude', model }
   return looksGpt(model, codexModels) ? { provider: 'codex', model } : { provider: 'claude', model: 'default' }
+}
+
+/** 화면·기록에 쓰는 엔진 이름 (번역하지 않는 고유 이름) */
+export const ENGINE_NAME: Record<AiProvider, string> = { claude: 'Claude', codex: 'GPT' }
+
+/** 지급된 연결 도구 중 그 엔진에서 못 쓰는 것: Codex 설정의 도구는 GPT만, claude.ai 커넥터는 GPT에서 못 붙인다 (카탈로그에 없는 이름은 판단하지 않는다) */
+export function engineUnsupportedMcp(catalog: EquipmentCatalog, equipped: string[], provider: AiProvider): string[] {
+  const kind = new Map(catalog.mcpServers.map((m) => [m.name, m.sourceKind]))
+  const blocked: McpSourceKind = provider === 'codex' ? 'claudeai' : 'codex'
+  return equipped.filter((name) => kind.get(name) === blocked)
 }
 
 /** 이미 저장된 직원의 모델이 엔진에 안 맞는지 */

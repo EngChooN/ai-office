@@ -13,6 +13,8 @@ import { dioramaFit, dioramaLayout, isOnOffice } from './exteriorLayout'
 import { isNightTime } from '@shared/dayNight'
 import { officeStage } from './officeStage'
 import { DecorDrawer } from './DecorDrawer'
+import { canExportScene, RecordingFrame, SceneExportButton, SceneExportNotice } from '@/features/sceneExport/SceneExport'
+import { useSceneExport } from '@/features/sceneExport/useSceneExport'
 import { DemoDayBanner, DemoDayNowButton } from '@/features/DemoStage'
 import { isReducedMotion } from '@/lib/reducedMotion'
 import { t } from '@shared/i18n'
@@ -265,6 +267,10 @@ function Hud() {
   const previewLevel = useOffice((s) => s.previewLevel)
   const seatShort = useSeatStatus()
   const setInside = useOffice((s) => s.setInside)
+  const isInside = useOffice((s) => s.isInside)
+  const isRecording = useSceneExport((s) => s.phase === 'recording')
+  // 장면 내보내기는 건물 안 장면만 (외관은 아직 범위 밖), 꾸미는 동안은 숨긴다
+  const canExport = !IS_MOBILE_SHELL && canExportScene() && isInside && !isDecorating
   // 휴대폰: 지도를 덜 가리게 한 줄로 접어 두고 누르면 펼친다
   const [isOpen, setIsOpen] = useState(false)
   const isDrawerOpen = isDecorating
@@ -324,14 +330,18 @@ function Hud() {
           </div>
         )}
       </div>
-      <button
-        type="button"
-        onClick={handleDecorate}
-        className={`rounded-lg border px-3 py-1.5 text-xs shadow-lg ${isDecorating ? 'border-primary bg-primary text-primary-foreground' : 'border-white/10 bg-[#1a1d28]/90 text-white'}`}
-      >
-        {isDecorating ? t('map.decorEnd') : t('map.decorStart')}
-      </button>
-      {!IS_MOBILE_SHELL && !isDecorating && <DemoDayNowButton />}
+      <div className="flex items-start gap-2">
+        {canExport && <SceneExportButton />}
+        <button
+          type="button"
+          onClick={handleDecorate}
+          disabled={isRecording}
+          className={`rounded-lg border px-3 py-1.5 text-xs shadow-lg disabled:opacity-50 ${isDecorating ? 'border-primary bg-primary text-primary-foreground' : 'border-white/10 bg-[#1a1d28]/90 text-white'}`}
+        >
+          {isDecorating ? t('map.decorEnd') : t('map.decorStart')}
+        </button>
+      </div>
+      {!isDecorating && <DemoDayNowButton />}
       {isDrawerOpen && <DecorDrawer />}
     </div>
   )
@@ -373,8 +383,10 @@ export function OfficeMap() {
       ) : (
         <OfficeExterior />
       )}
+      <RecordingFrame />
       <Hud />
-      {!IS_MOBILE_SHELL && <DemoDayBanner />}
+      <DemoDayBanner />
+      <SceneExportNotice />
       {isInside && (
         <>
           <div className="absolute right-3 bottom-3 flex flex-col overflow-hidden rounded-lg border border-white/10 bg-[#1a1d28]/90 shadow-lg">

@@ -1,7 +1,7 @@
 {
   "name": "claude-office",
   "productName": "AI Office",
-  "version": "0.14.2",
+  "version": "0.14.3",
   "private": true,
   "description": "AI 직원을 고용해 일을 맡기는 사무실 앱",
   "license": "MIT",
@@ -28,6 +28,7 @@
     "@radix-ui/react-slot": "^1.5.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "gifenc": "1.0.3",
     "lucide-react": "^1.60.0",
     "phaser": "^4.2.1",
     "qrcode-generator": "2.0.4",

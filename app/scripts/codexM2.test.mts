@@ -76,12 +76,12 @@ test('FallbackBackend.secretary: 말하기 전 오류 결과면 다음 공급자
   const ok: SecretaryEvent[] = [{ type: 'text', text: '안녕' }, { type: 'result', subtype: 'success', costUsd: 0, tokensIn: 1, tokensOut: 1 }]
   const b = new FallbackBackend(() => ['claude', 'codex'], (p) => fake(p, { events: p === 'claude' ? [err] : ok }))
   const got: SecretaryEvent[] = []
-  for await (const e of b.secretary({ prompt: '', system: '', cwd: '/', tier: 'standard', maxTurns: 1, maxBudgetUsd: 1, toolsName: 's', tools: { command: 'x' } }).events) got.push(e)
+  for await (const e of b.secretary({ prompt: '', system: '', cwd: '/', tier: 'standard', maxTurns: 1, maxBudgetUsd: 1, toolsName: 's', tools: { command: 'x' }, webSearch: false }).events) got.push(e)
   assert.deepEqual(got, ok)
   // 이미 말한 뒤의 오류 결과는 그대로 전달한다
   const late = new FallbackBackend(() => ['claude', 'codex'], (p) => fake(p, { events: p === 'claude' ? [{ type: 'text', text: 'a' }, err] : ok }))
   const got2: SecretaryEvent[] = []
-  for await (const e of late.secretary({ prompt: '', system: '', cwd: '/', tier: 'standard', maxTurns: 1, maxBudgetUsd: 1, toolsName: 's', tools: { command: 'x' } }).events) got2.push(e)
+  for await (const e of late.secretary({ prompt: '', system: '', cwd: '/', tier: 'standard', maxTurns: 1, maxBudgetUsd: 1, toolsName: 's', tools: { command: 'x' }, webSearch: false }).events) got2.push(e)
   assert.deepEqual(got2, [{ type: 'text', text: 'a' }, err])
 })
 

@@ -1,4 +1,4 @@
-import { MegaphoneIcon } from 'lucide-react'
+import { MegaphoneIcon, MessageSquareIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { APP_VERSION } from '@/lib/changelog'
 import { useOffice, useWorkMode } from '@/store'
@@ -6,6 +6,7 @@ import { t } from '@shared/i18n'
 import { GAME_VIEWS, NAV_ITEMS, useNavBadges } from './nav'
 import { updateActions } from '@/lib/update'
 import { useUpdateBadge } from './AppUpdate'
+import { openFeedbackIssue } from '@/lib/feedback'
 
 export function Sidebar() {
   const view = useOffice((s) => s.view)
@@ -36,6 +37,14 @@ export function Sidebar() {
       ))}
       <button
         type="button"
+        onClick={openFeedbackIssue}
+        className="text-muted-foreground hover:bg-accent/60 hover:text-foreground mt-auto flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-left text-xs"
+      >
+        <MessageSquareIcon className="size-3.5 shrink-0" />
+        <span className="min-w-0 flex-1 truncate whitespace-nowrap" title={t('settingsPage.guide.feedback')}>{t('settingsPage.guide.feedback')}</span>
+      </button>
+      <button
+        type="button"
         onClick={() => {
           setView('updates')
           // 새 버전이 있으면 안내 창을 다시 연다
@@ -43,7 +52,7 @@ export function Sidebar() {
         }}
         data-tour="nav-updates"
         className={cn(
-          'mt-auto flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-left text-xs',
+          'flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-left text-xs',
           view === 'updates' ? 'bg-accent text-foreground font-medium' : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground',
         )}
       >

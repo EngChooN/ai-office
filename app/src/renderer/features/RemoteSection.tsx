@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
+import { PcOnlyState } from '@/components/pc-only-state'
+import { IS_MOBILE_SHELL } from '@/shell'
 import { fmtDate, t } from '@shared/i18n'
 import type { AccessEntry, RemoteMode, RemoteQr, RemoteStatus } from '@shared/types'
 
@@ -27,10 +29,11 @@ function useRemoteStatus() {
     void window.office.remoteStatus().then(setStatus)
     return window.office.onRemoteStatus(setStatus)
   }, [])
-  // Tailscale 방식이 열려 있는 동안 3초마다 상태를 다시 읽는다 (사용자가 로그인을 마치면 자동으로 다음 단계로)
+  // Tailscale 방식이 열려 있는 동안 3초마다 상태를 다시 읽는다 (사용자가 로그인을 마치면 자동으로 다음 단계로).
+  // 휴대폰은 PC의 Tailscale을 다시 확인할 수 없다(pc_only) — 바뀐 상태는 onRemoteStatus로 받는다
   const mode = status?.mode
   useEffect(() => {
-    if (mode !== 'tailscale') return
+    if (mode !== 'tailscale' || IS_MOBILE_SHELL) return
     const read = () => void window.office.refreshRemoteTailscale().then(setStatus)
     read()
     const timer = setInterval(read, TS_POLL_MS)
@@ -83,7 +86,7 @@ export function RemoteSection() {
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" checked={status.isEnabled} onChange={(e) => void handleToggle(e.target.checked)} /> {t('remote.enable')}
       </label>
-      {status.isTsNoticePending && status.mode !== 'tailscale' && (
+      {status.isTsNoticePending && status.mode !== 'tailscale' && !IS_MOBILE_SHELL && (
         <Banner tone="ok">
           <p>{t('remote.ts.notice')}</p>
           <div className="mt-1.5 flex gap-2">
@@ -100,13 +103,14 @@ export function RemoteSection() {
         <legend className="mb-1 text-xs font-medium">{t('remote.mode')}</legend>
         {MODES.map((m) => (
           <label key={m.mode} className="flex items-start gap-2">
-            <input type="radio" name="remote-mode" className="mt-1" checked={status.mode === m.mode} onChange={() => void handleMode(m.mode)} />
+            <input type="radio" name="remote-mode" className="mt-1" checked={status.mode === m.mode} disabled={IS_MOBILE_SHELL} onChange={() => void handleMode(m.mode)} />
             <span>
               {t(m.label as 'remote.mode')}
               {status.mode === m.mode && m.desc && <span className="text-muted-foreground block text-xs">{t(m.desc as 'remote.mode')}</span>}
             </span>
           </label>
         ))}
+        {IS_MOBILE_SHELL && <PcOnlyState />}
       </fieldset>
       {isLanModeChanged && <Banner tone="warning">{t('remote.mode.changed')}</Banner>}
       {status.mode === 'tailscale' && <TailscaleSteps status={status} setStatus={setStatus} />}
@@ -169,9 +173,11 @@ function TailscaleSteps({ status, setStatus }: { status: RemoteStatus; setStatus
             {t('remote.ts.download')}
           </Button>
         )}
-        <Button size="sm" variant="ghost" onClick={() => void window.office.refreshRemoteTailscale().then(setStatus)}>
-          {t('remote.ts.recheck')}
-        </Button>
+        {!IS_MOBILE_SHELL && (
+          <Button size="sm" variant="ghost" onClick={() => void window.office.refreshRemoteTailscale().then(setStatus)}>
+            {t('remote.ts.recheck')}
+          </Button>
+        )}
       </p>
       <ol className="flex flex-col gap-0.5">
         <li className={stepClass(!isRunning, isRunning)}>

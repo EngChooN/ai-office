@@ -72,13 +72,12 @@ function AppBody() {
       <TutorialDone />
       <WhatsNew isBusy={isTourOpen || isPickerOpen} />
       <UpdateNotice />
-      <LevelUp />
+      <LevelUp isBusy={isTourOpen || isPickerOpen} />
       {!isPhone && <QuickSecretary />}
       {/* PC 주인에게만 (휴대폰에서 QR을 다시 만들면 그 휴대폰이 끊긴다) */}
       {!IS_MOBILE_SHELL && <RemoteUpgradeNotice />}
       {!IS_MOBILE_SHELL && <RemoteLanNotice />}
-      {/* 발표장 화면은 PC 전용 (휴대폰은 회의실 기록으로 본다) */}
-      {!IS_MOBILE_SHELL && <DemoStage />}
+      <DemoStage />
     </>
   )
   if (!IS_MOBILE_SHELL) return <DesktopShell>{overlays}</DesktopShell>
@@ -156,7 +155,6 @@ function DesktopShell({ children }: { children?: React.ReactNode }) {
 /** 사무실에 직원이 없을 때: 직원 마켓으로 안내 */
 function EmptyOfficeHint() {
   const openMarket = useOffice((s) => s.openMarket)
-  if (typeof window.officePack === 'undefined') return null
   return (
     <div className="bg-accent/50 flex shrink-0 items-center gap-3 border-b px-4 py-2 text-sm">
       <StoreIcon className="size-4 shrink-0" />

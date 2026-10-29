@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { formatWon, LEVEL_REWARD_UNIT } from '@shared/economy'
@@ -48,8 +48,11 @@ function writeSeen(level: number) {
   }
 }
 
-/** 회사 레벨이 오르면 축하 — 새로 생긴 공간과 보상 자금을 보여 준다 (앱이 꺼져 있던 사이에 오른 레벨도 처음 켤 때) */
-export function LevelUp() {
+/**
+ * 회사 레벨이 오르면 축하 — 새로 생긴 공간과 보상 자금을 보여 준다 (앱이 꺼져 있던 사이에 오른 레벨도 처음 켤 때).
+ * isBusy: 코치마크·튜토리얼 선택이 떠 있으면 닫힌 뒤로 미룬다 (튜토리얼 진행 중인지는 여기서 본다)
+ */
+export function LevelUp({ isBusy }: { isBusy: boolean }) {
   const level = useOffice((s) => s.company.level)
   // 칭호는 PC가 보낸 값 — 표를 레벨 숫자로 바로 읽으면 표보다 큰 레벨(더 새 PC)에서 화면 전체가 멈춘다 (office-iso-tech.md 4-3절)
   const title = useOffice((s) => s.company.title)
@@ -57,13 +60,28 @@ export function LevelUp() {
   const isLoaded = useOffice((s) => s.isLoaded)
   const isOnboarded = useOffice((s) => s.settings.isOnboarded)
   const setView = useOffice((s) => s.setView)
+  const isTutorialOn = useOffice((s) => Boolean(s.tutorial?.scenario))
   const isWorkMode = useWorkMode()
+  /** 이번 실행에서 첫 실행 안내를 거쳤다 — 그 레벨은 새 사무실의 출발점이라 축하·개편 안내 없이 본 것으로 친다 */
+  const isFirstRunRef = useRef(false)
   const [from, setFrom] = useState<number | null>(null)
   /** 개편 첫 실행 안내: 예전 10단계 기준 레벨 (null = 보통 축하) */
   const [revampFrom, setRevampFrom] = useState<number | null>(null)
 
   useEffect(() => {
-    if (!isLoaded || !isOnboarded) return
+    if (!isLoaded) return
+    if (!isOnboarded) {
+      isFirstRunRef.current = true
+      return
+    }
+    // 첫 실행 안내·코치마크·튜토리얼이 끝날 때까지 오른 레벨은 축하 없이 넘긴다 (끝난 순간 안내창이 겹치지 않게)
+    if (isFirstRunRef.current) {
+      writeSeen(level)
+      writeRevampSeen()
+      if (!isBusy && !isTutorialOn) isFirstRunRef.current = false
+      return
+    }
+    if (isBusy || isTutorialOn) return
     // 업무 모드에선 축하 창을 띄우지 않고, 본 것으로 쳐서 모드를 끈 뒤에 몰아서 뜨지 않게 한다
     const isRevampLive = MAX_LEVEL > OLD_LEVEL_COUNT
     if (isWorkMode) {
@@ -92,7 +110,7 @@ export function LevelUp() {
       return
     }
     if (level > seen) setFrom(seen)
-  }, [level, xp, isLoaded, isOnboarded, isWorkMode])
+  }, [level, xp, isLoaded, isOnboarded, isWorkMode, isBusy, isTutorialOn])
 
   if (from === null) return null
   const gained = COMPANY_LEVELS.map((l, i) => ({ ...l, level: i + 1 })).filter((l) => l.level > from && l.level <= level)

@@ -11,9 +11,9 @@ import { AvatarEditor } from './AvatarEditor'
 import { useShallow } from 'zustand/react/shallow'
 import { useOffice, useWorkMode } from '@/store'
 import { NativeSelect } from '@/components/ui/select'
-import { ROLE_PRESETS, type AgentTemplate, type AiProvider, type ApprovalMode, type HireInput, type ModelChoice, type ProvidersStatus } from '@shared/types'
-import { Badge } from '@/components/ui/badge'
+import { ROLE_PRESETS, type AgentTemplate, type ApprovalMode, type HireInput, type ModelChoice } from '@shared/types'
 import { PROVIDER_NAME, PROVIDERS, useProviders } from './ProviderCards'
+import { engineReason, isBothReady, ProviderPicker } from './ProviderPicker'
 import { defaultProvider } from '@shared/engineModel'
 import { shortPath } from './status'
 import { StaffMarketDialog } from './StaffMarketDialog'
@@ -33,36 +33,6 @@ const approvalModes = (): { value: ApprovalMode; label: string; hint: string }[]
   { value: 'acceptEdits', label: t('hire.approval.acceptEdits'), hint: t('hire.approval.acceptEdits.hint') },
 ]
 
-
-/** 공급자 고르기 — 준비된 쪽만 누를 수 있다. Codex에는 베타 표시 */
-function ProviderPicker({ status, value, onChange }: { status: ProvidersStatus | null; value: AiProvider; onChange: (p: AiProvider) => void }) {
-  return (
-    <div className="bg-muted flex w-fit rounded-lg p-0.5">
-      {PROVIDERS.map((p) => {
-        const isReady = status?.[p].state === 'ready'
-        return (
-          <button
-            key={p}
-            type="button"
-            disabled={!isReady}
-            onClick={() => onChange(p)}
-            className={cn(
-              'flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-50',
-              value === p ? 'bg-background shadow-sm' : 'text-muted-foreground',
-            )}
-          >
-            {PROVIDER_NAME[p]}
-            {p === 'codex' && (
-              <Badge variant="outline" className="text-muted-foreground px-1 py-0 text-[10px]">
-                {t('provider.beta')}
-              </Badge>
-            )}
-          </button>
-        )
-      })}
-    </div>
-  )
-}
 
 const emptyForm = (): HireInput => ({
   name: '',
@@ -108,8 +78,8 @@ export function HireDialog() {
   const [baseLook, setBaseLook] = useState<Look>(() => randomLook())
   const [isLookEdited, setIsLookEdited] = useState(false)
   const avatar = isLookEdited ? form.avatar : encodeLook({ ...baseLook, ...roleLook(form.role) })
-  // 직원 마켓·파일 가져오기는 PC 앱에서만 (모바일 빌드에는 없다)
-  const hasPack = typeof window.officePack !== 'undefined'
+  // 직원 마켓은 어디서나(원격 v2로도), 파일 가져오기는 파일 대화상자가 있는 PC 앱에서만 (모바일 빌드에는 officePack이 없다)
+  const canImportFile = typeof window.officePack !== 'undefined'
   const isMarketOpen = useOffice((s) => s.isMarketOpen)
   const setMarketOpen = useOffice((s) => s.setMarketOpen)
   const providers = useProviders(isOpen)
@@ -194,19 +164,19 @@ export function HireDialog() {
             <DialogDescription>{t('hire.desc')}</DialogDescription>
           </DialogHeader>
 
-          {hasPack && (
-            <div className="flex flex-col gap-2 rounded-lg border p-3">
-              <div className="flex flex-wrap gap-2">
-                <Button type="button" variant="outline" size="sm" onClick={() => setMarketOpen(true)}>
-                  <StoreIcon /> {t('pack.hire.market')}
-                </Button>
+          <div className="flex flex-col gap-2 rounded-lg border p-3">
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => setMarketOpen(true)}>
+                <StoreIcon /> {t('pack.hire.market')}
+              </Button>
+              {canImportFile && (
                 <Button type="button" variant="outline" size="sm" onClick={() => void handleImport()}>
                   <FileUpIcon /> {t('pack.hire.import')}
                 </Button>
-              </div>
-              <span className="text-muted-foreground text-xs">{t('pack.hire.hint')}</span>
+              )}
             </div>
-          )}
+            {canImportFile && <span className="text-muted-foreground text-xs">{t('pack.hire.hint')}</span>}
+          </div>
 
           {/* 업무 모드에선 아바타가 이니셜 원이라 고르지 않는다 (직무 소품을 얹은 무작위 모습으로 고용) */}
           {!isWorkMode && (
@@ -322,7 +292,8 @@ export function HireDialog() {
 
           <div className="flex flex-col gap-2">
             <Label>{t('hire.provider')}</Label>
-            <ProviderPicker status={providers.status} value={provider} onChange={(p) => p !== provider && update({ provider: p, model: 'default' })} />
+            <ProviderPicker status={providers.status} value={provider} onChange={(p) => p !== provider && update({ provider: p, model: 'default' })} role={isBothReady(providers.status) ? form.role : undefined} />
+            {isBothReady(providers.status) && engineReason(form.role) && <span className="text-muted-foreground text-xs">{engineReason(form.role)}</span>}
             <span className="text-muted-foreground text-xs">
               {providers.isChecking && !providers.status
                 ? t('hire.provider.checking')

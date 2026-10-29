@@ -1,23 +1,35 @@
 import { useCallback, useEffect, useState } from 'react'
-import { CheckCircle2Icon, CircleAlertIcon, CopyIcon, ExternalLinkIcon, FolderOpenIcon, Loader2Icon, LogInIcon, RefreshCwIcon } from 'lucide-react'
+import { CheckCircle2Icon, CircleAlertIcon, CircleXIcon, CopyIcon, ExternalLinkIcon, FolderOpenIcon, Loader2Icon, LogInIcon, RefreshCwIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { IS_WINDOWS, osText } from '@/lib/platform'
 import { useOffice } from '@/store'
-import type { ClaudeStatus } from '@shared/types'
+import type { AiProvider, ClaudeStatus } from '@shared/types'
 import { Avatar } from './StaffCard'
 import { shortPath } from './status'
 import { isAnyReady, ProviderCards, RecheckButton, useProviders } from './ProviderCards'
-import { t } from '@shared/i18n'
+import { fmtDate, t, trOr, type TKey } from '@shared/i18n'
+import { type FirstTaskExample, type FirstTaskFail, useFirstTask } from './useFirstTask'
 
 // 공식 설치 명령: 맥은 터미널, 윈도우는 PowerShell에 붙여 넣는다
 const INSTALL_COMMAND = osText('curl -fsSL https://claude.ai/install.sh | bash', 'irm https://claude.ai/install.ps1 | iex')
 const DOCS_URL = 'https://docs.claude.com/en/docs/claude-code/setup'
 const WELCOME_AVATARS = [1, 13, 5, 18, 2, 22]
 // 준비 점검은 설치 → 로그인 → 작업 폴더를 한 단계씩 (막히면 그 자리의 버튼으로 해결)
-const STEPS = ['welcome', 'install', 'login', 'folder', 'ready'] as const
+// 마지막 점검(firstTask)은 직원 1명에게 예제 업무를 실제로 맡겨 본다 — 고르기·일하는 중·실패는 그 안의 상태
+const STEPS = ['welcome', 'install', 'login', 'folder', 'firstTask', 'ready'] as const
 type Step = (typeof STEPS)[number]
-const CHECK_STEPS: Step[] = ['install', 'login', 'folder']
+const CHECK_STEPS: Step[] = ['install', 'login', 'folder', 'firstTask']
+const ACCOUNT_NAME: Record<AiProvider, string> = { claude: 'Claude', codex: 'ChatGPT' }
+const FAIL_TEXT: Record<FirstTaskFail, TKey> = {
+  login: 'onboarding.firstTask.fail.login',
+  limit: 'onboarding.firstTask.fail.limit',
+  timeout: 'onboarding.firstTask.fail.timeout',
+  network: 'onboarding.firstTask.fail.network',
+  unknown: 'onboarding.firstTask.fail.unknown',
+}
+
+const fmtSeconds = (ms: number) => t('onboarding.firstTask.seconds', { n: Math.round(ms / 1000) })
 
 function StepDots({ step }: { step: Step }) {
   return (
@@ -29,11 +41,13 @@ function StepDots({ step }: { step: Step }) {
   )
 }
 
-function CheckRow({ isOk, isLoading, title, children }: { isOk: boolean; isLoading?: boolean; title: string; children?: React.ReactNode }) {
+function CheckRow({ isOk, isLoading, isError, title, children }: { isOk: boolean; isLoading?: boolean; isError?: boolean; title: string; children?: React.ReactNode }) {
   return (
-    <div className={cn('flex gap-3 rounded-xl border p-4', !isOk && !isLoading && 'border-status-waiting/60')}>
+    <div className={cn('flex gap-3 rounded-xl border p-4', isError ? 'border-destructive/60' : !isOk && !isLoading && 'border-status-waiting/60')}>
       {isLoading ? (
         <Loader2Icon className="text-muted-foreground mt-0.5 size-5 shrink-0 animate-spin" />
+      ) : isError ? (
+        <CircleXIcon className="text-destructive mt-0.5 size-5 shrink-0" />
       ) : isOk ? (
         <CheckCircle2Icon className="text-status-working mt-0.5 size-5 shrink-0" />
       ) : (
@@ -89,11 +103,18 @@ export function Onboarding({ onStartTour }: { onStartTour: () => void }) {
   // Claude가 준비돼 있으면 Codex는 묻지 않는다 (Claude만 쓰는 사용자의 화면은 그대로)
   const isClaudeOut = step === 'login' && status?.isLoggedIn === false
   const isTerminalMissing = step === 'install' && status?.hasTerminalClaude === false
-  const providers = useProviders(isClaudeOut || isTerminalMissing)
+  const providers = useProviders(isClaudeOut || isTerminalMissing || (step === 'firstTask' && !status?.isLoggedIn))
   const isProviderReady = isAnyReady(providers.status)
   // GPT(Codex)가 이미 준비됐으면 터미널용 Claude Code는 정말 선택 — 설치를 기다리지 않고 넘어간다
   const isCodexReady = providers.status?.codex.state === 'ready'
   const isInstallOk = Boolean(status?.hasTerminalClaude) || isCodexReady
+  // 첫 업무 직원: Claude 로그인이 돼 있으면 Claude, 아니면 GPT만 준비된 사용자도 막히지 않게 GPT
+  const taskProvider: AiProvider | null = status?.isLoggedIn ? 'claude' : isCodexReady ? 'codex' : null
+  const firstTask = useFirstTask()
+  const [example, setExample] = useState<FirstTaskExample | null>(null)
+  // 직원은 온보딩을 마치면 내보내므로 보고 전문은 직원 화면이 아니라 여기서 펼쳐 본다
+  const [isReportOpen, setIsReportOpen] = useState(false)
+  const pickedExample = example ?? (defaultCwd ? 'folder' : 'ideas')
 
   const check = useCallback(async () => {
     setIsChecking(true)
@@ -102,8 +123,13 @@ export function Onboarding({ onStartTour }: { onStartTour: () => void }) {
   }, [])
 
   useEffect(() => {
-    if ((step === 'install' || step === 'login') && !status) void check()
+    if ((step === 'install' || step === 'login' || step === 'firstTask') && !status) void check()
   }, [step, status, check])
+
+  // 첫 업무가 끝나면 완료 화면(ready)으로 넘어간다
+  useEffect(() => {
+    if (firstTask.phase === 'done') setStep('ready')
+  }, [firstTask.phase])
 
   // 설치 명령을 붙여 넣거나 로그인 창을 띄운 뒤에는 될 때까지 조용히 다시 확인한다
   const isWaitingFix = (isTerminalMissing && !isCodexReady) || (step === 'login' && status?.isLoggedIn === false)
@@ -115,7 +141,10 @@ export function Onboarding({ onStartTour }: { onStartTour: () => void }) {
 
   if (!isLoaded || isOnboarded) return null
 
-  const finish = () => void window.office.updateSettings({ isOnboarded: true })
+  const finish = () => {
+    firstTask.dismiss()
+    void window.office.updateSettings({ isOnboarded: true })
+  }
   const handleMarket = () => {
     finish()
     useOffice.getState().openMarket()
@@ -132,6 +161,22 @@ export function Onboarding({ onStartTour }: { onStartTour: () => void }) {
     finish()
     onStartTour()
   }
+  const handleRunTask = () => {
+    if (taskProvider) void firstTask.run(pickedExample, taskProvider, defaultCwd)
+  }
+  // 첫 업무를 건너뛰면 사용량을 쓰지 않는 연습 튜토리얼로 안내한다
+  const handleSkipTask = () => {
+    finish()
+    void window.office.tutorialStart('task')
+  }
+  const handleRecheckLogin = () => {
+    firstTask.reset()
+    setStatus(null)
+    setStep('login')
+  }
+  const failText = (fail: FirstTaskFail) =>
+    fail === 'limit' && firstTask.limitAt ? t('onboarding.firstTask.fail.limitAt', { time: fmtDate(firstTask.limitAt, { timeStyle: 'short' }) }) : t(FAIL_TEXT[fail])
+  const staffName = firstTask.staff?.name ?? t('onboarding.firstTask.staffName')
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-6">
@@ -273,21 +318,144 @@ export function Onboarding({ onStartTour }: { onStartTour: () => void }) {
           </>
         )}
 
-        {step === 'ready' && (
+        {step === 'firstTask' && !taskProvider && (
           <>
-            <div className="flex flex-col gap-2 text-center">
-              <span className="text-5xl">🏢</span>
-              <h1 className="text-2xl font-bold">{t('onboarding.ready.title')}</h1>
-              <p className="text-muted-foreground">{t('onboarding.ready.desc')}</p>
+            <CheckHeader step={step} title={t('onboarding.firstTask.title')} desc={t('onboarding.firstTask.desc')} />
+            <CheckRow isOk={false} isLoading={isChecking || providers.isChecking} title={t('onboarding.firstTask.unavailable')}>
+              <span className="text-muted-foreground text-xs">{t('onboarding.firstTask.unavailableDesc')}</span>
+            </CheckRow>
+            <CheckFooter step={step} isOk={false} onMove={setStep} />
+          </>
+        )}
+
+        {step === 'firstTask' && taskProvider && firstTask.phase === 'pick' && (
+          <>
+            <CheckHeader step={step} title={t('onboarding.firstTask.title')} desc={t('onboarding.firstTask.desc')} />
+            <div className="text-muted-foreground text-xs">{t('onboarding.firstTask.staffLine', { name: staffName, role: t('onboarding.firstTask.staffRole') })}</div>
+            <div className="flex flex-col gap-2">
+              {(['folder', 'ideas'] as const).map((ex) => (
+                <button
+                  key={ex}
+                  type="button"
+                  onClick={() => setExample(ex)}
+                  disabled={ex === 'folder' && !defaultCwd}
+                  className={cn('flex flex-col gap-1 rounded-xl border p-4 text-left text-sm disabled:opacity-50', pickedExample === ex && 'border-primary')}
+                >
+                  <span className="font-semibold">
+                    {ex === 'folder' ? t('onboarding.firstTask.taskFolder') : t('onboarding.firstTask.taskIdeas')}
+                    {ex === 'folder' && <span className="text-primary ml-2 text-xs">{t('onboarding.firstTask.recommended')}</span>}
+                  </span>
+                  <span className="text-muted-foreground text-xs">{ex === 'folder' ? t('onboarding.firstTask.taskFolderNote') : t('onboarding.firstTask.taskIdeasNote')}</span>
+                </button>
+              ))}
             </div>
+            <p className="text-muted-foreground text-xs">{t('onboarding.firstTask.costNote', { provider: ACCOUNT_NAME[taskProvider] })}</p>
             <div className="flex items-center justify-between">
               <StepDots step={step} />
               <div className="flex gap-2">
-                {typeof window.officePack !== 'undefined' && (
-                  <Button variant="outline" onClick={handleMarket}>
-                    {t('market.bring')}
+                <Button variant="ghost" onClick={() => setStep('folder')}>
+                  {t('onboarding.prev')}
+                </Button>
+                <Button variant="outline" onClick={handleSkipTask}>
+                  {t('onboarding.firstTask.skip')}
+                </Button>
+                <Button onClick={handleRunTask}>{t('onboarding.firstTask.run')}</Button>
+              </div>
+            </div>
+          </>
+        )}
+
+        {step === 'firstTask' && firstTask.phase === 'running' && (
+          <>
+            <CheckHeader step={step} title={t('onboarding.firstTask.working', { name: staffName })} desc={t('onboarding.firstTask.workingDesc')} />
+            <div className="bg-muted h-1.5 overflow-hidden rounded-full">
+              <div className="bg-primary h-full w-full animate-pulse" />
+            </div>
+            <div className="text-muted-foreground flex flex-col gap-0.5 text-xs">
+              <span className="tabular-nums">{fmtSeconds(firstTask.elapsedMs)}</span>
+              {firstTask.progress.map((line, i) => (
+                <span key={i} className="truncate">
+                  {line}
+                </span>
+              ))}
+            </div>
+            {/* 예제는 결재 0건이 목표지만, 뜨면 결재함으로 보내지 않고 여기서 바로 고른다 */}
+            {firstTask.approvals.map((a) => (
+              <CheckRow key={a.id} isOk={false} title={trOr(a.summaryI18n, a.summary)}>
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={() => void window.office.decide(a.id, true)}>
+                    {t('onboarding.firstTask.allow')}
                   </Button>
-                )}
+                  <Button size="sm" variant="outline" onClick={() => void window.office.decide(a.id, false)}>
+                    {t('onboarding.firstTask.deny')}
+                  </Button>
+                </div>
+              </CheckRow>
+            ))}
+            <div className="flex items-center justify-between">
+              <StepDots step={step} />
+              <Button variant="outline" onClick={firstTask.stop}>
+                {t('onboarding.firstTask.stop')}
+              </Button>
+            </div>
+          </>
+        )}
+
+        {step === 'firstTask' && firstTask.phase === 'failed' && firstTask.fail && (
+          <>
+            <CheckHeader step={step} title={t('onboarding.firstTask.failTitle')} desc={t('onboarding.firstTask.failDesc')} />
+            <CheckRow isOk={false} isError title={failText(firstTask.fail)} />
+            <div className="flex items-center justify-between">
+              <StepDots step={step} />
+              <div className="flex gap-2">
+                <Button variant="ghost" onClick={handleSkipTask}>
+                  {t('onboarding.firstTask.skip')}
+                </Button>
+                <Button variant={firstTask.fail === 'login' ? 'default' : 'outline'} onClick={handleRecheckLogin}>
+                  {t('onboarding.firstTask.recheckLogin')}
+                </Button>
+                {firstTask.fail !== 'login' && firstTask.fail !== 'limit' && <Button onClick={handleRunTask}>{t('onboarding.firstTask.retry')}</Button>}
+              </div>
+            </div>
+          </>
+        )}
+
+        {step === 'ready' && firstTask.phase === 'done' && (
+          <>
+            <div className="flex flex-col gap-2 text-center">
+              <span className="text-5xl">🎉</span>
+              <h1 className="text-2xl font-bold">{t('onboarding.firstTask.done')}</h1>
+              <p className="text-muted-foreground">{t('onboarding.firstTask.doneDesc', { name: staffName })}</p>
+            </div>
+            <div className="bg-card flex flex-col gap-2 rounded-xl border p-4 text-sm">
+              <p className={cn('whitespace-pre-wrap', isReportOpen ? 'max-h-80 overflow-y-auto' : 'line-clamp-6')}>{firstTask.report}</p>
+              <div className="text-muted-foreground flex items-center justify-between gap-2 text-xs">
+                <span className="tabular-nums">{t('onboarding.firstTask.meta', { time: fmtSeconds(firstTask.tookMs), n: firstTask.approvalCount })}</span>
+                <button type="button" className="text-primary shrink-0 hover:underline" onClick={() => setIsReportOpen((v) => !v)}>
+                  {isReportOpen ? t('onboarding.firstTask.collapse') : t('onboarding.firstTask.viewFull')}
+                </button>
+              </div>
+            </div>
+            <p className="text-muted-foreground text-center text-xs">{t('onboarding.firstTask.keepNote', { name: staffName })}</p>
+          </>
+        )}
+
+        {step === 'ready' && firstTask.phase !== 'done' && (
+          <div className="flex flex-col gap-2 text-center">
+            <span className="text-5xl">🏢</span>
+            <h1 className="text-2xl font-bold">{t('onboarding.ready.title')}</h1>
+            <p className="text-muted-foreground">{t('onboarding.ready.desc')}</p>
+          </div>
+        )}
+
+        {step === 'ready' && (
+          <>
+            <div className="flex items-center justify-between">
+              <StepDots step={step} />
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={handleMarket}>
+                  {t('market.bring')}
+                </Button>
                 <Button variant="ghost" onClick={finish}>
                   {t('onboarding.startNow')}
                 </Button>

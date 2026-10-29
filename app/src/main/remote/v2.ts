@@ -67,6 +67,8 @@ export const V2_METHODS: Record<OfficeMethod, MethodSpec> = {
   tutorialAct: R('o'),
   tutorialCleanup: R(),
   hire: S('o'),
+  // 마켓 채용: 작업 폴더(기본 폴더)·승인(묻기)·장비(없음)를 PC가 정하고 엔진은 claude·codex만 받는다 — 원격 hire보다 좁다
+  hireMarket: S('s s?'),
   fire: R('s'),
   updateStaff: S('s o'),
   instruct: R('s s a?', [2]),
@@ -75,6 +77,8 @@ export const V2_METHODS: Record<OfficeMethod, MethodSpec> = {
   openAttachment: P('download_file', 's'),
   interrupt: R('s s? a?', [2]),
   resumeInTerminal: P('open_on_pc', 's'),
+  // 엔진 바꾸기: 로그인 상태·쉬는 중인지는 PC(office.changeEngine)가 다시 확인하고, 엔진 값도 claude·codex만 받는다
+  changeEngine: R('s s'),
   decide: R('s b'),
   getRecord: R('s'),
   listAgentTemplates: S('s'),
@@ -226,7 +230,7 @@ export const V2_FIELDS: Partial<Record<OfficeMethod, Record<number, string[]>>> 
   secretaryRun: { 1: fieldsOf('secretaryRun', 1, { fromStep: true, edits: true, revised: true, excluded: true }) },
   updateSettings: {
     // 화면 캡처 허용은 PC에서만 (폰에서 대표 화면 캡처 권한을 켜지 못하게)
-    0: fieldsExcept('updateSettings', 0, ['isStaffCaptureOn'], { monthlyBudgetUsd: true, tokenBudget: true, theme: true, dayNight: true, plants: true, isChatterOn: true, workHours: true, layout: true, isTrayOn: true, launchAtLogin: true, isOnboarded: true, defaultCwd: true, isWorkMode: true, isFullAccessNoticeSeen: true, isProviderBannerSeen: true, internalAi: true, language: true, demoDay: true }),
+    0: fieldsExcept('updateSettings', 0, ['isStaffCaptureOn'], { monthlyBudgetUsd: true, tokenBudget: true, theme: true, dayNight: true, plants: true, isChatterOn: true, workHours: true, layout: true, isTrayOn: true, launchAtLogin: true, isOnboarded: true, defaultCwd: true, isWorkMode: true, isFullAccessNoticeSeen: true, isProviderBannerSeen: true, internalAi: true, language: true, demoDay: true, isSecretaryWebOn: true }),
   },
 }
 

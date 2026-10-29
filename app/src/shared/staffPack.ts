@@ -1,6 +1,8 @@
 import { READ_ONLY_BASH, RISKY_BASH } from './bashPolicy.ts'
 import { AVATAR_LIMIT, canonicalAvatar } from './look.ts'
 import { ROLE_PRESETS, type AiProvider, type ApprovalMode, type Equipment, type ModelChoice } from './types.ts'
+import { t } from './i18n/index.ts'
+import type { TKey } from './i18n/dict/index.ts'
 
 // 직원·랩 묶음 파일 (내보내기/가져오기, 기본 직원 마켓). 순수 함수만 둔다 — 파일 입출력·채용은 main/staffPack*.ts
 // 파일에는 작업 폴더·참고 문서 같은 이 컴퓨터의 경로를 넣지 않고, 가져올 때 경로 필드가 있으면 통째로 거절한다
@@ -100,9 +102,8 @@ export interface PackMarketItem {
 }
 
 /** PC 앱 전용 채널(pack:*) — 원격 v2 목록과 무관하다. 취소하면 null */
+/** 파일이 필요한 것만 (PC 전용 — 모바일 빌드에는 없다). 마켓 채용은 파일이 없어 OfficeApi.hireMarket으로 */
 export interface OfficePackApi {
-  market(): Promise<PackMarketItem[]>
-  hireMarket(id: string): Promise<PackResult>
   importFile(): Promise<PackResult | null>
   exportStaff(ids: string[]): Promise<PackResult | null>
   exportLab(labId: string): Promise<PackResult | null>
@@ -406,3 +407,8 @@ export const STAFF_MARKET: readonly MarketTemplate[] = [
     systemPrompt: '당신은 리서처입니다. 자료를 찾아 읽고 요약합니다. 출처를 함께 적고, 확실하지 않은 내용은 확인 필요로 표시합니다.',
   },
 ]
+
+/** 마켓 목록 (지금 언어의 이름·설명) — 순수 데이터라 PC를 거치지 않고 화면에서 바로 만든다 */
+export function marketItems(): PackMarketItem[] {
+  return STAFF_MARKET.map((m) => ({ id: m.id, name: t(`pack.market.${m.id}.name` as TKey), role: m.role, desc: t(`pack.market.${m.id}.desc` as TKey) }))
+}

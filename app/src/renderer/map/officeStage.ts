@@ -66,6 +66,9 @@ export interface MiniHandle {
   dispose(): void
 }
 
+/** 장면 내보내기 녹화 대상: 지도를 그린 직후(같은 프레임) 게임 캔버스와 지도 영역(기기 px)을 받는다 */
+export type MapRecorder = (canvas: HTMLCanvasElement, map: { w: number; h: number }) => void
+
 interface View {
   staffId: string
   canvas: HTMLCanvasElement
@@ -96,6 +99,7 @@ class OfficeStage {
   private mapObserver: ResizeObserver | null = null
   private mapSize = { w: 0, h: 0 }
   private views = new Set<View>()
+  private recorders = new Set<MapRecorder>()
   private floorUsedAt = new Map<number, number>()
   private assignTimer = 0
   private ready: Promise<void> | null = null
@@ -291,6 +295,22 @@ class OfficeStage {
     if (this.game && this.parking) this.parking.append(this.game.canvas)
     this.layout()
     this.assign()
+  }
+
+  /** 지도가 열려 있고 그릴 수 있는지 (장면 내보내기 버튼이 본다) */
+  get isMapLive() {
+    return Boolean(this.mapHost && this.game && this.mainScene())
+  }
+
+  /**
+   * 장면 내보내기: 지도를 그릴 때마다 recorder를 부른다 (WebGL 화면이 지워지기 전이라 바로 읽을 수 있다).
+   * 미니 뷰 칸은 지도 영역 밖이라 map 크기 안에서만 읽으면 들어가지 않는다. 지도가 닫혀 있는 동안은 부르지 않는다
+   */
+  addRecorder(recorder: MapRecorder): () => void {
+    this.recorders.add(recorder)
+    return () => {
+      this.recorders.delete(recorder)
+    }
   }
 
   // ── 미니 뷰 ───────────────────────────────────────────
@@ -524,6 +544,10 @@ class OfficeStage {
 
   /** 방금 그린 미니 뷰 칸을 각 창으로 복사한다 (WebGL 화면이 지워지기 전, 같은 프레임 안에서) */
   private afterRender() {
+    if (this.recorders.size > 0 && this.mapHost && this.game) {
+      const { mapW, mapH } = this.canvasSize()
+      for (const r of this.recorders) r(this.game.canvas, { w: mapW, h: mapH })
+    }
     const due = [...this.views].filter((v) => v.isDue)
     if (due.length === 0 || !this.game) return
     const now = performance.now()

@@ -38,7 +38,18 @@ export interface OneShotOpts {
   /** 모델 호출 중간의 누적 비용 확인 — true를 돌려주면 턴을 끊는다 */
   shouldStop?: (e: { toolCalls: number; costUsd: number }) => boolean
   signal?: AbortSignal
+  /** Codex 웹 검색: true면 실시간 검색을 켜고, false면 끈다 (없으면 Codex 기본값) */
+  webSearch?: boolean
+  /** true면 쉘 도구(shell·unified_exec)와 플러그인을 아예 빼고 띄운다 (비서 세션) */
+  noShell?: boolean
 }
+
+/** 웹 검색 설정 인자. 끌 때는 내장 앱 도구(codex_apps)의 web_run으로도 검색되므로 features.apps도 함께 끈다 (codex.ts 직원 세션과 같다) */
+const webSearchArgs = (on: boolean | undefined) => (on === undefined ? [] : on ? ['-c', 'web_search="live"'] : ['-c', 'web_search="disabled"', '-c', 'features.apps=false'])
+
+/** 쉘 도구를 끄는 설정 인자. read-only 샌드박스여도 읽기 명령(echo·ls)은 승인 없이 돌기 때문에 도구 자체를 뺀다.
+ * 사용자 Codex 플러그인(컴퓨터 사용 cua_repl 등)도 터미널을 대신 조작하려 들어서 함께 끈다 (실제 Codex로 확인) */
+const noShellArgs = (on: boolean | undefined) => (on ? ['-c', 'features.shell_tool=false', '-c', 'features.unified_exec=false', '-c', 'features.plugins=false'] : [])
 
 /** 턴 하나를 돌리고 끝나면 프로세스를 닫는다. 실패하면 던진다 (호출한 쪽이 폴백) */
 export function runCodexOneShot(o: OneShotOpts): Promise<void> {
@@ -48,7 +59,7 @@ export function runCodexOneShot(o: OneShotOpts): Promise<void> {
     const mcp = codexMcpConfig(o.mcpServers ?? {})
     let child: ChildProcessByStdio<Writable, Readable, null>
     try {
-      child = spawn(binary, mcp.args, { cwd: o.cwd, stdio: ['pipe', 'pipe', 'ignore'], windowsHide: true, env: { ...process.env, ...mcp.env, [HIRED_ENV]: '1' } })
+      child = spawn(binary, [...mcp.args, ...webSearchArgs(o.webSearch), ...noShellArgs(o.noShell)], { cwd: o.cwd, stdio: ['pipe', 'pipe', 'ignore'], windowsHide: true, env: { ...process.env, ...mcp.env, [HIRED_ENV]: '1' } })
     } catch (e) {
       return reject(e)
     }
@@ -201,6 +212,8 @@ export class CodexBackend implements AiBackend {
       tier: o.tier,
       mcpServers: { [o.toolsName]: o.tools },
       allowTool: (name) => name.startsWith(prefix),
+      webSearch: o.webSearch,
+      noShell: true,
       signal: ac.signal,
       onToolStart: (name, input) => push({ type: 'tool', name, input }),
       shouldStop: ({ toolCalls, costUsd }) => {

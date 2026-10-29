@@ -52,6 +52,12 @@ export default {
     ja: 'PCのAI Officeをアップデートすると、スマートフォンからも家具を置けます。',
     zh: '更新电脑上的 AI Office 后，手机上也可以摆放家具。',
   },
+  'shell.pcUpdateFeature': {
+    ko: 'PC의 AI Office를 업데이트하면 휴대폰에서도 쓸 수 있어요.',
+    en: 'Update AI Office on your PC to use this from your phone too.',
+    ja: 'PCのAI Officeをアップデートすると、スマートフォンからも使えます。',
+    zh: '更新电脑上的 AI Office 后，手机上也可以使用。',
+  },
   'attach.attach': { ko: '파일 첨부', en: 'Attach file', ja: 'ファイルを添付', zh: '添加附件' },
   'attach.attachHint': { ko: '파일 첨부 (붙여넣기·끌어다 놓기도 돼요)', en: 'Attach a file (you can also paste or drag and drop)', ja: 'ファイルを添付（貼り付け・ドラッグ＆ドロップも可）', zh: '添加附件（也可粘贴或拖放）' },
   'attach.pastedImage': { ko: '붙여넣은 이미지', en: 'Pasted image', ja: '貼り付けた画像', zh: '粘贴的图片' },

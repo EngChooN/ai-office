@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import { NotOnWindows } from '@/components/not-on-windows'
+import { IS_MOBILE_SHELL } from '@/shell'
 import type { Staff, WorkChanges, WorkRevertInfo } from '@shared/types'
 import { t, type TKey } from '@shared/i18n'
 import { shortPath } from './status'
@@ -45,10 +46,13 @@ export function ReviewTab({ staff }: { staff: Staff }) {
   const handleRevert = async () => {
     setIsConfirming(false)
     setIsBusy(true)
-    const r = await window.office.revertWork(staff.id)
-    setOutput(`${r.ok ? '✅' : '⚠️'} ${r.output}`)
-    setIsBusy(false)
-    load()
+    try {
+      const r = await window.office.revertWork(staff.id)
+      setOutput(`${r.ok ? '✅' : '⚠️'} ${r.output}`)
+    } finally {
+      setIsBusy(false)
+      load()
+    }
   }
   const handleSuggest = async () => {
     setIsBusy(true)
@@ -97,9 +101,12 @@ export function ReviewTab({ staff }: { staff: Staff }) {
               <>
                 <div className="flex items-center gap-2">
                   <span className="min-w-0 flex-1">{t('review.revert.summary', { n: revert.files.length, add: revert.files.reduce((a, f) => a + f.additions, 0), del: revert.files.reduce((a, f) => a + f.deletions, 0) })}</span>
-                  <Button size="sm" variant="outline" onClick={() => setIsConfirming(true)} disabled={isBusy || revert.files.length === 0 || staff.status === 'working' || staff.status === 'waiting'}>
-                    <Undo2Icon /> {t('review.revert.button')}
-                  </Button>
+                  {/* 되돌리기는 PC 파일을 git으로 바꿔서 휴대폰에서는 하지 않는다 (원격 v2 pc_only) */}
+                  {!IS_MOBILE_SHELL && (
+                    <Button size="sm" variant="outline" onClick={() => setIsConfirming(true)} disabled={isBusy || revert.files.length === 0 || staff.status === 'working' || staff.status === 'waiting'}>
+                      <Undo2Icon /> {t('review.revert.button')}
+                    </Button>
+                  )}
                 </div>
                 {revert.skipped.length > 0 && <p className="text-muted-foreground">{t('review.revert.skipped', { n: revert.skipped.length })}</p>}
               </>

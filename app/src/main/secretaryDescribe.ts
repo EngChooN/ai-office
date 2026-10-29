@@ -15,7 +15,7 @@ const ROT = ['↙', '↖', '↗', '↘']
 export type NameOf = (id: string) => string | null
 
 /** 사전 키 이름: secretary.setting.<키> */
-const SETTING_KEYS = new Set(['monthlyBudgetUsd', 'tokenBudget', 'theme', 'dayNight', 'plants', 'isChatterOn', 'workHours', 'layout', 'isTrayOn', 'isOnboarded', 'isWorkMode', 'isFullAccessNoticeSeen', 'isProviderBannerSeen'])
+const SETTING_KEYS = new Set(['monthlyBudgetUsd', 'tokenBudget', 'theme', 'dayNight', 'plants', 'isChatterOn', 'workHours', 'layout', 'isTrayOn', 'isOnboarded', 'isWorkMode', 'isFullAccessNoticeSeen', 'isProviderBannerSeen', 'isSecretaryWebOn'])
 /** 이 설정은 바꿔도 꾸미기라 보통 */
 const COSMETIC_SETTINGS = new Set(['theme', 'dayNight', 'plants', 'isChatterOn', 'layout'])
 
@@ -107,6 +107,9 @@ export function describeLines(method: OfficeMethod, args: unknown[], nameOf: Nam
     }
     case 'updateSettings':
       lines.push(...objectLines(obj(a0), nameOf, settingLabel))
+      break
+    case 'changeEngine':
+      lines.push(L('secretary.d.target', { target: id(a0) }), kv(fieldLabel('provider'), valueText('provider', a1, nameOf)), kv(fieldLabel('model'), L('secretary.v.engineDefaultModel')), L('secretary.d.engineNewChat'))
       break
     case 'createTeam':
       lines.push(kv(fieldLabel('name'), quote(a0)), kv(fieldLabel('color'), String(a1)))
@@ -210,6 +213,7 @@ export function stepRisk(method: OfficeMethod, args: unknown[]): { risk: Secreta
   }
   if (method === 'setAutoApprove' && o0.mode !== 'off') up('자동결재를 켜면 그동안 결재를 대표 대신 승인해요')
   if (method === 'updateSettings' && Object.keys(o0).some((k) => !COSMETIC_SETTINGS.has(k))) up('예산·업무 모드 같은 설정이 바뀌어요')
+  if (method === 'changeEngine') up('이전 대화 맥락이 이어지지 않고 새로 시작돼요')
   if (method === 'setEquipment') up('직원이 쓸 수 있는 도구·결재 없이 쓰는 도구가 바뀌어요')
   // 자동결재가 기다리게 한 명령도 이 카드 한 번으로 승인되므로 (Round 2 B3)
   if (method === 'decide' && a1 === true) up('직원이 기다리는 결재를 대표 대신 승인해요 — 승인할 명령을 확인하세요')

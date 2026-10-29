@@ -104,4 +104,8 @@ export default {
     ja: '準備済みのAIアカウントがあるので次に進めます。もう一方は設定からいつでもつなげます。',
     zh: '已有可用的 AI 账号，可以继续。另一个随时可在设置中连接。',
   },
+  // ── 휴대폰에서 보는 PC 전용 설정 ──
+  'pcOnly.on': { ko: '켜져 있어요', en: 'On', ja: 'オンです', zh: '已开启' },
+  'pcOnly.off': { ko: '꺼져 있어요', en: 'Off', ja: 'オフです', zh: '已关闭' },
+  'pcOnly.hint': { ko: 'PC에서 바꿀 수 있어요.', en: 'You can change this on the PC.', ja: 'PC で変更できます。', zh: '可在电脑上更改。' },
 } satisfies Record<string, Entry>

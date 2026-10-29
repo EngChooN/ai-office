@@ -12,9 +12,10 @@ var DOWNLOADS = {
   win: 'https://github.com/EngChooN/ai-office/releases/latest/download/AI-Office-win-x64.zip',
   android: 'https://github.com/EngChooN/ai-office/releases/latest/download/AI-Office-android.apk',
   github: 'https://github.com/EngChooN/ai-office',
+  feedback: 'https://github.com/EngChooN/ai-office/issues/new', // 앱 설정의 [피드백 보내기]와 같은 주소
   changelog: '',  // 변경 기록 페이지 주소 (비우면 GitHub 저장소의 CHANGELOG.md)
   license: 'MIT', // 라이선스 이름
-  version: '0.14.2', // 기본값. 페이지가 열리면 GitHub 최신 Release의 tag_name으로 바뀜 (실패·시간 초과면 이 값)
+  version: '0.14.3', // 기본값. 페이지가 열리면 GitHub 최신 Release의 tag_name으로 바뀜 (실패·시간 초과면 이 값)
   latestApi: 'https://api.github.com/repos/EngChooN/ai-office/releases/latest'
 };
 </script>
@@ -23,6 +24,15 @@ var DOWNLOADS = {
 <meta name="description" content="Claude와 GPT 직원을 함께 뽑아 일을 맡기고, 결재하고, 보고받는 무료 오픈소스 데스크톱 앱. 명령어 창도, 어려운 설정도 필요 없습니다.">
 <meta name="theme-color" content="#0b0c10">
 <link rel="canonical" href="https://engchoon.github.io/ai-office/">
+<link rel="alternate" hreflang="ko" href="https://engchoon.github.io/ai-office/">
+<link rel="alternate" hreflang="en" href="https://engchoon.github.io/ai-office/en/">
+<link rel="alternate" hreflang="ja" href="https://engchoon.github.io/ai-office/ja/">
+<link rel="alternate" hreflang="zh-CN" href="https://engchoon.github.io/ai-office/zh/">
+<link rel="alternate" hreflang="x-default" href="https://engchoon.github.io/ai-office/">
+<!-- 검색엔진 소유 확인: 대표님이 서치 콘솔·서치어드바이저에서 받은 값을 content에 넣고 주석을 푼다 (docs/seo.md)
+<meta name="google-site-verification" content="">
+<meta name="naver-site-verification" content="">
+-->
 <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
 <link rel="icon" type="image/png" sizes="512x512" href="assets/icon.png">
 <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
@@ -45,12 +55,12 @@ var DOWNLOADS = {
 <meta name="twitter:description" content="Claude와 GPT 직원을 함께 뽑아 일을 맡기고, 결재하고, 보고받는 무료 오픈소스 데스크톱 앱. 명령어 창도, 어려운 설정도 필요 없습니다.">
 <meta name="twitter:image" content="https://engchoon.github.io/ai-office/assets/og.png?v=0.14.0">
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"SoftwareApplication","name":"AI Office","url":"https://engchoon.github.io/ai-office/","image":"https://engchoon.github.io/ai-office/assets/og.png?v=0.14.0","applicationCategory":"BusinessApplication","operatingSystem":"macOS, Windows, Android","softwareVersion":"0.14.0","license":"https://opensource.org/licenses/MIT","downloadUrl":"https://github.com/EngChooN/ai-office/releases/latest","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"inLanguage":["ko","en","ja","zh"],"description":"Claude와 GPT 직원을 함께 뽑아 일을 맡기고, 결재하고, 보고받는 무료 오픈소스 데스크톱 앱."}
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"AI Office","url":"https://engchoon.github.io/ai-office/","image":"https://engchoon.github.io/ai-office/assets/og.png?v=0.14.0","applicationCategory":"BusinessApplication","operatingSystem":"macOS, Windows, Android","softwareVersion":"0.14.3","license":"https://opensource.org/licenses/MIT","downloadUrl":"https://github.com/EngChooN/ai-office/releases/latest","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"USD","url":"https://github.com/EngChooN/ai-office/releases/latest"},"screenshot":["https://engchoon.github.io/ai-office/assets/screens/ko/office.webp","https://engchoon.github.io/ai-office/assets/screens/ko/staff-mix.webp","https://engchoon.github.io/ai-office/assets/screens/ko/chat.webp","https://engchoon.github.io/ai-office/assets/screens/ko/inbox.webp","https://engchoon.github.io/ai-office/assets/screens/ko/board.webp"],"inLanguage":"ko","description":"Claude와 GPT 직원을 함께 뽑아 일을 맡기고, 결재하고, 보고받는 무료 오픈소스 데스크톱 앱."}
 </script>
 <style>
 :root{
   --bg:#0b0c10; --panel:#12141b; --panel2:#181b24; --line:#232733; --line2:#2e3342;
-  --fg:#eef0f5; --muted:#9097a8; --dim:#636a7b; --accent:#7c9cff; --accent2:#5eead4;
+  --fg:#eef0f5; --muted:#9097a8; --dim:#636a7b; --accent:#7c9cff; --accent2:#5eead4; --beta:#fbbf24;
   --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial;
 }
 *{box-sizing:border-box;margin:0;padding:0}
@@ -100,10 +110,24 @@ h2{font-size:clamp(26px,3.6vw,40px);line-height:1.2;font-weight:700;letter-spaci
 .badge{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line2);border-radius:99px;padding:5px 12px 5px 6px;font-size:13px;color:var(--muted);margin-bottom:28px}
 .badge b{background:rgba(124,156,255,.14);color:var(--accent);font-weight:600;border-radius:99px;padding:1px 8px}
 .hero .lead{font-size:clamp(17px,2vw,20px);color:var(--muted);max-width:660px;margin:22px auto 0}
-.cta{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-top:36px}
-.also{margin-top:16px;font-size:13.5px;color:var(--dim)}
-.also a{color:var(--muted);text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--line2)}
-.also a:hover{color:var(--fg)}
+.hero h1{font-size:clamp(34px,5.6vw,60px);line-height:1.12;max-width:880px}
+.cta{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-top:32px;min-height:64px}
+.btn.hero{height:60px;padding:0 30px;gap:12px;border-radius:14px;font-size:18px;font-weight:700}
+.btn.hero svg{width:22px;height:22px}
+.btn.hero small{font-size:14px}
+.cta-note{margin-top:10px;font-size:13px;color:var(--dim)}
+#also a.off{color:var(--dim);text-decoration:none;cursor:default}
+/* 다른 플랫폼 │ BETA 알려진 제한 사항 │ 피드백 — PC 한 줄, 휴대폰 두 줄 */
+.meta{margin-top:18px;min-height:24px;display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:8px 14px;font-size:13.5px;color:var(--muted)}
+.meta a{color:var(--muted);text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--line2)}
+.meta a:hover{color:var(--fg)}
+.meta .sep{width:1px;height:14px;background:var(--line2)}
+.meta .brk{display:none}
+.beta{font-size:11.5px;font-weight:700;letter-spacing:.06em;color:var(--beta);background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.35);border-radius:6px;padding:1px 7px}
+/* 알려진 제한 사항 */
+.limits{max-width:820px;list-style:none;display:grid;gap:12px}
+.limits li{display:flex;gap:12px;align-items:baseline;color:var(--muted);font-size:15px}
+.limits li:before{content:"";flex:none;width:6px;height:6px;border-radius:50%;background:var(--beta);transform:translateY(-2px)}
 .shot{margin:72px auto 0;max-width:1100px;border:1px solid var(--line2);border-radius:14px;overflow:hidden;background:var(--panel);box-shadow:0 40px 120px -20px rgba(124,156,255,.16),0 20px 60px rgba(0,0,0,.5)}
 .shot img{width:100%;height:auto;aspect-ratio:1360/860;object-fit:contain}
 
@@ -182,12 +206,12 @@ footer .links .off{color:var(--dim);pointer-events:none}
 
 /* 쓰는 순서 */
 .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;counter-reset:step}
-.step{position:relative;border:1px solid var(--line2);border-radius:14px;padding:28px 26px;background:linear-gradient(180deg,var(--panel2),var(--panel))}
+.step{position:relative;display:flex;flex-direction:column;align-items:flex-start;border:1px solid var(--line2);border-radius:14px;padding:28px 26px;background:linear-gradient(180deg,var(--panel2),var(--panel))}
 .step:before{counter-increment:step;content:counter(step);display:inline-grid;place-items:center;width:32px;height:32px;border-radius:10px;margin-bottom:18px;
   font-weight:700;font-size:15px;color:#0b0c10;background:linear-gradient(135deg,var(--accent),var(--accent2))}
 .step h3{font-size:18px;font-weight:600;margin-bottom:8px}
-.step p{font-size:15px;color:var(--muted)}
-.step .say{margin-top:16px;font-size:13.5px;color:var(--fg);background:rgba(124,156,255,.1);border:1px solid rgba(124,156,255,.25);border-radius:10px 10px 10px 2px;padding:9px 12px}
+.step p{font-size:15px;color:var(--muted);margin-bottom:16px}
+.step .say{align-self:stretch;margin-top:auto;font-size:13.5px;color:var(--fg);background:rgba(124,156,255,.1);border:1px solid rgba(124,156,255,.25);border-radius:10px 10px 10px 2px;padding:9px 12px}
 .step:not(:last-child):after{content:"";position:absolute;top:44px;right:-13px;width:10px;height:10px;border-top:2px solid var(--line2);border-right:2px solid var(--line2);transform:rotate(45deg)}
 
 /* 화면·다운로드 */
@@ -254,7 +278,13 @@ figure:hover{transform:translateY(-4px);border-color:#454c60}
   .wrap{padding:0 18px}
   .hero{padding-top:64px}
   .hero .appicon{width:68px;height:68px}
-  html:lang(ja) h1{font-size:30px}
+  .hero h1{font-size:29px}
+  .badge{font-size:12px}
+  .btn.hero{height:56px;font-size:17px}
+  .btn.hero small{display:none}
+  .meta{gap:8px 10px;font-size:13px}
+  .meta .sep.pc{display:none}
+  .meta .brk{display:block;flex-basis:100%;height:0}
   .dot{width:18px;height:18px;font-size:10.5px;box-shadow:0 0 0 2px rgba(11,12,16,.75)}
   .cta .btn{flex:1 1 100%}
   .shot{margin-top:48px;border-radius:10px}
@@ -273,12 +303,12 @@ figure:hover{transform:translateY(-4px);border-color:#454c60}
 <header class="top"><div class="wrap">
   <a class="logo" href="#"><img src="assets/icon.png" alt="" width="28" height="28"><span>AI Office</span></a>
   <nav>
-    <a href="#how" data-i18n="nav.how"></a>
-    <a href="#features" data-i18n="nav.features"></a>
-    <a href="#grow" data-i18n="nav.grow"></a>
-    <a href="#screens" data-i18n="nav.screens"></a>
-    <a href="#download" data-i18n="nav.download"></a>
-    <a href="#faq" data-i18n="nav.faq"></a>
+    <a href="#how" data-i18n="nav.how"><!--p-->사용법<!--/p--></a>
+    <a href="#features" data-i18n="nav.features"><!--p-->기능<!--/p--></a>
+    <a href="#grow" data-i18n="nav.grow"><!--p-->꾸미기<!--/p--></a>
+    <a href="#screens" data-i18n="nav.screens"><!--p-->휴대폰<!--/p--></a>
+    <a href="#download" data-i18n="nav.download"><!--p-->다운로드<!--/p--></a>
+    <a href="#faq" data-i18n="nav.faq"><!--p-->FAQ<!--/p--></a>
   </nav>
   <div class="right">
     <select class="lang" id="lang" aria-label="Language">
@@ -290,115 +320,133 @@ figure:hover{transform:translateY(-4px);border-color:#454c60}
 
 <section class="hero"><div class="wrap">
   <img class="appicon" src="assets/icon.png" alt="AI Office" width="84" height="84">
-  <div class="badge"><b>v<span data-version></span></b><span data-i18n="badge.oss"></span></div>
-  <h1 data-i18n="hero.title"></h1>
-  <p class="lead" data-i18n="hero.lead"></p>
+  <div class="badge"><b>v<span data-version></span></b><span data-i18n="badge.oss"><!--p-->무료 · 오픈소스 · 맥·윈도우·안드로이드<!--/p--></span></div>
+  <h1 data-i18n="hero.title"><!--p-->코드 없이 AI 직원을 고용하는<br><em>AI 사무실</em>, AI Office<!--/p--></h1>
+  <p class="lead" data-i18n="hero.lead"><!--p-->Claude 직원과 GPT 직원을 한 사무실에 뽑아 일을 맡기세요. 중요한 일은 결재함에서 확인하고, 끝나면 보고를 받아요. 명령어 창도, 어려운 설정도 필요 없습니다.<!--/p--></p>
   <div class="cta" id="cta"></div>
-  <p class="also" id="also"></p>
+  <p class="cta-note" id="cta-note" hidden></p>
+  <div class="meta">
+    <span id="also"></span>
+    <span class="sep pc"></span><span class="brk"></span>
+    <span class="beta">BETA</span>
+    <a href="#limits" data-i18n="hero.limits"><!--p-->알려진 제한 사항<!--/p--></a>
+    <span class="sep"></span>
+    <a data-link="feedback" target="_blank" rel="noopener"><span data-i18n="foot.feedback"><!--p-->피드백 보내기<!--/p--></span> ↗</a>
+  </div>
   <div class="shot"><div class="chrome"><i></i><i></i><i></i><span>AI Office</span></div><div class="pic" data-co="office"><img src="assets/screens/ko/office.webp" data-shot="office" data-i18n-alt="alt.office" width="1360" height="860"></div></div>
 </div></section>
 
 <section id="how"><div class="wrap">
   <div class="head rv">
-    <div class="eyebrow" data-i18n="how.eyebrow"></div>
-    <h2 data-i18n="how.title"></h2>
-    <p class="sub" data-i18n="how.sub"></p>
+    <div class="eyebrow" data-i18n="how.eyebrow"><!--p-->사용법<!--/p--></div>
+    <h2 data-i18n="how.title"><!--p-->세 단계면 충분해요<!--/p--></h2>
+    <p class="sub" data-i18n="how.sub"><!--p-->사람에게 일을 맡기듯 하면 됩니다. 뽑고, 말하고, 확인만 하세요.<!--/p--></p>
   </div>
   <div class="steps">
-    <div class="step rv"><h3 data-i18n="s1.t"></h3><p data-i18n="s1.p"></p><div class="say" data-i18n="s1.say"></div></div>
-    <div class="step rv"><h3 data-i18n="s2.t"></h3><p data-i18n="s2.p"></p><div class="say" data-i18n="s2.say"></div></div>
-    <div class="step rv"><h3 data-i18n="s3.t"></h3><p data-i18n="s3.p"></p><div class="say" data-i18n="s3.say"></div></div>
+    <div class="step rv"><h3 data-i18n="s1.t"><!--p-->직원 뽑기<!--/p--></h3><p data-i18n="s1.p"><!--p-->직무와 모습, 그리고 Claude나 GPT 중 어느 쪽 직원으로 뽑을지 고르세요. 자리에 앉으면 바로 일할 준비를 해요.<!--/p--></p><div class="say" data-i18n="s1.say"><!--p-->마케터 ‘한소라’(GPT)를 뽑았어요<!--/p--></div></div>
+    <div class="step rv"><h3 data-i18n="s2.t"><!--p-->말로 시키기<!--/p--></h3><p data-i18n="s2.p"><!--p-->단체방에서 이름을 부르거나, 팀장에게 큰 일을 통째로 맡겨요.<!--/p--></p><div class="say" data-i18n="s2.say"><!--p-->@한소라 다음 주 뉴스레터 초안 부탁해요<!--/p--></div></div>
+    <div class="step rv"><h3 data-i18n="s3.t"><!--p-->결재하고 보고받기<!--/p--></h3><p data-i18n="s3.p"><!--p-->중요한 일은 결재함에서 승인하고, 끝나면 보고가 올라와요.<!--/p--></p><div class="say" data-i18n="s3.say"><!--p-->초안 올렸어요. 확인 부탁드려요!<!--/p--></div></div>
   </div>
-  <figure class="pc vid rv" data-video="approval-flow"><video muted loop playsinline preload="none" data-i18n-label="alt.vid1"></video><figcaption data-i18n="cap.vid1"></figcaption></figure>
+  <figure class="pc vid rv" data-video="approval-flow"><video muted loop playsinline preload="none" data-i18n-label="alt.vid1"></video><figcaption data-i18n="cap.vid1"><!--p--><b>실제 화면</b> — 단체방에서 지시 → 결재함에 요청 → 승인<!--/p--></figcaption></figure>
 </div></section>
 
 <section id="features"><div class="wrap">
   <div class="head rv">
-    <div class="eyebrow" data-i18n="feat.eyebrow"></div>
-    <h2 data-i18n="feat.title"></h2>
-    <p class="sub" data-i18n="feat.sub"></p>
+    <div class="eyebrow" data-i18n="feat.eyebrow"><!--p-->주요 기능<!--/p--></div>
+    <h2 data-i18n="feat.title"><!--p-->이미 아는 방식으로, 사무실처럼<!--/p--></h2>
+    <p class="sub" data-i18n="feat.sub"><!--p-->AI 세션 하나는 직원 한 명, 확인창은 결재함, 작업 기록은 업무 보고, 사용량은 급여 명세서가 됩니다.<!--/p--></p>
   </div>
   <div class="rows">
-    <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0114 0M19 8v6M16 11h6"/></svg></span><h3><span data-i18n="f1.t"></span><span class="pill" data-i18n="tag.beta"></span></h3><p data-i18n="f1.p"></p></div><figure><div class="pic" data-co="staff-mix"><img src="assets/screens/ko/staff-mix.webp" data-shot="staff-mix" data-i18n-alt="alt.f1" loading="lazy" width="1360" height="860"></div></figure></div>
-    <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 01-11.6 7.1L4 20l1-4.6A8 8 0 1121 12z"/><path d="M8.5 11h7M8.5 14h4"/></svg></span><h3 data-i18n="f2.t"></h3><p data-i18n="f2.p"></p></div><figure><div class="pic" data-co="chat"><img src="assets/screens/ko/chat.webp" data-shot="chat" data-i18n-alt="alt.f2" loading="lazy" width="1360" height="860"></div></figure></div>
-    <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 3v2h6V3M8.5 13l2.5 2.5 5-5"/></svg></span><h3 data-i18n="f3.t"></h3><p data-i18n="f3.p"></p></div><figure><div class="pic" data-co="inbox"><img src="assets/screens/ko/inbox.webp" data-shot="inbox" data-i18n-alt="alt.f3" loading="lazy" width="1360" height="860"></div></figure></div>
-    <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="5" height="16" rx="1.5"/><rect x="10" y="4" width="5" height="11" rx="1.5"/><rect x="17" y="4" width="4" height="7" rx="1.5"/></svg></span><h3 data-i18n="f4.t"></h3><p data-i18n="f4.p"></p></div><figure><div class="pic" data-co="board"><img src="assets/screens/ko/board.webp" data-shot="board" data-i18n-alt="alt.f4" loading="lazy" width="1360" height="860"></div></figure></div>
-    <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="9" r="3"/><circle cx="16" cy="9" r="3"/><path d="M2 20a6 6 0 0112 0M10 20a6 6 0 0112 0"/></svg></span><h3 data-i18n="f5.t"></h3><p data-i18n="f5.p"></p></div><figure><div class="pic" data-co="meeting"><img src="assets/screens/ko/meeting.webp" data-shot="meeting" data-i18n-alt="alt.f5" loading="lazy" width="1360" height="860"></div></figure></div>
-    <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/><path d="M11 9l3 3-1.2.3.8 1.7"/></svg></span><h3><span data-i18n="f6.t"></span><span class="pill" data-i18n="tag.new"></span></h3><p data-i18n="f6.p"></p></div><figure class="vid" data-video="computer-approval"><video muted loop playsinline preload="none" data-i18n-label="alt.f6"></video><div class="pic" data-co="computer"><img src="assets/screens/ko/computer.webp" data-shot="computer" data-i18n-alt="alt.f6" loading="lazy" width="1360" height="860"></div></figure></div>
-    <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.7 1.8 1.8.7-1.8.7L19 20l-.7-1.8-1.8-.7 1.8-.7z"/></svg></span><h3><span data-i18n="f7.t"></span><span class="pill" data-i18n="tag.new"></span></h3><p data-i18n="f7.p"></p></div><figure><div class="pic" data-co="secretary"><img src="assets/screens/ko/secretary.webp" data-shot="secretary" data-i18n-alt="alt.f7" loading="lazy" width="1360" height="860"></div></figure></div>
-    <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 6-7"/></svg></span><h3 data-i18n="f8.t"></h3><p data-i18n="f8.p"></p></div><figure><div class="pic" data-co="dashboard"><img src="assets/screens/ko/dashboard.webp" data-shot="dashboard" data-i18n-alt="alt.f8" loading="lazy" width="1360" height="860"></div></figure></div>
+    <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0114 0M19 8v6M16 11h6"/></svg></span><h3><span data-i18n="f1.t"><!--p-->Claude와 GPT 직원을 함께<!--/p--></span><span class="pill" data-i18n="tag.beta"><!--p-->베타<!--/p--></span></h3><p data-i18n="f1.p"><!--p-->직원마다 Claude와 GPT 중 어느 쪽 두뇌로 일할지 고를 수 있어요. 한 사무실에서 두 종류 직원이 같이 일하고, 일에 어울리는 직원을 추천도 해 줘요. 둘 중 하나만 있어도 바로 시작할 수 있고, GPT 직원은 아직 베타예요.<!--/p--></p></div><figure><div class="pic" data-co="staff-mix"><img src="assets/screens/ko/staff-mix.webp" data-shot="staff-mix" data-i18n-alt="alt.f1" loading="lazy" width="1360" height="860"></div></figure></div>
+    <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 01-11.6 7.1L4 20l1-4.6A8 8 0 1121 12z"/><path d="M8.5 11h7M8.5 14h4"/></svg></span><h3 data-i18n="f2.t"><!--p-->뽑고, 말로 시키기<!--/p--></h3><p data-i18n="f2.p"><!--p-->직무와 모습을 고르면 바로 일할 준비 끝. 단체방에서 @이름 · @팀 · @전체로 부르거나, 아무도 안 부르면 일에 맞는 직원이 받아요. 준비된 직원 여섯 명을 직원 마켓에서 바로 뽑을 수도 있어요.<!--/p--></p></div><figure><div class="pic" data-co="chat"><img src="assets/screens/ko/chat.webp" data-shot="chat" data-i18n-alt="alt.f2" loading="lazy" width="1360" height="860"></div></figure></div>
+    <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 3v2h6V3M8.5 13l2.5 2.5 5-5"/></svg></span><h3 data-i18n="f3.t"><!--p-->중요한 일은 결재로, 되돌리기까지<!--/p--></h3><p data-i18n="f3.p"><!--p-->파일을 바꾸거나 명령을 실행하는 일은 결재함에 먼저 올라옵니다. 얼마나 맡길지는 내가 정하고, 위험한 명령은 항상 막아요. 마음에 안 들면 ‘작업 전으로 되돌리기’ 한 번으로 직원이 바꾼 파일을 돌려 놓아요.<!--/p--></p></div><figure><div class="pic" data-co="inbox"><img src="assets/screens/ko/inbox.webp" data-shot="inbox" data-i18n-alt="alt.f3" loading="lazy" width="1360" height="860"></div></figure></div>
+    <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="5" height="16" rx="1.5"/><rect x="10" y="4" width="5" height="11" rx="1.5"/><rect x="17" y="4" width="4" height="7" rx="1.5"/></svg></span><h3 data-i18n="f4.t"><!--p-->팀장이 나눠서 진행<!--/p--></h3><p data-i18n="f4.p"><!--p-->큰 일을 팀장에게 주면 계획을 세워 나누고, 확인을 받은 뒤 순서대로 진행해 보고합니다. 진행 상황은 업무 보드에서, 카드마다 쓴 비용도 볼 수 있어요.<!--/p--></p></div><figure><div class="pic" data-co="board"><img src="assets/screens/ko/board.webp" data-shot="board" data-i18n-alt="alt.f4" loading="lazy" width="1360" height="860"></div></figure></div>
+    <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="9" r="3"/><circle cx="16" cy="9" r="3"/><path d="M2 20a6 6 0 0112 0M10 20a6 6 0 0112 0"/></svg></span><h3 data-i18n="f5.t"><!--p-->단체방과 회의실<!--/p--></h3><p data-i18n="f5.p"><!--p-->보고와 허락 요청이 채팅으로 흐르고, 결재함이나 단체방에서 바로 승인하거나 답할 수 있어요. 회의실에서는 직원들이 돌아가며 의견을 내고, 회의록과 할 일이 자동으로 정리돼요.<!--/p--></p></div><figure><div class="pic" data-co="meeting"><img src="assets/screens/ko/meeting.webp" data-shot="meeting" data-i18n-alt="alt.f5" loading="lazy" width="1360" height="860"></div></figure></div>
+    <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/><path d="M11 9l3 3-1.2.3.8 1.7"/></svg></span><h3><span data-i18n="f6.t"><!--p-->컴퓨터 조작 장비<!--/p--></span><span class="pill" data-i18n="tag.new"><!--p-->새 기능<!--/p--></span></h3><p data-i18n="f6.p"><!--p-->장비를 지급받은 직원은 내 화면을 보고 마우스와 키보드로 직접 작업해요. 화면을 보는 건 바로, 클릭하거나 글을 입력하는 건 결재함에서 내가 승인한 뒤에만 해요. 브라우저를 열어 사이트를 확인하는 장비도 있어요.<!--/p--></p></div><figure class="vid" data-video="computer-approval"><video muted loop playsinline preload="none" data-i18n-label="alt.f6"></video><div class="pic" data-co="computer"><img src="assets/screens/ko/computer.webp" data-shot="computer" data-i18n-alt="alt.f6" loading="lazy" width="1360" height="860"></div></figure></div>
+    <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.7 1.8 1.8.7-1.8.7L19 20l-.7-1.8-1.8-.7 1.8-.7z"/></svg></span><h3><span data-i18n="f7.t"><!--p-->비서와 튜토리얼<!--/p--></span><span class="pill" data-i18n="tag.new"><!--p-->새 기능<!--/p--></span></h3><p data-i18n="f7.p"><!--p-->처음엔 둘러보기가 사무실 쓰는 법을 안내하고, ‘한 사이클 해 보기’로 업무 맡기기·회의 열기를 따라 해 볼 수 있어요. 그다음부터는 비서에게 말로 부탁하세요 — 팀 옮기기, 업무 보드 정리, 사무실 꾸미기, 직원 점검까지 해 줘요. 직원이 왜 멈췄는지도 물어볼 수 있어요.<!--/p--></p></div><figure><div class="pic" data-co="secretary"><img src="assets/screens/ko/secretary.webp" data-shot="secretary" data-i18n-alt="alt.f7" loading="lazy" width="1360" height="860"></div></figure></div>
+    <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 6-7"/></svg></span><h3 data-i18n="f8.t"><!--p-->사용량과 급여 명세서, 터미널 세션 보기<!--/p--></h3><p data-i18n="f8.p"><!--p-->누가 일하고 누가 확인을 기다리는지 한눈에 보고, 직원별 사용량과 Claude·GPT 각각의 플랜 사용량을 카드로 확인해요. 사용량이 거의 다 차면 예약 업무를 잠시 멈춰 알려 줘요. 터미널에서 따로 돌리던 Claude·GPT 작업도 사무실에서 ‘일하는 중’으로 볼 수 있어요.<!--/p--></p></div><figure><div class="pic" data-co="dashboard"><img src="assets/screens/ko/dashboard.webp" data-shot="dashboard" data-i18n-alt="alt.f8" loading="lazy" width="1360" height="860"></div></figure></div>
   </div>
 </div></section>
 
 <section id="grow"><div class="wrap">
   <div class="head rv">
-    <div class="eyebrow" data-i18n="grow.eyebrow"></div>
-    <h2 data-i18n="grow.title"></h2>
-    <p class="sub" data-i18n="grow.sub"></p>
+    <div class="eyebrow" data-i18n="grow.eyebrow"><!--p-->꾸미기<!--/p--></div>
+    <h2 data-i18n="grow.title"><!--p-->일할수록 자라는 회사<!--/p--></h2>
+    <p class="sub" data-i18n="grow.sub"><!--p-->직원이 일하면 회사 레벨이 올라 사무실이 넓어지고, 새 가구가 열려요.<!--/p--></p>
   </div>
   <div class="rows">
-    <div class="row rv"><div class="txt"><div class="lvbar"><span>Lv.1</span><i></i><span>Lv.20</span></div><h3 data-i18n="g1.t"></h3><p data-i18n="g1.p"></p></div><figure><div class="pic"><img src="assets/screens/ko/exterior.webp" data-shot="exterior" data-i18n-alt="alt.g1" loading="lazy" width="1360" height="860"></div></figure></div>
-    <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V10l8-6 8 6v11"/><path d="M9 21v-6h6v6M12 4V2"/></svg></span><h3 data-i18n="g2.t"></h3><p data-i18n="g2.p"></p></div><figure><div class="pic" data-co="decorate"><img src="assets/screens/ko/decorate.webp" data-shot="decorate" data-i18n-alt="alt.g2" loading="lazy" width="1360" height="860"></div></figure></div>
-    <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v4M8 22h8"/></svg></span><h3 data-i18n="g3.t"></h3><p data-i18n="g3.p"></p></div><figure><div class="pic" data-co="demoday"><img src="assets/screens/ko/demoday.webp" data-shot="demoday" data-i18n-alt="alt.g3" loading="lazy" width="1360" height="860"></div></figure></div>
+    <div class="row rv"><div class="txt"><div class="lvbar"><span>Lv.1</span><i></i><span>Lv.20</span></div><h3 data-i18n="g1.t"><!--p-->레벨과 사무실<!--/p--></h3><p data-i18n="g1.p"><!--p-->차고에서 5층 타워까지 커져요. 레벨 11~20에서는 새 가구·소품 20종이 열리고, 레벨 15부터는 레벨마다 전설 품목이 하나씩 있어요. 업무 모드에서는 이런 요소를 숨길 수 있어요.<!--/p--></p></div><figure><div class="pic"><img src="assets/screens/ko/exterior.webp" data-shot="exterior" data-i18n-alt="alt.g1" loading="lazy" width="1360" height="860"></div></figure></div>
+    <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21V10l8-6 8 6v11"/><path d="M9 21v-6h6v6M12 4V2"/></svg></span><h3 data-i18n="g2.t"><!--p-->내 맘대로 꾸미기<!--/p--></h3><p data-i18n="g2.p"><!--p-->상점에서 가구·벽지·칸막이·고양이와 강아지를 사서 꾸며요. 책상과 의자는 한 세트로 돌려 놓고, 직원 자리에 앉힐 수 있어요. 커피머신·수족관 같은 소품은 움직이고 반응해요. “알아서 예쁘게 배치해줘”는 비서에게 맡기세요.<!--/p--></p></div><figure><div class="pic" data-co="decorate"><img src="assets/screens/ko/decorate.webp" data-shot="decorate" data-i18n-alt="alt.g2" loading="lazy" width="1360" height="860"></div></figure></div>
+    <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v4M8 22h8"/></svg></span><h3 data-i18n="g3.t"><!--p-->데모데이<!--/p--></h3><p data-i18n="g3.p"><!--p-->정해진 요일과 시간에 직원들이 무대에 올라 끝낸 일을 발표해요. 결과물은 갤러리에 모여 기간·직원·랩으로 골라 볼 수 있어요.<!--/p--></p></div><figure><div class="pic" data-co="demoday"><img src="assets/screens/ko/demoday.webp" data-shot="demoday" data-i18n-alt="alt.g3" loading="lazy" width="1360" height="860"></div></figure></div>
   </div>
 </div></section>
 
 <section id="screens"><div class="wrap">
   <div class="head rv">
-    <div class="eyebrow" data-i18n="scr.eyebrow"></div>
-    <h2 data-i18n="scr.title"></h2>
-    <p class="sub" data-i18n="scr.sub"></p>
+    <div class="eyebrow" data-i18n="scr.eyebrow"><!--p-->휴대폰<!--/p--></div>
+    <h2 data-i18n="scr.title"><!--p-->자리를 비워도 손안에서<!--/p--></h2>
+    <p class="sub" data-i18n="scr.sub"><!--p-->안드로이드 앱을 PC와 연결하면 대시보드·결재함·단체방을 휴대폰에서 그대로 쓸 수 있어요. 집 밖에서도 연결돼요.<!--/p--></p>
   </div>
   <div class="shots">
-    <figure class="ph rv"><img src="assets/screens/ko/phone-dashboard.webp" data-shot="phone-dashboard" data-i18n-alt="alt.dash" loading="lazy" width="390" height="844"><figcaption data-i18n="cap.dash"></figcaption></figure>
-    <figure class="ph rv"><img src="assets/screens/ko/phone-inbox.webp" data-shot="phone-inbox" data-i18n-alt="alt.inbox" loading="lazy" width="390" height="844"><figcaption data-i18n="cap.inbox"></figcaption></figure>
-    <figure class="ph rv"><img src="assets/screens/ko/phone-chat.webp" data-shot="phone-chat" data-i18n-alt="alt.chat" loading="lazy" width="390" height="844"><figcaption data-i18n="cap.chat"></figcaption></figure>
+    <figure class="ph rv"><img src="assets/screens/ko/phone-dashboard.webp" data-shot="phone-dashboard" data-i18n-alt="alt.dash" loading="lazy" width="390" height="844"><figcaption data-i18n="cap.dash"><!--p--><b>대시보드</b> — 확인이 필요한 일을 바로 결재<!--/p--></figcaption></figure>
+    <figure class="ph rv"><img src="assets/screens/ko/phone-inbox.webp" data-shot="phone-inbox" data-i18n-alt="alt.inbox" loading="lazy" width="390" height="844"><figcaption data-i18n="cap.inbox"><!--p--><b>결재함</b> — 밖에서도 승인·반려<!--/p--></figcaption></figure>
+    <figure class="ph rv"><img src="assets/screens/ko/phone-chat.webp" data-shot="phone-chat" data-i18n-alt="alt.chat" loading="lazy" width="390" height="844"><figcaption data-i18n="cap.chat"><!--p--><b>단체방</b> — 말로 지시하고 보고받기<!--/p--></figcaption></figure>
   </div>
-  <p class="sub ph-note" data-i18n="ph.note"></p>
+  <p class="sub ph-note" data-i18n="ph.note"><!--p-->공유기 설정을 바꾸지 않고, 내 기기끼리만 이어지는 개인 전용 연결(Tailscale)로 안전하게 붙어요. 같은 와이파이에서만 쓰게 제한할 수도 있어요.<!--/p--></p>
 </div></section>
 
 <section id="download"><div class="wrap">
   <div class="head rv">
-    <div class="eyebrow" data-i18n="dl.eyebrow"></div>
-    <h2 data-i18n="dl.title"></h2>
-    <p class="sub" data-i18n="dl.sub"></p>
+    <div class="eyebrow" data-i18n="dl.eyebrow"><!--p-->다운로드<!--/p--></div>
+    <h2 data-i18n="dl.title"><!--p-->무료로 받아 보세요<!--/p--></h2>
+    <p class="sub" data-i18n="dl.sub"><!--p-->Claude 또는 GPT(ChatGPT) 계정 중 하나만 로그인돼 있으면 시작할 수 있어요.<!--/p--></p>
   </div>
   <div class="dls" id="dls">
-    <div class="dlc rv" data-os="mac"><h3 data-os-title></h3><ul><li data-i18n="mac.1"></li><li data-i18n="mac.2"></li><li data-i18n="mac.3"></li><li class="note" data-i18n="mac.4"></li></ul><a data-dl></a></div>
-    <div class="dlc rv" data-os="win"><h3 data-os-title></h3><ul><li data-i18n="win.1"></li><li data-i18n="win.2"></li><li data-i18n="win.3"></li></ul><a data-dl></a></div>
-    <div class="dlc rv" data-os="android"><h3 data-os-title></h3><ul><li data-i18n="and.1"></li><li data-i18n="and.2"></li><li data-i18n="and.3"></li></ul><a data-dl></a></div>
+    <div class="dlc rv" data-os="mac"><h3 data-os-title></h3><ul><li data-i18n="mac.1"><!--p-->Apple Silicon(M1 이후) 전용<!--/p--></li><li data-i18n="mac.2"><!--p-->dmg를 열어 응용 프로그램 폴더로 끌어다 놓기<!--/p--></li><li data-i18n="mac.3"><!--p-->처음 열 때 경고가 나오면 시스템 설정 › 개인정보 보호 및 보안 › "그래도 열기"<!--/p--></li><li class="note" data-i18n="mac.4"><!--p-->용량이 커요(GPT 직원 기능 포함, 약 350MB)<!--/p--></li></ul><a data-dl></a></div>
+    <div class="dlc rv" data-os="win"><h3 data-os-title></h3><ul><li data-i18n="win.1"><!--p-->시험판 · 64비트 · .zip 압축을 풀고 claude-office.exe 실행<!--/p--></li><li data-i18n="win.2"><!--p-->"Windows의 PC 보호" 창이 뜨면 "추가 정보 › 실행"<!--/p--></li><li data-i18n="win.3"><!--p-->외부 직원 알림·화면 캡처는 아직 Mac 전용<!--/p--></li></ul><a data-dl></a></div>
+    <div class="dlc rv" data-os="android"><h3 data-os-title></h3><ul><li data-i18n="and.1"><!--p-->PC 앱을 원격으로 쓰는 휴대폰 앱<!--/p--></li><li data-i18n="and.2"><!--p-->PC의 설정 › 휴대폰 연결에서 켜고 QR로 연결<!--/p--></li><li data-i18n="and.3"><!--p-->PC와 같은 버전을 쓰세요<!--/p--></li></ul><a data-dl></a></div>
   </div>
+</div></section>
+
+<section id="limits"><div class="wrap">
+  <div class="head rv">
+    <div class="eyebrow">BETA</div>
+    <h2 data-i18n="limits.title"><!--p-->알려진 제한 사항<!--/p--></h2>
+    <p class="sub" data-i18n="limits.sub"><!--p-->지금은 베타라 아래 제한이 있어요. 불편한 점은 피드백으로 알려 주세요.<!--/p--></p>
+  </div>
+  <ul class="limits rv" id="limits-list"></ul>
 </div></section>
 
 <section id="faq"><div class="wrap">
   <div class="head rv">
     <div class="eyebrow">FAQ</div>
-    <h2 data-i18n="faq.title"></h2>
+    <h2 data-i18n="faq.title"><!--p-->자주 묻는 질문<!--/p--></h2>
   </div>
   <div class="faq rv">
-    <details><summary data-i18n="q1"></summary><p data-i18n="a1"></p></details>
-    <details><summary data-i18n="q2"></summary><p data-i18n="a2"></p></details>
-    <details><summary data-i18n="q3"></summary><p data-i18n="a3"></p></details>
-    <details><summary data-i18n="q4"></summary><p data-i18n="a4"></p></details>
-    <details><summary data-i18n="q5"></summary><p data-i18n="a5"></p></details>
-    <details><summary data-i18n="q6"></summary><p data-i18n="a6"></p></details>
-    <details><summary data-i18n="q7"></summary><p data-i18n="a7"></p></details>
-    <details><summary data-i18n="q8"></summary><p data-i18n="a8"></p></details>
-    <details><summary data-i18n="q9"></summary><p data-i18n="a9"></p></details>
+    <details><summary data-i18n="q1"><!--p-->따로 가입하거나 API 키가 필요한가요?<!--/p--></summary><p data-i18n="a1"><!--p-->아니요. 컴퓨터에 로그인된 Claude 또는 GPT(ChatGPT) 계정을 그대로 씁니다. 직원들은 그 계정으로 일하고, 사용량도 그 계정에 잡힙니다.<!--/p--></p></details>
+    <details><summary data-i18n="q2"><!--p-->Claude와 GPT 중 하나만 있어도 되나요?<!--/p--></summary><p data-i18n="a2"><!--p-->네. 하나만 로그인해 있으면 바로 시작할 수 있고, 나머지는 설정에서 나중에 연결하면 돼요. 두 계정이 모두 있으면 직원마다 어느 쪽으로 일할지 고를 수 있어요. 아직 GPT 직원은 베타입니다.<!--/p--></p></details>
+    <details><summary data-i18n="q3"><!--p-->개발을 전혀 몰라도 쓸 수 있나요?<!--/p--></summary><p data-i18n="a3"><!--p-->네. 직원을 뽑고, 채팅으로 일을 시키고, 결재함에서 승인·반려만 하면 됩니다. 명령어를 입력할 일은 없습니다.<!--/p--></p></details>
+    <details><summary data-i18n="q4"><!--p-->설치할 때 경고창이 떠요.<!--/p--></summary><p data-i18n="a4"><!--p-->아직 앱에 서명을 하지 않아서 나오는 안내입니다. Mac은 시스템 설정 › 개인정보 보호 및 보안에서 "그래도 열기", Windows는 "추가 정보 › 실행"을 누르면 열립니다.<!--/p--></p></details>
+    <details><summary data-i18n="q5"><!--p-->직원이 마음대로 파일을 바꾸지 않나요?<!--/p--></summary><p data-i18n="a5"><!--p-->영향이 큰 일은 결재함에 먼저 올라오고, 승인해야 진행됩니다. 직원이 바꾼 파일은 ‘작업 전으로 되돌리기’로 한 번에 돌릴 수 있어요. 되돌리기 어려운 위험한 명령은 항상 막습니다.<!--/p--></p></details>
+    <details><summary data-i18n="q6"><!--p-->내 데이터는 어디에 저장되나요?<!--/p--></summary><p data-i18n="a6"><!--p-->직원·업무·대화 기록은 내 컴퓨터 안에 저장됩니다. 휴대폰 연결은 기본으로 꺼져 있고, 켤 때만 연결돼요. GPT 로그인 정보는 앱이 갖지 않고 로그인 도구가 관리해요.<!--/p--></p></details>
+    <details><summary data-i18n="q7"><!--p-->직원이 내 컴퓨터 화면을 마음대로 조작하나요?<!--/p--></summary><p data-i18n="a7"><!--p-->아니요. 장비를 지급받은 직원만 화면을 볼 수 있고, 클릭·입력은 결재함에서 승인해야만 합니다.<!--/p--></p></details>
+    <details><summary data-i18n="q8"><!--p-->휴대폰 앱만 따로 쓸 수 있나요?<!--/p--></summary><p data-i18n="a8"><!--p-->아니요. PC에서 켜 둔 AI Office를 원격으로 쓰는 앱이라 PC 앱이 켜져 있어야 합니다. 집 밖에서도 연결할 수 있어요.<!--/p--></p></details>
+    <details><summary data-i18n="q9"><!--p-->어떤 언어로 쓸 수 있나요?<!--/p--></summary><p data-i18n="a9"><!--p-->한국어, 영어, 일본어, 중국어를 지원합니다. 처음에는 컴퓨터(휴대폰) 언어를 따르고, 지원하지 않는 언어면 영어로 시작해요. 설정 맨 위의 '언어'에서 언제든 바꿀 수 있습니다.<!--/p--></p></details>
   </div>
 </div></section>
 
 <section class="final"><div class="wrap"><div class="box rv">
-  <h2 data-i18n="end.title"></h2>
-  <p class="sub" data-i18n="end.sub"></p>
-  <a class="btn primary" href="#download" data-i18n="end.btn"></a>
+  <h2 data-i18n="end.title"><!--p-->오늘 첫 직원을 뽑아 보세요<!--/p--></h2>
+  <p class="sub" data-i18n="end.sub"><!--p-->무료이고, 설치하고 몇 분이면 Claude든 GPT든 첫 업무를 맡길 수 있어요.<!--/p--></p>
+  <a class="btn primary" href="#download" data-i18n="end.btn"><!--p-->무료로 받기<!--/p--></a>
 </div></div></section>
 
 <footer><div class="wrap">
   <div class="brand"><img src="assets/icon.png" alt="" width="20" height="20"><span>AI Office · v<span data-version></span></span></div>
   <div class="links">
     <a data-link="license"></a>
-    <a data-link="changelog" data-i18n="foot.changelog"></a>
+    <a data-link="changelog" data-i18n="foot.changelog"><!--p-->변경 기록<!--/p--></a>
+    <a data-link="feedback" data-i18n="foot.feedback"><!--p-->피드백 보내기<!--/p--></a>
     <a data-link="github">GitHub</a>
   </div>
 </div></footer>
@@ -411,10 +459,13 @@ var I18N = {
     'meta.title': 'AI Office — Claude와 GPT 직원을 함께 고용하는 AI 사무실',
     'meta.desc': 'Claude와 GPT 직원을 함께 뽑아 일을 맡기고, 결재하고, 보고받는 무료 오픈소스 데스크톱 앱. 명령어 창도, 어려운 설정도 필요 없습니다.',
     'nav.how': '사용법', 'nav.features': '기능', 'nav.grow': '꾸미기', 'nav.screens': '휴대폰', 'nav.download': '다운로드', 'nav.faq': 'FAQ',
-    'badge.oss': '무료 · 오픈소스 · <em>새로 GPT 직원</em>',
-    'hero.title': '코드를 몰라도,<br><em>AI 직원</em>을 함께 고용하세요',
+    'badge.oss': '무료 · 오픈소스 · 맥·윈도우·안드로이드',
+    'hero.title': '코드 없이 AI 직원을 고용하는<br><em>AI 사무실</em>, AI Office',
     'hero.lead': 'Claude 직원과 GPT 직원을 한 사무실에 뽑아 일을 맡기세요. 중요한 일은 결재함에서 확인하고, 끝나면 보고를 받아요. 명령어 창도, 어려운 설정도 필요 없습니다.',
-    'btn.download': '{os}용 다운로드', 'btn.soon': '준비 중', 'btn.also': '다른 플랫폼:',
+    'btn.download': '{os}용 무료 다운로드', 'btn.soon': '준비 중', 'btn.also': '다른 플랫폼:',
+    'hero.limits': '알려진 제한 사항', 'hero.android.note': 'PC 앱과 함께 써요', 'hero.ios.note': 'PC(맥·윈도우)에서 설치해 주세요',
+    'limits.title': '알려진 제한 사항', 'limits.sub': '지금은 베타라 아래 제한이 있어요. 불편한 점은 피드백으로 알려 주세요.',
+    'limits.items': ['베타 기간에는 예고 없이 기능과 화면이 바뀔 수 있어요.', '컴퓨터에 Claude 또는 GPT(ChatGPT) 계정이 로그인돼 있어야 직원이 일해요. 사용량은 그 계정에 잡혀요.', 'GPT 직원은 아직 베타예요.', 'Mac 앱은 Apple Silicon(M1 이후) 전용이에요.', 'Windows 앱은 시험판이에요. 외부 직원 알림·화면 캡처는 아직 Mac에서만 돼요.', '안드로이드 앱은 PC 앱을 원격으로 쓰는 앱이라 PC 앱이 켜져 있어야 해요.', '앱에 아직 서명을 하지 않아 설치할 때 경고창이 떠요. 여는 방법은 아래 FAQ에 있어요.'],
     'os.mac': 'Mac', 'os.win': 'Windows', 'os.android': '안드로이드',
     'how.eyebrow': '사용법', 'how.title': '세 단계면 충분해요', 'how.sub': '사람에게 일을 맡기듯 하면 됩니다. 뽑고, 말하고, 확인만 하세요.',
     's1.t': '직원 뽑기', 's1.p': '직무와 모습, 그리고 Claude나 GPT 중 어느 쪽 직원으로 뽑을지 고르세요. 자리에 앉으면 바로 일할 준비를 해요.', 's1.say': '마케터 ‘한소라’(GPT)를 뽑았어요',
@@ -476,16 +527,19 @@ var I18N = {
     'q8': '휴대폰 앱만 따로 쓸 수 있나요?', 'a8': '아니요. PC에서 켜 둔 AI Office를 원격으로 쓰는 앱이라 PC 앱이 켜져 있어야 합니다. 집 밖에서도 연결할 수 있어요.',
     'q9': '어떤 언어로 쓸 수 있나요?', 'a9': '한국어, 영어, 일본어, 중국어를 지원합니다. 처음에는 컴퓨터(휴대폰) 언어를 따르고, 지원하지 않는 언어면 영어로 시작해요. 설정 맨 위의 \'언어\'에서 언제든 바꿀 수 있습니다.',
     'end.title': '오늘 첫 직원을 뽑아 보세요', 'end.sub': '무료이고, 설치하고 몇 분이면 Claude든 GPT든 첫 업무를 맡길 수 있어요.', 'end.btn': '무료로 받기',
-    'foot.license': '{license} 라이선스', 'foot.changelog': '변경 기록'
+    'foot.license': '{license} 라이선스', 'foot.changelog': '변경 기록', 'foot.feedback': '피드백 보내기'
   },
   en: {
     'meta.title': 'AI Office — An AI office where you hire Claude and GPT staff together',
     'meta.desc': 'A free, open-source desktop app to hire Claude and GPT staff, hand out work, approve, and get reports. No command line, no hard setup.',
     'nav.how': 'How it works', 'nav.features': 'Features', 'nav.grow': 'Grow', 'nav.screens': 'Phone', 'nav.download': 'Download', 'nav.faq': 'FAQ',
-    'badge.oss': 'Free · Open source · <em>New: GPT staff</em>',
-    'hero.title': 'No code needed.<br>Hire <em>AI staff</em> together.',
+    'badge.oss': 'Free · Open source · Mac · Windows · Android',
+    'hero.title': 'Hire Claude & GPT <span class="nw">staff in your</span><br><em>AI agent office</em> — no code',
     'hero.lead': 'Put Claude staff and GPT staff in one office and hand out the work. Approve the important parts in your inbox and get a report when it’s done. No command line, no hard setup.',
-    'btn.download': 'Download for {os}', 'btn.soon': 'Coming soon', 'btn.also': 'Also available for',
+    'btn.download': 'Free download for {os}', 'btn.soon': 'Coming soon', 'btn.also': 'Also available for',
+    'hero.limits': 'Known limitations', 'hero.android.note': 'Works together with the PC app', 'hero.ios.note': 'Please install it on a PC (Mac or Windows)',
+    'limits.title': 'Known limitations', 'limits.sub': 'AI Office is in beta, so a few limits apply. Tell us what bothers you through feedback.',
+    'limits.items': ['Features and screens may change without notice during the beta.', 'Staff work only while a Claude or GPT (ChatGPT) account is logged in on your computer. Usage counts toward that account.', 'GPT staff are still in beta.', 'The Mac app supports Apple Silicon (M1 or later) only.', 'The Windows app is a preview. External session alerts and screen capture are Mac-only for now.', 'The Android app is a remote for the PC app, so the PC app must be running.', 'The app isn’t code-signed yet, so you’ll see a warning when installing. See the FAQ below to open it.'],
     'os.mac': 'Mac', 'os.win': 'Windows', 'os.android': 'Android',
     'how.eyebrow': 'How it works', 'how.title': 'Three steps are enough', 'how.sub': 'Just like handing work to a person: hire, talk, and check.',
     's1.t': 'Hire', 's1.p': 'Pick a role, a look, and whether the new hire is Claude or GPT. They sit down ready to work.', 's1.say': 'I hired Sora, a marketer (GPT)',
@@ -546,16 +600,19 @@ var I18N = {
     'q8': 'Can I use the phone app alone?', 'a8': 'No. It’s a remote for the AI Office running on your PC, so the PC app must be on. It also works away from home.',
     'q9': 'Which languages are supported?', 'a9': 'Korean, English, Japanese, and Chinese. It starts in your computer’s (or phone’s) language, or English if that isn’t supported. You can change it anytime under Language at the top of Settings.',
     'end.title': 'Hire your first employee today', 'end.sub': 'It’s free, and a few minutes after installing you can hand a first task to Claude or GPT.', 'end.btn': 'Get it free',
-    'foot.license': '{license} License', 'foot.changelog': 'Changelog'
+    'foot.license': '{license} License', 'foot.changelog': 'Changelog', 'foot.feedback': 'Send feedback'
   },
   ja: {
     'meta.title': 'AI Office — ClaudeとGPTの社員を一緒に雇うAIオフィス',
     'meta.desc': 'ClaudeとGPTの社員を雇い、仕事を任せ、承認し、報告を受ける無料のオープンソースデスクトップアプリ。コマンド画面も難しい設定も不要です。',
     'nav.how': '使い方', 'nav.features': '機能', 'nav.grow': '育てる', 'nav.screens': 'スマホ', 'nav.download': 'ダウンロード', 'nav.faq': 'FAQ',
-    'badge.oss': '無料 · オープンソース · <em>新登場：GPT社員</em>',
-    'hero.title': '<span class="nw">コードを知らなくても、</span><br><em>AI社員</em>を<span class="nw">まとめて雇えます</span>',
+    'badge.oss': '無料 · オープンソース · Mac・Windows・Android',
+    'hero.title': '<span class="nw">コード不要で</span><span class="nw">AI社員を雇える</span><br><em>AIオフィス</em>、AI Office',
     'hero.lead': 'ClaudeとGPTの社員を一つのオフィスに迎えて、仕事を任せましょう。大事な作業は承認箱で確認し、終わったら報告が届きます。コマンド画面も難しい設定も不要です。',
-    'btn.download': '{os} 版をダウンロード', 'btn.soon': '準備中', 'btn.also': 'ほかのプラットフォーム：',
+    'btn.download': '{os} 版を無料ダウンロード', 'btn.soon': '準備中', 'btn.also': 'ほかのプラットフォーム：',
+    'hero.limits': '既知の制限事項', 'hero.android.note': 'PCアプリと一緒に使います', 'hero.ios.note': 'PC（Mac・Windows）でインストールしてください',
+    'limits.title': '既知の制限事項', 'limits.sub': '現在ベータ版のため、以下の制限があります。気になる点はフィードバックでお知らせください。',
+    'limits.items': ['ベータ期間中は、予告なく機能や画面が変わることがあります。', 'パソコンでClaudeまたはGPT（ChatGPT）のアカウントにログインしている必要があります。使用量はそのアカウントに計上されます。', 'GPT社員はまだベータ版です。', 'Mac 版は Apple シリコン（M1 以降）専用です。', 'Windows 版はプレビュー版です。外部セッションの通知と画面キャプチャは現在 Mac のみです。', 'Android アプリはPCアプリを遠隔操作するアプリなので、PCアプリを起動しておく必要があります。', 'アプリにまだ署名をしていないため、インストール時に警告が出ます。開き方は下のFAQをご覧ください。'],
     'os.mac': 'Mac', 'os.win': 'Windows', 'os.android': 'Android',
     'how.eyebrow': '使い方', 'how.title': '3ステップでOK', 'how.sub': '人に仕事を頼むのと同じです。雇って、話して、確認するだけ。',
     's1.t': '雇う', 's1.p': '職種と見た目、そしてClaudeかGPTのどちらの社員にするかを選びます。席に着けばすぐ働けます。', 's1.say': 'マーケター「ソラ」（GPT）を雇いました',
@@ -616,16 +673,19 @@ var I18N = {
     'q8': 'スマホアプリだけで使えますか？', 'a8': 'いいえ。PCで起動中のAI Officeを遠隔操作するアプリなので、PCアプリを起動しておく必要があります。外出先からも接続できます。',
     'q9': 'どの言語で使えますか？', 'a9': '韓国語、英語、日本語、中国語に対応しています。最初はパソコン（スマホ）の言語に合わせ、対応していない言語の場合は英語で始まります。設定の一番上の「言語」でいつでも変更できます。',
     'end.title': '今日、最初の社員を雇いましょう', 'end.sub': '無料で、インストールして数分でClaudeにもGPTにも最初の仕事を任せられます。', 'end.btn': '無料で入手',
-    'foot.license': '{license} ライセンス', 'foot.changelog': '更新履歴'
+    'foot.license': '{license} ライセンス', 'foot.changelog': '更新履歴', 'foot.feedback': 'フィードバックを送る'
   },
   zh: {
     'meta.title': 'AI Office — 同时雇用 Claude 和 GPT 员工的 AI 办公室',
     'meta.desc': '可同时雇用 Claude 和 GPT 员工、分配任务、审批并接收汇报的免费开源桌面应用。无需命令行，无需复杂设置。',
     'nav.how': '用法', 'nav.features': '功能', 'nav.grow': '成长', 'nav.screens': '手机', 'nav.download': '下载', 'nav.faq': '常见问题',
-    'badge.oss': '免费 · 开源 · <em>新增 GPT 员工</em>',
-    'hero.title': '不懂代码也没关系，<br>一起雇用 <em>AI 员工</em>',
+    'badge.oss': '免费 · 开源 · Mac · Windows · Android',
+    'hero.title': '无需代码，雇用 AI 员工的<br><em>AI 办公室</em> — AI Office',
     'hero.lead': '把 Claude 员工和 GPT 员工请进同一间办公室，放心交给他们工作。重要的事在审批箱确认，完成后收到汇报。无需命令行，无需复杂设置。',
-    'btn.download': '下载 {os} 版', 'btn.soon': '即将推出', 'btn.also': '其他平台：',
+    'btn.download': '免费下载 {os} 版', 'btn.soon': '即将推出', 'btn.also': '其他平台：',
+    'hero.limits': '已知限制', 'hero.android.note': '需与电脑端配合使用', 'hero.ios.note': '请在电脑（Mac、Windows）上安装',
+    'limits.title': '已知限制', 'limits.sub': '目前为测试版，存在以下限制。如有不便，欢迎通过反馈告诉我们。',
+    'limits.items': ['测试期间，功能和界面可能会不经通知而变化。', '电脑上需要登录 Claude 或 GPT（ChatGPT）账号，员工才能工作。用量计入该账号。', 'GPT 员工目前为测试版。', 'Mac 版仅支持 Apple 芯片（M1 及以上）。', 'Windows 版为预览版。外部会话通知和截屏目前仅支持 Mac。', '安卓应用是远程使用电脑端的应用，电脑端必须保持开启。', '应用还没有签名，安装时会出现警告。打开方法见下方 FAQ。'],
     'os.mac': 'Mac', 'os.win': 'Windows', 'os.android': 'Android',
     'how.eyebrow': '用法', 'how.title': '三步就够了', 'how.sub': '就像把工作交给同事：雇人、开口、确认。',
     's1.t': '雇人', 's1.p': '选好职位、形象，以及雇 Claude 还是 GPT 员工。入座后马上就能开工。', 's1.say': '已雇用市场专员“Sora”（GPT）',
@@ -686,7 +746,7 @@ var I18N = {
     'q8': '可以只用手机应用吗？', 'a8': '不可以。手机应用是远程使用电脑上运行的 AI Office，所以电脑端必须保持开启。在外面也能连接。',
     'q9': '支持哪些语言？', 'a9': '支持韩语、英语、日语和中文。默认跟随电脑（手机）的语言，不支持时以英语启动。随时可在设置顶部的“语言”中更改。',
     'end.title': '今天就雇用第一位员工吧', 'end.sub': '免费使用，安装后几分钟就能把第一项任务交给 Claude 或 GPT。', 'end.btn': '免费获取',
-    'foot.license': '{license} 许可证', 'foot.changelog': '更新日志'
+    'foot.license': '{license} 许可证', 'foot.changelog': '更新日志', 'foot.feedback': '发送反馈'
   }
 };
 
@@ -715,11 +775,14 @@ var I18N = {
   // 움직이는 화면(assets/video/<이름>.webm)이 있는 언어. 지금은 한국어 화면만 있어 다른 언어는 정지 캡처를 보여 준다
   var VIDEO_LANGS = ['ko'];
   var ua = navigator.userAgent || '';
-  var os = /Android/i.test(ua) ? 'android' : /iPhone|iPad|iPod/i.test(ua) ? '' : /Mac/i.test(ua) ? 'mac' : /Win/i.test(ua) ? 'win' : '';
+  var ios = /iPhone|iPad|iPod/i.test(ua);
+  var os = /Android/i.test(ua) ? 'android' : ios ? '' : /Mac/i.test(ua) ? 'mac' : /Win/i.test(ua) ? 'win' : '';
   var changelog = D.changelog || (D.github ? D.github.replace(/\/$/, '') + '/blob/main/CHANGELOG.md' : '');
   var licenseUrl = D.github ? D.github.replace(/\/$/, '') + '/blob/main/LICENSE' : '';
 
+  var LANG_PATH = {ko: '', en: 'en/', ja: 'ja/', zh: 'zh/'};
   function pickLang(){
+    if (typeof PAGE_LANG !== 'undefined') return PAGE_LANG; // /en/ /ja/ /zh/ 주소는 그 언어로 고정
     var saved = null;
     try { saved = localStorage.getItem('lang'); } catch (e) {}
     if (LANGS.indexOf(saved) >= 0) return saved;
@@ -736,12 +799,13 @@ var I18N = {
     else { a.removeAttribute('href'); a.classList.add('off'); a.setAttribute('aria-disabled', 'true'); }
   }
 
+  // 아이폰은 받을 수 있는 앱이 없어 버튼은 보이되 누를 수 없게 둔다(PC에서 설치 안내)
   function dlButton(k, t, primary){
     var a = document.createElement('a'), url = D[k];
     a.className = 'btn' + (primary ? ' primary' : '');
     a.innerHTML = ICON[k] + '<span>' + t['btn.download'].replace('{os}', t['os.' + k]) + ' <small>' + (url ? EXT[k] : '· ' + t['btn.soon']) + '</small></span>';
-    if (url) a.setAttribute('download', '');
-    link(a, url);
+    if (url && !ios) a.setAttribute('download', '');
+    link(a, ios ? '' : url);
     return a;
   }
 
@@ -809,28 +873,32 @@ var I18N = {
     });
     document.querySelectorAll('[data-video]').forEach(function(fig){ setVideo(fig, VIDEO_LANGS.indexOf(lang) >= 0); });
 
-    // 첫 화면: 내 기기 다운로드 + GitHub, 나머지는 작은 링크
-    var cta = document.getElementById('cta'), also = document.getElementById('also');
-    cta.innerHTML = ''; also.innerHTML = '';
-    var keys = ['mac', 'win', 'android'];
-    if (os) {
-      cta.appendChild(dlButton(os, t, true));
-      also.appendChild(document.createTextNode(t['btn.also'] + ' '));
-      keys.filter(function(k){ return k !== os; }).forEach(function(k, n){
-        if (n) also.appendChild(document.createTextNode(' · '));
-        var a = document.createElement('a');
-        a.textContent = t['os.' + k];
-        a.href = D[k] || '#download';
-        also.appendChild(a);
-      });
-    } else {
-      keys.forEach(function(k){ cta.appendChild(dlButton(k, t, false)); });
-    }
-    var gh = document.createElement('a');
-    gh.className = 'btn';
-    gh.innerHTML = document.querySelector('[data-gh] svg').outerHTML + '<span>GitHub' + (D.github ? '' : ' <small>· ' + t['btn.soon'] + '</small>') + '</span>';
-    link(gh, D.github);
-    cta.appendChild(gh);
+    // 첫 화면: 내 기기용 큰 버튼 1개(아이폰·기타는 맥), 나머지 플랫폼은 작은 링크
+    var main = os || 'mac', cta = document.getElementById('cta'), also = document.getElementById('also'), note = document.getElementById('cta-note');
+    var big = dlButton(main, t, true);
+    big.classList.add('hero');
+    cta.innerHTML = '';
+    cta.appendChild(big);
+    note.textContent = os === 'android' ? t['hero.android.note'] : ios ? t['hero.ios.note'] : '';
+    note.hidden = !note.textContent;
+    also.textContent = t['btn.also'] + ' ';
+    ['mac', 'win', 'android'].filter(function(k){ return k !== main; }).forEach(function(k, n){
+      if (n) also.appendChild(document.createTextNode(' · '));
+      var a = document.createElement('a');
+      a.textContent = t['os.' + k];
+      if (ios) link(a, '');
+      else a.href = D[k] || '#download';
+      also.appendChild(a);
+    });
+
+    // 알려진 제한 사항
+    var limits = document.getElementById('limits-list');
+    limits.innerHTML = '';
+    t['limits.items'].forEach(function(s){
+      var li = document.createElement('li');
+      li.textContent = s;
+      limits.appendChild(li);
+    });
 
     // 다운로드 칸
     var box = document.getElementById('dls');
@@ -850,11 +918,14 @@ var I18N = {
     link(lic, licenseUrl);
     link(document.querySelector('[data-link="changelog"]'), changelog);
     link(document.querySelector('[data-link="github"]'), D.github);
+    document.querySelectorAll('[data-link="feedback"]').forEach(function(a){ link(a, D.feedback); });
   }
 
   if (os) { var mine = document.querySelector('.dlc[data-os="' + os + '"]'); mine.parentNode.insertBefore(mine, mine.parentNode.firstChild); }
   document.getElementById('lang').addEventListener('change', function(){
     try { localStorage.setItem('lang', this.value); } catch (e) {}
+    // 언어마다 주소가 있다: 언어 주소(/en/ 등)에서 고르면 그 주소로 이동, 루트(한국어 기본)에서는 제자리에서 바꿈
+    if (typeof PAGE_LANG !== 'undefined') { location.href = (PAGE_LANG === 'ko' ? '' : '../') + LANG_PATH[this.value]; return; }
     render(this.value);
   });
   // 스크롤하면 부드럽게 나타나기
