@@ -72,6 +72,7 @@ import { detectTextQuestion, toTextQuestions } from '../shared/textQuestion'
 import { mentionTargets, OFFICE_SENDER, parseMentions, pickResponder } from '../shared/mention'
 import { mergeRefDocs, normalizeRefDocPath, refDocKey, refDocsPrompt, sanitizeRefDocs } from '../shared/refDocs'
 import { draftCovered, isSameRule, matchRule, ruleLabel, type ApprovalRule } from '../shared/approvalRules'
+import { askDecisionInput, matchPastDecisions, sameAskDecisions } from '../shared/askDecision'
 import { KNOWLEDGE_MAX, knowledgeBrief, normalizeKnowledge, pickKnowledge, type KnowledgeEntry, type KnowledgeInput } from '../shared/knowledge'
 import { maskSecrets } from '../shared/redact'
 import { abortable, demoOutcome, addPraise, cleanSpeech, settleStaleMeeting, dateKeyOf, DEMO_COMMENT_MAX, DEMO_REACTIONS, demoPhaseMs, type DemoPhase, type DemoReaction, type DemoStage, type Praise, demoCoverImages, demoEntries, demoImages, demoLine, demoPresentInput, demoSummary, extractLinks, GALLERY_FILES_MAX, GALLERY_IMAGES_MAX, GALLERY_MAX, galleryBody, groupByStaff, isDemoDue, summarize, type GalleryEntry } from '../shared/gallery'
@@ -98,7 +99,7 @@ import { browserMcpConfig } from './browser'
 import { computerMcpConfig } from './computer'
 import { COMPUTER_EQUIPMENT, computerSummaryI18n } from '../shared/computerTools.ts'
 import { BROWSER_EQUIPMENT } from '../shared/browserTools.ts'
-import { parseTranslations, pendingDescriptions, slashAction, toStaffCommands, translationPrompt, type RawCommand, type StaffCommand } from '../shared/slashCommands.ts'
+import { parseSlash, parseTranslations, pendingDescriptions, slashAction, toStaffCommands, translationPrompt, type RawCommand, type StaffCommand } from '../shared/slashCommands.ts'
 import { listManuals, removeManual, saveManual } from './manuals'
 import {
   ACHIEVEMENTS,
@@ -713,6 +714,9 @@ export class Office extends EventEmitter<{
 
   fire(staffId: string) {
     const s = this.hired.get(staffId)
+    // 결재 카드도 정리한다 (안 닫으면 단체방에 눌러도 반응 없는 카드가 남는다) — 엔진 대기는 remove가 거부로 푼다
+    if (s) this.closeCards(s, s.approvals, 'canceled')
+    this.lastTextAsk.delete(staffId)
     this.manager.remove(staffId)
     this.hired.delete(staffId)
     this.commands.delete(staffId)
@@ -787,8 +791,11 @@ export class Office extends EventEmitter<{
     this.scheduleEmit()
   }
 
-  /** via: 원격(휴대폰)에서 온 지시면 기록 앞에 붙일 표시 (직원에게 가는 지시 글에는 넣지 않는다) */
-  instruct(staffId: string, text: string, origin: Origin = { kind: 'user' }, attachments: Attachment[] = [], via = '') {
+  /**
+   * via: 원격(휴대폰)에서 온 지시면 기록 앞에 붙일 표시 (직원에게 가는 지시 글에는 넣지 않는다).
+   * isDirect: 대표가 직접 보낸 말(직원 패널·단체방·휴대폰) — 기다리던 결재는 철회하고, 도구 결재로 멈춰 있었으면 끼어들어 바로 전한다
+   */
+  instruct(staffId: string, text: string, origin: Origin = { kind: 'user' }, attachments: Attachment[] = [], via = '', isDirect = false) {
     // 직전에 끝낸 같은 카드로 돌아온 대표 피드백(검토 반려)은 새 카드가 아니다 — 대화를 이어 간다
     const isNewCard =
       origin.kind === 'task' &&
@@ -803,7 +810,38 @@ export class Office extends EventEmitter<{
     // 같은 카드는 받은 업무에 한 번만 (피드백으로 다시 보낼 때도 카드는 하나)
     const isSameTask = origin.kind === 'task' && origins.some((o) => o.kind === 'task' && o.taskId === origin.taskId)
     if (!isSameTask) this.origins.set(staffId, [...origins, origin])
+    if (isDirect && this.withdrawApprovals(staffId)) {
+      // 결재를 기다리며 멈춘 턴은 대기열 지시를 받지 못한다 — 끼어들기처럼 끊고 바로 전한다 (/명령은 앞에 글을 붙이면 깨진다)
+      void this.manager.interrupt(staffId, { text: parseSlash(text) ? text : `${t('staff.msg.withdrawn')}\n\n${text}`, attachments })
+      return
+    }
     this.manager.instruct(staffId, text, attachments, isNewCard)
+  }
+
+  /**
+   * 대표가 직접 새 지시를 하면 그 직원의 대기 결재를 모두 '철회됨'으로 닫는다 (글 질문 카드 포함).
+   * 엔진이 도구 결재로 기다리던 중이었으면 true — 거부로 돌려줬으니 부른 쪽이 끼어들어 새 지시를 전한다
+   */
+  private withdrawApprovals(staffId: string) {
+    const s = this.hired.get(staffId)
+    if (!s?.approvals.length) return false
+    this.closeCards(s, s.approvals, 'withdrawn')
+    return this.manager.withdraw(staffId)
+  }
+
+  /** 엔진에 답하지 않고 결재 카드를 닫는다 (철회·대체·퇴사). 엔진 쪽 대기는 부른 쪽이 푼다 */
+  private closeCards(s: db.StoredStaff, list: readonly Approval[], result: 'withdrawn' | 'superseded' | 'canceled') {
+    if (!list.length) return
+    const ids = new Set(list.map((a) => a.id))
+    s.approvals = s.approvals.filter((a) => !ids.has(a.id))
+    const label = tk(result === 'withdrawn' ? 'log.withdrawn' : result === 'superseded' ? 'log.superseded' : 'log.firedCanceled')
+    for (const a of list) {
+      this.textAsks.delete(a.id)
+      this.demoApprovalIds.delete(a.id)
+      this.log(s.id, 'approval', { list: [label, `: ${a.toolName} `, a.summaryI18n ?? a.summary], sep: '' })
+      this.settleChat({ id: a.id, result })
+    }
+    if (!s.approvals.length && s.status === 'waiting') this.patch(s.id, { status: 'idle', activity: '' })
   }
 
   /**
@@ -887,7 +925,9 @@ export class Office extends EventEmitter<{
     if (text?.trim()) {
       this.log(staffId, 'status', tk('log.interrupted'))
       this.log(staffId, 'instruction', text, attachments)
-      await this.manager.interrupt(staffId, { text, attachments })
+      // 기다리던 결재는 '취소됨' 대신 '철회됨'으로 닫고 사유를 함께 전한다
+      const withdrew = this.withdrawApprovals(staffId) && !parseSlash(text)
+      await this.manager.interrupt(staffId, { text: withdrew ? `${t('staff.msg.withdrawn')}\n\n${text}` : text, attachments })
       return
     }
     await this.manager.interrupt(staffId)
@@ -994,6 +1034,7 @@ export class Office extends EventEmitter<{
       const a = s.approvals.find((x) => x.id === approvalId)
       if (!a) continue
       s.approvals = s.approvals.filter((x) => x.id !== approvalId)
+      this.rememberAnswers(s, a, answers)
       this.log(
         s.id,
         'approval',
@@ -1016,6 +1057,7 @@ export class Office extends EventEmitter<{
     if (s) {
       const a = s.approvals.find((x) => x.id === approvalId)
       s.approvals = s.approvals.filter((x) => x.id !== approvalId)
+      if (a && answers) this.rememberAnswers(s, a, answers)
       this.log(s.id, 'approval', { list: [via ? `${via} ` : '', answers ? { list: [tk('log.answered'), `: ${answersText(answers)}`], sep: '' } : tk('log.rejected'), ': ', a ? (a.summaryI18n ?? a.summary) : ask.question], sep: '' })
       this.patch(s.id, { status: s.approvals.length ? 'waiting' : 'idle', activity: '' })
     }
@@ -1032,17 +1074,19 @@ export class Office extends EventEmitter<{
 
   /**
    * 직원이 AskUserQuestion 없이 글로 물으며 턴을 끝냈으면 결재함 질문으로 대신 올린다.
-   * 오탐·중복 방지: 이번 턴에 도구로 물었거나, 점검 턴·팀원 보고·열린 결재가 있거나, 같은 질문이 이미 올라가 있으면 안 올린다
+   * 오탐·중복 방지: 이번 턴에 도구로 물었거나, 점검 턴·팀원 보고·도구 결재가 열려 있거나, 같은 질문이 이미 올라가 있으면 안 올린다.
+   * 같은 직원의 이전 글 질문 카드는 '대체됨'으로 닫고 새 카드를 올린다
    */
   private registerTextQuestion(staffId: string, summary: string, origins: Origin[], isAutoCheckTurn: boolean) {
     const s = this.hired.get(staffId)
     const asked = this.askedInTurn.delete(staffId)
-    if (!s || asked || isAutoCheckTurn || s.approvals.length) return
+    if (!s || asked || isAutoCheckTurn || s.approvals.some((a) => !this.textAsks.has(a.id))) return
     // 팀원 보고는 리드에게 가는 글이고, 예약·프로세스 단계는 대표가 지켜보지 않는다
     if (origins.some((o) => o.kind === 'delegate' || o.kind === 'process' || o.kind === 'schedule')) return
     const found = detectTextQuestion(summary)
     if (!found || this.lastTextAsk.get(staffId) === found.question) return
     this.lastTextAsk.set(staffId, found.question)
+    this.closeCards(s, s.approvals, 'superseded')
     const approval: Approval = { id: `text:${crypto.randomUUID()}`, staffId, toolName: 'AskUserQuestion', summary: found.question, createdAt: Date.now(), questions: toTextQuestions(found) }
     this.textAsks.set(approval.id, { staffId, question: found.question, taskId: origins.flatMap((o) => (o.kind === 'task' ? [o.taskId] : []))[0] ?? null })
     this.addApproval(approval)
@@ -1054,7 +1098,7 @@ export class Office extends EventEmitter<{
       decide: (id, allow) => this.decide(id, allow, REMOTE_MARK),
       answerQuestion: (id, answers) => this.answerQuestion(id, answers, REMOTE_MARK),
       reviewPlan: (taskId, isApproved, feedback) => this.reviewPlan(taskId, isApproved, feedback, REMOTE_MARK),
-      instruct: (staffId, text) => this.instruct(staffId, text, { kind: 'user' }, [], REMOTE_MARK),
+      instruct: (staffId, text) => this.instruct(staffId, text, { kind: 'user' }, [], REMOTE_MARK, true),
     }
   }
 
@@ -1271,6 +1315,9 @@ export class Office extends EventEmitter<{
    */
   private autoDecide(staffId: string, toolName: string, input: Record<string, unknown>, summary: string, questions?: StaffQuestion[]): Promise<{ answers?: Record<string, string> }> | null {
     if (questions?.length) this.askedInTurn.add(staffId)
+    // 대표가 전에 답한 같은 질문(최근 30일·엄격한 기준)이면 그 답을 따른다 — 애매하면 평소처럼 결재함
+    const past = questions?.length ? this.answerFromPast(staffId, questions) : null
+    if (past) return Promise.resolve({ answers: past })
     // 대표가 만든 "앞으로 항상 승인" 규칙 — 자동결재 기간과 상관없이 (위험 명령은 matchRule이 늘 거른다)
     if (!questions?.length && matchRule(this.rules, staffId, toolName, input)) {
       this.log(staffId, 'approval', tk('log.ruleApprove', { tool: toolName, summary }))
@@ -1340,6 +1387,21 @@ export class Office extends EventEmitter<{
     return Promise.resolve({})
   }
 
+  /** 지난 결정으로 답할 수 있으면 답(질문 → 답, 출처를 덧붙임)을 만들고 단체방·기록에 남긴다 */
+  private answerFromPast(staffId: string, questions: StaffQuestion[]): Record<string, string> | null {
+    const s = this.hired.get(staffId)
+    const found = s ? matchPastDecisions(this.knowledge, questions, Date.now()) : null
+    if (!s || !found) return null
+    const answers: Record<string, string> = {}
+    for (const { question, match } of found) {
+      const name = match.staffName || t('knowledge.byMe')
+      answers[question] = t('staff.msg.pastDecision', { answer: match.answer, name })
+      this.log(staffId, 'approval', tk('log.pastDecision', { name, text: `${question} → ${match.answer}` }))
+      this.postChat(staffId, t('chat.pastDecision', { question, answer: match.answer, name }).slice(0, CHAT_TEXT_MAX))
+    }
+    return answers
+  }
+
   // ── 앞으로 항상 승인 규칙 ──────────────────────────
 
   /** 규칙 목록 (해고한 직원의 규칙은 빼고) */
@@ -1407,11 +1469,21 @@ export class Office extends EventEmitter<{
   }
 
   /** 대표 피드백·결정을 지식 창고에 남긴다 (비었거나 맞지 않으면 조용히 넘어간다) */
-  private rememberKnowledge(input: KnowledgeInput) {
+  private rememberKnowledge(input: KnowledgeInput, by: db.StoredStaff | null = null) {
     try {
-      this.saveKnowledge(input)
+      this.saveKnowledge(input, by)
     } catch {
       // 지식 창고에 못 남겨도 피드백·결정 자체는 그대로 전달된다
+    }
+  }
+
+  /** 대표가 답한 질문은 질문마다 '결정'으로 남긴다 (승인·반려는 남기지 않는다). 같은 질문의 예전 답은 지우고 최신 답 하나만 둔다 */
+  private rememberAnswers(s: db.StoredStaff, a: Approval, answers: Record<string, string>) {
+    for (const q of a.questions ?? []) {
+      const answer = answers[q.question]?.trim()
+      if (!answer) continue
+      for (const old of sameAskDecisions(this.knowledge, q)) this.deleteKnowledge(old.id)
+      this.rememberKnowledge(askDecisionInput(q, answer), s)
     }
   }
 
@@ -3458,7 +3530,7 @@ export class Office extends EventEmitter<{
       )
       if (!id) return this.postChat(OFFICE_SENDER, '모든 직원이 이번 달 예산을 다 써서 전달하지 못했어요.')
       this.postChat(OFFICE_SENDER, `${this.hired.get(id)?.name} 님이 받았어요.`)
-      return this.instruct(id, message, { kind: 'chat' }, attachments)
+      return this.instruct(id, message, { kind: 'chat' }, attachments, '', true)
     }
     const empty = matched.filter((t) => t.memberIds.length === 0).map((t) => t.name)
     if (empty.length) this.postChat(OFFICE_SENDER, `${empty.join(', ')}에는 고용 직원 구성원이 없어요.`)
@@ -3468,7 +3540,7 @@ export class Office extends EventEmitter<{
       const groups = matched.filter((t) => t.kind !== 'staff' && t.memberIds.length > 0).map((t) => t.name)
       this.postChat(OFFICE_SENDER, `${groups.length ? `${groups.join(', ')} 포함 ` : ''}${recipientIds.length}명에게 전달했어요.`)
     }
-    for (const id of recipientIds) this.instruct(id, message, { kind: 'chat' }, attachments)
+    for (const id of recipientIds) this.instruct(id, message, { kind: 'chat' }, attachments, '', true)
   }
 
   private postChat(from: string, text: string, attachments?: Attachment[], approval?: ChatApproval) {

@@ -162,6 +162,15 @@ class Worker {
     return true
   }
 
+  /** 대표가 직접 새 지시를 해서 기다리던 결재를 거둔다 — 거부로 돌려주며 사유를 전한다. 기다리던 게 있었으면 true */
+  withdraw() {
+    const had = this.pending.size > 0
+    for (const resolve of this.pending.values()) resolve({ behavior: 'deny', message: t('staff.deny.withdrawn') })
+    this.pending.clear()
+    this.questionInputs.clear()
+    return had
+  }
+
   async interrupt(followUp?: { text: string; attachments: Attachment[] }) {
     if (!this.isRunning || !this.rt.isOpen) {
       // 이미 손이 빈 직원이면 끊을 턴이 없다 — 붙들린 업무 카드만 정리한다
@@ -470,6 +479,10 @@ export class HiredStaffManager {
 
   interrupt(staffId: string, followUp?: { text: string; attachments: Attachment[] }) {
     return this.workers.get(staffId)?.interrupt(followUp)
+  }
+
+  withdraw(staffId: string) {
+    return this.workers.get(staffId)?.withdraw() ?? false
   }
 
   restart(staffId: string) {

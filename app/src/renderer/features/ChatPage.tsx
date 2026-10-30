@@ -31,6 +31,8 @@ const RESULT_LABEL: Record<ChatApprovalResult, TKey> = {
   answered: 'chat.approval.answered',
   skipped: 'chat.approval.skipped',
   canceled: 'chat.approval.canceled',
+  withdrawn: 'chat.approval.withdrawn',
+  superseded: 'chat.approval.superseded',
 }
 
 /** 사무실 단체방: 직원 보고·결재 요청·위임이 채팅으로 흐르고, @직원·@팀·@랩·@전체 로 바로 지시한다 */

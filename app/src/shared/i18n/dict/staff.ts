@@ -79,6 +79,12 @@ export default {
   'staff.deny.equip': { ko: '장비 교체로 세션을 다시 시작합니다.', en: 'Restarting the session because of an equipment change.', ja: '装備の交換のためセッションを再開します。', zh: '因更换装备，会话将重新开始。' },
   'staff.deny.fired': { ko: '직원이 퇴사했습니다.', en: 'The employee has left the company.', ja: '社員が退職しました。', zh: '该员工已离职。' },
   'staff.deny.cancelled': { ko: '요청이 취소되었습니다.', en: 'The request was cancelled.', ja: 'リクエストがキャンセルされました。', zh: '请求已取消。' },
+  'staff.deny.withdrawn': {
+    ko: '대표가 직접 새 지시를 했습니다. 이 결재는 철회되었으니, 필요하면 바뀐 내용으로 다시 결재를 올리세요.',
+    en: 'The owner sent you a new instruction directly, so this approval was withdrawn. If you still need it, request approval again based on the new instruction.',
+    ja: '代表が直接新しい指示を出したため、この承認は撤回されました。必要なら新しい内容に合わせて改めて承認を依頼してください。',
+    zh: '代表直接下达了新指示，此审批已撤回。如仍需要，请按新的内容重新提交审批。',
+  },
   'staff.deny.risky': {
     ko: '"위험 명령 금지" 장비로 막힌 명령이에요 ({risky}). 꼭 필요하면 대표에게 직접 실행을 부탁하세요.',
     en: 'This command was blocked by the "No risky commands" equipment ({risky}). If it is truly needed, ask the owner to run it directly.',
@@ -109,6 +115,18 @@ export default {
     en: '[Auto check] Your report mentions remaining work, but nothing is currently handed off. Hand it off now with delegate or add_task. If you are waiting for the owner’s decision, do nothing and reply in a single line.',
     ja: '[自動チェック] 報告に残りの仕事がありますが、いま任されている仕事がありません。今すぐ delegate か add_task で任せてください。代表の判断を待っている場合は何もせず、一行だけで返答してください。',
     zh: '[自动检查] 汇报中还有剩余工作，但目前没有已交办的任务。请现在用 delegate 或 add_task 交办。如果正在等待代表决定，请不要做任何操作，只用一句话回复。',
+  },
+  'staff.msg.withdrawn': {
+    ko: '[결재 철회] 대표가 직접 새 지시를 해서 기다리던 결재를 거두었습니다. 필요하면 바뀐 내용으로 다시 결재를 올리세요.',
+    en: '[Approval withdrawn] The owner sent a new instruction directly, so your pending approval was withdrawn. If you still need it, request approval again based on the new instruction.',
+    ja: '[承認撤回] 代表が直接新しい指示を出したため、待っていた承認は撤回されました。必要なら新しい内容に合わせて改めて承認を依頼してください。',
+    zh: '[审批撤回] 代表直接下达了新指示，等待中的审批已撤回。如仍需要，请按新的内容重新提交审批。',
+  },
+  'staff.msg.pastDecision': {
+    ko: '{answer} (지난 결정: {name} 님이 전에 받은 같은 결정을 따랐어요)',
+    en: '{answer} (past decision: followed the same decision {name} received before)',
+    ja: '{answer}（過去の決定: {name} さんが以前受けた同じ決定に従いました）',
+    zh: '{answer}（以往决定：沿用了 {name} 之前收到的相同决定）',
   },
   'staff.msg.textAnswer': {
     ko: '[대표 답변] 질문: {question}\n답: {answer}\n이 답으로 이어서 진행하세요.',

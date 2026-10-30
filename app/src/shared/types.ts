@@ -538,7 +538,8 @@ export interface ChatMessage {
 }
 
 /** approved·rejected: 결재 승인·반려 / answered: 질문에 답함 / skipped: 질문 넘김 / canceled: 세션 쪽에서 사라짐 */
-export type ChatApprovalResult = 'approved' | 'rejected' | 'answered' | 'skipped' | 'canceled'
+/** withdrawn: 대표가 직접 새 지시를 해서 거둠 · superseded: 같은 직원의 새 글 질문으로 바뀜 */
+export type ChatApprovalResult = 'approved' | 'rejected' | 'answered' | 'skipped' | 'canceled' | 'withdrawn' | 'superseded'
 
 export interface ChatApproval {
   id: string

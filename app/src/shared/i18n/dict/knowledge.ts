@@ -68,6 +68,9 @@ export default {
   'knowledge.kind.learning': { ko: '배운 점', en: 'Lesson', ja: '学んだこと', zh: '经验' },
   'knowledge.kind.feedback': { ko: '피드백', en: 'Feedback', ja: 'フィードバック', zh: '反馈' },
   'knowledge.kind.decision': { ko: '결정', en: 'Decision', ja: '決定', zh: '决定' },
+  'knowledge.ask.question': { ko: '질문', en: 'Question', ja: '質問', zh: '问题' },
+  'knowledge.ask.answer': { ko: '답', en: 'Answer', ja: '回答', zh: '回答' },
+  'knowledge.ask.options': { ko: '선택지', en: 'Options', ja: '選択肢', zh: '选项' },
   'knowledge.editor.desc': {
     ko: '짧고 구체적으로 써 주세요. 자세한 내용은 참고 문서에 두고 연결하면 토큰을 아낄 수 있어요.',
     en: 'Keep it short and specific. Put details in a reference doc and link it to save tokens.',
