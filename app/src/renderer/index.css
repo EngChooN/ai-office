@@ -14,6 +14,20 @@
 @custom-variant short (&:where([data-layout=phone][data-short] *));
 /* 가로 폰에서 키보드가 열린 동안: 남는 높이가 100여 px라 화면 제목을 숨기고 입력창을 남긴다 */
 @custom-variant typing (&:where([data-layout=phone][data-short][data-keyboard] *));
+/* 좁은 본문: 화면 틀(ui/page)의 폭이 640px 미만일 때 — 창이 좁거나 직원 패널이 본문을 줄였을 때. 폰 배치와 같은 결과가 되게 phone:과 함께 쓴다 */
+@custom-variant narrow {
+  @container page (width < 40rem) {
+    @slot;
+  }
+}
+/* 좁은 데스크톱 창(폭 1000px 미만): 직원 패널을 본문 옆이 아니라 위에 겹쳐 띄운다. 휴대폰 앱은 phone: 규칙을 따른다 */
+@custom-variant compact {
+  @media (width < 1000px) {
+    &:where(html:not([data-shell=mobile]) *) {
+      @slot;
+    }
+  }
+}
 
 /* 바깥 UI 토큰 — 라벤더 소프트 모양(공통) + 색 테마 5종 × 라이트·다크 (원본: docs/design-refresh/themes/tokens.css)
    <html data-theme data-mode>는 index.html 인라인 스크립트와 lib/uiTheme.ts가 정한다. 사무실(Phaser) 캔버스 색은 여기 없다.
@@ -587,6 +601,26 @@
   [data-shell='mobile'] #root {
     box-sizing: border-box;
     padding-bottom: var(--ime, 0px);
+  }
+  /* ui/* 밖의 버튼·카드도 같은 포커스 테두리 — 마우스 클릭엔 없고 Tab으로 올 때만 한 겹.
+     그림자·링 클래스가 있는 요소는 그 클래스가 이기므로 focus-ring을 직접 붙인다 */
+  :where(button, [role='button'], [tabindex]:not([tabindex='-1']), summary) {
+    @apply focus-ring;
+  }
+}
+
+/* 포커스 테두리 (Tab 이동 때만). 둥근 모서리는 요소의 rounded를 따른다 */
+@utility focus-ring {
+  outline: none;
+  &:focus-visible {
+    box-shadow: var(--focus-ring);
+  }
+}
+/* 목록 행처럼 overflow로 바깥 그림자가 잘리는 요소: 안쪽에 한 겹 */
+@utility focus-ring-inset {
+  outline: none;
+  &:focus-visible {
+    box-shadow: inset 0 0 0 2px var(--focus-border);
   }
 }
 

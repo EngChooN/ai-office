@@ -111,7 +111,7 @@ export function StaffCard({ staff, isLead = false, isSelected, onSelect }: Props
       type="button"
       onClick={handleClick}
       className={cn(
-        'relative flex w-full flex-col gap-3 rounded-xl border p-4 text-left transition-colors',
+        'focus-ring relative flex w-full flex-col gap-3 rounded-xl border p-4 text-left transition-colors',
         CARD_TONE[staff.status],
         isSelected && 'ring-primary ring-2',
       )}

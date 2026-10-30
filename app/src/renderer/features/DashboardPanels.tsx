@@ -241,7 +241,7 @@ function AttentionRow({ item, staff, now, isGuarded }: { item: AttentionItem; st
             ? t('dashboardPanels.budget.globalNear')
             : t('dashboardPanels.budget.staffNear')
   return (
-    <div role="button" tabIndex={0} onClick={open} onKeyDown={handleKeyDown} className="hover:bg-accent/60 flex cursor-pointer flex-col gap-1.5 border-t px-4 py-3 first:border-t-0">
+    <div role="button" tabIndex={0} onClick={open} onKeyDown={handleKeyDown} className="hover:bg-accent/60 focus-ring-inset flex cursor-pointer flex-col gap-1.5 border-t px-4 py-3 first:border-t-0">
       <div className="flex min-w-0 items-center gap-2">
         {staff ? <Avatar avatar={staff.avatar} name={staff.name} teamId={staff.teamId} className="size-6" /> : <GaugeIcon className="text-muted-foreground size-6 shrink-0" />}
         <span className="truncate text-sm font-medium">{staff?.name ?? t('dashboardPanels.budget.globalName')}</span>
@@ -324,7 +324,8 @@ export function AttentionCard({ items, staffById }: { items: AttentionItem[]; st
         </p>
       ) : (
         <>
-          <div className="flex flex-col">
+          {/* 카드 밑에 닿는 마지막 줄은 포커스 링이 카드 모서리에 잘리지 않게 같이 둥글게 */}
+          <div className={cn('flex flex-col', items.length <= ATTENTION_VISIBLE && '[&>*:last-child]:rounded-b-[calc(var(--radius-xl)-1px)]')}>
             {shown.map((item) => (
               <AttentionRow key={item.key} item={item} staff={staffById.get(item.staffId)} now={now} isGuarded={isGuarded} />
             ))}

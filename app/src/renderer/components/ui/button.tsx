@@ -8,7 +8,8 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: 'bg-primary bg-[image:var(--grad-primary)] text-primary-foreground shadow-(--shadow-primary) hover:bg-[image:var(--grad-primary-hover)]',
+        // 같은 보라 계열 바탕 위에선 옅은 바깥 링이 잘 안 보여 안쪽에 밝은 선을 한 줄 더한다
+        default: 'bg-primary bg-[image:var(--grad-primary)] text-primary-foreground shadow-(--shadow-primary) hover:bg-[image:var(--grad-primary-hover)] focus-visible:shadow-[inset_0_0_0_2px_color-mix(in_oklab,var(--primary-foreground)_75%,transparent),var(--focus-ring)]',
         destructive: 'bg-destructive text-destructive-foreground hover:bg-(--destructive-hover)',
         outline: 'border bg-transparent hover:bg-accent hover:text-accent-foreground',
         secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',

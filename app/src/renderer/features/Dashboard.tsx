@@ -104,7 +104,7 @@ export function Dashboard() {
                   type="button"
                   aria-pressed={filter === st}
                   onClick={() => setFilter(st)}
-                  className={cn('rounded-md px-2.5 py-1 text-xs font-medium', filter === st ? 'bg-background shadow-sm' : 'text-muted-foreground')}
+                  className={cn('focus-ring rounded-md px-2.5 py-1 text-xs font-medium', filter === st ? 'bg-background shadow-sm' : 'text-muted-foreground')}
                 >
                   {st ? STATUS_META[st].label : t('dashboard.filterAll')}
                 </button>
@@ -116,7 +116,7 @@ export function Dashboard() {
                   key={g}
                   type="button"
                   onClick={() => setGroupBy(g)}
-                  className={cn('rounded-md px-3 py-1 text-xs font-medium', groupBy === g ? 'bg-background shadow-sm' : 'text-muted-foreground')}
+                  className={cn('focus-ring rounded-md px-3 py-1 text-xs font-medium', groupBy === g ? 'bg-background shadow-sm' : 'text-muted-foreground')}
                 >
                   {g === 'team' ? t('dashboard.groupBy.team') : t('dashboard.groupBy.lab')}
                 </button>
@@ -135,7 +135,7 @@ export function Dashboard() {
                     aria-pressed={staffView === v}
                     title={label}
                     onClick={() => setStaffView(v)}
-                    className={cn('rounded-md px-2 py-1', staffView === v ? 'bg-background shadow-sm' : 'text-muted-foreground')}
+                    className={cn('focus-ring rounded-md px-2 py-1', staffView === v ? 'bg-background shadow-sm' : 'text-muted-foreground')}
                   >
                     <Icon className="size-3.5" />
                   </button>

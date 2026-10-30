@@ -18,27 +18,30 @@ export function Sidebar() {
   const items = isWorkMode ? NAV_ITEMS.filter((i) => !GAME_VIEWS.has(i.view)) : NAV_ITEMS
 
   return (
-    <nav className="flex w-44 shrink-0 flex-col gap-0.5 border-r p-2">
-      {items.map(({ view: v, label, icon: Icon }) => (
-        <button
-          key={v}
-          type="button"
-          onClick={() => setView(v)}
-          data-tour={`nav-${v}`}
-          className={cn(
-            'flex items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm',
-            view === v ? 'bg-accent text-foreground font-medium' : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground',
-          )}
-        >
-          <Icon className="size-4" />
-          <span className="flex-1">{label}</span>
-          {Boolean(badges[v]) && <span className="bg-status-waiting shrink-0 rounded-full px-1.5 text-[10px] font-semibold text-background">{badges[v]}</span>}
-        </button>
-      ))}
+    <nav className="flex min-h-0 w-44 shrink-0 flex-col gap-0.5 border-r p-2">
+      {/* 창이 낮으면 메뉴만 스크롤하고 아래 의견 보내기·업데이트 소식은 남긴다. 포커스 테두리가 잘리지 않게 안쪽 여백을 둔다 */}
+      <div className="-m-1 flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto p-1">
+        {items.map(({ view: v, label, icon: Icon }) => (
+          <button
+            key={v}
+            type="button"
+            onClick={() => setView(v)}
+            data-tour={`nav-${v}`}
+            className={cn(
+              'flex shrink-0 items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm',
+              view === v ? 'bg-accent text-foreground font-medium' : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground',
+            )}
+          >
+            <Icon className="size-4" />
+            <span className="flex-1">{label}</span>
+            {Boolean(badges[v]) && <span className="bg-status-waiting shrink-0 rounded-full px-1.5 text-[10px] font-semibold text-background">{badges[v]}</span>}
+          </button>
+        ))}
+      </div>
       <button
         type="button"
         onClick={openFeedbackIssue}
-        className="text-muted-foreground hover:bg-accent/60 hover:text-foreground mt-auto flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-left text-xs"
+        className="text-muted-foreground hover:bg-accent/60 hover:text-foreground mt-1 flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-left text-xs"
       >
         <MessageSquareIcon className="size-3.5 shrink-0" />
         <span className="min-w-0 flex-1 truncate whitespace-nowrap" title={t('settingsPage.guide.feedback')}>{t('settingsPage.guide.feedback')}</span>
@@ -52,7 +55,7 @@ export function Sidebar() {
         }}
         data-tour="nav-updates"
         className={cn(
-          'flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-left text-xs',
+          'flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-left text-xs',
           view === 'updates' ? 'bg-accent text-foreground font-medium' : 'text-muted-foreground hover:bg-accent/60 hover:text-foreground',
         )}
       >

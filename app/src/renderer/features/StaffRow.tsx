@@ -35,7 +35,7 @@ export function StaffRow({ staff, isLead = false, isSelected, onSelect }: Props)
     <button
       type="button"
       onClick={() => onSelect(staff.id)}
-      className={cn('flex w-full min-w-0 items-center gap-3 px-3 py-2 text-left transition-colors', ROW_TONE[staff.status], isSelected && 'ring-primary ring-2 ring-inset')}
+      className={cn('focus-ring-inset flex w-full first:rounded-t-[calc(var(--radius-xl)-1px)] last:rounded-b-[calc(var(--radius-xl)-1px)] min-w-0 items-center gap-3 px-3 py-2 text-left transition-colors', ROW_TONE[staff.status], isSelected && 'ring-primary ring-2 ring-inset')}
     >
       <Avatar avatar={staff.avatar} name={staff.name} teamId={staff.teamId} className="size-8" />
       <div className="flex w-40 min-w-0 shrink-0 flex-col">

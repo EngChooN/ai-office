@@ -36,8 +36,8 @@ export function OrgPage() {
 
   return (
     <Page title={t('org.title')} description={t('org.desc')}>
-      <form onSubmit={handleCreate} className="phone:flex-wrap mb-6 flex items-center gap-2">
-        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('org.newTeam.placeholder')} className="max-w-xs" />
+      <form onSubmit={handleCreate} className="phone:flex-wrap narrow:flex-wrap mb-6 flex items-center gap-2">
+        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('org.newTeam.placeholder')} className="narrow:max-w-none narrow:basis-full max-w-xs min-w-40" />
         <div className="flex gap-1">
           {TEAM_COLORS.map((c) => (
             <button key={c} type="button" onClick={() => setColor(c)} className={cn('phone:size-8 size-6 rounded-full border-2', color === c ? 'border-foreground' : 'border-transparent')} style={{ background: c }} />

@@ -74,7 +74,7 @@ export function KnowledgePage() {
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <div className="bg-muted flex w-fit rounded-lg p-0.5">
           {(['all', ...KNOWLEDGE_KINDS] as const).map((k) => (
-            <button key={k} type="button" onClick={() => setKind(k)} className={cn('rounded-md px-3 py-1 text-xs font-medium', kind === k ? 'bg-background shadow-sm' : 'text-muted-foreground')}>
+            <button key={k} type="button" onClick={() => setKind(k)} className={cn('focus-ring rounded-md px-3 py-1 text-xs font-medium', kind === k ? 'bg-background shadow-sm' : 'text-muted-foreground')}>
               {k === 'all' ? t('knowledge.kind.all') : knowledgeKindLabel(k)}
             </button>
           ))}

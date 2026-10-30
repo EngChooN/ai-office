@@ -54,7 +54,7 @@ export function GalleryPage() {
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <div className="bg-muted flex w-fit rounded-lg p-0.5">
           {PERIODS.map((p) => (
-            <button key={p} type="button" onClick={() => setPeriod(p)} className={cn('rounded-md px-3 py-1 text-xs font-medium', period === p ? 'bg-background shadow-sm' : 'text-muted-foreground')}>
+            <button key={p} type="button" onClick={() => setPeriod(p)} className={cn('focus-ring rounded-md px-3 py-1 text-xs font-medium', period === p ? 'bg-background shadow-sm' : 'text-muted-foreground')}>
               {t(`gallery.period.${p}`)}
             </button>
           ))}
@@ -113,7 +113,7 @@ function GalleryCard({ entry: e, onOpen, onDelete }: { entry: GalleryEntry; onOp
       onClick={handleClick}
       onKeyDown={handleKeyDown}
       title={t('gallery.openDetail')}
-      className="bg-card hover:border-primary/40 focus-visible:ring-ring flex cursor-pointer flex-col gap-2 rounded-xl border p-4 outline-none focus-visible:ring-2"
+      className="bg-card hover:border-primary/40 focus-ring flex cursor-pointer flex-col gap-2 rounded-xl border p-4"
     >
       <div className="flex items-start gap-2">
         <div className="min-w-0 flex-1">

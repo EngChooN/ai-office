@@ -55,7 +55,7 @@ function Segmented<T extends string>({ options, value, onChange }: { options: { 
           key={o.value}
           type="button"
           onClick={() => onChange(o.value)}
-          className={cn('rounded-md px-3 py-1 text-xs font-medium', value === o.value ? 'bg-background shadow-sm' : 'text-muted-foreground')}
+          className={cn('focus-ring rounded-md px-3 py-1 text-xs font-medium', value === o.value ? 'bg-background shadow-sm' : 'text-muted-foreground')}
         >
           {o.label}
         </button>

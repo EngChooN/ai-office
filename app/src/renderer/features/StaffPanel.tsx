@@ -407,7 +407,7 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
   return (
     <aside
       style={{ width }}
-      className="bg-card phone:fixed phone:inset-0 phone:bottom-[var(--ime,0px)] phone:h-auto phone:z-40 phone:w-full! phone:border-l-0 phone:pr-[env(safe-area-inset-right)] phone:pl-[env(safe-area-inset-left)] short:overflow-y-auto relative flex h-full min-h-0 shrink-0 flex-col overflow-hidden border-l"
+      className="bg-card phone:fixed phone:inset-0 phone:bottom-[var(--ime,0px)] phone:h-auto phone:z-40 phone:w-full! phone:border-l-0 phone:pr-[env(safe-area-inset-right)] phone:pl-[env(safe-area-inset-left)] short:overflow-y-auto compact:absolute compact:inset-y-0 compact:right-0 compact:z-30 compact:max-w-[calc(100%-3rem)] compact:shadow-(--shadow-dialog) relative flex h-full min-h-0 shrink-0 flex-col overflow-hidden border-l"
     >
       <ResizeHandle width={width} onResize={onResize} />
       <header className="flex items-start gap-3 border-b p-4">

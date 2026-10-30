@@ -170,16 +170,16 @@ export function SettingsPage() {
   }
 
   return (
-    <Page title={t('nav.settings')} className="phone:flex-col flex gap-6">
-      {/* 슬랙·디스코드처럼 왼쪽 분류 → 오른쪽엔 고른 분류만. 폰은 위쪽 가로 탭 */}
-      <nav className="phone:static phone:w-auto phone:flex-row phone:overflow-x-auto sticky top-0 flex w-40 shrink-0 flex-col gap-1 self-start" aria-label={t('nav.settings')}>
+    <Page title={t('nav.settings')} className="phone:flex-col narrow:flex-col narrow:gap-4 flex gap-6">
+      {/* 슬랙·디스코드처럼 왼쪽 분류 → 오른쪽엔 고른 분류만. 폰·좁은 본문은 위쪽 가로 탭(넘치면 가로로 밀어 본다) */}
+      <nav className="phone:static phone:w-auto phone:flex-row phone:overflow-x-auto narrow:static narrow:w-auto narrow:max-w-full narrow:flex-row narrow:overflow-x-auto narrow:p-1 narrow:-m-1 sticky top-0 flex w-40 shrink-0 flex-col gap-1 self-start" aria-label={t('nav.settings')}>
         {CATEGORIES.map((c) => (
           <button
             key={c.id}
             type="button"
             onClick={() => setCategory(c.id)}
             aria-current={category === c.id ? 'page' : undefined}
-            className={cn('text-muted-foreground hover:bg-accent hover:text-foreground shrink-0 rounded-full px-3 py-1.5 text-left text-sm', category === c.id && 'bg-accent text-foreground font-semibold')}
+            className={cn('text-muted-foreground hover:bg-accent hover:text-foreground shrink-0 rounded-full px-3 py-1.5 text-left text-sm whitespace-nowrap', category === c.id && 'bg-accent text-foreground font-semibold')}
           >
             {t(c.labelKey)}
           </button>
@@ -190,7 +190,7 @@ export function SettingsPage() {
         {category === 'general' && (
           <>
             <Section title={t('settings.language.title')} description={t('settings.language.desc')}>
-              <NativeSelect value={settings.language} onChange={(e) => update({ language: e.target.value as LangSetting })} className="h-8 w-56 text-xs" aria-label={t('settings.language.label')}>
+              <NativeSelect value={settings.language} onChange={(e) => update({ language: e.target.value as LangSetting })} className="h-8 w-full max-w-56 text-xs" aria-label={t('settings.language.label')}>
                 <option value="auto">{t('settings.language.auto')}</option>
                 {LANGS.map((l) => (
                   <option key={l} value={l}>
@@ -200,7 +200,7 @@ export function SettingsPage() {
               </NativeSelect>
             </Section>
             <Section title={t('settingsPage.uiMode.title')} description={t('settingsPage.uiMode.desc')}>
-              <div className="bg-muted flex w-fit gap-1 rounded-full p-1" role="radiogroup" aria-label={t('settingsPage.uiMode.title')}>
+              <div className="bg-muted flex w-fit max-w-full flex-wrap gap-1 rounded-[1.25rem] p-1" role="radiogroup" aria-label={t('settingsPage.uiMode.title')}>
                 {UI_MODES.map((m) => (
                   <button
                     key={m.value}
@@ -209,7 +209,7 @@ export function SettingsPage() {
                     aria-checked={settings.uiMode === m.value}
                     disabled={IS_MOBILE_SHELL}
                     onClick={() => update({ uiMode: m.value })}
-                    className={cn('text-muted-foreground rounded-full px-4 py-1.5 text-xs disabled:opacity-60', settings.uiMode === m.value && 'bg-card text-foreground font-semibold shadow-sm')}
+                    className={cn('text-muted-foreground focus-ring rounded-full px-4 py-1.5 text-xs whitespace-nowrap disabled:opacity-60', settings.uiMode === m.value && 'bg-card text-foreground font-semibold shadow-sm')}
                   >
                     {t(m.labelKey)}
                   </button>
@@ -223,7 +223,7 @@ export function SettingsPage() {
                 <div key={g.id} className="flex flex-col gap-2">
                   {/* 묶음이 하나면 제목 없이 */}
                   {UI_THEME_GROUPS.length > 1 && g.titleKey && <h3 className="text-sm font-semibold">{t(g.titleKey)}</h3>}
-                  <div className="phone:grid-cols-2 grid grid-cols-3 gap-3" role="radiogroup" aria-label={t('settingsPage.uiTheme.title')}>
+                  <div className="phone:grid-cols-2 narrow:grid-cols-2 @max-xs/page:grid-cols-1 grid grid-cols-3 gap-3" role="radiogroup" aria-label={t('settingsPage.uiTheme.title')}>
                     {g.themes.map((theme) => (
                       <button
                         key={theme.id}
@@ -232,7 +232,7 @@ export function SettingsPage() {
                         aria-checked={settings.uiTheme === theme.id}
                         disabled={IS_MOBILE_SHELL}
                         onClick={() => update({ uiTheme: theme.id })}
-                        className={cn('enabled:hover:bg-accent/50 flex items-center gap-3 rounded-2xl border p-3 text-left disabled:opacity-60', settings.uiTheme === theme.id && 'border-ring ring-ring ring-2')}
+                        className={cn('enabled:hover:bg-accent/50 focus-ring flex min-w-0 items-center gap-3 rounded-2xl border p-3 text-left disabled:opacity-60', settings.uiTheme === theme.id && 'border-ring ring-ring ring-2')}
                       >
                         <span className="size-10 shrink-0 rounded-full border border-black/10" style={{ background: `linear-gradient(135deg, ${theme.swatchFrom}, ${theme.swatchTo})` }} />
                         <span className="truncate text-sm font-medium">{t(theme.labelKey)}</span>
@@ -359,6 +359,7 @@ export function SettingsPage() {
               </label>
             </Section>
             {IS_DEV_BUILD && <LevelPreview />}
+            {IS_DEV_BUILD && <InteractionPreview />}
             <Section title={t('settingsPage.layout.title')} description={t('settingsPage.layout.desc')}>
               <Button variant="outline" size="sm" className="w-fit" onClick={() => update({ layout: {} })} disabled={Object.keys(settings.layout).length === 0}>
                 {t('settingsPage.layout.reset')}
@@ -368,7 +369,7 @@ export function SettingsPage() {
               <label className="flex items-center gap-2 text-sm">
                 <input type="checkbox" checked={settings.workHours.isEnabled} onChange={(e) => update({ workHours: { ...settings.workHours, isEnabled: e.target.checked } })} /> {t('settingsPage.workHours.toggle')}
               </label>
-              <div className="flex items-center gap-2 text-sm">
+              <div className="flex flex-wrap items-center gap-2 text-sm">
                 <Input type="time" value={settings.workHours.start} onChange={(e) => update({ workHours: { ...settings.workHours, start: e.target.value } })} className="w-28" disabled={!settings.workHours.isEnabled} />
                 ~
                 <Input type="time" value={settings.workHours.end} onChange={(e) => update({ workHours: { ...settings.workHours, end: e.target.value } })} className="w-28" disabled={!settings.workHours.isEnabled} />
