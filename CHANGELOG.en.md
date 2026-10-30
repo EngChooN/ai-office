@@ -9,6 +9,17 @@ Writing rules
 
 ## [미정] (설치본 미빌드)
 
+## [0.16.2] - 2026-10-30
+
+### Improvements
+- Polished the Android phone screens. Header icon buttons and the send button are now round, and in portrait the Demo Day dialogue box sits below the stage with the reaction buttons at the bottom of the screen.
+- Answer and approval buttons now wrap in narrow spaces, so no horizontal scrollbar appears on a phone turned sideways or in a small PC window.
+- The phone's staff panel no longer has a height handle for the approvals section and shows only as much as the content needs.
+- @names are now highlighted in the group chat input box and speech bubbles.
+
+### Bug fixes
+- Fixed replies being lost when you sent an @name instruction in the group chat while that staff member was working. The reply now arrives in the room the instruction was sent from (including team and lab rooms), even after the earlier task finishes.
+
 ## [0.16.1] - 2026-10-30
 
 ### New features
