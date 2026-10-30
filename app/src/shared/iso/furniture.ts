@@ -109,6 +109,12 @@ export const FURNITURE: Record<string, FurnitureSpec> = {
   'partition-low-glass': divider(3, false),
   'partition-wall-white': divider(1, true),
   'partition-wall-wood': divider(3, true),
+  'partition-low-fabric-1': divider(1, false),
+  'partition-low-wood': divider(2, false),
+  'partition-wall-wood-1': divider(1, true),
+  'partition-wall-brick': divider(2, true),
+  'partition-wall-green': divider(2, true),
+  'partition-wall-glass': divider(2, true),
 
   // 레벨 전용 가구 (2-3절). 상점에 아직 없는 품목 — id는 임시이고 상점 품목을 만들 때(B1·김기획) 같이 확정한다
   'lv-folding-desk': desk(2),
