@@ -5,6 +5,7 @@ import { clampFloor } from '@shared/officeLevel'
 import { applyLanguage } from '@/lib/i18n'
 import { applyUiTheme } from '@/lib/uiTheme'
 import { t } from '@shared/i18n'
+import { appendChat } from '@shared/chatRooms'
 
 export type View = 'secretary' | 'map' | 'dashboard' | 'org' | 'board' | 'inbox' | 'chat' | 'meeting' | 'manuals' | 'knowledge' | 'gallery' | 'schedule' | 'report' | 'payroll' | 'settings' | 'updates' | 'shop'
 
@@ -16,6 +17,11 @@ interface OfficeState extends OfficeSnapshot {
   isMarketOpen: boolean
   liveLogs: LogEntry[]
   chat: ChatMessage[]
+  /** 단체방에서 보고 있는 방 — null = 전체 방, 아니면 팀 id */
+  chatRoom: string | null
+  setChatRoom(room: string | null): void
+  /** 단체방 화면으로 가서 그 방을 연다 (조직도 팀 카드 '팀 대화방') */
+  openChatRoom(room: string | null): void
   /** 랩 회의 열기 등에서 회의실 화면에 미리 채울 참석자 */
   meetingPreset: { topic: string; participantIds: string[] } | null
   /** 첫 스냅샷을 받았는지 (설정을 읽기 전 안내창이 깜빡이지 않게) */
@@ -86,6 +92,9 @@ export const useOffice = create<OfficeState>((set) => ({
   isMarketOpen: false,
   liveLogs: [],
   chat: [],
+  chatRoom: null,
+  setChatRoom: (chatRoom) => set({ chatRoom }),
+  openChatRoom: (chatRoom) => set((s) => ({ chatRoom, view: shownView('chat', s.settings.isWorkMode) })),
   meetingPreset: null,
   isLoaded: false,
   manuals: [],
@@ -123,8 +132,8 @@ export const useOffice = create<OfficeState>((set) => ({
   isQuickSecretaryOpen: false,
   setQuickSecretaryOpen: (isQuickSecretaryOpen) => set({ isQuickSecretaryOpen }),
   pushLog: (entry) => set((s) => ({ liveLogs: [...s.liveLogs.slice(-LIVE_LOG_MAX + 1), entry] })),
-  // 같은 id면 결재 결과로 바뀐 메시지 → 제자리에서 바꾼다
-  pushChat: (m) => set((s) => (s.chat.some((x) => x.id === m.id) ? { chat: s.chat.map((x) => (x.id === m.id ? m : x)) } : { chat: [...s.chat.slice(-CHAT_MAX + 1), m] })),
+  // 같은 id면 결재 결과로 바뀐 메시지 → 제자리에서 바꾼다. 방마다 최근 CHAT_MAX개
+  pushChat: (m) => set((s) => ({ chat: appendChat(s.chat, m, CHAT_MAX) })),
 }))
 
 /** main 프로세스 이벤트를 store에 연결한다 (앱 시작 시 1회) */

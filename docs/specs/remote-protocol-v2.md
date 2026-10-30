@@ -249,7 +249,7 @@ OfficeApi는 **메서드 84개 + 값 1개(`platform`) + 이벤트 5개**다(구�
 | 74 | `deleteSchedule` | R | | |
 | 75 | `runScheduleNow` | R | | |
 | 76 | `chatHistory` | R | | |
-| 77 | `sendChat` | R | 첨부 인자 | |
+| 77 | `sendChat` | R | 첨부 인자 | `(text, attachments?, room?)`. `room`은 팀 대화방(팀 id) — 생략·null이면 전체 방(예전 앱 그대로 동작). `chatHistory`·`chat` 이벤트의 메시지에 `room`이 있으면 그 팀 방 글(없으면 전체 방) |
 | 78 | `timeline` | R | | |
 | 79 | `dailyReport` | R | | |
 | 80 | `payslip` | R | | |

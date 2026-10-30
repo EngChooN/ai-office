@@ -179,7 +179,8 @@ export const V2_METHODS: Record<OfficeMethod, MethodSpec> = {
   runScheduleNow: R('s'),
   releasePlanHold: R(),
   chatHistory: R(),
-  sendChat: R('s a?', [1]),
+  // 세 번째 room(팀 id)은 선택 — 없으면 전체 방 (예전 앱 호환)
+  sendChat: R('s a? s?', [1]),
   timeline: R('n'),
   staffActivity: R('s'),
   dailyReport: R('n'),

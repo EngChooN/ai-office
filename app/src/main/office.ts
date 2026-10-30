@@ -70,6 +70,7 @@ import { shouldNudgeBackground, shouldNudgeLead } from '../shared/leadNudge'
 import { NO_HOLD, planHold, type HeldItem, type PlanHoldState } from '../shared/planHold'
 import { detectTextQuestion, toTextQuestions } from '../shared/textQuestion'
 import { mentionTargets, OFFICE_SENDER, parseMentions, pickResponder } from '../shared/mention'
+import { originRoom, pickRoomResponder, roomMembers, roomMentionTargets, roomTeams } from '../shared/chatRooms'
 import { mergeRefDocs, normalizeRefDocPath, refDocKey, refDocsPrompt, sanitizeRefDocs } from '../shared/refDocs'
 import { draftCovered, isSameRule, matchRule, ruleLabel, type ApprovalRule } from '../shared/approvalRules'
 import { askDecisionInput, matchPastDecisions, sameAskDecisions } from '../shared/askDecision'
@@ -168,9 +169,11 @@ const XP: Partial<Record<LogType, number>> = { result: 30, delegate: 10, approva
 /** t가 지역 변수(업무 t 등)에 가려지는 곳용 */
 const tr = t
 
-/** 지시가 어디서 왔는지 — 턴이 끝나면 출처에 따라 보드 갱신·팀장 보고를 한다 */
-
-type Origin = { kind: 'user' | 'chat' | 'schedule' } | { kind: 'task'; taskId: string } | { kind: 'delegate'; leadId: string } | { kind: 'process'; runId: string; stepId: string }
+/**
+ * 지시가 어디서 왔는지 — 턴이 끝나면 출처에 따라 보드 갱신·팀장 보고를 한다.
+ * room: 팀 대화방(팀 id)에서 시작된 지시 — 완료 보고·결재·질문·위임 글을 그 방에 올린다 (없으면 전체 방)
+ */
+type Origin = ({ kind: 'user' | 'chat' | 'schedule' } | { kind: 'task'; taskId: string } | { kind: 'delegate'; leadId: string } | { kind: 'process'; runId: string; stepId: string }) & { room?: string }
 
 type Counters = Partial<Record<LogType, number>>
 
@@ -209,6 +212,8 @@ export class Office extends EventEmitter<{
   /** 마지막으로 스냅샷을 낸 날 (자정 갱신용) */
   private snapshotDay = startOfDay(new Date())
   private origins = new Map<string, Origin[]>()
+  /** 턴을 막 끝낸 직원의 방 — 출처를 비운 뒤 올리는 글 질문도 같은 방에 가게 잠깐 둔다 */
+  private finishingRoom = new Map<string, string>()
   /** 직원별로 직전에 끝낸 업무 카드 — 같은 카드의 반려 피드백이면 대화를 이어 가기 위해 */
   private lastDoneTask = new Map<string, string>()
   /** 직원별 /명령어: raw = 세션 원본(별칭·기본 명령 판정용), list = 자동완성 목록(스냅샷으로 나간다) */
@@ -856,7 +861,7 @@ export class Office extends EventEmitter<{
       this.scheduleEmit()
     }
     this.log(staffId, 'status', notice)
-    if (origin.kind === 'chat') this.postChat(OFFICE_SENDER, `${this.hired.get(staffId)?.name}: ${notice}`)
+    if (origin.kind === 'chat') this.postChat(OFFICE_SENDER, `${this.hired.get(staffId)?.name}: ${notice}`, undefined, undefined, origin.room)
     return true
   }
 
@@ -1127,6 +1132,7 @@ export class Office extends EventEmitter<{
     if (!s) return
     const isAutoCheckTurn = this.autoChecked.delete(staffId)
     const origins = this.origins.get(staffId) ?? []
+    const room = originRoom(origins)
     this.origins.set(staffId, [])
     const doneTask = origins.find((o) => o.kind === 'task')
     if (doneTask && doneTask.kind === 'task') this.lastDoneTask.set(staffId, doneTask.taskId)
@@ -1148,29 +1154,34 @@ export class Office extends EventEmitter<{
       }
       if (o.kind === 'process') this.onStepDone(o.runId, o.stepId, s, summary)
       if (o.kind === 'delegate' && this.hired.has(o.leadId)) {
-        this.instruct(o.leadId, t('staff.msg.memberReport', { name: s.name, role: s.role, text: short }), { kind: 'user' })
+        this.instruct(o.leadId, t('staff.msg.memberReport', { name: s.name, role: s.role, text: short }), { kind: 'user', room: o.room })
       }
     }
-    this.postChat(staffId, short || t('notify.chatDone'))
+    this.postChat(staffId, short || t('notify.chatDone'), undefined, undefined, room)
     this.emit('notify', { title: t('notify.report', { name: s.name }), body: short.slice(0, 120) || t('notify.reportDone'), staffId })
-    this.registerTextQuestion(staffId, summary, origins, isAutoCheckTurn)
+    if (room) this.finishingRoom.set(staffId, room)
+    try {
+      this.registerTextQuestion(staffId, summary, origins, isAutoCheckTurn)
+    } finally {
+      this.finishingRoom.delete(staffId)
+    }
     const queued = this.taskQueue.get(staffId) ?? []
     const nextTask = queued.shift()
     this.taskQueue.set(staffId, queued)
     if (nextTask) this.assignTask(nextTask.taskId, staffId, nextTask.context)
     else if (!origins.some((o) => o.kind === 'task')) this.resumeStopped(staffId)
-    this.checkStall(staffId, summary, isAutoCheckTurn, backgroundTasks)
+    this.checkStall(staffId, summary, isAutoCheckTurn, backgroundTasks, room)
   }
 
   /**
    * 멈춤 방지: 턴이 끝나면 앱이 다시 깨우지 않으니, 백그라운드 작업을 남겼거나
    * 리드가 "맡길게요"라고만 하고 실제로 맡긴 일·승인 대기 기획안이 없으면 한 번 다시 지시한다
    */
-  private checkStall(staffId: string, summary: string, isAutoCheckTurn: boolean, backgroundTasks: string[]) {
+  private checkStall(staffId: string, summary: string, isAutoCheckTurn: boolean, backgroundTasks: string[], room?: string) {
     const isBusy = (this.origins.get(staffId)?.length ?? 0) > 0
     if (shouldNudgeBackground({ isAutoCheckTurn, isBusy, backgroundTasks })) {
       this.autoChecked.add(staffId)
-      this.instruct(staffId, t('staff.msg.backgroundNudge', { tasks: backgroundTasks.join(', ') }), { kind: 'user' })
+      this.instruct(staffId, t('staff.msg.backgroundNudge', { tasks: backgroundTasks.join(', ') }), { kind: 'user', room })
       return
     }
     const delegates = this.delegatesOf(staffId)
@@ -1190,7 +1201,7 @@ export class Office extends EventEmitter<{
     })
     if (!isNudge) return
     this.autoChecked.add(staffId)
-    this.instruct(staffId, t('staff.msg.leadNudge'), { kind: 'user' })
+    this.instruct(staffId, t('staff.msg.leadNudge'), { kind: 'user', room })
   }
 
   /** 대화하려고 멈췄던 업무를 이어 간다: 기획 하위 업무면 멈춘 기획을 다시 진행하고, 아니면 카드를 다시 맡긴다 */
@@ -1665,7 +1676,7 @@ export class Office extends EventEmitter<{
             const lead = this.hired.get(staffId)!
             this.log(staffId, 'delegate', tk('log.delegate', { name: target.name, text: instruction }))
             this.postChat(staffId, `@${target.name} ${instruction}`.slice(0, CHAT_TEXT_MAX))
-            this.instruct(target.id, t('staff.msg.delegated', { lead: lead.name, instruction }), { kind: 'delegate', leadId: staffId })
+            this.instruct(target.id, t('staff.msg.delegated', { lead: lead.name, instruction }), { kind: 'delegate', leadId: staffId, room: this.roomOf(staffId) })
             return text(t('staff.tool.delegate.done', { name: target.name }))
           },
         ),
@@ -3506,45 +3517,59 @@ export class Office extends EventEmitter<{
     return db.recentChat(CHAT_HISTORY)
   }
 
-  /** @이름 으로 부르면 그 직원에게 지시로 전달한다 */
-  /** 단체방: @직원·@팀·@랩·@전체 구성원에게 지시하고, 멘션이 없으면 알맞은 직원 한 명이 받는다 */
-  sendChat(text: string, attachments: Attachment[] = []) {
-    this.postChat('me', text, attachments)
+  /**
+   * 단체방: @직원·@팀·@랩·@전체 구성원에게 지시하고, 멘션이 없으면 알맞은 직원 한 명이 받는다.
+   * room(팀 id)이면 그 팀 방: 부를 수 있는 건 방 참여자와 @전체(= 팀 전원), 아무도 안 부르면 팀장이 받는다
+   */
+  sendChat(text: string, attachments: Attachment[] = [], room?: string) {
+    const team = room ? this.teams.get(room) : undefined
+    // 없어졌거나 방이 없는 팀(project·연습)이면 전체 방으로
+    if (room && (!team || roomTeams([team]).length === 0)) room = undefined
+    const say = (line: string) => this.postChat(OFFICE_SENDER, line, undefined, undefined, room)
+    this.postChat('me', text, attachments, undefined, room)
     // 앱이 직접 처리하는 단체방 명령: /데모데이
-    if (/^\/(데모데이|demoday)$/i.test(text.trim())) return this.runDemoDayNow()
+    if (!room && /^\/(데모데이|demoday)$/i.test(text.trim())) return this.runDemoDayNow()
     // 튜토리얼 연습 직원·팀·랩은 단체방 대상에서 뺀다 (AI 호출 없음)
-    const hired = [...this.hired.values()].filter((s) => !s.isPractice)
-    if (hired.length === 0) return this.postChat(OFFICE_SENDER, '고용한 직원이 없어 아무에게도 전달하지 못했어요.')
+    const allHired = [...this.hired.values()].filter((s) => !s.isPractice)
+    const hired = team ? roomMembers(team, allHired) : allHired
+    if (hired.length === 0) return say(team ? t('chat.room.noMembers', { team: team.name }) : '고용한 직원이 없어 아무에게도 전달하지 못했어요.')
     const teams = [...this.teams.values()].filter((t) => !t.isPractice)
     const labs = [...this.labs.values()].filter((l) => !l.isPractice)
-    const { matched, recipientIds, body } = parseMentions(text, mentionTargets(hired, teams, labs))
+    const targets = team ? roomMentionTargets(team, hired) : mentionTargets(hired, teams, labs)
+    const { matched, recipientIds, body } = parseMentions(text, targets)
     // 멘션만 있고 할 말이 없으면 여러 명에게 빈 지시가 가지 않게 막는다. 첨부만 있으면 첨부를 보라고 전한다
-    if (!body && attachments.length === 0) return this.postChat(OFFICE_SENDER, '내용이 없어 전달하지 않았어요.')
+    if (!body && attachments.length === 0) return say('내용이 없어 전달하지 않았어요.')
     // `@이름 /명령`은 머리말 없이 그대로 보내야 세션이 명령으로 알아듣는다
-    const message = body.startsWith('/') ? body : `[단체방] ${body || '첨부 파일을 확인해 주세요.'}`
+    const head = team ? `[${team.name} 방]` : '[단체방]'
+    const message = body.startsWith('/') ? body : `${head} ${body || '첨부 파일을 확인해 주세요.'}`
+    const origin: Origin = { kind: 'chat', room }
     if (matched.length === 0) {
       const leadIds = new Set([...teams, ...labs].map((g) => g.leadId))
-      const id = pickResponder(
-        body,
-        hired.map((s) => ({ id: s.id, role: s.role, status: s.status, isOverBudget: false, isLead: leadIds.has(s.id) })),
-      )
-      if (!id) return this.postChat(OFFICE_SENDER, '모든 직원이 이번 달 예산을 다 써서 전달하지 못했어요.')
-      this.postChat(OFFICE_SENDER, `${this.hired.get(id)?.name} 님이 받았어요.`)
-      return this.instruct(id, message, { kind: 'chat' }, attachments, '', true)
+      const candidates = hired.map((s) => ({ id: s.id, role: s.role, status: s.status, isOverBudget: false, isLead: leadIds.has(s.id) }))
+      const id = team ? pickRoomResponder(body, team.leadId, candidates) : pickResponder(body, candidates)
+      if (!id) return say('모든 직원이 이번 달 예산을 다 써서 전달하지 못했어요.')
+      say(`${this.hired.get(id)?.name} 님이 받았어요.`)
+      return this.instruct(id, message, origin, attachments, '', true)
     }
     const empty = matched.filter((t) => t.memberIds.length === 0).map((t) => t.name)
-    if (empty.length) this.postChat(OFFICE_SENDER, `${empty.join(', ')}에는 고용 직원 구성원이 없어요.`)
+    if (empty.length) say(`${empty.join(', ')}에는 고용 직원 구성원이 없어요.`)
     // 직원 한 명만 부른 예전 방식은 안내 줄 없이 그대로
     const isSingleStaff = matched.length === 1 && matched[0].kind === 'staff'
     if (recipientIds.length > 0 && !isSingleStaff) {
       const groups = matched.filter((t) => t.kind !== 'staff' && t.memberIds.length > 0).map((t) => t.name)
-      this.postChat(OFFICE_SENDER, `${groups.length ? `${groups.join(', ')} 포함 ` : ''}${recipientIds.length}명에게 전달했어요.`)
+      say(`${groups.length ? `${groups.join(', ')} 포함 ` : ''}${recipientIds.length}명에게 전달했어요.`)
     }
-    for (const id of recipientIds) this.instruct(id, message, { kind: 'chat' }, attachments, '', true)
+    for (const id of recipientIds) this.instruct(id, message, origin, attachments, '', true)
   }
 
-  private postChat(from: string, text: string, attachments?: Attachment[], approval?: ChatApproval) {
-    this.emit('chat', db.insertChat(from, text, attachments, approval))
+  /** 직원이 지금 하는 일의 방 — 팀 방에서 온 지시를 처리 중이면 그 방 (없으면 전체 방) */
+  private roomOf(from: string): string | undefined {
+    return originRoom(this.origins.get(from) ?? []) ?? this.finishingRoom.get(from)
+  }
+
+  /** room을 안 주면 보낸 직원이 처리 중인 지시의 방으로 (결재·질문·위임·중간 보고가 지시 온 방에 올라간다) */
+  private postChat(from: string, text: string, attachments?: Attachment[], approval?: ChatApproval, room = this.roomOf(from)) {
+    this.emit('chat', db.insertChat(from, text, attachments, approval, room))
   }
 
   /** 결재·질문 처리 결과를 단체방 메시지에 남긴다 (어디서 처리했든 — 결재함·단체방·휴대폰) */

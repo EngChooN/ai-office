@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { BuildingIcon, CrownIcon, PlusIcon, Trash2Icon } from 'lucide-react'
+import { BuildingIcon, CrownIcon, MessagesSquareIcon, PlusIcon, Trash2Icon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Page } from '@/components/ui/page'
@@ -7,6 +7,7 @@ import { NativeSelect } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import { useOffice, useViewLevel, useWorkMode } from '@/store'
 import { officeOf, teamFloor } from '@shared/officeLevel'
+import { roomTeams } from '@shared/chatRooms'
 import { TEAM_COLORS, type Staff, type Team } from '@shared/types'
 import { LabSection } from './LabSection'
 import { Avatar, StatusDot } from './StaffCard'
@@ -124,6 +125,7 @@ function TeamCard({ team, members, teams }: { team: Team | null; members: Staff[
   const lead = team ? members.find((m) => m.id === team.leadId) : undefined
   const handleLead = (id: string) => team && void window.office.updateTeam(team.id, { leadId: id || null })
   const handleMove = (staffId: string, teamId: string) => void window.office.updateStaff(staffId, { teamId: teamId || null })
+  const openChatRoom = useOffice((s) => s.openChatRoom)
   const handleDelete = () => {
     if (team && window.confirm(t('org.deleteTeam.confirm', { name: team.name }))) void window.office.deleteTeam(team.id)
   }
@@ -134,6 +136,11 @@ function TeamCard({ team, members, teams }: { team: Team | null; members: Staff[
         <span className="size-3 rounded-full" style={{ background: team?.color ?? '#8a8a9c' }} />
         <span className="flex-1 font-semibold">{team?.name ?? t('org.unassigned')}</span>
         <span className="text-muted-foreground text-xs">{t('org.memberCount', { n: members.length })}</span>
+        {team && roomTeams([team]).length > 0 && (
+          <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs" onClick={() => openChatRoom(team.id)}>
+            <MessagesSquareIcon className="size-3.5" /> {t('org.team.openChat')}
+          </Button>
+        )}
         {team && (
           <Button variant="ghost" size="icon" className="size-7" onClick={handleDelete} aria-label={t('org.deleteTeam')}>
             <Trash2Icon className="size-3.5" />

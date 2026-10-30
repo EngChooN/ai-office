@@ -535,6 +535,8 @@ export interface ChatMessage {
   attachments?: Attachment[]
   /** 결재 요청·직원 질문 메시지면 그 결재 — 단체방에서 바로 처리하고 결과를 보여 준다 */
   approval?: ChatApproval
+  /** 팀 대화방이면 그 팀 id (없으면 전체 방) */
+  room?: string
 }
 
 /** approved·rejected: 결재 승인·반려 / answered: 질문에 답함 / skipped: 질문 넘김 / canceled: 세션 쪽에서 사라짐 */
@@ -1020,7 +1022,8 @@ export interface OfficeApi {
   releasePlanHold(): Promise<void>
 
   chatHistory(): Promise<ChatMessage[]>
-  sendChat(text: string, attachments?: Attachment[]): Promise<void>
+  /** room: 팀 대화방(팀 id) — 비우면 전체 방 */
+  sendChat(text: string, attachments?: Attachment[], room?: string): Promise<void>
 
   timeline(sinceMs: number): Promise<LogEntry[]>
   /** 직원 한 명의 세션 활동 (마지막 활동·상태·대기 결재·최근 도구·오류·대기열) — 읽기 전용 */

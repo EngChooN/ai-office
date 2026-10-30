@@ -121,6 +121,8 @@ export function openDb() {
   // 단체방 결재·질문 메시지 ↔ 결재 id·처리 결과 (JSON)
   const chatCols = (db.prepare('PRAGMA table_info(chat)').all() as { name: string }[]).map((c) => c.name)
   if (!chatCols.includes('approval')) db.exec('ALTER TABLE chat ADD COLUMN approval TEXT')
+  // 팀 대화방 (팀 id). NULL·빈 값 = 전체 방 — 기존 메시지는 그대로 전체 방
+  if (!chatCols.includes('room')) db.exec('ALTER TABLE chat ADD COLUMN room TEXT')
 }
 
 const run = (sql: string, ...params: (string | number | null)[]) => db.prepare(sql).run(...params)
@@ -476,7 +478,7 @@ export function deleteScheduleRow(id: string) {
 
 // ── 단체방 ──────────────────────────────────────────────
 
-type ChatRow = { id: number; ts: number; sender: string; text: string; attachments: string | null; approval: string | null }
+type ChatRow = { id: number; ts: number; sender: string; text: string; attachments: string | null; approval: string | null; room: string | null }
 
 const toChatMessage = (r: ChatRow): ChatMessage => ({
   id: r.id,
@@ -485,13 +487,23 @@ const toChatMessage = (r: ChatRow): ChatMessage => ({
   text: r.text,
   attachments: parseAttachments(r.attachments),
   approval: r.approval ? (JSON.parse(r.approval) as ChatApproval) : undefined,
+  ...(r.room ? { room: r.room } : {}),
 })
 
-export function insertChat(from: string, text: string, attachments?: Attachment[], approval?: ChatApproval): ChatMessage {
+/** room: 팀 대화방(팀 id) — 비우면 전체 방 */
+export function insertChat(from: string, text: string, attachments?: Attachment[], approval?: ChatApproval, room?: string): ChatMessage {
   const ts = Date.now()
   const raw = attachments?.length ? JSON.stringify(attachments) : null
-  const { lastInsertRowid } = run('INSERT INTO chat (ts, sender, text, attachments, approval) VALUES (?, ?, ?, ?, ?)', ts, from, text, raw, approval ? JSON.stringify(approval) : null)
-  return { id: Number(lastInsertRowid), ts, from, text, attachments: attachments?.length ? attachments : undefined, approval }
+  const { lastInsertRowid } = run(
+    'INSERT INTO chat (ts, sender, text, attachments, approval, room) VALUES (?, ?, ?, ?, ?, ?)',
+    ts,
+    from,
+    text,
+    raw,
+    approval ? JSON.stringify(approval) : null,
+    room || null,
+  )
+  return { id: Number(lastInsertRowid), ts, from, text, attachments: attachments?.length ? attachments : undefined, approval, ...(room ? { room } : {}) }
 }
 
 /** 결재 처리 결과를 그 결재의 단체방 메시지에 남긴다 — 바뀐 메시지(없거나 이미 결과가 있으면 null) */
@@ -502,10 +514,12 @@ export function settleChatApproval(approval: ChatApproval): ChatMessage | null {
   return toChatMessage({ ...row, approval: JSON.stringify(approval) })
 }
 
+/** 방마다 최근 limit개씩 (전체 방 + 팀 방들) — 바쁜 팀 방이 전체 방 기록을 밀어내지 않게 */
 export function recentChat(limit: number): ChatMessage[] {
-  return all<ChatRow>('SELECT * FROM chat ORDER BY id DESC LIMIT ?', limit)
-    .reverse()
-    .map(toChatMessage)
+  return all<ChatRow>(
+    "SELECT * FROM (SELECT *, ROW_NUMBER() OVER (PARTITION BY COALESCE(room, '') ORDER BY id DESC) AS rn FROM chat) WHERE rn <= ? ORDER BY id",
+    limit,
+  ).map(toChatMessage)
 }
 
 // ── 비서 대화 ───────────────────────────────────────────
