@@ -9,6 +9,28 @@ Writing rules
 
 ## [미정] (설치본 미빌드)
 
+## [0.16.0] - 2026-10-30
+
+### New features
+- New app icon and tray icon. Mac, Windows and Android all use the same new icon.
+- Staff have a new look. The same new staff members appear on the map, staff cards, the decorating preview and Demo Day. Sitting and typing poses were redrawn too.
+- Emotion bubbles above staff were redrawn as new pixel art, with new 👀, 👍, ☕ and ? bubbles.
+- 7 new ways staff interact: handing over a task, looking over a shoulder at results, helping a stuck coworker, high-fives when work is done, chatting about recent work in the lounge, coffee runs, and waving when you click a staff member. These are visual only and do not affect real work.
+- New furniture has been added.
+- New buildings and scenery around the building exterior.
+- You can drag the approval section of the staff panel to change its height, and fold or unfold it.
+
+### Improvements
+- Settings, the staff panel and the sidebar now fit better on narrow windows.
+- The focus outline of the selected field looks the same across the whole app.
+- Partitions next to desks now connect, and desks are drawn to face the seated staff member.
+- The introduction site's text, screenshots and videos were refreshed.
+
+### Bug fixes
+- Fixed staff export failing when a role was longer than 40 characters. Up to 200 characters are accepted now, and the error message shows the staff name and the limit.
+- Fixed lab export failing when the name or goal was too long. The input boxes now have limits, and values that are already too long are trimmed when exporting.
+- Fixed the input box at the bottom of the staff panel being cut off in small windows.
+
 ## [0.15.1] - 2026-10-29
 
 ### Bug fixes

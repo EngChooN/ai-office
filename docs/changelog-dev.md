@@ -2,6 +2,22 @@
 
 버전은 SemVer. 기능 크기 기준으로 올린다. 버전마다 **새 기능 / 개선 / 버그 수정**으로 나눠 적는다(앱의 "업데이트 소식"이 이 파일을 그대로 보여 준다).
 
+## [0.16.0] - 2026-10-30
+
+### 새 기능
+- 새 앱·트레이 아이콘: `app/build/icon.*`·`trayWin*.png`, 안드로이드 `mipmap-*`·`ic_launcher_background.xml`(적응형 아이콘). 생성 스크립트 `app/scripts/icon-final.mjs` 등.
+- 하보풍 새 직원 그림 `personArt.ts`(자세 15장), `isoArt.ts`·`sprites.ts`·`demoStageScene.ts`·`StaffCard.tsx` 연결. 감정 말풍선 `emoteArt.ts`.
+- 직원 상호작용 7종: `shared/iso/interactions.ts`(+`scripts/interactions.test.mts`), `IsoOfficeScene.ts` 연결, 설정의 개발용 미리보기.
+- 가구 추가(`furniture.ts`·`economy.ts`·`game.ts`), 외관 주변 건물(`exteriorArt.ts`·`exteriorDiorama.ts`).
+- 직원 패널 결재 칸 높이 조절·접기: `ApprovalSplit.tsx`, `StaffPanel.tsx`.
+
+### 개선
+- `focus-ring` 클래스와 `narrow`·`compact` 변형으로 좁은 화면 대응(`index.css`, `Sidebar.tsx`, `SettingsPage.tsx` 등). 소개 사이트 4개 언어·화면 사진·영상 교체.
+
+### 버그 수정
+- 직원 내보내기 직무 상한 40→200자(`PACK_LIMITS.roleMax`), 오류 문구에 이름·상한. 랩 내보내기 이름·목표를 파일 한도에 맞춰 자르고 입력칸에 `maxLength`.
+- 안드로이드 `versionCode` 30.
+
 ## [0.15.1] - 2026-10-29
 
 ### 버그 수정

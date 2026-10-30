@@ -60,7 +60,7 @@ Free. You only need to be signed in to **Claude** or **GPT (ChatGPT)** on your c
 
 A free, open-source desktop app (Electron) where you **hire** Claude staff and GPT staff together and run them like one office: hand out work, approve, and get reports. Staff are Claude Code or Codex (GPT) sessions. (Formerly named Claude Office — existing data is copied automatically on first launch; the old folder is left untouched.)
 
-- Status: **0.15.1** (2026-10-29) — GPT staff (beta) · Office map (team zones, meeting rooms, lounge) · Team / team-lead delegation · Task board · Approval inbox · Group chat · Meetings · Scheduled tasks · Reports · Payslips · Decorating
+- Status: **0.16.0** (2026-10-30) — GPT staff (beta) · Office map (team zones, meeting rooms, lounge) · Team / team-lead delegation · Task board · Approval inbox · Group chat · Meetings · Scheduled tasks · Reports · Payslips · Decorating
 - Stack: Electron Forge + Vite · React 19 · Zustand · Tailwind 4 + shadcn/ui · Phaser 4 · SQLite (`node:sqlite`) · Claude Agent SDK · Codex app-server (GPT staff)
 
 ## Before you install
