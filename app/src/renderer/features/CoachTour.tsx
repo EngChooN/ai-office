@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import { useOffice, useWorkMode, type View } from '@/store'
 import { MOD_KEY, osText } from '@/lib/platform'
 import { cn } from '@/lib/utils'
+import { navTourTarget } from './nav'
 import { t } from '@shared/i18n'
 import type { TKey } from '@shared/i18n'
 
@@ -27,23 +28,24 @@ const CHAPTERS: { id: Chapter; label: TKey }[] = [
   { id: 'company', label: 'coachTour.chapter.company' },
 ]
 
+// 묶음 안 화면은 그 화면을 열어 위쪽 탭을 가리킨다 (navTourTarget: 탭이 없으면 사이드바 묶음으로)
 const STEPS: TourStep[] = [
   { chapter: 'office', target: 'nav-map', view: 'map', icon: '🏢', title: 'coachTour.map.title', body: 'coachTour.map.body' },
   { chapter: 'office', target: 'hud', view: 'map', icon: '📈', title: 'coachTour.hud.title', body: 'coachTour.hud.body' },
   { chapter: 'office', target: 'hire', icon: '🧑‍💼', title: 'coachTour.hire.title', body: 'coachTour.hire.body' },
-  { chapter: 'office', target: 'nav-dashboard', icon: '🗂️', title: 'coachTour.dashboard.title', body: 'coachTour.dashboard.body' },
-  { chapter: 'office', target: 'nav-org', icon: '🧭', title: 'coachTour.org.title', body: 'coachTour.org.body' },
-  { chapter: 'work', target: 'nav-board', icon: '📋', title: 'coachTour.board.title', body: 'coachTour.board.body' },
-  { chapter: 'work', target: 'nav-chat', icon: '💬', title: 'coachTour.chat.title', body: 'coachTour.chat.body' },
-  { chapter: 'work', target: 'nav-meeting', icon: '🗣️', title: 'coachTour.meeting.title', body: 'coachTour.meeting.body' },
-  { chapter: 'work', target: 'nav-manuals', icon: '📘', title: 'coachTour.manuals.title', body: 'coachTour.manuals.body' },
-  { chapter: 'work', target: 'nav-schedule', icon: '⏰', title: 'coachTour.schedule.title', body: 'coachTour.schedule.body' },
-  { chapter: 'review', target: 'nav-inbox', icon: '✅', title: 'coachTour.inbox.title', body: 'coachTour.inbox.body' },
-  { chapter: 'review', target: 'nav-report', icon: '📑', title: 'coachTour.report.title', body: 'coachTour.report.body' },
-  { chapter: 'review', target: 'nav-payroll', icon: '💳', title: 'coachTour.payroll.title', body: 'coachTour.payroll.body' },
-  { chapter: 'company', target: 'nav-shop', icon: '🛍️', title: 'coachTour.shop.title', body: 'coachTour.shop.body' },
-  { chapter: 'company', target: 'nav-settings', icon: '⚙️', title: 'coachTour.settings.title', body: 'coachTour.settings.body' },
-  { chapter: 'company', target: 'nav-updates', icon: '📣', title: 'coachTour.updates.title', body: 'coachTour.updates.body' },
+  { chapter: 'office', target: navTourTarget('dashboard'), view: 'dashboard', icon: '🗂️', title: 'coachTour.dashboard.title', body: 'coachTour.dashboard.body' },
+  { chapter: 'office', target: navTourTarget('org'), view: 'org', icon: '🧭', title: 'coachTour.org.title', body: 'coachTour.org.body' },
+  { chapter: 'work', target: navTourTarget('board'), view: 'board', icon: '📋', title: 'coachTour.board.title', body: 'coachTour.board.body' },
+  { chapter: 'work', target: navTourTarget('chat'), view: 'chat', icon: '💬', title: 'coachTour.chat.title', body: 'coachTour.chat.body' },
+  { chapter: 'work', target: navTourTarget('meeting'), view: 'meeting', icon: '🗣️', title: 'coachTour.meeting.title', body: 'coachTour.meeting.body' },
+  { chapter: 'work', target: navTourTarget('manuals'), view: 'manuals', icon: '📘', title: 'coachTour.manuals.title', body: 'coachTour.manuals.body' },
+  { chapter: 'work', target: navTourTarget('schedule'), view: 'schedule', icon: '⏰', title: 'coachTour.schedule.title', body: 'coachTour.schedule.body' },
+  { chapter: 'review', target: navTourTarget('inbox'), icon: '✅', title: 'coachTour.inbox.title', body: 'coachTour.inbox.body' },
+  { chapter: 'review', target: navTourTarget('report'), view: 'report', icon: '📑', title: 'coachTour.report.title', body: 'coachTour.report.body' },
+  { chapter: 'review', target: navTourTarget('payroll'), view: 'payroll', icon: '💳', title: 'coachTour.payroll.title', body: 'coachTour.payroll.body' },
+  { chapter: 'company', target: navTourTarget('shop'), icon: '🛍️', title: 'coachTour.shop.title', body: 'coachTour.shop.body' },
+  { chapter: 'company', target: navTourTarget('settings'), view: 'settings', icon: '⚙️', title: 'coachTour.settings.title', body: 'coachTour.settings.body' },
+  { chapter: 'company', target: navTourTarget('updates'), view: 'updates', icon: '📣', title: 'coachTour.updates.title', body: 'coachTour.updates.body' },
   { chapter: 'company', target: 'hire', icon: '🚀', title: 'coachTour.firstHire.title', body: 'coachTour.firstHire.body' },
 ]
 /** 업무 모드에서 숨긴 화면을 설명하는 단계 */
@@ -52,12 +54,21 @@ const PAD = 6
 const TIP_W = 340
 const TIP_GAP = 14
 
-/** data-tour 대상의 화면 위치를 따라간다 (화면 전환·창 크기 변경) — 튜토리얼 안내 줄도 같이 쓴다 */
+/** 'a|b'처럼 이은 후보 중 화면에 있는 첫 data-tour 대상 */
+function findTourTarget(target: string): Element | null {
+  for (const one of target.split('|')) {
+    const el = document.querySelector(`[data-tour="${one}"]`)
+    if (el) return el
+  }
+  return null
+}
+
+/** data-tour 대상의 화면 위치를 따라간다 (화면 전환·창 크기 변경) — 튜토리얼 안내 줄도 같이 쓴다. 대상이 없으면 null(설명 상자만 가운데) */
 export function useTourTarget(target: string | null) {
   const [rect, setRect] = useState<DOMRect | null>(null)
   useLayoutEffect(() => {
     if (!target) return setRect(null)
-    const update = () => setRect(document.querySelector(`[data-tour="${target}"]`)?.getBoundingClientRect() ?? null)
+    const update = () => setRect(findTourTarget(target)?.getBoundingClientRect() ?? null)
     update()
     const timer = setInterval(update, 300)
     window.addEventListener('resize', update)

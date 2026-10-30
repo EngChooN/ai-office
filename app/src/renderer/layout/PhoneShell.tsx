@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react'
-import { SparklesIcon, BellIcon, CheckCircle2Icon, EllipsisIcon, FolderIcon, LayoutGridIcon, MegaphoneIcon, UserPlusIcon, WifiOffIcon } from 'lucide-react'
+import { SparklesIcon, BellIcon, CheckCircle2Icon, EllipsisIcon, FolderIcon, LayoutGridIcon, UserPlusIcon, WifiOffIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { GAME_VIEWS, NAV_ITEMS, useNavBadges } from '@/features/nav'
+import { NAV_GROUPS, NAV_ITEMS, useNavBadges, useOpenGroup, type NavGroup } from '@/features/nav'
+import { NAV_GROUP_DEFS, groupBadge, groupOfView, visibleGroups, visibleTabs } from '@/features/navGroups'
+import { NavTabs } from '@/features/NavTabs'
+import { notifiableVersion, useUpdateStore } from '@/lib/update'
 import { StaffPanel } from '@/features/StaffPanel'
 import { AutoApproveBadge } from '@/features/AutoApprove'
-import { APP_VERSION } from '@/lib/changelog'
 import { cn } from '@/lib/utils'
 import { recentFolders } from '@/mobile/recentFolders'
 import { useMobileUi } from '@/mobile/ui'
@@ -40,8 +42,12 @@ export function PhoneShell({ children }: { children?: React.ReactNode }) {
     <div className="flex h-full flex-col pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)]">
       <PhoneTopBar />
       <ConnectionBanner />
-      <main className={cn('min-h-0 min-w-0 flex-1 overflow-hidden', isOffline && 'pointer-events-none opacity-60')}>
-        <Page />
+      <main className={cn('flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden', isOffline && 'pointer-events-none opacity-60')}>
+        {/* 묶음 화면 위쪽 탭 (PC와 같은 탭 줄) */}
+        <NavTabs />
+        <div className="min-h-0 flex-1">
+          <Page />
+        </div>
       </main>
       <NoticeBar />
       <PhoneTabBar />
@@ -147,7 +153,8 @@ function PhoneTabBar() {
   const setHireOpen = useOffice((s) => s.setHireOpen)
   const waitingCount = useOffice((s) => s.staff.filter((x) => x.status === 'waiting').length)
   const tabs = isWorkMode ? WORK_TABS : PHONE_TABS
-  const moreViews = moreItems(isWorkMode).map((i) => i.view)
+  // 아래 탭에 이미 숫자가 보이는 화면(업무 보드 등)은 더보기 숫자에 다시 세지 않는다
+  const moreViews = moreGroups(isWorkMode).flatMap((g) => visibleTabs(g, isWorkMode).map((x) => x.view)).filter((v) => !tabs.includes(v))
   const moreBadge = moreViews.reduce((n, v) => n + (badges[v] ?? 0), 0)
   // 비서 화면은 상단 바 버튼이 선택 모양 — 아래 탭은 하나도 고르지 않는다
   const isMoreSelected = !tabs.includes(view) && view !== 'secretary'
@@ -193,21 +200,24 @@ function Tab({ label, icon, isSelected, badge, onClick, tour }: { label: string;
   )
 }
 
-/** 더보기 안 메뉴: 사이드바에서 아래 탭에 없는 것 (같은 순서) */
-function moreItems(isWorkMode: boolean) {
+/** 더보기 안 메뉴: 사이드바와 같은 묶음 중 아래 탭만으로 다 열 수 없는 것 (같은 순서). 비서는 상단 바 버튼 */
+function moreGroups(isWorkMode: boolean): NavGroup[] {
   const tabs = isWorkMode ? WORK_TABS : PHONE_TABS
-  return NAV_ITEMS.filter((i) => !tabs.includes(i.view) && i.view !== 'secretary' && !(isWorkMode && GAME_VIEWS.has(i.view)))
+  return visibleGroups(NAV_GROUPS, isWorkMode).filter((g) => g.id !== 'secretary' && visibleTabs(g, isWorkMode).some((x) => !tabs.includes(x.view)))
 }
 
 function MoreSheet() {
   const isOpen = useMobileUi((s) => s.isMoreOpen)
   const setMoreOpen = useMobileUi((s) => s.setMoreOpen)
   const view = useOffice((s) => s.view)
-  const setView = useOffice((s) => s.setView)
   const isWorkMode = useWorkMode()
   const badges = useNavBadges()
-  const go = (v: View) => {
-    setView(v)
+  const openGroup = useOpenGroup()
+  const newVersion = notifiableVersion(useUpdateStore((s) => s.status))
+  const currentId = groupOfView(NAV_GROUP_DEFS, view)?.id
+  // 묶음을 누르면 그 묶음에서 마지막으로 본 탭으로 (화면 위쪽 탭 줄로 옮겨 다닌다)
+  const go = (g: NavGroup) => {
+    openGroup(g)
     setMoreOpen(false)
   }
   return (
@@ -219,29 +229,24 @@ function MoreSheet() {
           <DialogDescription className="sr-only">{t('shell.moreDesc')}</DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-0.5">
-          {moreItems(isWorkMode).map(({ view: v, label, icon: Icon }) => (
-            <button
-              key={v}
-              type="button"
-              onClick={() => go(v)}
-              data-tour={`nav-${v}`}
-              className={cn('flex min-h-12 items-center gap-2 rounded-md px-2.5 text-left text-sm', view === v ? 'bg-accent text-foreground font-medium' : 'text-muted-foreground')}
-            >
-              <Icon className="size-4" />
-              <span className="flex-1">{label}</span>
-              {Boolean(badges[v]) && <span className="bg-status-waiting rounded-full px-1.5 text-[10px] font-semibold text-background">{badges[v]}</span>}
-            </button>
-          ))}
-          <button
-            type="button"
-            onClick={() => go('updates')}
-            data-tour="nav-updates"
-            className={cn('mt-2 flex min-h-12 items-center gap-2 rounded-md border-t px-2.5 text-left text-xs', view === 'updates' ? 'bg-accent text-foreground font-medium' : 'text-muted-foreground')}
-          >
-            <MegaphoneIcon className="size-3.5" />
-            <span className="flex-1">{t('shell.updates')}</span>
-            <span className="tabular-nums">v{APP_VERSION}</span>
-          </button>
+          {moreGroups(isWorkMode).map((g) => {
+            const Icon = g.icon
+            const badge = groupBadge(g, badges, isWorkMode)
+            return (
+              <button
+                key={g.id}
+                type="button"
+                onClick={() => go(g)}
+                data-tour={`nav-${g.id}`}
+                className={cn('flex min-h-12 items-center gap-2 rounded-md px-2.5 text-left text-sm', currentId === g.id ? 'bg-accent text-foreground font-medium' : 'text-muted-foreground')}
+              >
+                <Icon className="size-4" />
+                <span className="flex-1">{g.label}</span>
+                {badge > 0 && <span className="bg-status-waiting rounded-full px-1.5 text-[10px] font-semibold text-background">{badge}</span>}
+                {g.id === 'config' && newVersion && <span className="bg-status-waiting rounded-full px-1.5 text-[10px] font-semibold text-background">{t('update.badgeShort')}</span>}
+              </button>
+            )
+          })}
         </div>
       </DialogContent>
     </Dialog>

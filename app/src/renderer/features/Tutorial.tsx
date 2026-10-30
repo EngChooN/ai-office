@@ -10,6 +10,7 @@ import { formatWon } from '@shared/economy'
 import { t, type TKey } from '@shared/i18n'
 import { DONE_STEP, stepsOf, type TutorialScenario, type TutorialSnapshot, type TutorialView } from '@shared/tutorial'
 import { useTourTarget } from './CoachTour'
+import { navTourTarget } from './nav'
 
 const PAD = 5
 /** 튜토리얼 상태가 아직 없을 때의 빈 목록 — 선택자가 매번 새 배열을 돌려주면 zustand가 끝없이 다시 그린다 */
@@ -36,7 +37,8 @@ const STEP_TARGET: Record<string, string> = {
 }
 
 function targetOf(tut: TutorialSnapshot): string | null {
-  if (tut.until === 'view' && tut.view) return `nav-${tut.view === 'office' ? 'map' : tut.view}`
+  // 탭이 보이면 탭, 아니면 사이드바(폰은 아래 탭·더보기) 묶음을 가리킨다
+  if (tut.until === 'view' && tut.view) return navTourTarget(tut.view === 'office' ? 'map' : tut.view)
   return (tut.step && STEP_TARGET[tut.step]) ?? null
 }
 

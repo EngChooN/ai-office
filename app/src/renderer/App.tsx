@@ -5,6 +5,7 @@ import { CoachTour } from '@/features/CoachTour'
 import { Onboarding } from '@/features/Onboarding'
 import { TutorialDone, TutorialGuide, TutorialPicker } from '@/features/Tutorial'
 import { HireDialog } from '@/features/HireDialog'
+import { NavTabs } from '@/features/NavTabs'
 import { Sidebar } from '@/features/Sidebar'
 import { StaffPanel } from '@/features/StaffPanel'
 import { LevelUp } from '@/features/LevelUp'
@@ -146,8 +147,11 @@ function DesktopShell({ children }: { children?: React.ReactNode }) {
       {!IS_MOBILE_SHELL && <ProviderBanner />}
       <div className="relative flex min-h-0 flex-1 overflow-hidden">
         <Sidebar />
-        <main className="min-h-0 min-w-0 flex-1">
-          <Page />
+        <main className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <NavTabs />
+          <div className="min-h-0 flex-1">
+            <Page />
+          </div>
         </main>
         <StaffPanel />
       </div>

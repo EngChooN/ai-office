@@ -236,7 +236,7 @@ export default {
   'dashboardPanels.reviewInInbox': { ko: '결재함에서 전체 보고 승인', en: 'Review in full in Approvals', ja: '承認箱で全文を見て承認', zh: '在审批箱中查看全文并批准' },
   'dashboardPanels.answer': { ko: '답하기', en: 'Answer', ja: '回答する', zh: '回答' },
   'dashboardPanels.check': { ko: '확인', en: 'View', ja: '確認', zh: '查看' },
-  'dashboardPanels.viewPayslip': { ko: '급여 명세서 보기', en: 'View payslip', ja: '給与明細を見る', zh: '查看工资单' },
+  'dashboardPanels.viewPayslip': { ko: '비용 보기', en: 'View costs', ja: 'コストを見る', zh: '查看费用' },
   'dashboardPanels.attentionTitle': { ko: '확인 필요', en: 'Needs attention', ja: '要確認', zh: '待处理' },
   'dashboardPanels.openInbox': { ko: '결재함 열기 →', en: 'Open Approvals →', ja: '承認箱を開く →', zh: '打开审批箱 →' },
   'dashboardPanels.attentionEmpty': { ko: '지금 확인할 일이 없어요.', en: 'Nothing needs your attention right now.', ja: '今確認することはありません。', zh: '目前没有需要处理的事项。' },
@@ -505,7 +505,7 @@ export default {
       ja: '1日の間に誰が何をしたかを、タイムラインと日報にまとめます。',
       zh: '以时间线和日报的形式整理一天中谁做了什么。',
     },
-    'coachTour.payroll.title': { ko: '급여 명세서', en: 'Payroll', ja: '給与明細', zh: '工资单' },
+    'coachTour.payroll.title': { ko: '비용', en: 'Costs', ja: 'コスト', zh: '费用' },
     'coachTour.payroll.body': {
       ko: 'AI가 쓴 토큰과 비용을 직원별로 보여 줘요. 일·주·월 토큰 한도를 정해 두면 넘기기 전에 알려 드려요.',
       en: 'See the tokens and costs the AI used, broken down by staff member. Set daily, weekly, or monthly token limits and you will be notified before they are exceeded.',

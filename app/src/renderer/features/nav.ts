@@ -1,5 +1,6 @@
-import { SparklesIcon, BookOpenIcon, LibraryIcon, GalleryHorizontalEndIcon, BanknoteIcon, StoreIcon, CalendarClockIcon, ClipboardCheckIcon, FileTextIcon, KanbanIcon, LayoutGridIcon, MapIcon, MessagesSquareIcon, NetworkIcon, PresentationIcon, SettingsIcon } from 'lucide-react'
-import { useOffice, type View } from '@/store'
+import { SparklesIcon, BookOpenIcon, LibraryIcon, GalleryHorizontalEndIcon, BanknoteIcon, StoreIcon, CalendarClockIcon, ClipboardCheckIcon, FileTextIcon, KanbanIcon, LayoutGridIcon, MapIcon, MessagesSquareIcon, NetworkIcon, PresentationIcon, SettingsIcon, UsersIcon } from 'lucide-react'
+import { useOffice, useWorkMode, type View } from '@/store'
+import { GAME_VIEWS, NAV_GROUP_DEFS, groupEntryView, rememberTab, tourTarget, type NavGroupDef, type NavGroupId } from './navGroups'
 import { pendingMeetingDecisions } from '@shared/meetingDecisions'
 import { t, type TKey } from '@shared/i18n'
 
@@ -34,8 +35,47 @@ export const NAV_ITEMS: { view: View; readonly label: string; icon: typeof MapIc
   item('settings', 'nav.settings', SettingsIcon),
 ]
 
-/** 업무 모드에선 사무실(게임 화면)과 상점(게임 재화)을 메뉴에서 뺀다 */
-export const GAME_VIEWS = new Set<View>(['map', 'shop'])
+export { GAME_VIEWS }
+
+const GROUP_ICONS: Record<NavGroupId, typeof MapIcon> = {
+  secretary: SparklesIcon,
+  map: MapIcon,
+  staff: UsersIcon,
+  work: KanbanIcon,
+  inbox: ClipboardCheckIcon,
+  talk: MessagesSquareIcon,
+  knowhow: BookOpenIcon,
+  records: FileTextIcon,
+  shop: StoreIcon,
+  config: SettingsIcon,
+}
+
+export type NavGroup = NavGroupDef & { icon: typeof MapIcon; readonly label: string }
+
+/** 사이드바·폰 더보기의 묶음 (이름은 읽을 때 번역) */
+export const NAV_GROUPS: NavGroup[] = NAV_GROUP_DEFS.map((g) => ({
+  ...g,
+  icon: GROUP_ICONS[g.id],
+  get label() {
+    return t(g.labelKey)
+  },
+}))
+
+// 묶음마다 마지막으로 본 탭 (앱을 켜 둔 동안). 어떤 경로로 화면이 바뀌어도(바로가기·비서 링크) 따라 적는다
+let lastTabs: Partial<Record<NavGroupId, View>> = rememberTab({}, NAV_GROUP_DEFS, useOffice.getState().view)
+useOffice.subscribe((s) => {
+  lastTabs = rememberTab(lastTabs, NAV_GROUP_DEFS, s.view)
+})
+
+/** 사이드바·더보기에서 묶음을 누를 때: 그 묶음에서 마지막으로 본 탭을 연다 */
+export function useOpenGroup() {
+  const setView = useOffice((s) => s.setView)
+  const isWorkMode = useWorkMode()
+  return (group: NavGroupDef) => setView(groupEntryView(group, lastTabs, isWorkMode))
+}
+
+/** 투어·튜토리얼이 가리킬 data-tour (탭이 보이면 탭, 아니면 묶음) */
+export const navTourTarget = (view: View) => tourTarget(NAV_GROUP_DEFS, view)
 
 /** 메뉴 옆 숫자 (결재함·회의실·업무 보드·상점) */
 export function useNavBadges(): Partial<Record<View, number>> {
