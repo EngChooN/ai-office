@@ -175,7 +175,8 @@ export function ApprovalSplitHandle({
       onPointerDown={handlePointerDown}
       onDoubleClick={() => onCommit(null)}
       onKeyDown={handleKeyDown}
-      className="group hover:bg-primary/40 active:bg-primary/60 focus-visible:bg-primary/40 relative h-1.5 shrink-0 cursor-row-resize touch-none border-b outline-none transition-colors"
+      // 폰은 직원 패널이 전체 화면으로 고정이라 높이 조절 손잡이를 두지 않는다 (PC 패널 폭 손잡이와 같이)
+      className="group hover:bg-primary/40 active:bg-primary/60 focus-visible:bg-primary/40 phone:hidden relative h-1.5 shrink-0 cursor-row-resize touch-none border-b outline-none transition-colors"
     >
       <span className="bg-muted-foreground/40 group-hover:bg-primary absolute top-1/2 left-1/2 h-1 w-8 -translate-x-1/2 -translate-y-1/2 rounded-full" />
     </div>

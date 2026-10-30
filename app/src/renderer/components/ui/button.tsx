@@ -19,7 +19,8 @@ const buttonVariants = cva(
         default: 'h-9 px-4 py-2',
         sm: 'h-8 gap-1.5 px-3',
         lg: 'h-10 px-6',
-        icon: 'size-9',
+        // 폰: 위 phone:min-h-10에 폭도 맞춰 정원으로 (size-7·8을 줘도 세로로 긴 타원이 되지 않게)
+        icon: 'size-9 phone:min-w-10',
       },
     },
     defaultVariants: { variant: 'default', size: 'default' },

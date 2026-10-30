@@ -74,7 +74,8 @@ export function QuestionBox({ approval }: { approval: Approval }) {
           />
         </div>
       ))}
-      <div className="flex gap-2">
+      {/* 좁은 칸(말풍선·좁은 창·가로 폰)에서는 버튼이 다음 줄로 내려가 가로 스크롤이 생기지 않게 */}
+      <div className="flex flex-wrap gap-2">
         <Button size="sm" onClick={handleSend} disabled={!isReady}>
           <SendIcon /> {t('question.answer')}
         </Button>

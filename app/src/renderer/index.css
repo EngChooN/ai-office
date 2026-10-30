@@ -12,6 +12,8 @@
 @custom-variant phone (&:where([data-layout=phone] *));
 /* 가로로 돌린 폰: 헤더를 아래 탭 줄로 합치고 제목·탭을 한 줄로 줄인다 */
 @custom-variant short (&:where([data-layout=phone][data-short] *));
+/* 세로 폰(폰 배치이면서 가로 폰이 아닐 때): 폭이 좁아 가로 배치를 세로로 쌓는 곳 (데모데이 발표장 등) */
+@custom-variant portrait (&:where([data-layout=phone]:not([data-short]) *));
 /* 가로 폰에서 키보드가 열린 동안: 남는 높이가 100여 px라 화면 제목을 숨기고 입력창을 남긴다 */
 @custom-variant typing (&:where([data-layout=phone][data-short][data-keyboard] *));
 /* 좁은 본문: 화면 틀(ui/page)의 폭이 640px 미만일 때 — 창이 좁거나 직원 패널이 본문을 줄였을 때. 폰 배치와 같은 결과가 되게 phone:과 함께 쓴다 */

@@ -275,7 +275,7 @@ function ApprovalActions({ link, pending, staffName }: { link: ChatApproval; pen
       </div>
     )
   return (
-    <div className="mt-2 flex gap-2 border-t pt-2">
+    <div className="mt-2 flex flex-wrap gap-2 border-t pt-2">
       <Button size="sm" onClick={() => void window.office.decide(a.id, true)}>
         <CheckIcon /> {t('inbox.approve')}
       </Button>
@@ -386,7 +386,8 @@ function Composer({ room }: { room: RoomInfo | undefined }) {
       <div className="mx-auto flex max-w-3xl items-end gap-2">
         <AttachButton onPick={draftFiles.add} className="size-9" />
         <Textarea value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={handleKeyDown} {...draftFiles.bind} rows={1} placeholder={t(!room ? 'chat.placeholder' : isLab ? 'chat.labRoom.placeholder' : 'chat.room.placeholder', { all: ALL_MENTION, newline: String(NEWLINE_HINT) })} className="field-sizing-content max-h-32 min-h-9 resize-none py-[7px]" />
-        <Button onClick={() => void handleSend()} disabled={!draft.trim() && draftFiles.files.length === 0}>
+        {/* 폰: 직원 패널·비서 보내기처럼 정원 */}
+        <Button onClick={() => void handleSend()} disabled={!draft.trim() && draftFiles.files.length === 0} className="phone:w-10 phone:px-0">
           <SendIcon />
         </Button>
       </div>

@@ -362,10 +362,11 @@ function StageDialog({ avatar, name, text, startedAt, durationMs, isPaused }: { 
       type="button"
       aria-label={t('stage.next')}
       onClick={handleNext}
-      className="absolute inset-x-[3%] bottom-[2.5%] flex max-h-[25cqh] items-stretch gap-[2cqh] p-[1.6cqh] text-left text-white [image-rendering:pixelated]"
+      // 세로 폰: 무대 상자가 낮아 글이 넘치므로 상자 안이 아니라 바로 아래에 쌓는다
+      className="portrait:top-full portrait:bottom-auto portrait:inset-x-0 portrait:mt-3 portrait:max-h-none portrait:gap-3 portrait:p-3 absolute inset-x-[3%] bottom-[2.5%] flex max-h-[25cqh] items-stretch gap-[2cqh] p-[1.6cqh] text-left text-white [image-rendering:pixelated]"
       style={{ backgroundColor: DIALOG_BG, boxShadow: `inset 0 0 0 2px ${DIALOG_EDGE}, inset 0 0 0 4px #2a2230, 0 0 0 2px #2a2230` }}
     >
-      <div className="flex aspect-square h-[15cqh] shrink-0 items-end justify-center self-center" style={{ backgroundColor: 'rgba(0,0,0,0.25)', boxShadow: `inset 0 0 0 2px ${ART_KIT.K.metal}` }}>
+      <div className="portrait:h-14 flex aspect-square h-[15cqh] shrink-0 items-end justify-center self-center" style={{ backgroundColor: 'rgba(0,0,0,0.25)', boxShadow: `inset 0 0 0 2px ${ART_KIT.K.metal}` }}>
         <img src={avatarUrl(avatar)} alt="" className="h-[90%] object-contain [image-rendering:pixelated]" />
       </div>
       <div className="relative flex min-w-0 flex-1 flex-col gap-[0.6cqh]">
@@ -422,9 +423,9 @@ function ReactionBar({ meeting, presenterId, onReacted }: { meeting: Meeting; pr
   }
 
   return (
-    // 오른쪽 위: 하단 대화창·한마디 말풍선과 겹치지 않게
-    <div className="absolute top-0 right-0 flex flex-col items-end gap-2 p-3">
-      <div className="flex items-center gap-2 rounded-full bg-black/50 p-1.5 shadow-lg">
+    // 오른쪽 위: 하단 대화창·한마디 말풍선과 겹치지 않게. 세로 폰은 위쪽 돌아가기 줄과 겹치므로 화면 아래(키보드 위)로
+    <div className="portrait:top-auto portrait:bottom-[var(--ime,0px)] portrait:left-0 portrait:items-center absolute top-0 right-0 flex flex-col items-end gap-2 p-3">
+      <div className="portrait:max-w-full portrait:flex-wrap portrait:justify-center portrait:rounded-3xl flex items-center gap-2 rounded-full bg-black/50 p-1.5 shadow-lg">
         <Button size="sm" variant="secondary" className="rounded-full" disabled={isBusy} onClick={() => void send('clap')}>
           👏 {t('stage.react.clap')}
         </Button>
@@ -433,13 +434,13 @@ function ReactionBar({ meeting, presenterId, onReacted }: { meeting: Meeting; pr
         </Button>
         {isWriting ? (
           <form
-            className="flex items-center gap-1"
+            className="portrait:basis-full flex items-center gap-1"
             onSubmit={(e) => {
               e.preventDefault()
               if (comment.trim()) void send('comment', comment.trim())
             }}
           >
-            <Input autoFocus value={comment} maxLength={DEMO_COMMENT_MAX} onChange={(e) => setComment(e.target.value)} placeholder={t('stage.react.placeholder')} className="h-8 w-64 rounded-full bg-white text-xs text-black" />
+            <Input autoFocus value={comment} maxLength={DEMO_COMMENT_MAX} onChange={(e) => setComment(e.target.value)} placeholder={t('stage.react.placeholder')} className="portrait:w-auto portrait:min-w-0 portrait:flex-1 h-8 w-64 rounded-full bg-white text-xs text-black" />
             <Button size="sm" type="submit" className="rounded-full" disabled={isBusy || !comment.trim()}>
               {t('stage.react.send')}
             </Button>

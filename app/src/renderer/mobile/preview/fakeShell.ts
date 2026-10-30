@@ -356,6 +356,26 @@ if (demo && LANGS.includes(demo)) {
   slip.rows = staff.slice(0, 6).map((s) => ({ staffId: s.id, name: s.name, role: s.role, avatar: s.avatar, costUsd: 3.21, tokensIn: 2_100_000, tokensOut: 180_000, tasksDone: 9 }))
 }
 
+// stage=1: 진행 중인 데모데이 발표 (발표장이 저절로 열린다 — 좁은 폭 배치 확인용)
+if (params.get('stage') === '1') {
+  const [presenter, ...rest] = snapshot.staff
+  snapshot.meetings = [
+    {
+      id: 'demo1',
+      kind: 'demo',
+      topic: '데모데이',
+      participantIds: [presenter.id, ...rest.slice(0, 4).map((s) => s.id)],
+      rounds: 1,
+      status: 'running',
+      messages: [{ staffId: presenter.id, name: presenter.name, text: '이번 주에는 휴대폰 앱의 화면 배치를 정리했어요. 폰에서는 결재창과 직원 패널이 전체 화면으로 열리고, 버튼은 손가락으로 누르기 좋게 둥글게 맞췄습니다.', ts: now }],
+      summary: '',
+      createdAt: now,
+      demo: { presenterId: presenter.id, phase: 'present', slides: [], cardTitle: '폰 화면 배치 정리', index: 1, total: 3, startedAt: now, durationMs: 600_000, mvpId: null },
+    },
+    ...snapshot.meetings,
+  ] as unknown as OfficeSnapshot['meetings']
+}
+
 const impl: Record<string, (...args: never[]) => unknown> = {
   snapshot: () => snapshot,
   // 마켓 채용: PC처럼 같은 모양의 결과만 돌려준다 (직원은 늘리지 않는다)

@@ -465,7 +465,8 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
           ref={split.ref}
           style={split.isFolded ? undefined : split.shownHeight ? { height: split.shownHeight } : split.maxHeight !== null ? { maxHeight: `min(50%, ${split.maxHeight}px)` } : undefined}
           // 펼친 칸은 패널이 모자랄 때(작은 창에서 매뉴얼 메뉴가 열리는 등) 하한 아래로도 줄어 하단 입력칸이 잘리지 않게 한다. 가로 폰은 패널을 스크롤하므로 그대로
-          className={cn('flex flex-col gap-2 overflow-y-auto px-4', split.isFolded ? 'shrink-0 border-b py-2' : 'short:shrink-0 min-h-0 py-4', !split.height && 'max-h-[50%]')}
+          // 폰은 패널이 늘 전체 화면이고 손잡이가 없다 — 저장한 높이를 쓰지 않고 내용만큼(최대 절반)
+          className={cn('phone:h-auto! phone:max-h-[50%] phone:border-b flex flex-col gap-2 overflow-y-auto px-4', split.isFolded ? 'shrink-0 border-b py-2' : 'short:shrink-0 min-h-0 py-4', !split.height && 'max-h-[50%]')}
         >
           <div className="flex items-center gap-2">
             <h3 className="text-status-waiting text-xs font-semibold">{t('staffPanel.approvals.title', { n: staff.approvals.length })}</h3>
@@ -487,7 +488,7 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
                 <>
                   <div className="text-sm font-medium">{toolDisplayName(a.toolName)}</div>
                   <div className="text-muted-foreground selectable line-clamp-3 font-mono text-xs break-all">{trOr(a.summaryI18n, a.summary)}</div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <Button size="sm" onClick={() => void window.office.decide(a.id, true)}>
                       <CheckIcon /> {t('staffPanel.approvals.approve')}
                     </Button>
