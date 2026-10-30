@@ -316,7 +316,8 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
   // now: 일하는 중이면 하던 일을 멈추고 바로 전한다 (끼어들기) · 아니면 하던 일이 끝난 뒤 이어서 처리한다
   const handleSend = async (isNow = false, typed = draft) => {
     const text = typed.trim().replace(/^\/\S*\s*/, (m) => (pickedManual ? '' : m))
-    if (!text && draftFiles.files.length === 0) return
+    // 매뉴얼을 골랐으면 덧붙일 말 없이도 보낼 수 있다
+    if (!text && draftFiles.files.length === 0 && !pickedManual) return
     setDraft('')
     // 내가 보낸 지시는 위를 읽던 중이어도 바로 보이게
     logScroll.scrollToBottom()
@@ -329,13 +330,13 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
       return
     }
     // /명령(스킬 포함)은 그대로 보낸다 — 막힌 명령·/clear는 main이 판정한다. 개인 매뉴얼을 고르면 그 스킬을 쓰라고 분명히 적어 보낸다
-    const body = text || '첨부한 파일을 확인해 주세요.'
-    const instruction = choice ? `[업무 매뉴얼: ${choice.name}] "${choice.name}" 스킬(매뉴얼)을 사용해서 처리해 주세요.\n${body}` : body
+    const body = text || (attachments?.length ? '첨부한 파일을 확인해 주세요.' : '')
+    const instruction = choice ? `[업무 매뉴얼: ${choice.name}] "${choice.name}" 스킬(매뉴얼)을 사용해서 처리해 주세요.${body ? `\n${body}` : ''}` : body
     if (isNow) void window.office.interrupt(staff.id, instruction, attachments)
     else void window.office.instruct(staff.id, instruction, attachments, isAutonomous ? { isAutonomous: true } : undefined)
   }
   const isBusy = staff.status === 'working' || staff.status === 'waiting'
-  const hasDraft = Boolean(draft.trim()) || draftFiles.files.length > 0
+  const hasDraft = Boolean(draft.trim()) || draftFiles.files.length > 0 || Boolean(pickedManual)
 
   // '/'로 시작하는 첫 낱말을 치는 동안: 위에 '내 매뉴얼'(개인 매뉴얼 + 랩·팀 프로세스), 아래에 'Claude 명령'.
   // 📘 매뉴얼·/ 명령 버튼으로 열면 그쪽만 보인다

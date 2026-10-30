@@ -2232,7 +2232,7 @@ export class Office extends EventEmitter<{
       `[프로세스 "${run.manualName}" · ${run.stepIndex + 1}/${run.steps.length}단계: ${step.title}]`,
       step.instruction,
       '',
-      `## 일감\n${run.input}`,
+      `## 일감\n${run.input || '(따로 적은 내용 없음 — 단계 지시대로 진행)'}`,
       projectDir ? `\n프로젝트 폴더: ${projectDir}` : '',
       recent.length ? `\n## 앞 단계 결과\n${recent.join('\n\n')}` : '',
       feedback ? `\n## 대표 피드백 (반영해서 다시)\n${feedback}` : '',
