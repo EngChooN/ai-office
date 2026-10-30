@@ -796,6 +796,7 @@ export default {
   'staffCard.lead': { ko: '리드', en: 'Lead', ja: 'リード', zh: '负责人' },
   'staffCard.noTask': { ko: '맡은 업무 없음', en: 'No assigned task', ja: '担当タスクなし', zh: '暂无负责的任务' },
   'staffCard.approvals': { ko: '결재 {n}', en: '{n} approvals', ja: '承認 {n}', zh: '待审批 {n}' },
+  'staffCard.unread': { ko: '안 읽은 보고 {n}개', en: '{n} unread reports', ja: '未読の報告 {n}件', zh: '{n} 条未读汇报' },
   'staffCard.praise': { ko: '칭찬 배지 · 박수 {claps} · MVP {mvps}', en: 'Praise · {claps} claps · {mvps} MVP', ja: '称賛バッジ · 拍手 {claps} · MVP {mvps}', zh: '表扬徽章 · 鼓掌 {claps} · MVP {mvps}' },
   'staffCard.external': { ko: '외부', en: 'External', ja: '外部', zh: '外部' },
   'staffCard.todayDone': { ko: '오늘 완료 {n}', en: '{n} done today', ja: '今日の完了 {n}', zh: '今日完成 {n}' },

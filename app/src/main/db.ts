@@ -3,6 +3,7 @@ import type { AutoApproveConfig } from '../shared/autoApprove'
 import type { ApprovalRule } from '../shared/approvalRules'
 import type { KnowledgeEntry } from '../shared/knowledge'
 import type { GalleryEntry, Praise } from '../shared/gallery'
+import type { UnreadReports } from '../shared/unreadReports'
 import type { I18nArg } from '../shared/i18n/index.ts'
 import { app } from 'electron'
 import path from 'node:path'
@@ -715,6 +716,16 @@ export function loadPraise(): Record<string, Praise> {
 
 export function savePraise(v: Record<string, Praise>) {
   run("INSERT INTO setting (key, value) VALUES ('praise', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", JSON.stringify(v))
+}
+
+/** 직원별 안 읽은 보고 개수 (앱을 다시 켜도 배지가 남게) */
+export function loadUnreadReports(): UnreadReports {
+  const row = get<{ value: string }>("SELECT value FROM setting WHERE key = 'unreadReports'")
+  return row ? (JSON.parse(row.value) as UnreadReports) : {}
+}
+
+export function saveUnreadReports(v: UnreadReports) {
+  run("INSERT INTO setting (key, value) VALUES ('unreadReports', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", JSON.stringify(v))
 }
 
 /** 원격 접속 설정 (토큰 해시·폐기 목록 포함 — Settings와 따로 둬서 화면으로 가지 않는다) */

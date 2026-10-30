@@ -78,6 +78,7 @@ import { KNOWLEDGE_MAX, knowledgeBrief, normalizeKnowledge, pickKnowledge, type 
 import { maskSecrets } from '../shared/redact'
 import { abortable, demoOutcome, addPraise, cleanSpeech, settleStaleMeeting, dateKeyOf, DEMO_COMMENT_MAX, DEMO_REACTIONS, demoPhaseMs, type DemoPhase, type DemoReaction, type DemoStage, type Praise, demoCoverImages, demoEntries, demoImages, demoLine, demoPresentInput, demoSummary, extractLinks, GALLERY_FILES_MAX, GALLERY_IMAGES_MAX, GALLERY_MAX, galleryBody, groupByStaff, isDemoDue, summarize, type GalleryEntry } from '../shared/gallery'
 import { InvalidArgsError } from '../shared/errors'
+import { addUnread, clearUnread, unreadOf, type UnreadReports } from '../shared/unreadReports'
 import { planBoardCleanup, type BoardCleanupPlan } from '../shared/boardCleanup'
 import { plansToAdvanceOnStart, shouldReopenForAnswer, tasksToReturnToTodo } from '../shared/taskResume'
 import { remoteSafeEquipment } from '../shared/staffPack'
@@ -272,6 +273,8 @@ export class Office extends EventEmitter<{
   /** 마지막 데모데이 (같은 날 두 번 열지 않고, 다음엔 그 뒤에 끝낸 업무만) */
   private demoDayLast: { date: string; at: number } | null = null
   private praise: Record<string, Praise> = {}
+  /** 직원별 안 읽은 보고 개수 (대표가 직원 패널을 열면 지운다) */
+  private unreadReports: UnreadReports = {}
   /** 이번 자동결재 기간에 대신 승인해 준 쓰기의 파일 경로·이름 (그 파일을 실행하는 명령은 기다린다, H2) */
   private autoWritten = new Set<string>()
   /** 이번 기간에 package.json·Makefile을 자동 승인으로 썼는지 (이후 npm run·make 실행은 기다린다, A4) */
@@ -425,6 +428,7 @@ export class Office extends EventEmitter<{
     this.gallery = db.loadGallery()
     this.demoDayLast = db.loadDemoDayLast()
     this.praise = db.loadPraise()
+    this.unreadReports = db.loadUnreadReports()
     this.shop = db.loadShop()
     this.companyLevelMax = db.loadCompanyLevelMax()
     for (const s of db.loadSchedules()) this.schedules.set(s.id, s)
@@ -581,7 +585,7 @@ export class Office extends EventEmitter<{
     const statusSince = seen && seen.status === s.status ? seen.since : Date.now()
     if (seen?.since !== statusSince) this.statusSeen.set(s.id, { status: s.status, since: statusSince })
     const todayDone = db.resultCountBetween(s.id, startOfDay(new Date()), Date.now() + 1)
-    return Object.assign(s, { stats: this.statsOf(s.id), meetingId: meeting?.id ?? null, labIds, statusSince, todayDone, praise: this.praise[s.id] }) as Staff
+    return Object.assign(s, { stats: this.statsOf(s.id), meetingId: meeting?.id ?? null, labIds, statusSince, todayDone, praise: this.praise[s.id], unreadReports: unreadOf(this.unreadReports, s.id) }) as Staff
   }
 
   /** 회사 경험치 = 고용 직원 경험치 합 + 직원 1명당 100. 레벨은 지금까지 오른 최고 레벨 아래로 내려가지 않는다 */
@@ -736,6 +740,7 @@ export class Office extends EventEmitter<{
     for (const t of this.tasks.values()) if (t.assigneeId === staffId) t.assigneeId = null
     for (const sc of [...this.schedules.values()]) if (sc.staffId === staffId) this.schedules.delete(sc.id)
     if (s) this.postChat('me', `${s.name} 님이 퇴사했습니다.`)
+    this.markReportsRead(staffId)
     this.scheduleEmit()
   }
 
@@ -1158,6 +1163,10 @@ export class Office extends EventEmitter<{
       }
     }
     this.postChat(staffId, short || t('notify.chatDone'), undefined, undefined, room)
+    // 대표에게 올린 보고 — 직원 카드에 안 읽은 개수로 쌓인다 (패널을 열어 두었으면 화면이 곧바로 읽음 처리한다)
+    this.unreadReports = addUnread(this.unreadReports, staffId)
+    db.saveUnreadReports(this.unreadReports)
+    this.scheduleEmit()
     this.emit('notify', { title: t('notify.report', { name: s.name }), body: short.slice(0, 120) || t('notify.reportDone'), staffId })
     if (room) this.finishingRoom.set(staffId, room)
     try {
@@ -3093,6 +3102,15 @@ export class Office extends EventEmitter<{
   /** 창을 닫으면(맥 Dock·윈도우 트레이에 남아 PC는 계속 돈다) 진행 중인 데모데이를 정리해 끝낸다 — 다시 열었을 때 발표가 이어지지 않게 */
   endLiveDemos() {
     for (const m of this.meetings) if (m.kind === 'demo' && isMeetingLive(m)) this.endMeeting(m.id, 'wrapup')
+  }
+
+  /** 대표가 직원 패널을 열어 보고를 확인했다 — 안 읽은 보고 배지를 지운다 (지울 게 없으면 저장·알림 없음) */
+  markReportsRead(staffId: string) {
+    const next = clearUnread(this.unreadReports, staffId)
+    if (next === this.unreadReports) return
+    this.unreadReports = next
+    db.saveUnreadReports(next)
+    this.scheduleEmit()
   }
 
   /** 대표 반응: 박수·MVP는 칭찬 배지(회의당 MVP 1명, 단체방 축하), 한마디는 지식 창고 피드백. AI 호출 없음 */

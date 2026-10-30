@@ -102,6 +102,8 @@ export interface Staff {
   todayDone: number
   /** 데모데이 칭찬 배지 (박수·MVP 누적, 없으면 0) */
   praise?: Praise
+  /** 대표가 아직 안 읽은 보고(완료 보고·지시에 대한 답) 개수 — 직원 패널을 열면 0 (없으면 0) */
+  unreadReports?: number
   /** 튜토리얼 연습 회사 데이터 — '연습 회사 정리'와 첫 실제 고용 때 지운다 */
   isPractice?: boolean
 }
@@ -984,6 +986,8 @@ export interface OfficeApi {
   runDemoDayNow(): Promise<void>
   /** 데모데이 발표에 대표가 반응: 박수·MVP(회의당 1명)·한마디(지식 창고 피드백) */
   demoReact(meetingId: string, staffId: string, kind: DemoReaction, text?: string): Promise<void>
+  /** 대표가 직원 패널을 열어 보고를 확인했다 — 그 직원 카드의 안 읽은 보고 배지를 지운다 */
+  markReportsRead(staffId: string): Promise<void>
   /** haiku를 한 번 짧게 불러 Claude 플랜 사용률을 지금 값으로 받아 온다 */
   refreshPlanUsage(): Promise<PlanUsage[]>
   /** 회사 자금 입출금 내역 (최근 순) */

@@ -96,6 +96,7 @@ export const OFFICE_METHODS = [
   'deleteGalleryEntry',
   'runDemoDayNow',
   'demoReact',
+  'markReportsRead',
   'refreshPlanUsage',
   'ledger',
   'buyItem',

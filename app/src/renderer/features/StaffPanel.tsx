@@ -277,6 +277,12 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
     // 고용 직원은 턴이 끝나 비용이 바뀔 때마다 오늘 사용량을 다시 읽는다
   }, [staff.id, isHired, staff.costUsd])
 
+  // 패널을 열면 보고를 확인한 것 — 카드의 안 읽은 보고 배지를 지운다 (열어 둔 채 새 보고가 와도 곧바로 지운다)
+  const unread = staff.unreadReports ?? 0
+  useEffect(() => {
+    if (unread > 0) void window.office.markReportsRead(staff.id)
+  }, [staff.id, unread])
+
   const logs = useMemo<LogEntry[]>(() => {
     const base = record?.logs ?? []
     if (!isHired) return base

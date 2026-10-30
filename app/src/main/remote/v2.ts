@@ -157,6 +157,8 @@ export const V2_METHODS: Record<OfficeMethod, MethodSpec> = {
   runDemoDayNow: R(),
   // 반응은 휴대폰에서도 (발표장 화면 자체는 PC 전용이라 휴대폰은 회의 기록을 본다)
   demoReact: R('s s s s?'),
+  // 안 읽은 보고 배지: 휴대폰에서 직원 대화를 열어도 읽은 것으로
+  markReportsRead: R('s'),
   refreshPlanUsage: R(),
   ledger: R(),
   buyItem: R('s'),

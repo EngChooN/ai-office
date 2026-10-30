@@ -423,6 +423,7 @@ const impl: Record<string, (...args: never[]) => unknown> = {
   deleteGalleryEntry: async () => {},
   runDemoDayNow: async () => {},
   demoReact: async () => {},
+  markReportsRead: async () => {},
   autoApproveLog: () =>
     params.get('auto') === '1'
       ? [

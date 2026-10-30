@@ -158,6 +158,8 @@ export const SECRETARY_TOOLS: Record<OfficeMethod, ToolSpec> = {
   tutorialStart: exclude,
   tutorialAct: exclude,
   tutorialCleanup: exclude,
+  // 안 읽은 보고 배지는 대표가 직원 패널을 직접 열어 확인했을 때만 지운다
+  markReportsRead: exclude,
 
   // ── 비서 자신 (도구에 넣지 않음) ──
   secretaryAsk: exclude,

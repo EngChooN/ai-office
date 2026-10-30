@@ -10,6 +10,7 @@ import { LiveMiniView } from './LiveMiniView'
 import { formatCost, formatTokens, STATUS_META, useNow } from './status'
 import { t } from '@shared/i18n'
 import { roleLabel } from '@shared/roleLabel'
+import { unreadLabel } from '@shared/unreadReports'
 
 interface Props {
   staff: Staff
@@ -62,6 +63,19 @@ export function Avatar({ avatar, className, name, teamId }: { avatar: number; cl
 /** 튜토리얼 연습 데이터 꼬리표 (직원·카드·회의 공용) */
 export function PracticeBadge({ className }: { className?: string }) {
   return <span className={cn('bg-status-waiting shrink-0 rounded px-1.5 text-[10px] font-semibold text-background', className)}>{t('tutorial.badge.practice')}</span>
+}
+
+/** 안 읽은 보고 개수 배지 (대표가 직원 패널을 열면 사라진다). 0이면 그리지 않는다 */
+export function UnreadBadge({ staff, className }: { staff: Staff; className?: string }) {
+  const n = staff.unreadReports ?? 0
+  const label = unreadLabel(n)
+  if (!label) return null
+  const title = t('staffCard.unread', { n })
+  return (
+    <span role="status" aria-label={title} title={title} className={cn('bg-primary text-primary-foreground inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1.5 text-[11px] font-semibold tabular-nums', className)}>
+      {label}
+    </span>
+  )
 }
 
 export function LeadMark() {
@@ -127,6 +141,7 @@ export function StaffCard({ staff, isLead = false, isSelected, onSelect }: Props
             {isLead && <LeadMark />}
             <span className="min-w-0 truncate">{staff.name}</span>
             {staff.isPractice && <PracticeBadge />}
+            <UnreadBadge staff={staff} />
           </div>
           <div className="text-muted-foreground truncate text-xs">{roleLabel(staff.role)}</div>
         </div>

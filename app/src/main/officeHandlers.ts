@@ -102,6 +102,7 @@ export function createOfficeHandlers(office: Office, remoteApi: () => RemoteServ
     deleteGalleryEntry: (id: string) => office.deleteGalleryEntry(id),
     runDemoDayNow: () => office.runDemoDayNow(),
     demoReact: (meetingId: string, staffId: string, kind: DemoReaction, text?: string) => office.demoReact(meetingId, staffId, kind, text),
+    markReportsRead: (staffId: string) => office.markReportsRead(staffId),
     refreshPlanUsage: () => office.refreshPlanUsage(),
     ledger: () => office.ledger(),
     buyItem: (itemId: string) => office.buyItem(itemId),
