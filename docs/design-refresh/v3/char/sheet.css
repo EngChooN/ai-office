@@ -1,0 +1,13 @@
+body{margin:0;background:#f4efe6;font-family:-apple-system,"Apple SD Gothic Neo",sans-serif;color:#2a2230}
+.page{width:1500px;padding:24px 28px}
+h1{font-size:22px;margin:0 0 14px}h1 small,h2 small{font-size:12px;font-weight:400;color:#7a6f80;margin-left:8px}
+h2{font-size:15px;margin:18px 0 8px}h3{font-size:13px;margin:0 0 4px}h3 em{font-style:normal;font-weight:400;color:#8a7f90;margin-left:8px;font-size:11px}
+.cols{display:flex;gap:24px}.main{flex:1}aside{width:330px;background:#fff;border-radius:12px;padding:6px 16px 14px;align-self:flex-start}
+.hd{display:grid;grid-template-columns:1fr 1.25fr;gap:12px;margin-bottom:6px}.hd b{font-size:13px;color:#6a5f70}.hd b:last-child{color:#c0603c}
+.row{margin-bottom:10px}.pair{display:grid;grid-template-columns:1fr 1.25fr;gap:12px}
+.side{display:flex;gap:10px;align-items:flex-end;padding:10px 12px;border-radius:10px;background:#e7dfd0;min-height:130px}
+.side.nw{background:#fbf6ec;outline:2px solid #e8835a55}
+.cell{display:flex;flex-direction:column;align-items:center;gap:4px}.cell span{font-size:10px;color:#7a6f80}
+.combo{margin-bottom:8px}.combo h4{margin:0 0 3px;font-size:12px}.cp{display:grid;grid-template-columns:1fr 1.25fr;gap:12px}
+aside img{display:block;margin:8px auto}aside ul{font-size:11px;padding-left:16px;line-height:1.6;margin:6px 0}
+.pal{display:flex;margin:4px 0}.pal i{flex:1;height:14px}.n{font-size:10.5px;color:#7a6f80;line-height:1.5}
