@@ -123,7 +123,7 @@ export function openDb() {
   // 단체방 결재·질문 메시지 ↔ 결재 id·처리 결과 (JSON)
   const chatCols = (db.prepare('PRAGMA table_info(chat)').all() as { name: string }[]).map((c) => c.name)
   if (!chatCols.includes('approval')) db.exec('ALTER TABLE chat ADD COLUMN approval TEXT')
-  // 팀 대화방 (팀 id). NULL·빈 값 = 전체 방 — 기존 메시지는 그대로 전체 방
+  // 대화방 (팀 id 또는 'lab:<랩 id>'). NULL·빈 값 = 전체 방 — 기존 메시지는 그대로 전체 방
   if (!chatCols.includes('room')) db.exec('ALTER TABLE chat ADD COLUMN room TEXT')
 }
 
@@ -494,7 +494,7 @@ const toChatMessage = (r: ChatRow): ChatMessage => ({
   ...(r.room ? { room: r.room } : {}),
 })
 
-/** room: 팀 대화방(팀 id) — 비우면 전체 방 */
+/** room: 팀 대화방(팀 id)·랩 대화방('lab:<랩 id>') — 비우면 전체 방 */
 export function insertChat(from: string, text: string, attachments?: Attachment[], approval?: ChatApproval, room?: string): ChatMessage {
   const ts = Date.now()
   const raw = attachments?.length ? JSON.stringify(attachments) : null
@@ -518,7 +518,7 @@ export function settleChatApproval(approval: ChatApproval): ChatMessage | null {
   return toChatMessage({ ...row, approval: JSON.stringify(approval) })
 }
 
-/** 방마다 최근 limit개씩 (전체 방 + 팀 방들) — 바쁜 팀 방이 전체 방 기록을 밀어내지 않게 */
+/** 방마다 최근 limit개씩 (전체 방 + 팀·랩 방들) — 바쁜 팀 방이 전체 방 기록을 밀어내지 않게 */
 export function recentChat(limit: number): ChatMessage[] {
   return all<ChatRow>(
     "SELECT * FROM (SELECT *, ROW_NUMBER() OVER (PARTITION BY COALESCE(room, '') ORDER BY id DESC) AS rn FROM chat) WHERE rn <= ? ORDER BY id",

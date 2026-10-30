@@ -9,9 +9,9 @@ import { handleComposerKey, NEWLINE_HINT } from '@/lib/composerKeys'
 import { commandDescription, commandItem, manualItem, SlashMenu, usePersonalManuals, useSlashKeys, useStaffCommands } from '@/components/slash-menu'
 import { matchCommands, runsOnEnter } from '@shared/slashCommands'
 import { useOffice } from '@/store'
-import type { Approval, ChatApproval, ChatApprovalResult, ChatMessage, Staff, Team } from '@shared/types'
+import type { Approval, ChatApproval, ChatApprovalResult, ChatMessage, Lab, Staff, Team } from '@shared/types'
 import { chatApprovalView } from '@shared/chatApproval'
-import { chatLines, roomMentionTargets, roomTeams, type ChatLine } from '@shared/chatRooms'
+import { chatLines, chatRoomMentionTargets, findRoom, labRoomId, parseRoom, roomLabs, roomTeams, type ChatLine, type ChatRoomInfo } from '@shared/chatRooms'
 import { ALL_MENTION, mentionTargets, mentionToken, OFFICE_SENDER, parseMentions, type MentionKind, type MentionTarget } from '@shared/mention'
 import { fmtDate, t, type TKey } from '@shared/i18n'
 import { roleLabel } from '@shared/roleLabel'
@@ -36,35 +36,42 @@ const RESULT_LABEL: Record<ChatApprovalResult, TKey> = {
   superseded: 'chat.approval.superseded',
 }
 
-/** 지금 보고 있는 팀 방 (방이 없어진 팀이면 전체 방) */
-function useRoomTeam(): Team | undefined {
+type RoomInfo = ChatRoomInfo<Team, Lab>
+
+/** 지금 보고 있는 팀·랩 방 (방이 없어진 팀·랩이면 전체 방) */
+function useChatRoom(): RoomInfo | undefined {
   const chatRoom = useOffice((s) => s.chatRoom)
   const teams = useOffice((s) => s.teams)
-  return chatRoom ? roomTeams(teams).find((tm) => tm.id === chatRoom) : undefined
+  const labs = useOffice((s) => s.labs)
+  return useMemo(() => findRoom(chatRoom, teams, labs), [chatRoom, teams, labs])
 }
 
-/** 사무실 단체방: 직원 보고·결재 요청·위임이 채팅으로 흐르고, @직원·@팀·@랩·@전체 로 바로 지시한다. 전체 방 + 팀별 방 */
+/** 사무실 단체방: 직원 보고·결재 요청·위임이 채팅으로 흐르고, @직원·@팀·@랩·@전체 로 바로 지시한다. 전체 방 + 팀별 방 + 랩별 방 */
 export function ChatPage() {
-  const team = useRoomTeam()
+  const room = useChatRoom()
+  const title = !room ? t('chat.title') : room.kind === 'lab' ? t('chat.labRoom.title', { lab: room.name }) : t('chat.room.title', { team: room.name })
+  const description = t(!room ? 'chat.description' : room.kind === 'lab' ? 'chat.labRoom.description' : 'chat.room.description', { all: ALL_MENTION })
   return (
     <div className="flex h-full flex-col">
       <div className="phone:px-4 phone:py-3 short:py-1.5 typing:hidden border-b px-6 py-4">
-        <h1 className="short:text-base text-lg font-semibold">{team ? t('chat.room.title', { team: team.name }) : t('chat.title')}</h1>
-        <p className="text-muted-foreground short:hidden text-xs">{team ? t('chat.room.description', { all: ALL_MENTION }) : t('chat.description', { all: ALL_MENTION })}</p>
-        <RoomTabs current={team?.id} />
+        <h1 className="short:text-base text-lg font-semibold">{title}</h1>
+        <p className="text-muted-foreground short:hidden text-xs">{description}</p>
+        <RoomTabs current={room?.room} />
       </div>
-      <MessageList room={team?.id} />
-      <Composer team={team} />
+      <MessageList room={room?.room} />
+      <Composer room={room} />
     </div>
   )
 }
 
-/** 방 목록: 전체 / 팀들 (project 종류·연습 팀은 방이 없다) */
+/** 방 목록: 전체 / 팀들 / 랩들 (project 종류·연습 팀, 연습 랩은 방이 없다) */
 function RoomTabs({ current }: { current: string | undefined }) {
   const teams = useOffice((s) => s.teams)
+  const labs = useOffice((s) => s.labs)
   const setChatRoom = useOffice((s) => s.setChatRoom)
-  const rooms = roomTeams(teams)
-  if (rooms.length === 0) return null
+  const teamRooms = roomTeams(teams)
+  const labRooms = roomLabs(labs)
+  if (teamRooms.length === 0 && labRooms.length === 0) return null
   const tab = (key: string, label: string, isActive: boolean, onClick: () => void, color?: string) => (
     <button
       key={key}
@@ -78,10 +85,18 @@ function RoomTabs({ current }: { current: string | undefined }) {
       {label}
     </button>
   )
+  const groupLabel = (key: string, label: string) => (
+    <span key={key} className="text-muted-foreground/70 ml-1 flex shrink-0 items-center text-[11px] font-medium">
+      {label}
+    </span>
+  )
   return (
     <div className="mt-2 flex gap-1.5 overflow-x-auto" role="tablist" aria-label={t('chat.rooms')}>
       {tab('all', t('chat.room.all'), !current, () => setChatRoom(null))}
-      {rooms.map((tm) => tab(tm.id, tm.name, current === tm.id, () => setChatRoom(tm.id), tm.color))}
+      {teamRooms.length > 0 && groupLabel('group:teams', t('chat.room.groupTeams'))}
+      {teamRooms.map((tm) => tab(tm.id, tm.name, current === tm.id, () => setChatRoom(tm.id), tm.color))}
+      {labRooms.length > 0 && groupLabel('group:labs', t('chat.room.groupLabs'))}
+      {labRooms.map((lb) => tab(labRoomId(lb.id), lb.name, current === labRoomId(lb.id), () => setChatRoom(labRoomId(lb.id)), lb.color))}
     </div>
   )
 }
@@ -93,6 +108,7 @@ function MessageList({ room }: { room: string | undefined }) {
   const chat = useOffice((s) => s.chat)
   const staff = useOffice((s) => s.staff)
   const teams = useOffice((s) => s.teams)
+  const labs = useOffice((s) => s.labs)
   const select = useOffice((s) => s.select)
   const setChatRoom = useOffice((s) => s.setChatRoom)
   const lines = useMemo(() => chatLines(chat, room), [chat, room])
@@ -114,8 +130,9 @@ function MessageList({ room }: { room: string | undefined }) {
         <div ref={scroll.contentRef} className="mx-auto flex max-w-3xl flex-col gap-3">
           {lines.map((line) => {
             if (line.kind === 'roomSummary') {
-              const tm = teams.find((x) => x.id === line.room)
-              return <RoomSummary key={`room:${line.room}:${line.firstId}`} team={tm} count={line.count} onOpen={tm ? () => setChatRoom(line.room) : undefined} />
+              const info = findRoom(line.room, teams, labs)
+              const isLab = parseRoom(line.room)?.kind === 'lab'
+              return <RoomSummary key={`room:${line.room}:${line.firstId}`} info={info} isLab={isLab} count={line.count} onOpen={info ? () => setChatRoom(line.room) : undefined} />
             }
             const m = line.message
             const sender = staff.find((s) => s.id === m.from)
@@ -139,9 +156,10 @@ function MessageList({ room }: { room: string | undefined }) {
   )
 }
 
-/** 전체 방에 접어 보여 주는 팀 방 글 한 줄 — 누르면 그 방으로 */
-function RoomSummary({ team, count, onOpen }: { team: Team | undefined; count: number; onOpen: (() => void) | undefined }) {
-  const label = t('chat.room.summary', { team: team?.name ?? t('chat.room.deletedTeam'), count })
+/** 전체 방에 접어 보여 주는 팀·랩 방 글 한 줄 — 누르면 그 방으로 */
+function RoomSummary({ info, isLab, count, onOpen }: { info: RoomInfo | undefined; isLab: boolean; count: number; onOpen: (() => void) | undefined }) {
+  const label = isLab ? t('chat.labRoom.summary', { lab: info?.name ?? t('chat.labRoom.deleted'), count }) : t('chat.room.summary', { team: info?.name ?? t('chat.room.deletedTeam'), count })
+  const color = info ? (info.kind === 'lab' ? info.lab.color : info.team.color) : undefined
   return (
     <div className="flex justify-center">
       <button
@@ -150,7 +168,7 @@ function RoomSummary({ team, count, onOpen }: { team: Team | undefined; count: n
         onClick={onOpen}
         className="text-muted-foreground hover:bg-accent flex items-center gap-1.5 rounded-full border border-dashed px-3 py-1 text-xs disabled:hover:bg-transparent"
       >
-        <MessagesSquareIcon className="size-3.5 shrink-0" style={team ? { color: team.color } : undefined} />
+        <MessagesSquareIcon className="size-3.5 shrink-0" style={color ? { color } : undefined} />
         {label}
         {onOpen && <ChevronRightIcon className="size-3.5 shrink-0" />}
       </button>
@@ -269,13 +287,13 @@ function ApprovalActions({ link, pending, staffName }: { link: ChatApproval; pen
   )
 }
 
-function Composer({ team }: { team: Team | undefined }) {
+function Composer({ room }: { room: RoomInfo | undefined }) {
   const [draft, setDraft] = useState('')
   const hired = useOffice(useShallow((s) => s.staff.filter((x) => x.kind === 'hired')))
   const teams = useOffice((s) => s.teams)
   const labs = useOffice((s) => s.labs)
-  // 팀 방에서는 방 참여자와 @전체(= 팀 전원)만 부른다
-  const targets = useMemo(() => (team ? roomMentionTargets(team, hired) : mentionTargets(hired, teams, labs)), [team, hired, teams, labs])
+  // 팀·랩 방에서는 방 참여자와 @전체(= 팀·랩 전원)만 부른다
+  const targets = useMemo(() => (room ? chatRoomMentionTargets(room, hired) : mentionTargets(hired, teams, labs)), [room, hired, teams, labs])
   const staffById = useMemo(() => new Map(hired.map((s) => [s.id, s])), [hired])
 
   // 마지막 단어가 @로 시작하면 전체·팀·랩·직원 후보를 띄운다 (구성원이 없는 대상은 빼고)
@@ -313,15 +331,20 @@ function Composer({ team }: { team: Team | undefined }) {
     setDraft('')
     const attachments = await draftFiles.upload()
     draftFiles.clear()
-    void window.office.sendChat(text, attachments, team?.id)
+    void window.office.sendChat(text, attachments, room?.room)
   }
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => slashKeys.onKeyDown(e) || handleComposerKey(e, () => void handleSend(), setDraft)
   // 같은 이름의 직원·팀·랩이 있으면 "@디자인(팀)"처럼 종류를 붙여 고른 대상에게 가게 한다
   const handleMention = (tg: MentionTarget) => setDraft((d) => d.replace(/@(\S*)$/, `${mentionToken(tg, targets)} `))
 
-  // 멘션 없이 보내면 누가 받는지: 전체 방은 알맞은 한 명, 팀 방은 팀장(없으면 팀 안에서 한 명)
-  const roomLead = team?.leadId ? staffById.get(team.leadId) : undefined
-  const noneLabel = !team ? t('chat.recipientsNone') : roomLead ? t('chat.room.recipientsLead', { name: roomLead.name }) : t('chat.room.recipientsNoLead')
+  // 멘션 없이 보내면 누가 받는지: 전체 방은 알맞은 한 명, 팀·랩 방은 팀장·랩 리드(없으면 방 안에서 한 명)
+  const roomLead = room?.leadId ? staffById.get(room.leadId) : undefined
+  const isLab = room?.kind === 'lab'
+  const noneLabel = !room
+    ? t('chat.recipientsNone')
+    : roomLead
+      ? t(isLab ? 'chat.labRoom.recipientsLead' : 'chat.room.recipientsLead', { name: roomLead.name })
+      : t(isLab ? 'chat.labRoom.recipientsNoLead' : 'chat.room.recipientsNoLead')
 
   return (
     <div className="typing:py-2 relative border-t p-4">
@@ -347,7 +370,7 @@ function Composer({ team }: { team: Team | undefined }) {
                     {tg.kind === 'staff'
                       ? roleLabel(staffById.get(tg.memberIds[0])?.role ?? '')
                       : tg.kind === 'all'
-                        ? t(team ? 'chat.room.allMembers' : 'chat.allHired', { count: tg.memberIds.length })
+                        ? t(!room ? 'chat.allHired' : isLab ? 'chat.labRoom.allMembers' : 'chat.room.allMembers', { count: tg.memberIds.length })
                         : t('chat.peopleCount', { count: tg.memberIds.length })}
                   </span>
                 </button>
@@ -362,7 +385,7 @@ function Composer({ team }: { team: Team | undefined }) {
       </div>
       <div className="mx-auto flex max-w-3xl items-end gap-2">
         <AttachButton onPick={draftFiles.add} className="size-9" />
-        <Textarea value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={handleKeyDown} {...draftFiles.bind} rows={1} placeholder={t(team ? 'chat.room.placeholder' : 'chat.placeholder', { all: ALL_MENTION, newline: String(NEWLINE_HINT) })} className="field-sizing-content max-h-32 min-h-9 resize-none py-[7px]" />
+        <Textarea value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={handleKeyDown} {...draftFiles.bind} rows={1} placeholder={t(!room ? 'chat.placeholder' : isLab ? 'chat.labRoom.placeholder' : 'chat.room.placeholder', { all: ALL_MENTION, newline: String(NEWLINE_HINT) })} className="field-sizing-content max-h-32 min-h-9 resize-none py-[7px]" />
         <Button onClick={() => void handleSend()} disabled={!draft.trim() && draftFiles.files.length === 0}>
           <SendIcon />
         </Button>

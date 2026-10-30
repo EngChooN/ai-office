@@ -17,10 +17,10 @@ interface OfficeState extends OfficeSnapshot {
   isMarketOpen: boolean
   liveLogs: LogEntry[]
   chat: ChatMessage[]
-  /** 단체방에서 보고 있는 방 — null = 전체 방, 아니면 팀 id */
+  /** 단체방에서 보고 있는 방 — null = 전체 방, 팀 id = 팀 방, 'lab:<랩 id>' = 랩 방 */
   chatRoom: string | null
   setChatRoom(room: string | null): void
-  /** 단체방 화면으로 가서 그 방을 연다 (조직도 팀 카드 '팀 대화방') */
+  /** 단체방 화면으로 가서 그 방을 연다 (조직도 팀 카드 '팀 대화방', 랩 카드 '랩 대화방') */
   openChatRoom(room: string | null): void
   /** 랩 회의 열기 등에서 회의실 화면에 미리 채울 참석자 */
   meetingPreset: { topic: string; participantIds: string[] } | null

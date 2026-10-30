@@ -541,7 +541,7 @@ export interface ChatMessage {
   attachments?: Attachment[]
   /** 결재 요청·직원 질문 메시지면 그 결재 — 단체방에서 바로 처리하고 결과를 보여 준다 */
   approval?: ChatApproval
-  /** 팀 대화방이면 그 팀 id (없으면 전체 방) */
+  /** 팀 대화방이면 그 팀 id, 랩 대화방이면 'lab:<랩 id>' (없으면 전체 방) */
   room?: string
 }
 
@@ -1035,7 +1035,7 @@ export interface OfficeApi {
   releasePlanHold(): Promise<void>
 
   chatHistory(): Promise<ChatMessage[]>
-  /** room: 팀 대화방(팀 id) — 비우면 전체 방 */
+  /** room: 팀 대화방(팀 id)·랩 대화방('lab:<랩 id>') — 비우면 전체 방 */
   sendChat(text: string, attachments?: Attachment[], room?: string): Promise<void>
 
   timeline(sinceMs: number): Promise<LogEntry[]>

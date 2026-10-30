@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import { CrownIcon, DownloadIcon, FlaskConicalIcon, FolderOpenIcon, PresentationIcon, Trash2Icon } from 'lucide-react'
+import { CrownIcon, DownloadIcon, FlaskConicalIcon, FolderOpenIcon, MessagesSquareIcon, PresentationIcon, Trash2Icon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { NativeSelect } from '@/components/ui/select'
@@ -15,6 +15,7 @@ import { RunCard } from './RunCard'
 import { Avatar, LeadMark } from './StaffCard'
 import { shortPath } from './status'
 import { PACK_LIMITS } from '@shared/staffPack'
+import { labRoomId } from '@shared/chatRooms'
 
 const LAB_COLORS = [...TEAM_COLORS].reverse()
 /** 새 일감 첫 줄을 카드 제목으로 쓸 때 최대 길이 */
@@ -136,6 +137,7 @@ function LabCard({ lab, staff, teams }: { lab: Lab; staff: Staff[]; teams: Team[
   const select = useOffice((s) => s.select)
   const setView = useOffice((s) => s.setView)
   const setMeetingPreset = useOffice((s) => s.setMeetingPreset)
+  const openChatRoom = useOffice((s) => s.openChatRoom)
   const [isEditing, setIsEditing] = useState(false)
   const members = lab.memberIds.map((id) => staff.find((s) => s.id === id)).filter((s): s is Staff => Boolean(s))
 
@@ -166,6 +168,11 @@ function LabCard({ lab, staff, teams }: { lab: Lab; staff: Staff[]; teams: Team[
           LAB
         </span>
         <span className="flex-1 truncate font-semibold">{lab.name}</span>
+        {!lab.isPractice && (
+          <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs" onClick={() => openChatRoom(labRoomId(lab.id))}>
+            <MessagesSquareIcon className="size-3.5" /> {t('lab.openChat')}
+          </Button>
+        )}
         {window.officePack && (
           <Button variant="ghost" size="icon" className="size-7" onClick={() => void handleExport()} aria-label={t('pack.lab.export')} title={t('pack.lab.export')}>
             <DownloadIcon className="size-3.5" />

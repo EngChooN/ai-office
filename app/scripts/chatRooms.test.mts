@@ -1,7 +1,24 @@
-// 팀 대화방(#5): 방 목록·참여자·방 범위 멘션·받는 사람·결과 방·전체 방 요약 단위 테스트 — pnpm test
+// 팀·랩 대화방(#5): 방 목록·참여자·방 범위 멘션·받는 사람·결과 방·전체 방 요약·room 구분 단위 테스트 — pnpm test
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { appendChat, chatLines, originRoom, pickRoomResponder, roomMembers, roomMentionTargets, roomTeams } from '../src/shared/chatRooms.ts'
+import {
+  appendChat,
+  chatLines,
+  chatRoomMembers,
+  chatRoomMentionTargets,
+  findRoom,
+  labRoomId,
+  labRoomMembers,
+  labRoomMentionTargets,
+  originRoom,
+  parseRoom,
+  pickRoomResponder,
+  roomHead,
+  roomLabs,
+  roomMembers,
+  roomMentionTargets,
+  roomTeams,
+} from '../src/shared/chatRooms.ts'
 import { parseMentions, type ResponderCandidate } from '../src/shared/mention.ts'
 import type { ChatMessage } from '../src/shared/types.ts'
 
@@ -98,5 +115,106 @@ test('appendChat: 같은 id는 제자리 교체, 상한은 방마다 따로', ()
   assert.deepEqual(
     appendChat(base, msg(5, 'dev'), 2).map((m) => m.id),
     [1, 2, 3, 5],
+  )
+})
+
+// ── 랩 방 ──────────────────────────────────────────────
+
+// 여러 팀에서 뽑은 랩: 리드는 디자인팀 최팀장, 멤버는 개발팀 김철수·디자인팀 박디자, 해고된 ghost
+const lab = { id: 'L1', name: '검색개선', leadId: 'boss', memberIds: ['kim', 'park', 'ghost'] }
+
+test('room 구분: 팀 방은 팀 id 그대로(기존 데이터 호환), 랩 방은 lab:<id>', () => {
+  assert.equal(labRoomId('L1'), 'lab:L1')
+  assert.deepEqual(parseRoom('lab:L1'), { kind: 'lab', id: 'L1' })
+  assert.deepEqual(parseRoom('dev'), { kind: 'team', id: 'dev' })
+  assert.equal(parseRoom(undefined), undefined)
+  assert.equal(parseRoom(null), undefined)
+  assert.equal(parseRoom(''), undefined)
+  assert.equal(parseRoom('lab:'), undefined)
+  // 팀 id와 랩 id가 같아도 다른 방
+  const teams = [{ ...dev, id: 'same' }]
+  const labs = [{ ...lab, id: 'same' }]
+  assert.equal(findRoom('same', teams, labs)?.kind, 'team')
+  assert.equal(findRoom('lab:same', teams, labs)?.kind, 'lab')
+})
+
+test('findRoom: 없어진 팀·랩, project 팀, 연습 랩은 전체 방(undefined)', () => {
+  const labs = [lab, { ...lab, id: 'P', isPractice: true }]
+  assert.equal(findRoom('lab:L1', [dev], labs)?.name, '검색개선')
+  assert.equal(findRoom('lab:P', [dev], labs), undefined)
+  assert.equal(findRoom('lab:nope', [dev], labs), undefined)
+  assert.equal(findRoom('dev', [dev], labs)?.kind, 'team')
+  assert.equal(findRoom('p', [{ id: 'p', name: '외부', leadId: null, kind: 'project' as const }], labs), undefined)
+  assert.equal(findRoom(undefined, [dev], labs), undefined)
+})
+
+test('연습 랩은 방을 만들지 않는다', () => {
+  assert.deepEqual(
+    roomLabs([lab, { ...lab, id: 'P', isPractice: true }]).map((l) => l.id),
+    ['L1'],
+  )
+})
+
+test('랩 방 참여자: 랩 멤버 + 랩 리드 가운데 고용 직원 (여러 팀에서)', () => {
+  assert.deepEqual(
+    labRoomMembers(lab, hired).map((s) => s.id),
+    ['kim', 'park', 'boss'],
+  )
+  assert.deepEqual(
+    labRoomMembers({ leadId: null, memberIds: ['lee'] }, hired).map((s) => s.id),
+    ['lee'],
+  )
+  const info = findRoom('lab:L1', [dev], [lab])!
+  assert.deepEqual(
+    chatRoomMembers(info, hired).map((s) => s.id),
+    ['kim', 'park', 'boss'],
+  )
+  // 팀 방 정보도 같은 함수로
+  assert.deepEqual(
+    chatRoomMembers(findRoom('dev', [dev], [lab])!, hired).map((s) => s.id),
+    roomMembers(dev, hired).map((s) => s.id),
+  )
+})
+
+test('랩 방 멘션: @전체는 랩 전원, @멤버는 그 사람, 랩 밖 직원·팀·랩은 대상이 아니다', () => {
+  const targets = labRoomMentionTargets(lab, hired)
+  assert.deepEqual(parseMentions('@전체 회고해요', targets).recipientIds, ['kim', 'park', 'boss'])
+  assert.deepEqual(parseMentions('@박디자 시안 부탁', targets).recipientIds, ['park'])
+  const outside = parseMentions('@이영희 도와줘요', targets)
+  assert.equal(outside.matched.length, 0)
+  assert.equal(outside.body, '@이영희 도와줘요')
+  assert.ok(!targets.some((t) => t.kind === 'team' || t.kind === 'lab'))
+  assert.deepEqual(
+    chatRoomMentionTargets(findRoom('lab:L1', [dev], [lab])!, hired).map((t) => t.key),
+    targets.map((t) => t.key),
+  )
+})
+
+test('랩 방 받는 사람: 멘션 없으면 랩 리드, 리드가 없거나 예산을 다 썼으면 랩 안에서 pickResponder', () => {
+  const info = findRoom('lab:L1', [dev], [lab])!
+  const cs = [cand('kim', '프론트엔드 개발자'), cand('park', '디자이너'), cand('boss', '팀장', { status: 'working' })]
+  assert.equal(pickRoomResponder('디자인 시안', info.leadId, cs), 'boss')
+  const over = [cand('kim', '프론트엔드 개발자'), cand('park', '디자이너'), cand('boss', '팀장', { isOverBudget: true })]
+  assert.equal(pickRoomResponder('디자이너 시안', info.leadId, over), 'park')
+  const noLead = findRoom('lab:L2', [], [{ ...lab, id: 'L2', leadId: null }])!
+  assert.equal(noLead.leadId, null)
+  assert.equal(pickRoomResponder('프론트엔드 화면', noLead.leadId, cs), 'kim')
+})
+
+test('머리말: 팀 방 [팀이름 방], 랩 방 [랩이름 랩]', () => {
+  assert.equal(roomHead(findRoom('lab:L1', [dev], [lab])!), '[검색개선 랩]')
+  assert.equal(roomHead(findRoom('dev', [dev], [lab])!), '[개발팀 방]')
+})
+
+test('결과 방·전체 방 요약: 랩 방도 팀 방과 같이', () => {
+  assert.equal(originRoom([{}, { room: 'lab:L1' }]), 'lab:L1')
+  const lines = chatLines([msg(1), msg(2, 'lab:L1'), msg(3, 'dev'), msg(4, 'lab:L1'), msg(5)], undefined)
+  assert.deepEqual(
+    lines.map((l) => (l.kind === 'message' ? `m${l.message.id}` : `${l.room}×${l.count}`)),
+    ['m1', 'lab:L1×2', 'dev×1', 'm5'],
+  )
+  assert.deepEqual(
+    chatLines([msg(1), msg(2, 'lab:L1'), msg(3, 'dev')], 'lab:L1').map((l) => (l.kind === 'message' ? l.message.id : -1)),
+    [2],
   )
 })
