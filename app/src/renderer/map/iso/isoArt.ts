@@ -13,7 +13,7 @@ import { edgeBox } from '../../../shared/iso/depth.ts'
 import { specOf, type Rot } from '../../../shared/iso/furniture.ts'
 import { FACE_ITEMS, HAIR_COLORS, HAIR_STYLES, HEAD_ITEMS, PANTS, SKINS, TOP_COLORS, TOPS } from '../../../shared/look.ts'
 import { itemName } from '../../../shared/i18n/names.ts'
-import { drawFigure, figureHex, type FigureDir, type Grid } from './personArt.ts'
+import { drawFigure, figureHex, type FigureDir, type FigurePose, type Grid } from './personArt.ts'
 
 type RGBA = [number, number, number, number]
 type Color = string | RGBA
@@ -3922,11 +3922,11 @@ export const lookOf = (n: number): Look => ({
   head: n % HEAD_ITEMS.length,
 })
 
-/** type = 책상 앞에 앉아 키보드 치기 (앞 방향은 다리를 그리지 않는다) */
-export type PersonPose = 'stand' | 'walk1' | 'walk2' | 'sit' | 'type'
+/** type = 책상 앞에 앉아 키보드 치기 (앞 방향은 다리를 그리지 않는다). 상호작용 연출 자세(personArt ActPose)도 같이 쓴다 */
+export type PersonPose = FigurePose
 /** front ↙ · back ↖ · frontRight ↘ · backRight ↗ */
 export type PersonDir = 'front' | 'back' | 'frontRight' | 'backRight'
-export const PERSON_POSES: PersonPose[] = ['stand', 'walk1', 'walk2', 'sit', 'type']
+export const PERSON_POSES: PersonPose[] = ['stand', 'walk1', 'walk2', 'sit', 'type'] // 기본 자세 (연출 자세는 쓸 때 그린다)
 export const PERSON_DIRS: PersonDir[] = ['front', 'back', 'frontRight', 'backRight']
 /** 칸 방향(r0 ↙ · r1 ↖ · r2 ↗ · r3 ↘) → 직원 그림 방향 */
 export const personDirOf = (facing: Rot): PersonDir => (['front', 'back', 'backRight', 'frontRight'] as const)[facing]

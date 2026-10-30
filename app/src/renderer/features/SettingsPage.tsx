@@ -14,6 +14,7 @@ import { PROVIDER_SECTION_ID, ProviderSection } from './ProviderCards'
 import { COMPANY_LEVELS, type DayNight, type HooksStatus, type Settings, type ThemeId } from '@shared/types'
 import { UI_THEME_GROUPS, type UiMode } from '@shared/uiTheme'
 import { officeOf } from '@shared/officeLevel'
+import { officeStage } from '@/map/officeStage'
 import { ApprovalRulesList, AutoApproveSection } from './AutoApprove'
 import { UpdateSection } from './AppUpdate'
 import { updateActions } from '@/lib/update'
@@ -79,6 +80,31 @@ function LevelPreview() {
           {t('settingsPage.levelPreview.reset')}
         </Button>
       </div>
+    </Section>
+  )
+}
+
+const IX_PREVIEWS = ['handoff', 'review', 'help', 'celebrate', 'chat', 'coffee', 'wave'] as const
+
+/** 개발용: 직원 상호작용 7종을 지도에서 바로 실행해 본다 (쿨다운 무시, 업무·저장에는 영향 없음) */
+function InteractionPreview() {
+  const setView = useOffice((s) => s.setView)
+  const [isMissing, setMissing] = useState(false)
+  const run = (kind: (typeof IX_PREVIEWS)[number]) => {
+    setView('map')
+    // 지도 장면이 깨어난 뒤 실행한다
+    setTimeout(() => setMissing(!officeStage.mainScene()?.previewInteraction(kind)), 400)
+  }
+  return (
+    <Section title={t('settingsPage.ixPreview.title')} description={t('settingsPage.ixPreview.desc')}>
+      <div className="flex flex-wrap items-center gap-1.5">
+        {IX_PREVIEWS.map((kind) => (
+          <Button key={kind} size="sm" variant="outline" className="h-8 text-xs" onClick={() => run(kind)}>
+            {t(`settingsPage.ixPreview.${kind}`)}
+          </Button>
+        ))}
+      </div>
+      {isMissing && <p className="text-muted-foreground text-xs">{t('settingsPage.ixPreview.missing')}</p>}
     </Section>
   )
 }
@@ -326,7 +352,7 @@ export function SettingsPage() {
             <Section title={t('settingsPage.props.title')}>
               <label className="flex items-center gap-3 text-sm">
                 {t('settingsPage.props.plants', { n: settings.plants })}
-                <input type="range" min={0} max={MAX_PLANTS} value={settings.plants} onChange={(e) => update({ plants: Number(e.target.value) })} className="w-48" />
+                <input type="range" min={0} max={MAX_PLANTS} value={settings.plants} onChange={(e) => update({ plants: Number(e.target.value) })} className="w-full max-w-48" />
               </label>
               <label className="flex items-center gap-2 text-sm">
                 <input type="checkbox" checked={settings.isChatterOn} onChange={(e) => update({ isChatterOn: e.target.checked })} /> {t('settingsPage.props.chatter')}

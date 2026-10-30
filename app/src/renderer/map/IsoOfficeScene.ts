@@ -28,6 +28,8 @@ import { MotionPlayer } from './iso/motionPlayer'
 import { workersOf } from '@shared/iso/propMotion'
 import { endVisit, headcountOf, startVisit, takeCameBack, useFloorVisits, type Visit } from './iso/floorVisits'
 import { roleLabel } from '@shared/roleLabel'
+import { behindCell, besideCell, cancel as cancelIx, chatLine, CUP_SHARE_RATE, detectEvents, dropHelpFor, emptyDirector, fallbackOf, finish as finishIx, meetPair, offer, PARTNER_KINDS, pickHelper, startNext, stepsOf, type DelegateMemo, type Director, type Interaction, type InteractionKind, type IxAnim, type IxPlace, type IxSnap, type IxStep } from '@shared/iso/interactions'
+import { FIGURE_ANIMS } from './iso/personArt'
 
 /** 세계 여백 (화면 px). 위쪽은 뒷벽 위로 이름표·말풍선 자리 */
 const MARGIN = 40
@@ -85,6 +87,15 @@ const PLAN_WEIGHTS: ['desk' | 'fun' | 'rest' | 'office' | 'wander' | 'visit', nu
   ['wander', 16],
   ['visit', 6],
 ]
+/** 상호작용 연출: 걸어가다 이만큼 지나도 못 닿으면 포기 · 쉬다 도착한 직원이 업무 수다를 꺼낼 비율 · 커피 심부름에 들르는 가구 */
+const IX_WALK_GIVE_UP_MS = 15_000
+const IX_CHAT_RATE = 0.5
+const COFFEE_ITEMS = new Set(['lv-vending', 'prop-cooler', 'lv-kettle-shelf', 'lv-fridge'])
+/** 연출 자세 한 프레임 (초) — 한 번만 하는 자세(건네기·하이파이브·컵 놓기)는 마지막 프레임에서 멈춘다 */
+const ACT_FRAME_S: Partial<Record<IxAnim, number>> = { handOver: 0.4, highFive: 0.35, cupPut: 0.45, clap: 0.2, wave: 0.25 }
+const ACT_LOOPS = new Set<IxAnim>(['clap', 'wave'])
+/** 하이파이브: 가로로 붙은 두 칸에서 서로 이만큼(칸) 다가선다 — 발 사이 13 아트 px (한 칸 16) */
+const HIGH_FIVE_NUDGE = 3 / 32
 /** 다른 층에 놀러 가 머무는 시간 */
 const VISIT_MIN_MS = 60_000
 const VISIT_MAX_MS = 150_000
@@ -190,7 +201,26 @@ interface Actor {
   chatUntil: number
   chatText: string
   prevStatus: Staff['status']
+  /** 상호작용 연출 자세 (없으면 평소 자세). carry = 들고 걷는 것 */
+  act: { anim: IxAnim; t: number; carry?: 'paper' | 'cup' } | null
 }
+
+/** 상호작용 연출 한 편의 진행 (shared/iso/interactions의 단계를 차례로) */
+interface IxRun {
+  ix: Interaction
+  steps: IxStep[]
+  /** 지금 단계 */
+  i: number
+  /** 자세 단계가 끝나는 때 · 걷기를 포기하는 때 (scene time) */
+  until: number
+  /** 하이파이브 상대 (함께 걸어와 자세를 잡는다) */
+  partner?: Actor
+  /** 상대가 다른 층이라 말풍선만 띄우는 연출 */
+  isBubble?: boolean
+}
+
+/** 상호작용 이벤트를 뽑을 스냅샷 부분 */
+const ixSnapOf = (st: ReturnType<typeof useOffice.getState>): IxSnap => ({ staff: st.staff, teams: st.teams, tasks: st.tasks, logs: st.liveLogs, companyLevel: st.company.level, selectedId: st.selectedId })
 
 interface FurnPart {
   img: Phaser.GameObjects.Image
@@ -306,6 +336,10 @@ export class IsoOfficeScene extends Phaser.Scene {
   private motion: MotionPlayer | null = null
   /** 꾸미기로 들고 있는 놓인 가구 — 그림을 숨긴다 */
   private hiddenUids: ReadonlySet<string> = new Set()
+  /** 상호작용 연출 (지도 장면에만): 쿨다운·직원별 큐 · 도구 위임 기억 · 진행 중인 연출 */
+  private director: Director = emptyDirector()
+  private ixMemo: DelegateMemo = new Map()
+  private ixRuns = new Map<string, IxRun>()
 
   constructor(opts: { key?: string; floor?: number } = {}) {
     super(opts.key ?? 'office')
@@ -365,9 +399,19 @@ export class IsoOfficeScene extends Phaser.Scene {
       if (this.sys.isSleeping()) this.isSyncPending = true
       else syncNow()
     })
+    // 상호작용 연출: 위 sync(직원 상태 반영) 뒤에 스냅샷 변화를 비교한다. 지도를 안 보는 동안의 변화는 연출하지 않는다
+    const unsubscribeIx =
+      this.fixedFloor === null
+        ? useOffice.subscribe((st, prev) => {
+            if (st.tasks === prev.tasks && st.liveLogs === prev.liveLogs && st.staff === prev.staff && st.company === prev.company && st.selectedId === prev.selectedId) return
+            if (this.sys.isSleeping() || st.settings.isWorkMode || !prev.staff.length) return
+            this.feedEvents(ixSnapOf(prev), ixSnapOf(st))
+          })
+        : () => {}
     this.unsubscribe = () => {
       unsubscribeOffice()
       unsubscribeVisits()
+      unsubscribeIx()
     }
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.unsubscribe?.())
     this.events.once(Phaser.Scenes.Events.DESTROY, () => this.unsubscribe?.())
@@ -432,6 +476,7 @@ export class IsoOfficeScene extends Phaser.Scene {
     }
     for (const [id, a] of this.actors) {
       if (seen.has(id)) continue
+      this.cancelRun(a)
       if (a.spot) a.spot.takenBy = null
       this.tweens.killTweensOf(a.emote)
       for (const o of [a.container, a.focus, a.shadow, a.label]) o.destroy()
@@ -965,6 +1010,7 @@ export class IsoOfficeScene extends Phaser.Scene {
       chatUntil: 0,
       chatText: '',
       prevStatus: s.status,
+      act: null,
     }
     this.actors.set(s.id, a)
     const isGuest = this.guests.has(s.id)
@@ -1005,11 +1051,19 @@ export class IsoOfficeScene extends Phaser.Scene {
   /** 상태 변화: 일이 오면 자리로, 회의는 회의실로, 일이 끝나면 잠시 뒤 쉬러 간다 */
   private react(a: Actor, prev: Staff) {
     const s = a.staff
+    // 상호작용 연출 중 새 일·회의가 오면 바로 끊고 아래 규칙대로 자리로 간다. 그 밖에는 연출을 마칠 때까지 둔다
+    const isNewWork = (prev.status !== 'working' && s.status === 'working') || (Boolean(s.meetingId) && !prev.meetingId)
+    // 막힘(결재 대기·오류)에서 풀렸으면 이 사람을 도우러 가려던 대기 연출을 바로 버린다
+    const isStuckStatus = (st: Staff['status']) => st === 'waiting' || st === 'error'
+    if (isStuckStatus(prev.status) && !isStuckStatus(s.status)) this.director = dropHelpFor(this.director, s.id)
+    // 연출로 걷던 중이면 남은 경로를 버리고 자리(회의실)로 다시 보낸다 — 책상에서 막 출발해 mode가 아직 'desk'여도
+    if (isNewWork && this.cancelRun(a) && (a.goal || a.mode !== 'desk') && !this.guests.has(s.id)) this.goBack(a)
     // 놀러 온 직원은 일·회의가 생기면 계단으로 나가 자기 층으로 돌아간다
     if (this.guests.has(s.id)) {
       if (s.status !== 'idle' || s.meetingId) this.leaveFloor(a)
       return
     }
+    if (this.isInvolved(s.id)) return
     if (s.meetingId && this.meetingOf(s.id)) {
       if (a.mode !== 'meeting' && a.goal?.mode !== 'meeting') this.goMeeting(a, true)
       return
@@ -1184,6 +1238,15 @@ export class IsoOfficeScene extends Phaser.Scene {
 
   private arriveAt(a: Actor, spot: Spot) {
     if (spot.emote) this.showEmote(a, spot.emote)
+    // 업무 내용 수다: 쉬는 자리에 앉으면 가끔 최근 업무 제목을 한 줄 (구역 말풍선 대신)
+    if (this.fixedFloor === null && spot.category !== 'office' && Math.random() < IX_CHAT_RATE) {
+      const text = chatLine(a.staff.id, useOffice.getState().tasks)
+      const d = text ? offer(this.director, { kind: 'chat', actor: a.staff.id, text, at: this.time.now }, this.time.now) : this.director
+      if (d !== this.director) {
+        this.director = d
+        return
+      }
+    }
     // 구역 안이면 그 구역 말풍선, 아니면 가구 동작의 말풍선
     const say = (spot.zone && ZONE_SAY[spot.zone.split(':')[0]]) || spot.say
     if (say?.length) {
@@ -1314,6 +1377,11 @@ export class IsoOfficeScene extends Phaser.Scene {
     if (this.fixedFloor === null) this.settleVisits(state.staff, visits)
     for (const a of this.actors.values()) {
       const s = a.staff
+      // 상호작용 연출 중이면 연출이 끝날 때까지 행동을 정하지 않는다
+      if (this.isInvolved(s.id)) {
+        this.applyLook(a, s.id === state.selectedId)
+        continue
+      }
       const isResting = !isBusy(s) && !s.meetingId && a.mode !== 'meeting'
       const isWalking = a.path.length > 0
       const visit = this.guests.has(s.id) ? visits[s.id] : undefined
@@ -1433,10 +1501,14 @@ export class IsoOfficeScene extends Phaser.Scene {
   private draw(a: Actor) {
     const isWalking = a.path.length > 0
     // 보는 방향: r0 ↙ · r1 ↖ · r2 ↗ · r3 ↘ — 방향마다 따로 그린 그림 (반전 없음)
-    const dir = personDirOf(a.facing)
+    // 클릭 반응: 앉은 채 앞(↙)으로 돌아본다
+    const isTurned = a.act?.anim === 'turn' && a.isSitting
+    const dir = isTurned ? 'front' : personDirOf(a.facing)
     // 책상 자리에 앉았으면 키보드 치는 자세 (무릎이 책상 위로 비어져 나오지 않는다)
-    const isTyping = a.isSitting && !!a.seat?.hasDesk && Math.floor(a.x) === a.seat.gx && Math.floor(a.y) === a.seat.gy
-    const pose = isTyping ? 'type' : a.isSitting ? 'sit' : isWalking ? (Math.floor(a.walkT / WALK_FRAME_S) % 2 ? 'walk2' : 'walk1') : 'stand'
+    const isTyping = !isTurned && a.isSitting && !!a.seat?.hasDesk && Math.floor(a.x) === a.seat.gx && Math.floor(a.y) === a.seat.gy
+    const walkFrame = Math.floor(a.walkT / WALK_FRAME_S) % 2
+    const actPose = !a.isSitting && a.act ? this.actPose(a.act, isWalking, walkFrame) : null
+    const pose = actPose ?? (isTyping ? 'type' : a.isSitting ? 'sit' : isWalking ? (walkFrame ? 'walk2' : 'walk1') : 'stand')
     a.body.setTexture(this.personTexture(a.staff.avatar, pose, dir))
     const foot = this.wpt(a.x, a.y)
     const lift = a.isSitting ? a.sitZ * PIXEL : 0
@@ -1467,7 +1539,9 @@ export class IsoOfficeScene extends Phaser.Scene {
 
   update(_t: number, deltaMs: number) {
     const dt = Math.min(deltaMs, 100) / 1000
+    this.runInteractions()
     for (const a of this.actors.values()) {
+      if (a.act) a.act.t += dt
       this.step(a, dt)
       this.draw(a)
     }
@@ -1515,6 +1589,340 @@ export class IsoOfficeScene extends Phaser.Scene {
     // 그림자는 그 직원 바로 밑 — 고정 깊이(바닥 위)면 러그(flat)에 가려진다. 직원은 뒤 가구보다 1 이상 위라 0.01을 빼도 가구 아래로 내려가지 않는다
     for (const a of this.actors.values()) a.shadow.setDepth(a.container.depth - SHADOW_BELOW)
     for (const p of this.pets.values()) p.shadow.setDepth(p.img.depth - SHADOW_BELOW)
+  }
+
+  // ── 상호작용 연출 (shared/iso/interactions) ───────────────────
+
+  /** 스냅샷 변화 → 연출을 직원별 큐에 넣는다. 막힌 직원은 가장 가까운 쉬는 동료가 도우러 간다 */
+  private feedEvents(prev: IxSnap, next: IxSnap) {
+    const { events, memo } = detectEvents(prev, next, this.ixMemo, Date.now())
+    this.ixMemo = memo
+    const now = this.time.now
+    for (const e of events) {
+      if (e.kind === 'stuck') this.offerHelp(e.target)
+      else this.offerIx({ ...e, at: now })
+    }
+  }
+
+  /** 연출을 받는다. 상대가 다른 층이면 걸어가지 않고 이 층에 있는 쪽에 말풍선만 띄운다 */
+  private offerIx(ix: Interaction) {
+    const now = this.time.now
+    const actor = this.actors.get(ix.actor)
+    const target = ix.target ? this.actors.get(ix.target) : undefined
+    if (actor && (!ix.target || target)) {
+      this.director = offer(this.director, ix, now)
+      return
+    }
+    // 이 층에 있는 쪽의 큐에 넣는다 (같은 쿨다운·큐 규칙). 꺼낼 때 startRun이 말풍선만 띄운다
+    const here = actor ?? target
+    if (here) this.director = offer(this.director, ix, now, here.staff.id)
+  }
+
+  /** 말풍선만 띄우는 연출 — 띄워 둔 동안은 다음 연출을 꺼내지 않아 말풍선이 겹치지 않는다 */
+  private bubbleRun(a: Actor, ix: Interaction, b: { emote?: string; say?: string }) {
+    if (!b.emote && !b.say) {
+      this.director = finishIx(this.director, a.staff.id)
+      return
+    }
+    const run: IxRun = { ix, steps: [{ do: 'act', anim: 'keep', ms: CHAT_SHOW_MS, ...b }], i: -1, until: 0, isBubble: true }
+    this.ixRuns.set(a.staff.id, run)
+    this.nextStep(a, run)
+  }
+
+  /** 도움 받을 직원이 아직 막혀 있다 (결재 대기·오류) */
+  private isStuck(id?: string) {
+    const s = (id && this.actors.get(id)?.staff) || useOffice.getState().staff.find((x) => x.id === id)
+    return s?.status === 'waiting' || s?.status === 'error'
+  }
+
+  private bubbleOnly(a: Actor, b: { emote?: string; say?: string }) {
+    if (!b.emote && !b.say) return
+    if (b.emote) this.showEmote(a, b.emote)
+    if (b.say) {
+      a.chatText = b.say
+      a.chatUntil = this.time.now + CHAT_SHOW_MS
+    }
+  }
+
+  /** 막힌 직원(결재 대기·오류)에게 이 층의 가장 가까운 쉬는 동료를 보낸다 */
+  private offerHelp(targetId: string) {
+    const t = this.actors.get(targetId)
+    if (!t || !t.container.visible) return
+    const free = [...this.actors.values()].filter((x) => x !== t && this.isIdleHere(x) && !this.director.queue[x.staff.id])
+    const helper = pickHelper(this.cellOf(t), free.map((x) => ({ id: x.staff.id, ...this.cellOf(x) })))
+    if (helper) this.offerIx({ kind: 'help', actor: helper, target: targetId, at: this.time.now })
+  }
+
+  /** 쉬고 있고 연출·회의·퇴근·층 이동 중이 아닌 직원 */
+  private isIdleHere(a: Actor) {
+    const s = a.staff
+    const leaving = (m?: Mode) => m === 'meeting' || m === 'home' || m === 'leave'
+    return s.status === 'idle' && !s.meetingId && a.container.visible && !leaving(a.mode) && !leaving(a.goal?.mode) && !this.isInvolved(s.id)
+  }
+
+  private cellOf(a: Actor): Cell {
+    return { gx: Math.floor(a.x), gy: Math.floor(a.y) }
+  }
+
+  /** 연출 중이다 (주인공이거나 하이파이브 상대) */
+  private isInvolved(id: string) {
+    if (this.ixRuns.has(id)) return true
+    for (const r of this.ixRuns.values()) if (r.partner?.staff.id === id) return true
+    return false
+  }
+
+  /** 연출을 시작할 수 있는 상태 (회의·퇴근·층 이동·꾸미기 중이 아님) */
+  private canStartIx(a: Actor) {
+    const busyMode = (m?: Mode) => m === 'meeting' || m === 'home' || m === 'leave'
+    return a.container.visible && !busyMode(a.mode) && !busyMode(a.goal?.mode) && !a.staff.meetingId && !this.isInvolved(a.staff.id) && !useOffice.getState().isDecorating
+  }
+
+  /** 매 프레임: 진행 중인 연출의 단계를 넘기고, 쉬는 직원의 큐에서 다음 연출을 꺼낸다 */
+  private runInteractions() {
+    if (this.fixedFloor !== null) return
+    const now = this.time.now
+    for (const [id, run] of [...this.ixRuns]) {
+      const a = this.actors.get(id)
+      if (!a) {
+        this.ixRuns.delete(id)
+        this.director = finishIx(this.director, id)
+        continue
+      }
+      const step = run.steps[run.i]
+      // 도우러 가는 중에 막힌 직원이 일로 돌아갔으면 접고 돌아간다 (이미 돌아가는 길이면 그대로)
+      if (run.ix.kind === 'help' && !run.isBubble && !run.ix.isPreview && !this.isStuck(run.ix.target) && !(step?.do === 'walk' && step.to === 'home')) {
+        this.endRun(a)
+        this.goBack(a)
+        continue
+      }
+      const isStill = (x: Actor) => !x.goal && !x.path.length
+      if (now >= run.until || (step?.do === 'walk' && isStill(a) && (!run.partner || isStill(run.partner)))) this.nextStep(a, run)
+    }
+    for (const id of Object.keys(this.director.queue)) {
+      const a = this.actors.get(id)
+      if (!a) {
+        this.director = cancelIx(this.director, id)
+        continue
+      }
+      if (!this.canStartIx(a)) continue
+      const { d, ix } = startNext(this.director, id, now)
+      this.director = d
+      if (ix) this.startRun(a, ix)
+    }
+  }
+
+  private startRun(a: Actor, given: Interaction) {
+    let ix = given
+    // 그새 막힌 직원이 일로 돌아갔으면 도우러 가지 않는다
+    if (ix.kind === 'help' && !ix.isPreview && !this.isStuck(ix.target)) {
+      this.director = finishIx(this.director, a.staff.id)
+      return
+    }
+    // 이 층의 상대 쪽이 받은 연출(주인공이 다른 층): 말풍선만
+    if (a.staff.id !== ix.actor) {
+      const name = useOffice.getState().staff.find((s) => s.id === ix.actor)?.name ?? ''
+      return this.bubbleRun(a, ix, fallbackOf(ix, 'target', name))
+    }
+    // 커피 심부름: 가끔 일하는 동료 자리에 컵을 놓아 준다
+    if (ix.kind === 'coffee' && !ix.target && Math.random() < CUP_SHARE_RATE) {
+      const mates = [...this.actors.values()].filter((x) => x !== a && x.mode === 'desk' && !x.goal && x.seat && x.container.visible)
+      if (mates.length) ix = { ...ix, target: pick(mates).staff.id }
+    }
+    const target = ix.target ? this.actors.get(ix.target) : undefined
+    const isPartnerFree = (x?: Actor) => x && this.canStartIx(x) && !isBusy(x.staff)
+    if ((ix.target && !target) || (PARTNER_KINDS.has(ix.kind) && !isPartnerFree(target))) {
+      // 상대가 없어졌거나(층 이동) 바쁘면 걸어가지 않고 말풍선만
+      const name = target?.staff.name ?? useOffice.getState().staff.find((s) => s.id === ix.target)?.name ?? ''
+      const fb = fallbackOf(ix, 'actor', name)
+      if (target) this.bubbleOnly(target, fb)
+      return this.bubbleRun(a, ix, fb)
+    }
+    const run: IxRun = { ix, steps: stepsOf(ix, { isSitting: a.isSitting }), i: -1, until: 0, partner: PARTNER_KINDS.has(ix.kind) ? target : undefined }
+    this.ixRuns.set(a.staff.id, run)
+    this.nextStep(a, run)
+  }
+
+  /** 다음 단계로. 단계가 끝나면 연출을 마친다 */
+  private nextStep(a: Actor, run: IxRun): void {
+    const now = this.time.now
+    if (run.partner && run.steps[run.i]?.do === 'act') run.partner.act = null
+    run.i++
+    const step = run.steps[run.i]
+    if (!step) return this.endRun(a)
+    const target = run.ix.target ? this.actors.get(run.ix.target) : undefined
+    if (step.do === 'act') {
+      // 앉은 채 하는 연출(수다·박수 대신 🎉·돌아보기)은 방향을 바꾸지 않는다
+      if (target && target !== a && !a.isSitting) a.facing = facingOf(target.x - a.x, target.y - a.y)
+      a.act = step.anim === 'keep' ? null : { anim: step.anim, t: 0 }
+      if (step.emote) this.showEmote(a, step.emote)
+      if (step.say) {
+        a.chatText = step.say
+        a.chatUntil = now + step.ms
+      }
+      if (target && step.partnerEmote) this.showEmote(target, step.partnerEmote)
+      const p = run.partner
+      if (p && step.partnerAnim) {
+        p.facing = facingOf(a.x - p.x, a.y - p.y)
+        p.act = { anim: step.partnerAnim, t: 0 }
+        // 하이파이브: 가로로 붙은 두 칸에서 서로 조금 다가서야 손이 맞닿는다
+        if (step.anim === 'highFive' && Math.abs(p.y - a.y) < 0.01 && Math.abs(Math.abs(p.x - a.x) - 1) < 0.01) {
+          const s = Math.sign(p.x - a.x) * HIGH_FIVE_NUDGE
+          a.x += s
+          p.x -= s
+        }
+      }
+      run.until = now + step.ms
+      return
+    }
+    a.act = step.carry ? { anim: step.carry === 'paper' ? 'carry' : 'cup', t: 0, carry: step.carry } : null
+    run.until = now + IX_WALK_GIVE_UP_MS
+    if (step.to === 'home') {
+      // 일하는 중이면 자리로, 쉬는 중이면 다시 쉬러. 하이파이브 상대도 함께 돌아간다
+      if (run.partner) {
+        this.goBack(run.partner)
+        run.partner = undefined
+      }
+      return this.goBack(a)
+    }
+    const goal = this.ixGoal(a, run, step.to, target)
+    if (!goal) {
+      // 커피 머신이 없으면 그 자리에서 마신다. 상대 옆에 갈 칸이 없으면 연출을 접고 돌아간다
+      if (step.to === 'coffee') return this.nextStep(a, run)
+      run.i = run.steps.length - 2
+      return this.nextStep(a, run)
+    }
+    this.release(a)
+    this.walkTo(a, { ...goal, mode: 'away', isSitting: false, face: goal.face })
+  }
+
+  /** 연출에서 걸어갈 칸 (상대 옆·의자 뒤·하이파이브 칸·커피 머신). 하이파이브는 상대도 옆 칸으로 보낸다 */
+  private ixGoal(a: Actor, run: IxRun, to: Exclude<IxPlace, 'home'>, target?: Actor): (Cell & { face: Rot | null }) | null {
+    if (!this.walk) return null
+    const occupied = new Set<string>()
+    for (const x of this.actors.values()) {
+      if (x === a || x === run.partner) continue
+      const at = x.goal ?? this.cellOf(x)
+      occupied.add(`${at.gx},${at.gy}`)
+    }
+    const isFree = (c: Cell) => isInside(this.room, c.gx, c.gy) && !this.walk.blocked[cellKey(this.room, c.gx, c.gy)] && !occupied.has(`${c.gx},${c.gy}`)
+    const from = this.cellOf(a)
+    if (to === 'coffee') {
+      const itemOf = (uid: string) => this.items.find((it) => it.uid === uid)?.itemId ?? ''
+      const machines = this.spots.filter((s) => (s.emote === '☕' || COFFEE_ITEMS.has(itemOf(s.uid))) && (!s.takenBy || s.takenBy === a.staff.id) && !s.isSitting)
+      machines.sort((p, q) => Math.abs(p.gx - from.gx) + Math.abs(p.gy - from.gy) - (Math.abs(q.gx - from.gx) + Math.abs(q.gy - from.gy)))
+      const m = machines[0]
+      return m ? { gx: m.gx, gy: m.gy, face: m.face } : null
+    }
+    if (!target) return null
+    const tc = this.cellOf(target)
+    if (to === 'meet') {
+      const mid = { gx: Math.round((from.gx + tc.gx) / 2), gy: Math.round((from.gy + tc.gy) / 2) }
+      const pair = meetPair(mid, isFree)
+      if (!pair || !run.partner) return null
+      const p = run.partner
+      this.release(p)
+      p.act = null
+      this.walkTo(p, { ...pair[1], mode: 'away', isSitting: false, face: 1 })
+      return { ...pair[0], face: 3 }
+    }
+    const atDesk = target.seat && target.mode === 'desk' && !target.goal && tc.gx === target.seat.gx && tc.gy === target.seat.gy
+    const cell = to === 'behind' && atDesk && target.seat ? behindCell(target.seat, from, isFree) : besideCell(tc, from, isFree)
+    return cell ? { ...cell, face: null } : null
+  }
+
+  /** 연출이 끝난 사람: 일하는 중이면 자리로, 쉬는 중이면 다음 쉬는 행동 */
+  private goBack(a: Actor) {
+    a.act = null
+    if (isBusy(a.staff) || a.staff.meetingId) {
+      if (a.staff.meetingId && this.meetingOf(a.staff.id)) this.goMeeting(a, true)
+      else this.goDesk(a, true)
+    } else this.plan(a, true)
+  }
+
+  private endRun(a: Actor) {
+    const run = this.ixRuns.get(a.staff.id)
+    this.ixRuns.delete(a.staff.id)
+    this.director = finishIx(this.director, a.staff.id)
+    a.act = null
+    if (run?.partner) this.goBack(run.partner)
+  }
+
+  /** 새 일이 왔다(또는 사라졌다): 하던 연출·기다리던 연출을 버린다. 하이파이브 상대였으면 그 연출도 접는다. 연출 중이었으면 true */
+  private cancelRun(a: Actor): boolean {
+    const wasInvolved = this.isInvolved(a.staff.id)
+    this.director = cancelIx(this.director, a.staff.id)
+    const run = this.ixRuns.get(a.staff.id)
+    this.ixRuns.delete(a.staff.id)
+    a.act = null
+    if (run?.partner) this.goBack(run.partner)
+    for (const [id, r] of [...this.ixRuns]) {
+      if (r.partner !== a) continue
+      const owner = this.actors.get(id)
+      r.partner = undefined
+      if (owner) {
+        this.endRun(owner)
+        this.goBack(owner)
+      }
+    }
+    return wasInvolved
+  }
+
+  /** 연출 자세 → 그림 자세 (iso/personArt FIGURE_ANIMS). 들고 걸으면 들기 걷기, 한 번만 하는 자세는 마지막 프레임에서 멈춘다 */
+  private actPose(act: NonNullable<Actor['act']>, isWalking: boolean, walkFrame: number): PersonPose | null {
+    if (isWalking) {
+      if (!act.carry) return null
+      return (act.carry === 'paper' ? FIGURE_ANIMS.carryWalk : FIGURE_ANIMS.cupWalk)[walkFrame]
+    }
+    switch (act.anim) {
+      case 'keep':
+      case 'turn':
+        return null
+      case 'stand':
+      case 'carry':
+      case 'cup':
+      case 'peek':
+        return act.anim
+      default: {
+        const frames: readonly PersonPose[] = FIGURE_ANIMS[act.anim]
+        const n = Math.floor(act.t / (ACT_FRAME_S[act.anim] ?? 0.3))
+        return frames[ACT_LOOPS.has(act.anim) ? n % frames.length : Math.min(n, frames.length - 1)]
+      }
+    }
+  }
+
+  /**
+   * 개발용 미리보기: 상호작용 7종을 이 층 직원으로 바로 실행한다 (쿨다운 무시).
+   * 팀장이 있으면 팀장이 주인공, 다른 한 명이 상대. 직원이 없으면 false
+   */
+  previewInteraction(kind: 'handoff' | 'review' | 'help' | 'celebrate' | 'chat' | 'coffee' | 'wave') {
+    const list = [...this.actors.values()].filter((a) => a.container.visible && a.mode !== 'meeting' && a.goal?.mode !== 'meeting')
+    if (!list.length) return false
+    const { teams, tasks } = useOffice.getState()
+    const lead = list.find((a) => teams.some((t) => t.leadId === a.staff.id)) ?? list[0]
+    const other = list.find((a) => a !== lead)
+    for (const a of list) this.cancelRun(a)
+    this.director = { ...this.director, last: {} }
+    const add = (k: InteractionKind, actor: Actor, target?: Actor, text?: string) => {
+      const now = this.time.now
+      this.director = offer(this.director, { kind: k, actor: actor.staff.id, ...(target ? { target: target.staff.id } : {}), ...(text ? { text } : {}), at: now, isPreview: true }, now)
+    }
+    if (kind === 'wave') add('wave', lead)
+    else if (kind === 'chat') add('chat', other ?? lead, undefined, chatLine((other ?? lead).staff.id, tasks) ?? '오늘 할 일 정리 중')
+    else if (kind === 'coffee') add('coffee', other ?? lead, other ? lead : undefined)
+    else if (!other) return false
+    else if (kind === 'handoff') {
+      // 넘겨주기를 마친 뒤 보고 (실제로도 맡긴 일이 끝나야 보고한다)
+      add('handoff', lead, other)
+      this.time.delayedCall(9000, () => this.actors.has(other.staff.id) && this.actors.has(lead.staff.id) && add('report', other, lead))
+    } else if (kind === 'review') {
+      add('review', lead, other)
+      add('approve', lead, other)
+    } else if (kind === 'help') add('help', other, lead)
+    else {
+      add('highFive', lead, other)
+      for (const a of list) add('clap', a)
+    }
+    return true
   }
 
   // ── 카메라 ────────────────────────────────────────────
