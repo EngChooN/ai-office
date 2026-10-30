@@ -17,8 +17,8 @@ export function NavTabs() {
   if (tabs.length < 2) return null
 
   return (
-    // 폰에서 입력 중이면 화면 제목처럼 숨긴다. 탭이 넘치면 가로로 밀어 본다
-    <div role="tablist" className="typing:hidden flex shrink-0 gap-1 overflow-x-auto border-b px-4 phone:px-2">
+    // 폰에서 입력 중이면 화면 제목처럼 숨긴다. 탭이 넘치면 가로로 밀어 본다 (스크롤바는 숨김 — 탭 밑줄 -mb-px 때문에 세로 스크롤바가 생겼음)
+    <div role="tablist" className="typing:hidden flex shrink-0 gap-1 overflow-x-auto overflow-y-hidden [scrollbar-width:none] border-b px-4 phone:px-2">
       {tabs.map(({ view: v, labelKey }) => {
         const isSelected = view === v
         const isUpdates = v === 'updates'

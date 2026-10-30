@@ -91,7 +91,7 @@ function RoomTabs({ current }: { current: string | undefined }) {
     </span>
   )
   return (
-    <div className="mt-2 flex gap-1.5 overflow-x-auto" role="tablist" aria-label={t('chat.rooms')}>
+    <div className="mt-2 flex gap-1.5 overflow-x-auto overflow-y-hidden [scrollbar-width:none]" role="tablist" aria-label={t('chat.rooms')}>
       {tab('all', t('chat.room.all'), !current, () => setChatRoom(null))}
       {teamRooms.length > 0 && groupLabel('group:teams', t('chat.room.groupTeams'))}
       {teamRooms.map((tm) => tab(tm.id, tm.name, current === tm.id, () => setChatRoom(tm.id), tm.color))}

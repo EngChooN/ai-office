@@ -82,11 +82,12 @@ function Tile({
         isPressed && 'border-primary bg-accent',
       )}
     >
-      <span className="text-muted-foreground flex items-center gap-1.5 text-xs">
+      {/* 칸이 좁아도 이름은 한 줄(넘치면 …), 오른쪽 위 화살표 자리는 비워 둔다 */}
+      <span className={cn('text-muted-foreground flex w-full min-w-0 items-center gap-1.5 text-xs whitespace-nowrap', isLink && 'pr-3.5')}>
         {dot && <span className={cn('size-2 shrink-0 rounded-full', dot, isZero && 'opacity-40')} />}
-        {label}
+        <span className="truncate">{label}</span>
       </span>
-      <span className={cn('text-2xl font-semibold tabular-nums', isZero ? 'text-muted-foreground' : tone === 'waiting' ? 'text-status-waiting' : tone === 'error' ? 'text-status-error' : '')}>
+      <span className={cn('max-w-full truncate text-xl font-semibold tabular-nums @4xl:text-2xl', isZero ? 'text-muted-foreground' : tone === 'waiting' ? 'text-status-waiting' : tone === 'error' ? 'text-status-error' : '')}>
         {value}
       </span>
       {sub}
@@ -141,7 +142,8 @@ export function SummaryRow({
       <Tile
         label={
           <>
-            <CheckIcon className="size-3.5" /> {t('dashboardPanels.todayDone')}
+            <CheckIcon className="mr-1 inline size-3.5 align-[-2px]" />
+            {t('dashboardPanels.todayDone')}
           </>
         }
         value={todayDone}
