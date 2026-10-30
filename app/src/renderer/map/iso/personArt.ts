@@ -36,7 +36,28 @@ export interface FigureLook {
   head?: number
 }
 /** type = 책상 앞에 앉아 키보드를 치는 자세 (다리는 앉기와 같고 손만 키보드 위로) */
-export type FigurePose = 'stand' | 'walk1' | 'walk2' | 'sit' | 'type'
+export type FigurePose = 'stand' | 'walk1' | 'walk2' | 'sit' | 'type' | ActPose
+/** 상호작용 연출 자세 (모두 서서 · 다리는 서기/걷기와 같다). 앞(↙)·뒤(↖) 두 장, ↘·↗는 반전 */
+export type ActPose =
+  | 'carry' | 'carryWalk1' | 'carryWalk2' // 서류 들고 서기·걷기
+  | 'handOver' // 서류 내밀기
+  | 'peek' // 몸을 숙여 들여다보기 (앞: 턱에 손 · 뒤: 뒷짐)
+  | 'highFive1' | 'highFive2' // 손 들기 → 손바닥 맞추기(반짝)
+  | 'clap1' | 'clap2' // 손 벌림 → 손 모음
+  | 'cup' | 'cupWalk1' | 'cupWalk2' | 'cupPut' // 컵 들고 서기·걷기 · 숙여서 내려놓기
+  | 'wave1' | 'wave2' // 손 흔들기
+export const ACT_POSES: ActPose[] = ['carry', 'carryWalk1', 'carryWalk2', 'handOver', 'peek', 'highFive1', 'highFive2', 'clap1', 'clap2', 'cup', 'cupWalk1', 'cupWalk2', 'cupPut', 'wave1', 'wave2']
+/** 연출 → 프레임 순서. 걷기류는 반복, 나머지는 앞에서부터 한 번(마지막 프레임 유지) 또는 반복 */
+export const FIGURE_ANIMS = {
+  carryWalk: ['carryWalk1', 'carryWalk2'],
+  handOver: ['carry', 'handOver'],
+  peek: ['peek'],
+  highFive: ['highFive1', 'highFive2'],
+  clap: ['clap1', 'clap2'],
+  cupWalk: ['cupWalk1', 'cupWalk2'],
+  cupPut: ['cup', 'cupPut'],
+  wave: ['wave1', 'wave2'],
+} as const satisfies Record<string, readonly ActPose[]>
 export type FigureDir = 'SW' | 'SE' | 'NW' | 'NE'
 
 type Dir = 'f' | 'b'
@@ -393,6 +414,113 @@ function armBentPart(c: Col, k: FigureLook, sx: number, sy: number, ex: number, 
   }
   return P
 }
+/** 꺾은선 팔: 어깨 → … → 손. 굵기 2px(세로 구간은 가로 2칸, 가로 구간은 세로 2칸), 마지막 2칸이 손.
+ *  noHand = 손이 몸 앞에 가려 안 보이는 뒤 방향 */
+function armPath(c: Col, k: FigureLook, pts: number[][], side: 'lit' | 'sh', noHand = false) {
+  const P = new Part()
+  const sl = sleeveLen(k)
+  const cells: [number, number, boolean][] = []
+  for (let i = 0; i < pts.length - 1; i++) {
+    const [x0, y0] = pts[i]
+    const [x1, y1] = pts[i + 1]
+    const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0))
+    const isVert = Math.abs(y1 - y0) >= Math.abs(x1 - x0)
+    for (let j = i ? 1 : 0; j <= n; j++) cells.push([Math.round(x0 + ((x1 - x0) * j) / n), Math.round(y0 + ((y1 - y0) * j) / n), isVert])
+  }
+  cells.forEach(([x, y, isVert], i) => {
+    const isHand = !noHand && i >= cells.length - 2
+    const isCuff = !noHand && sl === 99 && i === cells.length - 3
+    const isCloth = sl === 99 || i < sl
+    const a = isHand ? c.s : isCuff ? c.C : isCloth ? (side === 'lit' ? c.L : c.c) : c.s
+    const b = isHand ? c.k : isCuff ? c.F : isCloth ? c.C : c.k
+    P.px(x, y, a)
+    if (isVert) P.px(x + 1, y, b)
+    else P.px(x, y + 1, b)
+  })
+  return P
+}
+/** 들고 다니는 소품. paper = 줄 친 서류 5×4 · cup = 김 나는 머그 · burst = 하이파이브 반짝(외곽선 없음) */
+function propPart(kind: 'paper' | 'cup' | 'burst', x: number, y: number): Part | Flat {
+  const P = new Part()
+  if (kind === 'paper') P.tpl(['wwwws', 'wllws', 'wwwws', 'wllss'], x, y, { w: '#f6f4ec', l: '#a9b0c8', s: '#d6d4e2' })
+  if (kind === 'cup') P.tpl(['ccc.', 'wwwh', 'wwWh', 'wwW.'], x, y, { c: '#6a4030', w: '#ffffff', W: '#c8cad8', h: '#e6e3f2' })
+  if (kind === 'burst') {
+    P.tpl(['..Y..', 'Y.y.Y', '.yWy.', 'Y.y.Y', '..Y..'], x, y, { Y: '#f5c43a', y: '#ffe9a0', W: '#ffffff' })
+    return { flat: P }
+  }
+  return P
+}
+/** 서 있는 연출 자세의 팔·소품. far = 몸 뒤로 먼저 그리는 팔, near = 몸 앞 팔.
+ *  late = 머리 다음에 그린다(머리 옆으로 든 팔·턱 괸 손) · lean = 머리를 앞으로 1칸 숙인다 */
+interface ActArms {
+  far: number[][]
+  near: number[][]
+  farFront?: boolean
+  late?: 'far' | 'near'
+  noHand?: boolean
+  lean?: boolean
+  prop?: ['paper' | 'cup' | 'burst', number, number]
+  /** 소품을 머리 다음에 */
+  propLate?: boolean
+}
+// 기준: ↙ 먼 팔 어깨 (3,12) · 가까운 팔 (11,12) / ↖ 먼 팔 (12,12) · 가까운 팔 (4,12). 몸통 x 5~11, 머리 x 3~12 · y 0~8
+const HANG_F = { far: [[3, 12], [3, 18]], near: [[11, 12], [11, 18]] }
+const HANG_B = { far: [[12, 12], [12, 18]], near: [[4, 12], [4, 18]] }
+function actArms(pose: ActPose, isF: boolean, sw: number): ActArms {
+  const farSwing = isF ? [[3, 12], [3 - (sw < 0 ? 1 : 0), 18 - (sw < 0 ? 1 : 0)]] : [[12, 12], [12 + (sw > 0 ? 1 : 0), 18 - (sw > 0 ? 1 : 0)]]
+  if (isF)
+    switch (pose) {
+      case 'carry': case 'carryWalk1': case 'carryWalk2':
+        return { far: [[3, 12], [3, 15], [1, 16]], near: [[11, 12], [11, 15], [6, 16]], prop: ['paper', 1, 13] }
+      case 'handOver':
+        return { far: [[3, 12], [2, 14], [0, 15]], near: HANG_F.near, prop: ['paper', 0, 11] }
+      case 'peek':
+        return { far: [[3, 12], [4, 17]], near: [[11, 12], [11, 15], [8, 11]], late: 'near', lean: true }
+      case 'highFive1':
+        return { far: [[3, 12], [1, 9], [1, 4]], near: HANG_F.near, late: 'far' }
+      case 'highFive2':
+        return { far: [[3, 12], [1, 9], [0, 5]], near: HANG_F.near, late: 'far', prop: ['burst', 0, 0], propLate: true }
+      case 'clap1':
+        return { far: [[3, 12], [3, 14], [1, 13]], near: [[11, 12], [11, 15], [7, 13]] }
+      case 'clap2':
+        return { far: [[3, 12], [3, 14], [2, 13]], near: [[11, 12], [11, 15], [4, 13]] }
+      case 'cup': case 'cupWalk1': case 'cupWalk2':
+        return { far: pose === 'cup' ? HANG_F.far : farSwing, near: [[11, 12], [11, 15], [8, 16]], prop: ['cup', 7, 13] }
+      case 'cupPut':
+        return { far: HANG_F.far, near: [[11, 12], [10, 15], [5, 18]], prop: ['cup', 4, 15], lean: true }
+      case 'wave1':
+        return { far: HANG_F.far, near: [[11, 12], [13, 9], [13, 3]], late: 'near' }
+      case 'wave2':
+        return { far: HANG_F.far, near: [[11, 12], [13, 9], [14, 4]], late: 'near' }
+    }
+  switch (pose) {
+    case 'carry': case 'carryWalk1': case 'carryWalk2':
+      return { far: [[12, 12], [12, 15]], near: [[4, 12], [3, 15], [2, 15]], prop: ['paper', 0, 12] }
+    case 'handOver':
+      return { far: HANG_B.far, near: [[4, 12], [2, 14], [0, 14]], prop: ['paper', 0, 10] }
+    case 'peek':
+      // 뒷짐: 두 손이 등 위에서 모인다
+      return { far: [[12, 12], [11, 15], [9, 17]], near: [[4, 12], [5, 15], [7, 17]], farFront: true, lean: true }
+    case 'highFive1':
+      return { far: HANG_B.far, near: [[4, 12], [2, 9], [1, 4]] }
+    case 'highFive2':
+      return { far: HANG_B.far, near: [[4, 12], [2, 9], [0, 5]], prop: ['burst', 0, 0], propLate: true }
+    case 'clap1':
+      return { far: [[12, 12], [14, 15]], near: [[4, 12], [2, 15]], noHand: true }
+    case 'clap2':
+      return { far: [[12, 12], [13, 15], [12, 16]], near: [[4, 12], [3, 15], [4, 16]], noHand: true }
+    case 'cup': case 'cupWalk1': case 'cupWalk2':
+      return { far: pose === 'cup' ? HANG_B.far : farSwing, near: [[4, 12], [3, 15], [1, 15]], prop: ['cup', 0, 12] }
+    case 'cupPut':
+      return { far: HANG_B.far, near: [[4, 12], [2, 15], [0, 17]], prop: ['cup', 0, 13], lean: true }
+    case 'wave1':
+      return { far: HANG_B.far, near: [[4, 12], [2, 9], [2, 3]], late: 'near' }
+    case 'wave2':
+      return { far: HANG_B.far, near: [[4, 12], [2, 9], [0, 4]], late: 'near' }
+  }
+}
+const ACT_LEGS: Partial<Record<ActPose, 'walk1' | 'walk2'>> = { carryWalk1: 'walk1', carryWalk2: 'walk2', cupWalk1: 'walk1', cupWalk2: 'walk2' }
+
 /** 다리 3px */
 function legPart(c: Col, x0: number, y0: number, x1: number, y1: number) {
   const P = new Part()
@@ -450,7 +578,8 @@ function figure(k: FigureLook, pose: FigurePose, dir: Dir) {
       walk1: isF ? [[5, 20, 3, 27, 0], [8, 20, 9, 25, 1]] : [[5, 20, 4, 25, 0], [8, 20, 9, 27, 1]],
       walk2: isF ? [[5, 20, 7, 25, 1], [8, 20, 5, 27, 0]] : [[5, 20, 5, 27, 1], [8, 20, 7, 25, 0]],
     }
-    const [L, R] = legs[pose]
+    const isAct = pose !== 'stand' && pose !== 'walk1' && pose !== 'walk2'
+    const [L, R] = legs[isAct ? (ACT_LEGS[pose] ?? 'stand') : pose]
     // 앞으로 나오는(아래쪽) 다리를 나중에 그린다
     const order = L[3] > R[3] || (L[3] === R[3] && !isF) ? [R, L] : [L, R]
     for (const l of order) {
@@ -460,6 +589,30 @@ function figure(k: FigureLook, pose: FigurePose, dir: Dir) {
     D(hipPart(c))
     // 팔: 걷기에서는 다리와 반대로 흔든다
     const sw = pose === 'walk1' ? 1 : pose === 'walk2' ? -1 : 0
+    if (isAct) {
+      const act = actArms(pose, isF, ACT_LEGS[pose] === 'walk1' ? 1 : ACT_LEGS[pose] === 'walk2' ? -1 : 0)
+      // 숙이기: 머리를 앞(왼쪽 아래)으로 한 칸
+      const ax = act.lean ? hx - 1 : hx
+      const ay = act.lean ? hy + 1 : hy
+      const far = armPath(c, k, act.far, isF ? 'lit' : 'sh', act.noHand)
+      const near = armPath(c, k, act.near, isF ? 'sh' : 'lit', act.noHand)
+      const prop = act.prop && propPart(...act.prop)
+      if (isLong) D(hairBack(c, k, dir, ax, ay))
+      if (!act.farFront && act.late !== 'far') D(far)
+      if (isHood && isF) D(hoodPart(c, dir, ax, ay))
+      D(torsoPart(c, k, dir))
+      D(neckPart(c, 10, act.lean ? -1 : 0))
+      if (act.farFront) D(far)
+      if (act.late !== 'near') D(near)
+      if (prop && !act.propLate) D(prop)
+      D(headPart(c, k, dir, ax, ay))
+      D(hairOver(c, k, dir, ax, ay))
+      if (isHood && !isF) D(hoodPart(c, dir, ax, ay))
+      for (const p of headWear(c, k, dir, ax, ay)) D(p)
+      if (act.late) D(act.late === 'far' ? far : near)
+      if (prop && act.propLate) D(prop)
+      return g
+    }
     const far = isF ? [3, 12, 3 - (sw < 0 ? 1 : 0), 18 - (sw < 0 ? 1 : 0)] : [12, 12, 12 + (sw > 0 ? 1 : 0), 18 - (sw > 0 ? 1 : 0)]
     const near = isF ? [11, 12, 11 + (sw > 0 ? 1 : 0), 18] : [4, 12, 4 - (sw < 0 ? 1 : 0), 18]
     if (isLong) D(hairBack(c, k, dir, hx, hy))

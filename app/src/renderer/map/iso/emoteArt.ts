@@ -3,13 +3,15 @@
 
 import { Cv, toCanvas } from './isoArt.ts'
 
-export type EmoteKind = 'love' | 'note' | 'excited' | 'happy' | 'relax' | 'idea' | 'sweat' | 'ask' | 'done'
-export const EMOTE_KINDS: EmoteKind[] = ['love', 'note', 'excited', 'happy', 'relax', 'idea', 'sweat', 'ask', 'done']
+export type EmoteKind = 'love' | 'note' | 'excited' | 'happy' | 'relax' | 'idea' | 'sweat' | 'ask' | 'done' | 'look' | 'good' | 'coffee' | 'question'
+export const EMOTE_KINDS: EmoteKind[] = ['love', 'note', 'excited', 'happy', 'relax', 'idea', 'sweat', 'ask', 'done', 'look', 'good', 'coffee', 'question']
 
 /** 이모지 → 감정. 표에 없으면 기분 좋음 */
 const BY_EMOJI: Record<string, EmoteKind> = {
   // 상태 변화 (IsoOfficeScene EMOTES)
   '✅': 'done', '💡': 'idea', '🙋': 'ask', '💦': 'sweat', '📘': 'idea',
+  // 상호작용 연출: 어깨 너머 검토 👀 · 승인 👍 · 막힘 도움 ? · 커피 심부름 ☕
+  '👀': 'look', '👍': 'good', '?': 'question', '❓': 'question', '☕': 'coffee',
   // 귀여운 것·동물·꽃 → 좋아함
   '🐶': 'love', '🐱': 'love', '🐟': 'love', '🐠': 'love', '🦜': 'love', '🧸': 'love', '🌸': 'love',
   // 음악
@@ -17,7 +19,7 @@ const BY_EMOJI: Record<string, EmoteKind> = {
   // 놀이·운동 → 신남
   '🎯': 'excited', '🕹️': 'excited', '🎱': 'excited', '🏓': 'excited', '⚽': 'excited', '🥊': 'excited', '🏃': 'excited', '🚀': 'excited', '🦖': 'excited', '🤖': 'excited', '🥽': 'excited', '🎁': 'excited',
   // 먹고 마시기·계절 소품 → 기분 좋음
-  '☕': 'happy', '🍦': 'happy', '🍿': 'happy', '💰': 'happy', '🎄': 'happy', '🎃': 'happy', '⛄': 'happy',
+  '🍦': 'happy', '🍿': 'happy', '💰': 'happy', '🎄': 'happy', '🎃': 'happy', '⛄': 'happy',
   // 쉬기
   '🛋️': 'relax', '🕰️': 'relax',
   // 읽기·그리기·구경 → 아이디어
@@ -33,6 +35,7 @@ const COL: Record<string, string> = {
   B: '#5aa8e8', b: '#3a7ec0',
   G: '#3fb868', g: '#8a8fa8', h: '#5d6380',
   O: '#f0834e',
+  K: '#9a6440', k: '#6a4030',
 }
 /** 9×8 아이콘 (. = 빈칸) */
 const ICON: Record<EmoteKind, string[]> = {
@@ -45,6 +48,10 @@ const ICON: Record<EmoteKind, string[]> = {
   sweat: ['....B....', '...BBB...', '..BBBBB..', '.BwBBBBB.', '.BwBBBBb.', '.BBBBBBb.', '..BBBbb..', '...bbb...'],
   ask: ['...OOO...', '...OOO...', '...OOO...', '...OOO...', '....O....', '.........', '...OOO...', '...OOO...'],
   done: ['........G', '.......GG', '......GG.', 'G....GG..', 'GG..GG...', '.GGGG....', '..GG.....', '.........'],
+  look: ['.........', '.ee...ee.', 'ewwe.ewwe', 'ewwe.ewwe', 'eewe.eewe', 'eewe.eewe', '.ee...ee.', '.........'],
+  good: ['....YY...', '...YYy...', '...Yy....', 'BYYYYYYy.', 'BYYYYYYy.', 'BYYYYYyy.', 'BYYYYYy..', '..yyyy...'],
+  question: ['..OOOO...', '.OO..OO..', '.....OO..', '....OO...', '...OO....', '.........', '...OO....', '...OO....'],
+  coffee: ['..g..g...', '...g..g..', '.KkkkkK..', '.KKKKKKkk', '.KKKKKK.k', '.KKKKKKkk', '..KKKKk..', '.ggggggg.'],
 }
 
 const hex = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16))
