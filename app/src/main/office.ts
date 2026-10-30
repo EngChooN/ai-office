@@ -130,6 +130,7 @@ import {
 import { HiredStaffManager } from './hired'
 import { askAsProvider, askOnce, type RateLimitInfo } from './ai'
 import { probeMcpStatus, sdk } from './ai/claude'
+import { splitFinished } from './ai/pendingSends'
 import { codexBinaryPath } from './ai/codex'
 import { readCodexRateLimits, refreshCodexAssets } from './ai/codexAssets'
 import { defineTool, registerLocalMcp, type LocalMcpHandle } from './mcp/localMcp'
@@ -312,7 +313,7 @@ export class Office extends EventEmitter<{
       isAutonomous: (id) => this.isAutonomous(id),
       cancelApproval: (id) => this.dropApproval(id, '취소됨'),
       rateLimit: (info, provider) => (provider === 'codex' ? this.onCodexRateLimit(info) : this.onRateLimit(info)),
-      finished: (id, summary, backgroundTasks) => this.onFinished(id, summary, backgroundTasks),
+      finished: (id, summary, backgroundTasks, pending) => this.onFinished(id, summary, backgroundTasks, pending),
       stopped: (id) => this.onStopped(id),
       officeTools: (id) => this.officeTools(id),
       context: (id) => this.teamContext(id),
@@ -1180,14 +1181,15 @@ export class Office extends EventEmitter<{
     return { staffId, costUsd: 0, ...(ext.provider === 'codex' ? readCodexExternalDay(staffId, ext.sessionId, since) : readExternalDay(staffId, ext.cwd, ext.sessionId, since)) }
   }
 
-  private onFinished(staffId: string, summary: string, backgroundTasks: string[] = []) {
+  private onFinished(staffId: string, summary: string, backgroundTasks: string[] = [], pending = 0) {
     void this.persistWork(staffId) // 마지막 수정까지 반영한 폴더 상태로 다시 저장
     const s = this.hired.get(staffId)
     if (!s) return
     const isAutoCheckTurn = this.autoChecked.delete(staffId)
-    const origins = this.origins.get(staffId) ?? []
+    // 일하는 중에 받아 아직 답하지 않은 지시는 다음 결과 몫으로 남긴다 (그 답이 지시가 온 방에 올라가게)
+    const { done: origins, keep } = splitFinished(this.origins.get(staffId) ?? [], pending)
     const room = originRoom(origins)
-    this.origins.set(staffId, [])
+    this.origins.set(staffId, keep)
     const doneTask = origins.find((o) => o.kind === 'task')
     if (doneTask && doneTask.kind === 'task') this.lastDoneTask.set(staffId, doneTask.taskId)
     else this.lastDoneTask.delete(staffId)
@@ -1224,11 +1226,14 @@ export class Office extends EventEmitter<{
     } finally {
       this.finishingRoom.delete(staffId)
     }
-    const queued = this.taskQueue.get(staffId) ?? []
-    const nextTask = queued.shift()
-    this.taskQueue.set(staffId, queued)
-    if (nextTask) this.assignTask(nextTask.taskId, staffId, nextTask.context)
-    else if (!origins.some((o) => o.kind === 'task')) this.resumeStopped(staffId)
+    // 아직 답할 지시가 남았으면 다음 업무 카드는 그 답까지 마친 뒤에 맡긴다
+    if (pending === 0) {
+      const queued = this.taskQueue.get(staffId) ?? []
+      const nextTask = queued.shift()
+      this.taskQueue.set(staffId, queued)
+      if (nextTask) this.assignTask(nextTask.taskId, staffId, nextTask.context)
+      else if (!origins.some((o) => o.kind === 'task')) this.resumeStopped(staffId)
+    }
     this.checkStall(staffId, summary, isAutoCheckTurn, backgroundTasks, room, this.hasAutonomousOrigin(origins))
   }
 

@@ -51,26 +51,50 @@ export interface ParsedMentions {
   body: string
 }
 
+export interface MentionSpan {
+  start: number
+  end: number
+  target: MentionTarget
+}
+
+/** 찾은 순서(긴 멘션 → 종류 순)대로의 멘션 자리. 잡은 자리는 가려서 "@개발팀" 안의 "@개발"을 다시 잡지 않는다 */
+function scanMentions(text: string, targets: MentionTarget[]): MentionSpan[] {
+  const tokens = targets
+    .filter((t) => t.name)
+    .flatMap((t) => [{ t, token: qualifiedToken(t) }, { t, token: `@${t.name}` }])
+    .sort((a, b) => b.token.length - a.token.length || KIND_ORDER[a.t.kind] - KIND_ORDER[b.t.kind])
+  const spans: MentionSpan[] = []
+  let rest = text
+  for (const { t, token } of tokens) {
+    for (let i = rest.indexOf(token); i !== -1; i = rest.indexOf(token, i + token.length)) {
+      spans.push({ start: i, end: i + token.length, target: t })
+      rest = rest.slice(0, i) + '\0'.repeat(token.length) + rest.slice(i + token.length)
+    }
+  }
+  return spans
+}
+
+/**
+ * 글 속 멘션 자리 (앞에서부터). 단체방이 받는 사람을 고르는 규칙(parseMentions)과 같다 — 입력칸·말풍선 강조에 쓴다.
+ * 이름 바로 뒤에 조사·문장부호가 붙어도("@김버전님", "@김버전,") 이름까지만 잡는다
+ */
+export function mentionSpans(text: string, targets: MentionTarget[]): MentionSpan[] {
+  return scanMentions(text, targets).sort((a, b) => a.start - b.start)
+}
+
 /**
  * 메시지에서 @대상을 찾는다. 긴 멘션부터 잡고 잡은 자리는 지워서 "@개발팀"이 "@개발"로도 잡히지 않게 한다.
  * 종류를 붙인 "@디자인(팀)"이 먼저 잡히고, 종류 없는 "@디자인"은 이름이 겹치면 직원 → 팀 → 랩 → 전체 순으로 하나만 잡는다.
  * 없는 이름의 @단어는 멘션으로 보지 않는다.
  */
 export function parseMentions(text: string, targets: MentionTarget[]): ParsedMentions {
-  const tokens = targets
-    .filter((t) => t.name)
-    .flatMap((t) => [{ t, token: qualifiedToken(t) }, { t, token: `@${t.name}` }])
-    .sort((a, b) => b.token.length - a.token.length || KIND_ORDER[a.t.kind] - KIND_ORDER[b.t.kind])
-  const matched: MentionTarget[] = []
-  let rest = text
-  for (const { t, token } of tokens) {
-    if (!rest.includes(token)) continue
-    if (!matched.includes(t)) matched.push(t)
-    rest = rest.replaceAll(token, ' ')
-  }
+  const spans = scanMentions(text, targets)
+  const matched = [...new Set(spans.map((s) => s.target))]
+  let body = text
+  for (const s of [...spans].sort((a, b) => b.start - a.start)) body = `${body.slice(0, s.start)} ${body.slice(s.end)}`
   const all = matched.flatMap((t) => t.memberIds)
   const recipientIds = [...new Set(all)]
-  return { matched, recipientIds, duplicates: all.length - recipientIds.length, body: rest.replace(/[ \t]{2,}/g, ' ').trim() }
+  return { matched, recipientIds, duplicates: all.length - recipientIds.length, body: body.replace(/[ \t]{2,}/g, ' ').trim() }
 }
 
 export interface ResponderCandidate {

@@ -2,7 +2,6 @@ import { memo, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, typ
 import { CheckIcon, ChevronDownIcon, ChevronRightIcon, FlaskConicalIcon, MegaphoneIcon, MessagesSquareIcon, SendIcon, UsersIcon } from 'lucide-react'
 import { useShallow } from 'zustand/react/shallow'
 import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
 import { AttachButton, AttachmentView, DraftAttachments, useDraftAttachments } from '@/components/attachments'
 import { cn } from '@/lib/utils'
 import { handleComposerKey, NEWLINE_HINT } from '@/lib/composerKeys'
@@ -17,6 +16,7 @@ import { fmtDate, t, type TKey } from '@shared/i18n'
 import { roleLabel } from '@shared/roleLabel'
 import { Avatar } from './StaffCard'
 import { Markdown } from '@/components/markdown'
+import { MentionText, MentionTextarea, remarkMentions } from '@/components/mention-text'
 import { JumpToBottom, useStickToBottom } from '@/components/stick-to-bottom'
 import { QuestionBox } from './QuestionBox'
 import { AlwaysApproveButton } from './AutoApprove'
@@ -112,6 +112,11 @@ function MessageList({ room }: { room: string | undefined }) {
   const select = useOffice((s) => s.select)
   const setChatRoom = useOffice((s) => s.setChatRoom)
   const lines = useMemo(() => chatLines(chat, room), [chat, room])
+  // 말풍선 속 @이름 강조: 지금 있는 직원·팀·랩 이름과 맞을 때만
+  const hiredKey = staff.flatMap((s) => (s.kind === 'hired' && !s.isPractice ? [`${s.id}\t${s.name}\t${s.teamId ?? ''}`] : [])).join('\n')
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- 직원 상태가 바뀔 때마다 말풍선을 다시 그리지 않게 이름·팀이 바뀔 때만
+  const hired = useMemo(() => staff.filter((s) => s.kind === 'hired' && !s.isPractice), [hiredKey])
+  const mentions = useMemo(() => mentionTargets(hired, teams.filter((x) => !x.isPractice), labs.filter((x) => !x.isPractice)), [hired, teams, labs])
   // 아직 기다리는 결재·질문 — 말풍선에서 바로 처리한다
   const pendingById = useMemo(() => new Map(staff.flatMap((s) => s.approvals.map((a) => [a.id, a]))), [staff])
   const scroll = useStickToBottom(lines, lineKey, `chat:${room ?? ''}`)
@@ -145,6 +150,7 @@ function MessageList({ room }: { room: string | undefined }) {
                 senderAvatar={sender?.avatar ?? 0}
                 senderTeamId={sender?.teamId ?? null}
                 pendingApproval={m.approval && pendingById.get(m.approval.id)}
+                mentions={mentions}
                 onSelect={select}
               />
             )
@@ -184,6 +190,7 @@ const Bubble = memo(function Bubble({
   senderAvatar,
   senderTeamId,
   pendingApproval,
+  mentions,
   onSelect,
 }: {
   message: ChatMessage
@@ -192,9 +199,11 @@ const Bubble = memo(function Bubble({
   senderAvatar: number
   senderTeamId: string | null
   pendingApproval: Approval | undefined
+  mentions: MentionTarget[]
   onSelect: (id: string) => void
 }) {
   const isMe = m.from === 'me'
+  const plugins = useMemo(() => [remarkMentions(mentions)], [mentions])
   if (m.from === OFFICE_SENDER)
     return (
       <div className="flex justify-center">
@@ -211,7 +220,7 @@ const Bubble = memo(function Bubble({
       <div className={cn('flex max-w-[75%] flex-col gap-0.5', isMe && 'items-end')}>
         {!isMe && <span className="text-muted-foreground text-xs">{senderName}</span>}
         <div className={cn('selectable min-w-0 rounded-2xl px-3 py-2 text-sm', isMe ? 'bg-primary text-primary-foreground whitespace-pre-wrap' : 'bg-card border')}>
-          <FoldableText text={m.text}>{isMe ? m.text : <Markdown>{m.text}</Markdown>}</FoldableText>
+          <FoldableText text={m.text}>{isMe ? <MentionText text={m.text} targets={mentions} onPrimary /> : <Markdown plugins={plugins}>{m.text}</Markdown>}</FoldableText>
           {m.attachments?.length ? (
             <div className="mt-2">
               <AttachmentView attachments={m.attachments} />
@@ -385,7 +394,7 @@ function Composer({ room }: { room: RoomInfo | undefined }) {
       </div>
       <div className="mx-auto flex max-w-3xl items-end gap-2">
         <AttachButton onPick={draftFiles.add} className="size-9" />
-        <Textarea value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={handleKeyDown} {...draftFiles.bind} rows={1} placeholder={t(!room ? 'chat.placeholder' : isLab ? 'chat.labRoom.placeholder' : 'chat.room.placeholder', { all: ALL_MENTION, newline: String(NEWLINE_HINT) })} className="field-sizing-content max-h-32 min-h-9 resize-none py-[7px]" />
+        <MentionTextarea value={draft} targets={targets} onChange={(e) => setDraft(e.target.value)} onKeyDown={handleKeyDown} {...draftFiles.bind} rows={1} placeholder={t(!room ? 'chat.placeholder' : isLab ? 'chat.labRoom.placeholder' : 'chat.room.placeholder', { all: ALL_MENTION, newline: String(NEWLINE_HINT) })} className="field-sizing-content max-h-32 min-h-9 resize-none py-[7px]" />
         {/* 폰: 직원 패널·비서 보내기처럼 정원 */}
         <Button onClick={() => void handleSend()} disabled={!draft.trim() && draftFiles.files.length === 0} className="phone:w-10 phone:px-0">
           <SendIcon />

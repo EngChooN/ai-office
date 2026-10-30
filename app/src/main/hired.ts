@@ -50,8 +50,11 @@ export interface HiredHooks {
   rateLimit(info: RateLimitInfo, provider: AiProvider): void
   /** 세션이 결재 요청을 거둬들임 (취소·세션 재시작) */
   cancelApproval(approvalId: string): void
-  /** backgroundTasks: 턴이 끝날 때 세션에 아직 돌고 있는 백그라운드 작업 설명 (끝나도 직원을 다시 깨우지 않으니 점검용) */
-  finished(staffId: string, summary: string, backgroundTasks: string[]): void
+  /**
+   * backgroundTasks: 턴이 끝날 때 세션에 아직 돌고 있는 백그라운드 작업 설명 (끝나도 직원을 다시 깨우지 않으니 점검용).
+   * pending: 일하는 중에 받아 아직 답하지 않은 지시 수 (다음 결과로 이어서 답한다)
+   */
+  finished(staffId: string, summary: string, backgroundTasks: string[], pending: number): void
   /** 손이 빈 직원이 새 지시를 받아 일을 시작함 (작업 전 상태를 기록하는 시점) */
   workStarted(staffId: string): void
   /** 직원이 파일 수정 도구로 건드린 파일 경로 (같은 폴더를 쓰는 다른 직원의 변경과 가르는 용도) */
@@ -438,7 +441,7 @@ class Worker {
         tokensOut: this.staff.tokensOut,
       })
       this.isRunning = this.rt.queued > 0
-      this.hooks.finished(id, summary, isError ? [] : this.backgroundTasks)
+      this.hooks.finished(id, summary, isError ? [] : this.backgroundTasks, this.rt.queued)
       this.applyPendingRestart()
     }
   }

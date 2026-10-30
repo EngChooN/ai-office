@@ -1,7 +1,7 @@
 // 단체방 멘션 해석·응답자 선정 단위 테스트 — pnpm test
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { mentionTargets, mentionToken, parseMentions, pickResponder, type ResponderCandidate } from '../src/shared/mention.ts'
+import { mentionSpans, mentionTargets, mentionToken, parseMentions, pickResponder, type ResponderCandidate } from '../src/shared/mention.ts'
 
 const hired = [
   { id: 'kim', name: '김철수', teamId: 'dev' },
@@ -118,4 +118,25 @@ test('이름 충돌: 종류 없는 "@디자인"은 직원 한 명만 (직원 →
 test('멘션만 있으면 본문이 비어 있다 (main이 빈 지시를 막는 기준)', () => {
   assert.equal(parseMentions('@개발팀', targets).body, '')
   assert.equal(parseMentions('  @전체  @김철수 ', targets).body, '')
+})
+
+// 단체방 @태그 응답 누락 조사 — 파싱 쪽은 아래 모양 모두 잡는다 (누락 원인은 pendingSends.test.mts)
+test('조사·문장부호·줄바꿈이 붙거나 영문·숫자·밑줄 이름이어도 잡는다', () => {
+  const t2 = mentionTargets([...hired, { id: 'ai', name: 'ai-office_2', teamId: null }], teams, labs)
+  const ids = (text: string) => parseMentions(text, t2).recipientIds
+  assert.deepEqual(ids('@김철수님 확인 부탁'), ['kim'])
+  assert.deepEqual(ids('@김철수, @이영희! 둘 다'), ['kim', 'lee'])
+  assert.deepEqual(ids('첫 줄\n@김철수\n둘째 줄'), ['kim'])
+  assert.deepEqual(ids('(@ai-office_2) 빌드'), ['ai'])
+  // 자동완성으로 넣은 "@이름 "과 손으로 친 "@이름"은 같은 결과
+  assert.deepEqual(ids(`${mentionToken(t2.find((t) => t.key === 'staff:kim')!, t2)} 봐 줘`), ids('@김철수 봐 줘'))
+})
+
+test('강조 자리(mentionSpans)는 받는 사람 규칙과 같다: 긴 이름 우선, 없는 이름은 빼고 앞에서부터', () => {
+  const text = '@개발팀 그리고 @김철수님, @없는사람 @개발'
+  const spans = mentionSpans(text, targets)
+  assert.deepEqual(spans.map((s) => text.slice(s.start, s.end)), ['@개발팀', '@김철수', '@개발'])
+  assert.deepEqual(spans.map((s) => s.target.key), ['team:dev', 'staff:kim', 'staff:gae'])
+  assert.deepEqual(new Set(spans.map((s) => s.target.key)), new Set(parseMentions(text, targets).matched.map((t) => t.key)))
+  assert.deepEqual(mentionSpans('@김철수 @김철수', targets).map((s) => s.start), [0, 5])
 })

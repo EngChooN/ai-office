@@ -9,6 +9,7 @@ import type { RawCommand } from '../../shared/slashCommands.ts'
 import { t } from '../../shared/i18n/index.ts'
 import { HIRED_ENV } from '../external'
 import { contextOf } from '../sessionRotate'
+import { PendingSends } from './pendingSends'
 import { exeName } from '../platform'
 import type { AgentRuntime, AiBackend, AskOptions, AskResult, RuntimeEvent, RuntimeStartOpts, SecretaryEvent, SecretaryRun, SecretaryRunOpts } from './types'
 
@@ -86,6 +87,8 @@ export class ClaudeRuntime implements AgentRuntime {
   /** 세션을 다시 열 때마다 올려서 이전 입력 스트림을 끝낸다 */
   private generation = 0
   private q: Query | null = null
+  /** 보냈지만 아직 결과가 오지 않은 지시 — SDK가 inbox를 바로 비우므로 따로 센다 */
+  private pending = new PendingSends()
 
   constructor(private onEvent: (e: RuntimeEvent) => void) {}
 
@@ -93,12 +96,19 @@ export class ClaudeRuntime implements AgentRuntime {
     return this.q !== null
   }
   get queued() {
-    return this.inbox.length
+    return this.pending.count
   }
 
   send(text: string, attachments: Attachment[]) {
-    this.inbox.push({ type: 'user', message: { role: 'user', content: toContent(text, attachments) }, parent_tool_use_id: null })
+    const uuid = crypto.randomUUID()
+    this.pending.add(uuid)
+    this.inbox.push({ type: 'user', message: { role: 'user', content: toContent(text, attachments) }, parent_tool_use_id: null, uuid })
     this.wake?.()
+  }
+
+  /** 세션에 넘긴 지시는 닫힌 세션에서 결과가 오지 않는다 — 아직 inbox에 있는 것만 다음 세션 몫으로 남긴다 */
+  private forgetDelivered() {
+    this.pending.keepOnly(this.inbox.flatMap((m) => (m.uuid ? [m.uuid] : [])))
   }
 
   async interrupt() {
@@ -114,6 +124,7 @@ export class ClaudeRuntime implements AgentRuntime {
     this.wake?.()
     this.q?.close()
     this.q = null
+    this.forgetDelivered()
   }
 
   dispose() {
@@ -203,7 +214,10 @@ export class ClaudeRuntime implements AgentRuntime {
     } catch (e) {
       this.onEvent({ type: 'error', error: e })
     } finally {
-      if (this.q === q) this.q = null
+      if (this.q === q) {
+        this.q = null
+        this.forgetDelivered()
+      }
     }
   }
 
@@ -227,6 +241,8 @@ export class ClaudeRuntime implements AgentRuntime {
       return
     }
     if (m.type === 'result') {
+      // 이 턴이 처리한 지시를 먼저 지운다 — 결과를 받은 쪽이 queued로 "남은 지시가 있나"를 본다
+      this.pending.settle(m.user_message_uuids ?? (m.user_message_uuid ? [m.user_message_uuid] : undefined))
       emit({ type: 'result', ok: m.subtype === 'success', subtype: m.subtype, text: m.subtype === 'success' ? m.result : '', numTurns: m.num_turns, costUsd: m.total_cost_usd, ...usageTotals(m.modelUsage) })
     }
   }

@@ -253,6 +253,9 @@ const chat: ChatMessage[] = [
   // 스크립트·위험한 링크가 섞인 보고도 글자로만 보여야 한다 (XSS 확인용)
   { id: 3, ts: now - 30 * min, from: 's8', text: '규격 정리했습니다 <script>OfficeBridge.postMessage("x")</script> <img src=x onerror=alert(1)> [링크](javascript:alert(1))' },
   { id: 4, ts: now - 6 * min, from: 's6', text: '폰 배치안 작업 시작했어요. 아래 탭 순서 질문 하나 드렸어요.' },
+  // @이름 강조 확인용 (없는 이름 @홍길동은 강조하지 않는다)
+  { id: 5, ts: now - 4 * min, from: 'me', text: '@김버전님 빌드 부탁해요. @홍길동 은 없는 사람이에요' },
+  { id: 6, ts: now - 2 * min, from: 's1', text: '@김기획 기획서 확인했어요. **@디자인 팀** 시안은 `@이디자` 확인 뒤에 반영할게요.' },
 ] as ChatMessage[]
 
 const remoteStatus = {
