@@ -24,7 +24,7 @@ function head(l) {
     + `\n<link rel="alternate" hreflang="x-default" href="${SITE}">`;
   const ld = {
     '@context': 'https://schema.org', '@type': 'SoftwareApplication', name: 'AI Office', url: url(l),
-    image: SITE + 'assets/og.png?v=0.16.0', applicationCategory: 'BusinessApplication',
+    image: SITE + 'assets/og.png?v=0.16.1', applicationCategory: 'BusinessApplication',
     operatingSystem: 'macOS, Windows, Android', softwareVersion: version, license: 'https://opensource.org/licenses/MIT',
     downloadUrl: 'https://github.com/EngChooN/ai-office/releases/latest', isAccessibleForFree: true,
     offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD', url: 'https://github.com/EngChooN/ai-office/releases/latest' },

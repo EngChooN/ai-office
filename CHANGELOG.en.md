@@ -9,6 +9,28 @@ Writing rules
 
 ## [미정] (설치본 미빌드)
 
+## [0.16.1] - 2026-10-30
+
+### New features
+- Every team and every lab now has its own chat room. In the group chat you can pick the All room, a team room or a lab room, and results of work assigned in a team or lab room come back to the same room. The All room folds new posts from other rooms into one line, and clicking it opens that room. You can open them from the team cards and lab cards in the org chart.
+- Autonomous mode. Turn on "Autonomous" per task and staff will carry it through to the end without asking. Auto-approval also gets a "Full autonomy" level that applies to all staff. Risky actions are refused instead of going to the approvals inbox and are left as "Needs your confirmation." You can turn it on only from the PC; the phone can only turn it off.
+- The staff market now has Designer, Customer Support (CS) and Marketer. Their staff art was redrawn to match each role.
+- Staff cards show the number of unread reports as a badge. Opening the staff panel clears it.
+- When you speak to a staff member directly, their pending approvals are closed as "Withdrawn." When the same staff member posts a new text question, the earlier one is closed as "Replaced."
+- Questions you have already answered are saved to the knowledge base as "Decisions," and if the same question comes again within 30 days it is answered automatically with the earlier answer. Which answer was followed is recorded in the history.
+- In the staff panel you can send just by choosing a manual, with no extra message.
+- On the outdoor (street) screen you can now zoom with the wheel or pinch and drag to move around, like inside the building. There are also zoom in, zoom out and show-all buttons.
+
+### Improvements
+- The sidebar menu shrank from 16 items to 10 groups, and similar screens moved into tabs at the top of the screen. Each group remembers the tab you viewed last, and the phone's More menu uses the same groups. "Payslips" is now called "Costs."
+- While a new version downloads, the progress shows inside the "Update now" button, and the button is locked meanwhile.
+- The group chat no longer cuts completion reports short with "…"; the full text is saved. Long speech bubbles show 12 lines and expand with "Show more" and "Collapse" buttons.
+
+### Bug fixes
+- Fixed a vertical scrollbar appearing on the tab bar at the top.
+- Fixed names and numbers overflowing their boxes in the dashboard summary cards.
+- Fixed the outdoor screen's building size suddenly jumping with the window shape. A drag that ended on a building is no longer counted as entering it.
+
 ## [0.16.0] - 2026-10-30
 
 ### New features
