@@ -11,7 +11,7 @@ import { HH, HW, PIXEL, SLAB, WALL_H, WALL_T, type Room } from '../../../shared/
 import { CellKind, edgesOf, kindAt, type EdgeSide } from '../../../shared/iso/plan.ts'
 import { edgeBox } from '../../../shared/iso/depth.ts'
 import { specOf, type Rot } from '../../../shared/iso/furniture.ts'
-import { FACE_ITEMS, HAIR_COLORS, HAIR_STYLES, HEAD_ITEMS, PANTS, SKINS, TOP_COLORS, TOPS } from '../../../shared/look.ts'
+import { decodeLook, FACE_ITEMS, HAIR_COLORS, HAIR_STYLES, HEAD_ITEMS, PANTS, SKINS, TOP_COLORS, TOPS } from '../../../shared/look.ts'
 import { itemName } from '../../../shared/i18n/names.ts'
 import { drawFigure, figureHex, type FigureDir, type FigurePose, type Grid } from './personArt.ts'
 
@@ -3922,6 +3922,12 @@ export const lookOf = (n: number): Look => ({
   head: n % HEAD_ITEMS.length,
 })
 
+/** 앱 생김새(부품 번호) → 칸 사무실 직원 그림 (색 + 머리 모양·윗옷·얼굴·머리 소품) */
+export const isoLook = (avatar: number): Look => {
+  const l = decodeLook(avatar)
+  return { h: HAIR_COLORS[l.hairColor % HAIR_COLORS.length][0], s: SKINS[l.skin % SKINS.length], c: TOP_COLORS[l.topColor % TOP_COLORS.length][0], p: PANTS[l.pants % PANTS.length], hair: l.hairStyle, top: l.top, face: l.face, head: l.head }
+}
+
 /** type = 책상 앞에 앉아 키보드 치기 (앞 방향은 다리를 그리지 않는다). 상호작용 연출 자세(personArt ActPose)도 같이 쓴다 */
 export type PersonPose = FigurePose
 /** front ↙ · back ↖ · frontRight ↘ · backRight ↗ */
@@ -3961,6 +3967,14 @@ export function artPerson(pose: PersonPose, dir: PersonDir, look: Look) {
 export function personSitDrop(dir: PersonDir, pose: 'sit' | 'type' = 'sit') {
   const g = drawFigure({ h: '#000000', s: '#000000', c: '#000000', p: '#000000' }, pose, FIG_DIR[dir])
   return rowsUsed(g)[1] - g.hip
+}
+
+/** 대시보드·패널 아바타용 상반신 (앞 방향 서기 그림의 윗부분, 16 × rows) */
+export function artPersonBust(look: Look, rows = 18) {
+  const full = artPerson('stand', 'front', look)
+  const cv = new Cv(full.w, Math.min(rows, full.h))
+  cv.px.set(full.px.subarray(0, cv.w * cv.h * 4))
+  return cv
 }
 
 /** 직원 한 장 (화면 캔버스) — 장면은 쓰는 자세부터 한 장씩 만든다 */

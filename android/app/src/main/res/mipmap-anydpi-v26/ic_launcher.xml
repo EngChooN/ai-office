@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- PC 앱 아이콘(app/build/icon.png)과 같은 픽셀아트. foreground PNG는 108dp 캔버스 가운데 64dp에 그림, 바깥은 벽·선반을 이어 그림 -->
+<!-- PC 앱 아이콘(app/build/icon.png)과 같은 도트 사무실. 배경은 라벤더 그라데이션, 전경은 108dp 가운데 66dp 원 안. app/scripts/icon.mjs final로 생성 -->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-    <background android:drawable="@color/ic_launcher_background" />
+    <background android:drawable="@drawable/ic_launcher_background" />
     <foreground android:drawable="@mipmap/ic_launcher_foreground" />
     <monochrome android:drawable="@drawable/ic_launcher_monochrome" />
 </adaptive-icon>

@@ -1,6 +1,7 @@
 // 픽셀 스프라이트를 코드로 그린다 (밝은 탑다운 오피스 톤). 이미지 생성 에셋으로 바꿀 때는
 // 같은 텍스처 키(sit-*, stand-*, desk-*, ...)로 PNG를 로드하면 씬 코드는 그대로 쓸 수 있다.
 
+import { artPerson, artPersonBust, isoLook, toCanvas } from './iso/isoArt'
 import { decodeLook, HAIR_COLORS, PANTS, SKINS, TOP_COLORS, type Look } from '@shared/look'
 
 export const PIXEL = 2
@@ -570,13 +571,15 @@ function drawCharacter(avatar: number, pose: Pose): HTMLCanvasElement {
   return drawFigure(avatar, 'down', CHAR_H, null, extra[pose])
 }
 
-/** 대시보드·패널용 아바타 */
-const avatarCache = new Map<number, string>()
-export function avatarUrl(avatar: number): string {
-  let url = avatarCache.get(avatar)
+/** 대시보드·패널용 아바타 — 사무실 지도와 같은 새 직원 그림. bust면 상반신만 (작은 목록용) */
+const avatarCache = new Map<string, string>()
+export function avatarUrl(avatar: number, bust = false): string {
+  const key = `${avatar}:${bust ? 'b' : 'f'}`
+  let url = avatarCache.get(key)
   if (!url) {
-    url = drawCharacter(avatar, 'idle').toDataURL()
-    avatarCache.set(avatar, url)
+    const look = isoLook(avatar)
+    url = toCanvas(bust ? artPersonBust(look) : artPerson('stand', 'front', look)).toDataURL()
+    avatarCache.set(key, url)
   }
   return url
 }

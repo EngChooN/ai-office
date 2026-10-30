@@ -55,7 +55,7 @@ function InitialAvatar({ name, teamId, className }: { name: string; teamId?: str
 export function Avatar({ avatar, className, name, teamId }: { avatar: number; className?: string; name?: string; teamId?: string | null }) {
   const isWorkMode = useWorkMode()
   if (isWorkMode && name) return <InitialAvatar name={name} teamId={teamId} className={className} />
-  return <img src={avatarUrl(avatar)} alt="" className={cn('size-10 shrink-0 object-contain [image-rendering:pixelated]', className)} />
+  return <img src={avatarUrl(avatar, true)} alt="" className={cn('size-10 shrink-0 object-contain [image-rendering:pixelated]', className)} />
 }
 
 /** 팀장·랩 리드 표시. 업무 모드면 ★ 대신 "리드" 글자 */

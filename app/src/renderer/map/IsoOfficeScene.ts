@@ -7,7 +7,6 @@ import { useOffice, viewLevelOf } from '@/store'
 import { buildFloors, levelRowOf, officeOf } from '@shared/officeLevel'
 import type { ShopState } from '@shared/economy'
 import { isMeetingLive, type Meeting, type Settings, type Staff, type Team } from '@shared/types'
-import { decodeLook, HAIR_COLORS, PANTS, SKINS, TOP_COLORS } from '@shared/look'
 import { PIXEL, TILE_H, TILE_W, cellKey, isInside, miniFocus, toGrid, toWorld, type Cell, type Room } from '@shared/iso/grid'
 import { cellsOf, FACE_STEP, facingOf, specOf, spotsOf, type GridItem, type Rot } from '@shared/iso/furniture'
 import { fixedTiles, nextSeatCap, seatCapOf, type FixedTile, type FloorState } from '@shared/iso/place'
@@ -18,7 +17,7 @@ import { depthOrder, edgeBox, hidesMover, placeMovers, type IsoBox } from '@shar
 import { meetingLayoutOf, meetingSeatFor, type MeetingLayout } from '@shared/iso/meeting'
 import { setAutoOff, useSeatStatus } from './iso/seatStatus'
 import { ITEM_ACTIONS } from '@shared/iso/actions'
-import { DESK_FLIP, deskCellOf, partitionJoins, HALL_SIT_Z, MEETING_CHAIR, artMeetingChair, isSplitChair, PODIUM_KEY, WALL_FADE_ALPHA, ZONE_FLOOR_KINDS, artHallRow, artMeetingRoom, artMeetingTable, artPodium, artPlanEdges, artZoneFloor, drawItem, drawPerson, personSitDrop, drawPet, PET_HOMES, type PetKind, type PetPose, drawPersonShadow, drawPlanRoom, PERSON_DIRS, personDirOf, finishKey, finishLabel, finishOf, hallRowKey, meetingTableKey, planRoomTextureKey, withSurfaces, zoneFloorKey, type Finish, type MeetingTableKind, type ZoneFloor, seatHeight, toCanvas, type ArtBox, type ItemArt, type Look, type PersonDir, type PersonPose } from './iso/isoArt'
+import { DESK_FLIP, deskCellOf, partitionJoins, HALL_SIT_Z, MEETING_CHAIR, artMeetingChair, isSplitChair, PODIUM_KEY, WALL_FADE_ALPHA, ZONE_FLOOR_KINDS, artHallRow, artMeetingRoom, artMeetingTable, artPodium, artPlanEdges, artZoneFloor, drawItem, drawPerson, isoLook, personSitDrop, drawPet, PET_HOMES, type PetKind, type PetPose, drawPersonShadow, drawPlanRoom, PERSON_DIRS, personDirOf, finishKey, finishLabel, finishOf, hallRowKey, meetingTableKey, planRoomTextureKey, withSurfaces, zoneFloorKey, type Finish, type MeetingTableKind, type ZoneFloor, seatHeight, toCanvas, type ArtBox, type ItemArt, type PersonDir, type PersonPose } from './iso/isoArt'
 import { drawEmote, emoteKindOf, type EmoteKind } from './iso/emoteArt'
 import { playLevelUpFx } from './iso/levelUpFx'
 import { pinchStep } from './gestures'
@@ -248,12 +247,8 @@ const pickZoned = (spots: Spot[]) => {
   }
   return spots[spots.length - 1]
 }
-/** 앱 생김새(부품 번호) → 칸 사무실 직원 그림 (색 + 머리 모양·윗옷·얼굴·머리 소품). 텍스처 키는 avatar 번호라 생김새를 바꾸면 새 그림이 된다 */
-export const isoLook = (avatar: number): Look => {
-  const l = decodeLook(avatar)
-  return { h: HAIR_COLORS[l.hairColor % HAIR_COLORS.length][0], s: SKINS[l.skin % SKINS.length], c: TOP_COLORS[l.topColor % TOP_COLORS.length][0], p: PANTS[l.pants % PANTS.length], hair: l.hairStyle, top: l.top, face: l.face, head: l.head }
-}
 /** 그림 캔버스를 텍스처로. addCanvas(CanvasTexture)는 만들 때 getImageData로 픽셀을 다시 읽어 폰에서 느리다 — 그림은 고치지 않으니 보통 텍스처로 */
+export { isoLook }
 const addArt = (textures: Phaser.Textures.TextureManager, key: string, canvas: HTMLCanvasElement) => textures.addImage(key, canvas as unknown as HTMLImageElement)
 type ArtMeta = ArtBox & { ax: number; ay: number }
 const PERSON_FRAMES: [PersonPose, PersonDir][] = (['stand', 'sit', 'type', 'walk1', 'walk2'] as const).flatMap((p) => PERSON_DIRS.map((d) => [p, d] as [PersonPose, PersonDir]))

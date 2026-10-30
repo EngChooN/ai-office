@@ -68,9 +68,9 @@ const config: ForgeConfig = {
     appBundleId: 'com.joonyoung.claude-office',
     // 확장자는 OS마다 붙는다 (맥 icon.icns · 윈도우 icon.ico)
     icon: 'build/icon',
-    // 메뉴바(맥: 흑백 템플릿)·알림 영역(윈도우: 컬러 앱 아이콘) 아이콘은 Resources 폴더에 그대로 둔다
+    // 메뉴바(맥: 흑백 템플릿)·알림 영역(윈도우: 16·32px 전용 컬러 trayWin) 아이콘은 Resources 폴더에 그대로 둔다
     // 비서가 사용법 근거로 읽는 문서(SPEC·업데이트 소식)도 함께 넣는다 (main/secretary.ts guidePath)
-    extraResource: ['build/trayTemplate.png', 'build/trayTemplate@2x.png', 'build/icon.png', '../SPEC.md', '../CHANGELOG.md'],
+    extraResource: ['build/trayTemplate.png', 'build/trayTemplate@2x.png', 'build/trayWin.png', 'build/trayWin@2x.png', 'build/icon.png', '../SPEC.md', '../CHANGELOG.md'],
     // claude 실행 파일은 asar 안에서 실행할 수 없어 풀어 둔다
     asar: { unpack: '**/node_modules/@anthropic-ai/**' },
   },

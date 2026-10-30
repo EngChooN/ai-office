@@ -1,9 +1,10 @@
 // 앱 아이콘 생성기: 32×32 픽셀아트를 macOS 아이콘 규격(1024, 둥근 사각형)으로 키워 PNG로 저장한다.
 // 시안 하나를 고르면 윈도우용 icon.ico(256·48·32·16)도 함께 만든다.
 // 사용: node scripts/icon.mjs <시안이름|all> <출력폴더>
+//       node scripts/icon.mjs final   ← 확정 아이콘(도트 사무실)으로 맥·윈도우·사이트·안드로이드 아이콘을 모두 교체 (icon-final.mjs)
 import fs from 'node:fs'
 import path from 'node:path'
-import zlib from 'node:zlib'
+import { encodePng } from './icon-png.mjs'
 
 const GRID = 32
 const SIZE = 1024
@@ -11,39 +12,6 @@ const CELL = 26 // 32 × 26 = 832 (애플 가이드의 아이콘 본체 크기�
 const BODY = GRID * CELL
 const OFFSET = (SIZE - BODY) / 2
 const RADIUS = 186
-
-// ── PNG 인코더 ──────────────────────────────────────────
-const CRC_TABLE = Array.from({ length: 256 }, (_, n) => {
-  let c = n
-  for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1
-  return c >>> 0
-})
-const crc32 = (buf) => {
-  let c = 0xffffffff
-  for (const b of buf) c = CRC_TABLE[(c ^ b) & 0xff] ^ (c >>> 8)
-  return (c ^ 0xffffffff) >>> 0
-}
-function chunk(type, data) {
-  const len = Buffer.alloc(4)
-  len.writeUInt32BE(data.length)
-  const td = Buffer.concat([Buffer.from(type), data])
-  const crc = Buffer.alloc(4)
-  crc.writeUInt32BE(crc32(td))
-  return Buffer.concat([len, td, crc])
-}
-function encodePng(w, h, rgba) {
-  const raw = Buffer.alloc((w * 4 + 1) * h)
-  for (let y = 0; y < h; y++) {
-    raw[y * (w * 4 + 1)] = 0
-    rgba.copy(raw, y * (w * 4 + 1) + 1, y * w * 4, (y + 1) * w * 4)
-  }
-  const ihdr = Buffer.alloc(13)
-  ihdr.writeUInt32BE(w, 0)
-  ihdr.writeUInt32BE(h, 4)
-  ihdr[8] = 8
-  ihdr[9] = 6
-  return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', ihdr), chunk('IDAT', zlib.deflateSync(raw, { level: 9 })), chunk('IEND', Buffer.alloc(0))])
-}
 
 // ── 32×32 픽셀 캔버스 ───────────────────────────────────
 const hex = (c) => [parseInt(c.slice(1, 3), 16), parseInt(c.slice(3, 5), 16), parseInt(c.slice(5, 7), 16)]
@@ -288,6 +256,10 @@ const DESIGNS = {
 }
 
 const [, , which = 'all', outDir = 'build'] = process.argv
+if (which === 'final') {
+  ;(await import('./icon-final.mjs')).run()
+  process.exit(0)
+}
 fs.mkdirSync(outDir, { recursive: true })
 for (const [name, design] of Object.entries(DESIGNS)) {
   if (which !== 'all' && which !== name) continue

@@ -8,7 +8,7 @@ import { depthOrder, type IsoBox } from '@shared/iso/depth'
 import { walkAlong } from '@shared/iso/walkAlong'
 import type { DemoPhase, DemoReaction } from '@shared/gallery'
 import { isReducedMotion } from '@/lib/reducedMotion'
-import { isoLook } from '../IsoOfficeScene'
+import { isoLook } from './isoArt'
 import {
   artHallRow,
   artPerson,
