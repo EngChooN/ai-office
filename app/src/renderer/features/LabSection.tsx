@@ -14,6 +14,7 @@ import { RefDocsEditor } from './RefDocsEditor'
 import { RunCard } from './RunCard'
 import { Avatar, LeadMark } from './StaffCard'
 import { shortPath } from './status'
+import { PACK_LIMITS } from '@shared/staffPack'
 
 const LAB_COLORS = [...TEAM_COLORS].reverse()
 /** 새 일감 첫 줄을 카드 제목으로 쓸 때 최대 길이 */
@@ -89,8 +90,8 @@ export function LabSection() {
       {isCreating && (
         <form onSubmit={handleCreate} className="bg-card mb-4 flex flex-col gap-3 rounded-xl border p-4">
           <div className="flex gap-2">
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('lab.namePlaceholder')} className="max-w-xs" autoFocus />
-            <Input value={goal} onChange={(e) => setGoal(e.target.value)} placeholder={t('lab.goalPlaceholder')} />
+            <Input value={name} maxLength={PACK_LIMITS.nameMax} onChange={(e) => setName(e.target.value)} placeholder={t('lab.namePlaceholder')} className="max-w-xs" autoFocus />
+            <Input value={goal} maxLength={PACK_LIMITS.descMax} onChange={(e) => setGoal(e.target.value)} placeholder={t('lab.goalPlaceholder')} />
           </div>
           <div className="flex items-center gap-2 text-xs">
             <Button type="button" size="sm" variant="outline" onClick={handlePickFolder}>

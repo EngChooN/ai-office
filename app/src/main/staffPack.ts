@@ -6,6 +6,7 @@ import type { TKey } from '../shared/i18n/dict/index.ts'
 import { encodeLook, randomLook } from '../shared/look.ts'
 import {
   PACK_FORMAT,
+  PACK_LIMITS,
   PACK_VERSION,
   STAFF_MARKET,
   buildPackText,
@@ -155,7 +156,8 @@ export function registerPack(getOffice: () => Office, getWin: () => BrowserWindo
     const leader = lab.leadId ? members.findIndex((m) => m.id === lab.leadId) : -1
     const built = buildPackText(
       members.map((s) => toExportStaff(office, s)),
-      { name: lab.name, color: lab.color, goal: lab.goal, leader: leader >= 0 ? leader : null },
+      // 입력칸 한도가 생기기 전에 저장된 긴 이름·목표 때문에 내보내기가 막히지 않게 파일 한도에 맞춰 자른다
+      { name: lab.name.trim().slice(0, PACK_LIMITS.nameMax), color: lab.color, goal: lab.goal.trim().slice(0, PACK_LIMITS.descMax), leader: leader >= 0 ? leader : null },
     )
     if (!built.ok) return failed(built.reason)
     return saveFile(getWin, lab.name, built.text, t('pack.done.exportedLab', { lab: lab.name, count: members.length }))
