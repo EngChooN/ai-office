@@ -15,7 +15,8 @@ export const PACK_MAX_BYTES = 1024 * 1024
 export const PACK_LIMITS = {
   staff: 50,
   nameMax: 40,
-  roleMax: 40,
+  // 직무는 AI 고용·원격으로도 정해져 입력칸(40글자)보다 길 수 있다
+  roleMax: 200,
   descMax: 300,
   promptMax: 8000,
   manualsPerStaff: 20,
@@ -220,7 +221,7 @@ function readStaff(raw: unknown): PackStaff {
   if (!isObj(raw)) return fail('pack.err.shape')
   // 직무는 고용 화면에서 직접 입력할 수 있으니 목록에 없는 이름도 받는다. 빈 값과 너무 긴 값만 막는다
   const role = typeof raw.role === 'string' ? raw.role.trim() : ''
-  if (role.length < 1 || role.length > PACK_LIMITS.roleMax) return fail('pack.err.role', { role: String(raw.role ?? '').slice(0, 30) })
+  if (role.length < 1 || role.length > PACK_LIMITS.roleMax) return fail('pack.err.role', { name: String(raw.name ?? '').slice(0, 40), max: PACK_LIMITS.roleMax })
   if (raw.provider !== undefined && raw.provider !== 'claude' && raw.provider !== 'codex') return fail('pack.err.model', { model: String(raw.provider).slice(0, 30) })
   const provider: AiProvider = raw.provider === 'codex' ? 'codex' : 'claude'
   // Claude는 별칭만, GPT는 모델 이름 모양만 본다 (실제로 쓸 수 있는지는 엔진이 정한다)

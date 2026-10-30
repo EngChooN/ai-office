@@ -87,7 +87,10 @@ test('직접 입력한 직무도 받고, 빈 직무·너무 긴 직무는 막는
   const custom = validatePackObject(packOf([staffEntry({ role: ' 마법사 ' })]), known)
   assert.equal(custom.ok && custom.pack.staff[0].role, '마법사')
   assert.equal(reasonOf(packOf([staffEntry({ role: '  ' })])), 'pack.err.role')
-  assert.equal(reasonOf(packOf([staffEntry({ role: 'ㄱ'.repeat(41) })])), 'pack.err.role')
+  // 입력칸(40글자)보다 긴 직무도 AI 고용으로 생길 수 있어 받는다
+  const longRole = validatePackObject(packOf([staffEntry({ role: 'ㄱ'.repeat(41) })]), known)
+  assert.equal(longRole.ok && longRole.pack.staff[0].role, 'ㄱ'.repeat(41))
+  assert.equal(reasonOf(packOf([staffEntry({ role: 'ㄱ'.repeat(201) })])), 'pack.err.role')
   assert.equal(reasonOf(packOf([staffEntry({ role: 3 })])), 'pack.err.role')
 })
 

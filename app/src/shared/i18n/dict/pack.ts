@@ -147,10 +147,10 @@ export default {
     zh: '员工名字需为 1 至 40 个字。',
   },
   'pack.err.role': {
-    ko: '직무 "{role}"은(는) 이 앱에 없는 직무예요.',
-    en: 'The role "{role}" is not a role in this app.',
-    ja: '職務「{role}」はこのアプリにない職務です。',
-    zh: '职务“{role}”不是本应用中的职务。',
+    ko: '직원 "{name}"의 직무는 1~{max}글자로 적어 주세요.',
+    en: 'The role of "{name}" must be 1 to {max} characters.',
+    ja: '社員「{name}」の職務は1〜{max}文字で入力してください。',
+    zh: '员工“{name}”的职务需为 1 至 {max} 个字。',
   },
   'pack.err.model': {
     ko: '모델 "{model}"은(는) 이 앱에서 고를 수 없어요.',
