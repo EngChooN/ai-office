@@ -60,6 +60,18 @@ export interface StaffStats {
   progress: number
 }
 
+/** 직원이 지금 처리 중인(또는 처리를 기다리는) 지시 — 답이 오면 사라진다 */
+export interface StaffProgress {
+  /** queued: 앞 작업이 끝나면 처리 · working: 처리 중 · approval: 결재 대기 · error: 오류로 멈춤 */
+  state: 'queued' | 'working' | 'approval' | 'error'
+  /** 현재(가장 먼저 받은) 지시 요약 */
+  text: string
+  /** 지시가 온 대화방 (없으면 직원 1:1) */
+  room?: string
+  /** 현재 지시 뒤에 대기 중인 지시 수 */
+  queued: number
+}
+
 export interface Staff {
   id: string
   kind: StaffKind
@@ -104,6 +116,8 @@ export interface Staff {
   praise?: Praise
   /** 대표가 아직 안 읽은 보고(완료 보고·지시에 대한 답) 개수 — 직원 패널을 열면 0 (없으면 0) */
   unreadReports?: number
+  /** 처리 중인 지시 정보 (없으면 처리할 지시가 없다) — main이 채운다 */
+  progress?: StaffProgress | null
   /** 지금 자율 진행(묻지 않고 끝까지) 중인지 — 자율 업무를 하는 중이거나 '완전 자율'이 켜져 있으면 true (화면 표시용, main이 채운다) */
   isAutonomous?: boolean
   /** 튜토리얼 연습 회사 데이터 — '연습 회사 정리'와 첫 실제 고용 때 지운다 */

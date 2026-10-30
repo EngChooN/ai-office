@@ -87,6 +87,7 @@ export default {
   },
   'notify.report': { ko: '{name} 업무 보고', en: 'Work report from {name}', ja: '{name}の業務報告', zh: '{name} 的工作报告' },
   'notify.reportDone': { ko: '완료했습니다.', en: 'Done.', ja: '完了しました。', zh: '已完成。' },
+  'chat.runError': { ko: '오류로 멈췄어요. 다시 보내 주세요. ({error})', en: 'Stopped due to an error. Please send it again. ({error})', ja: 'エラーで停止しました。もう一度送ってください。({error})', zh: '因错误而停止。请重新发送。({error})' },
   'notify.chatDone': { ko: '업무를 마쳤어요.', en: 'Finished the work.', ja: '作業を終えました。', zh: '已完成工作。' },
   'notify.approval': { ko: '{name} 결재 요청', en: '{name} requests approval', ja: '{name}から承認依頼', zh: '{name} 请求审批' },
   'notify.autoSummary': { ko: '🤖 자동결재 요약', en: '🤖 Auto-approve summary', ja: '🤖 自動承認の要約', zh: '🤖 自动审批摘要' },

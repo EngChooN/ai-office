@@ -131,6 +131,7 @@ import { HiredStaffManager } from './hired'
 import { askAsProvider, askOnce, type RateLimitInfo } from './ai'
 import { probeMcpStatus, sdk } from './ai/claude'
 import { splitFinished } from './ai/pendingSends'
+import { buildStaffProgress, summarizeInstruction } from '../shared/staffProgress'
 import { codexBinaryPath } from './ai/codex'
 import { readCodexRateLimits, refreshCodexAssets } from './ai/codexAssets'
 import { defineTool, registerLocalMcp, type LocalMcpHandle } from './mcp/localMcp'
@@ -177,7 +178,7 @@ const tr = t
  * room: 팀·랩 대화방(팀 id·'lab:<랩 id>')에서 시작된 지시 — 완료 보고·결재·질문·위임 글을 그 방에 올린다 (없으면 전체 방)
  */
 /** isAutonomous: 자율 진행으로 받은 일 (지시창에서 켠 지시·자율 직원이 위임한 일 등 — 카드는 카드의 표시를 본다) */
-type Origin = ({ kind: 'user' | 'chat' | 'schedule' } | { kind: 'task'; taskId: string } | { kind: 'delegate'; leadId: string } | { kind: 'process'; runId: string; stepId: string }) & { room?: string; isAutonomous?: boolean }
+type Origin = ({ kind: 'user' | 'chat' | 'schedule' } | { kind: 'task'; taskId: string } | { kind: 'delegate'; leadId: string } | { kind: 'process'; runId: string; stepId: string }) & { room?: string; isAutonomous?: boolean; text?: string }
 
 type Counters = Partial<Record<LogType, number>>
 
@@ -315,6 +316,7 @@ export class Office extends EventEmitter<{
       rateLimit: (info, provider) => (provider === 'codex' ? this.onCodexRateLimit(info) : this.onRateLimit(info)),
       finished: (id, summary, backgroundTasks, pending) => this.onFinished(id, summary, backgroundTasks, pending),
       stopped: (id) => this.onStopped(id),
+      failed: (id, error) => this.onFailed(id, error),
       officeTools: (id) => this.officeTools(id),
       context: (id) => this.teamContext(id),
       saved: (id, tokens) => db.insertSaving(id, tokens),
@@ -591,7 +593,25 @@ export class Office extends EventEmitter<{
     const statusSince = seen && seen.status === s.status ? seen.since : Date.now()
     if (seen?.since !== statusSince) this.statusSeen.set(s.id, { status: s.status, since: statusSince })
     const todayDone = db.resultCountBetween(s.id, startOfDay(new Date()), Date.now() + 1)
-    return Object.assign(s, { stats: this.statsOf(s.id), meetingId: meeting?.id ?? null, labIds, statusSince, todayDone, praise: this.praise[s.id], unreadReports: unreadOf(this.unreadReports, s.id), isAutonomous: this.isAutonomous(s.id) }) as Staff
+    return Object.assign(s, { stats: this.statsOf(s.id), meetingId: meeting?.id ?? null, labIds, statusSince, todayDone, progress: this.progressOf(s), praise: this.praise[s.id], unreadReports: unreadOf(this.unreadReports, s.id), isAutonomous: this.isAutonomous(s.id) }) as Staff
+  }
+
+  private progressOf(s: db.StoredStaff) {
+    if (!this.hired.has(s.id)) return null
+    return buildStaffProgress({ status: s.status, origins: this.origins.get(s.id) ?? [], pending: this.manager.pendingCount(s.id), hasApproval: s.approvals.length > 0 })
+  }
+
+  /** 실행 중 예외(SDK·Codex 오류): 대화방에 알리고, 받은 일을 정리하고, 업무 카드를 되돌린다 */
+  private onFailed(staffId: string, error: string) {
+    const origins = this.origins.get(staffId) ?? []
+    const queued = this.taskQueue.get(staffId) ?? []
+    this.origins.set(staffId, [])
+    this.taskQueue.set(staffId, [])
+    for (const o of origins) if (o.kind === 'process') this.stopRun(o.runId)
+    const taskIds = [...origins.flatMap((o) => (o.kind === 'task' ? [o.taskId] : [])), ...queued.map((q) => q.taskId)]
+    for (const id of taskIds) this.returnToTodo(id)
+    this.postChat(staffId, t('chat.runError', { error: error.slice(0, 200) }), undefined, undefined, originRoom(origins))
+    this.scheduleEmit()
   }
 
   /** 회사 경험치 = 고용 직원 경험치 합 + 직원 1명당 100. 레벨은 지금까지 오른 최고 레벨 아래로 내려가지 않는다 */
@@ -825,7 +845,7 @@ export class Office extends EventEmitter<{
     const origins = this.origins.get(staffId) ?? []
     // 같은 카드는 받은 업무에 한 번만 (피드백으로 다시 보낼 때도 카드는 하나)
     const isSameTask = origin.kind === 'task' && origins.some((o) => o.kind === 'task' && o.taskId === origin.taskId)
-    if (!isSameTask) this.origins.set(staffId, [...origins, origin])
+    if (!isSameTask) this.origins.set(staffId, [...origins, origin.text ? origin : { ...origin, text: summarizeInstruction(text) }])
     // 자율 진행이면 지시 끝에 머리말을 붙인다 — 지침(시스템 프롬프트)은 세션을 새로 열어야 바뀌므로 (끝에 붙여 가벼운 업무 판정은 그대로)
     if (!parseSlash(text) && this.isAutonomous(staffId)) text = `${text}\n\n${t('staff.msg.autonomous')}`
     if (isDirect && this.withdrawApprovals(staffId)) {

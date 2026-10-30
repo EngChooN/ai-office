@@ -65,6 +65,8 @@ export interface HiredHooks {
   saved(staffId: string, tokens: number): void
   /** 대표가 하던 일을 멈춤 (보고 없이 끝남) */
   stopped(staffId: string): void
+  /** 실행 중 예외로 멈춤 (보고 없이 끝남 — 받은 일 정리·대화방 알림) */
+  failed(staffId: string, error: string): void
   /** 사무실 MCP 도구(팀 조회·위임·보드). 직원마다 같은 서버를 붙이고 권한은 도구 안에서 판단한다 */
   officeTools(staffId: string): RuntimeMcpServer
   /** 세션 시작 시 덧붙이는 팀 맥락 */
@@ -345,12 +347,17 @@ class Worker {
     })
   }
 
+  get pendingCount() {
+    return this.rt.queued
+  }
+
   private handle(m: RuntimeEvent) {
     const id = this.staff.id
     if (m.type === 'error') {
       this.isRunning = false
       this.hooks.update(id, { status: 'error', activity: String(m.error).slice(0, ACTIVITY_MAX) })
       this.hooks.log(id, 'error', String(m.error))
+      this.hooks.failed(id, String(m.error))
       return
     }
     if (m.type === 'rateLimit') {
@@ -485,6 +492,11 @@ export class HiredStaffManager {
 
   interrupt(staffId: string, followUp?: { text: string; attachments: Attachment[] }) {
     return this.workers.get(staffId)?.interrupt(followUp)
+  }
+
+  /** 아직 답하지 않은 지시 수 (처리 중인 것 포함) */
+  pendingCount(staffId: string) {
+    return this.workers.get(staffId)?.pendingCount ?? 0
   }
 
   withdraw(staffId: string) {
