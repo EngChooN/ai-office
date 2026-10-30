@@ -19,6 +19,8 @@ import { Markdown } from '@/components/markdown'
 import { MentionText, MentionTextarea, remarkMentions } from '@/components/mention-text'
 import { JumpToBottom, useStickToBottom } from '@/components/stick-to-bottom'
 import { QuestionBox } from './QuestionBox'
+import { ProgressLine } from './ProgressLine'
+import { progressesForRoom } from '@shared/progressView'
 import { AlwaysApproveButton } from './AutoApprove'
 
 const MENTION_MAX = 6
@@ -155,9 +157,24 @@ function MessageList({ room }: { room: string | undefined }) {
               />
             )
           })}
+          <ProgressLines room={room} />
         </div>
       </div>
       <JumpToBottom isNear={scroll.isNear} unread={scroll.unread} onClick={() => scroll.scrollToBottom(true)} />
+    </div>
+  )
+}
+
+/** 이 방에서 받은 지시를 아직 처리 중인 직원들 (#9) — 작업 내용이 바뀔 때 말풍선 목록이 다시 그려지지 않게 따로 구독한다 */
+function ProgressLines({ room }: { room: string | undefined }) {
+  const staff = useOffice((s) => s.staff)
+  const working = useMemo(() => progressesForRoom(staff.filter((s) => s.kind === 'hired' && !s.isPractice), room), [staff, room])
+  if (working.length === 0) return null
+  return (
+    <div className="flex flex-col gap-1.5">
+      {working.map((s) => (
+        <ProgressLine key={s.id} staff={s} progress={s.progress} variant="chat" />
+      ))}
     </div>
   )
 }

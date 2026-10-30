@@ -20,6 +20,7 @@ import { ReviewTab } from './ReviewTab'
 import { StaffExportDialog } from './StaffExportDialog'
 import { LiveMiniView } from './LiveMiniView'
 import { Avatar, StatusDot } from './StaffCard'
+import { ProgressLine } from './ProgressLine'
 import { AutonomyCheck } from './Autonomy'
 import { useProviders } from './ProviderCards'
 import { formatCost, formatTokens, shortPath, workDirLabel } from './status'
@@ -530,6 +531,7 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
         <Profile staff={staff} />
       ) : (
         <>
+          {staff.progress && <ProgressLine staff={staff} progress={staff.progress} variant="panel" />}
           <section className="flex items-center gap-4 border-b px-4 py-3 text-xs">
             <span className="text-muted-foreground">{t('staffPanel.usage.today')}</span>
             <span>{t('staffPanel.usage.tokens', { n: formatTokens(isHired ? (record?.tokensIn ?? 0) + (record?.tokensOut ?? 0) : (todayTokens ?? 0)) })}</span>

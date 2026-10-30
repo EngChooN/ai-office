@@ -515,6 +515,12 @@ export default {
   'status.idle': { ko: '대기', en: 'Idle', ja: '待機', zh: '空闲' },
   'status.offline': { ko: '퇴근', en: 'Off work', ja: '退勤', zh: '已下班' },
   'status.error': { ko: '오류', en: 'Error', ja: 'エラー', zh: '错误' },
+  // 지시 처리 상태 (ProgressLine.tsx, #9)
+  'progress.queued': { ko: '앞 작업이 끝나면 처리해요', en: 'Will start after the current task', ja: '前の作業が終わったら対応します', zh: '当前任务结束后处理' },
+  'progress.working': { ko: '작업 중', en: 'Working', ja: '作業中', zh: '工作中' },
+  'progress.approval': { ko: '확인을 기다려요', en: 'Waiting for your review', ja: '確認待ちです', zh: '等待确认' },
+  'progress.error': { ko: '오류로 멈췄어요 · 다시 보내 주세요', en: 'Stopped due to an error · Please send it again', ja: 'エラーで停止しました · もう一度送ってください', zh: '因错误而停止 · 请重新发送' },
+  'progress.more': { ko: '대기 {count}건', en: '{count} waiting', ja: '待機 {count}件', zh: '等待 {count} 条' },
   'status.noFolder': { ko: '폴더 지정 없음', en: 'No folder set', ja: 'フォルダー未指定', zh: '未指定文件夹' },
   // OS별 문구 (lib/platform.ts)
   'platform.trayPlace.mac': { ko: '메뉴바', en: 'Menu bar', ja: 'メニューバー', zh: '菜单栏' },
