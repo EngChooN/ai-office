@@ -610,7 +610,8 @@ export class Office extends EventEmitter<{
     for (const o of origins) if (o.kind === 'process') this.stopRun(o.runId)
     const taskIds = [...origins.flatMap((o) => (o.kind === 'task' ? [o.taskId] : [])), ...queued.map((q) => q.taskId)]
     for (const id of taskIds) this.returnToTodo(id)
-    this.postChat(staffId, t('chat.runError', { error: error.slice(0, 200) }), undefined, undefined, originRoom(origins))
+    // 쉬는 중에 세션만 끊긴 경우는 다시 보낼 지시가 없으니 대화방에 알리지 않는다 (상태·기록에는 남는다)
+    if (origins.length || queued.length) this.postChat(staffId, t('chat.runError', { error: error.slice(0, 200) }), undefined, undefined, originRoom(origins))
     this.scheduleEmit()
   }
 

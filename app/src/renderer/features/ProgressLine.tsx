@@ -16,9 +16,9 @@ export function ProgressLine({ staff, progress, variant }: { staff: Pick<Staff, 
     return (
       <div role="status" className="text-muted-foreground flex min-w-0 items-center gap-2 text-xs">
         <Avatar avatar={staff.avatar} name={staff.name} teamId={staff.teamId} className="size-5" />
-        <span className="text-foreground shrink-0 font-medium">{staff.name}</span>
+        <span className="text-foreground max-w-[40%] min-w-0 truncate font-medium">{staff.name}</span>
         {dot}
-        <span className={cn('shrink-0 font-medium', meta.text)}>{t(PROGRESS_LABEL[progress.state])}</span>
+        <span className={cn('min-w-0 truncate font-medium', meta.text)}>{t(PROGRESS_LABEL[progress.state])}</span>
         {detail && <span className="min-w-0 truncate">· {detail}</span>}
         {more && <span className="shrink-0">· {more}</span>}
       </div>
