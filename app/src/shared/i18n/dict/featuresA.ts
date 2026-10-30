@@ -84,6 +84,8 @@ export default {
     zh: '📚 已按以往决定自动回答 — {question} → {answer}（{name} 曾收到的决定）',
   },
   'chat.approval.done': { ko: '처리됨', en: 'Handled', ja: '処理済み', zh: '已处理' },
+  'chat.bubble.more': { ko: '더보기', en: 'Show more', ja: 'もっと見る', zh: '展开' },
+  'chat.bubble.less': { ko: '접기', en: 'Show less', ja: '折りたたむ', zh: '收起' },
   'chat.kind.all': { ko: '전체', en: 'Everyone', ja: '全員', zh: '全体' },
   'chat.kind.team': { ko: '팀', en: 'Teams', ja: 'チーム', zh: '团队' },
   'chat.kind.lab': { ko: '랩', en: 'Labs', ja: 'ラボ', zh: '实验室' },

@@ -1,5 +1,5 @@
-import { memo, useEffect, useMemo, useState, type KeyboardEvent } from 'react'
-import { CheckIcon, ChevronRightIcon, FlaskConicalIcon, MegaphoneIcon, MessagesSquareIcon, SendIcon, UsersIcon } from 'lucide-react'
+import { memo, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
+import { CheckIcon, ChevronDownIcon, ChevronRightIcon, FlaskConicalIcon, MegaphoneIcon, MessagesSquareIcon, SendIcon, UsersIcon } from 'lucide-react'
 import { useShallow } from 'zustand/react/shallow'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -193,7 +193,7 @@ const Bubble = memo(function Bubble({
       <div className={cn('flex max-w-[75%] flex-col gap-0.5', isMe && 'items-end')}>
         {!isMe && <span className="text-muted-foreground text-xs">{senderName}</span>}
         <div className={cn('selectable min-w-0 rounded-2xl px-3 py-2 text-sm', isMe ? 'bg-primary text-primary-foreground whitespace-pre-wrap' : 'bg-card border')}>
-          {isMe ? m.text : <Markdown>{m.text}</Markdown>}
+          <FoldableText text={m.text}>{isMe ? m.text : <Markdown>{m.text}</Markdown>}</FoldableText>
           {m.attachments?.length ? (
             <div className="mt-2">
               <AttachmentView attachments={m.attachments} />
@@ -206,6 +206,43 @@ const Bubble = memo(function Bubble({
     </div>
   )
 })
+
+/** 긴 말풍선: 몇 줄로 접고 '더보기 / 접기' 버튼으로 펼친다. 넘치지 않으면 버튼을 그리지 않는다 */
+function FoldableText({ text, children }: { text: string; children: ReactNode }) {
+  const id = useId()
+  const ref = useRef<HTMLDivElement>(null)
+  const [isOpen, setIsOpen] = useState(false)
+  const [hasMore, setHasMore] = useState(false)
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el || isOpen) return
+    const measure = () => setHasMore(el.scrollHeight > el.clientHeight + 1)
+    measure()
+    // 창 폭이 바뀌면 줄 수도 바뀌니 다시 잰다
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [isOpen, text])
+  return (
+    <>
+      <div id={id} ref={ref} className={cn(!isOpen && 'max-h-[12lh] overflow-hidden')}>
+        {children}
+      </div>
+      {hasMore && (
+        <button
+          type="button"
+          aria-expanded={isOpen}
+          aria-controls={id}
+          onClick={() => setIsOpen((v) => !v)}
+          className="mt-1 flex items-center gap-0.5 text-xs font-medium opacity-70 hover:opacity-100"
+        >
+          {isOpen ? t('chat.bubble.less') : t('chat.bubble.more')}
+          <ChevronDownIcon className={cn('size-3.5 transition-transform duration-150 ease-out motion-reduce:transition-none', isOpen && 'rotate-180')} />
+        </button>
+      )}
+    </>
+  )
+}
 
 /** 결재 요청·질문 말풍선 아래: 기다리는 중이면 결재함과 같은 버튼, 처리됐으면 결과 */
 function ApprovalActions({ link, pending, staffName }: { link: ChatApproval; pending: Approval | undefined; staffName: string }) {

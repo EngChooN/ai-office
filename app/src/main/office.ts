@@ -1162,7 +1162,8 @@ export class Office extends EventEmitter<{
         this.instruct(o.leadId, t('staff.msg.memberReport', { name: s.name, role: s.role, text: short }), { kind: 'user', room: o.room })
       }
     }
-    this.postChat(staffId, short || t('notify.chatDone'), undefined, undefined, room)
+    // 단체방에는 보고 원문을 그대로 남긴다 (긴 보고는 화면에서 접어 보여 준다)
+    this.postChat(staffId, summary.slice(0, TASK_RESULT_MAX) || t('notify.chatDone'), undefined, undefined, room)
     // 대표에게 올린 보고 — 직원 카드에 안 읽은 개수로 쌓인다 (패널을 열어 두었으면 화면이 곧바로 읽음 처리한다)
     this.unreadReports = addUnread(this.unreadReports, staffId)
     db.saveUnreadReports(this.unreadReports)
