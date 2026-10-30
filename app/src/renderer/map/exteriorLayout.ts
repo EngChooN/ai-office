@@ -26,11 +26,43 @@ export interface DioramaLayout {
   hit: (x: number, y: number) => boolean
 }
 
-/** 화면에 맞는 정수 배율과 논리 크기 (땅 판이 다 보이는 가장 큰 배율, 남는 곳은 거리) */
+/** 거리 전체의 논리 크기 — 화면 크기와 상관없이 레벨마다 같다 (부지 폭의 3×2배: 가로로 긴 창·세로로 긴 폰도 덮는다) */
+export function dioramaWorld(level: number) {
+  const { cv } = artExteriorBoard(level, false)
+  const bw = cv.w + MARGIN * 2
+  return { W: bw * 3, H: bw * 2 }
+}
+
+/** 처음 배율과 거리 크기. 배율은 땅 판이 다 보이는 가장 큰 값 (실수 — 정수로 내리면 창 비율에 따라 건물이 크게·작게 튄다) */
 export function dioramaFit(level: number, hostW: number, hostH: number) {
   const { cv } = artExteriorBoard(level, false)
-  const scale = Math.max(1, Math.floor(Math.min(hostW / (cv.w + MARGIN * 2), hostH / (cv.h + MARGIN * 2))))
-  return { scale, W: Math.ceil(hostW / scale), H: Math.ceil(hostH / scale) }
+  const scale = Math.min(hostW / (cv.w + MARGIN * 2), hostH / (cv.h + MARGIN * 2))
+  return { scale, ...dioramaWorld(level) }
+}
+
+/** 화면 가운데가 보는 논리 px와 배율 */
+export interface DioramaCamera {
+  x: number
+  y: number
+  zoom: number
+}
+
+/** 확대·축소 범위(처음 배율의 0.6~4배, 건물 안과 같다)를 지키고, 거리 밖(빈 곳)이 보이지 않게 맞춘다 */
+export function clampCamera(cam: DioramaCamera, fit: number, W: number, H: number, hostW: number, hostH: number): DioramaCamera {
+  const cover = Math.max(hostW / W, hostH / H)
+  const zoom = Math.min(Math.max(cover, fit * 4), Math.max(cover, fit * 0.6, cam.zoom))
+  const halfW = hostW / 2 / zoom
+  const halfH = hostH / 2 / zoom
+  const x = W <= halfW * 2 ? W / 2 : Math.min(W - halfW, Math.max(halfW, cam.x))
+  const y = H <= halfH * 2 ? H / 2 : Math.min(H - halfH, Math.max(halfH, cam.y))
+  return { x, y, zoom }
+}
+
+/** 화면 점(sx, sy — 화면 왼쪽 위 기준)을 그 자리에 둔 채 배율만 바꾼다 */
+export function zoomCameraAt(cam: DioramaCamera, zoom: number, sx: number, sy: number, hostW: number, hostH: number): DioramaCamera {
+  const dx = sx - hostW / 2
+  const dy = sy - hostH / 2
+  return { zoom, x: cam.x + dx / cam.zoom - dx / zoom, y: cam.y + dy / cam.zoom - dy / zoom }
 }
 
 export function dioramaLayout(level: number, isNight: boolean, W: number, H: number): DioramaLayout {
