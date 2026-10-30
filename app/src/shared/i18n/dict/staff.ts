@@ -377,5 +377,8 @@ export default {
   'role.qa': { ko: 'QA', en: 'QA', ja: 'QA', zh: 'QA' },
   'role.planner': { ko: '기획자', en: 'Planner', ja: 'プランナー', zh: '策划' },
   'role.researcher': { ko: '리서처', en: 'Researcher', ja: 'リサーチャー', zh: '研究员' },
+  'role.designer': { ko: '디자이너', en: 'Designer', ja: 'デザイナー', zh: '设计师' },
+  'role.cs': { ko: '고객 응대(CS)', en: 'Customer support (CS)', ja: 'カスタマーサポート(CS)', zh: '客户服务(CS)' },
+  'role.marketer': { ko: '마케터', en: 'Marketer', ja: 'マーケター', zh: '市场营销' },
   'role.free': { ko: '자유 직무', en: 'Freeform role', ja: 'フリー職務', zh: '自由职务' },
 } satisfies Record<string, Entry>

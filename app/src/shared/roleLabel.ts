@@ -10,6 +10,9 @@ const ROLE_KEY: Record<(typeof ROLE_PRESETS)[number], TKey> = {
   QA: 'role.qa',
   기획자: 'role.planner',
   리서처: 'role.researcher',
+  디자이너: 'role.designer',
+  '고객 응대(CS)': 'role.cs',
+  마케터: 'role.marketer',
   '자유 직무': 'role.free',
 }
 

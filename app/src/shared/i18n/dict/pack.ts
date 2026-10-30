@@ -65,6 +65,27 @@ export default {
     ja: '資料を探して読み、出典つきで要約します。',
     zh: '查找并阅读资料，附上出处进行总结。',
   },
+  'pack.market.designer.name': { ko: '디자인 담당', en: 'Designer', ja: 'デザイン担当', zh: '设计负责人' },
+  'pack.market.designer.desc': {
+    ko: '화면 구성·색·글자를 기존 규칙에 맞춰 시안으로 제안합니다.',
+    en: 'Proposes layouts, colors and type as mockups that follow the existing design rules.',
+    ja: '画面構成・色・文字を既存のルールに合わせて案として提案します。',
+    zh: '按照现有设计规范，以方案形式提出界面布局、颜色和字体。',
+  },
+  'pack.market.cs.name': { ko: '고객 응대 담당', en: 'Customer support', ja: 'カスタマーサポート担当', zh: '客服负责人' },
+  'pack.market.cs.desc': {
+    ko: '고객 문의를 정리하고 답변 초안을 쓰며, 반복 문의·버그를 모아 알립니다.',
+    en: 'Sorts customer inquiries, drafts replies, and reports recurring questions and bugs.',
+    ja: 'お客様の問い合わせを整理して返信案を書き、繰り返しの問い合わせやバグをまとめて知らせます。',
+    zh: '整理客户咨询并撰写回复草稿，汇总重复咨询和错误并报告。',
+  },
+  'pack.market.marketer.name': { ko: '마케팅 담당', en: 'Marketer', ja: 'マーケティング担当', zh: '市场营销负责人' },
+  'pack.market.marketer.desc': {
+    ko: '대상과 목표를 정리해 홍보 문구와 캠페인 계획을 만듭니다.',
+    en: 'Defines audience and goals, then writes promo copy and campaign plans.',
+    ja: '対象と目標を整理し、宣伝文やキャンペーン計画を作ります。',
+    zh: '梳理目标受众和目标，制作宣传文案和推广计划。',
+  },
 
   // ── 직원 내보내기 창 ──
   'pack.export.button': { ko: '내보내기', en: 'Export', ja: '書き出し', zh: '导出' },
@@ -263,6 +284,24 @@ export default {
     en: 'Finds and cross-checks sources from a different angle than the builders.',
     ja: '作る側とは別の視点で資料を探し、照らし合わせて確認します。',
     zh: '从与开发方不同的角度查找资料并交叉核对。',
+  },
+  'engine.reason.designer': {
+    ko: '시안을 직접 만들고, 연결 도구·매뉴얼을 모두 쓸 수 있어요.',
+    en: 'Builds mockups hands-on and can use all connectors and manuals.',
+    ja: '案を自分で作り、接続ツールやマニュアルをすべて使えます。',
+    zh: '亲手制作设计方案，并能使用所有连接工具和手册。',
+  },
+  'engine.reason.cs': {
+    ko: '문의를 정리하고 정중한 답변 글을 쓰는 일에 강해요.',
+    en: 'Strong at sorting inquiries and writing polite replies.',
+    ja: '問い合わせの整理と丁寧な返信文の作成に強いです。',
+    zh: '擅长整理咨询并撰写礼貌的回复。',
+  },
+  'engine.reason.marketer': {
+    ko: '목표에 맞춰 문구와 계획을 쓰는 일에 강해요.',
+    en: 'Strong at writing copy and plans that fit the goal.',
+    ja: '目標に合わせた文章や計画の作成に強いです。',
+    zh: '擅长根据目标撰写文案和计划。',
   },
   'pack.err.hire': {
     ko: '채용 중에 문제가 생겼어요. 다시 시도해 주세요.',

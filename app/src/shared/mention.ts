@@ -85,13 +85,23 @@ export interface ResponderCandidate {
 
 const STATUS_ORDER: Record<StaffStatus, number> = { idle: 0, working: 1, waiting: 2, offline: 3, error: 4 }
 
+/** 직무 이름만으로는 안 잡히는 일 낱말 (직무에 앞 낱말이 들어 있으면 뒤 낱말도 맞춰 본다) */
+const ROLE_EXTRA_WORDS: readonly [string, readonly string[]][] = [
+  ['디자', ['디자인', '시안', 'UI']],
+  ['CS', ['문의', '고객', '답변', '응대']],
+  ['응대', ['문의', '고객', '답변', 'CS']],
+  ['마케', ['마케팅', '홍보', '광고', '캠페인']],
+]
+
 /** 직무에서 메시지와 맞춰 볼 낱말 ("프론트엔드 개발자" → 프론트엔드, 개발자, 개발) */
 function roleWords(role: string) {
+  const extra = ROLE_EXTRA_WORDS.filter(([key]) => role.includes(key)).flatMap(([, words]) => words)
   return role
     .split(/[\s·,/()]+/)
     .filter((w) => w.length >= 2)
     .flatMap((w) => [w, w.replace(/[자어너러]$/, '')])
     .filter((w) => w.length >= 2)
+    .concat(extra)
 }
 
 /**

@@ -19,6 +19,9 @@ export const ROLE_ENGINE: Readonly<Record<string, RoleEngine>> = {
   '코드 리뷰어': { provider: 'codex', slug: 'reviewer' },
   QA: { provider: 'codex', slug: 'qa' },
   리서처: { provider: 'codex', slug: 'researcher' },
+  디자이너: { provider: 'claude', slug: 'designer' },
+  '고객 응대(CS)': { provider: 'claude', slug: 'cs' },
+  마케터: { provider: 'claude', slug: 'marketer' },
 }
 
 /** 이 직무의 추천 엔진 (없으면 null) */

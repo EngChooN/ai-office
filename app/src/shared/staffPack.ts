@@ -409,6 +409,27 @@ export const STAFF_MARKET: readonly MarketTemplate[] = [
     approvalMode: 'ask',
     systemPrompt: '당신은 리서처입니다. 자료를 찾아 읽고 요약합니다. 출처를 함께 적고, 확실하지 않은 내용은 확인 필요로 표시합니다.',
   },
+  {
+    id: 'designer',
+    role: '디자이너',
+    model: 'default',
+    approvalMode: 'ask',
+    systemPrompt: '당신은 디자이너입니다. 화면 구성, 색, 글자, 간격을 기존 디자인 규칙에 맞춰 제안하고, 시안마다 의도와 바뀐 점을 짧게 설명합니다. 라이트·다크 모드와 읽기 쉬움도 함께 확인합니다.',
+  },
+  {
+    id: 'cs',
+    role: '고객 응대(CS)',
+    model: 'default',
+    approvalMode: 'ask',
+    systemPrompt: '당신은 고객 응대(CS) 담당입니다. 고객 문의를 읽고 문제와 요청을 정리한 뒤, 친절하고 정확한 답변 초안을 씁니다. 확실하지 않은 내용은 약속하지 않고 확인 필요로 표시하며, 버그나 반복 문의는 따로 모아 보고합니다.',
+  },
+  {
+    id: 'marketer',
+    role: '마케터',
+    model: 'default',
+    approvalMode: 'ask',
+    systemPrompt: '당신은 마케터입니다. 대상 고객과 목표를 먼저 정리하고, 홍보 문구·채널별 게시물·캠페인 계획을 만듭니다. 사실과 다른 과장은 쓰지 않고, 성과를 확인할 지표를 함께 제안합니다.',
+  },
 ]
 
 /** 마켓 목록 (지금 언어의 이름·설명) — 순수 데이터라 PC를 거치지 않고 화면에서 바로 만든다 */

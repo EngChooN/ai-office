@@ -68,6 +68,13 @@ test('응답자: 직무 낱말이 맞는 직원', () => {
   assert.equal(pickResponder('다음 분기 기획 정리', c), 'pm')
 })
 
+test('응답자: 디자이너·고객 응대·마케터는 일 낱말로도 고른다', () => {
+  const c = [cand('lead', '팀장', 'idle', false, true), cand('de', '디자이너'), cand('cs', '고객 응대(CS)'), cand('mk', '마케터')]
+  assert.equal(pickResponder('설정 화면 디자인 시안 부탁해', c), 'de')
+  assert.equal(pickResponder('어제 들어온 고객 문의에 답변 써 줘', c), 'cs')
+  assert.equal(pickResponder('신규 기능 홍보 문구랑 광고 계획', c), 'mk')
+})
+
 test('응답자: 맞는 직무가 없으면 리드(leadId 기준, 직무 이름과 무관), 그다음 한가한 직원', () => {
   assert.equal(pickResponder('오늘 점심 뭐 먹지', [cand('fe', '프론트엔드 개발자'), cand('lead', '프론트엔드 리드', 'working', false, true)]), 'lead')
   assert.equal(pickResponder('오늘 점심 뭐 먹지', [cand('title', '팀장'), cand('lead', '리서처', 'working', false, true)]), 'lead')

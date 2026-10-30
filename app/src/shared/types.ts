@@ -1042,7 +1042,7 @@ export interface OfficeApi {
   onFocus(cb: (staffId: string) => void): () => void
 }
 
-export const ROLE_PRESETS = ['팀장', '프론트엔드 개발자', '백엔드 개발자', '코드 리뷰어', 'QA', '기획자', '리서처', '자유 직무'] as const
+export const ROLE_PRESETS = ['팀장', '프론트엔드 개발자', '백엔드 개발자', '코드 리뷰어', 'QA', '기획자', '리서처', '디자이너', '고객 응대(CS)', '마케터', '자유 직무'] as const
 export const TEAM_COLORS = ['#e8925a', '#4a7fe0', '#58b07a', '#9b6ad6', '#e0c04a', '#e05a7a', '#46b8c0', '#8a8a9c'] as const
 export const HOOK_PORT = 47823
 /** 자동결재 꺼짐 상태 (스냅샷을 받기 전 화면 초기값) */

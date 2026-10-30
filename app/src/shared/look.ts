@@ -117,6 +117,8 @@ export function roleLook(role: string): Partial<Look> {
   if (role.includes('기획')) return { top: 3, head: 4 }
   if (role.includes('리서')) return { top: 3, face: 1 }
   if (role.includes('디자')) return { head: 5 }
+  if (role.includes('CS') || role.includes('응대')) return { head: 1, top: 3 }
+  if (role.includes('마케')) return { top: 2, face: 2 }
   return {}
 }
 

@@ -220,7 +220,8 @@ test('내보내기: 1MB를 넘으면 이유를 돌려준다', () => {
 })
 
 test('기본 직원 마켓 항목은 모두 검증을 통과하고 번역 키가 4개 언어로 있다', () => {
-  assert.ok(STAFF_MARKET.length >= 5 && STAFF_MARKET.length <= 6)
+  assert.equal(STAFF_MARKET.length, 9)
+  assert.equal(new Set(STAFF_MARKET.map((m) => m.id)).size, STAFF_MARKET.length)
   for (const tpl of STAFF_MARKET) {
     const r = validatePackObject(
       packOf([{ name: 'x', role: tpl.role, avatar: 7, model: tpl.model, approvalMode: tpl.approvalMode, systemPrompt: tpl.systemPrompt }]),
