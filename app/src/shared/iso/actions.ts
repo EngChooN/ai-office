@@ -10,7 +10,7 @@ export const ITEM_ACTIONS: Record<string, ItemAction> = {
   bookshelf: { emote: '📖', say: ['이 책 재밌네', '클린 코드 다시 읽기'] },
   dartboard: { emote: '🎯', say: ['불스아이!', '아깝다…'] },
   easel: { emote: '🎨', say: ['오늘의 작품', '추상화예요'] },
-  'punching-bag': { emote: '🥊', say: ['버그 나가!', '스트레스 해소 🥊'] },
+  'punching-bag': { emote: '🥊', say: ['버그 나가!', '스트레스 해소!'] },
   popcorn: { emote: '🍿', say: ['팝콘 냠냠', '고소하다'] },
   arcade: { emote: '🕹️', say: ['최고 기록!', '한 판만 더'] },
   'record-shelf': { emote: '🎵', say: ['오늘은 재즈', 'LP 감성'] },

@@ -18,7 +18,8 @@ import { depthOrder, edgeBox, hidesMover, placeMovers, type IsoBox } from '@shar
 import { meetingLayoutOf, meetingSeatFor, type MeetingLayout } from '@shared/iso/meeting'
 import { setAutoOff, useSeatStatus } from './iso/seatStatus'
 import { ITEM_ACTIONS } from '@shared/iso/actions'
-import { HALL_SIT_Z, MEETING_CHAIR, artMeetingChair, isSplitChair, PODIUM_KEY, WALL_FADE_ALPHA, ZONE_FLOOR_KINDS, artHallRow, artMeetingRoom, artMeetingTable, artPodium, artPlanEdges, artZoneFloor, drawItem, drawPerson, drawPet, PET_HOMES, type PetKind, type PetPose, drawPersonShadow, drawPlanRoom, PERSON_DIRS, personDirOf, finishKey, finishLabel, finishOf, hallRowKey, meetingTableKey, planRoomTextureKey, withSurfaces, zoneFloorKey, type Finish, type MeetingTableKind, type ZoneFloor, seatHeight, toCanvas, type ArtBox, type ItemArt, type Look, type PersonDir, type PersonPose } from './iso/isoArt'
+import { DESK_FLIP, deskCellOf, partitionJoins, HALL_SIT_Z, MEETING_CHAIR, artMeetingChair, isSplitChair, PODIUM_KEY, WALL_FADE_ALPHA, ZONE_FLOOR_KINDS, artHallRow, artMeetingRoom, artMeetingTable, artPodium, artPlanEdges, artZoneFloor, drawItem, drawPerson, personSitDrop, drawPet, PET_HOMES, type PetKind, type PetPose, drawPersonShadow, drawPlanRoom, PERSON_DIRS, personDirOf, finishKey, finishLabel, finishOf, hallRowKey, meetingTableKey, planRoomTextureKey, withSurfaces, zoneFloorKey, type Finish, type MeetingTableKind, type ZoneFloor, seatHeight, toCanvas, type ArtBox, type ItemArt, type Look, type PersonDir, type PersonPose } from './iso/isoArt'
+import { drawEmote, emoteKindOf, type EmoteKind } from './iso/emoteArt'
 import { playLevelUpFx } from './iso/levelUpFx'
 import { pinchStep } from './gestures'
 import { isNightTime } from '@shared/dayNight'
@@ -45,6 +46,10 @@ const PET_VISIT_MS: [number, number] = [6000, 10000]
 const PET_VISIT_RATE = 0.4
 /** 앉은 직원을 띄우는 기본 높이 (아트 px) — 품목에 sitZ가 없을 때 */
 const SIT_Z = 9
+/** 좌석 높이 위로 엉덩이가 놓이는 높이 (아트 px) — 앉은 그림은 엉덩이를 여기에 맞추고 다리는 그 아래로 내려온다 */
+const SIT_HIP = 3
+const SIT_DROP = Object.fromEntries(PERSON_DIRS.map((d) => [d, personSitDrop(d)])) as Record<PersonDir, number>
+const TYPE_DROP = Object.fromEntries(PERSON_DIRS.map((d) => [d, personSitDrop(d, 'type')])) as Record<PersonDir, number>
 const TICK_MS = 150
 const CHAT_SHOW_MS = 2600
 const STAY_MIN_MS = 9000
@@ -168,7 +173,7 @@ interface Actor {
   bubble: Phaser.GameObjects.Container
   bubbleText: Phaser.GameObjects.Text
   bubbleBg: Phaser.GameObjects.Graphics
-  emote: Phaser.GameObjects.Text
+  emote: Phaser.GameObjects.Image
   /** 칸 좌표 (실수, 칸 중심 = gx + 0.5) */
   x: number
   y: number
@@ -221,7 +226,7 @@ export const isoLook = (avatar: number): Look => {
 /** 그림 캔버스를 텍스처로. addCanvas(CanvasTexture)는 만들 때 getImageData로 픽셀을 다시 읽어 폰에서 느리다 — 그림은 고치지 않으니 보통 텍스처로 */
 const addArt = (textures: Phaser.Textures.TextureManager, key: string, canvas: HTMLCanvasElement) => textures.addImage(key, canvas as unknown as HTMLImageElement)
 type ArtMeta = ArtBox & { ax: number; ay: number }
-const PERSON_FRAMES: [PersonPose, PersonDir][] = (['stand', 'sit', 'walk1', 'walk2'] as const).flatMap((p) => PERSON_DIRS.map((d) => [p, d] as [PersonPose, PersonDir]))
+const PERSON_FRAMES: [PersonPose, PersonDir][] = (['stand', 'sit', 'type', 'walk1', 'walk2'] as const).flatMap((p) => PERSON_DIRS.map((d) => [p, d] as [PersonPose, PersonDir]))
 /** 한 프레임에 미리 그려 둘 직원 그림 수 (쓰는 자세는 바로, 나머지는 프레임 사이에) */
 const WARM_PER_FRAME = 2
 /** 안 쓰게 된 방 그림을 지우기 전 기다리는 시간 — 레벨업 연출(2.8초)이 예전 방 그림을 덮어 쓰는 동안은 둔다 */
@@ -853,6 +858,23 @@ export class IsoOfficeScene extends Phaser.Scene {
         if (desk && !skins.has(desk.uid)) skins.set(desk.uid, g.desk)
       }
     }
+    // 의자가 책상 오른쪽(로컬 x 1) 칸에만 붙어 있으면 책상을 뒤집어 그린다 — 모니터·키보드가 늘 앉은 직원 앞에 온다
+    const sides = new Map<string, Set<number>>()
+    for (const seat of seatsOf(items)) {
+      if (!seat.hasDesk) continue
+      const [dx, dy] = FACE_STEP[seat.face]
+      const desk = items.find((i) => specOf(i.itemId).kind === 'desk' && cellsOf(i).some((c) => c.gx === seat.gx + dx && c.gy === seat.gy + dy))
+      if (!desk) continue
+      const set = sides.get(desk.uid) ?? new Set<number>()
+      set.add(deskCellOf(desk.itemId, desk.rot, desk.gx, desk.gy, seat.gx + dx, seat.gy + dy))
+      sides.set(desk.uid, set)
+    }
+    for (const it of items) {
+      const set = sides.get(it.uid)
+      if (set && !set.has(0) && set.has(1)) skins.set(it.uid, `${skins.get(it.uid) ?? it.itemId}${DESK_FLIP}`)
+    }
+    // 붙어 있는 파티션·가벽은 한 판으로 이어 그린다 (일자 → 이어 붙임, 직각 → ㄱ·ㅜ 모서리)
+    for (const [uid, join] of partitionJoins(items)) skins.set(uid, `${items.find((i) => i.uid === uid)!.itemId}${join}`)
     return skins
   }
 
@@ -901,7 +923,7 @@ export class IsoOfficeScene extends Phaser.Scene {
     const bubbleText = this.crisp(this.add.text(0, 0, '', { fontFamily: FONT, fontSize: '10px', color: '#2a2230', wordWrap: { width: 140 } }).setOrigin(0.5, 1))
     const bubbleBg = this.add.graphics()
     const bubble = this.add.container(0, -60, [bubbleBg, bubbleText])
-    const emote = this.crisp(this.add.text(0, -58, '', { fontFamily: FONT, fontSize: '16px' }).setOrigin(0.5, 1).setAlpha(0))
+    const emote = this.add.image(0, -58, this.emoteTexture('happy')).setOrigin(0.5, 1).setAlpha(0)
     const label = this.add.container(0, 0, [name, bubble, emote]).setDepth(DEPTH.label)
     container.setInteractive({ useHandCursor: true, hitArea: new Phaser.Geom.Rectangle(-16, -54, 32, 58), hitAreaCallback: Phaser.Geom.Rectangle.Contains })
     container.on('pointerdown', () => {
@@ -1348,10 +1370,18 @@ export class IsoOfficeScene extends Phaser.Scene {
     a.bubbleBg.fillStyle(0xffffff).fillTriangle(-4, pad * 0.6, 4, pad * 0.6, 0, pad * 0.6 + 5)
   }
 
+  /** 감정 도트 말풍선 그림 (처음 쓸 때 한 번 그린다) */
+  private emoteTexture(kind: EmoteKind) {
+    const key = `iso-emote-${kind}`
+    if (!this.textures.exists(key)) addArt(this.textures, key, drawEmote(kind))
+    return key
+  }
+
+  /** icon = 이모지 (가구 행동·상태 변화) → 감정 도트 말풍선으로 띄운다 */
   private showEmote(a: Actor, icon: string) {
     this.tweens.killTweensOf(a.emote)
     const y = this.labelTop(a) - 2
-    a.emote.setText(icon).setAlpha(1).setY(y)
+    a.emote.setTexture(this.emoteTexture(emoteKindOf(icon))).setAlpha(1).setY(y)
     this.tweens.add({ targets: a.emote, y: y - 14, alpha: 0, delay: EMOTE_MS * 0.5, duration: EMOTE_MS * 0.5 })
   }
 
@@ -1404,15 +1434,17 @@ export class IsoOfficeScene extends Phaser.Scene {
     const isWalking = a.path.length > 0
     // 보는 방향: r0 ↙ · r1 ↖ · r2 ↗ · r3 ↘ — 방향마다 따로 그린 그림 (반전 없음)
     const dir = personDirOf(a.facing)
-    const pose = a.isSitting ? 'sit' : isWalking ? (Math.floor(a.walkT / WALK_FRAME_S) % 2 ? 'walk2' : 'walk1') : 'stand'
+    // 책상 자리에 앉았으면 키보드 치는 자세 (무릎이 책상 위로 비어져 나오지 않는다)
+    const isTyping = a.isSitting && !!a.seat?.hasDesk && Math.floor(a.x) === a.seat.gx && Math.floor(a.y) === a.seat.gy
+    const pose = isTyping ? 'type' : a.isSitting ? 'sit' : isWalking ? (Math.floor(a.walkT / WALK_FRAME_S) % 2 ? 'walk2' : 'walk1') : 'stand'
     a.body.setTexture(this.personTexture(a.staff.avatar, pose, dir))
     const foot = this.wpt(a.x, a.y)
     const lift = a.isSitting ? a.sitZ * PIXEL : 0
     a.container.setPosition(foot.x, foot.y)
-    a.body.setY(PIXEL - lift)
+    a.body.setY(a.isSitting ? PIXEL - (a.sitZ + SIT_HIP - (isTyping ? TYPE_DROP : SIT_DROP)[dir]) * PIXEL : PIXEL)
     a.ring.setY(-lift)
     // 이름표는 머리 위에 — 발밑에 두면 앉았을 때 앞줄 책상 위에 떠서 옆 사람 이름처럼 읽힌다. 말풍선·이모티콘은 그 위
-    const head = PIXEL - lift - a.body.height
+    const head = a.body.y - a.body.height
     a.mark.setY(head + 14)
     a.name.setY(head - NAME_GAP)
     a.shadow.setPosition(foot.x, foot.y).setVisible(!a.isSitting && a.container.visible)
@@ -1429,7 +1461,7 @@ export class IsoOfficeScene extends Phaser.Scene {
 
   /** 머리 위 이름표의 윗변 (이름이 숨어 있으면 머리) — 말풍선·이모티콘을 이 위에 띄운다 */
   private labelTop(a: Actor) {
-    const head = PIXEL - (a.isSitting ? a.sitZ * PIXEL : 0) - a.body.height
+    const head = a.body.y - a.body.height
     return a.name.visible ? head - NAME_GAP - a.name.height : head
   }
 
@@ -1458,7 +1490,7 @@ export class IsoOfficeScene extends Phaser.Scene {
     for (const parts of [...this.parts.values(), this.fixedParts])
       for (const { img, box, item } of parts) statics.push({ x: item.gx + box.x, y: item.gy + box.y, w: box.w, d: box.d, z: box.z, h: box.h, obj: img, isTallWall: specOf(item.itemId).isTallWall })
     const movers: DepthBox[] = []
-    for (const a of this.actors.values()) if (a.container.visible) movers.push({ x: a.x - 0.18, y: a.y - 0.18, w: 0.36, d: 0.36, z: a.isSitting ? a.sitZ + 3 : 0, h: 24, obj: a.container })
+    for (const a of this.actors.values()) if (a.container.visible) movers.push({ x: a.x - 0.18, y: a.y - 0.18, w: 0.36, d: 0.36, z: a.isSitting ? a.sitZ + SIT_HIP : 0, h: 30, obj: a.container })
     for (const p of this.pets.values()) if (p.img.visible) movers.push({ x: p.x - 0.18, y: p.y - 0.18, w: 0.36, d: 0.36, z: p.z, h: 8, obj: p.img })
     const prev = this.staticDepth
     const isSame = prev !== null && prev.list.length === statics.length && statics.every((s, i) => prev.list[i].obj === s.obj && prev.list[i].x === s.x && prev.list[i].y === s.y)
