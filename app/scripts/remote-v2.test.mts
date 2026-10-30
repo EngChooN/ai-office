@@ -37,7 +37,7 @@ test('분류표: OfficeApi 메서드와 빠짐없이 같은 이름 (더하거나
   assert.equal(new Set(OFFICE_METHODS).size, OFFICE_METHODS.length)
   const count: Record<string, number> = {}
   for (const s of Object.values(V2_METHODS)) count[s.cls] = (count[s.cls] ?? 0) + 1
-  assert.deepEqual(count, { R: 90, S: 18, P: 19, C: 2, U: 1 })
+  assert.deepEqual(count, { R: 91, S: 18, P: 19, C: 2, U: 1 })
   // PC 전용은 모두 대신할 길(alternative)을 알려 준다
   for (const [name, s] of Object.entries(V2_METHODS)) if (s.cls === 'P') assert.ok(s.alternative, name)
 })
@@ -637,7 +637,10 @@ test('L2: 객체 인자는 메서드별 허용 필드만 — updateTask에 id·�
       assert.ok((V2_FIELDS as Record<string, Record<number, string[]>>)[name]?.[i], `${name} args[${i}]`)
     })
   }
-  assert.deepEqual(V2_FIELDS.updateTask![1].sort(), ['assigneeId', 'detail', 'labId', 'status', 'teamId', 'title'])
+  // isAutonomous는 끄기만 쓰인다 (켜기는 office가 원격 호출을 막는다)
+  assert.deepEqual(V2_FIELDS.updateTask![1].sort(), ['assigneeId', 'detail', 'isAutonomous', 'labId', 'status', 'teamId', 'title'])
+  assert.ok(!V2_FIELDS.createTask![0].includes('isAutonomous'), '카드 만들기에서 자율 켜기는 PC에서만')
+  assert.ok(!V2_FIELDS.setAutoApprove![0].includes('isFull'), '완전 자율은 PC에서만')
 })
 
 test('L3: remoteStatus도 snapshot처럼 500ms로 묶어 마지막 값만 보낸다', async () => {

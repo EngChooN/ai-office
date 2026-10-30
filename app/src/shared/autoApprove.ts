@@ -19,10 +19,15 @@ export interface AutoApprovePlan {
   /** mode 'daily': 예 '23:00' → '08:00' */
   start?: string
   end?: string
+  /** '완전 자율' 단계: 기간 동안 모든 고용 직원이 묻지 않고 끝까지 (위험 작업은 건너뛰고 보고). 없으면 지금 설정을 따른다 */
+  isFull?: boolean
 }
 
 /** 저장하는 설정 (hours는 끝나는 시각으로 바꿔 둔다 — 앱을 다시 켜도 그 시각에 끝난다) */
-export type AutoApproveConfig = { mode: 'off' } | { mode: 'hours'; until: number } | { mode: 'daily'; start: string; end: string }
+export type AutoApproveConfig = ({ mode: 'off' } | { mode: 'hours'; until: number } | { mode: 'daily'; start: string; end: string }) & {
+  /** '완전 자율' 단계 (꺼져 있을 때도 다음에 켤 단계로 남는다) */
+  isFull?: boolean
+}
 
 export const AUTO_HOURS = [1, 4, 8, 12] as const
 export const AUTO_DAILY_DEFAULT = { start: '23:00', end: '08:00' }
@@ -226,17 +231,18 @@ const minutesOf = (hhmm: string) => {
 
 /** 고른 기간을 저장할 설정으로 바꾼다. 맞지 않는 값이면 null */
 export function planToConfig(plan: AutoApprovePlan, now: number): AutoApproveConfig | null {
-  if (plan.mode === 'off') return { mode: 'off' }
+  const full = plan.isFull ? { isFull: true } : {}
+  if (plan.mode === 'off') return { mode: 'off', ...full }
   if (plan.mode === 'hours') {
     const h = plan.hours
     if (typeof h !== 'number' || !Number.isFinite(h) || h <= 0 || h > 24) return null
-    return { mode: 'hours', until: now + Math.round(h * 3600_000) }
+    return { mode: 'hours', until: now + Math.round(h * 3600_000), ...full }
   }
   if (plan.mode === 'daily') {
     const start = plan.start ?? AUTO_DAILY_DEFAULT.start
     const end = plan.end ?? AUTO_DAILY_DEFAULT.end
     if (!HHMM.test(start) || !HHMM.test(end) || start === end) return null
-    return { mode: 'daily', start, end }
+    return { mode: 'daily', start, end, ...full }
   }
   return null
 }
@@ -275,7 +281,7 @@ export function autoWindow(config: AutoApproveConfig, now: number): { isActive: 
 export function autoStep(config: AutoApproveConfig, wasActive: boolean, now: number): { config: AutoApproveConfig; isActive: boolean; event: 'start' | 'end' | null } {
   const w = autoWindow(config, now)
   const event = w.isActive && !wasActive ? 'start' : !w.isActive && wasActive ? 'end' : null
-  return { config: config.mode === 'hours' && !w.isActive ? { mode: 'off' } : config, isActive: w.isActive, event }
+  return { config: config.mode === 'hours' && !w.isActive ? { mode: 'off', ...(config.isFull ? { isFull: true } : {}) } : config, isActive: w.isActive, event }
 }
 
 /** 남은 시간 "3시간 12분" / "8분" */

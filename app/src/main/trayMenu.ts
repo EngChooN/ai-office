@@ -21,6 +21,8 @@ export interface TrayMenuActions {
   open(staffId?: string): void
   decide(approvalId: string, allow: boolean): void
   setAutoApprove(plan: AutoApprovePlan): void
+  /** 자동결재 단계: '완전 자율' 켜기·끄기 */
+  setAutoFull(isFull: boolean): void
   stopAll(): void
   /** 클립보드 글로 업무 보드에 할 일 추가 */
   quickTask(): void
@@ -50,7 +52,7 @@ export function attentionCount(snap: OfficeSnapshot) {
 /** 자동결재 한 줄: "🤖 자동결재 중 · 남은 3시간 12분" */
 export function autoApproveLine(snap: OfficeSnapshot, now: number) {
   const a = snap.autoApprove
-  if (a.isActive && a.endsAt) return t('tray.autoActive', { left: formatRemaining(a.endsAt - now) })
+  if (a.isActive && a.endsAt) return t('tray.autoActive', { left: formatRemaining(a.endsAt - now) }) + (a.config.isFull ? ` · ${t('autonomy.full')}` : '')
   if (a.config.mode === 'daily') return t('tray.autoDaily', { start: a.config.start, end: a.config.end }) + (a.startsAt ? t('tray.autoNext', { time: hhmm(a.startsAt) }) : '')
   return t('tray.autoOff')
 }
@@ -125,6 +127,8 @@ function autoMenu(snap: OfficeSnapshot, extra: TrayExtra, actions: TrayMenuActio
       click: () => actions.setAutoApprove(isDailyDefault ? { mode: 'off' } : { mode: 'daily', ...AUTO_DAILY_DEFAULT }),
     },
     { type: 'separator' },
+    // 단계: 완전 자율 (기간 동안 모든 직원이 묻지 않고 끝까지 — 위험 작업은 건너뛰고 보고)
+    { label: t('tray.autoFull'), type: 'checkbox', checked: Boolean(a.config.isFull), click: () => actions.setAutoFull(!a.config.isFull) },
     { label: t('tray.autoWaits'), enabled: false },
   ]
   return { label: autoApproveLine(snap, extra.now), submenu }

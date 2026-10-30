@@ -20,6 +20,7 @@ import { ReviewTab } from './ReviewTab'
 import { StaffExportDialog } from './StaffExportDialog'
 import { LiveMiniView } from './LiveMiniView'
 import { Avatar, StatusDot } from './StaffCard'
+import { AutonomyCheck } from './Autonomy'
 import { useProviders } from './ProviderCards'
 import { formatCost, formatTokens, shortPath, workDirLabel } from './status'
 import { Markdown } from '@/components/markdown'
@@ -310,6 +311,8 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
   const handleClose = () => select(null)
   const draftFiles = useDraftAttachments()
   const [pickedManual, setPickedManual] = useState<ManualChoice | null>(null)
+  /** 지시창의 '자율 진행' — 켜고 보내면 묻지 않고 끝까지 (위험 작업은 건너뛰고 보고) */
+  const [isAutonomous, setIsAutonomous] = useState(false)
   // now: 일하는 중이면 하던 일을 멈추고 바로 전한다 (끼어들기) · 아니면 하던 일이 끝난 뒤 이어서 처리한다
   const handleSend = async (isNow = false, typed = draft) => {
     const text = typed.trim().replace(/^\/\S*\s*/, (m) => (pickedManual ? '' : m))
@@ -329,7 +332,7 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
     const body = text || '첨부한 파일을 확인해 주세요.'
     const instruction = choice ? `[업무 매뉴얼: ${choice.name}] "${choice.name}" 스킬(매뉴얼)을 사용해서 처리해 주세요.\n${body}` : body
     if (isNow) void window.office.interrupt(staff.id, instruction, attachments)
-    else void window.office.instruct(staff.id, instruction, attachments)
+    else void window.office.instruct(staff.id, instruction, attachments, isAutonomous ? { isAutonomous: true } : undefined)
   }
   const isBusy = staff.status === 'working' || staff.status === 'waiting'
   const hasDraft = Boolean(draft.trim()) || draftFiles.files.length > 0
@@ -637,6 +640,7 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
               </Button>
             )}
           </div>
+          <AutonomyCheck checked={isAutonomous} onChange={setIsAutonomous} className="px-1" />
           <div className="flex items-center gap-2">
             <Button size="sm" variant="ghost" className="h-8 px-2 text-xs" onClick={() => openSlash('manual')} title={t('slashMenu.manualButtonTitle')}>
               {t('slashMenu.manualButton')}

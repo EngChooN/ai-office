@@ -41,9 +41,11 @@ export interface HiredHooks {
   requestApproval(approval: Approval): void
   /**
    * 자동결재(대표 부재 중): 결재함에 올리기 전에 대표 대신 판정한다. null이면 평소처럼 결재함.
-   * 질문이면 answers(질문 → 답)를 채워 돌려준다
+   * 질문이면 answers(질문 → 답)를 채워 돌려준다. deny가 있으면 결재함에 올리지 않고 그 사유로 거부한다 (자율 진행의 위험 작업)
    */
-  autoDecide(staffId: string, toolName: string, input: Record<string, unknown>, summary: string, questions?: StaffQuestion[]): Promise<{ answers?: Record<string, string> }> | null
+  autoDecide(staffId: string, toolName: string, input: Record<string, unknown>, summary: string, questions?: StaffQuestion[]): Promise<{ answers?: Record<string, string>; deny?: string }> | null
+  /** 지금 자율 진행 중인가 (위험 명령 금지를 강제로 켠다) */
+  isAutonomous(staffId: string): boolean
   /** Claude 구독 사용률 알림 (값이 바뀔 때만 온다) */
   rateLimit(info: RateLimitInfo, provider: AiProvider): void
   /** 세션이 결재 요청을 거둬들임 (취소·세션 재시작) */
@@ -287,14 +289,14 @@ class Worker {
         if (!auto) return this.askApproval(toolName, input, signal, questions)
         // 대신 답(비서 등)을 만들다 실패하면 평소처럼 대표를 기다린다
         return auto.then(
-          (r): ToolDecision => (r.answers ? { behavior: 'allow', updatedInput: { ...input, answers: r.answers } } : { behavior: 'allow' }),
+          (r): ToolDecision => (r.deny ? { behavior: 'deny', message: r.deny } : r.answers ? { behavior: 'allow', updatedInput: { ...input, answers: r.answers } } : { behavior: 'allow' }),
           () => this.askApproval(toolName, input, signal, questions),
         )
       },
       onToolUse: (toolName, toolInput) => {
-        // "위험 명령 금지"는 결재 판단보다 앞서 막는다 (settings.json 허용 규칙·자율 장비로도 못 뚫게)
+        // "위험 명령 금지"는 결재 판단보다 앞서 막는다 (settings.json 허용 규칙·자율 장비로도 못 뚫게). 자율 진행 중에는 장비 설정과 상관없이 켠다
         const command = toolName === 'Bash' ? (toolInput as { command?: unknown }).command : undefined
-        const risky = typeof command === 'string' && s.equipment.disallowedTools.includes(RISKY_BASH) ? findRiskyCommand(command) : null
+        const risky = typeof command === 'string' && (s.equipment.disallowedTools.includes(RISKY_BASH) || this.hooks.isAutonomous(s.id)) ? findRiskyCommand(command) : null
         // GPT 엔진은 disallowedTools를 엔진이 알지 못하니 여기서 막는다 (도구 이름은 Claude 이름으로 맞춰져 온다)
         const barred = s.provider === 'codex' ? s.equipment.disallowedTools.find((x) => !isBashPolicyMark(x) && (toolName === x || toolName.startsWith(`mcp__${x}__`))) : undefined
         if (barred) {
@@ -303,7 +305,8 @@ class Worker {
         }
         if (risky) {
           this.hooks.log(s.id, 'tool', `막힘 (${risky}): ${command}`.slice(0, ACTIVITY_MAX))
-          return { deny: t('staff.deny.risky', { risky }) }
+          // 자율 진행 중이면 대표에게 부탁하라는 대신 건너뛰고 보고에 남기라고 알린다
+          return { deny: this.hooks.isAutonomous(s.id) ? t('staff.deny.autonomous', { action: `${risky}: ${String(command).slice(0, 200)}` }) : t('staff.deny.risky', { risky }) }
         }
         const text = `${toolDisplayName(toolName)} ${summarizeInput(toolInput, toolName)}`.slice(0, ACTIVITY_MAX)
         this.hooks.update(s.id, { activity: text })

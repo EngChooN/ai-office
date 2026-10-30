@@ -85,6 +85,7 @@ export const OFFICE_METHODS = [
   'answerQuestion',
   'autoApproveStatus',
   'setAutoApprove',
+  'setAutoFull',
   'autoApproveLog',
   'approveAlways',
   'approvalRules',

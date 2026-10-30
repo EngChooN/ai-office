@@ -11,6 +11,7 @@ import type { Approval, AutoHandled } from '@shared/types'
 import { useNow } from './status'
 import { fmtDate, t, trOr } from '@shared/i18n'
 import { toolDisplayName } from '@shared/computerTools'
+import { IS_MOBILE_SHELL } from '@/shell'
 
 // 자동결재(대표 부재 중) 화면 3곳: 설정 칸 · 상단 바 표시 · 결재함 "자동 처리됨" 목록
 // + "앞으로 항상 승인" 규칙: 결재 승인 옆 버튼 · 설정의 규칙 목록 (approveAlways·approvalRules·deleteApprovalRule)
@@ -29,12 +30,14 @@ function useAutoStatus() {
   const auto = useOffice((s) => s.autoApprove)
   const now = useNow(30_000)
   const { config, isActive, endsAt, startsAt } = auto
+  // '완전 자율' 단계면 그 이름으로 보인다
+  const activeLabel = config.isFull ? t('autonomy.fullActive') : t('autoApprove.active')
   const text = isActive
-    ? t('autoApprove.active') + (endsAt ? ` · ${t('autoApprove.remaining', { time: formatRemaining(endsAt - now) })}` : '')
+    ? activeLabel + (endsAt ? ` · ${t('autoApprove.remaining', { time: formatRemaining(endsAt - now) })}` : '')
     : config.mode === 'daily'
       ? t('autoApprove.daily', { start: config.start, end: config.end }) + (startsAt ? ` · ${t('autoApprove.startsAt', { time: hhmm(startsAt) })}` : '')
       : t('autoApprove.off')
-  return { auto, text, remaining: isActive && endsAt ? formatRemaining(endsAt - now) : null }
+  return { auto, text, activeLabel, remaining: isActive && endsAt ? formatRemaining(endsAt - now) : null }
 }
 
 /** 켜기·끄기 — 실패하면 화면에 알린다 (실패 문구를 돌려준다) */
@@ -69,6 +72,17 @@ export function AutoApproveSection() {
   const c = auto.counts
   const handled = c.edit + c.command + c.other
   const { error, isBusy, run: setPlan } = usePlan()
+  const [fullError, setFullError] = useState<string | null>(null)
+  const isFull = Boolean(config.isFull)
+  // 단계 바꾸기: '완전 자율' 켜기·끄기 (기간은 그대로). 휴대폰에서는 끄기만
+  const handleFull = async (next: boolean) => {
+    try {
+      await window.office.setAutoFull(next)
+      setFullError(null)
+    } catch (e) {
+      setFullError(e instanceof Error ? e.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '') : t('autonomy.pcOnly'))
+    }
+  }
   return (
     <div className="flex flex-col gap-3 text-sm">
       <p className="flex flex-wrap items-center gap-x-2 text-xs">
@@ -80,6 +94,20 @@ export function AutoApproveSection() {
           </span>
         )}
       </p>
+      <div className="flex flex-col gap-1">
+        <label className={cn('flex w-fit items-center gap-1.5 text-xs', IS_MOBILE_SHELL && !isFull ? 'opacity-60' : 'cursor-pointer')}>
+          <input type="checkbox" checked={isFull} disabled={IS_MOBILE_SHELL && !isFull} onChange={(e) => void handleFull(e.target.checked)} />
+          <BotIcon className={cn('size-3.5', isFull && 'text-status-working')} />
+          <span className={cn('font-medium', isFull && 'text-status-working')}>{t('autonomy.full')}</span>
+          <span className="text-muted-foreground">· {t('autonomy.hint')}</span>
+        </label>
+        <p className="text-muted-foreground pl-5 text-xs">{IS_MOBILE_SHELL && !isFull ? t('autonomy.pcOnly') : t('autonomy.fullHint')}</p>
+        {fullError && (
+          <p role="alert" className="text-status-error pl-5 text-xs">
+            {fullError}
+          </p>
+        )}
+      </div>
       <div className="flex flex-wrap items-center gap-1.5">
         <span className="text-muted-foreground w-16 text-xs">{t('autoApprove.fromNow')}</span>
         {AUTO_HOURS.map((h) => (
@@ -116,7 +144,7 @@ export function AutoApproveSection() {
 
 /** 상단 바: 켜져 있을 때만 "🤖 자동결재 중 · 남은 시간", 누르면 끄기·설정 */
 export function AutoApproveBadge({ isCompact = false }: { isCompact?: boolean }) {
-  const { auto, remaining } = useAutoStatus()
+  const { auto, remaining, activeLabel } = useAutoStatus()
   const setView = useOffice((s) => s.setView)
   const [isOpen, setIsOpen] = useState(false)
   const { error, isBusy, run: setPlan } = usePlan()
@@ -130,9 +158,9 @@ export function AutoApproveBadge({ isCompact = false }: { isCompact?: boolean })
   if (!auto.isActive) return null
   return (
     <div ref={ref} className="relative [-webkit-app-region:no-drag]">
-      <Button size="sm" variant="outline" className="border-status-working/60 text-status-working shrink-0 px-2" onClick={() => setIsOpen((v) => !v)} aria-label={t('autoApprove.active')}>
+      <Button size="sm" variant="outline" className="border-status-working/60 text-status-working shrink-0 px-2" onClick={() => setIsOpen((v) => !v)} aria-label={activeLabel}>
         <BotIcon />
-        {isCompact ? remaining : t('autoApprove.active') + (remaining ? ` · ${remaining}` : '')}
+        {isCompact ? remaining : activeLabel + (remaining ? ` · ${remaining}` : '')}
       </Button>
       {isOpen && (
         <div className="bg-popover absolute top-full right-0 z-50 mt-1 flex w-56 flex-col gap-1 rounded-lg border p-2 text-xs shadow-lg">
@@ -173,7 +201,8 @@ export function AutoHandledList() {
   const counts = useOffice((s) => s.autoApprove.counts)
   const isActive = useOffice((s) => s.autoApprove.isActive)
   const [items, setItems] = useState<AutoHandled[]>([])
-  const total = counts.edit + counts.command + counts.other + counts.answered
+  // waited: 자율 진행에서 건너뛴 작업도 목록에 남는다
+  const total = counts.edit + counts.command + counts.other + counts.answered + counts.waited
   useEffect(() => {
     void window.office.autoApproveLog().then((log) => setItems([...log].sort((a, b) => b.at - a.at)))
   }, [total, isActive])
@@ -195,6 +224,9 @@ export function AutoHandledList() {
                 </>
               ) : (
                 <>
+                  {/* 자율 진행: 건너뛴 위험 작업 · 자동 승인한 기획안 */}
+                  {h.kind === 'skipped' && <span className="text-status-waiting mr-1 font-medium">{t('autonomy.skipped')}</span>}
+                  {h.kind === 'plan' && <span className="text-status-working mr-1 font-medium">{t('autonomy.planApproved')}</span>}
                   <span className="text-muted-foreground">{toolDisplayName(h.toolName)}</span> {maskSecrets(trOr(h.summaryI18n, h.summary))}
                 </>
               )}

@@ -38,7 +38,8 @@ export function createOfficeHandlers(office: Office, remoteApi: () => RemoteServ
     hireMarket: (id: string, provider?: unknown) => hireMarket(office, id, provider ?? undefined),
     fire: (id: string) => office.fire(id),
     updateStaff: (id: string, patch: Parameters<Office['updateStaff']>[1]) => office.updateStaff(id, patch),
-    instruct: (id: string, text: string, attachments?: Parameters<Office['instruct']>[3]) => office.instruct(id, text, { kind: 'user' }, attachments ?? [], '', true),
+    instruct: (id: string, text: string, attachments?: Parameters<Office['instruct']>[3], opts?: { isAutonomous?: boolean }) =>
+      opts?.isAutonomous ? office.instructAutonomous(id, text, attachments ?? []) : office.instruct(id, text, { kind: 'user' }, attachments ?? [], '', true),
     saveAttachments: (files: Parameters<typeof saveUploads>[0]) => saveUploads(files),
     openAttachment: async (id: string) => {
       const file = findById(id)
@@ -91,6 +92,7 @@ export function createOfficeHandlers(office: Office, remoteApi: () => RemoteServ
     answerQuestion: (approvalId: string, answers: Record<string, string>) => office.answerQuestion(approvalId, answers),
     autoApproveStatus: () => office.autoApproveStatus(),
     setAutoApprove: (plan: AutoApprovePlan) => office.setAutoApprove(plan),
+    setAutoFull: (isFull: boolean) => office.setAutoFull(Boolean(isFull)),
     autoApproveLog: () => office.autoApproveLog(),
     approveAlways: (approvalId: string) => office.approveAlways(approvalId),
     approvalRules: () => office.approvalRules(),

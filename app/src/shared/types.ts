@@ -104,6 +104,8 @@ export interface Staff {
   praise?: Praise
   /** 대표가 아직 안 읽은 보고(완료 보고·지시에 대한 답) 개수 — 직원 패널을 열면 0 (없으면 0) */
   unreadReports?: number
+  /** 지금 자율 진행(묻지 않고 끝까지) 중인지 — 자율 업무를 하는 중이거나 '완전 자율'이 켜져 있으면 true (화면 표시용, main이 채운다) */
+  isAutonomous?: boolean
   /** 튜토리얼 연습 회사 데이터 — '연습 회사 정리'와 첫 실제 고용 때 지운다 */
   isPractice?: boolean
 }
@@ -402,6 +404,8 @@ export interface Task {
   usage?: TaskUsage
   /** 튜토리얼 연습 회사 데이터 — '연습 회사 정리'와 첫 실제 고용 때 지운다 */
   isPractice?: boolean
+  /** 자율 진행: 묻지 않고 끝까지 (질문은 대신 답·기획안은 자동 승인·위험 작업은 건너뛰고 보고). 하위 업무·위임받은 일도 따른다 */
+  isAutonomous?: boolean
 }
 
 export interface TaskUsage {
@@ -641,8 +645,8 @@ export interface AutoHandled {
   at: number
   staffId: string
   staffName: string
-  /** approval = 대신 승인, answer = 질문에 대신 답함 */
-  kind: 'approval' | 'answer'
+  /** approval = 대신 승인, answer = 질문에 대신 답함, skipped = 자율 진행이라 위험 작업을 건너뜀, plan = 자율 진행이라 기획안을 자동 승인 */
+  kind: 'approval' | 'answer' | 'skipped' | 'plan'
   toolName: string
   /** 승인한 도구 요약, 또는 "질문 → 답" */
   summary: string
@@ -864,7 +868,8 @@ export interface OfficeApi {
   fire(staffId: string): Promise<void>
   updateStaff(staffId: string, patch: { teamId?: string | null; name?: string; role?: string; model?: ModelChoice; avatar?: number; systemPrompt?: string; cwd?: string }): Promise<void>
   /** text가 /명령이면 세션에 그대로 보낸다. /clear는 새 대화로, 막힌 기본 명령은 보내지 않고 직원 기록에 안내를 남긴다 */
-  instruct(staffId: string, text: string, attachments?: Attachment[]): Promise<void>
+  /** opts.isAutonomous: 자율 진행(묻지 않고 끝까지)으로 맡긴다 — PC에서만 */
+  instruct(staffId: string, text: string, attachments?: Attachment[], opts?: { isAutonomous?: boolean }): Promise<void>
   /** 이 직원의 /명령어 목록을 (아직 없으면) 불러온다. 결과는 스냅샷 staffCommands로 온다 */
   loadStaffCommands(staffId: string): Promise<void>
   saveAttachments(files: UploadFile[]): Promise<Attachment[]>
@@ -947,8 +952,10 @@ export interface OfficeApi {
   revertWork(staffId: string): Promise<{ ok: boolean; output: string; restored: number }>
   pushAndCreatePr(staffId: string, title: string, body: string): Promise<{ ok: boolean; output: string }>
 
-  createTask(input: { title: string; detail: string; teamId: string | null; labId?: string | null; attachments?: Attachment[] }): Promise<Task>
-  updateTask(taskId: string, patch: Partial<Pick<Task, 'title' | 'detail' | 'status' | 'teamId' | 'labId' | 'assigneeId'>>): Promise<void>
+  /** isAutonomous(자율 진행) 켜기는 PC에서만 */
+  createTask(input: { title: string; detail: string; teamId: string | null; labId?: string | null; attachments?: Attachment[]; isAutonomous?: boolean }): Promise<Task>
+  /** isAutonomous: 휴대폰에서는 끄기만 */
+  updateTask(taskId: string, patch: Partial<Pick<Task, 'title' | 'detail' | 'status' | 'teamId' | 'labId' | 'assigneeId' | 'isAutonomous'>>): Promise<void>
   assignTask(taskId: string, staffId: string): Promise<void>
   deleteTask(taskId: string): Promise<void>
   /** 중복 카드를 keep 카드 하나로: 설명·첨부를 keep에 덧붙이고 나머지는 지운다 (시작 안 한 카드만) */
@@ -970,6 +977,8 @@ export interface OfficeApi {
   /** 자동결재(대표 부재 중): 지금 상태 · 켜기(N시간·매일 시간대)/끄기 · 대신 처리한 목록(최근 것부터) */
   autoApproveStatus(): Promise<AutoApproveState>
   setAutoApprove(plan: AutoApprovePlan): Promise<AutoApproveState>
+  /** 자동결재 단계: '완전 자율' 켜기·끄기 (기간은 그대로). 켜기는 PC에서만 */
+  setAutoFull(isFull: boolean): Promise<AutoApproveState>
   autoApproveLog(): Promise<AutoHandled[]>
   /** 이 결재를 승인하고 같은 직원의 같은 종류 요청은 앞으로 자동 승인 (규칙을 만들 수 없는 결재면 false) */
   approveAlways(approvalId: string): Promise<boolean>

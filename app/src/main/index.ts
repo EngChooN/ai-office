@@ -85,6 +85,7 @@ const tray = new OfficeTray(
     },
     decide: (approvalId, allow) => office.decide(approvalId, allow),
     setAutoApprove: (plan) => office.setAutoApprove(plan),
+    setAutoFull: (isFull) => office.setAutoFull(isFull),
     stopAll: () => {
       const { stopped, autoWasOn } = office.stopAllWork()
       // 비상 정지는 자동결재도 함께 끈다 (M4) — 알림에 그 사실을 알린다

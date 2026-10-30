@@ -134,6 +134,7 @@ import { codexBinaryPath } from './ai/codex'
 import { readCodexRateLimits, refreshCodexAssets } from './ai/codexAssets'
 import { defineTool, registerLocalMcp, type LocalMcpHandle } from './mcp/localMcp'
 import { autoApprove, autoKindOf, autoStep, autoSummaryText, autoWindow, AWAY_ANSWER, formatRemaining, planToConfig, type AutoApprovePlan } from '../shared/autoApprove'
+import { AUTONOMY_TEXT_ASK_MAX, autonomyVerdict, fallbackAnswers, isFullAutonomy, isTaskAutonomous, nextTextAskRetry, resolveAutonomy } from '../shared/autonomy'
 import { commitAll, folderState, pushAndPr, repoRoot, restoreFiles, snapshotTree, treeDiff, workBaseStillValid, workChanges } from './review'
 import { readCodexExternalDay, readExternalDay } from './transcript'
 import { Tutorial } from './tutorial'
@@ -174,7 +175,8 @@ const tr = t
  * 지시가 어디서 왔는지 — 턴이 끝나면 출처에 따라 보드 갱신·팀장 보고를 한다.
  * room: 팀 대화방(팀 id)에서 시작된 지시 — 완료 보고·결재·질문·위임 글을 그 방에 올린다 (없으면 전체 방)
  */
-type Origin = ({ kind: 'user' | 'chat' | 'schedule' } | { kind: 'task'; taskId: string } | { kind: 'delegate'; leadId: string } | { kind: 'process'; runId: string; stepId: string }) & { room?: string }
+/** isAutonomous: 자율 진행으로 받은 일 (지시창에서 켠 지시·자율 직원이 위임한 일 등 — 카드는 카드의 표시를 본다) */
+type Origin = ({ kind: 'user' | 'chat' | 'schedule' } | { kind: 'task'; taskId: string } | { kind: 'delegate'; leadId: string } | { kind: 'process'; runId: string; stepId: string }) & { room?: string; isAutonomous?: boolean }
 
 type Counters = Partial<Record<LogType, number>>
 
@@ -198,6 +200,8 @@ export class Office extends EventEmitter<{
   private askedInTurn = new Set<string>()
   /** 글 질문으로 올린 결재 id → 직원·질문 문장 (답하면 새 지시로 보낸다) */
   private textAsks = new Map<string, { staffId: string; question: string; taskId: string | null }>()
+  /** 자율 진행에서 글 질문을 "스스로 판단해 계속" 재지시로 바꾼 횟수 (업무 카드 id, 카드가 없으면 직원 id별) */
+  private textAskRetries = new Map<string, number>()
   /** 직원별로 마지막에 글 질문으로 올린 문장 — 같은 질문을 되풀이해 올리지 않는다 */
   private lastTextAsk = new Map<string, string>()
   /** 플랜 한도 때문에 보류 중인 예약·기획 하위 업무 (다시 계산되므로 저장하지 않는다) */
@@ -305,6 +309,7 @@ export class Office extends EventEmitter<{
       log: (id, type, text) => this.log(id, type, text),
       requestApproval: (a) => this.addApproval(a),
       autoDecide: (id, toolName, input, summary, questions) => this.autoDecide(id, toolName, input, summary, questions),
+      isAutonomous: (id) => this.isAutonomous(id),
       cancelApproval: (id) => this.dropApproval(id, '취소됨'),
       rateLimit: (info, provider) => (provider === 'codex' ? this.onCodexRateLimit(info) : this.onRateLimit(info)),
       finished: (id, summary, backgroundTasks) => this.onFinished(id, summary, backgroundTasks),
@@ -585,7 +590,7 @@ export class Office extends EventEmitter<{
     const statusSince = seen && seen.status === s.status ? seen.since : Date.now()
     if (seen?.since !== statusSince) this.statusSeen.set(s.id, { status: s.status, since: statusSince })
     const todayDone = db.resultCountBetween(s.id, startOfDay(new Date()), Date.now() + 1)
-    return Object.assign(s, { stats: this.statsOf(s.id), meetingId: meeting?.id ?? null, labIds, statusSince, todayDone, praise: this.praise[s.id], unreadReports: unreadOf(this.unreadReports, s.id) }) as Staff
+    return Object.assign(s, { stats: this.statsOf(s.id), meetingId: meeting?.id ?? null, labIds, statusSince, todayDone, praise: this.praise[s.id], unreadReports: unreadOf(this.unreadReports, s.id), isAutonomous: this.isAutonomous(s.id) }) as Staff
   }
 
   /** 회사 경험치 = 고용 직원 경험치 합 + 직원 1명당 100. 레벨은 지금까지 오른 최고 레벨 아래로 내려가지 않는다 */
@@ -820,12 +825,40 @@ export class Office extends EventEmitter<{
     // 같은 카드는 받은 업무에 한 번만 (피드백으로 다시 보낼 때도 카드는 하나)
     const isSameTask = origin.kind === 'task' && origins.some((o) => o.kind === 'task' && o.taskId === origin.taskId)
     if (!isSameTask) this.origins.set(staffId, [...origins, origin])
+    // 자율 진행이면 지시 끝에 머리말을 붙인다 — 지침(시스템 프롬프트)은 세션을 새로 열어야 바뀌므로 (끝에 붙여 가벼운 업무 판정은 그대로)
+    if (!parseSlash(text) && this.isAutonomous(staffId)) text = `${text}\n\n${t('staff.msg.autonomous')}`
     if (isDirect && this.withdrawApprovals(staffId)) {
       // 결재를 기다리며 멈춘 턴은 대기열 지시를 받지 못한다 — 끼어들기처럼 끊고 바로 전한다 (/명령은 앞에 글을 붙이면 깨진다)
       void this.manager.interrupt(staffId, { text: parseSlash(text) ? text : `${t('staff.msg.withdrawn')}\n\n${text}`, attachments })
       return
     }
     this.manager.instruct(staffId, text, attachments, isNewCard)
+  }
+
+  // ── 자율 진행 (묻지 않고 끝까지) ───────────────────────
+
+  /** 카드(또는 상위 기획 카드)가 자율 진행인가 */
+  private isCardAutonomous(taskId: string) {
+    return isTaskAutonomous(this.tasks.get(taskId), (id) => this.tasks.get(id))
+  }
+
+  /** 받은 일 목록에 자율 진행이 섞여 있는가 ('완전 자율' 단계는 보지 않는다 — 위임·카드에 물려줄 때 쓴다) */
+  private hasAutonomousOrigin(origins: readonly Origin[]) {
+    return resolveAutonomy({ isFull: false, origins, isTaskAutonomous: (id) => this.isCardAutonomous(id) })
+  }
+
+  /** 이 직원이 지금 자율 진행 중인가: '완전 자율' 기간이거나 자율 업무를 받아 하는 중 (고용 직원만) */
+  private isAutonomous(staffId: string) {
+    if (!this.hired.has(staffId)) return false
+    return isFullAutonomy(this.auto.config, Date.now()) || this.hasAutonomousOrigin(this.origins.get(staffId) ?? [])
+  }
+
+  /** 지시창에서 '자율 진행'을 켜고 보낸 지시 — 켜기는 PC에서만 (원격이면 평소 지시로) */
+  instructAutonomous(staffId: string, text: string, attachments: Attachment[] = []) {
+    if (isRemoteCall()) throw new InvalidArgsError(t('autonomy.pcOnly'))
+    // 카드 없는 지시의 글 질문 재지시 횟수는 새 자율 지시마다 새로 센다
+    this.textAskRetries.delete(staffId)
+    this.instruct(staffId, text, { kind: 'user', isAutonomous: true }, attachments, '', true)
   }
 
   /**
@@ -1094,11 +1127,27 @@ export class Office extends EventEmitter<{
     // 팀원 보고는 리드에게 가는 글이고, 예약·프로세스 단계는 대표가 지켜보지 않는다
     if (origins.some((o) => o.kind === 'delegate' || o.kind === 'process' || o.kind === 'schedule')) return
     const found = detectTextQuestion(summary)
-    if (!found || this.lastTextAsk.get(staffId) === found.question) return
+    if (!found) return
+    const taskId = origins.flatMap((o) => (o.kind === 'task' ? [o.taskId] : []))[0] ?? null
+    // 자율 진행: 결재함에 올리지 않고 "추천안대로 스스로 판단해 계속"을 다시 지시한다 (업무당 횟수 제한 — 넘으면 평소처럼 질문 카드)
+    if (isFullAutonomy(this.auto.config, Date.now()) || this.hasAutonomousOrigin(origins)) {
+      const retry = nextTextAskRetry(this.textAskRetries, taskId ?? staffId)
+      this.textAskRetries = retry.counts
+      if (retry.isRetry) {
+        this.log(staffId, 'approval', tk('log.autonomousTextAsk', { question: found.question, n: retry.counts.get(taskId ?? staffId) ?? 0, max: AUTONOMY_TEXT_ASK_MAX }))
+        const card = taskId ? this.tasks.get(taskId) : undefined
+        const isReopened = Boolean(card) && shouldReopenForAnswer(card)
+        if (card && isReopened) this.saveTask({ ...card, status: 'doing', updatedAt: Date.now() })
+        const room = originRoom(origins)
+        this.instruct(staffId, t('staff.msg.autonomousContinue', { question: found.question }), card && isReopened ? { kind: 'task', taskId: card.id, room } : { kind: 'user', room, isAutonomous: true })
+        return
+      }
+    }
+    if (this.lastTextAsk.get(staffId) === found.question) return
     this.lastTextAsk.set(staffId, found.question)
     this.closeCards(s, s.approvals, 'superseded')
     const approval: Approval = { id: `text:${crypto.randomUUID()}`, staffId, toolName: 'AskUserQuestion', summary: found.question, createdAt: Date.now(), questions: toTextQuestions(found) }
-    this.textAsks.set(approval.id, { staffId, question: found.question, taskId: origins.flatMap((o) => (o.kind === 'task' ? [o.taskId] : []))[0] ?? null })
+    this.textAsks.set(approval.id, { staffId, question: found.question, taskId })
     this.addApproval(approval)
   }
 
@@ -1159,7 +1208,7 @@ export class Office extends EventEmitter<{
       }
       if (o.kind === 'process') this.onStepDone(o.runId, o.stepId, s, summary)
       if (o.kind === 'delegate' && this.hired.has(o.leadId)) {
-        this.instruct(o.leadId, t('staff.msg.memberReport', { name: s.name, role: s.role, text: short }), { kind: 'user', room: o.room })
+        this.instruct(o.leadId, t('staff.msg.memberReport', { name: s.name, role: s.role, text: short }), { kind: 'user', room: o.room, ...(o.isAutonomous ? { isAutonomous: true } : {}) })
       }
     }
     // 단체방에는 보고 원문을 그대로 남긴다 (긴 보고는 화면에서 접어 보여 준다)
@@ -1180,18 +1229,19 @@ export class Office extends EventEmitter<{
     this.taskQueue.set(staffId, queued)
     if (nextTask) this.assignTask(nextTask.taskId, staffId, nextTask.context)
     else if (!origins.some((o) => o.kind === 'task')) this.resumeStopped(staffId)
-    this.checkStall(staffId, summary, isAutoCheckTurn, backgroundTasks, room)
+    this.checkStall(staffId, summary, isAutoCheckTurn, backgroundTasks, room, this.hasAutonomousOrigin(origins))
   }
 
   /**
    * 멈춤 방지: 턴이 끝나면 앱이 다시 깨우지 않으니, 백그라운드 작업을 남겼거나
    * 리드가 "맡길게요"라고만 하고 실제로 맡긴 일·승인 대기 기획안이 없으면 한 번 다시 지시한다
    */
-  private checkStall(staffId: string, summary: string, isAutoCheckTurn: boolean, backgroundTasks: string[], room?: string) {
+  private checkStall(staffId: string, summary: string, isAutoCheckTurn: boolean, backgroundTasks: string[], room?: string, isAutonomous = false) {
+    const auto = isAutonomous ? { isAutonomous: true } : {}
     const isBusy = (this.origins.get(staffId)?.length ?? 0) > 0
     if (shouldNudgeBackground({ isAutoCheckTurn, isBusy, backgroundTasks })) {
       this.autoChecked.add(staffId)
-      this.instruct(staffId, t('staff.msg.backgroundNudge', { tasks: backgroundTasks.join(', ') }), { kind: 'user', room })
+      this.instruct(staffId, t('staff.msg.backgroundNudge', { tasks: backgroundTasks.join(', ') }), { kind: 'user', room, ...auto })
       return
     }
     const delegates = this.delegatesOf(staffId)
@@ -1211,7 +1261,7 @@ export class Office extends EventEmitter<{
     })
     if (!isNudge) return
     this.autoChecked.add(staffId)
-    this.instruct(staffId, t('staff.msg.leadNudge'), { kind: 'user', room })
+    this.instruct(staffId, t('staff.msg.leadNudge'), { kind: 'user', room, ...auto })
   }
 
   /** 대화하려고 멈췄던 업무를 이어 간다: 기획 하위 업무면 멈춘 기획을 다시 진행하고, 아니면 카드를 다시 맡긴다 */
@@ -1257,11 +1307,28 @@ export class Office extends EventEmitter<{
       if (!isRemoteAutoAllowed(plan)) throw new InvalidArgsError('자동결재는 PC에서만 켤 수 있어요')
       this.notifyRemoteChange('notify.remoteAuto')
     }
-    const config = planToConfig(plan, Date.now())
+    // '완전 자율' 단계는 고르지 않았으면 지금 단계를 따른다. 원격에서 끄면 단계도 내린다 (다시 켜기는 PC에서)
+    const isFull = isRemoteCall() ? false : (plan.isFull ?? Boolean(this.auto.config.isFull))
+    const config = planToConfig({ ...plan, isFull }, Date.now())
     if (!config) throw new InvalidArgsError('자동결재 기간이 맞지 않아요')
     this.auto = { ...this.auto, config }
     this.saveAuto()
     this.syncAutoWindow()
+    this.scheduleEmit()
+    return this.autoApproveStatus()
+  }
+
+  /** 자동결재 단계 바꾸기: '완전 자율' 켜기·끄기 (기간은 그대로). 켜기는 PC에서만 — 원격은 끄기만 */
+  setAutoFull(isFull: boolean): AutoApproveState {
+    if (isRemoteCall()) {
+      if (isFull) throw new InvalidArgsError(t('autonomy.pcOnly'))
+      this.notifyRemoteChange('notify.remoteAuto')
+    }
+    const { isFull: _was, ...rest } = this.auto.config
+    const config = isFull ? { ...rest, isFull: true } : rest
+    this.auto = { ...this.auto, config }
+    this.saveAuto()
+    if (isFull && autoWindow(config, Date.now()).isActive) this.postChat('me', t('autonomy.fullStart'))
     this.scheduleEmit()
     return this.autoApproveStatus()
   }
@@ -1304,6 +1371,7 @@ export class Office extends EventEmitter<{
       const endsAt = autoWindow(step.config, Date.now()).endsAt
       const until = endsAt ? new Date(endsAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : ''
       this.postChat('me', `🤖 자동결재를 시작해요${until ? ` (${until}까지, ${formatRemaining(endsAt! - Date.now())})` : ''}. 위험 명령·푸시·외부 전송은 기다렸다가 결재함에 남겨요.`)
+      if (step.config.isFull) this.postChat('me', t('autonomy.fullStart'))
     } else if (step.event === 'end') this.finishAutoWindow()
     // N시간이 지났으면 설정도 끈다 (다시 켜면 새로 고른다)
     if (step.event || step.config !== this.auto.config) {
@@ -1334,7 +1402,7 @@ export class Office extends EventEmitter<{
    * 결재 요청을 대표 대신 판정한다 (hired.ts가 결재함에 올리기 전에 부른다). 자동결재 밖이거나 기다려야 하면 null → 평소처럼 결재함.
    * 질문은 answerWhileAway로 답을 만들어 돌려준다
    */
-  private autoDecide(staffId: string, toolName: string, input: Record<string, unknown>, summary: string, questions?: StaffQuestion[]): Promise<{ answers?: Record<string, string> }> | null {
+  private autoDecide(staffId: string, toolName: string, input: Record<string, unknown>, summary: string, questions?: StaffQuestion[]): Promise<{ answers?: Record<string, string>; deny?: string }> | null {
     if (questions?.length) this.askedInTurn.add(staffId)
     // 대표가 전에 답한 같은 질문(최근 30일·엄격한 기준)이면 그 답을 따른다 — 애매하면 평소처럼 결재함
     const past = questions?.length ? this.answerFromPast(staffId, questions) : null
@@ -1345,18 +1413,29 @@ export class Office extends EventEmitter<{
       return Promise.resolve({})
     }
     const s = this.hired.get(staffId)
-    if (!s || !this.syncAutoWindow()) return null
-    const record = (h: Omit<AutoHandled, 'id' | 'at' | 'staffId' | 'staffName'>) => {
-      this.auto = { ...this.auto, log: [...this.auto.log, { id: crypto.randomUUID(), at: Date.now(), staffId, staffName: s.name, ...h, summary: maskSecrets(h.summary) }].slice(-AUTO_LOG_MAX) }
-      this.saveAutoSoon()
-      this.scheduleEmit()
-    }
+    if (!s) return null
+    // 자율 진행이면 자동결재 시간대와 상관없이 대신 판정한다 (시간대 전환은 그대로 챙긴다)
+    const isWindow = this.syncAutoWindow()
+    const isAuto = this.isAutonomous(staffId)
+    if (!isWindow && !isAuto) return null
+    const record = (h: Omit<AutoHandled, 'id' | 'at' | 'staffId' | 'staffName'>) => this.recordAuto(s, h)
     if (questions?.length) {
       // 질문을 받은 때부터 답까지 걸린 시간을 기록에 남긴다 (QA: 대신 답하기 지연 측정)
       const askedAt = Date.now()
       const tookSec = () => Math.round((Date.now() - askedAt) / 1000)
       const took = () => `${tookSec()}초`
-      return this.answerWhileAway(this.liveStaff(s), questions).then((answers) => {
+      const asked = this.answerWhileAway(this.liveStaff(s), questions)
+      // 자율 진행이면 비서가 실패해도(예외) 아래 대체 답으로 간다
+      return (isAuto ? asked.catch(() => null) : asked).then((answers) => {
+        // 자율 진행: 비서가 보류·실패하면 첫 번째(추천) 선택지로 답하고 기록한다 — 결재함에서 멈추지 않게
+        if (!answers && isAuto) {
+          const fallback = fallbackAnswers(questions)
+          const text = answersText(fallback)
+          this.auto.counts = { ...this.auto.counts, answered: this.auto.counts.answered + 1 }
+          record({ kind: 'answer', toolName, summary: `${text} (${took()})`, summaryI18n: tk('log.autonomousAnswer', { text: maskSecrets(text) }), category: 'other' })
+          this.log(staffId, 'approval', tk('log.autonomousAnswer', { text }))
+          return { answers: fallback }
+        }
         // 비서가 답하지 못했으면(위험한 질문·근거 없음·실패) 결재함에 올려 대표를 기다린다 — hired.ts는 거절된 약속을 평소 결재로 받는다
         if (!answers) {
           this.auto.counts = { ...this.auto.counts, waited: this.auto.counts.waited + 1 }
@@ -1379,6 +1458,13 @@ export class Office extends EventEmitter<{
     const runsWrittenFile = command !== '' && [...this.autoWritten].some((p) => p && command.includes(p))
     // A4: package.json·Makefile 쓰기는 허용하되, 그 기간에 쓴 뒤 npm run·make 등으로 실행하면 기다린다 (스크립트에 푸시·배포를 심을 수 있어서)
     const runsBuildFile = command !== '' && this.autoWroteBuildFile && /(^|[^\w.])(npm|pnpm|yarn|bun|npx|make|rake|gradle|mvn|\.\/gradlew|\.\/mvnw)(\s|$)/.test(command)
+    // 자율 진행: 기다려야 할 도구는 결재함에 올리지 않고 거부한다 — 직원은 보고의 "대표 확인 필요"에 남기고 나머지를 계속한다
+    if (isAuto && autonomyVerdict(toolName, input, runsWrittenFile || runsBuildFile) === 'deny') {
+      this.auto.counts = { ...this.auto.counts, waited: this.auto.counts.waited + 1 }
+      record({ kind: 'skipped', toolName, summary, category: autoKindOf(toolName) })
+      this.log(staffId, 'approval', tk('log.autonomousSkip', { tool: toolName, summary }))
+      return Promise.resolve({ deny: t('staff.deny.autonomous', { action: `${toolName} ${maskSecrets(summary)}`.slice(0, 300) }) })
+    }
     if (runsWrittenFile || runsBuildFile || autoApprove(toolName, input) === 'wait') {
       // 대기로 넘긴 건수 — 요약의 "기다리는 것 N건"
       this.auto.counts = { ...this.auto.counts, waited: this.auto.counts.waited + 1 }
@@ -1406,6 +1492,13 @@ export class Office extends EventEmitter<{
     record({ kind: 'approval', toolName, summary: logSummary, summaryI18n, category })
     this.log(staffId, 'approval', tk('log.autoApprove', { tool: toolName, summary: summaryI18n ?? summary }))
     return Promise.resolve({})
+  }
+
+  /** 결재함 "자동 처리됨" 목록에 한 건 남긴다 (비밀값은 가려서) */
+  private recordAuto(s: db.StoredStaff, h: Omit<AutoHandled, 'id' | 'at' | 'staffId' | 'staffName'>) {
+    this.auto = { ...this.auto, log: [...this.auto.log, { id: crypto.randomUUID(), at: Date.now(), staffId: s.id, staffName: s.name, ...h, summary: maskSecrets(h.summary) }].slice(-AUTO_LOG_MAX) }
+    this.saveAutoSoon()
+    this.scheduleEmit()
   }
 
   /** 지난 결정으로 답할 수 있으면 답(질문 → 답, 출처를 덧붙임)을 만들고 단체방·기록에 남긴다 */
@@ -1517,7 +1610,7 @@ export class Office extends EventEmitter<{
     }
     // 비상 정지 — 자동결재도 함께 끈다 (멈춘 직후 들어오는 예약·휴대폰 지시가 다시 자동 승인되지 않게, M4)
     const autoWasOn = this.auto.config.mode !== 'off'
-    if (autoWasOn) this.setAutoApprove({ mode: 'off' })
+    if (autoWasOn) this.setAutoApprove({ mode: 'off', isFull: false })
     return { stopped: working.length, autoWasOn }
   }
 
@@ -1647,7 +1740,8 @@ export class Office extends EventEmitter<{
       )
     if (!this.hired.get(staffId)?.ownCwd) lines.push(t('staff.ctx.noCwd'))
     lines.push(this.delegatesOf(staffId).length ? t('staff.ctx.leaderGuide') : t('staff.ctx.memberGuide'))
-    lines.push(t('staff.ctx.askGuide'))
+    // 자율 진행으로 여는 세션은 "물어보라" 대신 "묻지 말고 끝까지" (앞 안내의 묻기 부분도 이 줄이 덮는다)
+    lines.push(this.isAutonomous(staffId) ? t('staff.ctx.autonomyGuide') : t('staff.ctx.askGuide'))
     return lines.join('\n')
   }
 
@@ -1686,7 +1780,9 @@ export class Office extends EventEmitter<{
             const lead = this.hired.get(staffId)!
             this.log(staffId, 'delegate', tk('log.delegate', { name: target.name, text: instruction }))
             this.postChat(staffId, `@${target.name} ${instruction}`.slice(0, CHAT_TEXT_MAX))
-            this.instruct(target.id, t('staff.msg.delegated', { lead: lead.name, instruction }), { kind: 'delegate', leadId: staffId, room: this.roomOf(staffId) })
+            // 자율 업무를 하던 리드가 맡긴 일은 자율로 이어 간다 ('완전 자율' 단계는 기간 동안 따로 적용된다)
+            const isAuto = this.hasAutonomousOrigin(this.origins.get(staffId) ?? [])
+            this.instruct(target.id, t('staff.msg.delegated', { lead: lead.name, instruction }), { kind: 'delegate', leadId: staffId, room: this.roomOf(staffId), ...(isAuto ? { isAutonomous: true } : {}) })
             return text(t('staff.tool.delegate.done', { name: target.name }))
           },
         ),
@@ -1772,6 +1868,7 @@ export class Office extends EventEmitter<{
                   detail: '',
                   teamId: this.teamOf(staffId)?.id ?? null,
                   labId: lab?.id ?? null,
+                  isAutonomous: this.hasAutonomousOrigin(this.origins.get(staffId) ?? []),
                 }),
                 assigneeId: staffId,
                 status: 'doing',
@@ -1800,10 +1897,15 @@ export class Office extends EventEmitter<{
             this.saveTask({ ...task, plan, status: 'doing', updatedAt: Date.now() })
             const lead = this.hired.get(staffId)!
             this.postChat(staffId, t('staff.tool.plan.posted', { title: task.title, n: plan.subtasks.length }))
-            this.emit('notify', { title: t('notify.planConfirm', { name: lead.name }), body: task.title, staffId })
             const absorbNote = absorbs?.length
               ? `${t('staff.tool.plan.absorbFound', { n: absorbed.ids.length })}${absorbed.unmatched.length ? t('staff.tool.plan.absorbMissing', { titles: absorbed.unmatched.join(', ') }) : ''}`
               : ''
+            // 자율 진행: 대표 확인 없이 바로 승인해 하위 업무를 시작한다 (결재함 "자동 처리됨"·직원 기록에 남긴다)
+            if (this.isAutonomous(staffId) && this.reviewPlan(task.id, true, '', t('autonomy.via'))) {
+              this.recordAuto(lead, { kind: 'plan', toolName: 'propose_plan', summary: `${task.title} (${plan.subtasks.map((st) => st.title).join(' · ')})`, category: 'other' })
+              return text(t('staff.tool.plan.autoApproved', { n: plan.subtasks.length, note: absorbNote }))
+            }
+            this.emit('notify', { title: t('notify.planConfirm', { name: lead.name }), body: task.title, staffId })
             return text(t('staff.tool.plan.asked', { note: absorbNote }))
           },
         ),
@@ -1813,7 +1915,8 @@ export class Office extends EventEmitter<{
           { title: z.string(), detail: z.string().optional(), assignee: z.string().optional().describe(t('staff.tool.add.assignee')) },
           async ({ title, detail, assignee }) => {
             const lab = this.labsOf(staffId).find((l) => l.leadId === staffId) ?? null
-            const card = this.createTask({ title, detail: detail ?? '', teamId: this.teamOf(staffId)?.id ?? null, labId: lab?.id ?? null })
+            // 자율 업무를 하다 올린 카드는 자율을 물려받는다
+            const card = this.createTask({ title, detail: detail ?? '', teamId: this.teamOf(staffId)?.id ?? null, labId: lab?.id ?? null, isAutonomous: this.hasAutonomousOrigin(this.origins.get(staffId) ?? []) })
             const named = assignee?.trim() ? [...this.hired.values()].find((s) => s.name === assignee.trim()) : undefined
             // 담당이 없으면 내 리드에게 (리드가 올린 카드는 보드에 남겨 두고 대표·리드가 배정)
             const toId = named?.id ?? this.leadOf(staffId)
@@ -2670,16 +2773,21 @@ export class Office extends EventEmitter<{
     return restored
   }
 
-  createTask(input: { title: string; detail: string; teamId: string | null; labId?: string | null; attachments?: Attachment[] }): Task {
+  createTask(input: { title: string; detail: string; teamId: string | null; labId?: string | null; attachments?: Attachment[]; isAutonomous?: boolean }): Task {
     const now = Date.now()
-    const task: Task = { id: crypto.randomUUID(), ...input, labId: input.labId ?? null, status: 'todo', assigneeId: null, result: '', createdAt: now, updatedAt: now }
+    // 자율 진행 켜기는 PC에서만
+    if (input.isAutonomous && isRemoteCall()) throw new InvalidArgsError(t('autonomy.pcOnly'))
+    const { isAutonomous, ...rest } = input
+    const task: Task = { id: crypto.randomUUID(), ...rest, labId: input.labId ?? null, status: 'todo', assigneeId: null, result: '', createdAt: now, updatedAt: now, ...(isAutonomous ? { isAutonomous: true } : {}) }
     this.saveTask(task)
     return task
   }
 
-  updateTask(taskId: string, patch: Partial<Pick<Task, 'title' | 'detail' | 'status' | 'teamId' | 'labId' | 'assigneeId'>>) {
+  updateTask(taskId: string, patch: Partial<Pick<Task, 'title' | 'detail' | 'status' | 'teamId' | 'labId' | 'assigneeId' | 'isAutonomous'>>) {
     const t = this.tasks.get(taskId)
     if (!t) return
+    // 자율 진행은 PC에서만 켠다 — 휴대폰은 끄기만
+    if (patch.isAutonomous && isRemoteCall()) throw new InvalidArgsError(tr('autonomy.pcOnly'))
     this.saveTask({ ...t, ...patch, updatedAt: Date.now() })
     if (t.parentId && patch.status) this.advancePlan(t.parentId)
     if (t.isPractice && patch.status === 'done') this.tutorial.notify('taskDone', taskId)
@@ -2705,7 +2813,8 @@ export class Office extends EventEmitter<{
       this.log(staffId, 'status', tk('log.queued', { title: task.title }))
       return
     }
-    // 다시 돌리는 카드면 지난 보고·기획안을 비우고 새로 시작한다
+    // 다시 돌리는 카드면 지난 보고·기획안을 비우고 새로 시작한다 (자율 진행의 글 질문 재지시 횟수도 새로)
+    this.textAskRetries.delete(taskId)
     this.saveTask({ ...task, assigneeId: staffId, status: 'doing', result: '', plan: null, updatedAt: Date.now() })
     const leadGuide = !task.parentId && this.delegatesOf(staffId).length ? `\n\n${t('staff.leadGuide')}` : ''
     // 지식 창고에서 이 업무와 관련 있는 상위 몇 개만 짧게 (토큰 절약 — 없으면 아무것도 붙이지 않는다)

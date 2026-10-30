@@ -108,6 +108,7 @@ export function openDb() {
   // 카드별 토큰·비용 (JSON)
   if (!taskCols.includes('usage')) db.exec('ALTER TABLE task ADD COLUMN usage TEXT')
   if (!taskCols.includes('is_practice')) db.exec('ALTER TABLE task ADD COLUMN is_practice INTEGER')
+  if (!taskCols.includes('is_autonomous')) db.exec('ALTER TABLE task ADD COLUMN is_autonomous INTEGER')
   // 첨부(JSON 배열)는 로그·단체방·업무 카드에 붙는다
   const teamCols = (db.prepare('PRAGMA table_info(team)').all() as { name: string }[]).map((c) => c.name)
   if (!teamCols.includes('manuals')) db.exec('ALTER TABLE team ADD COLUMN manuals TEXT')
@@ -374,6 +375,7 @@ interface TaskRow {
   meeting_id: string | null
   usage: string | null
   is_practice: number | null
+  is_autonomous: number | null
 }
 
 export function loadTasks(): Task[] {
@@ -394,17 +396,18 @@ export function loadTasks(): Task[] {
     meetingId: r.meeting_id ?? null,
     usage: r.usage ? (JSON.parse(r.usage) as Task['usage']) : undefined,
     ...(r.is_practice ? { isPractice: true } : {}),
+    ...(r.is_autonomous ? { isAutonomous: true } : {}),
   }))
 }
 
 export function upsertTask(t: Task) {
   run(
-    `INSERT INTO task (id, title, detail, status, assignee_id, team_id, result, created_at, updated_at, lab_id, attachments, parent_id, plan, meeting_id, usage, is_practice) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO task (id, title, detail, status, assignee_id, team_id, result, created_at, updated_at, lab_id, attachments, parent_id, plan, meeting_id, usage, is_practice, is_autonomous) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET title = excluded.title, detail = excluded.detail, status = excluded.status, assignee_id = excluded.assignee_id,
        team_id = excluded.team_id, result = excluded.result, updated_at = excluded.updated_at, lab_id = excluded.lab_id, attachments = excluded.attachments,
-       parent_id = excluded.parent_id, plan = excluded.plan, meeting_id = excluded.meeting_id, usage = excluded.usage, is_practice = excluded.is_practice`,
+       parent_id = excluded.parent_id, plan = excluded.plan, meeting_id = excluded.meeting_id, usage = excluded.usage, is_practice = excluded.is_practice, is_autonomous = excluded.is_autonomous`,
     t.id, t.title, t.detail, t.status, t.assigneeId, t.teamId, t.result, t.createdAt, t.updatedAt, t.labId, t.attachments?.length ? JSON.stringify(t.attachments) : null,
-    t.parentId ?? null, t.plan ? JSON.stringify(t.plan) : null, t.meetingId ?? null, t.usage ? JSON.stringify(t.usage) : null, t.isPractice ? 1 : null,
+    t.parentId ?? null, t.plan ? JSON.stringify(t.plan) : null, t.meetingId ?? null, t.usage ? JSON.stringify(t.usage) : null, t.isPractice ? 1 : null, t.isAutonomous ? 1 : null,
   )
 }
 

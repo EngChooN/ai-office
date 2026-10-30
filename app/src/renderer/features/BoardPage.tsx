@@ -20,6 +20,7 @@ import { useTutorialStep, useTutorialTaskId } from './Tutorial'
 import { Avatar, PracticeBadge } from './StaffCard'
 import { formatCost, formatTokens } from './status'
 import { roleLabel } from '@shared/roleLabel'
+import { AutonomyCheck, TaskAutonomy } from './Autonomy'
 
 const COLUMNS: { status: TaskStatus; label: TKey; hint: TKey | null }[] = [
   {
@@ -43,6 +44,8 @@ export function BoardPage() {
   const [dragOver, setDragOver] = useState<TaskStatus | null>(null)
   const labs = useOffice((s) => s.labs)
   const [labId, setLabId] = useState('')
+  /** 자율 진행(묻지 않고 끝까지)으로 만들기 */
+  const [isAutonomous, setIsAutonomous] = useState(false)
   /** 보드 필터: 전체 또는 특정 랩 */
   const [labFilter, setLabFilter] = useState('')
   // 튜토리얼 '카드 만들기' 단계: 대본의 제목·설명을 미리 채운다
@@ -65,9 +68,11 @@ export function BoardPage() {
       teamId: teamId || null,
       labId: labId || null,
       attachments,
+      ...(isAutonomous ? { isAutonomous: true } : {}),
     })
     setTitle('')
     setDetail('')
+    setIsAutonomous(false)
   }
   const handleDrop = (status: TaskStatus) => (e: DragEvent) => {
     e.preventDefault()
@@ -107,6 +112,7 @@ export function BoardPage() {
           <AttachButton onPick={draftFiles.add} />
         </div>
         <DraftAttachments files={draftFiles.files} onRemove={draftFiles.remove} />
+        <AutonomyCheck checked={isAutonomous} onChange={setIsAutonomous} />
       </form>
       <ActiveRuns />
       {labs.length > 0 && (
@@ -245,6 +251,7 @@ function TaskCard({ task }: { task: Task }) {
           {planLabel && <span className={cn('rounded px-1.5 font-semibold', task.plan?.status === 'waiting' ? 'bg-status-waiting text-background' : 'bg-primary/15 text-primary')}>{planLabel}</span>}
         </div>
       )}
+      <TaskAutonomy task={task} />
       {(team || lab || task.isPractice) && (
         <div className="flex flex-wrap gap-1">
           {task.isPractice && <PracticeBadge className="w-fit" />}

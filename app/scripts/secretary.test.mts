@@ -43,7 +43,7 @@ test('분류표: OfficeApi 메서드 전부를 조회 27·변경 61·제외 36(+
   assert.deepEqual(Object.keys(SECRETARY_TOOLS).sort(), [...OFFICE_METHODS].sort())
   assert.equal(methodsOfKind('read').length, 27)
   assert.equal(methodsOfKind('change').length, 61)
-  assert.equal(methodsOfKind('exclude').length, 38 + SECRETARY_SELF_METHODS.length)
+  assert.equal(methodsOfKind('exclude').length, 39 + SECRETARY_SELF_METHODS.length)
   // 연결·보안·상점 구매·바닥/벽·미션 보상·직원 장식·코드 저장은 비서 도구에 없다
   for (const m of ['regenerateRemoteQr', 'setRemoteEnabled', 'commitChanges', 'revertWork', 'pushAndCreatePr', 'buyItem', 'applySurface', 'claimMission', 'setGear', 'pickFolder', 'setHooksInstalled', 'fireExternal', 'secretaryRun']) assert.equal(SECRETARY_TOOLS[m as keyof typeof SECRETARY_TOOLS].kind, 'exclude', m)
   for (const m of ['fire', 'deleteTeam', 'mergeTeams', 'deleteLab', 'deleteManual']) assert.equal(SECRETARY_TOOLS[m as keyof typeof SECRETARY_TOOLS].risk, 'danger', m)

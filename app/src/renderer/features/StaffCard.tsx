@@ -11,6 +11,7 @@ import { formatCost, formatTokens, STATUS_META, useNow } from './status'
 import { t } from '@shared/i18n'
 import { roleLabel } from '@shared/roleLabel'
 import { unreadLabel } from '@shared/unreadReports'
+import { AutonomyBadge } from './Autonomy'
 
 interface Props {
   staff: Staff
@@ -142,6 +143,7 @@ export function StaffCard({ staff, isLead = false, isSelected, onSelect }: Props
             <span className="min-w-0 truncate">{staff.name}</span>
             {staff.isPractice && <PracticeBadge />}
             <UnreadBadge staff={staff} />
+            {staff.isAutonomous && <AutonomyBadge className="shrink-0" />}
           </div>
           <div className="text-muted-foreground truncate text-xs">{roleLabel(staff.role)}</div>
         </div>

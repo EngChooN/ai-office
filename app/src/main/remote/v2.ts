@@ -142,6 +142,8 @@ export const V2_METHODS: Record<OfficeMethod, MethodSpec> = {
   // 자동결재: 휴대폰에서도 켜고 끈다 (기획서 — 대표가 밖에서 켜 두고 잠들 수 있게)
   autoApproveStatus: R(),
   setAutoApprove: R('o'),
+  // 완전 자율: 휴대폰에서는 끄기만 (켜기는 office가 막는다)
+  setAutoFull: R('b'),
   autoApproveLog: R(),
   // 앞으로 항상 승인 규칙: 결재처럼 휴대폰에서도 만들고 지운다
   approveAlways: R('s'),
@@ -221,10 +223,13 @@ export const V2_FIELDS: Partial<Record<OfficeMethod, Record<number, string[]>>> 
   setEquipment: { 1: fieldsExcept('setEquipment', 1, ['allowedTools', 'disallowedTools'], { mcpServers: true, skills: true, monthlyBudgetUsd: true, lightModelOff: true }) },
   saveManual: { 0: fieldsOf('saveManual', 0, { name: true, description: true, kind: true, scope: true, projectDir: true, body: true, steps: true }) },
   startRun: { 0: fieldsOf('startRun', 0, { manualName: true, scope: true, input: true, attachments: true, taskId: true }) },
-  createTask: { 0: fieldsOf('createTask', 0, { title: true, detail: true, teamId: true, labId: true, attachments: true }) },
+  // 자율 진행 켜기는 PC에서만
+  createTask: { 0: fieldsExcept('createTask', 0, ['isAutonomous'], { title: true, detail: true, teamId: true, labId: true, attachments: true }) },
   moveStaff: { 1: fieldsOf('moveStaff', 1, { teamId: true, joinLabIds: true, leaveLabIds: true }) },
-  updateTask: { 1: fieldsOf('updateTask', 1, { title: true, detail: true, status: true, teamId: true, labId: true, assigneeId: true }) },
-  setAutoApprove: { 0: fieldsOf('setAutoApprove', 0, { mode: true, hours: true, start: true, end: true }) },
+  // isAutonomous는 끄기만 통과 (켜기는 office가 막는다)
+  updateTask: { 1: fieldsOf('updateTask', 1, { title: true, detail: true, status: true, teamId: true, labId: true, assigneeId: true, isAutonomous: true }) },
+  // 완전 자율 단계는 PC에서만
+  setAutoApprove: { 0: fieldsExcept('setAutoApprove', 0, ['isFull'], { mode: true, hours: true, start: true, end: true }) },
   saveKnowledge: { 0: fieldsOf('saveKnowledge', 0, { id: true, kind: true, title: true, body: true, tags: true, docPath: true }) },
   startMeeting: { 0: fieldsOf('startMeeting', 0, { topic: true, participantIds: true, rounds: true }) },
   // 진행 입력은 종류마다 필드가 달라(view는 화면 이름만 더) 공통 키로 고를 수 없어 직접 적는다
