@@ -40,14 +40,10 @@ function InstallConfirm({ version, open, onOpenChange }: { version: string; open
   )
 }
 
-/** 앱 안 설치 진행 줄 — 내려받는 중 · 확인 중 · 실패 이유 */
-function InstallProgress() {
+/** 앱 안 설치 실패 이유 — 내려받는 중·확인 중 표시는 설치 버튼이 맡는다 */
+function InstallError() {
   const install = useUpdateStore((s) => s.status?.install)
-  if (!install || install.phase === 'idle') return null
-  if (install.phase === 'preparing') return <p className="text-sm">{t('update.install.preparing')}</p>
-  if (install.phase === 'downloading') {
-    return <p className="text-sm">{install.progress === null ? t('update.install.downloadingNoPct') : t('update.install.downloading', { pct: install.progress })}</p>
-  }
+  if (install?.phase !== 'failed') return null
   const message =
     install.installError === 'download'
       ? t('update.install.failed.download')
@@ -55,6 +51,28 @@ function InstallProgress() {
         ? t('update.install.failed.verify')
         : t('update.install.failed.prepare')
   return <p className="text-destructive text-sm">{message}</p>
+}
+
+/** '지금 업데이트' 버튼 — 내려받는 동안 버튼 안에 진행률을 채우고 눌리지 않게 막는다 */
+function InstallButton({ size, onClick }: { size?: 'sm'; onClick: () => void }) {
+  const install = useUpdateStore((s) => s.status?.install)
+  const phase = install?.phase
+  const isBusy = phase === 'downloading' || phase === 'preparing'
+  const pct = phase === 'downloading' ? install?.progress ?? null : null
+  const label =
+    phase === 'preparing'
+      ? t('update.install.preparing')
+      : phase === 'downloading'
+        ? pct === null
+          ? t('update.install.downloadingNoPct')
+          : t('update.install.downloading', { pct })
+        : t('update.install')
+  return (
+    <Button size={size} className="relative w-fit overflow-hidden" onClick={onClick} disabled={isBusy} aria-busy={isBusy}>
+      {pct !== null && <span aria-hidden className="bg-primary-foreground/25 absolute inset-y-0 left-0 transition-[width]" style={{ width: `${pct}%` }} />}
+      <span className="relative">{label}</span>
+    </Button>
+  )
 }
 
 /** 새 버전 안내 — 새 버전을 처음 받으면 한 번 뜨고, 사이드바 배지로 다시 연다 (업데이트 소식 창이 떠 있으면 그 창을 닫은 뒤에) */
@@ -79,7 +97,7 @@ export function UpdateNotice() {
           <DialogDescription>{t('update.notice.desc', { current: status.current })}</DialogDescription>
         </DialogHeader>
         <ReleaseSummary notes={status.latest.notes} />
-        <InstallProgress />
+        <InstallError />
         <DialogFooter>
           <Button variant="outline" onClick={() => updateActions.skip(version)}>
             {t('update.later')}
@@ -87,7 +105,7 @@ export function UpdateNotice() {
           <Button variant="outline" onClick={handleDownload}>
             {t('update.download')}
           </Button>
-          {status.canInstall && <Button onClick={() => setIsConfirmOpen(true)}>{t('update.install')}</Button>}
+          {status.canInstall && <InstallButton onClick={() => setIsConfirmOpen(true)} />}
         </DialogFooter>
         <InstallConfirm version={version} open={isConfirmOpen} onOpenChange={setIsConfirmOpen} />
       </DialogContent>
@@ -135,18 +153,13 @@ function UpdateResult() {
   if (status?.state === 'upToDate') return <p className="text-sm">{t('update.section.upToDate')}</p>
   if (status?.state === 'failed') return <p className="text-muted-foreground text-sm">{t('update.section.failed')}</p>
   if (status?.state !== 'available' || !status.latest) return null
-  const isInstalling = status.install.phase === 'downloading' || status.install.phase === 'preparing'
   return (
     <div className="flex flex-col gap-2">
       <p className="text-sm font-medium">{t('update.notice.title', { version: status.latest.version })}</p>
       <ReleaseSummary notes={status.latest.notes} />
-      <InstallProgress />
+      <InstallError />
       <div className="flex flex-wrap gap-2">
-        {status.canInstall && (
-          <Button size="sm" className="w-fit" onClick={() => setIsConfirmOpen(true)} disabled={isInstalling}>
-            {t('update.install')}
-          </Button>
-        )}
+        {status.canInstall && <InstallButton size="sm" onClick={() => setIsConfirmOpen(true)} />}
         <Button size="sm" variant={status.canInstall ? 'outline' : 'default'} className="w-fit" onClick={updateActions.download}>
           {t('update.download')}
         </Button>
