@@ -1,5 +1,5 @@
 import { memo, useEffect, useMemo, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
-import { ArrowUpIcon, CheckIcon, CircleStopIcon, DownloadIcon, SendIcon, SquareTerminalIcon, UserMinusIcon, XIcon, ZapIcon } from 'lucide-react'
+import { ArrowUpIcon, CheckIcon, ChevronDownIcon, ChevronUpIcon, CircleStopIcon, DownloadIcon, SendIcon, SquareTerminalIcon, UserMinusIcon, XIcon, ZapIcon } from 'lucide-react'
 import { NativeSelect } from '@/components/ui/select'
 import { AttachButton, AttachmentView, DraftAttachments, useDraftAttachments } from '@/components/attachments'
 import { Button } from '@/components/ui/button'
@@ -11,6 +11,7 @@ import { handleComposerKey, NEWLINE_HINT, SEND_HINT, STOP_HINT } from '@/lib/com
 import { useOffice, useWorkMode } from '@/store'
 import { ROLE_PRESETS, type AiProvider, type ApprovalMode, type DailyRecord, type LogEntry, type LogType, type ModelChoice, type Staff } from '@shared/types'
 import { ENGINE_NAME } from '@shared/engineModel'
+import { ApprovalSplitHandle, useApprovalSplit } from './ApprovalSplit'
 import { AvatarEditor } from './AvatarEditor'
 import { EquipmentTab } from './EquipmentTab'
 import { QuestionBox, StopWorkButton } from './QuestionBox'
@@ -403,6 +404,7 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
     if (window.confirm(t('staffPanel.fire.confirm', { name: staff.name }))) void window.office.fire(staff.id)
   }
   const [isExportOpen, setExportOpen] = useState(false)
+  const split = useApprovalSplit(staff.approvals.length)
 
   return (
     <aside
@@ -449,9 +451,25 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
       {resumeError && <p className="text-status-error border-b px-4 py-2 text-xs">{resumeError}</p>}
 
       {staff.approvals.length > 0 && (
-        <section className="flex max-h-[50%] shrink-0 flex-col gap-2 overflow-y-auto border-b p-4">
-          <h3 className="text-status-waiting text-xs font-semibold">{t('staffPanel.approvals.title', { n: staff.approvals.length })}</h3>
-          {staff.approvals.map((a) => (
+        <section
+          ref={split.ref}
+          style={split.isFolded ? undefined : split.shownHeight ? { height: split.shownHeight } : split.maxHeight !== null ? { maxHeight: `min(50%, ${split.maxHeight}px)` } : undefined}
+          // 펼친 칸은 패널이 모자랄 때(작은 창에서 매뉴얼 메뉴가 열리는 등) 하한 아래로도 줄어 하단 입력칸이 잘리지 않게 한다. 가로 폰은 패널을 스크롤하므로 그대로
+          className={cn('flex flex-col gap-2 overflow-y-auto px-4', split.isFolded ? 'shrink-0 border-b py-2' : 'short:shrink-0 min-h-0 py-4', !split.height && 'max-h-[50%]')}
+        >
+          <div className="flex items-center gap-2">
+            <h3 className="text-status-waiting text-xs font-semibold">{t('staffPanel.approvals.title', { n: staff.approvals.length })}</h3>
+            <button
+              type="button"
+              onClick={() => split.setIsFolded(!split.isFolded)}
+              aria-expanded={!split.isFolded}
+              className="text-muted-foreground hover:text-foreground ml-auto flex items-center gap-0.5 text-[11px]"
+            >
+              {split.isFolded ? <ChevronDownIcon className="size-3.5" /> : <ChevronUpIcon className="size-3.5" />}
+              {t(split.isFolded ? 'staffPanel.approvals.unfold' : 'staffPanel.approvals.fold')}
+            </button>
+          </div>
+          {!split.isFolded && staff.approvals.map((a) => (
             <div key={a.id} className="bg-muted flex flex-col gap-2 rounded-lg p-3">
               {a.questions ? (
                 <QuestionBox approval={a} />
@@ -473,6 +491,9 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
             </div>
           ))}
         </section>
+      )}
+      {staff.approvals.length > 0 && !split.isFolded && (
+        <ApprovalSplitHandle targetRef={split.ref} clamp={split.clamp} now={split.nowHeight} max={split.maxHeight} onChange={split.setHeight} onCommit={split.save} />
       )}
 
       {
@@ -539,7 +560,7 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
             </label>
           </div>
           {/* 가로 폰: 패널 전체를 밀어 올려 보도록 기록 칸 높이를 지킨다 */}
-          <div className="short:min-h-[70dvh] relative flex min-h-0 flex-1 flex-col">
+          <div data-split-rest="200" className="short:min-h-[70dvh] relative flex min-h-0 flex-1 flex-col">
             <section ref={logScroll.ref} onScroll={logScroll.onScroll} className="min-h-0 flex-1 overflow-y-auto px-4 pb-4" style={{ fontSize }}>
               <div ref={logScroll.contentRef} className="flex flex-col gap-2">
                 {shownLogs.length === 0 && <p className="text-muted-foreground">{t('staffPanel.log.empty')}</p>}
@@ -554,7 +575,8 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
       )}
 
       {tab === 'review' || tab === 'equip' ? null : isHired ? (
-        <footer className="flex flex-col gap-2 border-t p-4">
+        // 작은 창(폰 키보드가 올라온 때 등)에서 매뉴얼·명령 메뉴가 길어지면 메뉴가 먼저 줄어 스크롤되고, 그래도 모자라면 입력 영역이 스크롤된다 — 패널 밖으로 밀리지 않게 (가로 폰은 패널을 스크롤하므로 그대로)
+        <footer className="short:shrink-0 flex min-h-0 flex-col gap-2 overflow-y-auto border-t p-4">
           <DraftAttachments files={draftFiles.files} onRemove={draftFiles.remove} />
           {pickedManual && <PickedManual manual={pickedManual} onRemove={() => setPickedManual(null)} />}
           {slashQuery !== null && (
@@ -656,7 +678,7 @@ function Profile({ staff }: { staff: Staff }) {
     { label: t('staffPanel.profile.totalPay'), value: formatCost(staff.costUsd) },
   ]
   return (
-    <section className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
+    <section data-split-rest className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
       {!isWorkMode && <AvatarEditor value={staff.avatar} onChange={(avatar) => void window.office.updateStaff(staff.id, { avatar })} />}
       <NameRole key={`${staff.name}\n${staff.role}`} staff={staff} />
       {!isWorkMode && (

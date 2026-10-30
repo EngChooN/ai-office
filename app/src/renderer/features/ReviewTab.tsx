@@ -76,7 +76,7 @@ export function ReviewTab({ staff }: { staff: Staff }) {
   if (!changes.isGit) return <p className="text-muted-foreground p-4 text-xs">{t('review.notGit', { path: shortPath(staff.cwd) })}</p>
 
   return (
-    <section className="flex min-h-0 flex-1 flex-col">
+    <section data-split-rest className="flex min-h-0 flex-1 flex-col">
       <div className="border-b px-4 py-2 empty:hidden">
         <NotOnWindows reason={t('review.windowsNote')} />
       </div>

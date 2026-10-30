@@ -54,7 +54,7 @@ export function EquipmentTab({ staff }: { staff: Staff }) {
   const handleSave = () => void window.office.setEquipment(staff.id, { ...eq, monthlyBudgetUsd: 0 })
 
   return (
-    <section className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-4 text-sm">
+    <section data-split-rest className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-4 text-sm">
       <McpSection cwd={staff.cwd} eq={eq} setEq={setEq} catalog={catalog} setCatalog={setCatalog} provider={staff.provider} />
 
       <div className="flex flex-col gap-2">
