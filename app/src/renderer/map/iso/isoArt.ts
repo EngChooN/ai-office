@@ -13,6 +13,7 @@ import { edgeBox } from '../../../shared/iso/depth.ts'
 import { specOf, type Rot } from '../../../shared/iso/furniture.ts'
 import { FACE_ITEMS, HAIR_COLORS, HAIR_STYLES, HEAD_ITEMS, PANTS, SKINS, TOP_COLORS, TOPS } from '../../../shared/look.ts'
 import { itemName } from '../../../shared/i18n/names.ts'
+import { drawFigure, figureHex, type FigureDir, type Grid } from './personArt.ts'
 
 type RGBA = [number, number, number, number]
 type Color = string | RGBA
@@ -114,35 +115,37 @@ export function toCanvas(cv: Cv, scale = PIXEL) {
   return canvas
 }
 
-// ── 빛·그림자·외곽선 (A 파스텔, 문서 2절) ──────────────────
+// ── 빛·그림자·외곽선 (A 파스텔, 문서 2절 · 외곽선과 옆면 음영을 진하게) — 0.16: 남색 → 따뜻한 자두·밤색으로 옮겨 전체가 따뜻하게 ──
 const S = {
-  out: '#2e2a40',
-  sh: '#4a4f80', // 그림자색: 앱 배경 남색 계열로 섞는다 (회색·검정을 섞지 않는다)
-  shadeS: 0.12,
-  shadeE: 0.26,
+  out: '#3a2a32',
+  sh: '#5c4252', // 그림자색: 따뜻한 자두색 계열로 섞는다 (회색·검정을 섞지 않는다)
+  shadeS: 0.16,
+  shadeE: 0.36,
   hi: 0.4,
-  floorShadow: [42, 46, 80, 46] as RGBA,
+  floorShadow: [72, 46, 52, 48] as RGBA,
 }
 
-// ── 팔레트 — 앱 색(주황 primary, 초록 working, 노랑 waiting)에서 가져왔다 ──
+// ── 팔레트 — 앱 색(라벤더 primary, 초록 working, 노랑 waiting)에서 가져왔다. 주황은 따뜻한 포인트색 ──
 const K = {
-  white: '#f6f8fb',
-  paper: '#ffffff',
-  metal: '#5d6380',
-  metalL: '#b8bdcb',
-  steel: '#cfd6de',
-  dark: '#3a3f55',
+  white: '#faf5ec',
+  paper: '#fffcf5',
+  metal: '#665a66',
+  metalL: '#c4b9b2',
+  steel: '#ddd3c9',
+  dark: '#41363f',
   navy: '#3a4a6a',
   wood: '#d6ae7a',
   woodL: '#e8c79a',
   woodD: '#a77d52',
   walnut: '#8a5a3c',
   walnutT: '#a06a46',
-  deskTop: '#f4dfbd',
-  deskSide: '#e2c69e',
+  deskTop: '#f3e3ca',
+  deskSide: '#e2cbaa',
   screen: '#9fe3ff',
-  keyboard: '#eef0f6',
-  orange: '#f0834e', // --primary
+  keyboard: '#f3ede3',
+  orange: '#f0834e',
+  /** 앱 기본 테마(라벤더) --primary 계열 — 기본 의자 */
+  accent: '#8f80e6',
   green: '#3fc168', // --status-working
   mint: '#8fd6c2',
   mintL: '#a8e2d2',
@@ -161,7 +164,7 @@ const K = {
   fabric: '#9fb3c8',
 }
 
-/** 실루엣 외곽선 1px: 닿은 색을 외곽선색 쪽으로 72% 어둡게 */
+/** 실루엣 외곽선 1px: 닿은 색을 외곽선색 쪽으로 86% 어둡게 */
 function outline(cv: Cv) {
   const src = cv.px.slice()
   const solid = (i: number) => src[i * 4 + 3] === 255
@@ -176,7 +179,7 @@ function outline(cv: Cv) {
         // 반투명(바닥 그림자)에는 외곽선을 두르지 않는다
         if (xx >= 0 && yy >= 0 && xx < cv.w && yy < cv.h && solid(yy * cv.w + xx)) n = yy * cv.w + xx
       }
-      if (n >= 0) cv.write(i, mix([src[n * 4], src[n * 4 + 1], src[n * 4 + 2], 255], S.out, 0.72))
+      if (n >= 0) cv.write(i, mix([src[n * 4], src[n * 4 + 1], src[n * 4 + 2], 255], S.out, 0.86))
     }
 }
 
@@ -267,20 +270,22 @@ function drawBox(cv: Cv, o: Pt, b: Box) {
   const { x, y, w, d, z, h } = b
   const z1 = z + h
   const side = new Set<number>()
+  let sF: number[] = []
+  let eF: number[] = []
   if (h > 0) {
-    for (const i of fillPoly(cv, [P(o, x, y + d, z1), P(o, x + w, y + d, z1), P(o, x + w, y + d, z), P(o, x, y + d, z)], (px, py) => {
+    for (const i of (sF = fillPoly(cv, [P(o, x, y + d, z1), P(o, x + w, y + d, z1), P(o, x + w, y + d, z), P(o, x, y + d, z)], (px, py) => {
       const gy = y + d
       const gx = (px - o[0]) / HW + gy
       const zz = (gx + gy) * HH + o[1] - py
       return shaded(paint(b.S, { u: (gx - x) / w, v: (zz - z) / h, gx, gy, z: zz, face: 'S' }), S.shadeS)
-    }))
+    })))
       side.add(i)
-    for (const i of fillPoly(cv, [P(o, x + w, y, z1), P(o, x + w, y + d, z1), P(o, x + w, y + d, z), P(o, x + w, y, z)], (px, py) => {
+    for (const i of (eF = fillPoly(cv, [P(o, x + w, y, z1), P(o, x + w, y + d, z1), P(o, x + w, y + d, z), P(o, x + w, y, z)], (px, py) => {
       const gx = x + w
       const gy = gx - (px - o[0]) / HW
       const zz = (gx + gy) * HH + o[1] - py
       return shaded(paint(b.E, { u: (gy - y) / d, v: (zz - z) / h, gx, gy, z: zz, face: 'E' }), S.shadeE)
-    }))
+    })))
       side.add(i)
   }
   const top = fillPoly(cv, [P(o, x, y, z1), P(o, x + w, y, z1), P(o, x + w, y + d, z1), P(o, x, y + d, z1)], (px, py) => {
@@ -292,6 +297,22 @@ function drawBox(cv: Cv, o: Pt, b: Box) {
   })
   // 윗면 앞모서리 하이라이트
   if (h > 0 && !b.noHi) for (const i of top) if (side.has(i + cv.w) && cv.has(i)) cv.write(i, mix(cv.read(i), WHITE, S.hi))
+  // 입체 다듬기 (인물 화풍에 맞춰): 옆면 아래쪽은 바닥·아래 부품에 닿아 어둡게(AO), 앞 세로 모서리는 빛을 받아 밝게
+  if (h >= 4 && !b.noHi) {
+    const topSet = new Set(top)
+    const sSet = new Set(sF)
+    const eSet = new Set(eF)
+    for (const i of side) {
+      if (topSet.has(i) || !cv.has(i)) continue
+      const isS = sSet.has(i)
+      const fs = isS ? sSet : eSet
+      // 맨 아래 줄 = 접지선, 그 위 한두 줄 = 옅은 AO
+      if (!fs.has(i + cv.w)) cv.write(i, mix(cv.read(i), S.out, 0.22))
+      else if (!fs.has(i + cv.w * 2) && h >= 8) cv.write(i, mix(cv.read(i), S.sh, 0.1))
+      // S면 오른쪽 끝(앞 모서리) — 이웃이 E면이면 밝은 세로선
+      else if (isS && eSet.has(i + 1)) cv.write(i, mix(cv.read(i), WHITE, 0.22))
+    }
+  }
   return { top, side }
 }
 
@@ -446,7 +467,37 @@ const legs = (x0: number, y0: number, x1: number, y1: number, s: number, h: numb
   ].map(([x, y]) => b(x, y, s, s, 0, h, c))
 /** 앞면 그림: 사각형 (u0..u1, v0..v1) 안인지 */
 const inRect = (q: Q, u0: number, u1: number, v0: number, v1: number) => q.u > u0 && q.u < u1 && q.v > v0 && q.v < v1
-const screenFace = (q: Q) => (inRect(q, 0.08, 0.92, 0.12, 0.9) ? (q.v > 0.7 ? mix(K.screen, WHITE, 0.4) : K.screen) : K.metal)
+/** 모니터 화면: 어두운 베젤 → 창 하나(제목 줄 + 들여쓴 코드 줄) + 왼쪽 위 반사 */
+const screenOf = (glow: string) => (q: Q): Fill => {
+  if (!inRect(q, 0.07, 0.93, 0.1, 0.92)) return '#2e3246'
+  const u = (q.u - 0.07) / 0.86
+  const v = (0.92 - q.v) / 0.82 // 위 0 → 아래 1
+  if (v < 0.16) return mix(glow, K.navy, 0.45)
+  if (v < 0.22) return mix(glow, WHITE, 0.25)
+  const row = Math.floor((v - 0.22) * 8)
+  const f = frac((v - 0.22) * 8)
+  const ind = (row % 3) * 0.08 + 0.06
+  if (f > 0.3 && f < 0.75 && u > ind && u < ind + 0.2 + noise(row, 5) * 0.55) return [K.orange, K.green, '#ffffff', K.yellow, K.pink][Math.floor(noise(row, 9) * 5)]
+  return u + (1 - v) * 0.6 > 1.05 && u + (1 - v) * 0.6 < 1.18 ? mix(glow, WHITE, 0.45) : mix(glow, K.navy, 0.12 + v * 0.18)
+}
+const screenFace = screenOf(K.screen)
+/** 모니터 뒷면: 밝은 플라스틱 + 가운데 환기 홈 + 아래 그늘 */
+const monitorBack = (base: string) => (q: Q): Fill => {
+  if (q.v > 0.86) return mix(base, WHITE, 0.25)
+  if (q.u > 0.3 && q.u < 0.7 && q.v > 0.45 && q.v < 0.75 && frac(q.v * 12) < 0.4) return mix(base, S.sh, 0.3)
+  return base
+}
+/** 모니터 한 대: 받침판 · 목 · 화면(N면이 화면, S면이 뒷면) · 뒤 볼록 덮개. x = 왼쪽 끝, y = 화면 앞면, z = 책상 윗면 */
+const monitor = (x: number, y: number, z: number, w: number, h: number, screen: string = K.screen, body = '#dfe3ea'): Part[] => [
+  b(x + w / 2 - 0.16, y - 0.02, 0.32, 0.22, z, 1, '#c3c8d4', { top: mix('#c3c8d4', WHITE, 0.2) }),
+  b(x + w / 2 - 0.04, y + 0.1, 0.08, 0.06, z + 1, 5, '#9aa0b4'),
+  b(x, y, w, 0.08, z + 4, h, body, { N: screenOf(screen), S: monitorBack(body), top: mix(body, WHITE, 0.2) }),
+  b(x + w * 0.25, y + 0.08, w * 0.5, 0.05, z + 6, Math.max(3, h - 6), body, { S: monitorBack(body) }),
+]
+/** 키보드 윗면: 키 줄 */
+const keysTop = (q: Q): Fill => (q.u < 0.04 || q.u > 0.96 || q.v < 0.08 || q.v > 0.92 ? '#c9cedb' : frac(q.u * 14) < 0.25 || frac(q.v * 4) < 0.3 ? '#c9cedb' : K.keyboard)
+/** 서류 더미 옆면: 종이 줄 */
+const paperSide = (q: Q): Fill => (frac(q.v * 3) < 0.34 ? '#dfe3ea' : K.paper)
 const glassFace = (frame: string) => (q: Q) => {
   if (q.u < 0.05 || q.u > 0.95 || q.v < 0.04 || q.v > 0.96) return frame
   const t = frac((q.u * 2 + q.v * 1.2) * 1.6)
@@ -474,7 +525,10 @@ const books = (frame: string, shelves: number) => (q: Q) => {
   if (f < 0.12) return frame
   const n = noise(Math.floor(q.u * 18), Math.floor(q.v * shelves))
   if (f > 0.55 + n * 0.4) return mix(frame, S.sh, 0.35) // 책 위 빈 칸
-  return [K.orange, K.blue, K.mint, K.yellow, K.pink, K.purple, '#f4f1ea'][Math.floor(n * 7)]
+  const c = [K.orange, K.blue, K.mint, K.yellow, K.pink, K.purple, '#f4f1ea'][Math.floor(n * 7)]
+  const fu = frac(q.u * 18)
+  // 책 등: 왼쪽 밝은 줄 · 오른쪽 어두운 틈 · 가운데 띠 라벨
+  return fu > 0.82 ? mix(c, S.sh, 0.4) : fu < 0.2 ? mix(c, WHITE, 0.3) : Math.abs(f - 0.3) < 0.04 ? mix(c, WHITE, 0.45) : c
 }
 
 /** 잎 덩어리: 원을 겹친다 — 왼쪽 위가 밝다. blobs = [화면 dx, dy, 반지름] */
@@ -484,8 +538,12 @@ function leaves(a: After, x: number, y: number, z: number, blobs: number[][], pa
     for (let yy = -br; yy <= br; yy++)
       for (let xx = -br; xx <= br; xx++) {
         if (xx * xx + yy * yy > br * br) continue
-        const l = (xx + yy) / br
-        a.cv.set(cx + bx + xx, cy + by + yy, C(l < -0.7 ? pal[2] : l < 0.35 ? pal[1] : pal[0]))
+        // 빛(왼쪽 위) + 잎 결 흔들림 → 4단. 가장자리 오른쪽 아래는 한 단 더 어둡게
+        const X = cx + bx + xx
+        const Y = cy + by + yy
+        const l = (xx + yy) / br + (noise(X >> 1, Y) - 0.5) * 0.7
+        const edge = xx * xx + yy * yy > (br - 1) * (br - 1) && xx + yy > 0
+        a.cv.set(X, Y, C(edge ? mix(pal[0], S.out, 0.3) : l < -0.75 ? mix(pal[2], WHITE, 0.25) : l < -0.2 ? pal[2] : l < 0.45 ? pal[1] : pal[0]))
       }
 }
 function line(cv: Cv, [x0, y0]: Pt, [x1, y1]: Pt, c: Color, thick = 1) {
@@ -513,21 +571,28 @@ const plant = (name: string, pot: { c: string; h: number; s: number }, blobs: nu
     },
   }
 }
-const sofa = (name: string, W: number, c: string, cushion: string, more: Part[] = []): ItemDef => ({
-  name,
-  W,
-  D: 1,
-  sitZ: 9,
-  parts: [
-    b(0.04, 0.12, W - 0.08, 0.82, 0, 2, K.metal),
-    b(0.04, 0.12, W - 0.08, 0.82, 2, 7, c),
-    b(0.04, 0.12, W - 0.08, 0.26, 9, 11, c),
-    b(0.04, 0.38, 0.24, 0.56, 9, 5, c),
-    b(W - 0.28, 0.38, 0.24, 0.56, 9, 5, c),
-    ...Array.from({ length: W }, (_, i) => b(0.3 + (i * (W - 0.56)) / W, 0.38, (W - 0.56) / W - 0.04, 0.54, 9, 2, cushion)),
-    ...more,
-  ],
-})
+/** 소파: 나무 다리 · 몸통 · 높은 등판 + 기댄 등쿠션 · 둥근 팔걸이 · 앉는 방석(앞 0.88칸까지 — 앉은 직원 무릎이 방석 끝에 온다) */
+const sofa = (name: string, W: number, c: string, cushion: string, more: Part[] = []): ItemDef => {
+  const n = W
+  const cw = (W - 0.52) / n
+  return {
+    name,
+    W,
+    D: 1,
+    sitZ: 8,
+    parts: [
+      ...legs(0.08, 0.14, W - 0.08, 0.86, 0.08, 2, K.walnut),
+      b(0.04, 0.1, W - 0.08, 0.8, 2, 6, c, { S: seamFace(c), E: seamFace(c) }),
+      // 등판·등쿠션 = 'back' 장 (뒤를 보고 앉으면 직원 앞에 그린다). 앉은 직원 상자(가운데 ±0.18칸)와 겹치지 않게 0.32칸까지
+      b(0.04, 0.1, W - 0.08, 0.14, 8, 18, c, { S: seamFace(c), N: seamFace(c), top: mix(c, WHITE, 0.18), role: 'back' }),
+      ...Array.from({ length: n }, (_, i) => b(0.28 + i * cw, 0.24, cw - 0.03, 0.08, 10, 13, cushion, { S: pillowFace(cushion), top: mix(cushion, WHITE, 0.2), role: 'back' as const })),
+      ...Array.from({ length: n }, (_, i) => b(0.28 + i * cw, 0.32, cw - 0.03, 0.56, 8, 3, cushion, { top: cushionTop(cushion), S: pillowFace(cushion) })),
+      b(0.04, 0.1, 0.22, 0.8, 8, 9, c, { top: armTop(c), S: armFace(c) }),
+      b(W - 0.26, 0.1, 0.22, 0.8, 8, 9, c, { top: armTop(c), S: armFace(c) }),
+      ...more,
+    ],
+  }
+}
 const shelf = (name: string, W: number, h: number, frame: string): ItemDef => ({
   name,
   W,
@@ -539,19 +604,19 @@ const deskGear = (name: string, o: { top: Paint; side: string; z?: number; metal
   const z = o.z ?? 12
   const n = o.monitors ?? 1
   const mw = n === 1 ? 0.76 : n === 2 ? 0.56 : 0.46
-  const x0 = 1 - (n * mw + (n - 1) * 0.04) / 2
-  const face = (q: Q) => (inRect(q, 0.08, 0.92, 0.12, 0.9) ? (q.v > 0.7 ? mix(o.screen ?? K.screen, WHITE, 0.4) : (o.screen ?? K.screen)) : K.metal)
+  // 모니터 묶음은 의자 칸(로컬 x 0~1) 가운데 — 2·3대면 넘치는 만큼 오른쪽으로
+  const x0 = Math.max(0.04, 0.5 - (n * mw + (n - 1) * 0.04) / 2)
   return {
     name,
     W: 2,
     D: 1,
     parts: [
       ...(o.metalLegs ? legs(0.1, 0.14, 1.9, 0.86, 0.06, z, K.metalL) : [b(0.08, 0.12, 0.14, 0.76, 0, z, o.side), b(1.78, 0.12, 0.14, 0.76, 0, z, o.side), b(0.22, 0.76, 1.56, 0.08, 4, z - 4, o.side)]),
-      b(0.04, 0.08, 1.92, 0.84, z, 2, o.side, { top: o.top, S: o.edge ?? o.side }),
-      b(0.86, 0.6, 0.28, 0.16, z + 2, 1, K.metal),
-      ...Array.from({ length: n }, (_, i) => b(x0 + i * (mw + 0.04), 0.62, mw, 0.1, z + 3, n === 1 ? 12 : 10, K.metal, { N: face })),
-      b(0.66, 0.26, 0.62, 0.16, z + 2, 1, K.keyboard),
-      b(0.24, 0.28, 0.14, 0.14, z + 2, 4, K.yellow),
+      b(0.02, 0.06, 1.96, 0.88, z, 2, o.side, { top: o.top, S: o.edge ?? o.side }),
+      ...Array.from({ length: n }, (_, i) => monitor(x0 + i * (mw + 0.04), 0.6, z + 2, mw, n === 1 ? 12 : 11, o.screen)).flat(),
+      b(0.19, 0.2, 0.62, 0.17, z + 2, 1, '#c9cedb', { top: keysTop }),
+      b(0.88, 0.24, 0.08, 0.11, z + 2, 1, '#dfe3ea'),
+      b(1.6, 0.22, 0.13, 0.13, z + 2, 4, K.yellow, { top: '#6a4a34' }),
       ...(o.more ?? []),
     ],
   }
@@ -620,38 +685,212 @@ const slatFace = (base: string) => (q: Q) => {
   if (frac(a) < 0.14) return mix(base, S.sh, 0.35)
   return n32(Math.floor(a), q.z / 20) < 0.25 ? K.walnutT : frac(a) > 0.82 ? mix(base, WHITE, 0.1) : base
 }
+/** 파티션·가벽 이음 (장면이 옆에 붙은 파티션을 보고 정한다 — partitionJoins).
+ *  s·e = 시작(로컬 x 0)·끝(x L) 모양: '-' 그냥 끝, 'c' 칸 끝까지 이어 붙임(옆 파티션과 한 판), 'k' 그 칸 가운데에서 꺾임(ㄱ자 모서리).
+ *  stubs = 칸 i 가운데에서 옆(n = 로컬 y 0 쪽, s = y 1 쪽)으로 칸 끝까지 나가는 팔 — 꺾인 파티션과 만난다 */
+export interface PartJoin {
+  s: '-' | 'c' | 'k'
+  e: '-' | 'c' | 'k'
+  stubs: [number, 'n' | 's'][]
+}
+const NO_JOIN: PartJoin = { s: '-', e: '-', stubs: [] }
+/** 팔 하나의 y 범위 (칸 가운데 기둥·판 두께 밖에서 칸 끝까지) */
+const stubY = (side: 'n' | 's', half: number): [number, number] => (side === 'n' ? [0, 0.5 - half] : [0.5 + half, 0.5 - half])
 /** 낮은 파티션 L칸: 칸 경계마다 금속 기둥(받침 포함), 사이에 판 + 위 레일. lower = 아래 불투명 판 높이(유리 칸막이) */
-const partition = (name: string, L: number, h: number, base: string, face: Paint, lower = 0): ItemDef => {
-  const posts = Array.from({ length: L + 1 }, (_, i) => Math.min(L - 0.08, Math.max(0.02, i - 0.04)))
+const partition = (name: string, L: number, h: number, base: string, face: Paint, lower = 0) => (j: PartJoin = NO_JOIN): ItemDef => {
+  const x0 = j.s === 'c' ? 0 : j.s === 'k' ? 0.47 : 0.02
+  const x1 = j.e === 'c' ? L : j.e === 'k' ? L - 0.47 : L - 0.02
+  // 기둥(폭 0.06) 시작 x — 이어 붙인 끝은 기둥 없이 옆 파티션 판과 바로 맞닿는다
+  const at = new Map<number, number>()
+  const post = (x: number) => at.set(Math.round(x * 100), x)
+  if (j.s !== 'c') post(x0)
+  for (let i = 1; i < L; i++) post(i - 0.03)
+  if (j.e !== 'c') post(x1 - 0.06)
+  for (const [i] of j.stubs) post(i + 0.47)
+  const posts = [...at.values()].sort((a, b) => a - b)
+  const panel = (px: number, w: number, py: number, d: number, sides: 'NS' | 'EW') => {
+    const f = sides === 'NS' ? { S: face, N: face } : { E: face, W: face }
+    return [
+      ...(lower ? [b(px - (sides === 'NS' ? 0 : 0.01), py - (sides === 'NS' ? 0.01 : 0), w + (sides === 'NS' ? 0 : 0.02), d + (sides === 'NS' ? 0.02 : 0), 2, lower - 2, K.white, { top: K.metalL })] : []),
+      b(px, py, w, d, lower || 2, h - (lower || 2), base, f),
+      b(px - (sides === 'NS' ? 0 : 0.01), py - (sides === 'NS' ? 0.01 : 0), w + (sides === 'NS' ? 0 : 0.02), d + (sides === 'NS' ? 0.02 : 0), h, 1, K.metalL, { top: K.steel }),
+    ]
+  }
+  const parts: Part[] = posts.flatMap((x) => [b(x, 0.32, 0.06, 0.36, 0, 2, K.metal), b(x, 0.43, 0.06, 0.14, 2, h + 1, K.metalL, { top: K.steel })])
+  let cur = x0
+  for (const p of [...posts, x1]) {
+    if (p > cur + 0.001) parts.push(...panel(cur, Math.min(p, x1) - cur, 0.46, 0.08, 'NS'))
+    cur = Math.max(cur, p + 0.06)
+  }
+  for (const [i, side] of j.stubs) {
+    const [y, d] = stubY(side, 0.07)
+    parts.push(...panel(i + 0.46, 0.08, y, d, 'EW'))
+  }
+  return { name, W: L, D: 1, parts }
+}
+/** 높은 가벽 L칸: 벽(WALL_T 두께)과 같은 얇은 통판 40px. 무늬는 앞뒤 두 면에 같이 */
+const dividerWall = (name: string, L: number, side: string, cap: string, face: Paint) => (j: PartJoin = NO_JOIN): ItemDef => {
+  const x0 = j.s === 'c' ? 0 : j.s === 'k' ? 0.41 : 0.02
+  const x1 = j.e === 'c' ? L : j.e === 'k' ? L - 0.41 : L - 0.02
+  const end = mix(side, S.sh, 0.08)
   return {
     name,
     W: L,
     D: 1,
     parts: [
-      ...posts.flatMap((x) => [b(x, 0.32, 0.06, 0.36, 0, 2, K.metal), b(x, 0.43, 0.06, 0.14, 2, h + 1, K.metalL, { top: K.steel })]),
-      ...posts.slice(0, -1).flatMap((x, i) => {
-        const x0 = x + 0.06
-        const w = posts[i + 1] - x0
-        return [
-          ...(lower ? [b(x0, 0.45, w, 0.1, 2, lower - 2, K.white, { top: K.metalL })] : []),
-          b(x0, 0.46, w, 0.08, lower || 2, h - (lower || 2), base, { S: face, N: face }),
-          b(x0, 0.45, w, 0.1, h, 1, K.metalL, { top: K.steel }),
-        ]
+      b(x0, 0.41, x1 - x0, 0.18, 0, 40, side, { top: cap, S: face, N: face, E: end, W: end }),
+      ...j.stubs.map(([i, s]) => {
+        const [y, d] = stubY(s, 0.09)
+        return b(i + 0.41, y, 0.18, d, 0, 40, side, { top: cap, E: face, W: face, N: end, S: end })
       }),
     ],
   }
 }
-/** 높은 가벽 L칸: 벽(WALL_T 두께)과 같은 얇은 통판 40px. 무늬는 앞뒤 두 면에 같이 */
-const dividerWall = (name: string, L: number, side: string, cap: string, face: Paint): ItemDef => ({
-  name,
-  W: L,
-  D: 1,
-  parts: [b(0.02, 0.41, L - 0.04, 0.18, 0, 40, side, { top: cap, S: face, N: face, E: mix(side, S.sh, 0.08), W: mix(side, S.sh, 0.08) })],
+
+/** 벽돌: 4px 줄 · 반 장씩 엇갈림 · 줄눈 + 장마다 살짝 다른 색 */
+const brickFace = (base: string, joint: string) => (q: Q): Fill => {
+  const row = Math.floor(q.z / 4)
+  const a = (q.gx + q.gy) * 3 + (row % 2) * 0.5
+  if (q.z % 4 < 1 || frac(a) < 0.1) return joint
+  const n = n32(Math.floor(a), row)
+  return n < 0.2 ? mix(base, S.sh, 0.1) : n > 0.85 ? mix(base, WHITE, 0.1) : base
+}
+/** 식물 벽: 나무 틀 안에 잎 무늬 3톤 + 군데군데 꽃 */
+const greenFace = (frame: string) => (q: Q): Fill => {
+  if (q.v < 0.06 || q.v > 0.95) return frame
+  const x = Math.floor((q.gx + q.gy) * 16)
+  const y = Math.floor(q.z / 2)
+  const n = n32(x, y)
+  if (n > 0.97) return K.pink
+  return n < 0.3 ? K.leaf[0] : n < 0.75 ? K.leaf[1] : K.leaf[2]
+}
+/** 높은 유리 가벽: 위아래 나무 띠 + 가운데 유리 */
+const glassWallFace = (frame: string) => (q: Q): Fill => (q.v < 0.12 || q.v > 0.93 || Math.abs(q.v - 0.55) < 0.025 ? frame : glassPanel(q))
+
+/** 파티션·가벽 그림 (이음 모양을 받아 그린다) — docs/specs/partition-items.md. 낮음은 22px(앉은 직원 머리 높이), 높음은 40px(서 있는 직원을 다 가린다 — 장면이 WALL_FADE로 비친다) */
+const PARTITIONS: Record<string, (j?: PartJoin) => ItemDef> = {
+  'partition-low-fabric': partition('낮은 패브릭 파티션', 2, 22, '#aaa9ad', fabricFace('#aaa9ad')),
+  'partition-low-fabric-1': partition('낮은 패브릭 파티션 (1칸)', 1, 22, '#aaa9ad', fabricFace('#aaa9ad')),
+  'partition-low-glass': partition('낮은 유리 파티션', 3, 22, '#eef1f5', glassPanel, 7),
+  'partition-low-wood': partition('낮은 원목 파티션', 2, 20, K.wood, slatFace(K.wood)),
+  'partition-wall-white': dividerWall('화이트 가벽', 1, '#eef0f4', '#ffffff', matteFace('#eef0f4', '#d8dce4')),
+  'partition-wall-wood': dividerWall('원목 가벽', 3, K.walnut, K.walnutT, slatFace(K.walnut)),
+  'partition-wall-wood-1': dividerWall('원목 가벽 (1칸)', 1, K.walnut, K.walnutT, slatFace(K.walnut)),
+  'partition-wall-brick': dividerWall('벽돌 가벽', 2, '#c8735a', '#e0b49a', brickFace('#c8735a', '#ead8c6')),
+  'partition-wall-green': dividerWall('식물 가벽', 2, K.woodD, K.wood, greenFace(K.woodD)),
+  'partition-wall-glass': dividerWall('유리 가벽', 2, K.woodL, K.wood, glassWallFace(K.woodD)),
+}
+/** 파티션 이음 표시 — 장면이 `{id}~j{s}{e}{칸}{n|s}...` 이름으로 그린다 */
+export const PART_JOIN = '~j'
+const joinCode = (j: PartJoin) => `${PART_JOIN}${j.s}${j.e}${j.stubs.map(([i, s]) => `${i}${s}`).join('')}`
+const parseJoin = (code: string): PartJoin => ({
+  s: code[0] as PartJoin['s'],
+  e: code[1] as PartJoin['e'],
+  stubs: [...code.slice(2).matchAll(/(\d)([ns])/g)].map((m) => [+m[1], m[2] as 'n' | 's']),
 })
+const tallOf = (id: string) => id.startsWith('partition-wall')
+
+/**
+ * 붙어 있는 파티션끼리 한 판으로 이어 그리기 (같은 높이끼리만). 반환 = uid → 이음 표시(없으면 빠짐).
+ * 일자로 붙으면 두 끝을 칸 끝까지 이어 붙이고, 직각으로 만나면(ㄱ·ㅜ) 만나는 칸에 옆 팔을 내고 꺾인 끝은 가운데에서 멈춘다
+ */
+export function partitionJoins(items: readonly { uid: string; itemId: string; gx: number; gy: number; rot: Rot }[]): Map<string, string> {
+  type P = { uid: string; tall: boolean; L: number; cells: [number, number][]; ax: [number, number]; nv: [number, number] }
+  const ps: P[] = []
+  for (const it of items) {
+    const gen = PARTITIONS[it.itemId]
+    if (!gen) continue
+    const L = gen().W
+    const w = (x: number, y: number) => rotPt(x, y, it.rot, L, 1)
+    const unit = (a: [number, number], b: [number, number]): [number, number] => [Math.round(b[0] - a[0]), Math.round(b[1] - a[1])]
+    ps.push({
+      uid: it.uid,
+      tall: tallOf(it.itemId),
+      L,
+      cells: Array.from({ length: L }, (_, i) => {
+        const [x, y] = w(i + 0.5, 0.5)
+        return [Math.floor(it.gx + x), Math.floor(it.gy + y)]
+      }),
+      ax: unit(w(0, 0.5), w(1, 0.5)),
+      nv: unit(w(0.5, 0.5), w(0.5, -0.5)),
+    })
+  }
+  const at = new Map<string, { p: P; i: number }>()
+  for (const p of ps) p.cells.forEach(([x, y], i) => at.set(`${x},${y}`, { p, i }))
+  const other = (p: P, x: number, y: number) => {
+    const o = at.get(`${x},${y}`)
+    return o && o.p !== p && o.p.tall === p.tall ? o : null
+  }
+  const out = new Map<string, string>()
+  for (const p of ps) {
+    const j: PartJoin = { s: '-', e: '-', stubs: [] }
+    p.cells.forEach(([x, y], i) => {
+      for (const side of ['n', 's'] as const) {
+        const d = side === 'n' ? p.nv : ([-p.nv[0], -p.nv[1]] as [number, number])
+        const o = other(p, x + d[0], y + d[1])
+        if (!o || Math.abs(o.p.ax[0] * d[0] + o.p.ax[1] * d[1]) !== 1) continue
+        // 상대 칸이 상대 파티션의 끝이고, 그 끝이 이쪽을 바라볼 때만 (옆으로 나란히 지나가는 파티션은 아님)
+        const out0 = o.i === 0 && o.p.ax[0] === d[0] && o.p.ax[1] === d[1]
+        const out1 = o.i === o.p.L - 1 && o.p.ax[0] === -d[0] && o.p.ax[1] === -d[1]
+        if (out0 || out1) j.stubs.push([i, side])
+      }
+    })
+    const [sx, sy] = p.cells[0]
+    const [ex, ey] = p.cells[p.L - 1]
+    const hasS = !!other(p, sx - p.ax[0], sy - p.ax[1])
+    const hasE = !!other(p, ex + p.ax[0], ey + p.ax[1])
+    const stubAt = (i: number) => j.stubs.some(([k]) => k === i)
+    // 꺾인 끝: 이어진 옆 파티션이 없고 그 칸에 옆 팔이 있을 때 — 1칸짜리는 반대쪽이 이어져 있어야 어느 쪽으로 꺾일지 정해진다
+    j.s = hasS ? 'c' : stubAt(0) && (p.L > 1 || hasE) ? 'k' : '-'
+    j.e = hasE ? 'c' : stubAt(p.L - 1) && (p.L > 1 || hasS) ? 'k' : '-'
+    if (j.s !== '-' || j.e !== '-' || j.stubs.length) out.set(p.uid, joinCode(j))
+  }
+  return out
+}
 
 const placeholder = (W: number, D: number): ItemDef => {
   const stripe = (q: Q) => (frac((q.u * 3 + q.v * 2) * 1.5) < 0.5 ? '#ddd3f2' : '#cfc2ec')
   return { name: '임시', W, D, parts: [b(0.1, 0.1, W - 0.2, D - 0.2, 0, 14, '#e6def5', { S: stripe, E: stripe, W: stripe, N: stripe, top: (q) => (q.u < 0.06 || q.u > 0.94 || q.v < 0.06 || q.v > 0.94 ? '#cfc2ec' : '#efe9fa') })] }
+}
+
+/** 서랍·문 패널: 가장자리 한 줄 띄우고 안쪽에 밝은 위·왼쪽 / 어두운 아래·오른쪽 몰딩 */
+const panelFace = (base: string) => (q: Q) => {
+  if (q.u < 0.1 || q.u > 0.9 || q.v < 0.1 || q.v > 0.9) return base
+  if (q.u < 0.18 || q.v > 0.82) return mix(base, WHITE, 0.18)
+  if (q.u > 0.82 || q.v < 0.18) return mix(base, S.sh, 0.3)
+  return mix(base, S.sh, 0.08)
+}
+/** 원목 상판: 긴 결 + 앞모서리 쪽 밝게 */
+const grainTop = (base: string) => (q: Q) => {
+  const g = frac(q.v * 7 + Math.sin(q.u * 9) * 0.15)
+  if (g < 0.08) return mix(base, S.sh, 0.18)
+  return q.v > 0.85 ? mix(base, WHITE, 0.12) : base
+}
+/** 가죽 방석: 가운데 볼록(밝음) · 가장자리 눌림 */
+const cushionTop = (base: string) => (q: Q) => {
+  const d = Math.max(Math.abs(q.u - 0.5), Math.abs(q.v - 0.5))
+  return d > 0.4 ? mix(base, S.sh, 0.2) : d < 0.18 ? mix(base, WHITE, 0.16) : base
+}
+/** 천 옆면: 아래 박음선 한 줄 + 위 가장자리 밝게 */
+const seamFace = (base: string) => (q: Q): Fill => (q.v > 0.86 ? mix(base, WHITE, 0.15) : q.v > 0.12 && q.v < 0.24 ? mix(base, S.sh, 0.16) : base)
+/** 쿠션 앞면: 가운데 볼록 · 양끝 눌림 */
+const pillowFace = (base: string) => (q: Q): Fill => (q.u < 0.08 || q.u > 0.92 || q.v < 0.15 ? mix(base, S.sh, 0.18) : q.v > 0.8 ? mix(base, WHITE, 0.2) : base)
+/** 팔걸이 윗면: 둥글게 말린 앞쪽이 밝다 */
+const armTop = (base: string) => (q: Q): Fill => (q.u < 0.3 ? mix(base, WHITE, 0.24) : q.u > 0.8 ? mix(base, S.sh, 0.1) : mix(base, WHITE, 0.1))
+/** 팔걸이 앞면: 말린 둥근 끝(위 반원 밝게) */
+const armFace = (base: string) => (q: Q): Fill => {
+  const dx = q.u - 0.5
+  const dz = q.v - 0.72
+  if (dx * dx * 4 + dz * dz * 10 < 0.22) return dx * 4 + dz * 3 < 0.2 ? mix(base, WHITE, 0.2) : base
+  return q.v > 0.5 ? mix(base, S.sh, 0.12) : base
+}
+/** 가죽 등받이: 버튼 터프팅 점 + 위 가장자리 하이라이트 */
+const tuftFace = (base: string) => (q: Q) => {
+  if (q.v > 0.9) return mix(base, WHITE, 0.2)
+  const bu = frac(q.u * 3)
+  const bv = frac(q.v * 2.5)
+  if (Math.abs(bu - 0.5) < 0.12 && Math.abs(bv - 0.5) < 0.12) return mix(base, S.sh, 0.4)
+  return base
 }
 
 // ── 품목 그림 ────────────────────────────────────────────
@@ -663,15 +902,19 @@ const ITEMS: Record<string, ItemDef> = {
     W: 2,
     D: 1,
     parts: [
-      b(0.08, 0.12, 0.14, 0.76, 0, 12, K.deskSide),
-      b(1.78, 0.12, 0.14, 0.76, 0, 12, K.deskSide),
-      b(0.22, 0.76, 1.56, 0.08, 4, 8, K.deskSide),
-      b(0.04, 0.08, 1.92, 0.84, 12, 2, K.deskTop),
-      b(0.86, 0.6, 0.28, 0.16, 14, 1, K.metal),
-      b(0.62, 0.62, 0.76, 0.1, 15, 12, K.metal, { N: screenFace }),
-      b(0.66, 0.26, 0.62, 0.16, 14, 1, K.keyboard),
-      b(0.24, 0.28, 0.14, 0.14, 14, 4, K.yellow),
-      b(1.46, 0.22, 0.34, 0.3, 14, 1, K.paper),
+      // 왼쪽 옆판(앉는 칸 = 기본 자리 의자가 붙는 로컬 x 0~1, 무릎 들어갈 자리) · 오른쪽 서랍장(서랍은 앉는 쪽 N면)
+      // 무릎 자리는 앞이 뚫려 있다(위 띠판만) — 앉은 직원의 정강이·신발이 책상 아래로 보인다
+      b(0.06, 0.1, 0.14, 0.78, 0, 12, K.deskSide, { S: panelFace(K.deskSide), E: panelFace(K.deskSide) }),
+      b(1.4, 0.1, 0.52, 0.78, 0, 12, K.deskSide, { N: drawers(K.deskSide, 3), S: panelFace(K.deskSide), E: panelFace(K.deskSide) }),
+      b(0.2, 0.74, 1.2, 0.06, 9, 3, K.deskSide, { S: mix(K.deskSide, S.sh, 0.06) }),
+      b(0.02, 0.06, 1.96, 0.88, 12, 2, K.deskSide, { top: grainTop(K.deskTop), S: mix(K.deskTop, S.sh, 0.05) }),
+      // 모니터·키보드·마우스는 의자 바로 앞 — 앉은 직원이 화면을 마주 본다
+      ...monitor(0.1, 0.6, 14, 0.8, 12),
+      b(0.19, 0.2, 0.62, 0.17, 14, 1, '#c9cedb', { top: keysTop }),
+      b(0.88, 0.24, 0.08, 0.11, 14, 1, '#dfe3ea'),
+      b(1.18, 0.66, 0.13, 0.13, 14, 4, K.yellow, { top: '#6a4a34' }),
+      b(1.48, 0.16, 0.32, 0.28, 14, 2, K.paper, { S: paperSide, E: paperSide }),
+      b(1.64, 0.64, 0.14, 0.14, 14, 3, K.pot, { top: K.leaf[1] }),
     ],
   },
   chair: {
@@ -680,10 +923,15 @@ const ITEMS: Record<string, ItemDef> = {
     D: 1,
     sitZ: 9,
     parts: [
-      b(0.26, 0.26, 0.48, 0.48, 0, 2, K.metal, { role: 'seat' }),
-      b(0.45, 0.45, 0.1, 0.1, 2, 7, K.metal, { role: 'seat' }),
-      b(0.22, 0.24, 0.56, 0.56, 9, 3, K.orange, { role: 'seat' }),
-      b(0.22, 0.14, 0.56, 0.1, 12, 13, K.orange, { role: 'back' }),
+      // 다섯 발 받침(십자로) · 가스 기둥 · 두툼한 좌석 · 등받이 + 이음대
+      b(0.18, 0.45, 0.64, 0.1, 0, 1, K.dark, { role: 'seat' }),
+      b(0.45, 0.18, 0.1, 0.64, 0, 1, K.dark, { role: 'seat' }),
+      ...[[0.16, 0.44], [0.76, 0.44], [0.44, 0.16], [0.44, 0.76]].map(([x, y]) => b(x, y, 0.1, 0.1, 0, 2, '#2e3246', { role: 'seat' as const })),
+      b(0.46, 0.46, 0.08, 0.08, 1, 6, K.metalL, { role: 'seat' }),
+      b(0.24, 0.26, 0.52, 0.52, 7, 1, K.dark, { role: 'seat' }),
+      b(0.2, 0.24, 0.6, 0.56, 8, 4, K.accent, { role: 'seat', top: cushionTop(K.accent), S: seamFace(K.accent), E: seamFace(K.accent) }),
+      b(0.44, 0.12, 0.12, 0.06, 9, 5, K.dark, { role: 'back' }),
+      b(0.2, 0.12, 0.6, 0.11, 13, 14, K.accent, { role: 'back', S: tuftFace(K.accent), N: seamFace(K.accent), top: mix(K.accent, WHITE, 0.2) }),
     ],
   },
   /** 기본 화분 (prop-plant) */
@@ -1798,6 +2046,90 @@ const ITEMS: Record<string, ItemDef> = {
       }),
     ],
   },
+  // ── 작은 소품 (0.16) ──
+  'book-stack': {
+    name: '책 더미',
+    W: 1,
+    D: 1,
+    parts: [
+      ...[[K.red, 0.24, 0.3, 4], [K.navy, 0.28, 0.34, 3], [K.yellow, 0.22, 0.32, 4], [K.mint, 0.3, 0.3, 3], [K.pink, 0.26, 0.36, 3]].map(([c, x, y, h], i, a) =>
+        b(x as number, y as number, 0.44, 0.32, a.slice(0, i).reduce((z, r) => z + (r[3] as number), 0), h as number, c as string, { top: K.paper, E: (q: Q) => (q.v > 0.2 && q.v < 0.8 ? K.paper : (c as string)) }),
+      ),
+      b(0.56, 0.62, 0.22, 0.16, 0, 2, K.wood, { top: K.woodL }),
+    ],
+  },
+  'box-pile': {
+    name: '택배 상자',
+    W: 1,
+    D: 1,
+    parts: [
+      b(0.12, 0.2, 0.5, 0.5, 0, 10, '#c99a64', { top: (q) => (Math.abs(q.u - 0.5) < 0.07 ? '#e6cf9a' : '#d8ad78'), S: (q) => (q.v > 0.55 && q.v < 0.8 && q.u > 0.15 && q.u < 0.45 ? K.paper : '#c99a64') }),
+      b(0.56, 0.42, 0.34, 0.36, 0, 7, '#d4a874', { top: (q) => (Math.abs(q.v - 0.5) < 0.08 ? '#e6cf9a' : '#e2bb88') }),
+      b(0.2, 0.28, 0.34, 0.34, 10, 6, '#ddb27c', { top: (q) => (Math.abs(q.u - 0.5) < 0.09 ? '#e6cf9a' : '#ebc995') }),
+    ],
+  },
+  'umbrella-stand': {
+    name: '우산꽂이',
+    W: 1,
+    D: 1,
+    parts: [
+      b(0.3, 0.3, 0.4, 0.4, 0, 12, K.navy, { top: K.dark, S: (q) => (q.v > 0.8 ? mix(K.navy, WHITE, 0.2) : K.navy) }),
+      b(0.36, 0.38, 0.06, 0.06, 12, 14, K.red),
+      b(0.33, 0.36, 0.12, 0.1, 22, 4, K.red, { top: mix(K.red, WHITE, 0.2) }),
+      b(0.55, 0.44, 0.06, 0.06, 12, 10, K.yellow),
+      b(0.52, 0.42, 0.12, 0.1, 18, 4, K.yellow),
+      b(0.46, 0.56, 0.05, 0.05, 12, 12, K.woodD),
+    ],
+  },
+  'snack-basket': {
+    name: '간식 바구니',
+    W: 1,
+    D: 1,
+    parts: [
+      ...legs(0.26, 0.26, 0.74, 0.74, 0.06, 8, K.woodD),
+      b(0.22, 0.22, 0.56, 0.56, 8, 2, K.wood, { top: K.woodL }),
+      b(0.26, 0.28, 0.48, 0.44, 10, 5, '#d8b07a', { S: (q) => (frac(q.u * 6) < 0.3 ? '#c49a62' : '#d8b07a'), E: (q) => (frac(q.u * 5) < 0.3 ? '#c49a62' : '#d8b07a') }),
+      b(0.3, 0.32, 0.14, 0.12, 15, 3, K.red),
+      b(0.46, 0.34, 0.12, 0.16, 15, 2, K.yellow),
+      b(0.6, 0.3, 0.1, 0.12, 15, 3, K.orange),
+      b(0.36, 0.52, 0.16, 0.12, 15, 2, K.pink),
+    ],
+  },
+  'mini-fridge': {
+    name: '미니 냉장고',
+    W: 1,
+    D: 1,
+    parts: [
+      b(0.22, 0.26, 0.56, 0.52, 0, 20, '#f2e6d0', {
+        S: (q) => (q.v > 0.6 && q.v < 0.64 ? '#d6c6aa' : q.u > 0.82 && q.u < 0.88 && Math.abs(q.v - 0.75) < 0.1 ? K.metal : '#f2e6d0'),
+        top: '#f8efe0',
+      }),
+      b(0.3, 0.36, 0.12, 0.1, 20, 4, K.mint),
+      b(0.5, 0.4, 0.16, 0.12, 20, 2, K.yellow),
+      ...[[0.26, 0.7], [0.66, 0.7]].map(([x, y]) => b(x, y, 0.06, 0.06, 0, 1, K.dark)),
+    ],
+  },
+  'cork-board': {
+    name: '코르크 메모판',
+    W: 1,
+    D: 1,
+    parts: [
+      b(0.24, 0.44, 0.06, 0.12, 0, 12, K.woodD),
+      b(0.7, 0.44, 0.06, 0.12, 0, 12, K.woodD),
+      b(0.16, 0.38, 0.68, 0.24, 0, 1, K.woodD),
+      b(0.14, 0.46, 0.72, 0.08, 10, 18, K.woodD, {
+        S: (q) => {
+          if (q.u < 0.06 || q.u > 0.94 || q.v < 0.08 || q.v > 0.92) return K.woodD
+          if (inRect(q, 0.12, 0.38, 0.45, 0.82)) return q.v > 0.74 && Math.abs(q.u - 0.25) < 0.04 ? K.red : '#fff3a8'
+          if (inRect(q, 0.48, 0.78, 0.5, 0.86)) return q.v > 0.78 && Math.abs(q.u - 0.63) < 0.04 ? K.blue : K.paper
+          if (inRect(q, 0.56, 0.86, 0.14, 0.42)) return '#ffc9d2'
+          if (inRect(q, 0.14, 0.42, 0.14, 0.36)) return '#c9ecd8'
+          return n32(Math.floor(q.u * 20), Math.floor(q.v * 12)) < 0.3 ? '#b88552' : '#c99662'
+        },
+        N: K.woodD,
+      }),
+    ],
+  },
   // Lv.12
   'magazine-rack': {
     name: '잡지꽂이',
@@ -2009,10 +2341,7 @@ const ITEMS: Record<string, ItemDef> = {
     ],
   },
   // 파티션·가벽 (docs/specs/partition-items.md): 칸 가운데 얇은 판. 낮음은 24px(앉은 직원 머리 높이), 높음은 40px(서 있는 직원을 다 가린다 — 장면이 WALL_FADE로 비친다)
-  'partition-low-fabric': partition('낮은 패브릭 파티션', 2, 22, '#aaa9ad', fabricFace('#aaa9ad')),
-  'partition-low-glass': partition('낮은 유리 파티션', 3, 22, '#eef1f5', glassPanel, 7),
-  'partition-wall-white': dividerWall('화이트 가벽', 1, '#eef0f4', '#ffffff', matteFace('#eef0f4', '#d8dce4')),
-  'partition-wall-wood': dividerWall('원목 가벽', 3, K.walnut, K.walnutT, slatFace(K.walnut)),
+  ...Object.fromEntries(Object.entries(PARTITIONS).map(([id, gen]) => [id, gen()])),
 }
 
 // ── 고정 소품 (지금 사무실의 settings.layout 키) → 서랍 가구 prop-{key} ──
@@ -2127,7 +2456,31 @@ const ZONE_ITEMS: Record<string, ItemDef> = {
 /** 구역 기본 가구 품목 id (furniture.ts 규격표·ZONE_LAYOUTS가 쓴다) */
 export const ZONE_ITEM_IDS = Object.keys(ZONE_ITEMS)
 
+/** 책상 좌우 뒤집기 표시 — 의자가 책상의 오른쪽(로컬 x 1) 칸 앞에 붙으면 장면이 이 이름으로 그려 모니터를 의자 앞으로 옮긴다 */
+export const DESK_FLIP = '~flip'
+const flipU = (f: Paint | undefined): Paint | undefined => (typeof f === 'function' ? (q: Q) => f({ ...q, u: 1 - q.u }) : f)
+/** 정의를 로컬 x축으로 뒤집는다 (부품 위치 · 동서 면 · 앞뒤·윗면 무늬 가로) */
+const mirrorDef = (def: ItemDef): ItemDef => ({
+  ...def,
+  parts: def.parts.map((p) => ({ ...p, x: def.W - p.x - p.w, E: p.W, W: p.E, N: flipU(p.N), S: flipU(p.S), top: flipU(p.top) })),
+})
+/** 놓인 책상에서 바닥 칸 (cx, cy)가 로컬 몇 번째 칸(x)인지 — 없으면 -1 */
+export function deskCellOf(itemId: string, r: Rot, gx: number, gy: number, cx: number, cy: number) {
+  const { W, D } = defOf(itemId).def
+  for (let i = 0; i < W; i++) {
+    const [x, y] = rotPt(i + 0.5, 0.5, r, W, D)
+    if (Math.floor(gx + x) === cx && Math.floor(gy + y) === cy) return i
+  }
+  return -1
+}
+
 function defOf(itemId: string): { def: ItemDef; isPlaceholder: boolean } {
+  const ji = itemId.indexOf(PART_JOIN)
+  if (ji > 0 && PARTITIONS[itemId.slice(0, ji)]) return { def: PARTITIONS[itemId.slice(0, ji)](parseJoin(itemId.slice(ji + PART_JOIN.length))), isPlaceholder: false }
+  if (itemId.endsWith(DESK_FLIP)) {
+    const base = defOf(itemId.slice(0, -DESK_FLIP.length))
+    return { ...base, def: mirrorDef(base.def) }
+  }
   if (itemId.startsWith('zone-') && ZONE_ITEMS[itemId]) return { def: ZONE_ITEMS[itemId], isPlaceholder: false }
   if (itemId.startsWith('prop-')) {
     const key = itemId.slice(5)
@@ -2180,11 +2533,22 @@ export function artItem(itemId: string, r: Rot, role?: 'seat' | 'back', withPets
   return artDef(def, r, role, isPlaceholder, withPets)
 }
 
+/** 1칸 의자의 등받이를 앉은 직원 등(직원 깊이 상자 뒤끝 0.32칸)에 붙인다 — 칸 끝에 두면 화면에서 등받이가 사람 옆에 따로 떠 보인다.
+ *  뒤쪽(y < 0.3)에서 시작하는 등받이 부품만 같이 민다(팔걸이처럼 앞으로 긴 부품은 그대로) */
+function leanBack(def: ItemDef): ItemDef {
+  if (def.sitZ === undefined || def.W !== 1 || def.D !== 1) return def
+  const backs = def.parts.filter((p) => p.role === 'back' && p.y < 0.3)
+  if (!backs.length) return def
+  const dy = 0.32 - Math.max(...backs.map((p) => p.y + p.d))
+  if (dy <= 0.005) return def
+  return { ...def, parts: def.parts.map((p) => (p.role === 'back' && p.y < 0.3 ? { ...p, y: p.y + dy } : p)) }
+}
+
 /** 부품 정의 한 방향 그림 — 품목·회의실 기본 테이블이 같이 쓴다 */
 function artDef(def: ItemDef, r: Rot, role?: 'seat' | 'back', isPlaceholder = false, withPets = true): ItemPixels {
   const { W, D } = def
   const [w, d] = r % 2 ? [D, W] : [W, D]
-  const shown = def.parts.filter((p) => withPets || !p.pet)
+  const shown = leanBack(def).parts.filter((p) => withPets || !p.pet)
   const parts = shown.filter((p) => !role || (p.role ?? 'seat') === role).map((p) => rotPart(p, r, W, D))
   const H = Math.max(...shown.map((p) => p.z + p.h)) + (def.extraH ?? 0)
   const pad = 3
@@ -2206,7 +2570,10 @@ function artDef(def: ItemDef, r: Rot, role?: 'seat' | 'back', isPlaceholder = fa
       },
     })
   outline(cv)
-  return { cv, o, box: boxOf(parts), w, d, isPlaceholder }
+  // 앉는 가구의 좌석 장: 팔걸이가 엉덩이보다 높아도 깊이 상자는 엉덩이 높이까지 — 앉은 직원이 늘 좌석 위(앞)에 그려진다
+  const box = boxOf(parts)
+  if (role === 'seat' && def.sitZ !== undefined) box.h = Math.min(box.h, def.sitZ + 3 - box.z)
+  return { cv, o, box, w, d, isPlaceholder }
 }
 
 // ── 연출 시트 생성기용 (scripts/motion-pilot.mts · 연출④-5). 화면 코드는 쓰지 않는다 ──
@@ -2367,7 +2734,7 @@ export type MeetingTableKind = 'folding' | 'pine' | 'oak' | 'walnut' | 'board'
 export const MEETING_CHAIR: Record<MeetingTableKind, string> = { folding: 'lv-folding-chair', pine: 'chair-wood', oak: 'chair', walnut: 'chair-mesh', board: 'chair-leather' }
 const MEETING_CHAIR_IDS: ReadonlySet<string> = new Set(Object.values(MEETING_CHAIR))
 /** 좌석·등받이 두 장으로 나눠 그릴 의자 — 앉은 직원을 그 사이에 끼운다. 회의실 의자(가죽·메쉬·원목)는 가구 표의 의자가 아니어도 나눈다 */
-export const isSplitChair = (itemId: string) => specOf(itemId).kind === 'chair' || MEETING_CHAIR_IDS.has(itemId)
+export const isSplitChair = (itemId: string) => specOf(itemId).kind === 'chair' || MEETING_CHAIR_IDS.has(itemId) || defOf(itemId).def.parts.some((p) => p.role === 'back')
 /** 등받이가 카메라 쪽(동·남)을 향하는 방향 — 앉은 직원이 등받이 뒤에 그려진다 */
 export const isCameraBack = (r: Rot) => r === 1 || r === 2
 /** 카메라 쪽 회의 의자의 등받이 윗면 높이 (아트 px) — 등지고 앉은 직원의 어깨(≈15)부터 보이게 */
@@ -2827,24 +3194,26 @@ const LEVEL_FLOORS: Record<LevelFloorMat, FloorDef> = {
 
 function windowPx(a: number, z: number, w: number, h: number, isCurtain = false) {
   // 창: 틀 → 유리 → 왼쪽 아래에서 오른쪽 위로 비치는 하이라이트 두 줄
-  if (!isCurtain && (a < 0.06 || a > w - 0.06 || z < 2 || z > h - 2)) return '#f6fcff'
+  if (!isCurtain && (a < 0.06 || a > w - 0.06 || z < 2 || z > h - 2)) return a > w - 0.06 || z < 2 ? '#d6e2ea' : '#f6fcff'
   if (!isCurtain && Math.abs(a - w / 2) < 0.03) return '#f6fcff'
+  // 창 안쪽 그늘(위·왼쪽 틀 밑) → 하늘 위아래 두 단 → 사선 반사
+  if (!isCurtain && (z > h - 4 || a < 0.1)) return '#86c4e2'
   const d = frac((a * 16 + z) / 24)
-  return d < 0.12 || (d > 0.2 && d < 0.25) ? '#e6f7ff' : '#a8dcf2'
+  return d < 0.12 || (d > 0.2 && d < 0.25) ? '#e6f7ff' : z > h * 0.55 ? '#9cd4ee' : '#b4e2f6'
 }
 /** a = 벽을 따라가는 칸 좌표, z = 높이(아트 px) */
 const LEVEL_WALLS: Record<LevelWallMat, WallDef> = {
   block: {
     name: '시멘트 블록',
-    base: '#9aa0a8',
-    cap: '#e4e6ea',
+    base: '#a39a92',
+    cap: '#ece6de',
     face: (a, z) => {
       const row = Math.floor(z / 8)
-      if (z % 8 < 1 || frac(a + (row % 2) * 0.5) < 0.03) return '#a9adb4'
-      return noise(Math.round(a * 32), Math.round(z)) > 0.9 ? '#bfc3c9' : '#c9ccd2'
+      if (z % 8 < 1 || frac(a + (row % 2) * 0.5) < 0.03) return '#b3aba2'
+      return noise(Math.round(a * 32), Math.round(z)) > 0.9 ? '#c5bdb4' : '#d2cbc2'
     },
   },
-  paint: { name: '흰 페인트', base: '#c9c2b4', cap: '#ffffff', face: () => '#f4f1ea' },
+  paint: { name: '흰 페인트', base: '#c8b49c', cap: '#fffaf2', face: () => '#f6ecdc' },
   brick: {
     name: '벽돌',
     base: '#b98a78',
@@ -2930,7 +3299,7 @@ const SHOP_FLOORS = {
     name: '인조 잔디',
     paint: (q) => {
       const n = n32(q.gx, q.gy)
-      return n > 0.9 ? '#9ad87e' : n < 0.12 ? '#4f9a4e' : Math.floor(q.gx) % 2 ? '#6fb85e' : '#78c266'
+      return n > 0.9 ? '#a5cf78' : n < 0.12 ? '#4a8a4c' : Math.floor(q.gx) % 2 ? '#78aa5c' : '#82b464'
     },
   },
   'floor-parquet': {
@@ -3169,7 +3538,16 @@ const SHOP_WALLS = {
 
 type ShopFloorId = keyof typeof SHOP_FLOORS
 type ShopWallId = keyof typeof SHOP_WALLS
-const FLOORS: Record<FloorMat, FloorDef> = { ...LEVEL_FLOORS, ...SHOP_FLOORS }
+/** 바닥 공통 빛: 뒤 벽(gx·gy = 0) 밑은 벽 그늘 두 단 */
+const floorLit = (f: FloorDef): FloorDef => ({
+  ...f,
+  paint: (q) => {
+    const c = f.paint(q)
+    const d = Math.min(q.gx, q.gy)
+    return d < 0.1 ? mix(c, S.sh, 0.2) : d < 0.22 ? mix(c, S.sh, 0.09) : c
+  },
+})
+const FLOORS: Record<FloorMat, FloorDef> = Object.fromEntries(Object.entries({ ...LEVEL_FLOORS, ...SHOP_FLOORS }).map(([k, f]) => [k, floorLit(f)])) as Record<FloorMat, FloorDef>
 const WALLS: Record<WallMat, WallDef> = { ...LEVEL_WALLS, ...SHOP_WALLS }
 /** 그림이 있는 상점 바닥재·벽지 id (economy.ts와 같은지 테스트가 본다) */
 export const SURFACE_ART_IDS = { floor: Object.keys(SHOP_FLOORS), wallpaper: Object.keys(SHOP_WALLS) }
@@ -3267,7 +3645,15 @@ const wallFace = (mat: WallMat, windows: number[], molding: boolean, seg?: Finis
   if (q.z < 5) return q.z < 1 ? mix(w.base, '#000000', 0.12) : w.base
   if (molding && q.z > 38 && q.z < 40) return w.cap
   for (const w0 of windows) if (a > w0 && a < w0 + 1.3 && q.z > 16 && q.z < 40) return windowPx(a - w0, q.z - 16, 1.3, 24)
-  return w.face(a, q.z)
+  // 창턱(흰 줄)과 그 아래 그늘 한 줄
+  for (const w0 of windows) if (a > w0 - 0.05 && a < w0 + 1.35 && q.z > 14 && q.z <= 16) return q.z > 15 ? '#ffffff' : mix(w.face(a, q.z), S.sh, 0.3)
+  return wallLight(w.face(a, q.z), a, q.z)
+}
+/** 벽 빛: 바닥에 닿는 아래쪽·방 구석은 어둡게(AO), 위쪽은 살짝 밝게 — 두세 단으로만 (픽셀 띠) */
+const wallLight = (c: Color, a: number, z: number): Color => {
+  const t = (z < 8 ? 0.14 : z < 12 ? 0.07 : 0) + (a < 0.12 ? 0.12 : a < 0.3 ? 0.05 : 0)
+  if (t) return mix(c, S.sh, t)
+  return z > WALL_H - 6 ? mix(c, WHITE, 0.08) : c
 }
 const windowsAlong = (len: number, want: number) => {
   const n = Math.max(0, Math.min(want, Math.floor(len / 1.8)))
@@ -3507,140 +3893,7 @@ export function artZoneFloor(kind: ZoneFloor, w: number, d: number): ItemPixels 
   return { cv, o, box: { x: 0, y: 0, w, d, z: 0, h: 0 }, w, d, isPlaceholder: false }
 }
 
-// ── 직원 (아트 16×26, 4방향: 앞 ↙ · 뒤 ↖ · 오른앞 ↘ · 오른뒤 ↗) ──
-// 오른쪽 두 방향은 반전하지 않고 따로 그린다 — 몸 방향(얼굴·귀·발끝)만 바뀌고 빛(머리 하이라이트·옷 그늘)은 화면 기준 같은 쪽에 남는다
-const FRONT = [
-  '....hhhhhh....',
-  '..hhhhhhhhhh..',
-  '.hhhhHHhhhhhh.',
-  '.hhHHhhhhhhhh.',
-  '.hhhssshhhhhh.',
-  '.hhssssssshhh.',
-  '.hsesssesshhh.',
-  '.hsesssesshhh.',
-  '.hrsssssrshhh.',
-  '..sssmmssshh..',
-  '...sssssss....',
-  '.....ss.......',
-  '...cccwwccc...',
-  '..ccccwwcccC..',
-  '.scccccccCCCs.',
-  '.scccccccCCCs.',
-  '..ccccccccCC..',
-  '..pppppppppp..',
-  '..ppppp.pppp..',
-  '..pppp..pppp..',
-  '..pppp..pppp..',
-  '..pppp..pppp..',
-  '..bbbb..bbbb..',
-  '.bbbbb.bbbbb..',
-]
-const BACK = [
-  '....hhhhhh....',
-  '..hhhhhhhhhh..',
-  '.hhhhhhhHHhhh.',
-  '.hhhhhhhhHHhh.',
-  '.hhhhhhhhhhhh.',
-  '.hhhhhhhhhhhh.',
-  '.hhhhhhhhhhhh.',
-  '.hhhhhhhhhhhs.',
-  '..hhhhhhhhhss.',
-  '..hhhhhhhhhh..',
-  '...hhhhhhhh...',
-  '......ss......',
-  '...ccccccc....',
-  '..CCcccccccc..',
-  '.sCCccccccccs.',
-  '.sCCccccccccs.',
-  '..CCcccccccc..',
-  '..pppppppppp..',
-  '..pppp.ppppp..',
-  '..pppp..pppp..',
-  '..pppp..pppp..',
-  '..pppp..pppp..',
-  '..bbbb..bbbb..',
-  '..bbbbb.bbbbb.',
-]
-/** 오른앞 ↘: 얼굴이 오른쪽, 왼쪽 귀가 보인다. 머리 하이라이트는 왼쪽 위, 옷 그늘은 오른쪽 그대로 */
-const FRONT_R = [
-  '....hhhhhh....',
-  '..hhhhhhhhhh..',
-  '.hhhHHhhhhhhh.',
-  '.hhhhhHHhhhhh.',
-  '.hhhhhhssshhh.',
-  '.hhhssssssshh.',
-  '.hshssesssesh.',
-  '.hshssesssesh.',
-  '.hhhsrsssssrh.',
-  '..hhsssmmsss..',
-  '....sssssss...',
-  '.......ss.....',
-  '...cccwwccc...',
-  '..ccccwwcccC..',
-  '.scccccccCCCs.',
-  '.scccccccCCCs.',
-  '..ccccccccCC..',
-  '..pppppppppp..',
-  '..pppp.ppppp..',
-  '..pppp..pppp..',
-  '..pppp..pppp..',
-  '..pppp..pppp..',
-  '..bbbb..bbbb..',
-  '..bbbbb.bbbbb.',
-]
-/** 오른뒤 ↗: 뒤통수 아래 왼쪽 볼이 보인다. 하이라이트는 오른쪽 위, 옷 그늘은 왼쪽 그대로 */
-const BACK_R = [
-  '....hhhhhh....',
-  '..hhhhhhhhhh..',
-  '.hhhhhhhHHhhh.',
-  '.hhhhhhhhHHhh.',
-  '.hhhhhhhhhhhh.',
-  '.hhhhhhhhhhhh.',
-  '.hhhhhhhhhhhh.',
-  '.shhhhhhhhhhh.',
-  '.sshhhhhhhhh..',
-  '..hhhhhhhhhh..',
-  '...hhhhhhhh...',
-  '......ss......',
-  '....ccccccc...',
-  '..CCcccccccc..',
-  '.sCCccccccccs.',
-  '.sCCccccccccs.',
-  '..CCcccccccc..',
-  '..pppppppppp..',
-  '..ppppp.pppp..',
-  '..pppp..pppp..',
-  '..pppp..pppp..',
-  '..pppp..pppp..',
-  '..bbbb..bbbb..',
-  '.bbbbb.bbbbb..',
-]
-// 걷기: 다리 줄을 바꾼 두 프레임 (지금 사무실의 walk1/walk2 방식) + 팔을 다리와 반대로 한 줄 흔든다
-const legs6 = (rows: string[], a: string[]) => [...rows.slice(0, 18), ...a]
-const swing = (rows: string[], left: boolean) => rows.map((r, i) => (i === 15 ? (left ? `.${r.slice(1, 12)}.${r.slice(13)}`.replace(/^\./, '.') : r) : i === 16 ? (left ? `s${r.slice(1)}` : `${r.slice(0, 13)}s`) : r))
-// 오른쪽 방향 다리는 왼쪽 방향 다리 줄을 좌우로 뒤집어 쓴다 (몸통 위는 위에서 따로 그림)
-const mirrorLegs = (rows: string[]) => rows.map((r) => [...r].reverse().join(''))
-const FRONT_LEGS = [
-  ['..pppp..pppp..', '..pppp...ppp..', '..ppp....ppp..', '..bbbb...ppp..', '.bbbbb...bbb..', '.........bbbb.'],
-  ['..pppp..pppp..', '..ppp...pppp..', '..ppp....ppp..', '..ppp...bbbb..', '..bbb...bbbbb.', '.bbbb.........'],
-]
-const BACK_LEGS = [
-  ['..pppp..pppp..', '..pppp...ppp..', '..ppp....ppp..', '..bbbb...ppp..', '..bbbb...bbb..', '.........bbbb.'],
-  ['..pppp..pppp..', '..ppp...pppp..', '..ppp....ppp..', '..ppp...bbbb..', '..bbb...bbbb..', '..bbbb........'],
-]
-const WALK = {
-  front: [swing(legs6(FRONT, FRONT_LEGS[0]), true), swing(legs6(FRONT, FRONT_LEGS[1]), false)],
-  back: [swing(legs6(BACK, BACK_LEGS[0]), false), swing(legs6(BACK, BACK_LEGS[1]), true)],
-  frontRight: [swing(legs6(FRONT_R, mirrorLegs(FRONT_LEGS[0])), false), swing(legs6(FRONT_R, mirrorLegs(FRONT_LEGS[1])), true)],
-  backRight: [swing(legs6(BACK_R, mirrorLegs(BACK_LEGS[0])), true), swing(legs6(BACK_R, mirrorLegs(BACK_LEGS[1])), false)],
-}
-const SIT = {
-  front: [...FRONT.slice(0, 17), '..pppppppppp..', '.pppppppppp...', '.bbbb.bbbb....'],
-  back: [...BACK.slice(0, 17), '..pppppppppp..'],
-  frontRight: [...FRONT_R.slice(0, 17), '..pppppppppp..', '...pppppppppp.', '....bbbb.bbbb.'],
-  backRight: [...BACK_R.slice(0, 17), '..pppppppppp..'],
-}
-
+// ── 직원 (인물 그림은 personArt.ts — 서기 약 13×32칸, 4방향: 앞 ↙ · 뒤 ↖ · 오른앞 ↘ · 오른뒤 ↗) ──
 export interface Look {
   h: string
   s: string
@@ -3669,134 +3922,45 @@ export const lookOf = (n: number): Look => ({
   head: n % HEAD_ITEMS.length,
 })
 
-// ── 직원 외관: 기본 그림(앞 ↙·뒤 ↖) 위에 칸 조각을 덧그린다. 오른쪽 두 방향은 조각을 좌우로 뒤집어 쓴다 ──
-/** [줄, 시작 칸, 끝 칸, 색 글자] — '.'은 지운다 */
-type Span = [y: number, x0: number, x1: number, k: string]
-type Wear = { front?: Span[]; back?: Span[] }
-const ART_W = 14
-const paintSpans = (rows: string[], spans: Span[], flip: boolean) => {
-  const g = rows.map((r) => [...r])
-  for (const [y, x0, x1, k] of spans) {
-    if (!g[y]) continue
-    for (let x = x0; x <= x1; x++) {
-      const at = flip ? ART_W - 1 - x : x
-      if (at >= 0 && at < ART_W) g[y][at] = k
-    }
-  }
-  return g.map((r) => r.join(''))
-}
-/** 머리 모양 (0 짧은 머리 = 기본 그림) */
-const HAIR_WEAR: Wear[] = [
-  {},
-  // 1 긴 머리: 뒤로 어깨까지
-  { front: [[9, 1, 1, 'h'], [9, 10, 12, 'h'], [10, 1, 2, 'h'], [10, 9, 12, 'h'], [11, 9, 12, 'h'], [12, 10, 12, 'h'], [13, 10, 11, 'h']], back: [[10, 2, 11, 'h'], [11, 2, 11, 'h'], [12, 2, 11, 'h'], [13, 3, 10, 'h'], [14, 4, 9, 'h']] },
-  // 2 단발 앞머리: 이마를 덮고 턱선에서 네모나게
-  { front: [[4, 1, 12, 'h'], [5, 3, 3, 'h'], [5, 5, 5, 'h'], [5, 7, 7, 'h'], [5, 9, 9, 'h'], [9, 1, 1, 'h'], [9, 10, 12, 'h'], [10, 1, 2, 'h'], [10, 9, 12, 'h']], back: [[9, 1, 12, 'h'], [10, 1, 12, 'h']] },
-  // 3 포니테일: 뒤통수에서 묶어 늘어뜨린다
-  { front: [[3, 12, 12, 'y'], [3, 13, 13, 'h'], [4, 13, 13, 'h'], [5, 13, 13, 'h'], [6, 13, 13, 'h'], [7, 12, 13, 'h'], [8, 12, 12, 'h']], back: [[10, 6, 7, 'y'], [11, 6, 7, 'h'], [12, 6, 7, 'h'], [13, 6, 7, 'h'], [14, 7, 7, 'h']] },
-  // 4 삐죽 머리: 정수리가 들쭉날쭉
-  { front: [[0, 0, 13, '.'], [0, 2, 2, 'h'], [0, 5, 5, 'h'], [0, 8, 8, 'h'], [0, 11, 11, 'h'], [1, 1, 12, 'h'], [2, 0, 0, 'h'], [3, 13, 13, 'h'], [4, 4, 4, 'h']], back: [[0, 0, 13, '.'], [0, 2, 2, 'h'], [0, 5, 5, 'h'], [0, 8, 8, 'h'], [0, 11, 11, 'h'], [1, 1, 12, 'h'], [2, 0, 0, 'h'], [3, 13, 13, 'h']] },
-  // 5 풍성한 머리: 양옆·위로 한 칸씩 부푼다
-  { front: [[0, 3, 10, 'h'], [1, 1, 12, 'h'], [2, 0, 0, 'h'], [2, 13, 13, 'h'], [3, 0, 0, 'h'], [3, 13, 13, 'h'], [4, 0, 0, 'h'], [4, 13, 13, 'h'], [5, 0, 0, 'h'], [5, 13, 13, 'h'], [6, 0, 0, 'h'], [6, 13, 13, 'h'], [7, 0, 0, 'h'], [7, 13, 13, 'h'], [8, 13, 13, 'h'], [9, 10, 12, 'h'], [10, 10, 11, 'h']], back: [[0, 3, 10, 'h'], [1, 1, 12, 'h'], [2, 0, 13, 'h'], [3, 0, 13, 'h'], [4, 0, 13, 'h'], [5, 0, 13, 'h'], [6, 0, 13, 'h'], [7, 0, 0, 'h'], [7, 13, 13, 'h'], [8, 1, 1, 'h'], [10, 2, 11, 'h']] },
-  // 6 옆 가르마: 얼굴 쪽으로 쓸어 넘긴 앞머리
-  { front: [[1, 4, 8, 'H'], [2, 3, 4, 'H'], [4, 1, 7, 'h'], [5, 2, 4, 'h'], [3, 1, 3, 'h']], back: [[1, 4, 8, 'H'], [2, 3, 4, 'H'], [2, 8, 9, 'h'], [3, 8, 9, 'h']] },
-  // 7 짧게 민 머리: 아래 shave()로 머리색을 옅게 + 윗줄을 깎는다
-  { front: [[0, 0, 13, '.'], [1, 2, 2, '.'], [1, 11, 11, '.'], [9, 10, 11, '.']], back: [[0, 0, 13, '.'], [1, 2, 2, '.'], [1, 11, 11, '.']] },
-]
-/** 머리 소품 */
-const HEAD_WEAR: Wear[] = [
-  {},
-  // 1 헤드셋: 머리띠 + 뒤통수 쪽 귀덮개 + 입으로 오는 마이크 (뒤에서는 귀덮개 둘)
-  { front: [[0, 4, 9, 'j'], [1, 10, 11, 'j'], [2, 12, 12, 'j'], [3, 12, 12, 'j'], [4, 11, 13, 'j'], [5, 11, 13, 'j'], [5, 12, 12, 'y'], [6, 11, 13, 'j'], [7, 10, 10, 'j'], [8, 9, 9, 'j']], back: [[0, 4, 9, 'j'], [1, 2, 3, 'j'], [1, 10, 11, 'j'], [2, 1, 1, 'j'], [3, 1, 1, 'j'], [2, 12, 12, 'j'], [3, 12, 12, 'j'], [4, 0, 1, 'j'], [5, 0, 1, 'j'], [6, 0, 1, 'j'], [4, 12, 13, 'j'], [5, 12, 13, 'j'], [6, 12, 13, 'j']] },
-  // 2 모자: 얼굴 쪽으로 챙이 나온 캡 (뒤에서는 조절 끈)
-  { front: [[0, 3, 10, 'q'], [1, 1, 12, 'q'], [2, 1, 12, 'q'], [3, 0, 6, 'Q']], back: [[0, 3, 10, 'q'], [1, 1, 12, 'q'], [2, 1, 12, 'q'], [3, 5, 8, 'Q']] },
-  // 3 비니: 머리를 덮는 니트 + 접단 + 방울
-  { front: [[0, 4, 9, 'v'], [0, 6, 7, 'w'], [1, 2, 11, 'v'], [2, 1, 12, 'v'], [3, 1, 12, 'V']], back: [[0, 4, 9, 'v'], [0, 6, 7, 'w'], [1, 2, 11, 'v'], [2, 1, 12, 'v'], [3, 1, 12, 'V']] },
-  // 4 머리핀
-  { front: [[3, 9, 10, 'y']], back: [[3, 9, 10, 'y']] },
-  // 5 베레모: 납작하고 뒤로 기울어 머리보다 넓다
-  { front: [[0, 3, 11, 't'], [1, 1, 13, 't'], [2, 2, 12, 'T']], back: [[0, 2, 10, 't'], [1, 0, 12, 't'], [2, 1, 11, 'T']] },
-]
-/** 얼굴 소품 — 얼굴이 보이는 앞 방향만 */
-const FACE_WEAR: Span[][] = [
-  [],
-  // 1 안경: 눈을 둘러싼 테 + 다리
-  [[6, 2, 2, 'g'], [6, 4, 6, 'g'], [6, 8, 9, 'g'], [7, 2, 2, 'g'], [7, 4, 4, 'g'], [7, 6, 6, 'g'], [7, 8, 8, 'g']],
-  // 2 선글라스: 까만 알 두 줄
-  [[6, 2, 9, 'k'], [7, 2, 4, 'k'], [7, 6, 8, 'k'], [6, 3, 3, 'L'], [6, 7, 7, 'L']],
-  // 3 수염: 입 둘레·턱
-  [[8, 2, 2, 'h'], [8, 9, 9, 'h'], [9, 2, 4, 'h'], [9, 7, 9, 'h'], [10, 3, 9, 'h']],
-  // 4 콧수염
-  [[8, 4, 7, 'h']],
-]
-/** 윗옷 (0 티셔츠 = 기본 그림). 가운데 기준 좌우 대칭이라 오른쪽 방향도 같은 칸 */
-const TOP_WEAR: (Wear & { sleeve?: boolean })[] = [
-  {},
-  // 1 후드티: 목둘레 모자 + 끈 + 앞주머니
-  { sleeve: true, front: [[11, 3, 4, 'C'], [11, 9, 10, 'C'], [12, 5, 8, 'C'], [13, 5, 5, 'w'], [14, 5, 5, 'w'], [13, 8, 8, 'w'], [14, 8, 8, 'w'], [16, 4, 9, 'C']], back: [[11, 4, 9, 'c'], [12, 4, 9, 'C'], [13, 5, 8, 'C']] },
-  // 2 셔츠·넥타이: 흰 깃 + 넥타이 + 벨트
-  { sleeve: true, front: [[12, 5, 8, 'w'], [13, 6, 7, 'n'], [14, 6, 7, 'n'], [15, 6, 7, 'n'], [16, 2, 11, 'K']], back: [[12, 4, 9, 'w'], [16, 2, 11, 'K']] },
-  // 3 카디건: 앞이 트여 흰 속옷이 보이고 단추, 엉덩이까지
-  { sleeve: true, front: [[12, 5, 8, 'w'], [13, 6, 7, 'w'], [14, 6, 7, 'w'], [15, 6, 7, 'w'], [16, 6, 7, 'w'], [14, 5, 5, 'C'], [16, 5, 5, 'C'], [17, 2, 4, 'c'], [17, 9, 11, 'c']], back: [[17, 2, 11, 'c']] },
-  // 4 정장: 흰 셔츠 V + 넥타이 + 깃, 재킷 자락이 길다
-  { sleeve: true, front: [[12, 5, 8, 'w'], [13, 5, 5, 'C'], [13, 8, 8, 'C'], [13, 6, 7, 'n'], [14, 6, 7, 'n'], [14, 5, 5, 'C'], [14, 8, 8, 'C'], [17, 2, 11, 'c'], [17, 6, 7, 'C']], back: [[12, 5, 8, 'w'], [17, 2, 11, 'c'], [17, 6, 6, 'C']] },
-]
-/** 긴소매: 팔(몸통 밖 피부 칸)의 맨 아래 한 칸(손)만 남기고 옷색으로 */
-const longSleeves = (rows: string[]) => {
-  const g = rows.map((r) => [...r])
-  for (const side of [[0, 1], [12, 13]])
-    for (const x of side) {
-      const ys = [12, 13, 14, 15, 16, 17].filter((y) => g[y]?.[x] === 's')
-      for (const y of ys.slice(0, -1)) g[y][x] = 'c'
-    }
-  return g.map((r) => r.join(''))
-}
-/** 짧게 민 머리: 머리 칸을 옅은 빡빡이 색으로 */
-const shave = (rows: string[]) => rows.map((r, y) => (y <= 10 ? r.replace(/[hH]/g, 'u') : r))
-const wearOf = <T,>(list: T[], n: number | undefined) => list[(((n ?? 0) % list.length) + list.length) % list.length]
-/** 기본 그림에 머리 모양 → 윗옷 → 머리 소품 → 얼굴 소품 순으로 덧그린다 */
-function dress(rows: string[], dir: PersonDir, look: Look) {
-  const isFront = dir === 'front' || dir === 'frontRight'
-  const flip = dir === 'frontRight' || dir === 'backRight'
-  const side = (w: Wear) => (isFront ? w.front : w.back) ?? []
-  const hair = wearOf(HAIR_WEAR, look.hair)
-  let out = paintSpans(rows, side(hair), flip)
-  if (wearOf(HAIR_WEAR, look.hair) === HAIR_WEAR[7]) out = shave(out)
-  const top = wearOf(TOP_WEAR, look.top)
-  if (top.sleeve) out = longSleeves(out)
-  out = paintSpans(out, side(top), flip)
-  out = paintSpans(out, side(wearOf(HEAD_WEAR, look.head)), flip)
-  if (isFront) out = paintSpans(out, wearOf(FACE_WEAR, look.face), flip)
-  return out
-}
-
-export type PersonPose = 'stand' | 'walk1' | 'walk2' | 'sit'
+/** type = 책상 앞에 앉아 키보드 치기 (앞 방향은 다리를 그리지 않는다) */
+export type PersonPose = 'stand' | 'walk1' | 'walk2' | 'sit' | 'type'
 /** front ↙ · back ↖ · frontRight ↘ · backRight ↗ */
 export type PersonDir = 'front' | 'back' | 'frontRight' | 'backRight'
-export const PERSON_POSES: PersonPose[] = ['stand', 'walk1', 'walk2', 'sit']
+export const PERSON_POSES: PersonPose[] = ['stand', 'walk1', 'walk2', 'sit', 'type']
 export const PERSON_DIRS: PersonDir[] = ['front', 'back', 'frontRight', 'backRight']
 /** 칸 방향(r0 ↙ · r1 ↖ · r2 ↗ · r3 ↘) → 직원 그림 방향 */
 export const personDirOf = (facing: Rot): PersonDir => (['front', 'back', 'backRight', 'frontRight'] as const)[facing]
-const ROWS: Record<PersonPose, Record<PersonDir, string[]>> = {
-  stand: { front: FRONT, back: BACK, frontRight: FRONT_R, backRight: BACK_R },
-  walk1: { front: WALK.front[0], back: WALK.back[0], frontRight: WALK.frontRight[0], backRight: WALK.backRight[0] },
-  walk2: { front: WALK.front[1], back: WALK.back[1], frontRight: WALK.frontRight[1], backRight: WALK.backRight[1] },
-  sit: SIT,
+const FIG_DIR: Record<PersonDir, FigureDir> = { front: 'SW', frontRight: 'SE', back: 'NW', backRight: 'NE' }
+/** 그린 칸을 내용만 남기고 자른다 → [윗줄, 아랫줄] */
+const rowsUsed = (g: Grid) => {
+  let top = -1
+  let bottom = -1
+  for (let y = 0; y < g.h; y++)
+    for (let x = 0; x < g.w; x++)
+      if (g.p[y * g.w + x]) {
+        if (top < 0) top = y
+        bottom = y
+      }
+  return [top, bottom]
 }
 
-/** 직원 한 장 (픽셀, 16 × 줄 수+2). 아래 가장자리 = 발끝, 가로 가운데 = 발 위치 */
+/** 직원 한 장 (픽셀, 16 × 키). 아래 가장자리 = 발끝(앉으면 앞 방향은 발끝, 뒤 방향은 엉덩이), 가로 가운데 = 발 위치 */
 export function artPerson(pose: PersonPose, dir: PersonDir, look: Look) {
-  const rows = dress(ROWS[pose][dir], dir, look)
-  const col: Record<string, Color> = {
-    h: look.h, H: mix(look.h, WHITE, 0.3), s: look.s, e: '#2a2230', r: '#f4a0a0', m: '#c2706a', c: look.c, C: mix(look.c, S.sh, 0.3), w: '#ffffff', p: look.p, b: look.b ?? '#3a3040',
-    // 외관 소품: 빡빡이·안경테·선글라스·헤드셋·렌즈·포인트·캡·비니·베레모·넥타이·벨트
-    u: mix(look.h, look.s, 0.45), g: '#8a90aa', k: '#22232c', j: '#d8dbe6', L: '#bfe4ff', y: '#f06a8a',
-    q: '#d24a4a', Q: mix('#d24a4a', S.sh, 0.35), v: '#f0a040', V: mix('#f0a040', S.sh, 0.3), t: '#3a5ac8', T: mix('#3a5ac8', S.sh, 0.35), n: '#c03a48', K: '#2a2a34',
-  }
-  const cv = new Cv(16, rows.length + 2)
-  rows.forEach((row, y) => [...row].forEach((k, x) => col[k] && cv.set(x + 1, y + 1, C(col[k]))))
-  outline(cv)
+  const g = drawFigure(look, pose, FIG_DIR[dir])
+  const [top, bottom] = rowsUsed(g)
+  const cv = new Cv(g.w, bottom - top + 1)
+  for (let y = top; y <= bottom; y++)
+    for (let x = 0; x < g.w; x++) {
+      const c = g.p[y * g.w + x]
+      if (c) cv.set(x, y - top, [...figureHex(c), 255] as RGBA)
+    }
   return cv
+}
+
+/** 앉은 그림에서 엉덩이(좌석에 닿는 줄) 아래로 내려온 다리 길이 (아트 px) — 장면은 이만큼 그림을 내려 엉덩이를 좌석에 맞춘다 */
+export function personSitDrop(dir: PersonDir, pose: 'sit' | 'type' = 'sit') {
+  const g = drawFigure({ h: '#000000', s: '#000000', c: '#000000', p: '#000000' }, pose, FIG_DIR[dir])
+  return rowsUsed(g)[1] - g.hip
 }
 
 /** 직원 한 장 (화면 캔버스) — 장면은 쓰는 자세부터 한 장씩 만든다 */
