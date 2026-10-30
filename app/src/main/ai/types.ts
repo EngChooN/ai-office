@@ -60,11 +60,15 @@ export interface AgentRuntime {
   readonly isOpen: boolean
   /** 아직 처리하지 않은 지시 수 */
   readonly queued: number
+  /** 지금 처리 중인 지시 뒤에 줄 선 지시 수 */
+  readonly backlog: number
   start(opts: RuntimeStartOpts): void
   send(text: string, attachments: Attachment[]): void
   /** 지금 턴을 끊는다 (결과는 result 이벤트로 온다) */
   interrupt(): Promise<void>
   setModel(modelId: string | undefined): void
+  /** 아직 시작하지 않은 지시를 버린다 (실행 오류 뒤 — 출처를 잃은 지시가 다시 실행되지 않게) */
+  dropQueued(): void
   /** 세션만 닫는다 — 다음 send 때 다시 열 수 있다 */
   close(): void
   /** 영구 종료 */

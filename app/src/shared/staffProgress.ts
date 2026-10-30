@@ -10,11 +10,11 @@ export function summarizeInstruction(text: string): string {
 
 /**
  * 직원의 처리 중인 지시 정보. 받은 일(origins)이 없으면 null.
- * pending = 아직 답하지 않은 지시 수(처리 중인 것 포함) — 현재 지시 뒤의 대기 수는 pending - 1
+ * queued = 현재 지시 뒤에 줄 선 지시 수 (공급자마다 세는 법이 달라 런타임이 계산해 넘긴다)
  */
-export function buildStaffProgress(a: { status: StaffStatus; origins: readonly { text?: string; room?: string }[]; pending: number; hasApproval: boolean }): StaffProgress | null {
+export function buildStaffProgress(a: { status: StaffStatus; origins: readonly { text?: string; room?: string }[]; queued: number; hasApproval: boolean }): StaffProgress | null {
   const cur = a.origins[0]
   if (!cur) return null
   const state: StaffProgress['state'] = a.status === 'error' ? 'error' : a.hasApproval || a.status === 'waiting' ? 'approval' : a.status === 'working' ? 'working' : 'queued'
-  return { state, text: cur.text ?? '', ...(cur.room ? { room: cur.room } : {}), queued: Math.max(0, a.pending - 1) }
+  return { state, text: cur.text ?? '', ...(cur.room ? { room: cur.room } : {}), queued: a.queued }
 }

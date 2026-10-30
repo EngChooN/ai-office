@@ -50,3 +50,15 @@ test('끝난 턴의 받은 일 나누기: 아직 답하지 않은 지시(나중�
   // 받은 일보다 남은 지시가 많아도(같은 카드 재지시 등) 넘치지 않는다
   assert.deepEqual(splitFinished(origins, 5), { done: [], keep: origins })
 })
+
+test('대기 수(#9): 처리 중 1건은 빼고 센다, 오류 뒤 비우면 0', () => {
+  const p = new PendingSends()
+  assert.equal(p.behind, 0)
+  p.add('a')
+  assert.equal(p.behind, 0)
+  p.add('b')
+  assert.equal(p.behind, 1)
+  p.keepOnly([]) // ClaudeRuntime.dropQueued
+  assert.equal(p.count, 0)
+  assert.equal(p.behind, 0)
+})

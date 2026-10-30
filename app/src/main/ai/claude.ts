@@ -98,6 +98,14 @@ export class ClaudeRuntime implements AgentRuntime {
   get queued() {
     return this.pending.count
   }
+  get backlog() {
+    return this.pending.behind
+  }
+
+  dropQueued() {
+    this.inbox = []
+    this.pending.keepOnly([])
+  }
 
   send(text: string, attachments: Attachment[]) {
     const uuid = crypto.randomUUID()

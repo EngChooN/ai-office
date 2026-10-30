@@ -347,14 +347,16 @@ class Worker {
     })
   }
 
-  get pendingCount() {
-    return this.rt.queued
+  get backlog() {
+    return this.rt.backlog
   }
 
   private handle(m: RuntimeEvent) {
     const id = this.staff.id
     if (m.type === 'error') {
       this.isRunning = false
+      // 받은 일은 office가 모두 정리한다 — 남은 입력이 출처 없이 다시 실행되지 않게 같이 버린다
+      this.rt.dropQueued()
       this.hooks.update(id, { status: 'error', activity: String(m.error).slice(0, ACTIVITY_MAX) })
       this.hooks.log(id, 'error', String(m.error))
       this.hooks.failed(id, String(m.error))
@@ -494,9 +496,9 @@ export class HiredStaffManager {
     return this.workers.get(staffId)?.interrupt(followUp)
   }
 
-  /** 아직 답하지 않은 지시 수 (처리 중인 것 포함) */
-  pendingCount(staffId: string) {
-    return this.workers.get(staffId)?.pendingCount ?? 0
+  /** 처리 중인 지시 뒤에 줄 선 지시 수 */
+  backlog(staffId: string) {
+    return this.workers.get(staffId)?.backlog ?? 0
   }
 
   withdraw(staffId: string) {

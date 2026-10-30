@@ -11,6 +11,11 @@ export class PendingSends {
     return this.ids.length
   }
 
+  /** 맨 앞(처리 중) 지시 뒤에 줄 선 수 */
+  get behind() {
+    return Math.max(0, this.ids.length - 1)
+  }
+
   add(id: string) {
     this.ids.push(id)
   }

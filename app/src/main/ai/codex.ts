@@ -75,6 +75,13 @@ export class CodexRuntime implements AgentRuntime {
   get queued() {
     return this.inbox.length
   }
+  get backlog() {
+    return this.inbox.length
+  }
+
+  dropQueued() {
+    this.inbox = []
+  }
 
   send(text: string, attachments: Attachment[]) {
     this.inbox.push({ text, attachments })
