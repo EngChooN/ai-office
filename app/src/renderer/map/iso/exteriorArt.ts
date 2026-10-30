@@ -8,7 +8,7 @@ import { HH, HW } from '../../../shared/iso/grid.ts'
 import { CellKind, kindAt, planOf } from '../../../shared/iso/plan.ts'
 import type { Rot } from '../../../shared/iso/furniture.ts'
 import { LEVEL_TABLE, levelRowOf, type ExteriorFeature, type ExteriorStage } from '../../../shared/officeLevel.ts'
-import { artItem, artPerson, Cv, lookOf, type ArtBox, type PersonDir, type PersonPose } from './isoArt.ts'
+import { artItem, Cv, lookOf, type ArtBox, type PersonDir, type PersonPose } from './isoArt.ts'
 
 type RGBA = [number, number, number, number]
 type Color = string | RGBA
@@ -27,31 +27,33 @@ const mix = (a: Color, b: Color, t: number): RGBA => {
 }
 const frac = (n: number) => n - Math.floor(n)
 const noise = (x: number, y: number) => (((Math.imul(x | 0, 73856093) ^ Math.imul(y | 0, 19349663)) >>> 0) % 997) / 997
-const SH = '#4a4f80'
+const SH = '#5a4a66'
 const OUT = '#2e2a40'
 const SHADOW: RGBA = [42, 46, 80, 46]
 const K = {
   wood: '#d6ae7a',
   woodD: '#a77d52',
-  metal: '#5d6380',
-  metalL: '#b8bdcb',
-  dark: '#3a3f55',
+  metal: '#5f5866',
+  metalL: '#c4bdbc',
+  dark: '#433d4c',
   navy: '#3a4a6a',
   white: '#f6f8fb',
   orange: '#f0834e',
   mint: '#8fd6c2',
   yellow: '#edb417',
   blue: '#5aa8d8',
-  sky: '#a8dcf2',
+  sky: '#b0d9e4',
   skyL: '#e6f7ff',
   pink: '#f2a7b8',
   gold: '#d8b45a',
-  leaf: ['#3f9a58', '#62bd6c', '#9ad87e'] as const,
+  leaf: ['#4a8a4c', '#6fae5c', '#a5cf78'] as const,
 }
 
 /** 외관 한 층 높이 (아트 px — 안의 벽 48px보다 낮춰 층수가 잘 보이게) · 평면 1칸이 외관에서 차지하는 칸 */
 export const FH = 22
 export const PLAN_K = 0.5
+/** 출입문 높이 (아트 px) — 외관 사람(miniPerson, 15px)보다 조금 높게 */
+const DOOR_H = 17
 
 // ── 상자 (isoArt.ts drawBox와 같은 빛: 윗면 원색 · 왼쪽 아래 12% · 오른쪽 아래 26% 남색 섞기) ──
 interface Q {
@@ -289,13 +291,48 @@ const put = (s: Sprite | { cv: Cv; o: Pt; box: ArtBox }, gx: number, gy: number,
 /** isoArt.ts 품목을 놓는다 */
 const item = (id: string, gx: number, gy: number, r: Rot = 0, z = 0) => put(artItem(id, r), gx, gy, z)
 
-/** 직원 그림(사무실 안과 같은 artPerson) 한 명 — front ↙, back ↖, flip이면 ↘·↗ */
+/** 외관 사람 — 건물이 사무실 안의 반 크기(PLAN_K)라 사람도 반 크기로 새로 그린다 (사무실 직원 그림을 줄이면 뭉개진다).
+ *  7×13 + 외곽선 1px = 9×15 — 문(DOOR_H 17)·가로등(32)·나무보다 작다. 머리·피부·윗옷·바지 색은 lookOf(n) */
+const MINI_HEAD: Record<'front' | 'back', string[]> = {
+  front: ['..hhh..', '.hhhhh.', '.hssss.', '.hssss.', '..sss..'],
+  back: ['..hhh..', '.hhhhh.', '.hhhhh.', '.hhhhh.', '..sss..'],
+}
+const MINI_BODY = ['.ccccc.', 'ccccccc', 'ccccccc', 'sppppps']
+const MINI_LEGS: Record<'stand' | 'walk1' | 'walk2', string[]> = {
+  stand: ['.pp.pp.', '.pp.pp.', '.pp.pp.', '.bb.bb.'],
+  walk1: ['.pp.pp.', 'pp...pp', 'pp...pp', 'bb...bb'],
+  walk2: ['..ppp..', '..pp...', '..pp...', '..bb...'],
+}
+export function miniPerson(pose: PersonPose, dir: PersonDir, n: number): Cv {
+  const k = lookOf(n)
+  const rows = [...MINI_HEAD[dir === 'back' || dir === 'backRight' ? 'back' : 'front'], ...MINI_BODY, ...MINI_LEGS[pose === 'walk1' || pose === 'walk2' ? pose : 'stand']]
+  const W = rows[0].length
+  const cv = new Cv(W + 2, rows.length + 2)
+  const pal: Record<string, Color> = { h: k.h, s: k.s, c: k.c, p: k.p, b: '#3a3442' }
+  // 외곽선 먼저, 그 위에 색 (오른쪽 끝 열은 그늘)
+  rows.forEach((row, y) => [...row].forEach((ch, x) => ch !== '.' && [[-1, 0], [1, 0], [0, -1], [0, 1]].forEach(([dx, dy]) => cv.set(x + 1 + dx, y + 1 + dy, C(OUT)))))
+  rows.forEach((row, y) =>
+    [...row].forEach((ch, x) => {
+      if (ch === '.') return
+      const isShade = x === W - 1 || row[x + 1] === '.' || row[x + 1] === undefined
+      cv.set(x + 1, y + 1, C(isShade && ch !== 'b' ? mix(pal[ch], SH, 0.28) : pal[ch]))
+    }),
+  )
+  return dir === 'frontRight' || dir === 'backRight' ? mirrorCv(cv) : cv
+}
+function mirrorCv(src: Cv): Cv {
+  const cv = new Cv(src.w, src.h)
+  cv.blit(src, 0, 0, true)
+  return cv
+}
+
+/** 외관 사람 한 명 (miniPerson) — front ↙, back ↖, flip이면 ↘·↗ */
 const person = (pose: PersonPose, dir: PersonDir, n: number, gx: number, gy: number, flip = false): Obj => ({
-  box: { x: gx - 0.2, y: gy - 0.2, w: 0.4, d: 0.4, z: 0, h: 26 },
+  box: { x: gx - 0.2, y: gy - 0.2, w: 0.4, d: 0.4, z: 0, h: 15 },
   draw: (cv, o) => {
     const [px, py] = P(o, gx, gy, 0)
-    for (let y = -2; y <= 2; y++) for (let x = -6; x <= 6; x++) if ((x * x) / 36 + (y * y) / 4 <= 1) cv.set(px + x, py + y, SHADOW)
-    const p = artPerson(pose, dir, lookOf(n))
+    for (let y = -1; y <= 1; y++) for (let x = -4; x <= 4; x++) if ((x * x) / 16 + y * y <= 1) cv.set(px + x, py + y, SHADOW)
+    const p = miniPerson(pose, dir, n)
     cv.blit(p, Math.round(px - p.w / 2), Math.round(py - p.h + 1), flip)
   },
 })
@@ -315,20 +352,27 @@ const winPx = (zz: number, a: number, isNight: boolean, seed: number, wide = 0.5
   const f = frac(a)
   if (f < 0.5 - wide / 2 || f > 0.5 + wide / 2 || zz < z0 || zz > z1) return null
   if (isNight) return noise(Math.floor(a), seed) > 0.35 ? (zz > z1 - 3 ? '#ffe7a8' : '#ffd98a') : '#3a4470'
-  return (f - zz * 0.02) % 0.3 < 0.05 ? K.skyL : zz > z1 - 3 ? '#cfeefa' : K.sky
+  return (f - zz * 0.02) % 0.3 < 0.05 ? K.skyL : zz > z1 - 3 ? '#cfe9ee' : K.sky
 }
 const curtain = (zz: number, a: number, isNight: boolean, seed: number, fin: string): Color => {
   if (zz < 2 || frac(a * 2) < 0.06) return fin
   if (isNight) return noise(Math.floor(a * 2), seed) > 0.3 ? '#ffd98a' : '#34406a'
-  return frac(a * 2 - zz * 0.03) < 0.12 ? K.skyL : '#b8e2f4'
+  return frac(a * 2 - zz * 0.03) < 0.12 ? K.skyL : '#bcdfe6'
 }
-const brick = (a: number, zz: number) => ((Math.floor(zz / 3) % 2 ? frac(a * 4) : frac(a * 4 + 0.5)) < 0.08 || zz % 3 < 0.6 ? '#fbe9df' : noise(Math.floor(a * 4), Math.floor(zz / 3)) > 0.7 ? '#ecbaa6' : '#f2c6b2')
+/** 밤: 불빛으로 잘못 읽히는 따뜻한 재질(벽돌 등)은 미리 어둡게 — nightTint가 불빛만 남기므로 */
+const dusk = (c: Color, isNight: boolean): Color => (isNight && isLit(C(c)) ? mix(c, '#1a2150', 0.42) : c)
+const brick = (a: number, zz: number) => ((Math.floor(zz / 3) % 2 ? frac(a * 4) : frac(a * 4 + 0.5)) < 0.08 || zz % 3 < 0.6 ? '#f3dccb' : noise(Math.floor(a * 4), Math.floor(zz / 3)) > 0.7 ? '#c97d61' : '#d98f72')
 const paving = (q: Q) => (frac(q.gx * 2) < 0.06 || frac(q.gy * 2) < 0.06 ? '#d6cfc2' : '#ebe5da')
-const lawn = (q: Q) => (noise(Math.round(q.gx * 16), Math.round(q.gy * 16)) > 0.86 ? '#8fcf7a' : '#9ad884')
-const plainLot = (q: Q) => (noise(Math.round(q.gx * 16), Math.round(q.gy * 16)) > 0.9 ? '#bdbab3' : '#d6d3cc')
+const lawn = (q: Q) => (noise(Math.round(q.gx * 16), Math.round(q.gy * 16)) > 0.86 ? '#97bd6e' : '#a8c97e')
+const plainLot = (q: Q) => (noise(Math.round(q.gx * 16), Math.round(q.gy * 16)) > 0.9 ? '#c4b8a6' : '#d9cfbf')
+/** 차고 마당: 자갈 섞인 흙 */
+const gravel = (q: Q) => {
+  const n = noise(Math.round(q.gx * 16), Math.round(q.gy * 16))
+  return n > 0.9 ? '#dccaa8' : n < 0.12 ? '#b09878' : n > 0.6 && n < 0.68 ? '#c0a888' : '#c8b292'
+}
 const marble = (q: Q) => ((Math.floor(q.gx) + Math.floor(q.gy)) % 2 ? '#ece7e2' : '#f6f2ee')
 const DECK = (q: Q) => (frac(q.gx * 4) < 0.12 ? '#b88c5e' : '#d9b285')
-const GRASS = (q: Q) => (noise(Math.round(q.gx * 16), Math.round(q.gy * 16)) > 0.8 ? '#8fcf7a' : '#a3dc8c')
+const GRASS = (q: Q) => (noise(Math.round(q.gx * 16), Math.round(q.gy * 16)) > 0.8 ? '#97bd6e' : '#abcb80')
 const RAIL: Paint = (q) => (q.v > 0.8 ? K.metal : q.v < 0.12 ? K.metalL : [190, 228, 244, 120])
 
 // ── 꾸밈 조각 (외관 전용) ──
@@ -343,6 +387,9 @@ const tree = (r = 7, h = 12) =>
     },
   })
 const lampSprite = (isNight: boolean) => sprite([bx(0.44, 0.44, 0.12, 0.12, 0, 2, K.metal), bx(0.47, 0.47, 0.06, 0.06, 2, 30, K.metal), bx(0.36, 0.36, 0.28, 0.28, 32, 4, isNight ? '#fff3c4' : '#e6e9ef', { flat: isNight })])
+/** 나무 전봇대 + 작은 전등 (E1 흙길 동네) */
+const poleSprite = (isNight: boolean) =>
+  sprite([bx(0.45, 0.45, 0.1, 0.1, 0, 36, K.woodD), bx(0.2, 0.47, 0.6, 0.06, 31, 1, K.woodD), bx(0.42, 0.56, 0.16, 0.12, 27, 2, isNight ? '#fff3c4' : '#d8d2c4', { flat: isNight })])
 const bench = () => sprite([...legs(0.1, 0.3, 0.9, 0.7, 0.06, 4, K.metal), bx(0.08, 0.3, 0.84, 0.4, 4, 1, K.wood), bx(0.08, 0.26, 0.84, 0.06, 5, 5, K.wood)])
 /** 차 한 대 (+x로 달림 — 앞모습이 ↘). dir −1이면 180° 돌려 ↖ */
 export function carSprite(color: string, isNight: boolean, dir: 1 | -1 = 1): Sprite {
@@ -414,6 +461,7 @@ interface Frame {
   GY: number
   /** 인도 줄(앞에서 세 번째 줄)의 뒤 끝 */
   side: number
+  stage: ExteriorStage
 }
 interface Built {
   plan: Plan
@@ -442,10 +490,25 @@ interface StageDef {
   lot: (q: Q, f: Frame, has: (f: ExteriorFeature) => boolean) => Color | null
   /** 건물에 붙는 것(차양·캐노피·간판·조명) — 건물 로컬 좌표 상자. 건물과 같이 정렬한다 */
   attach?: (b: Built, has: (f: ExteriorFeature) => boolean, isNight: boolean) => Box[]
+  /** 맨 위 지붕 설비 (단계마다 다르게 — 넓은 평지붕이 비어 보이지 않게) */
+  rooftop?: (b: Built, isNight: boolean) => Box[]
   decor: (d: DecorCtx) => void
 }
 
-const towerWall = (q: Q, c: WallCtx) => (c.zz < 2 ? '#efe9dc' : frac(c.a) < 0.1 ? (frac(c.a) < 0.04 ? K.gold : '#efe9dc') : curtain(c.zz, c.a, c.isNight, c.fl + 20, '#efe9dc'))
+/** E6·E7 타워: 굵은 돌 기둥 + 금색 테 + 층마다 돌 띠 (E5 유리 사옥과 구별되게 따뜻한 돌·유리) */
+const towerWall = (_q: Q, c: WallCtx) => {
+  const f = frac(c.a)
+  if (c.zz < 2 || c.zz > FH - 3 || f < 0.18) return f > 0.16 && f < 0.18 ? K.gold : c.zz > FH - 3 && c.zz < FH - 2.4 ? '#d8ccb6' : '#e8dfcf'
+  if (f > 0.97) return K.gold
+  return curtain(c.zz, c.a, c.isNight, c.fl + 20, '#e8dfcf')
+}
+/** E5 유리 사옥: 청록 유리 커튼월 + 층마다 짙은 띠(스팬드럴) + 가는 멀리언 */
+const glassWall = (_q: Q, c: WallCtx) => {
+  if (c.zz > FH - 4) return c.zz > FH - 1 ? '#8b97a3' : '#56616f'
+  if (frac(c.a * 2) < 0.05) return '#7b8796'
+  if (c.isNight) return curtain(c.zz, c.a, true, c.fl + 13, '#7b8796')
+  return frac(c.a * 2 - c.zz * 0.04) < 0.1 ? '#d6eeee' : c.zz > FH - 8 ? '#a9d2d0' : '#93c2c2'
+}
 const woodWall = (_q: Q, c: WallCtx) => (c.zz < 1.5 ? '#7a5634' : (winPx(c.zz, c.a, c.isNight, c.fl + 9, 0.7) ?? (frac(c.a * 3) < 0.12 ? '#b88c5e' : '#d9b285')))
 const towerLot = (q: Q, f: Frame) => (q.gy > f.y1 - 0.5 ? marble(q) : null)
 
@@ -453,7 +516,7 @@ const towerLot = (q: Q, f: Frame) => (q.gy > f.y1 - 0.5 ? marble(q) : null)
 const awning = (b: Built): Box[] => {
   const stripe = (q: Q) => (frac(q.gx * 2.5) < 0.5 ? K.orange : '#ffffff')
   const out: Box[] = []
-  for (let x = 0; x < b.plan.n; x++) if (b.plan.mark(0, x, b.plan.n) !== 'L') out.push(bx(x * PLAN_K, b.plan.n * PLAN_K, PLAN_K, 0.35, 14, 3, stripe, { E: K.orange, noHi: true }))
+  for (let x = 0; x < b.plan.n; x++) if (b.plan.mark(0, x, b.plan.n) !== 'L') out.push(bx(x * PLAN_K, b.plan.n * PLAN_K, PLAN_K, 0.35, DOOR_H, 3, stripe, { E: K.orange, noHi: true }))
   return out
 }
 /** 지붕 앞 왼쪽 조명 간판 (밤에 켜짐) */
@@ -464,18 +527,83 @@ const roofSign = (b: Built, isNight: boolean, z: number, y: number, c = K.orange
 /** 출입문 위 캐노피 */
 const canopy = (b: Built): Box[] => {
   const [x, y] = [b.door.x, b.door.y + PLAN_K]
-  return [bx(x - 0.3, y, PLAN_K + 0.6, 0.45, 13, 2, '#f6f8fb', { S: K.metalL, E: K.metalL }), bx(x - 0.28, y + 0.38, 0.05, 0.05, 0, 13, K.metal), bx(x + PLAN_K + 0.23, y + 0.38, 0.05, 0.05, 0, 13, K.metal)]
+  return [bx(x - 0.3, y, PLAN_K + 0.6, 0.45, DOOR_H, 2, '#f6f8fb', { S: K.metalL, E: K.metalL }), bx(x - 0.28, y + 0.38, 0.05, 0.05, 0, DOOR_H, K.metal), bx(x + PLAN_K + 0.23, y + 0.38, 0.05, 0.05, 0, DOOR_H, K.metal)]
 }
+
+// ── 지붕 설비: 맨 위층 실내 칸 위에만, 앞 줄(깃발·간판 자리)은 비운다 ──
+type RoofKit = 'vent' | 'ac' | 'tank' | 'skylight' | 'solar' | 'hvac' | 'helipad'
+/** 평면 칸 cw×cd가 모두 맨 위층 실내인 자리 (뒤에서부터, step 칸 간격) */
+function roofSpots(b: Built, cw: number, cd: number, step: number): [number, number][] {
+  const { plan } = b
+  const fl = plan.floors - 1
+  const ok = (x0: number, y0: number) => {
+    for (let y = y0; y < y0 + cd; y++) for (let x = x0; x < x0 + cw; x++) if (plan.mark(fl, x, y) !== '#' || plan.mark(fl, x, y + 1) === null || plan.mark(fl, x + 1, y) === null) return false
+    return y0 + cd <= plan.rows - 3 || x0 >= 4
+  }
+  const out: [number, number][] = []
+  for (let y = 1; y + cd < plan.rows; y += step) for (let x = 1; x + cw < plan.cols; x += step) if (ok(x, y)) out.push([x, y])
+  return out
+}
+const roofZ = (b: Built) => b.plan.floors * FH
+const kit: Record<RoofKit, (X: number, Y: number, z: number, isNight: boolean) => Box[]> = {
+  // 둥근 환기팬
+  vent: (X, Y, z) => [bx(X + 0.1, Y + 0.1, 0.5, 0.5, z, 3, '#b3aea8', { top: (q) => (Math.hypot(q.u - 0.5, q.v - 0.5) < 0.32 ? (frac((q.u + q.v) * 3) < 0.5 ? '#5f5866' : '#837c88') : '#c9c4be') })],
+  // 실외기 (옆면 팬 그릴)
+  ac: (X, Y, z) => [bx(X + 0.05, Y + 0.1, 0.8, 0.5, z, 5, '#d4d0ca', { S: (q) => (Math.hypot((q.u - 0.35) * 1.6, q.v - 0.5) < 0.3 ? (frac(q.u * 10) < 0.5 ? '#6e6874' : '#9a949e') : '#d4d0ca'), E: '#bdb8b1' })],
+  // 나무 물탱크 (다리 + 띠)
+  tank: (X, Y, z) => [...legs(X + 0.1, Y + 0.1, X + 0.8, Y + 0.8, 0.06, 4, K.dark), bx(X + 0.05, Y + 0.05, 0.8, 0.8, z + 4, 11, K.wood, { S: (q) => (frac(q.v * 3) < 0.12 ? K.dark : frac(q.u * 6) < 0.1 ? K.woodD : K.wood), E: (q) => (frac(q.v * 3) < 0.12 ? K.dark : K.woodD), top: '#8a6a48' }), bx(X + 0.3, Y + 0.3, 0.3, 0.3, z + 15, 3, '#8a6a48')].map((p) => (p.z < z ? { ...p, z: p.z + z } : p)),
+  // 천창 (밤엔 켜짐)
+  skylight: (X, Y, z, isNight) => [bx(X, Y, 0.9, 0.9, z, 2, K.metalL, { top: (q) => (q.u > 0.14 && q.u < 0.86 && q.v > 0.14 && q.v < 0.86 ? (isNight ? '#ffd98a' : frac(q.u - q.v) < 0.2 ? K.skyL : K.sky) : K.metalL), flat: isNight })],
+  // 태양광 패널
+  solar: (X, Y, z) => [bx(X + 0.05, Y + 0.1, 1.3, 0.8, z, 3, '#3e4f78', { top: (q) => (frac(q.u * 4) < 0.08 || frac(q.v * 3) < 0.1 ? '#93a2c2' : '#3e4f78'), S: K.metal, E: K.metal })],
+  // 큰 공조 설비
+  hvac: (X, Y, z) => [
+    bx(X, Y, 1.4, 0.9, z, 7, '#c9c4be', { S: (q) => (frac(q.u * 8) < 0.15 && q.v > 0.2 ? '#9a949e' : '#c9c4be'), E: '#b3aea8', top: (q) => (Math.hypot((q.u - 0.3) * 1.5, q.v - 0.5) < 0.3 || Math.hypot((q.u - 0.72) * 1.5, q.v - 0.5) < 0.3 ? '#5f5866' : '#d9d5cf') }),
+  ],
+  // 헬기장 (어두운 판 + 노란 원 + 흰 H)
+  helipad: (X, Y, z) => [
+    bx(X, Y, 2.5, 2.5, z, 1, '#5f5866', {
+      top: (q) => {
+        const r = Math.hypot(q.u - 0.5, q.v - 0.5)
+        if (r > 0.36 && r < 0.42) return K.yellow
+        const H = Math.abs(q.v - 0.5) < 0.2 && (Math.abs(q.u - 0.38) < 0.04 || Math.abs(q.u - 0.62) < 0.04 || (Math.abs(q.u - 0.5) < 0.12 && Math.abs(q.v - 0.5) < 0.035))
+        return H ? K.white : '#5f5866'
+      },
+      flat: true,
+    }),
+  ],
+}
+/** 지붕 꾸밈 목록 → 상자. [종류, 평면 칸 크기, 간격, 최대 개수] */
+const rooftop =
+  (...list: [RoofKit, number, number, number][]) =>
+  (b: Built, isNight: boolean): Box[] => {
+    const used = new Set<string>()
+    const out: Box[] = []
+    for (const [k, cells, step, max] of list) {
+      let n = 0
+      for (const [x, y] of roofSpots(b, cells, cells, step)) {
+        if (n >= max) break
+        const keys: string[] = []
+        for (let yy = y - 1; yy <= y + cells; yy++) for (let xx = x - 1; xx <= x + cells; xx++) keys.push(xx + ',' + yy)
+        if (keys.some((key) => used.has(key))) continue
+        keys.forEach((key) => used.add(key))
+        out.push(...kit[k](x * PLAN_K, y * PLAN_K, roofZ(b), isNight))
+        n++
+      }
+    }
+    return out
+  }
 
 const STAGES: Record<ExteriorStage, StageDef> = {
   1: {
     name: 'E1 차고',
+    rooftop: rooftop(['vent', 2, 3, 2]),
     at: [2, 1],
     right: 3,
     front: 1,
     // 셔터(문 왼쪽) · 블록 벽 · 옆면 높은 창
     wall: (q, c) => {
-      if (q.face === 'S' && c.a > 2.2 && c.a < 3.6 && c.zz < 15) return c.zz % 3 < 1 ? '#8a8f98' : '#b9bec6'
+      if (q.face === 'S' && c.a > 2.2 && c.a < 3.6 && c.zz < DOOR_H + 1) return c.zz % 3 < 1 ? '#8a8f98' : '#b9bec6'
       if (q.face === 'E') {
         const w = winPx(c.zz, c.a, c.isNight, 1, 0.4, 9, 15)
         if (w) return w
@@ -483,7 +611,7 @@ const STAGES: Record<ExteriorStage, StageDef> = {
       return frac(c.a * 2 + (Math.floor(c.zz / 4) % 2) * 0.5) < 0.05 || c.zz % 4 < 0.5 ? '#c4c1ba' : '#dcd9d2'
     },
     roof: '#9aa0a8',
-    lot: plainLot,
+    lot: gravel,
     decor: ({ f, b, add, lamp, has }) => {
       add(put(bike(), f.x1 + 0.6, f.y0 + 1))
       add(item('prop-trash', f.x1 + 0.4, f.y0 - 0.2))
@@ -495,6 +623,7 @@ const STAGES: Record<ExteriorStage, StageDef> = {
   },
   2: {
     name: 'E2 1층 상가',
+    rooftop: rooftop(['ac', 2, 3, 2], ['vent', 2, 3, 1]),
     at: [2, 1],
     right: 3,
     front: 2,
@@ -513,10 +642,11 @@ const STAGES: Record<ExteriorStage, StageDef> = {
   },
   3: {
     name: 'E3 2층 벽돌',
+    rooftop: rooftop(['tank', 2, 3, 1], ['vent', 2, 3, 2]),
     at: [2, 1],
     right: 2,
     front: 2,
-    wall: (_q, c) => (c.zz < 1.5 ? '#c08a72' : (winPx(c.zz, c.a, c.isNight, c.fl + 5, 0.5) ?? brick(c.a, c.zz))),
+    wall: (_q, c) => (c.zz < 1.5 ? '#c08a72' : (winPx(c.zz, c.a, c.isNight, c.fl + 5, 0.5) ?? dusk(brick(c.a, c.zz), c.isNight))),
     roof: '#c9b8a8',
     lot: lawn,
     attach: (b, has) => (has('canopy') ? canopy(b) : []),
@@ -538,6 +668,7 @@ const STAGES: Record<ExteriorStage, StageDef> = {
   },
   4: {
     name: 'E4 3층 오피스',
+    rooftop: rooftop(['skylight', 2, 3, 4], ['ac', 2, 3, 2]),
     at: [1, 1],
     right: 5,
     front: 2,
@@ -560,10 +691,11 @@ const STAGES: Record<ExteriorStage, StageDef> = {
   },
   5: {
     name: 'E5 4층 유리 사옥',
+    rooftop: rooftop(['hvac', 3, 3, 1], ['solar', 3, 3, 6]),
     at: [2, 1],
     right: 3,
     front: 3,
-    wall: (_q, c) => curtain(c.zz, c.a, c.isNight, c.fl + 13, '#8a96a8'),
+    wall: glassWall,
     roof: '#c4ccd6',
     lot: (q, f, has) => (has('fountain') && Math.hypot(q.gx - (f.x0 + 8), q.gy - (f.y1 + 1.5)) < 1.7 ? null : paving(q)),
     attach: (b, has) => (has('logo') ? [bx(b.plan.n * PLAN_K * 0.5 - 0.8, 0.5, 1.6, 0.14, FH * b.plan.floors, 7, K.white, { S: (q) => (Math.hypot((q.u - 0.5) * 3, q.v - 0.5) < 0.35 ? K.orange : K.white) })] : []),
@@ -585,6 +717,7 @@ const STAGES: Record<ExteriorStage, StageDef> = {
   },
   6: {
     name: 'E6 5층 타워',
+    rooftop: rooftop(['helipad', 5, 2, 1], ['hvac', 3, 3, 2]),
     at: [2, 1],
     right: 3,
     front: 3,
@@ -596,6 +729,7 @@ const STAGES: Record<ExteriorStage, StageDef> = {
   },
   7: {
     name: 'E7 캠퍼스',
+    rooftop: rooftop(['helipad', 5, 2, 1], ['hvac', 3, 3, 2]),
     at: [2, 1],
     right: 9,
     front: 3,
@@ -646,7 +780,7 @@ function frameOf(stage: ExteriorStage): Frame {
   const y1 = y0 + plan.rows * PLAN_K
   const GX = Math.ceil(x1 + s.right)
   const GY = Math.ceil(y1 + s.front) + 3
-  return { x0, y0, x1, y1, GX, GY, side: GY - 3 }
+  return { x0, y0, x1, y1, GX, GY, side: GY - 3, stage }
 }
 
 /** 회사 깃발: 맨 위층 앞 왼쪽 칸 지붕에 깃대 + 주황 깃발(흰 줄) — 이웃 건물 사이에서 내 사무실이 눈에 띄게 */
@@ -705,7 +839,7 @@ function buildingSprite(s: StageDef, b: Built, has: (f: ExteriorFeature) => bool
           const face = (q: Q): Color => {
             const zz = q.z - z
             const a = q.face === 'S' ? q.gx : q.gy
-            if (isDoor && q.face === 'S' && zz < 13) return q.u < 0.12 || q.u > 0.88 || zz > 11.5 || Math.abs(q.u - 0.5) < 0.05 ? K.metalL : isNight ? '#ffd98a' : '#cfeefa'
+            if (isDoor && q.face === 'S' && zz < DOOR_H) return q.u < 0.12 || q.u > 0.88 || zz > DOOR_H - 1.5 || Math.abs(q.u - 0.5) < 0.05 ? K.metalL : isNight ? '#ffd98a' : '#cfeefa'
             if (isLobby) return zz < 1.5 || zz > h - 2 ? K.metalL : curtain(zz, a, isNight, 3, K.metalL)
             return s.wall(q, { fl, zz, a, isNight })
           }
@@ -718,6 +852,7 @@ function buildingSprite(s: StageDef, b: Built, has: (f: ExteriorFeature) => bool
         }
       }
   parts.push(...(s.attach?.(b, has, isNight) ?? []))
+  parts.push(...(s.rooftop?.(b, isNight) ?? []))
   parts.push(...companyFlag(b))
   const key = (p: Box) => Math.floor((p.z + 0.01) / FH) * 1e4 + p.x + p.w / 2 + p.y + p.d / 2
   parts.sort((a, c) => key(a) - key(c))
@@ -726,28 +861,84 @@ function buildingSprite(s: StageDef, b: Built, has: (f: ExteriorFeature) => bool
   return { sprite: sp, lights }
 }
 
-/** 거리 줄 (부지 앞 GY−3 ~ GY+1, gx는 끝없이): 인도 1 + 차도 2(가운데 점선) + 건너편 인도 1. 거리가 아니면 null */
-function streetPaint(q: Q, GY: number, isNight: boolean): Color | null {
-  const road = GY - 2
-  if (q.gy >= road && q.gy < GY) {
-    const v = q.gy - road
-    if (Math.abs(v - 1) < 0.05 && frac(q.gx * 0.8) < 0.5) return '#f6e6a0'
-    return v < 0.06 || v > 1.94 ? '#a2a6ba' : isNight ? '#6e7290' : '#8e93a8'
+// ── 동네: 사무실이 좋아질수록 주변도 좋아진다 (2026-10-30 대표님 "차고지일 때는 흙길에 휑하게, 사무실이 좋아질수록 주변도 점점 좋아지게") ──
+// E1 흙길·마른 풀·빈터·판잣집·나무 전봇대 → E2 낡은 포장길·빈터 조금 → E3 차선 그은 길·횡단보도 → E4 가로수 → E5~ 타일 인도·공원 많은 도심
+interface Town {
+  /** 큰길·골목: 흙길 · 낡은 포장(차선 없음) · 포장(가운데 점선) */
+  road: 'dirt' | 'worn' | 'paved'
+  /** 인도: 없음(흙 갓길) · 시멘트 · 타일 */
+  walk: 'none' | 'plain' | 'tile'
+  /** 빈 땅: 마른 풀·흙 · 덜 자란 풀 · 잔디 */
+  ground: 'dry' | 'mixed' | 'lawn'
+  /** 블록이 빈터일 확률 · 공원일 확률 */
+  vacant: number
+  park: number
+  /** 이웃이 판잣집·창고(1층)인가 */
+  shabby: boolean
+  /** 큰길 건너편 가로등 간격 (칸) · 가로수 */
+  lampStep: number
+  streetTree: boolean
+  crosswalk: boolean
+  /** 이웃 건물 종류 (블록마다 하나를 뽑는다 — 같은 종류를 여러 번 적으면 그만큼 자주 나온다) */
+  kinds: readonly NbKind[]
+}
+const TOWNS: Record<ExteriorStage, Town> = {
+  1: { road: 'dirt', walk: 'none', ground: 'dry', vacant: 0.6, park: 0.04, shabby: true, lampStep: 9, streetTree: false, crosswalk: false, kinds: ['shack', 'shack', 'shed', 'store'] },
+  2: { road: 'worn', walk: 'plain', ground: 'mixed', vacant: 0.35, park: 0.08, shabby: true, lampStep: 8, streetTree: false, crosswalk: false, kinds: ['shack', 'shed', 'store', 'store', 'cafe'] },
+  3: { road: 'paved', walk: 'plain', ground: 'lawn', vacant: 0.15, park: 0.12, shabby: false, lampStep: 6, streetTree: false, crosswalk: true, kinds: ['brick', 'brick', 'shop', 'villa', 'cafe', 'store'] },
+  4: { road: 'paved', walk: 'plain', ground: 'lawn', vacant: 0.05, park: 0.16, shabby: false, lampStep: 5, streetTree: true, crosswalk: true, kinds: ['brick', 'shop', 'villa', 'cafe', 'store', 'glass'] },
+  5: { road: 'paved', walk: 'tile', ground: 'lawn', vacant: 0, park: 0.18, shabby: false, lampStep: 5, streetTree: true, crosswalk: true, kinds: ['shop', 'villa', 'glass', 'stone', 'brick', 'cafe'] },
+  6: { road: 'paved', walk: 'tile', ground: 'lawn', vacant: 0, park: 0.22, shabby: false, lampStep: 5, streetTree: true, crosswalk: true, kinds: ['glass', 'glass', 'stone', 'shop', 'villa', 'cafe'] },
+  7: { road: 'paved', walk: 'tile', ground: 'lawn', vacant: 0, park: 0.24, shabby: false, lampStep: 5, streetTree: true, crosswalk: true, kinds: ['glass', 'stone', 'stone', 'shop', 'villa', 'cafe'] },
+}
+/** 빈 땅 */
+function groundPaint(q: Q, t: Town): Color {
+  const nz = noise(Math.round(q.gx * 16), Math.round(q.gy * 16))
+  // 흙 얼룩: 두 크기 잡음을 섞고 가장자리를 픽셀 잡음으로 흩어 네모가 안 보이게
+  const blot = (noise(Math.floor(q.gx * 1.2), Math.floor(q.gy * 1.2)) + noise(Math.floor(q.gx * 2.6) + 31, Math.floor(q.gy * 2.6) + 17)) / 2 + (nz - 0.5) * 0.3
+  if (t.ground === 'dry') return blot > 0.62 ? (nz > 0.7 ? '#c9b38c' : '#d2be98') : nz > 0.8 ? '#a3ad6e' : nz > 0.45 ? '#aeb577' : '#b8bc80'
+  if (t.ground === 'mixed') return blot > 0.72 ? (nz > 0.6 ? '#c6b890' : '#cfc39c') : nz > 0.82 ? '#9fbb72' : '#adc67e'
+  return lawn(q)
+}
+/** 차도 (v = 차도 안 가로 위치 0~2, s = 길 방향 좌표) */
+function roadPaint(t: Town, v: number, s: number, gx: number, gy: number, isNight: boolean): Color {
+  if (t.road === 'dirt') {
+    const nz = noise(Math.round(gx * 16), Math.round(gy * 16))
+    const rut = Math.abs(v - 0.55) < 0.12 || Math.abs(v - 1.45) < 0.12
+    return rut ? '#94765a' : nz > 0.85 ? '#a48868' : '#b09372'
   }
-  if (q.gy >= road - 1 && q.gy < road) return frac(q.gx * 2) < 0.06 ? '#cfc8ba' : q.gy > road - 0.12 ? '#c9c0b2' : '#e4ded4'
-  if (q.gy >= GY && q.gy < GY + 1) return frac(q.gx * 2) < 0.06 ? '#cfc8ba' : q.gy < GY + 0.12 ? '#c9c0b2' : '#e4ded4'
+  const base = isNight ? '#6e7290' : '#8e93a8'
+  if (t.road === 'worn') return noise(Math.floor(gx * 3), Math.floor(gy * 3)) > 0.82 ? mix(base, '#b8b0a0', 0.35) : mix(base, '#a09c98', 0.35)
+  if (Math.abs(v - 1) < 0.05 && frac(s * 0.8) < 0.5) return '#f6e6a0'
+  return v < 0.06 || v > 1.94 ? '#a2a6ba' : base
+}
+/** 인도 (s = 길 방향 좌표, edge = 차도 쪽 연석 줄인가) */
+function walkPaint(t: Town, s: number, gx: number, gy: number, edge: boolean): Color {
+  if (t.walk === 'none') return noise(Math.round(gx * 16), Math.round(gy * 16)) > 0.8 ? '#b9a07e' : '#c3aa86'
+  if (edge) return '#c9c0b2'
+  if (t.walk === 'tile') return frac(gx * 4) < 0.08 || frac(gy * 4) < 0.08 ? '#cbbfae' : (Math.floor(gx * 4) + Math.floor(gy * 4)) % 2 ? '#e9e0d1' : '#dfd3c1'
+  return frac(s * 2) < 0.06 ? '#cfc8ba' : CURB
+}
+
+/** 거리 줄 (부지 앞 GY−3 ~ GY+1, gx는 끝없이): 인도 1 + 차도 2(가운데 점선) + 건너편 인도 1. 거리가 아니면 null */
+function streetPaint(q: Q, GY: number, isNight: boolean, t: Town): Color | null {
+  const road = GY - 2
+  if (q.gy >= road && q.gy < GY) return roadPaint(t, q.gy - road, q.gx, q.gx, q.gy, isNight)
+  if (q.gy >= road - 1 && q.gy < road) return walkPaint(t, q.gx, q.gx, q.gy, q.gy > road - 0.12)
+  if (q.gy >= GY && q.gy < GY + 1) return walkPaint(t, q.gx, q.gx, q.gy, q.gy < GY + 0.12)
   return null
 }
 
 /** 부지 바닥 (두께 없이 땅과 같은 높이): 뒤 = 대지(단계별), 앞쪽 3줄 = 인도 + 차도(횡단보도). 부지 둘레는 연석 한 줄 */
 function drawGround(cv: Cv, o: Pt, s: StageDef, f: Frame, has: (f: ExteriorFeature) => boolean, isNight: boolean, crossX: number) {
   const road = f.GY - 2
+  const t = TOWNS[f.stage]
   const top = (q: Q): Color => {
-    if (q.gy >= road && q.gx > crossX - 0.7 && q.gx < crossX + 0.7 && frac(q.gx * 4) < 0.5) return '#f2f2ee'
-    const st = streetPaint(q, f.GY, isNight)
+    if (t.crosswalk && q.gy >= road && q.gx > crossX - 0.7 && q.gx < crossX + 0.7 && frac(q.gx * 4) < 0.5) return '#f2f2ee'
+    const st = streetPaint(q, f.GY, isNight, t)
     if (st) return st
-    if (q.gx < 0.08 || q.gy < 0.08 || q.gx > f.GX - 0.08) return CURB
-    return s.lot(q, f, has) ?? lawn(q)
+    if (t.walk !== 'none' && (q.gx < 0.08 || q.gy < 0.08 || q.gx > f.GX - 0.08)) return CURB
+    return s.lot(q, f, has) ?? groundPaint(q, t)
   }
   drawBox(cv, o, bx(0, 0, f.GX, f.GY, 0, 0, top))
 }
@@ -771,6 +962,7 @@ export interface ExteriorBoard {
   /** 인도 걷는 줄·먼 차선·가까운 차선의 칸 y (차는 차선 칸 뒤 끝 기준) */
   lanes: { walk: number; far: number; near: number }
   stageName: string
+  stage: ExteriorStage
 }
 
 const boardCache = new Map<string, ExteriorBoard>()
@@ -817,7 +1009,7 @@ export function artExteriorBoard(level: number, isNight: boolean): ExteriorBoard
   const { sprite: bs, lights } = buildingSprite(s, b, has, isNight)
   const buildingObj = put(bs, f.x0, f.y0)
   objs.push(buildingObj)
-  const ls = lampSprite(isNight)
+  const ls = stage === 1 ? poleSprite(isNight) : lampSprite(isNight)
   s.decor({
     f,
     b,
@@ -848,8 +1040,8 @@ export function artExteriorBoard(level: number, isNight: boolean): ExteriorBoard
   const bxp = Math.round(sx - bs.o[0])
   const byp = Math.round(sy - bs.o[1])
   const dy = b.door.y + PLAN_K
-  const door: Pt[] = [P(o, b.door.x, dy, 13), P(o, b.door.x + PLAN_K, dy, 13), P(o, b.door.x + PLAN_K, dy, 0), P(o, b.door.x, dy, 0)]
-  const board: ExteriorBoard = { cv, o, GX: f.GX, GY: f.GY, building: { cv: bs.cv, x: bxp, y: byp }, outline: outlineOf(bs.cv), floors: plan.floors, door, lanes: { walk: f.GY - 2.35, far: f.GY - 2, near: f.GY - 1 }, stageName: s.name }
+  const door: Pt[] = [P(o, b.door.x, dy, DOOR_H), P(o, b.door.x + PLAN_K, dy, DOOR_H), P(o, b.door.x + PLAN_K, dy, 0), P(o, b.door.x, dy, 0)]
+  const board: ExteriorBoard = { cv, o, GX: f.GX, GY: f.GY, building: { cv: bs.cv, x: bxp, y: byp }, outline: outlineOf(bs.cv), floors: plan.floors, door, lanes: { walk: f.GY - 2.35, far: f.GY - 2, near: f.GY - 1 }, stageName: s.name, stage }
   boardCache.set(cacheKey, board)
   return board
 }
@@ -864,20 +1056,232 @@ const CURB = '#e4ded4'
 const NB = 4
 const NB_PAD = 0.5
 type NbLayer = 'back' | 'side' | 'front'
-/** 이웃 건물 색 (벽 · 지붕) — 회사 건물보다 흐리고 어둡게 */
-const NB_STYLES = [
-  { wall: '#c9c3b8', roof: '#b3ada3' },
-  { wall: '#bcc2c6', roof: '#a7adb2' },
-  { wall: '#c6bcae', roof: '#afa697' },
-  { wall: '#b8c0b6', roof: '#a3aba1' },
-  { wall: '#c4b9b9', roof: '#ada3a3' },
+// ── 이웃 건물: 종류마다 재질·창·문·지붕 설비가 다르다 (2026-10-30 대표님 "주변 건물이 다 똑같이 생겼다 — 종류도 다양하고 퀄리티도 사무실 건물 같았으면") ──
+// 판잣집·창고·구멍가게(E1·E2) → 벽돌 다세대·상가·빌라·카페(E3~) → 유리 오피스·석조 빌딩(E4~). 같은 종류도 블록마다 색·곁채·설비가 달라진다.
+// 회사 건물이 눈에 띄게: 다 그린 뒤 채도를 조금 낮추고(nbMute), 회사 깃발·핀은 이웃에 없다.
+type NbKind = 'shack' | 'shed' | 'store' | 'brick' | 'shop' | 'villa' | 'cafe' | 'glass' | 'stone'
+const pick = <T,>(xs: readonly T[], r: number): T => xs[Math.min(xs.length - 1, Math.floor(r * xs.length))]
+interface NbCtx {
+  w: number
+  d: number
+  floors: number
+  isNight: boolean
+  seed: number
+  /** 블록마다 고정된 0~1 값 (k로 여러 개) */
+  t: (k: number) => number
+}
+/** 면 칠 함수에 넘기는 값: a = 면을 따라가는 칸 좌표 · zz = 층 바닥에서 높이 · fl = 층 */
+type NbFace = (q: Q, a: number, zz: number, fl: number) => Color
+const nbFace = (f: NbFace) => (q: Q) => f(q, q.face === 'S' ? q.gx : q.gy, q.z % FH, Math.floor(q.z / FH))
+/** 유리 한 칸: 낮엔 하늘 반사 사선, 밤엔 켜짐(노랑)·꺼짐(남색) */
+const pane = (a: number, zz: number, isNight: boolean, on: boolean, tint: Color = K.sky): Color =>
+  isNight ? (on ? (zz > 12 ? '#ffe7a8' : '#ffd98a') : '#3a4470') : frac(a * 2 - zz * 0.04) < 0.1 ? K.skyL : tint
+/** 창 칸마다 밤에 불이 켜졌는가 */
+const litAt = (c: NbCtx, a: number, fl: number, rate: number) => noise(Math.floor(a * 2) + fl * 7, c.seed) < rate
+/** 창 + 창틀 + 창턱: 한 칸(1칸)에 창 하나, 폭 wide · 높이 z0~z1. 창 밖이면 null */
+function nbWindow(c: NbCtx, a: number, zz: number, fl: number, o: { wide: number; z0: number; z1: number; frame: string; sill?: string; rate?: number; per?: number }): Color | null {
+  const per = o.per ?? 1
+  const f = frac(a * per)
+  const [l, r] = [0.5 - o.wide / 2, 0.5 + o.wide / 2]
+  if (o.sill && zz >= o.z0 - 2 && zz < o.z0 - 0.8 && f > l - 0.08 && f < r + 0.08) return o.sill
+  if (zz < o.z0 - 0.8 || zz > o.z1 + 0.8 || f < l - 0.05 || f > r + 0.05) return null
+  if (zz < o.z0 || zz > o.z1 || f < l || f > r || Math.abs(f - 0.5) < 0.025) return o.frame
+  return pane(a * per, zz, c.isNight, litAt(c, a * per, fl, o.rate ?? 0.45))
+}
+/** 1층 앞면 문 (a0부터 0.5칸) — 안 맞으면 null */
+const nbDoor = (q: Q, a: number, zz: number, fl: number, a0: number, frame: string, glass: boolean, isNight: boolean): Color | null => {
+  if (fl !== 0 || q.face !== 'S' || a < a0 || a > a0 + 0.5 || zz > DOOR_H) return null
+  if (a < a0 + 0.05 || a > a0 + 0.45 || zz > DOOR_H - 1.2) return frame
+  if (!glass) return Math.abs(a - a0 - 0.37) < 0.03 && Math.abs(zz - 8) < 1 ? K.gold : mix(frame, '#ffffff', 0.18)
+  return Math.abs(a - a0 - 0.25) < 0.02 ? frame : isNight ? '#ffd98a' : '#cfeefa'
+}
+/** 지붕 윗면: 둘레 파라펫 + 안쪽 색 (fill로 무늬) */
+const nbRoof = (base: Color, fill?: (q: Q) => Color) => (q: Q): Color => (q.u < 0.06 || q.v < 0.06 || q.u > 0.94 || q.v > 0.94 ? mix(base, '#ffffff', 0.35) : (fill?.(q) ?? base))
+/** 줄무늬 차양 (앞면, x0~x1, 높이 z) */
+const nbAwning = (x0: number, x1: number, d: number, z: number, c: string): Box[] => [
+  bx(x0, d, x1 - x0, 0.32, z, 3, (q) => (frac(q.gx * 2.5) < 0.5 ? c : '#fbf7ef'), { S: (q) => (frac(q.gx * 2.5) < 0.5 ? c : '#fbf7ef'), E: c, noHi: true }),
 ]
-/** 이웃 건물 벽: 단색 + 층마다 작은 창 한 줄 (밤에는 몇 개만 불이 켜진다) */
-const nbWall = (base: string, zz: number, a: number, isNight: boolean, seed: number): Color => {
-  const f = frac(a * 2)
-  if (zz < 7 || zz > 15 || f < 0.32 || f > 0.68) return zz < 1.5 ? mix(base, SH, 0.25) : base
-  if (isNight) return noise(Math.floor(a * 2), seed) > 0.6 ? '#ffd98a' : mix(base, SH, 0.45)
-  return mix(base, SH, 0.18)
+/** 지붕 설비 하나 (지붕 위 빈 자리에) */
+const nbKit = (c: NbCtx, kind: RoofKit, H: number): Box[] => {
+  const size = kind === 'hvac' || kind === 'solar' ? 1.5 : 1
+  if (c.w < size + 0.5 || c.d < size + 0.5) return []
+  return kit[kind](0.25 + c.t(11) * (c.w - size - 0.5), 0.25 + c.t(12) * (c.d - size - 0.5), H, c.isNight)
+}
+
+const NB_KINDS: Record<NbKind, (c: NbCtx) => Box[]> = {
+  // 판잣집: 세로 널빤지 벽(군데군데 덧댄 판) · 작은 창 · 나무문 · 처마가 나온 함석 지붕(골·녹) · 연통 · 가끔 옆 헛간
+  shack: (c) => {
+    const base = pick(['#b39a7a', '#a9a296', '#bea585', '#a49a8a'], c.t(1))
+    const tin = pick(['#8f9692', '#a8775a', '#7f8a90'], c.t(2))
+    const shed = c.t(3) > 0.5 && c.w >= 1.75
+    const mw = shed ? c.w - 0.6 : c.w
+    const H = 17
+    const wall = nbFace((q, a, zz) => {
+      const door = nbDoor(q, a, zz, 0, 0.25, '#6e5236', false, c.isNight)
+      if (door) return door
+      if (q.face === 'E' || a > 1) {
+        const w = nbWindow(c, a, zz, 0, { wide: 0.32, z0: 7, z1: 12, frame: '#7a5a3c', rate: 0.5 })
+        if (w && noise(Math.floor(a), c.seed + 3) > 0.25) return w
+      }
+      if (zz < 1.2) return mix(base, SH, 0.35)
+      const p = frac(a * 6)
+      const patch = noise(Math.floor(a * 6), Math.floor(zz / 7) + c.seed) > 0.86
+      return p < 0.1 ? mix(base, SH, 0.28) : patch ? mix(base, '#e8dcc4', 0.25) : base
+    })
+    const ribs = (q: Q): Color => (noise(Math.round(q.gx * 8), Math.round(q.gy * 8) + c.seed) > 0.93 ? '#a8775a' : frac((q.gx + q.gy) * 3) < 0.35 ? mix(tin, SH, 0.18) : tin)
+    const parts: Box[] = [
+      bx(0.08, 0.08, mw - 0.16, c.d - 0.16, 0, H, tin, { S: wall, E: wall }),
+      bx(0, 0, mw, c.d, H, 2, ribs, { S: mix(tin, SH, 0.2), E: mix(tin, SH, 0.3), noHi: true }),
+      bx(mw * 0.65, c.d * 0.3, 0.1, 0.1, H + 2, 7, K.metal),
+    ]
+    if (shed) parts.push(bx(mw, 0.3, 0.55, c.d - 0.6, 0, 11, ribs, { S: wall, E: (q) => (frac(q.gy * 5) < 0.12 ? mix(base, SH, 0.3) : mix(base, SH, 0.1)) }))
+    return parts
+  },
+  // 창고: 골강판 벽(세로 골) · 큰 셔터 · 높은 띠창 · 낮은 골지붕 · 환기팬
+  shed: (c) => {
+    const base = pick(['#a9b4bb', '#bab3a2', '#a3b2aa', '#c3b7a3'], c.t(1))
+    const H = FH
+    const sw = Math.min(c.w - 0.5, 1.4)
+    const wall = nbFace((q, a, zz) => {
+      if (q.face === 'S' && a > 0.25 && a < 0.25 + sw && zz < 16) return zz > 15 || a < 0.3 || a > 0.2 + sw ? K.metal : zz % 2.4 < 0.5 ? mix(K.metalL, SH, 0.25) : K.metalL
+      if (q.face === 'E' && zz > 15 && zz < 19 && frac(a * 2) > 0.15 && frac(a * 2) < 0.85) return zz < 15.6 || zz > 18.4 ? K.metal : pane(a, zz, c.isNight, litAt(c, a, 0, 0.3))
+      if (zz < 1.4) return mix(base, SH, 0.35)
+      return frac(a * 8) < 0.3 ? mix(base, '#ffffff', 0.18) : base
+    })
+    const roof = mix(base, '#8f9692', 0.5)
+    return [bx(0, 0, c.w, c.d, 0, H, nbRoof(roof, (q) => (frac(q.v * c.d * 5) < 0.3 ? mix(roof, SH, 0.15) : roof)), { S: wall, E: wall }), ...nbKit(c, 'vent', H)]
+  },
+  // 구멍가게·편의점: 1층 통유리 진열창 + 색 간판 띠(흰 글자) · 위층은 창 · 지붕 실외기
+  store: (c) => {
+    const wallC = pick(['#f1e9db', '#e6ebe6', '#f0e2d6', '#ebe4f0'], c.t(1))
+    const band = pick([K.mint, K.blue, K.yellow, '#e98a8a', K.orange], c.t(2))
+    const H = c.floors * FH
+    const wall = nbFace((q, a, zz, fl) => {
+      if (fl === 0 && q.face === 'S') {
+        const door = nbDoor(q, a, zz, fl, 0.3, K.metalL, true, c.isNight)
+        if (door) return door
+        if (zz >= 15 && zz < 20.5) return zz > 16.8 && zz < 18.8 && frac(a * 3) < 0.55 && a > 0.4 && a < c.w - 0.4 ? '#fbf7ef' : band
+        if (zz >= 2 && zz < 14.5) return frac(a * 2) < 0.05 || zz > 13.5 ? K.metalL : c.isNight ? '#ffe7a8' : frac(a * 2 - zz * 0.04) < 0.12 ? K.skyL : '#bfe0e6'
+        if (zz < 2) return mix(wallC, SH, 0.3)
+      }
+      return nbWindow(c, a, zz, fl, { wide: 0.45, z0: 7, z1: 15, frame: '#c4bdbc', sill: '#f8f4ee' }) ?? (zz < 1.4 ? mix(wallC, SH, 0.25) : wallC)
+    })
+    return [bx(0, 0, c.w, c.d, 0, H, nbRoof('#d4d0c8'), { S: wall, E: wall }), ...nbKit(c, 'ac', H)]
+  },
+  // 벽돌 다세대: 붉은·갈색 벽돌 + 흰 창틀·창턱 + 맨 위 코니스 띠 · 현관문 · 물탱크나 환기팬
+  brick: (c) => {
+    const dark = c.t(1) > 0.5
+    const trim = '#efe6da'
+    const H = c.floors * FH
+    const wall = nbFace((q, a, zz, fl) => {
+      const door = nbDoor(q, a, zz, fl, 0.35, '#7a5634', false, c.isNight)
+      if (door) return door
+      if (fl === c.floors - 1 && zz > FH - 3) return zz > FH - 1.2 ? mix(trim, SH, 0.15) : trim
+      const w = nbWindow(c, a, zz, fl, { wide: 0.46, z0: 6, z1: 15, frame: '#f8f4ee', sill: trim })
+      if (w) return w
+      if (zz < 1.5) return '#a0705c'
+      const b = brick(a, zz)
+      return dusk(dark ? mix(b, '#7a4a3c', 0.3) : b, c.isNight)
+    })
+    return [bx(0, 0, c.w, c.d, 0, H, nbRoof('#c9b8a8'), { S: wall, E: wall }), ...nbKit(c, c.t(4) > 0.45 ? 'tank' : 'vent', H)]
+  },
+  // 상가 건물: 1층 가게 통유리 + 줄무늬 차양 · 위층 미장 벽에 두 짝 창 · 옥상 광고판
+  shop: (c) => {
+    const wallC = pick(['#e9e2d6', '#dfe4e6', '#efe0d4', '#e4e0ea'], c.t(1))
+    const aw = pick([K.orange, K.mint, '#e98a8a', K.blue, K.yellow], c.t(2))
+    const H = c.floors * FH
+    const wall = nbFace((q, a, zz, fl) => {
+      if (fl === 0 && q.face === 'S') {
+        const door = nbDoor(q, a, zz, fl, Math.floor(c.w / 2) + 0.25, K.metal, true, c.isNight)
+        if (door) return door
+        if (zz < 1.6) return mix(wallC, SH, 0.3)
+        if (zz < 15) return frac(a) < 0.06 || zz > 14 ? K.metal : c.isNight ? (frac(a * 0.5 + 0.3) < 0.5 ? '#ffe7a8' : '#ffd98a') : frac(a * 2 - zz * 0.04) < 0.12 ? K.skyL : '#bcdde4'
+      }
+      if (fl > 0 && zz < 1.4) return mix(wallC, SH, 0.15)
+      return nbWindow(c, a, zz, fl, { wide: 0.32, z0: 6, z1: 15, frame: '#8a8f98', per: 2 }) ?? wallC
+    })
+    const parts: Box[] = [bx(0, 0, c.w, c.d, 0, H, nbRoof('#cfcbc4'), { S: wall, E: wall }), ...nbAwning(0.05, c.w - 0.05, c.d, 15, aw)]
+    if (c.floors >= 2 && c.t(3) > 0.4) {
+      const bw = Math.min(1.6, c.w - 0.4)
+      parts.push(...[0.2, 0.2 + bw - 0.08].map((x) => bx(x, c.d - 0.5, 0.06, 0.06, H, 4, K.metal)), bx(0.2, c.d - 0.52, bw, 0.1, H + 4, 9, aw, { S: (q) => (q.v > 0.3 && q.v < 0.7 && q.u > 0.1 && q.u < 0.9 ? (c.isNight ? '#ffe7a8' : '#fbf7ef') : aw), flat: c.isNight }))
+    } else parts.push(...nbKit(c, 'ac', H))
+    return parts
+  },
+  // 빌라: 밝은 미장 벽 + 넓은 창(짙은 틀) · 층마다 발코니(바닥판 + 유리 난간) · 지붕 태양광이나 실외기
+  villa: (c) => {
+    const wallC = pick(['#f4efe6', '#e9eef0', '#f3e6e2', '#eef0e4'], c.t(1))
+    const H = c.floors * FH
+    const wall = nbFace((q, a, zz, fl) => {
+      const door = nbDoor(q, a, zz, fl, 0.25, '#8a8f98', true, c.isNight)
+      if (door) return door
+      if (zz < 1.3) return mix(wallC, SH, fl === 0 ? 0.3 : 0.12)
+      return nbWindow(c, a, zz, fl, { wide: 0.6, z0: 5, z1: 16, frame: '#8a8f98' }) ?? wallC
+    })
+    const parts: Box[] = [bx(0, 0, c.w, c.d, 0, H, nbRoof('#d4d0c8'), { S: wall, E: wall })]
+    for (let fl = 1; fl < c.floors; fl++)
+      for (let x = 0; x + 1 <= c.w; x++) {
+        if (noise(x + fl * 5, c.seed + 9) < 0.3) continue
+        parts.push(bx(x + 0.08, c.d, 0.84, 0.3, fl * FH, 1.5, '#e4ded4', { S: '#cfc8bb', E: '#cfc8bb' }), bx(x + 0.08, c.d + 0.26, 0.84, 0.04, fl * FH + 1.5, 6, K.metal, { S: RAIL, flat: true }))
+      }
+    return [...parts, ...nbKit(c, c.t(4) > 0.5 ? 'solar' : 'ac', H)]
+  },
+  // 카페: 원목 판벽 + 큰 창 · 색 차양 · 앞에 화단 상자 · 지붕 천창
+  cafe: (c) => {
+    const tone = pick(['#d9b285', '#c8a27a', '#e0c29a'], c.t(1))
+    const aw = pick(['#5f9a6a', K.orange, '#c0605a', '#3f5a7a'], c.t(2))
+    const H = c.floors * FH
+    const wall = nbFace((q, a, zz, fl) => {
+      const door = nbDoor(q, a, zz, fl, 0.3, '#7a5634', true, c.isNight)
+      if (door) return door
+      if (zz < 1.5) return '#7a5634'
+      const big = fl === 0 && q.face === 'S'
+      return nbWindow(c, a, zz, fl, { wide: big ? 0.78 : 0.5, z0: big ? 3 : 6, z1: big ? 14 : 15, frame: '#7a5634', rate: big ? 0.95 : 0.5 }) ?? (frac(a * 4) < 0.1 ? mix(tone, '#7a5634', 0.4) : tone)
+    })
+    return [
+      bx(0, 0, c.w, c.d, 0, H, nbRoof('#b8a690'), { S: wall, E: wall }),
+      ...nbAwning(0.05, c.w - 0.05, c.d, 14, aw),
+      bx(0.85, c.d + 0.08, c.w - 0.95, 0.25, 0, 3, K.leaf[1], { top: (q) => (noise(Math.round(q.gx * 16), Math.round(q.gy * 16)) > 0.6 ? K.leaf[2] : K.leaf[1]), S: K.woodD, E: K.woodD }),
+      ...nbKit(c, 'skylight', H),
+    ]
+  },
+  // 유리 오피스: 커튼월(청록·하늘·은빛) + 층마다 짙은 띠 + 가는 멀리언 · 1층 로비 · 공조 설비
+  glass: (c) => {
+    const tint = pick(['#93c2c2', '#9cb6d4', '#b2bccb', '#a3c8b8'], c.t(1))
+    const band = pick(['#56616f', '#4f5a6a', '#6a6470'], c.t(2))
+    const H = c.floors * FH
+    const wall = nbFace((q, a, zz, fl) => {
+      const door = nbDoor(q, a, zz, fl, 0.45, K.metalL, true, c.isNight)
+      if (door) return door
+      if (zz > FH - 4) return zz > FH - 1 ? '#8b97a3' : band
+      if (frac(a * 2) < 0.05) return '#7b8796'
+      return pane(a, zz, c.isNight, litAt(c, a, fl, 0.5), frac(a * 2 - zz * 0.04) > 0.6 ? mix(tint, '#ffffff', 0.2) : tint)
+    })
+    return [bx(0, 0, c.w, c.d, 0, H, nbRoof('#c4ccd6'), { S: wall, E: wall, flat: true }), ...nbKit(c, 'hvac', H)]
+  },
+  // 석조 빌딩: 돌 기둥(1칸마다) 사이 유리 · 층마다 돌 띠 · 맨 위 두꺼운 코니스 · 실외기
+  stone: (c) => {
+    const stone = pick(['#e3dccd', '#d6d7d6', '#e6d6c4'], c.t(1))
+    const H = c.floors * FH
+    const wall = nbFace((q, a, zz, fl) => {
+      const door = nbDoor(q, a, zz, fl, 0.25, '#6a6470', true, c.isNight)
+      if (door) return door
+      const f = frac(a)
+      if (fl === c.floors - 1 && zz > FH - 4) return zz > FH - 1.5 ? mix(stone, '#ffffff', 0.3) : mix(stone, SH, 0.12)
+      if (zz < 2 || zz > FH - 3 || f < 0.2 || f > 0.95) return f > 0.18 && f < 0.2 ? mix(stone, SH, 0.2) : stone
+      return frac(a * 2) < 0.06 ? mix(stone, SH, 0.25) : pane(a, zz, c.isNight, litAt(c, a, fl, 0.45), '#a9cfd6')
+    })
+    return [bx(0, 0, c.w, c.d, 0, H, nbRoof(pick(['#cbc3b4', '#bfc0c0', '#cdbfad'], c.t(1))), { S: wall, E: wall }), ...nbKit(c, 'ac', H)]
+  },
+}
+/** 이웃 건물은 회사 건물보다 조금 흐리게 (불빛은 그대로) */
+function nbMute(cv: Cv) {
+  for (let i = 0; i < cv.w * cv.h; i++) {
+    if (!cv.has(i)) continue
+    const c = cv.read(i)
+    if (isLit(c)) continue
+    const g = Math.round((c[0] + c[1] + c[2]) / 3)
+    cv.write(i, [0, 1, 2].map((k) => Math.round(c[k] + (g - c[k]) * 0.18)).concat(c[3]) as RGBA)
+  }
 }
 
 const mod = (n: number, m: number) => ((n % m) + m) % m
@@ -895,13 +1299,12 @@ function cellOf(q: Q, GX: number, GY: number): [number, number] | null {
 const isRoadCol = (i: number, GX: number) => mod(i, 3) === 1 && !(nbCellX(i, GX) < GX + 0.5 && nbCellX(i, GX) + NB > -0.5)
 const isRoadRow = (r: number, GY: number) => (r >= 0 ? r % 3 === 2 : -r % 3 === 0 && nbCellY(r, GY) + NB <= -0.5)
 
-const alleyRoad = (isNight: boolean) => (isNight ? '#6e7290' : '#8e93a8')
-const alleyWalk = (s: number) => (frac(s * 2) < 0.06 ? '#cfc8ba' : CURB)
+
 /** 골목 인도 폭 (칸) — 블록 열 양쪽 끝 */
 const ALLEY_WALK = 0.6
 
 /** 골목길 칠 (양쪽 인도 + 가운데 점선 차도, 교차로는 선 없이) */
-function alleyPaint(q: Q, GX: number, GY: number, isNight: boolean): Color | null {
+function alleyPaint(q: Q, GX: number, GY: number, isNight: boolean, t: Town): Color | null {
   const cell = cellOf(q, GX, GY)
   if (!cell) return null
   const [i, r] = cell
@@ -912,24 +1315,25 @@ function alleyPaint(q: Q, GX: number, GY: number, isNight: boolean): Color | nul
   const v = q.gy - nbCellY(r, GY)
   const walkU = u < ALLEY_WALK || u > NB - ALLEY_WALK
   const walkV = v < ALLEY_WALK || v > NB - ALLEY_WALK
-  const road = alleyRoad(isNight)
-  const walk = alleyWalk
-  if (col && row) return walkU && walkV ? walk(q.gx + q.gy) : road
-  if (col) return walkU ? walk(q.gy) : Math.abs(u - NB / 2) < 0.05 && frac(q.gy * 0.8) < 0.5 ? '#f6e6a0' : road
-  return walkV ? walk(q.gx) : Math.abs(v - NB / 2) < 0.05 && frac(q.gx * 0.8) < 0.5 ? '#f6e6a0' : road
+  const walk = (s: number) => walkPaint(t, s, q.gx, q.gy, false)
+  // 골목 차도: 가운데 점선은 포장길만, 차도 폭 NB − 2·ALLEY_WALK를 0~2로 맞춘다
+  const lane = (w: number, s: number) => roadPaint(t, ((w - ALLEY_WALK) / (NB - 2 * ALLEY_WALK)) * 2, s, q.gx, q.gy, isNight)
+  if (col && row) return walkU && walkV ? walk(q.gx + q.gy) : roadPaint(t, 0.3, 0, q.gx, q.gy, isNight)
+  if (col) return walkU ? walk(q.gy) : lane(u, q.gy)
+  return walkV ? walk(q.gx) : lane(v, q.gx)
 }
 
 /** 큰길과 만나는 골목 어귀 — 블록과 큰길 사이 틈(0.5칸)과 큰길 인도를 골목 차도가 지나 큰길 차도에 닿는다(교차로).
  * 큰길 인도 자리는 횡단보도, 틈의 골목 인도는 큰길 인도에 이어진다. 골목 열이 아니면 null */
-function alleyMouthPaint(q: Q, GX: number, GY: number, isNight: boolean): Color | null {
+function alleyMouthPaint(q: Q, GX: number, GY: number, isNight: boolean, t: Town): Color | null {
   const isWalk = (q.gy >= GY - 3 && q.gy < GY - 2) || (q.gy >= GY && q.gy < GY + 1)
   const isGap = (q.gy >= GY - 3.5 && q.gy < GY - 3) || (q.gy >= GY + 1 && q.gy < GY + 1.5)
   if (!isWalk && !isGap) return null
   const i = Math.floor((q.gx - GX - NB_PAD) / NB)
   if (!isRoadCol(i, GX)) return null
   const u = q.gx - nbCellX(i, GX)
-  if (u < ALLEY_WALK || u > NB - ALLEY_WALK) return isGap ? alleyWalk(q.gy) : null
-  return isWalk && frac(q.gy * 4) < 0.5 ? '#f2f2ee' : alleyRoad(isNight)
+  if (u < ALLEY_WALK || u > NB - ALLEY_WALK) return isGap ? walkPaint(t, q.gy, q.gx, q.gy, false) : null
+  return t.crosswalk && isWalk && frac(q.gy * 4) < 0.5 ? '#f2f2ee' : roadPaint(t, 0.3, 0, q.gx, q.gy, isNight)
 }
 /** 칸 gx가 골목 차도 위인가 (큰길 건너편 가로등을 골목 어귀에 세우지 않게) */
 const isAlleyRoadX = (gx: number, GX: number) => {
@@ -946,24 +1350,26 @@ interface Nb {
   w: number
   d: number
   floors: number
-  style: number
+  kind: NbKind
   wing: number
   park: boolean
   layer: NbLayer
 }
 
 /** 블록 하나의 건물 (블록 번호로 정해지는 값 — 화면 크기가 바뀌어도 같은 건물). maxFloors = 회사 건물 층수 */
-function nbAt(i: number, r: number, GX: number, GY: number, maxFloors: number): Nb | null {
+function nbAt(i: number, r: number, GX: number, GY: number, maxFloors: number, t: Town): Nb | null {
   const cx = nbCellX(i, GX)
   const cy = nbCellY(r, GY)
   if (cx < GX + 0.5 && cx + NB > -0.5 && cy < GY - 3 && cy + NB > -0.5) return null
   if (isRoadCol(i, GX) || isRoadRow(r, GY)) return null
   const n = (k: number) => noise(i * 37 + k * 101 + 4000, r * 53 + k * 7 + 4000)
-  const w = 2 + Math.round(n(1) * 4) * 0.25
-  const d = 2 + Math.round(n(2) * 4) * 0.25
+  // 빈터 (동네가 덜 자랐을 때)
+  if (n(9) < t.vacant) return null
+  const w = (t.shabby ? 1.25 : 2) + Math.round(n(1) * 4) * 0.25
+  const d = (t.shabby ? 1.25 : 2) + Math.round(n(2) * 4) * 0.25
   const layer: NbLayer = r >= 0 ? 'front' : cx >= GX ? 'side' : 'back'
   // 회사 건물보다 한 층 낮게, 거리 건너편은 거리를 덜 가리게 2층까지
-  const cap = Math.max(1, maxFloors - 1)
+  const cap = t.shabby ? 1 : Math.max(1, maxFloors - 1)
   return {
     i,
     r,
@@ -972,28 +1378,27 @@ function nbAt(i: number, r: number, GX: number, GY: number, maxFloors: number): 
     w,
     d,
     floors: 1 + Math.floor(n(5) * (layer === 'front' ? Math.min(2, cap) : cap)),
-    style: Math.floor(n(6) * NB_STYLES.length),
+    kind: pick(t.kinds, n(6)),
     wing: n(7),
-    park: n(8) < 0.16,
+    park: n(8) < t.park,
     layer,
   }
 }
 
-/** 이웃 건물 한 채: 본채 + (가끔) 낮은 곁채 + 옥상 실외기 */
+/** 이웃 건물 한 채 (종류별 그림 — NB_KINDS). 2층 이상이면 가끔 뒤쪽에 한 층 낮은 곁채 */
 function nbSprite(nb: Nb, floors: number, isNight: boolean): Sprite {
-  const st = NB_STYLES[nb.style]
   const seed = nb.i * 11 + nb.r * 17
-  const face = (q: Q): Color => nbWall(st.wall, q.z % FH, q.face === 'S' ? q.gx : q.gy, isNight, seed + Math.floor(q.z / FH))
-  const rim = mix(st.roof, '#ffffff', 0.25)
-  const roof = (q: Q): Color => (q.u < 0.06 || q.v < 0.06 || q.u > 0.94 || q.v > 0.94 ? rim : st.roof)
-  const { w, d } = nb
-  const H = floors * FH
-  const hasWing = floors >= 2 && nb.wing > 0.55
-  const mw = hasWing ? Math.round(w * 0.6 * 4) / 4 : w
-  const parts: Box[] = [bx(0, 0, mw, d, 0, H, roof, { S: face, E: face })]
-  if (hasWing) parts.push(bx(mw, 0, w - mw, Math.round(d * 0.7 * 4) / 4, 0, (floors - 1) * FH, roof, { S: face, E: face }))
-  if (nb.wing < 0.4) parts.push(bx(mw * 0.25, d * 0.25, 0.5, 0.4, H, 4, mix(st.roof, '#ffffff', 0.15)))
+  const t = (k: number) => noise(nb.i * 13 + k * 31 + 5000, nb.r * 19 + k * 7 + 5000)
+  const hasWing = floors >= 2 && nb.wing > 0.55 && nb.w >= 2.5
+  const mw = hasWing ? Math.round(nb.w * 0.6 * 4) / 4 : nb.w
+  const draw = NB_KINDS[nb.kind]
+  const parts = draw({ w: mw, d: nb.d, floors, isNight, seed, t })
+  if (hasWing) {
+    const wd = Math.round(nb.d * 0.7 * 4) / 4
+    for (const p of draw({ w: nb.w - mw, d: wd, floors: floors - 1, isNight, seed: seed + 5, t })) parts.push({ ...p, x: p.x + mw })
+  }
   const sp = sprite(parts)
+  nbMute(sp.cv)
   if (isNight) nightTint(sp.cv)
   return sp
 }
@@ -1022,8 +1427,6 @@ interface NbScene {
   lamps: Pt[]
 }
 const nbCache = new Map<string, NbScene>()
-/** 큰길 건너편 인도의 가로등 간격 (칸) */
-const LAMP_STEP = 5
 
 /** 화면에 보이는 이웃 건물·공원·가로등 (O = 부지 (0,0) 꼭짓점의 화면 px) */
 function neighborsOf(W: number, H: number, isNight: boolean, O: Pt, board: ExteriorBoard): NbScene {
@@ -1031,6 +1434,7 @@ function neighborsOf(W: number, H: number, isNight: boolean, O: Pt, board: Exter
   const hit = nbCache.get(cacheKey)
   if (hit) return hit
   const { GX, GY } = board
+  const town = TOWNS[board.stage]
   const toG = (x: number, y: number) => {
     const a = (x - O[0]) / HW
     const s = (y - O[1]) / HH
@@ -1064,8 +1468,23 @@ function neighborsOf(W: number, H: number, isNight: boolean, O: Pt, board: Exter
   }
   for (let r = r0; r <= r1; r++)
     for (let i = i0; i <= i1; i++) {
-      const nb = nbAt(i, r, GX, GY, board.floors)
-      if (!nb) continue
+      const nb = nbAt(i, r, GX, GY, board.floors, town)
+      if (!nb) {
+        // 빈터: 덤불 한두 포기
+        if (town.vacant > 0 && !isRoadCol(i, GX) && !isRoadRow(r, GY))
+          for (let k = 0; k < 2; k++) {
+            const nn = (j: number) => noise(i * 29 + j * 13 + k * 71 + 700, r * 31 + j * 3 + k * 19 + 700)
+            if (nn(0) < 0.45) continue
+            const gx = nbCellX(i, GX) + 0.6 + nn(1) * (NB - 1.6)
+            const gy = nbCellY(r, GY) + 0.6 + nn(2) * (NB - 1.6)
+            const b = rectOf(gx, gy, 1, 1, 14)
+            if (!onScreen(b) || (gx > -1 && gx < GX + 0.5 && gy > -1 && gy < GY)) continue
+            const sp = tree(4, 2)
+            if (isNight) nightTint(sp.cv)
+            place(sp, gx, gy, r >= 0 ? 'front' : gx >= GX ? 'side' : 'back')
+          }
+        continue
+      }
       if (nb.park) {
         for (const t of nbPark(nb, isNight)) {
           const b = rectOf(t.gx, t.gy, 1, 1, 34)
@@ -1074,22 +1493,32 @@ function neighborsOf(W: number, H: number, isNight: boolean, O: Pt, board: Exter
         continue
       }
       let floors = nb.floors
-      let b = rectOf(nb.gx, nb.gy, nb.w, nb.d, floors * FH + 6)
+      let b = rectOf(nb.gx, nb.gy, nb.w, nb.d, floors * FH + 18)
       if (!onScreen(b)) continue
-      while (nb.layer !== 'back' && floors > 0 && hitsBody(b)) b = rectOf(nb.gx, nb.gy, nb.w, nb.d, --floors * FH + 6)
+      while (nb.layer !== 'back' && floors > 0 && hitsBody(b)) b = rectOf(nb.gx, nb.gy, nb.w, nb.d, --floors * FH + 18)
       if (floors === 0) continue
       place(nbSprite({ ...nb, floors }, floors, isNight), nb.gx, nb.gy, nb.layer)
       aprons.set(`${i},${r}`, [nb.gx - 0.3, nb.gy - 0.3, nb.gx + nb.w + 0.3, nb.gy + nb.d + 0.3])
     }
   // 큰길 건너편 인도의 가로등 (밤에 거리를 밝힌다)
-  const ls = lampSprite(isNight)
+  // 흙길 동네는 나무 전봇대, 동네가 좋아질수록 가로등이 촘촘해지고 사이에 가로수
+  const ls = town.road === 'dirt' ? poleSprite(isNight) : lampSprite(isNight)
   if (isNight) nightTint(ls.cv)
-  for (let gx = Math.floor(Math.min(...gxs) / LAMP_STEP) * LAMP_STEP + 2; gx < Math.max(...gxs) + 2; gx += LAMP_STEP) {
+  const step = town.lampStep
+  for (let gx = Math.floor(Math.min(...gxs) / step) * step + 2; gx < Math.max(...gxs) + 2; gx += step) {
     const b = rectOf(gx + 0.4, GY + 0.4, 0.2, 0.2, 40)
     if (!onScreen(b) || hitsBody(b) || isAlleyRoadX(gx + 0.5, GX)) continue
     place(ls, gx, GY, 'front')
     lamps.push(P(O, gx + 0.5, GY + 0.5, 0))
   }
+  if (town.streetTree)
+    for (let gx = Math.floor(Math.min(...gxs) / step) * step + 2 + Math.floor(step / 2); gx < Math.max(...gxs) + 2; gx += step) {
+      const b = rectOf(gx + 0.3, GY + 0.3, 0.4, 0.4, 30)
+      if (!onScreen(b) || hitsBody(b) || isAlleyRoadX(gx + 0.5, GX)) continue
+      const sp = tree(5, 10)
+      if (isNight) nightTint(sp.cv)
+      place(sp, gx, GY + 0.1, 'front')
+    }
   const scene = { placed: placed.sort((a, b) => a.depth - b.depth), aprons, lamps }
   if (nbCache.size > 8) nbCache.clear()
   nbCache.set(cacheKey, scene)
@@ -1097,10 +1526,12 @@ function neighborsOf(W: number, H: number, isNight: boolean, O: Pt, board: Exter
 }
 
 /** 이웃 건물 마당 칠 (땅 칸 q가 어느 블록의 마당 안이면 포장색) */
-function apronPaint(q: Q, scene: NbScene, GX: number, GY: number): Color | null {
+function apronPaint(q: Q, scene: NbScene, GX: number, GY: number, t: Town): Color | null {
   const cell = cellOf(q, GX, GY)
   const a = cell && scene.aprons.get(`${cell[0]},${cell[1]}`)
   if (!cell || !a || q.gx < a[0] || q.gy < a[1] || q.gx >= a[2] || q.gy >= a[3]) return null
+  // 판잣집 동네는 연석 없는 흙 마당
+  if (t.shabby) return gravel(q)
   return q.gx < a[0] + 0.06 || q.gy < a[1] + 0.06 || q.gx > a[2] - 0.06 || q.gy > a[3] - 0.06 ? CURB : (cell[0] + cell[1]) % 2 ? paving(q) : plainLot(q)
 }
 
@@ -1124,13 +1555,14 @@ export function artGround(W: number, H: number, isNight: boolean, boardO: Pt, bo
   const cv = new Cv(W, H)
   const nbs = neighborsOf(W, H, isNight, boardO, board)
   const { GX, GY } = board
+  const town = TOWNS[board.stage]
   for (let y = 0; y < H; y++)
     for (let x = 0; x < W; x++) {
       const a = (x + 0.5 - boardO[0]) / HW
       const s = (y + 0.5 - boardO[1]) / HH
       const q: Q = { u: 0, v: 0, gx: (a + s) / 2, gy: (s - a) / 2, z: 0, face: 'top' }
       const isLotEdge = q.gx >= -0.08 && q.gx < GX + 0.08 && q.gy >= -0.08 && q.gy < GY
-      cv.write(y * W + x, C(alleyMouthPaint(q, GX, GY, isNight) ?? streetPaint(q, GY, isNight) ?? (isLotEdge ? CURB : (alleyPaint(q, GX, GY, isNight) ?? apronPaint(q, nbs, GX, GY) ?? lawn(q)))))
+      cv.write(y * W + x, C(alleyMouthPaint(q, GX, GY, isNight, town) ?? streetPaint(q, GY, isNight, town) ?? (isLotEdge && town.walk !== 'none' ? CURB : (alleyPaint(q, GX, GY, isNight, town) ?? apronPaint(q, nbs, GX, GY, town) ?? groundPaint(q, town)))))
     }
   if (isNight) {
     nightTint(cv)
@@ -1163,7 +1595,7 @@ export function artPin(): Cv {
 
 /** 걷는 사람 한 프레임 (사무실 직원 그림, 밤이면 어둡게) */
 export function artWalker(pose: PersonPose, dir: PersonDir, n: number, isNight: boolean): Cv {
-  const p = artPerson(pose, dir, lookOf(n))
+  const p = miniPerson(pose, dir, n)
   if (!isNight) return p
   const cv = new Cv(p.w, p.h)
   cv.blit(p, 0, 0)

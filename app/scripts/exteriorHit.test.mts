@@ -9,7 +9,6 @@ import { LEVEL_TABLE, MAX_LEVEL } from '../src/shared/officeLevel.ts'
 const STAGE_LEVELS = [...new Set(LEVEL_TABLE.slice(0, MAX_LEVEL).map((r) => r.exterior))].map((e) => LEVEL_TABLE.findIndex((r) => r.exterior === e) + 1)
 const LAWN = new Set(['143,207,122', '154,216,132'])
 /** 골목 차도 (낮) */
-const ROAD = '142,147,168'
 
 const originOf = (L: DioramaLayout): Pt => [L.ox + L.board.o[0], L.oy + L.board.o[1]]
 
@@ -92,6 +91,10 @@ test('외관 골목: 모든 단계에서 골목 차도가 큰길 앞 틈·인도
       const py = Math.floor(y)
       return px < 0 || py < 0 || px >= W || py >= H ? null : ground.read(py * W + px).slice(0, 3).join(',')
     }
+    // 차도 색: 단계마다 길이 다르다(흙길·낡은 포장·포장) — 큰길 차도에서 색을 모아 쓴다
+    const roads = new Set<string>()
+    for (let gx = -20; gx <= GX + 20; gx += 0.13) for (const gy of [GY - 1.7, GY - 1.3, GY - 0.7, GY - 0.3]) roads.add(colorAt(P(O, gx, gy, 0)) ?? '')
+    roads.delete('')
     let mouths = 0
     // 블록 열 i의 가운데 줄 (골목이면 차도 가운데). 골목은 세 열에 하나
     for (let i = -12; i <= 12; i++) {
@@ -102,7 +105,7 @@ test('외관 골목: 모든 단계에서 골목 차도가 큰길 앞 틈·인도
         [GY + 2.5, [GY + 1.25, GY + 0.1]],
         [GY - 5, [GY - 3.25, GY - 2.9]],
       ] as const) {
-        if (at(blockGy) !== ROAD || mouthGys.some((gy) => at(gy) === null)) continue
+        if (!roads.has(at(blockGy) ?? '') || mouthGys.some((gy) => at(gy) === null)) continue
         mouths++
         for (const gy of mouthGys) assert.ok(!LAWN.has(at(gy)!), `Lv.${level} 골목 열 ${i} gy=${gy}가 잔디`)
       }

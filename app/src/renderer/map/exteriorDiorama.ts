@@ -152,7 +152,7 @@ export class DioramaStreet {
       })
       const [x, y] = P(this.O, w.gx, lanes.walk, 0)
       c.fillStyle = 'rgba(42,46,80,0.18)'
-      c.fillRect(Math.round(x) - 5, Math.round(y) - 1, 11, 2)
+      c.fillRect(Math.round(x) - 4, Math.round(y) - 1, 9, 2)
       if (w.dir === 1) {
         c.save()
         c.translate(Math.round(x) + s.o[0], Math.round(y) - s.o[1])
