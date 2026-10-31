@@ -1238,7 +1238,7 @@ export class Office extends EventEmitter<{
       }
     }
     // 단체방에는 보고 원문을 그대로 남긴다 (긴 보고는 화면에서 접어 보여 준다)
-    this.postChat(staffId, summary.slice(0, TASK_RESULT_MAX) || t('notify.chatDone'), undefined, undefined, room)
+    this.postChat(staffId, summary.slice(0, TASK_RESULT_MAX) || t('notify.chatDone'), undefined, undefined, room, true)
     // 대표에게 올린 보고 — 직원 카드에 안 읽은 개수로 쌓인다 (패널을 열어 두었으면 화면이 곧바로 읽음 처리한다)
     this.unreadReports = addUnread(this.unreadReports, staffId)
     db.saveUnreadReports(this.unreadReports)
@@ -3766,8 +3766,8 @@ export class Office extends EventEmitter<{
   }
 
   /** room을 안 주면 보낸 직원이 처리 중인 지시의 방으로 (결재·질문·위임·중간 보고가 지시 온 방에 올라간다) */
-  private postChat(from: string, text: string, attachments?: Attachment[], approval?: ChatApproval, room = this.roomOf(from)) {
-    this.emit('chat', db.insertChat(from, text, attachments, approval, room))
+  private postChat(from: string, text: string, attachments?: Attachment[], approval?: ChatApproval, room = this.roomOf(from), isReport = false) {
+    this.emit('chat', db.insertChat(from, text, attachments, approval, room, isReport))
   }
 
   /** 결재·질문 처리 결과를 단체방 메시지에 남긴다 (어디서 처리했든 — 결재함·단체방·휴대폰) */

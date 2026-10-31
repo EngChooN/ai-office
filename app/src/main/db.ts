@@ -126,6 +126,8 @@ export function openDb() {
   if (!chatCols.includes('approval')) db.exec('ALTER TABLE chat ADD COLUMN approval TEXT')
   // 대화방 (팀 id 또는 'lab:<랩 id>'). NULL·빈 값 = 전체 방 — 기존 메시지는 그대로 전체 방
   if (!chatCols.includes('room')) db.exec('ALTER TABLE chat ADD COLUMN room TEXT')
+  // 직원이 대표에게 올린 업무 보고 (1) — 바탕화면 비서가 완료 카드로 보여 준다. 기존 메시지는 보고 여부를 모른다(NULL)
+  if (!chatCols.includes('is_report')) db.exec('ALTER TABLE chat ADD COLUMN is_report INTEGER')
 }
 
 const run = (sql: string, ...params: (string | number | null)[]) => db.prepare(sql).run(...params)
@@ -487,7 +489,7 @@ export function deleteScheduleRow(id: string) {
 
 // ── 단체방 ──────────────────────────────────────────────
 
-type ChatRow = { id: number; ts: number; sender: string; text: string; attachments: string | null; approval: string | null; room: string | null }
+type ChatRow = { id: number; ts: number; sender: string; text: string; attachments: string | null; approval: string | null; room: string | null; is_report?: number | null }
 
 const toChatMessage = (r: ChatRow): ChatMessage => ({
   id: r.id,
@@ -497,22 +499,24 @@ const toChatMessage = (r: ChatRow): ChatMessage => ({
   attachments: parseAttachments(r.attachments),
   approval: r.approval ? (JSON.parse(r.approval) as ChatApproval) : undefined,
   ...(r.room ? { room: r.room } : {}),
+  ...(r.is_report ? { isReport: true } : {}),
 })
 
 /** room: 팀 대화방(팀 id)·랩 대화방('lab:<랩 id>') — 비우면 전체 방 */
-export function insertChat(from: string, text: string, attachments?: Attachment[], approval?: ChatApproval, room?: string): ChatMessage {
+export function insertChat(from: string, text: string, attachments?: Attachment[], approval?: ChatApproval, room?: string, isReport = false): ChatMessage {
   const ts = Date.now()
   const raw = attachments?.length ? JSON.stringify(attachments) : null
   const { lastInsertRowid } = run(
-    'INSERT INTO chat (ts, sender, text, attachments, approval, room) VALUES (?, ?, ?, ?, ?, ?)',
+    'INSERT INTO chat (ts, sender, text, attachments, approval, room, is_report) VALUES (?, ?, ?, ?, ?, ?, ?)',
     ts,
     from,
     text,
     raw,
     approval ? JSON.stringify(approval) : null,
     room || null,
+    isReport ? 1 : null,
   )
-  return { id: Number(lastInsertRowid), ts, from, text, attachments: attachments?.length ? attachments : undefined, approval, ...(room ? { room } : {}) }
+  return { id: Number(lastInsertRowid), ts, from, text, attachments: attachments?.length ? attachments : undefined, approval, ...(room ? { room } : {}), ...(isReport ? { isReport: true } : {}) }
 }
 
 /** 결재 처리 결과를 그 결재의 단체방 메시지에 남긴다 — 바뀐 메시지(없거나 이미 결과가 있으면 null) */

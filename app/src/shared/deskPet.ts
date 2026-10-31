@@ -547,6 +547,8 @@ export interface OfficePetApi {
   hide(): void;
   /** 펼침 창이 보일 때마다 (입력창에 포커스를 준다) */
   onPanelShown(cb: () => void): () => void;
+  /** 펼침 창이 열리고 닫힐 때마다 (캐릭터 창이 받는다 — 창을 보고 있는 동안 끝난 일은 ✓ 배지에 쌓지 않는다) */
+  onPanelVisible(cb: (isVisible: boolean) => void): () => void;
   /** 캐릭터가 창의 어느 쪽에 서는지 (옮기거나 화면이 바뀔 때마다) */
   onAlign(cb: (align: PetAlign) => void): () => void;
   /** 펼침 창에서 결재·질문을 처리한 결과 표정 (캐릭터 창이 받는다 — outcomeFace) */
@@ -812,7 +814,7 @@ export function summaryLine(text: string): string {
     : line;
 }
 
-/** 비서 대화에 섞을 완료 카드: 직원이 올린 보고(단체방 글 — main/office.ts가 보고마다 남긴다). 최근 것만 */
+/** 비서 대화에 섞을 완료 카드: 직원이 올린 보고(단체방 글 중 isReport — main/office.ts가 보고마다 남긴다). 인사·중간 글·첨부는 빼고 최근 것만 */
 export const DONE_RECENT_MS = 24 * 60 * 60_000;
 const DONE_RECENT_MAX = 5;
 export function doneFromChat(
@@ -826,7 +828,7 @@ export function doneFromChat(
   return chat
     .filter(
       (m) =>
-        m.from !== "me" &&
+        m.isReport &&
         !m.approval &&
         hired.has(m.from) &&
         m.ts > now - DONE_RECENT_MS,

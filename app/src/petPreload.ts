@@ -36,6 +36,13 @@ contextBridge.exposeInMainWorld("office", {
       ipcRenderer.off("office:onSnapshot", listener);
     };
   },
+  onChat: (cb: (payload: unknown) => void) => {
+    const listener = (_e: IpcRendererEvent, payload: unknown) => cb(payload);
+    ipcRenderer.on("office:onChat", listener);
+    return () => {
+      ipcRenderer.off("office:onChat", listener);
+    };
+  },
 });
 
 // 화면(React)이 뜨기 전에 온 값도 놓치지 않게 preload가 마지막 값을 들고 있다
@@ -61,6 +68,14 @@ const pet: OfficePetApi = {
     ipcRenderer.invoke("pet:answer", approvalId, answers),
   skip: (approvalId) => ipcRenderer.invoke("pet:skip", approvalId),
   hide: () => ipcRenderer.send("pet:hide"),
+  onPanelVisible: (cb) => {
+    const listener = (_e: IpcRendererEvent, isVisible: boolean) =>
+      cb(isVisible);
+    ipcRenderer.on("pet:panelVisible", listener);
+    return () => {
+      ipcRenderer.off("pet:panelVisible", listener);
+    };
+  },
   onPanelShown: (cb) => {
     const listener = () => cb();
     ipcRenderer.on("pet:panelShown", listener);

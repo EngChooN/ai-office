@@ -222,12 +222,13 @@ export function PetPanel() {
     );
   };
   const send = useMemo(() => {
+    // 실패는 입력창(SecretaryComposer)이 받아 쓴 내용을 되돌리고 안내한다
     if (current.kind === "staff")
       return (text: string) =>
-        void window.office.instruct(current.staffId, text).finally(reloadLogs);
+        window.office.instruct(current.staffId, text).finally(reloadLogs);
     if (current.kind === "room")
       return (text: string) =>
-        void window.office
+        window.office
           .sendChat(text, undefined, current.room || undefined)
           .finally(reloadChat);
     return undefined;
@@ -782,7 +783,7 @@ function useAutoLog() {
   return log;
 }
 
-/** 단체방 글 (대화방 대화 · 직원 보고 = 완료 카드). 펼침 창은 단체방 이벤트를 받지 않아 보고가 늘거나(안 읽은 보고 수) 창을 열거나 보낸 뒤 다시 읽는다 */
+/** 단체방 글 (대화방 대화 · 직원 보고 = 완료 카드). 새 글·결재 결과가 올 때(onChat), 보고가 늘거나(안 읽은 보고 수) 창을 열거나 보낸 뒤 다시 읽는다 */
 function useChat(staff: { unreadReports?: number }[], shownCount: number) {
   const reports = staff.reduce((n, s) => n + (s.unreadReports ?? 0), 0);
   const [chat, setChat] = useState<ChatMessage[]>([]);
@@ -798,6 +799,18 @@ function useChat(staff: { unreadReports?: number }[], shownCount: number) {
     };
   }, [reports, shownCount, tick]);
   const reload = useCallback(() => setTick((n) => n + 1), []);
+  // 글이 연달아 오면 한 번만 다시 읽는다
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const off = window.office.onChat(() => {
+      clearTimeout(timer);
+      timer = setTimeout(reload, 250);
+    });
+    return () => {
+      clearTimeout(timer);
+      off();
+    };
+  }, [reload]);
   return { chat, reload };
 }
 

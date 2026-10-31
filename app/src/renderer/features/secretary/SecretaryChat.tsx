@@ -202,19 +202,23 @@ export function SecretaryMessages({
 }
 
 /** placeholder: 좁은 창(바탕화면 비서 펼침 창)은 짧은 안내로 바꿔 끼운다 */
-/** onSubmit을 주면 비서 대신 그쪽으로 보낸다 (바탕화면 비서 펼침 창에서 직원·대화방에 보낼 때) */
+/** onSubmit을 주면 비서 대신 그쪽으로 보낸다 (바탕화면 비서 펼침 창에서 직원·대화방에 보낼 때).
+ * 보내기가 실패하면 쓴 내용을 입력창에 되돌리고 sendFailedText를 보여 준다 — 그 사이 새로 쓴 글은 덮어쓰지 않는다 */
 export function SecretaryComposer({
   autoFocus,
   onSent,
   placeholder,
   onSubmit,
+  sendFailedText = t("deskPet.sendFailed"),
 }: {
   autoFocus?: boolean;
   onSent?: () => void;
   placeholder?: string;
-  onSubmit?: (text: string) => void;
+  onSubmit?: (text: string) => Promise<unknown> | void;
+  sendFailedText?: string;
 }) {
   const [draft, setDraft] = useState("");
+  const [isFailed, setIsFailed] = useState(false);
   const ref = useRef<HTMLTextAreaElement>(null);
   const prefill = useSecretaryDraft((s) => s.prefill);
   useEffect(() => {
@@ -226,35 +230,49 @@ export function SecretaryComposer({
     const text = draft.trim();
     if (!text) return;
     setDraft("");
-    if (onSubmit) onSubmit(text);
-    else void window.office.secretaryAsk(text);
+    setIsFailed(false);
+    const sent = onSubmit ? onSubmit(text) : window.office.secretaryAsk(text);
+    void Promise.resolve(sent).catch(() => {
+      setDraft((now) => (now.trim() ? now : text));
+      setIsFailed(true);
+    });
     onSent?.();
   };
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) =>
     handleComposerKey(e, send, setDraft);
   return (
-    <div className="flex items-end gap-2">
-      <Textarea
-        ref={ref}
-        autoFocus={autoFocus}
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onKeyDown={handleKeyDown}
-        rows={1}
-        placeholder={
-          placeholder ??
-          t("secretary.placeholder", { hint: String(NEWLINE_HINT) })
-        }
-        className="field-sizing-content max-h-32 min-h-9 resize-none py-[7px]"
-      />
-      <Button
-        size="icon"
-        onClick={send}
-        disabled={!draft.trim()}
-        aria-label={t("secretary.send")}
-      >
-        <SendIcon />
-      </Button>
+    <div>
+      {isFailed && (
+        <p role="alert" className="text-destructive mb-1.5 text-xs">
+          {sendFailedText}
+        </p>
+      )}
+      <div className="flex items-end gap-2">
+        <Textarea
+          ref={ref}
+          autoFocus={autoFocus}
+          value={draft}
+          onChange={(e) => {
+            setDraft(e.target.value);
+            setIsFailed(false);
+          }}
+          onKeyDown={handleKeyDown}
+          rows={1}
+          placeholder={
+            placeholder ??
+            t("secretary.placeholder", { hint: String(NEWLINE_HINT) })
+          }
+          className="field-sizing-content max-h-32 min-h-9 resize-none py-[7px]"
+        />
+        <Button
+          size="icon"
+          onClick={send}
+          disabled={!draft.trim()}
+          aria-label={t("secretary.send")}
+        >
+          <SendIcon />
+        </Button>
+      </div>
     </div>
   );
 }

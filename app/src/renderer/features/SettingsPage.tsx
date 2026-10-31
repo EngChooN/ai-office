@@ -388,7 +388,7 @@ export function SettingsPage() {
                 <input type="checkbox" checked={settings.isTrayOn} onChange={(e) => update({ isTrayOn: e.target.checked })} /> {t('settingsPage.tray.toggle', { place: trayPlace() })}
               </label>
             </Section>
-            {!IS_WINDOWS && !IS_MOBILE_SHELL && (
+            {!IS_MOBILE_SHELL && (
               <Section title={t('deskPet.setting')} description={t('deskPet.settingHint')}>
                 <label className="flex items-center gap-2 text-sm">
                   <input type="checkbox" checked={settings.isDeskPetOn} onChange={(e) => update({ isDeskPetOn: e.target.checked })} /> {t('deskPet.setting')}

@@ -598,6 +598,8 @@ export interface ChatMessage {
   approval?: ChatApproval
   /** 팀 대화방이면 그 팀 id, 랩 대화방이면 'lab:<랩 id>' (없으면 전체 방) */
   room?: string
+  /** 직원이 대표에게 올린 업무 보고 (바탕화면 비서의 완료 카드) — 인사·중간 글·첨부·결재 글은 아니다 */
+  isReport?: boolean
 }
 
 /** approved·rejected: 결재 승인·반려 / answered: 질문에 답함 / skipped: 질문 넘김 / canceled: 세션 쪽에서 사라짐 */

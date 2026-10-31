@@ -206,17 +206,36 @@ test("비서 대화의 완료 카드: 고용 직원이 최근에 올린 보고�
     person("x", { kind: "external" }),
   ];
   const chat = [
-    msg(1, "a", { ts: 1 }),
-    msg(2, "a", { ts: now - 10, text: "**완료** 보고" }),
+    msg(1, "a", { ts: 1, isReport: true }),
+    msg(2, "a", { ts: now - 10, text: "**완료** 보고", isReport: true }),
     msg(3, "me", { ts: now }),
-    msg(4, "x", { ts: now }),
+    msg(4, "x", { ts: now, isReport: true }),
     msg(5, "a", { ts: now, approval: { id: "q" } }),
+    // 입사 인사·중간 글·첨부는 보고가 아니다
+    msg(6, "a", { ts: now, text: "입사 인사" }),
+    msg(7, "a", { ts: now, text: "그림", attachments: [] }),
   ];
   const done = doneFromChat(chat, staff, now);
   assert.equal(done.length, 1);
   assert.deepEqual(
     done[0].kind === "done" && [done[0].staffName, done[0].summary],
     ["에이", "완료 보고"],
+  );
+});
+
+test("비서 대화의 완료 카드: 보고 아닌 글이 많아도 최근 보고가 밀리지 않는다", () => {
+  const now = DONE_RECENT_MS * 2;
+  const staff = [person("a", { name: "에이" })];
+  const chat = [
+    msg(1, "a", { ts: now - 100, text: "끝난 일", isReport: true }),
+    ...Array.from({ length: 10 }, (_, i) =>
+      msg(10 + i, "a", { ts: now - 50 + i, text: `중간 글 ${i}` }),
+    ),
+  ];
+  const done = doneFromChat(chat, staff, now);
+  assert.deepEqual(
+    done.map((d) => d.key),
+    ["done:chat:1"],
   );
 });
 

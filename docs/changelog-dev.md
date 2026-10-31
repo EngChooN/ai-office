@@ -9,6 +9,8 @@
 ### 새 기능
 - 바탕화면 비서 캐릭터(맥): `main/petWindow.ts`(투명·항상 위 캐릭터 창 + 펼침 창, 화면·전원 이벤트에 위치 보정, 끌 때 창·`pet:*` IPC 정리), `petPreload.ts`(읽기·비서 대화·`pet:*`만 노출), `renderer/deskPet/*`, `shared/deskPet.ts`(+`scripts/deskPet.test.mts`). 기본 켜짐(`isDeskPetOn`), 가장자리 40px 붙기, 메뉴 막대·설정에서 다시 불러오기.
 - 펼침 창 결재·답하기: 앱과 같은 `handlers.decide`·`handlers.answerQuestion`만 사용, main에서 `checkPetDecide`·`checkPetAnswer`로 재확인, 같은 InFlight로 중복 방지. 처리 결과(승인·반려·답함·넘김·다른 곳 처리·자동결재 처리)는 4초 뒤 빠짐, 최대 10건. 답 묶기 규칙은 `shared/questionAnswer.ts`로 분리해 `QuestionBox`와 공유. 340px에 안 맞는 질문은 '앱에서 열기'(`fitsPetPanel`).
+- 바탕화면 비서 윈도우 지원: 지원 판단은 `main/petPlatform.ts`(맥·윈도우, 리눅스 제외 — `scripts/petPlatform.test.mts`). 항상 위는 맥 `floating`·윈도우 `screen-saver`(`petTopLevel`), 모든 데스크톱 표시는 맥만, 배율이 다른 모니터를 넘을 때 윈도우는 크기를 한 번 더 적용. 트레이 다시 불러오기·설정 구역도 윈도우에 연다.
+- 펼침 창 리뷰 수정: 완료 카드는 보고 글만(`chat.is_report` 열 → `ChatMessage.isReport`, `postChat`의 보고 경로만 켬 — 기존 글은 NULL이라 업데이트 전 보고는 완료 카드로 안 나옴). 단체방 `chat`·`chatUpdate`를 비서 창에도 `office:onChat`으로 보내 대화방을 250ms 묶어 다시 읽음. `SecretaryComposer`는 보내기 실패 시 입력 복원 + `deskPet.sendFailed`. 캐릭터 창은 `pet:panelVisible`로 창이 열려 있는 동안 끝난 일은 ✓ 배지에 안 쌓고, 열리면 비움.
 - 캐릭터 움직임: 확정 그림 한 장에 CSS transform(`.pet-motion`, 시간은 `PET_MOTION`), 결재 알림 우선(`mergeAct`), 움직임 줄이기·창 숨김·끄는 중이면 정지(`canPetMove`). 머리 위 배지는 도트 말풍선(!·…).
 
 ### 개선

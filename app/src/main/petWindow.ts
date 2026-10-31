@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { app, BrowserWindow, ipcMain, powerMonitor, screen, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron'
 import type { OfficeSnapshot } from '../shared/types'
+import { isPetPlatform, needsBoundsRetry, petAllWorkspaces, petTopLevel } from './petPlatform'
 import {
   clampToArea,
   defaultPetBounds,
@@ -31,9 +32,9 @@ import {
   type Rect,
 } from '../shared/deskPet'
 
-// 바탕화면 비서(맥 1차): 캐릭터 창 + 펼침 창 두 개. 설정(isDeskPetOn)을 켜면 뜨고 끄면(숨기기 포함) 창·IPC·화면/전원 이벤트를 모두 정리한다
+// 바탕화면 비서(맥·윈도우): 캐릭터 창 + 펼침 창 두 개. 설정(isDeskPetOn)을 켜면 뜨고 끄면(숨기기 포함) 창·IPC·화면/전원 이벤트를 모두 정리한다
 // 결재·질문은 앱 화면과 같은 처리 함수(officeHandlers.decide·answerQuestion)로만 처리하고, 이미 끝난 결재·펼침 창에 맞지 않는 질문은 거른다 (shared/deskPet.ts petDecide·petAnswer)
-// 앱 종료 판단(window-all-closed)에는 끼지 않는다 — 맥은 원래 창을 닫아도 앱이 남는다
+// 앱 종료 판단(window-all-closed)에는 끼지 않는다 — 비서 창이 떠 있어도 앱 종료·트레이 상주 규칙은 그대로다
 
 export interface PetDeps {
   snapshot(): OfficeSnapshot
@@ -98,9 +99,9 @@ export class PetWindows {
 
   constructor(private deps: PetDeps) {}
 
-  /** 스냅샷마다: 설정에 맞춰 띄우거나 정리하고, 크기·투명도를 바로 반영한다 (맥만) */
+  /** 스냅샷마다: 설정에 맞춰 띄우거나 정리하고, 크기·투명도를 바로 반영한다 */
   update(snap: OfficeSnapshot) {
-    const isOn = process.platform === 'darwin' && snap.settings.isDeskPetOn
+    const isOn = isPetPlatform(process.platform) && snap.settings.isDeskPetOn
     const size = petSize(snap.settings.deskPetSize)
     const opacity = petOpacity(snap.settings.deskPetOpacity)
     if (!isOn) {
@@ -121,7 +122,7 @@ export class PetWindows {
 
   /** 트레이·설정의 "다시 불러오기": 꺼져 있으면 켜고, 숨었거나 엉뚱한 곳에 있으면 오른쪽 아래로 */
   summon() {
-    if (process.platform !== 'darwin') return
+    if (!isPetPlatform(process.platform)) return
     if (!this.pet) {
       this.isResetNext = true
       this.deps.setOn(true)
@@ -192,20 +193,26 @@ export class PetWindows {
 
   /** 다른 창 위·모든 데스크톱·전체 화면 앱 위에 띄운다. skipTransformProcessType: Dock 아이콘이 사라지지 않게 */
   private floatAbove(win: BrowserWindow) {
-    win.setAlwaysOnTop(true, 'floating')
-    win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true, skipTransformProcessType: true })
+    win.setAlwaysOnTop(true, petTopLevel(process.platform))
+    if (petAllWorkspaces(process.platform)) win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true, skipTransformProcessType: true })
+  }
+
+  /** 창 위치·크기를 준다. 윈도우는 배율이 다른 모니터로 넘어가면 크기가 틀어질 수 있어 틀어졌으면 한 번 더 준다 */
+  private setBoundsFit(win: BrowserWindow, bounds: Rect) {
+    win.setBounds(bounds)
+    if (needsBoundsRetry(process.platform, bounds, win.getBounds())) win.setBounds(bounds)
   }
 
   /** 캐릭터 창을 옮기고 위치·서는 쪽을 기억한다. 펼침 창이 열려 있으면 따라간다 (서는 쪽은 창 위치에서 다시 재지 않는다 — settlePet 참고) */
   private place(bounds: Rect, align: PetAlign) {
     if (!this.pet) return
-    this.pet.setBounds(bounds)
+    this.setBoundsFit(this.pet, bounds)
     savePos(bounds, align)
     if (align !== this.align) {
       this.align = align
       this.sendAlign()
     }
-    if (this.isPanelWanted && this.panel) this.panel.setBounds(this.panelBounds())
+    if (this.isPanelWanted && this.panel) this.setBoundsFit(this.panel, this.panelBounds())
   }
 
   /** 놓은 뒤·화면 변경 뒤: 화면 안으로 넣고 가장자리에 붙이며, 서는 쪽은 settlePet이 정한 대로 */
@@ -257,6 +264,7 @@ export class PetWindows {
       if (this.panel !== panel) return
       this.panel = null
       this.isPanelWanted = false
+      this.sendPanelVisible(false)
     })
     this.deps.load(panel, 'panel')
     this.panel = panel
@@ -266,10 +274,16 @@ export class PetWindows {
   private revealPanel() {
     const panel = this.panel
     if (!panel || !this.pet) return
-    panel.setBounds(this.panelBounds())
+    this.setBoundsFit(panel, this.panelBounds())
     panel.show()
     panel.focus()
     panel.webContents.send('pet:panelShown')
+    this.sendPanelVisible(true)
+  }
+
+  /** 캐릭터 창에 펼침 창이 보이는지 알린다 (완료 ✓ 배지 읽음 처리) */
+  private sendPanelVisible(isVisible: boolean) {
+    if (this.pet && !this.pet.isDestroyed()) this.pet.webContents.send('pet:panelVisible', isVisible)
   }
 
   private showPanel() {
@@ -282,6 +296,7 @@ export class PetWindows {
   private hidePanel() {
     this.isPanelWanted = false
     if (this.panel?.isVisible()) this.panel.hide()
+    this.sendPanelVisible(false)
   }
 
   /** 모니터 연결·분리, 해상도·배율 변경, 잠자기·잠금에서 돌아오면 화면 안으로 되돌린다 (한 번 더 늦게 확인) */
@@ -333,7 +348,7 @@ export class PetWindows {
     })
     this.on('pet:dragMove', (dx, dy) => {
       if (!this.pet || !this.dragFrom || typeof dx !== 'number' || typeof dy !== 'number') return
-      this.pet.setBounds({ ...this.dragFrom, x: Math.round(this.dragFrom.x + dx), y: Math.round(this.dragFrom.y + dy) })
+      this.setBoundsFit(this.pet, { ...this.dragFrom, x: Math.round(this.dragFrom.x + dx), y: Math.round(this.dragFrom.y + dy) })
     })
     this.on('pet:dragEnd', () => {
       this.dragFrom = null

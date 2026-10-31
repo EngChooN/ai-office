@@ -244,10 +244,12 @@ function bubbleText(b: NonNullable<PetBubble>) {
   }
 }
 
-/** 직원 업무 완료: 안 읽은 보고 수가 늘면(main이 보고마다 올린다 — shared/deskPet.ts newReports) 기쁨 표정과 말풍선, 펼침 창을 열 때까지 배지 수 */
+/** 직원 업무 완료: 안 읽은 보고 수가 늘면(main이 보고마다 올린다 — shared/deskPet.ts newReports) 기쁨 표정과 말풍선, 펼침 창을 열 때까지 배지 수.
+ * 펼침 창이 열려 있는 동안 끝난 일은 창의 완료 카드로 이미 보이니 배지에 쌓지 않고, 창이 열리면 배지를 비운다 */
 function useDone(isLoaded: boolean, flash: (face: PetFlashFace) => void) {
   const staff = useOffice((s) => s.staff);
   const counts = useRef<Map<string, number> | null>(null);
+  const isPanelVisible = useRef(false);
   const [shown, setShown] = useState<{
     staffName: string;
     count: number;
@@ -259,9 +261,17 @@ function useDone(isLoaded: boolean, flash: (face: PetFlashFace) => void) {
     counts.current = r.counts;
     if (!r.done.length) return;
     setShown({ staffName: r.done[0].staffName, count: r.done.length });
-    setUnread((n) => n + r.done.length);
+    if (!isPanelVisible.current) setUnread((n) => n + r.done.length);
     flash("happy");
   }, [staff, isLoaded, flash]);
+  useEffect(
+    () =>
+      pet().onPanelVisible((isVisible) => {
+        isPanelVisible.current = isVisible;
+        if (isVisible) setUnread(0);
+      }),
+    [],
+  );
   const clearUnread = useCallback(() => setUnread(0), []);
   const hide = useCallback(() => setShown(null), []);
   return { shown, unread, clearUnread, hide };

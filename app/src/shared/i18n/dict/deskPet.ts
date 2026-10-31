@@ -268,6 +268,12 @@ export default {
     ja: "{name}に指示する…",
     zh: "给 {name} 下达指示…",
   },
+  "deskPet.sendFailed": {
+    ko: "보내지 못했어요. 쓴 내용을 다시 넣어 두었으니 한 번 더 보내 주세요",
+    en: "Couldn't send. Your message is back in the box — please send it again",
+    ja: "送れませんでした。書いた内容を戻したので、もう一度送ってください",
+    zh: "发送失败。已把内容放回输入框，请再发送一次",
+  },
   "deskPet.placeholderRoom": {
     ko: "{name}에 보내기…",
     en: "Send to {name}…",

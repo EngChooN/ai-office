@@ -10,6 +10,7 @@ import { attachmentById, registerAttachmentScheme, saveUpload, serveAttachments 
 import { Office } from './office'
 import { OfficeTray } from './tray'
 import { PetWindows } from './petWindow'
+import { isPetPlatform } from './petPlatform'
 import { createOfficeHandlers, type OfficeHandlers } from './officeHandlers'
 import { runAsRemote } from './remoteContext'
 import { restrictRemoteArgs } from './remoteGuard'
@@ -137,7 +138,7 @@ const tray = new OfficeTray(
     // 메뉴바 "비서에게 말하기": 창을 띄우고 빠른 창(⌘K)을 연다
     talkToSecretary: () => showWindow(SECRETARY_FOCUS),
     // 숨겼거나 엉뚱한 곳에 있는 바탕화면 비서를 다시 불러온다 (맥)
-    summonDeskPet: process.platform === 'darwin' ? () => pet.summon() : undefined,
+    summonDeskPet: isPetPlatform(process.platform) ? () => pet.summon() : undefined,
   },
   () => {
     const r = remote?.status()
@@ -241,12 +242,20 @@ function registerIpc() {
     win?.webContents.send('office:onLog', entry)
     remote?.publish('log', entry)
   })
+  // 바탕화면 비서 창도 단체방 글을 받는다 (앱에서 보낸 글·직원의 중간 글을 펼침 창이 곧바로 다시 읽게)
+  const sendChatToPet = (m: unknown) => {
+    for (const w of pet.windows()) w.webContents.send('office:onChat', m)
+  }
   office.on('chat', (m) => {
     win?.webContents.send('office:onChat', m)
+    sendChatToPet(m)
     remote?.publish('chat', m)
   })
   // 결재 결과로 바뀐 단체방 메시지는 PC 화면만 갈아 끼운다 (같은 채널 — store가 id로 바꿔 넣는다)
-  office.on('chatUpdate', (m) => win?.webContents.send('office:onChat', m))
+  office.on('chatUpdate', (m) => {
+    win?.webContents.send('office:onChat', m)
+    sendChatToPet(m)
+  })
   office.on('notify', ({ title, body, staffId }) => {
     const n = new Notification({ title, body })
     n.on('click', () => {
