@@ -46,6 +46,13 @@ function ViewerBody({ artifact }: { artifact: ArtifactRef }) {
     }
   }, [artifact.id, version])
 
+  const [actionError, setActionError] = useState(false)
+  // 열기·파일 위치 실패는 창을 닫지 않고 안에서 알린다
+  const run = (act: () => Promise<unknown>) => {
+    setActionError(false)
+    act().catch(() => setActionError(true))
+  }
+
   const view = load.status === 'ready' ? load.view : null
   const shownVersion = view?.version ?? version
   return (
@@ -86,14 +93,19 @@ function ViewerBody({ artifact }: { artifact: ArtifactRef }) {
           </NativeSelect>
         )}
         <div className="ml-auto flex flex-wrap gap-2">
-          <Button size="sm" variant="outline" disabled={!view} onClick={() => view && void window.office.artifactOpenExternal(view.id, view.version)}>
+          <Button size="sm" variant="outline" disabled={!view} onClick={() => view && run(() => window.office.artifactOpenExternal(view.id, view.version))}>
             <ExternalLinkIcon /> {t('artifact.openExternal')}
           </Button>
-          <Button size="sm" variant="outline" disabled={!view} onClick={() => view && void window.office.artifactReveal(view.id, view.version)}>
+          <Button size="sm" variant="outline" disabled={!view} onClick={() => view && run(() => window.office.artifactReveal(view.id, view.version))}>
             <FolderOpenIcon /> {t('artifact.reveal')}
           </Button>
         </div>
       </div>
+      {actionError && (
+        <p role="alert" className="text-destructive text-sm">
+          {t('artifact.actionFailed')}
+        </p>
+      )}
       <div className="min-h-0 flex-1 overflow-hidden rounded-md border">
         {load.status !== 'ready' ? (
           <p className="text-muted-foreground p-4 text-sm">{t(load.status === 'loading' ? 'artifact.loading' : load.status === 'missing' ? 'artifact.missing' : 'artifact.error')}</p>

@@ -4,7 +4,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { test } from 'node:test'
 import { ARTIFACT_CSP, ARTIFACT_MAX_BYTES, artifactUrl, checkArtifactFile, markdownToHtml, parseArtifactUrl, withCspMeta } from '../src/shared/artifact.ts'
-import { artifactVersions, findArtifactVersion, listArtifacts, readArtifactText, respondArtifact, saveArtifact } from '../src/main/artifactStore.ts'
+import { artifactVersions, findArtifactVersion, listArtifacts, readArtifactText, respondArtifact, saveArtifact, writeBrowserCopy } from '../src/main/artifactStore.ts'
 
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'artifact-test-'))
 const owner = { staffId: 's1', staffName: '이디자', taskId: 't1' }
@@ -175,4 +175,19 @@ test('CSP 사본: <head>가 스크립트 뒤에 나와도 정책이 가장 먼�
     assert.ok(m < out.indexOf('<script'), out)
   }
   assert.ok(withCspMeta('<!doctype html><p>x').startsWith('<!doctype html><meta'))
+})
+
+test('브라우저 사본: 미리 만든 임시 폴더 링크를 따라가 외부 파일을 지우거나 덮어쓰지 않는다', () => {
+  const base = tmp()
+  const victimDir = tmp()
+  const victim = path.join(victimDir, 'abc-v1.html')
+  fs.writeFileSync(victim, 'KEEP')
+  fs.symlinkSync(victimDir, path.join(base, 'ai-office-artifacts'))
+  fs.symlinkSync(victim, path.join(base, 'abc-v1.html'))
+  const copy = writeBrowserCopy(base, 'abc-v1.html', '<p>x</p>')
+  assert.equal(fs.readFileSync(victim, 'utf8'), 'KEEP')
+  assert.equal(fs.readFileSync(copy, 'utf8'), '<p>x</p>')
+  assert.ok(fs.realpathSync(copy).startsWith(fs.realpathSync(base) + path.sep))
+  assert.notEqual(path.dirname(copy), base)
+  assert.equal(writeBrowserCopy(base, 'abc-v1.html', 'y') === copy, false)
 })

@@ -2,6 +2,20 @@ import type { Entry } from './index.ts'
 
 /** 아티팩트 카드·크게 보기 창 */
 export default {
+  'artifact.link.confirm': {
+    ko: '아티팩트 안의 링크를 기본 브라우저로 열까요?',
+    en: 'Open this link from the artifact in your default browser?',
+    ja: 'アーティファクト内のリンクを既定のブラウザで開きますか?',
+    zh: '要在默认浏览器中打开工件里的这个链接吗?',
+  },
+  'artifact.link.open': { ko: '브라우저에서 열기', en: 'Open in browser', ja: 'ブラウザで開く', zh: '在浏览器中打开' },
+  'artifact.link.cancel': { ko: '취소', en: 'Cancel', ja: 'キャンセル', zh: '取消' },
+  'artifact.actionFailed': {
+    ko: '처리하지 못했어요. 다시 시도해 주세요.',
+    en: 'That didn’t work. Please try again.',
+    ja: '処理できませんでした。もう一度お試しください。',
+    zh: '操作失败,请重试。',
+  },
   'artifact.kind.html': { ko: 'HTML', en: 'HTML', ja: 'HTML', zh: 'HTML' },
   'artifact.kind.md': { ko: '문서', en: 'Document', ja: '文書', zh: '文档' },
   'artifact.open': { ko: '열기', en: 'Open', ja: '開く', zh: '打开' },

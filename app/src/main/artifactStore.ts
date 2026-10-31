@@ -193,3 +193,11 @@ export function respondArtifact(url: string, dir: string): Response {
   const body = artifactDocument(found.ref.kind, text, found.ref.title)
   return new Response(body, { status: 200, headers: { ...NO_STORE, 'content-type': 'text/html; charset=utf-8', 'content-security-policy': ARTIFACT_CSP } })
 }
+
+/** 브라우저로 열 사본을 새 전용 폴더(mkdtemp, 0700)에 쓴다 — 미리 만들어 둔 링크·파일을 따라가거나 지우지 않는다 */
+export function writeBrowserCopy(tmpBase: string, name: string, html: string): string {
+  const dir = fs.mkdtempSync(path.join(tmpBase, 'ai-office-artifact-'))
+  const copy = path.join(dir, safeName(name))
+  fs.writeFileSync(copy, html, { flag: 'wx', mode: 0o600 })
+  return copy
+}
