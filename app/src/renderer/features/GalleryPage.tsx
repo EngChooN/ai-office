@@ -28,12 +28,12 @@ function useGallery() {
   }, [refresh, reviewCount])
   useEffect(() => window.office.onGalleryChanged(() => void refresh()), [refresh])
   useEffect(() => window.office.onChat((m) => m.attachments?.some((a) => a.artifact) && void refresh()), [refresh])
-  return { entries, refresh }
+  return { entries }
 }
 
 /** 결과물 갤러리: 끝난 업무의 캡처·링크·바뀐 파일 카드 + 매주 데모데이 설정 */
 export function GalleryPage() {
-  const { entries, refresh } = useGallery()
+  const { entries } = useGallery()
   const labs = useOffice((s) => s.labs)
   const [staffId, setStaffId] = useState('')
   const [labId, setLabId] = useState('')
@@ -48,8 +48,7 @@ export function GalleryPage() {
 
   const handleDelete = async (e: GalleryEntry) => {
     if (!window.confirm(t('gallery.confirmDelete', { title: e.title }))) return
-    await window.office.deleteGalleryEntry(e.id)
-    void refresh()
+    await window.office.deleteGalleryEntry(e.id) // 목록은 galleryChanged 신호로 다시 불러온다
   }
 
   return (

@@ -1,6 +1,7 @@
 // 결과물 갤러리·데모데이 — 끝난 업무 카드를 모으고, 매주 정한 시간에 짧게 요약한다 (AI 호출 없음)
 import type { ArtifactRef, Attachment, Meeting } from './types'
 import { t } from './i18n/index.ts'
+import { replaceArtifactRef } from './artifact.ts'
 
 /** 끝난 업무 한 장 (업무 카드가 "검토"로 넘어갈 때 앱이 만든다 — 같은 카드를 다시 끝내면 덮어쓴다) */
 export interface GalleryEntry {
@@ -336,4 +337,34 @@ export function abortable<T>(p: Promise<T>, ac: AbortController): Promise<T> {
 export function mergeGalleryEntry(list: GalleryEntry[], entry: GalleryEntry, max: number): { kept: GalleryEntry[]; dropped: GalleryEntry[] } {
   const next = [entry, ...list.filter((e) => e.id !== entry.id)]
   return { kept: next.slice(0, max), dropped: next.slice(max) }
+}
+
+/** 다시 올린 결과물 참조(ref)를 이미 가진 갤러리 카드를 새 버전으로 바꾼다. 바뀐 카드마다 save를 부른다 */
+export function bumpGalleryRefs(list: GalleryEntry[], ref: ArtifactRef, save: (e: GalleryEntry) => void): GalleryEntry[] {
+  return list.map((e) => {
+    const next = replaceArtifactRef(e.artifacts, ref)
+    if (!next) return e
+    const entry = { ...e, artifacts: next }
+    save(entry)
+    return entry
+  })
+}
+
+export interface GalleryStoreIo {
+  get: () => GalleryEntry[]
+  set: (list: GalleryEntry[]) => void
+  save: (e: GalleryEntry) => void
+  remove: (id: string) => void
+  emit: () => void
+  max: number
+}
+
+/** 카드를 만들고(늦게 끝날 수 있음) → 저장 → 목록 반영 → 갱신 신호 순서로 처리한다. 신호는 저장이 끝난 뒤에만 나간다 */
+export async function storeGalleryEntry(build: () => Promise<GalleryEntry>, io: GalleryStoreIo): Promise<void> {
+  const entry = await build()
+  io.save(entry)
+  const { kept, dropped } = mergeGalleryEntry(io.get(), entry, io.max)
+  for (const old of dropped) io.remove(old.id)
+  io.set(kept)
+  io.emit()
 }

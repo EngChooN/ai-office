@@ -78,7 +78,7 @@ import { draftCovered, isSameRule, matchRule, ruleLabel, type ApprovalRule } fro
 import { askDecisionInput, matchPastDecisions, sameAskDecisions } from '../shared/askDecision'
 import { KNOWLEDGE_MAX, knowledgeBrief, normalizeKnowledge, pickKnowledge, type KnowledgeEntry, type KnowledgeInput } from '../shared/knowledge'
 import { maskSecrets } from '../shared/redact'
-import { abortable, demoOutcome, addPraise, cleanSpeech, settleStaleMeeting, dateKeyOf, DEMO_COMMENT_MAX, DEMO_REACTIONS, demoPhaseMs, type DemoPhase, type DemoReaction, type DemoStage, type Praise, demoCoverImages, demoEntries, demoImages, demoLine, demoPresentInput, demoSummary, extractLinks, GALLERY_FILES_MAX, GALLERY_IMAGES_MAX, GALLERY_MAX, galleryBody, groupByStaff, isDemoDue, mergeGalleryEntry, summarize, type GalleryEntry } from '../shared/gallery'
+import { abortable, demoOutcome, addPraise, cleanSpeech, settleStaleMeeting, dateKeyOf, DEMO_COMMENT_MAX, DEMO_REACTIONS, demoPhaseMs, type DemoPhase, type DemoReaction, type DemoStage, type Praise, demoCoverImages, demoEntries, demoImages, demoLine, demoPresentInput, demoSummary, extractLinks, GALLERY_FILES_MAX, GALLERY_IMAGES_MAX, GALLERY_MAX, galleryBody, groupByStaff, isDemoDue, bumpGalleryRefs, storeGalleryEntry, summarize, type GalleryEntry } from '../shared/gallery'
 import { InvalidArgsError } from '../shared/errors'
 import { addUnread, clearUnread, unreadOf, type UnreadReports } from '../shared/unreadReports'
 import { planBoardCleanup, type BoardCleanupPlan } from '../shared/boardCleanup'
@@ -3121,13 +3121,7 @@ export class Office extends EventEmitter<{
       const next = replaceArtifactRef(task.artifacts, ref)
       if (next) this.saveTask({ ...task, artifacts: next })
     }
-    this.gallery = this.gallery.map((e) => {
-      const next = replaceArtifactRef(e.artifacts, ref)
-      if (!next) return e
-      const entry = { ...e, artifacts: next }
-      db.saveGalleryRow(entry)
-      return entry
-    })
+    this.gallery = bumpGalleryRefs(this.gallery, ref, db.saveGalleryRow)
     this.emit('galleryChanged')
   }
 
@@ -3153,28 +3147,28 @@ export class Office extends EventEmitter<{
         .flatMap((l) => l.attachments ?? [])
         .filter(isImageAttachment)
         .slice(-GALLERY_IMAGES_MAX)
-      const revert = await this.revertPlan(s.id).catch(() => null)
-      const files = (revert?.available ? revert.files : []).slice(0, GALLERY_FILES_MAX).map((f) => ({ path: f.path, added: f.additions, removed: f.deletions }))
-      const entry: GalleryEntry = {
-        id: task.id,
-        title: task.title,
-        staffId: s.id,
-        staffName: s.name,
-        teamId: task.teamId ?? this.teamOf(s.id)?.id ?? null,
-        labId: task.labId,
-        summary: summarize(maskSecrets(report)),
-        body: galleryBody(maskSecrets(report)),
-        links: extractLinks(report),
-        images,
-        ...((this.tasks.get(task.id)?.artifacts ?? task.artifacts)?.length ? { artifacts: this.tasks.get(task.id)?.artifacts ?? task.artifacts } : {}),
-        files,
-        finishedAt: Date.now(),
-      }
-      db.saveGalleryRow(entry)
-      const { kept, dropped } = mergeGalleryEntry(this.gallery, entry, GALLERY_MAX)
-      for (const old of dropped) db.deleteGalleryRow(old.id)
-      this.gallery = kept
-      this.emit('galleryChanged')
+      await storeGalleryEntry(
+        async () => {
+          const revert = await this.revertPlan(s.id).catch(() => null)
+          const files = (revert?.available ? revert.files : []).slice(0, GALLERY_FILES_MAX).map((f) => ({ path: f.path, added: f.additions, removed: f.deletions }))
+          return {
+            id: task.id,
+            title: task.title,
+            staffId: s.id,
+            staffName: s.name,
+            teamId: task.teamId ?? this.teamOf(s.id)?.id ?? null,
+            labId: task.labId,
+            summary: summarize(maskSecrets(report)),
+            body: galleryBody(maskSecrets(report)),
+            links: extractLinks(report),
+            images,
+            ...((this.tasks.get(task.id)?.artifacts ?? task.artifacts)?.length ? { artifacts: this.tasks.get(task.id)?.artifacts ?? task.artifacts } : {}),
+            files,
+            finishedAt: Date.now(),
+          }
+        },
+        { get: () => this.gallery, set: (l) => (this.gallery = l), save: db.saveGalleryRow, remove: db.deleteGalleryRow, emit: () => this.emit('galleryChanged'), max: GALLERY_MAX },
+      )
     } catch (e) {
       console.error('[office] recordGallery', e)
     }

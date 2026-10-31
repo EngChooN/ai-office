@@ -1,7 +1,7 @@
 // 결과물 갤러리·데모데이: 링크·요약 다듬기, 필터, 데모데이 시각 판정과 짧은 요약 — npm test
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { demoEntries, demoSummary, extractLinks, filterGallery, isDemoDue, summarize, DEMO_LINES_MAX, cleanSpeech, demoCoverImages, demoImages, demoPresentInput, GALLERY_IMAGES_MAX, galleryBody, GALLERY_BODY_MAX, mergeGalleryEntry, type DemoDayConfig, type GalleryEntry } from '../src/shared/gallery.ts'
+import { demoEntries, demoSummary, extractLinks, filterGallery, isDemoDue, summarize, DEMO_LINES_MAX, cleanSpeech, demoCoverImages, demoImages, demoPresentInput, GALLERY_IMAGES_MAX, galleryBody, GALLERY_BODY_MAX, mergeGalleryEntry, storeGalleryEntry, type DemoDayConfig, type GalleryEntry } from '../src/shared/gallery.ts'
 import { setLang } from '../src/shared/i18n/index.ts'
 
 setLang('ko')
@@ -149,4 +149,26 @@ test('갤러리 병합: 같은 id는 덮어써 맨 앞, 넘친 옛 카드는 dro
   const r = mergeGalleryEntry(list, entry('d'), 3)
   assert.deepEqual(r.kept.map((e) => e.id), ['d', 'a', 'b'])
   assert.deepEqual(r.dropped.map((e) => e.id), ['c'])
+})
+
+test('저장이 늦게 끝나면: 그동안은 항목이 없고, 저장 뒤 신호가 나간 다음 재조회하면 보인다', async () => {
+  let list: GalleryEntry[] = []
+  const events: string[] = []
+  let finish!: (e: GalleryEntry) => void
+  const pending = new Promise<GalleryEntry>((res) => (finish = res))
+  const done = storeGalleryEntry(() => pending, {
+    get: () => list,
+    set: (l) => (list = l),
+    save: (e) => events.push(`save:${e.id}`),
+    remove: (id) => events.push(`remove:${id}`),
+    emit: () => events.push('signal'),
+    max: 3,
+  })
+  await Promise.resolve()
+  assert.deepEqual(list, []) // 초기 조회: 아직 없음
+  assert.deepEqual(events, []) // 저장 전에는 신호도 없다
+  finish(entry('late'))
+  await done
+  assert.deepEqual(events, ['save:late', 'signal']) // 저장 → 신호 순서
+  assert.deepEqual(list.map((e) => e.id), ['late']) // 신호 뒤 재조회
 })

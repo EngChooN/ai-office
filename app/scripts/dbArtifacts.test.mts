@@ -11,6 +11,7 @@ import { spawnSync } from 'node:child_process'
 import { after, test } from 'node:test'
 import type { GalleryEntry } from '../src/shared/types.ts'
 import { replaceArtifactRef } from '../src/shared/artifact.ts'
+import { bumpGalleryRefs } from '../src/shared/gallery.ts'
 import type { ArtifactRef, Task } from '../src/shared/types.ts'
 
 register('./dbLoaderHooks.mjs', import.meta.url)
@@ -145,16 +146,9 @@ const galleryEntry = (id: string, artifacts?: ArtifactRef[]): GalleryEntry =>
 test('카드를 지운 뒤 같은 결과물을 다시 보고하면 갤러리 참조가 새 버전이 되고 DB 재로딩 뒤에도 유지된다', () => {
   freshDir()
   dbm.openDb()
-  // office.ts bumpArtifactRefs와 같은 흐름: 업무 카드는 없고 갤러리 카드만 남은 상태
+  // 운영 코드(office.ts bumpArtifactRefs)가 부르는 함수 그대로: 업무 카드는 없고 갤러리 카드만 남은 상태
   dbm.saveGalleryRow(galleryEntry('g1', [ref(1)]))
-  let gallery = dbm.loadGallery()
-  gallery = gallery.map((e) => {
-    const next = replaceArtifactRef(e.artifacts, ref(2))
-    if (!next) return e
-    const entry = { ...e, artifacts: next }
-    dbm.saveGalleryRow(entry)
-    return entry
-  })
+  const gallery = bumpGalleryRefs(dbm.loadGallery(), ref(2), dbm.saveGalleryRow)
   assert.equal(gallery[0].artifacts![0].version, 2)
   dbm.closeDb()
   dbm.openDb()
