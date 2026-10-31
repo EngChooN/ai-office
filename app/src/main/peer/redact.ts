@@ -4,8 +4,8 @@
 const MASK = '‹가림›'
 
 const RULES: [RegExp, string | ((m: string, ...g: string[]) => string)][] = [
-  // 비밀 키=값 (password: xxx, token=xxx, "api_key":"xxx")
-  [/((?:pass(?:word|wd)?|secret|token|api[_-]?key|access[_-]?key|auth(?:orization)?|credential)s?["']?\s*[:=]\s*["']?)([^\s"',;]{4,})/gi, (_m, k: string) => `${k}${MASK}`],
+  // 비밀 키=값 (password: xxx, token=xxx, "api_key":"xxx", password="공백 든 값")
+  [/((?:pass(?:word|wd)?|secret|token|api[_-]?key|access[_-]?key|auth(?:orization)?|credential)s?["']?\s*[:=]\s*)("[^"\n]+"|'[^'\n]+'|["']?[^\s"',;]{4,})/gi, (_m, k: string) => `${k}${MASK}`],
   // Authorization: Bearer xxx
   [/\b(Bearer|Basic)\s+[A-Za-z0-9._~+/=-]{8,}/g, (_m, k: string) => `${k} ${MASK}`],
   // 알려진 토큰 모양
@@ -23,6 +23,8 @@ const RULES: [RegExp, string | ((m: string, ...g: string[]) => string)][] = [
     const base = m.split(/[\\/]/).filter(Boolean).pop() ?? ''
     return `…/${base}`
   }],
+  // 그 밖의 절대 경로 (/data/internal/a.txt): 두 단계 이상일 때만. URL(//)·and/or·상대 경로는 앞 경계에서 걸러진다
+  [/(?:^|(?<=[\s"'`(=:,]))\/(?!\/)[^\s/"'`)<>|,;]+\/[^\s"'`)<>|,;]+/g, (m: string) => `…/${m.split('/').filter(Boolean).pop() ?? ''}`],
   // 길고 무작위로 보이는 문자열 (base64/hex 32자 이상)
   [/\b[A-Za-z0-9+/_-]{40,}={0,2}(?=$|[\s"',.;)])/g, MASK],
   [/\b[0-9a-f]{32,}\b/gi, MASK],

@@ -53,6 +53,7 @@ const delayFor = (attempts: number) => PEER_LIMITS.retryMs[Math.min(Math.max(att
 export class JobQueue {
   private d: JobQueueDeps
   private pumping = new Set<string>()
+  private rerun = new Set<string>()
   private timers = new Map<string, { cancel(): void }>()
 
   constructor(d: JobQueueDeps) {
@@ -105,13 +106,18 @@ export class JobQueue {
 
   /** 이 피어에 보낼 수 있는 것을 순서대로 보낸다 (한 번에 한 번만 돈다) */
   async pump(peerId: string) {
-    if (this.pumping.has(peerId)) return
+    // 도는 중에 들어온 요청(취소·새 일)은 표시만 해 두고, 지금 도는 pump가 한 바퀴 더 돈다
+    if (this.pumping.has(peerId)) return void this.rerun.add(peerId)
     this.pumping.add(peerId)
     try {
-      this.expire(peerId)
-      await this.pumpOutbox(peerId)
-      await this.pumpJobs(peerId)
+      do {
+        this.rerun.delete(peerId)
+        this.expire(peerId)
+        await this.pumpOutbox(peerId)
+        await this.pumpJobs(peerId)
+      } while (this.rerun.has(peerId))
     } finally {
+      this.rerun.delete(peerId)
       this.pumping.delete(peerId)
     }
   }

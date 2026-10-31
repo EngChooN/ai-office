@@ -288,8 +288,31 @@ test('회귀(P2): 보내는 중 취소했는데 전송이 끊겨도 canceled를 
   await w.settle()
   await w.settle()
   assert.equal(w.q.get(job.id)?.state, 'canceled')
-  assert.equal(w.store.outbox.list().filter((o) => o.kind === 'cancel' && o.payload.jobId === job.id).length, 1) // 한 번만
+  // 취소 요청은 쌓인 채 기다리지 않고 바로, 한 번만 전달된다 (4차 P2)
+  assert.equal(w.sent.filter((s) => s.path === `/v2/peer/jobs/${job.id}/cancel`).length, 1)
+  assert.equal(w.q.outboxCount('p1'), 0)
   assert.equal(w.q.queuedCount('p1'), 0)
+})
+
+test('4차 P2: 전송 대기 중 취소는 추가 업무·재연결 없이도 B컴에 전달된다', async () => {
+  let release!: () => void
+  const gate = new Promise<void>((r) => (release = r))
+  const w = makeWorld()
+  const real = w.http.call
+  // POST jobs만 붙들어 두었다가 정상 접수로 끝낸다
+  w.http.call = async (method, path, body, opts) => {
+    if (method === 'POST' && path === '/v2/peer/jobs') await gate
+    return real(method, path, body, opts)
+  }
+  const job = w.q.enqueue(w.base)
+  await w.settle()
+  assert.equal(w.q.get(job.id)?.state, 'sending')
+  w.q.cancel(job.id)
+  release()
+  for (let i = 0; i < 5; i++) await w.settle()
+  assert.ok(w.sent.some((s) => s.path === `/v2/peer/jobs/${job.id}/cancel`))
+  assert.equal(w.q.outboxCount('p1'), 0)
+  assert.equal(w.timers.length, 0) // 재시도 타이머에 기대지 않는다
 })
 
 test('queuedJobIds: 연결 대기 중인 일 id만, 직원별로 내려준다', async () => {
