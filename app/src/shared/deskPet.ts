@@ -335,6 +335,8 @@ export interface OfficePetApi {
   onPanelShown(cb: () => void): () => void
   /** 캐릭터가 창의 어느 쪽에 서는지 (옮기거나 화면이 바뀔 때마다) */
   onAlign(cb: (align: PetAlign) => void): () => void
+  /** 펼침 창에서 결재·질문을 처리한 결과 표정 (캐릭터 창이 받는다 — outcomeFace) */
+  onFace(cb: (face: PetFlashFace) => void): () => void
 }
 
 /** 캐릭터 움직임 (확정 그림 한 장에 CSS transform — renderer/index.css .pet-motion).
@@ -360,6 +362,49 @@ export const pickIdleAct = (r: number): PetAct => (r < 0.5 ? 'look' : 'hop')
 export const mergeAct = (cur: PetAct | null, next: PetAct): PetAct => (next === 'alert' ? 'alert' : (cur ?? next))
 /** 움직여도 되는지 — 움직임 줄이기·창이 안 보임·끄는 중이면 모두 멈춘다 */
 export const canPetMove = (s: { isReduced: boolean; isHidden: boolean; isDragging: boolean }) => !s.isReduced && !s.isHidden && !s.isDragging
+
+/** 캐릭터 표정 (얼굴만 바꾼 그림 — docs/design/desktop-secretary/face-sprites.py). 움직임이 아니라서 움직임 줄이기에서도 바뀐다.
+ * 잠깐 나오는 표정(놀람·기쁨·걱정)은 끝나는 시각을, 계속되는 표정(생각 중·집중·졸림)은 지금 상태를 보고 고른다 */
+export type PetFace = 'idle' | 'surprised' | 'worried' | 'happy' | 'thinking' | 'focused' | 'sleepy'
+/** 잠깐 나오는 표정의 시간, 조용하면 조는 데 걸리는 시간 */
+export const PET_FACE = { surprisedMs: 1500, happyMs: 1500, worriedMs: 3000, sleepyMs: 10 * 60_000 } as const
+export type PetFlashFace = 'surprised' | 'happy' | 'worried'
+export const FLASH_MS: Record<PetFlashFace, number> = { surprised: PET_FACE.surprisedMs, happy: PET_FACE.happyMs, worried: PET_FACE.worriedMs }
+
+export interface PetFaceState {
+  now: number
+  /** 잠깐 나오는 표정마다 끝나는 시각 (없으면 0) */
+  until: Record<PetFlashFace, number>
+  /** 비서가 대답을 만드는 중 */
+  isThinking: boolean
+  /** 직원이 일하는 중 */
+  isWorking: boolean
+  hasApproval: boolean
+  /** 마지막으로 무슨 일이 있었던 시각 (결재·대답·직원 작업·사용자 조작) */
+  quietSince: number
+}
+
+/** 겹치면 놀람 → 걱정 → 기쁨 → 생각 중 → 집중 → 졸림 → 평소 순으로 하나만 */
+export function pickFace(s: PetFaceState): PetFace {
+  for (const face of ['surprised', 'worried', 'happy'] as const) if (s.until[face] > s.now) return face
+  if (s.isThinking) return 'thinking'
+  if (s.isWorking) return 'focused'
+  if (!s.hasApproval && s.now - s.quietSince >= PET_FACE.sleepyMs) return 'sleepy'
+  return 'idle'
+}
+
+/** 표정이 저절로 바뀔 다음 시각 (잠깐 표정이 끝나거나 졸기 시작할 때). 없으면 null — 이때 한 번 다시 고른다 */
+export function nextFaceChange(s: PetFaceState): number | null {
+  const times = Object.values(s.until).filter((t) => t > s.now)
+  if (!s.isThinking && !s.isWorking && !s.hasApproval) {
+    const sleepAt = s.quietSince + PET_FACE.sleepyMs
+    if (sleepAt > s.now) times.push(sleepAt)
+  }
+  return times.length ? Math.min(...times) : null
+}
+
+/** 펼침 창 처리 결과 → 캐릭터 표정: 해내면 기쁨, 못 하면 걱정. 이미 처리됨·다른 곳에서 처리 중은 실패가 아니라서 표정 없음 */
+export const outcomeFace = (r: PetDecideResult | PetAnswerResult): PetFlashFace | null => (r === 'done' ? 'happy' : r === 'busy' || r === 'already' ? null : 'worried')
 
 /** 말풍선 하나: 대답 중 → 새 결재 → 직원 업무 순 (결재 배지는 따로 늘 보인다) */
 export type PetBubble = { kind: 'thinking' } | { kind: 'reply'; text: string; isError: boolean } | { kind: 'approval'; count: number; title: string } | { kind: 'working'; count: number } | null

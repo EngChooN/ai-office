@@ -15,6 +15,7 @@ Writing rules
 - When an approval arrives, a speech bubble (!) appears above the character and it hops. Otherwise it breathes and looks around.
 
 ### Improvements
+- The desktop secretary's face changes with the situation: surprised when an approval arrives, thinking while it prepares an answer, happy after you approve or answer, worried on errors, focused while staff are working, and sleepy after 10 quiet minutes.
 - Change the character's size (80–160) and opacity (40–100%) in Settings; changes apply right away.
 - A hidden character can be brought back from the menu bar or Settings.
 - If Reduce Motion is on, the character stays still.

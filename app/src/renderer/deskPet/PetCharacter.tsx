@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type AnimationEvent,
 import { useOffice } from '@/store'
 import { cn } from '@/lib/utils'
 import { EMPTY_SECRETARY } from '@shared/types'
-import { BUBBLE_MAX, canPetMove, isDragMove, mergeAct, nextIdleDelay, petApprovals, petLayout, petMotionVars, pickBubble, pickIdleAct, type PetAct, type PetAlign, type PetBubble } from '@shared/deskPet'
+import { BUBBLE_MAX, canPetMove, FLASH_MS, isDragMove, mergeAct, nextFaceChange, nextIdleDelay, petApprovals, petLayout, petMotionVars, pickBubble, pickFace, pickIdleAct, type PetAct, type PetAlign, type PetBubble, type PetFlashFace } from '@shared/deskPet'
 import { t, trOr } from '@shared/i18n'
 import { PetSprite, type PetPose } from './PetSprite'
 import { PetBadge, type PetBadgeKind } from './PetBadge'
@@ -10,6 +10,7 @@ import { PetBadge, type PetBadgeKind } from './PetBadge'
 // 캐릭터 창: 캐릭터 그림(PetSprite) + 머리 위 도트 말풍선(PetBadge) + 글자 말풍선 하나. 누르면 펼침 창, 끌면 옮기기 (이동 거리로 구분 — shared/deskPet.ts isDragMove)
 // 투명한 곳은 클릭이 뒤 창으로 지나가고, 캐릭터·말풍선 위에서만 마우스를 받는다 (setInteractive)
 // 움직임(숨쉬기·가끔 동작·결재 알림)은 button 안쪽 그림 래퍼에만 준다 — 클릭 영역·말풍선·결재 배지는 제자리 (usePetMotion)
+// 표정은 상황에 따라 얼굴 그림을 바꾼다 (usePetFace — 고르는 규칙은 shared/deskPet.ts pickFace)
 
 /** 말풍선을 보여 주는 시간 (대답 중은 끝날 때까지) */
 const BUBBLE_MS = 5000
@@ -26,15 +27,22 @@ export function PetCharacter() {
   // 방금 끝난 비서 답 — 대답 중이 끝나면 마지막 비서 말을 5초
   const [reply, setReply] = useState<{ text: string; isError: boolean } | null>(null)
   const wasBusy = useRef(false)
+  const isHidden = usePageHidden()
+  const { face, flash, touch } = usePetFace({ isThinking: secretary.isBusy, isWorking: workingCount > 0, hasApproval: approvals.length > 0, isHidden })
   useEffect(() => {
     if (wasBusy.current && !secretary.isBusy) {
       const last = [...secretary.messages].reverse().find((m) => m.role === 'secretary')
-      if (last) setReply({ text: last.text, isError: Boolean(last.isError) })
+      if (last) {
+        setReply({ text: last.text, isError: Boolean(last.isError) })
+        flash(last.isError ? 'worried' : 'happy')
+      }
     }
     wasBusy.current = secretary.isBusy
-  }, [secretary.isBusy, secretary.messages])
+  }, [secretary.isBusy, secretary.messages, flash])
+  // 펼침 창에서 결재·질문을 처리한 결과 (main이 알려 준다)
+  useEffect(() => pet().onFace(flash), [flash])
 
-  const drag = useDragOrClick()
+  const drag = useDragOrClick(touch)
   const motion = usePetMotion(drag.isDragging)
   // 새 결재: 들어온 순간 폴짝 두 번(결재 알림), 말풍선 차례가 오면 5초 보여 준다 (대답 중이면 끝난 뒤 한 번)
   const [newApproval, setNewApproval] = useState<{ count: number; title: string } | null>(null)
@@ -49,8 +57,10 @@ export function PetCharacter() {
     if (!approvals.length) return setNewApproval(null)
     if (!fresh.length) return
     setNewApproval({ count: approvals.length, title: `${approvals[0].staffName} · ${trOr(approvals[0].summaryI18n, approvals[0].summary)}` })
-    if (!isFirst) motion.play('alert')
-  }, [approvals, isLoaded, motion.play])
+    if (isFirst) return
+    motion.play('alert')
+    flash('surprised')
+  }, [approvals, isLoaded, motion.play, flash])
 
   // 직원 업무: 일하는 인원이 바뀌면 5초
   const [isWorkShown, setWorkShown] = useState(false)
@@ -103,7 +113,7 @@ export function PetCharacter() {
           style={{ '--pet-scale': layout.scale, ...petMotionVars() } as React.CSSProperties}
           onAnimationEnd={motion.onAnimationEnd}
         >
-          <PetSprite isBlinking={isBlinking} layout={layout} />
+          <PetSprite face={face} isBlinking={isBlinking} layout={layout} />
         </span>
         {badge && <PetBadge kind={badge} layout={layout} label={badge === 'thinking' ? t('deskPet.thinking') : t('deskPet.badge', { n: approvals.length })} />}
         {pose === 'working' && <span className="bg-primary absolute bottom-[12%] animate-pulse rounded-full motion-reduce:animate-none" style={{ left: -px(12), width: px(8), height: px(8) }} aria-hidden />}
@@ -189,7 +199,7 @@ function useBlink(isMoving: boolean, isActing: boolean) {
 }
 
 /** 누른 채 기준 거리 넘게 움직이면 끌기(창 옮기기), 아니면 클릭(펼침 창 열고 닫기) */
-function useDragOrClick() {
+function useDragOrClick(onPress: () => void) {
   const start = useRef<{ x: number; y: number; isDrag: boolean } | null>(null)
   // 끄는 동안 움직임을 멈추려고 화면에도 알린다 (start는 매 움직임마다 읽는 ref)
   const [isDragging, setDragging] = useState(false)
@@ -208,6 +218,7 @@ function useDragOrClick() {
     handlers: {
       onPointerDown: (e: PointerEvent<HTMLElement>) => {
         if (e.button !== 0) return
+        onPress()
         e.currentTarget.setPointerCapture(e.pointerId)
         start.current = { x: e.screenX, y: e.screenY, isDrag: false }
       },
@@ -270,6 +281,41 @@ function usePetMotion(isDragging: boolean) {
     if (e.target === e.currentTarget) setAct(null)
   }
   return { act, isActing: act !== null, isMoving, play, onAnimationEnd }
+}
+
+/** 표정: 잠깐 표정(놀람·기쁨·걱정)은 flash로 끝나는 시각을 정하고, 계속되는 표정(생각 중·집중·졸림)은 상태로 고른다.
+ * 저절로 바뀔 다음 시각(nextFaceChange)에 타이머 하나만 건다 — 창이 안 보이면 걸지 않고, 다시 보이면 지금 시각으로 다시 고른다.
+ * 조는 시간은 결재·대답·직원 작업이 끝난 때나 마지막 표정·누르기부터 센다 (touch) */
+function usePetFace(s: { isThinking: boolean; isWorking: boolean; hasApproval: boolean; isHidden: boolean }) {
+  const [until, setUntil] = useState<Record<PetFlashFace, number>>({ surprised: 0, happy: 0, worried: 0 })
+  const [quietSince, setQuietSince] = useState(() => Date.now())
+  const [now, setNow] = useState(() => Date.now())
+  const isActive = s.isThinking || s.isWorking || s.hasApproval
+  const touch = useCallback(() => {
+    const at = Date.now()
+    setNow(at)
+    setQuietSince(at)
+  }, [])
+  const flash = useCallback(
+    (face: PetFlashFace) => {
+      touch()
+      setUntil((u) => ({ ...u, [face]: Date.now() + FLASH_MS[face] }))
+    },
+    [touch],
+  )
+  useEffect(touch, [isActive, touch])
+  useEffect(() => {
+    if (!s.isHidden) setNow(Date.now())
+  }, [s.isHidden])
+  const state = { now, until, isThinking: s.isThinking, isWorking: s.isWorking, hasApproval: s.hasApproval, quietSince }
+  const next = s.isHidden ? null : nextFaceChange(state)
+  useEffect(() => {
+    if (next === null) return
+    // 시계가 조금 일찍 깨워도 바뀔 시각에 닿은 것으로 본다 — 안 그러면 next가 그대로라 타이머가 다시 걸리지 않는다
+    const timer = setTimeout(() => setNow(Math.max(Date.now(), next)), Math.max(0, next - Date.now()))
+    return () => clearTimeout(timer)
+  }, [next])
+  return { face: pickFace(state), flash, touch }
 }
 
 /** 창이 안 보이는지 (화면 잠금·가려짐 등 — 캐릭터를 끄면 창 자체가 없어진다) */

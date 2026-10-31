@@ -10,6 +10,7 @@
 - 캐릭터 움직임: 확정 그림 한 장에 CSS transform(`.pet-motion`, 시간은 `PET_MOTION`), 결재 알림 우선(`mergeAct`), 움직임 줄이기·창 숨김·끄는 중이면 정지(`canPetMove`). 머리 위 배지는 도트 말풍선(!·…).
 
 ### 개선
+- 표정 6종: `sprites/face-*.png`(기준 그림에서 얼굴만 바꿈, `docs/design/desktop-secretary/face-sprites.py`가 생성·얼굴 밖 픽셀 검사), `shared/deskPet.ts` `pickFace`·`nextFaceChange`·`outcomeFace`(우선순위 놀람>걱정>기쁨>생각 중>집중>졸림>평소, 1.5/1.5/3초, 10분 무활동 졸림), `PetCharacter` `usePetFace`(타이머 하나, 창이 안 보이면 안 검), main `withFace`가 펼침 창 처리 결과를 `pet:face`로 캐릭터 창에 전달. 움직임 줄이기에서도 표정은 바뀌고 깜빡임만 멈춤.
 - 크기 80~160px(8px 단위, 기본 112)·투명도 40~100% 설정, 즉시 반영. 휴대폰에서는 못 바꿈.
 - 펼침 창 D2: 평평한 목록, 폭 400, 입력창 고정, 선택 체크 표시, 보조 글자 대비 상향, 입력 안내 한 줄(`SecretaryChat` placeholder 선택 인자). 첫 스냅샷에는 대화 끝으로 스크롤하지 않음.
 

@@ -1,9 +1,15 @@
-// 바탕화면 비서: 위치 보정·펼침 창 배치·끌기/클릭 구분·결재 중복 처리·질문 답하기·말풍선 우선순위 단위 테스트 — pnpm test
+// 바탕화면 비서: 위치 보정·펼침 창 배치·끌기/클릭 구분·결재 중복 처리·질문 답하기·말풍선 우선순위·표정 단위 테스트 — pnpm test
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { EventEmitter } from 'node:events'
 import {
   addSettled,
+  FLASH_MS,
+  nextFaceChange,
+  outcomeFace,
+  PET_FACE,
+  pickFace,
+  type PetFaceState,
   canPetMove,
   checkPetAnswer,
   checkPetDecide,
@@ -576,4 +582,73 @@ test('움직임: 겹치면 결재 알림이 이기고, 동작 중 가끔 동작�
 test('움직임: 움직임 줄이기·창이 안 보임·끄는 중 하나라도면 멈춘다', () => {
   assert.equal(canPetMove({ isReduced: false, isHidden: false, isDragging: false }), true)
   for (const k of ['isReduced', 'isHidden', 'isDragging'] as const) assert.equal(canPetMove({ isReduced: false, isHidden: false, isDragging: false, [k]: true }), false)
+})
+
+const calm = (over: Partial<PetFaceState> = {}): PetFaceState => ({
+  now: 1_000_000,
+  until: { surprised: 0, happy: 0, worried: 0 },
+  isThinking: false,
+  isWorking: false,
+  hasApproval: false,
+  quietSince: 1_000_000,
+  ...over,
+})
+
+test('표정: 상황마다 맞는 표정, 아무 일 없으면 평소', () => {
+  const now = 1_000_000
+  assert.equal(pickFace(calm()), 'idle')
+  assert.equal(pickFace(calm({ until: { surprised: now + 1, happy: 0, worried: 0 } })), 'surprised')
+  assert.equal(pickFace(calm({ until: { surprised: 0, happy: now + 1, worried: 0 } })), 'happy')
+  assert.equal(pickFace(calm({ until: { surprised: 0, happy: 0, worried: now + 1 } })), 'worried')
+  assert.equal(pickFace(calm({ isThinking: true })), 'thinking')
+  assert.equal(pickFace(calm({ isWorking: true })), 'focused')
+  assert.equal(pickFace(calm({ quietSince: now - PET_FACE.sleepyMs })), 'sleepy')
+})
+
+test('표정: 겹치면 놀람 → 걱정 → 기쁨 → 생각 중 → 집중 → 졸림 순', () => {
+  const now = 1_000_000
+  const on = (faces: string[]) =>
+    calm({
+      until: { surprised: faces.includes('surprised') ? now + 1 : 0, happy: faces.includes('happy') ? now + 1 : 0, worried: faces.includes('worried') ? now + 1 : 0 },
+      isThinking: faces.includes('thinking'),
+      isWorking: faces.includes('focused'),
+      quietSince: faces.includes('sleepy') ? now - PET_FACE.sleepyMs : now,
+    })
+  const order = ['surprised', 'worried', 'happy', 'thinking', 'focused', 'sleepy'] as const
+  for (let i = 0; i < order.length - 1; i++) assert.equal(pickFace(on([order[i], order[i + 1]])), order[i], `${order[i]} > ${order[i + 1]}`)
+  assert.equal(pickFace(on([...order])), 'surprised')
+})
+
+test('표정: 잠깐 표정은 정해진 시간이 지나면 아래 표정으로 돌아간다', () => {
+  const at = 1_000_000
+  const s = (now: number) => calm({ now, isWorking: true, until: { surprised: at + FLASH_MS.surprised, happy: 0, worried: at + FLASH_MS.worried } })
+  assert.equal(FLASH_MS.surprised, 1500)
+  assert.equal(FLASH_MS.worried, 3000)
+  assert.equal(pickFace(s(at + 1499)), 'surprised')
+  assert.equal(pickFace(s(at + 1500)), 'worried')
+  assert.equal(pickFace(s(at + 2999)), 'worried')
+  assert.equal(pickFace(s(at + 3000)), 'focused')
+  assert.equal(nextFaceChange(s(at)), at + 1500)
+  assert.equal(nextFaceChange(s(at + 1500)), at + 3000)
+  assert.equal(nextFaceChange(s(at + 3000)), null, '일하는 중이면 졸 때가 없다')
+})
+
+test('표정: 10분 조용하면 졸고, 결재·대답·직원 작업이 있으면 졸지 않는다', () => {
+  const now = 1_000_000
+  assert.equal(pickFace(calm({ quietSince: now - PET_FACE.sleepyMs + 1 })), 'idle')
+  assert.equal(pickFace(calm({ quietSince: now - PET_FACE.sleepyMs })), 'sleepy')
+  assert.equal(nextFaceChange(calm({ quietSince: now - 1000 })), now - 1000 + PET_FACE.sleepyMs)
+  assert.equal(nextFaceChange(calm({ quietSince: now - PET_FACE.sleepyMs })), null, '이미 졸고 있으면 더 바뀔 때가 없다')
+  const long = now - PET_FACE.sleepyMs * 2
+  assert.equal(pickFace(calm({ quietSince: long, hasApproval: true })), 'idle')
+  assert.equal(pickFace(calm({ quietSince: long, isThinking: true })), 'thinking')
+  assert.equal(pickFace(calm({ quietSince: long, isWorking: true })), 'focused')
+  assert.equal(nextFaceChange(calm({ hasApproval: true })), null)
+})
+
+test('표정: 펼침 창 처리는 해내면 기쁨, 못 하면 걱정, 이미 처리됨·다른 곳에서 처리 중은 표정 없음', () => {
+  assert.equal(outcomeFace('done'), 'happy')
+  assert.equal(outcomeFace('already'), null)
+  assert.equal(outcomeFace('busy'), null)
+  for (const r of ['question', 'notQuestion', 'tooComplex', 'invalid'] as const) assert.equal(outcomeFace(r), 'worried')
 })

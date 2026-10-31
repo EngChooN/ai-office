@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
-import type { OfficePetApi, PetAlign, PetOpenTarget } from './shared/deskPet'
+import type { OfficePetApi, PetAlign, PetFlashFace, PetOpenTarget } from './shared/deskPet'
 
 // 바탕화면 비서 창(캐릭터·펼침 창) 전용 preload — 앱 창 preload보다 좁게 연다.
 // 사무실 API는 읽기(snapshot·onSnapshot·자동결재 기록)와 비서에게 말하기만, 결재는 pet:decide, 질문은 pet:answer·pet:skip(이미 끝난 결재·맞지 않는 질문을 거르는 길)로만 간다
@@ -46,6 +46,13 @@ const pet: OfficePetApi = {
     ipcRenderer.on('pet:panelShown', listener)
     return () => {
       ipcRenderer.off('pet:panelShown', listener)
+    }
+  },
+  onFace: (cb) => {
+    const listener = (_e: IpcRendererEvent, face: PetFlashFace) => cb(face)
+    ipcRenderer.on('pet:face', listener)
+    return () => {
+      ipcRenderer.off('pet:face', listener)
     }
   },
   onAlign: (cb) => {

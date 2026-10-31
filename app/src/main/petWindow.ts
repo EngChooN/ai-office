@@ -21,8 +21,12 @@ import {
   REFIT_EVENTS,
   resizePet,
   settlePet,
+  outcomeFace,
   type EventSource,
   type PetAlign,
+  type PetAnswerResult,
+  type PetDecideResult,
+  type PetFlashFace,
   type PetOpenTarget,
   type Rect,
 } from '../shared/deskPet'
@@ -301,6 +305,19 @@ export class PetWindows {
     return this.windows().some((w) => w.webContents === e.sender)
   }
 
+  /** 펼침 창의 처리 결과를 캐릭터 표정으로 알린다 (해내면 기쁨, 못 하면 걱정 — outcomeFace). 결과는 그대로 펼침 창에 돌려준다 */
+  private async withFace<R extends PetDecideResult | PetAnswerResult>(result: R | Promise<R>): Promise<R> {
+    const send = (face: PetFlashFace | null) => face && this.pet && !this.pet.isDestroyed() && this.pet.webContents.send('pet:face', face)
+    try {
+      const r = await result
+      send(outcomeFace(r))
+      return r
+    } catch (err) {
+      send('worried')
+      throw err
+    }
+  }
+
   private on(channel: string, fn: (...args: unknown[]) => void) {
     ipcMain.on(channel, (e, ...args) => {
       if (this.isMine(e)) fn(...args)
@@ -335,16 +352,16 @@ export class PetWindows {
     this.on('pet:hide', () => this.deps.setOn(false))
     ipcMain.handle('pet:decide', (e, approvalId: unknown, allow: unknown) => {
       if (!this.isMine(e) || typeof approvalId !== 'string' || typeof allow !== 'boolean') return 'already'
-      return petDecide({ staff: () => this.deps.snapshot().staff, decide: this.deps.decide, inFlight: this.inFlight }, approvalId, allow)
+      return this.withFace(petDecide({ staff: () => this.deps.snapshot().staff, decide: this.deps.decide, inFlight: this.inFlight }, approvalId, allow))
     })
     // 질문 답하기·넘기기: 펼침 창에 알맞은 질문만, 답하기는 답이 질문과 꼭 맞을 때만 (shared/deskPet.ts checkPetAnswer·checkPetQuestion). 결재와 같은 InFlight로 겹침을 막는다
     ipcMain.handle('pet:answer', (e, approvalId: unknown, answers: unknown) => {
       if (!this.isMine(e) || typeof approvalId !== 'string') return 'already'
-      return petAnswer({ staff: () => this.deps.snapshot().staff, answerQuestion: this.deps.answerQuestion, inFlight: this.inFlight }, approvalId, answers)
+      return this.withFace(petAnswer({ staff: () => this.deps.snapshot().staff, answerQuestion: this.deps.answerQuestion, inFlight: this.inFlight }, approvalId, answers))
     })
     ipcMain.handle('pet:skip', (e, approvalId: unknown) => {
       if (!this.isMine(e) || typeof approvalId !== 'string') return 'already'
-      return petSkipQuestion({ staff: () => this.deps.snapshot().staff, decide: this.deps.decide, inFlight: this.inFlight }, approvalId)
+      return this.withFace(petSkipQuestion({ staff: () => this.deps.snapshot().staff, decide: this.deps.decide, inFlight: this.inFlight }, approvalId))
     })
     const off = listenAll(
       [
