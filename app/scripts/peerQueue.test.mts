@@ -266,3 +266,28 @@ test('끝난 일 정리(prune)와 피어 해제(cancelAll)', async () => {
   assert.equal(w.q.get(a.id), undefined)
   assert.ok(w.q.get(b.id))
 })
+
+test('회귀(P2): 보내는 중 취소했는데 전송이 끊겨도 canceled를 queued로 되살리지 않고 B컴에 취소를 전한다', async () => {
+  let release!: () => void
+  const gate = new Promise<void>((r) => (release = r))
+  const w = makeWorld()
+  const real = w.http.call
+  // POST jobs만 붙들어 두었다가 네트워크 오류로 끝낸다 (B컴에는 이미 접수됐을 수 있는 상황)
+  w.http.call = async (method, path, body, opts) => {
+    if (method === 'POST' && path === '/v2/peer/jobs') {
+      await gate
+      throw new Error('ECONNRESET')
+    }
+    return real(method, path, body, opts)
+  }
+  const job = w.q.enqueue(w.base)
+  await w.settle()
+  assert.equal(w.q.get(job.id)?.state, 'sending')
+  w.q.cancel(job.id)
+  release()
+  await w.settle()
+  await w.settle()
+  assert.equal(w.q.get(job.id)?.state, 'canceled')
+  assert.equal(w.store.outbox.list().filter((o) => o.kind === 'cancel' && o.payload.jobId === job.id).length, 1) // 한 번만
+  assert.equal(w.q.queuedCount('p1'), 0)
+})

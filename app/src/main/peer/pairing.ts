@@ -94,8 +94,9 @@ export class PairingWindow implements PairingHost {
 
   view(): PairWindowView | null {
     const w = this.live()
-    const code = w && formatPairCode(w.code)
-    return w && code && { kind: w.kind, code, host: w.info.host, port: w.info.port, fingerprint: fingerprintShort(w.info.spki), until: w.until, copyText: `${w.info.host}:${w.info.port} ${code}` }
+    if (!w) return null
+    const code = formatPairCode(w.code)
+    return { kind: w.kind, code, host: w.info.host, port: w.info.port, fingerprint: fingerprintShort(w.info.spki), until: w.until, copyText: `${w.info.host}:${w.info.port} ${code}` }
   }
 
   hello(nonceA: unknown) {

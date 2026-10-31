@@ -10,6 +10,7 @@ import type { PeerManager } from './peer/peerManager'
 import type { PeerHost, PeerHostOffice } from './peer/peerHost'
 import type { PeerApprovalEvent } from '../shared/peerProtocol'
 import { remoteStaffBase } from './peer/remoteStaffView'
+import { hasLocalWork as hasLocalWorkOf, peerJobOfOrigins, shouldHoldLocal } from './peer/peerIsolation'
 import { fmtDate, getLang, resolveLang, setLang, t, tk, tr as trI18n, tx, type I18nArg, type Lang } from '../shared/i18n/index.ts'
 import {
   companyFromXp,
@@ -186,7 +187,7 @@ const tr = t
  * room: 팀·랩 대화방(팀 id·'lab:<랩 id>')에서 시작된 지시 — 완료 보고·결재·질문·위임 글을 그 방에 올린다 (없으면 전체 방)
  */
 /** isAutonomous: 자율 진행으로 받은 일 (지시창에서 켠 지시·자율 직원이 위임한 일 등 — 카드는 카드의 표시를 본다) */
-type Origin = ({ kind: 'user' | 'chat' | 'schedule' } | { kind: 'task'; taskId: string } | { kind: 'delegate'; leadId: string } | { kind: 'process'; runId: string; stepId: string } | { kind: 'peer'; jobId: string }) & { room?: string; isAutonomous?: boolean; text?: string }
+type Origin = ({ kind: 'user' | 'chat' | 'schedule' } | { kind: 'task'; taskId: string } | { kind: 'delegate'; leadId: string } | { kind: 'process'; runId: string; stepId: string } | { kind: 'peer'; jobId: string }) & { room?: string; isAutonomous?: boolean; text?: string; /** 다른 PC가 맡긴 일에서 파생된 지시 — 승인 주체(피어 jobId)를 이어받는다 */ peerJobId?: string }
 
 type Counters = Partial<Record<LogType, number>>
 
@@ -632,6 +633,7 @@ export class Office extends EventEmitter<{
     for (const id of taskIds) this.returnToTodo(id)
     // 쉬는 중에 세션만 끊긴 경우는 다시 보낼 지시가 없으니 대화방에 알리지 않는다 (상태·기록에는 남는다)
     if (origins.length || queued.length) this.postChat(staffId, t('chat.runError', { error: error.slice(0, 200) }), undefined, undefined, originRoom(origins))
+    this.releaseHeld(staffId)
     this.scheduleEmit()
   }
 
@@ -863,6 +865,8 @@ export class Office extends EventEmitter<{
     const s = this.hired.get(staffId)
     // 연습 직원은 AI를 부르지 않는다 (튜토리얼 진행은 대본이 맡는다)
     if (!s || s.isPractice) return
+    // 피어 일이 걸린 직원에게 온 로컬 지시는 대기 (/명령은 중단 같은 제어라 그대로 통과)
+    if (shouldHoldLocal(this.origins.get(staffId) ?? [], origin, Boolean(parseSlash(text)))) return this.holdLocal(staffId, text, origin, attachments, via, isDirect)
     this.log(staffId, 'instruction', via ? `${via} ${text}` : text, attachments)
     if (this.handleSlash(staffId, text, origin)) return
     const origins = this.origins.get(staffId) ?? []
@@ -1040,6 +1044,7 @@ export class Office extends EventEmitter<{
       this.resumeAfterTalk.set(staffId, taskIds)
       this.postChat(staffId, '하던 일을 멈췄어요. 이야기가 끝나면 하던 업무를 이어서 할게요. (완전히 멈추려면 업무 보드에서 멈추기)')
     } else this.postChat(staffId, '하던 일을 멈췄어요. 다시 시켜 주시면 이어서 할게요.')
+    this.releaseHeld(staffId)
   }
 
   private returnToTodo(taskId: string) {
@@ -1305,10 +1310,38 @@ export class Office extends EventEmitter<{
     }
   }
 
-  /** B컴: 이 직원이 지금 하는(맨 앞) 일이 다른 PC가 맡긴 일이면 그 일 id */
+  /**
+   * B컴: 이 직원이 받은 일 중 다른 PC가 맡긴 일(또는 거기서 파생된 재위임)이 하나라도 있으면 그 일 id.
+   * 맨 앞만 보면 로컬 일이 앞에 서는 순간 자동결재 제한·A컴 중계가 빠지므로 전체를 본다 (로컬 일과는 아래 격리 규칙으로 섞이지 않게 한다)
+   */
   private peerJobOf(staffId: string): string | null {
-    const o = (this.origins.get(staffId) ?? [])[0]
-    return o?.kind === 'peer' ? o.jobId : null
+    return peerJobOfOrigins(this.origins.get(staffId) ?? [])
+  }
+
+  /** 격리: 피어 일이 걸린 직원에게 온 로컬 지시는 그 일이 끝날 때까지 대기시킨다 (같은 세션에서 섞여 결재·보고가 엉키지 않게) */
+  private heldLocal = new Map<string, { text: string; origin: Origin; attachments: Attachment[]; via: string; isDirect: boolean }[]>()
+
+  private holdLocal(staffId: string, text: string, origin: Origin, attachments: Attachment[], via: string, isDirect: boolean) {
+    const list = this.heldLocal.get(staffId) ?? []
+    // 같은 카드를 또 시작해도 대기는 하나
+    const isDup = origin.kind === 'task' && list.some((h) => h.origin.kind === 'task' && h.origin.taskId === origin.taskId)
+    if (!isDup) this.heldLocal.set(staffId, [...list, { text, origin, attachments, via, isDirect }])
+    const name = this.hired.get(staffId)?.name ?? ''
+    this.log(staffId, 'status', t('peer.guard.held', { name }))
+    if (origin.kind === 'user' || origin.kind === 'chat') this.postChat(OFFICE_SENDER, t('peer.guard.held', { name }), undefined, undefined, origin.room)
+  }
+
+  /** 피어 일이 모두 끝났으면 대기시킨 로컬 지시를 순서대로 보낸다 */
+  private releaseHeld(staffId: string) {
+    const list = this.heldLocal.get(staffId)
+    if (!list?.length || this.peerJobOf(staffId)) return
+    this.heldLocal.delete(staffId)
+    for (const h of list) this.instruct(staffId, h.text, h.origin, h.attachments, h.via, h.isDirect)
+  }
+
+  /** 이 직원이 피어와 무관한 로컬 일(받은 일·대기열)을 하고 있는가 */
+  private hasLocalWork(staffId: string) {
+    return hasLocalWorkOf(this.origins.get(staffId) ?? [], this.manager.backlog(staffId), this.taskQueue.get(staffId)?.length ?? 0)
   }
 
   /** B컴: 피어 일의 결재가 새로 생기거나 사라진 것을 그 A컴에 알린다 (바뀔 때마다 부르는 곳에서 한꺼번에) */
@@ -1345,6 +1378,8 @@ export class Office extends EventEmitter<{
         if (!s || s.isPractice) return 'no_staff'
         // 파일 수정을 결재 없이 하는 직원은 받지 않는다: 그 자동 승인은 세션 안에서 일어나 A컴이 막을 수 없다
         if (s.approvalMode === 'acceptEdits') return 'auto_edit'
+        // 로컬 일을 하는 중이면 받지 않는다 — A컴 큐가 잠시 뒤 다시 보낸다 (같은 세션에서 섞이지 않게)
+        if (this.hasLocalWork(s.id)) return 'busy'
         const text = t('staff.msg.delegated', { lead: job.lead.name || t('peer.leadOwner'), instruction: job.instruction })
         this.instruct(s.id, text, { kind: 'peer', jobId: job.id, ...(job.isAutonomous ? { isAutonomous: true } : {}) })
         return 'ok'
@@ -1354,6 +1389,15 @@ export class Office extends EventEmitter<{
         const isHead = origins[0]?.kind === 'peer' && origins[0].jobId === job.id
         this.origins.set(job.staffId, origins.filter((o) => !(o.kind === 'peer' && o.jobId === job.id)))
         if (isHead) void this.manager.interrupt(job.staffId)
+        // 이 일에서 파생된 재위임도 함께 취소한다
+        for (const [id, list] of [...this.origins]) {
+          if (!list.some((o) => o.peerJobId === job.id)) continue
+          const head = list[0]?.peerJobId === job.id
+          this.origins.set(id, list.filter((o) => o.peerJobId !== job.id))
+          if (head) void this.manager.interrupt(id)
+          this.releaseHeld(id)
+        }
+        this.releaseHeld(job.staffId)
       },
       decide: (id, allow) => this.decide(id, allow),
       answerQuestion: (id, answers) => this.answerQuestion(id, answers),
@@ -1431,7 +1475,7 @@ export class Office extends EventEmitter<{
       if (o.kind === 'process') this.onStepDone(o.runId, o.stepId, s, summary)
       if (o.kind === 'peer') this.peerHost?.finish(o.jobId, summary)
       if (o.kind === 'delegate' && this.hired.has(o.leadId)) {
-        this.instruct(o.leadId, t('staff.msg.memberReport', { name: s.name, role: s.role, text: short }), { kind: 'user', room: o.room, ...(o.isAutonomous ? { isAutonomous: true } : {}) })
+        this.instruct(o.leadId, t('staff.msg.memberReport', { name: s.name, role: s.role, text: short }), { kind: 'user', room: o.room, ...(o.peerJobId ? { peerJobId: o.peerJobId } : {}), ...(o.isAutonomous ? { isAutonomous: true } : {}) })
       }
     }
     // 단체방에는 보고 원문을 그대로 남긴다 (긴 보고는 화면에서 접어 보여 준다)
@@ -1456,6 +1500,7 @@ export class Office extends EventEmitter<{
       else if (!origins.some((o) => o.kind === 'task')) this.resumeStopped(staffId)
     }
     this.checkStall(staffId, summary, isAutoCheckTurn, backgroundTasks, room, this.hasAutonomousOrigin(origins))
+    this.releaseHeld(staffId)
   }
 
   /**
@@ -2013,14 +2058,20 @@ export class Office extends EventEmitter<{
               // 다른 PC의 직원이면 일 큐로 맡긴다 (연결이 끊겨 있어도 저장해 두었다가 연결되면 보낸다)
               const remote = remotes.find((m) => m.name === member)
               if (!remote) return text(t('staff.tool.notFound', { name: member }))
+              // 다른 PC가 맡긴 일을 또 다른 PC로 넘기는 연쇄는 지원하지 않는다 (승인 주체가 끊긴다)
+              if (this.peerJobOf(staffId)) return text(t('peer.guard.noChain', { name: remote.name }))
               return text(this.delegateRemote(staffId, remote.id, remote.name, instruction))
             }
             const lead = this.hired.get(staffId)!
+            // 다른 PC가 맡긴 일에서 파생된 위임: 승인 주체(피어 jobId)를 이어받고, 파일 수정을 결재 없이 하는 직원·로컬 일을 하는 직원에게는 맡기지 않는다
+            const peerJobId = this.peerJobOf(staffId)
+            if (peerJobId && target.approvalMode === 'acceptEdits') return text(t('peer.guard.noAutoEdit', { name: target.name }))
+            if (peerJobId && this.hasLocalWork(target.id)) return text(t('peer.guard.busy', { name: target.name }))
             this.log(staffId, 'delegate', tk('log.delegate', { name: target.name, text: instruction }))
             this.postChat(staffId, `@${target.name} ${instruction}`.slice(0, CHAT_TEXT_MAX))
             // 자율 업무를 하던 리드가 맡긴 일은 자율로 이어 간다 ('완전 자율' 단계는 기간 동안 따로 적용된다)
             const isAuto = this.hasAutonomousOrigin(this.origins.get(staffId) ?? [])
-            this.instruct(target.id, t('staff.msg.delegated', { lead: lead.name, instruction }), { kind: 'delegate', leadId: staffId, room: this.roomOf(staffId), ...(isAuto ? { isAutonomous: true } : {}) })
+            this.instruct(target.id, t('staff.msg.delegated', { lead: lead.name, instruction }), { kind: 'delegate', leadId: staffId, room: this.roomOf(staffId), ...(peerJobId ? { peerJobId } : {}), ...(isAuto ? { isAutonomous: true } : {}) })
             return text(t('staff.tool.delegate.done', { name: target.name }))
           },
         ),

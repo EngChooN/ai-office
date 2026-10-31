@@ -120,9 +120,16 @@ export class JobQueue {
       try {
         res = await http.call('POST', PEER_PATHS.jobs, req, { idempotencyKey: j.id })
       } catch {
-        // 네트워크 끊김: queued로 돌리고 순서를 지키려고 여기서 멈춘다 (연결이 돌아오면 onOnline이 다시 돈다)
-        const attempts = j.attempts + 1
-        this.put({ ...j, state: 'queued', attempts, nextTryAt: this.now() + delayFor(attempts) })
+        // 네트워크 끊김: 보내는 동안 취소·완료로 바뀌었으면 되살리지 않는다 (최신 상태를 다시 읽는다)
+        const latest = this.d.store.jobs.get(j.id)
+        if (!latest || latest.state !== 'sending') {
+          // 응답만 못 받았을 뿐 B컴에는 이미 접수됐을 수 있다 — 취소된 일이면 B컴에도 취소를 전한다 (같은 키는 한 번만 쌓인다)
+          if (latest?.state === 'canceled') this.enqueueOutbox(peerId, 'cancel', `cancel:${j.id}`, { jobId: j.id })
+          continue
+        }
+        // 그대로면 queued로 돌리고 순서를 지키려고 여기서 멈춘다 (연결이 돌아오면 onOnline이 다시 돈다)
+        const attempts = latest.attempts + 1
+        this.put({ ...latest, state: 'queued', attempts, nextTryAt: this.now() + delayFor(attempts) })
         return this.retryLater(peerId, delayFor(attempts))
       }
       const cur = this.d.store.jobs.get(j.id)
