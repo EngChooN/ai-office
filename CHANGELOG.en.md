@@ -9,6 +9,16 @@ Writing rules
 
 ## [미정] (설치본 미빌드)
 
+### New features
+- Desktop secretary character (Mac): after install, a secretary character sits on your desktop. Drag it anywhere; drop it near a screen edge and it snaps to the edge. Turn it on or off in Settings > Connections.
+- Click the character to open a small window. Without opening the app, you can approve or reject requests, answer or skip staff questions, and talk to the secretary. Questions too long for the window continue via 'Open in app'.
+- When an approval arrives, a speech bubble (!) appears above the character and it hops. Otherwise it breathes and looks around.
+
+### Improvements
+- Change the character's size (80–160) and opacity (40–100%) in Settings; changes apply right away.
+- A hidden character can be brought back from the menu bar or Settings.
+- If Reduce Motion is on, the character stays still.
+
 ## [0.16.3] - 2026-10-31
 
 ### New features
