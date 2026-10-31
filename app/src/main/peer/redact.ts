@@ -5,7 +5,7 @@ const MASK = '‹가림›'
 
 const RULES: [RegExp, string | ((m: string, ...g: string[]) => string)][] = [
   // 비밀 키=값 (password: xxx, token=xxx, "api_key":"xxx", password="공백 든 값")
-  [/((?:pass(?:word|wd)?|secret|token|api[_-]?key|access[_-]?key|auth(?:orization)?|credential)s?["']?\s*[:=]\s*)("[^"\n]+"|'[^'\n]+'|["']?[^\s"',;]{4,})/gi, (_m, k: string) => `${k}${MASK}`],
+  [/((?:pass(?:word|wd)?|secret|token|api[_-]?key|access[_-]?key|auth(?:orization)?|credential)s?["']?\s*[:=]\s*)("(?:[^"\\\n]|\\.)+"|'(?:[^'\\\n]|\\.)+'|["']?[^\s"',;]{4,})/gi, (_m, k: string) => `${k}${MASK}`],
   // Authorization: Bearer xxx
   [/\b(Bearer|Basic)\s+[A-Za-z0-9._~+/=-]{8,}/g, (_m, k: string) => `${k} ${MASK}`],
   // 알려진 토큰 모양
