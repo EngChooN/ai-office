@@ -140,6 +140,8 @@ export interface StaffRemote {
   isGone?: boolean
   /** 이 PC가 이 피어에 보내려고 기다리는 일 수 (연결 대기) */
   queued?: number
+  /** 연결 대기 중인 일 id (이 직원 몫) — 대기 취소에 쓴다 */
+  queuedJobIds?: string[]
 }
 
 /** 부서. 고용 직원 팀은 사용자가 만들고, 외부 직원은 프로젝트 폴더별 가상 팀(proj:)으로 묶는다 */

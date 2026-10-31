@@ -291,3 +291,14 @@ test('회귀(P2): 보내는 중 취소했는데 전송이 끊겨도 canceled를 
   assert.equal(w.store.outbox.list().filter((o) => o.kind === 'cancel' && o.payload.jobId === job.id).length, 1) // 한 번만
   assert.equal(w.q.queuedCount('p1'), 0)
 })
+
+test('queuedJobIds: 연결 대기 중인 일 id만, 직원별로 내려준다', async () => {
+  const w = makeWorld()
+  w.setUp(false)
+  const a = w.q.enqueue(w.base)
+  const b = w.q.enqueue({ ...w.base, remoteStaffId: 'r2' })
+  await w.settle()
+  assert.deepEqual(w.q.queuedJobIds('p1').sort(), [a.id, b.id].sort())
+  assert.deepEqual(w.q.queuedJobIds('p1', 'r2'), [b.id])
+  assert.deepEqual(w.q.queuedJobIds('p9'), [])
+})

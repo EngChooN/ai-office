@@ -327,12 +327,13 @@ export class PeerManager {
       const s = base(rec)
       const approvals: Approval[] = this.relay.approvalsOf(rec.id)
       const thought = this.thoughts.get(rec.id)
+      const queuedIds = this.queue.queuedJobIds(rec.peerId, rec.id)
       return {
         ...s,
         status: state === 'online' && !rec.isGone ? ((['idle', 'working', 'waiting', 'error'].includes(rec.lastKnownStatus) ? rec.lastKnownStatus : 'idle') as Staff['status']) : 'idle',
         activity: state === 'online' && thought ? thought : '',
         approvals,
-        remote: { peerId: rec.peerId, peerName: peer?.name ?? '', state: rec.isGone ? 'offline' : state, ...(rec.isGone ? { isGone: true } : {}), ...(this.queue.queuedCount(rec.peerId) ? { queued: this.queue.queuedCount(rec.peerId) } : {}) },
+        remote: { peerId: rec.peerId, peerName: peer?.name ?? '', state: rec.isGone ? 'offline' : state, ...(rec.isGone ? { isGone: true } : {}), ...(queuedIds.length ? { queued: queuedIds.length, queuedJobIds: queuedIds } : {}) },
       }
     })
   }

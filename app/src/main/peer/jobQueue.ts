@@ -81,6 +81,11 @@ export class JobQueue {
     return this.list(peerId).filter((j) => j.state === 'queued' || j.state === 'sending').length
   }
 
+  /** 연결 대기 중인 일 id (직원 지정 시 그 직원 것만) — 화면의 '대기 취소'용 */
+  queuedJobIds(peerId: string, staffId?: string) {
+    return this.list(peerId).filter((j) => (j.state === 'queued' || j.state === 'sending') && (!staffId || j.remoteStaffId === staffId)).map((j) => j.id)
+  }
+
   /** 앱을 켤 때: 보내던 중이던 일은 queued로 되돌린다 (같은 jobId로 다시 보내므로 안전) */
   recover() {
     for (const j of this.list()) if (j.state === 'sending') this.d.store.jobs.put({ ...j, state: 'queued', nextTryAt: 0 })

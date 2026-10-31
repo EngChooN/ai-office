@@ -72,6 +72,8 @@ export default {
   'peer.picker.empty': { ko: '가져올 직원이 없어요', en: 'No employees available', ja: '取り込める社員がいません', zh: '没有可加入的员工' },
   'peer.picker.loading': { ko: '직원 목록을 가져오는 중…', en: 'Loading employees…', ja: '社員一覧を取得中…', zh: '正在获取员工列表…' },
   'peer.picker.autoEdit': { ko: '파일 수정을 결재 없이 하는 직원이라 추가할 수 없어요', en: 'Edits files without approval, so it cannot be added', ja: '承認なしでファイルを編集する社員のため追加できません', zh: '该员工无需审批即可修改文件，无法添加' },
+  'peer.queuedCancel': { ko: '대기 취소', en: 'Cancel waiting', ja: '待機を取り消す', zh: '取消等待' },
+  'peer.queuedCancelConfirm': { ko: '연결을 기다리는 일 {n}건을 보내지 않고 취소할까요?', en: 'Cancel {n} job(s) waiting for connection without sending?', ja: '接続待ちの {n}件を送信せずに取り消しますか？', zh: '要取消等待连接的 {n} 项且不发送吗？' },
   'peer.queuedHint': { ko: '연결되면 바로 보내요', en: 'Will be sent once connected', ja: '接続され次第送信します', zh: '连接后立即发送' },
   'remote.phoneCode': { ko: '휴대폰 연결 코드 (QR을 못 찍을 때 직접 입력)', en: 'Phone connection code (type it if you cannot scan the QR)', ja: 'スマホ接続コード（QRを読み取れない場合は手入力）', zh: '手机连接验证码（无法扫描二维码时手动输入）' },
   'remote.phoneCode.show': { ko: '코드 보기', en: 'Show code', ja: 'コードを表示', zh: '显示验证码' },
