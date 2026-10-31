@@ -6,6 +6,10 @@ import os from 'node:os'
 import path from 'node:path'
 import { app } from 'electron'
 import { z } from 'zod'
+import type { PeerManager } from './peer/peerManager'
+import type { PeerHost, PeerHostOffice } from './peer/peerHost'
+import type { PeerApprovalEvent } from '../shared/peerProtocol'
+import { remoteStaffBase } from './peer/remoteStaffView'
 import { fmtDate, getLang, resolveLang, setLang, t, tk, tr as trI18n, tx, type I18nArg, type Lang } from '../shared/i18n/index.ts'
 import {
   companyFromXp,
@@ -182,7 +186,7 @@ const tr = t
  * room: 팀·랩 대화방(팀 id·'lab:<랩 id>')에서 시작된 지시 — 완료 보고·결재·질문·위임 글을 그 방에 올린다 (없으면 전체 방)
  */
 /** isAutonomous: 자율 진행으로 받은 일 (지시창에서 켠 지시·자율 직원이 위임한 일 등 — 카드는 카드의 표시를 본다) */
-type Origin = ({ kind: 'user' | 'chat' | 'schedule' } | { kind: 'task'; taskId: string } | { kind: 'delegate'; leadId: string } | { kind: 'process'; runId: string; stepId: string }) & { room?: string; isAutonomous?: boolean; text?: string }
+type Origin = ({ kind: 'user' | 'chat' | 'schedule' } | { kind: 'task'; taskId: string } | { kind: 'delegate'; leadId: string } | { kind: 'process'; runId: string; stepId: string } | { kind: 'peer'; jobId: string }) & { room?: string; isAutonomous?: boolean; text?: string }
 
 type Counters = Partial<Record<LogType, number>>
 
@@ -198,6 +202,11 @@ export class Office extends EventEmitter<{
   notify: [{ title: string; body: string; staffId: string }]
 }> {
   private hired = new Map<string, db.StoredStaff>()
+  /** 다른 PC 연결: A컴 쪽(원격 직원·일 큐)과 B컴 쪽(받은 일) — 연결을 안 쓰면 null (docs/specs/multi-pc-protocol.md) */
+  private peer: PeerManager | null = null
+  private peerHost: PeerHost | null = null
+  /** B컴: 피어 일의 결재 중 이미 알린 것 (결재 id → 일 id) */
+  private peerApprovalSeen = new Map<string, string>()
   private external: db.StoredStaff[] = []
   private teams = new Map<string, Team>()
   private labs = new Map<string, Lab>()
@@ -547,7 +556,7 @@ export class Office extends EventEmitter<{
       return { ...s, teamId: id }
     })
     return {
-      staff: [...[...this.hired.values()].map((s) => this.liveStaff(s)), ...external.map((s) => this.liveStaff(s))],
+      staff: [...[...this.hired.values()].map((s) => this.liveStaff(s)), ...external.map((s) => this.liveStaff(s)), ...this.remoteStaff()],
       teams: [...this.teams.values(), ...projectTeams.values()],
       labs: [...this.labs.values()],
       runs: this.runs,
@@ -618,6 +627,7 @@ export class Office extends EventEmitter<{
     this.origins.set(staffId, [])
     this.taskQueue.set(staffId, [])
     for (const o of origins) if (o.kind === 'process') this.stopRun(o.runId)
+    for (const o of origins) if (o.kind === 'peer') this.peerHost?.fail(o.jobId, error)
     const taskIds = [...origins.flatMap((o) => (o.kind === 'task' ? [o.taskId] : [])), ...queued.map((q) => q.taskId)]
     for (const id of taskIds) this.returnToTodo(id)
     // 쉬는 중에 세션만 끊긴 경우는 다시 보낼 지시가 없으니 대화방에 알리지 않는다 (상태·기록에는 남는다)
@@ -848,6 +858,8 @@ export class Office extends EventEmitter<{
       origin.kind === 'task' &&
       this.lastDoneTask.get(staffId) !== origin.taskId &&
       !(this.origins.get(staffId) ?? []).some((o) => o.kind === 'task' && o.taskId === origin.taskId)
+    // 다른 PC의 직원에게는 일 큐로 보낸다 (대표가 대화창에서 직접 시킨 경우 — 리더 없이 보고만 대표에게)
+    if (this.peer?.isRemoteStaff(staffId)) return this.instructRemote(staffId, text, origin)
     const s = this.hired.get(staffId)
     // 연습 직원은 AI를 부르지 않는다 (튜토리얼 진행은 대본이 맡는다)
     if (!s || s.isPractice) return
@@ -1021,6 +1033,7 @@ export class Office extends EventEmitter<{
     const taskIds = [...origins.flatMap((o) => (o.kind === 'task' ? [o.taskId] : [])), ...queued.map((q) => q.taskId)]
     for (const id of taskIds) this.returnToTodo(id)
     for (const o of origins) if (o.kind === 'process') this.stopRun(o.runId)
+    for (const o of origins) if (o.kind === 'peer') this.peerHost?.fail(o.jobId, 'stopped')
     // Esc·중단 버튼은 대개 말을 걸려고 멈춘 것 — 이야기가 끝나면 하던 카드(기획이면 기획째)를 이어 간다
     const isHard = this.hardStops.delete(staffId)
     if (!isHard && taskIds.length) {
@@ -1078,6 +1091,8 @@ export class Office extends EventEmitter<{
 
   /** 결재를 처리했으면 true (이미 끝난 결재면 false — 원격은 409로 알린다). via: 원격 표시 */
   decide(approvalId: string, allow: boolean, via = '') {
+    // 다른 PC 직원의 결재 중계: 결정은 그 PC로 보낸다 (끊겨 있으면 큐에 남아 연결되면 전달)
+    if (this.peer?.isRelayedApproval(approvalId)) return this.peer.decide(approvalId, allow)
     // 글 질문 카드의 "넘기기" = 답 없이 닫기 (이미 끝난 턴이라 이어갈 도구 호출이 없다)
     if (this.textAsks.has(approvalId)) return this.closeTextAsk(approvalId, null, via)
     // 외부 직원 질문은 "넘기기" = 원래 창에서 답하도록 놓아 준다
@@ -1102,6 +1117,7 @@ export class Office extends EventEmitter<{
   }
 
   answerQuestion(approvalId: string, answers: Record<string, string>, via = '') {
+    if (this.peer?.isRelayedApproval(approvalId)) return this.peer.answerQuestion(approvalId, answers)
     if (this.textAsks.has(approvalId)) return this.closeTextAsk(approvalId, answers, via)
     if (!this.watcher.answer(approvalId, answers) && !this.manager.answer(approvalId, answers) && !this.demoApprovalIds.delete(approvalId)) return false
     this.settleChat({ id: approvalId, result: 'answered', answer: answersText(answers) })
@@ -1183,6 +1199,179 @@ export class Office extends EventEmitter<{
     this.addApproval(approval)
   }
 
+  // ── 다른 PC 연결 (docs/specs/multi-pc-protocol.md) ─────────────────
+
+  setPeer(peer: PeerManager | null) {
+    this.peer = peer
+  }
+
+  setPeerHost(host: PeerHost | null) {
+    this.peerHost = host
+  }
+
+  /** A컴 연결 총괄이 Office에 요청하는 것들 (결과 보고·랩 멤버 변경·화면 갱신) */
+  peerPort(): import('./peer/peerManager').PeerOfficePort {
+    return {
+      report: (job, info) => {
+        const lead = job.leadId ? this.hired.get(job.leadId) : null
+        if (lead) {
+          this.instruct(lead.id, t('staff.msg.memberReport', info), { kind: 'user', ...(job.room ? { room: job.room } : {}), ...(job.isAutonomous ? { isAutonomous: true } : {}) })
+          return
+        }
+        // 대표가 직접 시킨 일: 직원의 보고처럼 단체방에 올리고 알린다
+        const id = `p:${job.peerId}:${job.remoteStaffId}`
+        this.postChat(id, info.text.slice(0, TASK_RESULT_MAX), undefined, undefined, job.room, true)
+        this.emit('notify', { title: t('notify.chatDone'), body: info.text.slice(0, 120), staffId: id })
+      },
+      changed: () => this.scheduleEmit(),
+      context: (job) => {
+        const lead = job.leadId ? this.hired.get(job.leadId) : null
+        const lab = job.leadId ? this.labsOf(job.leadId).find((l) => l.memberIds.includes(`p:${job.peerId}:${job.remoteStaffId}`)) : undefined
+        return { lead: { name: lead?.name ?? t('peer.leadOwner'), role: lead?.role ?? '' }, ...(lab ? { lab: { name: lab.name, ...(lab.goal ? { goal: lab.goal } : {}) } } : {}) }
+      },
+      addToLab: (labId, staffId) => {
+        const lab = this.labs.get(labId)
+        if (lab && !lab.memberIds.includes(staffId)) this.saveLabObj({ ...lab, memberIds: [...lab.memberIds, staffId] })
+      },
+      removeFromLabs: (ids) => {
+        for (const l of this.labs.values()) {
+          if (l.memberIds.some((m) => ids.includes(m))) this.saveLabObj({ ...l, memberIds: l.memberIds.filter((m) => !ids.includes(m)) })
+        }
+      },
+      ownName: () => os.hostname().replace(/\.local$/, '') || 'Mac',
+    }
+  }
+
+  /** 지도·랩 화면에 합쳐 낼 원격 직원 */
+  private remoteStaff(): Staff[] {
+    if (!this.peer) return []
+    const maxDesk = Math.max(-1, ...[...this.hired.values()].map((s) => s.deskIndex))
+    let n = 0
+    return this.peer.staffViews((rec) =>
+      remoteStaffBase(
+        rec,
+        maxDesk + 1 + n++,
+        [...this.labs.values()].filter((l) => l.memberIds.includes(rec.id)).map((l) => l.id),
+      ),
+    )
+  }
+
+  /** 이 리더의 랩에 들어온 다른 PC 직원 */
+  private remoteMembersOf(staffId: string) {
+    if (!this.peer) return []
+    const out = new Map<string, { id: string; name: string }>()
+    for (const lab of this.labs.values()) {
+      if (lab.leadId !== staffId) continue
+      for (const id of lab.memberIds) {
+        const rec = this.peer.registry.staffOf(id)
+        if (rec) out.set(rec.id, { id: rec.id, name: rec.name })
+      }
+    }
+    return [...out.values()]
+  }
+
+  private hasDelegates(staffId: string) {
+    return this.delegatesOf(staffId).length > 0 || this.remoteMembersOf(staffId).length > 0
+  }
+
+  /** 리더의 delegate 도구가 다른 PC 직원에게 — 저장된 뒤에 "맡겼어요"로 답한다 */
+  private delegateRemote(leadId: string, targetId: string, targetName: string, instruction: string) {
+    try {
+      const isAuto = this.hasAutonomousOrigin(this.origins.get(leadId) ?? [])
+      this.peer!.delegate(targetId, instruction, { leadId, room: this.roomOf(leadId), isAutonomous: isAuto })
+      this.log(leadId, 'delegate', tk('log.delegate', { name: targetName, text: instruction }))
+      this.postChat(leadId, `@${targetName} ${instruction}`.slice(0, CHAT_TEXT_MAX))
+      return t('peer.delegate.queued', { name: targetName })
+    } catch (e) {
+      return this.peerErrorText(e, targetName)
+    }
+  }
+
+  private peerErrorText(e: unknown, name: string) {
+    const code = (e as { code?: string })?.code
+    if (code === 'queue_full') return t('peer.delegate.queueFull', { name })
+    if (code === 'too_long') return t('peer.delegate.tooLong')
+    if (code === 'gone') return t('peer.delegate.gone', { name })
+    return t('peer.error.no_staff')
+  }
+
+  /** 대표가 원격 직원에게 직접 지시 (대화창·단체방) */
+  private instructRemote(staffId: string, text: string, origin: Origin) {
+    const rec = this.peer!.registry.staffOf(staffId)!
+    try {
+      this.peer!.delegate(staffId, text, { leadId: null, ...(origin.room ? { room: origin.room } : {}), ...(origin.isAutonomous ? { isAutonomous: true } : {}) })
+    } catch (e) {
+      this.postChat(staffId, this.peerErrorText(e, rec.name).slice(0, CHAT_TEXT_MAX))
+    }
+  }
+
+  /** B컴: 이 직원이 지금 하는(맨 앞) 일이 다른 PC가 맡긴 일이면 그 일 id */
+  private peerJobOf(staffId: string): string | null {
+    const o = (this.origins.get(staffId) ?? [])[0]
+    return o?.kind === 'peer' ? o.jobId : null
+  }
+
+  /** B컴: 피어 일의 결재가 새로 생기거나 사라진 것을 그 A컴에 알린다 (바뀔 때마다 부르는 곳에서 한꺼번에) */
+  private syncPeerApprovals() {
+    const host = this.peerHost
+    if (!host) return
+    const now = new Map<string, string>()
+    for (const s of this.hired.values()) {
+      const jobId = this.peerJobOf(s.id)
+      if (!jobId) continue
+      for (const a of s.approvals) {
+        now.set(a.id, jobId)
+        if (!this.peerApprovalSeen.has(a.id)) host.onApproval(this.peerApprovalEvent(s.id, a, jobId))
+      }
+    }
+    for (const [id, jobId] of this.peerApprovalSeen) if (!now.has(id)) host.onApprovalGone(id, jobId)
+    this.peerApprovalSeen = now
+  }
+
+  /** alwaysRule은 싣지 않는다 — 원격에서 "항상 승인" 규칙을 만들 수 없게 */
+  private peerApprovalEvent(staffId: string, a: Approval, jobId: string): PeerApprovalEvent {
+    return { jobId, approvalId: a.id, staffId, toolName: a.toolName, summary: a.summary, ...(a.summaryI18n ? { summaryI18n: a.summaryI18n } : {}), createdAt: a.createdAt, ...(a.questions ? { questions: a.questions } : {}) }
+  }
+
+  /** B컴이 PeerHost에 열어 주는 입구 */
+  peerHostOffice(): PeerHostOffice {
+    return {
+      staffBriefs: () =>
+        [...this.hired.values()]
+          .filter((s) => !s.isPractice)
+          .map((s) => ({ id: s.id, name: s.name, role: s.role, avatar: s.avatar, provider: s.provider ?? 'claude', model: s.model, status: s.status, ...(s.activity ? { thought: s.activity } : {}), isAutoEdit: s.approvalMode === 'acceptEdits' })),
+      startJob: (job) => {
+        const s = this.hired.get(job.staffId)
+        if (!s || s.isPractice) return 'no_staff'
+        // 파일 수정을 결재 없이 하는 직원은 받지 않는다: 그 자동 승인은 세션 안에서 일어나 A컴이 막을 수 없다
+        if (s.approvalMode === 'acceptEdits') return 'auto_edit'
+        const text = t('staff.msg.delegated', { lead: job.lead.name || t('peer.leadOwner'), instruction: job.instruction })
+        this.instruct(s.id, text, { kind: 'peer', jobId: job.id, ...(job.isAutonomous ? { isAutonomous: true } : {}) })
+        return 'ok'
+      },
+      cancelJob: (job) => {
+        const origins = this.origins.get(job.staffId) ?? []
+        const isHead = origins[0]?.kind === 'peer' && origins[0].jobId === job.id
+        this.origins.set(job.staffId, origins.filter((o) => !(o.kind === 'peer' && o.jobId === job.id)))
+        if (isHead) void this.manager.interrupt(job.staffId)
+      },
+      decide: (id, allow) => this.decide(id, allow),
+      answerQuestion: (id, answers) => this.answerQuestion(id, answers),
+      pendingApprovals: () => {
+        const out: PeerApprovalEvent[] = []
+        for (const s of this.hired.values()) {
+          const jobId = this.peerJobOf(s.id)
+          if (jobId) for (const a of s.approvals) out.push(this.peerApprovalEvent(s.id, a, jobId))
+        }
+        return out
+      },
+      approvalJob: (id) => {
+        for (const s of this.hired.values()) if (s.approvals.some((a) => a.id === id)) return this.peerJobOf(s.id)
+        return null
+      },
+    }
+  }
+
   remotePort(): RemoteOfficePort {
     return {
       view: () => ({ staff: [...this.hired.values()].map((s) => this.liveStaff(s)), tasks: [...this.tasks.values()] }),
@@ -1240,6 +1429,7 @@ export class Office extends EventEmitter<{
         }
       }
       if (o.kind === 'process') this.onStepDone(o.runId, o.stepId, s, summary)
+      if (o.kind === 'peer') this.peerHost?.finish(o.jobId, summary)
       if (o.kind === 'delegate' && this.hired.has(o.leadId)) {
         this.instruct(o.leadId, t('staff.msg.memberReport', { name: s.name, role: s.role, text: short }), { kind: 'user', room: o.room, ...(o.isAutonomous ? { isAutonomous: true } : {}) })
       }
@@ -1284,11 +1474,12 @@ export class Office extends EventEmitter<{
     const memberIds = new Set(delegates.map((m) => m.id))
     const tasks = [...this.tasks.values()]
     const hasOpenDelegation =
+      Boolean(this.peer?.jobs().some((j) => j.leadId === staffId && (j.state === 'queued' || j.state === 'sending' || j.state === 'accepted' || j.state === 'running'))) ||
       delegates.some((m) => (this.origins.get(m.id) ?? []).some((o) => o.kind === 'delegate' && o.leadId === staffId) || (this.taskQueue.get(m.id)?.length ?? 0) > 0) ||
       tasks.some((task) => task.assigneeId && memberIds.has(task.assigneeId) && (task.status === 'todo' || task.status === 'doing'))
     const hasWaitingPlan = tasks.some((task) => task.assigneeId === staffId && task.plan?.status === 'waiting')
     const isNudge = shouldNudgeLead({
-      isLeader: delegates.length > 0,
+      isLeader: delegates.length > 0 || this.hasDelegates(staffId),
       isAutoCheckTurn,
       isBusy,
       hasOpenDelegation,
@@ -1439,6 +1630,8 @@ export class Office extends EventEmitter<{
    * 질문은 answerWhileAway로 답을 만들어 돌려준다
    */
   private autoDecide(staffId: string, toolName: string, input: Record<string, unknown>, summary: string, questions?: StaffQuestion[]): Promise<{ answers?: Record<string, string>; deny?: string }> | null {
+    // 다른 PC가 맡긴 일의 결재는 그 PC(A컴) 대표가 정한다 — 이 PC의 자동 승인·"항상 승인" 규칙·자동결재를 쓰지 않는다 (설계서 5-4)
+    if (this.peerJobOf(staffId)) return null
     if (questions?.length) this.askedInTurn.add(staffId)
     // 대표가 전에 답한 같은 질문(최근 30일·엄격한 기준)이면 그 답을 따른다 — 애매하면 평소처럼 결재함
     const past = questions?.length ? this.answerFromPast(staffId, questions) : null
@@ -1775,7 +1968,7 @@ export class Office extends EventEmitter<{
         }),
       )
     if (!this.hired.get(staffId)?.ownCwd) lines.push(t('staff.ctx.noCwd'))
-    lines.push(this.delegatesOf(staffId).length ? t('staff.ctx.leaderGuide') : t('staff.ctx.memberGuide'))
+    lines.push(this.hasDelegates(staffId) ? t('staff.ctx.leaderGuide') : t('staff.ctx.memberGuide'))
     // 자율 진행으로 여는 세션은 "물어보라" 대신 "묻지 말고 끝까지" (앞 안내의 묻기 부분도 이 줄이 덮는다)
     lines.push(this.isAutonomous(staffId) ? t('staff.ctx.autonomyGuide') : t('staff.ctx.askGuide'))
     return lines.join('\n')
@@ -1800,7 +1993,10 @@ export class Office extends EventEmitter<{
             )
           for (const lab of this.labsOf(staffId)) {
             const members = lab.memberIds.map((id) => this.hired.get(id)).filter((m): m is db.StoredStaff => Boolean(m))
-            parts.push(`${t('staff.tool.team.labHeader', { name: lab.name, goal: lab.goal || t('staff.ctx.goalNone') })}\n${members.map((m) => `${describe(m)}${lab.leadId === m.id ? t('staff.tool.team.tagLabLead') : ''}`).join('\n')}`)
+            // 다른 PC의 직원은 이름 옆에 [원격] 표지와 연결 상태를 붙여 알려 준다
+            const remotes = lab.memberIds.flatMap((id) => this.peer?.staffViews((r) => remoteStaffBase(r, 0, [])).filter((x) => x.id === id) ?? [])
+            const lines = [...members.map((m) => `${describe(m)}${lab.leadId === m.id ? t('staff.tool.team.tagLabLead') : ''}`), ...remotes.map((m) => `- ${m.name} (${m.role}) [${t('peer.tag', { name: m.remote?.peerName ?? '' })} · ${t(`peer.state.${m.remote?.state ?? 'offline'}`)}]`)]
+            parts.push(`${t('staff.tool.team.labHeader', { name: lab.name, goal: lab.goal || t('staff.ctx.goalNone') })}\n${lines.join('\n')}`)
           }
           return text(parts.join('\n\n') || t('staff.tool.team.none'))
         }),
@@ -1810,9 +2006,15 @@ export class Office extends EventEmitter<{
           { member: z.string().describe(t('staff.tool.delegate.member')), instruction: z.string().describe(t('staff.tool.delegate.instruction')) },
           async ({ member, instruction }) => {
             const candidates = this.delegatesOf(staffId)
-            if (candidates.length === 0) return text(t('staff.tool.delegate.notLeader'))
+            const remotes = this.remoteMembersOf(staffId)
+            if (candidates.length === 0 && remotes.length === 0) return text(t('staff.tool.delegate.notLeader'))
             const target = candidates.find((m) => m.name === member)
-            if (!target) return text(t('staff.tool.notFound', { name: member }))
+            if (!target) {
+              // 다른 PC의 직원이면 일 큐로 맡긴다 (연결이 끊겨 있어도 저장해 두었다가 연결되면 보낸다)
+              const remote = remotes.find((m) => m.name === member)
+              if (!remote) return text(t('staff.tool.notFound', { name: member }))
+              return text(this.delegateRemote(staffId, remote.id, remote.name, instruction))
+            }
             const lead = this.hired.get(staffId)!
             this.log(staffId, 'delegate', tk('log.delegate', { name: target.name, text: instruction }))
             this.postChat(staffId, `@${target.name} ${instruction}`.slice(0, CHAT_TEXT_MAX))
@@ -3935,6 +4137,7 @@ export class Office extends EventEmitter<{
       this.emitTimer = null
       this.syncWorkDirs()
       this.checkCompanyLevel()
+      this.syncPeerApprovals()
       this.emit('snapshot', this.snapshot())
     }, 50)
   }

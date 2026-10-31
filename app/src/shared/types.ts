@@ -13,6 +13,7 @@ import type { TutorialInput, TutorialScenario, TutorialSnapshot } from './tutori
 import type { BoardCleanupPlan } from './boardCleanup'
 import type { CustomMcp, CustomMcpInput } from './customMcp'
 import type { PackResult } from './staffPack'
+import type { PairKind, PairWindowView, PeerSlotView, PeerView, RemoteStaffChoice } from './peerProtocol'
 import { COMPANY_LEVELS, companyLevelOf } from './officeLevel.ts'
 import { DEFAULT_UI_MODE, DEFAULT_UI_THEME, sanitizeUi, type UiMode, type UiThemeId } from './uiTheme.ts'
 import type { I18nArg, I18nText, LangSetting } from './i18n/index.ts'
@@ -122,6 +123,20 @@ export interface Staff {
   isAutonomous?: boolean
   /** 튜토리얼 연습 회사 데이터 — '연습 회사 정리'와 첫 실제 고용 때 지운다 */
   isPractice?: boolean
+  /** 다른 PC(B컴)에 있는 원격 직원이면 연결 정보 — 없으면 이 PC의 직원 (옛 화면·휴대폰은 무시하면 된다) */
+  remote?: StaffRemote
+}
+
+/** 원격 직원의 연결 정보 (id는 p:<피어>:<원격id>) */
+export interface StaffRemote {
+  peerId: string
+  peerName: string
+  /** online 연결됨 · connecting 연결 중 · offline 끊김(회색) · unpaired 다시 짝짓기 필요 */
+  state: 'online' | 'connecting' | 'offline' | 'unpaired'
+  /** B컴 직원 목록에서 사라졌다 */
+  isGone?: boolean
+  /** 이 PC가 이 피어에 보내려고 기다리는 일 수 (연결 대기) */
+  queued?: number
 }
 
 /** 부서. 고용 직원 팀은 사용자가 만들고, 외부 직원은 프로젝트 폴더별 가상 팀(proj:)으로 묶는다 */
@@ -891,6 +906,9 @@ export interface RemoteStatus {
 }
 
 /** 지금 보여 줄 연결 QR (토큰이 담겨 있으므로 화면에만, 파일·클립보드로 남기지 않는다) */
+/** 짝짓기 성공 결과: 연결된 PC + 눈으로 확인할 지문 앞 8자리 */
+export type PeerPairResult = PeerView & { fingerprint: string }
+
 export interface RemoteQr {
   image: string
   host: string
@@ -920,6 +938,23 @@ export interface OfficeApi {
   refreshRemoteTailscale(): Promise<RemoteStatus>
   dismissRemoteTsNotice(): Promise<RemoteStatus>
   dismissRemoteLanNotice(): Promise<RemoteStatus>
+
+  /** 다른 PC 연결 (docs/specs/multi-pc-protocol.md). B컴: 짝짓기 창 열기(5분, 코드·지문)·닫기, 이 PC에 연결된 PC 슬롯 목록·해제. 휴대폰용(kind 'phone')은 QR 옆에 코드를 보여 준다 */
+  peerPairStart(kind?: PairKind): Promise<PairWindowView>
+  peerPairClose(): Promise<void>
+  peerSlots(): Promise<PeerSlotView[]>
+  peerRevokeSlot(slotId: string): Promise<void>
+  /** A컴: IP(Tailscale 주소)+코드로 짝짓기 → 연결된 PC · 목록 · 끊기(B컴에도 알림) · 다시 연결 */
+  peerPairConnect(host: string, port: number, code: string): Promise<PeerPairResult>
+  peerList(): Promise<PeerView[]>
+  peerUnpair(peerId: string): Promise<void>
+  peerReconnect(peerId: string): Promise<void>
+  /** 그 PC의 직원 목록(랩에 넣을 직원 고르기) · 랩에 넣기(labId가 있으면 그 랩 멤버로) · 랩에서 빼기 */
+  peerRemoteStaff(peerId: string): Promise<RemoteStaffChoice[]>
+  peerAddStaff(peerId: string, remoteId: string, labId?: string): Promise<void>
+  peerRemoveStaff(staffId: string): Promise<void>
+  /** 다른 PC로 보낸 일 취소 */
+  peerCancelJob(jobId: string): Promise<void>
 
   /** 비서 (docs/specs/secretary.md): 말 보내기 · 확인 카드 실행(첨삭은 고른 수정본·고친 값과 함께) · 카드 취소 · 대화 지우기. 대화는 스냅샷 secretary로 받는다 */
   secretaryAsk(text: string): Promise<void>

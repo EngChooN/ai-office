@@ -13,6 +13,11 @@ import { artifactList, artifactOpen, artifactOpenExternal, artifactReveal, artif
 import { askHookInstalled, hooksInstalled, setAskHookInstalled, setHooksInstalled } from './external'
 import type { Office } from './office'
 import type { RemoteService } from './remote/service.ts'
+import type { PairKind } from '../shared/peerProtocol'
+import { InvalidArgsError } from '../shared/errors'
+import { t } from '../shared/i18n/index.ts'
+import { peerErrorKey } from './peer/peerErrors'
+import type { PeerManager } from './peer/peerManager'
 import type { Secretary } from './secretary'
 import { claudeStatus, openClaudeLogin, openCodexLogin, providerStatus } from './setup'
 import { hireMarket } from './staffPack'
@@ -22,7 +27,15 @@ import { hireMarket } from './staffPack'
 
 export type OfficeHandlers = { [K in OfficeMethod]: (...args: never[]) => unknown }
 
-export function createOfficeHandlers(office: Office, remoteApi: () => RemoteService, secretary: () => Secretary): OfficeHandlers {
+export function createOfficeHandlers(office: Office, remoteApi: () => RemoteService, secretary: () => Secretary, peerApi: () => PeerManager): OfficeHandlers {
+  // 연결·짝짓기 실패는 화면 언어의 쉬운 문장으로 알린다 (원인 코드는 문구 키로 옮긴다)
+  const peerCall = async <T>(run: () => T | Promise<T>): Promise<T> => {
+    try {
+      return await run()
+    } catch (e) {
+      throw new InvalidArgsError(t(peerErrorKey(e)))
+    }
+  }
   return {
     snapshot: () => office.snapshot(),
     remoteStatus: () => remoteApi().status(),
@@ -35,6 +48,22 @@ export function createOfficeHandlers(office: Office, remoteApi: () => RemoteServ
     setRemoteMode: (mode: RemoteMode) => remoteApi().setMode(mode),
     refreshRemoteTailscale: () => remoteApi().refreshTailscale(),
     dismissRemoteTsNotice: () => remoteApi().dismissTsNotice(),
+    peerPairStart: async (kind?: PairKind) => {
+      const v = await remoteApi().openPairing(kind === 'phone' ? 'phone' : 'peer')
+      if (!v) throw new InvalidArgsError(t('peer.error.pair_off'))
+      return v
+    },
+    peerPairClose: () => remoteApi().closePairing(),
+    peerSlots: () => remoteApi().peerSlots(),
+    peerRevokeSlot: (slotId: string) => void remoteApi().revokePeerSlot(slotId),
+    peerPairConnect: (host: string, port: number, code: string) => peerCall(() => peerApi().pairConnect(host, port, code)),
+    peerList: () => peerApi().list(),
+    peerUnpair: (peerId: string) => peerCall(() => peerApi().unpair(peerId)),
+    peerReconnect: (peerId: string) => peerApi().reconnect(peerId),
+    peerRemoteStaff: (peerId: string) => peerCall(() => peerApi().remoteStaff(peerId)),
+    peerAddStaff: (peerId: string, remoteId: string, labId?: string) => peerCall(async () => void (await peerApi().addStaff(peerId, remoteId, labId))),
+    peerRemoveStaff: (staffId: string) => void peerApi().removeStaff(staffId),
+    peerCancelJob: (jobId: string) => void peerApi().cancelJob(jobId),
     hire: (input: Parameters<Office['hire']>[0]) => office.hire(input),
     hireMarket: (id: string, provider?: unknown) => hireMarket(office, id, provider ?? undefined),
     fire: (id: string) => office.fire(id),

@@ -7,10 +7,11 @@
 // 예전 PC는 hello에 404 unknown_method → 새 화면은 칸 배치를 쓰지 않는다
 
 import { COMPANY_LEVELS } from '../../shared/officeLevel.ts'
+import { PEER_CAPABILITY } from '../../shared/peerProtocol.ts'
 
 export const ISO_OFFICE = 'iso-office'
 /** 지금 서버가 아는 능력 (모르는 값은 받아도 버린다) */
-export const KNOWN_CAPABILITIES: readonly string[] = [ISO_OFFICE]
+export const KNOWN_CAPABILITIES: readonly string[] = [ISO_OFFICE, PEER_CAPABILITY]
 /** 요청·이벤트 스트림 연결에 능력을 싣는 헤더 (쉼표로 여러 개) */
 export const CAPABILITIES_HEADER = 'x-office-capabilities'
 /** 예전 폰 번들의 회사 레벨 표 길이 */

@@ -36,6 +36,7 @@ import { EMPTY_SHOP, type LedgerEntry, type LedgerKind, type ShopState } from '.
 import type { RemoteConfig } from './remote/service.ts'
 import { settleGrid } from './shopGrid.ts'
 import { createWorkBaseStore } from './workBaseStore.ts'
+import { ensurePeerTables, sqlitePeerStore, type PeerStore } from './peer/peerStore.ts'
 import { grantedLevels, grantedZones, runIsoMigration, runLevelGrants } from './isoMigrate.ts'
 
 // 사무실의 모든 영속 데이터는 사용자 데이터 폴더의 office.db 한 파일에 둔다
@@ -100,6 +101,8 @@ export function openDb() {
     );
   `)
   workBaseStore = createWorkBaseStore(db)
+  // 다른 PC 연결(peer·peer_staff·peer_job·peer_outbox·peer_inbox) — 표 모양은 peer/peerStore.ts가 안다
+  ensurePeerTables(db)
   const staffCols = (db.prepare('PRAGMA table_info(staff)').all() as { name: string }[]).map((c) => c.name)
   const logCols = (db.prepare('PRAGMA table_info(log)').all() as { name: string }[]).map((c) => c.name)
   if (!logCols.includes('text_i18n')) db.exec('ALTER TABLE log ADD COLUMN text_i18n TEXT')
@@ -233,6 +236,8 @@ export function saveEquipment(id: string, equipment: Equipment) {
   run('UPDATE staff SET equipment = ? WHERE id = ?', JSON.stringify(equipment), id)
 }
 
+/** 다른 PC 연결의 저장소 (office.db) */
+export const peerStore = (): PeerStore => sqlitePeerStore(db)
 export const saveWorkBase = (...a: Parameters<typeof workBaseStore.save>) => workBaseStore.save(...a)
 export const removeWorkBase = (id: string) => workBaseStore.remove(id)
 export const loadWorkBases = () => workBaseStore.load()

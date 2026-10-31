@@ -182,7 +182,7 @@ test('M3 잠금: 여러 IP 합쳐 20번 틀리면 PC에 알리기만 하고 잠�
   const { token } = guard.rotate()
   for (let i = 0; i < AUTH_LIMITS.GLOBAL_FAILURES_MAX; i++) guard.check('wrong', `10.0.${i}.1`, NOW)
   assert.deepEqual(alerts, ['global'])
-  assert.deepEqual(guard.check(token, '192.0.2.1', NOW + 1), { ok: true })
+  assert.deepEqual(guard.check(token, '192.0.2.1', NOW + 1), { ok: true, slot: 'phone' })
   assert.equal(guard.latestLock(NOW + 1), null)
 })
 

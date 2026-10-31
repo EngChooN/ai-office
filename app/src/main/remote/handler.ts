@@ -56,6 +56,9 @@ export interface RemoteContext {
   isReady: boolean
 }
 
+/** 피어 토큰이 닿을 수 있는 경로 (허용 목록 — 여기 없으면 403 scope_denied) */
+export const isPeerPathAllowed = (path: string) => path === '/v2/events' || path === '/v2/call' || path.startsWith('/v2/peer/')
+
 const RETRY_SEC_WHEN_UNAVAILABLE = 5
 const STATUS_PATH = '/v1/status'
 const DECISIONS_PATH = '/v1/decisions'
@@ -99,7 +102,9 @@ export function preflight(req: Pick<RemoteRequest, 'url' | 'authorization' | 'ip
   // ③④ 잠금·인증 (잠금 중이면 맞는 토큰도 auth_locked)
   const auth = guard.check(bearerToken(req.authorization), req.ip, now)
   if (!auth.ok) return auth.code === 'auth_locked' ? fail('auth_locked', { retryAt: auth.retryAt }) : fail(auth.code)
-  const retryAfterSec = guard.rateLimit(now)
+  // 피어 토큰은 휴대폰 토큰보다 좁다: v1·v2 대부분의 경로는 막고 /v2/events·/v2/peer/*·/v2/call(결재 메서드만, 아래에서 다시 거른다)만 지나간다 (설계서 8-1)
+  if (auth.slot !== 'phone' && !isPeerPathAllowed(path)) return { status: 403, headers: {}, body: { protocolVersion: version ? Number(version[1]) : 1, error: 'scope_denied', message: '이 연결로는 할 수 없는 일이에요' } }
+  const retryAfterSec = guard.rateLimit(now, auth.slot)
   if (retryAfterSec !== null) return fail('rate_limited', { retryAfterSec })
   if (!ctx.isReady) return fail('office_unavailable', { retryAfterSec: RETRY_SEC_WHEN_UNAVAILABLE })
   return null

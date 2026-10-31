@@ -54,14 +54,31 @@ export function bearerToken(header: string | undefined) {
   return m ? m[1] : null
 }
 
+/** 다른 PC(피어)에 내준 토큰 한 칸 — 휴대폰 토큰과 따로 두고 끊을 수 있다 (설계서 1-1). 해시만 저장한다 */
+export interface PeerSlot {
+  id: string
+  label: string
+  tokenHash: string
+  createdAt: number
+  lastSeenAt: number | null
+}
+
+/** 피어 슬롯 최대 수 */
+export const PEER_SLOTS_MAX = 8
+
 export interface AuthState {
   /** 지금 쓰는 토큰의 해시 (원격을 처음 켜기 전에는 null) */
   tokenHash: string | null
   /** 폐기한 토큰 해시 (최근 순) */
   revoked: string[]
+  /** 피어 슬롯 (없으면 빈 목록 — 예전 저장값은 그대로 읽는다) */
+  peers?: PeerSlot[]
 }
 
-export type AuthResult = { ok: true } | { ok: false; code: 'unauthorized' | 'token_revoked' } | { ok: false; code: 'auth_locked'; retryAt: number }
+/** 인증을 통과한 토큰 칸: 'phone' 또는 'peer:<슬롯 id>' */
+export type AuthSlot = 'phone' | `peer:${string}`
+
+export type AuthResult = { ok: true; slot: AuthSlot } | { ok: false; code: 'unauthorized' | 'token_revoked' } | { ok: false; code: 'auth_locked'; retryAt: number }
 
 /**
  * PC 알림용: 'ip' = 주소를 15분 잠갔음(until = 풀리는 시각), 'global' = 여러 곳 합쳐 실패가 많음(잠그지는 않고 알리기만, until = 알린 시각).
@@ -132,7 +149,12 @@ export class AuthGuard {
     const hash = hashToken(token)
     if (this.state.tokenHash && sameHash(hash, this.state.tokenHash)) {
       this.isUsed = true
-      return { ok: true }
+      return { ok: true, slot: 'phone' }
+    }
+    const peer = (this.state.peers ?? []).find((p) => sameHash(hash, p.tokenHash))
+    if (peer) {
+      peer.lastSeenAt = now
+      return { ok: true, slot: `peer:${peer.id}` }
     }
     if (this.state.revoked.some((h) => sameHash(hash, h))) return { ok: false, code: 'token_revoked' }
     this.recordFailure(ip, now)
@@ -197,9 +219,38 @@ export class AuthGuard {
     }
   }
 
-  /** 인증된 요청의 속도 제한 (토큰당 분당 120회). 넘으면 다시 시도할 수 있을 때까지 남은 초 */
-  rateLimit(now: number): number | null {
-    const key = this.state.tokenHash ?? ''
+  /** 이 토큰 해시가 휴대폰·피어 어느 칸이든 지금 쓸 수 있는지 (SSE가 15초마다 확인) */
+  isValidHash(hash: string) {
+    return Boolean((this.state.tokenHash && sameHash(hash, this.state.tokenHash)) || (this.state.peers ?? []).some((p) => sameHash(hash, p.tokenHash)))
+  }
+
+  /** 해시가 가리키는 피어 슬롯 (휴대폰 토큰이거나 모르면 null) */
+  peerSlotOf(hash: string) {
+    return (this.state.peers ?? []).find((p) => sameHash(hash, p.tokenHash)) ?? null
+  }
+
+  /** 새 피어 슬롯을 만들고 토큰 원문을 돌려준다 (가득 차면 null) */
+  addPeerSlot(label: string, now: number): { token: string; slot: PeerSlot } | null {
+    const peers = this.state.peers ?? []
+    if (peers.length >= PEER_SLOTS_MAX) return null
+    const token = newToken()
+    const slot: PeerSlot = { id: crypto.randomBytes(6).toString('base64url'), label: label.slice(0, 60), tokenHash: hashToken(token), createdAt: now, lastSeenAt: null }
+    this.state = { ...this.state, peers: [...peers, slot] }
+    return { token, slot }
+  }
+
+  /** 피어 슬롯을 지운다. 그 토큰은 이제 token_revoked로 답한다 */
+  removePeerSlot(id: string): PeerSlot | null {
+    const peers = this.state.peers ?? []
+    const slot = peers.find((p) => p.id === id)
+    if (!slot) return null
+    this.state = { ...this.state, peers: peers.filter((p) => p.id !== id), revoked: [slot.tokenHash, ...this.state.revoked].slice(0, REVOKED_KEEP) }
+    return slot
+  }
+
+  /** 인증된 요청의 속도 제한 (토큰 칸마다 분당 300회). 넘으면 다시 시도할 수 있을 때까지 남은 초 */
+  rateLimit(now: number, slot: AuthSlot = 'phone'): number | null {
+    const key = slot === 'phone' ? (this.state.tokenHash ?? '') : slot
     const list = [...(this.rates.get(key) ?? []).filter((t) => now - t < RATE_WINDOW_MS)]
     if (list.length >= RATE_MAX) return Math.max(1, Math.ceil((list[0] + RATE_WINDOW_MS - now) / 1000))
     list.push(now)
@@ -211,7 +262,7 @@ export class AuthGuard {
   rotate(): { token: string; state: AuthState } {
     const token = newToken()
     const revoked = this.state.tokenHash ? [this.state.tokenHash, ...this.state.revoked].slice(0, REVOKED_KEEP) : this.state.revoked
-    this.state = { tokenHash: hashToken(token), revoked }
+    this.state = { tokenHash: hashToken(token), revoked, peers: this.state.peers ?? [] }
     this.ipFailures.clear()
     this.globalFailures = []
     this.ipLocks.clear()

@@ -7,6 +7,8 @@ import { NO_CAPABILITIES, type Capabilities } from './capabilities.ts'
 import { stripAttachmentPaths, V2_PROTOCOL_VERSION } from './v2.ts'
 
 export type HubEvent = 'snapshot' | 'log' | 'chat' | 'focus' | 'remoteStatus'
+/** 피어(다른 PC) 슬롯 연결에만 가는 이벤트 — 휴대폰에는 나가지 않는다 (설계서 4-2) */
+export type PeerEventName = 'job' | 'approval' | 'changes'
 export type ByeReason = 'token_revoked' | 'remote_disabled' | 'shutdown' | 'replaced' | 'slow_consumer'
 
 /** 다시 붙을 때 보내 줄 이벤트 (snapshot·remoteStatus는 마지막 값만 의미가 있어 쌓지 않는다) */
@@ -21,7 +23,8 @@ export const SSE_LIMITS = {
   /** snapshot·remoteStatus는 이 간격으로 묶어 마지막 값만 보낸다 */
   coalesceMs: 500,
   perToken: 2,
-  total: 4,
+  /** 휴대폰 1~2 + 피어(슬롯당 1개)를 합쳐 (설계서 4-4) */
+  total: 8,
   /** 쓰기 대기가 이만큼 쌓인 채로 slowMs가 지나면 끊는다 */
   slowBytes: 1024 * 1024,
   slowMs: 10_000,
@@ -31,6 +34,8 @@ export const SSE_LIMITS = {
 interface Client {
   res: ServerResponse
   tokenHash: string
+  /** 피어 슬롯 연결이면 슬롯 id (휴대폰 연결은 null) — 피어에는 고른 직원의 줄인 정보만 보낸다 */
+  slot: string | null
   /** 연결할 때 헤더로 알린 능력 — 같은 토큰이라도 연결마다 다르다 (예전 폰과 새 폰이 함께 붙을 수 있다) */
   capabilities: Capabilities
   openedAt: number
@@ -52,6 +57,8 @@ export interface HubSource {
   isTokenValid(tokenHash: string): boolean
   /** 연결마다 보낼 모양으로 바꾼다 — 예전 폰 화면(능력을 알리지 않은 연결)에 회사 레벨을 줄여 보내기 (remote/capabilities.ts). 없으면 그대로 */
   shape?(event: HubEvent, data: unknown, capabilities: Capabilities): unknown
+  /** 피어 슬롯 연결에 보낼 모양 (허용 목록 사영). null이면 그 연결에는 보내지 않는다. 없으면 피어에는 snapshot·log도 보내지 않는다 */
+  shapePeer?(slotId: string, event: HubEvent, data: unknown): unknown | null
   now?(): number
 }
 
@@ -79,32 +86,49 @@ export class EventHub {
   }
 
   /** 연결을 더 받을 수 있는지 (전체 4개). 같은 토큰의 세 번째는 가장 오래된 것을 밀어내므로 받을 수 있다 */
-  canAccept(tokenHash: string) {
+  canAccept(tokenHash: string, slot: string | null = null) {
+    // 피어 슬롯은 슬롯당 1개 — 새 연결이 오면 옛 연결을 밀어낸다
+    if (slot) return this.clients.length < SSE_LIMITS.total || this.clients.some((c) => c.slot === slot)
     const mine = this.clients.filter((c) => c.tokenHash === tokenHash).length
     return this.clients.length < SSE_LIMITS.total || mine >= SSE_LIMITS.perToken
   }
 
   /** 새 연결: 헤더 → hello → (따라잡기) → snapshot → remoteStatus */
-  open(res: ServerResponse, tokenHash: string, lastEventId: string | undefined, capabilities: Capabilities = NO_CAPABILITIES) {
-    const mine = this.clients.filter((c) => c.tokenHash === tokenHash)
-    // 같은 토큰은 2개까지 — 세 번째가 오면 가장 오래된 연결을 닫는다 (폰의 재연결이 겹칠 때)
-    if (mine.length >= SSE_LIMITS.perToken) this.close(mine[0], 'replaced')
+  open(res: ServerResponse, tokenHash: string, lastEventId: string | undefined, capabilities: Capabilities = NO_CAPABILITIES, slot: string | null = null) {
+    const mine = this.clients.filter((c) => (slot ? c.slot === slot : c.tokenHash === tokenHash && !c.slot))
+    // 같은 토큰은 2개까지(피어 슬롯은 1개) — 넘으면 가장 오래된 연결을 닫는다 (재연결이 겹칠 때)
+    if (mine.length >= (slot ? 1 : SSE_LIMITS.perToken)) this.close(mine[0], 'replaced')
     res.writeHead(200, { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-store', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' })
-    const client: Client = { res, tokenHash, capabilities, openedAt: this.now(), slowSince: null }
+    const client: Client = { res, tokenHash, slot, capabilities, openedAt: this.now(), slowSince: null }
     this.clients.push(client)
     res.on('close', () => (this.clients = this.clients.filter((c) => c !== client)))
 
     const missed = this.missedSince(lastEventId)
     res.write(`retry: ${SSE_LIMITS.retryMs}\n\n`)
     this.writeRaw(client, 'hello', JSON.stringify({ protocolVersion: V2_PROTOCOL_VERSION, epoch: this.epoch, lastEventId: this.seq, heartbeatSec: SSE_LIMITS.heartbeatMs / 1000, resync: missed === null, serverTime: this.now() }))
-    for (const b of missed ?? []) this.writeRaw(client, b.event, b.data, b.n)
-    this.writeRaw(client, 'snapshot', JSON.stringify(stripAttachmentPaths(this.shaped('snapshot', this.source.snapshot(), client))), this.nextId())
-    this.writeRaw(client, 'remoteStatus', JSON.stringify(this.source.remoteStatus()), this.nextId())
+    // 피어에게는 놓친 log를 다시 보내지 않는다 (사영을 거치지 않은 원문이라서 — 일 결과는 일괄 조회로 따라잡는다)
+    if (!slot) for (const b of missed ?? []) this.writeRaw(client, b.event, b.data, b.n)
+    const snap = this.shaped('snapshot', this.source.snapshot(), client)
+    if (snap !== null) this.writeRaw(client, 'snapshot', JSON.stringify(stripAttachmentPaths(snap)), this.nextId())
+    // 접속 기록이 든 remoteStatus는 휴대폰에만
+    if (!slot) this.writeRaw(client, 'remoteStatus', JSON.stringify(this.source.remoteStatus()), this.nextId())
     this.startTimer()
   }
 
-  private shaped(event: HubEvent, data: unknown, c: Client) {
+  private shaped(event: HubEvent, data: unknown, c: Client): unknown | null {
+    if (c.slot) return this.source.shapePeer ? this.source.shapePeer(c.slot, event, data) : null
     return this.source.shape ? this.source.shape(event, data, c.capabilities) : data
+  }
+
+  /** 피어 슬롯 한 곳에만 보낸다 (job·approval·changes). 쌓아 두지 않는다 — 놓친 것은 재연결 때 일괄 조회로 */
+  publishToSlot(slotId: string, event: PeerEventName, data: unknown) {
+    const text = JSON.stringify(data)
+    for (const c of [...this.clients]) if (c.slot === slotId) this.writeRaw(c, event, text, this.nextId())
+  }
+
+  /** 이 슬롯의 연결을 닫는다 (해제) */
+  closeSlot(slotId: string, reason: ByeReason) {
+    for (const c of [...this.clients]) if (c.slot === slotId) this.close(c, reason)
   }
 
   /** Last-Event-ID 뒤로 놓친 log·chat·focus (모두 보관 범위 안이면 그 목록, 아니면 null = 앱이 다시 읽어야 함) */
@@ -155,6 +179,7 @@ export class EventHub {
     const texts = new Map<unknown, string>([[data, text]])
     for (const c of [...this.clients]) {
       const v = this.shaped(event, data, c)
+      if (v === null) continue
       if (!texts.has(v)) texts.set(v, JSON.stringify(stripAttachmentPaths(v)))
       this.writeRaw(c, event, texts.get(v)!, n)
     }
@@ -207,8 +232,9 @@ export class EventHub {
   }
 
   /** 모든 연결을 닫는다 (원격 끄기·QR 다시 만들기·앱 종료) */
-  closeAll(reason: ByeReason) {
-    for (const c of [...this.clients]) this.close(c, reason)
+  closeAll(reason: ByeReason, opts: { phonesOnly?: boolean } = {}) {
+    // phonesOnly: 휴대폰 QR 재발급은 휴대폰 연결만 끊는다 (다른 PC 연결의 토큰은 그대로라 'token_revoked'를 받으면 안 된다)
+    for (const c of [...this.clients]) if (!opts.phonesOnly || !c.slot) this.close(c, reason)
     this.stopTimer()
     for (const p of this.pending.values()) clearTimeout(p.timer)
     this.pending.clear()

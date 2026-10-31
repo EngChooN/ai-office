@@ -9,6 +9,7 @@ import type { Attachment } from '../../shared/types'
 import { bearerToken, hashToken, type AuthGuard } from './auth.ts'
 import { acceptHello, CAPABILITIES_HEADER, HELLO_METHOD, NO_CAPABILITIES, parseCapabilities, shapeFor } from './capabilities.ts'
 import type { EventHub } from './events.ts'
+import { PeerRoutes } from './peerRoutes.ts'
 import { preflight, type RemoteRequest } from './handler.ts'
 import type { RemoteResponse } from './protocol.ts'
 import type { AccessLogger, HandledResponse } from './server.ts'
@@ -47,6 +48,8 @@ export interface V2RouteContext {
   currentPort(): number
   /** 전용 모드 여부와 지금 이 PC의 내부 주소 (hello 답에 실어 앱이 주소를 자동으로 고치게 한다) */
   lanInfo?(): { lo: boolean; lan: string | null; ts?: boolean; tsHost?: string | null }
+  /** 다른 PC 연결(짝짓기·피어 경로) — 없으면 /v2/pair·/v2/peer는 404 */
+  peer?: PeerRoutes
 }
 
 const json = (res: ServerResponse, r: RemoteResponse, extraHeaders: Record<string, string> = {}) => {
@@ -87,10 +90,18 @@ export class V2Routes {
     const isEvents = path === '/v2/events'
     const file = path.match(FILE_PATH)
     const isUpload = path === '/v2/attachments'
-    if (!isEvents && !file && !isUpload) return false
+    const isPair = PeerRoutes.isPairPath(path)
+    const isPeer = PeerRoutes.isPeerPath(path)
+    if (!isEvents && !file && !isUpload && !isPair && !isPeer) return false
     const reply = (r: RemoteResponse, extra?: Record<string, string>) => {
       json(res, r, extra)
       access(r.status, typeof r.body.error === 'string' ? r.body.error : undefined)
+    }
+    // 짝짓기는 토큰이 없는 사람이 하는 일 — 인증 앞단 대신 창·코드·속도 제한이 지킨다 (설계서 1-4)
+    if (isPair) {
+      if (!this.ctx.peer) reply(v2Fail('not_found'))
+      else void this.ctx.peer.pair(req, res, path, ip, access)
+      return true
     }
     const auth = { url: path, authorization: req.headers.authorization, ip }
     const blocked = this.preflight(auth)
@@ -101,6 +112,14 @@ export class V2Routes {
       return true
     }
     markAuthed?.()
+    if (isPeer) {
+      if (!this.ctx.peer) reply(v2Fail('not_found'))
+      else {
+        const slot = this.ctx.guard.peerSlotOf(tokenHashOf(req.headers.authorization))?.id ?? null
+        void this.ctx.peer.peer(req, res, path, new URL(req.url ?? '/', 'http://x').searchParams, slot, access)
+      }
+      return true
+    }
     const allow = isUpload ? 'POST' : 'GET'
     if (req.method !== allow) {
       reply(v2Fail('method_not_allowed', { allow }))
@@ -116,14 +135,15 @@ export class V2Routes {
 
   private openEvents(req: IncomingMessage, res: ServerResponse, reply: (r: RemoteResponse) => void, access: AccessLogger) {
     const tokenHash = tokenHashOf(req.headers.authorization)
-    if (!this.ctx.hub.canAccept(tokenHash)) return reply(v2Fail('rate_limited', { retryAfterSec: 5 }))
+    const slot = this.ctx.guard.peerSlotOf(tokenHash)?.id ?? null
+    if (!this.ctx.hub.canAccept(tokenHash, slot)) return reply(v2Fail('rate_limited', { retryAfterSec: 5 }))
     // 망이 조용히 끊긴 연결(와이파이→LTE)을 OS가 더 빨리 알아채게 — 쓰기 대기가 쌓이는 것도 줄인다
     req.socket.setKeepAlive(true, 15_000)
     req.socket.setNoDelay(true)
     req.socket.setTimeout(0)
     const last = req.headers['last-event-id']
     // 능력은 연결할 때의 헤더로 — 이 연결에만 쓴다 (같은 토큰의 다른 연결과 섞지 않는다)
-    this.ctx.hub.open(res, tokenHash, typeof last === 'string' ? last : undefined, parseCapabilities(req.headers[CAPABILITIES_HEADER]))
+    this.ctx.hub.open(res, tokenHash, typeof last === 'string' ? last : undefined, parseCapabilities(req.headers[CAPABILITIES_HEADER]), slot)
     access(200)
   }
 
@@ -225,6 +245,9 @@ export class V2Routes {
     }
     const method = typeof (body as { method?: unknown })?.method === 'string' ? (body as { method: string }).method : undefined
     const tokenHash = tokenHashOf(req.authorization)
+    // 피어 토큰: hello와 (자기 일의) 결재 처리 말고는 OfficeApi 어느 것도 부르지 못한다 (설계서 8-1 허용 목록)
+    const peerSlot = this.ctx.guard.peerSlotOf(tokenHash)
+    if (peerSlot && method !== HELLO_METHOD) return this.ctx.peer ? (this.ctx.peer.callAsPeer(peerSlot.id, method, (body as { args?: unknown }).args ?? []) as HandledResponse) : v2Fail('scope_denied')
 
     // 연결 메시지 hello: 화면이 쓸 능력을 서버가 아는지 확인한다 (OfficeApi 메서드가 아님, 아무것도 저장하지 않음 — 능력은 요청 헤더로 판정).
     // 같은 내용을 몇 번 보내도 결과가 같아 요청 키를 보지 않는다

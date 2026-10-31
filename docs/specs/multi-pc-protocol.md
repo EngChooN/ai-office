@@ -501,3 +501,15 @@ interface PeerHttp { get/put/post(path, …): Promise<…>; stream(path): Readab
 
 ## 변경 이력 (이 문서)
 - 2026-11-01 강백엔: 초안 작성(1/8단계). 코드 변경 없음.
+- 2026-11-01 강백엔: 3번(연결·위임·결재 중계) 구현 반영. 설계와 달라진 점·구현 메모:
+  - 짝짓기 확인: A컴은 "지문 확인 뒤 저장"이 아니라 **저장 후 지문 앞 8자리를 돌려준다**(`peerPairConnect` 결과 `fingerprint`). 다르면 화면이 "연결 끊기"를 안내한다. HMAC 바인딩이 먼저 중간자를 막으므로 눈 확인은 보조.
+  - `PairWindowView`에 `copyText`(주소:포트 코드 한 줄)와 `qr`(토큰 없는 1회용 QR, 피어용)를 더했다. 휴대폰용 창은 기존 QR을 쓴다.
+  - 피어 토큰 경로 허용 목록은 `handler.ts isPeerPathAllowed`(`/v2/events`·`/v2/call`·`/v2/peer/*`)가 앞단에서, `/v2/call` 안의 메서드는 `PeerRoutes.callAsPeer`(hello·decide·answerQuestion만)가 거른다.
+  - 파일 수정을 결재 없이 하는 직원(`approvalMode: acceptEdits`)은 원격 일을 **받지 않는다**(`422 peer_auto_edit`, 목록에 `isAutoEdit`). 자동 승인이 세션 안(SDK)에서 일어나 A컴이 막을 수 없어서다. 설계 5-4 ①의 구현 방식.
+  - 피어에 나가는 SSE는 `snapshot`(고른 직원의 줄인 정보)·`job`·`approval`만이다. `log`·`chat`·`remoteStatus`는 보내지 않는다(활동 줄은 snapshot의 `thought`로). 4-3의 로그·대화 중계는 후속.
+  - 일괄 조회·결정은 `GET /v2/peer/jobs?ids=`·`POST /v2/call decide`(피어 범위). 수신함 정리는 앱 시작 때 한 번(`prune`).
+  - 짝짓기 호출 속도 제한: 인증 전 경로라 주소당 분당 12번(`PeerRoutes`)을 따로 둔다.
+  - SSE 전체 한도 4 → 8, 피어 슬롯당 1개. `closeAll('token_revoked', {phonesOnly:true})`: 휴대폰 QR 재발급이 피어 연결에 `token_revoked`를 보내지 않는다.
+  - 새 OfficeApi 12개(`peerPairStart`·`peerPairClose`·`peerSlots`·`peerRevokeSlot`·`peerPairConnect`·`peerList`·`peerUnpair`·`peerReconnect`·`peerRemoteStaff`·`peerAddStaff`·`peerRemoveStaff`·`peerCancelJob`)는 v2 분류 모두 P(PC 전용), 비서 도구는 제외.
+  - 파일 복사본·변경 묶음(4번)은 구현하지 않았다. `PeerJob.workspaceId`·`InboxJob.workspaceId`·`changesetId` 자리만 있다.
+

@@ -2,9 +2,9 @@ import './squirrelEvents' // Squirrel 설치·업데이트·제거 실행이면 
 import os from 'node:os'
 import { acquireDataLock, quitForDataLock } from './dataLock'
 import { cancelCodexLogin } from './ai/codexLogin'
-import { app, BrowserWindow, clipboard, dialog, ipcMain, nativeTheme, Notification, shell } from 'electron'
+import { app, BrowserWindow, clipboard, dialog, ipcMain, nativeTheme, Notification, safeStorage, shell } from 'electron'
 import path from 'node:path'
-import { loadRemoteConfig, openDb, saveRemoteConfig } from './db'
+import { loadRemoteConfig, openDb, peerStore, saveRemoteConfig } from './db'
 import { serveArtifacts } from './artifacts'
 import { attachmentById, registerAttachmentScheme, saveUpload, serveAttachments } from './attachments'
 import { Office } from './office'
@@ -18,6 +18,10 @@ import { IS_WINDOWS } from './platform'
 import { RemoteService } from './remote/service.ts'
 import { loadRemoteKeys, saveRemoteKeys } from './remote/keystore.ts'
 import * as upnp from './remote/upnp.ts'
+import { PeerHost, peerSnapshotShape } from './peer/peerHost'
+import { PeerManager } from './peer/peerManager'
+import { fileTokenVault } from './peer/peerRegistry'
+import { createOpenStream, createPairTransport, createPeerHttp } from './peer/peerTransport'
 import { Secretary } from './secretary'
 import { SECRETARY_FOCUS, SECRETARY_PAGE_FOCUS } from '../shared/types'
 import { t } from '../shared/i18n/index.ts'
@@ -44,9 +48,42 @@ let handlers: OfficeHandlers | null = null
 let secretary: Secretary | null = null
 // 업데이트 확인: 켤 때 한 번 + 6시간마다 (DB를 연 뒤에 만든다 — 건너뛴 버전을 읽는다)
 let updates: UpdateChecker | null = null
+// 다른 PC 연결 (docs/specs/multi-pc-protocol.md): B컴 쪽 일 받기(peerHost)와 A컴 쪽 연결 총괄(peerManager) — DB를 연 뒤에 만든다
+let peerHost: PeerHost | null = null
+let peerManager: PeerManager | null = null
+function createPeer() {
+  const store = peerStore()
+  const host = new PeerHost({ store, office: office.peerHostOffice(), publish: (slot, event, data) => remote?.publishToSlot(slot, event, data) })
+  // 앱이 꺼지며 끊긴 일은 실패로 닫는다 (같은 일을 다시 실행하지는 않는다)
+  host.recover()
+  host.prune()
+  peerHost = host
+  office.setPeerHost(host)
+  const crypt = safeStorage.isEncryptionAvailable() ? { encrypt: (s: string) => safeStorage.encryptString(s), decrypt: (b: Buffer) => safeStorage.decryptString(b) } : undefined
+  const manager = new PeerManager({
+    store,
+    vault: fileTokenVault(path.join(app.getPath('userData'), 'peers'), crypt),
+    office: office.peerPort(),
+    net: { pair: createPairTransport, http: (p, token) => createPeerHttp(p, token), stream: (p, token) => createOpenStream(p, token) },
+    text: (key, params) => t(key === 'tag' ? 'peer.tag' : `peer.report.${key}`, params),
+  })
+  peerManager = manager
+  office.setPeer(manager)
+}
+const peerApi = () => {
+  if (!peerManager) throw new Error('peer not ready')
+  return peerManager
+}
 function createRemote() {
   return new RemoteService({
     office: office.remotePort(),
+    peer: peerHost && {
+      host: peerHost,
+      ownName: () => os.hostname().replace(/\.local$/, '') || 'Mac',
+      // 피어에는 고른 직원의 줄인 정보만 — snapshot 말고는 보내지 않는다
+      shapePeer: (slot, event, data) => (event === 'snapshot' && peerHost ? peerSnapshotShape(data, peerHost.watchedBy(slot)) : null),
+      onSlotRemoved: (slot) => peerHost?.dropSlot(slot),
+    },
     serverVersion: app.getVersion(),
     loadConfig: loadRemoteConfig,
     saveConfig: saveRemoteConfig,
@@ -220,7 +257,7 @@ function createWindow(isHidden = false) {
 
 /** renderer가 부르는 사무실 API — 채널 이름 = office:<메서드> */
 function registerIpc() {
-  handlers = createOfficeHandlers(office, remoteApi, () => secretary!)
+  handlers = createOfficeHandlers(office, remoteApi, () => secretary!, peerApi)
   for (const [name, fn] of Object.entries(handlers)) ipcMain.handle(`office:${name}`, (_e, ...args) => (fn as (...a: unknown[]) => unknown)(...args))
   // 화면을 다시 불러오면 지난 window:shown을 모른다 — 시작할 때 지금 값을 묻는다
   ipcMain.handle('window:isShown', () => Boolean(win?.isVisible() && !win.isMinimized()))
@@ -288,10 +325,12 @@ app.whenReady().then(async () => {
   secretary = new Secretary(office, () => handlers!)
   office.secretaryState = () => secretary?.state()
   office.answerWhileAway = (staff, questions) => secretary!.answerWhileAway(staff, questions)
+  createPeer()
   remote = createRemote()
   registerIpc()
   office.start()
   void remote.init()
+  peerManager?.start()
   updates = registerUpdates(() => win)
   registerPack(() => office, () => win)
   registerSceneExport(() => win)
@@ -317,6 +356,7 @@ app.on('before-quit', (e) => {
   secretary?.stop()
   updates?.stop()
   office.stop()
+  peerManager?.dispose()
   stopLocalMcp()
   if (!remote) return
   // 원격 포트와 공유기 매핑을 닫을 때까지 최대 3초 기다린 뒤 끝낸다 (매핑은 1시간 임대라 못 지워도 1시간 안에 사라진다)

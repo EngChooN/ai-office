@@ -60,6 +60,19 @@ export const V2_METHODS: Record<OfficeMethod, MethodSpec> = {
   // 연결 방식은 밖에서 붙는 길을 바꾸므로 휴대폰에서는 바꾸지 못한다
   setRemoteMode: P('open_on_pc', 's'),
   refreshRemoteTailscale: P('open_on_pc'),
+  // 다른 PC 연결은 PC 앞에서만 — 휴대폰으로 PC끼리 짝짓거나 일을 맡기지 못한다
+  peerPairStart: P('open_on_pc', 's?'),
+  peerPairClose: P('open_on_pc'),
+  peerSlots: P('open_on_pc'),
+  peerRevokeSlot: P('open_on_pc', 's'),
+  peerPairConnect: P('open_on_pc', 's n s'),
+  peerList: P('open_on_pc'),
+  peerUnpair: P('open_on_pc', 's'),
+  peerReconnect: P('open_on_pc', 's'),
+  peerRemoteStaff: P('open_on_pc', 's'),
+  peerAddStaff: P('open_on_pc', 's s s?'),
+  peerRemoveStaff: P('open_on_pc', 's'),
+  peerCancelJob: P('open_on_pc', 's'),
   dismissRemoteTsNotice: P('open_on_pc'),
   snapshot: R(),
   // 첫 업무 튜토리얼: 모의 진행(AI 호출 없음)이라 휴대폰에서도 그대로
@@ -410,6 +423,10 @@ const V2_MESSAGE: Record<string, string> = {
   file_not_found: '파일을 찾을 수 없어요',
   not_found: '없는 기능이에요',
   method_not_allowed: '지원하지 않는 방식이에요',
+  pair_failed: '짝짓기 코드가 맞지 않아요',
+  pair_closed: '짝짓기 창이 닫혀 있어요. PC에서 코드를 새로 만들어 주세요',
+  scope_denied: '이 연결로는 할 수 없는 일이에요',
+  job_not_found: '그 일을 찾을 수 없어요',
 }
 
 const V2_STATUS: Record<string, number> = {
@@ -422,6 +439,10 @@ const V2_STATUS: Record<string, number> = {
   file_not_found: 404,
   not_found: 404,
   method_not_allowed: 405,
+  pair_failed: 401,
+  pair_closed: 410,
+  scope_denied: 403,
+  job_not_found: 404,
   already_decided: 409,
   in_progress: 409,
   duplicate_call: 409,

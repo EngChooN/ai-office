@@ -2,15 +2,19 @@
 // electron에 기대지 않는다 — 저장(DB·키 파일)·PC 알림은 밖에서 넣어 준다 (index.ts). 그래서 테스트가 그대로 띄워 볼 수 있다
 
 import os from 'node:os'
-import { AuthGuard, sameHash, type AuthState } from './auth.ts'
+import { AuthGuard, type AuthState } from './auth.ts'
 import { createSelfSignedCert, spkiFingerprint } from './cert.ts'
 import { handleRequest, type RemoteOfficePort } from './handler.ts'
-import { isValidQrPayload, lanForQr, qrImage } from './qr.ts'
+import { isValidQrPayload, lanForQr, peerQrImage, qrImage } from './qr.ts'
 import { detectTailscale, isAllowedClient, isTailscaleClient, pickLanAddress, readDefaultGateway, readTailscaleCli, type TsCliResult, type TsInfo } from './lan.ts'
 import { RemoteServer } from './server.ts'
 import { shapeFor } from './capabilities.ts'
 import { EventHub, type HubEvent } from './events.ts'
 import { V2Routes, type V2Office } from './v2routes.ts'
+import { PeerRoutes } from './peerRoutes.ts'
+import { PairingWindow } from '../peer/pairing.ts'
+import type { PeerHost } from '../peer/peerHost'
+import type { PairKind, PairWindowView, PeerSlotView } from '../../shared/peerProtocol'
 import type { AccessEntry, RemoteMode, RemoteQr, RemoteStatus, UpnpState } from '../../shared/types'
 import * as upnp from './upnp.ts'
 
@@ -41,7 +45,7 @@ export interface RemoteConfig extends AuthState {
   isTsNoticeSeen: boolean
 }
 
-export const DEFAULT_REMOTE_CONFIG: RemoteConfig = { isEnabled: false, port: DEFAULT_REMOTE_PORT, host: '', tokenHash: null, revoked: [], isTokenUsed: false, lanOnly: false, isLanNoticeSeen: false, isTsNoticeSeen: false }
+export const DEFAULT_REMOTE_CONFIG: RemoteConfig = { isEnabled: false, port: DEFAULT_REMOTE_PORT, host: '', tokenHash: null, revoked: [], peers: [], isTokenUsed: false, lanOnly: false, isLanNoticeSeen: false, isTsNoticeSeen: false }
 /** 앱을 끝낼 때 공유기 매핑 해제를 기다리는 최대 시간 */
 export const SHUTDOWN_WAIT_MS = 3000
 
@@ -73,6 +77,8 @@ export interface RemoteDeps {
   tailscaleCli?: () => Promise<TsCliResult>
   /** 원격 v2: PC 화면과 같은 처리 함수 표·첨부 저장소 (없으면 v2는 404) */
   v2?: V2Office | null
+  /** 다른 PC 연결(B컴 쪽): 일 받기·결재 처리 (없으면 /v2/pair·/v2/peer는 404) */
+  peer?: { host: PeerHost; ownName(): string; shapePeer(slotId: string, event: HubEvent, data: unknown): unknown | null; onSlotRemoved?(slotId: string): void } | null
 }
 
 function isUsableCert(certPem: string) {
@@ -130,10 +136,9 @@ export class RemoteService {
     this.hub = new EventHub({
       snapshot: () => v2?.call('snapshot', []) ?? null,
       remoteStatus: () => this.status(),
-      isTokenValid: (tokenHash) => {
-        const current = this.guard.current.tokenHash
-        return Boolean(current) && sameHash(tokenHash, current as string)
-      },
+      // 휴대폰 토큰이든 피어 슬롯 토큰이든 살아 있어야 한다
+      isTokenValid: (tokenHash) => this.guard.isValidHash(tokenHash),
+      shapePeer: deps.peer ? (slot, event, data) => deps.peer!.shapePeer(slot, event, data) : undefined,
       // 예전 폰 화면(연결할 때 iso-office를 알리지 않음)에는 회사 레벨을 10까지만 (A4: 11 이상이면 화면이 멈춘다)
       shape: (event, data, capabilities) => (event === 'snapshot' ? shapeFor(capabilities, data) : data),
       now: () => this.now(),
@@ -147,8 +152,75 @@ export class RemoteService {
           isReady: () => this.isReady,
           currentPort: () => this.config.port,
           lanInfo: () => ({ lo: this.config.lanOnly, lan: this.lanHost(), ...(this.isTailscale ? { ts: true, tsHost: this.ts.address } : {}) }),
+          peer: deps.peer
+            ? new PeerRoutes({
+                pairing: this.pairing,
+                host: deps.peer.host,
+                ownName: () => deps.peer!.ownName(),
+                now: () => this.now(),
+                onPaired: (r) => this.finishPairing(r),
+                onUnpair: (slotId) => void this.revokePeerSlot(slotId),
+              })
+            : undefined,
         })
       : null
+  }
+
+  // ── 다른 PC 연결 (B컴 쪽, 설계서 1절) ──
+
+  private pairing = new PairingWindow({ now: () => this.now(), onChange: () => this.deps.changed() })
+
+  /** 짝짓기 창 열기 (5분). 서버가 떠 있고 이 PC의 주소를 알아야 한다. 휴대폰용은 QR과 같은 토큰을 쓰므로 QR이 없으면 새로 만든다 */
+  async openPairing(kind: PairKind): Promise<PairWindowView | null> {
+    if (!this.server.isListening || !this.keys) return null
+    const host = this.connectHost()?.host
+    if (!host) return null
+    if (kind === 'phone' && !(this.shownToken && this.shownToken.until > this.now())) await this.regenerate()
+    // 새 인증서·포트로 다시 열렸을 수 있으니 열기 전에 서버 상태를 다시 확인한다
+    if (!this.server.isListening || !this.keys) return null
+    const spki = spkiFingerprint(this.keys.certPem)
+    const view = this.pairing.open(kind, { host, port: this.config.port, spki })
+    // 다른 PC용은 토큰 없는 QR(1회용 코드만)을 함께 — 휴대폰용은 기존 QR이 따로 있다
+    return kind === 'peer' ? { ...view, qr: peerQrImage({ v: 1, kind: 'peer', host, port: this.config.port, spki, code: view.code, name: this.deps.peer?.ownName() ?? '', pv: 2 }) } : view
+  }
+
+  closePairing() {
+    this.pairing.close()
+  }
+
+  pairingView() {
+    return this.pairing.view()
+  }
+
+  /** 짝짓기 성공: 피어면 새 슬롯, 휴대폰이면 지금 QR의 토큰 */
+  private finishPairing(r: { kind: PairKind; label: string }): { token: string; slotId?: string } | null {
+    if (r.kind === 'phone') {
+      const shown = this.shownToken
+      return shown && shown.until > this.now() ? { token: shown.token } : null
+    }
+    const made = this.guard.addPeerSlot(r.label, this.now())
+    if (!made) return null
+    this.save()
+    return { token: made.token, slotId: made.slot.id }
+  }
+
+  peerSlots(): PeerSlotView[] {
+    return (this.guard.current.peers ?? []).map((p) => ({ id: p.id, label: p.label, createdAt: p.createdAt, lastSeenAt: p.lastSeenAt }))
+  }
+
+  /** B컴에서 슬롯을 지운다 (이 PC 앞에서 해제 / A컴이 unpair를 부름). 그 토큰의 연결은 곧 끊기고 진행 중이던 일은 취소된다 */
+  revokePeerSlot(slotId: string) {
+    const removed = this.guard.removePeerSlot(slotId)
+    if (!removed) return false
+    this.save()
+    this.hub.closeSlot(slotId, 'token_revoked')
+    this.deps.peer?.onSlotRemoved?.(slotId)
+    return true
+  }
+
+  /** 피어 슬롯 한 곳에 이벤트를 보낸다 (job·approval·changes) */
+  publishToSlot(slotId: string, event: 'job' | 'approval' | 'changes', data: unknown) {
+    if (this.server.isListening) this.hub.publishToSlot(slotId, event, data)
   }
 
   /** PC에서 일어난 이벤트를 열린 v2 이벤트 스트림에 보낸다 (원격이 켜져 있을 때만) */
@@ -162,7 +234,7 @@ export class RemoteService {
 
   private newGuard() {
     // 알림은 종류마다 10분에 한 번 (AuthGuard가 합쳐서 부른다) — count는 그 사이 합친 횟수
-    return new AuthGuard({ tokenHash: this.config.tokenHash, revoked: this.config.revoked }, (scope, until, count) => {
+    return new AuthGuard({ tokenHash: this.config.tokenHash, revoked: this.config.revoked, peers: this.config.peers ?? [] }, (scope, until, count) => {
       const at = new Date(until).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
       if (scope === 'global')
         this.deps.alert('⚠️ 원격 접속 실패가 많아요', `여러 곳에서 틀린 열쇠로 ${count}번 이상 연결하려 했어요. 내가 한 일이 아니라면 휴대폰 연결을 끄거나 QR을 다시 만들어 주세요.`)
@@ -343,7 +415,7 @@ export class RemoteService {
   async regenerate() {
     this.issueToken()
     this.save()
-    this.hub.closeAll('token_revoked')
+    this.hub.closeAll('token_revoked', { phonesOnly: true })
     if (this.server.isListening) {
       await this.server.stop()
       await this.listen()

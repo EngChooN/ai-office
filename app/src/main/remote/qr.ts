@@ -53,3 +53,22 @@ export function qrImage(p: QrPayload) {
   qr.make()
   return `data:image/svg+xml;base64,${Buffer.from(qr.createSvgTag({ cellSize: 6, margin: 4, scalable: true })).toString('base64')}`
 }
+
+/** 다른 PC 짝짓기 QR: 토큰은 넣지 않고 1회용 코드만 (설계서 1-3). host:port·지문·이름과 함께 */
+export interface PeerQrPayload {
+  v: 1
+  kind: 'peer'
+  host: string
+  port: number
+  spki: string
+  code: string
+  name: string
+  pv: number
+}
+
+export function peerQrImage(p: PeerQrPayload) {
+  const qr = qrcode(0, 'M')
+  qr.addData(JSON.stringify(p), 'Byte')
+  qr.make()
+  return `data:image/svg+xml;base64,${Buffer.from(qr.createSvgTag({ cellSize: 6, margin: 4, scalable: true })).toString('base64')}`
+}
