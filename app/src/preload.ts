@@ -41,6 +41,9 @@ contextBridge.exposeInMainWorld('officeWindow', {
   isShown: () => ipcRenderer.invoke('window:isShown'),
 })
 
+// 바탕화면 비서 다시 불러오기 (맥, 설정 화면) — 원격 v2와 상관없어 OfficeApi 밖에 둔다
+contextBridge.exposeInMainWorld('officeDeskPet', { summon: () => ipcRenderer.invoke('pet:summon') })
+
 // 앱 업데이트 확인 (PC 앱 자신의 업데이트라 원격 v2와 상관없어 OfficeApi 밖에 둔다)
 const update: OfficeUpdateApi = {
   status: () => ipcRenderer.invoke('update:status'),

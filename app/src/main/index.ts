@@ -135,6 +135,8 @@ const tray = new OfficeTray(
     },
     // 메뉴바 "비서에게 말하기": 창을 띄우고 빠른 창(⌘K)을 연다
     talkToSecretary: () => showWindow(SECRETARY_FOCUS),
+    // 숨겼거나 엉뚱한 곳에 있는 바탕화면 비서를 다시 불러온다 (맥)
+    summonDeskPet: process.platform === 'darwin' ? () => pet.summon() : undefined,
   },
   () => {
     const r = remote?.status()
@@ -147,6 +149,7 @@ const pet = new PetWindows({
   snapshot: () => office.snapshot(),
   decide: (approvalId, allow) => (handlers!.decide as (id: string, allow: boolean) => boolean)(approvalId, allow),
   openApp: (target) => showWindow(target.kind === 'secretary' ? SECRETARY_PAGE_FOCUS : target.kind === 'staff' ? target.staffId : undefined),
+  setOn: (isOn) => office.updateSettings({ isDeskPetOn: isOn }),
   load: (w, view) => {
     if (MAIN_WINDOW_VITE_DEV_SERVER_URL) void w.loadURL(`${MAIN_WINDOW_VITE_DEV_SERVER_URL}?view=${view}`)
     else void w.loadFile(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`), { query: { view } })
@@ -218,6 +221,10 @@ function registerIpc() {
   for (const [name, fn] of Object.entries(handlers)) ipcMain.handle(`office:${name}`, (_e, ...args) => (fn as (...a: unknown[]) => unknown)(...args))
   // 화면을 다시 불러오면 지난 window:shown을 모른다 — 시작할 때 지금 값을 묻는다
   ipcMain.handle('window:isShown', () => Boolean(win?.isVisible() && !win.isMinimized()))
+  // 설정 › 바탕화면 비서 "다시 불러오기" (앱 창에서만 — 원격 v2와 상관없어 OfficeApi 밖에 둔다)
+  ipcMain.handle('pet:summon', (e) => {
+    if (e.sender === win?.webContents) pet.summon()
+  })
 
   office.on('snapshot', (s) => {
     syncNativeTheme(s.settings.uiMode)
@@ -283,10 +290,8 @@ app.whenReady().then(async () => {
   createWindow(isHidden)
   syncLoginItem(office.snapshot().settings.launchAtLogin)
   updates.start()
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
-    else win?.show()
-  })
+  // Dock 아이콘을 누르면 앱 창을 띄운다 — 앱 창을 닫고 바탕화면 비서 창만 남아 있어도 다시 만든다 (창 수가 아니라 win 기준)
+  app.on('activate', () => showWindow())
 })
 
 let isQuitting = false

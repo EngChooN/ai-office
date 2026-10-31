@@ -597,8 +597,12 @@ export interface Settings {
   layout: Record<string, { dx: number; dy: number }>
   /** 메뉴바 아이콘 */
   isTrayOn: boolean
-  /** 바탕화면 비서 캐릭터 (맥 전용, 기본 끔) */
+  /** 바탕화면 비서 캐릭터 (맥 전용, 설치하면 켜져 있다) */
   isDeskPetOn: boolean
+  /** 바탕화면 비서 캐릭터 키(px) — shared/deskPet.ts PET_SIZE_RANGE */
+  deskPetSize: number
+  /** 바탕화면 비서 캐릭터 투명도(%) — shared/deskPet.ts PET_OPACITY_RANGE */
+  deskPetOpacity: number
   /** 로그인할 때 앱을 자동으로 켠다 (창은 숨기고 켠다 — 예약 업무가 돌도록) */
   launchAtLogin: boolean
   /** 첫 실행 안내를 마쳤는지 */
@@ -1085,7 +1089,9 @@ export const DEFAULT_SETTINGS: Settings = {
   workHours: { isEnabled: false, start: '09:00', end: '19:00' },
   layout: {},
   isTrayOn: true,
-  isDeskPetOn: false,
+  isDeskPetOn: true,
+  deskPetSize: 112,
+  deskPetOpacity: 100,
   launchAtLogin: false,
   isOnboarded: false,
   defaultCwd: '',

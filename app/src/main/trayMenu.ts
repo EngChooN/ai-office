@@ -28,6 +28,8 @@ export interface TrayMenuActions {
   quickTask(): void
   /** 비서에게 말하기 — 비서 기획 뒤 연결 (없으면 메뉴는 "준비 중") */
   talkToSecretary?: () => void
+  /** 바탕화면 비서 캐릭터 다시 불러오기 (맥만 — 없으면 메뉴에 없다) */
+  summonDeskPet?: () => void
   setRemoteEnabled(isOn: boolean): void
 }
 
@@ -190,6 +192,7 @@ export function buildTrayMenu(snap: OfficeSnapshot, extra: TrayExtra, actions: T
     },
     { label: t('tray.quickTask'), click: () => actions.quickTask() },
     actions.talkToSecretary ? { label: t('tray.talkSecretary'), click: () => actions.talkToSecretary!() } : { label: t('tray.talkSecretarySoon'), enabled: false },
+    ...(actions.summonDeskPet ? [{ label: t('deskPet.summon'), click: () => actions.summonDeskPet!() }] : []),
     {
       label: r ? t('tray.phone', { state: r.isListening ? t('tray.phoneOn', { port: r.port }) : r.isEnabled ? t('tray.phoneStarting') : t('tray.phoneOff') }) : t('tray.phoneSoon'),
       enabled: Boolean(r),

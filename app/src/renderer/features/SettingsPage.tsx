@@ -13,6 +13,7 @@ import { RemoteSection } from './RemoteSection'
 import { PROVIDER_SECTION_ID, ProviderSection } from './ProviderCards'
 import { COMPANY_LEVELS, type DayNight, type HooksStatus, type Settings, type ThemeId } from '@shared/types'
 import { UI_THEME_GROUPS, type UiMode } from '@shared/uiTheme'
+import { PET_OPACITY_RANGE, PET_SIZE_RANGE, petOpacity, petSize } from '@shared/deskPet'
 import { officeOf } from '@shared/officeLevel'
 import { officeStage } from '@/map/officeStage'
 import { ApprovalRulesList, AutoApproveSection } from './AutoApprove'
@@ -392,6 +393,24 @@ export function SettingsPage() {
                 <label className="flex items-center gap-2 text-sm">
                   <input type="checkbox" checked={settings.isDeskPetOn} onChange={(e) => update({ isDeskPetOn: e.target.checked })} /> {t('deskPet.setting')}
                 </label>
+                <label className="flex items-center gap-3 text-sm">
+                  <span className="w-28 shrink-0">{t('deskPet.size')}</span>
+                  <input type="range" min={PET_SIZE_RANGE.min} max={PET_SIZE_RANGE.max} step={PET_SIZE_RANGE.step} value={petSize(settings.deskPetSize)} onChange={(e) => update({ deskPetSize: Number(e.target.value) })} className="w-full max-w-48" />
+                  <span className="text-muted-foreground w-14 tabular-nums">{petSize(settings.deskPetSize)}px</span>
+                </label>
+                <label className="flex items-center gap-3 text-sm">
+                  <span className="w-28 shrink-0">{t('deskPet.opacity')}</span>
+                  <input type="range" min={PET_OPACITY_RANGE.min} max={PET_OPACITY_RANGE.max} step={PET_OPACITY_RANGE.step} value={petOpacity(settings.deskPetOpacity)} onChange={(e) => update({ deskPetOpacity: Number(e.target.value) })} className="w-full max-w-48" />
+                  <span className="text-muted-foreground w-14 tabular-nums">{petOpacity(settings.deskPetOpacity)}%</span>
+                </label>
+                {window.officeDeskPet && (
+                  <div className="flex items-center gap-3 text-sm">
+                    <Button size="sm" variant="outline" onClick={() => void window.officeDeskPet?.summon()}>
+                      {t('deskPet.summon')}
+                    </Button>
+                    <span className="text-muted-foreground text-xs">{t('deskPet.summonHint')}</span>
+                  </div>
+                )}
               </Section>
             )}
           </>

@@ -3,7 +3,7 @@ import { useOffice } from '@/store'
 import { cn } from '@/lib/utils'
 import { isReducedMotion } from '@/lib/reducedMotion'
 import { EMPTY_SECRETARY } from '@shared/types'
-import { isDragMove, petApprovals, pickBubble, type PetBubble } from '@shared/deskPet'
+import { BUBBLE_MAX, isDragMove, petApprovals, petLayout, pickBubble, type PetAlign, type PetBubble } from '@shared/deskPet'
 import { t, trOr } from '@shared/i18n'
 import { PetSprite, type PetPose } from './PetSprite'
 
@@ -41,12 +41,14 @@ export function PetCharacter() {
   useEffect(() => {
     if (!isLoaded) return
     const ids = new Set(approvals.map((a) => a.id))
-    const fresh = seenIds.current ? approvals.filter((a) => !seenIds.current!.has(a.id)) : []
+    // 처음 받은 스냅샷(앱 재시작·캐릭터 켜기)에 이미 대기 중인 결재가 있으면 그 제목도 한 번 보여 준다 (튀어 오르기는 새로 온 결재만)
+    const isFirst = !seenIds.current
+    const fresh = isFirst ? approvals : approvals.filter((a) => !seenIds.current!.has(a.id))
     seenIds.current = ids
     if (!approvals.length) return setNewApproval(null)
     if (!fresh.length) return
     setNewApproval({ count: approvals.length, title: `${approvals[0].staffName} · ${trOr(approvals[0].summaryI18n, approvals[0].summary)}` })
-    if (isReducedMotion()) return
+    if (isFirst || isReducedMotion()) return
     setBump(true)
     const timer = setTimeout(() => setBump(false), BUMP_MS)
     return () => clearTimeout(timer)
@@ -75,10 +77,15 @@ export function PetCharacter() {
   const isBlinking = useBlink()
   const drag = useDragOrClick()
   const pose: PetPose = secretary.isBusy ? 'thinking' : approvals.length ? 'approval' : workingCount ? 'working' : 'idle'
+  // 크기는 설정값으로 바로 바뀐다 (창 크기는 main이 같은 스냅샷으로 맞춘다). 캐릭터는 가까운 화면 가장자리 쪽에 선다
+  const size = useOffice((s) => s.settings.deskPetSize)
+  const layout = petLayout(size)
+  const align = useAlign()
+  const px = (n: number) => Math.round(n * layout.scale)
 
   return (
-    <div className="flex h-screen w-screen flex-col items-center justify-end overflow-hidden pb-1 select-none">
-      <Bubble bubble={bubble} />
+    <div className={cn('flex h-screen w-screen flex-col justify-end overflow-hidden pb-1 select-none', align === 'left' ? 'items-start' : 'items-end')} style={{ paddingInline: layout.pad }}>
+      <Bubble bubble={bubble} maxWidth={Math.min(BUBBLE_MAX, layout.window.width - layout.pad * 2)} />
       <button
         type="button"
         aria-label={t('deskPet.character')}
@@ -88,13 +95,17 @@ export function PetCharacter() {
         onMouseLeave={() => !drag.isDown() && pet().setInteractive(false)}
         {...drag.handlers}
       >
-        <PetSprite pose={pose} isBlinking={isBlinking} />
+        <PetSprite pose={pose} isBlinking={isBlinking} layout={layout} />
         {approvals.length > 0 && (
-          <span className="bg-destructive absolute -top-2 -right-2 flex size-[18px] items-center justify-center rounded-full text-[11px] font-bold text-white ring-2 ring-white" aria-label={t('deskPet.badge', { n: approvals.length })}>
+          <span
+            className="bg-destructive absolute flex items-center justify-center rounded-full font-bold text-white ring-2 ring-white"
+            style={{ top: -px(8), right: -px(8), width: px(18), height: px(18), fontSize: px(11) }}
+            aria-label={t('deskPet.badge', { n: approvals.length })}
+          >
             !
           </span>
         )}
-        {pose === 'working' && <span className="bg-primary absolute bottom-[12%] -left-3 size-2 animate-pulse rounded-full motion-reduce:animate-none" aria-hidden />}
+        {pose === 'working' && <span className="bg-primary absolute bottom-[12%] animate-pulse rounded-full motion-reduce:animate-none" style={{ left: -px(12), width: px(8), height: px(8) }} aria-hidden />}
       </button>
       {/* 상태 변화는 화면 읽기 프로그램에 알린다 (색·모양만으로 구별하지 않게) */}
       <span className="sr-only" aria-live="polite">
@@ -117,7 +128,14 @@ function bubbleText(b: NonNullable<PetBubble>) {
   }
 }
 
-function Bubble({ bubble }: { bubble: PetBubble }) {
+/** 캐릭터가 창의 어느 쪽에 서는지 (main이 옮길 때마다 알려 준다) */
+function useAlign() {
+  const [align, setAlign] = useState<PetAlign>('right')
+  useEffect(() => pet().onAlign(setAlign), [])
+  return align
+}
+
+function Bubble({ bubble, maxWidth }: { bubble: PetBubble; maxWidth: number }) {
   if (!bubble) return null
   return (
     <button
@@ -128,9 +146,10 @@ function Bubble({ bubble }: { bubble: PetBubble }) {
       onMouseLeave={() => pet().setInteractive(false)}
       onClick={() => pet().togglePanel()}
       className={cn(
-        'bg-card text-card-foreground max-w-[240px] rounded-xl border px-3 py-2.5 text-left text-[13px] leading-snug shadow-md',
+        'bg-card text-card-foreground rounded-xl border px-3 py-2.5 text-left text-[13px] leading-snug shadow-md',
         bubble.kind === 'reply' && bubble.isError && 'border-destructive text-destructive',
       )}
+      style={{ maxWidth }}
     >
       <span className="line-clamp-2 break-words">{bubbleText(bubble)}</span>
     </button>
