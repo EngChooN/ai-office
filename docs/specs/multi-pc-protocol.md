@@ -50,33 +50,63 @@ B컴이 "다른 PC 연결" 화면을 열면 **짝짓기 창**이 열린다.
 | 항목 | 값 |
 |---|---|
 | 유지 시간 | 5분(`QR_SHOW_MS`와 같음). 화면을 닫으면 즉시 닫힘 |
-| 짝짓기 코드 | 숫자 6자리(`crypto.randomInt`), **창마다 새로**, 한 번 성공하면 폐기 |
+| 짝짓기 코드 | **12자 Crockford base32(약 60비트)**, 표기 `XXXX-XXXX-XXXX`(`crypto.randomInt`로 한 글자씩), **창마다 새로**, 한 번 성공하면 폐기 |
 | 시도 제한 | 코드 틀림 3번이면 창이 닫히고 새 창을 열어야 함. 같은 IP는 기존 잠금 규칙(5회/15분)도 함께 |
-| 화면에 보이는 것 | QR + IP:포트 + 코드 6자리 + **인증서 지문 앞 8자리**("연결할 때 A컴에 같은 글자가 보이면 맞아요") |
+| 화면에 보이는 것 | QR + IP:포트 + 코드 12자 + **인증서 지문 앞 8자리**("연결할 때 A컴에 같은 글자가 보이면 맞아요") |
 | 로그·클립보드 | QR·코드는 화면에만. 파일·클립보드·로그에 남기지 않음(기존 QR과 같은 규칙) |
 
 ### 1-3. 두 가지 입력 방식 — 결과는 같다
 
 **(가) QR** — B컴 화면의 QR을 A컴이 읽는다(A컴 카메라 또는 화면 캡처 이미지 불러오기). 기존 QR 형식을 확장한다:
 ```
-{ v, host, port, spki, ts?, lan?, pv, kind:"peer", code:"482913", name:"디자인 맥" }   // token 없음
+{ v, host, port, spki, ts?, lan?, pv, kind:"peer", code:"7M3Q-H9XK-2VTB", name:"디자인 맥" }   // token 없음
 ```
 QR에는 **토큰을 넣지 않고** 1회용 코드만 넣는다(휴대폰 QR은 토큰이 바로 들어 있으나, 피어는 코드를 교환해 토큰을 받는다). 맥끼리는 카메라 읽기가 번거로우므로 QR 대신 **"연결 정보 복사"(host:port+코드 한 줄)** 도 둔다 — 코드와 같은 5분 수명이라 클립보드에 남아도 곧 무효.
 
 **(나) IP + 코드 입력** — A컴 "PC 추가"에서 `IP`(또는 Tailscale 이름)와 `코드`를 입력. 포트는 기본 47900(고급에서 변경).
 - 허용 주소: Tailscale 100.64.0.0/10, 사설 IPv4(`isLanAddress`), MagicDNS `*.ts.net`. **공인 IP·그 밖의 이름은 거절**("같은 Tailscale 망의 주소만 쓸 수 있어요"). 이 검사는 입력 직후 A컴이 한다(연결 시도 전, 아무 데나 코드를 보내지 않게).
 
-### 1-4. 교환 절차 — `POST /v2/pair` (인증 없음, 짝짓기 창이 열린 동안에만)
+### 1-4. 교환 절차 — `POST /v2/pair/hello` → `POST /v2/pair/confirm` (인증 없음, 짝짓기 창이 열린 동안에만)
 
-인증서를 아직 모르는 상태(IP 입력)에서도 중간자 공격을 막기 위해 **코드로 인증서를 묶는다**(채널 바인딩):
+**v2 규격(2026-11-01 확정, PC↔PC와 휴대폰 `kind:"phone"` 모두 같다. 안드로이드·PC가 이 절만 보고 구현한다.)** 코드로 인증서를 묶고(채널 바인딩), 느린 키 유도로 오프라인 대입을 막고, 양쪽이 서로를 증명한다.
 
-1. A: B에 TLS로 접속(이 한 번만 인증서 검증 없이). 실제로 받은 서버 인증서의 지문 `spkiSeen`을 기록.
-2. A → `POST /v2/pair/hello` `{ clientName, nonceA }` → B가 `{ nonceB, spki(B가 아는 자기 지문) }`.
-3. A는 `spki == spkiSeen`인지 확인(다르면 중간자 → 중단, "연결 정보가 바뀌었어요").
-4. A → `POST /v2/pair/confirm` `{ proof = HMAC-SHA256(code, "peer-pair|" + nonceA + nonceB + spkiSeen), peerLabel, clientId }`.
-5. B가 같은 식으로 계산해 `timingSafeEqual`로 비교. 틀리면 `401 pair_failed`(틀린 횟수 +1). 맞으면 새 피어 토큰(32바이트 base64url)을 만들어 슬롯에 **해시만** 저장하고 `{ token, slotId, peerName }`을 응답. 코드는 즉시 폐기, 창 닫힘.
-6. 중간자는 코드를 모르므로 `proof`를 만들 수 없다. 코드 없이 토큰을 얻을 길은 없다. (전송 구간은 Tailscale(WireGuard)이 한 번 더 감싼다.)
-- 사람이 눈으로 확인하는 장치: A컴 화면에 지문 앞 8자리를 보여 주고 B컴 화면 것과 같은지 묻는다(확인을 눌러야 저장).
+#### 코드 규칙
+- 알파벳(Crockford base32): `0123456789ABCDEFGHJKMNPQRSTVWXYZ` (I·L·O·U 없음). 12글자 = 60비트.
+- 표기는 4글자씩 하이픈(`7M3Q-H9XK-2VTB`). **입력 정규화**: 공백·하이픈 제거 → 대문자 → `O→0`, `I→1`, `L→1` → 12글자이고 모두 알파벳 안인지 검사(아니면 `bad_code`, 연결 시도 전).
+- **키 유도에 쓰는 코드는 정규화한 12글자**(하이픈 없음, ASCII/UTF-8 바이트). QR·"연결 정보 복사"에는 하이픈 표기를 넣고, 받는 쪽이 정규화한다.
+
+#### 바이트 규격
+- `nonceA`, `nonceB`: 각각 **랜덤 16바이트**, 전송은 **base64url(패딩 없음) 22글자**. 서버는 정확히 22글자 base64url인지 검사한다.
+- `spkiDigest`(32바이트): 서버 인증서 SPKI DER의 SHA-256. 문자열 지문 `sha256/<base64>`의 `<base64>`(표준 base64, 패딩 포함 44글자)를 디코드한 값. 클라이언트는 **TLS에서 실제로 본 인증서**로 계산한다.
+- `salt = nonceA(16B) ‖ nonceB(16B) ‖ spkiDigest(32B)` — 날바이트 이어붙임, **64바이트**.
+- `K = PBKDF2-HMAC-SHA256(password = UTF8(code12), salt, iterations = 200000, dkLen = 32)`
+  - Node: `crypto.pbkdf2(code12, salt, 200000, 32, 'sha256')` / 안드로이드: `SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")`, `PBEKeySpec(code12.toCharArray(), salt, 200000, 256)`.
+- `clientProof = HMAC-SHA256(K, UTF8("client") ‖ salt)` (32바이트)
+- `serverProof = HMAC-SHA256(K, UTF8("server") ‖ salt ‖ clientProof)` (32바이트, 클라이언트 증명을 묶어 되돌려 보내기를 막는다)
+- 선에 실을 때 두 증명은 **소문자 hex 64글자**.
+
+#### 절차
+1. A: B에 TLS로 접속(이 한 번만 인증서 검증 없이). 실제로 본 서버 인증서 지문 `spkiSeen`을 기록.
+2. A → `POST /v2/pair/hello` `{ clientName, nonceA }` → B가 `{ nonceB, spki(B가 아는 자기 지문), name }`. (창이 닫혀 있으면 `410 pair_closed`.)
+3. A는 `spki == spkiSeen`인지 확인(다르면 중간자 → 중단, `spki_mismatch`).
+4. A가 `salt`·`K`를 계산하고 → `POST /v2/pair/confirm` `{ nonceA, nonceB, clientProof, peerLabel, clientId, kind }`.
+5. B는 hello에서 발급한 `nonceB`↔`nonceA` 짝인지 확인하고 같은 식으로 `K`를 계산해 `clientProof`를 `timingSafeEqual`로 비교한다. **시도 횟수는 계산 전에 먼저 센다**(동시에 여러 번 보내 3회를 넘기지 못하게). 틀리면 `401 pair_failed {remaining}`, 3번째 오답이면 창이 닫힌다. 맞으면 토큰(32바이트 base64url)을 만들어 슬롯에 **해시만** 저장하고 `{ token, slotId, peerName, serverProof }`를 응답. 코드는 즉시 폐기, 창 닫힘.
+6. **A는 `serverProof`가 `HMAC(K, "server" ‖ salt ‖ clientProof)`와 같을 때만 토큰을 저장한다.** 다르면 `server_proof_mismatch`(가짜 서버 — 저장하지 않고 중단).
+7. 중간자·가짜 서버는 코드를 모르니 `K`를 만들 수 없다. 코드는 선에 실리지 않는다. 오프라인으로 훔친 `hello`·`confirm` 기록(nonce·clientProof)에서 코드를 찾으려면 60비트 × PBKDF2 20만 회가 필요해 5분 안에는 불가능하다.
+- 사람이 눈으로 확인하는 장치(보조): A컴 화면에 지문 앞 8자리를 보여 준다.
+
+**테스트 벡터** (두 구현 모두 이 값이 나와야 한다)
+```
+code12        = 7M3QH9XK2VTB                  (표기 7M3Q-H9XK-2VTB)
+nonceA(hex)   = 000102030405060708090a0b0c0d0e0f   → "AAECAwQFBgcICQoLDA0ODw"
+nonceB(hex)   = 101112131415161718191a1b1c1d1e1f   → "EBESExQVFhcYGRobHB0eHw"
+spkiDigest    = 0xab × 32                         → "sha256/q6urq6urq6urq6urq6urq6urq6urq6urq6urq6urq6s="
+salt(hex)     = 000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f
+                abababababababababababababababababababababababababababababababab
+K             = eecc54457136acf3bc7f7dd3ab4f2b95ef43be799c31e8c5423e439bcf966238
+clientProof   = 1c1728fc7f1a6dc43cac178fcf2a35a51690be716a2ddf965b93704dfeb37e48
+serverProof   = 65767af5031f2c8c6dc71acaafe8a2c877d53cb7a557f02a5991c1e5cf4749e9
+```
 
 ### 1-5. A컴 저장
 - 테이블 `peer`(DB, 3번 소유) 한 줄: `{ id, name, host, port, spki, pairedAt, lastSeenAt, lastHost }` + 토큰.
@@ -351,9 +381,9 @@ Change    { op: 'add'|'modify'|'delete', path, size?, sha256?, baseSha256?, exec
 
 대상: 안드로이드 앱(기존 QR 연결 화면에 "주소로 연결" 추가). 서버 쪽은 1-4의 짝짓기 교환을 **휴대폰용으로 같은 길**로 쓴다.
 
-1. PC 설정 > 휴대폰 연결에서 QR 옆에 **코드 6자리**와 IP:포트, 지문 앞 8자리를 같이 보여 준다(QR이 보이는 5분 동안만, `QR_SHOW_MS`와 같은 창).
+1. PC 설정 > 휴대폰 연결에서 QR 옆에 **코드 12자(`XXXX-XXXX-XXXX`)**와 IP:포트, 지문 앞 8자리를 같이 보여 준다(QR이 보이는 5분 동안만, `QR_SHOW_MS`와 같은 창).
 2. 휴대폰 앱 "주소로 연결": `IP`(Tailscale 100.x, 같은 와이파이의 사설 IP, `*.ts.net`) + `코드`(+고급: 포트) 입력. 앱은 입력 즉시 주소 종류를 검사(공인 IP는 막고 "Tailscale 앱이 켜져 있어야 해요" 안내).
-3. 앱 → `POST /v2/pair/hello` → `POST /v2/pair/confirm`(1-4와 같은 코드·HMAC·지문 확인). 휴대폰에는 `kind:'phone'`을 보낸다.
+3. 앱 → `POST /v2/pair/hello` → `POST /v2/pair/confirm`(1-4와 같은 코드·PBKDF2 키 유도·양방향 증명·지문 확인. 휴대폰도 `serverProof`가 맞아야만 토큰을 저장한다). 휴대폰에는 `kind:'phone'`을 보낸다.
 4. 서버가 휴대폰 슬롯 **현재 토큰을 돌려준다**(QR을 찍은 것과 똑같은 결과). 단 이 토큰이 이미 다른 폰이 쓰는 중(`isTokenUsed`)이면 QR 재발급과 같은 `confirm_required`("이전 폰이 끊겨요")를 PC 쪽 화면 확인으로 거친다.
 5. 이후는 기존과 동일(`hello` 능력 확인·v2 `/v2/call`·SSE). 앱은 `{ host, port, token, spki }`만 저장하고, 기존 QR 저장 경로와 같은 값이다 → **앱 나머지 코드는 변경 없음**.
 6. 실패: 코드 오답(남은 시도 표시), 창 만료("PC에서 코드를 새로 만들어 주세요"), 주소 접속 불가(Tailscale 꺼짐), 지문 불일치(중단).
@@ -519,3 +549,5 @@ interface PeerHttp { get/put/post(path, …): Promise<…>; stream(path): Readab
   - 반영 선택은 `all`(충돌이 하나라도 있으면 아무것도 쓰지 않고 `blocked`)·`safe`(충돌 없는 것만)·`files`(고른 파일만)·`reject`. 민감 경로는 `sensitiveOk`에 따로 넣어야 반영된다. 막힘·실패(되돌림)는 `pending`으로 남아 다시 고를 수 있다.
   - B컴 경로는 슬롯마다 자기 것만: `PUT blobs`는 그 슬롯이 올리는 중인 목록에 든 주소만, `GET blobs`는 그 슬롯의 변경 묶음에 든 주소만. 4번 오류 코드(`workspace_quota` 507·`changes_rejected` 422 등)는 `syncRoutes`가 v2 모양으로 직접 낸다(`v2.ts`는 고치지 않음).
   - 아직 3번 쪽에서 이어 줄 곳(4번은 손대지 않음): `v2routes.stream()`에서 `SyncRoutes.isSyncPath`면 `SyncRoutes.handle`로 위임, `db.ts`의 `ensureSyncTables(db)`, `dict/index.ts`의 `peerSync` 등록, `JobQueue`의 `prepareWorkspace`→`pushWorkspace`, `PeerHost`의 `workspaceDir`(cwd)·`collectChanges`, 결과 회수 후 `fetchChangeSet`→`Approval.peerChanges` 카드, ack·해제 때 `discardWorkspace`·`discardSlot`, 앱 시작 때 `prune()`.
+
+- 2026-11-01 강백엔(2차): 짝짓기 보안 강화. 1-2·1-3·1-4·8절을 v2 규격으로 교체했다 — 코드 6자리 숫자 → 12자 Crockford base32, `HMAC(code, …)` 한 번 → PBKDF2 20만 회 키 `K` + `clientProof`/`serverProof` 양방향 증명(바이트 순서·인코딩·테스트 벡터는 1-4). 요청 필드가 `proof` → `clientProof`로, 응답에 `serverProof`가 더해졌다. 옛 6자리·`proof` 형식은 더 받지 않는다(호환 없음: 두 PC·휴대폰이 같이 올라가야 한다).
