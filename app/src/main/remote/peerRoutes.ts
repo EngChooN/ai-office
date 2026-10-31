@@ -103,14 +103,14 @@ export class PeerRoutes {
       if (h === 'invalid') return reply(v2Fail('invalid_request'))
       return reply({ status: 200, body: { nonceB: h.nonceB, spki: h.spki, name: this.ctx.ownName() } })
     }
-    const r = this.ctx.pairing.confirm(body)
+    const r = await this.ctx.pairing.confirm(body)
     if (!r.ok) {
       const f = v2Fail(r.code)
       return reply({ ...f, body: { ...f.body, ...(r.remaining !== undefined ? { remaining: r.remaining } : {}) } })
     }
     const made = this.ctx.onPaired({ kind: r.kind, label: r.label })
     if (!made) return reply({ status: 409, body: { error: 'full', message: '연결할 수 있는 PC 수를 넘었어요. 안 쓰는 PC 연결을 먼저 해제해 주세요' } })
-    reply({ status: 200, body: { token: made.token, ...(made.slotId ? { slotId: made.slotId } : {}), peerName: this.ctx.ownName() } })
+    reply({ status: 200, body: { token: made.token, ...(made.slotId ? { slotId: made.slotId } : {}), peerName: this.ctx.ownName(), serverProof: r.serverProof } })
   }
 
   /** /v2/peer/* — slotId는 피어 토큰의 슬롯 (휴대폰 토큰은 null → 거부) */

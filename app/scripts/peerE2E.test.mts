@@ -137,11 +137,11 @@ test('PC 두 대: 짝짓기 → 원격 직원 → delegate → 진행 → 보고
 
     // ── ① 짝짓기: 틀린 코드는 거절, 맞는 코드면 토큰 교환
     const win = await B.svc.openPairing('peer')
-    assert.ok(win && /^\d{6}$/.test(win.code))
+    assert.ok(win && /^[0-9A-Z]{4}-[0-9A-Z]{4}-[0-9A-Z]{4}$/.test(win.code))
     assert.equal(win!.fingerprint.length, 8)
     assert.equal(win!.copyText, `127.0.0.1:${port} ${win!.code}`)
     assert.match(win!.qr ?? '', /^data:image\/svg\+xml;base64,/)
-    const wrong = win!.code === '000000' ? '111111' : '000000'
+    const wrong = win!.code === '0000-0000-0000' ? '1111-1111-1111' : '0000-0000-0000'
     await assert.rejects(A.mgr.pairConnect('127.0.0.1', port, wrong), (e: PairFailure) => e.code === 'wrong_code' && e.remaining === 2)
     await assert.rejects(A.mgr.pairConnect('8.8.8.8', port, win!.code), (e: PairFailure) => e.code === 'bad_host')
     const paired = await A.mgr.pairConnect('127.0.0.1', port, win!.code)
@@ -335,11 +335,11 @@ test('휴대폰 IP 입력: 같은 짝짓기 길(/v2/pair/*)로 휴대폰 토큰�
   try {
     await B.svc.enable(port)
     // 창이 닫혀 있으면 410
-    const closed = await createPairTransport('127.0.0.1', port).post('/v2/pair/hello', { nonceA: 'A'.repeat(20) })
+    const closed = await createPairTransport('127.0.0.1', port).post('/v2/pair/hello', { nonceA: 'A'.repeat(22) })
     assert.deepEqual([closed.status, closed.body.error], [410, 'pair_closed'])
     const win = (await B.svc.openPairing('phone'))!
     assert.equal(win.kind, 'phone')
-    const wrong = win.code === '000000' ? '111111' : '000000'
+    const wrong = win.code === '0000-0000-0000' ? '1111-1111-1111' : '0000-0000-0000'
     await assert.rejects(pairWithHost(createPairTransport('127.0.0.1', port), { code: wrong, clientName: '내 폰', kind: 'phone' }), (e: PairFailure) => e.code === 'wrong_code')
     // 오답 한 번 뒤에도 창은 살아 있다 (3번 틀려야 닫힌다)
     const r = await pairWithHost(createPairTransport('127.0.0.1', port), { code: win.code, clientName: '내 폰', kind: 'phone' })
@@ -379,7 +379,7 @@ test('인증 전 짝짓기 호출은 한 주소에서 분당 12번까지만 (그
     await B.svc.enable(port)
     const t = createPairTransport('127.0.0.1', port)
     const codes: number[] = []
-    for (let i = 0; i < 14; i++) codes.push((await t.post('/v2/pair/hello', { nonceA: 'A'.repeat(20) })).status)
+    for (let i = 0; i < 14; i++) codes.push((await t.post('/v2/pair/hello', { nonceA: 'A'.repeat(22) })).status)
     assert.deepEqual([codes.slice(0, 12).every((c) => c === 410), codes[12], codes[13]], [true, 429, 429])
   } finally {
     await B.svc.disable()

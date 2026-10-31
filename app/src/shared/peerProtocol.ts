@@ -17,7 +17,7 @@ export const PEER_PATHS = {
 /** 숫자 한도는 모두 초기값 (설계서 O-12) */
 export const PEER_LIMITS = {
   pairWindowMs: 5 * 60_000,
-  pairCodeDigits: 6,
+  pairCodeLength: 12,
   pairMaxWrong: 3,
   maxSlots: 8,
   /** 피어당 연결 대기 일 수 */
@@ -167,8 +167,19 @@ export function isPeerHostAllowed(raw: string): boolean {
   return /^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*\.ts\.net$/.test(host)
 }
 
-/** 짝짓기 코드: 숫자 6자리 */
-export const isPairCode = (s: unknown): s is string => typeof s === 'string' && new RegExp(`^\\d{${PEER_LIMITS.pairCodeDigits}}$`).test(s)
+/** 짝짓기 코드: 12자 Crockford base32 (I·L·O·U 없음, 설계서 1-4) */
+export const PAIR_CODE_ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'
+
+/** 입력 정규화: 공백·하이픈 제거 → 대문자 → O→0, I·L→1. 12글자·알파벳 안이 아니면 null (키 유도에는 이 값을 쓴다) */
+export function normalizePairCode(input: unknown): string | null {
+  if (typeof input !== 'string') return null
+  const c = input.replace(/[\s-]/g, '').toUpperCase().replace(/O/g, '0').replace(/[IL]/g, '1')
+  return c.length === PEER_LIMITS.pairCodeLength && [...c].every((ch) => PAIR_CODE_ALPHABET.includes(ch)) ? c : null
+}
+
+/** 표기: XXXX-XXXX-XXXX */
+export const formatPairCode = (code12: string) => code12.replace(/(.{4})(?=.)/g, '$1-')
+export const isPairCode = (s: unknown): s is string => normalizePairCode(s) !== null
 
 /** 일 id: UUID v4 모양 (jobId는 UUID) */
 export const isJobId = (s: unknown): s is string => typeof s === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s)
