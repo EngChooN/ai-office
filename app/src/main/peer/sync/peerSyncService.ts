@@ -21,7 +21,7 @@ import {
   type SyncHttp,
 } from '../../../shared/peerSync.ts'
 import { diffHunks } from '../../../shared/textDiff.ts'
-import { applyPlan, planChanges } from './applyChanges.ts'
+import { applyPlan, assertNoLinkParent, planChanges, readNoFollow } from './applyChanges.ts'
 import { BlobStore } from './blobStore.ts'
 import { diffWorkspace, eachLimit, receiveChangeSet } from './changeset.ts'
 import { hashFile, manifestRev, scanFolder } from './manifest.ts'
@@ -203,7 +203,7 @@ export class PeerSync implements SyncApi {
 
   /** 결재 카드 본문 — 열 때마다 지금 A컴 파일로 충돌을 다시 판정한다 */
   async approvalCard(view: ChangeSetView): Promise<PeerChangesCard> {
-    const plan = await planChanges(view.root, view.changes)
+    const plan = await this.planOrReject(view.root, view.changesetId, view.changes)
     let budget = CARD_DIFF_TOTAL
     const files: CardFile[] = []
     for (const p of plan) {
@@ -234,8 +234,11 @@ export class PeerSync implements SyncApi {
   private async diffOf(root: string, c: ChangeSetView['changes'][number], budget: number): Promise<CardFile['diff']> {
     if ((c.size ?? 0) > SYNC_LIMITS.diffMax || budget <= 0) return 'too_large'
     const abs = resolveInside(root, c.path)
-    const st = abs ? await fs.lstat(abs).catch(() => null) : null
-    const before = st?.isFile() && st.size <= SYNC_LIMITS.diffMax ? await fs.readFile(abs!) : st ? null : Buffer.alloc(0)
+    if (!abs) return 'too_large'
+    // 판정 뒤에 링크로 바뀌었을 수 있어 읽기 직전에 다시 본다 (폴더 밖 파일을 카드로 내보내지 않게)
+    await assertNoLinkParent(root, c.path)
+    const st = await fs.lstat(abs).catch(() => null)
+    const before = st?.isFile() && st.size <= SYNC_LIMITS.diffMax ? await readNoFollow(abs).catch(() => null) : st ? null : Buffer.alloc(0)
     if (!before) return 'too_large'
     const after = c.op === 'delete' ? Buffer.alloc(0) : await this.staging.read(c.sha256!)
     const a = asText(before)
@@ -247,27 +250,52 @@ export class PeerSync implements SyncApi {
 
   async applyChangeSet(changesetId: string, choice: ApplyChoice): Promise<ApplyResult> {
     const r = this.pendingA(changesetId)
+    const rejected: ApplyResult = { status: 'rejected', applied: [], same: [], conflicts: [], held: r.changes.map((c) => c.path) }
+    // 링크 때문에 이미 거절된 묶음을 대표가 거절로 닫는 경우
+    if (r.state === 'rejected' && choice.mode === 'reject') return rejected
     if (r.state !== 'pending') throw new SyncError('already_decided', r.state)
     const decide = async (state: ChangesetRecord['state'], result: ApplyResult) => {
       this.d.store.changesets.put({ ...r, state, decidedAt: this.now() })
       await this.dropStaging(changesetId, r)
       return result
     }
-    if (choice.mode === 'reject') return decide('rejected', { status: 'rejected', applied: [], same: [], conflicts: [], held: r.changes.map((c) => c.path) })
+    if (choice.mode === 'reject') return decide('rejected', rejected)
     const ws = this.sideA(r.workspaceId)
     // 루트가 아직 등록된 랩 폴더인지, 그사이 링크로 바뀌지 않았는지 다시 본다
     const root = await this.allowedRoot(ws.root!)
     if (root !== ws.root) throw new SyncError('root_not_allowed', 'moved')
-    const plan = await planChanges(root, r.changes)
-    const result = await applyPlan(plan, choice, {
-      root,
-      staging: this.staging,
-      undoDir: path.join(this.d.baseDir, 'peer-undo', changesetId),
-      conflictDir: path.join(this.d.baseDir, 'peer-conflicts', changesetId),
-    })
+    let result: ApplyResult
+    try {
+      const plan = await this.planOrReject(root, changesetId, r.changes)
+      result = await applyPlan(plan, choice, {
+        root,
+        staging: this.staging,
+        undoDir: path.join(this.d.baseDir, 'peer-undo', changesetId),
+        conflictDir: path.join(this.d.baseDir, 'peer-conflicts', changesetId),
+      })
+    } catch (e) {
+      // 링크 폴더를 지나는 경로: 아무것도 쓰지 않고 묶음 전체 거절 (충돌 없는 것만 반영도 마찬가지)
+      if (!(e instanceof SyncError) || e.code !== 'changes_rejected') throw e
+      if (this.d.store.changesets.get(changesetId)?.state === 'pending') return decide('rejected', { ...rejected, error: 'changes_rejected' })
+      return { ...rejected, error: 'changes_rejected' }
+    }
     // 막혔거나 실패해 되돌린 경우는 대표가 다시 고를 수 있게 그대로 둔다
     if (result.status === 'blocked' || result.status === 'failed') return result
     return decide(result.status, result)
+  }
+
+  /** 판정. 링크 폴더를 지나는 경로가 있으면 묶음 전체를 거절 상태로 닫고(받은 내용 삭제) 다시 던진다 */
+  private async planOrReject(root: string, changesetId: string, changes: ChangeSetView['changes']) {
+    try {
+      return await planChanges(root, changes)
+    } catch (e) {
+      const r = this.d.store.changesets.get(changesetId)
+      if (e instanceof SyncError && e.code === 'changes_rejected' && r?.side === 'a' && r.state === 'pending') {
+        this.d.store.changesets.put({ ...r, state: 'rejected', decidedAt: this.now() })
+        await this.dropStaging(changesetId, r)
+      }
+      throw e
+    }
   }
 
   /** 받은 묶음의 스테이징 내용을 지운다 (다른 대기 묶음이 같은 내용을 쓰면 남긴다) */

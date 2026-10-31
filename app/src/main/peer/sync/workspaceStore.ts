@@ -38,7 +38,10 @@ export class WorkspaceStore {
     const m = manifest as Manifest
     const old = this.store.workspaces.get(m.workspaceId)
     if (old && (old.side !== 'b' || old.slotId !== slotId)) throw new SyncError('changes_rejected', 'id')
+    // 한 번 등록한 목록은 바꿀 수 없다 — 큰 목록으로 내용을 올린 뒤 작은 목록으로 바꿔 할당량을 비켜 가지 못하게
+    if (old && old.manifest.rev !== m.rev) throw new SyncError('changes_rejected', 'manifest_changed')
     if (old?.state === 'ready') return { missing: [] }
+    if (old) return { missing: await this.missing(old.manifest) }
     const bytes = m.entries.reduce((n, e) => n + e.size, 0)
     const used = this.store.workspaces.list().filter((r) => r.side === 'b' && r.id !== m.workspaceId).reduce((n, r) => n + r.bytes, 0)
     if (used + bytes > SYNC_LIMITS.hostQuotaBytes) throw new SyncError('workspace_quota')

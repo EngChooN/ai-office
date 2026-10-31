@@ -244,10 +244,54 @@ test('심볼릭 링크: A컴에서 링크인 자리·링크 폴더 안으로는 
   // 받은 뒤 A컴에 링크가 생겼다
   await fs.symlink(outside, path.join(s.root, 'out'))
   await fs.symlink(path.join(outside, 'victim.txt'), path.join(s.root, 'ln.txt'))
+  // 링크 폴더를 지나는 경로가 있으면 "충돌 없는 것만"이어도 묶음 전체 거절 — ln.txt도 쓰지 않는다
   const r = await s.A.applyChangeSet(col.changesetId, { mode: 'safe' })
-  assert.deepEqual(r.conflicts.map((c) => [c.path, c.reason]).sort(), [['ln.txt', 'not_a_file'], ['out/victim.txt', 'not_a_file']])
+  assert.equal(r.status, 'rejected')
+  assert.equal(r.error, 'changes_rejected')
+  assert.deepEqual(r.applied, [])
   assert.equal(await read(path.join(outside, 'victim.txt')), 'safe')
   assert.ok((await fs.lstat(path.join(s.root, 'ln.txt'))).isSymbolicLink())
+  // 거절로 닫혔다 — 다시 반영할 수 없고, 대표가 거절로 닫는 것은 된다
+  await assert.rejects(s.A.applyChangeSet(col.changesetId, { mode: 'all' }), code('already_decided'))
+  assert.equal((await s.A.applyChangeSet(col.changesetId, { mode: 'reject' })).status, 'rejected')
+})
+
+test('심볼릭 링크: 대상만 링크인 자리는 충돌로 두고 나머지는 반영 (링크 너머는 읽지도 쓰지도 않는다)', async (t) => {
+  const s = await setup()
+  t.after(s.close)
+  const outside = await tmp()
+  await fs.writeFile(path.join(outside, 'victim.txt'), 'safe')
+  const w = await pushed(s)
+  await fs.writeFile(path.join(w.dir, 'ln.txt'), 'pwned')
+  await fs.writeFile(path.join(w.dir, 'ok.txt'), 'ok')
+  const col = await s.B.collectChanges('job-1', w.workspaceId)
+  assert.ok('changesetId' in col)
+  await s.A.fetchChangeSet(s.c.h, col.changesetId)
+  await fs.symlink(path.join(outside, 'victim.txt'), path.join(s.root, 'ln.txt'))
+  const r = await s.A.applyChangeSet(col.changesetId, { mode: 'safe' })
+  assert.deepEqual(r.conflicts, [{ path: 'ln.txt', reason: 'not_a_file' }])
+  assert.deepEqual(r.applied, ['ok.txt'])
+  assert.equal(await read(path.join(outside, 'victim.txt')), 'safe')
+})
+
+test('심볼릭 링크: 결재 카드의 줄 비교가 링크 폴더를 따라 폴더 밖 파일을 읽지 않는다 — 묶음 전체 거절', async (t) => {
+  const s = await setup()
+  t.after(s.close)
+  const outside = await tmp()
+  await fs.mkdir(path.join(outside, 'src'))
+  await fs.writeFile(path.join(outside, 'src', 'b.js'), 'SECRET_OUTSIDE\n')
+  const w = await pushed(s)
+  await fs.writeFile(path.join(w.dir, 'src', 'b.js'), 'export const b = 2\n')
+  const col = await s.B.collectChanges('job-1', w.workspaceId)
+  assert.ok('changesetId' in col)
+  await s.A.fetchChangeSet(s.c.h, col.changesetId)
+  // 받은 뒤 A컴의 src 폴더가 폴더 밖을 가리키는 링크로 바뀌었다
+  await fs.rm(path.join(s.root, 'src'), { recursive: true })
+  await fs.symlink(path.join(outside, 'src'), path.join(s.root, 'src'))
+  await assert.rejects(s.A.changesetDetail(col.changesetId), (e: unknown) => code('changes_rejected')(e) && !String((e as Error).message).includes('SECRET'))
+  // 거절로 닫혀 반영할 수 없다
+  await assert.rejects(s.A.applyChangeSet(col.changesetId, { mode: 'safe' }), code('already_decided'))
+  assert.equal(await read(path.join(outside, 'src', 'b.js')), 'SECRET_OUTSIDE\n')
 })
 
 test('되돌리기: 반영 중 하나라도 실패하면 이미 쓴 파일을 원래대로 돌리고 다시 고를 수 있다', async (t) => {
@@ -356,6 +400,13 @@ test('한도: 20MB 넘는 내용 올리기는 413, 잘못된 목록은 422, B컴
   }
   assert.deepEqual(statuses.slice(0, 10), Array(10).fill(200))
   assert.equal(statuses[10], 507)
+  // 큰 목록으로 등록한 뒤 작은 목록으로 바꿔 할당량을 비켜 가지 못한다 (한 번 등록한 목록은 바뀌지 않는다)
+  const small = [{ path: 'tiny', size: 1, sha256: 'f'.repeat(64), exec: false }]
+  const swap = await s.c.h.call('POST', SYNC_PATHS.workspaces, { manifest: { workspaceId: '44444444-4444-4444-8444-000000000000', rootName: 'x', createdAt: 1, rev: manifestRev(small), entries: small } })
+  assert.equal(swap.status, 422)
+  assert.equal(s.bStore.workspaces.get('44444444-4444-4444-8444-000000000000')?.bytes, 25 * SYNC_LIMITS.fileMax)
+  // 같은 목록을 다시 보내는 것(이어 올리기)은 된다
+  assert.equal((await s.c.h.call('POST', SYNC_PATHS.workspaces, { manifest: { workspaceId: '44444444-4444-4444-8444-000000000000', rootName: 'x', createdAt: 1, rev: manifestRev(entries), entries } })).status, 200)
   // A컴: 등록되지 않은 폴더는 보내지 않는다
   await assert.rejects(s.A.prepareWorkspace(s.base), code('root_not_allowed'))
 })

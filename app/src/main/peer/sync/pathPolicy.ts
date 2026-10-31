@@ -74,23 +74,34 @@ export function resolveInside(root: string, rel: string): string | null {
 const isMissing = (e: unknown) => (e as NodeJS.ErrnoException)?.code === 'ENOENT' || (e as NodeJS.ErrnoException)?.code === 'ENOTDIR'
 
 /**
- * 대상의 부모 폴더를 root부터 한 구성요소씩 lstat — 링크·폴더가 아닌 것이 하나라도 있으면 false (설계서 7-6 ③-②)
+ * 대상의 부모 폴더를 root부터 한 구성요소씩 lstat (설계서 7-6 ③-②)
+ * - 'link': 링크가 하나라도 있거나 실제 경로가 root 밖 — 부르는 쪽은 묶음 전체를 거절한다
+ * - 'not_dir': 폴더 자리에 파일 등이 있다 — 충돌로만 본다
  * 아직 없는 폴더에서 멈춘다 (그 아래는 새로 만든다)
  */
-export async function parentsSafe(root: string, rel: string): Promise<boolean> {
-  const parts = rel.split('/').slice(0, -1)
+export async function parentProblem(root: string, rel: string): Promise<'link' | 'not_dir' | null> {
   let cur = root
-  for (const part of parts) {
+  let found = root
+  for (const part of rel.split('/').slice(0, -1)) {
     cur = path.join(cur, part)
     try {
       const st = await fs.lstat(cur)
-      if (st.isSymbolicLink() || !st.isDirectory()) return false
+      if (st.isSymbolicLink()) return 'link'
+      if (!st.isDirectory()) return 'not_dir'
+      found = cur
     } catch (e) {
-      if (isMissing(e)) return true
+      if (isMissing(e)) break
       throw e
     }
   }
-  return true
+  // 마지막으로 있는 폴더의 실제 경로가 root의 실제 경로 안인지 한 번 더
+  const [realFound, realRoot] = [await real(found), await real(root)]
+  if (!realFound || !realRoot || !isUnder(realFound, realRoot)) return 'link'
+  return null
+}
+
+export async function parentsSafe(root: string, rel: string): Promise<boolean> {
+  return (await parentProblem(root, rel)) === null
 }
 
 /** 복사본 루트가 될 수 없는 곳 */

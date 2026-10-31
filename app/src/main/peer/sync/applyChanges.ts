@@ -8,7 +8,7 @@ import path from 'node:path'
 import { SyncError, type ApplyChoice, type ApplyResult, type Change, type ConflictReason } from '../../../shared/peerSync.ts'
 import type { BlobStore } from './blobStore'
 import { currentOf, judge } from './conflict.ts'
-import { checkPaths, isSensitive, parentsSafe, pathKey, resolveInside } from './pathPolicy.ts'
+import { checkPaths, isSensitive, parentProblem, parentsSafe, pathKey, resolveInside } from './pathPolicy.ts'
 
 /** 부모 폴더를 한 구성요소씩 만든다 — 이미 있는 것이 링크·파일이면 거절 */
 async function ensureDirs(root: string, rel: string) {
@@ -54,6 +54,17 @@ async function removeFile(root: string, rel: string) {
   await fs.unlink(abs)
 }
 
+/** 대상 자체가 링크면 따라가지 않고 실패 (lstat 뒤에 바꿔치기해도 폴더 밖을 읽지 않게) */
+export async function readNoFollow(abs: string): Promise<Buffer> {
+  const fh = await fs.open(abs, constants.O_RDONLY | constants.O_NOFOLLOW)
+  try {
+    if (!(await fh.stat()).isFile()) throw new SyncError('apply_failed', 'not_a_file')
+    return await fh.readFile()
+  } finally {
+    await fh.close()
+  }
+}
+
 export interface PlanItem {
   change: Change
   verdict: 'apply' | 'same' | 'conflict'
@@ -61,10 +72,16 @@ export interface PlanItem {
   isSensitive: boolean
 }
 
-/** 지금 A컴 상태로 파일마다 판정한다 */
+/** 경로 중간 폴더가 링크(또는 실제 경로가 폴더 밖)면 묶음 전체 거절 — 읽기·쓰기 전에 부른다 */
+export async function assertNoLinkParent(root: string, rel: string) {
+  if ((await parentProblem(root, rel)) === 'link') throw new SyncError('changes_rejected', `link_parent:${rel}`)
+}
+
+/** 지금 A컴 상태로 파일마다 판정한다. 링크 폴더를 지나는 경로가 하나라도 있으면 SyncError('changes_rejected') */
 export async function planChanges(root: string, changes: readonly Change[]): Promise<PlanItem[]> {
   const bad = checkPaths(changes.map((c) => c.path))
   if (bad) throw new SyncError('changes_rejected', `path:${bad.problem}`)
+  for (const c of changes) await assertNoLinkParent(root, c.path)
   const out: PlanItem[] = []
   for (const c of changes) {
     const j = judge(c, c.baseSha256, await currentOf(root, c.path))
@@ -111,9 +128,10 @@ export async function applyPlan(plan: readonly PlanItem[], choice: ApplyChoice, 
   const undo: { rel: string; data: Buffer | null; exec: boolean }[] = []
   for (const p of todo) {
     const abs = resolveInside(d.root, p.change.path)!
+    await assertNoLinkParent(d.root, p.change.path)
     const st = await fs.lstat(abs).catch(() => null)
     if (st?.isFile()) {
-      const data = await fs.readFile(abs)
+      const data = await readNoFollow(abs)
       const keep = resolveInside(d.undoDir, p.change.path)
       if (keep) {
         await fs.mkdir(path.dirname(keep), { recursive: true })

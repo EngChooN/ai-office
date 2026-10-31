@@ -7,7 +7,7 @@ import { test } from 'node:test'
 import { validateChangeSet } from '../src/main/peer/sync/changeset.ts'
 import { judge } from '../src/main/peer/sync/conflict.ts'
 import { isExcluded, manifestRev, scanFolder, validateManifest } from '../src/main/peer/sync/manifest.ts'
-import { checkPath, checkPaths, isSensitive, parentsSafe, resolveInside, rootAllowed } from '../src/main/peer/sync/pathPolicy.ts'
+import { checkPath, checkPaths, isSensitive, parentProblem, parentsSafe, resolveInside, rootAllowed } from '../src/main/peer/sync/pathPolicy.ts'
 import type { WorkspaceRecord } from '../src/main/peer/sync/syncDb.ts'
 import { SyncError, SYNC_LIMITS, type Manifest, type SyncEntry } from '../src/shared/peerSync.ts'
 import DICT from '../src/shared/i18n/dict/peerSync.ts'
@@ -64,6 +64,11 @@ test('심볼릭 링크: 부모 폴더 중 링크가 있으면 parentsSafe=false'
   assert.equal(await parentsSafe(dir, 'new/deeper/x.txt'), true)
   assert.equal(await parentsSafe(dir, 'link/x.txt'), false)
   assert.equal(await parentsSafe(dir, 'link/sub/x.txt'), false)
+  // 링크는 묶음 전체 거절('link'), 폴더 자리에 파일은 충돌('not_dir')
+  await fs.writeFile(path.join(dir, 'file'), 'x')
+  assert.equal(await parentProblem(dir, 'link/x.txt'), 'link')
+  assert.equal(await parentProblem(dir, 'file/x.txt'), 'not_dir')
+  assert.equal(await parentProblem(dir, 'real/new/x.txt'), null)
 })
 
 test('루트 보호: 등록된 랩 폴더만, 홈·시스템 폴더·userData는 안 된다', async () => {
