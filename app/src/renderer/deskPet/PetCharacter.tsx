@@ -7,10 +7,9 @@ import { isDragMove, petApprovals, pickBubble, type PetBubble } from '@shared/de
 import { t, trOr } from '@shared/i18n'
 import { PetSprite, type PetPose } from './PetSprite'
 
-// 캐릭터 창: 도트 캐릭터 + 결재 배지 + 말풍선 하나. 누르면 펼침 창, 끌면 옮기기 (이동 거리로 구분 — shared/deskPet.ts isDragMove)
+// 캐릭터 창: 캐릭터 그림(PetSprite) + 결재 배지 + 말풍선 하나. 누르면 펼침 창, 끌면 옮기기 (이동 거리로 구분 — shared/deskPet.ts isDragMove)
 // 투명한 곳은 클릭이 뒤 창으로 지나가고, 캐릭터·말풍선 위에서만 마우스를 받는다 (setInteractive)
 
-const PET_PX = 72
 /** 말풍선을 보여 주는 시간 (대답 중은 끝날 때까지) */
 const BUBBLE_MS = 5000
 const BUMP_MS = 240
@@ -84,18 +83,18 @@ export function PetCharacter() {
         type="button"
         aria-label={t('deskPet.character')}
         title={t('deskPet.character')}
-        className={cn('relative mt-1 cursor-grab touch-none rounded-lg outline-none active:cursor-grabbing', isBump && '-translate-y-0.5', 'transition-transform duration-[120ms]')}
+        className={cn('relative mt-3 cursor-grab touch-none rounded-lg outline-none active:cursor-grabbing', isBump && '-translate-y-0.5', 'transition-transform duration-[120ms]')}
         onMouseEnter={() => pet().setInteractive(true)}
         onMouseLeave={() => !drag.isDown() && pet().setInteractive(false)}
         {...drag.handlers}
       >
-        <PetSprite size={PET_PX} pose={pose} isBlinking={isBlinking} />
+        <PetSprite pose={pose} isBlinking={isBlinking} />
         {approvals.length > 0 && (
-          <span className="bg-destructive absolute -top-1 -right-1 flex size-[18px] items-center justify-center rounded-full text-[11px] font-bold text-white ring-2 ring-white" aria-label={t('deskPet.badge', { n: approvals.length })}>
+          <span className="bg-destructive absolute -top-2 -right-2 flex size-[18px] items-center justify-center rounded-full text-[11px] font-bold text-white ring-2 ring-white" aria-label={t('deskPet.badge', { n: approvals.length })}>
             !
           </span>
         )}
-        {pose === 'working' && <span className="bg-primary absolute bottom-1 -left-1 size-2 animate-pulse rounded-full motion-reduce:animate-none" aria-hidden />}
+        {pose === 'working' && <span className="bg-primary absolute bottom-[12%] -left-3 size-2 animate-pulse rounded-full motion-reduce:animate-none" aria-hidden />}
       </button>
       {/* 상태 변화는 화면 읽기 프로그램에 알린다 (색·모양만으로 구별하지 않게) */}
       <span className="sr-only" aria-live="polite">

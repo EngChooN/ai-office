@@ -1,55 +1,34 @@
-import { SparklesIcon } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { MessageCircleMoreIcon, SparklesIcon } from 'lucide-react'
+import { PET_CHAR } from '@shared/deskPet'
+import idleSrc from './sprites/body-idle.png'
+import blinkSrc from './sprites/body-blink.png'
 
-// 임시 도트 그림 — 확정 시안(docs/design/desktop-secretary/sprites/)이 나오면 이 컴포넌트만 바꾼다.
-// 바깥에서는 크기·상태·눈 감기만 넘긴다 (배지·말풍선·끌기는 PetCharacter가 맡는다)
+// 확정 그림(docs/design/desktop-secretary/README.md '구현용 최종 에셋'): 몸통은 body-idle 한 장, 눈 감기만 body-blink.
+// 원본(90×127)에서 투명 여백을 같은 영역으로 잘라 캐릭터만 남겼다 (60×94, docs/design/desktop-secretary/app-sprites.py) — 그래서 그림 크기가 곧 캐릭터 크기다.
+// 상태(생각 중 등)는 그림을 바꾸지 않고 몸통 위에 얹어서, 상태가 바뀌어도 몸통이 흔들리지 않게 한다.
+// 바깥에서는 상태·눈 감기만 넘긴다 (결재 배지·작업 표시·말풍선·끌기는 PetCharacter가 맡는다)
 
 export type PetPose = 'idle' | 'approval' | 'working' | 'thinking'
 
-// 16×16 도트: . 빈칸, o 외곽선, s 피부, h 머리카락, b 옷, e 눈
-const BODY = [
-  '................',
-  '.....oooooo.....',
-  '....ohhhhhho....',
-  '...ohhhhhhhho...',
-  '...ohssssssho...',
-  '...ossessesso...',
-  '...ossessesso...',
-  '...osssssssso...',
-  '....osssssso....',
-  '.....oooooo.....',
-  '....obbbbbbo....',
-  '...obbbbbbbbo...',
-  '...obbbbbbbbo...',
-  '...obboooobbo...',
-  '....oo....oo....',
-  '................',
-]
-
-const COLORS: Record<string, string> = {
-  o: '#2b2233',
-  h: '#5b4636',
-  s: '#ffd9b8',
-  b: 'var(--primary)',
-  e: '#2b2233',
-}
-
-export function PetSprite({ size, pose, isBlinking }: { size: number; pose: PetPose; isBlinking: boolean }) {
-  const rects: React.ReactNode[] = []
-  BODY.forEach((row, y) =>
-    [...row].forEach((c, x) => {
-      // 눈 감기: 눈 두 줄 중 위 줄을 피부로, 아래 줄을 선으로
-      const color = isBlinking && c === 'e' ? (y === 5 ? COLORS.s : COLORS.o) : COLORS[c]
-      if (color) rects.push(<rect key={`${x}-${y}`} x={x} y={y} width={1} height={1} fill={color} />)
-    }),
-  )
+export function PetSprite({ pose, isBlinking }: { pose: PetPose; isBlinking: boolean }) {
   return (
-    <span className="relative inline-block" style={{ width: size, height: size }}>
-      <svg viewBox="0 0 16 16" width={size} height={size} shapeRendering="crispEdges" aria-hidden className={cn(pose === 'thinking' && 'opacity-90')}>
-        {rects}
-      </svg>
-      {/* 비서 표식: 머리 옆 반짝임 */}
-      <SparklesIcon className="text-primary absolute top-0 -right-1 size-3" aria-hidden />
+    <span className="relative block" style={PET_CHAR}>
+      {/* 두 장을 겹쳐 두고 눈 감기만 바꿔 보인다 — 처음 깜빡일 때 그림을 불러오느라 비는 일이 없게 */}
+      {[idleSrc, blinkSrc].map((src, i) => (
+        <img
+          key={src}
+          src={src}
+          alt=""
+          aria-hidden
+          draggable={false}
+          {...PET_CHAR}
+          className="pointer-events-none absolute inset-0 [image-rendering:pixelated]"
+          style={{ visibility: (i === 1) === isBlinking ? 'visible' : 'hidden' }}
+        />
+      ))}
+      {/* 비서 표식: 머리 옆 반짝임 12px */}
+      <SparklesIcon className="text-primary absolute top-[30%] -right-3.5 size-3" aria-hidden />
+      {pose === 'thinking' && <MessageCircleMoreIcon className="text-primary absolute top-0 -left-4 size-4 fill-white" aria-hidden />}
     </span>
   )
 }

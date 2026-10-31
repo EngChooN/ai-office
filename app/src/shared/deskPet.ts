@@ -10,8 +10,10 @@ export interface Rect {
   height: number
 }
 
-/** 캐릭터 창 크기 (말풍선 최대 폭 240px + 캐릭터 72px + 배지 여유) */
-export const PET_SIZE = { width: 260, height: 190 } as const
+/** 캐릭터 그림 크기 — 높이 기준 112px (renderer/deskPet/sprites는 여백 없이 캐릭터만 60×94) */
+export const PET_CHAR = { width: 72, height: 112 } as const
+/** 캐릭터 창 크기 (말풍선 최대 폭 240px + 여유, 말풍선 두 줄 + 캐릭터 + 배지 여유) */
+export const PET_SIZE = { width: 260, height: PET_CHAR.height + 128 } as const
 /** 펼침 창 크기 (높이는 화면이 모자라면 줄인다) */
 export const PANEL_SIZE = { width: 340, maxHeight: 520, minHeight: 240 } as const
 /** 화면 가장자리·캐릭터와 띄우는 거리 */
