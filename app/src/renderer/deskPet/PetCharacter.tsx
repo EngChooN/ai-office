@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type AnimationEvent, type PointerEvent } from 'react'
 import { useOffice } from '@/store'
 import { cn } from '@/lib/utils'
-import { isReducedMotion } from '@/lib/reducedMotion'
 import { EMPTY_SECRETARY } from '@shared/types'
-import { BUBBLE_MAX, canPetMove, isDragMove, mergeAct, nextIdleDelay, petApprovals, petLayout, pickBubble, pickIdleAct, type PetAct, type PetAlign, type PetBubble } from '@shared/deskPet'
+import { BUBBLE_MAX, canPetMove, isDragMove, mergeAct, nextIdleDelay, petApprovals, petLayout, petMotionVars, pickBubble, pickIdleAct, type PetAct, type PetAlign, type PetBubble } from '@shared/deskPet'
 import { t, trOr } from '@shared/i18n'
 import { PetSprite, type PetPose } from './PetSprite'
 
@@ -72,7 +71,7 @@ export function PetCharacter() {
     return () => clearTimeout(timer)
   }, [kind, bubbleKey])
 
-  const isBlinking = useBlink(motion.isActing)
+  const isBlinking = useBlink(motion.isMoving, motion.isActing)
   const pose: PetPose = secretary.isBusy ? 'thinking' : approvals.length ? 'approval' : workingCount ? 'working' : 'idle'
   // 크기는 설정값으로 바로 바뀐다 (창 크기는 main이 같은 스냅샷으로 맞춘다). 캐릭터는 가까운 화면 가장자리 쪽에 선다
   const size = useOffice((s) => s.settings.deskPetSize)
@@ -96,7 +95,7 @@ export function PetCharacter() {
           className="pet-motion pointer-events-none"
           data-act={motion.act ?? undefined}
           data-held={motion.isMoving ? undefined : ''}
-          style={{ '--pet-scale': layout.scale } as React.CSSProperties}
+          style={{ '--pet-scale': layout.scale, ...petMotionVars() } as React.CSSProperties}
           onAnimationEnd={motion.onAnimationEnd}
         >
           <PetSprite pose={pose} isBlinking={isBlinking} layout={layout} />
@@ -161,17 +160,19 @@ function Bubble({ bubble, maxWidth }: { bubble: PetBubble; maxWidth: number }) {
   )
 }
 
-/** 4~7초마다 120ms 눈 깜빡임 (움직임 줄이기면 깜빡이지 않고, 다른 동작 중이면 다음 차례로 미룬다) */
-function useBlink(isActing: boolean) {
+/** 4~7초마다 120ms 눈 깜빡임. 다른 움직임과 같이 멈춘다 — 움직임 줄이기·창이 안 보임·끄는 중이면 타이머를 걸지 않고 눈을 뜬 채로 둔다 (usePetMotion isMoving).
+ * 다른 동작 중이면 다음 차례로 미룬다 */
+function useBlink(isMoving: boolean, isActing: boolean) {
   const [isBlinking, setBlinking] = useState(false)
   const acting = useRef(isActing)
   acting.current = isActing
   useEffect(() => {
+    if (!isMoving) return
     let timer: ReturnType<typeof setTimeout>
     const next = () => {
       timer = setTimeout(
         () => {
-          if (isReducedMotion() || acting.current) return next()
+          if (acting.current) return next()
           setBlinking(true)
           timer = setTimeout(() => {
             setBlinking(false)
@@ -182,8 +183,11 @@ function useBlink(isActing: boolean) {
       )
     }
     next()
-    return () => clearTimeout(timer)
-  }, [])
+    return () => {
+      clearTimeout(timer)
+      setBlinking(false)
+    }
+  }, [isMoving])
   return isBlinking
 }
 

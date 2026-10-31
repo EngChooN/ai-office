@@ -7,6 +7,7 @@ import {
   canPetMove,
   checkPetAnswer,
   checkPetDecide,
+  checkPetQuestion,
   fitsPetPanel,
   clampToArea,
   defaultPetBounds,
@@ -28,6 +29,7 @@ import {
   pickBubble,
   pickIdleAct,
   PET_MOTION,
+  petMotionVars,
   placePanel,
   pruneSettled,
   recentAuto,
@@ -205,13 +207,16 @@ test('펼침 창 질문: 질문 1~2개·선택지 2~4개·짧은 글이면 여�
 
 test('질문 확인: 평소 결재는 답하기 길로 못 가고, 질문은 승인 길로 못 간다', () => {
   const staff = staffWith([approval('a1'), approval('q1', { questions: [q('A?')] }), approval('q2', { questions: [q('A?', 6)] })])
-  assert.equal(checkPetAnswer(staff, 'q1'), 'ok')
+  assert.equal(checkPetQuestion(staff, 'q1'), 'ok')
+  assert.equal(checkPetQuestion(staff, 'a1'), 'notQuestion')
+  assert.equal(checkPetQuestion(staff, 'q2'), 'tooComplex')
+  assert.equal(checkPetQuestion(staff, 'zz'), 'already')
   assert.equal(checkPetAnswer(staff, 'q1', { 'A?': '선택1' }), 'ok')
   assert.equal(checkPetAnswer(staff, 'q1', { 'A?': '' }), 'invalid')
   assert.equal(checkPetAnswer(staff, 'a1', { 'A?': 'x' }), 'notQuestion')
   assert.equal(checkPetAnswer(staff, 'q2', { 'A?': 'x' }), 'tooComplex')
-  assert.equal(checkPetAnswer(staff, 'zz'), 'already')
-  assert.equal(checkPetAnswer(staffWith([approval('q1', { questions: [q('A?')] })], 'external'), 'q1'), 'already')
+  assert.equal(checkPetAnswer(staff, 'zz', { 'A?': 'x' }), 'already')
+  assert.equal(checkPetAnswer(staffWith([approval('q1', { questions: [q('A?')] })], 'external'), 'q1', { 'A?': 'x' }), 'already')
   assert.equal(checkPetDecide(staff, 'q1'), 'question')
 })
 
@@ -246,6 +251,33 @@ test('질문 답하기: 앱과 같은 처리 함수로 한 번만, 다른 곳에
   const other = { staff: () => staffWith([approval('q3', { questions: [q('A?')] })]), inFlight: new InFlight(), answerQuestion: () => false }
   assert.equal(await petAnswer(other, 'q3', { 'A?': '선택1' }), 'already')
   assert.equal(other.inFlight.begin('q3'), true)
+})
+
+test('질문 답하기: 답이 없거나 질문과 맞지 않으면 처리 함수를 부르기 전에 invalid (질문 대기가 풀리지 않는다)', async () => {
+  const calls: unknown[] = []
+  const deps = {
+    staff: () => staffWith([approval('q1', { questions: [q('A?')] })]),
+    inFlight: new InFlight(),
+    answerQuestion: (_id: string, answers: Record<string, string>) => (calls.push(answers), true),
+  }
+  const bad: unknown[] = [
+    undefined, // 답이 빠진 요청 (IPC로 답 없이 옴)
+    null,
+    {}, // 빈 객체
+    { 'A?': '   ' }, // 빈칸
+    { 'A?': 5 }, // 범위 밖 선택지 번호 — 답은 글자로만 (선택지에 없는 글은 직접 답하기로 받는다)
+    { 'A?': ['선택1'] },
+    { 'A?': '선택1', 'B?': '선택2' }, // 모르는 질문
+    { 'B?': '선택1' },
+    ['선택1'],
+    '선택1',
+  ]
+  for (const answers of bad) assert.equal(await petAnswer(deps, 'q1', answers), 'invalid', JSON.stringify(answers))
+  // 모르는 결재 id는 답이 맞아도 already
+  assert.equal(await petAnswer(deps, 'zz', { 'A?': '선택1' }), 'already')
+  assert.deepEqual(calls, [])
+  // 처리 중 표시도 남지 않는다
+  assert.equal(deps.inFlight.begin('q1'), true)
 })
 
 test('질문 넘기기: 앱의 넘기기와 같은 decide(id, false), 평소 결재는 이 길로 반려되지 않는다, 예외에도 처리 중 표시가 풀린다', async () => {
@@ -514,9 +546,12 @@ test('움직임: 가끔 동작은 15~30초 사이, 두리번·폴짝 반반', ()
   assert.equal(pickIdleAct(0.49), 'look')
   assert.equal(pickIdleAct(0.5), 'hop')
   assert.equal(pickIdleAct(0.99), 'hop')
-  // 숨쉬기는 대표 지시 2~3초 안, 결재 알림은 README 약 0.7초 (CSS 350ms × 2)
+  // 숨쉬기는 대표 지시 2~3초 안
   assert.ok(PET_MOTION.breatheMs >= 2000 && PET_MOTION.breatheMs <= 3000)
-  assert.equal(PET_MOTION.alertMs, 350 * 2)
+  // 결재 알림은 폴짝 두 번, 약 0.7초
+  assert.equal(PET_MOTION.alertHopMs * PET_MOTION.alertHops, 700)
+  // CSS는 PET_MOTION 값을 변수로 받는다 (시간 값이 두 곳에서 어긋나지 않게)
+  assert.deepEqual(petMotionVars(), { '--pet-breathe': '2400ms', '--pet-look': '900ms', '--pet-hop': '400ms', '--pet-alert-hop': '350ms', '--pet-alert-hops': '2' })
 })
 
 test('움직임: 겹치면 결재 알림이 이기고, 동작 중 가끔 동작은 버리며, 결재가 연달아 와도 알림은 하나', () => {

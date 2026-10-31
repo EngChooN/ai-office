@@ -336,7 +336,7 @@ export class PetWindows {
       if (!this.isMine(e) || typeof approvalId !== 'string' || typeof allow !== 'boolean') return 'already'
       return petDecide({ staff: () => this.deps.snapshot().staff, decide: this.deps.decide, inFlight: this.inFlight }, approvalId, allow)
     })
-    // 질문 답하기·넘기기: 펼침 창에 알맞은 질문만, 답은 질문과 꼭 맞을 때만 (shared/deskPet.ts checkPetAnswer). 결재와 같은 InFlight로 겹침을 막는다
+    // 질문 답하기·넘기기: 펼침 창에 알맞은 질문만, 답하기는 답이 질문과 꼭 맞을 때만 (shared/deskPet.ts checkPetAnswer·checkPetQuestion). 결재와 같은 InFlight로 겹침을 막는다
     ipcMain.handle('pet:answer', (e, approvalId: unknown, answers: unknown) => {
       if (!this.isMine(e) || typeof approvalId !== 'string') return 'already'
       return petAnswer({ staff: () => this.deps.snapshot().staff, answerQuestion: this.deps.answerQuestion, inFlight: this.inFlight }, approvalId, answers)

@@ -216,18 +216,26 @@ export function fitsPetPanel(questions: StaffQuestion[]): boolean {
   return total <= L.total
 }
 
-/** 캐릭터 창에서 질문에 답하거나 넘겨도 되는지 (승인·반려 길인 checkPetDecide와 따로 — 평소 결재가 답하기 길로 승인되지 않게).
- * - 'ok': 펼침 창에 알맞은 대기 중인 질문 (답이 있으면 질문마다 빈칸 없이 꼭 맞음)
- * - 'already': 이미 처리됐거나 없는 질문 · 'notQuestion': 평소 결재 · 'tooComplex': 앱에서 답할 질문 · 'invalid': 답이 질문과 맞지 않음 */
+/** 캐릭터 창에서 질문을 답하거나 넘겨도 되는지 (승인·반려 길인 checkPetDecide와 따로 — 평소 결재가 답하기 길로 승인되지 않게).
+ * - 'ok': 펼침 창에 알맞은 대기 중인 질문
+ * - 'already': 이미 처리됐거나 없는 질문 · 'notQuestion': 평소 결재 · 'tooComplex': 앱에서 답할 질문 · 'invalid': 답이 질문과 맞지 않음(답하기만) */
 export type PetAnswerCheck = 'ok' | 'already' | 'notQuestion' | 'tooComplex' | 'invalid'
 
-export function checkPetAnswer(staff: Staff[], approvalId: string, answers?: unknown): PetAnswerCheck {
+/** 넘기기 자격: 펼침 창에 알맞은 대기 중인 질문인지 (답은 보지 않는다) */
+export function checkPetQuestion(staff: Staff[], approvalId: string): Exclude<PetAnswerCheck, 'invalid'> {
   const a = petApprovals(staff).find((x) => x.id === approvalId)
   if (!a) return 'already'
   if (!a.questions?.length) return 'notQuestion'
-  if (!fitsPetPanel(a.questions)) return 'tooComplex'
-  if (answers !== undefined && !isCompleteAnswer(a.questions, answers)) return 'invalid'
-  return 'ok'
+  return fitsPetPanel(a.questions) ? 'ok' : 'tooComplex'
+}
+
+/** 답하기 자격: 넘기기 자격에 더해 답이 질문마다 빈칸 없이 꼭 맞아야 한다 — 답이 없거나(undefined) 비어도 'invalid'.
+ * 처리 함수(answerQuestion)가 질문 대기를 풀기 전에 여기서 거른다 */
+export function checkPetAnswer(staff: Staff[], approvalId: string, answers: unknown): PetAnswerCheck {
+  const check = checkPetQuestion(staff, approvalId)
+  if (check !== 'ok') return check
+  const questions = petApprovals(staff).find((x) => x.id === approvalId)!.questions!
+  return isCompleteAnswer(questions, answers) ? 'ok' : 'invalid'
 }
 
 export type PetAnswerResult = 'done' | 'busy' | Exclude<PetAnswerCheck, 'ok'>
@@ -257,7 +265,7 @@ export function petSkipQuestion(
   deps: { staff: () => Staff[]; decide: (approvalId: string, allow: boolean) => boolean | Promise<boolean>; inFlight: InFlight },
   approvalId: string,
 ): Promise<PetAnswerResult> {
-  return runQuestion(deps.inFlight, approvalId, checkPetAnswer(deps.staff(), approvalId), () => deps.decide(approvalId, false))
+  return runQuestion(deps.inFlight, approvalId, checkPetQuestion(deps.staff(), approvalId), () => deps.decide(approvalId, false))
 }
 
 /** 펼침 창 결재 목록에서 목록을 떠난 항목을 잠시 남겨 둔다.
@@ -317,7 +325,7 @@ export interface OfficePetApi {
   closePanel(): void
   openApp(target: PetOpenTarget): void
   decide(approvalId: string, allow: boolean): Promise<PetDecideResult>
-  /** 질문에 답하기·넘기기 (펼침 창에 알맞은 질문만 — checkPetAnswer) */
+  /** 질문에 답하기·넘기기 (펼침 창에 알맞은 질문만 — checkPetAnswer·checkPetQuestion) */
   answer(approvalId: string, answers: Record<string, string>): Promise<PetAnswerResult>
   skip(approvalId: string): Promise<PetAnswerResult>
   /** 캐릭터 숨기기 (설정의 "바탕화면 비서 캐릭터 보이기"를 끈다 — 트레이·설정에서 다시 불러온다) */
@@ -330,9 +338,18 @@ export interface OfficePetApi {
 
 /** 캐릭터 움직임 (확정 그림 한 장에 CSS transform — renderer/index.css .pet-motion).
  * 평소엔 숨쉬기(발밑 기준 아주 작은 들썩임)를 되풀이하고, 가끔 동작(두리번 'look'·폴짝 'hop')이나 결재 알림('alert' 폴짝 두 번)이 그 자리를 잠깐 대신한다.
- * 시간 값은 디자인 README 동작 제안표를 따르되 숨쉬기는 대표 지시(2~3초)에 맞춰 2.4초 — 가끔 동작 15~30초 간격, 결재 알림 약 0.7초 */
+ * 시간 값은 디자인 README 동작 제안표를 따르되 숨쉬기는 대표 지시(2~3초)에 맞춰 2.4초 — 가끔 동작 15~30초 간격, 결재 알림은 폴짝(0.35초) 두 번.
+ * 동작 시간은 여기 한 곳에서 정하고 CSS 변수로 넘긴다 (petMotionVars → index.css .pet-motion) */
 export type PetAct = 'look' | 'hop' | 'alert'
-export const PET_MOTION = { breatheMs: 2400, idleMinMs: 15_000, idleMaxMs: 30_000, alertMs: 700 } as const
+export const PET_MOTION = { breatheMs: 2400, lookMs: 900, hopMs: 400, alertHopMs: 350, alertHops: 2, idleMinMs: 15_000, idleMaxMs: 30_000 } as const
+/** .pet-motion에 줄 CSS 변수 (동작 시간) */
+export const petMotionVars = () => ({
+  '--pet-breathe': `${PET_MOTION.breatheMs}ms`,
+  '--pet-look': `${PET_MOTION.lookMs}ms`,
+  '--pet-hop': `${PET_MOTION.hopMs}ms`,
+  '--pet-alert-hop': `${PET_MOTION.alertHopMs}ms`,
+  '--pet-alert-hops': String(PET_MOTION.alertHops),
+})
 
 /** 다음 가끔 동작까지 기다릴 시간 (r: 0 이상 1 미만 난수) */
 export const nextIdleDelay = (r: number) => PET_MOTION.idleMinMs + r * (PET_MOTION.idleMaxMs - PET_MOTION.idleMinMs)

@@ -646,20 +646,21 @@
 }
 
 /* 바탕화면 비서 캐릭터 움직임 (shared/deskPet.ts PET_MOTION · docs/design/desktop-secretary/README.md 동작 제안표)
+   동작 시간은 PET_MOTION이 CSS 변수로 넘긴다 (petMotionVars) — 여기 기본값은 변수가 없을 때만
    그림 한 장을 발밑 기준으로 움직이고, steps로 끊어 도트 그림처럼 보이게 한다. 클릭 영역(button)·말풍선은 움직이지 않는다 */
 .pet-motion {
   display: block;
   transform-origin: 50% 100%;
-  animation: pet-breathe 2.4s steps(1, end) infinite;
+  animation: pet-breathe var(--pet-breathe, 2.4s) steps(1, end) infinite;
 }
 .pet-motion[data-act='look'] {
-  animation: pet-look 900ms steps(1, end) 1;
+  animation: pet-look var(--pet-look, 900ms) steps(1, end) 1;
 }
 .pet-motion[data-act='hop'] {
-  animation: pet-hop 400ms steps(1, end) 1;
+  animation: pet-hop var(--pet-hop, 400ms) steps(1, end) 1;
 }
 .pet-motion[data-act='alert'] {
-  animation: pet-hop 350ms steps(1, end) 2;
+  animation: pet-hop var(--pet-alert-hop, 350ms) steps(1, end) var(--pet-alert-hops, 2);
 }
 .pet-motion[data-held] {
   animation: none;
