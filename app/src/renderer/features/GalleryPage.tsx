@@ -16,7 +16,8 @@ import { fmtDate, t, type TKey } from '@shared/i18n'
 const PERIODS: GalleryPeriod[] = ['week', 'month', 'all']
 const WEEKDAYS: TKey[] = ['schedule.day.sun', 'schedule.day.mon', 'schedule.day.tue', 'schedule.day.wed', 'schedule.day.thu', 'schedule.day.fri', 'schedule.day.sat']
 
-/** 갤러리 목록 — 화면을 열 때 받고, 보드 카드가 바뀌면(검토로 넘어가면) 다시 받는다 */
+/** 갤러리 목록 — 화면을 열 때 받고, 보드 카드가 바뀌면(검토로 넘어가면) 다시 받는다.
+ * 직원이 결과물을 (다시) 올리면 그 보고가 대화로 오므로 그때도 다시 받는다 (업무 카드가 지워진 갤러리 카드도 새 버전으로) */
 function useGallery() {
   const tasks = useOffice((s) => s.tasks)
   const [entries, setEntries] = useState<GalleryEntry[]>([])
@@ -25,6 +26,7 @@ function useGallery() {
   useEffect(() => {
     void refresh()
   }, [refresh, reviewCount])
+  useEffect(() => window.office.onChat((m) => m.attachments?.some((a) => a.artifact) && void refresh()), [refresh])
   return { entries, refresh }
 }
 

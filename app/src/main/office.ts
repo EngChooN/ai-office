@@ -24,6 +24,7 @@ import {
   type ModelChoice,
   type ApprovalMode,
   type Attachment,
+  type ArtifactRef,
   TEAM_COLORS,
   type Approval,
   type AutoApproveState,
@@ -87,6 +88,7 @@ import { MAX_FLOORS, meetingRoomOf } from '../shared/officeLevel'
 import { BUDGET_PERIODS, budgetTokens, nextBudgetAlert, periodStart, pruneAlertKeys } from '../shared/budget'
 import { importFile, mimeOf } from './attachments'
 import { saveArtifactFile } from './artifacts'
+import { replaceArtifactRef } from '../shared/artifact'
 import type { RemoteOfficePort } from './remote/handler.ts'
 import { isRemoteAutoAllowed, isRemoteManualDirAllowed, isRemoteManualScopeAllowed, isRemoteRuleBlocked } from './remoteGuard'
 import { pickStaffPatch, type StaffPatch } from './staffPatch'
@@ -1853,6 +1855,7 @@ export class Office extends EventEmitter<{
             this.postChat(staffId, body, [att])
             const card = taskId ? this.tasks.get(taskId) : undefined
             if (card) this.saveTask({ ...card, artifacts: [...(card.artifacts ?? []).filter((a) => a.id !== r.ref.id), r.ref] })
+            this.bumpArtifactRefs(r.ref)
             return text(t('staff.tool.artifact.done', { version: r.ref.version }))
           },
         ),
@@ -3087,6 +3090,22 @@ export class Office extends EventEmitter<{
     db.upsertTask(t)
     this.tasks.set(t.id, t)
     this.scheduleEmit()
+  }
+
+  /** 결과물을 고쳐 다시 올리면, 이미 그 결과물을 가진 업무 카드·갤러리 카드도 새 버전으로 바꾼다
+   * (검토로 넘어간 뒤 올리면 직원의 업무 출처가 없어 위에서 카드를 못 찾는다) */
+  private bumpArtifactRefs(ref: ArtifactRef) {
+    for (const task of this.tasks.values()) {
+      const next = replaceArtifactRef(task.artifacts, ref)
+      if (next) this.saveTask({ ...task, artifacts: next })
+    }
+    this.gallery = this.gallery.map((e) => {
+      const next = replaceArtifactRef(e.artifacts, ref)
+      if (!next) return e
+      const entry = { ...e, artifacts: next }
+      db.saveGalleryRow(entry)
+      return entry
+    })
   }
 
   // ── 결과물 갤러리·데모데이 ─────────────────────────────

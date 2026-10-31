@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { test } from 'node:test'
-import { ARTIFACT_CSP, ARTIFACT_MAX_BYTES, artifactUrl, checkArtifactFile, markdownToHtml, parseArtifactUrl, withCspMeta } from '../src/shared/artifact.ts'
+import { ARTIFACT_CSP, ARTIFACT_MAX_BYTES, artifactUrl, checkArtifactFile, markdownToHtml, parseArtifactUrl, replaceArtifactRef, withCspMeta } from '../src/shared/artifact.ts'
 import { artifactVersions, findArtifactVersion, listArtifacts, readArtifactText, respondArtifact, saveArtifact, writeBrowserCopy } from '../src/main/artifactStore.ts'
 
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'artifact-test-'))
@@ -190,4 +190,14 @@ test('브라우저 사본: 미리 만든 임시 폴더 링크를 따라가 외�
   assert.ok(fs.realpathSync(copy).startsWith(fs.realpathSync(base) + path.sep))
   assert.notEqual(path.dirname(copy), base)
   assert.equal(writeBrowserCopy(base, 'abc-v1.html', 'y') === copy, false)
+})
+
+test('replaceArtifactRef: 다시 올린 결과물만 새 버전으로 바꾸고, 바꿀 게 없으면 null', () => {
+  const a = { id: 'a', title: '차트', kind: 'html' as const, version: 2, name: 'c.html', size: 10 }
+  const b = { id: 'b', title: '메모', kind: 'md' as const, version: 1, name: 'n.md', size: 5 }
+  const a3 = { ...a, version: 3, size: 12 }
+  assert.deepEqual(replaceArtifactRef([a, b], a3), [a3, b])
+  assert.equal(replaceArtifactRef([a3, b], a3), null)
+  assert.equal(replaceArtifactRef([b], a3), null)
+  assert.equal(replaceArtifactRef(undefined, a3), null)
 })

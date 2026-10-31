@@ -1,5 +1,5 @@
 // 아티팩트: 직원이 만든 HTML·마크다운 결과물을 앱 안에서 안전하게 보여 주기 위한 규칙 (파일을 만지지 않는 순수 함수)
-import type { ArtifactKind } from './types.ts'
+import type { ArtifactKind, ArtifactRef } from './types.ts'
 
 export const ARTIFACT_SCHEME = 'office-artifact'
 export const ARTIFACT_MAX_BYTES = 5 * 1024 * 1024
@@ -171,3 +171,9 @@ export function parseArtifactUrl(raw: string): { id: string; version: number } |
 }
 
 export const artifactUrl = (id: string, version: number) => `${ARTIFACT_SCHEME}://${id}/${version}`
+
+/** 결과물을 다시 올렸을 때 카드에 붙은 참조를 새 버전으로 바꾼 목록. 그 결과물이 없거나 이미 같은 버전이면 null (저장할 필요 없음) */
+export function replaceArtifactRef(list: ArtifactRef[] | undefined, ref: ArtifactRef): ArtifactRef[] | null {
+  if (!list?.some((a) => a.id === ref.id && a.version !== ref.version)) return null
+  return list.map((a) => (a.id === ref.id ? ref : a))
+}
