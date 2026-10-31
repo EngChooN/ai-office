@@ -23,3 +23,18 @@ export const shouldHoldLocal = (origins: readonly OriginLike[], incoming: Origin
 
 /** 로컬 일을 하는 직원은 피어 일을 받지 않는다 (A컴 큐가 잠시 뒤 다시 보낸다) */
 export const hasLocalWork = (origins: readonly OriginLike[], backlog: number, queuedTasks: number) => origins.some((o) => !isPeerOrigin(o)) || backlog > 0 || queuedTasks > 0
+
+/** 이 직원을 jobId와 다른 피어 일(또는 그 복사본 폴더)이 쓰고 있는가 — 다른 일끼리는 한 세션에서 섞이지 않는다. jobId가 없으면(로컬 진입점) 어떤 피어 일이든 점유로 본다 */
+export function heldByOtherPeerJob(origins: readonly OriginLike[], cwdJobId: string | undefined, jobId?: string): boolean {
+  const cur = peerJobOfOrigins(origins)
+  return (cur !== null && cur !== jobId) || (cwdJobId !== undefined && cwdJobId !== jobId)
+}
+
+/** 피어 문맥에서 업무 카드를 새로 만들거나 기획안을 올릴 수 있는가 — 카드는 승인 주체를 이어받지 못하므로 막는다 */
+export const canCreateCards = (origins: readonly OriginLike[]) => peerJobOfOrigins(origins) === null
+
+/** 이 피어 일이 파일 복사본 폴더로 일하는 중이면 재위임을 막는다 (자식 직원에게 복사본 cwd·수명을 이어 줄 수 없다) */
+export const blocksCopyRedelegate = (cwdJobIds: Iterable<string>, peerJobId: string | null) => peerJobId !== null && [...cwdJobIds].includes(peerJobId)
+
+/** 복사본 폴더 정리: 직원의 실제 작업 폴더가 원래대로 돌아왔을 때만 기록을 지운다 (돌아오기 전에는 로컬 지시를 계속 막는다) */
+export const peerCwdRestored = (currentCwd: string, originalCwd: string) => currentCwd === originalCwd

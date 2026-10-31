@@ -20,6 +20,24 @@ export default {
     ja: '{name}はこのPCの別の作業中です。終わってからもう一度任せてください',
     zh: '{name}正在处理这台电脑上的其他工作。请在完成后再交给 TA',
   },
+  'peer.guard.busyPeer': {
+    ko: '{name}은(는) 다른 PC가 맡긴 일을 하는 중이에요. 그 일이 끝난 뒤에 다시 맡겨 주세요',
+    en: '{name} is working on a job from another PC. Hand it over again once that job is done',
+    ja: '{name}は別のPCから任された作業中です。その作業が終わってからもう一度任せてください',
+    zh: '{name}正在处理另一台电脑交付的工作。请在该工作完成后再交给 TA',
+  },
+  'peer.guard.noCard': {
+    ko: '다른 PC가 맡긴 일에서는 업무 카드를 새로 만들거나 기획안을 올릴 수 없어요. 결과 보고에 필요한 내용을 적어 주세요',
+    en: 'Work from another PC cannot create new board tasks or submit plans. Put what is needed in your result report instead',
+    ja: '別のPCから任された作業では、業務カードの作成や企画案の提出はできません。必要な内容は結果報告に書いてください',
+    zh: '另一台电脑交付的工作中不能新建任务卡或提交方案。请把所需内容写在结果报告里',
+  },
+  'peer.guard.noCopyChain': {
+    ko: '파일 복사본으로 하는 일은 다른 직원에게 다시 맡길 수 없어요. 직접 처리해 주세요',
+    en: 'Work on a file copy cannot be handed on to another staff member. Please handle it yourself',
+    ja: 'ファイルのコピーで行う作業は、他のスタッフに再度任せられません。ご自身で対応してください',
+    zh: '基于文件副本的工作无法再转交给其他员工，请自行处理',
+  },
   'peer.guard.noChain': {
     ko: '다른 PC가 맡긴 일을 또 다른 PC의 {name}에게 넘길 수는 없어요',
     en: 'Work received from another PC cannot be passed on to {name} on yet another PC',

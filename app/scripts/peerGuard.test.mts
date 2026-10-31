@@ -91,3 +91,33 @@ test('P1 busy: 직원이 로컬 일을 하는 중이면 일을 받지 않고(503
   assert.deepEqual([r.status, r.body.error], [503, 'staff_busy'])
   assert.equal(h.store.inbox.get(J), undefined)
 })
+
+// ── 4차 한리뷰 지적 (office.ts가 쓰는 순수 판정) ──
+import { blocksCopyRedelegate, canCreateCards, heldByOtherPeerJob, peerCwdRestored } from '../src/main/peer/peerIsolation.ts'
+
+test('4차 P1-1 피어 문맥(재위임 포함)에서는 add_task·propose_plan 카드 생성을 막고, 로컬 직원은 허용한다', () => {
+  assert.equal(canCreateCards([{ kind: 'peer', jobId: 'J1' }]), false)
+  assert.equal(canCreateCards([{ kind: 'delegate', peerJobId: 'J1' }]), false)
+  assert.equal(canCreateCards([{ kind: 'user' }, { kind: 'peer', jobId: 'J1' }]), false)
+  assert.equal(canCreateCards([{ kind: 'user' }]), true)
+})
+
+test('4차 P1-2 다른 jobId가 점유한 직원은 피어 수신·내부 delegate·add_task 모두 busy', () => {
+  const j1 = [{ kind: 'peer', jobId: 'J1' }]
+  assert.equal(heldByOtherPeerJob(j1, undefined, 'J2'), true) // 피어 수신
+  assert.equal(heldByOtherPeerJob(j1, undefined, undefined), true) // 로컬 delegate/add_task
+  assert.equal(heldByOtherPeerJob([], 'J1', 'J2'), true) // 복사본 폴더 점유
+  assert.equal(heldByOtherPeerJob([{ kind: 'delegate', peerJobId: 'J1' }], undefined, 'J1'), false) // 같은 일의 재위임은 허용
+  assert.equal(heldByOtherPeerJob([], undefined, 'J2'), false)
+})
+
+test('4차 P2-3 복사본 폴더로 하는 피어 일은 재위임 거절', () => {
+  assert.equal(blocksCopyRedelegate(['J1'], 'J1'), true)
+  assert.equal(blocksCopyRedelegate(['J1'], 'J2'), false)
+  assert.equal(blocksCopyRedelegate(['J1'], null), false)
+})
+
+test('4차 P2-4 실제 작업 폴더가 원래대로 돌아오기 전에는 복사본 기록을 지우지 않는다', () => {
+  assert.equal(peerCwdRestored('/copy/j1', '/home/me/proj'), false)
+  assert.equal(peerCwdRestored('/home/me/proj', '/home/me/proj'), true)
+})
