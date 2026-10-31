@@ -43,6 +43,25 @@ const INTERPRETERS = new Set(['bash', 'sh', 'zsh', 'ksh', 'dash', 'fish', 'csh',
 const INLINE_CODE_FLAGS = new Set(['-c', '-e', '--eval', '--command', '--exec'])
 /** 하위 명령으로 판정하는 빌드 래퍼 (배포·게시만 기다리고 빌드·테스트는 허용) */
 const BUILD_WRAPPERS = new Set(['make', 'gradle', 'gradlew', 'mvn', 'mvnw', 'rake'])
+// npm·pnpm·yarn·bun 의 설치·갱신 별칭 (오타 별칭 포함)
+const PKG_INSTALL_WORDS = new Set(['install', 'i', 'in', 'ins', 'inst', 'insta', 'instal', 'isnt', 'isnta', 'isntal', 'isntall', 'add', 'a', 'update', 'up', 'upgrade', 'udpate', 'install-test', 'it'])
+// 값을 따로 받는 옵션 (--filter web 의 web 을 패키지 이름으로 보지 않게)
+const PKG_OPT_WITH_VALUE = new Set(['--filter', '-F', '--workspace', '-w', '--registry', '--prefix', '--cwd', '--dir', '-C', '--tag', '--loglevel', '--cache', '--omit', '--include', '--otp', '--scope', '--fetch-retries', '--network-timeout', '--cpu', '--os', '--libc'])
+function installsPackages(args: string[]): boolean {
+  const dd = args.indexOf('--')
+  const words = dd < 0 ? args : args.slice(0, dd)
+  const at = words.findIndex((a) => PKG_INSTALL_WORDS.has(a))
+  if (at < 0) return false
+  if (words.includes('global') && words.includes('add')) return true // yarn global add
+  if (words.some((a) => a === '--global' || a === '--global=true' || /^-[A-Za-z]*g[A-Za-z]*$/.test(a))) return true // 전역 설치
+  if (dd >= 0 && args.slice(dd + 1).some((a) => !a.startsWith('-'))) return true // npm i -- pkg
+  for (let k = at + 1; k < words.length; k++) {
+    if (PKG_OPT_WITH_VALUE.has(words[k])) k++
+    else if (!words[k].startsWith('-')) return true
+  }
+  return false
+}
+
 const PKG = new Set(['npm', 'pnpm', 'yarn', 'bun', 'npx', 'pnpx', 'bunx'])
 /** 호스트에 붙는 전송 도구 — 쓰면 기다린다 */
 const NET_SENDERS = new Set(['ssh', 'scp', 'sftp', 'telnet', 'nc', 'ncat', 'netcat', 'socat', 'rclone'])
@@ -365,6 +384,7 @@ function segmentWaits(seg: Segment): boolean {
     if (args.some((a) => ['dlx', 'exec', 'x', 'explore', 'create', 'publish', 'deploy'].includes(a))) return true
     if ((args.includes('pkg') && args.some((a) => ['set', 'delete', 'fix'].includes(a))) || (['config', 'set'].includes(sub ?? '') && !args.some((a) => ['get', 'list', 'ls'].includes(a)))) return true // package.json 스크립트·npm 설정(script-shell 등) 변경
     if (args.includes('init') && args.length > args.indexOf('init') + 1 && !args[args.indexOf('init') + 1].startsWith('-')) return true
+    if (installsPackages(args)) return true // 패키지 이름이 붙은 설치·갱신·전역 설치는 남의 코드를 실행하므로 대표 확인
     const runAt = args.findIndex((a) => ['run', 'run-script', 'rum', 'urn'].includes(a))
     if (runAt >= 0) return isOutboundName(args[runAt + 1] ?? '')
     return sub !== undefined && isOutboundName(sub) && ['yarn', 'bun'].includes(name)

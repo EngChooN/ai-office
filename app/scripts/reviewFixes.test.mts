@@ -497,3 +497,10 @@ test('R11 산술 문맥에 변수 이름이 있으면 기다린다 (safeVars 제
   const allows = ['while (( $# )); do shift; done', 'echo $((1+2)); (( 3 > 2 ))', 'echo $(($#+1))', 'exit $?', 'PATH=$PATH:./node_modules/.bin tsc', 'for i in {1..3}; do echo $i; done']
   for (const c of allows) assert.equal(commandWaits(c), false, c)
 })
+
+test('패키지 추가·전역 설치는 대표 확인, 이름 없는 설치는 자동 허용', () => {
+  const wait = ['npm install lodash', 'npm i lodash', 'npm isntall lodash', 'npm add lodash', 'npm i -D vitest', 'npm i lodash@4', 'npm i ./local', 'npm i ../pkg', 'npm i git+https://github.com/a/b.git', 'npm i https://x.com/a.tgz', 'npm i github:a/b', 'yarn add react', 'yarn global add typescript', 'pnpm add zod', 'pnpm --filter web add x', 'pnpm -F web add x', 'npm --prefix app i x', 'npm i --prefix app x', 'bun add hono', 'bun a hono', 'npm i -g typescript', 'npm install --global typescript', 'npm i -g', 'npm update lodash', 'npm upgrade lodash', 'yarn upgrade react', 'pnpm update zod', 'npm i --registry https://r.example x', 'npm i -- lodash', 'npm install --save-dev --ignore-scripts evil']
+  for (const c of wait) assert.equal(commandWaits(c), true, c)
+  const ok = ['npm install', 'npm ci', 'pnpm install', 'yarn', 'yarn install', 'bun install', 'npm install --ignore-scripts', 'npm ci --no-audit', 'pnpm --filter web install', 'npm --prefix app install', 'npm i --registry https://r.example', 'npm i --omit dev', 'npm install --ignore-scripts && npm test']
+  for (const c of ok) assert.equal(commandWaits(c), false, c)
+})
