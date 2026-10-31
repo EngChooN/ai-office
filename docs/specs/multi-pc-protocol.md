@@ -513,3 +513,9 @@ interface PeerHttp { get/put/post(path, …): Promise<…>; stream(path): Readab
   - 새 OfficeApi 12개(`peerPairStart`·`peerPairClose`·`peerSlots`·`peerRevokeSlot`·`peerPairConnect`·`peerList`·`peerUnpair`·`peerReconnect`·`peerRemoteStaff`·`peerAddStaff`·`peerRemoveStaff`·`peerCancelJob`)는 v2 분류 모두 P(PC 전용), 비서 도구는 제외.
   - 파일 복사본·변경 묶음(4번)은 구현하지 않았다. `PeerJob.workspaceId`·`InboxJob.workspaceId`·`changesetId` 자리만 있다.
 
+- 2026-11-01 정리드: 4번(파일 복사본·변경 묶음·충돌) 구현 반영. `peer/sync/*`·`remote/syncRoutes.ts`·`shared/peerSync.ts`·`dict/peerSync.ts`만 고쳤다. 설계와 달라진 점·구현 메모:
+  - 파일 바이트 전송은 3번 `PeerHttp.call`(JSON, 응답 16MB 한도)로는 20MB 파일을 못 실어서, 4번 함수는 **`SyncHttp`**(`call` + `putBytes`·`getBytes`)를 받는다. `call`은 `PeerHttp.call`과 같은 모양이고, `putBytes`·`getBytes`는 3번이 `peerTransport`에 더해 주어야 한다.
+  - `SyncApi` 구현은 `PeerSync`(`peer/sync/peerSyncService.ts`). `approvalCard`는 열 때마다 지금 A컴 파일로 충돌을 다시 판정하므로 `Promise`를 돌려준다. `fetchChangeSet`에 `expectWorkspaceId`(그 일에 보낸 복사본 id)를 더해, B컴이 다른 복사본을 가리키면 거절한다. `peerChangesetDetail` 본문은 `changesetDetail(id)`, `peerApplyChanges` 본문은 `applyChangeSet(id, choice)`.
+  - 반영 선택은 `all`(충돌이 하나라도 있으면 아무것도 쓰지 않고 `blocked`)·`safe`(충돌 없는 것만)·`files`(고른 파일만)·`reject`. 민감 경로는 `sensitiveOk`에 따로 넣어야 반영된다. 막힘·실패(되돌림)는 `pending`으로 남아 다시 고를 수 있다.
+  - B컴 경로는 슬롯마다 자기 것만: `PUT blobs`는 그 슬롯이 올리는 중인 목록에 든 주소만, `GET blobs`는 그 슬롯의 변경 묶음에 든 주소만. 4번 오류 코드(`workspace_quota` 507·`changes_rejected` 422 등)는 `syncRoutes`가 v2 모양으로 직접 낸다(`v2.ts`는 고치지 않음).
+  - 아직 3번 쪽에서 이어 줄 곳(4번은 손대지 않음): `v2routes.stream()`에서 `SyncRoutes.isSyncPath`면 `SyncRoutes.handle`로 위임, `db.ts`의 `ensureSyncTables(db)`, `dict/index.ts`의 `peerSync` 등록, `JobQueue`의 `prepareWorkspace`→`pushWorkspace`, `PeerHost`의 `workspaceDir`(cwd)·`collectChanges`, 결과 회수 후 `fetchChangeSet`→`Approval.peerChanges` 카드, ack·해제 때 `discardWorkspace`·`discardSlot`, 앱 시작 때 `prune()`.
