@@ -403,8 +403,19 @@ export function loadTasks(): Task[] {
     usage: r.usage ? (JSON.parse(r.usage) as Task['usage']) : undefined,
     ...(r.is_practice ? { isPractice: true } : {}),
     ...(r.is_autonomous ? { isAutonomous: true } : {}),
-    ...(r.artifacts ? { artifacts: JSON.parse(r.artifacts) as Task['artifacts'] } : {}),
+    ...parseArtifacts(r.artifacts),
   }))
+}
+
+/** 깨진 JSON이어도 카드 목록 전체가 막히지 않도록 빈 목록으로 본다 */
+function parseArtifacts(raw: string | null): Pick<Task, 'artifacts'> {
+  if (!raw) return {}
+  try {
+    const list = JSON.parse(raw)
+    return Array.isArray(list) && list.length ? { artifacts: list as Task['artifacts'] } : {}
+  } catch {
+    return {}
+  }
 }
 
 export function upsertTask(t: Task) {
