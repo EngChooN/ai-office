@@ -9,6 +9,8 @@ Writing rules
 
 ## [미정] (설치본 미빌드)
 
+## [0.17.0] - 2026-10-31
+
 ### New features
 - Desktop secretary character (Mac): after install, a secretary character sits on your desktop. Drag it anywhere; drop it near a screen edge and it snaps to the edge. Turn it on or off in Settings > Connections.
 - Click the character to open a small window. Without opening the app, you can approve or reject requests, answer or skip staff questions, and talk to the secretary. Questions too long for the window continue via 'Open in app'.

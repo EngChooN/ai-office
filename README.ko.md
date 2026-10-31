@@ -60,7 +60,7 @@
 
 Claude 직원과 GPT 직원을 함께 **고용**해 하나의 사무실처럼 일을 맡기고, 결재하고, 보고받는 무료 오픈소스 데스크톱 앱 (Electron). 직원은 Claude Code 또는 Codex(GPT) 세션입니다. 예전 이름은 Claude Office이며, 첫 실행 때 기존 데이터를 자동으로 복사해 옵니다(옛 폴더는 그대로 둡니다).
 
-- 상태: **0.16.3** (2026-10-31) — GPT 직원(베타) · 사무실 맵(팀 구역·회의실·휴게실) · 팀/팀장 위임 · 업무 보드 · 결재함 · 단체방 · 회의 · 예약 업무 · 보고서 · 급여 명세서 · 꾸미기
+- 상태: **0.17.0** (2026-10-31) — GPT 직원(베타) · 사무실 맵(팀 구역·회의실·휴게실) · 팀/팀장 위임 · 업무 보드 · 결재함 · 단체방 · 회의 · 예약 업무 · 보고서 · 급여 명세서 · 꾸미기
 - 스택: Electron Forge + Vite · React 19 · Zustand · Tailwind 4 + shadcn/ui · Phaser 4 · SQLite(`node:sqlite`) · Claude Agent SDK · Codex app-server(GPT 직원)
 
 ## 설치 전에 읽어 주세요
