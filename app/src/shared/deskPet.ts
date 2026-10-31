@@ -1,7 +1,8 @@
-// 바탕화면 비서(맥 1차): 캐릭터 창·펼침 창이 함께 쓰는 순수 규칙 — 위치 보정, 끌기/클릭 구분, 결재 처리 가능 여부, 말풍선 우선순위
+// 바탕화면 비서(맥 1차): 캐릭터 창·펼침 창이 함께 쓰는 순수 규칙 — 위치 보정, 끌기/클릭 구분, 결재·질문 처리 가능 여부, 말풍선 우선순위
 // 디자인: docs/design/desktop-secretary/README.md · 테스트: scripts/deskPet.test.mts
 
-import type { Approval, AutoHandled, Staff } from './types'
+import type { Approval, AutoHandled, Staff, StaffQuestion } from './types'
+import { isCompleteAnswer } from './questionAnswer.ts'
 
 export interface Rect {
   x: number
@@ -156,7 +157,7 @@ export function petApprovals(staff: Staff[]): PetApproval[] {
 /** 캐릭터 창에서 승인·반려해도 되는지.
  * - 'ok': 지금 대기 중인 평소 결재
  * - 'already': 이미 처리됐거나(다른 화면·휴대폰·자동결재) 없는 결재
- * - 'question': 직원 질문 — 답을 골라야 해서 앱에서만 처리한다 (승인/반려 버튼으로 넘기기가 되지 않게) */
+ * - 'question': 직원 질문 — 승인/반려 버튼으로 넘어가지 않게 막는다 (질문은 답하기·넘기기 길 petAnswer·petSkipQuestion으로) */
 export type PetDecideCheck = 'ok' | 'already' | 'question'
 
 export function checkPetDecide(staff: Staff[], approvalId: string): PetDecideCheck {
@@ -197,11 +198,73 @@ export async function petDecide(
   }
 }
 
+/** 펼침 창(폭 340px)에서 바로 답하기에 알맞은 질문인지. 하나라도 넘으면 '앱에서 열기'로 넘긴다.
+ * 결재 칸은 펼침 창 높이의 45%(약 230px)라 질문 3개부터는 스크롤 안에서 길을 잃고, 글 폭(약 284px)에 한글 한 줄 약 22자라 질문은 5줄·이름 2줄·설명 4줄까지 */
+export const PET_QUESTION_LIMIT = { maxQuestions: 2, minOptions: 2, maxOptions: 4, question: 120, label: 40, description: 80, total: 600 } as const
+/** 한글·이모지를 글자 단위로 센다 */
+const charCount = (s: string) => [...s].length
+
+export function fitsPetPanel(questions: StaffQuestion[]): boolean {
+  const L = PET_QUESTION_LIMIT
+  if (!questions.length || questions.length > L.maxQuestions) return false
+  let total = 0
+  for (const q of questions) {
+    if (q.options.length < L.minOptions || q.options.length > L.maxOptions || charCount(q.question) > L.question) return false
+    if (q.options.some((o) => charCount(o.label) > L.label || charCount(o.description) > L.description)) return false
+    total += charCount(q.question) + q.options.reduce((n, o) => n + charCount(o.label) + charCount(o.description), 0)
+  }
+  return total <= L.total
+}
+
+/** 캐릭터 창에서 질문에 답하거나 넘겨도 되는지 (승인·반려 길인 checkPetDecide와 따로 — 평소 결재가 답하기 길로 승인되지 않게).
+ * - 'ok': 펼침 창에 알맞은 대기 중인 질문 (답이 있으면 질문마다 빈칸 없이 꼭 맞음)
+ * - 'already': 이미 처리됐거나 없는 질문 · 'notQuestion': 평소 결재 · 'tooComplex': 앱에서 답할 질문 · 'invalid': 답이 질문과 맞지 않음 */
+export type PetAnswerCheck = 'ok' | 'already' | 'notQuestion' | 'tooComplex' | 'invalid'
+
+export function checkPetAnswer(staff: Staff[], approvalId: string, answers?: unknown): PetAnswerCheck {
+  const a = petApprovals(staff).find((x) => x.id === approvalId)
+  if (!a) return 'already'
+  if (!a.questions?.length) return 'notQuestion'
+  if (!fitsPetPanel(a.questions)) return 'tooComplex'
+  if (answers !== undefined && !isCompleteAnswer(a.questions, answers)) return 'invalid'
+  return 'ok'
+}
+
+export type PetAnswerResult = 'done' | 'busy' | Exclude<PetAnswerCheck, 'ok'>
+
+/** 확인 → 중복 막기(결재와 같은 InFlight) → 앱과 같은 처리 함수 */
+async function runQuestion(inFlight: InFlight, approvalId: string, check: PetAnswerCheck, fn: () => boolean | Promise<boolean>): Promise<PetAnswerResult> {
+  if (check !== 'ok') return check
+  if (!inFlight.begin(approvalId)) return 'busy'
+  try {
+    return (await fn()) ? 'done' : 'already'
+  } finally {
+    inFlight.end(approvalId)
+  }
+}
+
+/** 캐릭터 창에서 질문에 답한다 — 앱과 같은 answerQuestion으로 */
+export function petAnswer(
+  deps: { staff: () => Staff[]; answerQuestion: (approvalId: string, answers: Record<string, string>) => boolean | Promise<boolean>; inFlight: InFlight },
+  approvalId: string,
+  answers: unknown,
+): Promise<PetAnswerResult> {
+  return runQuestion(deps.inFlight, approvalId, checkPetAnswer(deps.staff(), approvalId, answers), () => deps.answerQuestion(approvalId, answers as Record<string, string>))
+}
+
+/** 캐릭터 창에서 질문을 넘긴다(답 없이 알아서 판단) — 앱의 "넘기기"와 같은 decide(id, false)로 */
+export function petSkipQuestion(
+  deps: { staff: () => Staff[]; decide: (approvalId: string, allow: boolean) => boolean | Promise<boolean>; inFlight: InFlight },
+  approvalId: string,
+): Promise<PetAnswerResult> {
+  return runQuestion(deps.inFlight, approvalId, checkPetAnswer(deps.staff(), approvalId), () => deps.decide(approvalId, false))
+}
+
 /** 펼침 창 결재 목록에서 목록을 떠난 항목을 잠시 남겨 둔다.
- * - approved·rejected: 이 창에서 내가 처리 (petDecide 'done')
+ * - approved·rejected·answered·skipped: 이 창에서 내가 처리 (petDecide·petAnswer·petSkipQuestion 'done')
  * - elsewhere: 다른 곳(앱·휴대폰·트레이)에서 처리됐거나 취소돼 목록에서 빠짐, 또는 눌렀더니 이미 처리됨('already')
  * 자동결재가 대신 처리한 건은 결재 목록에 오르지 않으므로(main/office.ts autoDecide) 기존 기록(autoApproveLog)에서 따로 읽는다 — recentAuto */
-export type PetSettledKind = 'approved' | 'rejected' | 'elsewhere'
+export type PetSettledKind = 'approved' | 'rejected' | 'answered' | 'skipped' | 'elsewhere'
 export interface PetSettled {
   approval: PetApproval
   kind: PetSettledKind
@@ -254,6 +317,9 @@ export interface OfficePetApi {
   closePanel(): void
   openApp(target: PetOpenTarget): void
   decide(approvalId: string, allow: boolean): Promise<PetDecideResult>
+  /** 질문에 답하기·넘기기 (펼침 창에 알맞은 질문만 — checkPetAnswer) */
+  answer(approvalId: string, answers: Record<string, string>): Promise<PetAnswerResult>
+  skip(approvalId: string): Promise<PetAnswerResult>
   /** 캐릭터 숨기기 (설정의 "바탕화면 비서 캐릭터 보이기"를 끈다 — 트레이·설정에서 다시 불러온다) */
   hide(): void
   /** 펼침 창이 보일 때마다 (입력창에 포커스를 준다) */

@@ -6,6 +6,8 @@ import {
   clampToArea,
   defaultPetBounds,
   InFlight,
+  petAnswer,
+  petSkipQuestion,
   listenAll,
   petAlignFor,
   petCharRect,
@@ -25,13 +27,15 @@ import {
 } from '../shared/deskPet'
 
 // 바탕화면 비서(맥 1차): 캐릭터 창 + 펼침 창 두 개. 설정(isDeskPetOn)을 켜면 뜨고 끄면(숨기기 포함) 창·IPC·화면/전원 이벤트를 모두 정리한다
-// 결재는 앱 화면과 같은 처리 함수(officeHandlers.decide)로만 처리하고, 질문·이미 끝난 결재는 거른다 (shared/deskPet.ts petDecide)
+// 결재·질문은 앱 화면과 같은 처리 함수(officeHandlers.decide·answerQuestion)로만 처리하고, 이미 끝난 결재·펼침 창에 맞지 않는 질문은 거른다 (shared/deskPet.ts petDecide·petAnswer)
 // 앱 종료 판단(window-all-closed)에는 끼지 않는다 — 맥은 원래 창을 닫아도 앱이 남는다
 
 export interface PetDeps {
   snapshot(): OfficeSnapshot
   /** 앱 화면·휴대폰과 같은 결재 처리 함수 */
   decide(approvalId: string, allow: boolean): boolean
+  /** 앱 화면·휴대폰과 같은 질문 답 처리 함수 */
+  answerQuestion(approvalId: string, answers: Record<string, string>): boolean
   openApp(target: PetOpenTarget): void
   /** 설정의 "바탕화면 비서 캐릭터 보이기"를 바꾼다 (숨기기·다시 불러오기) */
   setOn(isOn: boolean): void
@@ -69,6 +73,8 @@ const areaOf = (b: Rect): Rect => screen.getDisplayMatching(b).workArea
 /** 잠자기·모니터 변경 직후에는 화면 정보가 늦게 바뀌는 일이 있어 한 번 더 맞춘다 */
 const REFIT_AGAIN_MS = 800
 const PET_CHANNELS = ['pet:interactive', 'pet:dragStart', 'pet:dragMove', 'pet:dragEnd', 'pet:togglePanel', 'pet:closePanel', 'pet:openApp', 'pet:hide']
+
+const PET_HANDLERS = ['pet:decide', 'pet:answer', 'pet:skip']
 
 export class PetWindows {
   private pet: BrowserWindow | null = null
@@ -330,6 +336,15 @@ export class PetWindows {
       if (!this.isMine(e) || typeof approvalId !== 'string' || typeof allow !== 'boolean') return 'already'
       return petDecide({ staff: () => this.deps.snapshot().staff, decide: this.deps.decide, inFlight: this.inFlight }, approvalId, allow)
     })
+    // 질문 답하기·넘기기: 펼침 창에 알맞은 질문만, 답은 질문과 꼭 맞을 때만 (shared/deskPet.ts checkPetAnswer). 결재와 같은 InFlight로 겹침을 막는다
+    ipcMain.handle('pet:answer', (e, approvalId: unknown, answers: unknown) => {
+      if (!this.isMine(e) || typeof approvalId !== 'string') return 'already'
+      return petAnswer({ staff: () => this.deps.snapshot().staff, answerQuestion: this.deps.answerQuestion, inFlight: this.inFlight }, approvalId, answers)
+    })
+    ipcMain.handle('pet:skip', (e, approvalId: unknown) => {
+      if (!this.isMine(e) || typeof approvalId !== 'string') return 'already'
+      return petSkipQuestion({ staff: () => this.deps.snapshot().staff, decide: this.deps.decide, inFlight: this.inFlight }, approvalId)
+    })
     const off = listenAll(
       [
         [screen as unknown as EventSource, REFIT_EVENTS.screen],
@@ -339,7 +354,7 @@ export class PetWindows {
     )
     this.unlisten = () => {
       for (const ch of PET_CHANNELS) ipcMain.removeAllListeners(ch)
-      ipcMain.removeHandler('pet:decide')
+      for (const ch of PET_HANDLERS) ipcMain.removeHandler(ch)
       off()
     }
   }

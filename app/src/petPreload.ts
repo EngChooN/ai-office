@@ -2,7 +2,7 @@ import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 import type { OfficePetApi, PetAlign, PetOpenTarget } from './shared/deskPet'
 
 // 바탕화면 비서 창(캐릭터·펼침 창) 전용 preload — 앱 창 preload보다 좁게 연다.
-// 사무실 API는 읽기(snapshot·onSnapshot·자동결재 기록)와 비서에게 말하기만, 결재는 pet:decide(질문·이미 끝난 결재를 거르는 길)로만 간다
+// 사무실 API는 읽기(snapshot·onSnapshot·자동결재 기록)와 비서에게 말하기만, 결재는 pet:decide, 질문은 pet:answer·pet:skip(이미 끝난 결재·맞지 않는 질문을 거르는 길)로만 간다
 
 const view = new URLSearchParams(location.search).get('view') === 'panel' ? 'panel' : 'pet'
 
@@ -38,6 +38,8 @@ const pet: OfficePetApi = {
   closePanel: () => ipcRenderer.send('pet:closePanel'),
   openApp: (target: PetOpenTarget) => ipcRenderer.send('pet:openApp', target),
   decide: (approvalId, allow) => ipcRenderer.invoke('pet:decide', approvalId, allow),
+  answer: (approvalId, answers) => ipcRenderer.invoke('pet:answer', approvalId, answers),
+  skip: (approvalId) => ipcRenderer.invoke('pet:skip', approvalId),
   hide: () => ipcRenderer.send('pet:hide'),
   onPanelShown: (cb) => {
     const listener = () => cb()

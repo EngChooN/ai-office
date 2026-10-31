@@ -148,6 +148,7 @@ const tray = new OfficeTray(
 const pet = new PetWindows({
   snapshot: () => office.snapshot(),
   decide: (approvalId, allow) => (handlers!.decide as (id: string, allow: boolean) => boolean)(approvalId, allow),
+  answerQuestion: (approvalId, answers) => (handlers!.answerQuestion as (id: string, answers: Record<string, string>) => boolean)(approvalId, answers),
   openApp: (target) => showWindow(target.kind === 'secretary' ? SECRETARY_PAGE_FOCUS : target.kind === 'staff' ? target.staffId : undefined),
   setOn: (isOn) => office.updateSettings({ isDeskPetOn: isOn }),
   load: (w, view) => {

@@ -1,10 +1,12 @@
-// 바탕화면 비서: 위치 보정·펼침 창 배치·끌기/클릭 구분·결재 중복 처리·말풍선 우선순위 단위 테스트 — pnpm test
+// 바탕화면 비서: 위치 보정·펼침 창 배치·끌기/클릭 구분·결재 중복 처리·질문 답하기·말풍선 우선순위 단위 테스트 — pnpm test
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { EventEmitter } from 'node:events'
 import {
   addSettled,
+  checkPetAnswer,
   checkPetDecide,
+  fitsPetPanel,
   clampToArea,
   defaultPetBounds,
   InFlight,
@@ -13,7 +15,10 @@ import {
   PANEL_SIZE,
   petAlignFor,
   petCharRect,
+  petAnswer,
   petDecide,
+  petSkipQuestion,
+  PET_QUESTION_LIMIT,
   petLayout,
   petOpacity,
   petSize,
@@ -31,7 +36,8 @@ import {
   type PetApproval,
   type Rect,
 } from '../src/shared/deskPet.ts'
-import { DEFAULT_SETTINGS, type Approval, type AutoHandled, type Staff } from '../src/shared/types.ts'
+import { DEFAULT_SETTINGS, type Approval, type AutoHandled, type Staff, type StaffQuestion } from '../src/shared/types.ts'
+import { collectAnswers, isCompleteAnswer, togglePick } from '../src/shared/questionAnswer.ts'
 
 const PET_SIZE = petLayout(112).window
 
@@ -140,6 +146,123 @@ test('처리 함수가 예외를 내도 처리 중 표시가 풀린다', async (
   }
   await assert.rejects(petDecide(deps, 'a1', true))
   assert.equal(deps.inFlight.begin('a1'), true)
+})
+
+const opt = (label: string, description = '') => ({ label, description })
+const q = (question: string, n = 2, extra: Partial<StaffQuestion> = {}): StaffQuestion => ({ question, header: '', options: Array.from({ length: n }, (_, i) => opt(`선택${i + 1}`)), multiSelect: false, ...extra })
+
+test('질문 답 묶기(앱과 같은 규칙): 하나 고르기는 바꾸고 다시 누르면 풀림, 여러 개는 쉼표로, 직접 적은 답이 우선', () => {
+  let p = togglePick({}, 'A?', 'x', false)
+  p = togglePick(p, 'A?', 'y', false)
+  assert.deepEqual(p['A?'], ['y'])
+  assert.deepEqual(togglePick(p, 'A?', 'y', false)['A?'], [])
+  let m = togglePick({}, 'B?', 'x', true)
+  m = togglePick(m, 'B?', 'y', true)
+  const qs = [q('A?'), q('B?', 2, { multiSelect: true })]
+  assert.deepEqual(collectAnswers(qs, { ...p, ...m }, {}), { 'A?': 'y', 'B?': 'x, y' })
+  assert.deepEqual(collectAnswers(qs, { ...p, ...m }, { 'A?': '  직접  ' }), { 'A?': '직접', 'B?': 'x, y' })
+  // 하나라도 비면 보낼 수 없다 (빈칸만 적은 기타도 빈 답)
+  assert.equal(collectAnswers(qs, m, { 'A?': '   ' }), null)
+})
+
+test('질문 답 확인: 질문마다 빈칸 없는 문자열 하나, 모르는 질문·빠진 질문·문자열 아닌 값은 거른다', () => {
+  const qs = [q('A?'), q('B?')]
+  assert.equal(isCompleteAnswer(qs, { 'A?': '1', 'B?': '2' }), true)
+  assert.equal(isCompleteAnswer(qs, { 'A?': '1' }), false)
+  assert.equal(isCompleteAnswer(qs, { 'A?': '1', 'B?': ' ' }), false)
+  assert.equal(isCompleteAnswer(qs, { 'A?': '1', 'C?': '2' }), false)
+  assert.equal(isCompleteAnswer(qs, { 'A?': '1', 'B?': '2', 'C?': '3' }), false)
+  assert.equal(isCompleteAnswer(qs, { 'A?': '1', 'B?': 2 }), false)
+  for (const bad of [null, 'A', ['A?'], undefined]) assert.equal(isCompleteAnswer(qs, bad), false)
+})
+
+test('펼침 창 질문: 질문 1~2개·선택지 2~4개·짧은 글이면 여기서, 넘으면 앱에서 열기', () => {
+  const L = PET_QUESTION_LIMIT
+  assert.equal(fitsPetPanel([q('A?', 2)]), true)
+  assert.equal(fitsPetPanel([q('A?', 4), q('B?', 3, { multiSelect: true })]), true)
+  assert.equal(fitsPetPanel([]), false)
+  assert.equal(fitsPetPanel([q('A?', 1)]), false)
+  assert.equal(fitsPetPanel([q('A?', 5)]), false)
+  assert.equal(fitsPetPanel([q('A?'), q('B?'), q('C?')]), false)
+  assert.equal(fitsPetPanel([q('가'.repeat(L.question))]), true)
+  assert.equal(fitsPetPanel([q('가'.repeat(L.question + 1))]), false)
+  assert.equal(fitsPetPanel([{ ...q('A?'), options: [opt('가'.repeat(L.label)), opt('b')] }]), true)
+  assert.equal(fitsPetPanel([{ ...q('A?'), options: [opt('가'.repeat(L.label + 1)), opt('b')] }]), false)
+  assert.equal(fitsPetPanel([{ ...q('A?'), options: [opt('a', '가'.repeat(L.description)), opt('b')] }]), true)
+  assert.equal(fitsPetPanel([{ ...q('A?'), options: [opt('a', '가'.repeat(L.description + 1)), opt('b')] }]), false)
+  // 이모지는 한 글자로 센다
+  assert.equal(fitsPetPanel([q('😀'.repeat(L.question))]), true)
+  // 하나하나는 괜찮아도 합치면 길면 앱에서
+  const long = (n: string) => ({ ...q(n, 4), question: '가'.repeat(100), options: Array.from({ length: 4 }, (_, i) => opt(`${n}${i}`, '나'.repeat(60))) })
+  assert.equal(fitsPetPanel([long('A')]), true)
+  assert.equal(fitsPetPanel([long('A'), long('B')]), false)
+})
+
+test('질문 확인: 평소 결재는 답하기 길로 못 가고, 질문은 승인 길로 못 간다', () => {
+  const staff = staffWith([approval('a1'), approval('q1', { questions: [q('A?')] }), approval('q2', { questions: [q('A?', 6)] })])
+  assert.equal(checkPetAnswer(staff, 'q1'), 'ok')
+  assert.equal(checkPetAnswer(staff, 'q1', { 'A?': '선택1' }), 'ok')
+  assert.equal(checkPetAnswer(staff, 'q1', { 'A?': '' }), 'invalid')
+  assert.equal(checkPetAnswer(staff, 'a1', { 'A?': 'x' }), 'notQuestion')
+  assert.equal(checkPetAnswer(staff, 'q2', { 'A?': 'x' }), 'tooComplex')
+  assert.equal(checkPetAnswer(staff, 'zz'), 'already')
+  assert.equal(checkPetAnswer(staffWith([approval('q1', { questions: [q('A?')] })], 'external'), 'q1'), 'already')
+  assert.equal(checkPetDecide(staff, 'q1'), 'question')
+})
+
+test('질문 답하기: 앱과 같은 처리 함수로 한 번만, 다른 곳에서 먼저 답했으면 already, 거른 질문은 처리 함수를 부르지 않는다', async () => {
+  let pending = [approval('q1', { questions: [q('A?')] }), approval('a1')]
+  const calls: string[] = []
+  let release: () => void = () => {}
+  const gate = new Promise<void>((r) => (release = r))
+  const inFlight = new InFlight()
+  const deps = {
+    staff: () => staffWith(pending),
+    inFlight,
+    answerQuestion: async (id: string, answers: Record<string, string>) => {
+      calls.push(`${id}:${answers['A?']}`)
+      await gate
+      const had = pending.some((a) => a.id === id)
+      pending = pending.filter((a) => a.id !== id)
+      return had
+    },
+  }
+  const first = petAnswer(deps, 'q1', { 'A?': '선택1' })
+  // 답하는 중 같은 질문을 다시 답하거나 넘기면 busy (결재와 같은 InFlight)
+  assert.equal(await petAnswer(deps, 'q1', { 'A?': '선택2' }), 'busy')
+  assert.equal(await petSkipQuestion({ staff: deps.staff, inFlight, decide: () => true }, 'q1'), 'busy')
+  release()
+  assert.equal(await first, 'done')
+  assert.deepEqual(calls, ['q1:선택1'])
+  assert.equal(await petAnswer(deps, 'q1', { 'A?': '선택1' }), 'already')
+  assert.equal(await petAnswer(deps, 'a1', { 'A?': 'x' }), 'notQuestion')
+  assert.deepEqual(calls, ['q1:선택1'])
+  // 확인 뒤 다른 곳(앱·휴대폰)에서 먼저 답해 처리 함수가 false면 already, 처리 중 표시는 풀린다
+  const other = { staff: () => staffWith([approval('q3', { questions: [q('A?')] })]), inFlight: new InFlight(), answerQuestion: () => false }
+  assert.equal(await petAnswer(other, 'q3', { 'A?': '선택1' }), 'already')
+  assert.equal(other.inFlight.begin('q3'), true)
+})
+
+test('질문 넘기기: 앱의 넘기기와 같은 decide(id, false), 평소 결재는 이 길로 반려되지 않는다, 예외에도 처리 중 표시가 풀린다', async () => {
+  const decided: [string, boolean][] = []
+  const deps = { staff: () => staffWith([approval('q1', { questions: [q('A?')] }), approval('a1')]), inFlight: new InFlight(), decide: (id: string, allow: boolean) => (decided.push([id, allow]), true) }
+  assert.equal(await petSkipQuestion(deps, 'q1'), 'done')
+  assert.equal(await petSkipQuestion(deps, 'a1'), 'notQuestion')
+  assert.deepEqual(decided, [['q1', false]])
+  const boom = { ...deps, decide: () => { throw new Error('boom') } }
+  await assert.rejects(petSkipQuestion(boom, 'q1'))
+  assert.equal(boom.inFlight.begin('q1'), true)
+})
+
+test('처리 결과: 답하는 중인 질문이 스냅샷에서 먼저 빠져도 "다른 곳에서 처리됨"이 아니라 답함', () => {
+  const a = { ...approval('q1', { questions: [q('A?')] }), staffName: '김직원' } as PetApproval
+  const now = 1000
+  const vanished = settleVanished([], [a], [], new Set(['q1']), now)
+  assert.equal(vanished.length, 0)
+  const mine = addSettled(vanished, a, 'answered', now)
+  assert.deepEqual(mine.map((x) => x.kind), ['answered'])
+  assert.equal(settleVanished(mine, [a], [], new Set(), now).length, 1)
+  assert.deepEqual(addSettled(mine, a, 'skipped', now).map((x) => x.kind), ['skipped'])
 })
 
 test('말풍선 우선순위: 대답 중 → 답 → 새 결재 → 직원 업무', () => {

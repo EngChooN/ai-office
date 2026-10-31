@@ -6,14 +6,16 @@ import { cn } from '@/lib/utils'
 import { useOffice } from '@/store'
 import { SecretaryComposer } from '@/features/secretary/SecretaryChat'
 import { SecretaryFace } from '@/features/secretary/SecretaryFace'
+import { QuestionBox } from '@/features/QuestionBox'
 import { EMPTY_SECRETARY, type AutoHandled } from '@shared/types'
-import { addSettled, petApprovals, pruneSettled, recentAuto, settleVanished, type PetApproval, type PetOpenTarget, type PetSettled, type PetSettledKind } from '@shared/deskPet'
+import { addSettled, fitsPetPanel, petApprovals, pruneSettled, recentAuto, settleVanished, type PetApproval, type PetOpenTarget, type PetSettled, type PetSettledKind } from '@shared/deskPet'
 import { toolDisplayName } from '@shared/computerTools'
 import { maskSecrets } from '@shared/redact'
 import { t, trOr } from '@shared/i18n'
 
 // 펼침 창: 최근 비서 대화 · 입력창 · 결재 대기 목록 · 앱에서 열기 (docs/design/desktop-secretary/README.md "작은 창")
-// 바꾸는 일(확인 카드)은 여기서 실행하지 않고 앱의 비서 화면으로 넘긴다. 결재 승인·반려는 여기서 바로 (질문은 앱에서)
+// 바꾸는 일(확인 카드)은 여기서 실행하지 않고 앱의 비서 화면으로 넘긴다. 결재 승인·반려는 여기서 바로.
+// 직원 질문은 앱과 같은 답하기 화면(QuestionBox)으로 여기서 답하고, 너무 길거나 복잡하면(shared/deskPet.ts fitsPetPanel) 앱에서 열기로 넘긴다
 
 const pet = () => window.officePet!
 const open = (target: PetOpenTarget) => pet().openApp(target)
@@ -111,7 +113,9 @@ function useAutoLog() {
 /** 처리 중·실패는 아직 목록에 있는 결재에만 붙는다 (목록을 떠나면 settled가 맡는다) */
 type ItemState = { kind: 'busy' } | { kind: 'error' }
 
-const SETTLED_LABEL: Record<PetSettledKind, 'deskPet.didApprove' | 'deskPet.didReject' | 'deskPet.elsewhere'> = { approved: 'deskPet.didApprove', rejected: 'deskPet.didReject', elsewhere: 'deskPet.elsewhere' }
+const SETTLED_LABEL = { approved: 'deskPet.didApprove', rejected: 'deskPet.didReject', answered: 'deskPet.didAnswer', skipped: 'deskPet.didSkip', elsewhere: 'deskPet.elsewhere' } as const satisfies Record<PetSettledKind, string>
+/** 내가 처리했을 때 화면 읽기 프로그램에 알리는 말 */
+const DONE_ANNOUNCE = { approved: 'deskPet.approved', rejected: 'deskPet.rejected', answered: 'deskPet.answered', skipped: 'deskPet.skipped' } as const
 
 function autoLabel(h: AutoHandled) {
   return h.kind === 'answer' ? t('autoApprove.answered') : h.kind === 'skipped' ? t('autonomy.skipped') : h.kind === 'plan' ? t('autonomy.planApproved') : t('deskPet.autoApproved')
@@ -143,23 +147,29 @@ function ApprovalList({ approvals, isAuto, autoLog }: { approvals: PetApproval[]
     return () => clearTimeout(timer)
   }, [settled])
 
-  const decide = async (a: PetApproval, allow: boolean) => {
+  /** 결재 승인·반려, 질문 답하기·넘기기를 같은 흐름으로: 처리 중 표시 → 결과(내가 처리·다른 곳에서 처리됨·실패) */
+  const run = async (a: PetApproval, call: () => Promise<string>, doneKind: keyof typeof DONE_ANNOUNCE) => {
     busy.current.add(a.id)
     setStates((s) => ({ ...s, [a.id]: { kind: 'busy' } }))
     const settle = (kind: PetSettledKind) => setSettled((l) => addSettled(l, a, kind, Date.now()))
     // 처리하는 동안 스냅샷에서 이미 빠졌으면(settleVanished가 건너뛴 경우) 여기서 남긴다
     const isGone = () => !prev.current.some((x) => x.id === a.id)
     try {
-      const result = await pet().decide(a.id, allow)
+      const result = await call()
       if (result === 'done') {
-        settle(allow ? 'approved' : 'rejected')
-        setAnnounce(t(allow ? 'deskPet.approved' : 'deskPet.rejected', { title: titleOf(a) }))
+        settle(doneKind)
+        setAnnounce(t(DONE_ANNOUNCE[doneKind], { title: titleOf(a) }))
       } else if (result === 'busy') {
         // 같은 결재를 다른 곳(앱 등)에서 처리하는 중 — 결과는 스냅샷으로 온다
         if (isGone()) settle('elsewhere')
-      } else {
+      } else if (result === 'already') {
         settle('elsewhere')
         setAnnounce(t('deskPet.already'))
+      } else {
+        // 질문이 바뀌어 여기서 답할 수 없게 됨 (tooComplex·invalid 등) — 앱에서 답하도록 실패로 남긴다
+        setStates((s) => ({ ...s, [a.id]: { kind: 'error' } }))
+        setAnnounce(t('deskPet.failed'))
+        return
       }
       setStates(({ [a.id]: _, ...rest }) => rest)
     } catch {
@@ -170,12 +180,15 @@ function ApprovalList({ approvals, isAuto, autoLog }: { approvals: PetApproval[]
       busy.current.delete(a.id)
     }
   }
+  const decide = (a: PetApproval, allow: boolean) => run(a, () => pet().decide(a.id, allow), allow ? 'approved' : 'rejected')
 
   const settledOf = new Map(settled.map((x) => [x.approval.id, x]))
   const shown = [...approvals, ...settled.map((x) => x.approval).filter((g) => !approvals.some((a) => a.id === g.id))]
   const autos = recentAuto(autoLog, Date.now())
+  // 여기서 답할 질문이 있으면 결재 칸을 넓혀 선택지·답하기 버튼이 한눈에 들어오게 (최근 대화 칸이 줄어든다)
+  const hasInlineQuestion = approvals.some((a) => a.questions?.length && fitsPetPanel(a.questions))
   return (
-    <section aria-labelledby="pet-approvals" className="flex max-h-[45%] min-h-0 flex-col gap-2">
+    <section aria-labelledby="pet-approvals" className={cn('flex min-h-0 flex-col gap-2', hasInlineQuestion ? 'max-h-[60%]' : 'max-h-[45%]')}>
       <h2 id="pet-approvals" className="flex items-center gap-2 text-[14px] font-semibold">
         {t('deskPet.pending', { n: approvals.length })}
         {isAuto && (
@@ -197,6 +210,23 @@ function ApprovalList({ approvals, isAuto, autoLog }: { approvals: PetApproval[]
               </p>
               {done ? (
                 <span className="text-muted-foreground text-xs font-medium">{t(SETTLED_LABEL[done.kind])}</span>
+              ) : a.questions?.length && fitsPetPanel(a.questions) ? (
+                // 처리 중에는 통째로 막아 두 번 보내지 않게 (fieldset disabled는 안의 버튼·입력칸을 모두 끈다)
+                <fieldset disabled={state?.kind === 'busy'} aria-busy={state?.kind === 'busy'} className="flex min-w-0 flex-col gap-2">
+                  <QuestionBox
+                    approval={a}
+                    isCompact
+                    onAnswer={(answers) => void run(a, () => pet().answer(a.id, answers), 'answered')}
+                    onSkip={() => void run(a, () => pet().skip(a.id), 'skipped')}
+                  />
+                  <div className="flex items-center gap-2">
+                    {state?.kind === 'busy' && <span className="text-muted-foreground flex-1 text-xs">{t('deskPet.busy')}</span>}
+                    {state?.kind === 'error' && <span className="text-destructive flex-1 text-xs">{t('deskPet.failed')}</span>}
+                    <Button size="sm" variant="ghost" className="ml-auto min-w-11" aria-label={t('deskPet.openOf', { title })} onClick={() => open({ kind: 'staff', staffId: a.staffId })}>
+                      {t('deskPet.openApp')}
+                    </Button>
+                  </div>
+                </fieldset>
               ) : a.questions?.length ? (
                 <div className="flex items-center gap-2">
                   <span className="text-muted-foreground flex-1 text-xs">{t('deskPet.question')}</span>
