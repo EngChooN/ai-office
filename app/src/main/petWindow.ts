@@ -43,21 +43,23 @@ export interface PetDeps {
 
 const POS_FILE = () => path.join(app.getPath('userData'), 'desk-pet.json')
 
-function loadPos(): Rect | null {
+function loadPos(): (Rect & { align?: PetAlign }) | null {
   try {
-    const p = JSON.parse(fs.readFileSync(POS_FILE(), 'utf8')) as Partial<Record<keyof Rect, unknown>>
+    const p = JSON.parse(fs.readFileSync(POS_FILE(), 'utf8')) as Partial<Record<keyof Rect | 'align', unknown>>
     if (typeof p.x !== 'number' || typeof p.y !== 'number') return null
     // 크기 없이 저장된 예전 기록은 지금 크기로 본다 (open에서 resizePet이 다시 잰다)
     const { window } = petLayout(PET_SIZE_RANGE.default)
-    return { x: p.x, y: p.y, width: typeof p.width === 'number' ? p.width : window.width, height: typeof p.height === 'number' ? p.height : window.height }
+    const align = p.align === 'left' || p.align === 'right' ? p.align : undefined
+    return { x: p.x, y: p.y, width: typeof p.width === 'number' ? p.width : window.width, height: typeof p.height === 'number' ? p.height : window.height, align }
   } catch {
     return null
   }
 }
 
-function savePos(b: Rect) {
+/** 서는 쪽도 함께 기억한다 — 같은 창 위치라도 서는 쪽에 따라 캐릭터 자리가 달라서 */
+function savePos(b: Rect, align: PetAlign) {
   try {
-    fs.writeFileSync(POS_FILE(), JSON.stringify({ x: b.x, y: b.y, width: b.width, height: b.height }))
+    fs.writeFileSync(POS_FILE(), JSON.stringify({ x: b.x, y: b.y, width: b.width, height: b.height, align }))
   } catch {
     // 위치 저장 실패는 다음에 기본 위치로 뜰 뿐이다
   }
@@ -114,7 +116,7 @@ export class PetWindows {
       this.deps.setOn(true)
       return
     }
-    this.place(defaultPetBounds(screen.getPrimaryDisplay().workArea, this.size))
+    this.place(defaultPetBounds(screen.getPrimaryDisplay().workArea, this.size), 'right')
     this.pet.showInactive()
   }
 
@@ -139,11 +141,12 @@ export class PetWindows {
     this.register()
     const saved = this.isResetNext ? null : loadPos()
     this.isResetNext = false
-    const start = saved ? resizePet(saved, areaOf(saved), this.size) : defaultPetBounds(screen.getPrimaryDisplay().workArea, this.size)
+    // 다시 불러오기(기본 위치)는 오른쪽 아래라 오른쪽에 선다
+    this.align = saved ? (saved.align ?? petAlignFor(saved, areaOf(saved))) : 'right'
+    const start = saved ? resizePet(saved, areaOf(saved), this.size, this.align) : defaultPetBounds(screen.getPrimaryDisplay().workArea, this.size)
     const bounds = clampToArea(start, areaOf(start))
     // 보정·다시 불러오기로 바뀐 위치를 기억한다 (다음에 켤 때 예전 위치로 돌아가지 않게)
-    savePos(bounds)
-    this.align = petAlignFor(bounds, areaOf(bounds))
+    savePos(bounds, this.align)
     const pet = new BrowserWindow({
       ...bounds,
       frame: false,
@@ -182,17 +185,22 @@ export class PetWindows {
     win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true, skipTransformProcessType: true })
   }
 
-  /** 캐릭터 창을 옮기고 위치를 기억한다. 펼침 창이 열려 있으면 따라간다 */
-  private place(bounds: Rect) {
+  /** 캐릭터 창을 옮기고 위치·서는 쪽을 기억한다. 펼침 창이 열려 있으면 따라간다 (서는 쪽은 창 위치에서 다시 재지 않는다 — settlePet 참고) */
+  private place(bounds: Rect, align: PetAlign) {
     if (!this.pet) return
     this.pet.setBounds(bounds)
-    savePos(bounds)
-    const align = petAlignFor(bounds, areaOf(bounds))
+    savePos(bounds, align)
     if (align !== this.align) {
       this.align = align
       this.sendAlign()
     }
     if (this.isPanelWanted && this.panel) this.panel.setBounds(this.panelBounds())
+  }
+
+  /** 놓은 뒤·화면 변경 뒤: 화면 안으로 넣고 가장자리에 붙이며, 서는 쪽은 settlePet이 정한 대로 */
+  private placeSettled(b: Rect) {
+    const { bounds, align } = settlePet(b, areaOf(b), this.size, this.align)
+    this.place(bounds, align)
   }
 
   private sendAlign() {
@@ -204,7 +212,7 @@ export class PetWindows {
     if (!this.pet) return
     this.size = size
     const b = this.pet.getBounds()
-    this.place(resizePet(b, areaOf(b), size))
+    this.place(resizePet(b, areaOf(b), size, this.align), this.align)
   }
 
   private panelBounds(): Rect {
@@ -278,7 +286,7 @@ export class PetWindows {
   private refitNow() {
     if (!this.pet || this.dragFrom) return
     const b = this.pet.getBounds()
-    this.place(settlePet(b, areaOf(b), this.size, this.align).bounds)
+    this.placeSettled(b)
   }
 
   /** 보낸 창이 캐릭터·펼침 창일 때만 받는다 (앱 창·다른 창이 pet:* 를 부르지 못하게) */
@@ -308,7 +316,7 @@ export class PetWindows {
       if (!this.pet) return
       // 화면 안으로 넣고, 가장자리 가까이 놓았으면 붙인다
       const b = this.pet.getBounds()
-      this.place(settlePet(b, areaOf(b), this.size, this.align).bounds)
+      this.placeSettled(b)
     })
     this.on('pet:togglePanel', () => (this.isPanelWanted ? this.hidePanel() : this.showPanel()))
     this.on('pet:closePanel', () => this.hidePanel())

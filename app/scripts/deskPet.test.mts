@@ -191,15 +191,15 @@ test('크기: 80·112·160에서 그림·창·장식이 함께 커지고 비율�
 
 test('크기 바꾸기: 캐릭터가 선 쪽 가장자리·아래쪽을 지키고 화면 밖으로 나가지 않는다', () => {
   const right = defaultPetBounds(AREA, 112)
-  const big = resizePet(right, AREA, 160)
+  const big = resizePet(right, AREA, 160, 'right')
   assert.equal(big.x + big.width, right.x + right.width)
   assert.equal(big.y + big.height, right.y + right.height)
   const left = { ...petLayout(112).window, x: 0, y: 25 }
-  const leftBig = resizePet(left, AREA, 160)
+  const leftBig = resizePet(left, AREA, 160, 'left')
   assert.equal(leftBig.x, 0)
   // 화면 위쪽 끝에서 키우면 아래로 밀지 않고 화면 안으로
   assert.ok(inside(leftBig, AREA))
-  for (const size of [80, 112, 160]) for (const b of [right, left, { ...right, x: 1300, y: 800 }]) assert.ok(inside(resizePet(b, AREA, size), AREA), `${size}`)
+  for (const size of [80, 112, 160]) for (const b of [right, left, { ...right, x: 1300, y: 800 }]) for (const align of ['left', 'right'] as const) assert.ok(inside(resizePet(b, AREA, size, align), AREA), `${size}`)
 })
 
 test('캐릭터 위치: 가까운 가장자리 쪽에 서고, 펼침 창은 창이 아니라 캐릭터 옆 12px', () => {
@@ -239,6 +239,36 @@ test('가장자리 붙기: 서는 쪽이 바뀌어도 캐릭터는 놓은 자리
   const r = settlePet(dropped, AREA, 112, 'right')
   assert.equal(r.align, 'left')
   assert.equal(petCharRect(r.bounds, 112, r.align).x, before.x)
+})
+
+test('가장자리 붙기: 화면 가운데를 가로질러 놓아도 캐릭터가 튀지 않고, 창 위치와 서는 쪽이 맞는다', () => {
+  const area = { x: 0, y: 0, width: 1440, height: 900 }
+  for (const size of [80, 112, 160]) {
+    const w = petLayout(size).window
+    for (const prevAlign of ['left', 'right'] as const) {
+      // 화면 왼쪽 끝에서 오른쪽 끝까지 끌어 놓기 (가운데 근처는 촘촘히)
+      for (let x = -w.width; x <= area.width; x += 4) {
+        const dropped = { ...w, x, y: 300 }
+        const before = petCharRect(dropped, size, prevAlign)
+        const r = settlePet(dropped, area, size, prevAlign)
+        const after = petCharRect(r.bounds, size, r.align)
+        const msg = `${size}px ${prevAlign} x=${x}`
+        // 가장자리 붙기·화면 안으로 넣기 말고는 캐릭터가 놓은 자리에 있다 (붙기는 SNAP_DISTANCE 안)
+        const isAdjusted = r.bounds.x === area.x || r.bounds.x === area.width - w.width
+        if (!isAdjusted) assert.equal(after.x, before.x, msg)
+        else assert.ok(Math.abs(after.x - before.x) <= SNAP_DISTANCE || dropped.x < 0 || dropped.x > area.width - w.width, msg)
+        // 서는 쪽은 캐릭터가 화면 어느 쪽 절반에 있는지와 같다
+        assert.equal(r.align, after.x + after.width / 2 < area.width / 2 ? 'left' : 'right', msg)
+        // 다시 맞춰도(화면 변경·잠자기 복귀) 그대로 — 두 번째 보정에서 튀지 않는다
+        assert.deepEqual(settlePet(r.bounds, area, size, r.align), r, msg)
+      }
+    }
+  }
+  // 리뷰 재현값: 오른쪽에 서 있던 캐릭터를 가운데 조금 왼쪽에 놓음
+  const w = petLayout(112).window
+  const dropped = { ...w, x: 580, y: 300 }
+  const r = settlePet(dropped, area, 112, 'right')
+  assert.equal(petCharRect(r.bounds, 112, r.align).x, petCharRect(dropped, 112, 'right').x)
 })
 
 test('모니터: 왼쪽 보조 모니터(음수 좌표)에서도 그 화면 안에 붙고, 모니터를 빼면 남은 화면 안으로', () => {

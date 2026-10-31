@@ -67,7 +67,7 @@ export function petCharRect(win: Rect, size: number, align: PetAlign): Rect {
   return { ...char, x: align === 'left' ? win.x + pad : win.x + win.width - pad - char.width, y: win.y + win.height - CHAR_BOTTOM - char.height }
 }
 
-/** 창이 화면 왼쪽·오른쪽 중 어느 쪽에 가까운지 */
+/** 창이 화면 왼쪽·오른쪽 중 어느 쪽에 가까운지 — 서는 쪽을 모를 때(서는 쪽 없이 저장된 예전 위치)만 쓴다 */
 export const petAlignFor = (win: Rect, area: Rect): PetAlign => (win.x + win.width / 2 < area.x + area.width / 2 ? 'left' : 'right')
 
 /** 누른 곳에서 움직인 거리가 끌기인지 */
@@ -89,22 +89,27 @@ export function defaultPetBounds(area: Rect, size: number): Rect {
 }
 
 /** 크기를 바꾸면 캐릭터가 선 쪽 가장자리와 아래쪽을 그대로 두고 창을 다시 잰다 (화면 밖으로 나가지 않게) */
-export function resizePet(win: Rect, area: Rect, size: number): Rect {
+export function resizePet(win: Rect, area: Rect, size: number, align: PetAlign): Rect {
   const { window } = petLayout(size)
-  const x = petAlignFor(win, area) === 'left' ? win.x : win.x + win.width - window.width
+  const x = align === 'left' ? win.x : win.x + win.width - window.width
   return clampToArea({ ...window, x, y: win.y + win.height - window.height }, area)
 }
 
-/** 놓은 뒤 위치: 서는 쪽이 바뀌면 캐릭터가 제자리에 있게 창을 옮기고, 화면 안으로 넣은 뒤, 가장자리에 가까우면 붙인다 */
+/**
+ * 놓은 뒤 위치: 서는 쪽이 바뀌면 캐릭터가 제자리에 있게 창을 옮기고, 화면 안으로 넣은 뒤, 가장자리에 가까우면 붙인다.
+ * 서는 쪽은 창이 아니라 캐릭터(지금 보이는 자리)의 가운데로 정한다 — 창 가운데로 정하면 창을 옮긴 뒤 다시 잴 때
+ * 서는 쪽이 되돌아가 캐릭터가 튄다. 그래서 돌려준 align을 창 위치에서 다시 계산하지 말고 그대로 써야 한다
+ */
 export function settlePet(win: Rect, area: Rect, size: number, prevAlign: PetAlign): { bounds: Rect; align: PetAlign } {
-  const align = petAlignFor(win, area)
+  const char = petCharRect(win, size, prevAlign)
+  const align: PetAlign = char.x + char.width / 2 < area.x + area.width / 2 ? 'left' : 'right'
   const shift = petCharRect(win, size, prevAlign).x - petCharRect(win, size, align).x
   const b = clampToArea({ ...win, x: win.x + shift }, area)
   const right = area.x + area.width - b.width
   const bottom = area.y + area.height - b.height
   const x = b.x - area.x <= SNAP_DISTANCE ? area.x : right - b.x <= SNAP_DISTANCE ? right : b.x
   const y = b.y - area.y <= SNAP_DISTANCE ? area.y : bottom - b.y <= SNAP_DISTANCE ? bottom : b.y
-  return { bounds: { ...b, x, y }, align: petAlignFor({ ...b, x, y }, area) }
+  return { bounds: { ...b, x, y }, align }
 }
 
 /** 펼침 창 위치: 캐릭터 옆(왼쪽 우선, 모자라면 오른쪽), 캐릭터 아래쪽에 맞춘다. 높이가 모자라면 줄이고 안에서 스크롤한다 */
