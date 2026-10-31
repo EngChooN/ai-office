@@ -83,6 +83,15 @@ test('펼침 창: 화면 안·여백 12px 안에 들어가고, 낮은 화면이�
   assert.equal(placePanel({ x: 1100, y: 100, ...PET_SIZE }, low).height, 400 - SCREEN_MARGIN * 2)
 })
 
+test('펼침 창: 좁은 화면(양옆 모두 400px이 안 남음)에서도 화면 안에 들어간다', () => {
+  const narrow = { x: 0, y: 0, width: 700, height: 600 }
+  for (const x of [0, 250, 300, 628]) {
+    const p = placePanel({ x, y: 400, ...PET_SIZE }, narrow)
+    assert.equal(p.width, PANEL_SIZE.width)
+    assert.ok(p.x >= SCREEN_MARGIN && p.x + p.width <= narrow.width - SCREEN_MARGIN, `x ${p.x}`)
+  }
+})
+
 test('끌기와 클릭: 기준 거리 이하면 클릭, 넘으면 끌기', () => {
   assert.equal(isDragMove(0, 0), false)
   assert.equal(isDragMove(3, 3), false)
@@ -292,7 +301,7 @@ test('질문 넘기기: 앱의 넘기기와 같은 decide(id, false), 평소 결
 })
 
 test('처리 결과: 답하는 중인 질문이 스냅샷에서 먼저 빠져도 "다른 곳에서 처리됨"이 아니라 답함', () => {
-  const a = { ...approval('q1', { questions: [q('A?')] }), staffName: '김직원' } as PetApproval
+  const a = { ...approval('q1', { questions: [q('A?')] }), staffName: '김직원', staffRole: '개발' } as PetApproval
   const now = 1000
   const vanished = settleVanished([], [a], [], new Set(['q1']), now)
   assert.equal(vanished.length, 0)
@@ -474,7 +483,7 @@ test('화면·전원 이벤트: 켤 때 모두 걸고(모니터 연결·분리·
   assert.equal(n, 5)
 })
 
-const pa = (id: string): PetApproval => ({ ...approval(id), staffName: '김직원' })
+const pa = (id: string): PetApproval => ({ ...approval(id), staffName: '김직원', staffRole: '개발' })
 
 test('처리 결과: 다른 곳에서 처리돼 빠진 결재는 "다른 곳에서 처리됨"으로 4초만 남는다', () => {
   const t0 = 1000

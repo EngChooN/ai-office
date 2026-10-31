@@ -15,6 +15,7 @@ import {
   petLayout,
   petOpacity,
   petSize,
+  PANEL_SIZE,
   PET_SIZE_RANGE,
   placePanel,
   REFIT_EVENTS,
@@ -229,8 +230,8 @@ export class PetWindows {
   private ensurePanel(): BrowserWindow {
     if (this.panel && !this.panel.isDestroyed()) return this.panel
     const panel = new BrowserWindow({
-      width: 340,
-      height: 520,
+      width: PANEL_SIZE.width,
+      height: PANEL_SIZE.maxHeight,
       frame: false,
       resizable: false,
       minimizable: false,

@@ -645,6 +645,14 @@
   animation: confetti-fall 2.4s ease-in forwards;
 }
 
+/* 바탕화면 비서 펼침 창 (docs/design/desktop-secretary/panel-concepts D2): 작은 글자가 많아 보조 글자·선을 진하게.
+   테마마다 색이 달라 고정값 대신 글자색과 바탕색을 섞는다 (라벤더 다크 ≈ 11:1, 라이트 ≈ 7:1) */
+.pet-panel {
+  --muted-foreground: color-mix(in oklab, var(--foreground) 74%, var(--background));
+  --border: color-mix(in oklab, var(--foreground) 22%, var(--background));
+  --input: color-mix(in oklab, var(--foreground) 38%, var(--background));
+}
+
 /* 바탕화면 비서 캐릭터 움직임 (shared/deskPet.ts PET_MOTION · docs/design/desktop-secretary/README.md 동작 제안표)
    동작 시간은 PET_MOTION이 CSS 변수로 넘긴다 (petMotionVars) — 여기 기본값은 변수가 없을 때만
    그림 한 장을 발밑 기준으로 움직이고, steps로 끊어 도트 그림처럼 보이게 한다. 클릭 영역(button)·말풍선은 움직이지 않는다 */

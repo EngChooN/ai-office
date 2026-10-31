@@ -24,7 +24,7 @@ const BUBBLE_SPACE = 128
 /** 창 아래쪽과 캐릭터 사이 */
 const CHAR_BOTTOM = 4
 /** 펼침 창 크기 (높이는 화면이 모자라면 줄인다) */
-export const PANEL_SIZE = { width: 340, maxHeight: 520, minHeight: 240 } as const
+export const PANEL_SIZE = { width: 400, maxHeight: 520, minHeight: 240 } as const
 /** 화면 가장자리·캐릭터와 띄우는 거리 */
 export const SCREEN_MARGIN = 12
 /** 놓은 곳이 화면 가장자리에서 이만큼(px) 안이면 가장자리에 붙인다 */
@@ -144,13 +144,14 @@ export const REFIT_EVENTS = { screen: ['display-added', 'display-removed', 'disp
 
 export interface PetApproval extends Approval {
   staffName: string
+  staffRole: string
 }
 
 /** 대기 중인 결재 (오래된 것부터). 고용 직원 것만 — 외부 직원 질문은 원래 창에서 답한다 */
 export function petApprovals(staff: Staff[]): PetApproval[] {
   return staff
     .filter((s) => s.kind === 'hired')
-    .flatMap((s) => s.approvals.map((a) => ({ ...a, staffName: s.name })))
+    .flatMap((s) => s.approvals.map((a) => ({ ...a, staffName: s.name, staffRole: s.role })))
     .sort((a, b) => a.createdAt - b.createdAt)
 }
 

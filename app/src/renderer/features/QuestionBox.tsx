@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { SendIcon, SquareIcon } from 'lucide-react'
+import { CheckIcon, SendIcon, SquareIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
@@ -63,10 +63,17 @@ export function QuestionBox({
                   type="button"
                   aria-pressed={isOn}
                   onClick={() => toggle(q.question, o.label, q.multiSelect)}
-                  className={cn('rounded-lg border px-3 py-1.5 text-left text-xs', isOn ? 'border-primary bg-primary/10' : 'hover:bg-accent')}
+                  className={cn(
+                    'border text-left text-xs',
+                    // 펼침 창: 고른 것을 색만이 아니라 체크·굵은 테두리·굵은 글씨로도 구분 (docs/design/desktop-secretary/panel-concepts D2)
+                    isCompact ? cn('flex items-start gap-2 rounded-2xl px-3 py-2', isOn ? 'border-primary bg-accent ring-primary font-semibold ring-1' : 'border-input hover:bg-accent') : cn('rounded-lg px-3 py-1.5', isOn ? 'border-primary bg-primary/10' : 'hover:bg-accent'),
+                  )}
                 >
-                  <div className="font-medium">{o.label}</div>
-                  {o.description && <div className="text-muted-foreground">{o.description}</div>}
+                  {isCompact && <CheckIcon aria-hidden className={cn('text-primary mt-px size-3.5 shrink-0', !isOn && 'invisible')} />}
+                  <div className="min-w-0">
+                    <div className={isCompact && isOn ? 'font-semibold' : 'font-medium'}>{o.label}</div>
+                    {o.description && <div className="text-muted-foreground font-normal">{o.description}</div>}
+                  </div>
                 </button>
               )
             })}

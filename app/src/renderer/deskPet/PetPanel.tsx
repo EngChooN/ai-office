@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { EyeOffIcon, XIcon } from 'lucide-react'
+import { ArrowUpRightIcon, EyeOffIcon, XIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Markdown } from '@/components/markdown'
 import { cn } from '@/lib/utils'
@@ -31,9 +31,14 @@ export function PetPanel() {
   const approvals = useMemo(() => petApprovals(staff), [staff])
   const messages = secretary.messages.slice(-RECENT_MAX)
   const listRef = useRef<HTMLDivElement>(null)
+  const chatEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    const off = pet().onPanelShown(() => document.querySelector<HTMLTextAreaElement>('textarea')?.focus())
+    // 열 때마다 맨 위(결재)부터 보이고 입력창에 바로 적을 수 있게
+    const off = pet().onPanelShown(() => {
+      listRef.current?.scrollTo({ top: 0 })
+      document.querySelector<HTMLTextAreaElement>('textarea')?.focus()
+    })
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') pet().closePanel()
     }
@@ -43,26 +48,40 @@ export function PetPanel() {
       window.removeEventListener('keydown', onKey)
     }
   }, [])
-  // 새 말이 오면 맨 아래로
+  // 새 말이 오면 대화 끝이 보이게 (처음 그릴 때는 결재가 보이도록 건너뛴다)
+  const isFirst = useRef(true)
   useEffect(() => {
-    listRef.current?.scrollTo({ top: listRef.current.scrollHeight })
+    if (isFirst.current) {
+      isFirst.current = false
+      return
+    }
+    chatEndRef.current?.scrollIntoView({ block: 'end' })
   }, [messages.length, secretary.isBusy])
 
+  // 평평한 목록 (docs/design/desktop-secretary/panel-concepts D2): 머리줄 · [결재들 · 비서 대화]만 스크롤 · 입력창은 아래 고정
   return (
-    <div className="bg-background text-foreground flex h-screen flex-col gap-4 p-4 text-[13px]">
-      <header className="flex items-center gap-2 [-webkit-app-region:drag]">
+    <div className="pet-panel bg-background text-foreground flex h-screen flex-col text-[13px]">
+      <header className="flex items-center gap-2 border-b px-3 py-2.5 [-webkit-app-region:drag]">
         <SecretaryFace className="size-7" />
-        <h1 className="flex-1 text-[15px] font-semibold">{t('secretary.name')}</h1>
-        <Button size="icon" variant="ghost" className="[-webkit-app-region:no-drag]" aria-label={t('deskPet.hide')} title={`${t('deskPet.hide')} — ${t('deskPet.hideHint')}`} onClick={() => pet().hide()}>
+        <h1 className="flex-1 truncate text-[15px] font-semibold">{t('secretary.name')}</h1>
+        {approvals.length > 0 && <span className="shrink-0 rounded-full border px-2 py-0.5 text-xs font-medium">{t('deskPet.pending', { n: approvals.length })}</span>}
+        <Button size="sm" variant="outline" className="shrink-0 rounded-full [-webkit-app-region:no-drag]" onClick={() => open({ kind: 'secretary' })}>
+          {t('deskPet.openApp')}
+          <ArrowUpRightIcon />
+        </Button>
+        <Button size="icon" variant="ghost" className="size-8 shrink-0 [-webkit-app-region:no-drag]" aria-label={t('deskPet.hide')} title={`${t('deskPet.hide')} — ${t('deskPet.hideHint')}`} onClick={() => pet().hide()}>
           <EyeOffIcon />
         </Button>
-        <Button size="icon" variant="ghost" className="[-webkit-app-region:no-drag]" aria-label={t('deskPet.close')} onClick={() => pet().closePanel()}>
+        <Button size="icon" variant="ghost" className="size-8 shrink-0 [-webkit-app-region:no-drag]" aria-label={t('deskPet.close')} onClick={() => pet().closePanel()}>
           <XIcon />
         </Button>
       </header>
 
-      <section aria-label={t('deskPet.recent')} className="flex min-h-24 flex-1 flex-col gap-2">
-        <div ref={listRef} className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">
+      <div ref={listRef} className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4">
+        <ApprovalList approvals={approvals} isAuto={isAuto} autoLog={autoLog} />
+
+        <section aria-label={t('deskPet.recent')} className="flex flex-col gap-2 py-3">
+          <h2 className="text-muted-foreground text-xs font-semibold">{t('secretary.name')}</h2>
           {messages.length === 0 && <p className="text-muted-foreground">{t('deskPet.empty')}</p>}
           {messages.map((m) => (
             <div key={m.id} className={cn('max-w-[90%] rounded-xl px-3 py-2', m.role === 'me' ? 'bg-primary text-primary-foreground self-end' : 'bg-muted self-start', m.isError && 'text-destructive')}>
@@ -78,15 +97,13 @@ export function PetPanel() {
             </div>
           ))}
           {secretary.isBusy && <p className="text-muted-foreground self-start">{secretary.activity || t('deskPet.thinking')}</p>}
-        </div>
+          <div ref={chatEndRef} />
+        </section>
+      </div>
+
+      <div className="border-t px-3 py-2.5">
         <SecretaryComposer />
-      </section>
-
-      <ApprovalList approvals={approvals} isAuto={isAuto} autoLog={autoLog} />
-
-      <Button variant="outline" className="h-9" onClick={() => open({ kind: 'secretary' })}>
-        {t('deskPet.openApp')}
-      </Button>
+      </div>
     </div>
   )
 }
@@ -185,32 +202,37 @@ function ApprovalList({ approvals, isAuto, autoLog }: { approvals: PetApproval[]
   const settledOf = new Map(settled.map((x) => [x.approval.id, x]))
   const shown = [...approvals, ...settled.map((x) => x.approval).filter((g) => !approvals.some((a) => a.id === g.id))]
   const autos = recentAuto(autoLog, Date.now())
-  // 여기서 답할 질문이 있으면 결재 칸을 넓혀 선택지·답하기 버튼이 한눈에 들어오게 (최근 대화 칸이 줄어든다)
-  const hasInlineQuestion = approvals.some((a) => a.questions?.length && fitsPetPanel(a.questions))
   return (
-    <section aria-labelledby="pet-approvals" className={cn('flex min-h-0 flex-col gap-2', hasInlineQuestion ? 'max-h-[60%]' : 'max-h-[45%]')}>
-      <h2 id="pet-approvals" className="flex items-center gap-2 text-[14px] font-semibold">
+    <section aria-labelledby="pet-approvals" className="flex flex-col border-b">
+      {/* 건수는 머리줄 배지가 보여 준다 — 여기 제목은 화면 읽기용 */}
+      <h2 id="pet-approvals" className="sr-only">
         {t('deskPet.pending', { n: approvals.length })}
-        {isAuto && (
-          <span className="text-muted-foreground rounded-full border px-2 py-0.5 text-[11px] font-normal" title={t('deskPet.autoOnHint')}>
-            {t('deskPet.autoOn')}
-          </span>
-        )}
       </h2>
-      <div className="flex min-h-0 flex-col gap-2 overflow-y-auto">
-        {shown.length === 0 && <p className="text-muted-foreground">{t('deskPet.none')}</p>}
+      {isAuto && (
+        <p className="text-muted-foreground pt-3 text-xs" title={t('deskPet.autoOnHint')}>
+          {t('deskPet.autoOn')}
+        </p>
+      )}
+      <div className="divide-y">
+        {shown.length === 0 && <p className="text-muted-foreground py-3">{t('deskPet.none')}</p>}
         {shown.map((a) => {
           const done = settledOf.get(a.id)
           const state: ItemState | undefined = states[a.id]
           const title = titleOf(a)
+          const summary = trOr(a.summaryI18n, a.summary)
+          const isInline = !done && !!a.questions?.length && fitsPetPanel(a.questions)
           return (
-            <div key={a.id} className="bg-card flex flex-col gap-2 rounded-xl border p-3">
-              <p className="line-clamp-2 break-words" title={title}>
-                {title}
-              </p>
+            <div key={a.id} className="flex flex-col gap-2 py-3">
+              <p className="text-muted-foreground truncate text-xs">{[a.staffName, a.staffRole].filter(Boolean).join(' · ')}</p>
+              {/* 여기서 답할 질문은 질문 글이 곧 제목 (QuestionBox가 보여 준다) */}
+              {!isInline && (
+                <p className="line-clamp-2 text-[14px] font-semibold break-words" title={summary}>
+                  {summary}
+                </p>
+              )}
               {done ? (
                 <span className="text-muted-foreground text-xs font-medium">{t(SETTLED_LABEL[done.kind])}</span>
-              ) : a.questions?.length && fitsPetPanel(a.questions) ? (
+              ) : isInline ? (
                 // 처리 중에는 통째로 막아 두 번 보내지 않게 (fieldset disabled는 안의 버튼·입력칸을 모두 끈다)
                 <fieldset disabled={state?.kind === 'busy'} aria-busy={state?.kind === 'busy'} className="flex min-w-0 flex-col gap-2">
                   <QuestionBox
@@ -219,13 +241,8 @@ function ApprovalList({ approvals, isAuto, autoLog }: { approvals: PetApproval[]
                     onAnswer={(answers) => void run(a, () => pet().answer(a.id, answers), 'answered')}
                     onSkip={() => void run(a, () => pet().skip(a.id), 'skipped')}
                   />
-                  <div className="flex items-center gap-2">
-                    {state?.kind === 'busy' && <span className="text-muted-foreground flex-1 text-xs">{t('deskPet.busy')}</span>}
-                    {state?.kind === 'error' && <span className="text-destructive flex-1 text-xs">{t('deskPet.failed')}</span>}
-                    <Button size="sm" variant="ghost" className="ml-auto min-w-11" aria-label={t('deskPet.openOf', { title })} onClick={() => open({ kind: 'staff', staffId: a.staffId })}>
-                      {t('deskPet.openApp')}
-                    </Button>
-                  </div>
+                  {state?.kind === 'busy' && <span className="text-muted-foreground text-xs">{t('deskPet.busy')}</span>}
+                  {state?.kind === 'error' && <span className="text-destructive text-xs">{t('deskPet.failed')}</span>}
                 </fieldset>
               ) : a.questions?.length ? (
                 <div className="flex items-center gap-2">
@@ -242,9 +259,6 @@ function ApprovalList({ approvals, isAuto, autoLog }: { approvals: PetApproval[]
                   <Button size="sm" variant="outline" className="min-w-11" disabled={state?.kind === 'busy'} aria-label={t('deskPet.rejectOf', { title })} onClick={() => void decide(a, false)}>
                     {t('deskPet.reject')}
                   </Button>
-                  <Button size="sm" variant="ghost" className="ml-auto min-w-11" aria-label={t('deskPet.openOf', { title })} onClick={() => open({ kind: 'staff', staffId: a.staffId })}>
-                    {t('deskPet.openApp')}
-                  </Button>
                   {state?.kind === 'error' && <p className="text-destructive w-full text-xs">{t('deskPet.failed')}</p>}
                 </div>
               )}
@@ -252,7 +266,7 @@ function ApprovalList({ approvals, isAuto, autoLog }: { approvals: PetApproval[]
           )
         })}
         {autos.length > 0 && (
-          <div className="flex flex-col gap-1.5" aria-label={t('deskPet.autoList')}>
+          <div className="flex flex-col gap-1.5 py-3" aria-label={t('deskPet.autoList')}>
             <h3 className="text-muted-foreground text-xs font-semibold">{t('deskPet.autoList')}</h3>
             {autos.map((h) => (
               <div key={h.id} className="bg-muted/50 flex flex-col gap-0.5 rounded-lg border border-dashed px-3 py-2 text-xs">
