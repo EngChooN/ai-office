@@ -11,7 +11,7 @@ import { formatPairCode, normalizePairCode, type PairWindowView, type PeerSlotVi
 // 설정 › 다른 PC 연결: B컴 역할(짝짓기 창·연결된 PC), A컴 역할(주소+코드로 연결·목록·다시 연결·해제·직원 고르기)
 // PC 전용 — 휴대폰 화면에서는 그리지 않는다
 
-const DEFAULT_PORT = 7777
+const DEFAULT_PORT = 47900 // main/remote/service.ts DEFAULT_REMOTE_PORT와 같아야 함
 const COPIED_MS = 1500
 const errText = (e: unknown) => (e instanceof Error ? e.message.replace(/^Error invoking remote method '[^']*': (Error: )?/, '') : t('peer.error.failed'))
 const timeText = (ms: number) => fmtDate(ms, { hour: '2-digit', minute: '2-digit' })

@@ -52,7 +52,7 @@ export default {
   'peer.host.revokeConfirm': { ko: '이 PC의 연결을 해제할까요? 다시 쓰려면 새로 짝지어야 해요.', en: 'Disconnect this PC? You will need to pair again to use it.', ja: 'このPCの接続を解除しますか？再び使うには、もう一度ペアリングが必要です。', zh: '要断开这台电脑吗？再次使用需要重新配对。' },
   'peer.client.title': { ko: '다른 PC에 연결하기', en: 'Connect to another PC', ja: '別のPCに接続する', zh: '连接其他电脑' },
   'peer.client.desc': { ko: '다른 PC에서 짝짓기 창을 연 뒤, 그 화면의 주소와 코드를 입력하세요.', en: 'Open the pairing window on the other PC, then enter the address and code shown there.', ja: '別のPCでペアリング画面を開き、表示されたアドレスとコードを入力してください。', zh: '在对方电脑上打开配对窗口，然后输入其屏幕上显示的地址和验证码。' },
-  'peer.client.host': { ko: '주소 (예: 100.64.0.5 또는 100.64.0.5:7777)', en: 'Address (e.g. 100.64.0.5 or 100.64.0.5:7777)', ja: 'アドレス（例: 100.64.0.5 または 100.64.0.5:7777）', zh: '地址（例如 100.64.0.5 或 100.64.0.5:7777）' },
+  'peer.client.host': { ko: '주소 (예: 100.64.0.5 또는 100.64.0.5:47900)', en: 'Address (e.g. 100.64.0.5 or 100.64.0.5:47900)', ja: 'アドレス（例: 100.64.0.5 または 100.64.0.5:47900）', zh: '地址（例如 100.64.0.5 或 100.64.0.5:47900）' },
   'peer.client.code': { ko: '연결 코드 (XXXX-XXXX-XXXX)', en: 'Connection code (XXXX-XXXX-XXXX)', ja: '接続コード（XXXX-XXXX-XXXX）', zh: '连接验证码（XXXX-XXXX-XXXX）' },
   'peer.client.connect': { ko: '연결', en: 'Connect', ja: '接続', zh: '连接' },
   'peer.client.connecting': { ko: '연결하는 중… (몇 초 걸려요)', en: 'Connecting… (takes a few seconds)', ja: '接続中…（数秒かかります）', zh: '正在连接…（需要几秒）' },
