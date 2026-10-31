@@ -129,6 +129,8 @@ const config: ForgeConfig = {
       build: [
         { entry: 'src/main/index.ts', config: 'vite.main.config.mts', target: 'main' },
         { entry: 'src/preload.ts', config: 'vite.preload.config.mts', target: 'preload' },
+        // 바탕화면 비서 창 전용 (좁은 통로 — main/petWindow.ts)
+        { entry: 'src/petPreload.ts', config: 'vite.preload.config.mts', target: 'preload' },
       ],
       renderer: [{ name: 'main_window', config: 'vite.renderer.config.mts' }],
     }),

@@ -8,6 +8,7 @@ import { loadRemoteConfig, openDb, saveRemoteConfig } from './db'
 import { attachmentById, registerAttachmentScheme, saveUpload, serveAttachments } from './attachments'
 import { Office } from './office'
 import { OfficeTray } from './tray'
+import { PetWindows } from './petWindow'
 import { createOfficeHandlers, type OfficeHandlers } from './officeHandlers'
 import { runAsRemote } from './remoteContext'
 import { restrictRemoteArgs } from './remoteGuard'
@@ -16,7 +17,7 @@ import { RemoteService } from './remote/service.ts'
 import { loadRemoteKeys, saveRemoteKeys } from './remote/keystore.ts'
 import * as upnp from './remote/upnp.ts'
 import { Secretary } from './secretary'
-import { SECRETARY_FOCUS } from '../shared/types'
+import { SECRETARY_FOCUS, SECRETARY_PAGE_FOCUS } from '../shared/types'
 import { t } from '../shared/i18n/index.ts'
 import { registerUpdates, type UpdateChecker } from './updates'
 import { registerPack } from './staffPack'
@@ -70,18 +71,22 @@ const remoteApi = () => {
 }
 const QUICK_TASK_TITLE_MAX = 80
 const QUICK_TASK_DETAIL_MAX = 4000
+/** 앱 창을 띄우고(없으면 만들고) focus가 있으면 그 직원·비서를 연다 — 새로 연 창은 화면이 뜬 뒤에 보낸다 */
+function showWindow(focus?: string) {
+  const isNew = !win
+  if (isNew) createWindow()
+  win?.show()
+  win?.focus()
+  if (!focus) return
+  if (isNew) win?.webContents.once('did-finish-load', () => win?.webContents.send('office:onFocus', focus))
+  else win?.webContents.send('office:onFocus', focus)
+}
+
 const tray = new OfficeTray(
   {
     open: (staffId) => {
-      const isNew = !win
-      if (isNew) createWindow()
-      win?.show()
-      win?.focus()
-      if (!staffId) return
-      // 새로 연 창은 화면이 뜬 뒤에 그 직원을 선택한다
-      if (isNew) win?.webContents.once('did-finish-load', () => win?.webContents.send('office:onFocus', staffId))
-      else win?.webContents.send('office:onFocus', staffId)
-      remote?.publish('focus', staffId)
+      showWindow(staffId)
+      if (staffId) remote?.publish('focus', staffId)
     },
     decide: (approvalId, allow) => office.decide(approvalId, allow),
     setAutoApprove: (plan) => office.setAutoApprove(plan),
@@ -129,20 +134,31 @@ const tray = new OfficeTray(
         })
     },
     // 메뉴바 "비서에게 말하기": 창을 띄우고 빠른 창(⌘K)을 연다
-    talkToSecretary: () => {
-      const isNew = !win
-      if (isNew) createWindow()
-      win?.show()
-      win?.focus()
-      if (isNew) win?.webContents.once('did-finish-load', () => win?.webContents.send('office:onFocus', SECRETARY_FOCUS))
-      else win?.webContents.send('office:onFocus', SECRETARY_FOCUS)
-    },
+    talkToSecretary: () => showWindow(SECRETARY_FOCUS),
   },
   () => {
     const r = remote?.status()
     return { today: office.todaySummary(), remote: r ? { isEnabled: r.isEnabled, isListening: r.isListening, port: r.port } : null }
   },
 )
+
+// 바탕화면 비서 캐릭터 (맥, 설정에서 켠다) — 결재는 앱 화면과 같은 처리 함수 표(handlers.decide)로
+const pet = new PetWindows({
+  snapshot: () => office.snapshot(),
+  decide: (approvalId, allow) => (handlers!.decide as (id: string, allow: boolean) => boolean)(approvalId, allow),
+  openApp: (target) => showWindow(target.kind === 'secretary' ? SECRETARY_PAGE_FOCUS : target.kind === 'staff' ? target.staffId : undefined),
+  load: (w, view) => {
+    if (MAIN_WINDOW_VITE_DEV_SERVER_URL) void w.loadURL(`${MAIN_WINDOW_VITE_DEV_SERVER_URL}?view=${view}`)
+    else void w.loadFile(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`), { query: { view } })
+  },
+  preloadPath: path.join(__dirname, 'petPreload.cjs'),
+  background: () => windowColors().background,
+})
+
+/** 스냅샷처럼 앱 창과 비서 창이 함께 받는 이벤트 */
+function broadcast(channel: string, payload: unknown) {
+  for (const w of [win, ...pet.windows()]) if (w && !w.isDestroyed()) w.webContents.send(channel, payload)
+}
 
 /** 바깥 UI 화면 모드를 nativeTheme에 맞춘다 — 화면의 prefers-color-scheme와 창 배경·윈도우 제목 표시줄 색이 같은 모드를 따른다 */
 function syncNativeTheme(mode: UiMode) {
@@ -206,8 +222,9 @@ function registerIpc() {
   office.on('snapshot', (s) => {
     syncNativeTheme(s.settings.uiMode)
     syncLoginItem(s.settings.launchAtLogin)
-    win?.webContents.send('office:onSnapshot', s)
+    broadcast('office:onSnapshot', s)
     tray.update(s)
+    pet.update(s)
     remote?.publish('snapshot', s)
   })
   // 휴대폰(원격 v2 이벤트 스트림)에도 PC 화면이 받는 이벤트를 그대로 보낸다
@@ -278,6 +295,7 @@ app.on('before-quit', (e) => {
   isQuitting = true
   cancelCodexLogin()
   tray.destroy()
+  pet.close()
   secretary?.stop()
   updates?.stop()
   office.stop()

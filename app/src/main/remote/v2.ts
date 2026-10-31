@@ -237,8 +237,8 @@ export const V2_FIELDS: Partial<Record<OfficeMethod, Record<number, string[]>>> 
   saveSchedule: { 0: fieldsOf('saveSchedule', 0, { id: true, staffId: true, label: true, time: true, weekdays: true, instruction: true, enabled: true }) },
   secretaryRun: { 1: fieldsOf('secretaryRun', 1, { fromStep: true, edits: true, revised: true, excluded: true }) },
   updateSettings: {
-    // 화면 캡처 허용은 PC에서만 (폰에서 대표 화면 캡처 권한을 켜지 못하게). PC 화면 모드·색 테마도 PC에서만
-    0: fieldsExcept('updateSettings', 0, ['isStaffCaptureOn', 'uiMode', 'uiTheme'], { monthlyBudgetUsd: true, tokenBudget: true, theme: true, dayNight: true, plants: true, isChatterOn: true, workHours: true, layout: true, isTrayOn: true, launchAtLogin: true, isOnboarded: true, defaultCwd: true, isWorkMode: true, isFullAccessNoticeSeen: true, isProviderBannerSeen: true, internalAi: true, language: true, demoDay: true, isSecretaryWebOn: true }),
+    // 화면 캡처 허용은 PC에서만 (폰에서 대표 화면 캡처 권한을 켜지 못하게). PC 화면 모드·색 테마·바탕화면 비서도 PC에서만
+    0: fieldsExcept('updateSettings', 0, ['isStaffCaptureOn', 'uiMode', 'uiTheme', 'isDeskPetOn'], { monthlyBudgetUsd: true, tokenBudget: true, theme: true, dayNight: true, plants: true, isChatterOn: true, workHours: true, layout: true, isTrayOn: true, launchAtLogin: true, isOnboarded: true, defaultCwd: true, isWorkMode: true, isFullAccessNoticeSeen: true, isProviderBannerSeen: true, internalAi: true, language: true, demoDay: true, isSecretaryWebOn: true }),
   },
 }
 

@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { AUTO_APPROVE_OFF, companyFromXp, DEFAULT_SETTINGS, SECRETARY_FOCUS, withSettingsDefaults, type ChatMessage, type LogEntry, type Manual, type OfficeSnapshot } from '@shared/types'
+import { AUTO_APPROVE_OFF, companyFromXp, DEFAULT_SETTINGS, SECRETARY_FOCUS, SECRETARY_PAGE_FOCUS, withSettingsDefaults, type ChatMessage, type LogEntry, type Manual, type OfficeSnapshot } from '@shared/types'
 import { EMPTY_SHOP } from '@shared/economy'
 import { clampFloor } from '@shared/officeLevel'
 import { applyLanguage } from '@/lib/i18n'
@@ -142,7 +142,12 @@ export function connectOffice() {
   void window.office.snapshot().then(setSnapshot)
   void window.office.chatHistory().then((chat) => useOffice.setState({ chat }))
   // 메뉴바 "비서에게 말하기"는 직원 대신 비서 표시가 온다 → 빠른 창
-  const focus = (id: string) => (id === SECRETARY_FOCUS ? useOffice.setState({ isQuickSecretaryOpen: true }) : select(id))
+  // 바탕화면 비서 "앱에서 열기"는 비서 화면으로 (확인 카드를 거기서 이어 한다)
+  const focus = (id: string) => {
+    if (id === SECRETARY_FOCUS) useOffice.setState({ isQuickSecretaryOpen: true })
+    else if (id === SECRETARY_PAGE_FOCUS) useOffice.getState().setView('secretary')
+    else select(id)
+  }
   const offs = [window.office.onSnapshot(setSnapshot), window.office.onLog(pushLog), window.office.onChat(pushChat), window.office.onFocus(focus)]
   return () => offs.forEach((off) => off())
 }

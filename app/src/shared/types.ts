@@ -597,6 +597,8 @@ export interface Settings {
   layout: Record<string, { dx: number; dy: number }>
   /** 메뉴바 아이콘 */
   isTrayOn: boolean
+  /** 바탕화면 비서 캐릭터 (맥 전용, 기본 끔) */
+  isDeskPetOn: boolean
   /** 로그인할 때 앱을 자동으로 켠다 (창은 숨기고 켠다 — 예약 업무가 돌도록) */
   launchAtLogin: boolean
   /** 첫 실행 안내를 마쳤는지 */
@@ -1083,6 +1085,7 @@ export const DEFAULT_SETTINGS: Settings = {
   workHours: { isEnabled: false, start: '09:00', end: '19:00' },
   layout: {},
   isTrayOn: true,
+  isDeskPetOn: false,
   launchAtLogin: false,
   isOnboarded: false,
   defaultCwd: '',
@@ -1259,3 +1262,6 @@ export const SECRETARY_ID = 'secretary'
 
 /** 메뉴바 "비서에게 말하기" → 화면에 비서 빠른 창을 열라는 표시 (onFocus로 온다, 직원 id와 겹치지 않는다) */
 export const SECRETARY_FOCUS = '__secretary__'
+
+/** 바탕화면 비서 "앱에서 열기" → 화면에 비서 화면을 열라는 표시 (확인 카드는 그 화면에서 이어 한다) */
+export const SECRETARY_PAGE_FOCUS = '__secretary_page__'

@@ -4,6 +4,7 @@ import type { OfficeApi } from './shared/types'
 import type { OfficeUpdateApi } from './shared/updateCheck'
 import type { OfficePackApi } from './shared/staffPack'
 import type { OfficeSceneApi } from './shared/sceneExport'
+import type { OfficePetApi } from './shared/deskPet'
 
 declare global {
   interface Window {
@@ -16,6 +17,8 @@ declare global {
     officePack?: OfficePackApi
     /** 사무실 장면 내보내기 저장 (preload — 모바일 빌드에는 없다) */
     officeScene?: OfficeSceneApi
+    /** 바탕화면 비서 창 통로 (petPreload — 비서 창에만 있다) */
+    officePet?: OfficePetApi
     /** 안드로이드 셸이 넣는 메시지 통로 (모바일 빌드만, docs/specs/android-bridge.md) */
     OfficeBridge?: { postMessage(text: string): void; onmessage: ((e: { data: string }) => void) | null }
   }
