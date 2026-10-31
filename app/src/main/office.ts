@@ -2120,17 +2120,16 @@ export class Office extends EventEmitter<{
   }
 
   saveManual(input: ManualInput, previousPath?: string) {
+    const prev = previousPath ? this.listManuals().find((x) => x.path === previousPath) : undefined
+    if (previousPath && !prev) throw new InvalidArgsError('등록된 매뉴얼이 아니에요')
     // 휴대폰에서 프로젝트 매뉴얼은 등록된 랩 폴더(또는 고치는 매뉴얼이 이미 있는 폴더)에만 — 아무 폴더에 파일을 만들지 못하게
     if (isRemoteCall()) {
       // 전역 매뉴얼(~/.claude/skills)은 모든 프로젝트에 영향 — 만들기·고치기·프로젝트로 옮기기 모두 PC에서만
-      const prev = previousPath ? this.listManuals().find((x) => x.path === previousPath) : undefined
       if (!isRemoteManualScopeAllowed(input.scope, prev?.scope)) throw new InvalidArgsError('전역 매뉴얼은 PC에서 해 주세요 (프로젝트·랩 폴더 매뉴얼만 휴대폰에서 할 수 있어요)')
-    }
-    if (isRemoteCall() && input.scope === 'project') {
-      const own = previousPath ? this.listManuals().find((x) => x.path === previousPath)?.projectDir : null
-      const labDirs = [...this.labs.values()].flatMap((l) => (l.cwd ? [l.cwd] : []))
-      const isAllowed = isRemoteManualDirAllowed(input.projectDir, labDirs, own)
-      if (!isAllowed) throw new InvalidArgsError('매뉴얼은 등록된 랩 폴더에만 만들 수 있어요')
+      if (input.scope === 'project') {
+        const labDirs = [...this.labs.values()].flatMap((l) => (l.cwd ? [l.cwd] : []))
+        if (!isRemoteManualDirAllowed(input.projectDir, labDirs, prev?.projectDir ?? null)) throw new InvalidArgsError('매뉴얼은 등록된 랩 폴더에만 만들 수 있어요')
+      }
     }
     const m = saveManual(input, previousPath)
     this.scheduleEmit()
@@ -2139,12 +2138,11 @@ export class Office extends EventEmitter<{
 
   deleteManual(file: string) {
     const m = this.listManuals().find((x) => x.path === file)
+    if (!m) throw new InvalidArgsError('등록된 매뉴얼이 아니에요')
     removeManual(file)
-    if (m) {
-      for (const s of this.hired.values())
-        if (Array.isArray(s.equipment.skills) && s.equipment.skills.includes(m.name)) this.setEquipment(s.id, { ...s.equipment, skills: s.equipment.skills.filter((n) => n !== m.name) })
-      this.trainGroups(m.name, [], [])
-    }
+    for (const s of this.hired.values())
+      if (Array.isArray(s.equipment.skills) && s.equipment.skills.includes(m.name)) this.setEquipment(s.id, { ...s.equipment, skills: s.equipment.skills.filter((n) => n !== m.name) })
+    this.trainGroups(m.name, [], [])
   }
 
   /** 직원에게 매뉴얼 초안을 맡긴다 — 파일은 쓰지 않고 양식에 채울 내용만 돌려준다 */
@@ -2226,7 +2224,7 @@ export class Office extends EventEmitter<{
   startRun(input: { manualName: string; scope: { kind: 'lab' | 'team'; id: string }; input: string; attachments?: Attachment[]; taskId?: string | null }) {
     const manual = this.listManuals().find((m) => m.name === input.manualName && m.kind === 'process')
     const scopeName = input.scope.kind === 'lab' ? this.labs.get(input.scope.id)?.name : this.teams.get(input.scope.id)?.name
-    if (!manual || manual.steps.length === 0 || !scopeName) return null
+    if (!manual || manual.error || manual.steps.length === 0 || !scopeName) return null
     const now = Date.now()
     const run: ProcessRun = {
       id: crypto.randomUUID(),

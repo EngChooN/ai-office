@@ -52,6 +52,86 @@ const DNS = new Set(['nslookup', 'host', 'dig'])
 /** 배포·게시·푸시·올리기 하위 명령 (빌드 래퍼·패키지 매니저 run 대상) */
 const OUTBOUND_VERBS = new Set(['deploy', 'publish', 'push', 'release', 'upload'])
 
+/** 확장 문자(중괄호·glob) — 명령 이름·하위 명령에 있으면 실제로 무엇이 실행될지 알 수 없다 */
+const hasExpansion = (s: string) => /[{}*?[\]]/.test(s)
+/** 이 목록의 명령은 하위 명령을 보고 판정하므로 하위 명령 자리의 확장 문자도 막는다 */
+const SUBCOMMAND_TOOLS = new Set(['git', 'gh', 'glab', 'docker', 'docker-compose', 'kubectl', 'helm', 'terraform', 'aws', 'gsutil', 'cargo', 'gem', 'twine', 'poetry', 'flit', 'pod', 'fastlane', 'make', ...['gradle', 'gradlew', 'mvn', 'mvnw', 'rake'], ...['npm', 'pnpm', 'yarn', 'bun', 'npx', 'pnpx', 'bunx']])
+/** xargs 뒤에 올 수 있는 읽기 전용 명령 (그 밖은 인자로 하위 명령이 만들어질 수 있어 기다린다) */
+const XARGS_SAFE = new Set(['echo', 'cat', 'ls', 'grep', 'egrep', 'fgrep', 'rg', 'wc', 'head', 'tail', 'file', 'stat', 'basename', 'dirname', 'du', 'sort', 'uniq', 'diff', 'md5', 'md5sum', 'shasum', 'sha256sum', 'cksum', 'realpath', 'readlink', 'printf'])
+/** 알고 있는 안전한 명령 — 목록에 없는 명령(xcrun·arch·script·su·parallel·entr …)은 무엇을 실행할지 몰라 기다린다 (fail closed) */
+const SAFE_COMMANDS = new Set([
+  'ls', 'cat', 'echo', 'printf', 'pwd', 'cd', 'pushd', 'popd', 'grep', 'egrep', 'fgrep', 'rg', 'ag', 'head', 'tail', 'wc', 'sort', 'uniq', 'cut', 'tr', 'tee', 'sed', 'awk', 'gawk', 'diff', 'cmp', 'comm', 'paste', 'column', 'fold', 'nl', 'rev', 'tac', 'jq', 'yq', 'xxd', 'od', 'hexdump', 'strings',
+  'file', 'stat', 'du', 'df', 'ps', 'pgrep', 'date', 'uname', 'whoami', 'id', 'hostname', 'which', 'type', 'whereis', 'basename', 'dirname', 'realpath', 'readlink', 'tree', 'less', 'more', 'man', 'help', 'history', 'clear', 'cal', 'bc', 'expr', 'seq', 'printenv', 'tput', 'lsof', 'netstat', 'ping', 'mdfind', 'pbcopy', 'pbpaste',
+  'mkdir', 'touch', 'cp', 'mv', 'ln', 'chmod', 'rm', 'rmdir', 'mktemp', 'true', 'false', 'test', '[', '[[', 'export', 'unset', 'set', 'read', 'sleep', 'wait', 'exit', 'return', 'break', 'continue', 'shift', 'local', 'declare', 'typeset', 'readonly', 'umask', 'ulimit', 'unalias', 'sw_vers',
+  'tar', 'zip', 'unzip', 'gzip', 'gunzip', 'bzip2', 'xz', 'zcat', 'base64', 'md5', 'md5sum', 'shasum', 'sha256sum', 'cksum', 'iconv', 'split', 'patch', 'sqlite3', 'brew', 'ffmpeg', 'kill', 'pkill', 'killall',
+  'tsc', 'eslint', 'prettier', 'vitest', 'jest', 'mocha', 'playwright', 'vite', 'webpack', 'esbuild', 'next', 'nuxt', 'biome', 'turbo', 'nx', 'electron', 'electron-forge', 'go', 'rustc', 'rustup', 'pip', 'pip3', 'pipx', 'uv', 'bundle', 'java', 'javac', 'kotlinc', 'swift', 'swiftc', 'dotnet', 'ruff', 'pytest', 'mypy', 'black', 'adb', 'gradle',
+])
+/** 판정 규칙이 따로 있는 명령(하위 명령·옵션을 보고 정한다)도 아는 명령이다 */
+const RULE_COMMANDS = new Set(['nvm', 'xcrun', 'find', 'rsync', 'git', 'curl', 'wget', 'http', 'https', 'xh', 'gh', 'glab', 'docker', 'docker-compose', 'kubectl', 'helm', 'terraform', 'aws', 'gsutil', 'cargo', 'gem', 'twine', 'poetry', 'flit', 'pod', 'fastlane', 'open', 'nslookup', 'host', 'dig'])
+const isKnownCommand = (name: string) =>
+  SAFE_COMMANDS.has(name) || RULE_COMMANDS.has(name) || BUILD_WRAPPERS.has(name) || PKG.has(name) || INTERPRETERS.has(name) || NET_SENDERS.has(name) || CLOUD.has(name) || MAIL.has(name) || DNS.has(name)
+
+/** `git -c key=값`으로 안전하게 넘길 수 있는 설정 키 (색·사용자·표시 옵션). 이 밖의 키는 명령 실행으로 이어질 수 있어 기다린다 */
+const GIT_SAFE_CONFIG = /^(color\.[a-z0-9.-]+|user\.(name|email|signingkey)|core\.(quotepath|autocrlf|safecrlf|whitespace|abbrev|filemode|ignorecase|precomposeunicode|longpaths|untrackedcache)|advice\.[a-z.]+|init\.defaultbranch|pull\.(rebase|ff)|push\.(default|followtags|autosetupremote)|merge\.(ff|conflictstyle)|diff\.(algorithm|colormoved|renames|context)|log\.(date|abbrevcommit)|status\.[a-z.]+|fetch\.prune|branch\.sort|column\.ui|help\.autocorrect)$/i
+/** `git config 키`로 건드리면 명령이 실행되는 키 (별칭·pager·editor·훅·외부 diff·필터·자격 증명 등) */
+const GIT_RISKY_KEY = /^(alias\.|core\.(sshcommand|pager|editor|fsmonitor|hookspath|askpass|gitproxy|attributesfile)|credential|include|url\.|protocol\.|pager\.|diff\.([^.]+\.)?(external|textconv|command)|merge\.[^.]+\.(driver|recursivedriver)|filter\.|gpg\.([^.]+\.)?program|sequence\.editor|browser\.|web\.browser|difftool\.|mergetool\.|man\.|sendemail\.|receive\.|uploadpack\.|ssh\.|trailer\.|interactive\.difffilter|format\.pager|remote\.[^.]+\.(uploadpack|receivepack|vcs|proxy)|submodule\.[^.]+\.update|core\.alternaterefscommand|core\.alternaterefsprefixes|core\.worktree)/i
+
+const GIT_CONFIG_READ_FLAGS = new Set(['--get', '--get-all', '--get-regexp', '--get-urlmatch', '-l', '--list', '--get-color', '--get-colorbool', '--show-origin', '--show-scope', '--name-only'])
+const GIT_CONFIG_WRITE_FLAGS = new Set(['--add', '--replace-all', '--unset', '--unset-all', '--rename-section', '--remove-section', '-e', '--edit', 'set', 'unset', 'edit'])
+const GIT_CONFIG_VALUE_FLAGS = new Set(['-f', '--file', '--blob', '--default', '--type', '--comment'])
+/** `git config`: 위험 키를 건드리거나, 값을 쓰는데 안전 키가 아니면 true. 읽기(--get·--list·키 하나)는 위험 키가 아니면 통과 */
+function gitConfigWaits(rest: string[]) {
+  const pos: string[] = []
+  for (let k = 0; k < rest.length; k++) {
+    const a = rest[k]
+    if (a.startsWith('-')) {
+      if (GIT_CONFIG_VALUE_FLAGS.has(a)) k++
+    } else pos.push(a)
+  }
+  if (pos.some((a) => GIT_RISKY_KEY.test(a))) return true
+  if (rest.some((a) => a === '-e' || a === '--edit' || a === 'edit')) return true
+  const reading = rest.some((a) => GIT_CONFIG_READ_FLAGS.has(a))
+  const writing = rest.some((a) => GIT_CONFIG_WRITE_FLAGS.has(a)) || pos.length >= 2
+  if (!writing || reading) return false
+  const key = pos[0] === 'set' || pos[0] === 'unset' ? pos[1] : pos[0]
+  return !GIT_SAFE_CONFIG.test(key ?? '')
+}
+
+/** git 전역 옵션 `-c`가 안전 목록 밖의 키이거나 `--config-env`가 있는가 */
+function gitRunsConfigCommand(args: string[]) {
+  const safe = (kv: string) => GIT_SAFE_CONFIG.test(kv.split('=')[0])
+  for (let i = 0; i < args.length && args[i].startsWith('-'); i++) {
+    const a = args[i]
+    if (a === '--config-env' || a.startsWith('--config-env=')) return true
+    if (a === '-c') {
+      if (!safe(args[i + 1] ?? '')) return true
+      i++
+    } else if (a.startsWith('-c') && a.length > 2 && !a.startsWith('--') && !safe(a.slice(2))) return true
+    else if (['-C', '--git-dir', '--work-tree', '--namespace', '--super-prefix'].includes(a)) i++
+  }
+  return false
+}
+
+/** 환경 변수 대입 중 다른 프로그램·설정을 실행하게 만드는 것 (GIT_CONFIG_*·LESSOPEN·PAGER·EDITOR·LD_PRELOAD …) */
+const DANGEROUS_NAME = /^(GIT_[A-Za-z0-9_]*|LESSOPEN|LESSCLOSE|PAGER|MANPAGER|EDITOR|VISUAL|BASH_ENV|ENV|LD_[A-Z_]+|DYLD_[A-Z_]+|NODE_OPTIONS|PYTHONSTARTUP|PERL5OPT|RUBYOPT|PROMPT_COMMAND)$/
+const DANGEROUS_ENV = new RegExp(`${DANGEROUS_NAME.source.slice(0, -2)})=`)
+/** 변수 이름을 받는 내장 명령 — `read GIT_SSH_COMMAND`·`export LD_PRELOAD`처럼 `=` 없이도 위험 변수를 건드린다 (PATH 포함) */
+const VAR_NAMING_CMDS = new Set(['read', 'export', 'declare', 'typeset', 'readonly', 'local', 'printf', 'unset', 'let', 'mapfile', 'readarray', 'getopts'])
+/** 변수 첨자에 든 `$(…)`·백틱 (a[$(git push)]) — 산술 평가 때 실행된다 */
+const SUBSCRIPT_INJECTION = /[A-Za-z0-9_]\[[^\]]*(\$\(|`)/
+/** 산술식 안이 숫자·연산자뿐인가 (16진수 포함) */
+const isLiteralArith = (body: string) => /^[\s0-9+\-*/%()<>=!&|^~?:,]*$/.test(body.replace(/\b0[xX][0-9a-fA-F]+\b/g, '0'))
+/** 산술식의 변수가 모두 그 식 안에서 대입·증감되는 것뿐인가 (i++ · i=0). `$`·백틱·`[`가 있거나 읽기만 하는 변수가 있으면 false */
+function isSelfContainedArith(body: string) {
+  if (/[$`[\]]/.test(body)) return false
+  const ids = body.replace(/\b0[xX][0-9a-fA-F]+\b/g, '0').match(/[A-Za-z_][A-Za-z0-9_]*/g) ?? []
+  return ids.every((id) => new RegExp(`(\\+\\+|--)${id}\\b|\\b${id}\\s*(\\+\\+|--|[-+*/%&|^]?=(?!=)|<<=|>>=)`).test(body))
+}
+const NUM = /^-?\d+$/
+const ARITH_TEST_OPS = new Set(['-eq', '-ne', '-lt', '-le', '-gt', '-ge'])
+/** 변수에 담았다가 산술 평가로 명령을 실행하게 만들 수 있는 문맥이 명령 어딘가에 있는가 */
+const ARITH_CONTEXT = /\(\(|\blet\b|\s-(eq|ne|lt|le|gt|ge)\s|\b(declare|typeset|local|export|readonly|printf|read|unset|kill)\b|\w\[/
+
 const firstNonOpt = (args: string[]) => args.find((a) => !a.startsWith('-'))
 /** 이름에 `:`·`-`·`_`로 붙은 배포·게시 낱말이 있으면 true (npm run deploy:prod·build:publish, A3) */
 const isOutboundName = (s: string) => s.split(/[:_-]/).some((p) => OUTBOUND_VERBS.has(p))
@@ -60,45 +140,107 @@ const optName = (a: string) => a.split('=')[0]
 /** 치환·변수·입력 리다이렉트가 있으면 밖으로 데이터를 실어 보낼 수 있다 */
 const hasExfilSyntax = (seg: Segment) => seg.hasSubst || /\$[A-Za-z_{]/.test(seg.raw) || seg.raw.includes('<')
 
-/** 인터프리터가 파일·인라인 코드·표준입력으로 임의 코드를 실행하는가 (버전 확인 같은 옵션만이면 아니다) */
-function interpreterRuns(args: string[]) {
+const INFO_FLAGS = /^(--version|-v|-V|--help|-h|-version)$/
+/** 인터프리터가 파일·인라인 코드·표준입력으로 임의 코드를 실행하는가. 버전 확인 옵션만이고 표준입력도 없을 때만 아니다 */
+function interpreterRuns(args: string[], seg: Segment) {
   if (args.length === 0) return true // 표준입력(파이프)으로 실행
-  if (args.some((a) => INLINE_CODE_FLAGS.has(a) || a === '-m')) return true
-  return args.some((a) => !a.startsWith('-')) // 파일 인자
+  if (args.some((a) => INLINE_CODE_FLAGS.has(a) || a === '-m' || a === '-s' || a === '-')) return true
+  if (args.some((a) => !a.startsWith('-'))) return true // 파일 인자
+  // 옵션만: -c'…'·-e'…'·--eval=…·-x 처럼 붙여 쓴 코드나 해석 못 하는 옵션은 기다린다
+  return !args.every((a) => INFO_FLAGS.test(a)) || seg.piped || seg.raw.includes('<')
 }
 
 /** 한 토막이 대표를 기다려야 하는 명령인가 (위험 명령은 findRiskyCommand가 따로 본다) */
 function segmentWaits(seg: Segment): boolean {
-  const { cmd, args, localScript } = resolveCommand(seg)
+  // 명령을 실행하게 만드는 환경 변수 대입은 명령 없이 따로 있어도(다음 토막에서 쓰인다) 기다린다
+  if (seg.tokens.some((t) => DANGEROUS_ENV.test(t))) return true
+  // 산술식 `((…))`: 숫자·연산자뿐이거나 그 식 안에서 대입하는 변수만 허용 (변수 값이 a[$(…)] 이면 평가 때 명령이 실행된다)
+  if (seg.tokens[0] === '((') return !(isLiteralArith(seg.tokens[1] ?? '') || isSelfContainedArith(seg.tokens[1] ?? ''))
+  // 변수 첨자에 든 $(…)·백틱은 어떤 명령에서든 산술 평가로 실행될 수 있다
+  if (seg.tokens.some((t) => SUBSCRIPT_INJECTION.test(t))) return true
+  if (writesDangerousPath(seg)) return true
+  const { cmd, args, localScript, via } = resolveCommand(seg)
   if (!cmd) return false
+  // PATH 앞 대입(PATH=/x git …)은 실행될 프로그램을 바꾼다 (export PATH=… 는 허용)
+  const cmdAt = seg.tokens.filter((t) => t !== '').length - args.length - 1
+  if (seg.tokens.filter((t) => t !== '').slice(0, Math.max(cmdAt, 0)).some((t) => /^PATH=/.test(t))) return true
+  // read·export 등으로 위험 변수 이름을 `=` 없이 건드림 (read GIT_SSH_COMMAND; export LD_PRELOAD), printf -v NAME
+  if (VAR_NAMING_CMDS.has(base(cmd)) && args.some((a) => DANGEROUS_NAME.test(a.replace(/^-v/, '')) || (base(cmd) !== 'printf' && /^PATH$/.test(a)) || (base(cmd) === 'printf' && /^(-v)?PATH$/.test(a)))) return true
+  // let · declare -i 등 산술 평가 명령
+  if (base(cmd) === 'let') return !args.every((a) => isLiteralArith(a) || isSelfContainedArith(a))
+  if (['declare', 'typeset', 'local'].includes(base(cmd)) && args.some((a) => /^-[A-Za-z]*i/.test(a))) return true
+  // [[ x -eq 1 ]]: 산술 비교의 피연산자가 숫자 글자가 아니면 변수 값이 평가된다
+  if (cmd === '[[') {
+    const t = seg.tokens
+    for (let k = 0; k < t.length; k++) if (ARITH_TEST_OPS.has(t[k]) && !(NUM.test(t[k - 1] ?? '') && NUM.test(t[k + 1] ?? ''))) return true
+  }
+  // 명령 이름의 중괄호·glob 확장 ({git,push}·/usr/bin/gi?)은 실제 실행 대상을 알 수 없다
+  if (cmd !== '[' && cmd !== '[[' && hasExpansion(cmd)) return true
   // 명령 이름을 변수·명령 치환으로 감추거나 eval·source·. 로 임의 코드를 실행 (M1)
   if (cmd.startsWith('$') || cmd.includes('$(') || cmd.includes('`')) return true
   const name = base(cmd)
+  if (!localScript && !isKnownCommand(name) && name !== 'eval' && name !== 'source' && name !== '.') return true // 모르는 명령은 기다린다 (fail closed)
+  if (via.includes('xargs') && !XARGS_SAFE.has(name)) return true // xargs 뒤 명령은 인자로 하위 명령이 만들어질 수 있다 (xargs -I% git %)
+  if (SUBCOMMAND_TOOLS.has(name) && (name === 'git' ? false : hasExpansion(firstNonOpt(args) ?? ''))) return true
   if (name === 'eval' || name === 'source' || name === '.') return true
   if (BUILD_WRAPPERS.has(name)) {
-    const sub = firstNonOpt(args)
-    return sub ? isOutboundName(sub) : false
+    // make --eval·변수로 넘긴 $(shell …)·SHELL= 은 임의 명령을 실행한다
+    if (name === 'make' && args.some((a) => /^--eval|\$\((shell|eval|call)\b|(^|\s)\.?SHELL(FLAGS)?\s*[:+?]?=|^-f-?$/.test(a))) return true
+    // make -C dir deploy · make -j 4 deploy 처럼 옵션 값이 앞에 와도 놓치지 않게 옵션이 아닌 낱말 전부를 본다
+    return args.some((a) => !a.startsWith('-') && isOutboundName(a))
   }
   if (localScript) return true // ./deploy.sh 처럼 로컬 파일을 실행
-  if (INTERPRETERS.has(name)) return interpreterRuns(args)
+  if (INTERPRETERS.has(name)) return interpreterRuns(args, seg)
   if (PKG.has(name)) {
     // npx·bunx·pnpm dlx·npm exec·yarn dlx·bun x — 임의 패키지를 받아 실행 (A2)
     if (name === 'npx' || name === 'pnpx' || name === 'bunx') return true
     const sub = firstNonOpt(args)
-    if (sub === 'dlx' || sub === 'exec' || sub === 'x') return true
-    if (sub === 'publish' || sub === 'deploy') return true
-    if (sub === 'run') return isOutboundName(args[args.indexOf('run') + 1] ?? '')
-    return false
+    // pnpm --filter x exec … 처럼 옵션 값이 앞에 와도 놓치지 않게 낱말 전체를 본다. npm explore·create·init <패키지> 도 임의 코드를 실행한다
+    if (args.some((a) => ['dlx', 'exec', 'x', 'explore', 'create', 'publish', 'deploy'].includes(a))) return true
+    if ((args.includes('pkg') && args.some((a) => ['set', 'delete', 'fix'].includes(a))) || (['config', 'set'].includes(sub ?? '') && !args.some((a) => ['get', 'list', 'ls'].includes(a)))) return true // package.json 스크립트·npm 설정(script-shell 등) 변경
+    if (args.includes('init') && args.length > args.indexOf('init') + 1 && !args[args.indexOf('init') + 1].startsWith('-')) return true
+    const runAt = args.findIndex((a) => ['run', 'run-script', 'rum', 'urn'].includes(a))
+    if (runAt >= 0) return isOutboundName(args[runAt + 1] ?? '')
+    return sub !== undefined && isOutboundName(sub) && ['yarn', 'bun'].includes(name)
   }
   if (name === 'find') return args.some((a) => ['-exec', '-execdir', '-ok', '-okdir', '-delete', '-fprintf', '-fprint', '-fls'].includes(a))
-  if (name === 'rsync') return args.some((a) => !a.startsWith('-') && a.includes(':')) // host:/path 로 외부 전송
+  if (name === 'rsync') return args.some((a) => (!a.startsWith('-') && a.includes(':')) || /^--(rsh|rsync-path)/.test(a) || /^-[A-Za-z]*e/.test(a)) // host:/path 전송, -e 로 명령 실행 // host:/path 로 외부 전송
   if (name === 'git') {
     const { sub, rest } = gitSubcommand(args)
-    if (!sub || /[$`]/.test(sub)) return true // 하위 명령을 변수·치환으로 감춤 (M1)
+    if (!sub || /[$`]/.test(sub) || hasExpansion(sub)) return true // 하위 명령을 변수·치환·확장 문자로 감춤 (M1)
+    if (gitRunsConfigCommand(args)) return true
     if (sub === 'push') return true
-    if (sub === 'config' && rest.some((a) => a.startsWith('alias.'))) return true // 별칭 정의 (M1)
+    if (args.some((a) => /^--(upload-pack|receive-pack|exec|upload-archive|extcmd)/.test(a) || a.includes('ext::'))) return true // 외부 프로그램·ext 전송
+    if (sub === 'clone' && rest.some((a) => /^-[A-Za-z]*u/.test(a))) return true // clone -u = --upload-pack
+    if (sub === 'clone' || sub === 'init') {
+      // clone -c key=값 · --config key=값 으로 설정을 심는다
+      for (let k = 0; k < rest.length; k++) {
+        const a = rest[k]
+        if (a === '-c' || a === '--config') {
+          if (!GIT_SAFE_CONFIG.test((rest[k + 1] ?? '').split('=')[0])) return true
+        } else if (/^--config=/.test(a) && !GIT_SAFE_CONFIG.test(a.slice(9).split('=')[0])) return true
+      }
+    }
+    if ((sub === 'rebase' || sub === 'pull') && rest.some((a) => /^-x|^--exec|^-[A-Za-z]*x/.test(a))) return true // rebase -x: 명령 실행
+    if (sub === 'bisect' && rest.includes('run')) return true
+    if (sub === 'submodule' && rest.includes('foreach')) return true
+    if (['filter-branch', 'difftool', 'mergetool', 'instaweb', 'daemon'].includes(sub)) return true
+    if (sub === 'grep' && rest.some((a) => /^-O|^--open-files-in-pager/.test(a))) return true
+    if (sub === 'config' && gitConfigWaits(rest)) return true // 별칭·sshCommand·pager 등 명령 설정
     return false
   }
+  if (name === 'awk' || name === 'gawk') return args.some((a) => /system|getline|(^|[^|])\|([^|]|$)|^-f|^--(file|source|include|load)|^-[il]$|@(include|load)/.test(a)) // system()·파이프로 명령 실행
+  if (name === 'sed') return args.some((a) => /(^|[;{}\s])\d*\$?e(\s|$)|\/[a-zA-Z]*e[a-zA-Z]*$/.test(a)) // e 명령·s///e 는 셸을 실행한다
+  if (name === 'sqlite3') return seg.piped || seg.raw.includes('<') || args.some((a) => /(^|[\s;])\.[a-z]/i.test(a) || a === '-init') // .shell·.system 등 점 명령과 표준입력
+  if (name === 'tar') return args.some((a, i) => /^--(use-compress-program|to-command|checkpoint-action|info-script|new-volume-script|rmt-command|rsh-command)/.test(a) || /^-[A-Za-z]*[IF]/.test(a) || (i === 0 && !a.startsWith('-') && /[IF]/.test(a)))
+  if (name === 'zip') return args.some((a) => a.startsWith('-TT') || a === '--unzip-command')
+  if (name === 'man') return args.some((a) => a.startsWith('-') && !/^-[afkw]+$/.test(a)) // man -P 는 pager 명령을 실행한다
+  if (name === 'brew') return ['ruby', 'irb', 'sh', 'exec'].includes(firstNonOpt(args) ?? '')
+  if (name === 'xcrun') {
+    const nonOpts = args.filter((a) => !a.startsWith('-'))
+    return !(nonOpts[0] === 'simctl' && nonOpts[1] === 'list')
+  }
+  if (name === 'nvm') return !['ls', 'list', 'current', 'version', 'which', 'use', 'alias', 'ls-remote', 'help', undefined].includes(firstNonOpt(args))
   if (NET_SENDERS.has(name)) return true
   if (name === 'curl' || name === 'wget') {
     if (hasExfilSyntax(seg)) return true
@@ -137,11 +279,31 @@ function segmentWaits(seg: Segment): boolean {
   return false
 }
 
+const REDIRECT_OUT = /^(?:\d*|&)(?:>>|>\||>&|>|&>>|&>)(.*)$/
+/** 파일을 쓰는 명령 — 인자가 실행 위험 경로(.git/config·훅·셸 rc …)면 기다린다 */
+const FILE_WRITERS = new Set(['tee', 'cp', 'mv', 'ln', 'install', 'sed', 'touch', 'truncate', 'dd', 'rsync', 'patch', 'tar', 'unzip', 'zip'])
+/** 리다이렉트 대상이나 파일 쓰는 명령의 인자가 실행 위험 경로인가 (.git/config·hooks/·info/ 직접 쓰기 포함) */
+function writesDangerousPath(seg: Segment) {
+  const toks = seg.tokens.filter((t) => t !== '')
+  for (let k = 0; k < toks.length; k++) {
+    const m = REDIRECT_OUT.exec(toks[k])
+    if (!m) continue
+    const target = m[1] || toks[k + 1] || ''
+    if (!/^(\d+|-)$/.test(target) && isDangerousWritePath(target, '')) return true
+  }
+  const { cmd, args } = resolveCommand(seg)
+  if (cmd && FILE_WRITERS.has(base(cmd))) return args.some((a) => !a.startsWith('-') && isDangerousWritePath(a.replace(/^of=/, ''), ''))
+  return false
+}
+
 /** 대표를 기다려야 하는 명령인가 (위험 명령·푸시·외부 전송·스크립트 실행·명령 숨기기). 이어 붙인 명령 중 하나라도 걸리면 true */
 export function commandWaits(command: string): boolean {
   if (!command.trim()) return true
   if (findRiskyCommand(command)) return true
-  return lexSegments(command).some(segmentWaits)
+  const segs = lexSegments(command)
+  // 글자 그대로 남긴 $(…)·백틱(따옴표·이스케이프 속)이 있고 산술 평가가 될 만한 문맥도 있으면 변수 경유 우회로 보고 기다린다
+  if (segs.some((s) => s.literalSubst) && ARITH_CONTEXT.test(command)) return true
+  return segs.some(segmentWaits)
 }
 
 /** 실행 위험 경로에 쓰는 파일인지 (셸 rc·git 훅·.claude·.ssh·CI 설정 등 — H2) */
@@ -152,17 +314,20 @@ const DANGEROUS_WRITE = [
   /\/\.git\/hooks\//i,
   /(^|\/)(Library\/LaunchAgents|LaunchDaemons)\//i,
   /(^|\/)(crontab|cron\.d)(\/|$)/i,
+  /Start Menu\/Programs\/Startup(\/|$)/i, // 윈도우 시작프로그램
+  /(^|\/)(Windows)?PowerShell\/(v[\d.]+\/)?[^/]*profile\.ps1$/i, // PowerShell 프로필
   /\.github\/workflows\//i,
   /(^|\/)(\.gitlab-ci\.yml|\.circleci\/|azure-pipelines\.yml|Jenkinsfile|\.travis\.yml|bitbucket-pipelines\.yml)/i,
   // A4: git 설정·훅 관리자·디렉터리 환경·에디터 작업
   /(^|\/)\.gitconfig$/i,
-  /\/\.git\/config$/i,
+  /(^|\/)\.git\/(config|info\/|hooks\/|modules\/.+\/config$)/i,
   /(^|\/)\.husky(\/|$)/i,
   /(^|\/)\.envrc$/i,
   /\.vscode\/tasks\.json$/i,
 ]
 /** 홈 바로 밑 셸 rc 도 본다 */
-function isDangerousWritePath(p: string, content: string) {
+function isDangerousWritePath(rawPath: string, content: string) {
+  const p = rawPath.replace(/\\/g, '/') // 윈도우 역슬래시 경로도 같은 규칙으로 본다
   if (DANGEROUS_WRITE.some((re) => re.test(p))) return true
   // #! 로 시작하는(실행되는) 파일
   if (content.trimStart().startsWith('#!')) return true

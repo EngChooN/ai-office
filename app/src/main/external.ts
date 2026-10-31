@@ -14,6 +14,8 @@ const CLAUDE_DIR = path.join(os.homedir(), '.claude')
 const REGISTRY_DIR = path.join(CLAUDE_DIR, 'sessions')
 const SETTINGS_PATH = path.join(CLAUDE_DIR, 'settings.json')
 const POLL_MS = 2000
+/** 훅 요청 본문 상한 — 로컬 포트로 들어오는 과대 요청이 메모리를 채우지 않게 한다 */
+const MAX_BODY = 4 * 1024 * 1024
 const CODEX_SESSIONS_DIR = path.join(os.homedir(), '.codex', 'sessions')
 /** Codex 세션 파일 훑기는 폴링 몇 번에 한 번만 */
 const CODEX_SCAN_MS = 6000
@@ -104,7 +106,13 @@ export class ExternalWatcher {
       if (req.method === 'POST' && req.url === '/ask') return this.onAsk(req, res)
       if (req.method !== 'POST' || req.url !== '/hook') return res.writeHead(404).end()
       let body = ''
-      req.on('data', (c) => (body += c))
+      req.on('data', (c) => {
+        body += c
+        if (body.length > MAX_BODY) {
+          res.writeHead(413).end()
+          req.destroy()
+        }
+      })
       req.on('end', () => {
         res.writeHead(204).end()
         try {
@@ -127,7 +135,13 @@ export class ExternalWatcher {
   /** 외부 세션의 질문을 받아 둔다 — 응답은 답하거나 놓을 때까지 미룬다 */
   private onAsk(req: http.IncomingMessage, res: http.ServerResponse) {
     let body = ''
-    req.on('data', (c) => (body += c))
+    req.on('data', (c) => {
+      body += c
+      if (body.length > MAX_BODY) {
+        res.writeHead(413).end()
+        req.destroy()
+      }
+    })
     req.on('end', () => {
       let p: HookPayload
       try {

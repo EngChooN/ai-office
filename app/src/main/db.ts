@@ -59,9 +59,11 @@ export function openDb() {
       id INTEGER PRIMARY KEY AUTOINCREMENT, staff_id TEXT NOT NULL, ts INTEGER NOT NULL,
       cost_usd REAL NOT NULL, tokens_in INTEGER NOT NULL, tokens_out INTEGER NOT NULL
     );
+    CREATE INDEX IF NOT EXISTS usage_ts ON usage (ts, staff_id);
     CREATE TABLE IF NOT EXISTS saving (
       id INTEGER PRIMARY KEY AUTOINCREMENT, staff_id TEXT NOT NULL, ts INTEGER NOT NULL, tokens INTEGER NOT NULL
     );
+    CREATE INDEX IF NOT EXISTS saving_ts ON saving (ts);
     CREATE TABLE IF NOT EXISTS team (
       id TEXT PRIMARY KEY, name TEXT NOT NULL, color TEXT NOT NULL, lead_id TEXT, created_at INTEGER NOT NULL
     );

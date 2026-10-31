@@ -60,6 +60,8 @@ export class RemoteServer {
   private byPeer = new Map<string, { key: string; isAuthed: boolean }>()
   private unauthed = 0
   private authed = 0
+  /** 서버 실행 세대 — stop() 때마다 올라가서 옛 연결의 늦은 close가 새 카운터를 깎지 못하게 한다 */
+  private generation = 0
 
   get isListening() {
     return Boolean(this.server?.listening)
@@ -81,10 +83,13 @@ export class RemoteServer {
       this.perAddress.set(key, open + 1)
       this.unauthed++
       const entry = { key, isAuthed: false }
+      const gen = this.generation
       const peer = `${socket.remoteAddress}:${socket.remotePort}`
       this.sockets.set(socket, entry)
       this.byPeer.set(peer, entry)
       socket.once('close', () => {
+        // 서버를 다시 시작한 뒤에 늦게 닫히는 옛 연결은 새 카운터를 건드리지 않는다
+        if (gen !== this.generation) return
         this.sockets.delete(socket)
         this.byPeer.delete(peer)
         if (entry.isAuthed) this.authed--
@@ -127,6 +132,7 @@ export class RemoteServer {
     const server = this.server
     this.server = null
     if (!server) return Promise.resolve()
+    this.generation++
     for (const s of this.sockets.keys()) s.destroy()
     this.sockets.clear()
     this.byPeer.clear()

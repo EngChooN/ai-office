@@ -192,6 +192,8 @@ export interface Manual {
   path: string
   body: string
   steps: ProcessStep[]
+  /** 단계 JSON이 잘못됐을 때 사유 — 있으면 실행하지 않는다 */
+  error?: string
 }
 
 export interface ManualInput {

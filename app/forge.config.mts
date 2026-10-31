@@ -61,6 +61,30 @@ const machOFiles = (dir: string): string[] => {
   return found
 }
 
+/** 앱이 지원하는 언어(ko·en·ja·zh — shared/i18n LANGS)의 Electron 언어팩만 남긴다.
+ * 맥은 Electron Framework의 *.lproj(약 49MB), 윈도우는 locales/*.pak 이 대상이다. 서명 전에 지워야 서명이 깨지지 않는다. */
+const KEEP_LOCALE = /^(en|ko|ja|zh)([-_.]|$)/i
+
+const pruneLocales = (dir: string): void => {
+  const walk = (d: string): void => {
+    for (const ent of fs.readdirSync(d, { withFileTypes: true })) {
+      const full = path.join(d, ent.name)
+      if (ent.isSymbolicLink()) continue
+      if (ent.isDirectory() && ent.name.endsWith('.lproj')) {
+        if (!KEEP_LOCALE.test(ent.name)) fs.rmSync(full, { recursive: true, force: true })
+      } else if (ent.isDirectory()) {
+        if (ent.name !== 'node_modules') walk(full)
+      }
+    }
+  }
+  walk(dir)
+  // 윈도우·리눅스: <설치 폴더>/locales/*.pak
+  const pakDir = path.join(dir, 'locales')
+  if (fs.existsSync(pakDir)) {
+    for (const f of fs.readdirSync(pakDir)) if (f.endsWith('.pak') && !KEEP_LOCALE.test(f)) fs.rmSync(path.join(pakDir, f))
+  }
+}
+
 const config: ForgeConfig = {
   packagerConfig: {
     name: 'AI Office',
@@ -84,6 +108,7 @@ const config: ForgeConfig = {
       const codexSrc = path.resolve(import.meta.dirname, 'vendor', 'codex', `${result.platform}-${result.arch}`)
       for (const dir of result.outputPaths) {
         const resources = result.platform === 'darwin' ? path.join(dir, fs.readdirSync(dir).find((f) => f.endsWith('.app')) ?? '', 'Contents', 'Resources') : path.join(dir, 'resources')
+        pruneLocales(dir)
         if (fs.existsSync(codexSrc)) fs.cpSync(codexSrc, path.join(resources, 'codex'), { recursive: true, verbatimSymlinks: true })
         else console.warn(`[codex] ${codexSrc} 없음 — Codex 번들 없이 패키징합니다 (node scripts/fetch-codex.mts ${result.platform}-${result.arch})`)
       }
