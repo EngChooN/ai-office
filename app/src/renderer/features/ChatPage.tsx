@@ -360,13 +360,24 @@ function Composer({ room }: { room: RoomInfo | undefined }) {
     void window.office.sendChat(text, attachments, room?.room)
   }
   // 같은 이름의 직원·팀·랩이 있으면 "@디자인(팀)"처럼 종류를 붙여 고른 대상에게 가게 한다
-  const handleMention = (tg: MentionTarget) => setDraft((d) => d.replace(/@(\S*)$/, `${mentionToken(tg, targets)} `))
-  // @ 후보도 슬래시 메뉴와 같은 키(↑↓·Enter·Tab). Esc로 닫으면 글을 더 칠 때까지 닫아 둔다
+  // 고른 뒤에는 입력창에 포커스를 주고 커서를 끝(넣은 "@이름 " 뒤)으로 — 글이 바뀐 다음 프레임에 옮긴다
+  const inputId = useId()
+  const handleMention = (tg: MentionTarget) => {
+    setDraft((d) => d.replace(/@(\S*)$/, `${mentionToken(tg, targets)} `))
+    requestAnimationFrame(() => {
+      const el = document.getElementById(inputId)
+      if (!(el instanceof HTMLTextAreaElement)) return
+      el.focus()
+      el.setSelectionRange(el.value.length, el.value.length)
+    })
+  }
+  // @ 후보도 슬래시 메뉴와 같은 키(↑↓·Enter·Tab). Esc로 닫으면 글이 바뀔 때까지만 닫아 둔다 (onChange에서 푼다)
   const [closedDraft, setClosedDraft] = useState<string | null>(null)
   const isMentionOpen = suggestions.length > 0 && closedDraft !== draft
   const mentionItems = isMentionOpen ? suggestions.flatMap((g) => g.items) : []
   const mentionKeys = useSlashKeys(mentionItems.length, isMentionOpen ? (mentionQuery ?? null) : null, (i) => handleMention(mentionItems[i]))
   const mentionListRef = useRef<HTMLDivElement>(null)
+  const mentionOptionId = (index: number) => `${inputId}-mention-${index}`
   useEffect(() => {
     mentionListRef.current?.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: 'nearest' })
   }, [mentionKeys.active, isMentionOpen])
@@ -401,7 +412,7 @@ function Composer({ room }: { room: RoomInfo | undefined }) {
         />
       )}
       {isMentionOpen && (
-        <div ref={mentionListRef} role="listbox" className="bg-popover absolute bottom-full left-4 mb-1 flex max-h-80 min-w-56 flex-col overflow-y-auto rounded-lg border p-1 shadow-lg">
+        <div ref={mentionListRef} id={`${inputId}-mentions`} role="listbox" className="bg-popover absolute bottom-full left-4 mb-1 flex max-h-80 min-w-56 flex-col overflow-y-auto rounded-lg border p-1 shadow-lg">
           {suggestions.map((g) => (
             <div key={g.kind} className="flex flex-col">
               <span className="text-muted-foreground px-2 pt-1 text-[10px]">{t(KIND_LABEL[g.kind])}</span>
@@ -410,6 +421,7 @@ function Composer({ room }: { room: RoomInfo | undefined }) {
                 return (
                   <button
                     key={tg.key}
+                    id={mentionOptionId(index)}
                     type="button"
                     role="option"
                     aria-selected={index === mentionKeys.active}
@@ -440,7 +452,23 @@ function Composer({ room }: { room: RoomInfo | undefined }) {
       </div>
       <div className="mx-auto flex max-w-3xl items-end gap-2">
         <AttachButton onPick={draftFiles.add} className="size-9" />
-        <MentionTextarea value={draft} targets={targets} onChange={(e) => setDraft(e.target.value)} onKeyDown={handleKeyDown} {...draftFiles.bind} rows={1} placeholder={t(!room ? 'chat.placeholder' : isLab ? 'chat.labRoom.placeholder' : 'chat.room.placeholder', { all: ALL_MENTION, newline: String(NEWLINE_HINT) })} className="field-sizing-content max-h-32 min-h-9 resize-none py-[7px]" />
+        <MentionTextarea
+          id={inputId}
+          aria-expanded={isMentionOpen}
+          aria-controls={isMentionOpen ? `${inputId}-mentions` : undefined}
+          aria-activedescendant={isMentionOpen ? mentionOptionId(mentionKeys.active) : undefined}
+          value={draft}
+          targets={targets}
+          onChange={(e) => {
+            setDraft(e.target.value)
+            setClosedDraft(null)
+          }}
+          onKeyDown={handleKeyDown}
+          {...draftFiles.bind}
+          rows={1}
+          placeholder={t(!room ? 'chat.placeholder' : isLab ? 'chat.labRoom.placeholder' : 'chat.room.placeholder', { all: ALL_MENTION, newline: String(NEWLINE_HINT) })}
+          className="field-sizing-content max-h-32 min-h-9 resize-none py-[7px]"
+        />
         {/* 폰: 직원 패널·비서 보내기처럼 정원 */}
         <Button onClick={() => void handleSend()} disabled={!draft.trim() && draftFiles.files.length === 0} className="phone:w-10 phone:px-0">
           <SendIcon />
