@@ -14,6 +14,8 @@ export interface Segment {
   piped: boolean
   /** 따옴표·이스케이프로 글자 그대로 남긴 `$(`·백틱이 있었는지 (변수에 담았다가 산술 평가로 실행되는 우회 판정용) */
   literalSubst?: boolean
+  /** tokens와 같은 순서: 작은따옴표·`$'…'` 안 글자를 \u0001로 가린 낱말 (그 안의 글은 산술 평가가 되지 않는다) */
+  plain?: string[]
 }
 
 /** `((` 다음 위치부터 짝이 맞는 `))`까지가 산술식이면 끝 위치와 안쪽 글. `) )`처럼 붙지 않으면 명령 치환 속 서브셸이다(bash도 그렇게 되돌린다) */
@@ -81,6 +83,14 @@ function dqEnd(src: string, from: number): number {
   }
   return -1
 }
+/** `$'` 뒤 `from`부터 닫는 `'` 위치 (`\x` 쌍은 건너뛴다). 못 찾으면 -1 */
+function ansiCEnd(src: string, from: number): number {
+  for (let k = from; k < src.length; k++) {
+    if (src[k] === '\\') k++
+    else if (src[k] === "'") return k
+  }
+  return -1
+}
 /** `$(`의 `(` 위치에서 짝이 맞는 `)` 위치. 따옴표·이스케이프·백틱·heredoc 본문 속 괄호는 세지 않는다. 못 찾으면 -1 (호출한 쪽이 fail closed) */
 function substEnd(src: string, open: number): number {
   let d = 0
@@ -88,7 +98,12 @@ function substEnd(src: string, open: number): number {
   for (let j = open; j < src.length; j++) {
     const c = src[j]
     if (c === '\\') j++
-    else if (c === "'") {
+    else if (c === '$' && src[j + 1] === "'") {
+      // ANSI-C 따옴표 $'…': 안에서는 \x 쌍을 건너뛴다 (\' 가 따옴표를 닫지 않는다)
+      const e = ansiCEnd(src, j + 2)
+      if (e < 0) return -1
+      j = e
+    } else if (c === "'") {
       const e = src.indexOf("'", j + 1)
       if (e < 0) return -1
       j = e
@@ -134,6 +149,9 @@ export function lexSegments(command: string, depth = 0): Segment[] {
   /** 치환 안쪽 글(나중에 다시 토막으로 푼다) */
   const inners: string[] = []
   let tokens: string[] = []
+  let plains: string[] = []
+  /** 현재 낱말에서 작은따옴표로 감싼 글의 위치 범위 */
+  let sqRanges: [number, number][] = []
   let cur = ''
   let curHas = false
   let hasSubst = false
@@ -145,27 +163,41 @@ export function lexSegments(command: string, depth = 0): Segment[] {
   let piped = false
   let inCase = 0
   let parenDepth = 0
+  /** 열려 있는 ${…}·$[…]의 닫는 글자 */
+  const closers: string[] = []
   const n = command.length
   let i = 0
   const flushToken = () => {
-    if (curHas) tokens.push(cur)
+    if (curHas) {
+      tokens.push(cur)
+      let plain = ''
+      let at = 0
+      for (const [a, b] of sqRanges) {
+        plain += cur.slice(at, a) + '\u0001'.repeat(b - a)
+        at = b
+      }
+      plains.push(plain + cur.slice(at))
+    }
     cur = ''
     curHas = false
+    sqRanges = []
   }
   const flushSegment = (end: number, patternClose = false) => {
     flushToken()
     const raw = command.slice(segStart, end)
     let k = 0
     while (k < tokens.length && CONTROL.has(tokens[k]) && tokens[k] !== 'case') k++
+    if (tokens[k] === 'case' && depth > 0) unparsed = true // 명령 치환 안의 case: 패턴의 `)`가 치환을 닫은 것으로 읽힌다
     if (tokens[k] === 'case') inCase++
     else if (tokens[k] === 'esac' && inCase > 0) inCase--
     // case 패턴(`a|b)`)은 명령이 아니다 — 짝 없는 `)`로 끝나는 토막만 버린다
     const isPattern = patternClose && inCase > 0
     if (!isPattern && (tokens.length || raw.trim())) {
-      segments.push({ tokens, raw, hasSubst, piped, literalSubst })
+      segments.push({ tokens, raw, hasSubst, piped, literalSubst, plain: plains })
       piped = false
     }
     tokens = []
+    plains = []
     hasSubst = false
     literalSubst = false
   }
@@ -224,11 +256,26 @@ export function lexSegments(command: string, depth = 0): Segment[] {
       i++
       continue
     }
+    if (ch === '$' && command[i + 1] === "'") {
+      // ANSI-C 따옴표 $'…': \n \t \' \" \\ 만 풀고, 그 밖의 이스케이프(\x41·\101·\u…)는 무엇이 될지 몰라 해석 불가로 둔다 (fail closed)
+      const e = ansiCEnd(command, i + 2)
+      const body = command.slice(i + 2, e < 0 ? n : e)
+      curHas = true
+      if (e < 0 || /\\[^ntre'"\\]/.test(body)) unparsed = true
+      if (/\$\(|`/.test(body)) literalSubst = true
+      const c0 = cur.length
+      cur += body.replace(/\\(.)/gs, (_m, c: string) => (c === 'n' ? '\n' : c === 't' ? '\t' : c === 'r' ? '\r' : c === 'e' ? '\x1b' : c))
+      sqRanges.push([c0, cur.length])
+      i = e < 0 ? n : e + 1
+      continue
+    }
     if (ch === "'") {
       i++
       curHas = true
       const q0 = i
+      const c0 = cur.length
       while (i < n && command[i] !== "'") cur += command[i++]
+      sqRanges.push([c0, cur.length])
       if (/\$\(|`/.test(command.slice(q0, i))) literalSubst = true
       if (i < n) i++
       continue
@@ -255,7 +302,10 @@ export function lexSegments(command: string, depth = 0): Segment[] {
           i++
           hasSubst = true
           const s = i
-          while (i < n && command[i] !== '`') cur += command[i++]
+          while (i < n && command[i] !== '`') {
+            if (command[i] === '\\' && command[i + 1] === '`') unparsed = true // 백틱 안의 이스케이프된 백틱 = 중첩 치환 (fail closed)
+            cur += command[i++]
+          }
           inners.push(command.slice(s, i))
           if (i < n) i++
           continue
@@ -274,9 +324,29 @@ export function lexSegments(command: string, depth = 0): Segment[] {
       hasSubst = true
       curHas = true
       const s = i
-      while (i < n && command[i] !== '`') cur += command[i++]
+      while (i < n && command[i] !== '`') {
+        if (command[i] === '\\' && command[i + 1] === '`') unparsed = true
+        cur += command[i++]
+      }
       inners.push(command.slice(s, i))
       if (i < n) i++
+      continue
+    }
+    // ${…}·$[…] 안의 공백·연산자는 낱말을 나누지 않는다 (${s: x}·${a[ x ]}·$[ x ]). 짝이 닫히지 않으면 아래에서 해석 불가로 둔다
+    if (ch === '$' && (command[i + 1] === '{' || command[i + 1] === '[')) {
+      closers.push(command[i + 1] === '{' ? '}' : ']')
+      cur += ch + command[i + 1]
+      curHas = true
+      i += 2
+      continue
+    }
+    if (closers.length) {
+      const top = closers[closers.length - 1]
+      if (ch === top) closers.pop()
+      else if (ch === '[' && top === ']') closers.push(top) // ${…} 안의 { 는 중첩이 아니다 — 처음 나오는 }가 닫는다
+      cur += ch
+      curHas = true
+      i++
       continue
     }
     // 주석: 낱말 첫머리의 # 부터 줄 끝까지는 명령이 아니다 (줄바꿈은 남겨 둔다)
@@ -300,6 +370,7 @@ export function lexSegments(command: string, depth = 0): Segment[] {
     if (((ch === '&' && command[i + 1] === '&') || (ch === '|' && command[i + 1] === '|')) && inDoubleBracket() && cur !== ']]') {
       flushToken()
       tokens.push(command.slice(i, i + 2))
+      plains.push(command.slice(i, i + 2))
       i += 2
       continue
     }
@@ -337,6 +408,16 @@ export function lexSegments(command: string, depth = 0): Segment[] {
       }
       continue
     }
+    // 숫자 중괄호 범위 {1..3}은 낱말이다 (for i in {1..3})
+    if (ch === '{' && !curHas) {
+      const rm = /^\{-?\d+\.\.-?\d+(\.\.\d+)?\}/.exec(command.slice(i, i + 40))
+      if (rm) {
+        cur += rm[0]
+        curHas = true
+        i += rm[0].length
+        continue
+      }
+    }
     // 연산자·괄호: 토막을 끊는다. ( ) 는 늘 끊고, { } 는 낱말 첫머리일 때만 (${VAR}·brace 확장과 구분)
     if (ch === '&' || ch === '|' || ch === ';' || ch === '\n' || ch === '(' || ch === ')' || ((ch === '{' || ch === '}') && !curHas)) {
       const two = command.slice(i, i + 2)
@@ -362,13 +443,14 @@ export function lexSegments(command: string, depth = 0): Segment[] {
     i++
   }
   flushSegment(n)
+  if (closers.length) unparsed = true
   if (unparsed) segments.push({ tokens: ['$unterminated-substitution'], raw: '', hasSubst: true, piped: false })
   // 치환 안쪽을 다시 토막으로 풀어 더한다 (A1 — echo $(git push)·`rm -rf x` 안의 명령도 본다)
   if (depth < MAX_DEPTH) for (const inner of inners) if (inner.trim()) segments.push(...lexSegments(inner, depth + 1))
   return segments
 }
 
-const ASSIGN = /^[A-Za-z_][A-Za-z0-9_]*=/
+const ASSIGN = /^[A-Za-z_][A-Za-z0-9_]*(\[[^\]]*\])?\+?=/
 /** 명령 앞의 리다이렉트 낱말 (`> out` · `2>&1` · `<<EOF` · `&>f`): 연산자만 있으면 다음 낱말(대상)도 건너뛴다 */
 const REDIRECT = /^(?:\d*|&)(?:>>|>\||>&|<&|<>|<<<|<<-?|>|<|&>>|&>)/
 const REDIRECT_ALONE = /^(?:\d*|&)(?:>>|>\||>&|<&|<>|<<<|<<-|<<|>|<|&>>|&>)$/
@@ -463,39 +545,42 @@ const UNPARSEABLE = '$unparseable-wrapper'
 const CONTROL = new Set(['if', 'then', 'else', 'elif', 'fi', 'do', 'done', 'while', 'for', 'until', 'case', 'esac', 'function', 'select', '!', '{', '}'])
 
 /** 토막에서 환경 변수 대입·감싸는 앞말·제어문 키워드를 걷어내고 실제 명령과 인자를 고른다 */
-export function resolveCommand(seg: Segment): { cmd: string | null; args: string[]; localScript: boolean; via: string[] } {
-  const toks = seg.tokens.filter((t) => t !== '')
+export function resolveCommand(seg: Segment): { cmd: string | null; args: string[]; localScript: boolean; via: string[]; assigns: string[] } {
+  // 빈 인자('')도 자리를 차지한다 (옵션 값 위치가 밀리면 sed -e '' -e 'w …' 같은 판정이 어긋난다)
+  const toks = seg.tokens
   let k = 0
   /** 거쳐 온 감싸는 앞말 (xargs 뒤 명령 제한용) */
   const via: string[] = []
+  /** 명령 앞(래퍼 뒤 포함)의 `이름=값` 대입 */
+  const assigns: string[] = []
   for (;;) {
-    while (k < toks.length && ASSIGN.test(toks[k])) k++
+    while (k < toks.length && ASSIGN.test(toks[k])) assigns.push(toks[k++])
     if (k < toks.length && REDIRECT.test(toks[k])) {
       k += REDIRECT_ALONE.test(toks[k]) ? 2 : 1
       continue
     }
     // for·select·case·function 머리줄은 낱말이 데이터다 (본문은 다음 토막에서 따로 본다)
-    if (k < toks.length && ['for', 'select', 'case', 'function'].includes(toks[k])) return { cmd: null, args: [], localScript: false, via }
+    if (k < toks.length && ['for', 'select', 'case', 'function'].includes(toks[k])) return { cmd: null, args: [], localScript: false, via, assigns }
     const name = k < toks.length ? base(toks[k]) : ''
     if (k < toks.length && CONTROL.has(toks[k])) {
       k++
       continue
     }
     // command -v/-V 는 명령을 찾기만 한다
-    if (name === 'command' && /^-[vV]$/.test(toks[k + 1] ?? '')) return { cmd: null, args: [], localScript: false, via }
+    if (name === 'command' && /^-[vV]$/.test(toks[k + 1] ?? '')) return { cmd: null, args: [], localScript: false, via, assigns }
     if (name && WRAPPERS.has(name)) {
       const next = skipWrapperArgs(name, toks, k + 1)
-      if (next === null || (name === 'env' && toks.slice(k + 1, next).some((t) => /^-[A-Za-z]*S|^--split-string/.test(t)))) return { cmd: UNPARSEABLE, args: [], localScript: false, via }
+      if (next === null || (name === 'env' && toks.slice(k + 1, next).some((t) => /^-[A-Za-z]*S|^--split-string/.test(t)))) return { cmd: UNPARSEABLE, args: [], localScript: false, via, assigns }
       via.push(name)
       k = next
       continue
     }
     break
   }
-  if (k >= toks.length) return { cmd: null, args: [], localScript: false, via }
+  if (k >= toks.length) return { cmd: null, args: [], localScript: false, via, assigns }
   const raw = toks[k]
   const localScript = /^(\.\/|\.\.\/|~\/)/.test(raw) || (raw.includes('/') && !raw.startsWith('/'))
-  return { cmd: raw, args: toks.slice(k + 1), localScript, via }
+  return { cmd: raw, args: toks.slice(k + 1), localScript, via, assigns }
 }
 
 /** 경로를 떼고 명령 이름만 (예: /usr/bin/git → git). 명령 치환·변수는 그대로 둔다 */
