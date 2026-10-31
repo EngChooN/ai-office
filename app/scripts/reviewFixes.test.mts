@@ -511,3 +511,16 @@ test('설치 판정 리뷰 지적 6건: 우회 5종은 대표 확인, 옵션 값
   const ok = ['npm --prefix install install', 'pnpm --filter install install']
   for (const c of ok) assert.equal(commandWaits(c), false, c)
 })
+
+test('설치 판정 3차: 옵션 뒤 --, install-test 줄임말·camelCase, --global=값', () => {
+  const wait = ['npm --prefix app -- install lodash', 'pnpm --filter web -- add lodash', 'yarn --cwd app -- add lodash', 'bun --cwd app -- add lodash', 'npm install-t lodash', 'npm install-te lodash', 'npm install-tes lodash', 'npm installTest lodash', 'npm install-test lodash', 'npm it lodash', 'npm install --global=1', 'npm install --global=true', 'npm install --g=1', 'npm install -g=1', 'npm i --global=yes lodash']
+  for (const c of wait) {
+    assert.equal(commandWaits(c), true, c)
+    assert.equal(autoApprove('Bash', { command: c }), 'wait', c)
+  }
+  const ok = ['npm test', 'npm run build', 'npm install', 'npm ci', 'npm install --global=false', 'npm install --global=0', 'npm install --prefix app -- --ignore-scripts', 'pnpm --filter web -- install']
+  for (const c of ok) {
+    assert.equal(commandWaits(c), false, c)
+    assert.notEqual(autoApprove('Bash', { command: c }), 'wait', c)
+  }
+})

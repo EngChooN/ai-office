@@ -44,35 +44,41 @@ const INLINE_CODE_FLAGS = new Set(['-c', '-e', '--eval', '--command', '--exec'])
 /** 하위 명령으로 판정하는 빌드 래퍼 (배포·게시만 기다리고 빌드·테스트는 허용) */
 const BUILD_WRAPPERS = new Set(['make', 'gradle', 'gradlew', 'mvn', 'mvnw', 'rake'])
 // npm·pnpm·yarn·bun 의 설치·갱신 별칭 (오타 별칭 포함)
-const PKG_INSTALL_WORDS = new Set(['install', 'i', 'in', 'ins', 'inst', 'insta', 'instal', 'isnt', 'isnta', 'isntal', 'isntall', 'add', 'a', 'update', 'up', 'upgrade', 'udpate', 'upd', 'upda', 'updat', 'upg', 'upgr', 'upgra', 'upgrad', 'install-test', 'it'])
+const PKG_INSTALL_WORDS = new Set(['install', 'i', 'in', 'ins', 'inst', 'insta', 'instal', 'isnt', 'isnta', 'isntal', 'isntall', 'add', 'a', 'update', 'up', 'upgrade', 'udpate', 'upd', 'upda', 'updat', 'upg', 'upgr', 'upgra', 'upgrad', 'install-test', 'install-t', 'install-te', 'install-tes', 'installtest', 'it'])
 // 값을 따로 받는 옵션 (--filter web 의 web 을 패키지 이름으로 보지 않게). -w·--workspace 는 npm 만 값을 받고 pnpm 은 값 없는 옵션이다
 const PKG_OPT_WITH_VALUE = new Set(['--filter', '-F', '--registry', '--prefix', '--cwd', '--dir', '-C', '--tag', '--loglevel', '--cache', '--omit', '--include', '--otp', '--scope', '--fetch-retries', '--network-timeout', '--cpu', '--os', '--libc', '--location'])
 const NPM_ONLY_VALUE = new Set(['--workspace', '-w'])
 /** 설치가 아닌 것이 확실한 하위 명령 — 이 밖의 알 수 없는 하위 명령 뒤에 설치 낱말이 있으면 옵션 값을 잘못 읽었을 수 있어 기다린다 */
 const PKG_PLAIN_SUBS = new Set(['run', 'run-script', 'rum', 'urn', 'test', 't', 'tst', 'start', 'stop', 'restart', 'ci', 'ls', 'list', 'll', 'la', 'outdated', 'view', 'pack', 'rebuild', 'prune', 'dedupe', 'audit', 'why', 'version', 'help', 'build', 'dev', 'lint', 'cache', 'config', 'get', 'root', 'bin', 'prefix', 'whoami', 'ping', 'doctor', 'fund', 'search', 'info'])
-const isGlobalFlag = (a: string) => a === '--global' || a === '--global=true' || /^--g(l(o(b(a(l)?)?)?)?)?(=true)?$/.test(a) || /^-[A-Za-z]*g[A-Za-z]*$/.test(a) || a === '--location=global'
+/** 전역 설치 표기: -g·--global·--g…, 값이 붙으면(--global=1) 명시적 거짓(false·0·빈 값)이 아닌 한 전역으로 본다 */
+function isGlobalFlag(a: string): boolean {
+  const m = a.match(/^(--g(?:l(?:o(?:b(?:a(?:l)?)?)?)?)?|-[A-Za-z]*g[A-Za-z]*)(?:=(.*))?$/)
+  if (m) return m[2] === undefined || !['false', '0', ''].includes(m[2].toLowerCase())
+  return a === '--location=global'
+}
 function installsPackages(args: string[], pm = 'npm'): boolean {
-  const dd = args.indexOf('--')
-  const head = dd === 0 ? args.slice(1) : args // npm -- install lodash: 앞의 -- 는 건너뛴다
-  const dd2 = head.indexOf('--')
-  const words = dd2 < 0 ? head : head.slice(0, dd2)
   const takesValue = (a: string) => PKG_OPT_WITH_VALUE.has(a) || (pm === 'npm' && NPM_ONLY_VALUE.has(a))
+  // 하위 명령 앞에서는 옵션(값 포함)과 `--` 를 건너뛰고 첫 낱말을 하위 명령으로 본다
+  let at = -1
+  for (let k = 0; k < args.length; k++) {
+    if (args[k] === '--') continue
+    if (args[k].startsWith('-')) { if (takesValue(args[k])) k++ } else { at = k; break }
+  }
+  const dd = args.indexOf('--', Math.max(at, 0)) // 하위 명령 뒤의 `--`: 그 뒤 낱말은 패키지 이름
+  const words = dd < 0 ? args : args.slice(0, dd)
   if (words.some(isGlobalFlag)) return true // 전역 설치
   const loc = words.indexOf('--location')
   if (loc >= 0 && words[loc + 1] === 'global') return true
-  let at = -1
-  for (let k = 0; k < words.length; k++) {
-    if (words[k].startsWith('-')) { if (takesValue(words[k])) k++ } else { at = k; break }
-  }
   if (at < 0) return false
   const sub = words[at]
   if (/[$`]/.test(sub)) return true // 하위 명령이 변수·치환이면 무엇인지 확정할 수 없다
   if (sub === 'global' && words.slice(at + 1).some((a) => ['add', 'upgrade', 'install'].includes(a))) return true // yarn global add
-  if (!PKG_INSTALL_WORDS.has(sub)) {
+  const isInstall = (w: string) => PKG_INSTALL_WORDS.has(w) || PKG_INSTALL_WORDS.has(w.toLowerCase()) // installTest 같은 대소문자 표기
+  if (!isInstall(sub)) {
     // 알 수 없는 옵션이 값을 받았을 가능성: 뒤에 설치 낱말이 있으면 기다린다
-    return !PKG_PLAIN_SUBS.has(sub) && words.slice(at + 1).some((a) => PKG_INSTALL_WORDS.has(a))
+    return !PKG_PLAIN_SUBS.has(sub) && words.slice(at + 1).some(isInstall)
   }
-  if (dd2 >= 0 && head.slice(dd2 + 1).some((a) => !a.startsWith('-'))) return true // npm i -- pkg
+  if (dd >= 0 && args.slice(dd + 1).some((a) => !a.startsWith('-'))) return true // npm i -- pkg
   for (let k = at + 1; k < words.length; k++) {
     if (takesValue(words[k])) k++
     else if (!words[k].startsWith('-')) return true
