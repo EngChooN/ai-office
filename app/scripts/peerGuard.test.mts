@@ -101,7 +101,7 @@ test('P1 busy: 직원이 로컬 일을 하는 중이면 일을 받지 않고(503
 })
 
 // ── 4차 한리뷰 지적 (office.ts가 쓰는 순수 판정) ──
-import { blocksCopyRedelegate, canCreateCards, heldByOtherPeerJob, peerCwdRestored } from '../src/main/peer/peerIsolation.ts'
+import { blocksCopyRedelegate, canCreateCards, derivedPeerAction, heldByOtherPeerJob, peerCwdRestored } from '../src/main/peer/peerIsolation.ts'
 
 test('4차 P1-1 피어 문맥(재위임 포함)에서는 add_task·propose_plan 카드 생성을 막고, 로컬 직원은 허용한다', () => {
   assert.equal(canCreateCards([{ kind: 'peer', jobId: 'J1' }]), false)
@@ -128,4 +128,16 @@ test('4차 P2-3 복사본 폴더로 하는 피어 일은 재위임 거절', () =
 test('4차 P2-4 실제 작업 폴더가 원래대로 돌아오기 전에는 복사본 기록을 지우지 않는다', () => {
   assert.equal(peerCwdRestored('/copy/j1', '/home/me/proj'), false)
   assert.equal(peerCwdRestored('/home/me/proj', '/home/me/proj'), true)
+})
+
+test('4차 재리뷰 P1-2 늦게 온 팀원 보고: 끝난 피어 일이면 버리고, 다른 피어 일이 쓰는 리드는 대기, 같은 일·로컬 지시는 통과', () => {
+  const active = (id: string) => id === 'J1' || id === 'J2'
+  const report = { kind: 'user', peerJobId: 'J1' }
+  assert.equal(derivedPeerAction(report, [], undefined, active), 'pass')
+  assert.equal(derivedPeerAction(report, [{ kind: 'peer', jobId: 'J1' }], undefined, active), 'pass')
+  assert.equal(derivedPeerAction(report, [{ kind: 'peer', jobId: 'J2' }], undefined, active), 'hold')
+  assert.equal(derivedPeerAction(report, [], 'J2', active), 'hold')
+  assert.equal(derivedPeerAction({ kind: 'user', peerJobId: 'J0' }, [], undefined, active), 'drop')
+  assert.equal(derivedPeerAction({ kind: 'user' }, [{ kind: 'peer', jobId: 'J2' }], undefined, active), 'pass') // 로컬 지시는 기존 대기 규칙 몫
+  assert.equal(derivedPeerAction({ kind: 'peer', jobId: 'J3' }, [], undefined, active), 'pass')
 })

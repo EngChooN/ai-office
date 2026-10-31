@@ -8,6 +8,12 @@ export default {
     ja: '{name}は別のPCから任された作業中です。この指示はその作業が終わってからお伝えします',
     zh: '{name}正在处理另一台电脑交付的工作。这条指令会在那项工作完成后再转达',
   },
+  'peer.guard.lateDropped': {
+    ko: '{name}에게 온 지시는 이미 끝난 다른 PC 일에서 이어진 것이라 전하지 않았어요',
+    en: 'An instruction for {name} came from a job from another PC that has already finished, so it was not passed on',
+    ja: '{name}への指示はすでに終わった別のPCの作業から続いたものなので、伝えませんでした',
+    zh: '发给{name}的指令来自另一台电脑已完成的工作，因此没有转达',
+  },
   'peer.guard.noAutoEdit': {
     ko: '{name}은(는) 파일 수정을 결재 없이 하는 설정이라, 다른 PC가 맡긴 일에서는 일을 넘길 수 없어요',
     en: '{name} edits files without approval, so work from another PC cannot be handed to them',

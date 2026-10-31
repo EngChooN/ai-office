@@ -8,9 +8,9 @@ import { app } from 'electron'
 import { z } from 'zod'
 import type { PeerManager } from './peer/peerManager'
 import type { PeerHost, PeerHostOffice } from './peer/peerHost'
-import type { PeerApprovalEvent } from '../shared/peerProtocol'
+import { isPeerJobActive, type PeerApprovalEvent } from '../shared/peerProtocol'
 import { remoteStaffBase } from './peer/remoteStaffView'
-import { blocksCopyRedelegate, canCreateCards, hasLocalWork as hasLocalWorkOf, heldByOtherPeerJob, peerCwdRestored, peerJobOfOrigins, shouldHoldLocal } from './peer/peerIsolation'
+import { blocksCopyRedelegate, canCreateCards, derivedPeerAction, hasLocalWork as hasLocalWorkOf, heldByOtherPeerJob, peerCwdRestored, peerJobOfOrigins, shouldHoldLocal } from './peer/peerIsolation'
 import { fmtDate, getLang, resolveLang, setLang, t, tk, tr as trI18n, tx, type I18nArg, type Lang } from '../shared/i18n/index.ts'
 import {
   companyFromXp,
@@ -884,6 +884,13 @@ export class Office extends EventEmitter<{
     if (!s || s.isPractice) return
     // 피어 일이 걸린 직원에게 온 로컬 지시는 대기 (/명령은 중단 같은 제어라 그대로 통과)
     if (shouldHoldLocal(this.origins.get(staffId) ?? [], origin, Boolean(parseSlash(text))) || (this.peerCwd.has(staffId) && !(origin.kind === 'peer' || origin.peerJobId) && !parseSlash(text))) return this.holdLocal(staffId, text, origin, attachments, via, isDirect)
+    // 피어 일에서 파생된 지시: 그 일이 끝났으면 버리고, 다른 피어 일이 쓰는 중이면 대기
+    const derived = derivedPeerAction(origin, this.origins.get(staffId) ?? [], this.peerCwd.get(staffId)?.jobId, (id) => {
+      const j = this.peerHost?.getJob(id)
+      return Boolean(j && isPeerJobActive(j.state))
+    })
+    if (derived === 'drop') return this.log(staffId, 'status', t('peer.guard.lateDropped', { name: s.name }))
+    if (derived === 'hold') return this.holdLocal(staffId, text, origin, attachments, via, isDirect)
     this.log(staffId, 'instruction', via ? `${via} ${text}` : text, attachments)
     if (this.handleSlash(staffId, text, origin)) return
     const origins = this.origins.get(staffId) ?? []
@@ -1593,7 +1600,8 @@ export class Office extends EventEmitter<{
       if (nextTask) this.assignTask(nextTask.taskId, staffId, nextTask.context)
       else if (!origins.some((o) => o.kind === 'task')) this.resumeStopped(staffId)
     }
-    this.checkStall(staffId, summary, isAutoCheckTurn, backgroundTasks, room, this.hasAutonomousOrigin(origins), peerJobOfOrigins(origins))
+    // 피어 일을 받은 턴은 결과를 이미 A컴에 돌려줬다 — 다시 깨우면 변경 모으기와 겹치고 이어 한 일은 A컴에 닿지 않는다
+    if (!origins.some((o) => o.kind === 'peer')) this.checkStall(staffId, summary, isAutoCheckTurn, backgroundTasks, room, this.hasAutonomousOrigin(origins), peerJobOfOrigins(origins))
     this.releaseHeld(staffId)
   }
 

@@ -30,6 +30,17 @@ export function heldByOtherPeerJob(origins: readonly OriginLike[], cwdJobId: str
   return (cur !== null && cur !== jobId) || (cwdJobId !== undefined && cwdJobId !== jobId)
 }
 
+/**
+ * 피어 일에서 파생된 지시(늦게 온 팀원 보고·멈춤 방지 재지시)를 어떻게 다룰까
+ * - 그 피어 일이 이미 끝났으면 버린다 (A컴은 결과를 받았고, 이어 하면 승인 주체 없이 일하게 된다)
+ * - 이 직원을 다른 피어 일이 쓰고 있으면 그 일이 끝날 때까지 대기시킨다 (한 세션에서 섞지 않는다)
+ */
+export function derivedPeerAction(incoming: OriginLike, origins: readonly OriginLike[], cwdJobId: string | undefined, isJobActive: (jobId: string) => boolean): 'pass' | 'drop' | 'hold' {
+  if (incoming.kind === 'peer' || !incoming.peerJobId) return 'pass'
+  if (!isJobActive(incoming.peerJobId)) return 'drop'
+  return heldByOtherPeerJob(origins, cwdJobId, incoming.peerJobId) ? 'hold' : 'pass'
+}
+
 /** 피어 문맥에서 업무 카드를 새로 만들거나 기획안을 올릴 수 있는가 — 카드는 승인 주체를 이어받지 못하므로 막는다 */
 export const canCreateCards = (origins: readonly OriginLike[]) => peerJobOfOrigins(origins) === null
 
