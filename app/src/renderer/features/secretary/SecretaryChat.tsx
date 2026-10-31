@@ -65,7 +65,7 @@ export function ExampleChips({
   onPick?: () => void;
 }) {
   const questions = useExampleQuestions();
-  const { isBusy } = useSecretary();
+  const isBusy = useOffice((s) => (s.secretary ?? EMPTY_SECRETARY).isBusy);
   return (
     <div className={cn("flex gap-1.5", className)}>
       {questions.map((q) => (

@@ -422,21 +422,36 @@ function RemoteGuide({
   )
 }
 
-/** QR 단계: 휴대폰이 처음 상태 조회에 성공하면 "연결됐어요" */
-function QrStep({ status, setStatus, onClose }: { status: RemoteStatus; setStatus: (s: RemoteStatus) => void; onClose: () => void }) {
-  const [qr, setQr] = useState<RemoteQr | null>(null)
+/** QR이 숨기까지 남은 시간 — 1초마다 이 줄만 다시 그린다 */
+function QrHideIn({ until }: { until: number }) {
   const [now, setNow] = useState(() => Date.now())
-  const [shownAt] = useState(() => Date.now())
-  useEffect(() => {
-    void window.office.remoteQr().then(setQr)
-  }, [status.isQrReady, status.connectHost, status.port])
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(timer)
   }, [])
+  const left = Math.max(0, until - now)
+  return <span className="text-status-waiting">{t('remote.qr.hideIn', { time: `${Math.floor(left / 60_000)}:${String(Math.floor((left % 60_000) / 1000)).padStart(2, '0')}` })}</span>
+}
+
+/** QR 단계: 휴대폰이 처음 상태 조회에 성공하면 "연결됐어요" */
+function QrStep({ status, setStatus, onClose }: { status: RemoteStatus; setStatus: (s: RemoteStatus) => void; onClose: () => void }) {
+  const [qr, setQr] = useState<RemoteQr | null>(null)
+  const [isExpired, setExpired] = useState(false)
+  const [shownAt] = useState(() => Date.now())
+  useEffect(() => {
+    void window.office.remoteQr().then(setQr)
+  }, [status.isQrReady, status.connectHost, status.port])
+  // 숨길 시각에 한 번만 다시 그린다 (남은 시간 글자는 QrHideIn이 혼자 1초마다 고친다)
+  useEffect(() => {
+    if (!qr) return
+    const left = qr.until - Date.now()
+    setExpired(left <= 0)
+    if (left <= 0) return
+    const timer = setTimeout(() => setExpired(true), left)
+    return () => clearTimeout(timer)
+  }, [qr])
   const isConnected = status.recentAccess.some((e) => e.at >= shownAt && e.path === '/v1/status' && e.status === 200)
-  const left = qr ? Math.max(0, qr.until - now) : 0
-  const isVisible = Boolean(qr && left > 0)
+  const isVisible = Boolean(qr && !isExpired)
 
   const handleRegenerate = async () => {
     if (!window.confirm(t('remote.regenerateConfirm'))) return
@@ -468,9 +483,7 @@ function QrStep({ status, setStatus, onClose }: { status: RemoteStatus; setStatu
                 {qr.host}:{qr.port}
               </span>
             )}
-            <span className="text-status-waiting">
-              {t('remote.qr.hideIn', { time: `${Math.floor(left / 60_000)}:${String(Math.floor((left % 60_000) / 1000)).padStart(2, '0')}` })}
-            </span>
+            <QrHideIn until={qr.until} />
             {isConnected && (
               <span className="text-status-working flex items-center gap-1">
                 <CheckCircle2Icon className="size-3.5" /> {t('remote.qr.connected')}

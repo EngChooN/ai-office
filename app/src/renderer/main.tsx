@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import { watchSystemMode } from '@/lib/uiTheme'
+import { loadPage } from '@/layout/pages'
 
 // OS별 여백·문구를 CSS(win: 변형)와 화면에서 나눠 쓰도록 <html>에 표시해 둔다
 document.documentElement.dataset.platform = window.office.platform
@@ -18,7 +19,10 @@ if (window.officePet) {
     ),
   )
 } else {
-  void import('./App').then(({ default: App }) =>
+  // 첫 화면(store.ts의 처음 view = 사무실 지도)은 App과 동시에 받기 시작해, 둘 다 오면 그린다 — 틀만 뜨고 본문이 비는 순간이 없게.
+  // 받지 못해도 앱은 띄우고 그 자리는 "다시 시도" 안내로 (LoadErrorBoundary)
+  const firstPage = loadPage('map').catch(() => {})
+  void Promise.all([import('./App'), firstPage]).then(([{ default: App }]) =>
     root.render(
       <StrictMode>
         <App />

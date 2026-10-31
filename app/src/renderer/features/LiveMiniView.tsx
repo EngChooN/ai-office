@@ -4,7 +4,8 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { cn } from '@/lib/utils'
-import { MINI_H, MINI_W, officeStage, type MiniHandle } from '@/map/officeStage'
+import { MINI_H, MINI_W } from '@/map/miniSize'
+import type { MiniHandle } from '@/map/officeStage'
 import { avatarUrl } from '@/map/sprites'
 import { useWorkMode } from '@/store'
 import type { Staff } from '@shared/types'
@@ -45,16 +46,24 @@ export function LiveMiniView({ staff, className, wrapperClassName, isCompact = f
     }
     // 창이 기본 비율보다 넓으면 그만큼 넓게 그린다 (늘려서 확대하지 않게)
     const aspectOf = () => box.clientWidth / Math.max(1, box.clientHeight)
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting && !handleRef.current) handleRef.current = officeStage.addView(staffIdRef.current, canvas, setIsLive, { isCompact, aspect: aspectOf() })
-      else if (!entry.isIntersecting) stop()
-    })
-    observer.observe(box)
-    const resizer = new ResizeObserver(() => handleRef.current?.setAspect(aspectOf()))
-    resizer.observe(box)
+    // 무대(Phaser)는 미니 뷰가 처음 필요할 때 불러온다 — 첫 화면에 싣지 않는다. 그동안은 정지 그림
+    let isGone = false
+    let observer: IntersectionObserver | null = null
+    let resizer: ResizeObserver | null = null
+    void import('@/map/officeStage').then(({ officeStage }) => {
+      if (isGone) return
+      observer = new IntersectionObserver(([entry]) => {
+        if (entry.isIntersecting && !handleRef.current) handleRef.current = officeStage.addView(staffIdRef.current, canvas, setIsLive, { isCompact, aspect: aspectOf() })
+        else if (!entry.isIntersecting) stop()
+      })
+      observer.observe(box)
+      resizer = new ResizeObserver(() => handleRef.current?.setAspect(aspectOf()))
+      resizer.observe(box)
+    }).catch(() => {}) // 무대를 받지 못하면 정지 그림 그대로 둔다
     return () => {
-      observer.disconnect()
-      resizer.disconnect()
+      isGone = true
+      observer?.disconnect()
+      resizer?.disconnect()
       stop()
     }
   }, [isWorkMode, isStill, isCompact])

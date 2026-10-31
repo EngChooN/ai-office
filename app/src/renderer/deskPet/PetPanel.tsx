@@ -814,6 +814,9 @@ function useChat(staff: { unreadReports?: number }[], shownCount: number) {
   return { chat, reload };
 }
 
+const isSameLogs = (a: LogEntry[], b: LogEntry[]) =>
+  a.length === b.length && a.every((x, i) => x.id === b[i].id && x.text === b[i].text);
+
 /** 고른 직원의 오늘 기록 (앱 직원 패널과 같은 getRecord). 상태·보고·결재가 바뀌거나 일하는 동안 몇 초마다 다시 읽는다 */
 function useStaffLogs(
   staffId: string | undefined,
@@ -830,7 +833,8 @@ function useStaffLogs(
     let isLive = true;
     void window.office
       .getRecord(staffId)
-      .then((r) => isLive && setLogs({ staffId, logs: r.logs }))
+      // 몇 초마다 다시 읽어도 기록이 그대로면 다시 그리지 않는다
+      .then((r) => isLive && setLogs((prev) => (prev?.staffId === staffId && isSameLogs(prev.logs, r.logs) ? prev : { staffId, logs: r.logs })))
       .catch(() => {});
     return () => {
       isLive = false;

@@ -15,10 +15,10 @@ import { isMeetingLive } from '@shared/types'
 import { IsoOfficeScene } from './IsoOfficeScene'
 import { useFloorVisits } from './iso/floorVisits'
 import { afterNextRender } from './renderSignal'
+import { MINI_H, MINI_W } from './miniSize'
 
 /** 미니 뷰 기본 크기 (CSS px) — 창은 이 비율로 그린다 */
-export const MINI_W = 200
-export const MINI_H = 140
+export { MINI_H, MINI_W }
 /**
  * 창이 기본 비율보다 넓으면(폭이 넓은 대시보드 카드) 높이는 그대로 두고 그만큼 넓게 그린다 —
  * 늘려서 잘라 확대하지 않고 사무실 좌우가 더 보인다. 이 비율까지만 넓힌다

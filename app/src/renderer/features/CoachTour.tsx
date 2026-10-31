@@ -68,7 +68,11 @@ export function useTourTarget(target: string | null) {
   const [rect, setRect] = useState<DOMRect | null>(null)
   useLayoutEffect(() => {
     if (!target) return setRect(null)
-    const update = () => setRect(findTourTarget(target)?.getBoundingClientRect() ?? null)
+    // 자리가 그대로면 상태를 바꾸지 않는다 (300ms마다 설명 상자를 통째로 다시 그리지 않게)
+    const update = () => {
+      const next = findTourTarget(target)?.getBoundingClientRect() ?? null
+      setRect((prev) => (prev && next && prev.x === next.x && prev.y === next.y && prev.width === next.width && prev.height === next.height ? prev : next))
+    }
     update()
     const timer = setInterval(update, 300)
     window.addEventListener('resize', update)

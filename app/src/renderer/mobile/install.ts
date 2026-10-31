@@ -1,7 +1,7 @@
 // 모바일 빌드 진입 준비: window.office를 원격 어댑터로 채우고, 셸 메시지(연결·뒤로 가기·resync)를 화면 상태에 잇는다
 // main.tsx보다 먼저 실행돼야 한다 (mobile/main.tsx가 이 파일을 먼저 import)
 
-import { useOffice } from '@/store'
+import { loadChatHistory, useOffice } from '@/store'
 import { isPhoneLayout } from '@/layout/useLayout'
 import { createLayoutTracker, setLayoutState } from '@/layout/layoutState'
 import { createBridge } from './bridge'
@@ -35,7 +35,7 @@ document.documentElement.dataset.shell = 'mobile'
 session.onResync(() => {
   const { setSnapshot, liveLogs } = useOffice.getState()
   void window.office.snapshot().then(setSnapshot)
-  void window.office.chatHistory().then((chat) => useOffice.setState({ chat }))
+  loadChatHistory()
   const since = liveLogs.at(-1)?.ts ?? Date.now() - 60 * 60_000
   void window.office.timeline(since).then((logs) => {
     const seen = new Set(useOffice.getState().liveLogs.map((l) => l.id))

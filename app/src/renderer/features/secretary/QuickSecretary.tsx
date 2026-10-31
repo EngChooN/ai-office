@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { MOD_KEY } from '@/lib/platform'
 import { useOffice } from '@/store'
-import { ExampleChips, SecretaryComposer, SecretaryMessages, useSecretary } from './SecretaryChat'
+import { ExampleChips, SecretaryComposer, SecretaryMessages } from './SecretaryChat'
+import { EMPTY_SECRETARY } from '@shared/types'
 import { SecretaryFace } from './SecretaryFace'
 import { t } from '@shared/i18n'
 
@@ -15,12 +16,12 @@ export function QuickSecretary() {
   const isOpen = useOffice((s) => s.isQuickSecretaryOpen)
   const setOpen = useOffice((s) => s.setQuickSecretaryOpen)
   const setView = useOffice((s) => s.setView)
-  const { messages } = useSecretary()
   const [since, setSince] = useState(0)
   useEffect(() => {
     if (isOpen) setSince(Date.now())
   }, [isOpen])
-  const hasCard = messages.some((m) => m.ts >= since && m.card)
+  // 참·거짓만 꺼낸다 (스냅샷마다 빠른 창 전체를 다시 그리지 않게)
+  const hasCard = useOffice((s) => (s.secretary ?? EMPTY_SECRETARY).messages.some((m) => m.ts >= since && m.card))
   const goSecretary = () => {
     setOpen(false)
     setView('secretary')

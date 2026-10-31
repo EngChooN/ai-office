@@ -136,11 +136,22 @@ export const useOffice = create<OfficeState>((set) => ({
   pushChat: (m) => set((s) => ({ chat: appendChat(s.chat, m, CHAT_MAX) })),
 }))
 
+/**
+ * 단체방 기록을 다시 읽는다. 응답을 기다리는 사이 실시간으로 온 글(onChat)은 응답으로 덮어쓰지 않고 그 위에 다시 얹는다
+ * — 휴대폰은 기록(HTTP)과 실시간 글(이벤트 스트림)이 다른 길로 와서, 먼저 온 새 글이나 결재 결과로 바뀐 글이 옛 기록에 묻힐 수 있다
+ */
+export function loadChatHistory() {
+  const before = new Set(useOffice.getState().chat)
+  void window.office.chatHistory().then((history) =>
+    useOffice.setState((s) => ({ chat: s.chat.filter((m) => !before.has(m)).reduce((chat, m) => appendChat(chat, m, CHAT_MAX), history) })),
+  )
+}
+
 /** main 프로세스 이벤트를 store에 연결한다 (앱 시작 시 1회) */
 export function connectOffice() {
   const { setSnapshot, pushLog, pushChat, select } = useOffice.getState()
   void window.office.snapshot().then(setSnapshot)
-  void window.office.chatHistory().then((chat) => useOffice.setState({ chat }))
+  loadChatHistory()
   // 메뉴바 "비서에게 말하기"는 직원 대신 비서 표시가 온다 → 빠른 창
   // 바탕화면 비서 "앱에서 열기"는 비서 화면으로 (확인 카드를 거기서 이어 한다)
   const focus = (id: string) => {

@@ -1,8 +1,10 @@
 import { Trash2Icon } from 'lucide-react'
+import { useShallow } from 'zustand/react/shallow'
 import { Button } from '@/components/ui/button'
 import { Page } from '@/components/ui/page'
-import { formatTokens } from '@shared/types'
-import { ExampleChips, SecretaryComposer, SecretaryMessages, useSecretary } from './SecretaryChat'
+import { useOffice } from '@/store'
+import { EMPTY_SECRETARY, formatTokens } from '@shared/types'
+import { ExampleChips, SecretaryComposer, SecretaryMessages } from './SecretaryChat'
 import { SecretaryFace } from './SecretaryFace'
 import { t } from '@shared/i18n'
 
@@ -20,7 +22,13 @@ function Empty() {
 }
 
 export function SecretaryPage() {
-  const { usageTodayTokens, isLimited, messages } = useSecretary()
+  // 쓰는 값만 꺼낸다 — 스냅샷마다 비서 상태가 새 객체로 와도 값이 같으면 화면 틀을 다시 그리지 않는다 (대화 목록은 SecretaryMessages가 따로)
+  const { usageTodayTokens, isLimited, hasMessages } = useOffice(
+    useShallow((s) => {
+      const sec = s.secretary ?? EMPTY_SECRETARY
+      return { usageTodayTokens: sec.usageTodayTokens, isLimited: sec.isLimited, hasMessages: sec.messages.length > 0 }
+    }),
+  )
   const handleClear = () => {
     if (window.confirm(t('secretary.clearConfirm'))) void window.office.secretaryClear()
   }
@@ -32,7 +40,7 @@ export function SecretaryPage() {
       actions={
         <div className="flex items-center gap-2">
           <span className="text-muted-foreground text-xs tabular-nums">{t('secretary.todayTokens', { n: formatTokens(usageTodayTokens) })}</span>
-          <Button size="sm" variant="ghost" onClick={handleClear} disabled={messages.length === 0}>
+          <Button size="sm" variant="ghost" onClick={handleClear} disabled={!hasMessages}>
             <Trash2Icon /> {t('secretary.clear')}
           </Button>
         </div>
@@ -43,7 +51,7 @@ export function SecretaryPage() {
       </div>
       <div className="flex flex-col gap-2 border-t px-6 py-3 phone:px-4">
         {isLimited && <p className="text-status-waiting text-xs">{t('secretary.limited')}</p>}
-        {messages.length > 0 && <ExampleChips className="mx-auto w-full max-w-3xl overflow-x-auto [scrollbar-width:none]" />}
+        {hasMessages && <ExampleChips className="mx-auto w-full max-w-3xl overflow-x-auto [scrollbar-width:none]" />}
         <div className="mx-auto w-full max-w-3xl">
           <SecretaryComposer />
         </div>

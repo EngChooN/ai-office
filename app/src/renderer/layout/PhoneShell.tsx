@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { SparklesIcon, BellIcon, CheckCircle2Icon, EllipsisIcon, FolderIcon, LayoutGridIcon, UserPlusIcon, WifiOffIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -15,7 +15,8 @@ import { recentFolders } from '@/mobile/recentFolders'
 import { useMobileUi } from '@/mobile/ui'
 import { useOffice, useWorkMode, type View } from '@/store'
 import { formatWon } from '@shared/economy'
-import { PAGES } from './pages'
+import { renderPage, retryPage } from './pages'
+import { LoadErrorBoundary } from '@/components/load-error-boundary'
 import { fmtDate, t } from '@shared/i18n'
 
 // 폰 틀 (docs/specs/android-pc-layout.md 2절): 상단 바 · 연결 배너 · 기존 화면 · 아래 탭 5칸 · 더보기 시트
@@ -35,7 +36,6 @@ export function PhoneShell({ children }: { children?: React.ReactNode }) {
   const wasOpen = useMobileUi((s) => s.wasOpen)
   // 끊긴 동안에는 결재·지시가 늦게 들어가 엉뚱하게 처리되지 않게 본문 조작을 막는다 (마지막 화면은 보인다)
   const isOffline = wasOpen && connection !== 'open'
-  const Page = PAGES[view]
 
   return (
     // 가로 폰: 노치·카메라 구멍이 있는 좌우를 비운다
@@ -46,7 +46,9 @@ export function PhoneShell({ children }: { children?: React.ReactNode }) {
         {/* 묶음 화면 위쪽 탭 (PC와 같은 탭 줄) */}
         <NavTabs />
         <div className="min-h-0 flex-1">
-          <Page />
+          <LoadErrorBoundary key={view} onRetry={() => retryPage(view)}>
+            {() => <Suspense fallback={null}>{renderPage(view)}</Suspense>}
+          </LoadErrorBoundary>
         </div>
       </main>
       <NoticeBar />

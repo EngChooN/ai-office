@@ -15,7 +15,6 @@ import { COMPANY_LEVELS, type DayNight, type HooksStatus, type Settings, type Th
 import { UI_THEME_GROUPS, type UiMode } from '@shared/uiTheme'
 import { PET_OPACITY_RANGE, PET_SIZE_RANGE, petOpacity, petSize } from '@shared/deskPet'
 import { officeOf } from '@shared/officeLevel'
-import { officeStage } from '@/map/officeStage'
 import { ApprovalRulesList, AutoApproveSection } from './AutoApprove'
 import { UpdateSection } from './AppUpdate'
 import { updateActions } from '@/lib/update'
@@ -93,8 +92,14 @@ function InteractionPreview() {
   const [isMissing, setMissing] = useState(false)
   const run = (kind: (typeof IX_PREVIEWS)[number]) => {
     setView('map')
-    // 지도 장면이 깨어난 뒤 실행한다
-    setTimeout(() => setMissing(!officeStage.mainScene()?.previewInteraction(kind)), 400)
+    // 지도 장면이 깨어난 뒤 실행한다 (무대는 지도를 열 때 불러오므로 여기서도 늦게 가져온다 — 설정 화면이 Phaser를 싣지 않게)
+    setTimeout(
+      () =>
+        void import('@/map/officeStage')
+          .then(({ officeStage }) => setMissing(!officeStage.mainScene()?.previewInteraction(kind)))
+          .catch(() => setMissing(true)),
+      400,
+    )
   }
   return (
     <Section title={t('settingsPage.ixPreview.title')} description={t('settingsPage.ixPreview.desc')}>

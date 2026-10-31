@@ -8,18 +8,17 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { isReducedMotion } from '@/lib/reducedMotion'
-import { useOffice, useWorkMode } from '@/store'
+import { useOffice } from '@/store'
 import { DemoStageScene, type StageLayout } from '@/map/iso/demoStageScene'
 import { officeStage } from '@/map/officeStage'
 import { ART_KIT, artStageCurtainPanel, STAGE_COLORS, toCanvas } from '@/map/iso/isoArt'
 import { avatarUrl } from '@/map/sprites'
 import { attachmentUrl, isImageAttachment, isMeetingLive, type Attachment, type Meeting } from '@shared/types'
 import { DEMO_COMMENT_MAX, plainSpeech, speechPageAt, wrapSpeech, type DemoReaction, type DemoStage as DemoProgress } from '@shared/gallery'
+import { liveDemoOf } from './DemoStageHost'
 import { useNow } from './status'
 import { t } from '@shared/i18n'
 
-/** 진행 표시가 이만큼 멈춰 있으면 앱이 꺼졌다 켜진 옛 회의로 보고 발표장으로 부르지 않는다 */
-const STALE_MS = 90_000
 const SLIDE_MS = 3_000
 const TYPING_MS_PER_CHAR = 45
 const NOTE_MS = 2_500
@@ -51,30 +50,10 @@ function slideAt(demo: DemoProgress, now: number) {
 
 const errorText = (e: unknown) => (e instanceof Error ? e.message.replace(/^Error invoking remote method '[^']+': (\w*Error: )?/, '') : String(e))
 
-/** 지금 진행 중인 데모데이 (오래 멈춘 옛 기록은 뺀다) */
-export function liveDemoOf(meetings: Meeting[], now = Date.now()) {
-  return meetings.find((m) => m.kind === 'demo' && m.demo && isMeetingLive(m) && now < m.demo.startedAt + m.demo.durationMs + STALE_MS) ?? null
-}
-
-/** 앱 전체에 한 번 붙는다: 새 데모데이가 시작되면 발표장으로 옮기고, 열려 있으면 발표장을 그린다 */
-export function DemoStage() {
-  const stageId = useOffice((s) => s.demoStageId)
-  const setStageId = useOffice((s) => s.setDemoStageId)
-  const live = useOffice((s) => liveDemoOf(s.meetings))
-  const isWorkMode = useWorkMode()
-  // 한 회의는 한 번만 저절로 연다 — 사무실로 돌아간 뒤 다시 끌려오지 않게
-  const autoOpenedRef = useRef<string | null>(null)
-  useEffect(() => {
-    if (!live || isWorkMode || autoOpenedRef.current === live.id) return
-    autoOpenedRef.current = live.id
-    if (Date.now() - live.createdAt < STALE_MS) setStageId(live.id)
-  }, [live, isWorkMode, setStageId])
-  return stageId ? <StageOverlay key={stageId} meetingId={stageId} onClose={() => setStageId(null)} /> : null
-}
-
 type Curtain = 'open' | 'closed'
 
-function StageOverlay({ meetingId, onClose }: { meetingId: string; onClose: () => void }) {
+/** 발표장 화면 (DemoStageHost가 발표장을 열 때 불러와 그린다) */
+export function StageOverlay({ meetingId, onClose }: { meetingId: string; onClose: () => void }) {
   const meeting = useOffice((s) => s.meetings.find((m) => m.id === meetingId))
   const staff = useOffice((s) => s.staff)
   const hostRef = useRef<HTMLDivElement>(null)

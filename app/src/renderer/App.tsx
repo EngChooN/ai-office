@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { Suspense, useEffect, useMemo, useState } from 'react'
 import { BellIcon, SparklesIcon, StoreIcon, UserPlusIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CoachTour } from '@/features/CoachTour'
@@ -9,7 +9,7 @@ import { NavTabs } from '@/features/NavTabs'
 import { Sidebar } from '@/features/Sidebar'
 import { StaffPanel } from '@/features/StaffPanel'
 import { LevelUp } from '@/features/LevelUp'
-import { DemoStage } from '@/features/DemoStage'
+import { DemoStage } from '@/features/DemoStageHost'
 import { WhatsNew } from '@/features/WhatsNew'
 import { UpdateNotice } from '@/features/AppUpdate'
 import { RemoteLanNotice, RemoteUpgradeNotice } from '@/features/RemoteUpgradeNotice'
@@ -22,7 +22,8 @@ import { PlanUsageChip } from '@/features/PlanUsageCard'
 import { chipEngines } from '@shared/planUsageChip'
 import { formatWon } from '@shared/economy'
 import { PhoneShell } from '@/layout/PhoneShell'
-import { PAGES } from '@/layout/pages'
+import { preloadPages, renderPage, retryPage } from '@/layout/pages'
+import { LoadErrorBoundary } from '@/components/load-error-boundary'
 import { useLayout } from '@/layout/useLayout'
 import { useLang } from '@/lib/i18n'
 import { connectOffice, useOffice, useWorkMode } from './store'
@@ -31,6 +32,7 @@ import { t } from '@shared/i18n'
 
 export default function App() {
   useEffect(() => connectOffice(), [])
+  useEffect(() => preloadPages(), [])
   // 언어를 바꾸면 화면 전체를 다시 그려 모든 글자를 새 언어로 (저장 데이터는 store에 있어 그대로)
   const lang = useLang()
   return <AppBody key={lang} />
@@ -108,7 +110,6 @@ function DesktopShell({ children }: { children?: React.ReactNode }) {
   const setHireOpen = useOffice((s) => s.setHireOpen)
 
   const waitingCount = staff.filter((s) => s.status === 'waiting').length
-  const Page = PAGES[view]
 
   return (
     <div className="flex h-full flex-col">
@@ -150,7 +151,10 @@ function DesktopShell({ children }: { children?: React.ReactNode }) {
         <main className="flex min-h-0 min-w-0 flex-1 flex-col">
           <NavTabs />
           <div className="min-h-0 flex-1">
-            <Page />
+            {/* 처음 여는 화면은 불러오는 동안 빈 칸 (배경 그대로), 받지 못하면 그 자리만 "다시 시도" 안내 (메뉴를 바꾸면 새로 시작) */}
+            <LoadErrorBoundary key={view} onRetry={() => retryPage(view)}>
+              {() => <Suspense fallback={null}>{renderPage(view)}</Suspense>}
+            </LoadErrorBoundary>
           </div>
         </main>
         <StaffPanel />

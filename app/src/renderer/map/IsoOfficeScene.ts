@@ -559,6 +559,7 @@ export class IsoOfficeScene extends Phaser.Scene {
     }
     for (const p of this.fixedParts) p.img.destroy()
     this.fixedParts = []
+    this.isStaticDepthDirty = true
     const fixedItem = (itemId: string, gx: number, gy: number, rot: Rot = 0): GridItem => ({ uid: `fixed:${itemId}:${gx},${gy}`, itemId, floor: this.floor, gx, gy, rot })
     const pixels = (key: string, pc: { cv: Parameters<typeof toCanvas>[0]; o: [number, number]; box: ArtBox }) => this.artTexture(key, () => ({ canvas: toCanvas(pc.cv), anchor: { x: pc.o[0] * PIXEL, y: pc.o[1] * PIXEL }, box: pc.box }))
     // 구역 바닥 (벽 없는 구역 — 놓기 판정에는 쓰지 않는다)
@@ -681,6 +682,7 @@ export class IsoOfficeScene extends Phaser.Scene {
       this.parts.delete(id)
     }
     for (const it of items) if (!this.parts.has(it.uid)) this.parts.set(it.uid, this.drawFurniture(it, this.skinOf.get(it.uid)))
+    this.isStaticDepthDirty = true
     this.setItemHidden([...this.hiddenUids])
     this.walk = buildWalkMap(this.room, items, this.fixed)
     this.buildSpots()
@@ -1399,8 +1401,10 @@ export class IsoOfficeScene extends Phaser.Scene {
     let text = ''
     if (a.chatUntil > this.time.now) text = a.chatText
     else if (a.mode === 'meeting') {
-      const running = this.meetingOf(s.id)
-      const last = running ? [...running.messages].reverse().find((m) => m.staffId === s.id) : undefined
+      // 그 직원의 마지막 발언 — 뒤에서부터 찾는다 (매 프레임 배열을 복사·뒤집지 않게)
+      const messages = this.meetingOf(s.id)?.messages ?? []
+      let last: (typeof messages)[number] | undefined
+      for (let i = messages.length - 1; i >= 0 && !last; i--) if (messages[i].staffId === s.id) last = messages[i]
       if (last && Date.now() - last.ts < 7000) text = last.text
     } else if (this.awayMeeting.has(s.id)) text = `${this.awayMeeting.get(s.id)}층 회의 중`
     else if (atDesk && s.activity && (isSelected || s.status === 'waiting')) text = s.activity
@@ -1553,18 +1557,22 @@ export class IsoOfficeScene extends Phaser.Scene {
    */
   /** 정렬해 둔 가구 순서 (배치가 바뀌면 다시) */
   private staticDepth: { list: DepthBox[]; ordered: DepthBox[]; isApplied: boolean } | null = null
+  /** 가구 부품(parts·fixedParts)이 바뀌었음 — 다음 프레임에 가구 깊이 목록을 다시 만든다. 부품을 바꾸는 곳은 모두 이 값을 세운다 */
+  private isStaticDepthDirty = true
 
   private sortDepth() {
-    const statics: DepthBox[] = []
-    for (const parts of [...this.parts.values(), this.fixedParts])
-      for (const { img, box, item } of parts) statics.push({ x: item.gx + box.x, y: item.gy + box.y, w: box.w, d: box.d, z: box.z, h: box.h, obj: img, isTallWall: specOf(item.itemId).isTallWall })
+    if (this.isStaticDepthDirty || !this.staticDepth) {
+      this.isStaticDepthDirty = false
+      const list: DepthBox[] = []
+      for (const parts of [...this.parts.values(), this.fixedParts])
+        for (const { img, box, item } of parts) list.push({ x: item.gx + box.x, y: item.gy + box.y, w: box.w, d: box.d, z: box.z, h: box.h, obj: img, isTallWall: specOf(item.itemId).isTallWall })
+      this.staticDepth = { list, ordered: depthOrder(list), isApplied: false }
+    }
+    const cache = this.staticDepth
+    const statics = cache.list
     const movers: DepthBox[] = []
     for (const a of this.actors.values()) if (a.container.visible) movers.push({ x: a.x - 0.18, y: a.y - 0.18, w: 0.36, d: 0.36, z: a.isSitting ? a.sitZ + SIT_HIP : 0, h: 30, obj: a.container })
     for (const p of this.pets.values()) if (p.img.visible) movers.push({ x: p.x - 0.18, y: p.y - 0.18, w: 0.36, d: 0.36, z: p.z, h: 8, obj: p.img })
-    const prev = this.staticDepth
-    const isSame = prev !== null && prev.list.length === statics.length && statics.every((s, i) => prev.list[i].obj === s.obj && prev.list[i].x === s.x && prev.list[i].y === s.y)
-    if (!isSame) this.staticDepth = { list: statics, ordered: depthOrder(statics), isApplied: false }
-    const cache = this.staticDepth!
     if (!cache.isApplied) {
       cache.ordered.forEach((it, i) => it.obj.setDepth(10 + i * 10))
       cache.isApplied = true
