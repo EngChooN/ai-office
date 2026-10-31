@@ -4,21 +4,28 @@
 
 ## [미정] (설치본 미빌드)
 
+## [0.18.0] - 2026-10-31
+
+### 새 기능
+- 바탕화면 비서 윈도우 지원: 지원 판단은 `main/petPlatform.ts`(맥·윈도우, 리눅스 제외 — `scripts/petPlatform.test.mts`). 항상 위는 맥 `floating`·윈도우 `screen-saver`(`petTopLevel`), 모든 데스크톱 표시는 맥만, 배율이 다른 모니터를 넘을 때 윈도우는 크기를 한 번 더 적용. 트레이 다시 불러오기·설정 구역도 윈도우에 연다.
+- 펼침 창 리뷰 수정: 완료 카드는 보고 글만(`chat.is_report` 열 → `ChatMessage.isReport`, `postChat`의 보고 경로만 켬 — 기존 글은 NULL이라 업데이트 전 보고는 완료 카드로 안 나옴). 단체방 `chat`·`chatUpdate`를 비서 창에도 `office:onChat`으로 보내 대화방을 250ms 묶어 다시 읽음. `SecretaryComposer`는 보내기 실패 시 입력 복원 + `deskPet.sendFailed`. 캐릭터 창은 `pet:panelVisible`로 창이 열려 있는 동안 끝난 일은 ✓ 배지에 안 쌓고, 열리면 비움.
+- 아티팩트(결과물 보기): main `artifactStore.ts`·`artifacts.ts`(저장·버전, 심볼릭 링크 거부·크기 제한, 임시 사본 폴더), 전용 보기 주소 `office-artifact`(CSP·외부 링크 확인), 직원·비서 도구 `report_artifact`(`secretaryTools.ts`, 직원 기본 안내 한 줄). 화면은 `artifact-card.tsx`(대화·기록·업무 카드·갤러리, 휴대폰은 PC 안내)·`artifact-viewer.tsx`(sandbox iframe 실제 화면·원본 탭, 버전 선택, 브라우저·파일 위치 열기). 다시 올리면 `replaceArtifactRef`로 업무 카드·갤러리 참조를 새 버전으로 교체, `task.artifacts` 열 추가. 문구 `i18n/dict/artifact.ts`, 테스트 `scripts/artifact.test.mts`.
+
+### 개선
+- 펼침 창 대화 흐름: 결재 목록을 따로 두지 않고 메시지·결재·질문·완료·자동결재 카드를 `mergeFeed`로 시간순 섞음, 열 때·상대를 바꿀 때 바닥으로(`useStickToBottom` + `JumpToBottom`). 머리줄 상대 고르기(비서·고용 직원·전체/팀/랩 방 — `petTargets`, 사라진 상대는 비서로 `findPetTarget`), `작업 중 N명`(`petWorkingCount`), `결재 N` 누르면 첫 대기 카드로 이동(지금 상대에 없으면 비서로 바꾼 뒤). 직원은 `getRecord`(`staffFeed`: result → 앞 답 요약 완료 카드), 방은 `chatHistory`(`roomFeed`), 비서 화면 완료 카드는 24시간 안 직원 보고(`doneFromChat`). 보내기는 앱과 같은 `office:instruct`·`office:sendChat`(`petPreload.ts`에 getRecord·chatHistory·instruct·sendChat 추가, main 변경 없음). 펼침 창은 onLog·onChat을 받지 않아 보고 수·상태가 바뀌거나 창을 열거나 보낸 뒤, 직원이 일하는 동안 4초마다 다시 읽음. `SecretaryComposer`에 `onSubmit` 선택 인자. 이 단락 테스트: `scripts/deskPetFeed.test.mts`.
+- 캐릭터 완료 알림: 직원 `unreadReports` 증가로 감지(`newReports`, 첫 스냅샷은 기준만) → 기쁨 1.5초 + `○○ 작업이 완료됐어요` 말풍선 5초(`pickBubble` 순서: 생각 중 > 답 > 새 결재 > 완료 > 업무) + 펼침 창을 캐릭터로 열 때까지 초록 ✓ 도트 배지(결재 !가 우선). 읽음은 이 배지에만 적용, 앱의 안 읽은 보고 수는 건드리지 않음.
+
 ## [0.17.0] - 2026-10-31
 
 ### 새 기능
 - 바탕화면 비서 캐릭터(맥): `main/petWindow.ts`(투명·항상 위 캐릭터 창 + 펼침 창, 화면·전원 이벤트에 위치 보정, 끌 때 창·`pet:*` IPC 정리), `petPreload.ts`(읽기·비서 대화·`pet:*`만 노출), `renderer/deskPet/*`, `shared/deskPet.ts`(+`scripts/deskPet.test.mts`). 기본 켜짐(`isDeskPetOn`), 가장자리 40px 붙기, 메뉴 막대·설정에서 다시 불러오기.
 - 펼침 창 결재·답하기: 앱과 같은 `handlers.decide`·`handlers.answerQuestion`만 사용, main에서 `checkPetDecide`·`checkPetAnswer`로 재확인, 같은 InFlight로 중복 방지. 처리 결과(승인·반려·답함·넘김·다른 곳 처리·자동결재 처리)는 4초 뒤 빠짐, 최대 10건. 답 묶기 규칙은 `shared/questionAnswer.ts`로 분리해 `QuestionBox`와 공유. 340px에 안 맞는 질문은 '앱에서 열기'(`fitsPetPanel`).
-- 바탕화면 비서 윈도우 지원: 지원 판단은 `main/petPlatform.ts`(맥·윈도우, 리눅스 제외 — `scripts/petPlatform.test.mts`). 항상 위는 맥 `floating`·윈도우 `screen-saver`(`petTopLevel`), 모든 데스크톱 표시는 맥만, 배율이 다른 모니터를 넘을 때 윈도우는 크기를 한 번 더 적용. 트레이 다시 불러오기·설정 구역도 윈도우에 연다.
-- 펼침 창 리뷰 수정: 완료 카드는 보고 글만(`chat.is_report` 열 → `ChatMessage.isReport`, `postChat`의 보고 경로만 켬 — 기존 글은 NULL이라 업데이트 전 보고는 완료 카드로 안 나옴). 단체방 `chat`·`chatUpdate`를 비서 창에도 `office:onChat`으로 보내 대화방을 250ms 묶어 다시 읽음. `SecretaryComposer`는 보내기 실패 시 입력 복원 + `deskPet.sendFailed`. 캐릭터 창은 `pet:panelVisible`로 창이 열려 있는 동안 끝난 일은 ✓ 배지에 안 쌓고, 열리면 비움.
 - 캐릭터 움직임: 확정 그림 한 장에 CSS transform(`.pet-motion`, 시간은 `PET_MOTION`), 결재 알림 우선(`mergeAct`), 움직임 줄이기·창 숨김·끄는 중이면 정지(`canPetMove`). 머리 위 배지는 도트 말풍선(!·…).
 
 ### 개선
 - 표정 6종: `sprites/face-*.png`(기준 그림에서 얼굴만 바꿈, `docs/design/desktop-secretary/face-sprites.py`가 생성·얼굴 밖 픽셀 검사), `shared/deskPet.ts` `pickFace`·`nextFaceChange`·`outcomeFace`(우선순위 놀람>걱정>기쁨>생각 중>집중>졸림>평소, 1.5/1.5/3초, 10분 무활동 졸림), `PetCharacter` `usePetFace`(타이머 하나, 창이 안 보이면 안 검), main `withFace`가 펼침 창 처리 결과를 `pet:face`로 캐릭터 창에 전달. 움직임 줄이기에서도 표정은 바뀌고 깜빡임만 멈춤.
 - 크기 80~160px(8px 단위, 기본 112)·투명도 40~100% 설정, 즉시 반영. 휴대폰에서는 못 바꿈.
 - 펼침 창 D2: 평평한 목록, 폭 400, 입력창 고정, 선택 체크 표시, 보조 글자 대비 상향, 입력 안내 한 줄(`SecretaryChat` placeholder 선택 인자). 첫 스냅샷에는 대화 끝으로 스크롤하지 않음.
-- 펼침 창 대화 흐름: 결재 목록을 따로 두지 않고 메시지·결재·질문·완료·자동결재 카드를 `mergeFeed`로 시간순 섞음, 열 때·상대를 바꿀 때 바닥으로(`useStickToBottom` + `JumpToBottom`). 머리줄 상대 고르기(비서·고용 직원·전체/팀/랩 방 — `petTargets`, 사라진 상대는 비서로 `findPetTarget`), `작업 중 N명`(`petWorkingCount`), `결재 N` 누르면 첫 대기 카드로 이동(지금 상대에 없으면 비서로 바꾼 뒤). 직원은 `getRecord`(`staffFeed`: result → 앞 답 요약 완료 카드), 방은 `chatHistory`(`roomFeed`), 비서 화면 완료 카드는 24시간 안 직원 보고(`doneFromChat`). 보내기는 앱과 같은 `office:instruct`·`office:sendChat`(`petPreload.ts`에 getRecord·chatHistory·instruct·sendChat 추가, main 변경 없음). 펼침 창은 onLog·onChat을 받지 않아 보고 수·상태가 바뀌거나 창을 열거나 보낸 뒤, 직원이 일하는 동안 4초마다 다시 읽음. `SecretaryComposer`에 `onSubmit` 선택 인자. 이 단락 테스트: `scripts/deskPetFeed.test.mts`.
-- 캐릭터 완료 알림: 직원 `unreadReports` 증가로 감지(`newReports`, 첫 스냅샷은 기준만) → 기쁨 1.5초 + `○○ 작업이 완료됐어요` 말풍선 5초(`pickBubble` 순서: 생각 중 > 답 > 새 결재 > 완료 > 업무) + 펼침 창을 캐릭터로 열 때까지 초록 ✓ 도트 배지(결재 !가 우선). 읽음은 이 배지에만 적용, 앱의 안 읽은 보고 수는 건드리지 않음.
 
 ## [0.16.3] - 2026-10-31
 

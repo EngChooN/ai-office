@@ -435,11 +435,9 @@ test('빌드 결과(dist-mobile): 상대 경로·인라인 스크립트 없음·
   assert.match(html, /src="\.\/assets\/[^"]+\.js"/)
   assert.doesNotMatch(html, /<script(?![^>]*\bsrc=)[^>]*>/)
   const js = fs.readdirSync(path.join(APP, 'dist-mobile/assets')).filter((f) => f.endsWith('.js'))
-  for (const f of js) {
-    const code = read(`dist-mobile/assets/${f}`)
-    assert.doesNotMatch(code, /1\.1\.0-preview|ipcRenderer/)
-    assert.match(code, /appassets\.androidplatform\.net\/office-file\//)
-  }
+  for (const f of js) assert.doesNotMatch(read(`dist-mobile/assets/${f}`), /1\.1\.0-preview|ipcRenderer/)
+  // 조각이 여러 개로 나뉘므로 파일 주소는 어느 한 조각에만 있으면 된다
+  assert.ok(js.some((f) => /appassets\.androidplatform\.net\/office-file\//.test(read(`dist-mobile/assets/${f}`))))
   assert.ok(!fs.readdirSync(path.join(APP, 'dist-mobile')).some((f) => f.endsWith('.map')))
 })
 
