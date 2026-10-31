@@ -4,6 +4,7 @@ import { test } from 'node:test'
 import { EventEmitter } from 'node:events'
 import {
   addSettled,
+  canPetMove,
   checkPetAnswer,
   checkPetDecide,
   fitsPetPanel,
@@ -12,6 +13,8 @@ import {
   InFlight,
   isDragMove,
   listenAll,
+  mergeAct,
+  nextIdleDelay,
   PANEL_SIZE,
   petAlignFor,
   petCharRect,
@@ -23,6 +26,8 @@ import {
   petOpacity,
   petSize,
   pickBubble,
+  pickIdleAct,
+  PET_MOTION,
   placePanel,
   pruneSettled,
   recentAuto,
@@ -499,4 +504,32 @@ test('자동결재 기록: 최근 10분 것만 최근 순으로 5건까지', () 
     recentAuto(log, now).map((x) => x.id),
     ['n0', 'n1', 'n2', 'n3', 'n4'],
   )
+})
+
+test('움직임: 가끔 동작은 15~30초 사이, 두리번·폴짝 반반', () => {
+  assert.equal(nextIdleDelay(0), 15_000)
+  assert.ok(nextIdleDelay(0.9999) < 30_000)
+  assert.equal(nextIdleDelay(0.5), 22_500)
+  assert.equal(pickIdleAct(0), 'look')
+  assert.equal(pickIdleAct(0.49), 'look')
+  assert.equal(pickIdleAct(0.5), 'hop')
+  assert.equal(pickIdleAct(0.99), 'hop')
+  // 숨쉬기는 대표 지시 2~3초 안, 결재 알림은 README 약 0.7초 (CSS 350ms × 2)
+  assert.ok(PET_MOTION.breatheMs >= 2000 && PET_MOTION.breatheMs <= 3000)
+  assert.equal(PET_MOTION.alertMs, 350 * 2)
+})
+
+test('움직임: 겹치면 결재 알림이 이기고, 동작 중 가끔 동작은 버리며, 결재가 연달아 와도 알림은 하나', () => {
+  assert.equal(mergeAct(null, 'hop'), 'hop')
+  assert.equal(mergeAct(null, 'alert'), 'alert')
+  assert.equal(mergeAct('look', 'alert'), 'alert')
+  assert.equal(mergeAct('hop', 'alert'), 'alert')
+  assert.equal(mergeAct('alert', 'look'), 'alert')
+  assert.equal(mergeAct('look', 'hop'), 'look')
+  assert.equal(mergeAct('alert', 'alert'), 'alert')
+})
+
+test('움직임: 움직임 줄이기·창이 안 보임·끄는 중 하나라도면 멈춘다', () => {
+  assert.equal(canPetMove({ isReduced: false, isHidden: false, isDragging: false }), true)
+  for (const k of ['isReduced', 'isHidden', 'isDragging'] as const) assert.equal(canPetMove({ isReduced: false, isHidden: false, isDragging: false, [k]: true }), false)
 })

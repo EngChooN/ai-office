@@ -644,3 +644,79 @@
   top: 0;
   animation: confetti-fall 2.4s ease-in forwards;
 }
+
+/* 바탕화면 비서 캐릭터 움직임 (shared/deskPet.ts PET_MOTION · docs/design/desktop-secretary/README.md 동작 제안표)
+   그림 한 장을 발밑 기준으로 움직이고, steps로 끊어 도트 그림처럼 보이게 한다. 클릭 영역(button)·말풍선은 움직이지 않는다 */
+.pet-motion {
+  display: block;
+  transform-origin: 50% 100%;
+  animation: pet-breathe 2.4s steps(1, end) infinite;
+}
+.pet-motion[data-act='look'] {
+  animation: pet-look 900ms steps(1, end) 1;
+}
+.pet-motion[data-act='hop'] {
+  animation: pet-hop 400ms steps(1, end) 1;
+}
+.pet-motion[data-act='alert'] {
+  animation: pet-hop 350ms steps(1, end) 2;
+}
+.pet-motion[data-held] {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pet-motion {
+    animation: none !important;
+  }
+}
+/* 기본 → 들숨 → 기본 → 날숨, 2.4초 (README 비율 5:4:5:4) */
+@keyframes pet-breathe {
+  0% {
+    transform: none;
+  }
+  27.8% {
+    transform: translateY(calc(-1px * var(--pet-scale, 1))) scaleY(1.01);
+  }
+  50% {
+    transform: none;
+  }
+  77.8% {
+    transform: scaleY(0.98);
+  }
+}
+/* 두리번: 왼쪽으로 기울기 → 기본 → 오른쪽 → 기본 */
+@keyframes pet-look {
+  0% {
+    transform: none;
+  }
+  15% {
+    transform: rotate(-3deg);
+  }
+  50% {
+    transform: none;
+  }
+  65% {
+    transform: rotate(3deg);
+  }
+  100% {
+    transform: none;
+  }
+}
+/* 폴짝: 웅크림 → 위로 → 착지 */
+@keyframes pet-hop {
+  0% {
+    transform: scaleY(0.96);
+  }
+  25% {
+    transform: translateY(calc(-3px * var(--pet-scale, 1)));
+  }
+  50% {
+    transform: translateY(calc(-5px * var(--pet-scale, 1)));
+  }
+  75% {
+    transform: translateY(calc(-2px * var(--pet-scale, 1)));
+  }
+  100% {
+    transform: none;
+  }
+}

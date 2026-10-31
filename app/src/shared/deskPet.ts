@@ -328,6 +328,21 @@ export interface OfficePetApi {
   onAlign(cb: (align: PetAlign) => void): () => void
 }
 
+/** 캐릭터 움직임 (확정 그림 한 장에 CSS transform — renderer/index.css .pet-motion).
+ * 평소엔 숨쉬기(발밑 기준 아주 작은 들썩임)를 되풀이하고, 가끔 동작(두리번 'look'·폴짝 'hop')이나 결재 알림('alert' 폴짝 두 번)이 그 자리를 잠깐 대신한다.
+ * 시간 값은 디자인 README 동작 제안표를 따르되 숨쉬기는 대표 지시(2~3초)에 맞춰 2.4초 — 가끔 동작 15~30초 간격, 결재 알림 약 0.7초 */
+export type PetAct = 'look' | 'hop' | 'alert'
+export const PET_MOTION = { breatheMs: 2400, idleMinMs: 15_000, idleMaxMs: 30_000, alertMs: 700 } as const
+
+/** 다음 가끔 동작까지 기다릴 시간 (r: 0 이상 1 미만 난수) */
+export const nextIdleDelay = (r: number) => PET_MOTION.idleMinMs + r * (PET_MOTION.idleMaxMs - PET_MOTION.idleMinMs)
+/** 가끔 동작 고르기: 두리번이나 폴짝 반반 */
+export const pickIdleAct = (r: number): PetAct => (r < 0.5 ? 'look' : 'hop')
+/** 동작이 겹칠 때: 결재 알림이 이기고, 다른 동작 중에 온 가끔 동작은 버린다 (결재 두 건이 연달아 와도 알림은 한 번) */
+export const mergeAct = (cur: PetAct | null, next: PetAct): PetAct => (next === 'alert' ? 'alert' : (cur ?? next))
+/** 움직여도 되는지 — 움직임 줄이기·창이 안 보임·끄는 중이면 모두 멈춘다 */
+export const canPetMove = (s: { isReduced: boolean; isHidden: boolean; isDragging: boolean }) => !s.isReduced && !s.isHidden && !s.isDragging
+
 /** 말풍선 하나: 대답 중 → 새 결재 → 직원 업무 순 (결재 배지는 따로 늘 보인다) */
 export type PetBubble = { kind: 'thinking' } | { kind: 'reply'; text: string; isError: boolean } | { kind: 'approval'; count: number; title: string } | { kind: 'working'; count: number } | null
 

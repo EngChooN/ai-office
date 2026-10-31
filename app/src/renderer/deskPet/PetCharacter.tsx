@@ -1,18 +1,18 @@
-import { useEffect, useMemo, useRef, useState, type PointerEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type AnimationEvent, type PointerEvent } from 'react'
 import { useOffice } from '@/store'
 import { cn } from '@/lib/utils'
 import { isReducedMotion } from '@/lib/reducedMotion'
 import { EMPTY_SECRETARY } from '@shared/types'
-import { BUBBLE_MAX, isDragMove, petApprovals, petLayout, pickBubble, type PetAlign, type PetBubble } from '@shared/deskPet'
+import { BUBBLE_MAX, canPetMove, isDragMove, mergeAct, nextIdleDelay, petApprovals, petLayout, pickBubble, pickIdleAct, type PetAct, type PetAlign, type PetBubble } from '@shared/deskPet'
 import { t, trOr } from '@shared/i18n'
 import { PetSprite, type PetPose } from './PetSprite'
 
 // 캐릭터 창: 캐릭터 그림(PetSprite) + 결재 배지 + 말풍선 하나. 누르면 펼침 창, 끌면 옮기기 (이동 거리로 구분 — shared/deskPet.ts isDragMove)
 // 투명한 곳은 클릭이 뒤 창으로 지나가고, 캐릭터·말풍선 위에서만 마우스를 받는다 (setInteractive)
+// 움직임(숨쉬기·가끔 동작·결재 알림)은 button 안쪽 그림 래퍼에만 준다 — 클릭 영역·말풍선·결재 배지는 제자리 (usePetMotion)
 
 /** 말풍선을 보여 주는 시간 (대답 중은 끝날 때까지) */
 const BUBBLE_MS = 5000
-const BUMP_MS = 240
 
 const pet = () => window.officePet!
 
@@ -34,9 +34,10 @@ export function PetCharacter() {
     wasBusy.current = secretary.isBusy
   }, [secretary.isBusy, secretary.messages])
 
-  // 새 결재: 들어온 순간 한 번 튀어 오르고, 말풍선 차례가 오면 5초 보여 준다 (대답 중이면 끝난 뒤 한 번)
+  const drag = useDragOrClick()
+  const motion = usePetMotion(drag.isDragging)
+  // 새 결재: 들어온 순간 폴짝 두 번(결재 알림), 말풍선 차례가 오면 5초 보여 준다 (대답 중이면 끝난 뒤 한 번)
   const [newApproval, setNewApproval] = useState<{ count: number; title: string } | null>(null)
-  const [isBump, setBump] = useState(false)
   const seenIds = useRef<Set<string> | null>(null)
   useEffect(() => {
     if (!isLoaded) return
@@ -48,11 +49,8 @@ export function PetCharacter() {
     if (!approvals.length) return setNewApproval(null)
     if (!fresh.length) return
     setNewApproval({ count: approvals.length, title: `${approvals[0].staffName} · ${trOr(approvals[0].summaryI18n, approvals[0].summary)}` })
-    if (isFirst || isReducedMotion()) return
-    setBump(true)
-    const timer = setTimeout(() => setBump(false), BUMP_MS)
-    return () => clearTimeout(timer)
-  }, [approvals, isLoaded])
+    if (!isFirst) motion.play('alert')
+  }, [approvals, isLoaded, motion.play])
 
   // 직원 업무: 일하는 인원이 바뀌면 5초
   const [isWorkShown, setWorkShown] = useState(false)
@@ -74,8 +72,7 @@ export function PetCharacter() {
     return () => clearTimeout(timer)
   }, [kind, bubbleKey])
 
-  const isBlinking = useBlink()
-  const drag = useDragOrClick()
+  const isBlinking = useBlink(motion.isActing)
   const pose: PetPose = secretary.isBusy ? 'thinking' : approvals.length ? 'approval' : workingCount ? 'working' : 'idle'
   // 크기는 설정값으로 바로 바뀐다 (창 크기는 main이 같은 스냅샷으로 맞춘다). 캐릭터는 가까운 화면 가장자리 쪽에 선다
   const size = useOffice((s) => s.settings.deskPetSize)
@@ -90,12 +87,20 @@ export function PetCharacter() {
         type="button"
         aria-label={t('deskPet.character')}
         title={t('deskPet.character')}
-        className={cn('relative mt-3 cursor-grab touch-none rounded-lg outline-none active:cursor-grabbing', isBump && '-translate-y-0.5', 'transition-transform duration-[120ms]')}
+        className="relative mt-3 cursor-grab touch-none rounded-lg outline-none active:cursor-grabbing"
         onMouseEnter={() => pet().setInteractive(true)}
         onMouseLeave={() => !drag.isDown() && pet().setInteractive(false)}
         {...drag.handlers}
       >
-        <PetSprite pose={pose} isBlinking={isBlinking} layout={layout} />
+        <span
+          className="pet-motion pointer-events-none"
+          data-act={motion.act ?? undefined}
+          data-held={motion.isMoving ? undefined : ''}
+          style={{ '--pet-scale': layout.scale } as React.CSSProperties}
+          onAnimationEnd={motion.onAnimationEnd}
+        >
+          <PetSprite pose={pose} isBlinking={isBlinking} layout={layout} />
+        </span>
         {approvals.length > 0 && (
           <span
             className="bg-destructive absolute flex items-center justify-center rounded-full font-bold text-white ring-2 ring-white"
@@ -156,15 +161,17 @@ function Bubble({ bubble, maxWidth }: { bubble: PetBubble; maxWidth: number }) {
   )
 }
 
-/** 4~7초마다 120ms 눈 깜빡임 (움직임 줄이기면 깜빡이지 않는다) */
-function useBlink() {
+/** 4~7초마다 120ms 눈 깜빡임 (움직임 줄이기면 깜빡이지 않고, 다른 동작 중이면 다음 차례로 미룬다) */
+function useBlink(isActing: boolean) {
   const [isBlinking, setBlinking] = useState(false)
+  const acting = useRef(isActing)
+  acting.current = isActing
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>
     const next = () => {
       timer = setTimeout(
         () => {
-          if (isReducedMotion()) return next()
+          if (isReducedMotion() || acting.current) return next()
           setBlinking(true)
           timer = setTimeout(() => {
             setBlinking(false)
@@ -183,16 +190,20 @@ function useBlink() {
 /** 누른 채 기준 거리 넘게 움직이면 끌기(창 옮기기), 아니면 클릭(펼침 창 열고 닫기) */
 function useDragOrClick() {
   const start = useRef<{ x: number; y: number; isDrag: boolean } | null>(null)
+  // 끄는 동안 움직임을 멈추려고 화면에도 알린다 (start는 매 움직임마다 읽는 ref)
+  const [isDragging, setDragging] = useState(false)
   const end = (e: PointerEvent<HTMLElement>, isCancel: boolean) => {
     const s = start.current
     start.current = null
     if (!s) return
     if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId)
+    setDragging(false)
     if (s.isDrag) pet().dragEnd()
     else if (!isCancel) pet().togglePanel()
   }
   return {
     isDown: () => start.current !== null,
+    isDragging,
     handlers: {
       onPointerDown: (e: PointerEvent<HTMLElement>) => {
         if (e.button !== 0) return
@@ -207,6 +218,7 @@ function useDragOrClick() {
         if (!s.isDrag && !isDragMove(dx, dy)) return
         if (!s.isDrag) {
           s.isDrag = true
+          setDragging(true)
           pet().dragStart()
         }
         pet().dragMove(dx, dy)
@@ -219,4 +231,64 @@ function useDragOrClick() {
       },
     },
   }
+}
+
+/** 캐릭터 움직임: 숨쉬기는 CSS가 되풀이하고, 가끔 동작은 15~30초마다 무작위로, 결재 알림은 play('alert')로.
+ * 움직임 줄이기·창이 안 보임·끄는 중이면 모두 멈추고 무작위 타이머도 걸지 않는다 (shared/deskPet.ts canPetMove) */
+function usePetMotion(isDragging: boolean) {
+  const isReduced = useMediaQuery('(prefers-reduced-motion: reduce)')
+  const isHidden = usePageHidden()
+  const isMoving = canPetMove({ isReduced, isHidden, isDragging })
+  const [act, setAct] = useState<PetAct | null>(null)
+  const moving = useRef(isMoving)
+  moving.current = isMoving
+
+  const play = useCallback((next: PetAct) => {
+    if (moving.current) setAct((cur) => mergeAct(cur, next))
+  }, [])
+  // 멈추면 하던 동작도 거둔다 (다시 움직일 때 반쯤 하던 동작이 이어지지 않게)
+  useEffect(() => {
+    if (!isMoving) setAct(null)
+  }, [isMoving])
+  // 가끔 동작: 움직일 수 있을 때만 타이머를 건다 (창이 안 보이면 타이머가 없다)
+  useEffect(() => {
+    if (!isMoving) return
+    let timer: ReturnType<typeof setTimeout>
+    const next = () => {
+      timer = setTimeout(() => {
+        play(pickIdleAct(Math.random()))
+        next()
+      }, nextIdleDelay(Math.random()))
+    }
+    next()
+    return () => clearTimeout(timer)
+  }, [isMoving, play])
+
+  // 동작 하나가 끝나면 숨쉬기로 돌아간다 (안쪽 그림에서 올라온 이벤트는 거른다)
+  const onAnimationEnd = (e: AnimationEvent<HTMLElement>) => {
+    if (e.target === e.currentTarget) setAct(null)
+  }
+  return { act, isActing: act !== null, isMoving, play, onAnimationEnd }
+}
+
+/** 창이 안 보이는지 (화면 잠금·가려짐 등 — 캐릭터를 끄면 창 자체가 없어진다) */
+function usePageHidden() {
+  const [isHidden, setHidden] = useState(() => document.visibilityState === 'hidden')
+  useEffect(() => {
+    const onChange = () => setHidden(document.visibilityState === 'hidden')
+    document.addEventListener('visibilitychange', onChange)
+    return () => document.removeEventListener('visibilitychange', onChange)
+  }, [])
+  return isHidden
+}
+
+function useMediaQuery(query: string) {
+  const [isOn, setOn] = useState(() => window.matchMedia(query).matches)
+  useEffect(() => {
+    const mql = window.matchMedia(query)
+    const onChange = () => setOn(mql.matches)
+    mql.addEventListener('change', onChange)
+    return () => mql.removeEventListener('change', onChange)
+  }, [query])
+  return isOn
 }
