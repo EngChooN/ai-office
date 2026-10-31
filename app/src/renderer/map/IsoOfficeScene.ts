@@ -465,7 +465,12 @@ export class IsoOfficeScene extends Phaser.Scene {
         actor.prevStatus = s.status
       }
       const shortName = s.name.length > NAME_MAX ? `${s.name.slice(0, NAME_MAX)}…` : s.name
-      actor.name.setText(teams.some((t) => t.leadId === s.id) ? `★ ${shortName}` : shortName)
+      // 다른 PC 직원은 이름 앞에 🌐, 연결이 끊겼으면(offline·unpaired) 몸통과 이름표를 흐리게
+      const mark = teams.some((t) => t.leadId === s.id) ? '★ ' : ''
+      actor.name.setText(`${s.remote ? '🌐 ' : ''}${mark}${shortName}`)
+      const isRemoteDim = s.remote?.state === 'offline' || s.remote?.state === 'unpaired'
+      actor.container.setAlpha(isRemoteDim ? 0.4 : 1)
+      actor.label.setAlpha(isRemoteDim ? 0.6 : 1)
       actor.name.setBackgroundColor(s.kind === 'hired' ? '#2a2230d0' : '#3a4a70d0')
       this.react(actor, prev)
     }

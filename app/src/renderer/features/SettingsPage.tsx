@@ -10,6 +10,7 @@ import { NotOnWindows } from '@/components/not-on-windows'
 import { PcOnlyState } from '@/components/pc-only-state'
 import { IS_MOBILE_SHELL } from '@/shell'
 import { RemoteSection } from './RemoteSection'
+import { PeerSection } from './PeerSection'
 import { PROVIDER_SECTION_ID, ProviderSection } from './ProviderCards'
 import { COMPANY_LEVELS, type DayNight, type HooksStatus, type Settings, type ThemeId } from '@shared/types'
 import { UI_THEME_GROUPS, type UiMode } from '@shared/uiTheme'
@@ -388,6 +389,11 @@ export function SettingsPage() {
             <Section title={t('settingsPage.remote.title')} description={t('settingsPage.remote.desc')}>
               <RemoteSection />
             </Section>
+            {!IS_MOBILE_SHELL && (
+              <Section title={t('peer.section.title')} description={t('peer.section.desc')}>
+                <PeerSection />
+              </Section>
+            )}
             <Section title={trayPlace()} description={osText(t('settingsPage.tray.desc.mac'), t('settingsPage.tray.desc.win'))}>
               <label className="flex items-center gap-2 text-sm">
                 <input type="checkbox" checked={settings.isTrayOn} onChange={(e) => update({ isTrayOn: e.target.checked })} /> {t('settingsPage.tray.toggle', { place: trayPlace() })}

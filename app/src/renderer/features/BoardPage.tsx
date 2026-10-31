@@ -355,6 +355,11 @@ function TaskCard({ task }: { task: Task }) {
           </div>
         )
       )}
+      {task.status === 'doing' && !!assignee?.remote?.queued && (
+        <span className="bg-status-waiting/15 text-status-waiting w-fit rounded px-1.5 py-0.5 text-[11px] font-medium" title={t('peer.queuedHint')}>
+          {t('peer.queued', { n: assignee.remote.queued })}
+        </span>
+      )}
       {task.status === 'doing' && !run && task.plan?.status !== 'waiting' && (
         <div className="flex gap-1.5">
           {task.plan?.isPaused ? (

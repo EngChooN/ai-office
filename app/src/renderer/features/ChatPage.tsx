@@ -58,11 +58,31 @@ export function ChatPage() {
       <div className="phone:px-4 phone:py-3 short:py-1.5 typing:hidden border-b px-6 py-4">
         <h1 className="short:text-base text-lg font-semibold">{title}</h1>
         <p className="text-muted-foreground short:hidden text-xs">{description}</p>
+        <RemoteLine />
         <RoomTabs current={room?.room} />
       </div>
       <MessageList room={room?.room} />
       <Composer room={room} />
     </div>
+  )
+}
+
+/** 다른 PC 직원이 랩에 있으면 "원격 · 피어명" 한 줄 (연결이 끊긴 PC는 흐리게) */
+function RemoteLine() {
+  const peers = useOffice(useShallow((s) => [...new Map(s.staff.flatMap((x) => (x.remote ? [[x.remote.peerId, `${x.remote.peerName}\t${x.remote.state}`] as const] : []))).values()]))
+  if (peers.length === 0) return null
+  return (
+    <p className="mt-1 flex flex-wrap gap-x-2 text-xs">
+      {peers.map((p) => {
+        const [name, state] = p.split('\t')
+        const isDim = state === 'offline' || state === 'unpaired'
+        return (
+          <span key={p} className={isDim ? 'text-muted-foreground' : 'text-primary'} title={t(`peer.state.${state as 'online'}`)}>
+            🌐 {t('peer.chatLine', { name })}
+          </span>
+        )
+      })}
+    </p>
   )
 }
 

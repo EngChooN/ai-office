@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import { PcOnlyState } from '@/components/pc-only-state'
 import { IS_MOBILE_SHELL } from '@/shell'
 import { fmtDate, t } from '@shared/i18n'
+import { formatPairCode, type PairWindowView } from '@shared/peerProtocol'
 import type { AccessEntry, RemoteMode, RemoteQr, RemoteStatus } from '@shared/types'
 
 // 설정 › 휴대폰 연결: 켜기·끄기, 연결 방식(Tailscale·같은 네트워크 전용·고급 공유기 포트), Tailscale 단계 안내, 첫 연결 가이드(켜기 → 포트 → 공유기 → 주소 → QR), QR 다시 만들기, 지문, 최근 접속 기록
@@ -148,6 +149,7 @@ export function RemoteSection() {
           {status.isEnabled ? t('remote.reopenGuide') : t('remote.start')}
         </Button>
       </div>
+      {status.isEnabled && !IS_MOBILE_SHELL && <PhoneCode />}
       {status.fingerprint && (
         <p className="text-muted-foreground text-[11px]">
           {t('remote.fingerprint')} <span className="selectable font-mono break-all">{status.fingerprint}</span>
@@ -156,6 +158,44 @@ export function RemoteSection() {
       {status.recentAccess.length > 0 && <RecentAccess entries={status.recentAccess} />}
       <RemoteGuide status={status} setStatus={setStatus} isOpen={isGuideOpen} onOpenChange={setIsGuideOpen} step={guideStep} setStep={setGuideStep} />
     </>
+  )
+}
+
+/** 휴대폰용 연결 코드(12자) — QR을 못 찍는 안드로이드가 주소+코드를 직접 입력할 때. 5분 뒤 화면에서 지운다 */
+function PhoneCode() {
+  const [win, setWin] = useState<PairWindowView | null>(null)
+  const [error, setError] = useState('')
+  useEffect(() => {
+    if (!win) return
+    const timer = setTimeout(() => setWin(null), Math.max(0, win.until - Date.now()))
+    return () => clearTimeout(timer)
+  }, [win])
+  const show = async () => {
+    setError('')
+    try {
+      setWin(await window.office.peerPairStart('phone'))
+    } catch (e) {
+      setError(e instanceof Error ? e.message.replace(/^Error invoking remote method '[^']*': (Error: )?/, '') : '')
+    }
+  }
+  return (
+    <div className="flex flex-col gap-1.5 text-xs">
+      <span className="text-muted-foreground">{t('remote.phoneCode')}</span>
+      {win ? (
+        <p>
+          <span className="selectable font-mono text-base font-semibold tracking-wider">{formatPairCode(win.code)}</span>
+          <span className="text-muted-foreground selectable ml-2 font-mono">
+            {win.host}:{win.port}
+          </span>
+          <span className="text-muted-foreground ml-2">{t('peer.host.until', { time: timeText(win.until) })}</span>
+        </p>
+      ) : (
+        <Button size="sm" variant="outline" className="w-fit" onClick={() => void show()}>
+          {t('remote.phoneCode.show')}
+        </Button>
+      )}
+      {error && <p className="text-status-error">{error}</p>}
+    </div>
   )
 }
 

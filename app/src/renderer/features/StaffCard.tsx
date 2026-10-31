@@ -12,6 +12,7 @@ import { t } from '@shared/i18n'
 import { roleLabel } from '@shared/roleLabel'
 import { unreadLabel } from '@shared/unreadReports'
 import { AutonomyBadge } from './Autonomy'
+import { isRemoteDim, RemoteBadge } from './RemoteBadge'
 
 interface Props {
   staff: Staff
@@ -128,6 +129,7 @@ export function StaffCard({ staff, isLead = false, isSelected, onSelect }: Props
       className={cn(
         'focus-ring relative flex w-full flex-col gap-3 rounded-xl border p-4 text-left transition-colors',
         CARD_TONE[staff.status],
+        isRemoteDim(staff) && 'opacity-50 grayscale',
         isSelected && 'ring-primary ring-2',
       )}
     >
@@ -142,6 +144,7 @@ export function StaffCard({ staff, isLead = false, isSelected, onSelect }: Props
             {isLead && <LeadMark />}
             <span className="min-w-0 truncate">{staff.name}</span>
             {staff.isPractice && <PracticeBadge />}
+            <RemoteBadge staff={staff} />
             <UnreadBadge staff={staff} />
             {staff.isAutonomous && <AutonomyBadge className="shrink-0" />}
           </div>

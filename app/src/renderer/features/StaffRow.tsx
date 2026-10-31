@@ -8,6 +8,7 @@ import type { Staff } from '@shared/types'
 import { t } from '@shared/i18n'
 import { Avatar, Elapsed, LeadMark, PracticeBadge, StatusDot, UnreadBadge } from './StaffCard'
 import { roleLabel } from '@shared/roleLabel'
+import { isRemoteDim, RemoteBadge } from './RemoteBadge'
 
 interface Props {
   staff: Staff
@@ -35,7 +36,7 @@ export function StaffRow({ staff, isLead = false, isSelected, onSelect }: Props)
     <button
       type="button"
       onClick={() => onSelect(staff.id)}
-      className={cn('focus-ring-inset flex w-full first:rounded-t-[calc(var(--radius-xl)-1px)] last:rounded-b-[calc(var(--radius-xl)-1px)] min-w-0 items-center gap-3 px-3 py-2 text-left transition-colors', ROW_TONE[staff.status], isSelected && 'ring-primary ring-2 ring-inset')}
+      className={cn('focus-ring-inset flex w-full first:rounded-t-[calc(var(--radius-xl)-1px)] last:rounded-b-[calc(var(--radius-xl)-1px)] min-w-0 items-center gap-3 px-3 py-2 text-left transition-colors', ROW_TONE[staff.status], isRemoteDim(staff) && 'opacity-50 grayscale', isSelected && 'ring-primary ring-2 ring-inset')}
     >
       <Avatar avatar={staff.avatar} name={staff.name} teamId={staff.teamId} className="size-8" />
       <div className="flex w-40 min-w-0 shrink-0 flex-col">
@@ -43,6 +44,7 @@ export function StaffRow({ staff, isLead = false, isSelected, onSelect }: Props)
           {isLead && <LeadMark />}
           <span className="min-w-0 truncate">{staff.name}</span>
           {staff.isPractice && <PracticeBadge />}
+          <RemoteBadge staff={staff} />
           <UnreadBadge staff={staff} />
         </div>
         <div className="text-muted-foreground truncate text-xs">{roleLabel(staff.role)}</div>
