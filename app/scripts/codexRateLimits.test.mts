@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { codexUsageAfterFailure, parseRateLimits, rateLimitsFailure, readCodexRateLimits } from '../src/main/ai/codexAssets.ts'
+import { codexUsageAfterFailure, parseRateLimits, rateLimitsFailure, readCodexRateLimits, shareInFlight } from '../src/main/ai/codexAssets.ts'
 import { planHold } from '../src/shared/planHold.ts'
 import type { PlanUsage } from '../src/shared/types.ts'
 
@@ -99,4 +99,33 @@ test('조회에 실패해도 읽어 둔 사용률과 보류 상태는 그대로,
     assert.deepEqual(planHold(after.usage, now), before, note)
   }
   assert.deepEqual(codexUsageAfterFailure([], 'noResponse'), { usage: [], note: 'noResponse' })
+})
+
+// 앱 시작 조회와 새로고침이 겹치는 경우 — office.ts의 refreshCodexUsage가 쓰는 함수 그대로
+test('동시 조회: 진행 중인 조회 하나를 같이 기다리고 app-server는 한 번만 부른다', async () => {
+  let calls = 0
+  let finish!: (v: string) => void
+  const refresh = shareInFlight(() => {
+    calls++
+    return new Promise<string>((r) => (finish = r))
+  })
+  const onStart = refresh()
+  const onButton = refresh()
+  assert.equal(onButton, onStart)
+  assert.equal(calls, 1)
+  finish('read')
+  assert.deepEqual(await Promise.all([onStart, onButton]), ['read', 'read'])
+})
+
+test('조회가 끝난 뒤 새로고침하면 새로 조회한다 (실패로 끝나도)', async () => {
+  let calls = 0
+  const refresh = shareInFlight(async () => {
+    calls++
+    if (calls === 2) throw new Error('codex down')
+    return calls
+  })
+  assert.equal(await refresh(), 1)
+  await assert.rejects(refresh(), /codex down/)
+  assert.equal(await refresh(), 3)
+  assert.equal(calls, 3)
 })

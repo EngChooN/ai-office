@@ -182,6 +182,15 @@ export function codexUsageAfterFailure(usage: PlanUsage[], note: CodexUsageNote)
   return { usage, note: usage.length ? undefined : note }
 }
 
+/** 진행 중인 조회가 있으면 그 Promise를 같이 쓰고, 끝나면(실패해도) 다음 호출 때 새로 조회한다 — 앱 시작·새로고침이 겹쳐도 app-server는 한 번만 부른다 */
+export function shareInFlight<T>(read: () => Promise<T>): () => Promise<T> {
+  let reading: Promise<T> | null = null
+  return () =>
+    (reading ??= read().finally(() => {
+      reading = null
+    }))
+}
+
 /**
  * 직원에게 줄 Claude 형식 스킬 폴더 → Codex가 추가로 읽을 스킬 루트 (skills/extraRoots/set).
  * 'all'이면 ~/.claude/skills와 프로젝트 .claude/skills를 그대로, 이름 목록이면 고른 것만 임시 폴더에 링크해 그 폴더 하나만 준다.
