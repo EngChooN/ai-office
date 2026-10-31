@@ -2,6 +2,18 @@
 
 버전은 SemVer. 기능 크기 기준으로 올린다. 버전마다 **새 기능 / 개선 / 버그 수정**으로 나눠 적는다(앱의 "업데이트 소식"이 이 파일을 그대로 보여 준다).
 
+## [0.16.3] - 2026-10-31
+
+### 새 기능
+- 지시 처리 상태 줄(#9): `shared/staffProgress.ts`·`shared/progressView.ts`, `ProgressLine.tsx`를 `ChatPage.tsx`와 `StaffPanel.tsx` 업무 탭에 표시. main `office.ts`·`hired.ts`가 상태 노출.
+- 대화방 @ 후보 키보드 선택(#8): ↑↓·Enter·Tab·Esc, 고른 뒤 입력창 포커스·커서 끝, Esc 닫힘은 입력이 바뀌면 풀림(`ChatPage.tsx`, `slash-menu.tsx`).
+
+### 개선
+- 대기 수를 공급자 공통 기준으로 계산(`pendingSends.ts`, `claude.ts`, `codex.ts`). 긴 이름·상태 말줄임, 좁은 화면 줄바꿈.
+
+### 버그 수정
+- 실행 중 오류 뒤 남은 입력을 버리고 대화방에 알림. 쉬는 중 세션 끊김은 알리지 않음.
+
 ## [0.16.2] - 2026-10-30
 
 ### 개선

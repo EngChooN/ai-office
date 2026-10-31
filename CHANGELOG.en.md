@@ -9,6 +9,19 @@ Writing rules
 
 ## [미정] (설치본 미빌드)
 
+## [0.16.3] - 2026-10-31
+
+### New features
+- When you send an instruction in a chat room, a per-staff status line (waiting / working / needs your check / error, N waiting) now shows in that room and in the Tasks tab of the staff panel until the reply arrives.
+- You can pick @ suggestions in the chat room with the keyboard: ↑↓ to move, Enter or Tab to select, Esc to close.
+
+### Improvements
+- After you pick an @ suggestion, the cursor stays in the input box so you can keep typing right away.
+- The status line no longer overflows on narrow screens, and long names and statuses are shortened.
+
+### Bug fixes
+- If a staff member hits an error while working, the chat room is told and the remaining instructions are cleared. A connection that drops while the staff member is idle is not reported.
+
 ## [0.16.2] - 2026-10-30
 
 ### Improvements
