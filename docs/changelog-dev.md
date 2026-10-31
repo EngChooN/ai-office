@@ -4,6 +4,19 @@
 
 ## [미정] (설치본 미빌드)
 
+## [0.18.1] - 2026-10-31
+
+### 개선
+- 화면 최적화: 17개 화면을 `layout/pages.ts`에서 늦게 불러오기, 첫 화면(사무실 지도)은 App과 함께 받음, Phaser 첫 청크 분리(첫 JS 3,517KB → 1,732KB). 못 받으면 `components/load-error-boundary.tsx`가 '다시 시도' 안내. 지도 깊이 정렬은 바뀔 때만, 시계·QR 타이머 정리, 스토어 구독 줄임.
+- Codex 사용률: `codexAssets.ts`가 문장 대신 이유 코드(binary·noResponse·unreadable·noWindow), 화면 문구 `planUsage.codexNote.*`(4개 언어). 새로고침은 Codex 조회 완료까지 기다리고 진행 중 조회는 `shareInFlight`로 공유.
+- 명령 자동결재 fail-closed(`shared/autoApprove.ts`·`commandScan.ts`): 허용 목록 밖 명령·래퍼·모르는 옵션은 대표 확인, 중괄호·글롭·줄 잇기·heredoc·주석·치환 우회 차단, git -c/위험 설정 키, 변수 산술은 대기(리터럴·정수 특수 매개변수만 허용), `${…}`/`$[…]` 렉싱·첨자 대입·PATH 접두, BSD `sed -i ''`/`-I ''`·`.git` 쓰기, curl 출력 판정. 패키지 이름이 붙은 설치·갱신·전역 설치는 대표 확인(옵션 뒤 `--`, install-test 줄임말, `--global=값`). 테스트 `scripts/reviewFixes.test.mts`.
+- 비밀값 가리기(`shared/redact.ts`): 접두어 붙은 키·따옴표/숫자 값·공백 값, 선형 시간. 원격 연결 수 제한, 비용 조회 색인.
+
+### 버그 수정
+- `loadTasks`: `task.artifacts` JSON 파싱 실패 시 빈 목록(깨진 행 하나가 카드 목록 전체를 막던 문제). 마이그레이션·재로딩 테스트(`scripts/dbReopenChild.mts`·`dbLoaderHooks.mjs`).
+- 매뉴얼(`main/manuals.ts`): 같은 폴더 다른 표기에서 원본 삭제 방지, 같은 이름 덮어쓰기 금지, 잘못된 단계 JSON 표시, 윈도우 줄바꿈.
+- 갤러리 참조 갱신·저장 순서를 `shared/gallery.ts` 공용 함수로.
+
 ## [0.18.0] - 2026-10-31
 
 ### 새 기능

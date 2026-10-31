@@ -9,6 +9,18 @@ Writing rules
 
 ## [미정] (설치본 미빌드)
 
+## [0.18.1] - 2026-10-31
+
+### Improvements
+- The app opens faster. It loads half as much at startup and loads other screens when you open them. If a screen can't load, a 'Try again' notice appears in its place.
+- If GPT (Codex) usage can't be read, the app tells you why (program not found, no response, no data, etc.). Refresh now finishes only after Codex usage is read.
+- Auto-approval is stricter. Only clearly safe commands pass automatically; unfamiliar commands and package installs or updates ask you first.
+- Secrets such as passwords and keys are hidden more reliably in logs.
+
+### Bug fixes
+- Fixed the whole task card list disappearing when one card's result data was broken.
+- Fixed saving a manual possibly overwriting another manual with the same name or deleting the original. Manuals made on Windows are now read correctly.
+
 ## [0.18.0] - 2026-10-31
 
 ### New features
