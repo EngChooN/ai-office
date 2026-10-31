@@ -504,3 +504,10 @@ test('패키지 추가·전역 설치는 대표 확인, 이름 없는 설치는 
   const ok = ['npm install', 'npm ci', 'pnpm install', 'yarn', 'yarn install', 'bun install', 'npm install --ignore-scripts', 'npm ci --no-audit', 'pnpm --filter web install', 'npm --prefix app install', 'npm i --registry https://r.example', 'npm i --omit dev', 'npm install --ignore-scripts && npm test']
   for (const c of ok) assert.equal(commandWaits(c), false, c)
 })
+
+test('설치 판정 리뷰 지적 6건: 우회 5종은 대표 확인, 옵션 값이 설치 낱말인 경우는 허용', () => {
+  const wait = ['npm -- install lodash', 'CMD=install; npm "$CMD" lodash', 'npm $(echo install) lodash', 'npm upd lodash', 'npm upg lodash', 'pnpm add -w lodash', 'pnpm add --workspace lodash', 'npm install --g', 'npm install --location=global', 'npm install --location global typescript']
+  for (const c of wait) assert.equal(commandWaits(c), true, c)
+  const ok = ['npm --prefix install install', 'pnpm --filter install install']
+  for (const c of ok) assert.equal(commandWaits(c), false, c)
+})

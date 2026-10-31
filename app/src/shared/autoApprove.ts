@@ -44,19 +44,37 @@ const INLINE_CODE_FLAGS = new Set(['-c', '-e', '--eval', '--command', '--exec'])
 /** 하위 명령으로 판정하는 빌드 래퍼 (배포·게시만 기다리고 빌드·테스트는 허용) */
 const BUILD_WRAPPERS = new Set(['make', 'gradle', 'gradlew', 'mvn', 'mvnw', 'rake'])
 // npm·pnpm·yarn·bun 의 설치·갱신 별칭 (오타 별칭 포함)
-const PKG_INSTALL_WORDS = new Set(['install', 'i', 'in', 'ins', 'inst', 'insta', 'instal', 'isnt', 'isnta', 'isntal', 'isntall', 'add', 'a', 'update', 'up', 'upgrade', 'udpate', 'install-test', 'it'])
-// 값을 따로 받는 옵션 (--filter web 의 web 을 패키지 이름으로 보지 않게)
-const PKG_OPT_WITH_VALUE = new Set(['--filter', '-F', '--workspace', '-w', '--registry', '--prefix', '--cwd', '--dir', '-C', '--tag', '--loglevel', '--cache', '--omit', '--include', '--otp', '--scope', '--fetch-retries', '--network-timeout', '--cpu', '--os', '--libc'])
-function installsPackages(args: string[]): boolean {
+const PKG_INSTALL_WORDS = new Set(['install', 'i', 'in', 'ins', 'inst', 'insta', 'instal', 'isnt', 'isnta', 'isntal', 'isntall', 'add', 'a', 'update', 'up', 'upgrade', 'udpate', 'upd', 'upda', 'updat', 'upg', 'upgr', 'upgra', 'upgrad', 'install-test', 'it'])
+// 값을 따로 받는 옵션 (--filter web 의 web 을 패키지 이름으로 보지 않게). -w·--workspace 는 npm 만 값을 받고 pnpm 은 값 없는 옵션이다
+const PKG_OPT_WITH_VALUE = new Set(['--filter', '-F', '--registry', '--prefix', '--cwd', '--dir', '-C', '--tag', '--loglevel', '--cache', '--omit', '--include', '--otp', '--scope', '--fetch-retries', '--network-timeout', '--cpu', '--os', '--libc', '--location'])
+const NPM_ONLY_VALUE = new Set(['--workspace', '-w'])
+/** 설치가 아닌 것이 확실한 하위 명령 — 이 밖의 알 수 없는 하위 명령 뒤에 설치 낱말이 있으면 옵션 값을 잘못 읽었을 수 있어 기다린다 */
+const PKG_PLAIN_SUBS = new Set(['run', 'run-script', 'rum', 'urn', 'test', 't', 'tst', 'start', 'stop', 'restart', 'ci', 'ls', 'list', 'll', 'la', 'outdated', 'view', 'pack', 'rebuild', 'prune', 'dedupe', 'audit', 'why', 'version', 'help', 'build', 'dev', 'lint', 'cache', 'config', 'get', 'root', 'bin', 'prefix', 'whoami', 'ping', 'doctor', 'fund', 'search', 'info'])
+const isGlobalFlag = (a: string) => a === '--global' || a === '--global=true' || /^--g(l(o(b(a(l)?)?)?)?)?(=true)?$/.test(a) || /^-[A-Za-z]*g[A-Za-z]*$/.test(a) || a === '--location=global'
+function installsPackages(args: string[], pm = 'npm'): boolean {
   const dd = args.indexOf('--')
-  const words = dd < 0 ? args : args.slice(0, dd)
-  const at = words.findIndex((a) => PKG_INSTALL_WORDS.has(a))
+  const head = dd === 0 ? args.slice(1) : args // npm -- install lodash: 앞의 -- 는 건너뛴다
+  const dd2 = head.indexOf('--')
+  const words = dd2 < 0 ? head : head.slice(0, dd2)
+  const takesValue = (a: string) => PKG_OPT_WITH_VALUE.has(a) || (pm === 'npm' && NPM_ONLY_VALUE.has(a))
+  if (words.some(isGlobalFlag)) return true // 전역 설치
+  const loc = words.indexOf('--location')
+  if (loc >= 0 && words[loc + 1] === 'global') return true
+  let at = -1
+  for (let k = 0; k < words.length; k++) {
+    if (words[k].startsWith('-')) { if (takesValue(words[k])) k++ } else { at = k; break }
+  }
   if (at < 0) return false
-  if (words.includes('global') && words.includes('add')) return true // yarn global add
-  if (words.some((a) => a === '--global' || a === '--global=true' || /^-[A-Za-z]*g[A-Za-z]*$/.test(a))) return true // 전역 설치
-  if (dd >= 0 && args.slice(dd + 1).some((a) => !a.startsWith('-'))) return true // npm i -- pkg
+  const sub = words[at]
+  if (/[$`]/.test(sub)) return true // 하위 명령이 변수·치환이면 무엇인지 확정할 수 없다
+  if (sub === 'global' && words.slice(at + 1).some((a) => ['add', 'upgrade', 'install'].includes(a))) return true // yarn global add
+  if (!PKG_INSTALL_WORDS.has(sub)) {
+    // 알 수 없는 옵션이 값을 받았을 가능성: 뒤에 설치 낱말이 있으면 기다린다
+    return !PKG_PLAIN_SUBS.has(sub) && words.slice(at + 1).some((a) => PKG_INSTALL_WORDS.has(a))
+  }
+  if (dd2 >= 0 && head.slice(dd2 + 1).some((a) => !a.startsWith('-'))) return true // npm i -- pkg
   for (let k = at + 1; k < words.length; k++) {
-    if (PKG_OPT_WITH_VALUE.has(words[k])) k++
+    if (takesValue(words[k])) k++
     else if (!words[k].startsWith('-')) return true
   }
   return false
@@ -384,7 +402,7 @@ function segmentWaits(seg: Segment): boolean {
     if (args.some((a) => ['dlx', 'exec', 'x', 'explore', 'create', 'publish', 'deploy'].includes(a))) return true
     if ((args.includes('pkg') && args.some((a) => ['set', 'delete', 'fix'].includes(a))) || (['config', 'set'].includes(sub ?? '') && !args.some((a) => ['get', 'list', 'ls'].includes(a)))) return true // package.json 스크립트·npm 설정(script-shell 등) 변경
     if (args.includes('init') && args.length > args.indexOf('init') + 1 && !args[args.indexOf('init') + 1].startsWith('-')) return true
-    if (installsPackages(args)) return true // 패키지 이름이 붙은 설치·갱신·전역 설치는 남의 코드를 실행하므로 대표 확인
+    if (installsPackages(args, name)) return true // 패키지 이름이 붙은 설치·갱신·전역 설치는 남의 코드를 실행하므로 대표 확인
     const runAt = args.findIndex((a) => ['run', 'run-script', 'rum', 'urn'].includes(a))
     if (runAt >= 0) return isOutboundName(args[runAt + 1] ?? '')
     return sub !== undefined && isOutboundName(sub) && ['yarn', 'bun'].includes(name)
