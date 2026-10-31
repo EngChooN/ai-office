@@ -42,6 +42,15 @@ import { grantedLevels, grantedZones, runIsoMigration, runLevelGrants } from './
 let db: DatabaseSync
 let workBaseStore: ReturnType<typeof createWorkBaseStore>
 
+/** 연결을 닫는다 (테스트가 닫았다 다시 열기를 재현하는 데 쓴다) */
+export function closeDb() {
+  try {
+    db?.close()
+  } catch {
+    // 이미 닫힘
+  }
+}
+
 export function openDb() {
   db = new DatabaseSync(path.join(app.getPath('userData'), 'office.db'))
   db.exec(`

@@ -256,6 +256,7 @@ function registerIpc() {
     win?.webContents.send('office:onChat', m)
     sendChatToPet(m)
   })
+  office.on('galleryChanged', () => win?.webContents.send('office:onGalleryChanged'))
   office.on('notify', ({ title, body, staffId }) => {
     const n = new Notification({ title, body })
     n.on('click', () => {

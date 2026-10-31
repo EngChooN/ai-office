@@ -331,3 +331,9 @@ export function demoOutcome<R>(stop: 'wrapup' | 'discard' | undefined, remark: R
 export function abortable<T>(p: Promise<T>, ac: AbortController): Promise<T> {
   return Promise.race([p, new Promise<never>((_, rej) => (ac.signal.aborted ? rej(new Error('aborted')) : ac.signal.addEventListener('abort', () => rej(new Error('aborted')), { once: true })))])
 }
+
+/** 갤러리 목록에 한 장을 넣는다 (같은 id는 덮어쓰고 맨 앞, 최대 개수를 넘는 옛 카드는 dropped로) */
+export function mergeGalleryEntry(list: GalleryEntry[], entry: GalleryEntry, max: number): { kept: GalleryEntry[]; dropped: GalleryEntry[] } {
+  const next = [entry, ...list.filter((e) => e.id !== entry.id)]
+  return { kept: next.slice(0, max), dropped: next.slice(max) }
+}

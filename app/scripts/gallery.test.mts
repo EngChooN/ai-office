@@ -1,7 +1,7 @@
 // 결과물 갤러리·데모데이: 링크·요약 다듬기, 필터, 데모데이 시각 판정과 짧은 요약 — npm test
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { demoEntries, demoSummary, extractLinks, filterGallery, isDemoDue, summarize, DEMO_LINES_MAX, cleanSpeech, demoCoverImages, demoImages, demoPresentInput, GALLERY_IMAGES_MAX, galleryBody, GALLERY_BODY_MAX, type DemoDayConfig, type GalleryEntry } from '../src/shared/gallery.ts'
+import { demoEntries, demoSummary, extractLinks, filterGallery, isDemoDue, summarize, DEMO_LINES_MAX, cleanSpeech, demoCoverImages, demoImages, demoPresentInput, GALLERY_IMAGES_MAX, galleryBody, GALLERY_BODY_MAX, mergeGalleryEntry, type DemoDayConfig, type GalleryEntry } from '../src/shared/gallery.ts'
 import { setLang } from '../src/shared/i18n/index.ts'
 
 setLang('ko')
@@ -138,4 +138,15 @@ test('galleryBody: 상한까지만 저장, 짧으면 그대로', () => {
 test('예전 항목(body 없음)도 그대로 다룬다', () => {
   const old = entry('o', { summary: '요약' })
   assert.equal(old.body, undefined)
+})
+
+test('갤러리 병합: 같은 id는 덮어써 맨 앞, 넘친 옛 카드는 dropped', () => {
+  const list = [entry('a'), entry('b'), entry('c')]
+  const { kept, dropped } = mergeGalleryEntry(list, entry('b', { title: '새' }), 3)
+  assert.deepEqual(kept.map((e) => e.id), ['b', 'a', 'c'])
+  assert.equal(kept[0].title, '새')
+  assert.equal(dropped.length, 0)
+  const r = mergeGalleryEntry(list, entry('d'), 3)
+  assert.deepEqual(r.kept.map((e) => e.id), ['d', 'a', 'b'])
+  assert.deepEqual(r.dropped.map((e) => e.id), ['c'])
 })

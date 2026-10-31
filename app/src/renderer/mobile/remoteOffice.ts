@@ -68,7 +68,7 @@ const CONFIRM_TEXT: Partial<Record<OfficeMethod, string>> = {
   setRemoteEnabled: '이 휴대폰 연결이 바로 끊겨요.\n원격 연결을 끄거나 포트를 바꾸면 이 휴대폰도 바로 끊기고, 다시 켜려면 PC 앞에서 켜야 해요.',
 }
 
-const EVENT_NAME: Record<OfficeEvent, string> = { onSnapshot: 'snapshot', onLog: 'log', onChat: 'chat', onFocus: 'focus', onRemoteStatus: 'remoteStatus' }
+const EVENT_NAME: Record<OfficeEvent, string> = { onSnapshot: 'snapshot', onLog: 'log', onChat: 'chat', onFocus: 'focus', onRemoteStatus: 'remoteStatus', onGalleryChanged: 'galleryChanged' }
 
 /** JSON으로 보낼 인자: 끝에 붙은 undefined는 빼고(PC가 남는 인자를 거절), 중간 undefined는 null */
 export function normalizeArgs(args: unknown[]): unknown[] {

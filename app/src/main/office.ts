@@ -77,7 +77,7 @@ import { draftCovered, isSameRule, matchRule, ruleLabel, type ApprovalRule } fro
 import { askDecisionInput, matchPastDecisions, sameAskDecisions } from '../shared/askDecision'
 import { KNOWLEDGE_MAX, knowledgeBrief, normalizeKnowledge, pickKnowledge, type KnowledgeEntry, type KnowledgeInput } from '../shared/knowledge'
 import { maskSecrets } from '../shared/redact'
-import { abortable, demoOutcome, addPraise, cleanSpeech, settleStaleMeeting, dateKeyOf, DEMO_COMMENT_MAX, DEMO_REACTIONS, demoPhaseMs, type DemoPhase, type DemoReaction, type DemoStage, type Praise, demoCoverImages, demoEntries, demoImages, demoLine, demoPresentInput, demoSummary, extractLinks, GALLERY_FILES_MAX, GALLERY_IMAGES_MAX, GALLERY_MAX, galleryBody, groupByStaff, isDemoDue, summarize, type GalleryEntry } from '../shared/gallery'
+import { abortable, demoOutcome, addPraise, cleanSpeech, settleStaleMeeting, dateKeyOf, DEMO_COMMENT_MAX, DEMO_REACTIONS, demoPhaseMs, type DemoPhase, type DemoReaction, type DemoStage, type Praise, demoCoverImages, demoEntries, demoImages, demoLine, demoPresentInput, demoSummary, extractLinks, GALLERY_FILES_MAX, GALLERY_IMAGES_MAX, GALLERY_MAX, galleryBody, groupByStaff, isDemoDue, mergeGalleryEntry, summarize, type GalleryEntry } from '../shared/gallery'
 import { InvalidArgsError } from '../shared/errors'
 import { addUnread, clearUnread, unreadOf, type UnreadReports } from '../shared/unreadReports'
 import { planBoardCleanup, type BoardCleanupPlan } from '../shared/boardCleanup'
@@ -192,6 +192,8 @@ export class Office extends EventEmitter<{
   chat: [ChatMessage]
   /** 이미 올린 메시지가 바뀜 (결재 처리 결과) — PC 화면만 받는다 */
   chatUpdate: [ChatMessage]
+  /** 갤러리 목록이 저장·갱신됨 — PC 화면이 목록을 다시 받는다 */
+  galleryChanged: []
   notify: [{ title: string; body: string; staffId: string }]
 }> {
   private hired = new Map<string, db.StoredStaff>()
@@ -3113,6 +3115,7 @@ export class Office extends EventEmitter<{
       db.saveGalleryRow(entry)
       return entry
     })
+    this.emit('galleryChanged')
   }
 
   // ── 결과물 갤러리·데모데이 ─────────────────────────────
@@ -3124,6 +3127,7 @@ export class Office extends EventEmitter<{
   deleteGalleryEntry(id: string) {
     this.gallery = this.gallery.filter((e) => e.id !== id)
     db.deleteGalleryRow(id)
+    this.emit('galleryChanged')
   }
 
   /** 업무 카드가 검토로 넘어가면 보고·캡처·바뀐 파일을 한 장으로 남긴다 (같은 카드를 다시 끝내면 덮어쓴다) */
@@ -3154,9 +3158,10 @@ export class Office extends EventEmitter<{
         finishedAt: Date.now(),
       }
       db.saveGalleryRow(entry)
-      const next = [entry, ...this.gallery.filter((e) => e.id !== entry.id)]
-      for (const old of next.slice(GALLERY_MAX)) db.deleteGalleryRow(old.id)
-      this.gallery = next.slice(0, GALLERY_MAX)
+      const { kept, dropped } = mergeGalleryEntry(this.gallery, entry, GALLERY_MAX)
+      for (const old of dropped) db.deleteGalleryRow(old.id)
+      this.gallery = kept
+      this.emit('galleryChanged')
     } catch (e) {
       console.error('[office] recordGallery', e)
     }

@@ -1125,6 +1125,8 @@ export interface OfficeApi {
   onLog(cb: (entry: LogEntry) => void): () => void
   onChat(cb: (message: ChatMessage) => void): () => void
   onFocus(cb: (staffId: string) => void): () => void
+  /** 갤러리 저장이 끝남 — 갤러리 화면이 목록을 다시 받는 신호 */
+  onGalleryChanged(cb: () => void): () => void
 }
 
 export const ROLE_PRESETS = ['팀장', '프론트엔드 개발자', '백엔드 개발자', '코드 리뷰어', 'QA', '기획자', '리서처', '디자이너', '고객 응대(CS)', '마케터', '자유 직무'] as const

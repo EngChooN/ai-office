@@ -26,6 +26,7 @@ function useGallery() {
   useEffect(() => {
     void refresh()
   }, [refresh, reviewCount])
+  useEffect(() => window.office.onGalleryChanged(() => void refresh()), [refresh])
   useEffect(() => window.office.onChat((m) => m.attachments?.some((a) => a.artifact) && void refresh()), [refresh])
   return { entries, refresh }
 }
