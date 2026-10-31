@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type KeyboardEvent, type MouseEvent } from 'react'
 import { FileDiffIcon, GalleryHorizontalEndIcon, LinkIcon, PresentationIcon, Trash2Icon } from 'lucide-react'
 import { AttachmentView } from '@/components/attachments'
+import { ArtifactCards } from '@/components/artifact-card'
 import { Markdown } from '@/components/markdown'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -127,6 +128,7 @@ function GalleryCard({ entry: e, onOpen, onDelete }: { entry: GalleryEntry; onOp
         </Button>
       </div>
       <AttachmentView attachments={e.images} size="md" />
+      <ArtifactCards artifacts={e.artifacts} />
       {/* 카드에선 블록 사이 여백·큰 제목을 없애야 정확히 5줄에서 잘린다 (상세 창은 그대로) */}
       {e.summary && <Markdown className="text-muted-foreground line-clamp-5 text-xs [&_*]:my-0! [&_:is(h1,h2,h3,h4)]:text-[1em]!">{e.summary}</Markdown>}
       <EntryLinks links={e.links} />
@@ -156,6 +158,7 @@ function GalleryDetail({ entry: e, onClose }: { entry: GalleryEntry | null; onCl
                   <AttachmentView attachments={e.images} size="lg" />
                 </section>
               )}
+              <ArtifactCards artifacts={e.artifacts} />
               <section className="flex flex-col gap-1.5">
                 <h3 className="text-muted-foreground text-xs font-medium">{t('gallery.detail.result')}</h3>
                 {body ? <Markdown className="text-sm">{body}</Markdown> : <p className="text-muted-foreground text-sm">{t('gallery.detail.noBody')}</p>}

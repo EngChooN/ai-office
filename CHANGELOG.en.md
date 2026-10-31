@@ -15,6 +15,7 @@ Writing rules
 - Desktop secretary character (Mac): after install, a secretary character sits on your desktop. Drag it anywhere; drop it near a screen edge and it snaps to the edge. Turn it on or off in Settings > Connections.
 - Click the character to open a small window. Without opening the app, you can approve or reject requests, answer or skip staff questions, and talk to the secretary. Questions too long for the window continue via 'Open in app'.
 - When an approval arrives, a speech bubble (!) appears above the character and it hops. Otherwise it breathes and looks around.
+- Open web page mockups, dashboards and write-ups (HTML, Markdown) made by your staff right inside the app. Result cards appear in chat, work reports, task cards and the Gallery; click 'Open' to see the live page or its source in a large viewer and switch between uploaded versions. You can also open it in your browser or show the file location. Results open in a window isolated from the app, so they can't reach your files or outside servers. On the phone you see the list and can open them on the PC.
 
 ### Improvements
 - The desktop secretary's face changes with the situation: surprised when an approval arrives, thinking while it prepares an answer, happy after you approve or answer, worried on errors, focused while staff are working, and sleepy after 10 quiet minutes.

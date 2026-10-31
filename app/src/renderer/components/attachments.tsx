@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ClipboardEvent, type DragEvent } from 'react'
 import { FileIcon, PaperclipIcon, XIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { ArtifactCards } from '@/components/artifact-card'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import { attachmentUrl, isImageAttachment, type Attachment } from '@shared/types'
@@ -73,15 +74,18 @@ export function DraftAttachments({ files, onRemove }: { files: File[]; onRemove:
   )
 }
 
-/** 보낸·받은 첨부 보기: 이미지는 썸네일(누르면 크게), 파일은 누르면 기본 앱으로 연다 */
+/** 보낸·받은 첨부 보기: 이미지는 썸네일(누르면 크게), 파일은 누르면 기본 앱으로 연다, 아티팩트는 카드(누르면 크게 보기) */
 const THUMB_CLASS = { sm: 'size-12', md: 'max-h-40 max-w-56', lg: 'max-h-80 max-w-full' } as const
 
 export function AttachmentView({ attachments, size = 'md' }: { attachments?: Attachment[]; size?: keyof typeof THUMB_CLASS }) {
   const [zoom, setZoom] = useState<Attachment | null>(null)
   if (!attachments?.length) return null
+  const artifacts = attachments.flatMap((a) => (a.artifact ? [a.artifact] : []))
+  const files = attachments.filter((a) => !a.artifact)
   return (
     <div className="flex flex-wrap gap-2">
-      {attachments.map((a) =>
+      <ArtifactCards artifacts={artifacts} className="contents" />
+      {files.map((a) =>
         isImageAttachment(a) ? (
           <button key={a.id} type="button" onClick={() => setZoom(a)} className="overflow-hidden rounded-md border">
             <img src={attachmentUrl(a)} alt={a.name} className={cn('object-cover', THUMB_CLASS[size])} />

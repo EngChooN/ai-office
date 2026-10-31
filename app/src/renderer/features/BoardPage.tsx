@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Markdown } from '@/components/markdown'
 import { AttachButton, AttachmentView, DraftAttachments, useDraftAttachments } from '@/components/attachments'
+import { ArtifactCards } from '@/components/artifact-card'
 import { cn } from '@/lib/utils'
 import { useShallow } from 'zustand/react/shallow'
 import { useOffice } from '@/store'
@@ -268,6 +269,7 @@ function TaskCard({ task }: { task: Task }) {
         </div>
       )}
       <AttachmentView attachments={task.attachments} size="sm" />
+      <ArtifactCards artifacts={task.artifacts} />
       {preview && (
         // 카드에는 앞부분만, 누르면 상세 창에서 전체를 본다
         <button
@@ -419,6 +421,7 @@ function TaskDetail({ task, isOpen, onOpenChange }: { task: Task; isOpen: boolea
           </section>
         )}
         <AttachmentView attachments={task.attachments} />
+        <ArtifactCards artifacts={task.artifacts} />
         {task.plan && <PlanCard task={task} isCompact />}
         {children.length > 0 && (
           <section className="flex flex-col gap-1">

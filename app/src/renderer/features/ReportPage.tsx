@@ -8,6 +8,7 @@ import type { LogEntry, LogType } from '@shared/types'
 import { fmtDate, t, trOr, type TKey } from '@shared/i18n'
 import { Avatar } from './StaffCard'
 import { Markdown } from '@/components/markdown'
+import { AttachmentView } from '@/components/attachments'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 const LOG_LABEL: Record<LogType, TKey> = {
@@ -77,7 +78,10 @@ export function ReportPage() {
                   <Avatar avatar={s?.avatar ?? 0} name={s?.name} teamId={s?.teamId} className="size-4" />
                   <span className="w-16 shrink-0 truncate font-medium">{s?.name ?? t('common.formerStaff')}</span>
                   <span className={cn('w-8 shrink-0 font-medium', LOG_COLOR[l.type] ?? 'text-muted-foreground')}>{t(LOG_LABEL[l.type])}</span>
-                  <span className="selectable line-clamp-3 min-w-0 flex-1 break-words">{trOr(l.textI18n, l.text)}</span>
+                  <div className="flex min-w-0 flex-1 flex-col gap-1">
+                    <span className="selectable line-clamp-3 break-words">{trOr(l.textI18n, l.text)}</span>
+                    <AttachmentView attachments={l.attachments} size="sm" />
+                  </div>
                 </div>
               )
             })}
