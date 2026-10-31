@@ -12,6 +12,7 @@ export default {
   'deskPet.autoOnHint': { ko: '자동결재가 켜져 있어 대부분의 결재는 비서가 대신 처리해요', en: 'Auto-approve is on, so the secretary handles most approvals', ja: '自動承認がオンのため、ほとんどの承認は秘書が代わりに処理します', zh: '自动审批已开启，大部分审批由秘书代为处理' },
   'deskPet.approve': { ko: '승인', en: 'Approve', ja: '承認', zh: '批准' },
   'deskPet.reject': { ko: '반려', en: 'Reject', ja: '却下', zh: '驳回' },
+  'deskPet.placeholder': { ko: '비서에게 말하기…', en: 'Message the secretary…', ja: '秘書に話しかける…', zh: '对秘书说…' },
   'deskPet.openApp': { ko: '앱에서 열기', en: 'Open in app', ja: 'アプリで開く', zh: '在应用中打开' },
   'deskPet.approveOf': { ko: '{title} 승인', en: 'Approve {title}', ja: '{title} を承認', zh: '批准 {title}' },
   'deskPet.rejectOf': { ko: '{title} 반려', en: 'Reject {title}', ja: '{title} を却下', zh: '驳回 {title}' },

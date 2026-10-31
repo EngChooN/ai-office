@@ -48,15 +48,17 @@ export function PetPanel() {
       window.removeEventListener('keydown', onKey)
     }
   }, [])
-  // 새 말이 오면 대화 끝이 보이게 (처음 그릴 때는 결재가 보이도록 건너뛴다)
-  const isFirst = useRef(true)
+  // 새 말이 오면 대화 끝이 보이게. 첫 스냅샷으로 기존 대화가 들어올 때는 결재가 보이도록 건너뛴다 (PetRoot가 스냅샷을 늦게 받는다)
+  const isLoaded = useOffice((s) => s.isLoaded)
+  const seenLoad = useRef(false)
   useEffect(() => {
-    if (isFirst.current) {
-      isFirst.current = false
+    if (!isLoaded) return
+    if (!seenLoad.current) {
+      seenLoad.current = true
       return
     }
     chatEndRef.current?.scrollIntoView({ block: 'end' })
-  }, [messages.length, secretary.isBusy])
+  }, [isLoaded, messages.length, secretary.isBusy])
 
   // 평평한 목록 (docs/design/desktop-secretary/panel-concepts D2): 머리줄 · [결재들 · 비서 대화]만 스크롤 · 입력창은 아래 고정
   return (
@@ -102,7 +104,7 @@ export function PetPanel() {
       </div>
 
       <div className="border-t px-3 py-2.5">
-        <SecretaryComposer />
+        <SecretaryComposer placeholder={t('deskPet.placeholder')} />
       </div>
     </div>
   )

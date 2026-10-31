@@ -136,7 +136,8 @@ export function SecretaryMessages({ since, className, empty }: { since?: number;
   )
 }
 
-export function SecretaryComposer({ autoFocus, onSent }: { autoFocus?: boolean; onSent?: () => void }) {
+/** placeholder: 좁은 창(바탕화면 비서 펼침 창)은 짧은 안내로 바꿔 끼운다 */
+export function SecretaryComposer({ autoFocus, onSent, placeholder }: { autoFocus?: boolean; onSent?: () => void; placeholder?: string }) {
   const [draft, setDraft] = useState('')
   const ref = useRef<HTMLTextAreaElement>(null)
   const prefill = useSecretaryDraft((s) => s.prefill)
@@ -162,7 +163,7 @@ export function SecretaryComposer({ autoFocus, onSent }: { autoFocus?: boolean; 
         onChange={(e) => setDraft(e.target.value)}
         onKeyDown={handleKeyDown}
         rows={1}
-        placeholder={t('secretary.placeholder', { hint: String(NEWLINE_HINT) })}
+        placeholder={placeholder ?? t('secretary.placeholder', { hint: String(NEWLINE_HINT) })}
         className="field-sizing-content max-h-32 min-h-9 resize-none py-[7px]"
       />
       <Button size="icon" onClick={send} disabled={!draft.trim()} aria-label={t('secretary.send')}>
