@@ -42,7 +42,7 @@ export const petOpacity = (v: unknown) => (typeof v === 'number' && Number.isFin
 export type PetAlign = 'left' | 'right'
 
 export interface PetLayout {
-  /** 112px 기준 배율 (배지·반짝임·작업 점·생각 중 아이콘 크기와 위치) */
+  /** 112px 기준 배율 (머리 위 도트 말풍선·반짝임·작업 점 크기와 위치) */
   scale: number
   /** 캐릭터 그림 크기 */
   char: { width: number; height: number }

@@ -5,8 +5,9 @@ import { EMPTY_SECRETARY } from '@shared/types'
 import { BUBBLE_MAX, canPetMove, isDragMove, mergeAct, nextIdleDelay, petApprovals, petLayout, petMotionVars, pickBubble, pickIdleAct, type PetAct, type PetAlign, type PetBubble } from '@shared/deskPet'
 import { t, trOr } from '@shared/i18n'
 import { PetSprite, type PetPose } from './PetSprite'
+import { PetBadge, type PetBadgeKind } from './PetBadge'
 
-// 캐릭터 창: 캐릭터 그림(PetSprite) + 결재 배지 + 말풍선 하나. 누르면 펼침 창, 끌면 옮기기 (이동 거리로 구분 — shared/deskPet.ts isDragMove)
+// 캐릭터 창: 캐릭터 그림(PetSprite) + 머리 위 도트 말풍선(PetBadge) + 글자 말풍선 하나. 누르면 펼침 창, 끌면 옮기기 (이동 거리로 구분 — shared/deskPet.ts isDragMove)
 // 투명한 곳은 클릭이 뒤 창으로 지나가고, 캐릭터·말풍선 위에서만 마우스를 받는다 (setInteractive)
 // 움직임(숨쉬기·가끔 동작·결재 알림)은 button 안쪽 그림 래퍼에만 준다 — 클릭 영역·말풍선·결재 배지는 제자리 (usePetMotion)
 
@@ -78,10 +79,14 @@ export function PetCharacter() {
   const layout = petLayout(size)
   const align = useAlign()
   const px = (n: number) => Math.round(n * layout.scale)
+  // 생각 중은 글자 말풍선 대신 머리 위 도트 '…'. 결재 대기 '!'는 글자 말풍선(답·새 결재 제목·업무)이 떠 있는 동안 접어 둔다 — 머리 위에 두 개가 겹쳐 쌓이지 않게
+  // 생각 중이 결재보다 먼저 — 방금 말을 건 비서가 듣고 있다는 걸 보여 준다 (캐릭터 자세 pose와 같은 순서)
+  const isTextBubble = bubble !== null && bubble.kind !== 'thinking'
+  const badge: PetBadgeKind | null = secretary.isBusy ? 'thinking' : approvals.length && !isTextBubble ? 'approval' : null
 
   return (
     <div className={cn('flex h-screen w-screen flex-col justify-end overflow-hidden pb-1 select-none', align === 'left' ? 'items-start' : 'items-end')} style={{ paddingInline: layout.pad }}>
-      <Bubble bubble={bubble} maxWidth={Math.min(BUBBLE_MAX, layout.window.width - layout.pad * 2)} />
+      <Bubble bubble={isTextBubble ? bubble : null} maxWidth={Math.min(BUBBLE_MAX, layout.window.width - layout.pad * 2)} />
       <button
         type="button"
         aria-label={t('deskPet.character')}
@@ -98,17 +103,9 @@ export function PetCharacter() {
           style={{ '--pet-scale': layout.scale, ...petMotionVars() } as React.CSSProperties}
           onAnimationEnd={motion.onAnimationEnd}
         >
-          <PetSprite pose={pose} isBlinking={isBlinking} layout={layout} />
+          <PetSprite isBlinking={isBlinking} layout={layout} />
         </span>
-        {approvals.length > 0 && (
-          <span
-            className="bg-destructive absolute flex items-center justify-center rounded-full font-bold text-white ring-2 ring-white"
-            style={{ top: -px(8), right: -px(8), width: px(18), height: px(18), fontSize: px(11) }}
-            aria-label={t('deskPet.badge', { n: approvals.length })}
-          >
-            !
-          </span>
-        )}
+        {badge && <PetBadge kind={badge} layout={layout} label={badge === 'thinking' ? t('deskPet.thinking') : t('deskPet.badge', { n: approvals.length })} />}
         {pose === 'working' && <span className="bg-primary absolute bottom-[12%] animate-pulse rounded-full motion-reduce:animate-none" style={{ left: -px(12), width: px(8), height: px(8) }} aria-hidden />}
       </button>
       {/* 상태 변화는 화면 읽기 프로그램에 알린다 (색·모양만으로 구별하지 않게) */}
