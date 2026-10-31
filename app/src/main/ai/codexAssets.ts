@@ -156,9 +156,19 @@ export async function refreshCodexAssets(binary: string, cwds: string[]) {
 }
 
 /** 계정 사용량(5시간·주간, 무료는 30일 하나). 못 읽으면 null */
-export async function readCodexRateLimits(binary: string) {
+/** 사용률을 못 읽은 이유 (화면 안내용 쉬운 말) */
+export const CODEX_USAGE_NOTES = {
+  binary: 'Codex 실행 파일을 찾지 못해 사용률을 읽지 못했어요.',
+  noResponse: 'Codex가 사용률 요청에 답하지 않았어요. 잠시 뒤 새로고침해 보세요.',
+  noWindow: '이 로그인 방식(API 키 등)은 5시간·주간 사용률을 알려 주지 않아요.',
+} as const
+
+export async function readCodexRateLimits(binary: string): Promise<{ info: RateLimitInfo | null; note?: string }> {
+  if (!fs.existsSync(binary)) return { info: null, note: CODEX_USAGE_NOTES.binary }
   const [r] = await codexQuery(binary, [['account/rateLimits/read']])
-  return parseRateLimits(r)
+  if (r === null || r === undefined) return { info: null, note: CODEX_USAGE_NOTES.noResponse }
+  const info = parseRateLimits(r)
+  return info ? { info } : { info: null, note: CODEX_USAGE_NOTES.noWindow }
 }
 
 /**

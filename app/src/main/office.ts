@@ -136,7 +136,7 @@ import { probeMcpStatus, sdk } from './ai/claude'
 import { splitFinished } from './ai/pendingSends'
 import { buildStaffProgress, summarizeInstruction } from '../shared/staffProgress'
 import { codexBinaryPath } from './ai/codex'
-import { readCodexRateLimits, refreshCodexAssets } from './ai/codexAssets'
+import { CODEX_USAGE_NOTES, readCodexRateLimits, refreshCodexAssets } from './ai/codexAssets'
 import { defineTool, registerLocalMcp, type LocalMcpHandle } from './mcp/localMcp'
 import { autoApprove, autoKindOf, autoStep, autoSummaryText, autoWindow, AWAY_ANSWER, formatRemaining, planToConfig, type AutoApprovePlan } from '../shared/autoApprove'
 import { AUTONOMY_TEXT_ASK_MAX, autonomyVerdict, fallbackAnswers, isFullAutonomy, isTaskAutonomous, nextTextAskRetry, resolveAutonomy } from '../shared/autonomy'
@@ -236,6 +236,7 @@ export class Office extends EventEmitter<{
   private planUsage: PlanUsage[] = []
   /** Codex 사용률 (보류·알림 판정에는 쓰지 않는다 — Claude 직원 흐름과 분리) */
   private codexUsage: PlanUsage[] = []
+  private codexUsageNote: string | undefined
   /** 촬영용 데모(CLAUDE_OFFICE_DEMO=1)가 채운 결재 — 세션이 없으니 누르면 카드만 처리한다 */
   private demoApprovalIds = new Set<string>()
   private shop!: ShopState
@@ -553,6 +554,7 @@ export class Office extends EventEmitter<{
       monthCostUsd,
       planUsage: this.planUsage,
       ...(this.codexUsage.length ? { codexUsage: this.codexUsage } : {}),
+      ...(this.codexUsageNote ? { codexUsageNote: this.codexUsageNote } : {}),
       planHold: this.planHoldState(),
       funds: this.funds(),
       claimable: this.claimableCount(),
@@ -2766,8 +2768,15 @@ export class Office extends EventEmitter<{
   /** Codex 사용량을 app-server에서 읽어 온다 (로그인 안 됐거나 못 읽으면 그대로 둔다) */
   async refreshCodexUsage() {
     if (lastProviderStatus()?.codex.state !== 'ready') return
-    const info = await readCodexRateLimits(codexBinaryPath()).catch(() => null)
-    if (info) this.onCodexRateLimit(info)
+    const res = await readCodexRateLimits(codexBinaryPath()).catch(() => ({ info: null, note: CODEX_USAGE_NOTES.noResponse }))
+    if (res.info) {
+      this.codexUsageNote = undefined
+      this.onCodexRateLimit(res.info)
+    } else {
+      // 이미 읽어 둔 값이 있으면 그대로 두고, 없을 때만 이유를 화면에 남긴다
+      this.codexUsageNote = this.codexUsage.length ? undefined : res.note
+      this.scheduleEmit()
+    }
   }
 
   private onRateLimit(info: RateLimitInfo) {

@@ -84,6 +84,7 @@ export function PlanUsageCard({ isCompact = false }: { isCompact?: boolean }) {
   const sorted = [...list].sort((a, b) => (ORDER.indexOf(a.type) + 1 || 99) - (ORDER.indexOf(b.type) + 1 || 99))
   const updatedAt = Math.max(0, ...list.map((u) => u.updatedAt))
   const codex = useOffice((s) => s.codexUsage ?? NO_USAGE).filter((u) => !isCompact || COMPACT_TYPES.has(u.type) || u.type === 'thirty_day')
+  const codexNote = useOffice((s) => s.codexUsageNote)
   const sortedCodex = [...codex].sort((a, b) => (ORDER.indexOf(a.type) + 1 || 99) - (ORDER.indexOf(b.type) + 1 || 99))
   // Codex만 연결된 사람에겐 빈 Claude 칸이 쓸모없다 — Claude 값이 없고 Codex 값이 있으면 숨긴다
   const isClaudeShown = sorted.length > 0 || sortedCodex.length === 0
@@ -142,6 +143,12 @@ export function PlanUsageCard({ isCompact = false }: { isCompact?: boolean }) {
           {sortedCodex.map((u) => (
             <Row key={`codex-${u.type}`} usage={u} isCompact={isCompact} />
           ))}
+        </div>
+      )}
+      {sortedCodex.length === 0 && codexNote && (
+        <div className={cn('flex flex-col gap-1', isClaudeShown && 'border-t pt-3')}>
+          <h3 className="text-sm font-semibold">{t('planUsage.titleCodex')}</h3>
+          <p className="text-muted-foreground text-xs">{codexNote}</p>
         </div>
       )}
       {!isCompact && <p className="text-muted-foreground text-[11px]">{note}</p>}

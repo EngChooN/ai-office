@@ -687,6 +687,8 @@ export interface OfficeSnapshot {
   planUsage: PlanUsage[]
   /** Codex(ChatGPT 플랜) 사용률 — 5시간·주간, 무료 플랜은 30일 하나. Codex에 로그인한 적이 없으면 없다 */
   codexUsage?: PlanUsage[]
+  /** Codex 사용률을 못 읽은 이유(쉬운 말). 읽었거나 Codex 미연결이면 없다 */
+  codexUsageNote?: string
   /** 플랜 한도가 높아 보류 중인 일 (옛 main이면 없을 수 있다) */
   planHold?: PlanHoldState
   /** 회사 자금 잔액 (원) */
