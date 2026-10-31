@@ -16,6 +16,9 @@ export interface PeerHttpResponse {
 /** 인증이 붙은 B컴 호출 (JobQueue·ApprovalRelay가 쓴다). 네트워크 오류면 reject */
 export interface PeerHttp {
   call(method: 'GET' | 'POST' | 'PUT', path: string, body?: unknown, opts?: { idempotencyKey?: string }): Promise<PeerHttpResponse>
+  /** 파일 바이트 올리기·받기 (복사본·변경 묶음, 4번). 없는 통로(테스트의 가짜)면 파일 동기화를 쓰지 않는다 */
+  putBytes?(path: string, data: Buffer): Promise<PeerHttpResponse>
+  getBytes?(path: string, limit: number): Promise<{ status: number; data: Buffer | null }>
 }
 
 export interface PeerEndpoint {
@@ -95,6 +98,45 @@ function requestJson(e: PeerEndpoint, token: string | null, method: string, path
   })
 }
 
+const BYTES_TIMEOUT_MS = 120_000
+
+/** 바이트 올리기(PUT)·받기(GET). 받을 때는 limit을 넘으면 끊는다 */
+function requestBytes(e: PeerEndpoint, token: string, method: 'PUT' | 'GET', path: string, data: Buffer | null, limit: number): Promise<{ status: number; body: Record<string, unknown>; data: Buffer | null }> {
+  return new Promise((resolve, reject) => {
+    const headers: Record<string, string | number> = { 'X-Office-Capabilities': 'iso-office', Authorization: `Bearer ${token}` }
+    if (data) {
+      headers['Content-Type'] = 'application/octet-stream'
+      headers['Content-Length'] = data.length
+    }
+    const req = https.request(baseOptions(e, path, method, headers), (res) => {
+      const chunks: Buffer[] = []
+      let size = 0
+      res.on('data', (c: Buffer) => {
+        size += c.length
+        if (size > limit) return void req.destroy(new Error('response too large'))
+        chunks.push(c)
+      })
+      res.on('end', () => {
+        const raw = Buffer.concat(chunks)
+        const status = res.statusCode ?? 0
+        if (status === 200 && /^application\/octet-stream/i.test(String(res.headers['content-type'] ?? ''))) return resolve({ status, body: {}, data: raw })
+        let parsed: Record<string, unknown> = {}
+        try {
+          parsed = JSON.parse(raw.toString('utf8') || '{}')
+        } catch {
+          // JSON이 아니면 빈 본문
+        }
+        resolve({ status, body: parsed, data: null })
+      })
+    })
+    pinCheck(req, e.spki, () => {})
+    req.setTimeout(BYTES_TIMEOUT_MS, () => req.destroy(Object.assign(new Error('timeout'), { code: 'ETIMEDOUT' })))
+    req.on('error', reject)
+    if (data) req.write(data)
+    req.end()
+  })
+}
+
 /** 짝짓기용 통로: 지문을 모르는 상태로 붙고 실제로 본 지문을 기록한다 */
 export function createPairTransport(host: string, port: number): PairTransport {
   let seen: string | null = null
@@ -108,6 +150,14 @@ export function createPairTransport(host: string, port: number): PairTransport {
 export function createPeerHttp(e: PeerEndpoint & { spki: string }, token: string): PeerHttp {
   return {
     call: (method, path, body, opts) => requestJson(e, token, method, path, body, opts?.idempotencyKey ? { 'Idempotency-Key': opts.idempotencyKey } : {}),
+    putBytes: async (path, data) => {
+      const r = await requestBytes(e, token, 'PUT', path, data, BODY_MAX)
+      return { status: r.status, body: r.body }
+    },
+    getBytes: async (path, limit) => {
+      const r = await requestBytes(e, token, 'GET', path, null, limit)
+      return { status: r.status, data: r.data }
+    },
   }
 }
 

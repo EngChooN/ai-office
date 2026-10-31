@@ -30,7 +30,19 @@ export interface JobQueueDeps {
   now?(): number
   schedule?(ms: number, fn: () => void): { cancel(): void }
   newId?(): string
+  /** 파일 복사본 (4번) — 없으면 복사본 없이 일만 보낸다 */
+  sync?: JobQueueSync
 }
+
+/** 4번 PeerSync 중 일 큐가 쓰는 것 (SyncApi의 일부) */
+export interface JobQueueSync {
+  prepare(root: string, peerId: string): Promise<{ workspaceId: string }>
+  push(http: PeerHttp, workspaceId: string): Promise<void>
+  discard(workspaceId: string): Promise<void>
+}
+
+/** 복사본을 못 만들 때 일을 막지 않고 복사본 없이 보내는 오류 (크기·위치 문제) — 그 밖(전송 오류)은 다시 시도한다 */
+const SKIP_WORKSPACE = new Set(['root_not_allowed', 'workspace_too_large', 'workspace_quota'])
 
 type Pending = Omit<PeerJob, 'id' | 'state' | 'attempts' | 'nextTryAt' | 'createdAt'>
 
@@ -108,11 +120,18 @@ export class JobQueue {
 
   private async pumpJobs(peerId: string) {
     for (const first of this.list(peerId)) {
-      const j = this.d.store.jobs.get(first.id)
+      let j = this.d.store.jobs.get(first.id)
       if (!j || j.state !== 'queued') continue
       if (j.nextTryAt > this.now()) return this.retryLater(peerId, j.nextTryAt - this.now())
       const http = this.d.http(peerId)
       if (!http) return
+      const ready = await this.prepareWorkspace(peerId, j, http)
+      if (ready === 'retry') return
+      if (!ready) continue
+      // 준비하는 동안 취소·완료로 바뀌었으면 보내지 않는다
+      const fresh = this.d.store.jobs.get(j.id)
+      if (!fresh || fresh.state !== 'queued') continue
+      j = fresh
       // 보내는 순간부터 sending — 앱이 죽어도 시작할 때 queued로 되돌려 같은 jobId로 다시 보낸다
       this.put({ ...j, state: 'sending', sentAt: this.now() })
       const req: PeerJobRequest = { jobId: j.id, staffId: j.remoteStaffId, instruction: j.instruction, ...this.d.context(j), ...(j.workspaceId ? { workspaceId: j.workspaceId } : {}), ...(j.isAutonomous ? { isAutonomous: true } : {}) }
@@ -146,6 +165,47 @@ export class JobQueue {
         this.put({ ...cur, state: 'queued', attempts, nextTryAt: this.now() + delayFor(attempts) })
         return this.retryLater(peerId, delayFor(attempts))
       }
+    }
+  }
+
+  /**
+   * 복사본 준비(4번): 만들고 B컴에 올린다. 보내도 된다 → true, 이번 pump는 멈춤(전송 오류, 다시 시도) → 'retry', 일을 이미 닫음 → false
+   * 크기·위치 문제로 복사본을 못 만들면 일을 막지 않고 복사본 없이 보낸다 (이유는 보고에 남는다)
+   */
+  private async prepareWorkspace(peerId: string, j: PeerJob, http: PeerHttp): Promise<boolean | 'retry'> {
+    const sync = this.d.sync
+    if (!sync || !j.workspaceRoot || j.isWorkspacePushed) return true
+    try {
+      let cur = j
+      if (!cur.workspaceId) {
+        const made = await sync.prepare(j.workspaceRoot, peerId)
+        cur = { ...(this.d.store.jobs.get(j.id) ?? j), workspaceId: made.workspaceId }
+        // 만드는 동안 취소됐으면 만든 복사본을 버린다
+        if (cur.state !== 'queued') {
+          void sync.discard(made.workspaceId).catch(() => {})
+          return false
+        }
+        this.put(cur)
+      }
+      await sync.push(http, cur.workspaceId!)
+      const after = this.d.store.jobs.get(j.id)
+      if (after && after.state === 'queued') this.put({ ...after, isWorkspacePushed: true })
+      return true
+    } catch (e) {
+      const code = (e as { code?: string })?.code ?? ''
+      const cur = this.d.store.jobs.get(j.id)
+      if (!cur || cur.state !== 'queued') return false
+      if (SKIP_WORKSPACE.has(code)) {
+        const { workspaceId, ...rest } = cur
+        if (workspaceId) void sync.discard(workspaceId).catch(() => {})
+        this.put({ ...rest, workspaceRoot: undefined, isWorkspacePushed: false, workspaceNote: code })
+        return true
+      }
+      // 전송 오류: 같은 복사본으로 다시 올린다 (올린 파일은 건너뛴다)
+      const attempts = cur.attempts + 1
+      this.put({ ...cur, attempts, nextTryAt: this.now() + delayFor(attempts) })
+      this.retryLater(peerId, delayFor(attempts))
+      return 'retry'
     }
   }
 
@@ -260,8 +320,23 @@ export class JobQueue {
     if (state !== 'canceled' && !next.isReported) {
       this.put({ ...next, isReported: true })
       this.d.onReport({ ...next, isReported: true })
-      if (state === 'done') this.enqueueOutbox(j.peerId, 'ack', `ack:${j.id}`, { jobId: j.id })
+      // 변경 묶음이 딸려 오면 A컴이 다 받은 뒤에 ack한다 (B컴이 ack로 묶음을 지우므로) — PeerManager가 ackJob을 부른다
+      if (state === 'done' && !(next.changesetId && next.workspaceId)) this.enqueueOutbox(j.peerId, 'ack', `ack:${j.id}`, { jobId: j.id })
     }
+    // 변경 묶음을 받을 일이 아니면 이 일의 복사본(A컴 쪽 목록)은 더 필요 없다
+    if (next.workspaceId && !(state === 'done' && next.changesetId)) void this.d.sync?.discard(next.workspaceId).catch(() => {})
+  }
+
+  /** 일에 딸린 B컴 복사본·변경 묶음을 지우게 ack를 보낸다 (변경 묶음을 받은 뒤) */
+  ackJob(jobId: string) {
+    const j = this.d.store.jobs.get(jobId)
+    if (j) this.enqueueOutbox(j.peerId, 'ack', `ack:${j.id}`, { jobId: j.id })
+  }
+
+  /** 변경 묶음 처리 결과를 일에 적는다 */
+  markChanges(jobId: string, state: 'fetched' | 'failed') {
+    const j = this.d.store.jobs.get(jobId)
+    if (j && j.changesState !== state) this.put({ ...j, changesState: state })
   }
 
   /** A컴에서 취소. queued면 바로 canceled, 이미 B컴에 갔으면 B컴에 취소를 보낸다 (못 닿으면 큐에 둔다) */

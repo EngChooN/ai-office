@@ -16,7 +16,11 @@ interface Relayed {
   peerId: string
   jobId: string
   approval: Approval
+  /** 파일 변경 결재 카드(A컴이 직접 만든다 — B컴 결재가 아니므로 B컴 목록과 대조하거나 일 종료로 지우지 않는다) */
+  isChanges?: boolean
 }
+
+export const changesApprovalId = (peerId: string, changesetId: string) => relayId(peerId, `changes:${changesetId}`)
 
 export interface ApprovalRelayDeps {
   store: PeerStore
@@ -59,6 +63,25 @@ export class ApprovalRelay {
     return true
   }
 
+  /** 돌아온 파일 변경 묶음을 결재함에 올린다 (4번 카드). 같은 묶음은 한 번만 */
+  addChanges(peerId: string, jobId: string, staffId: string, card: NonNullable<Approval['peerChanges']>, summary: string, createdAt: number) {
+    const id = changesApprovalId(peerId, card.changesetId)
+    if (this.items.has(id)) return id
+    const approval: Approval = { id, staffId, toolName: 'PeerChanges', summary: summary.slice(0, 500), createdAt, peerChanges: card }
+    this.items.set(id, { peerId, jobId, approval, isChanges: true })
+    this.d.onChange()
+    return id
+  }
+
+  isChanges(id: string) {
+    return Boolean(this.items.get(id)?.isChanges)
+  }
+
+  /** 반영·거절이 끝난 변경 묶음 카드를 지운다 */
+  removeChanges(peerId: string, changesetId: string) {
+    if (this.items.delete(changesApprovalId(peerId, changesetId))) this.d.onChange()
+  }
+
   /** B컴에서 결재가 사라졌다 (B컴 앞에서 처리·취소·해제) */
   onGone(peerId: string, approvalId: string) {
     if (this.items.get(relayId(peerId, approvalId))?.peerId === peerId && this.items.delete(relayId(peerId, approvalId))) this.d.onChange()
@@ -67,7 +90,7 @@ export class ApprovalRelay {
   /** 재연결 때 B컴의 미결재 목록과 대조: 사라진 것은 지우고 새 것은 올린다 */
   reconcile(peerId: string, events: PeerApprovalEvent[]) {
     const ids = new Set(events.map((e) => relayId(peerId, String(e.approvalId))))
-    for (const [id, r] of [...this.items]) if (r.peerId === peerId && !ids.has(id)) this.items.delete(id)
+    for (const [id, r] of [...this.items]) if (r.peerId === peerId && !r.isChanges && !ids.has(id)) this.items.delete(id)
     for (const e of events) this.onApproval(peerId, e)
     this.d.onChange()
   }
@@ -81,7 +104,7 @@ export class ApprovalRelay {
   /** 일이 끝났으면 그 일의 결재 카드도 닫는다 */
   dropJob(jobId: string) {
     let isChanged = false
-    for (const [id, r] of [...this.items]) if (r.jobId === jobId) isChanged = this.items.delete(id) || isChanged
+    for (const [id, r] of [...this.items]) if (r.jobId === jobId && !r.isChanges) isChanged = this.items.delete(id) || isChanged
     if (isChanged) this.d.onChange()
   }
 
@@ -98,7 +121,7 @@ export class ApprovalRelay {
   decide(id: string, allow: boolean): boolean {
     const r = this.items.get(id)
     const parsed = parseRelayId(id)
-    if (!r || !parsed) return false
+    if (!r || !parsed || r.isChanges) return false
     this.items.delete(id)
     this.d.send(r.peerId, 'decide', `appr:${parsed.approvalId}:${allow}`, { method: 'decide', args: [parsed.approvalId, allow] })
     this.d.onChange()
@@ -108,7 +131,7 @@ export class ApprovalRelay {
   answer(id: string, answers: Record<string, string>): boolean {
     const r = this.items.get(id)
     const parsed = parseRelayId(id)
-    if (!r || !parsed) return false
+    if (!r || !parsed || r.isChanges) return false
     this.items.delete(id)
     this.d.send(r.peerId, 'answer', `appr:${parsed.approvalId}:answer`, { method: 'answerQuestion', args: [parsed.approvalId, answers] })
     this.d.onChange()

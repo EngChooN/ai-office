@@ -13,6 +13,7 @@ import type { TutorialInput, TutorialScenario, TutorialSnapshot } from './tutori
 import type { BoardCleanupPlan } from './boardCleanup'
 import type { CustomMcp, CustomMcpInput } from './customMcp'
 import type { PackResult } from './staffPack'
+import type { ApplyChoice, ApplyResult, CardFile, PeerChangesCard } from './peerSync'
 import type { PairKind, PairWindowView, PeerSlotView, PeerView, RemoteStaffChoice } from './peerProtocol'
 import { COMPANY_LEVELS, companyLevelOf } from './officeLevel.ts'
 import { DEFAULT_UI_MODE, DEFAULT_UI_THEME, sanitizeUi, type UiMode, type UiThemeId } from './uiTheme.ts'
@@ -42,6 +43,8 @@ export interface Approval {
   questions?: StaffQuestion[]
   /** "앞으로 항상 승인"으로 만들 수 있는 규칙 (위험 명령·질문이면 없음) */
   alwaysRule?: ApprovalRuleDraft
+  /** 다른 PC 직원이 바꾼 파일 묶음 결재(toolName 'PeerChanges') — 줄 단위 비교(diff)는 빼고 목록만 든다. 자세히는 peerChangesetDetail */
+  peerChanges?: PeerChangesCard
 }
 
 export interface StaffQuestion {
@@ -955,6 +958,12 @@ export interface OfficeApi {
   peerRemoveStaff(staffId: string): Promise<void>
   /** 다른 PC로 보낸 일 취소 */
   peerCancelJob(jobId: string): Promise<void>
+  /** 다른 PC 직원이 바꾼 파일 묶음(결재함의 PeerChanges 카드) — 자세히 보기(파일별 줄 단위 비교 포함, A컴의 지금 파일로 충돌을 다시 판정) */
+  peerChangesetDetail(changesetId: string): Promise<PeerChangesCard>
+  /** 한 파일의 비교만 (카드의 files[].diff와 같은 모양) */
+  peerChangeFileDiff(changesetId: string, path: string): Promise<CardFile['diff'] | null>
+  /** 반영: choice.mode 'all'(충돌 있으면 막힘) · 'safe'(충돌 없는 것만) · 'files'(고른 파일) · 'reject'(거절). 민감 경로는 sensitiveOk에 따로 */
+  peerApplyChanges(changesetId: string, choice: ApplyChoice): Promise<ApplyResult>
 
   /** 비서 (docs/specs/secretary.md): 말 보내기 · 확인 카드 실행(첨삭은 고른 수정본·고친 값과 함께) · 카드 취소 · 대화 지우기. 대화는 스냅샷 secretary로 받는다 */
   secretaryAsk(text: string): Promise<void>

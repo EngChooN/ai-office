@@ -15,6 +15,14 @@ import { relayId } from '../src/main/peer/approvalRelay.ts'
 import { remoteStaffBase } from '../src/main/peer/remoteStaffView.ts'
 import { createSelfSignedCert } from '../src/main/remote/cert.ts'
 import { pairWithHost, type PairFailure } from '../src/main/peer/pairing.ts'
+import { PeerSync } from '../src/main/peer/sync/peerSyncService.ts'
+import { memorySyncStore } from '../src/main/peer/sync/syncDb.ts'
+import type { SyncHttp } from '../src/shared/peerSync.ts'
+import fs from 'node:fs'
+import fsp from 'node:fs/promises'
+const J_SYNC = '99999999-9999-4999-8999-999999999999'
+import os from 'node:os'
+import path from 'node:path'
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms))
 async function until(cond: () => boolean, label = '', ms = 4000) {
@@ -75,7 +83,8 @@ function makeB(port: number) {
     pendingApprovals: () => [...approvalJobs].map(([approvalId, jobId]) => ({ jobId, approvalId, staffId: 'kim', toolName: 'Bash', summary: 'deploy.sh', createdAt: Date.now() })),
     approvalJob: (id) => approvalJobs.get(id) ?? null,
   }
-  const host = new PeerHost({ store, office, publish: (slot, event, data) => svc.publishToSlot(slot, event as 'job' | 'approval', data) })
+  const syncB = new PeerSync({ baseDir: fs.mkdtempSync(path.join(os.tmpdir(), 'peer-b-')), store: memorySyncStore(), registeredRoots: () => [] })
+  const host = new PeerHost({ store, office, publish: (slot, event, data) => svc.publishToSlot(slot, event as 'job' | 'approval', data), workspaceReady: (id, slot) => syncB.workspaces.record(id)?.slotId === slot && syncB.workspaces.record(id)?.state === 'ready' })
   svc = new RemoteService({
     office: { view: () => ({ staff: [], tasks: [] }), decide: () => true, answerQuestion: () => true, reviewPlan: () => true, instruct: () => {} },
     serverVersion: 'test',
@@ -92,10 +101,10 @@ function makeB(port: number) {
       attachment: () => null,
       saveUpload: () => ({ id: 'x', name: 'x', path: '/x', mime: '', size: 0 }),
     },
-    peer: { host, ownName: () => 'B컴', shapePeer: (slot, ev, data) => (ev === 'snapshot' ? peerSnapshotShape(data, host.watchedBy(slot)) : null), onSlotRemoved: (slot) => host.dropSlot(slot) },
+    peer: { host, sync: syncB, ownName: () => 'B컴', shapePeer: (slot, ev, data) => (ev === 'snapshot' ? peerSnapshotShape(data, host.watchedBy(slot)) : null), onSlotRemoved: (slot) => host.dropSlot(slot) },
   })
   void phoneToken
-  return { svc, host, store, started, decided, approvalJobs, calls, config: () => config }
+  return { svc, host, store, started, decided, approvalJobs, calls, config: () => config, sync: syncB }
 }
 
 /** A컴: 진짜 통로 + 메모리 저장소 */
@@ -155,6 +164,29 @@ test('PC 두 대: 짝짓기 → 원격 직원 → delegate → 진행 → 보고
     assert.ok(token && !JSON.stringify(B.config()).includes(token))
     // 같은 코드로 다시는 안 된다
     await assert.rejects(A.mgr.pairConnect('127.0.0.1', port, win!.code), (e: PairFailure) => e.code === 'closed')
+
+    // ── 4번 연결: 파일 복사본 경로가 404가 아니고, 실제 HTTPS로 파일 바이트가 올라가 B컴에 복사본 폴더가 만들어진다
+    assert.notEqual((await rawReq(port, '/v2/peer/workspaces', token, 'POST', { manifest: 'bad' })).status, 404)
+    const rootA = await fsp.mkdtemp(path.join(os.tmpdir(), 'peer-a-root-'))
+    await fsp.writeFile(path.join(rootA, 'a.txt'), '안녕')
+    const syncA = new PeerSync({ baseDir: await fsp.mkdtemp(path.join(os.tmpdir(), 'peer-a-')), store: memorySyncStore(), registeredRoots: () => [rootA] })
+    const peerRec = A.mgr.registry.getPeer(paired.id)!
+    const rawHttp = createPeerHttp({ host: '127.0.0.1', port, spki: peerRec.spki }, token)
+    const sh: SyncHttp = { call: (m, p, b) => rawHttp.call(m, p, b), putBytes: (p, d) => rawHttp.putBytes!(p, d), getBytes: (p, l) => rawHttp.getBytes!(p, l) }
+    const prepared = await syncA.prepareWorkspace(rootA, { peerId: paired.id })
+    await syncA.pushWorkspace(sh, prepared.workspaceId)
+    const wsDir = B.sync.workspaceDir(prepared.workspaceId)
+    assert.ok(wsDir)
+    assert.equal(await fsp.readFile(path.join(wsDir!, 'a.txt'), 'utf8'), '안녕')
+    // B컴에서 바꾼 파일이 변경 묶음이 되고, A컴이 같은 통로로 받아 카드를 만든다
+    await fsp.writeFile(path.join(wsDir!, 'a.txt'), '바뀜')
+    const collected = await B.sync.collectChanges(J_SYNC, prepared.workspaceId)
+    assert.ok('changesetId' in collected)
+    const csView = await syncA.fetchChangeSet(sh, (collected as { changesetId: string }).changesetId, prepared.workspaceId)
+    const syncCard = await syncA.approvalCard(csView)
+    assert.deepEqual(syncCard.files.map((f) => [f.op, f.path, f.verdict]), [['modify', 'a.txt', 'apply']])
+    assert.equal((await syncA.applyChangeSet(csView.changesetId, { mode: 'all' })).status, 'applied')
+    assert.equal(await fsp.readFile(path.join(rootA, 'a.txt'), 'utf8'), '바뀜')
 
     // ── ② 연결 상태 online + 원격 직원 목록·랩에 넣기
     await until(() => A.mgr.linkState(paired.id) === 'online', 'online')

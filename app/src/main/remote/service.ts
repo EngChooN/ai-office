@@ -12,6 +12,8 @@ import { shapeFor } from './capabilities.ts'
 import { EventHub, type HubEvent } from './events.ts'
 import { V2Routes, type V2Office } from './v2routes.ts'
 import { PeerRoutes } from './peerRoutes.ts'
+import { SyncRoutes } from './syncRoutes.ts'
+import type { PeerSync } from '../peer/sync/peerSyncService'
 import { PairingWindow } from '../peer/pairing.ts'
 import type { PeerHost } from '../peer/peerHost'
 import type { PairKind, PairWindowView, PeerSlotView } from '../../shared/peerProtocol'
@@ -78,7 +80,7 @@ export interface RemoteDeps {
   /** 원격 v2: PC 화면과 같은 처리 함수 표·첨부 저장소 (없으면 v2는 404) */
   v2?: V2Office | null
   /** 다른 PC 연결(B컴 쪽): 일 받기·결재 처리 (없으면 /v2/pair·/v2/peer는 404) */
-  peer?: { host: PeerHost; ownName(): string; shapePeer(slotId: string, event: HubEvent, data: unknown): unknown | null; onSlotRemoved?(slotId: string): void } | null
+  peer?: { host: PeerHost; sync?: PeerSync; ownName(): string; shapePeer(slotId: string, event: HubEvent, data: unknown): unknown | null; onSlotRemoved?(slotId: string): void } | null
 }
 
 function isUsableCert(certPem: string) {
@@ -162,6 +164,7 @@ export class RemoteService {
                 onUnpair: (slotId) => void this.revokePeerSlot(slotId),
               })
             : undefined,
+          sync: deps.peer?.sync ? new SyncRoutes(deps.peer.sync) : undefined,
         })
       : null
   }

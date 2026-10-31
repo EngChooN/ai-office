@@ -10,7 +10,7 @@ export interface PeerHostOffice {
   /** 피어에 보여 줄 얇은 직원 목록 */
   staffBriefs(): PeerStaffBrief[]
   /** 일을 직원에게 시킨다. 이 일의 결과는 PeerHost.finish/fail로 돌아온다 */
-  startJob(job: InboxJob): 'ok' | 'no_staff' | 'auto_edit' | 'busy'
+  startJob(job: InboxJob): 'ok' | 'no_staff' | 'auto_edit' | 'busy' | 'no_workspace'
   cancelJob(job: InboxJob): void
   decide(approvalId: string, allow: boolean): boolean
   answerQuestion(approvalId: string, answers: Record<string, string>): boolean
@@ -26,6 +26,10 @@ export interface PeerHostDeps {
   /** 그 슬롯의 SSE 연결에 이벤트를 보낸다 */
   publish(slotId: string, event: 'job' | 'approval', data: unknown): void
   now?(): number
+  /** 이 슬롯이 올려 둔(commit까지 끝난) 복사본인가 — 아니면 그 workspaceId로는 일을 받지 않는다 (남의 복사본·없는 복사본 거절) */
+  workspaceReady?(workspaceId: string, slotId: string): boolean
+  /** A컴이 일을 확인(ack)했다 — 복사본·변경 묶음을 정리할 때 */
+  onAcked?(job: InboxJob): void
 }
 
 export type HostResult = { status: number; body: Record<string, unknown> }
@@ -79,6 +83,8 @@ export class PeerHost {
       if (old.slotId !== slotId) return err(404, 'job_not_found')
       return { status: 200, body: view(old) as unknown as Record<string, unknown> }
     }
+    const workspaceId = typeof r.workspaceId === 'string' ? r.workspaceId.slice(0, 100) : undefined
+    if (workspaceId && !(this.d.workspaceReady?.(workspaceId, slotId) ?? false)) return err(404, 'workspace_not_found')
     const lead = { name: String(r.lead?.name ?? '').slice(0, 60), role: String(r.lead?.role ?? '').slice(0, 60) }
     const job: InboxJob = {
       id: r.jobId,
@@ -87,7 +93,7 @@ export class PeerHost {
       instruction: r.instruction,
       lead,
       ...(r.lab && typeof r.lab.name === 'string' ? { lab: { name: r.lab.name.slice(0, 100), ...(typeof r.lab.goal === 'string' ? { goal: r.lab.goal.slice(0, 500) } : {}) } } : {}),
-      ...(typeof r.workspaceId === 'string' ? { workspaceId: r.workspaceId.slice(0, 100) } : {}),
+      ...(workspaceId ? { workspaceId } : {}),
       ...(r.isAutonomous === true ? { isAutonomous: true } : {}),
       state: 'accepted',
       createdAt: this.now(),
@@ -101,6 +107,10 @@ export class PeerHost {
     if (started === 'auto_edit') {
       this.d.store.inbox.delete(job.id)
       return err(422, 'peer_auto_edit', '그 직원은 파일 수정을 결재 없이 하는 설정이라 원격 일을 받을 수 없어요')
+    }
+    if (started === 'no_workspace') {
+      this.d.store.inbox.delete(job.id)
+      return err(404, 'workspace_not_found')
     }
     if (started === 'busy') {
       // 그 직원이 로컬 일을 하는 중 — 받지 않고 A컴 큐가 잠시 뒤 같은 jobId로 다시 보내게 한다 (503은 재시도 대상)
@@ -126,6 +136,7 @@ export class PeerHost {
     const next: InboxJob = { ...j, state: 'canceled', finishedAt: this.now() }
     this.d.store.inbox.put(next)
     this.d.office.cancelJob(j)
+    this.d.onAcked?.(next) // 취소된 일의 복사본·변경 묶음도 정리한다
     this.d.publish(slotId, 'job', view(next))
     return { status: 200, body: view(next) as unknown as Record<string, unknown> }
   }
@@ -134,7 +145,12 @@ export class PeerHost {
     const j = this.d.store.inbox.get(jobId)
     if (!j || j.slotId !== slotId) return err(404, 'job_not_found')
     this.d.store.inbox.put({ ...j, ackedAt: this.now() })
+    this.d.onAcked?.(j)
     return { status: 200, body: { ok: true } }
+  }
+
+  getJob(jobId: string) {
+    return this.d.store.inbox.get(jobId)
   }
 
   /** 직원이 일을 끝냈다 (Office가 부른다). 끝난 일은 한 번만 */

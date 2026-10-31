@@ -32,4 +32,28 @@ export default {
     ja: '相手が正しいPCか確認できず、接続を中止しました（偽のサーバーの可能性があります）',
     zh: '无法确认对方是正确的电脑，已中止连接（可能是伪造的服务器）',
   },
+  'peer.report.changes': {
+    ko: '파일 변경 {n}개가 결재함에 있어요. 열어서 확인하고 반영해 주세요',
+    en: '{n} file changes are waiting in your approvals. Open them to review and apply',
+    ja: 'ファイル変更{n}件が承認箱にあります。開いて確認し反映してください',
+    zh: '审批箱中有 {n} 个文件更改，请打开查看并应用',
+  },
+  'peer.report.changesFailed': {
+    ko: '파일 변경을 아직 받지 못했어요. 연결이 다시 되면 자동으로 받아서 결재함에 올릴게요',
+    en: 'The file changes have not arrived yet. They will be fetched and added to your approvals once the connection is back',
+    ja: 'ファイル変更をまだ受け取れていません。接続が戻り次第、自動で受け取って承認箱に追加します',
+    zh: '尚未收到文件更改。连接恢复后会自动获取并加入审批箱',
+  },
+  'peer.report.changesSummary': {
+    ko: '{name}의 파일 변경 {n}개',
+    en: '{n} file changes from {name}',
+    ja: '{name}のファイル変更{n}件',
+    zh: '来自{name}的 {n} 个文件更改',
+  },
+  'peer.report.noWorkspace': {
+    ko: '(프로젝트 폴더가 너무 크거나 보낼 수 없는 위치라 파일 복사본 없이 일만 보냈어요)',
+    en: '(The project folder was too large or in a place that cannot be sent, so only the job was sent without a file copy)',
+    ja: '（プロジェクトフォルダが大きすぎるか送れない場所のため、ファイルのコピーなしで作業だけ送りました）',
+    zh: '（项目文件夹过大或位置无法发送，因此只发送了任务，未附带文件副本）',
+  },
 } satisfies Record<string, Entry>

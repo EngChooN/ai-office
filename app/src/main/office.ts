@@ -187,6 +187,12 @@ const tr = t
  * room: 팀·랩 대화방(팀 id·'lab:<랩 id>')에서 시작된 지시 — 완료 보고·결재·질문·위임 글을 그 방에 올린다 (없으면 전체 방)
  */
 /** isAutonomous: 자율 진행으로 받은 일 (지시창에서 켠 지시·자율 직원이 위임한 일 등 — 카드는 카드의 표시를 본다) */
+/** B컴 Office가 4번(PeerSync)에서 쓰는 것 */
+export interface PeerWorkspacePort {
+  workspaceDir(workspaceId: string): string | null
+  collectChanges(jobId: string, workspaceId: string): Promise<{ changesetId: string; files: number; bytes: number } | { none: true }>
+}
+
 type Origin = ({ kind: 'user' | 'chat' | 'schedule' } | { kind: 'task'; taskId: string } | { kind: 'delegate'; leadId: string } | { kind: 'process'; runId: string; stepId: string } | { kind: 'peer'; jobId: string }) & { room?: string; isAutonomous?: boolean; text?: string; /** 다른 PC가 맡긴 일에서 파생된 지시 — 승인 주체(피어 jobId)를 이어받는다 */ peerJobId?: string }
 
 type Counters = Partial<Record<LogType, number>>
@@ -208,6 +214,9 @@ export class Office extends EventEmitter<{
   private peerHost: PeerHost | null = null
   /** B컴: 피어 일의 결재 중 이미 알린 것 (결재 id → 일 id) */
   private peerApprovalSeen = new Map<string, string>()
+  /** B컴: 파일 복사본으로 일하는 직원의 작업 폴더 (피어 일이 끝나 변경을 모을 때까지) */
+  private peerCwd = new Map<string, { dir: string; jobId: string }>()
+  private peerSync: PeerWorkspacePort | null = null
   private external: db.StoredStaff[] = []
   private teams = new Map<string, Team>()
   private labs = new Map<string, Lab>()
@@ -583,25 +592,30 @@ export class Office extends EventEmitter<{
 
   /** 실제 작업 폴더: 직접 지정한 폴더, 지정 안 했으면 홈 폴더(범용 — 지시에 나온 어느 프로젝트든 오간다) */
   private workDirOf(s: db.StoredStaff): { cwd: string; source: 'own' | 'none' } {
+    // 다른 PC가 보낸 파일 복사본으로 일하는 동안은 그 복사본 폴더 (끝나면 원래 폴더로 돌아온다)
+    const pc = this.peerCwd.get(s.id)
+    if (pc && fs.existsSync(pc.dir)) return { cwd: pc.dir, source: 'own' }
     if (s.ownCwd && fs.existsSync(s.ownCwd)) return { cwd: s.ownCwd, source: 'own' }
     return { cwd: os.homedir(), source: 'none' }
   }
 
   /** 작업 폴더가 바뀐 직원은 쉬는 중일 때 그 폴더에서 새 대화로 다시 연다 (일하는 중이면 끝난 뒤 다음 갱신 때) */
   private syncWorkDirs() {
-    for (const s of this.hired.values()) {
-      const dir = this.workDirOf(s)
-      if (dir.cwd === s.cwd) {
-        s.cwdSource = dir.source
-        continue
-      }
-      if (s.status === 'working' || s.approvals.length) continue
-      s.cwd = dir.cwd
+    for (const s of this.hired.values()) this.syncWorkDir(s)
+  }
+
+  private syncWorkDir(s: db.StoredStaff) {
+    const dir = this.workDirOf(s)
+    if (dir.cwd === s.cwd) {
       s.cwdSource = dir.source
-      this.manager.resetSession(s.id)
-      this.commands.delete(s.id) // 폴더마다 스킬·명령이 다르다
-      this.log(s.id, 'status', tk('log.cwdChanged', { dir: dir.cwd }))
+      return
     }
+    if (s.status === 'working' || s.approvals.length) return
+    s.cwd = dir.cwd
+    s.cwdSource = dir.source
+    this.manager.resetSession(s.id)
+    this.commands.delete(s.id) // 폴더마다 스킬·명령이 다르다
+    this.log(s.id, 'status', tk('log.cwdChanged', { dir: dir.cwd }))
   }
 
   private liveStaff(s: db.StoredStaff): Staff {
@@ -628,7 +642,7 @@ export class Office extends EventEmitter<{
     this.origins.set(staffId, [])
     this.taskQueue.set(staffId, [])
     for (const o of origins) if (o.kind === 'process') this.stopRun(o.runId)
-    for (const o of origins) if (o.kind === 'peer') this.peerHost?.fail(o.jobId, error)
+    for (const o of origins) if (o.kind === 'peer') this.failPeerJob(o.jobId, staffId, error)
     const taskIds = [...origins.flatMap((o) => (o.kind === 'task' ? [o.taskId] : [])), ...queued.map((q) => q.taskId)]
     for (const id of taskIds) this.returnToTodo(id)
     // 쉬는 중에 세션만 끊긴 경우는 다시 보낼 지시가 없으니 대화방에 알리지 않는다 (상태·기록에는 남는다)
@@ -866,7 +880,7 @@ export class Office extends EventEmitter<{
     // 연습 직원은 AI를 부르지 않는다 (튜토리얼 진행은 대본이 맡는다)
     if (!s || s.isPractice) return
     // 피어 일이 걸린 직원에게 온 로컬 지시는 대기 (/명령은 중단 같은 제어라 그대로 통과)
-    if (shouldHoldLocal(this.origins.get(staffId) ?? [], origin, Boolean(parseSlash(text)))) return this.holdLocal(staffId, text, origin, attachments, via, isDirect)
+    if (shouldHoldLocal(this.origins.get(staffId) ?? [], origin, Boolean(parseSlash(text))) || (this.peerCwd.has(staffId) && !(origin.kind === 'peer' || origin.peerJobId) && !parseSlash(text))) return this.holdLocal(staffId, text, origin, attachments, via, isDirect)
     this.log(staffId, 'instruction', via ? `${via} ${text}` : text, attachments)
     if (this.handleSlash(staffId, text, origin)) return
     const origins = this.origins.get(staffId) ?? []
@@ -1037,7 +1051,7 @@ export class Office extends EventEmitter<{
     const taskIds = [...origins.flatMap((o) => (o.kind === 'task' ? [o.taskId] : [])), ...queued.map((q) => q.taskId)]
     for (const id of taskIds) this.returnToTodo(id)
     for (const o of origins) if (o.kind === 'process') this.stopRun(o.runId)
-    for (const o of origins) if (o.kind === 'peer') this.peerHost?.fail(o.jobId, 'stopped')
+    for (const o of origins) if (o.kind === 'peer') this.failPeerJob(o.jobId, staffId, 'stopped')
     // Esc·중단 버튼은 대개 말을 걸려고 멈춘 것 — 이야기가 끝나면 하던 카드(기획이면 기획째)를 이어 간다
     const isHard = this.hardStops.delete(staffId)
     if (!isHard && taskIds.length) {
@@ -1214,6 +1228,10 @@ export class Office extends EventEmitter<{
     this.peerHost = host
   }
 
+  setPeerSync(sync: PeerWorkspacePort | null) {
+    this.peerSync = sync
+  }
+
   /** A컴 연결 총괄이 Office에 요청하는 것들 (결과 보고·랩 멤버 변경·화면 갱신) */
   peerPort(): import('./peer/peerManager').PeerOfficePort {
     return {
@@ -1244,7 +1262,18 @@ export class Office extends EventEmitter<{
         }
       },
       ownName: () => os.hostname().replace(/\.local$/, '') || 'Mac',
+      // 원격 직원이 든 랩의 프로젝트 폴더를 파일 복사본의 뿌리로 (리더가 속한 랩을 먼저)
+      workspaceRoot: (leadId, targetStaffId) => {
+        const labs = [...this.labs.values()].filter((l) => l.cwd && l.memberIds.includes(targetStaffId))
+        const lab = (leadId ? labs.find((l) => l.leadId === leadId || l.memberIds.includes(leadId)) : undefined) ?? labs[0]
+        return lab?.cwd && fs.existsSync(lab.cwd) ? lab.cwd : null
+      },
     }
+  }
+
+  /** 대표가 등록한 랩 프로젝트 폴더들 — 파일 복사본의 뿌리는 이 중 하나만 허용된다 */
+  labRoots(): string[] {
+    return [...this.labs.values()].flatMap((l) => (l.cwd ? [l.cwd] : []))
   }
 
   /** 지도·랩 화면에 합쳐 낼 원격 직원 */
@@ -1331,10 +1360,53 @@ export class Office extends EventEmitter<{
     if (origin.kind === 'user' || origin.kind === 'chat') this.postChat(OFFICE_SENDER, t('peer.guard.held', { name }), undefined, undefined, origin.room)
   }
 
+  /** 피어 일(또는 그 복사본 작업·변경 모으기)이 아직 이 직원을 쓰고 있는가 */
+  private isPeerBusy(staffId: string) {
+    return this.peerJobOf(staffId) !== null || this.peerCwd.has(staffId)
+  }
+
+  /** B컴: 일이 끝났다 — 복사본으로 일했으면 바뀐 파일을 모아 변경 묶음과 함께 돌려준다 (모으는 동안 이 직원은 로컬 지시를 받지 않는다) */
+  private finishPeerJob(jobId: string, staffId: string, summary: string) {
+    const host = this.peerHost
+    if (!host) return
+    const workspaceId = host.getJob(jobId)?.workspaceId
+    if (!workspaceId || !this.peerSync) return host.finish(jobId, summary)
+    this.peerSync
+      .collectChanges(jobId, workspaceId)
+      .then((r) => host.finish(jobId, summary, 'changesetId' in r ? r.changesetId : undefined))
+      .catch((e: unknown) => {
+        // 변경을 못 모았어도 결과 글은 돌려준다 (이유를 덧붙인다)
+        const code = (e as { code?: string })?.code
+        host.finish(jobId, `${summary}\n\n(${t(`peerSync.error.${code === 'changes_too_large' || code === 'changes_rejected' ? code : 'transfer_failed'}`)})`)
+      })
+      .finally(() => this.endPeerCwd(staffId, jobId))
+  }
+
+  private failPeerJob(jobId: string, staffId: string, error: string) {
+    this.peerHost?.fail(jobId, error)
+    this.endPeerCwd(staffId, jobId)
+  }
+
+  /** 복사본 작업 폴더를 원래대로 돌리고 대기시킨 로컬 지시를 푼다 */
+  private endPeerCwd(staffId: string, jobId: string) {
+    if (this.peerCwd.get(staffId)?.jobId === jobId) {
+      this.peerCwd.delete(staffId)
+      const s = this.hired.get(staffId)
+      if (s) this.syncWorkDir(s)
+    }
+    this.releaseHeld(staffId)
+  }
+
   /** 피어 일이 모두 끝났으면 대기시킨 로컬 지시를 순서대로 보낸다 */
   private releaseHeld(staffId: string) {
     const list = this.heldLocal.get(staffId)
-    if (!list?.length || this.peerJobOf(staffId)) return
+    if (!list?.length || this.isPeerBusy(staffId)) return
+    // 작업 폴더가 아직 복사본이면(일하는 중이라 못 돌렸으면) 다음 갱신에서 푼다
+    const s = this.hired.get(staffId)
+    if (s) {
+      this.syncWorkDir(s)
+      if (s.cwd !== this.workDirOf(s).cwd) return
+    }
     this.heldLocal.delete(staffId)
     for (const h of list) this.instruct(staffId, h.text, h.origin, h.attachments, h.via, h.isDirect)
   }
@@ -1380,6 +1452,19 @@ export class Office extends EventEmitter<{
         if (s.approvalMode === 'acceptEdits') return 'auto_edit'
         // 로컬 일을 하는 중이면 받지 않는다 — A컴 큐가 잠시 뒤 다시 보낸다 (같은 세션에서 섞이지 않게)
         if (this.hasLocalWork(s.id)) return 'busy'
+        // 파일 복사본으로 일하려면 이 직원이 다른 복사본·피어 일을 하고 있지 않아야 한다 (작업 폴더는 세션당 하나)
+        if (job.workspaceId) {
+          const dir = this.peerSync?.workspaceDir(job.workspaceId) ?? null
+          if (!dir) return 'no_workspace'
+          if (this.peerCwd.has(s.id) || this.peerJobOf(s.id)) return 'busy'
+          this.peerCwd.set(s.id, { dir, jobId: job.id })
+          this.syncWorkDir(s)
+          // 일하는 중이라 폴더를 못 바꿨으면 받지 않는다 (엉뚱한 폴더에서 일하지 않게)
+          if (s.cwd !== dir) {
+            this.peerCwd.delete(s.id)
+            return 'busy'
+          }
+        } else if (this.peerCwd.has(s.id)) return 'busy'
         const text = t('staff.msg.delegated', { lead: job.lead.name || t('peer.leadOwner'), instruction: job.instruction })
         this.instruct(s.id, text, { kind: 'peer', jobId: job.id, ...(job.isAutonomous ? { isAutonomous: true } : {}) })
         return 'ok'
@@ -1397,7 +1482,7 @@ export class Office extends EventEmitter<{
           if (head) void this.manager.interrupt(id)
           this.releaseHeld(id)
         }
-        this.releaseHeld(job.staffId)
+        this.endPeerCwd(job.staffId, job.id)
       },
       decide: (id, allow) => this.decide(id, allow),
       answerQuestion: (id, answers) => this.answerQuestion(id, answers),
@@ -1473,7 +1558,7 @@ export class Office extends EventEmitter<{
         }
       }
       if (o.kind === 'process') this.onStepDone(o.runId, o.stepId, s, summary)
-      if (o.kind === 'peer') this.peerHost?.finish(o.jobId, summary)
+      if (o.kind === 'peer') this.finishPeerJob(o.jobId, staffId, summary)
       if (o.kind === 'delegate' && this.hired.has(o.leadId)) {
         this.instruct(o.leadId, t('staff.msg.memberReport', { name: s.name, role: s.role, text: short }), { kind: 'user', room: o.room, ...(o.peerJobId ? { peerJobId: o.peerJobId } : {}), ...(o.isAutonomous ? { isAutonomous: true } : {}) })
       }
@@ -4187,6 +4272,7 @@ export class Office extends EventEmitter<{
     this.emitTimer = setTimeout(() => {
       this.emitTimer = null
       this.syncWorkDirs()
+      for (const id of [...this.heldLocal.keys()]) this.releaseHeld(id)
       this.checkCompanyLevel()
       this.syncPeerApprovals()
       this.emit('snapshot', this.snapshot())

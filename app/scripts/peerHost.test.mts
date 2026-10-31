@@ -88,7 +88,7 @@ test('완료·실패는 그 슬롯에만 job 이벤트로 알리고, 끝난 일�
   assert.equal(h.published.length, 1)
   assert.deepEqual(h.published[0], { slot: 'slotA', event: 'job', data: { jobId: J1, state: 'done', result: '결과', changesetId: 'cs1' } })
   h.host.accept('slotA', req({ jobId: J2 }))
-  h.host.fail(J2, 'x'.repeat(900))
+  h.host.fail(J2, 'e '.repeat(450))
   assert.equal(h.store.inbox.get(J2)?.error?.length, 500)
 })
 

@@ -46,6 +46,14 @@ export interface PeerJob {
   isAutonomous?: boolean
   instruction: string
   workspaceId?: string
+  /** 복사본으로 보낼 A컴 폴더 (랩 폴더). 보낼 때 복사본을 만들어 workspaceId를 채운다 */
+  workspaceRoot?: string
+  /** 복사본을 B컴에 올리는 일이 끝났는가 */
+  isWorkspacePushed?: boolean
+  /** 복사본을 못 만들어 그냥 보냈다면 그 이유(오류 코드) — 보고에 알린다 */
+  workspaceNote?: string
+  /** 돌아온 변경 묶음을 A컴이 받아 결재함에 올렸는가 (실패하면 다시 붙을 때 다시 받는다) */
+  changesState?: 'fetched' | 'failed'
   state: PeerJobState
   attempts: number
   nextTryAt: number

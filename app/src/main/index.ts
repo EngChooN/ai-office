@@ -4,7 +4,7 @@ import { acquireDataLock, quitForDataLock } from './dataLock'
 import { cancelCodexLogin } from './ai/codexLogin'
 import { app, BrowserWindow, clipboard, dialog, ipcMain, nativeTheme, Notification, safeStorage, shell } from 'electron'
 import path from 'node:path'
-import { loadRemoteConfig, openDb, peerStore, saveRemoteConfig } from './db'
+import { loadRemoteConfig, openDb, peerStore, saveRemoteConfig, syncStore } from './db'
 import { serveArtifacts } from './artifacts'
 import { attachmentById, registerAttachmentScheme, saveUpload, serveAttachments } from './attachments'
 import { Office } from './office'
@@ -20,6 +20,8 @@ import { loadRemoteKeys, saveRemoteKeys } from './remote/keystore.ts'
 import * as upnp from './remote/upnp.ts'
 import { PeerHost, peerSnapshotShape } from './peer/peerHost'
 import { PeerManager } from './peer/peerManager'
+import { PeerSync } from './peer/sync/peerSyncService'
+import { SyncError } from '../shared/peerSync'
 import { fileTokenVault } from './peer/peerRegistry'
 import { createOpenStream, createPairTransport, createPeerHttp } from './peer/peerTransport'
 import { Secretary } from './secretary'
@@ -51,9 +53,27 @@ let updates: UpdateChecker | null = null
 // 다른 PC 연결 (docs/specs/multi-pc-protocol.md): B컴 쪽 일 받기(peerHost)와 A컴 쪽 연결 총괄(peerManager) — DB를 연 뒤에 만든다
 let peerHost: PeerHost | null = null
 let peerManager: PeerManager | null = null
+// 파일 복사본·변경 묶음 (A컴: 보내고 받아 반영 · B컴: 받은 복사본으로 일하고 바뀐 파일을 모은다)
+let peerSync: PeerSync | null = null
 function createPeer() {
   const store = peerStore()
-  const host = new PeerHost({ store, office: office.peerHostOffice(), publish: (slot, event, data) => remote?.publishToSlot(slot, event, data) })
+  const sync = new PeerSync({ baseDir: app.getPath('userData'), store: syncStore(), registeredRoots: () => office.labRoots() })
+  peerSync = sync
+  office.setPeerSync(sync)
+  const host = new PeerHost({
+    store,
+    office: office.peerHostOffice(),
+    publish: (slot, event, data) => remote?.publishToSlot(slot, event, data),
+    // 이 슬롯이 올리고 commit까지 마친 복사본만 일의 작업 폴더가 된다
+    workspaceReady: (id, slot) => {
+      const r = sync.workspaces.record(id)
+      return Boolean(r && r.slotId === slot && r.state === 'ready')
+    },
+    // A컴이 확인했거나 일이 취소됐다: 복사본·변경 묶음을 지운다
+    onAcked: (job) => {
+      if (job.workspaceId) void sync.discardWorkspace(job.workspaceId).catch(() => {})
+    },
+  })
   // 앱이 꺼지며 끊긴 일은 실패로 닫는다 (같은 일을 다시 실행하지는 않는다)
   host.recover()
   host.prune()
@@ -64,12 +84,32 @@ function createPeer() {
     store,
     vault: fileTokenVault(path.join(app.getPath('userData'), 'peers'), crypt),
     office: office.peerPort(),
+    sync: {
+      prepare: async (root, peerId) => ({ workspaceId: (await sync.prepareWorkspace(root, { peerId })).workspaceId }),
+      push: (http, workspaceId) => sync.pushWorkspace(asSyncHttp(http), workspaceId),
+      discard: (workspaceId) => sync.discardWorkspace(workspaceId),
+      fetchChanges: (http, changesetId, workspaceId) => sync.fetchChangeSet(asSyncHttp(http), changesetId, workspaceId),
+      card: (view) => sync.approvalCard(view),
+      detail: (changesetId) => sync.changesetDetail(changesetId),
+      apply: (changesetId, choice) => sync.applyChangeSet(changesetId, choice),
+      pending: () =>
+        syncStore()
+          .changesets.list()
+          .filter((c) => c.side === 'a' && c.state === 'pending')
+          .map((c) => ({ changesetId: c.id, workspaceId: c.workspaceId, jobId: c.jobId, peerId: syncStore().workspaces.get(c.workspaceId)?.peerId })),
+    },
     net: { pair: createPairTransport, http: (p, token) => createPeerHttp(p, token), stream: (p, token) => createOpenStream(p, token) },
     text: (key, params) => t(key === 'tag' ? 'peer.tag' : `peer.report.${key}`, params),
   })
   peerManager = manager
   office.setPeer(manager)
 }
+/** 파일 바이트를 못 나르는 통로(가짜)면 전송 오류로 본다 */
+const asSyncHttp = (http: import('./peer/peerTransport').PeerHttp): import('../shared/peerSync').SyncHttp => ({
+  call: (method, path, body) => http.call(method, path, body),
+  putBytes: (path, data) => (http.putBytes ? http.putBytes(path, data) : Promise.reject(new SyncError('transfer_failed', 'no_bytes'))),
+  getBytes: (path, limit) => (http.getBytes ? http.getBytes(path, limit) : Promise.reject(new SyncError('transfer_failed', 'no_bytes'))),
+})
 const peerApi = () => {
   if (!peerManager) throw new Error('peer not ready')
   return peerManager
@@ -79,10 +119,14 @@ function createRemote() {
     office: office.remotePort(),
     peer: peerHost && {
       host: peerHost,
+      sync: peerSync ?? undefined,
       ownName: () => os.hostname().replace(/\.local$/, '') || 'Mac',
       // 피어에는 고른 직원의 줄인 정보만 — snapshot 말고는 보내지 않는다
       shapePeer: (slot, event, data) => (event === 'snapshot' && peerHost ? peerSnapshotShape(data, peerHost.watchedBy(slot)) : null),
-      onSlotRemoved: (slot) => peerHost?.dropSlot(slot),
+      onSlotRemoved: (slot) => {
+        peerHost?.dropSlot(slot)
+        void peerSync?.discardSlot(slot).catch(() => {})
+      },
     },
     serverVersion: app.getVersion(),
     loadConfig: loadRemoteConfig,
@@ -331,6 +375,8 @@ app.whenReady().then(async () => {
   office.start()
   void remote.init()
   peerManager?.start()
+  // 보관 기간이 지난 복사본·변경 묶음 정리 (7일·14일)
+  void peerSync?.prune().catch(() => {})
   updates = registerUpdates(() => win)
   registerPack(() => office, () => win)
   registerSceneExport(() => win)

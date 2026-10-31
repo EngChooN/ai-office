@@ -73,6 +73,9 @@ export const V2_METHODS: Record<OfficeMethod, MethodSpec> = {
   peerAddStaff: P('open_on_pc', 's s s?'),
   peerRemoveStaff: P('open_on_pc', 's'),
   peerCancelJob: P('open_on_pc', 's'),
+  peerChangesetDetail: P('open_on_pc', 's'),
+  peerChangeFileDiff: P('open_on_pc', 's s'),
+  peerApplyChanges: P('open_on_pc', 's o'),
   dismissRemoteTsNotice: P('open_on_pc'),
   snapshot: R(),
   // 첫 업무 튜토리얼: 모의 진행(AI 호출 없음)이라 휴대폰에서도 그대로

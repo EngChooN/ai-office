@@ -15,7 +15,8 @@ import {
 } from '../../shared/peerProtocol.ts'
 import type { Approval, Staff } from '../../shared/types'
 import { ApprovalRelay, parseRelayId } from './approvalRelay.ts'
-import { JobQueue, PeerQueueError } from './jobQueue.ts'
+import type { ApplyChoice, ApplyResult, CardFile, ChangeSetView, PeerChangesCard } from '../../shared/peerSync.ts'
+import { JobQueue, PeerQueueError, type JobQueueSync } from './jobQueue.ts'
 import { checkPairInput, pairWithHost, PairFailure, type PairTransport } from './pairing.ts'
 import { PeerClient, type OpenStream, type PeerClientOptions } from './peerClient.ts'
 import { PeerRegistry, type TokenVault } from './peerRegistry.ts'
@@ -34,6 +35,18 @@ export interface PeerOfficePort {
   removeFromLabs(staffIds: string[]): void
   /** 이 PC 이름 (짝지을 때 상대에게 알릴 이름) */
   ownName(): string
+  /** 이 일에 복사본으로 보낼 A컴 폴더 (원격 직원이 든 랩의 프로젝트 폴더). 없으면 복사본 없이 일만 보낸다 */
+  workspaceRoot?(leadId: string | null, targetStaffId: string): string | null
+}
+
+/** 4번(PeerSync)에서 A컴 쪽이 쓰는 것 — index.ts가 PeerSync를 이 모양으로 맞춰 꽂는다 */
+export interface PeerSyncPort extends JobQueueSync {
+  fetchChanges(http: PeerHttp, changesetId: string, workspaceId: string): Promise<ChangeSetView>
+  card(view: ChangeSetView): Promise<PeerChangesCard>
+  detail(changesetId: string): Promise<PeerChangesCard>
+  apply(changesetId: string, choice: ApplyChoice): Promise<ApplyResult>
+  /** 반영을 기다리는 변경 묶음 (앱을 다시 켰을 때 카드를 되살린다) */
+  pending(): { changesetId: string; workspaceId: string; jobId: string; peerId?: string }[]
 }
 
 export interface PeerNet {
@@ -54,7 +67,9 @@ export interface PeerManagerDeps {
   clientOptions?: Pick<PeerClientOptions, 'retryMs' | 'offlineAfterMs' | 'idleMs'>
   schedule?: ConstructorParameters<typeof JobQueue>[0]['schedule']
   /** 문구 (화면 언어로) */
-  text(key: 'tag' | 'failed' | 'expired' | 'lost' | 'interrupted', params?: Record<string, string | number>): string
+  text(key: 'tag' | 'failed' | 'expired' | 'lost' | 'interrupted' | 'changes' | 'changesFailed' | 'changesSummary' | 'noWorkspace', params?: Record<string, string | number>): string
+  /** 파일 복사본·변경 묶음 (4번) — 없으면 파일 동기화 없이 일만 오간다 */
+  sync?: PeerSyncPort
 }
 
 export class PeerError extends Error {
@@ -94,6 +109,7 @@ export class PeerManager {
       context: (job) => d.office.context(job),
       now: d.now,
       schedule: d.schedule,
+      sync: d.sync,
     })
   }
 
@@ -102,6 +118,7 @@ export class PeerManager {
     this.queue.recover()
     this.queue.prune()
     for (const p of this.registry.listPeers()) this.connect(p)
+    void this.restoreChanges()
   }
 
   dispose() {
@@ -164,6 +181,8 @@ export class PeerManager {
     }
     this.d.office.changed()
     await this.queue.onOnline(peerId)
+    // 연결이 끊겨 못 받은 변경 묶음을 다시 받는다
+    for (const j of this.queue.list(peerId)) if (j.state === 'done' && j.changesetId && j.workspaceId && j.changesState !== 'fetched') await this.fetchChanges(j)
   }
 
   private onEvent(peerId: string, name: string, data: unknown) {
@@ -190,11 +209,99 @@ export class PeerManager {
   // ── 보고 ──
 
   private onReport(job: PeerJob) {
+    void this.report(job)
+  }
+
+  private async report(job: PeerJob) {
     const rec = this.registry.staffOf(`p:${job.peerId}:${job.remoteStaffId}`)
     const peerName = this.registry.getPeer(job.peerId)?.name ?? ''
-    const body = job.state === 'done' ? (job.result ?? '').trim() : this.d.text(job.error === 'expired' || job.error === 'lost' || job.error === 'interrupted' ? job.error : 'failed', { reason: job.error ?? '' })
+    let body = job.state === 'done' ? (job.result ?? '').trim() : this.d.text(job.error === 'expired' || job.error === 'lost' || job.error === 'interrupted' ? job.error : 'failed', { reason: job.error ?? '' })
     // B컴이 쓴 글은 믿지 않는다: 출처 표지를 붙이고 길이를 자른다 (프롬프트 주입 대책, 설계서 T5)
-    this.d.office.report(job, { name: rec?.name ?? '?', role: rec?.role ?? '', text: `[${this.d.text('tag', { name: peerName })}] ${body}`.slice(0, PEER_LIMITS.resultMax) })
+    body = `[${this.d.text('tag', { name: peerName })}] ${body}`.slice(0, PEER_LIMITS.resultMax)
+    // 우리가 붙이는 안내는 B컴 글이 아니므로 자른 뒤에 덧붙인다
+    if (job.workspaceNote) body += `\n\n${this.d.text('noWorkspace')}`
+    if (job.state === 'done' && job.changesetId && job.workspaceId) body += `\n\n${await this.fetchChanges(job)}`
+    this.d.office.report(job, { name: rec?.name ?? '?', role: rec?.role ?? '', text: body })
+  }
+
+  // ── 파일 변경 묶음 (4번) ──
+
+  private fetching = new Set<string>()
+
+  /** 돌아온 변경 묶음을 받아 결재함에 카드로 올린다. 안내 글을 돌려준다 (실패하면 다시 붙을 때 다시 받는다) */
+  private async fetchChanges(job: PeerJob): Promise<string> {
+    const sync = this.d.sync
+    const http = this.httpOf(job.peerId)
+    const staff = this.registry.staffOf(`p:${job.peerId}:${job.remoteStaffId}`)
+    if (!sync || !job.changesetId || !job.workspaceId || this.fetching.has(job.id)) return this.d.text('changesFailed')
+    if (!http || !staff) {
+      this.queue.markChanges(job.id, 'failed')
+      return this.d.text('changesFailed')
+    }
+    this.fetching.add(job.id)
+    try {
+      const view = await sync.fetchChanges(http, job.changesetId, job.workspaceId)
+      const card = lightCard(await sync.card(view))
+      const name = this.registry.getPeer(job.peerId)?.name ?? ''
+      this.relay.addChanges(job.peerId, job.id, staff.id, card, this.d.text('changesSummary', { name, n: card.files.length }), this.d.now?.() ?? Date.now())
+      this.queue.markChanges(job.id, 'fetched')
+      // 다 받았으니 B컴이 복사본·묶음을 지워도 된다
+      this.queue.ackJob(job.id)
+      await sync.discard(job.workspaceId).catch(() => {})
+      this.d.office.changed()
+      return this.d.text('changes', { n: card.files.length })
+    } catch {
+      this.queue.markChanges(job.id, 'failed')
+      return this.d.text('changesFailed')
+    } finally {
+      this.fetching.delete(job.id)
+    }
+  }
+
+  /** 앱을 켤 때: 반영을 기다리는 변경 묶음 카드를 되살린다 */
+  private async restoreChanges() {
+    const sync = this.d.sync
+    if (!sync) return
+    for (const p of sync.pending()) {
+      const job = this.d.store.jobs.get(p.jobId)
+      const peerId = p.peerId ?? job?.peerId
+      if (!job || !peerId) continue
+      const staff = this.registry.staffOf(`p:${peerId}:${job.remoteStaffId}`)
+      if (!staff) continue
+      try {
+        const card = lightCard(await sync.detail(p.changesetId))
+        const name = this.registry.getPeer(peerId)?.name ?? ''
+        this.relay.addChanges(peerId, job.id, staff.id, card, this.d.text('changesSummary', { name, n: card.files.length }), job.finishedAt ?? Date.now())
+      } catch {
+        // 읽지 못하는 묶음은 건너뛴다 (보관 기간이 지나면 정리된다)
+      }
+    }
+  }
+
+  /** 변경 묶음 자세히 (줄 단위 비교 포함, 지금 A컴 파일로 충돌을 다시 판정) */
+  changesetDetail(changesetId: string): Promise<PeerChangesCard> {
+    if (!this.d.sync) throw new PeerError('unknown_peer')
+    return this.d.sync.detail(changesetId)
+  }
+
+  async changeFileDiff(changesetId: string, path: string): Promise<CardFile['diff'] | null> {
+    const card = await this.changesetDetail(changesetId)
+    return card.files.find((f) => f.path === path)?.diff ?? null
+  }
+
+  /** 반영·거절. 막힘·실패(되돌림)가 아니면 카드를 지운다 */
+  async applyChanges(changesetId: string, choice: ApplyChoice): Promise<ApplyResult> {
+    const sync = this.d.sync
+    if (!sync) throw new PeerError('unknown_peer')
+    const info = sync.pending().find((p) => p.changesetId === changesetId)
+    const result = await sync.apply(changesetId, choice)
+    if (result.status !== 'blocked' && result.status !== 'failed') {
+      const peerId = info?.peerId ?? (info ? this.d.store.jobs.get(info.jobId)?.peerId : undefined)
+      if (peerId) this.relay.removeChanges(peerId, changesetId)
+      if (info) await sync.discard(info.workspaceId).catch(() => {})
+    }
+    this.d.office.changed()
+    return result
   }
 
   // ── 화면·Office 입구 ──
@@ -319,8 +426,10 @@ export class PeerManager {
     const rec = parsed && this.registry.staffOf(targetStaffId)
     if (!parsed || !rec) throw new PeerError('no_staff')
     if (rec.isGone) throw new PeerError('gone')
+    // 파일 복사본: 이 직원이 든 랩의 프로젝트 폴더가 있으면 일과 함께 보낸다 (복사본은 보낼 때 만든다)
+    const workspaceRoot = this.d.sync ? this.d.office.workspaceRoot?.(from.leadId, targetStaffId) : null
     try {
-      return this.queue.enqueue({ peerId: rec.peerId, remoteStaffId: rec.remoteId, leadId: from.leadId, ...(from.room ? { room: from.room } : {}), ...(from.isAutonomous ? { isAutonomous: true } : {}), instruction })
+      return this.queue.enqueue({ peerId: rec.peerId, remoteStaffId: rec.remoteId, leadId: from.leadId, ...(workspaceRoot ? { workspaceRoot } : {}), ...(from.room ? { room: from.room } : {}), ...(from.isAutonomous ? { isAutonomous: true } : {}), instruction })
     } catch (e) {
       if (e instanceof PeerQueueError) throw new PeerError(e.code === 'queue_full' ? 'queue_full' : e.code === 'too_long' ? 'too_long' : 'unknown_peer')
       throw e
@@ -329,6 +438,12 @@ export class PeerManager {
 
   /** A컴 결재함의 결재 처리 (p:… id) */
   decide(id: string, allow: boolean) {
+    // 파일 변경 카드: 승인 = 전체 반영(충돌이 있으면 막힌 채 카드가 남는다), 거절 = 받은 내용 버림. 자세한 선택은 peerApplyChanges
+    if (this.relay.isChanges(id)) {
+      const csid = (parseRelayId(id)?.approvalId ?? '').replace(/^changes:/, '')
+      void this.applyChanges(csid, { mode: allow ? 'all' : 'reject' }).catch(() => {})
+      return true
+    }
     return this.relay.decide(id, allow)
   }
 
@@ -355,3 +470,8 @@ export class PeerManager {
   }
 }
 
+
+/** 카드의 줄 단위 비교(diff)는 빼고 목록만 — 스냅샷이 무거워지지 않게 (자세히는 peerChangesetDetail) */
+function lightCard(card: PeerChangesCard): PeerChangesCard {
+  return { ...card, files: card.files.map(({ diff: _diff, ...f }) => f) }
+}

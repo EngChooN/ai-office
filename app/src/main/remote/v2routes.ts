@@ -10,6 +10,7 @@ import { bearerToken, hashToken, type AuthGuard } from './auth.ts'
 import { acceptHello, CAPABILITIES_HEADER, HELLO_METHOD, NO_CAPABILITIES, parseCapabilities, shapeFor } from './capabilities.ts'
 import type { EventHub } from './events.ts'
 import { PeerRoutes } from './peerRoutes.ts'
+import { SyncRoutes } from './syncRoutes.ts'
 import { preflight, type RemoteRequest } from './handler.ts'
 import type { RemoteResponse } from './protocol.ts'
 import type { AccessLogger, HandledResponse } from './server.ts'
@@ -50,6 +51,8 @@ export interface V2RouteContext {
   lanInfo?(): { lo: boolean; lan: string | null; ts?: boolean; tsHost?: string | null }
   /** 다른 PC 연결(짝짓기·피어 경로) — 없으면 /v2/pair·/v2/peer는 404 */
   peer?: PeerRoutes
+  /** 파일 복사본·변경 묶음 경로(/v2/peer/workspaces·blobs·changesets) — 없으면 404 */
+  sync?: SyncRoutes
 }
 
 const json = (res: ServerResponse, r: RemoteResponse, extraHeaders: Record<string, string> = {}) => {
@@ -116,6 +119,11 @@ export class V2Routes {
       if (!this.ctx.peer) reply(v2Fail('not_found'))
       else {
         const slot = this.ctx.guard.peerSlotOf(tokenHashOf(req.headers.authorization))?.id ?? null
+        if (SyncRoutes.isSyncPath(path)) {
+          if (this.ctx.sync) void this.ctx.sync.handle(req, res, path, slot, access)
+          else reply(v2Fail('not_found'))
+          return true
+        }
         void this.ctx.peer.peer(req, res, path, new URL(req.url ?? '/', 'http://x').searchParams, slot, access)
       }
       return true
