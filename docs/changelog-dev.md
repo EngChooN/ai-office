@@ -15,6 +15,8 @@
 - 표정 6종: `sprites/face-*.png`(기준 그림에서 얼굴만 바꿈, `docs/design/desktop-secretary/face-sprites.py`가 생성·얼굴 밖 픽셀 검사), `shared/deskPet.ts` `pickFace`·`nextFaceChange`·`outcomeFace`(우선순위 놀람>걱정>기쁨>생각 중>집중>졸림>평소, 1.5/1.5/3초, 10분 무활동 졸림), `PetCharacter` `usePetFace`(타이머 하나, 창이 안 보이면 안 검), main `withFace`가 펼침 창 처리 결과를 `pet:face`로 캐릭터 창에 전달. 움직임 줄이기에서도 표정은 바뀌고 깜빡임만 멈춤.
 - 크기 80~160px(8px 단위, 기본 112)·투명도 40~100% 설정, 즉시 반영. 휴대폰에서는 못 바꿈.
 - 펼침 창 D2: 평평한 목록, 폭 400, 입력창 고정, 선택 체크 표시, 보조 글자 대비 상향, 입력 안내 한 줄(`SecretaryChat` placeholder 선택 인자). 첫 스냅샷에는 대화 끝으로 스크롤하지 않음.
+- 펼침 창 대화 흐름: 결재 목록을 따로 두지 않고 메시지·결재·질문·완료·자동결재 카드를 `mergeFeed`로 시간순 섞음, 열 때·상대를 바꿀 때 바닥으로(`useStickToBottom` + `JumpToBottom`). 머리줄 상대 고르기(비서·고용 직원·전체/팀/랩 방 — `petTargets`, 사라진 상대는 비서로 `findPetTarget`), `작업 중 N명`(`petWorkingCount`), `결재 N` 누르면 첫 대기 카드로 이동(지금 상대에 없으면 비서로 바꾼 뒤). 직원은 `getRecord`(`staffFeed`: result → 앞 답 요약 완료 카드), 방은 `chatHistory`(`roomFeed`), 비서 화면 완료 카드는 24시간 안 직원 보고(`doneFromChat`). 보내기는 앱과 같은 `office:instruct`·`office:sendChat`(`petPreload.ts`에 getRecord·chatHistory·instruct·sendChat 추가, main 변경 없음). 펼침 창은 onLog·onChat을 받지 않아 보고 수·상태가 바뀌거나 창을 열거나 보낸 뒤, 직원이 일하는 동안 4초마다 다시 읽음. `SecretaryComposer`에 `onSubmit` 선택 인자. 이 단락 테스트: `scripts/deskPetFeed.test.mts`.
+- 캐릭터 완료 알림: 직원 `unreadReports` 증가로 감지(`newReports`, 첫 스냅샷은 기준만) → 기쁨 1.5초 + `○○ 작업이 완료됐어요` 말풍선 5초(`pickBubble` 순서: 생각 중 > 답 > 새 결재 > 완료 > 업무) + 펼침 창을 캐릭터로 열 때까지 초록 ✓ 도트 배지(결재 !가 우선). 읽음은 이 배지에만 적용, 앱의 안 읽은 보고 수는 건드리지 않음.
 
 ## [0.16.3] - 2026-10-31
 
