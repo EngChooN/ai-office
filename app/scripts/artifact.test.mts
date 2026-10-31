@@ -4,7 +4,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { test } from 'node:test'
 import { ARTIFACT_CSP, ARTIFACT_MAX_BYTES, artifactUrl, checkArtifactFile, markdownToHtml, parseArtifactUrl, withCspMeta } from '../src/shared/artifact.ts'
-import { artifactVersions, findArtifactVersion, listArtifacts, respondArtifact, saveArtifact } from '../src/main/artifactStore.ts'
+import { artifactVersions, findArtifactVersion, listArtifacts, readArtifactText, respondArtifact, saveArtifact } from '../src/main/artifactStore.ts'
 
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'artifact-test-'))
 const owner = { staffId: 's1', staffName: '이디자', taskId: 't1' }
@@ -78,7 +78,7 @@ test('경로 탈출 방지: id·버전·주소 경로로 저장소 밖 파일을
   for (const u of bad) assert.equal(respondArtifact(u, root).status, 404, u)
   // 이름이 경로처럼 들어와도 그 버전 폴더 안에만 저장된다
   const nasty = saveArtifact(root, { title: 't2', source: write(src, '..%2f..%2fevil.md', 'x'), ...owner })
-  assert.ok(nasty.ok && path.resolve(nasty.file).startsWith(path.resolve(root) + path.sep))
+  assert.ok(nasty.ok && fs.realpathSync(nasty.file).startsWith(fs.realpathSync(root) + path.sep))
 })
 
 test('CSP 헤더: 전용 주소 응답에 붙고 connect·외부 출처는 막는다', async () => {
@@ -102,7 +102,7 @@ test('CSP 헤더: 전용 주소 응답에 붙고 connect·외부 출처는 막�
   assert.doesNotMatch(csp, /allow-(popups|top-navigation|downloads|same-origin|forms)/)
   assert.doesNotMatch(csp, /\*/)
   assert.equal(await res.text(), '<script>1</script>')
-  assert.match(withCspMeta('<html><head><title>x</title></head></html>'), /<head><meta http-equiv="Content-Security-Policy" content="default-src 'none'/)
+  assert.match(withCspMeta('<html><head><title>x</title></head></html>'), /^<meta http-equiv="Content-Security-Policy" content="default-src 'none'/)
   assert.doesNotMatch(withCspMeta('<p>x</p>'), /sandbox/)
 })
 test('md는 HTML로 바꿔 내어 주고 원문 속 스크립트·위험한 링크는 글자가 된다', async () => {
@@ -122,4 +122,57 @@ test('md는 HTML로 바꿔 내어 주고 원문 속 스크립트·위험한 링�
   assert.match(html, /href="https:\/\/x\.dev"/)
   assert.match(html, /<pre><code>&lt;b&gt;x&lt;\/b&gt;<\/code><\/pre>/)
   assert.equal(markdownToHtml('![x](https://evil.test/a.png)'), '<p>[x]</p>')
+})
+
+test('심볼릭 링크: 원본 링크는 거절하고, 저장소 안의 링크가 밖을 가리키면 읽지 않는다', () => {
+  const root = tmp()
+  const src = tmp()
+  const secret = write(src, 'secret.md', 'TOP SECRET')
+  fs.symlinkSync(secret, path.join(src, 'link.md'))
+  assert.deepEqual(saveArtifact(root, { title: 'x', source: path.join(src, 'link.md'), ...owner }), { ok: false, reason: 'missing' })
+
+  const r = saveArtifact(root, { title: 'ok', source: write(src, 'a.md', 'hello'), ...owner })
+  assert.ok(r.ok)
+  const id = r.ok ? r.ref.id : ''
+  // 버전 파일을 밖을 가리키는 링크로 바꿔치기
+  const file = path.join(root, id, '1', 'a.md')
+  fs.rmSync(file)
+  fs.symlinkSync(secret, file)
+  assert.equal(findArtifactVersion(root, id), null)
+  assert.equal(respondArtifact(artifactUrl(id, 1), root).status, 404)
+  // 버전 폴더 전체를 밖으로 가리키는 링크로
+  const outside = tmp()
+  fs.writeFileSync(path.join(outside, 'a.md'), 'TOP SECRET')
+  fs.rmSync(path.join(root, id, '1'), { recursive: true })
+  fs.symlinkSync(outside, path.join(root, id, '1'))
+  assert.equal(findArtifactVersion(root, id), null)
+  // meta.json이 밖을 가리키는 링크면 목록에서 빠진다
+  const meta = path.join(root, id, 'meta.json')
+  const copy = fs.readFileSync(meta)
+  fs.rmSync(meta)
+  fs.writeFileSync(path.join(outside, 'meta.json'), copy)
+  fs.symlinkSync(path.join(outside, 'meta.json'), meta)
+  assert.equal(listArtifacts(root).length, 0)
+})
+
+test('크기 초과: 저장소 안에서 커진 파일은 읽지 않는다', () => {
+  const root = tmp()
+  const src = tmp()
+  const r = saveArtifact(root, { title: 'big', source: write(src, 'a.html', '<p>x</p>'), ...owner })
+  assert.ok(r.ok)
+  const id = r.ok ? r.ref.id : ''
+  fs.writeFileSync(path.join(root, id, '1', 'a.html'), 'a'.repeat(ARTIFACT_MAX_BYTES + 1))
+  assert.equal(findArtifactVersion(root, id)?.file !== undefined, true)
+  assert.equal(readArtifactText(root, path.join(root, id, '1', 'a.html')), null)
+  assert.equal(respondArtifact(artifactUrl(id, 1), root).status, 404)
+})
+
+test('CSP 사본: <head>가 스크립트 뒤에 나와도 정책이 가장 먼저 온다', () => {
+  for (const html of ['<script>alert(1)</script><head></head>', '<script>1</script><HEAD><title>x</title></HEAD>', '<!doctype html><script>1</script><head>', '<html><body><script>1</script></body></html>']) {
+    const out = withCspMeta(html)
+    const m = out.indexOf('Content-Security-Policy')
+    assert.ok(m >= 0)
+    assert.ok(m < out.indexOf('<script'), out)
+  }
+  assert.ok(withCspMeta('<!doctype html><p>x').startsWith('<!doctype html><meta'))
 })

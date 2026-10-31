@@ -150,7 +150,10 @@ export function artifactDocument(kind: ArtifactKind, text: string, title: string
 export function withCspMeta(html: string): string {
   const csp = ARTIFACT_CSP.split('; ').filter((d) => !d.startsWith('sandbox')).join('; ')
   const meta = `<meta http-equiv="Content-Security-Policy" content="${csp}">`
-  return /<head[^>]*>/i.test(html) ? html.replace(/<head[^>]*>/i, (m) => `${m}${meta}`) : `${meta}${html}`
+  // 항상 맨 앞에 둔다 — <head>가 스크립트 뒤에 나오는 문서도 정책이 본문보다 먼저 적용된다 (doctype이 있으면 그 뒤)
+  const doctype = /^\s*<!doctype[^>]*>/i.exec(html)
+  const at = doctype ? doctype[0].length : 0
+  return `${html.slice(0, at)}${meta}${html.slice(at)}`
 }
 
 /** 주소(office-artifact://<id>/<버전>)에서 id·버전 읽기 — 형식이 다르면 null (경로로 파일을 찾지 않는다) */
