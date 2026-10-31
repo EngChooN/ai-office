@@ -148,7 +148,7 @@ export function PlanUsageCard({ isCompact = false }: { isCompact?: boolean }) {
       {sortedCodex.length === 0 && codexNote && (
         <div className={cn('flex flex-col gap-1', isClaudeShown && 'border-t pt-3')}>
           <h3 className="text-sm font-semibold">{t('planUsage.titleCodex')}</h3>
-          <p className="text-muted-foreground text-xs">{codexNote}</p>
+          <p className="text-muted-foreground text-xs">{t(`planUsage.codexNote.${codexNote}`)}</p>
         </div>
       )}
       {!isCompact && <p className="text-muted-foreground text-[11px]">{note}</p>}

@@ -4,6 +4,7 @@ import os from 'node:os'
 import path from 'node:path'
 import type { Readable, Writable } from 'node:stream'
 import type { RawCommand } from '../../shared/slashCommands.ts'
+import type { CodexUsageNote, PlanUsage } from '../../shared/types.ts'
 import type { RateLimitInfo } from './types.ts'
 
 // Codex 쪽 스킬·MCP 원천·사용량 읽기. app-server에 한 번 물어 오고 끝낸다 (electron 없이 돌아 단위 테스트한다).
@@ -155,20 +156,30 @@ export async function refreshCodexAssets(binary: string, cwds: string[]) {
   return codexAssets
 }
 
-/** 계정 사용량(5시간·주간, 무료는 30일 하나). 못 읽으면 null */
-/** 사용률을 못 읽은 이유 (화면 안내용 쉬운 말) */
-export const CODEX_USAGE_NOTES = {
-  binary: 'Codex 실행 파일을 찾지 못해 사용률을 읽지 못했어요.',
-  noResponse: 'Codex가 사용률 요청에 답하지 않았어요. 잠시 뒤 새로고침해 보세요.',
-  noWindow: '이 로그인 방식(API 키 등)은 5시간·주간 사용률을 알려 주지 않아요.',
-} as const
+/**
+ * 사용률 응답을 못 읽었을 때 그 이유 — 응답 자체를 해석 못 한 것(unreadable)과 창이 비어 온 것(noWindow)을 나눈다.
+ * 로그인 방식은 확인하지 않으므로 이유로 단정하지 않는다
+ */
+export function rateLimitsFailure(result: unknown): Exclude<CodexUsageNote, 'binary'> {
+  if (result === null || result === undefined) return 'noResponse'
+  const rl = result && typeof result === 'object' && !Array.isArray(result) ? (result as Json).rateLimits : undefined
+  const isEmpty = !!rl && typeof rl === 'object' && !Array.isArray(rl) && ['primary', 'secondary'].every((slot) => (rl as Json)[slot] == null)
+  return isEmpty ? 'noWindow' : 'unreadable'
+}
 
-export async function readCodexRateLimits(binary: string): Promise<{ info: RateLimitInfo | null; note?: string }> {
-  if (!fs.existsSync(binary)) return { info: null, note: CODEX_USAGE_NOTES.binary }
-  const [r] = await codexQuery(binary, [['account/rateLimits/read']])
-  if (r === null || r === undefined) return { info: null, note: CODEX_USAGE_NOTES.noResponse }
+export type CodexUsageRead = { info: RateLimitInfo; note?: undefined } | { info: null; note: CodexUsageNote }
+
+/** 계정 사용량(5시간·주간, 무료는 30일 하나). 못 읽으면 이유 코드를 준다 (query는 테스트용으로 바꿔 끼운다) */
+export async function readCodexRateLimits(binary: string, query = codexQuery): Promise<CodexUsageRead> {
+  if (!fs.existsSync(binary)) return { info: null, note: 'binary' }
+  const [r] = await query(binary, [['account/rateLimits/read']]).catch(() => [null])
   const info = parseRateLimits(r)
-  return info ? { info } : { info: null, note: CODEX_USAGE_NOTES.noWindow }
+  return info ? { info } : { info: null, note: rateLimitsFailure(r) }
+}
+
+/** 조회에 실패한 뒤의 상태 — 읽어 둔 사용률(보류 판단의 근거)은 그대로 두고, 값이 하나도 없을 때만 이유를 남긴다 */
+export function codexUsageAfterFailure(usage: PlanUsage[], note: CodexUsageNote): { usage: PlanUsage[]; note: CodexUsageNote | undefined } {
+  return { usage, note: usage.length ? undefined : note }
 }
 
 /**
