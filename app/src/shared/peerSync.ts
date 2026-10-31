@@ -77,19 +77,27 @@ export const SYNC_PATHS = {
 } as const
 
 /** 오류 코드 — 화면 문구는 peerSync.error.<code> */
-export type SyncErrorCode =
-  | 'root_not_allowed'
-  | 'workspace_too_large'
-  | 'workspace_quota'
-  | 'workspace_not_found'
-  | 'changes_too_large'
-  | 'changes_rejected'
-  | 'changeset_not_found'
-  | 'blob_mismatch'
-  | 'blob_missing'
-  | 'transfer_failed'
-  | 'already_decided'
-  | 'apply_failed'
+export const SYNC_ERROR_CODES = [
+  'root_not_allowed',
+  'workspace_too_large',
+  'workspace_quota',
+  'workspace_not_found',
+  'changes_too_large',
+  'changes_rejected',
+  'changeset_not_found',
+  'blob_mismatch',
+  'blob_missing',
+  'transfer_failed',
+  'already_decided',
+  'apply_failed',
+] as const
+export type SyncErrorCode = (typeof SYNC_ERROR_CODES)[number]
+
+/** 오류 글(IPC를 건너오면 class가 사라진다)에서 코드만 꺼낸다 — 경로 같은 자세한 내용은 화면에 내지 않는다 */
+export function syncErrorCode(e: unknown): SyncErrorCode | null {
+  const msg = e instanceof Error ? e.message : String(e)
+  return SYNC_ERROR_CODES.find((c) => new RegExp(`(^|[^a-z_])${c}([^a-z_]|$)`).test(msg)) ?? null
+}
 
 export class SyncError extends Error {
   code: SyncErrorCode

@@ -32,6 +32,8 @@ import { mergeRefDocs, REF_DOCS_TOTAL } from '@shared/refDocs'
 import { fmtDate, t, trOr, type TKey } from '@shared/i18n'
 import { toolDisplayName } from '@shared/computerTools'
 import { roleLabel } from '@shared/roleLabel'
+import { IS_MOBILE_SHELL } from '@/shell'
+import { ChangesetCard } from './ChangesetCard'
 
 const EXTERNAL_REFRESH_MS = 5000
 const LOG_LABEL: Record<LogType, TKey> = {
@@ -485,6 +487,8 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
             <div key={a.id} className="bg-muted flex flex-col gap-2 rounded-lg p-3">
               {a.questions ? (
                 <QuestionBox approval={a} />
+              ) : a.peerChanges && !IS_MOBILE_SHELL ? (
+                <ChangesetCard approval={a} staffName={staff.name} />
               ) : (
                 <>
                   <div className="text-sm font-medium">{toolDisplayName(a.toolName)}</div>

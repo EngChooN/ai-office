@@ -13,6 +13,8 @@ import { shortPath, workDirLabel } from './status'
 import { fmtDate, t, trOr } from '@shared/i18n'
 import { toolDisplayName } from '@shared/computerTools'
 import { roleLabel } from '@shared/roleLabel'
+import { IS_MOBILE_SHELL } from '@/shell'
+import { ChangesetCard } from './ChangesetCard'
 
 /** 결재함: 모든 직원의 권한 요청을 한곳에서 도장 찍는다 */
 export function InboxPage() {
@@ -102,6 +104,10 @@ export function InboxPage() {
                 <div className="mt-2">
                   <QuestionBox approval={a} />
                 </div>
+              ) : a.peerChanges && !IS_MOBILE_SHELL ? (
+                <div className="mt-2">
+                  <ChangesetCard approval={a} staffName={a.staff.name} />
+                </div>
               ) : (
                 <>
                   <div className="mt-1 text-sm font-medium">{toolDisplayName(a.toolName)}</div>
@@ -109,7 +115,7 @@ export function InboxPage() {
                 </>
               )}
             </div>
-            {!a.questions && (
+            {!a.questions && !(a.peerChanges && !IS_MOBILE_SHELL) && (
               <div className="flex flex-col gap-2">
                 <Button size="sm" onClick={() => void window.office.decide(a.id, true)}>
                   <CheckIcon /> {t('inbox.approve')}
