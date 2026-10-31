@@ -73,7 +73,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 
 @Composable
-fun StartScreen(onScan: () -> Unit) {
+fun StartScreen(onScan: () -> Unit, onManual: () -> Unit) {
     val c = Office.colors
     Column(
         Modifier.fillMaxSize().background(c.background).verticalScroll(rememberScrollState()).padding(horizontal = Space.s5),
@@ -92,6 +92,7 @@ fun StartScreen(onScan: () -> Unit) {
         }
         Spacer(Modifier.height(Space.s5))
         PrimaryButton(S.get(R.string.btn_scan_qr), onScan, Modifier.fillMaxWidth())
+        PlainTextButton(S.get(R.string.manual_btn), onManual, Modifier.fillMaxWidth())
         Spacer(Modifier.height(Space.s3))
         MutedText(S.get(R.string.onb_camera_note))
     }
@@ -99,7 +100,7 @@ fun StartScreen(onScan: () -> Unit) {
 
 /** QR 스캔. 우리 형식이면 onPayload, v가 앱보다 크면 onNeedsUpdate */
 @Composable
-fun ScannerScreen(onPayload: (QrPayload) -> Unit, onNeedsUpdate: () -> Unit, onClose: () -> Unit) {
+fun ScannerScreen(onPayload: (QrPayload) -> Unit, onNeedsUpdate: () -> Unit, onClose: () -> Unit, onManual: (() -> Unit)? = null) {
     val context = LocalContext.current
     var hasPermission by remember {
         mutableStateOf(ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == android.content.pm.PackageManager.PERMISSION_GRANTED)
@@ -182,6 +183,7 @@ fun ScannerScreen(onPayload: (QrPayload) -> Unit, onNeedsUpdate: () -> Unit, onC
                     val t = cm.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(context)?.toString()
                     if (t.isNullOrBlank()) notOurs = true else handle(t)
                 })
+                onManual?.let { PlainTextButton(S.get(R.string.manual_btn), it) }
             }
         }
     }

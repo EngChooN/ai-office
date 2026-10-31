@@ -230,4 +230,24 @@
     <string name="state_connfail_unreach_ts">スマホのTailscaleがオンになっているか確認してください。PCと同じアカウントでログインしている必要があります。</string>
     <string name="state_unreach_body_ts">次のような場合があります。\n· スマホのTailscaleがオフ、またはPCと別のアカウントです\n· PCがスリープ中または電源オフです\n· AI Officeが終了しています</string>
     <string name="qr_unreach_default_ts">PCに届きませんでした。スマホのTailscaleがオンか、PCと同じアカウントか確認してください。</string>
+    <string name="manual_btn">アドレスで接続</string>
+    <string name="manual_title">アドレスで接続</string>
+    <string name="manual_intro">PCのAI Office設定 › スマホ接続に表示されたアドレスと12文字の接続コード（XXXX-XXXX-XXXX）を入力します。Tailscaleアプリをオンにしてください。</string>
+    <string name="manual_host_label">PCアドレス（Tailscale IP）</string>
+    <string name="manual_host_hint">例: 100.64.0.1</string>
+    <string name="manual_code_label">接続コード（12文字）</string>
+    <string name="manual_port_label">ポート（詳細、既定 47900）</string>
+    <string name="manual_connect">接続する</string>
+    <string name="manual_checking">コードを確認しています…</string>
+    <string name="manual_err_host">同じTailscaleネットワーク（または同じWi-Fi）のアドレスのみ使えます</string>
+    <string name="manual_err_port">ポート番号が正しくありません</string>
+    <string name="manual_err_code">接続コードは英数字12文字（XXXX-XXXX-XXXX）です</string>
+    <string name="manual_err_unreachable">PCに届きません。Tailscaleアプリがオンか確認してください</string>
+    <string name="manual_err_closed">接続ウィンドウが閉じました。PCでコードを作り直してください</string>
+    <string name="manual_err_mismatch">接続情報が変わったため、安全のため中断しました</string>
+    <string name="manual_err_server_proof">接続相手を確認できませんでした。本物のPCではない可能性があるため中断しました</string>
+    <string name="manual_err_wrong">コードが違います。残り%1$d回</string>
+    <string name="manual_err_wrong_plain">コードが違います。PCで再確認してください</string>
+    <string name="manual_err_full">接続の空きがありません。他の接続を先に解除してください</string>
+    <string name="manual_err_failed">接続できませんでした。しばらくしてからもう一度お試しください</string>
 </resources>

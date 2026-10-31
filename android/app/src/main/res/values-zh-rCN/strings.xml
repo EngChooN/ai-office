@@ -230,4 +230,24 @@
     <string name="state_connfail_unreach_ts">请确认手机上的 Tailscale 已开启，并与电脑使用同一账号登录。</string>
     <string name="state_unreach_body_ts">可能的原因：\n· 手机上的 Tailscale 已关闭，或与电脑账号不同\n· 电脑处于睡眠状态或已关机\n· AI Office 未运行</string>
     <string name="qr_unreach_default_ts">无法连接到电脑。请确认手机上的 Tailscale 已开启，并与电脑使用同一账号。</string>
+    <string name="manual_btn">通过地址连接</string>
+    <string name="manual_title">通过地址连接</string>
+    <string name="manual_intro">输入电脑上 AI Office 设置 › 手机连接中显示的地址和12位连接码（XXXX-XXXX-XXXX）。需要开启 Tailscale 应用。</string>
+    <string name="manual_host_label">电脑地址（Tailscale IP）</string>
+    <string name="manual_host_hint">例如：100.64.0.1</string>
+    <string name="manual_code_label">连接码（12位）</string>
+    <string name="manual_port_label">端口（高级，默认 47900）</string>
+    <string name="manual_connect">连接</string>
+    <string name="manual_checking">正在验证连接码…</string>
+    <string name="manual_err_host">只能使用同一 Tailscale 网络（或同一 Wi-Fi）的地址</string>
+    <string name="manual_err_port">端口号无效</string>
+    <string name="manual_err_code">连接码为12位字母或数字（XXXX-XXXX-XXXX）</string>
+    <string name="manual_err_unreachable">无法连接到电脑。请确认 Tailscale 已开启</string>
+    <string name="manual_err_closed">连接窗口已关闭。请在电脑上重新生成连接码</string>
+    <string name="manual_err_mismatch">连接信息已变化，为安全起见已中止</string>
+    <string name="manual_err_server_proof">无法确认连接对象，可能不是您的电脑，已中止</string>
+    <string name="manual_err_wrong">连接码错误。还剩 %1$d 次</string>
+    <string name="manual_err_wrong_plain">连接码错误。请在电脑上再次确认</string>
+    <string name="manual_err_full">没有空闲的连接位。请先解除其他连接</string>
+    <string name="manual_err_failed">连接失败，请稍后再试</string>
 </resources>

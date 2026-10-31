@@ -230,4 +230,24 @@
     <string name="state_connfail_unreach_ts">Check that Tailscale is turned on on your phone and signed in with the same account as the PC.</string>
     <string name="state_unreach_body_ts">This may be because:\n· Tailscale is off on your phone, or signed in with a different account than the PC\n· Your PC is asleep or off\n· AI Office is not running</string>
     <string name="qr_unreach_default_ts">Couldn\'t reach your PC. Check that Tailscale is on on your phone and uses the same account as the PC.</string>
+    <string name="manual_btn">Connect with address</string>
+    <string name="manual_title">Connect with address</string>
+    <string name="manual_intro">Enter the address and the 12-character code (XXXX-XXXX-XXXX) shown in AI Office on your PC (Settings › Phone connection). The Tailscale app must be on.</string>
+    <string name="manual_host_label">PC address (Tailscale IP)</string>
+    <string name="manual_host_hint">e.g. 100.64.0.1</string>
+    <string name="manual_code_label">Connection code (12 characters)</string>
+    <string name="manual_port_label">Port (advanced, default 47900)</string>
+    <string name="manual_connect">Connect</string>
+    <string name="manual_checking">Checking the code…</string>
+    <string name="manual_err_host">Only addresses on your Tailscale network (or the same Wi-Fi) can be used</string>
+    <string name="manual_err_port">The port number is not valid</string>
+    <string name="manual_err_code">The code is 12 letters/digits (XXXX-XXXX-XXXX)</string>
+    <string name="manual_err_unreachable">Can\'t reach the PC. Check that the Tailscale app is on</string>
+    <string name="manual_err_closed">The pairing window has closed. Create a new code on the PC</string>
+    <string name="manual_err_mismatch">The connection details changed, so it was stopped for safety</string>
+    <string name="manual_err_server_proof">Couldn\'t verify the other side. It may not be your PC, so it was stopped</string>
+    <string name="manual_err_wrong">Wrong code. %1$d tries left</string>
+    <string name="manual_err_wrong_plain">Wrong code. Check the code on the PC again</string>
+    <string name="manual_err_full">No connection slot is free. Remove another connection first</string>
+    <string name="manual_err_failed">Couldn\'t connect. Please try again shortly</string>
 </resources>

@@ -60,6 +60,7 @@ import kotlinx.coroutines.launch
 private sealed interface Onboarding {
     data object Start : Onboarding
     data object Scan : Onboarding
+    data object Manual : Onboarding
     data class Connecting(val qr: QrPayload) : Onboarding
     data class Failed(val qr: QrPayload, val error: ApiError, val tried: List<com.claudeoffice.remote.net.Endpoint>) : Onboarding
     data object QrNeedsUpdate : Onboarding
@@ -155,9 +156,14 @@ fun AppRoot(repo: OfficeRepository, launch: LaunchRequest?, onLaunchHandled: () 
     Box(if (isMain) bg else bg.systemBarsPadding()) {
         when {
             step != null -> when (step) {
-                Onboarding.Start -> StartScreen { onboarding = Onboarding.Scan }
+                Onboarding.Start -> StartScreen(onScan = { onboarding = Onboarding.Scan }, onManual = { onboarding = Onboarding.Manual })
+                Onboarding.Manual -> ManualConnectScreen(
+                    onPayload = ::connect,
+                    onClose = { onboarding = if (state.gate == Gate.NotConnected) Onboarding.Start else null },
+                ).also { BackHandler { onboarding = if (state.gate == Gate.NotConnected) Onboarding.Start else null } }
                 Onboarding.Scan -> ScannerScreen(
                     onPayload = ::connect,
+                    onManual = { onboarding = Onboarding.Manual },
                     onNeedsUpdate = { onboarding = Onboarding.QrNeedsUpdate },
                     onClose = { onboarding = if (state.gate == Gate.NotConnected) Onboarding.Start else null },
                 ).also { BackHandler { onboarding = if (state.gate == Gate.NotConnected) Onboarding.Start else null } }
@@ -175,7 +181,7 @@ fun AppRoot(repo: OfficeRepository, launch: LaunchRequest?, onLaunchHandled: () 
                 Onboarding.QrNeedsUpdate -> GateScreen(Gate.NeedsAppUpdate, 0, onScan = { onboarding = Onboarding.Scan }, onRetry = { onboarding = Onboarding.Scan }, onSettings = null)
                 Onboarding.Connected -> ConnectedScreen(state.address) { onboarding = null }
             }
-            state.gate == Gate.NotConnected -> StartScreen { onboarding = Onboarding.Scan }
+            state.gate == Gate.NotConnected -> StartScreen(onScan = { onboarding = Onboarding.Scan }, onManual = { onboarding = Onboarding.Manual })
             keepWeb -> {
                 WebRoot(repo, webEntry!!)
                 if (gate != null) Box(Modifier.fillMaxSize().background(Office.colors.background).systemBarsPadding()) {
