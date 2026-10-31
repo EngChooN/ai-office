@@ -1,0 +1,13 @@
+<!doctype html><html lang="ko" data-mode="light"><head><meta charset="utf-8"><title>A 결재 우선</title><link rel="stylesheet" href="shared.css"><script src="shared.js"></script></head><body style="--w:340px;--h:520px"><div class="panel" id="p"></div><script>
+
+$("#p").innerHTML = head() + `<div class="body" style="padding:12px;gap:10px">
+ <div class="row"><span class="title" style="font-size:13px">결재 1 / 2</span><span class="grow"></span>${openBtn()}</div>
+ <div class="card col grow" style="gap:12px;min-height:0">
+  <div>${who(D.question)}<div class="title" style="margin-top:2px">${D.question.title}</div></div>
+  <div class="col" style="--p:14px">${options(0, false)}</div>
+  <div class="grow"></div>
+  <button class="btn primary" style="height:40px">이 답으로 보내기</button>
+ </div>
+ <div class="row sm" style="padding:2px 4px"><span class="badge">2</span><span class="grow">다음 · ${D.plain.title}</span><span class="muted">›</span></div>
+ </div>` + composer();
+</script></body></html>

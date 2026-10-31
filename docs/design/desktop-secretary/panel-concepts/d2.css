@@ -1,0 +1,14 @@
+/* D2 수정: 대비 상향·선택 표시·스크롤 영역. shared.css 뒤에 불러온다 */
+[data-mode='dark']{--muted-fg:#C9C6DF;--border:#5B5782;--input:#76729E;--line:#4A4670}
+[data-mode='light']{--muted-fg:#57536F;--line:#C4BFE0;--input:#9A94C4;--border:#C4BFE0}
+.head,.composer,.sep{border-color:var(--line)}
+.head .btn.ghost{color:var(--foreground);border-color:var(--input);height:30px;font-size:12px}
+.scroll{flex:1;min-height:0;overflow-y:auto;padding:0 16px}
+.scroll::-webkit-scrollbar{width:8px}.scroll::-webkit-scrollbar-thumb{background:var(--input);border-radius:8px}
+section.item{padding:8px 0;border-top:1px solid var(--line)}section.item:first-child{border-top:0}
+.chip2{display:inline-flex;align-items:flex-start;gap:6px;padding:6px 12px;border:1px solid var(--input);border-radius:16px;font-size:13px;background:transparent;color:var(--muted-fg);max-width:100%;line-height:1.35}
+.chip2.on{border:2px solid var(--primary);background:var(--accent);color:var(--foreground);font-weight:600;padding:5px 11px}
+.chip2 .ck{width:14px;flex:none;font-weight:700;color:var(--primary);margin-top:1px}
+.input{color:var(--muted-fg);border-color:var(--input)}
+.fade{height:14px;margin-top:-14px;flex:none;pointer-events:none;background:linear-gradient(transparent,var(--background));position:relative}
+.pill{color:var(--foreground);border-color:var(--input)}

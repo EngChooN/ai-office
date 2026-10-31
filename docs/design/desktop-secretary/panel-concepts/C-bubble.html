@@ -1,0 +1,9 @@
+<!doctype html><html lang="ko" data-mode="light"><head><meta charset="utf-8"><title>C 말풍선형</title><link rel="stylesheet" href="shared.css"><script src="shared.js"></script></head><body style="--w:340px;--h:340px"><div class="panel" id="p"></div><script>
+$("#p").innerHTML = `<div class="body" style="padding:12px;gap:10px;justify-content:flex-end">
+ <div class="card col" style="gap:10px">
+  <div class="row">${who(D.question)}<span class="grow"></span><span class="pill">결재 2</span></div>
+  <div class="title">${D.question.title}</div>
+  <div class="row" style="flex-wrap:wrap;gap:6px">${D.question.options.map(([t],i)=>`<span class="chip" style="${i===0?'border-color:var(--ring);background:var(--accent)':''}">${t}</span>`).join('')}</div>
+  <div class="row"><button class="btn primary sm">답 보내기</button><span class="grow"></span><button class="btn ghost sm">펼치기 ⌄</button></div>
+ </div></div>` + composer();
+</script></body></html>

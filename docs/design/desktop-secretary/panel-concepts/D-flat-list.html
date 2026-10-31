@@ -1,0 +1,16 @@
+<!doctype html><html lang="ko" data-mode="dark"><head><meta charset="utf-8"><title>D 평평한 목록</title><link rel="stylesheet" href="shared.css"><script src="shared.js"></script></head><body style="--w:400px;--h:520px"><div class="panel" id="p"></div><script>
+$("#p").innerHTML = head(`<span class="pill">결재 2</span>`) + `<div class="body" style="padding:0 16px;overflow:hidden">
+ <section style="padding:11px 0" class="col">
+  <div class="row">${who(D.question)}<span class="grow"></span>${openBtn()}</div>
+  <div class="title">${D.question.title}</div>
+  <div class="row" style="flex-wrap:wrap;gap:6px">${D.question.options.map(([t],i)=>`<span class="chip" style="${i===0?'border-color:var(--ring);background:var(--accent)':''}">${t}</span>`).join('')}</div>
+  <div class="row"><button class="btn primary sm">답 보내기</button></div>
+ </section>
+ <section class="sep col" style="padding:11px 0">
+  ${who(D.plain)}<div class="title">${D.plain.title}</div>
+  <p class="sm muted">${D.plain.desc}</p>
+  <div class="row"><button class="btn primary sm">승인</button><button class="btn sm">반려</button></div>
+ </section>
+ <section class="sep col grow" style="padding:11px 0"><span class="xs muted" style="font-weight:600">비서</span><div class="bubble">${D.reply}</div></section>
+ </div>` + composer();
+</script></body></html>

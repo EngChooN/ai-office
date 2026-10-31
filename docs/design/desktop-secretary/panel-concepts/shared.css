@@ -1,0 +1,37 @@
+/* 비서 펼침 창 시안 공통 스타일 — 토큰은 app/src/renderer/index.css(라벤더)에서 그대로 옮김 */
+[data-mode='light']{--background:#F6F5FB;--foreground:#221F33;--card:#fff;--primary:#6C5CE7;--primary-fg:#fff;--secondary:#ECEAF6;--muted-fg:#66627F;--accent:#E9E6FA;--destructive:#C42B2B;--border:#DEDAF0;--input:#CFCAE6;--ring:#8776FF;--shadow:rgba(108,92,231,.28)}
+[data-mode='dark']{--background:#14131C;--foreground:#EDEBF8;--card:#201F2D;--primary:#9B8CFF;--primary-fg:#1A1240;--secondary:#292739;--muted-fg:#A7A3C4;--accent:#302D47;--destructive:#FF6B6B;--border:#34314A;--input:#413E5C;--ring:#9B8CFF;--shadow:rgba(0,0,0,.5)}
+:root{--radius:18px;--font:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Pretendard','Segoe UI',sans-serif}
+*{box-sizing:border-box;margin:0}
+html,body{overflow:hidden;background:var(--background);color:var(--foreground);font:14px/1.45 var(--font);-webkit-font-smoothing:antialiased}
+.panel{display:flex;flex-direction:column;height:var(--h);width:var(--w);background:var(--background)}
+.head{display:flex;align-items:center;gap:6px;padding:10px 12px;border-bottom:1px solid var(--border)}
+.head h1{flex:1;font-size:15px;font-weight:600}
+.body{flex:1;min-height:0;display:flex;flex-direction:column}
+.muted{color:var(--muted-fg)}.xs{font-size:12px}.sm{font-size:13px}
+.title{font-size:15px;font-weight:600;line-height:1.35}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:14px;box-shadow:0 10px 28px -14px var(--shadow)}
+.row{display:flex;align-items:center;gap:8px}.col{display:flex;flex-direction:column;gap:8px}
+.grow{flex:1}.sep{border-top:1px solid var(--border)}
+.btn{height:34px;padding:0 14px;border-radius:999px;border:1px solid var(--border);background:transparent;color:var(--foreground);font:500 13px var(--font);display:inline-flex;align-items:center;justify-content:center;gap:4px;white-space:nowrap}
+.btn.sm{height:30px;padding:0 12px;font-size:12px}
+.btn.primary{background:linear-gradient(135deg,var(--primary),#A04ED1);border-color:transparent;color:#fff}
+[data-mode='dark'] .btn.primary{background:var(--primary);color:var(--primary-fg)}
+.btn.ghost{border-color:transparent;color:var(--muted-fg)}
+.btn.icon{width:32px;height:32px;padding:0;border-color:transparent;color:var(--muted-fg);font-size:16px}
+.opt{width:100%;text-align:left;padding:9px 12px;border:1px solid var(--input);border-radius:14px;background:var(--card);display:flex;gap:10px;align-items:flex-start}
+.opt .dot{width:16px;height:16px;border-radius:50%;border:1.5px solid var(--input);margin-top:2px;flex:none}
+.opt.sel{border-color:var(--ring);background:var(--accent)}.opt.sel .dot{border:5px solid var(--primary)}
+.chip{padding:5px 12px;border:1px solid var(--input);border-radius:999px;font-size:13px;background:var(--card)}
+.badge{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:var(--primary);color:var(--primary-fg);font-size:11px;font-weight:600}
+.pill{font-size:11px;padding:1px 8px;border:1px solid var(--border);border-radius:999px;color:var(--muted-fg)}
+.tabs{display:flex;gap:4px;padding:4px;margin:10px 12px 0;background:var(--secondary);border-radius:999px}
+.tab{flex:1;height:30px;border-radius:999px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:13px;font-weight:500;color:var(--muted-fg)}
+.tab.on{background:var(--card);color:var(--foreground);box-shadow:0 1px 4px var(--shadow)}
+.composer{display:flex;align-items:center;gap:8px;padding:10px 12px;border-top:1px solid var(--border);background:var(--background)}
+.input{flex:1;height:38px;padding:0 14px;border:1px solid var(--input);border-radius:999px;background:var(--card);display:flex;align-items:center;color:var(--muted-fg);font-size:13px}
+.send{width:38px;height:38px;border-radius:50%;background:var(--primary);color:var(--primary-fg);display:flex;align-items:center;justify-content:center;font-size:16px;flex:none}
+.bubble{align-self:flex-start;max-width:90%;padding:8px 12px;border-radius:14px 14px 14px 4px;background:var(--secondary);font-size:13px}
+.av{width:28px;height:28px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:15px;flex:none}
+.opt.big{padding:14px 14px}
+.tight .opt{padding:6px 12px}
