@@ -1,5 +1,5 @@
 // 결과물 갤러리·데모데이 — 끝난 업무 카드를 모으고, 매주 정한 시간에 짧게 요약한다 (AI 호출 없음)
-import type { Attachment, Meeting } from './types'
+import type { ArtifactRef, Attachment, Meeting } from './types'
 import { t } from './i18n/index.ts'
 
 /** 끝난 업무 한 장 (업무 카드가 "검토"로 넘어갈 때 앱이 만든다 — 같은 카드를 다시 끝내면 덮어쓴다) */
@@ -19,6 +19,8 @@ export interface GalleryEntry {
   links: string[]
   /** 그 업무를 하는 동안 직원이 올린 캡처·그림 */
   images: Attachment[]
+  /** 그 업무를 하는 동안 직원이 올린 아티팩트 (같은 아티팩트는 최신 버전만, 예전 항목엔 없다) */
+  artifacts?: ArtifactRef[]
   /** 작업 폴더에서 바뀐 파일 (git으로 볼 수 있을 때만) */
   files: GalleryFile[]
   finishedAt: number

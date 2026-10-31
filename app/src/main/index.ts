@@ -5,6 +5,7 @@ import { cancelCodexLogin } from './ai/codexLogin'
 import { app, BrowserWindow, clipboard, dialog, ipcMain, nativeTheme, Notification, shell } from 'electron'
 import path from 'node:path'
 import { loadRemoteConfig, openDb, saveRemoteConfig } from './db'
+import { serveArtifacts } from './artifacts'
 import { attachmentById, registerAttachmentScheme, saveUpload, serveAttachments } from './attachments'
 import { Office } from './office'
 import { OfficeTray } from './tray'
@@ -273,6 +274,7 @@ app.whenReady().then(async () => {
     .then(() => Promise.all([refreshCodexAssets(codexBinaryPath(), [os.homedir()]), office.refreshCodexUsage()]))
     .catch(() => {})
   serveAttachments()
+  serveArtifacts()
   secretary = new Secretary(office, () => handlers!)
   office.secretaryState = () => secretary?.state()
   office.answerWhileAway = (staff, questions) => secretary!.answerWhileAway(staff, questions)

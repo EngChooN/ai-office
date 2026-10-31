@@ -3,6 +3,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import type { Attachment, UploadFile } from '../shared/types'
+import { ARTIFACT_SCHEME_PRIVILEGES } from './artifacts.ts'
 
 // 첨부 저장소: 지시·보고에 붙는 파일을 앱 데이터 폴더에 복사해 두고, 화면에는 office-file:// 로 내어 준다
 
@@ -32,7 +33,7 @@ export const mimeOf = (file: string) => MIME_BY_EXT[path.extname(file).toLowerCa
 
 /** app ready 전에 불러야 한다 */
 export function registerAttachmentScheme() {
-  protocol.registerSchemesAsPrivileged([{ scheme: SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true } }])
+  protocol.registerSchemesAsPrivileged([{ scheme: SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true } }, ARTIFACT_SCHEME_PRIVILEGES])
 }
 
 export function serveAttachments() {

@@ -405,6 +405,8 @@ export interface Task {
   teamId: string | null
   labId: string | null
   attachments?: Attachment[]
+  /** 담당 직원이 이 카드를 하며 올린 아티팩트 (같은 아티팩트는 최신 버전만) */
+  artifacts?: ArtifactRef[]
   result: string
   createdAt: number
   updatedAt: number
@@ -531,6 +533,45 @@ export interface Attachment {
   path: string
   mime: string
   size: number
+  /** report_artifact로 올린 결과물이면 그 아티팩트 (path는 그 버전의 복사본) — 화면은 파일 칩 대신 아티팩트 카드로 보여 준다 */
+  artifact?: ArtifactRef
+}
+
+/** 아티팩트: 직원이 만든 HTML·마크다운 결과물 하나 (고쳐 올리면 같은 id의 새 버전) */
+export type ArtifactKind = 'html' | 'md'
+export interface ArtifactRef {
+  id: string
+  title: string
+  kind: ArtifactKind
+  /** 올린 시점의 버전 (1부터) */
+  version: number
+  /** 원본 파일 이름 */
+  name: string
+  size: number
+}
+/** 목록 한 줄 — 최신 버전 기준 */
+export interface ArtifactInfo extends ArtifactRef {
+  staffId: string
+  staffName: string
+  /** 올릴 때 하던 업무 카드 (없으면 null) */
+  taskId: string | null
+  /** 최신 버전을 올린 시각 */
+  updatedAt: number
+  /** 전체 버전 수 (= version) */
+  versionCount: number
+}
+export interface ArtifactVersionInfo {
+  version: number
+  name: string
+  size: number
+  createdAt: number
+}
+/** 크게 보기 창에 줄 것: url은 전용 주소(office-artifact://)라 sandbox iframe에만 넣는다. 다른 버전으로 바꿀 땐 iframe을 새로 만든다 */
+export interface ArtifactView extends ArtifactRef {
+  url: string
+  /** 원본 보기용 텍스트 (html·md 그대로) */
+  source: string
+  versions: ArtifactVersionInfo[]
 }
 
 /** 화면에서 고른 파일을 main으로 보낼 때 */
@@ -894,6 +935,15 @@ export interface OfficeApi {
   loadStaffCommands(staffId: string): Promise<void>
   saveAttachments(files: UploadFile[]): Promise<Attachment[]>
   openAttachment(id: string): Promise<void>
+  /** 아티팩트 전체 (최신 순) */
+  artifactList(): Promise<ArtifactInfo[]>
+  artifactVersions(id: string): Promise<ArtifactVersionInfo[]>
+  /** 크게 보기용 정보 — version을 생략하면 최신. 없으면 null */
+  artifactOpen(id: string, version?: number): Promise<ArtifactView | null>
+  /** 기본 브라우저로 연다 (PC 전용) */
+  artifactOpenExternal(id: string, version?: number): Promise<void>
+  /** 파일 위치를 연다 (PC 전용) */
+  artifactReveal(id: string, version?: number): Promise<void>
   /** 하던 일을 멈춘다. 지시를 같이 주면 멈춘 뒤 바로 그 지시를 받는다 (끼어들기) */
   interrupt(staffId: string, text?: string, attachments?: Attachment[]): Promise<void>
   /** 직원 대화를 Claude Code(터미널)에서 이어서 연다. 못 열면 이유 문장, 열었으면 '' */

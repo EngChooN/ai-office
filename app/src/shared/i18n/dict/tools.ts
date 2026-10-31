@@ -2,6 +2,20 @@ import type { Entry } from './index.ts'
 
 /** 브라우저 장비·/명령어 (main이 쓰는 문구 — 화면 자동완성 문구는 다른 접두어로) */
 export default {
+  'staff.tool.artifact.desc': {
+    ko: '직원이 만든 결과물(웹페이지 시안·대시보드·표·차트·정리 문서)을 대표가 보고·갤러리에서 바로 열어 볼 수 있게 올린다. .html·.htm·.md 파일 하나(5MB 이하)만 받는다. 같은 제목이나 같은 파일을 고쳐 다시 올리면 새 버전이 된다. 화면은 앱 안 격리 창에서 열리며 외부 서버와 통신할 수 없다. 외부 라이브러리는 cdnjs·unpkg·jsDelivr 주소만 쓸 수 있다.',
+    en: 'Publish something you made (a page mockup, dashboard, table, chart or write-up) so the owner can open it right from the report and gallery. Accepts one .html, .htm or .md file (up to 5MB). Uploading a fixed version of the same title or file creates a new version. It opens in an isolated window inside the app and cannot talk to outside servers; external libraries may only come from cdnjs, unpkg or jsDelivr.',
+    ja: 'スタッフが作った成果物（Webページ案・ダッシュボード・表・グラフ・まとめ文書）を、代表が報告やギャラリーからそのまま開けるように提出する。受け付けるのは .html・.htm・.md ファイル1つ（5MB以下）。同じタイトルやファイルを直して再提出すると新しいバージョンになる。画面はアプリ内の隔離ウィンドウで開き、外部サーバーとは通信できない。外部ライブラリは cdnjs・unpkg・jsDelivr のアドレスだけ使える。',
+    zh: '提交员工做好的成果（网页方案、仪表盘、表格、图表、整理文档），让代表直接在报告和画廊里打开查看。只接受一个 .html、.htm 或 .md 文件（不超过 5MB）。修改后用相同标题或相同文件再次提交，会生成新版本。页面在应用内的隔离窗口中打开，无法与外部服务器通信；外部库只能使用 cdnjs、unpkg、jsDelivr 的地址。',
+  },
+  'staff.tool.artifact.title': { ko: '결과물 제목 (80자까지)', en: 'Title of the result (up to 80 characters)', ja: '成果物のタイトル（80文字まで）', zh: '成果标题（最多 80 个字符）' },
+  'staff.tool.artifact.path': { ko: '.html·.htm·.md 파일의 절대 경로', en: 'Absolute path of the .html, .htm or .md file', ja: '.html・.htm・.md ファイルの絶対パス', zh: '.html、.htm 或 .md 文件的绝对路径' },
+  'staff.tool.artifact.missing': { ko: '파일을 찾지 못했습니다. 절대 경로를 확인하세요.', en: 'Could not find the file. Check the absolute path.', ja: 'ファイルが見つかりませんでした。絶対パスを確認してください。', zh: '找不到文件。请确认绝对路径。' },
+  'staff.tool.artifact.ext': { ko: '.html·.htm·.md 파일만 올릴 수 있습니다.', en: 'Only .html, .htm and .md files can be uploaded.', ja: '.html・.htm・.md ファイルのみ提出できます。', zh: '只能提交 .html、.htm、.md 文件。' },
+  'staff.tool.artifact.size': { ko: '파일이 너무 큽니다. 5MB 이하로 줄여 다시 올리세요.', en: 'The file is too large. Shrink it to 5MB or less and upload again.', ja: 'ファイルが大きすぎます。5MB以下にして再提出してください。', zh: '文件太大。请缩小到 5MB 以内后重新提交。' },
+  'staff.tool.artifact.empty': { ko: '빈 파일은 올릴 수 없습니다.', en: 'An empty file cannot be uploaded.', ja: '空のファイルは提出できません。', zh: '不能提交空文件。' },
+  'staff.tool.artifact.chat': { ko: '결과물 "{title}" (v{version})을 올렸어요.', en: 'I uploaded the result "{title}" (v{version}).', ja: '成果物「{title}」(v{version})を提出しました。', zh: '已提交成果“{title}”(v{version})。' },
+  'staff.tool.artifact.done': { ko: '결과물을 올렸습니다 (v{version}). 대표가 보고와 갤러리에서 열어 볼 수 있습니다.', en: 'Result uploaded (v{version}). The owner can open it from the report and gallery.', ja: '成果物を提出しました（v{version}）。代表が報告とギャラリーから開けます。', zh: '已提交成果（v{version}）。代表可在报告和画廊中打开。' },
   'equip.browser.name': { ko: '브라우저', en: 'Browser', ja: 'ブラウザ', zh: '浏览器' },
   'equip.browser.desc': {
     ko: '직원 전용 크롬 창으로 사이트를 열고 클릭·입력해요. 이동·클릭·입력은 결재를 받아요.',

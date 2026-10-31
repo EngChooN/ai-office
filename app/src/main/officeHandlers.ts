@@ -9,6 +9,7 @@ import type { TutorialInput, TutorialScenario } from '../shared/tutorial'
 import { HOOK_PORT, type Attachment, type RemoteMode } from '../shared/types'
 import { listAgentTemplates } from './agents'
 import { findById, saveUploads } from './attachments'
+import { artifactList, artifactOpen, artifactOpenExternal, artifactReveal, artifactVersionList } from './artifacts'
 import { askHookInstalled, hooksInstalled, setAskHookInstalled, setHooksInstalled } from './external'
 import type { Office } from './office'
 import type { RemoteService } from './remote/service.ts'
@@ -45,6 +46,11 @@ export function createOfficeHandlers(office: Office, remoteApi: () => RemoteServ
       const file = findById(id)
       if (file) await shell.openPath(file)
     },
+    artifactList: () => artifactList(),
+    artifactVersions: (id: string) => artifactVersionList(String(id)),
+    artifactOpen: (id: string, version?: number) => artifactOpen(String(id), typeof version === 'number' ? version : undefined),
+    artifactOpenExternal: (id: string, version?: number) => artifactOpenExternal(String(id), typeof version === 'number' ? version : undefined),
+    artifactReveal: async (id: string, version?: number) => artifactReveal(String(id), typeof version === 'number' ? version : undefined),
     interrupt: (id: string, text?: string, attachments?: Attachment[]) => office.interrupt(id, text, attachments),
     resumeInTerminal: (id: string) => office.resumeInTerminal(id),
     changeEngine: (id: string, provider: Parameters<Office['changeEngine']>[1]) => office.changeEngine(id, provider),

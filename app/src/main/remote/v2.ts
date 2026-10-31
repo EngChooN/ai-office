@@ -75,6 +75,11 @@ export const V2_METHODS: Record<OfficeMethod, MethodSpec> = {
   loadStaffCommands: R('s'),
   saveAttachments: { cls: 'U', args: 'a' },
   openAttachment: P('download_file', 's'),
+  artifactList: R(),
+  artifactVersions: R('s'),
+  artifactOpen: P('open_on_pc', 's n?'),
+  artifactOpenExternal: P('open_on_pc', 's n?'),
+  artifactReveal: P('open_on_pc', 's n?'),
   interrupt: R('s s? a?', [2]),
   resumeInTerminal: P('open_on_pc', 's'),
   // 엔진 바꾸기: 로그인 상태·쉬는 중인지는 PC(office.changeEngine)가 다시 확인하고, 엔진 값도 claude·codex만 받는다

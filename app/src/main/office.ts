@@ -86,6 +86,7 @@ import * as shopGrid from './shopGrid'
 import { MAX_FLOORS, meetingRoomOf } from '../shared/officeLevel'
 import { BUDGET_PERIODS, budgetTokens, nextBudgetAlert, periodStart, pruneAlertKeys } from '../shared/budget'
 import { importFile, mimeOf } from './attachments'
+import { saveArtifactFile } from './artifacts'
 import type { RemoteOfficePort } from './remote/handler.ts'
 import { isRemoteAutoAllowed, isRemoteManualDirAllowed, isRemoteManualScopeAllowed, isRemoteRuleBlocked } from './remoteGuard'
 import { pickStaffPatch, type StaffPatch } from './staffPatch'
@@ -1839,6 +1840,23 @@ export class Office extends EventEmitter<{
           },
         ),
         defineTool(
+          'report_artifact',
+          t('staff.tool.artifact.desc'),
+          { title: z.string().describe(t('staff.tool.artifact.title')), path: z.string().describe(t('staff.tool.artifact.path')), caption: z.string().optional().describe(t('staff.tool.caption')) },
+          async ({ title, path: file, caption }) => {
+            const taskId = (this.origins.get(staffId) ?? []).find((o): o is Extract<Origin, { kind: 'task' }> => o.kind === 'task')?.taskId ?? null
+            const r = saveArtifactFile({ title, source: file, staffId, staffName: this.hired.get(staffId)?.name ?? '', taskId })
+            if (!r.ok) return text(t(`staff.tool.artifact.${r.reason}`))
+            const att: Attachment = { id: r.ref.id, name: r.ref.name, path: r.file, mime: mimeOf(r.ref.name), size: r.ref.size, artifact: r.ref }
+            const body = caption?.trim() || t('staff.tool.artifact.chat', { title: r.ref.title, version: r.ref.version })
+            this.log(staffId, 'reply', body, [att])
+            this.postChat(staffId, body, [att])
+            const card = taskId ? this.tasks.get(taskId) : undefined
+            if (card) this.saveTask({ ...card, artifacts: [...(card.artifacts ?? []).filter((a) => a.id !== r.ref.id), r.ref] })
+            return text(t('staff.tool.artifact.done', { version: r.ref.version }))
+          },
+        ),
+        defineTool(
           'capture_screen',
           t('staff.tool.screen.desc'),
           { caption: z.string().describe(t('staff.tool.caption')) },
@@ -3105,6 +3123,7 @@ export class Office extends EventEmitter<{
         body: galleryBody(maskSecrets(report)),
         links: extractLinks(report),
         images,
+        ...((this.tasks.get(task.id)?.artifacts ?? task.artifacts)?.length ? { artifacts: this.tasks.get(task.id)?.artifacts ?? task.artifacts } : {}),
         files,
         finishedAt: Date.now(),
       }
