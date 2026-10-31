@@ -359,9 +359,25 @@ function Composer({ room }: { room: RoomInfo | undefined }) {
     draftFiles.clear()
     void window.office.sendChat(text, attachments, room?.room)
   }
-  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => slashKeys.onKeyDown(e) || handleComposerKey(e, () => void handleSend(), setDraft)
   // 같은 이름의 직원·팀·랩이 있으면 "@디자인(팀)"처럼 종류를 붙여 고른 대상에게 가게 한다
   const handleMention = (tg: MentionTarget) => setDraft((d) => d.replace(/@(\S*)$/, `${mentionToken(tg, targets)} `))
+  // @ 후보도 슬래시 메뉴와 같은 키(↑↓·Enter·Tab). Esc로 닫으면 글을 더 칠 때까지 닫아 둔다
+  const [closedDraft, setClosedDraft] = useState<string | null>(null)
+  const isMentionOpen = suggestions.length > 0 && closedDraft !== draft
+  const mentionItems = isMentionOpen ? suggestions.flatMap((g) => g.items) : []
+  const mentionKeys = useSlashKeys(mentionItems.length, isMentionOpen ? (mentionQuery ?? null) : null, (i) => handleMention(mentionItems[i]))
+  const mentionListRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    mentionListRef.current?.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: 'nearest' })
+  }, [mentionKeys.active, isMentionOpen])
+  const closeMentions = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (!isMentionOpen || e.key !== 'Escape' || e.nativeEvent.isComposing) return false
+    e.preventDefault()
+    e.stopPropagation()
+    setClosedDraft(draft)
+    return true
+  }
+  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => slashKeys.onKeyDown(e) || mentionKeys.onKeyDown(e) || closeMentions(e) || handleComposerKey(e, () => void handleSend(), setDraft)
 
   // 멘션 없이 보내면 누가 받는지: 전체 방은 알맞은 한 명, 팀·랩 방은 팀장·랩 리드(없으면 방 안에서 한 명)
   const roomLead = room?.leadId ? staffById.get(room.leadId) : undefined
@@ -384,23 +400,36 @@ function Composer({ room }: { room: RoomInfo | undefined }) {
           className="absolute bottom-full left-4 mb-1 w-80 max-w-[calc(100%-2rem)]"
         />
       )}
-      {suggestions.length > 0 && (
-        <div className="bg-popover absolute bottom-full left-4 mb-1 flex max-h-80 min-w-56 flex-col overflow-y-auto rounded-lg border p-1 shadow-lg">
+      {isMentionOpen && (
+        <div ref={mentionListRef} role="listbox" className="bg-popover absolute bottom-full left-4 mb-1 flex max-h-80 min-w-56 flex-col overflow-y-auto rounded-lg border p-1 shadow-lg">
           {suggestions.map((g) => (
             <div key={g.kind} className="flex flex-col">
               <span className="text-muted-foreground px-2 pt-1 text-[10px]">{t(KIND_LABEL[g.kind])}</span>
-              {g.items.map((tg) => (
-                <button key={tg.key} type="button" onClick={() => handleMention(tg)} className="hover:bg-accent flex items-center gap-2 rounded px-2 py-1 text-left text-sm">
-                  <TargetIcon target={tg} staff={staffById.get(tg.memberIds[0])} /> {tg.name}
-                  <span className="text-muted-foreground ml-auto pl-3 text-xs">
-                    {tg.kind === 'staff'
-                      ? roleLabel(staffById.get(tg.memberIds[0])?.role ?? '')
-                      : tg.kind === 'all'
-                        ? t(!room ? 'chat.allHired' : isLab ? 'chat.labRoom.allMembers' : 'chat.room.allMembers', { count: tg.memberIds.length })
-                        : t('chat.peopleCount', { count: tg.memberIds.length })}
-                  </span>
-                </button>
-              ))}
+              {g.items.map((tg) => {
+                const index = mentionItems.indexOf(tg)
+                return (
+                  <button
+                    key={tg.key}
+                    type="button"
+                    role="option"
+                    aria-selected={index === mentionKeys.active}
+                    // 누르는 동안 입력창 포커스를 뺏지 않는다 (고른 뒤 바로 이어 쓰게)
+                    onMouseDown={(e) => e.preventDefault()}
+                    onMouseEnter={() => mentionKeys.setActive(index)}
+                    onClick={() => handleMention(tg)}
+                    className={cn('flex items-center gap-2 rounded px-2 py-1 text-left text-sm', index === mentionKeys.active && 'bg-accent')}
+                  >
+                    <TargetIcon target={tg} staff={staffById.get(tg.memberIds[0])} /> {tg.name}
+                    <span className="text-muted-foreground ml-auto pl-3 text-xs">
+                      {tg.kind === 'staff'
+                        ? roleLabel(staffById.get(tg.memberIds[0])?.role ?? '')
+                        : tg.kind === 'all'
+                          ? t(!room ? 'chat.allHired' : isLab ? 'chat.labRoom.allMembers' : 'chat.room.allMembers', { count: tg.memberIds.length })
+                          : t('chat.peopleCount', { count: tg.memberIds.length })}
+                    </span>
+                  </button>
+                )
+              })}
             </div>
           ))}
         </div>

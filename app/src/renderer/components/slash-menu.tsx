@@ -92,7 +92,7 @@ export function useSlashKeys(count: number, query: string | null, onPick: (index
     }
     return false
   }
-  return { active: current, onKeyDown }
+  return { active: current, setActive, onKeyDown }
 }
 
 /** '/' 자동완성 목록. 앱에서 막힌 명령(/login 등)을 다 치면 목록 대신 안내를 보여 준다 */
