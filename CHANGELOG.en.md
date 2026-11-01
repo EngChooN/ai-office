@@ -12,6 +12,7 @@ Writing rules
 ### Improvements
 - Dragging the desktop secretary no longer closes its open small window — the window now follows along.
 - Redrew the desktop secretary's expressions (surprised, thinking, happy, worried, focused, sleepy). The eyes now match the pixel style of the default look, and the mouths are clearer.
+- On Mac, clicking the desktop secretary no longer brings the AI Office window to the front or switches to the desktop it's on. Only the secretary's small window opens, and the AI Office window opens only when you press 'Open in app'.
 - The Connect another PC screen now explains that the feature is for connecting your own computers, and not to connect to a PC signed in with someone else's account.
 - After the first task in the setup check, you can choose whether to keep that staff member in the office (kept by default). If the first task takes a long time, the staff member stays in the office and keeps working, and the practice tutorial is only started if you want it. If you already did the first task for real, 'Assign a task' in the practice picker shows 'Done for real'.
 - The menu tour now matches the current app. It explains the secretary (⌘K from any screen) and the desktop secretary, and the costs step now covers plan usage and tokens per staff member. Step titles match the actual menu names (for example, Records › Costs), and you can press 'Hire staff' right from the last step.

@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { app, BrowserWindow, ipcMain, powerMonitor, screen, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron'
 import type { OfficeSnapshot } from '../shared/types'
-import { isPetPlatform, needsBoundsRetry, petAllWorkspaces, petTopLevel } from './petPlatform'
+import { isPetPlatform, needsBoundsRetry, petAllWorkspaces, petPanelType, petTopLevel } from './petPlatform'
 import {
   clampToArea,
   defaultPetBounds,
@@ -249,6 +249,8 @@ export class PetWindows {
       maximizable: false,
       fullscreenable: false,
       skipTaskbar: true,
+      // 맥: 열어도 앱 전체가 앞으로 오지 않게 (본 창은 '앱으로 열기'로만)
+      type: petPanelType(process.platform),
       show: false,
       title: 'AI Office',
       backgroundColor: this.deps.background(),

@@ -1,7 +1,7 @@
 // 바탕화면 비서 맥·윈도우 차이 단위 테스트 — pnpm test
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { isPetPlatform, needsBoundsRetry, petAllWorkspaces, petTopLevel } from '../src/main/petPlatform.ts'
+import { isPetPlatform, needsBoundsRetry, petAllWorkspaces, petPanelType, petTopLevel } from '../src/main/petPlatform.ts'
 
 test('맥·윈도우에서만 비서를 띄운다', () => {
   assert.equal(isPetPlatform('darwin'), true)
@@ -17,6 +17,11 @@ test('항상 위 단계: 맥은 그대로 floating, 윈도우는 screen-saver', 
 test('모든 데스크톱 위 표시는 맥만', () => {
   assert.equal(petAllWorkspaces('darwin'), true)
   assert.equal(petAllWorkspaces('win32'), false)
+})
+
+test('펼침 창은 맥만 panel (앱 전체를 앞으로 부르지 않게)', () => {
+  assert.equal(petPanelType('darwin'), 'panel')
+  assert.equal(petPanelType('win32'), undefined)
 })
 
 test('윈도우는 배율 때문에 크기가 틀어졌을 때만 다시 맞춘다 (맥은 안 함)', () => {

@@ -11,6 +11,12 @@ export const petTopLevel = (platform: string) => (platform === 'win32' ? 'screen
 /** 모든 데스크톱 위 표시는 맥에서만 한다 (윈도우는 지원하지 않는 호출) */
 export const petAllWorkspaces = (platform: string) => platform === 'darwin'
 
+/**
+ * 펼침 창 종류: 맥은 'panel' — 눌러 열어도 앱 전체를 앞으로 부르지 않아,
+ * 본 창이 있는 데스크톱으로 화면이 넘어가거나 본 창이 튀어나오지 않는다 (윈도우는 보통 창)
+ */
+export const petPanelType = (platform: string) => (platform === 'darwin' ? 'panel' : undefined)
+
 const sameSize = (a: Rect, b: Rect) => a.width === b.width && a.height === b.height
 
 /**
