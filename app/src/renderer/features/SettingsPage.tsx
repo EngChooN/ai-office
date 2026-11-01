@@ -386,7 +386,7 @@ export function SettingsPage() {
         )}
         {category === 'connect' && (
           <>
-            <Section title={t('settingsPage.remote.title')} description={t('settingsPage.remote.desc')}>
+            <Section id="settings-remote" title={t('settingsPage.remote.title')} description={t('settingsPage.remote.desc')}>
               <RemoteSection />
             </Section>
             {!IS_MOBILE_SHELL && (

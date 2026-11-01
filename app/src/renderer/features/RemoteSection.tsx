@@ -7,7 +7,9 @@ import { cn } from '@/lib/utils'
 import { PcOnlyState } from '@/components/pc-only-state'
 import { IS_MOBILE_SHELL } from '@/shell'
 import { fmtDate, t } from '@shared/i18n'
+import { ipcErrorText } from '@shared/ipcError'
 import { formatPairCode, type PairWindowView } from '@shared/peerProtocol'
+import { OPEN_REMOTE_GUIDE_EVENT } from './PeerSection'
 import type { AccessEntry, RemoteMode, RemoteQr, RemoteStatus } from '@shared/types'
 
 // 설정 › 휴대폰 연결: 켜기·끄기, 연결 방식(Tailscale·같은 네트워크 전용·고급 공유기 포트), Tailscale 단계 안내, 첫 연결 가이드(켜기 → 포트 → 공유기 → 주소 → QR), QR 다시 만들기, 지문, 최근 접속 기록
@@ -56,6 +58,15 @@ export function RemoteSection() {
   const [isGuideOpen, setIsGuideOpen] = useState(false)
   const [guideStep, setGuideStep] = useState(0)
   const [isLanModeChanged, setIsLanModeChanged] = useState(false)
+  // 다른 PC 연결의 [원격 켜기]가 보내는 신호: 켜기 안내를 처음부터 연다
+  useEffect(() => {
+    const open = () => {
+      setGuideStep(0)
+      setIsGuideOpen(true)
+    }
+    window.addEventListener(OPEN_REMOTE_GUIDE_EVENT, open)
+    return () => window.removeEventListener(OPEN_REMOTE_GUIDE_EVENT, open)
+  }, [])
   if (!status) return null
 
   const openGuide = (step = 0) => {
@@ -175,7 +186,7 @@ function PhoneCode() {
     try {
       setWin(await window.office.peerPairStart('phone'))
     } catch (e) {
-      setError(e instanceof Error ? e.message.replace(/^Error invoking remote method '[^']*': (Error: )?/, '') : '')
+      setError(ipcErrorText(e))
     }
   }
   return (

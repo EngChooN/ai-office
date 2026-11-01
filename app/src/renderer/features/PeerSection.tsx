@@ -1,122 +1,342 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Loader2Icon } from 'lucide-react'
+import { CheckCircle2Icon, CircleIcon, Loader2Icon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { NativeSelect } from '@/components/ui/select'
+import { cn } from '@/lib/utils'
 import { useOffice } from '@/store'
 import { IS_MOBILE_SHELL } from '@/shell'
 import { fmtDate, t } from '@shared/i18n'
-import { formatPairCode, normalizePairCode, type PairWindowView, type PeerSlotView, type PeerView, type RemoteStaffChoice } from '@shared/peerProtocol'
+import { ipcErrorText } from '@shared/ipcError'
+import { formatPairCode, normalizePairCode, parsePeerInvite, type PairWindowView, type PeerSlotView, type PeerView, type RemoteStaffChoice } from '@shared/peerProtocol'
 
-// 설정 › 다른 PC 연결: B컴 역할(짝짓기 창·연결된 PC), A컴 역할(주소+코드로 연결·목록·다시 연결·해제·직원 고르기)
-// PC 전용 — 휴대폰 화면에서는 그리지 않는다
+// 설정 › 다른 PC 연결: 준비 확인(원격 켜짐·네트워크) → 역할 고르기 → 보내는 PC(연결 정보 만들기·복사) / 불러오는 PC(붙여넣기 한 번으로 연결 → 직원 고르기 자동 열림)
+// 아래엔 늘 연결된 PC 목록(이 PC에 붙은 PC, 이 PC가 붙은 PC). PC 전용 — 휴대폰 화면에서는 그리지 않는다
 
 const DEFAULT_PORT = 47900 // main/remote/service.ts DEFAULT_REMOTE_PORT와 같아야 함
 const COPIED_MS = 1500
-const errText = (e: unknown) => (e instanceof Error ? e.message.replace(/^Error invoking remote method '[^']*': (Error: )?/, '') : t('peer.error.failed'))
+/** RemoteSection이 듣는 이벤트: 원격 켜기 안내를 연다 */
+export const OPEN_REMOTE_GUIDE_EVENT = 'office:open-remote-guide'
+const errText = (e: unknown) => ipcErrorText(e, t('peer.error.failed'))
 const timeText = (ms: number) => fmtDate(ms, { hour: '2-digit', minute: '2-digit' })
-
-/** "주소" 또는 "주소:포트"를 나눈다 (포트 없으면 기본값) */
-function parseHost(raw: string): { host: string; port: number } | null {
-  const m = raw.trim().match(/^([^\s:]+)(?::(\d{1,5}))?$/)
-  if (!m) return null
-  const port = m[2] ? Number(m[2]) : DEFAULT_PORT
-  return port >= 1 && port <= 65535 ? { host: m[1], port } : null
+const mmss = (ms: number) => {
+  const s = Math.ceil(ms / 1000)
+  return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
 }
+
+type Role = 'host' | 'client'
 
 export function PeerSection() {
   if (IS_MOBILE_SHELL) return null
+  return <PeerBody />
+}
+
+function PeerBody() {
+  const isRemoteOn = useRemoteOn()
+  const [role, setRole] = useState<Role | null>(null)
+  const [slots, setSlots] = useState<PeerSlotView[]>([])
+  const [peers, setPeers] = useState<PeerView[]>([])
+  const [openId, setOpenId] = useState<string | null>(null)
+  const loadSlots = useCallback(() => void window.office.peerSlots().then(setSlots), [])
+  const loadPeers = useCallback(() => void window.office.peerList().then(setPeers), [])
+  useEffect(loadSlots, [loadSlots])
+  useEffect(loadPeers, [loadPeers])
+  // 연결 상태(online/offline)는 직원 목록(staff.remote)으로 내려오므로, 그 모양이 바뀌면 목록도 다시 읽는다
+  const remoteKey = useOffice((s) => s.staff.map((x) => `${x.remote?.peerId}:${x.remote?.state}:${x.remote?.queued}`).join('|'))
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- remoteKey가 바뀔 때만 다시 읽는다
+  useEffect(loadPeers, [remoteKey])
+  // 원격을 끄면 고른 역할도 처음으로
+  useEffect(() => {
+    if (isRemoteOn === false) setRole(null)
+  }, [isRemoteOn])
+
+  if (isRemoteOn === null) return null
+  const handleConnected = (peerId: string) => {
+    loadPeers()
+    setOpenId(peerId)
+  }
+
   return (
-    <div className="flex flex-col gap-5">
-      <HostPart />
-      <ClientPart />
+    <div className="flex flex-col gap-4">
+      <Readiness isRemoteOn={isRemoteOn} />
+      {role === null ? (
+        <RolePicker isDisabled={!isRemoteOn} onPick={setRole} />
+      ) : (
+        <div className="flex flex-col gap-2 rounded-lg border p-3">
+          <button type="button" className="text-muted-foreground hover:text-foreground w-fit text-xs" onClick={() => setRole(null)}>
+            {t('peer.role.back')}
+          </button>
+          {role === 'host' ? <HostPart slotCount={slots.length} onSlotsChanged={loadSlots} /> : <ClientPart onConnected={handleConnected} />}
+        </div>
+      )}
+      <SlotList slots={slots} onChanged={loadSlots} />
+      <PeerList peers={peers} openId={openId} onToggle={(id) => setOpenId(openId === id ? null : id)} onChanged={loadPeers} />
     </div>
   )
 }
 
-/** B컴 역할: 짝짓기 창을 열어 코드·QR·지문을 보여 주고, 이 PC에 붙은 PC 목록을 관리 */
-function HostPart() {
+/** 원격 기능이 켜져 있는지 (읽기 전엔 null) */
+function useRemoteOn() {
+  const [isOn, setIsOn] = useState<boolean | null>(null)
+  useEffect(() => {
+    void window.office.remoteStatus().then((s) => setIsOn(s.isEnabled))
+    return window.office.onRemoteStatus((s) => setIsOn(s.isEnabled))
+  }, [])
+  return isOn
+}
+
+/** 준비 확인: ① 원격 기능 ② 두 PC의 네트워크(자동 판별은 안 하고 안내만) */
+function Readiness({ isRemoteOn }: { isRemoteOn: boolean }) {
+  const openRemoteGuide = () => {
+    document.getElementById('settings-remote')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    window.dispatchEvent(new Event(OPEN_REMOTE_GUIDE_EVENT))
+  }
+  return (
+    <ul className="flex flex-col gap-2 text-xs">
+      <li className="flex items-start gap-2">
+        {isRemoteOn ? <CheckCircle2Icon className="text-status-working mt-0.5 size-4 shrink-0" /> : <CircleIcon className="text-muted-foreground mt-0.5 size-4 shrink-0" />}
+        <div className="min-w-0 flex-1">
+          <p className="font-medium">{isRemoteOn ? t('peer.ready.remoteOn') : t('peer.ready.remoteOff')}</p>
+          <p className="text-muted-foreground">{isRemoteOn ? t('peer.ready.remoteOnDesc') : t('peer.ready.remoteOffDesc')}</p>
+        </div>
+        {!isRemoteOn && (
+          <Button size="sm" className="shrink-0" onClick={openRemoteGuide}>
+            {t('peer.ready.turnOn')}
+          </Button>
+        )}
+      </li>
+      <li className="flex items-start gap-2">
+        <CircleIcon className="text-muted-foreground mt-0.5 size-4 shrink-0" />
+        <div className="min-w-0 flex-1">
+          <p className="font-medium">{t('peer.ready.network')}</p>
+          <p className="text-muted-foreground">{t('peer.ready.networkDesc')}</p>
+          <details className="mt-1">
+            <summary className="text-primary w-fit cursor-pointer">{t('peer.ready.more')}</summary>
+            <ul className="text-muted-foreground mt-1 list-disc pl-4">
+              <li>{t('peer.ready.moreSame')}</li>
+              <li>{t('peer.ready.moreFar')}</li>
+            </ul>
+          </details>
+        </div>
+      </li>
+    </ul>
+  )
+}
+
+/** 역할 카드 2장: 각자 1·2·3단계와 시작 버튼 */
+function RolePicker({ isDisabled, onPick }: { isDisabled: boolean; onPick: (role: Role) => void }) {
+  const cards: { role: Role; tag: string; title: string; steps: string[]; go: string }[] = [
+    { role: 'host', tag: t('peer.role.hostTag'), title: t('peer.role.host'), steps: [t('peer.role.hostStep1'), t('peer.role.hostStep2'), t('peer.role.hostStep3')], go: t('peer.role.hostGo') },
+    { role: 'client', tag: t('peer.role.clientTag'), title: t('peer.role.client'), steps: [t('peer.role.clientStep1'), t('peer.role.clientStep2'), t('peer.role.clientStep3')], go: t('peer.role.clientGo') },
+  ]
+  return (
+    <div className="flex flex-col gap-2">
+      <h3 className="text-sm font-semibold">{t('peer.role.title')}</h3>
+      {isDisabled && <p className="text-muted-foreground text-xs">{t('peer.ready.needOn')}</p>}
+      <div className="grid gap-2 sm:grid-cols-2">
+        {cards.map((c) => (
+          <div key={c.role} className={cn('flex flex-col gap-2 rounded-lg border p-3 text-xs', isDisabled && 'opacity-50')}>
+            <span className="text-muted-foreground">{c.tag}</span>
+            <p className="text-sm font-medium">{c.title}</p>
+            <ol className="text-muted-foreground flex list-decimal flex-col gap-0.5 pl-4">
+              {c.steps.map((s) => (
+                <li key={s}>{s}</li>
+              ))}
+            </ol>
+            <Button size="sm" variant="outline" className="mt-auto w-fit" disabled={isDisabled} onClick={() => onPick(c.role)}>
+              {c.go}
+            </Button>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/** 보내는 PC: 들어오면 바로 연결 정보를 만들고, 코드·남은 시간·복사 버튼을 보여 준다. 연결이 생기면 알린다 */
+function HostPart({ slotCount, onSlotsChanged }: { slotCount: number; onSlotsChanged: () => void }) {
   const [win, setWin] = useState<PairWindowView | null>(null)
-  const [slots, setSlots] = useState<PeerSlotView[]>([])
+  const [isExpired, setIsExpired] = useState(false)
   const [error, setError] = useState('')
   const [isCopied, setIsCopied] = useState(false)
-  const loadSlots = useCallback(() => void window.office.peerSlots().then(setSlots), [])
-  useEffect(loadSlots, [loadSlots])
-  // 창이 열린 동안엔 연결이 생겼는지 3초마다 본다. 5분이 지나면 화면에서 코드를 지운다
-  useEffect(() => {
-    if (!win) return
-    const poll = setInterval(loadSlots, 3000)
-    const left = Math.max(0, win.until - Date.now())
-    const expire = setTimeout(() => setWin(null), left)
-    return () => {
-      clearInterval(poll)
-      clearTimeout(expire)
-    }
-  }, [win, loadSlots])
+  const [now, setNow] = useState(Date.now())
+  const [baseCount, setBaseCount] = useState<number | null>(null)
+  const [newName, setNewName] = useState('')
 
-  const open = async () => {
+  const open = useCallback(async () => {
     setError('')
+    setIsExpired(false)
+    setNewName('')
     try {
       setWin(await window.office.peerPairStart('peer'))
+      setNow(Date.now())
     } catch (e) {
       setError(errText(e))
     }
-  }
-  const close = async () => {
-    setWin(null)
-    await window.office.peerPairClose()
-  }
+  }, [])
+  useEffect(() => {
+    void open()
+    // 역할을 바꾸거나 화면을 떠나면 창을 닫는다
+    return () => void window.office.peerPairClose()
+  }, [open])
+  // 창이 열린 동안 1초마다 남은 시간, 3초마다 새 연결을 본다
+  useEffect(() => {
+    if (!win) return
+    const tick = setInterval(() => {
+      const n = Date.now()
+      setNow(n)
+      if (n >= win.until) {
+        setWin(null)
+        setIsExpired(true)
+      }
+    }, 1000)
+    const poll = setInterval(onSlotsChanged, 3000)
+    return () => {
+      clearInterval(tick)
+      clearInterval(poll)
+    }
+  }, [win, onSlotsChanged])
+  // 창을 연 뒤 연결된 PC가 늘면 "연결됐어요"
+  useEffect(() => {
+    if (!win) return setBaseCount(null)
+    if (baseCount === null) return setBaseCount(slotCount)
+    if (slotCount > baseCount) {
+      void window.office.peerSlots().then((list) => setNewName(list[list.length - 1]?.label ?? ''))
+      setBaseCount(slotCount)
+    }
+  }, [win, slotCount, baseCount])
+
   const copy = async () => {
     if (!win) return
     await navigator.clipboard.writeText(win.copyText)
     setIsCopied(true)
     setTimeout(() => setIsCopied(false), COPIED_MS)
   }
-  const revoke = async (id: string) => {
-    if (!window.confirm(t('peer.host.revokeConfirm'))) return
-    await window.office.peerRevokeSlot(id)
-    loadSlots()
+
+  return (
+    <div className="flex flex-col gap-2 text-xs">
+      <h3 className="text-sm font-semibold">{t('peer.host.sendTitle')}</h3>
+      <p className="text-muted-foreground">{t('peer.host.sendDesc')}</p>
+      {error && <p className="text-status-error">{error}</p>}
+      {newName && <p className="text-status-working">{t('peer.host.newSlot', { name: newName })}</p>}
+      {win && (
+        <div className="flex flex-wrap items-start gap-4">
+          {win.qr && <img src={win.qr} alt={t('peer.host.qrAlt')} className="size-28 rounded bg-white p-1" />}
+          <div className="flex min-w-0 flex-col gap-1.5">
+            <span className="text-muted-foreground">{t('peer.host.code')}</span>
+            <span className="selectable font-mono text-xl font-semibold tracking-wider">{formatPairCode(win.code)}</span>
+            <span className="text-muted-foreground tabular-nums">{t('peer.host.left', { time: mmss(win.until - now) })}</span>
+            <span className="text-muted-foreground">
+              {t('peer.host.address')} · <span className="selectable font-mono">{win.host}:{win.port}</span>
+            </span>
+            <div className="flex gap-2">
+              <Button size="sm" onClick={() => void copy()}>
+                {isCopied ? t('peer.host.copied') : t('peer.host.copy')}
+              </Button>
+            </div>
+            <details>
+              <summary className="text-muted-foreground w-fit cursor-pointer">{t('peer.host.fingerprint')}</summary>
+              <p className="text-muted-foreground mt-1">{t('peer.host.fingerprintDesc')}</p>
+              <p className="selectable font-mono">{win.fingerprint}</p>
+            </details>
+          </div>
+        </div>
+      )}
+      {isExpired && !win && (
+        <div className="flex items-center gap-2">
+          <p className="text-muted-foreground">{t('peer.host.expired')}</p>
+          <Button size="sm" variant="outline" onClick={() => void open()}>
+            {t('peer.host.renew')}
+          </Button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** 불러오는 PC: 받은 연결 정보를 한 칸에 붙여 넣어 연결. 따로 입력하는 칸은 접어 둔다 */
+function ClientPart({ onConnected }: { onConnected: (peerId: string) => void }) {
+  const [pasted, setPasted] = useState('')
+  const [host, setHost] = useState('')
+  const [code, setCode] = useState('')
+  const [isManual, setIsManual] = useState(false)
+  const [isBusy, setIsBusy] = useState(false)
+  const [message, setMessage] = useState<{ isError: boolean; text: string; sub?: string } | null>(null)
+
+  // 붙여넣기 칸이 우선. 직접 입력을 펼쳤으면 두 칸을 합쳐 같은 해석기로 읽는다
+  const raw = isManual ? `${host} ${code}` : pasted
+  const invite = parsePeerInvite(raw, DEFAULT_PORT)
+  const hasInput = raw.trim() !== ''
+  const handleConnect = async () => {
+    if (!invite.host) return setMessage({ isError: true, text: isManual ? t('peer.client.badHost') : t('peer.client.needHost') })
+    if (!invite.port) return setMessage({ isError: true, text: t('peer.client.badHost') })
+    if (!invite.code) return setMessage({ isError: true, text: isManual ? t('peer.error.bad_code') : t('peer.client.needCode') })
+    setIsBusy(true)
+    setMessage(null)
+    try {
+      const r = await window.office.peerPairConnect(invite.host, invite.port, invite.code)
+      setMessage({ isError: false, text: t('peer.client.done', { name: r.name }), sub: t('peer.client.doneFp', { fingerprint: r.fingerprint }) })
+      setPasted('')
+      setHost('')
+      setCode('')
+      onConnected(r.id)
+    } catch (e) {
+      setMessage({ isError: true, text: errText(e) })
+    } finally {
+      setIsBusy(false)
+    }
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      <h3 className="text-sm font-semibold">{t('peer.host.title')}</h3>
-      <p className="text-muted-foreground text-xs">{t('peer.host.desc')}</p>
-      {error && <p className="text-status-error text-xs">{error}</p>}
-      {win ? (
-        <div className="flex flex-wrap items-start gap-4 rounded-lg border p-3">
-          {win.qr && <img src={win.qr} alt={t('peer.host.qrAlt')} className="size-32 rounded bg-white p-1" />}
-          <dl className="flex min-w-0 flex-col gap-1.5 text-xs">
-            <div>
-              <dt className="text-muted-foreground">{t('peer.host.code')}</dt>
-              <dd className="selectable font-mono text-xl font-semibold tracking-wider">{formatPairCode(win.code)}</dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground">{t('peer.host.address')}</dt>
-              <dd className="selectable font-mono">
-                {win.host}:{win.port}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-muted-foreground">{t('peer.host.fingerprint')}</dt>
-              <dd className="selectable font-mono">{win.fingerprint}</dd>
-            </div>
-            <p className="text-muted-foreground">{t('peer.host.until', { time: timeText(win.until) })}</p>
-            <div className="flex gap-2">
-              <Button size="sm" variant="outline" onClick={() => void copy()}>
-                {isCopied ? t('peer.host.copied') : t('peer.host.copy')}
-              </Button>
-              <Button size="sm" variant="ghost" onClick={() => void close()}>
-                {t('peer.host.close')}
-              </Button>
-            </div>
-          </dl>
-        </div>
-      ) : (
-        <Button size="sm" variant="outline" className="w-fit" onClick={() => void open()}>
-          {t('peer.host.open')}
-        </Button>
+    <div className="flex flex-col gap-2 text-xs">
+      <h3 className="text-sm font-semibold">{t('peer.client.pasteTitle')}</h3>
+      <p className="text-muted-foreground">{t('peer.client.pasteDesc')}</p>
+      {!isManual && (
+        <Input
+          value={pasted}
+          onChange={(e) => setPasted(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && hasInput && !isBusy && void handleConnect()}
+          placeholder={t('peer.client.paste')}
+          aria-label={t('peer.client.paste')}
+          className="max-w-md font-mono"
+          autoComplete="off"
+          spellCheck={false}
+        />
       )}
+      <details open={isManual} onToggle={(e) => setIsManual(e.currentTarget.open)}>
+        <summary className="text-muted-foreground w-fit cursor-pointer">{t('peer.client.manual')}</summary>
+        <p className="text-muted-foreground mt-1">{t('peer.client.manualDesc')}</p>
+        <div className="mt-1 flex flex-wrap gap-2">
+          <Input value={host} onChange={(e) => setHost(e.target.value)} placeholder={t('peer.client.host')} aria-label={t('peer.client.host')} className="w-64" />
+          {/* 하이픈·공백·소문자는 normalizePairCode가 무시한다. 입력 중엔 보기 좋게 XXXX-XXXX-XXXX로 */}
+          <Input value={code} onChange={(e) => setCode(autoFormat(e.target.value))} placeholder={t('peer.client.code')} aria-label={t('peer.client.code')} className="w-52 font-mono" autoComplete="off" spellCheck={false} />
+        </div>
+      </details>
+      <div className="flex items-center gap-2">
+        <Button size="sm" className="w-fit" disabled={isBusy || !hasInput} onClick={() => void handleConnect()}>
+          {isBusy && <Loader2Icon className="animate-spin" />} {isBusy ? t('peer.client.connecting') : t('peer.client.connect')}
+        </Button>
+        {!hasInput && !message && <span className="text-muted-foreground">{t('peer.client.pasteHint')}</span>}
+      </div>
+      {message && (
+        <div className={message.isError ? 'text-status-error' : 'text-status-working'}>
+          <p>{message.text}</p>
+          {message.sub && <p className="text-muted-foreground">{message.sub}</p>}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** 이 PC에 붙은 PC (보내는 PC 쪽 목록) */
+function SlotList({ slots, onChanged }: { slots: PeerSlotView[]; onChanged: () => void }) {
+  const revoke = async (id: string) => {
+    if (!window.confirm(t('peer.host.revokeConfirm'))) return
+    await window.office.peerRevokeSlot(id)
+    onChanged()
+  }
+  return (
+    <div className="flex flex-col gap-1">
       <h4 className="text-xs font-medium">{t('peer.host.slots')}</h4>
       {slots.length === 0 ? (
         <p className="text-muted-foreground text-xs">{t('peer.host.slotNone')}</p>
@@ -137,67 +357,15 @@ function HostPart() {
   )
 }
 
-/** A컴 역할: 주소+코드로 연결하고, 연결된 PC 목록에서 다시 연결·해제·직원 고르기 */
-function ClientPart() {
-  const [peers, setPeers] = useState<PeerView[]>([])
-  const [host, setHost] = useState('')
-  const [code, setCode] = useState('')
-  const [isBusy, setIsBusy] = useState(false)
-  const [message, setMessage] = useState<{ isError: boolean; text: string } | null>(null)
-  const [openId, setOpenId] = useState<string | null>(null)
-  const load = useCallback(() => void window.office.peerList().then(setPeers), [])
-  useEffect(load, [load])
-  // 연결 상태(online/offline)는 직원 목록(staff.remote)으로 내려오므로, 그 모양이 바뀌면 목록도 다시 읽는다
-  const remoteKey = useOffice((s) => s.staff.map((x) => `${x.remote?.peerId}:${x.remote?.state}:${x.remote?.queued}`).join('|'))
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- remoteKey가 바뀔 때만 다시 읽는다
-  useEffect(load, [remoteKey])
-
-  const target = parseHost(host)
-  const code12 = normalizePairCode(code)
-  const handleConnect = async () => {
-    if (!target) return setMessage({ isError: true, text: t('peer.client.badHost') })
-    if (!code12) return setMessage({ isError: true, text: t('peer.error.bad_code') })
-    setIsBusy(true)
-    setMessage(null)
-    try {
-      const r = await window.office.peerPairConnect(target.host, target.port, code12)
-      setMessage({ isError: false, text: t('peer.client.done', { name: r.name, fingerprint: r.fingerprint }) })
-      setHost('')
-      setCode('')
-      load()
-    } catch (e) {
-      setMessage({ isError: true, text: errText(e) })
-    } finally {
-      setIsBusy(false)
-    }
-  }
+/** 이 PC가 붙은 PC (불러오는 PC 쪽 목록): 다시 연결·해제·직원 고르기 */
+function PeerList({ peers, openId, onToggle, onChanged }: { peers: PeerView[]; openId: string | null; onToggle: (id: string) => void; onChanged: () => void }) {
   const handleUnpair = async (p: PeerView) => {
     if (!window.confirm(t('peer.client.unpairConfirm', { name: p.name }))) return
     await window.office.peerUnpair(p.id)
-    load()
+    onChanged()
   }
-
   return (
-    <div className="flex flex-col gap-2">
-      <h3 className="text-sm font-semibold">{t('peer.client.title')}</h3>
-      <p className="text-muted-foreground text-xs">{t('peer.client.desc')}</p>
-      <div className="flex flex-wrap items-center gap-2">
-        <Input value={host} onChange={(e) => setHost(e.target.value)} placeholder={t('peer.client.host')} aria-label={t('peer.client.host')} className="w-64" />
-        {/* 붙여넣기 허용: 하이픈·공백·소문자는 normalizePairCode가 무시한다. 입력 중엔 보기 좋게 XXXX-XXXX-XXXX로 */}
-        <Input
-          value={code}
-          onChange={(e) => setCode(autoFormat(e.target.value))}
-          placeholder={t('peer.client.code')}
-          aria-label={t('peer.client.code')}
-          className="w-52 font-mono"
-          autoComplete="off"
-          spellCheck={false}
-        />
-        <Button size="sm" disabled={isBusy || !host.trim() || !code.trim()} onClick={() => void handleConnect()}>
-          {isBusy && <Loader2Icon className="animate-spin" />} {isBusy ? t('peer.client.connecting') : t('peer.client.connect')}
-        </Button>
-      </div>
-      {message && <p className={message.isError ? 'text-status-error text-xs' : 'text-status-working text-xs'}>{message.text}</p>}
+    <div className="flex flex-col gap-1">
       <h4 className="text-xs font-medium">{t('peer.client.list')}</h4>
       {peers.length === 0 ? (
         <p className="text-muted-foreground text-xs">{t('peer.client.none')}</p>
@@ -210,14 +378,14 @@ function ClientPart() {
                 <span className="font-medium">{p.name}</span>
                 <span className="text-muted-foreground">{t(`peer.state.${p.state}`)}</span>
                 <span className="text-muted-foreground">
-                  · {p.host}:{p.port} · {t('peer.client.staffCount', { n: p.staffCount })}
+                  · {t('peer.client.staffCount', { n: p.staffCount })}
                   {p.queued > 0 && ` · ${t('peer.queued', { n: p.queued })}`}
                 </span>
                 <span className="ml-auto flex gap-1">
-                  <Button size="sm" variant="outline" className="h-6 px-2 text-[11px]" disabled={p.state === 'unpaired'} onClick={() => setOpenId(openId === p.id ? null : p.id)}>
+                  <Button size="sm" variant={openId === p.id ? 'default' : 'outline'} className="h-6 px-2 text-[11px]" disabled={p.state === 'unpaired'} onClick={() => onToggle(p.id)}>
                     {t('peer.client.pickStaff')}
                   </Button>
-                  <Button size="sm" variant="ghost" className="h-6 px-2 text-[11px]" disabled={p.state === 'online' || p.state === 'connecting' || p.state === 'unpaired'} onClick={() => void window.office.peerReconnect(p.id).then(load)}>
+                  <Button size="sm" variant="ghost" className="h-6 px-2 text-[11px]" disabled={p.state === 'online' || p.state === 'connecting' || p.state === 'unpaired'} onClick={() => void window.office.peerReconnect(p.id).then(onChanged)}>
                     {t('peer.client.reconnect')}
                   </Button>
                   <Button size="sm" variant="ghost" className="border-destructive/60 h-6 px-2 text-[11px]" onClick={() => void handleUnpair(p)}>
@@ -225,7 +393,7 @@ function ClientPart() {
                   </Button>
                 </span>
               </div>
-              {openId === p.id && <RemoteStaffPicker peerId={p.id} onChanged={load} />}
+              {openId === p.id && <RemoteStaffPicker peerId={p.id} onChanged={onChanged} />}
             </li>
           ))}
         </ul>

@@ -186,3 +186,19 @@ export const isJobId = (s: unknown): s is string => typeof s === 'string' && /^[
 
 /** 일 상태 오류 중 다시 보내도 소용없는 것 (400/403/404·토큰 폐기 — 설계서 6-1) */
 export const isPermanentPeerStatus = (status: number) => status === 400 || status === 401 || status === 403 || status === 404 || status === 410 || status === 422
+
+/** 붙여 넣은 연결 정보("주소:포트 코드", 줄바꿈·공백·http:// 섞여도 됨)를 나눈다. 못 찾은 칸은 null, 포트가 범위를 벗어나면 port=null */
+export function parsePeerInvite(raw: string, defaultPort: number): { host: string | null; port: number | null; code: string | null } {
+  const tokens = raw.split(/\s+/).filter(Boolean)
+  const hostOf = (tok: string) => tok.replace(/^https?:\/\//i, '').replace(/\/+$/, '').match(/^([^\s:/]+)(?::(\d{1,5}))?$/)
+  // 주소는 점·콜론이 있거나 localhost인 토큰. 없으면(짧은 기기 이름) 나머지가 코드가 되는 첫 토큰을 주소로 본다
+  let i = tokens.findIndex((tok) => !isPairCode(tok) && /[.:]|^localhost$/i.test(tok) && hostOf(tok))
+  if (i < 0) i = tokens.findIndex((tok, k) => hostOf(tok) && !isPairCode(tok) && isPairCode(tokens.filter((_, j) => j !== k).join('')))
+  const m = i >= 0 ? hostOf(tokens[i]) : null
+  const port = m?.[2] ? Number(m[2]) : defaultPort
+  return {
+    host: m ? m[1] : null,
+    port: port >= 1 && port <= 65535 ? port : null,
+    code: normalizePairCode(tokens.filter((_, j) => j !== i).join('')),
+  }
+}
