@@ -70,6 +70,7 @@ function makeB(port: number) {
   const decided: [string, boolean][] = []
   const approvalJobs = new Map<string, string>()
   const calls: string[] = []
+  const canceled: string[] = []
   let svc: RemoteService
   const office: PeerHostOffice = {
     staffBriefs: () => [
@@ -77,7 +78,7 @@ function makeB(port: number) {
       { id: 'auto', name: '자동수정', role: '개발', avatar: 4, provider: 'claude', model: 'default', status: 'idle', isAutoEdit: true },
     ],
     startJob: (j) => (started.push(j), 'ok'),
-    cancelJob: () => {},
+    cancelJob: (j) => void canceled.push(j.id),
     decide: (id, allow) => (decided.push([id, allow]), true),
     answerQuestion: () => true,
     pendingApprovals: () => [...approvalJobs].map(([approvalId, jobId]) => ({ jobId, approvalId, staffId: 'kim', toolName: 'Bash', summary: 'deploy.sh', createdAt: Date.now() })),
@@ -104,7 +105,7 @@ function makeB(port: number) {
     peer: { host, sync: syncB, ownName: () => 'B컴', shapePeer: (slot, ev, data) => (ev === 'snapshot' ? peerSnapshotShape(data, host.watchedBy(slot)) : null), onSlotRemoved: (slot) => host.dropSlot(slot) },
   })
   void phoneToken
-  return { svc, host, store, started, decided, approvalJobs, calls, config: () => config, sync: syncB }
+  return { svc, host, store, started, decided, approvalJobs, calls, canceled, config: () => config, sync: syncB }
 }
 
 /** A컴: 진짜 통로 + 메모리 저장소 */
@@ -254,6 +255,17 @@ test('PC 두 대: 짝짓기 → 원격 직원 → delegate → 진행 → 보고
     assert.equal(B.started.length, 2) // 두 번 보내지 않았다
     assert.equal(B.store.inbox.list().length, 2)
     B.approvalJobs.delete('ap2')
+
+    // ── 이 일 멈추기: 원격 직원의 진행 중인 일을 취소하고 B컴에 취소를 보내며, 그 일의 결재 카드도 닫는다
+    B.approvalJobs.set('ap3', waiting.id)
+    B.host.onApproval({ jobId: waiting.id, approvalId: 'ap3', staffId: 'kim', toolName: 'Bash', summary: 'rm', createdAt: Date.now() })
+    await until(() => A.mgr.relay.approvalsOf(rec.id).length === 1, '멈출 일의 결재 도착')
+    assert.equal(A.mgr.stopStaff(rec.id), 1)
+    assert.equal(A.mgr.jobs().find((j) => j.id === waiting.id)?.state, 'canceled')
+    assert.equal(A.mgr.relay.approvalsOf(rec.id).length, 0)
+    await until(() => B.canceled.includes(waiting.id), 'B에 취소 전달')
+    assert.equal(A.mgr.stopStaff(rec.id), 0) // 멈출 일이 없으면 0
+    B.approvalJobs.delete('ap3')
 
     // ── 권한 범위: 피어 토큰으로는 그 밖의 어떤 기능도 못 쓴다
     assert.equal((await rawReq(port, '/v1/status', token)).status, 403)

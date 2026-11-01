@@ -460,6 +460,20 @@ export class PeerManager {
     return this.queue.cancel(jobId)
   }
 
+  /** 대표가 원격 직원의 '이 일 멈추기'를 누르면: 이 직원에게 맡긴 진행 중인 일을 모두 취소하고 결재 카드도 닫는다. 멈춘 일 수를 돌려준다 */
+  stopStaff(staffId: string) {
+    const rec = this.registry.staffOf(staffId)
+    if (!rec) return 0
+    let n = 0
+    for (const j of this.queue.list(rec.peerId)) {
+      if (j.remoteStaffId !== rec.remoteId || !this.queue.cancel(j.id)) continue
+      this.relay.dropJob(j.id)
+      n++
+    }
+    if (n) this.d.office.changed()
+    return n
+  }
+
   // 일 목록 (화면용)
   jobs(peerId?: string) {
     return this.queue.list(peerId)

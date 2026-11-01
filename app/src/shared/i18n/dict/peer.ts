@@ -61,6 +61,8 @@ export default {
   'peer.client.pickStaff': { ko: '직원 고르기', en: 'Choose employees', ja: '社員を選ぶ', zh: '选择员工' },
   'peer.picker.lab': { ko: '불러오면서 넣을 랩 (선택)', en: 'Also add to lab (optional)', ja: '同時に入れるラボ（任意）', zh: '同时加入的实验室（可选）' },
   'peer.picker.noLab': { ko: '넣지 않음', en: 'None', ja: '入れない', zh: '不加入' },
+  'peer.attachUnsupported': { ko: '다른 PC 직원에게는 아직 이미지·파일을 보낼 수 없어요. {name}에게는 글만 보냈어요.', en: 'Images and files cannot be sent to employees on another PC yet. Only the text was sent to {name}.', ja: '別のPCの社員にはまだ画像やファイルを送れません。{name}には文章だけ送りました。', zh: '暂时还不能向其他电脑的员工发送图片或文件。只向 {name} 发送了文字。' },
+  'peer.attachDropped': { ko: '(대표가 이미지·파일을 붙였지만 PC 사이로는 아직 전달되지 않아요. 그림이 필요하면 무엇이 필요한지 말해 달라고 답해 주세요.)', en: '(The owner attached images or files, but they cannot be passed between PCs yet. If you need them, say what you need in your reply.)', ja: '（代表が画像やファイルを添付しましたが、PC間ではまだ渡せません。必要なら何が必要か返答で伝えてください。）', zh: '（负责人附加了图片或文件，但目前无法在电脑之间传递。如有需要，请在回复中说明需要什么。）' },
   'peer.picker.add': { ko: '불러오기', en: 'Bring here', ja: '呼ぶ', zh: '带来' },
   'peer.picker.remove': { ko: '빼기', en: 'Remove', ja: '外す', zh: '移出' },
   'peer.picker.empty': { ko: '가져올 직원이 없어요', en: 'No employees available', ja: '取り込める社員がいません', zh: '没有可加入的员工' },

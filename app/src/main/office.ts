@@ -878,7 +878,7 @@ export class Office extends EventEmitter<{
       this.lastDoneTask.get(staffId) !== origin.taskId &&
       !(this.origins.get(staffId) ?? []).some((o) => o.kind === 'task' && o.taskId === origin.taskId)
     // 다른 PC의 직원에게는 일 큐로 보낸다 (대표가 대화창에서 직접 시킨 경우 — 리더 없이 보고만 대표에게)
-    if (this.peer?.isRemoteStaff(staffId)) return this.instructRemote(staffId, text, origin, via)
+    if (this.peer?.isRemoteStaff(staffId)) return this.instructRemote(staffId, text, origin, via, attachments)
     const s = this.hired.get(staffId)
     // 연습 직원은 AI를 부르지 않는다 (튜토리얼 진행은 대본이 맡는다)
     if (!s || s.isPractice) return
@@ -1035,6 +1035,13 @@ export class Office extends EventEmitter<{
 
   /** 하던 일을 멈춘다. 지시를 같이 주면 멈춘 뒤 그 지시를 바로 받는다 (끼어들기 — 하던 업무 카드는 그대로 이어 간다) */
   async interrupt(staffId: string, text?: string, attachments: Attachment[] = []) {
+    // 다른 PC 직원: 맡긴 일을 취소한다 (그 PC에 취소를 보낸다). 지시를 같이 주면 새 일로 보낸다
+    if (this.peer?.isRemoteStaff(staffId)) {
+      const stopped = this.peer.stopStaff(staffId)
+      if (stopped) this.log(staffId, 'status', tk(text?.trim() ? 'log.interrupted' : 'log.stopped'))
+      if (text?.trim()) this.instructRemote(staffId, text, { kind: 'user' }, '', attachments)
+      return
+    }
     const s = this.hired.get(staffId)
     if (!s) return
     if (text?.trim()) {
@@ -1343,12 +1350,15 @@ export class Office extends EventEmitter<{
   }
 
   /** 대표가 원격 직원에게 직접 지시 (대화창·단체방) */
-  private instructRemote(staffId: string, text: string, origin: Origin, via = '') {
+  private instructRemote(staffId: string, text: string, origin: Origin, via = '', attachments: Attachment[] = []) {
     const rec = this.peer!.registry.staffOf(staffId)!
     // 직원 패널의 오늘 한 일에도 지시를 남긴다 (답은 peerPort().report가 같은 곳에 남긴다)
-    this.log(staffId, 'instruction', via ? `${via} ${text}` : text)
+    this.log(staffId, 'instruction', via ? `${via} ${text}` : text, attachments)
+    // 첨부는 아직 다른 PC로 보내지 못한다 — 대표에게 알리고, 직원이 없는 그림을 찾지 않게 지시에도 적어 보낸다
+    if (attachments.length) this.log(staffId, 'error', t('peer.attachUnsupported', { name: rec.name }))
+    const sent = attachments.length ? `${text}\n\n${t('peer.attachDropped')}` : text
     try {
-      this.peer!.delegate(staffId, text, { leadId: null, ...(origin.room ? { room: origin.room } : {}), ...(origin.isAutonomous ? { isAutonomous: true } : {}) })
+      this.peer!.delegate(staffId, sent, { leadId: null, ...(origin.room ? { room: origin.room } : {}), ...(origin.isAutonomous ? { isAutonomous: true } : {}) })
     } catch (e) {
       const msg = this.peerErrorText(e, rec.name)
       this.log(staffId, 'error', msg)
