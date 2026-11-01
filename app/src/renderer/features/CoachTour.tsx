@@ -1,9 +1,10 @@
-import { useEffect, useLayoutEffect, useMemo, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { useOffice, useWorkMode, type View } from '@/store'
 import { MOD_KEY, osText } from '@/lib/platform'
 import { cn } from '@/lib/utils'
 import { navTourTarget } from './nav'
+import { isVisibleBox, placeTip, TIP_MARGIN } from './coachTip'
 import { t } from '@shared/i18n'
 import type { TKey } from '@shared/i18n'
 
@@ -51,14 +52,15 @@ const STEPS: TourStep[] = [
 /** 업무 모드에서 숨긴 화면을 설명하는 단계 */
 const GAME_TARGETS = new Set(['nav-map', 'hud', 'nav-shop'])
 const PAD = 6
-const TIP_W = 340
-const TIP_GAP = 14
+/** 높이를 재기 전 첫 자리 계산에 쓰는 설명 상자 높이 */
+const TIP_H_GUESS = 220
 
-/** 'a|b'처럼 이은 후보 중 화면에 있는 첫 data-tour 대상 */
+/** 'a|b'처럼 이은 후보 중 화면에 보이는 첫 data-tour 대상 (가로 폰에서 숨은 PC 상단 바 같은 크기 0 요소는 건너뛴다) */
 function findTourTarget(target: string): Element | null {
   for (const one of target.split('|')) {
-    const el = document.querySelector(`[data-tour="${one}"]`)
-    if (el) return el
+    for (const el of document.querySelectorAll(`[data-tour="${one}"]`)) {
+      if (isVisibleBox(el.getBoundingClientRect())) return el
+    }
   }
   return null
 }
@@ -95,10 +97,43 @@ export function CoachTour({ isOpen, onClose }: { isOpen: boolean; onClose: (isFi
   const [index, setIndex] = useState(0)
   const step = steps[Math.min(index, steps.length - 1)]
   const rect = useTourTarget(isOpen ? step.target : null)
+  // 설명 상자 실제 높이 (글이 길거나 폭이 좁으면 커진다) — 화면 밖으로 나가지 않게 자리를 잡을 때 쓴다
+  const tipRef = useRef<HTMLDivElement>(null)
+  const [tipH, setTipH] = useState(TIP_H_GUESS)
+  const [view, setViewSize] = useState(() => ({ w: window.innerWidth, h: window.innerHeight }))
 
   useEffect(() => {
     if (isOpen) setIndex(0)
   }, [isOpen])
+
+  useLayoutEffect(() => {
+    const el = tipRef.current
+    if (!isOpen || !el) return
+    const measure = () => {
+      setTipH(el.offsetHeight)
+      setViewSize({ w: window.innerWidth, h: window.innerHeight })
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(el)
+    window.addEventListener('resize', measure)
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', measure)
+    }
+  }, [isOpen])
+
+  // Esc: 그만 보기 (화면 전체를 덮으므로 키보드로도 빠져나갈 수 있게)
+  useEffect(() => {
+    if (!isOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      e.preventDefault()
+      onClose(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [isOpen, onClose])
 
   useEffect(() => {
     if (isOpen && step.view) setView(step.view)
@@ -122,14 +157,8 @@ export function CoachTour({ isOpen, onClose }: { isOpen: boolean; onClose: (isFi
   }
   const chapters = CHAPTERS.filter((c) => steps.some((s) => s.chapter === c.id))
 
-  // 설명 상자는 대상 오른쪽(공간이 없으면 왼쪽·아래)에 둔다
-  const tip = (() => {
-    if (!rect) return { left: window.innerWidth / 2 - TIP_W / 2, top: window.innerHeight / 2 - 80 }
-    const right = rect.right + TIP_GAP
-    if (right + TIP_W < window.innerWidth) return { left: right, top: Math.min(rect.top, window.innerHeight - 260) }
-    if (rect.left - TIP_GAP - TIP_W > 0) return { left: rect.left - TIP_GAP - TIP_W, top: Math.min(rect.top, window.innerHeight - 260) }
-    return { left: Math.max(12, rect.right - TIP_W), top: rect.bottom + TIP_GAP }
-  })()
+  // 설명 상자는 대상 오른쪽(공간이 없으면 왼쪽·아래·위)에 두고, 언제나 화면 안에 들어오게 한다 (폰은 아래 탭 위로)
+  const tip = placeTip(rect, tipH, view.w, view.h)
 
   return (
     <div className="fixed inset-0 z-[90]">
@@ -141,7 +170,13 @@ export function CoachTour({ isOpen, onClose }: { isOpen: boolean; onClose: (isFi
       ) : (
         <div className="fixed inset-0 bg-overlay" />
       )}
-      <div className="bg-background fixed flex flex-col gap-3 rounded-xl border p-4 shadow-2xl transition-all duration-300" style={{ ...tip, width: TIP_W }}>
+      <div
+        ref={tipRef}
+        role="dialog"
+        aria-modal
+        className="bg-background fixed flex flex-col gap-3 overflow-y-auto rounded-xl border p-4 shadow-2xl transition-all duration-300"
+        style={{ ...tip, maxHeight: view.h - TIP_MARGIN * 2 }}
+      >
         {/* 장 표시: 지난 장·지금 장·남은 장을 막대로 */}
         <div className="flex flex-col gap-1.5">
           <div className="flex gap-1">
