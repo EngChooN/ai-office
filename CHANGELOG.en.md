@@ -9,14 +9,7 @@ Writing rules
 
 ## [미정] (설치본 미빌드)
 
-### New features
-- Work together with staff on another PC. In Settings > Connect > Other PC, pair two PCs with a 12-character code, then bring the other PC's staff into your lab and assign them work. Progress, replies, and approvals come back to your app, and if the connection is down the work waits as 'Waiting to connect' and is sent once it reconnects.
-- When staff on another PC change your project files, an approval card shows the changed files and line-by-line differences, and only what you approve is applied.
-- Phones (Android) now connect more securely with an address and a 12-character code.
-
 ### Improvements
-- Attachments sent to staff on another PC are tidied up: up to 20MB per file and 5 per task, and unused attachments are deleted automatically after 2 days.
-- Work assigned to staff on another PC can also be canceled with 'Stop this task'.
 - Dragging the desktop secretary no longer closes its open small window — the window now follows along.
 - Redrew the desktop secretary's expressions (surprised, thinking, happy, worried, focused, sleepy). The eyes now match the pixel style of the default look, and the mouths are clearer.
 - The Connect another PC screen now explains that the feature is for connecting your own computers, and not to connect to a PC signed in with someone else's account.
@@ -25,10 +18,27 @@ Writing rules
 - If you don't have an AI account yet, the account step of the setup check now offers 'Connect later and look around'. Settings › Guides now has separate 'Replay the menu tour' and 'Try the practice tutorial' buttons, and the step counts and times in the guide text match reality. The optional Claude Code for terminal item is shown in a calm color instead of a warning color.
 
 ### Bug fixes
-- Fixed the Tailscale menu bar app flickering on and off. AI Office now checks Tailscale status without making the Tailscale window appear.
 - Fixed the Demo Day spotlight darkening only half of the screen. Now the whole hall dims and only the presenting staff member stays lit.
 - Fixed the new-version notice hiding behind the welcome screen on first launch and popping up as soon as it closed. It now waits until the welcome, setup check, tour, and practice are all finished, and until then only the update mark in the sidebar shows it.
 - Fixed the menu tour's explanation box going off the bottom of narrow screens such as phones, hiding the Next and Skip tour buttons. The box now always stays on screen, you can also leave the tour with the Esc key, and buttons that aren't visible are no longer highlighted.
+
+## [0.19.0] - 2026-11-01
+
+### New features
+- Work together with staff on another PC. In Settings > Connections > Other PCs, pair two PCs with a 12-character connection code, then bring in staff from the other PC and assign them work in your lab. Progress, replies and approvals come back to your app, and if the connection is down the work waits as 'Waiting for connection' and is sent when it reconnects.
+- When staff on another PC change your project files, you see the changed files and a line-by-line comparison as an approval card, and only what you approve is applied.
+- Phones (Android) now connect more securely with an address and a 12-character code.
+
+### Improvements
+- Attachments sent to staff on another PC are tidied up: up to 20MB per file and 5 files per task, and unused attachments are deleted automatically after 2 days.
+- Work given to staff on another PC can be cancelled with 'Stop this task'. Work waiting for a connection can be cancelled too.
+- Instructions and replies exchanged with staff on another PC are also kept in that staff member's panel.
+- Secrets are hidden in more cases in logs.
+
+### Bug fixes
+- Fixed the Tailscale menu bar app turning on and off. AI Office no longer brings up the Tailscale window when checking its status.
+- Fixed update notes being cut off with '…' after a few lines. You can now scroll to the end.
+- Fixed connection codes showing oddly like '5YXC--BB7' (including phone connection codes).
 
 ## [0.18.1] - 2026-10-31
 
