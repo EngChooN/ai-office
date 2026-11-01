@@ -1,6 +1,6 @@
 import { SparklesIcon, BookOpenIcon, LibraryIcon, GalleryHorizontalEndIcon, BanknoteIcon, StoreIcon, CalendarClockIcon, ClipboardCheckIcon, FileTextIcon, KanbanIcon, LayoutGridIcon, MapIcon, MessagesSquareIcon, NetworkIcon, PresentationIcon, SettingsIcon, UsersIcon } from 'lucide-react'
 import { useOffice, useWorkMode, type View } from '@/store'
-import { GAME_VIEWS, NAV_GROUP_DEFS, groupEntryView, rememberTab, tourTarget, type NavGroupDef, type NavGroupId } from './navGroups'
+import { GAME_VIEWS, NAV_GROUP_DEFS, groupEntryView, groupOfView, rememberTab, tourTarget, type NavGroupDef, type NavGroupId } from './navGroups'
 import { pendingMeetingDecisions } from '@shared/meetingDecisions'
 import { t, type TKey } from '@shared/i18n'
 
@@ -76,6 +76,14 @@ export function useOpenGroup() {
 
 /** 투어·튜토리얼이 가리킬 data-tour (탭이 보이면 탭, 아니면 묶음) */
 export const navTourTarget = (view: View) => tourTarget(NAV_GROUP_DEFS, view)
+
+/** 화면의 실제 메뉴 이름 — 탭이 여럿인 묶음은 '묶음 › 탭' (예: 기록 › 비용), 하나면 묶음 이름 */
+export function menuTitle(view: View): string {
+  const g = groupOfView(NAV_GROUP_DEFS, view)
+  const tab = g?.tabs.find((x) => x.view === view)
+  if (!g || !tab) return ''
+  return g.tabs.length > 1 ? `${t(g.labelKey)} › ${t(tab.labelKey)}` : t(g.labelKey)
+}
 
 /** 메뉴 옆 숫자 (결재함·회의실·업무 보드·상점) */
 export function useNavBadges(): Partial<Record<View, number>> {

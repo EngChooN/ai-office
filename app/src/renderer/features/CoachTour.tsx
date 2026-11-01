@@ -3,7 +3,8 @@ import { Button } from '@/components/ui/button'
 import { useOffice, useWorkMode, type View } from '@/store'
 import { MOD_KEY, osText } from '@/lib/platform'
 import { cn } from '@/lib/utils'
-import { navTourTarget } from './nav'
+import { menuTitle, navTourTarget } from './nav'
+import { IS_MOBILE_SHELL } from '@/shell'
 import { isVisibleBox, placeTip, TIP_MARGIN } from './coachTip'
 import { t } from '@shared/i18n'
 import type { TKey } from '@shared/i18n'
@@ -11,15 +12,22 @@ import type { TKey } from '@shared/i18n'
 type Chapter = 'office' | 'work' | 'review' | 'company'
 
 interface TourStep {
+  /** 가리킬 data-tour (빈 값이면 설명 상자만 가운데) */
   target: string
   icon: string
-  /** 제목·설명 번역 키 (렌더할 때 t()로 읽는다) */
-  title: TKey
+  /** 메뉴 화면을 설명하는 단계: 제목은 실제 메뉴 이름(묶음 › 탭) */
+  menu?: View
+  /** 메뉴가 아닌 단계의 제목 번역 키 (렌더할 때 t()로 읽는다) */
+  title?: TKey
   body: TKey
   /** 이 단계를 보여 주기 전에 열어 둘 화면 */
   view?: View
   /** 묶이는 장 (사무실 / 일 시키기 / 결재·결과 / 회사 운영) */
   chapter: Chapter
+  /** 앱 창 밖(바탕화면)을 설명하는 단계 — 휴대폰 앱에서는 뺀다 */
+  isDesktopOnly?: boolean
+  /** 마지막 단계에 '직원 고용하기' 버튼을 붙인다 */
+  hasHireButton?: boolean
 }
 
 const CHAPTERS: { id: Chapter; label: TKey }[] = [
@@ -29,25 +37,36 @@ const CHAPTERS: { id: Chapter; label: TKey }[] = [
   { id: 'company', label: 'coachTour.chapter.company' },
 ]
 
-// 묶음 안 화면은 그 화면을 열어 위쪽 탭을 가리킨다 (navTourTarget: 탭이 없으면 사이드바 묶음으로)
+/** 메뉴 화면 단계: 그 화면을 열어 위쪽 탭을 가리킨다 (navTourTarget: 탭이 없으면 사이드바 묶음으로). isOpening=false면 화면은 그대로 두고 메뉴만 가리킨다 */
+const menuStep = (chapter: Chapter, menu: View, icon: string, body: TKey, isOpening = true): TourStep => ({
+  chapter,
+  menu,
+  target: navTourTarget(menu),
+  view: isOpening ? menu : undefined,
+  icon,
+  body,
+})
+
 const STEPS: TourStep[] = [
-  { chapter: 'office', target: 'nav-map', view: 'map', icon: '🏢', title: 'coachTour.map.title', body: 'coachTour.map.body' },
+  menuStep('office', 'map', '🏢', 'coachTour.map.body'),
   { chapter: 'office', target: 'hud', view: 'map', icon: '📈', title: 'coachTour.hud.title', body: 'coachTour.hud.body' },
+  menuStep('office', 'secretary', '✨', 'coachTour.secretary.body'),
+  { chapter: 'office', target: '', icon: '🧑‍💻', title: 'coachTour.deskPet.title', body: 'coachTour.deskPet.body', isDesktopOnly: true },
   { chapter: 'office', target: 'hire', icon: '🧑‍💼', title: 'coachTour.hire.title', body: 'coachTour.hire.body' },
-  { chapter: 'office', target: navTourTarget('dashboard'), view: 'dashboard', icon: '🗂️', title: 'coachTour.dashboard.title', body: 'coachTour.dashboard.body' },
-  { chapter: 'office', target: navTourTarget('org'), view: 'org', icon: '🧭', title: 'coachTour.org.title', body: 'coachTour.org.body' },
-  { chapter: 'work', target: navTourTarget('board'), view: 'board', icon: '📋', title: 'coachTour.board.title', body: 'coachTour.board.body' },
-  { chapter: 'work', target: navTourTarget('chat'), view: 'chat', icon: '💬', title: 'coachTour.chat.title', body: 'coachTour.chat.body' },
-  { chapter: 'work', target: navTourTarget('meeting'), view: 'meeting', icon: '🗣️', title: 'coachTour.meeting.title', body: 'coachTour.meeting.body' },
-  { chapter: 'work', target: navTourTarget('manuals'), view: 'manuals', icon: '📘', title: 'coachTour.manuals.title', body: 'coachTour.manuals.body' },
-  { chapter: 'work', target: navTourTarget('schedule'), view: 'schedule', icon: '⏰', title: 'coachTour.schedule.title', body: 'coachTour.schedule.body' },
-  { chapter: 'review', target: navTourTarget('inbox'), icon: '✅', title: 'coachTour.inbox.title', body: 'coachTour.inbox.body' },
-  { chapter: 'review', target: navTourTarget('report'), view: 'report', icon: '📑', title: 'coachTour.report.title', body: 'coachTour.report.body' },
-  { chapter: 'review', target: navTourTarget('payroll'), view: 'payroll', icon: '💳', title: 'coachTour.payroll.title', body: 'coachTour.payroll.body' },
-  { chapter: 'company', target: navTourTarget('shop'), icon: '🛍️', title: 'coachTour.shop.title', body: 'coachTour.shop.body' },
-  { chapter: 'company', target: navTourTarget('settings'), view: 'settings', icon: '⚙️', title: 'coachTour.settings.title', body: 'coachTour.settings.body' },
-  { chapter: 'company', target: navTourTarget('updates'), view: 'updates', icon: '📣', title: 'coachTour.updates.title', body: 'coachTour.updates.body' },
-  { chapter: 'company', target: 'hire', icon: '🚀', title: 'coachTour.firstHire.title', body: 'coachTour.firstHire.body' },
+  menuStep('office', 'dashboard', '🗂️', 'coachTour.dashboard.body'),
+  menuStep('office', 'org', '🧭', 'coachTour.org.body'),
+  menuStep('work', 'board', '📋', 'coachTour.board.body'),
+  menuStep('work', 'chat', '💬', 'coachTour.chat.body'),
+  menuStep('work', 'meeting', '🗣️', 'coachTour.meeting.body'),
+  menuStep('work', 'manuals', '📘', 'coachTour.manuals.body'),
+  menuStep('work', 'schedule', '⏰', 'coachTour.schedule.body'),
+  menuStep('review', 'inbox', '✅', 'coachTour.inbox.body', false),
+  menuStep('review', 'report', '📑', 'coachTour.report.body'),
+  menuStep('review', 'payroll', '💳', 'coachTour.payroll.body'),
+  menuStep('company', 'shop', '🛍️', 'coachTour.shop.body', false),
+  menuStep('company', 'settings', '⚙️', 'coachTour.settings.body'),
+  menuStep('company', 'updates', '📣', 'coachTour.updates.body'),
+  { chapter: 'company', target: 'hire', icon: '🚀', title: 'coachTour.firstHire.title', body: 'coachTour.firstHire.body', hasHireButton: true },
 ]
 /** 업무 모드에서 숨긴 화면을 설명하는 단계 */
 const GAME_TARGETS = new Set(['nav-map', 'hud', 'nav-shop'])
@@ -87,13 +106,14 @@ export function useTourTarget(target: string | null) {
 }
 
 /**
- * 메뉴별 코치마크: 대상만 밝게 비추고 옆에 설명을 띄운다. 17단계를 4개 장으로 묶어 장마다 건너뛸 수 있다.
+ * 메뉴별 코치마크: 대상만 밝게 비추고 옆에 설명을 띄운다. 메뉴·비서·바탕화면 비서를 4개 장으로 묶어 장마다 건너뛸 수 있다.
  * onClose(isFinished) — 끝까지 봤거나 마지막 장을 건너뛰면 true (다음에 시나리오 선택을 띄운다), 그만 보기면 false
  */
 export function CoachTour({ isOpen, onClose }: { isOpen: boolean; onClose: (isFinished: boolean) => void }) {
   const setView = useOffice((s) => s.setView)
   const isWorkMode = useWorkMode()
-  const steps = useMemo(() => (isWorkMode ? STEPS.filter((s) => !GAME_TARGETS.has(s.target)) : STEPS), [isWorkMode])
+  const setHireOpen = useOffice((s) => s.setHireOpen)
+  const steps = useMemo(() => STEPS.filter((s) => !(isWorkMode && GAME_TARGETS.has(s.target)) && !(IS_MOBILE_SHELL && s.isDesktopOnly)), [isWorkMode])
   const [index, setIndex] = useState(0)
   const step = steps[Math.min(index, steps.length - 1)]
   const rect = useTourTarget(isOpen ? step.target : null)
@@ -146,6 +166,12 @@ export function CoachTour({ isOpen, onClose }: { isOpen: boolean; onClose: (isFi
     setView('map')
   }
   const next = () => (isLast ? finish() : setIndex(index + 1))
+  // 고용 창으로 바로: 연습 고르기는 띄우지 않는다 (설정 › 안내에서 언제든 할 수 있다)
+  const hire = () => {
+    onClose(false)
+    setView('map')
+    setHireOpen(true)
+  }
   // 지금 장의 단계들 (업무 모드에서 빠진 단계는 세지 않는다)
   const chapterNo = CHAPTERS.findIndex((c) => c.id === step.chapter)
   const inChapter = steps.filter((s) => s.chapter === step.chapter)
@@ -193,7 +219,7 @@ export function CoachTour({ isOpen, onClose }: { isOpen: boolean; onClose: (isFi
           </div>
         </div>
         <div className="font-semibold">
-          {step.icon} {t(step.title)}
+          {step.icon} {step.menu ? menuTitle(step.menu) : step.title && t(step.title)}
         </div>
         <p className="text-muted-foreground text-sm">{t(step.body, { modKey: MOD_KEY, trayPlace: osText(t('coachTour.trayPlace.mac'), t('coachTour.trayPlace.win')) })}</p>
         <div className="flex items-center gap-1">
@@ -209,7 +235,12 @@ export function CoachTour({ isOpen, onClose }: { isOpen: boolean; onClose: (isFi
                 {t('coachTour.prev')}
               </Button>
             )}
-            <Button size="sm" onClick={next}>
+            {step.hasHireButton && (
+              <Button size="sm" onClick={hire}>
+                {t('coachTour.hireStaff')}
+              </Button>
+            )}
+            <Button size="sm" variant={step.hasHireButton ? 'outline' : 'default'} onClick={next}>
               {isLast ? t('coachTour.finish') : t('coachTour.next')}
             </Button>
           </div>
