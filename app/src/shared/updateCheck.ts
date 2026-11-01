@@ -162,8 +162,9 @@ export function pickDownloadUrl(assets: unknown, target: AssetTarget | null): st
   return pickAsset(assets, target)?.url ?? null
 }
 
-const NOTES_MAX_LINES = 8
-const NOTES_MAX_CHARS = 600
+// 안내 상자는 스크롤되므로 다 보여 준다. 아래 값은 잘못 올린 거대한 본문만 막는 안전 한도
+const NOTES_MAX_LINES = 80
+const NOTES_MAX_CHARS = 8000
 
 /** Release 본문의 언어 섹션 머리말 ('## 한국어' 등 — docs/release-notes 형식). 휴대폰 UpdateCheck.kt와 같은 규칙 */
 const LANG_HEADERS: [Lang, string][] = [

@@ -44,3 +44,9 @@ test('오류 문구에서 IPC 포장과 오류 이름만 지운다', () => {
   assert.equal(ipcErrorText(new Error('그냥 문구: Error: 아님')), '그냥 문구: Error: 아님')
   assert.equal(ipcErrorText('문자열', '기본'), '기본')
 })
+
+test('formatPairCode는 이미 하이픈이 있어도 한 번만 꾸민다', async () => {
+  const { formatPairCode } = await import('../src/shared/peerProtocol.ts')
+  assert.equal(formatPairCode('5YXCBB7T6GQZ'), '5YXC-BB7T-6GQZ')
+  assert.equal(formatPairCode('5YXC-BB7T-6GQZ'), '5YXC-BB7T-6GQZ')
+})

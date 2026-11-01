@@ -158,3 +158,10 @@ test('pickAsset: 크기와 sha256(digest)를 읽고, 형식이 다르면 sha256�
   assert.deepEqual(pickAsset(asset({}), 'mac'), { url, size: null, sha256: null })
   assert.equal(pickAsset(asset({ size: 1 }), null), null)
 })
+
+test('summarizeNotes: 기본값으로는 보통 길이의 배포 안내(10줄 넘음)를 자르지 않는다', () => {
+  const body = ['## 개선', ...Array.from({ length: 8 }, (_, i) => `- 개선 항목 ${i} ${'설명'.repeat(30)}`), '', '## 버그 수정', '- 마지막 항목'].join('\n')
+  const s = summarizeNotes(body, 'ko')
+  assert.ok(s.endsWith('• 마지막 항목'))
+  assert.ok(!s.includes('…'))
+})

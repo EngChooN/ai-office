@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { CheckCircle2Icon, CircleIcon, Loader2Icon } from 'lucide-react'
+import { AlertTriangleIcon, CheckCircle2Icon, CircleIcon, Loader2Icon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { NativeSelect } from '@/components/ui/select'
@@ -8,6 +8,7 @@ import { useOffice } from '@/store'
 import { IS_MOBILE_SHELL } from '@/shell'
 import { fmtDate, t } from '@shared/i18n'
 import { ipcErrorText } from '@shared/ipcError'
+import type { RemoteStatus } from '@shared/types'
 import { formatPairCode, normalizePairCode, parsePeerInvite, type PairWindowView, type PeerSlotView, type PeerView, type RemoteStaffChoice } from '@shared/peerProtocol'
 
 // 설정 › 다른 PC 연결: 준비 확인(원격 켜짐·네트워크) → 역할 고르기 → 보내는 PC(연결 정보 만들기·복사) / 불러오는 PC(붙여넣기 한 번으로 연결 → 직원 고르기 자동 열림)
@@ -32,7 +33,7 @@ export function PeerSection() {
 }
 
 function PeerBody() {
-  const isRemoteOn = useRemoteOn()
+  const remote = useRemoteStatus()
   const [role, setRole] = useState<Role | null>(null)
   const [slots, setSlots] = useState<PeerSlotView[]>([])
   const [peers, setPeers] = useState<PeerView[]>([])
@@ -45,12 +46,13 @@ function PeerBody() {
   const remoteKey = useOffice((s) => s.staff.map((x) => `${x.remote?.peerId}:${x.remote?.state}:${x.remote?.queued}`).join('|'))
   // eslint-disable-next-line react-hooks/exhaustive-deps -- remoteKey가 바뀔 때만 다시 읽는다
   useEffect(loadPeers, [remoteKey])
-  // 원격을 끄면 고른 역할도 처음으로
+  // 원격이 꺼지거나 닫히면 고른 역할도 처음으로
+  const isReady = !!remote?.isEnabled && remote.isListening
   useEffect(() => {
-    if (isRemoteOn === false) setRole(null)
-  }, [isRemoteOn])
+    if (remote && !isReady) setRole(null)
+  }, [remote, isReady])
 
-  if (isRemoteOn === null) return null
+  if (!remote) return null
   const handleConnected = (peerId: string) => {
     loadPeers()
     setOpenId(peerId)
@@ -58,15 +60,15 @@ function PeerBody() {
 
   return (
     <div className="flex flex-col gap-4">
-      <Readiness isRemoteOn={isRemoteOn} />
+      <Readiness remote={remote} />
       {role === null ? (
-        <RolePicker isDisabled={!isRemoteOn} onPick={setRole} />
+        <RolePicker isDisabled={!isReady} hint={remote.isEnabled ? '' : t('peer.ready.needOn')} onPick={setRole} />
       ) : (
         <div className="flex flex-col gap-2 rounded-lg border p-3">
           <button type="button" className="text-muted-foreground hover:text-foreground w-fit text-xs" onClick={() => setRole(null)}>
             {t('peer.role.back')}
           </button>
-          {role === 'host' ? <HostPart slotCount={slots.length} onSlotsChanged={loadSlots} /> : <ClientPart onConnected={handleConnected} />}
+          {role === 'host' ? <HostPart slots={slots} onSlotsChanged={loadSlots} /> : <ClientPart onConnected={handleConnected} />}
         </div>
       )}
       <SlotList slots={slots} onChanged={loadSlots} />
@@ -75,33 +77,50 @@ function PeerBody() {
   )
 }
 
-/** 원격 기능이 켜져 있는지 (읽기 전엔 null) */
-function useRemoteOn() {
-  const [isOn, setIsOn] = useState<boolean | null>(null)
+/** 원격 상태 (읽기 전엔 null) */
+function useRemoteStatus() {
+  const [status, setStatus] = useState<RemoteStatus | null>(null)
   useEffect(() => {
-    void window.office.remoteStatus().then((s) => setIsOn(s.isEnabled))
-    return window.office.onRemoteStatus((s) => setIsOn(s.isEnabled))
+    void window.office.remoteStatus().then(setStatus)
+    return window.office.onRemoteStatus(setStatus)
   }, [])
-  return isOn
+  return status
 }
 
-/** 준비 확인: ① 원격 기능 ② 두 PC의 네트워크(자동 판별은 안 하고 안내만) */
-function Readiness({ isRemoteOn }: { isRemoteOn: boolean }) {
-  const openRemoteGuide = () => {
+/** 켰는데 열리지 못한 이유 (휴대폰 연결 섹션과 같은 문구) */
+function notOpenText(r: RemoteStatus) {
+  if (r.error === 'port_in_use') return t('remote.error.portInUse', { port: r.port })
+  if (r.error === 'start_failed') return t('remote.error.startFailed')
+  if (r.error === 'no_network') return r.mode === 'tailscale' ? t('remote.ts.error.waiting') : t('remote.error.noNetwork')
+  return t('peer.ready.notOpenDesc')
+}
+
+/** 준비 확인: ① 원격 기능(꺼짐·켰는데 안 열림·켜짐) ② 두 PC의 네트워크(자동 판별은 안 하고 안내만) */
+function Readiness({ remote }: { remote: RemoteStatus }) {
+  const goRemote = (isGuide: boolean) => {
     document.getElementById('settings-remote')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    window.dispatchEvent(new Event(OPEN_REMOTE_GUIDE_EVENT))
+    if (isGuide) window.dispatchEvent(new Event(OPEN_REMOTE_GUIDE_EVENT))
   }
+  const state = !remote.isEnabled ? 'off' : remote.isListening ? 'on' : 'notOpen'
   return (
     <ul className="flex flex-col gap-2 text-xs">
       <li className="flex items-start gap-2">
-        {isRemoteOn ? <CheckCircle2Icon className="text-status-working mt-0.5 size-4 shrink-0" /> : <CircleIcon className="text-muted-foreground mt-0.5 size-4 shrink-0" />}
+        {state === 'on' ? (
+          <CheckCircle2Icon className="text-status-working mt-0.5 size-4 shrink-0" />
+        ) : state === 'notOpen' ? (
+          <AlertTriangleIcon className="text-status-error mt-0.5 size-4 shrink-0" />
+        ) : (
+          <CircleIcon className="text-muted-foreground mt-0.5 size-4 shrink-0" />
+        )}
         <div className="min-w-0 flex-1">
-          <p className="font-medium">{isRemoteOn ? t('peer.ready.remoteOn') : t('peer.ready.remoteOff')}</p>
-          <p className="text-muted-foreground">{isRemoteOn ? t('peer.ready.remoteOnDesc') : t('peer.ready.remoteOffDesc')}</p>
+          <p className="font-medium">{state === 'on' ? t('peer.ready.remoteOn') : state === 'notOpen' ? t('peer.ready.notOpen') : t('peer.ready.remoteOff')}</p>
+          <p className={state === 'notOpen' ? 'text-status-error' : 'text-muted-foreground'}>
+            {state === 'on' ? t('peer.ready.remoteOnDesc') : state === 'notOpen' ? notOpenText(remote) : t('peer.ready.remoteOffDesc')}
+          </p>
         </div>
-        {!isRemoteOn && (
-          <Button size="sm" className="shrink-0" onClick={openRemoteGuide}>
-            {t('peer.ready.turnOn')}
+        {state !== 'on' && (
+          <Button size="sm" className="shrink-0" onClick={() => goRemote(state === 'off')}>
+            {state === 'off' ? t('peer.ready.turnOn') : t('peer.ready.check')}
           </Button>
         )}
       </li>
@@ -124,7 +143,7 @@ function Readiness({ isRemoteOn }: { isRemoteOn: boolean }) {
 }
 
 /** 역할 카드 2장: 각자 1·2·3단계와 시작 버튼 */
-function RolePicker({ isDisabled, onPick }: { isDisabled: boolean; onPick: (role: Role) => void }) {
+function RolePicker({ isDisabled, hint, onPick }: { isDisabled: boolean; hint: string; onPick: (role: Role) => void }) {
   const cards: { role: Role; tag: string; title: string; steps: string[]; go: string }[] = [
     { role: 'host', tag: t('peer.role.hostTag'), title: t('peer.role.host'), steps: [t('peer.role.hostStep1'), t('peer.role.hostStep2'), t('peer.role.hostStep3')], go: t('peer.role.hostGo') },
     { role: 'client', tag: t('peer.role.clientTag'), title: t('peer.role.client'), steps: [t('peer.role.clientStep1'), t('peer.role.clientStep2'), t('peer.role.clientStep3')], go: t('peer.role.clientGo') },
@@ -132,7 +151,7 @@ function RolePicker({ isDisabled, onPick }: { isDisabled: boolean; onPick: (role
   return (
     <div className="flex flex-col gap-2">
       <h3 className="text-sm font-semibold">{t('peer.role.title')}</h3>
-      {isDisabled && <p className="text-muted-foreground text-xs">{t('peer.ready.needOn')}</p>}
+      {isDisabled && hint && <p className="text-muted-foreground text-xs">{hint}</p>}
       <div className="grid gap-2 sm:grid-cols-2">
         {cards.map((c) => (
           <div key={c.role} className={cn('flex flex-col gap-2 rounded-lg border p-3 text-xs', isDisabled && 'opacity-50')}>
@@ -154,19 +173,20 @@ function RolePicker({ isDisabled, onPick }: { isDisabled: boolean; onPick: (role
 }
 
 /** 보내는 PC: 들어오면 바로 연결 정보를 만들고, 코드·남은 시간·복사 버튼을 보여 준다. 연결이 생기면 알린다 */
-function HostPart({ slotCount, onSlotsChanged }: { slotCount: number; onSlotsChanged: () => void }) {
+function HostPart({ slots, onSlotsChanged }: { slots: PeerSlotView[]; onSlotsChanged: () => void }) {
   const [win, setWin] = useState<PairWindowView | null>(null)
   const [isExpired, setIsExpired] = useState(false)
   const [error, setError] = useState('')
   const [isCopied, setIsCopied] = useState(false)
   const [now, setNow] = useState(Date.now())
-  const [baseCount, setBaseCount] = useState<number | null>(null)
+  const [knownIds, setKnownIds] = useState<Set<string> | null>(null)
   const [newName, setNewName] = useState('')
 
   const open = useCallback(async () => {
     setError('')
     setIsExpired(false)
     setNewName('')
+    setKnownIds(null)
     try {
       setWin(await window.office.peerPairStart('peer'))
       setNow(Date.now())
@@ -196,15 +216,15 @@ function HostPart({ slotCount, onSlotsChanged }: { slotCount: number; onSlotsCha
       clearInterval(poll)
     }
   }, [win, onSlotsChanged])
-  // 창을 연 뒤 연결된 PC가 늘면 "연결됐어요"
+  // 창을 열 때 있던 PC 말고 새 PC가 붙으면 "연결됐어요" — 코드는 한 번 쓰면 끝이므로 코드 표시도 거둔다
   useEffect(() => {
-    if (!win) return setBaseCount(null)
-    if (baseCount === null) return setBaseCount(slotCount)
-    if (slotCount > baseCount) {
-      void window.office.peerSlots().then((list) => setNewName(list[list.length - 1]?.label ?? ''))
-      setBaseCount(slotCount)
-    }
-  }, [win, slotCount, baseCount])
+    if (!win) return
+    if (!knownIds) return setKnownIds(new Set(slots.map((x) => x.id)))
+    const added = slots.find((x) => !knownIds.has(x.id))
+    if (!added) return
+    setNewName(added.label)
+    setWin(null)
+  }, [win, slots, knownIds])
 
   const copy = async () => {
     if (!win) return
@@ -242,11 +262,11 @@ function HostPart({ slotCount, onSlotsChanged }: { slotCount: number; onSlotsCha
           </div>
         </div>
       )}
-      {isExpired && !win && (
+      {!win && (isExpired || error || newName) && (
         <div className="flex items-center gap-2">
-          <p className="text-muted-foreground">{t('peer.host.expired')}</p>
+          {isExpired && <p className="text-muted-foreground">{t('peer.host.expired')}</p>}
           <Button size="sm" variant="outline" onClick={() => void open()}>
-            {t('peer.host.renew')}
+            {newName ? t('peer.host.another') : error ? t('peer.host.retry') : t('peer.host.renew')}
           </Button>
         </div>
       )}
@@ -295,6 +315,11 @@ function ClientPart({ onConnected }: { onConnected: (peerId: string) => void }) 
         <Input
           value={pasted}
           onChange={(e) => setPasted(e.target.value)}
+          // 한 줄 칸은 붙여 넣은 줄바꿈을 지워 주소와 코드가 붙어 버리므로, 줄바꿈을 띄어쓰기로 바꿔 넣는다
+          onPaste={(e) => {
+            e.preventDefault()
+            setPasted(e.clipboardData.getData('text').replace(/\s+/g, ' ').trim())
+          }}
           onKeyDown={(e) => e.key === 'Enter' && hasInput && !isBusy && void handleConnect()}
           placeholder={t('peer.client.paste')}
           aria-label={t('peer.client.paste')}

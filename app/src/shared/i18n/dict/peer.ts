@@ -49,7 +49,7 @@ export default {
   'peer.client.host': { ko: '다른 PC의 주소 (예: 100.64.0.5:47900)', en: 'Other PC’s address (e.g. 100.64.0.5:47900)', ja: '相手のPCのアドレス（例: 100.64.0.5:47900）', zh: '对方电脑地址（例如 100.64.0.5:47900）' },
   'peer.client.code': { ko: '연결 코드 (XXXX-XXXX-XXXX)', en: 'Connection code (XXXX-XXXX-XXXX)', ja: '接続コード（XXXX-XXXX-XXXX）', zh: '连接验证码（XXXX-XXXX-XXXX）' },
   'peer.client.connect': { ko: '연결하기', en: 'Connect', ja: '接続する', zh: '连接' },
-  'peer.client.connecting': { ko: '연결하는 중… (몇 초 걸려요)', en: 'Connecting… (takes a few seconds)', ja: '接続中…（数秒かかります）', zh: '正在连接…（需要几秒）' },
+  'peer.client.connecting': { ko: '연결하는 중… 상대 PC가 응답하지 않으면 1분 넘게 걸릴 수 있어요', en: 'Connecting… it can take over a minute if the other PC does not answer', ja: '接続中…相手のPCが応答しない場合は1分以上かかることがあります', zh: '正在连接…若对方电脑无响应，可能需要一分钟以上' },
   'peer.client.badHost': { ko: '주소를 확인해 주세요', en: 'Check the address', ja: 'アドレスを確認してください', zh: '请检查地址' },
   'peer.client.done': { ko: '{name}에 연결했어요. 이제 이 랩에 넣을 직원을 고르세요.', en: 'Connected to {name}. Now choose employees to add to your lab.', ja: '{name}に接続しました。ラボに入れる社員を選んでください。', zh: '已连接到 {name}。现在请选择要加入实验室的员工。' },
   'peer.client.list': { ko: '연결된 PC', en: 'Connected PCs', ja: '接続済みのPC', zh: '已连接的电脑' },
@@ -112,4 +112,9 @@ export default {
   'peer.client.manual': { ko: '직접 입력', en: 'Enter manually', ja: '手入力', zh: '手动输入' },
   'peer.client.manualDesc': { ko: '복사한 정보를 쓸 수 없다면 다른 PC 화면의 주소와 코드를 각각 입력해 주세요.', en: 'If you cannot use the copied info, type the address and code shown on the other PC.', ja: 'コピーした情報が使えない場合は、相手のPC画面のアドレスとコードをそれぞれ入力してください。', zh: '如果无法使用复制的信息，请分别输入对方电脑屏幕上的地址和验证码。' },
   'peer.client.doneFp': { ko: '보안 확인값: {fingerprint}', en: 'Security check value: {fingerprint}', ja: 'セキュリティ確認値: {fingerprint}', zh: '安全校验值：{fingerprint}' },
+  'peer.host.another': { ko: '다른 PC도 연결하기', en: 'Connect another PC', ja: '別のPCも接続する', zh: '再连接一台电脑' },
+  'peer.host.retry': { ko: '다시 시도', en: 'Try again', ja: 'もう一度試す', zh: '重试' },
+  'peer.ready.notOpen': { ko: '원격 기능이 켜졌지만 아직 열리지 않았어요', en: 'Remote is on but not open yet', ja: 'リモート機能はオンですが、まだ開いていません', zh: '远程功能已开启，但尚未打开' },
+  'peer.ready.notOpenDesc': { ko: '위쪽 ‘휴대폰 연결’에서 상태를 확인해 주세요.', en: 'Check the status in “Phone connection” above.', ja: '上の「スマホ連携」で状態を確認してください。', zh: '请在上方“手机连接”中查看状态。' },
+  'peer.ready.check': { ko: '확인하기', en: 'Check', ja: '確認する', zh: '查看' },
 } satisfies Record<string, Entry>

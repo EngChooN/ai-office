@@ -177,8 +177,8 @@ export function normalizePairCode(input: unknown): string | null {
   return c.length === PEER_LIMITS.pairCodeLength && [...c].every((ch) => PAIR_CODE_ALPHABET.includes(ch)) ? c : null
 }
 
-/** 표기: XXXX-XXXX-XXXX */
-export const formatPairCode = (code12: string) => code12.replace(/(.{4})(?=.)/g, '$1-')
+/** 표기: XXXX-XXXX-XXXX (메인이 이미 꾸민 코드를 화면이 다시 꾸며도 같게) */
+export const formatPairCode = (code12: string) => code12.replace(/-/g, '').replace(/(.{4})(?=.)/g, '$1-') // 이미 하이픈이 있어도 같은 결과
 export const isPairCode = (s: unknown): s is string => normalizePairCode(s) !== null
 
 /** 일 id: UUID v4 모양 (jobId는 UUID) */
