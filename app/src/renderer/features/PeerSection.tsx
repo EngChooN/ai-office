@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import { AlertTriangleIcon, CheckCircle2Icon, CircleIcon, Loader2Icon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -457,7 +458,8 @@ function autoFormat(raw: string) {
 
 /** B컴 직원 목록 → 랩에 추가/빼기. 목록은 열 때 한 번 가져온다 */
 function RemoteStaffPicker({ peerId, onChanged }: { peerId: string; onChanged: () => void }) {
-  const labs = useOffice((s) => s.labs.filter((l) => !l.isPractice))
+  // 매번 새 배열을 돌려주면 무한히 다시 그려지므로 내용이 같으면 같은 값으로 본다
+  const labs = useOffice(useShallow((s) => s.labs.filter((l) => !l.isPractice)))
   const [choices, setChoices] = useState<RemoteStaffChoice[] | null>(null)
   const [labId, setLabId] = useState('')
   const [error, setError] = useState('')
