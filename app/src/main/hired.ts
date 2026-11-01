@@ -13,6 +13,7 @@ import { BROWSER_EQUIPMENT, browserVerdict } from '../shared/browserTools.ts'
 import { COMPUTER_EQUIPMENT, computerSummary, computerSummaryI18n, computerVerdict, toolDisplayName } from '../shared/computerTools.ts'
 import { parseSlash, type RawCommand } from '../shared/slashCommands.ts'
 import { browserOutputDir } from './browser'
+import { computerPermissionNotice } from './computer'
 import { createRuntime, modelIdFor, type AgentRuntime, type RateLimitInfo, type RuntimeEvent, type RuntimeMcpServer, type ToolDecision } from './ai'
 
 const ACTIVITY_MAX = 80
@@ -263,7 +264,9 @@ class Worker {
     const refDocPaths = new Set(refDocs.paths)
     const mcpServers = this.hooks.equippedMcp(s.id)
     const browserGuide = mcpServers[BROWSER_EQUIPMENT] ? t('staff.browser.guide', { dir: browserOutputDir(s.id) }) : ''
-    const computerGuide = mcpServers[COMPUTER_EQUIPMENT] ? t('staff.computer.guide') : ''
+    // 맥 권한이 빠진 채 누르면 클릭이 무시되고 시스템 설정만 열리니, 시작할 때 빠진 권한을 미리 알려 준다
+    const computerNotice = mcpServers[COMPUTER_EQUIPMENT] ? computerPermissionNotice() : null
+    const computerGuide = mcpServers[COMPUTER_EQUIPMENT] ? [t('staff.computer.guide'), computerNotice && t('staff.computer.noPermission', { notice: computerNotice })].filter(Boolean).join('\n') : ''
     // 백그라운드 작업 목록은 CLI 프로세스 단위라 새로 열면 비운다
     this.backgroundTasks = []
     this.rt.start({
