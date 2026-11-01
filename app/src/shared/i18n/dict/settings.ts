@@ -91,12 +91,13 @@ export default {
     zh: '现在也可以雇用 GPT 员工了。去设置里连接 Codex 吧。',
   },
   'provider.banner.open': { ko: '연결하러 가기', en: 'Connect', ja: 'つなげる', zh: '去连接' },
+  'onboarding.provider.laterTour': { ko: '나중에 연결하고 둘러보기', en: 'Connect later and look around', ja: '後で接続して見て回る', zh: '稍后连接，先看看' },
   'onboarding.provider.title': { ko: 'AI 계정 연결', en: 'Connect an AI account', ja: 'AIアカウントの接続', zh: '连接 AI 账号' },
   'onboarding.provider.gateDesc': {
-    ko: '직원을 움직일 AI 계정이 필요해요. Claude와 Codex 중 하나만 연결하면 넘어갈 수 있어요.',
-    en: 'Your staff need an AI account. Connect either Claude or Codex to continue.',
-    ja: 'スタッフを動かすAIアカウントが必要です。ClaudeかCodexのどちらか1つをつなげば次に進めます。',
-    zh: '员工需要一个 AI 账号。连接 Claude 或 Codex 其中之一即可继续。',
+    ko: '직원을 움직일 AI 계정이 필요해요. Claude와 Codex 중 하나만 연결하면 넘어갈 수 있어요. 아직 계정이 없으면 나중에 연결하고 먼저 둘러봐도 돼요.',
+    en: 'Your staff need an AI account. Connect either Claude or Codex to continue. No account yet? You can connect later and look around first.',
+    ja: 'スタッフを動かすAIアカウントが必要です。ClaudeかCodexのどちらか1つをつなげば次に進めます。まだアカウントがなければ、後で接続して先に見て回ってもかまいません。',
+    zh: '员工需要一个 AI 账号。连接 Claude 或 Codex 其中之一即可继续。还没有账号的话，可以稍后再连接，先四处看看。',
   },
   'onboarding.provider.passDesc': {
     ko: '준비된 AI 계정이 있어 바로 넘어갈 수 있어요. 나머지는 설정에서 언제든 연결할 수 있어요.',

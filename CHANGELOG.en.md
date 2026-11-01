@@ -22,6 +22,7 @@ Writing rules
 - The Connect another PC screen now explains that the feature is for connecting your own computers, and not to connect to a PC signed in with someone else's account.
 - After the first task in the setup check, you can choose whether to keep that staff member in the office (kept by default). If the first task takes a long time, the staff member stays in the office and keeps working, and the practice tutorial is only started if you want it. If you already did the first task for real, 'Assign a task' in the practice picker shows 'Done for real'.
 - The menu tour now matches the current app. It explains the secretary (⌘K from any screen) and the desktop secretary, and the costs step now covers plan usage and tokens per staff member. Step titles match the actual menu names (for example, Records › Costs), and you can press 'Hire staff' right from the last step.
+- If you don't have an AI account yet, the account step of the setup check now offers 'Connect later and look around'. Settings › Guides now has separate 'Replay the menu tour' and 'Try the practice tutorial' buttons, and the step counts and times in the guide text match reality. The optional Claude Code for terminal item is shown in a calm color instead of a warning color.
 
 ### Bug fixes
 - Fixed the Tailscale menu bar app flickering on and off. AI Office now checks Tailscale status without making the Tailscale window appear.

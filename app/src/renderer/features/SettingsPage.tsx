@@ -135,6 +135,7 @@ export function SettingsPage() {
   const [isBusy, setIsBusy] = useState(false)
   const update = (patch: Partial<Settings>) => void window.office.updateSettings(patch)
   const requestTour = useOffice((s) => s.requestTour)
+  const requestPractice = useOffice((s) => s.requestPractice)
   const hasPractice = useOffice((s) => Boolean(s.tutorial?.hasPractice))
   const [category, setCategory] = useState<Category>('general')
   const [scrollTo, setScrollTo] = useState<string | null>(null)
@@ -262,12 +263,15 @@ export function SettingsPage() {
               </Section>
             )}
             <Section title={t('settingsPage.guide.title')} description={t('settingsPage.guide.desc')}>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Button variant="outline" size="sm" onClick={() => update({ isOnboarded: false })}>
                   {t('settingsPage.guide.onboarding')}
                 </Button>
                 <Button variant="outline" size="sm" onClick={requestTour}>
                   {t('settingsPage.guide.tour')}
+                </Button>
+                <Button variant="outline" size="sm" onClick={requestPractice}>
+                  {t('settingsPage.guide.practice')}
                 </Button>
                 {hasPractice && (
                   <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={() => void window.office.tutorialCleanup()}>

@@ -32,6 +32,9 @@ interface OfficeState extends OfficeSnapshot {
   /** 설정에서 "둘러보기 다시"를 누를 때마다 올라가는 번호 */
   tourRequest: number
   requestTour(): void
+  /** 설정에서 "연습 튜토리얼"을 누를 때마다 올라가는 번호 (연습 고르기 창을 연다) */
+  practiceRequest: number
+  requestPractice(): void
   /** 사무실 꾸미기(가구 옮기기) 모드 */
   isDecorating: boolean
   /** 개발용 레벨 미리보기 (null = 실제 회사 레벨). 경험치·자금은 그대로 둔다 */
@@ -101,6 +104,8 @@ export const useOffice = create<OfficeState>((set) => ({
   refreshManuals: async () => set({ manuals: await window.office.listManuals() }),
   tourRequest: 0,
   requestTour: () => set((s) => ({ tourRequest: s.tourRequest + 1, view: shownView('map', s.settings.isWorkMode) })),
+  practiceRequest: 0,
+  requestPractice: () => set((s) => ({ practiceRequest: s.practiceRequest + 1 })),
   isDecorating: false,
   previewLevel: null,
   viewFloor: 1,

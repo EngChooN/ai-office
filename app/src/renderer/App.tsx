@@ -46,6 +46,10 @@ function AppBody() {
   useEffect(() => {
     if (tourRequest) setIsTourOpen(true)
   }, [tourRequest])
+  const practiceRequest = useOffice((s) => s.practiceRequest)
+  useEffect(() => {
+    if (practiceRequest) setIsPickerOpen(true)
+  }, [practiceRequest])
   // 폰(모바일 빌드 · 폭 840 미만)은 아래 탭 틀, 그 밖(PC·태블릿)은 지금 틀 그대로
   const isPhone = useLayout() === 'phone'
   // ⌘K(윈도우 Ctrl+K): 어느 화면에서나 비서 빠른 창 — 입력칸에 포커스가 있어도 먼저 받는다 (폰은 상단 바 버튼)

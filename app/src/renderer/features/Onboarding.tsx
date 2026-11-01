@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { CheckCircle2Icon, CircleAlertIcon, CircleXIcon, CopyIcon, ExternalLinkIcon, FolderOpenIcon, Loader2Icon, LogInIcon, RefreshCwIcon } from 'lucide-react'
+import { CheckCircle2Icon, CircleAlertIcon, CircleDashedIcon, CircleXIcon, CopyIcon, ExternalLinkIcon, FolderOpenIcon, Loader2Icon, LogInIcon, RefreshCwIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { IS_WINDOWS, osText } from '@/lib/platform'
@@ -41,15 +41,32 @@ function StepDots({ step }: { step: Step }) {
   )
 }
 
-function CheckRow({ isOk, isLoading, isError, title, children }: { isOk: boolean; isLoading?: boolean; isError?: boolean; title: string; children?: React.ReactNode }) {
+/** isOptional: 없어도 되는 항목 — 안 돼 있어도 경고 색 대신 중립 색으로 */
+function CheckRow({
+  isOk,
+  isLoading,
+  isError,
+  isOptional,
+  title,
+  children,
+}: {
+  isOk: boolean
+  isLoading?: boolean
+  isError?: boolean
+  isOptional?: boolean
+  title: string
+  children?: React.ReactNode
+}) {
   return (
-    <div className={cn('flex gap-3 rounded-xl border p-4', isError ? 'border-destructive/60' : !isOk && !isLoading && 'border-status-waiting/60')}>
+    <div className={cn('flex gap-3 rounded-xl border p-4', isError ? 'border-destructive/60' : !isOk && !isLoading && !isOptional && 'border-status-waiting/60')}>
       {isLoading ? (
         <Loader2Icon className="text-muted-foreground mt-0.5 size-5 shrink-0 animate-spin" />
       ) : isError ? (
         <CircleXIcon className="text-destructive mt-0.5 size-5 shrink-0" />
       ) : isOk ? (
         <CheckCircle2Icon className="text-status-working mt-0.5 size-5 shrink-0" />
+      ) : isOptional ? (
+        <CircleDashedIcon className="text-muted-foreground mt-0.5 size-5 shrink-0" />
       ) : (
         <CircleAlertIcon className="text-status-waiting mt-0.5 size-5 shrink-0" />
       )}
@@ -72,8 +89,11 @@ function CheckHeader({ step, title, desc }: { step: Step; title: string; desc: s
   )
 }
 
-/** 점검 단계 아래: 이전 / 다음 (아직 안 됐으면 "나중에 할게요"로 넘어간다) */
-function CheckFooter({ step, isOk, isBlocked, onMove }: { step: Step; isOk: boolean; isBlocked?: boolean; onMove: (step: Step) => void }) {
+/**
+ * 점검 단계 아래: 이전 / 다음 (아직 안 됐으면 "나중에 할게요"로 넘어간다).
+ * onSkipToTour: 막혀서 다음으로 못 갈 때 남은 점검을 건너뛰고 둘러보기로 가는 길
+ */
+function CheckFooter({ step, isOk, isBlocked, onMove, onSkipToTour }: { step: Step; isOk: boolean; isBlocked?: boolean; onMove: (step: Step) => void; onSkipToTour?: () => void }) {
   const i = STEPS.indexOf(step)
   return (
     <div className="flex items-center justify-between">
@@ -82,7 +102,12 @@ function CheckFooter({ step, isOk, isBlocked, onMove }: { step: Step; isOk: bool
         <Button variant="ghost" onClick={() => onMove(STEPS[i - 1])}>
           {t('onboarding.prev')}
         </Button>
-        {/* 공급자가 하나도 준비되지 않으면 직원을 만들 수 없어 "나중에"를 두지 않는다 */}
+        {/* 공급자가 하나도 준비되지 않으면 첫 업무를 할 수 없어 "나중에" 대신 둘러보기로 보낸다 (계정은 나중에 설정 › 연결에서) */}
+        {isBlocked && onSkipToTour && (
+          <Button variant="outline" onClick={onSkipToTour}>
+            {t('onboarding.provider.laterTour')}
+          </Button>
+        )}
         <Button variant={isOk ? 'default' : 'outline'} onClick={() => onMove(STEPS[i + 1])} disabled={isBlocked}>
           {isOk || isBlocked ? t('onboarding.next') : t('onboarding.later')}
         </Button>
@@ -247,7 +272,7 @@ export function Onboarding({ onStartTour }: { onStartTour: () => void }) {
             <CheckRow isOk title={t('onboarding.engine.title')}>
               <span className="text-muted-foreground text-xs">{t('onboarding.engine.desc')}</span>
             </CheckRow>
-            <CheckRow isOk={isInstallOk} isLoading={isChecking && !status} title={status?.hasTerminalClaude ? t('onboarding.terminal.installed') : t('onboarding.terminal.title')}>
+            <CheckRow isOk={isInstallOk} isOptional isLoading={isChecking && !status} title={status?.hasTerminalClaude ? t('onboarding.terminal.installed') : t('onboarding.terminal.title')}>
               <span className="text-muted-foreground text-xs">{t('onboarding.terminal.desc')}</span>
               {isTerminalMissing && isCodexReady && <span className="text-muted-foreground text-xs">{t('onboarding.terminal.codexReady')}</span>}
               {status && !status.hasTerminalClaude && (
@@ -289,7 +314,7 @@ export function Onboarding({ onStartTour }: { onStartTour: () => void }) {
                 void providers.check()
               }}
             />
-            <CheckFooter step={step} isOk={isProviderReady} isBlocked={Boolean(providers.status) && !isProviderReady} onMove={setStep} />
+            <CheckFooter step={step} isOk={isProviderReady} isBlocked={Boolean(providers.status) && !isProviderReady} onMove={setStep} onSkipToTour={handleTour} />
           </>
         )}
 
