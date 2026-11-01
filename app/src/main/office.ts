@@ -878,7 +878,7 @@ export class Office extends EventEmitter<{
       this.lastDoneTask.get(staffId) !== origin.taskId &&
       !(this.origins.get(staffId) ?? []).some((o) => o.kind === 'task' && o.taskId === origin.taskId)
     // 다른 PC의 직원에게는 일 큐로 보낸다 (대표가 대화창에서 직접 시킨 경우 — 리더 없이 보고만 대표에게)
-    if (this.peer?.isRemoteStaff(staffId)) return this.instructRemote(staffId, text, origin)
+    if (this.peer?.isRemoteStaff(staffId)) return this.instructRemote(staffId, text, origin, via)
     const s = this.hired.get(staffId)
     // 연습 직원은 AI를 부르지 않는다 (튜토리얼 진행은 대본이 맡는다)
     if (!s || s.isPractice) return
@@ -1246,6 +1246,8 @@ export class Office extends EventEmitter<{
   peerPort(): import('./peer/peerManager').PeerOfficePort {
     return {
       report: (job, info) => {
+        // 원격 직원의 패널에도 답을 남긴다 — 대표가 그 직원에게 말을 걸었으면 거기서 답을 기다린다
+        this.log(`p:${job.peerId}:${job.remoteStaffId}`, job.state === 'done' ? 'reply' : 'error', info.text)
         const lead = job.leadId ? this.hired.get(job.leadId) : null
         if (lead) {
           this.instruct(lead.id, t('staff.msg.memberReport', info), { kind: 'user', ...(job.room ? { room: job.room } : {}), ...(job.isAutonomous ? { isAutonomous: true } : {}) })
@@ -1324,6 +1326,7 @@ export class Office extends EventEmitter<{
       const isAuto = this.hasAutonomousOrigin(this.origins.get(leadId) ?? [])
       this.peer!.delegate(targetId, instruction, { leadId, room: this.roomOf(leadId), isAutonomous: isAuto })
       this.log(leadId, 'delegate', tk('log.delegate', { name: targetName, text: instruction }))
+      this.log(targetId, 'instruction', instruction)
       this.postChat(leadId, `@${targetName} ${instruction}`.slice(0, CHAT_TEXT_MAX))
       return t('peer.delegate.queued', { name: targetName })
     } catch (e) {
@@ -1340,12 +1343,16 @@ export class Office extends EventEmitter<{
   }
 
   /** 대표가 원격 직원에게 직접 지시 (대화창·단체방) */
-  private instructRemote(staffId: string, text: string, origin: Origin) {
+  private instructRemote(staffId: string, text: string, origin: Origin, via = '') {
     const rec = this.peer!.registry.staffOf(staffId)!
+    // 직원 패널의 오늘 한 일에도 지시를 남긴다 (답은 peerPort().report가 같은 곳에 남긴다)
+    this.log(staffId, 'instruction', via ? `${via} ${text}` : text)
     try {
       this.peer!.delegate(staffId, text, { leadId: null, ...(origin.room ? { room: origin.room } : {}), ...(origin.isAutonomous ? { isAutonomous: true } : {}) })
     } catch (e) {
-      this.postChat(staffId, this.peerErrorText(e, rec.name).slice(0, CHAT_TEXT_MAX))
+      const msg = this.peerErrorText(e, rec.name)
+      this.log(staffId, 'error', msg)
+      this.postChat(staffId, msg.slice(0, CHAT_TEXT_MAX))
     }
   }
 
@@ -1539,6 +1546,8 @@ export class Office extends EventEmitter<{
     const since = startOfDay(new Date())
     const hired = this.hired.get(staffId)
     if (hired) return { staffId, logs: db.logsSince(staffId, since), ...db.usageSince(staffId, since) }
+    // 다른 PC 직원: 이 PC에서 보낸 지시와 돌아온 보고만 기록에 있다 (사용량은 그 PC에서 센다)
+    if (this.peer?.isRemoteStaff(staffId)) return { staffId, logs: db.logsSince(staffId, since), costUsd: 0, tokensIn: 0, tokensOut: 0 }
     const ext = this.external.find((s) => s.id === staffId)
     if (!ext?.sessionId) return { staffId, logs: [], costUsd: 0, tokensIn: 0, tokensOut: 0 }
     // Codex 세션은 ~/.codex/sessions, Claude 세션은 ~/.claude/projects 기록에서 읽는다

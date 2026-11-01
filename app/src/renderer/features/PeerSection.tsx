@@ -456,7 +456,7 @@ function autoFormat(raw: string) {
   return c.replace(/(.{4})(?=.)/g, '$1-')
 }
 
-/** B컴 직원 목록 → 랩에 추가/빼기. 목록은 열 때 한 번 가져온다 */
+/** B컴 직원 목록 → 이 PC로 불러오기/빼기 (랩은 골라 두면 함께 넣는다). 목록은 열 때 한 번 가져온다 */
 function RemoteStaffPicker({ peerId, onChanged }: { peerId: string; onChanged: () => void }) {
   // 매번 새 배열을 돌려주면 무한히 다시 그려지므로 내용이 같으면 같은 값으로 본다
   const labs = useOffice(useShallow((s) => s.labs.filter((l) => !l.isPractice)))
