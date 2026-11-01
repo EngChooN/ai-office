@@ -60,8 +60,14 @@ export function parseWindowsGateway(out: string): string | null {
 /** `ip route show default` (리눅스) */
 export const parseLinuxGateway = (out: string) => out.match(/default via (\d{1,3}(?:\.\d{1,3}){3})/)?.[1] ?? null
 
-function run(cmd: string, args: string[]): Promise<string> {
-  return new Promise((resolve, reject) => execFile(cmd, args, { timeout: 3000, windowsHide: true }, (e, stdout) => (e ? reject(e) : resolve(stdout))))
+function run(cmd: string, args: string[], env?: NodeJS.ProcessEnv): Promise<string> {
+  return new Promise((resolve, reject) => execFile(cmd, args, { timeout: 3000, windowsHide: true, ...(env ? { env } : {}) }, (e, stdout) => (e ? reject(e) : resolve(stdout))))
+}
+
+/** 맥 Tailscale 앱 본체는 앱이 띄운 것처럼 보이면(__CFBundleIdentifier·XPC_SERVICE_NAME) 명령 대신 화면을 띄우려 한다 — 감시가 5초마다 부르면 메뉴 막대 앱이 켜졌다 꺼졌다 한다. 명령 모드를 못 박는다 */
+export function tailscaleCliEnv(base: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
+  const { __CFBundleIdentifier: _bundle, XPC_SERVICE_NAME: _xpc, ...rest } = base
+  return { ...rest, TAILSCALE_BE_CLI: '1' }
 }
 
 /** 기본 게이트웨이(공유기) 주소 — UPnP 없이 OS 명령으로 읽는다. 못 읽으면 null */
@@ -139,7 +145,7 @@ export async function readTailscaleCli(platform: NodeJS.Platform = process.platf
   let isFailed = false
   for (const bin of tailscaleCliPaths(platform)) {
     try {
-      return { kind: 'ok', out: await run(bin, ['status', '--json']) }
+      return { kind: 'ok', out: await run(bin, ['status', '--json'], tailscaleCliEnv()) }
     } catch (e) {
       if ((e as NodeJS.ErrnoException).code !== 'ENOENT') isFailed = true
     }

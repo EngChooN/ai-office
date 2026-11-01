@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import net from 'node:net'
 import { test } from 'node:test'
 import { createSelfSignedCert } from '../src/main/remote/cert.ts'
-import { detectTailscale, isTailscaleClient, parseTailscaleStatus, pickTailscaleAddress, tailscaleCliPaths } from '../src/main/remote/lan.ts'
+import { detectTailscale, isTailscaleClient, parseTailscaleStatus, pickTailscaleAddress, tailscaleCliEnv, tailscaleCliPaths } from '../src/main/remote/lan.ts'
 import { isTailscaleAddress, isValidQrPayload, qrText } from '../src/main/remote/qr.ts'
 import { RemoteServer } from '../src/main/remote/server.ts'
 import { DEFAULT_REMOTE_CONFIG, RemoteService, type RemoteConfig, type RemoteDeps } from '../src/main/remote/service.ts'
@@ -228,4 +228,9 @@ test('모드 전환: router→tailscale은 매핑을 닫고, tailscale→router�
   upnpCalls.length = 0
   await make({ port, mode: 'tailscale' }, () => tsNic).svc.init()
   assert.deepEqual(upnpCalls, ['find', 'remove'])
+})
+
+test('tailscale CLI 환경: 맥 앱 본체가 화면을 띄우지 않게 명령 모드를 못 박고 앱 표시 값을 뺀다', () => {
+  const env = tailscaleCliEnv({ PATH: '/usr/bin', __CFBundleIdentifier: 'com.joonyoung.claude-office', XPC_SERVICE_NAME: 'application.x' })
+  assert.deepEqual(env, { PATH: '/usr/bin', TAILSCALE_BE_CLI: '1' })
 })
