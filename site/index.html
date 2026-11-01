@@ -877,21 +877,25 @@ var I18N = {
     android: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.6 9.5l1.7-3a.4.4 0 00-.7-.4l-1.8 3.1a10.6 10.6 0 00-9.6 0L5.4 6.1a.4.4 0 00-.7.4l1.7 3A9.9 9.9 0 001.5 17h21a9.9 9.9 0 00-4.9-7.5zM7 14.4a1 1 0 110-2 1 1 0 010 2zm10 0a1 1 0 110-2 1 1 0 010 2z"/></svg>'
   };
   var EXT = {mac:'.dmg', win:'.exe', android:'.apk'};
-  // 캡처 위 번호 점 위치 [가로 %, 세로 %] — 4개 언어 캡처가 같은 구도라 위치도 같다. 설명 글은 I18N의 'co.<이름>'
+  // 캡처 위 번호 점 위치 [가로 %, 세로 %] — 4개 언어 캡처가 거의 같은 구도라 위치도 같다. 설명 글은 I18N의 'co.<이름>'
+  // 글 길이 때문에 구도가 달라진 언어만 CALLOUTS_LANG에 따로 둔다
   var CALLOUTS = {
-    office: [[46, 33], [49, 51], [85, 9]],
-    'staff-mix': [[29.5, 52], [44, 52]],
-    chat: [[61, 35], [25, 52]],
-    inbox: [[14.5, 60], [60, 58], [60, 81]],
-    board: [[36, 50], [14.5, 54]],
-    meeting: [[14.5, 60], [47, 66], [14.5, 83]],
+    office: [[49.5, 36], [49, 51], [83.3, 9]],
+    'staff-mix': [[29.5, 49], [47.3, 49]],
+    chat: [[86.5, 26], [25, 52]],
+    inbox: [[13.8, 33], [14.5, 68], [60, 81]],
+    board: [[35.3, 58], [14, 64.5]],
+    meeting: [[14.5, 60], [47, 66], [14.5, 90]],
     computer: [[72.5, 30], [72.5, 59]],
-    secretary: [[68, 37], [30, 61], [75, 29]],
-    dashboard: [[28.5, 8], [64, 41]],
-    decorate: [[91.5, 19], [59.5, 50], [47, 44]],
-    demoday: [[52, 32], [54, 57]],
-    look: [[47.4, 62.9], [49.3, 40.7], [26.9, 16.9]],
-    export: [[92.5, 36.6], [69.6, 40.9]]
+    secretary: [[86.5, 37.5], [30, 61], [75, 29]],
+    dashboard: [[28.3, 17.5], [64.75, 49]],
+    decorate: [[74.8, 20], [57, 45], [44.5, 46]],
+    demoday: [[52, 32], [66.5, 58]],
+    look: [[47.4, 62.9], [51.5, 45], [26.9, 16.9]],
+    export: [[92.5, 36.6], [68.8, 41]]
+  };
+  var CALLOUTS_LANG = {
+    en: {'staff-mix': [[29.5, 45.5], [51, 45.5]], meeting: [[14.5, 60], [60, 66], [14.5, 90]]}
   };
   // 움직이는 화면(assets/video/<이름>.webm)이 있는 언어. 지금은 한국어 화면만 있어 다른 언어는 정지 캡처를 보여 준다
   var VIDEO_LANGS = ['ko'];
@@ -943,7 +947,7 @@ var I18N = {
     img.src = 'assets/screens/' + chain[0] + '/' + name + '.webp';
   }
 
-  // 번호 점과 설명 줄 자리를 한 번만 만든다 (글은 render가 채움)
+  // 번호 점과 설명 줄 자리를 한 번만 만든다 (점 위치와 글은 render가 언어에 맞춰 채움)
   function buildCallouts(){
     document.querySelectorAll('[data-co]').forEach(function(pic){
       var ol = document.createElement('ol');
@@ -953,8 +957,6 @@ var I18N = {
         dot.className = 'dot';
         dot.textContent = n + 1;
         dot.setAttribute('aria-hidden', 'true');
-        dot.style.left = p[0] + '%';
-        dot.style.top = p[1] + '%';
         pic.appendChild(dot);
         var li = document.createElement('li');
         li.setAttribute('data-n', n + 1);
@@ -989,7 +991,9 @@ var I18N = {
     document.querySelectorAll('[data-i18n-label]').forEach(function(el){ el.setAttribute('aria-label', t[el.getAttribute('data-i18n-label')]); });
     document.querySelectorAll('[data-shot]').forEach(function(el){ setShot(el, lang); });
     document.querySelectorAll('[data-co]').forEach(function(pic){
-      var lines = t['co.' + pic.getAttribute('data-co')];
+      var name = pic.getAttribute('data-co'), lines = t['co.' + name];
+      var spots = (CALLOUTS_LANG[lang] || {})[name] || CALLOUTS[name];
+      pic.querySelectorAll('.dot').forEach(function(dot, n){ dot.style.left = spots[n][0] + '%'; dot.style.top = spots[n][1] + '%'; });
       pic.nextElementSibling.querySelectorAll('li').forEach(function(li, n){ li.textContent = lines[n]; });
     });
     document.querySelectorAll('[data-video]').forEach(function(fig){ setVideo(fig, VIDEO_LANGS.indexOf(lang) >= 0); });
