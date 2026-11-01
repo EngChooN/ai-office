@@ -9,6 +9,9 @@ Writing rules
 
 ## [미정] (설치본 미빌드)
 
+### Improvements
+- You can now pick 'Memory' under each staff chat (Short, Normal, Long, Max). Long or Max moves to a new conversation less often, so you can keep talking about earlier things, at a higher cost. Hover to see what each option means.
+
 ## [0.19.1] - 2026-11-01
 
 ### Improvements

@@ -4,11 +4,26 @@
 // 이전 대화는 지워지지 않는다 — 터미널에서 이어 하기로 그대로 볼 수 있다
 
 import { t } from '../shared/i18n/index.ts'
+import type { MemoryLength } from '../shared/types.ts'
 import fs from 'node:fs'
 import path from 'node:path'
 
 /** 한 번 부를 때 보내는 문맥이 이만큼을 넘으면 다음 지시부터 새 대화 */
 export const CONTEXT_ROTATE_TOKENS = 80_000
+/** 새 업무 카드를 받을 때 새 대화로 넘기는 최소 문맥 (이보다 짧으면 넘겨도 아끼는 게 없다) */
+const CARD_ROTATE_MIN_TOKENS = 20_000
+
+/**
+ * 대화 기억 길이별로 새 대화로 넘기는 기준. null이면 넘기지 않는다(최대 — 길어지면 모델이 스스로 요약한다).
+ * chat: 이어지는 지시, card: 새 업무 카드
+ */
+export function rotateLimits(memory: MemoryLength | undefined): { chat: number; card: number } | null {
+  if (memory === 'full') return null
+  if (memory === 'short') return { chat: 40_000, card: CARD_ROTATE_MIN_TOKENS }
+  if (memory === 'long') return { chat: 160_000, card: CONTEXT_ROTATE_TOKENS }
+  return { chat: CONTEXT_ROTATE_TOKENS, card: CARD_ROTATE_MIN_TOKENS }
+}
+
 /** 인수인계로 넘길 직전 보고 길이 */
 const HANDOFF_MAX = 4000
 /** 세션 기록 끝부분만 읽는다 (수십 MB짜리 기록도 있다) */

@@ -22,6 +22,7 @@ import { LiveMiniView } from './LiveMiniView'
 import { Avatar, StatusDot } from './StaffCard'
 import { ProgressLine } from './ProgressLine'
 import { AutonomyCheck } from './Autonomy'
+import { MemoryLengthSelect } from './MemoryLength'
 import { useProviders } from './ProviderCards'
 import { formatCost, formatTokens, shortPath, workDirLabel } from './status'
 import { Markdown } from '@/components/markdown'
@@ -649,7 +650,10 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
               </Button>
             )}
           </div>
-          <AutonomyCheck checked={isAutonomous} onChange={setIsAutonomous} className="px-1" />
+          <div className="flex items-center gap-2 px-1">
+            <AutonomyCheck checked={isAutonomous} onChange={setIsAutonomous} className="min-w-0 flex-1" />
+            {!staff.remote && <MemoryLengthSelect staff={staff} />}
+          </div>
           <div className="flex items-center gap-2">
             <Button size="sm" variant="ghost" className="h-8 px-2 text-xs" onClick={() => openSlash('manual')} title={t('slashMenu.manualButtonTitle')}>
               {t('slashMenu.manualButton')}

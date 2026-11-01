@@ -30,6 +30,8 @@ export type ClaudeModel = 'default' | 'opus' | 'sonnet' | 'haiku'
 /** 직원 모델: Claude는 별칭, Codex는 'default' 또는 model/list의 모델 id */
 export type ModelChoice = ClaudeModel | (string & {})
 export type ApprovalMode = 'ask' | 'acceptEdits'
+/** 대화 기억 길이: 대화가 얼마나 길어지면 새 대화로 넘길지 (짧게·보통·길게·최대=넘기지 않음) */
+export type MemoryLength = 'short' | 'normal' | 'long' | 'full'
 
 export interface Approval {
   id: string
@@ -97,6 +99,8 @@ export interface Staff {
   systemPrompt: string
   approvalMode: ApprovalMode
   sessionId: string | null
+  /** 대화 기억 길이 (없으면 보통) */
+  memory?: MemoryLength
   teamId: string | null
   /** 소속 랩(프로젝트 팀) — 여러 개 가능 */
   labIds: string[]
@@ -986,7 +990,7 @@ export interface OfficeApi {
   /** 직원 마켓 채용 (파일 가져오기와 같은 검증·채용 길). provider를 빼면 PC가 준비된 엔진으로 정한다 */
   hireMarket(id: string, provider?: AiProvider): Promise<PackResult>
   fire(staffId: string): Promise<void>
-  updateStaff(staffId: string, patch: { teamId?: string | null; name?: string; role?: string; model?: ModelChoice; avatar?: number; systemPrompt?: string; cwd?: string }): Promise<void>
+  updateStaff(staffId: string, patch: { teamId?: string | null; name?: string; role?: string; model?: ModelChoice; avatar?: number; systemPrompt?: string; cwd?: string; memory?: MemoryLength }): Promise<void>
   /** text가 /명령이면 세션에 그대로 보낸다. /clear는 새 대화로, 막힌 기본 명령은 보내지 않고 직원 기록에 안내를 남긴다 */
   /** opts.isAutonomous: 자율 진행(묻지 않고 끝까지)으로 맡긴다 — PC에서만 */
   instruct(staffId: string, text: string, attachments?: Attachment[], opts?: { isAutonomous?: boolean }): Promise<void>

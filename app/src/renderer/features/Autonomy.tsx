@@ -15,8 +15,8 @@ export function AutonomyCheck({ checked, onChange, className }: { checked: boole
   return (
     <label className={cn('text-muted-foreground flex cursor-pointer items-center gap-1.5 text-xs', className)} title={t('autonomy.hint')}>
       <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
-      <BotIcon className={cn('size-3.5', checked && 'text-status-working')} />
-      <span className={cn(checked && 'text-status-working font-medium')}>{t('autonomy.label')}</span>
+      <BotIcon className={cn('size-3.5 shrink-0', checked && 'text-status-working')} />
+      <span className={cn('shrink-0 whitespace-nowrap', checked && 'text-status-working font-medium')}>{t('autonomy.label')}</span>
       <span className="truncate">· {t('autonomy.hint')}</span>
     </label>
   )

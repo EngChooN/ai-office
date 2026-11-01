@@ -4,6 +4,9 @@
 
 ## [미정] (설치본 미빌드)
 
+### 개선
+- 대화 기억 길이(`Staff.memory`: short·normal·long·full, staff.memory 열): `rotateLimits`로 새 대화 넘김 기준을 직원별로(짧게 40k/20k, 보통 80k/20k, 길게 160k/80k, 최대 넘기지 않음 — 이어지는 지시/새 카드). updateStaff 허용 필드에 추가(잘못된 값은 버림), 휴대폰 v2도 허용. 직원 패널 자율 진행 줄 오른쪽 `MemoryLengthSelect`(마우스 올리면 설명).
+
 ## [0.19.1] - 2026-11-01
 
 ### 개선

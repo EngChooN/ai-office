@@ -3,13 +3,22 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { test } from 'node:test'
-import { contextOf, CONTEXT_ROTATE_TOKENS, findSessionFile, handoffText, readSessionTail } from '../src/main/sessionRotate.ts'
+import { contextOf, CONTEXT_ROTATE_TOKENS, findSessionFile, handoffText, readSessionTail, rotateLimits } from '../src/main/sessionRotate.ts'
 
 test('문맥 크기는 입력 + 캐시 읽기 + 캐시 만들기', () => {
   assert.equal(contextOf({ input_tokens: 10, cache_read_input_tokens: 500_000, cache_creation_input_tokens: 90 }), 500_100)
   assert.equal(contextOf({ input_tokens: 5, cache_read_input_tokens: null }), 5)
   assert.equal(contextOf(undefined), 0)
   assert.ok(CONTEXT_ROTATE_TOKENS < 200_000)
+})
+
+test('대화 기억 길이: 짧을수록 일찍 넘기고, 최대는 넘기지 않는다', () => {
+  assert.deepEqual(rotateLimits(undefined), rotateLimits('normal'))
+  assert.equal(rotateLimits('normal')!.chat, CONTEXT_ROTATE_TOKENS)
+  assert.ok(rotateLimits('short')!.chat < rotateLimits('normal')!.chat)
+  assert.ok(rotateLimits('long')!.chat > rotateLimits('normal')!.chat)
+  assert.ok(rotateLimits('long')!.card > rotateLimits('normal')!.card)
+  assert.equal(rotateLimits('full'), null)
 })
 
 test('세션 기록 끝부분에서 마지막 문맥 크기와 마지막 답을 읽는다', () => {

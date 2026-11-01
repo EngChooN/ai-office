@@ -116,6 +116,8 @@ export function openDb() {
   // 튜토리얼 연습 회사 표시 (1 = 연습 — 정리할 때 이 표시로 지운다). 직원·팀·카드는 열, 랩·회의는 data JSON 안에
   if (!staffCols.includes('is_practice')) db.exec('ALTER TABLE staff ADD COLUMN is_practice INTEGER')
   // 모델 공급자 ('claude' | 'codex'). 기존 행은 자동으로 'claude'
+  // 대화 기억 길이 ('short'|'normal'|'long'|'full', 없으면 보통)
+  if (!staffCols.includes('memory')) db.exec('ALTER TABLE staff ADD COLUMN memory TEXT')
   if (!staffCols.includes('provider')) db.exec("ALTER TABLE staff ADD COLUMN provider TEXT NOT NULL DEFAULT 'claude'")
   const taskCols = (db.prepare('PRAGMA table_info(task)').all() as { name: string }[]).map((c) => c.name)
   if (!taskCols.includes('lab_id')) db.exec('ALTER TABLE task ADD COLUMN lab_id TEXT')
@@ -172,6 +174,7 @@ interface StaffRow {
   ref_docs: string | null
   is_practice: number | null
   provider: string | null
+  memory: string | null
 }
 
 export type StoredStaff = Omit<Staff, 'stats' | 'meetingId' | 'labIds' | 'statusSince' | 'todayDone'>
@@ -192,6 +195,7 @@ export function loadHiredStaff(): StoredStaff[] {
       systemPrompt: r.system_prompt,
       approvalMode: r.approval_mode as Staff['approvalMode'],
       sessionId: r.session_id,
+      ...(r.memory && r.memory !== 'normal' ? { memory: r.memory as Staff['memory'] } : {}),
       teamId: r.team_id,
       equipment: r.equipment ? { ...DEFAULT_EQUIPMENT, ...(JSON.parse(r.equipment) as Partial<Equipment>) } : DEFAULT_EQUIPMENT,
       refDocs: parseList(r.ref_docs),
@@ -217,7 +221,8 @@ export function insertStaff(id: string, input: HireInput, deskIndex: number, hir
   )
 }
 
-export function updateStaffRow(id: string, patch: { teamId?: string | null; name?: string; role?: string; model?: ModelChoice; avatar?: number; systemPrompt?: string; cwd?: string }) {
+export function updateStaffRow(id: string, patch: { teamId?: string | null; name?: string; role?: string; model?: ModelChoice; avatar?: number; systemPrompt?: string; cwd?: string; memory?: Staff['memory'] }) {
+  if (patch.memory !== undefined) run('UPDATE staff SET memory = ? WHERE id = ?', patch.memory, id)
   if (patch.teamId !== undefined) run('UPDATE staff SET team_id = ? WHERE id = ?', patch.teamId, id)
   if (patch.name !== undefined) run('UPDATE staff SET name = ? WHERE id = ?', patch.name, id)
   if (patch.role !== undefined) run('UPDATE staff SET role = ? WHERE id = ?', patch.role, id)

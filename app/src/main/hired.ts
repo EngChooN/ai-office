@@ -8,7 +8,7 @@ import { t, tk, type I18nArg } from '../shared/i18n/index.ts'
 import os from 'node:os'
 import { insertUsage, saveSessionId } from './db'
 import { findCodexRollout, readCodexTail } from './ai/codexSession'
-import { CONTEXT_ROTATE_TOKENS, findSessionFile, handoffText, readSessionTail } from './sessionRotate'
+import { findSessionFile, handoffText, readSessionTail, rotateLimits } from './sessionRotate'
 import { BROWSER_EQUIPMENT, browserVerdict } from '../shared/browserTools.ts'
 import { COMPUTER_EQUIPMENT, computerSummary, computerSummaryI18n, computerVerdict, toolDisplayName } from '../shared/computerTools.ts'
 import { parseSlash, type RawCommand } from '../shared/slashCommands.ts'
@@ -17,8 +17,6 @@ import { computerPermissionNotice } from './computer'
 import { createRuntime, modelIdFor, type AgentRuntime, type RateLimitInfo, type RuntimeEvent, type RuntimeMcpServer, type ToolDecision } from './ai'
 
 const ACTIVITY_MAX = 80
-/** 새 업무 카드를 받을 때 새 대화로 넘기는 최소 문맥 (이보다 짧으면 넘겨도 아끼는 게 없다) */
-const CARD_ROTATE_MIN_TOKENS = 20_000
 /** 인수인계 글이 차지하는 토큰 (직전 보고 상한 4000자 안팎) */
 const HANDOFF_TOKENS = 2_000
 /** 한 번 지시에 모델을 부르는 평균 횟수 — 아낀 양은 "문맥 × 이 횟수"로 보수적으로 추정한다 */
@@ -194,7 +192,9 @@ class Worker {
   /** 대화가 길어졌으면 새 대화로 시작하고, 지시 앞에 직전 보고를 인수인계로 붙인다 (이전 대화는 기록에 그대로 남는다) */
   private rotateIfLong(text: string, fresh: boolean) {
     const sessionId = this.staff.sessionId
-    if (!sessionId) return text
+    // 대화 기억 '최대'면 넘기지 않는다
+    const limits = rotateLimits(this.staff.memory)
+    if (!sessionId || !limits) return text
     if (this.contextTokens === null) {
       const codex = this.staff.provider === 'codex'
       const file = codex ? findCodexRollout(path.join(os.homedir(), '.codex', 'sessions'), sessionId) : findSessionFile(path.join(os.homedir(), '.claude', 'projects'), sessionId)
@@ -203,7 +203,7 @@ class Worker {
       if (!this.lastReport) this.lastReport = tail.lastText
     }
     // 새 업무 카드는 짧은 이전 대화도 넘기지 않는다 (인수인계 몫 정도는 남겨 두고 세 본다)
-    if (this.contextTokens < (fresh ? CARD_ROTATE_MIN_TOKENS : CONTEXT_ROTATE_TOKENS)) return text
+    if (this.contextTokens < (fresh ? limits.card : limits.chat)) return text
     this.hooks.saved(this.staff.id, (this.contextTokens - HANDOFF_TOKENS) * SAVED_CALLS_PER_TURN)
     this.hooks.log(this.staff.id, 'status', tk('log.rotated', { k: Math.round(this.contextTokens / 1000) }))
     this.resetSession()
