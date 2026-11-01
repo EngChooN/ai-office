@@ -1,7 +1,7 @@
 // 결과물 갤러리·데모데이: 링크·요약 다듬기, 필터, 데모데이 시각 판정과 짧은 요약 — npm test
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { demoEntries, demoSummary, extractLinks, filterGallery, isDemoDue, summarize, DEMO_LINES_MAX, cleanSpeech, demoCoverImages, demoImages, demoPresentInput, GALLERY_IMAGES_MAX, galleryBody, GALLERY_BODY_MAX, mergeGalleryEntry, storeGalleryEntry, type DemoDayConfig, type GalleryEntry } from '../src/shared/gallery.ts'
+import { demoEntries, demoSummary, extractLinks, filterGallery, isDemoDue, summarize, DEMO_LINES_MAX, cleanSpeech, demoCoverImages, demoImages, demoPresentInput, GALLERY_IMAGES_MAX, galleryBody, GALLERY_BODY_MAX, mergeGalleryEntry, storeGalleryEntry, bumpGalleryRefs, looseArtifactEntry, looseImageEntry, LOOSE_GALLERY_WINDOW_MS, type DemoDayConfig, type GalleryEntry } from '../src/shared/gallery.ts'
 import { setLang } from '../src/shared/i18n/index.ts'
 
 setLang('ko')
@@ -171,4 +171,71 @@ test('저장이 늦게 끝나면: 그동안은 항목이 없고, 저장 뒤 신�
   await done
   assert.deepEqual(events, ['save:late', 'signal']) // 저장 → 신호 순서
   assert.deepEqual(list.map((e) => e.id), ['late']) // 신호 뒤 재조회
+})
+
+// ── 업무 카드 없이 올린 결과물·사진 ──
+const who = { staffId: 's1', staffName: '김개발', teamId: 't1', labId: 'L' }
+const ref = (version: number) => ({ id: 'art1', title: '메뉴바 개편 변경 전·후 시안', kind: 'html' as const, version, name: 'menubar.html', size: 100 })
+const photo = (id: string) => ({ id, name: `${id}.png`, path: `/tmp/${id}.png`, mime: 'image/png', size: 1 })
+
+test('카드 없는 결과물: 올리면 결과물 제목·설명·직원·랩으로 갤러리 카드가 생긴다', () => {
+  const r = looseArtifactEntry([], ref(1), '변경 전·후 비교', who, NOW)
+  assert.ok(r)
+  assert.equal(r.entry.id, 'artifact:art1')
+  assert.equal(r.entry.title, '메뉴바 개편 변경 전·후 시안')
+  assert.equal(r.entry.summary, '변경 전·후 비교')
+  assert.equal(r.entry.staffName, '김개발')
+  assert.equal(r.entry.labId, 'L')
+  assert.deepEqual(r.entry.artifacts, [ref(1)])
+  assert.deepEqual(r.entry.images, [])
+  assert.equal(r.absorbed, null)
+})
+
+test('카드 없는 결과물: 새 버전은 같은 카드를 갱신한다 (사진·설명 유지, 맨 위로)', () => {
+  const first = looseArtifactEntry([], ref(1), '처음 설명', who, NOW - 1000)!.entry
+  const withPhoto = { ...first, images: [photo('p1')] }
+  let list = mergeGalleryEntry([entry('other', { finishedAt: NOW - 500 })], withPhoto, 10).kept
+  const r = looseArtifactEntry(list, ref(2), '', who, NOW)!
+  list = mergeGalleryEntry(list, r.entry, 10).kept
+  assert.deepEqual(list.map((e) => e.id), ['artifact:art1', 'other']) // 카드가 하나만, 맨 위로
+  assert.deepEqual(list[0].artifacts, [ref(2)])
+  assert.deepEqual(list[0].images, [photo('p1')])
+  assert.equal(list[0].summary, '처음 설명') // 설명 없이 다시 올리면 앞 설명 유지
+  // 이어서 bumpArtifactRefs와 같은 경로를 타도 이미 새 버전이라 바뀌지 않는다 (중복 저장 없음)
+  const saved: string[] = []
+  bumpGalleryRefs(list, ref(2), (e) => saved.push(e.id))
+  assert.deepEqual(saved, [])
+})
+
+test('카드 있는 결과물: 업무 카드 갤러리 항목이 가진 결과물이면 따로 카드를 만들지 않고 기존처럼 버전만 바뀐다', () => {
+  const taskEntry = entry('task1', { artifacts: [ref(1)] })
+  assert.equal(looseArtifactEntry([taskEntry], ref(2), '고침', who, NOW), null)
+  const saved: string[] = []
+  const next = bumpGalleryRefs([taskEntry], ref(2), (e) => saved.push(e.id))
+  assert.deepEqual(saved, ['task1'])
+  assert.deepEqual(next[0].artifacts, [ref(2)])
+})
+
+test('카드 없는 사진: 같은 직원이 1시간 안에 만든 카드 없는 항목에 붙고, 없으면 사진 카드를 만든다', () => {
+  const art = looseArtifactEntry([], ref(1), '', who, NOW - 1000)!.entry
+  const attached = looseImageEntry([art, entry('task1', { finishedAt: NOW - 10 })], photo('p1'), '화면', who, NOW)
+  assert.equal(attached.id, 'artifact:art1') // 업무 카드 항목(task1)에는 붙지 않는다
+  assert.deepEqual(attached.images, [photo('p1')])
+  const otherStaff = looseImageEntry([art], photo('p2'), '다른 사람 화면', { ...who, staffId: 's2' }, NOW)
+  assert.equal(otherStaff.id, `image:s2:${NOW}`)
+  assert.equal(otherStaff.title, '다른 사람 화면')
+  const late = looseImageEntry([art], photo('p3'), '', who, NOW - 1000 + LOOSE_GALLERY_WINDOW_MS + 1)
+  assert.ok(late.id.startsWith('image:s1:')) // 1시간이 지나면 새 사진 카드, 제목은 파일 이름
+  assert.equal(late.title, 'p3.png')
+  // 사진은 최근 GALLERY_IMAGES_MAX장만
+  let e = attached
+  for (let i = 0; i < GALLERY_IMAGES_MAX + 2; i++) e = looseImageEntry([e], photo(`x${i}`), '', who, NOW)
+  assert.equal(e.images.length, GALLERY_IMAGES_MAX)
+})
+
+test('카드 없는 결과물: 직전 사진 카드의 사진을 가져오고 그 카드는 지울 대상으로 돌려준다', () => {
+  const shot = looseImageEntry([], photo('p1'), '시안 화면', who, NOW - 1000)
+  const r = looseArtifactEntry([shot], ref(1), '', who, NOW)!
+  assert.deepEqual(r.entry.images, [photo('p1')])
+  assert.equal(r.absorbed, shot.id)
 })

@@ -83,7 +83,7 @@ import { draftCovered, isSameRule, matchRule, ruleLabel, type ApprovalRule } fro
 import { askDecisionInput, matchPastDecisions, sameAskDecisions } from '../shared/askDecision'
 import { KNOWLEDGE_MAX, knowledgeBrief, normalizeKnowledge, pickKnowledge, type KnowledgeEntry, type KnowledgeInput } from '../shared/knowledge'
 import { maskSecrets } from '../shared/redact'
-import { abortable, demoOutcome, addPraise, cleanSpeech, settleStaleMeeting, dateKeyOf, DEMO_COMMENT_MAX, DEMO_REACTIONS, demoPhaseMs, type DemoPhase, type DemoReaction, type DemoStage, type Praise, demoCoverImages, demoEntries, demoImages, demoLine, demoPresentInput, demoSummary, extractLinks, GALLERY_FILES_MAX, GALLERY_IMAGES_MAX, GALLERY_MAX, galleryBody, groupByStaff, isDemoDue, bumpGalleryRefs, storeGalleryEntry, summarize, type GalleryEntry } from '../shared/gallery'
+import { abortable, demoOutcome, addPraise, cleanSpeech, settleStaleMeeting, dateKeyOf, DEMO_COMMENT_MAX, DEMO_REACTIONS, demoPhaseMs, type DemoPhase, type DemoReaction, type DemoStage, type Praise, demoCoverImages, demoEntries, demoImages, demoLine, demoPresentInput, demoSummary, extractLinks, GALLERY_FILES_MAX, GALLERY_IMAGES_MAX, GALLERY_MAX, galleryBody, groupByStaff, isDemoDue, bumpGalleryRefs, looseArtifactEntry, looseImageEntry, storeGalleryEntry, summarize, type GalleryEntry, type GalleryStoreIo, type LooseGalleryWho } from '../shared/gallery'
 import { InvalidArgsError } from '../shared/errors'
 import { addUnread, clearUnread, unreadOf, type UnreadReports } from '../shared/unreadReports'
 import { planBoardCleanup, type BoardCleanupPlan } from '../shared/boardCleanup'
@@ -2225,6 +2225,7 @@ export class Office extends EventEmitter<{
             const att = importFile(file)
             this.log(staffId, 'reply', caption, [att])
             this.postChat(staffId, caption, [att])
+            if (!this.taskOriginOf(staffId)) this.recordLooseGallery(staffId, (list, who, now) => ({ entry: looseImageEntry(list, att, caption, who, now), absorbed: null }))
             return text(t('staff.tool.image.done'))
           },
         ),
@@ -2233,7 +2234,7 @@ export class Office extends EventEmitter<{
           t('staff.tool.artifact.desc'),
           { title: z.string().describe(t('staff.tool.artifact.title')), path: z.string().describe(t('staff.tool.artifact.path')), caption: z.string().optional().describe(t('staff.tool.caption')) },
           async ({ title, path: file, caption }) => {
-            const taskId = (this.origins.get(staffId) ?? []).find((o): o is Extract<Origin, { kind: 'task' }> => o.kind === 'task')?.taskId ?? null
+            const taskId = this.taskOriginOf(staffId)
             const r = saveArtifactFile({ title, source: file, staffId, staffName: this.hired.get(staffId)?.name ?? '', taskId })
             if (!r.ok) return text(t(`staff.tool.artifact.${r.reason}`))
             const att: Attachment = { id: r.ref.id, name: r.ref.name, path: r.file, mime: mimeOf(r.ref.name), size: r.ref.size, artifact: r.ref }
@@ -2242,6 +2243,8 @@ export class Office extends EventEmitter<{
             this.postChat(staffId, body, [att])
             const card = taskId ? this.tasks.get(taskId) : undefined
             if (card) this.saveTask({ ...card, artifacts: [...(card.artifacts ?? []).filter((a) => a.id !== r.ref.id), r.ref] })
+            // 카드 없이 올린 결과물은 갤러리에 바로 남긴다 (업무 카드가 가진 결과물이면 그 카드가 검토로 넘어갈 때 남는다)
+            else if (![...this.tasks.values()].some((task) => task.artifacts?.some((a) => a.id === r.ref.id))) this.recordLooseGallery(staffId, (list, who, now) => looseArtifactEntry(list, r.ref, caption ?? '', who, now))
             this.bumpArtifactRefs(r.ref)
             return text(t('staff.tool.artifact.done', { version: r.ref.version }))
           },
@@ -2263,6 +2266,7 @@ export class Office extends EventEmitter<{
             fs.rmSync(file, { force: true })
             this.log(staffId, 'reply', caption, [att])
             this.postChat(staffId, caption, [att])
+            if (!this.taskOriginOf(staffId)) this.recordLooseGallery(staffId, (list, who, now) => ({ entry: looseImageEntry(list, att, caption, who, now), absorbed: null }))
             return text(t('staff.tool.screen.done'))
           },
         ),
@@ -3508,6 +3512,27 @@ export class Office extends EventEmitter<{
 
   // ── 결과물 갤러리·데모데이 ─────────────────────────────
 
+  private taskOriginOf(staffId: string): string | null {
+    return (this.origins.get(staffId) ?? []).find((o): o is Extract<Origin, { kind: 'task' }> => o.kind === 'task')?.taskId ?? null
+  }
+
+  private galleryIo(): GalleryStoreIo {
+    return { get: () => this.gallery, set: (l) => (this.gallery = l), save: db.saveGalleryRow, remove: db.deleteGalleryRow, emit: () => this.emit('galleryChanged'), max: GALLERY_MAX }
+  }
+
+  /** 업무 카드 없이(위임받은 일·대화 중) 올린 결과물·사진도 갤러리에 남긴다 — 한도·삭제·갱신 신호는 카드 있는 항목과 같다 */
+  private recordLooseGallery(staffId: string, build: (list: GalleryEntry[], who: LooseGalleryWho, now: number) => { entry: GalleryEntry; absorbed: string | null } | null) {
+    const s = this.hired.get(staffId)
+    if (!s) return
+    const r = build(this.gallery, { staffId, staffName: s.name, teamId: this.teamOf(staffId)?.id ?? null, labId: this.labsOf(staffId)[0]?.id ?? null }, Date.now())
+    if (!r) return
+    if (r.absorbed) {
+      this.gallery = this.gallery.filter((e) => e.id !== r.absorbed)
+      db.deleteGalleryRow(r.absorbed)
+    }
+    storeGalleryEntry(async () => r.entry, this.galleryIo()).catch((e) => console.error('[office] recordLooseGallery', e))
+  }
+
   galleryList(): GalleryEntry[] {
     return this.gallery
   }
@@ -3548,7 +3573,7 @@ export class Office extends EventEmitter<{
             finishedAt: Date.now(),
           }
         },
-        { get: () => this.gallery, set: (l) => (this.gallery = l), save: db.saveGalleryRow, remove: db.deleteGalleryRow, emit: () => this.emit('galleryChanged'), max: GALLERY_MAX },
+        this.galleryIo(),
       )
     } catch (e) {
       console.error('[office] recordGallery', e)

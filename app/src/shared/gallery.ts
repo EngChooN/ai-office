@@ -350,6 +350,73 @@ export function bumpGalleryRefs(list: GalleryEntry[], ref: ArtifactRef, save: (e
   })
 }
 
+// ── 업무 카드 없이 올린 결과물·사진 (위임받은 일·대화 중에 올린 것) ──
+// 결과물 카드 id = "artifact:<결과물 id>" (새 버전은 같은 카드를 갱신), 사진만 있는 카드 id = "image:<직원>:<시각>"
+
+/** 카드 없는 사진을 같은 직원의 직전 카드 없는 항목에 붙이는 시간 (넘으면 새 사진 카드) */
+export const LOOSE_GALLERY_WINDOW_MS = 60 * 60 * 1000
+const LOOSE_TITLE_MAX = 60
+
+export interface LooseGalleryWho {
+  staffId: string
+  staffName: string
+  teamId: string | null
+  labId: string | null
+}
+
+export const looseArtifactId = (artifactId: string) => `artifact:${artifactId}`
+const isLooseEntry = (e: GalleryEntry) => e.id.startsWith('artifact:') || e.id.startsWith('image:')
+const isPhotoOnly = (e: GalleryEntry) => e.id.startsWith('image:')
+
+/** 같은 직원이 최근(창 안)에 만든 카드 없는 항목 중 가장 최근 것 */
+function recentLoose(list: GalleryEntry[], staffId: string, now: number, only: (e: GalleryEntry) => boolean = isLooseEntry): GalleryEntry | null {
+  return list.filter((e) => only(e) && e.staffId === staffId && e.finishedAt >= now - LOOSE_GALLERY_WINDOW_MS).sort((a, b) => b.finishedAt - a.finishedAt)[0] ?? null
+}
+
+/** 카드 없이 올린 결과물 → 갤러리 항목. 이미 업무 카드 갤러리 항목이 가진 결과물이면 null (버전 갱신은 bumpGalleryRefs가 한다).
+ * 처음 만들 때 같은 직원의 직전 사진 카드가 있으면 그 사진을 가져오고 그 카드는 absorbed로 돌려준다 (지워서 중복을 막는다) */
+export function looseArtifactEntry(list: GalleryEntry[], ref: ArtifactRef, caption: string, who: LooseGalleryWho, now: number): { entry: GalleryEntry; absorbed: string | null } | null {
+  const id = looseArtifactId(ref.id)
+  if (list.some((e) => e.id !== id && !isLooseEntry(e) && e.artifacts?.some((a) => a.id === ref.id))) return null
+  const prev = list.find((e) => e.id === id)
+  const photos = prev ? null : recentLoose(list, who.staffId, now, isPhotoOnly)
+  const text = caption.trim()
+  return {
+    entry: {
+      id,
+      ...who,
+      title: ref.title,
+      summary: text ? summarize(text) : (prev?.summary ?? ''),
+      body: text ? galleryBody(text) : (prev?.body ?? ''),
+      links: text ? extractLinks(text) : (prev?.links ?? []),
+      images: prev?.images ?? photos?.images ?? [],
+      artifacts: [ref],
+      files: [],
+      finishedAt: now,
+    },
+    absorbed: photos?.id ?? null,
+  }
+}
+
+/** 카드 없이 올린 사진 → 같은 직원이 최근 만든 카드 없는 항목에 붙이고, 없으면 사진만 있는 카드 */
+export function looseImageEntry(list: GalleryEntry[], image: Attachment, caption: string, who: LooseGalleryWho, now: number): GalleryEntry {
+  const prev = recentLoose(list, who.staffId, now)
+  if (prev) return { ...prev, images: [...prev.images.filter((i) => i.id !== image.id), image].slice(-GALLERY_IMAGES_MAX), finishedAt: now }
+  const text = caption.trim()
+  const firstLine = text.split('\n')[0] ?? ''
+  return {
+    id: `image:${who.staffId}:${now}`,
+    ...who,
+    title: (firstLine.length > LOOSE_TITLE_MAX ? `${firstLine.slice(0, LOOSE_TITLE_MAX).trimEnd()}…` : firstLine) || image.name,
+    summary: summarize(text),
+    body: galleryBody(text),
+    links: extractLinks(text),
+    images: [image],
+    files: [],
+    finishedAt: now,
+  }
+}
+
 export interface GalleryStoreIo {
   get: () => GalleryEntry[]
   set: (list: GalleryEntry[]) => void
