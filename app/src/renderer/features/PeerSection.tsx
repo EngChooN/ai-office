@@ -182,23 +182,41 @@ function HostPart({ onSlotsChanged }: { onSlotsChanged: () => void }) {
   const [newName, setNewName] = useState('')
   // 코드를 만들기 직전에 받아 둔 연결 목록 — 이것과 비교해야 기존 연결을 새 연결로 착각하지 않는다
   const knownIds = useRef<Set<string>>(new Set())
+  // 늦게 끝난 이전 요청이 화면을 바꾸거나, 떠난 뒤에 연결 창을 다시 열지 못하게 한다
+  const openSeq = useRef(0)
+  const isMounted = useRef(false)
 
   const open = useCallback(async () => {
+    const seq = ++openSeq.current
+    const isStale = () => seq !== openSeq.current
     setError('')
     setIsExpired(false)
     setNewName('')
     try {
-      knownIds.current = new Set((await window.office.peerSlots()).map((x) => x.id))
-      setWin(await window.office.peerPairStart('peer'))
+      const base = await window.office.peerSlots()
+      if (isStale()) return
+      knownIds.current = new Set(base.map((x) => x.id))
+      const opened = await window.office.peerPairStart('peer')
+      if (isStale()) {
+        // 화면을 떠났으면 방금 연 창을 닫는다. 새 요청이 진행 중이면 그 요청이 창을 바꿔 연다
+        if (!isMounted.current) void window.office.peerPairClose()
+        return
+      }
+      setWin(opened)
       setNow(Date.now())
     } catch (e) {
-      setError(errText(e))
+      if (!isStale()) setError(errText(e))
     }
   }, [])
   useEffect(() => {
+    isMounted.current = true
     void open()
     // 역할을 바꾸거나 화면을 떠나면 창을 닫는다
-    return () => void window.office.peerPairClose()
+    return () => {
+      isMounted.current = false
+      openSeq.current++
+      void window.office.peerPairClose()
+    }
   }, [open])
   // 창이 열린 동안 1초마다 남은 시간, 3초마다 새 연결을 본다.
   // 창을 열 때 있던 PC 말고 새 PC가 붙으면 "연결됐어요" — 코드는 한 번 쓰면 끝이므로 코드 표시도 거둔다
