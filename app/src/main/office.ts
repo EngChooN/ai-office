@@ -8,7 +8,7 @@ import { app } from 'electron'
 import { z } from 'zod'
 import type { PeerManager } from './peer/peerManager'
 import type { PeerHost, PeerHostOffice } from './peer/peerHost'
-import { isPeerJobActive, type PeerApprovalEvent } from '../shared/peerProtocol'
+import { isPeerJobActive, PEER_LIMITS, type PeerApprovalEvent } from '../shared/peerProtocol'
 import { remoteStaffBase } from './peer/remoteStaffView'
 import { blocksCopyRedelegate, canCreateCards, derivedPeerAction, hasLocalWork as hasLocalWorkOf, heldByOtherPeerJob, peerCwdRestored, peerJobOfOrigins, shouldHoldLocal } from './peer/peerIsolation'
 import { fmtDate, getLang, resolveLang, setLang, t, tk, tr as trI18n, tx, type I18nArg, type Lang } from '../shared/i18n/index.ts'
@@ -1354,11 +1354,11 @@ export class Office extends EventEmitter<{
     const rec = this.peer!.registry.staffOf(staffId)!
     // 직원 패널의 오늘 한 일에도 지시를 남긴다 (답은 peerPort().report가 같은 곳에 남긴다)
     this.log(staffId, 'instruction', via ? `${via} ${text}` : text, attachments)
-    // 첨부는 아직 다른 PC로 보내지 못한다 — 대표에게 알리고, 직원이 없는 그림을 찾지 않게 지시에도 적어 보낸다
-    if (attachments.length) this.log(staffId, 'error', t('peer.attachUnsupported', { name: rec.name }))
-    const sent = attachments.length ? `${text}\n\n${t('peer.attachDropped')}` : text
+    // 첨부도 함께 보낸다 — 개수·크기 한도를 넘는 것은 일 큐가 빼고 보내므로(보고·지시에 안내) 대표에게는 지금 바로 알린다
+    const skipped = attachments.filter((a, i) => i >= PEER_LIMITS.attachmentsPerJob || a.size > PEER_LIMITS.attachmentMax)
+    if (skipped.length) this.log(staffId, 'error', t('peer.attachSkipped', { name: rec.name, files: skipped.map((a) => a.name).join(', '), max: PEER_LIMITS.attachmentsPerJob, mb: PEER_LIMITS.attachmentMax / 1024 / 1024 }))
     try {
-      this.peer!.delegate(staffId, sent, { leadId: null, ...(origin.room ? { room: origin.room } : {}), ...(origin.isAutonomous ? { isAutonomous: true } : {}) })
+      this.peer!.delegate(staffId, text, { leadId: null, ...(origin.room ? { room: origin.room } : {}), ...(origin.isAutonomous ? { isAutonomous: true } : {}), ...(attachments.length ? { attachments } : {}) })
     } catch (e) {
       const msg = this.peerErrorText(e, rec.name)
       this.log(staffId, 'error', msg)
@@ -1497,8 +1497,10 @@ export class Office extends EventEmitter<{
             return 'busy'
           }
         } else if (this.peerCwd.has(s.id)) return 'busy'
-        const text = t('staff.msg.delegated', { lead: job.lead.name || t('peer.leadOwner'), instruction: job.instruction })
-        this.instruct(s.id, text, { kind: 'peer', jobId: job.id, ...(job.isAutonomous ? { isAutonomous: true } : {}) })
+        // A컴이 붙였지만 받지 못한 첨부가 있으면 지시 끝에 알린다 (직원이 없는 파일을 찾지 않게)
+        const instruction = job.droppedAttachments ? `${job.instruction}\n\n${t('peer.attachMissing', { n: job.droppedAttachments })}` : job.instruction
+        const text = t('staff.msg.delegated', { lead: job.lead.name || t('peer.leadOwner'), instruction })
+        this.instruct(s.id, text, { kind: 'peer', jobId: job.id, ...(job.isAutonomous ? { isAutonomous: true } : {}) }, job.attachments ?? [])
         return 'ok'
       },
       cancelJob: (job) => {

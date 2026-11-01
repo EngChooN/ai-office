@@ -1,6 +1,7 @@
 // PC 두 대 통합 시험 (실제 HTTPS·SSE, 한 프로세스): B컴 = RemoteService + PeerHost(가짜 직원), A컴 = PeerManager(진짜 통로)
 // 짝짓기 → 원격 직원 → delegate → 실시간 진행 → [팀원 보고] → 결재 중계 → 연결 끊김·자동 재전달 → 해제 + 권한 범위
 import assert from 'node:assert/strict'
+import crypto from 'node:crypto'
 import https from 'node:https'
 import net from 'node:net'
 import { test } from 'node:test'
@@ -84,8 +85,16 @@ function makeB(port: number) {
     pendingApprovals: () => [...approvalJobs].map(([approvalId, jobId]) => ({ jobId, approvalId, staffId: 'kim', toolName: 'Bash', summary: 'deploy.sh', createdAt: Date.now() })),
     approvalJob: (id) => approvalJobs.get(id) ?? null,
   }
+  // 피어가 올린 첨부: 진짜 파일로 저장한다 (휴대폰 올리기와 같은 saveUpload 자리)
+  const attachDir = fs.mkdtempSync(path.join(os.tmpdir(), 'peer-b-att-'))
+  const saveUpload = (name: string, mime: string, data: Buffer) => {
+    const id = crypto.randomUUID()
+    const file = path.join(attachDir, `${id}__${name}`)
+    fs.writeFileSync(file, data)
+    return { id, name, path: file, mime, size: data.length }
+  }
   const syncB = new PeerSync({ baseDir: fs.mkdtempSync(path.join(os.tmpdir(), 'peer-b-')), store: memorySyncStore(), registeredRoots: () => [] })
-  const host = new PeerHost({ store, office, publish: (slot, event, data) => svc.publishToSlot(slot, event as 'job' | 'approval', data), workspaceReady: (id, slot) => syncB.workspaces.record(id)?.slotId === slot && syncB.workspaces.record(id)?.state === 'ready' })
+  const host = new PeerHost({ store, office, publish: (slot, event, data) => svc.publishToSlot(slot, event as 'job' | 'approval', data), workspaceReady: (id, slot) => syncB.workspaces.record(id)?.slotId === slot && syncB.workspaces.record(id)?.state === 'ready', saveUpload })
   svc = new RemoteService({
     office: { view: () => ({ staff: [], tasks: [] }), decide: () => true, answerQuestion: () => true, reviewPlan: () => true, instruct: () => {} },
     serverVersion: 'test',
@@ -426,6 +435,106 @@ test('인증 전 짝짓기 호출은 한 주소에서 분당 12번까지만 (그
     for (let i = 0; i < 14; i++) codes.push((await t.post('/v2/pair/hello', { nonceA: 'A'.repeat(22) })).status)
     assert.deepEqual([codes.slice(0, 12).every((c) => c === 410), codes[12], codes[13]], [true, 429, 429])
   } finally {
+    await B.svc.disable()
+  }
+})
+
+/** 바이트 올리기 (헤더를 마음대로 — 길이 없음·거짓 길이 시험용) */
+function rawPut(port: number, path: string, token: string, data: Buffer | null, headers: Record<string, string | number>): Promise<{ status: number; body: any }> {
+  return new Promise((resolve, reject) => {
+    const r = https.request({ host: '127.0.0.1', port, path, method: 'PUT', rejectUnauthorized: false, agent: false, headers: { Authorization: `Bearer ${token}`, ...headers } }, (res) => {
+      const chunks: Buffer[] = []
+      res.on('data', (c) => chunks.push(c))
+      res.on('end', () => {
+        let b: any = null
+        try {
+          b = JSON.parse(Buffer.concat(chunks).toString())
+        } catch {}
+        resolve({ status: res.statusCode ?? 0, body: b })
+      })
+    })
+    r.on('error', reject)
+    if (data) r.write(data)
+    r.end()
+  })
+}
+
+test('첨부: A컴 파일을 올리고 일과 함께 보내면 B컴 직원 지시에 실린다 · 다른 슬롯 id는 버린다 · 한도', { timeout: 30_000 }, async () => {
+  const port = await freePort()
+  const B = makeB(port)
+  const A = makeA()
+  const A2 = makeA()
+  try {
+    await B.svc.enable(port)
+    const paired = await A.mgr.pairConnect('127.0.0.1', port, (await B.svc.openPairing('peer'))!.code)
+    await until(() => A.mgr.linkState(paired.id) === 'online', 'online')
+    const rec = await A.mgr.addStaff(paired.id, 'kim')
+    const token = A.vault.load(paired.id) as string
+    const slotA = B.svc.peerSlots()[0].id
+
+    // ── 업로드 → 일 수락 → startJob에 첨부(B컴 파일)가 실린다. 사라진 파일은 빼고 보내고 지시·보고에 알린다
+    const dirA = await fsp.mkdtemp(path.join(os.tmpdir(), 'peer-a-att-'))
+    const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 1, 2, 3])
+    await fsp.writeFile(path.join(dirA, '화면.png'), png)
+    const job = A.mgr.delegate(rec.id, '이 그림 봐 줘', {
+      leadId: null,
+      attachments: [
+        { path: path.join(dirA, '화면.png'), name: '화면.png', mime: 'image/png' },
+        { path: path.join(dirA, 'gone.txt'), name: 'gone.txt', mime: 'text/plain' },
+      ],
+    })
+    await until(() => B.started.length === 1, 'B가 일을 받음')
+    const got = B.started[0]
+    assert.equal(got.id, job.id)
+    assert.deepEqual(got.attachments?.map((a) => [a.name, a.mime, a.size]), [['화면.png', 'image/png', png.length]])
+    assert.deepEqual(await fsp.readFile(got.attachments![0].path), png)
+    assert.equal(got.droppedAttachments, undefined)
+    assert.match(got.instruction, /^이 그림 봐 줘\n\nattachDropped:\{"files":"gone.txt"\}$/)
+    // A컴 일에는 올린 B컴 id와 뺀 이유가 남는다 (다시 보낼 때 올린 것은 건너뛴다)
+    const saved = A.mgr.jobs().find((j) => j.id === job.id)!
+    assert.deepEqual(saved.attachments?.map((a) => [a.name, Boolean(a.remoteId), a.dropped]), [['화면.png', true, undefined], ['gone.txt', false, 'missing']])
+    B.host.finish(job.id, '봤어요')
+    await until(() => A.reports.length === 1, '보고')
+    assert.match(A.reports[0].info.text, /attachFailed:\{"files":"gone.txt"\}$/)
+
+    // ── 다른 슬롯이 올린 id는 쓸 수 없다: A2가 올린 첨부 id를 A가 보내면 버리고 수만 남긴다
+    const paired2 = await A2.mgr.pairConnect('127.0.0.1', port, (await B.svc.openPairing('peer'))!.code)
+    const token2 = A2.vault.load(paired2.id) as string
+    const up2 = await rawPut(port, '/v2/peer/attachments', token2, Buffer.from('비밀'), { 'Content-Type': 'text/plain', 'Content-Length': Buffer.byteLength('비밀'), 'X-File-Name': encodeURIComponent('남의.txt') })
+    assert.equal(up2.status, 201)
+    assert.deepEqual(Object.keys(up2.body.attachment).sort(), ['id', 'mime', 'name', 'size']) // B컴 경로는 나가지 않는다
+    assert.equal(up2.body.attachment.name, '남의.txt')
+    const otherJob = crypto.randomUUID()
+    const r = await rawReq(port, '/v2/peer/jobs', token, 'POST', { jobId: otherJob, staffId: 'kim', instruction: '이것도', lead: { name: '', role: '' }, attachmentIds: [up2.body.attachment.id, 'no-such-id'] })
+    assert.equal(r.status, 202)
+    const stolen = B.started.find((j) => j.id === otherJob)!
+    assert.deepEqual([stolen.attachments, stolen.droppedAttachments], [undefined, 2])
+    assert.equal(B.store.inbox.get(otherJob)?.slotId, slotA)
+
+    // ── 한도: 파일당 크기(밝힌 길이로 본문 전에 거절)·길이 없음·일 하나당 개수·메서드·휴대폰 토큰
+    const big = await rawPut(port, '/v2/peer/attachments', token, null, { 'Content-Type': 'image/png', 'Content-Length': 20 * 1024 * 1024 + 1 })
+    assert.deepEqual([big.status, big.body?.error], [413, 'payload_too_large'])
+    const chunked = await rawPut(port, '/v2/peer/attachments', token, Buffer.from('x'), { 'Transfer-Encoding': 'chunked' })
+    assert.deepEqual([chunked.status, chunked.body?.error], [411, 'length_required'])
+    const ids: string[] = []
+    for (let i = 0; i < 6; i++) ids.push((await rawPut(port, '/v2/peer/attachments', token, Buffer.from(`f${i}`), { 'Content-Length': 2, 'X-File-Name': `f${i}.txt` })).body.attachment.id)
+    const tooMany = await rawReq(port, '/v2/peer/jobs', token, 'POST', { jobId: crypto.randomUUID(), staffId: 'kim', instruction: '많다', lead: { name: '', role: '' }, attachmentIds: ids })
+    assert.deepEqual([tooMany.status, tooMany.body.error, tooMany.body.message], [400, 'invalid_request', 'too_many_attachments'])
+    const five = await rawReq(port, '/v2/peer/jobs', token, 'POST', { jobId: crypto.randomUUID(), staffId: 'kim', instruction: '다섯', lead: { name: '', role: '' }, attachmentIds: ids.slice(0, 5) })
+    assert.equal(five.status, 202)
+    assert.equal(B.started.at(-1)!.attachments?.length, 5)
+    assert.equal((await rawReq(port, '/v2/peer/attachments', token, 'POST', {})).status, 405)
+    // A컴 일 큐도 6번째부터는 빼고 보낸다
+    const many = A.mgr.delegate(rec.id, '여섯 개', { leadId: null, attachments: Array.from({ length: 6 }, () => ({ path: path.join(dirA, '화면.png'), name: '화면.png', mime: 'image/png' })) })
+    await until(() => B.started.some((j) => j.id === many.id), '여섯 개 일')
+    assert.equal(B.started.find((j) => j.id === many.id)!.attachments?.length, 5)
+    assert.equal(A.mgr.jobs().find((j) => j.id === many.id)!.attachments?.[5].dropped, 'too_many')
+    // 슬롯을 해제하면 그 슬롯이 올린 첨부 기록도 지운다
+    B.svc.revokePeerSlot(B.svc.peerSlots().find((s) => s.id !== slotA)!.id)
+    assert.equal(B.store.uploads.get(up2.body.attachment.id), undefined)
+  } finally {
+    A.mgr.dispose()
+    A2.mgr.dispose()
     await B.svc.disable()
   }
 })

@@ -2,7 +2,7 @@
 // 인증·잠금·속도는 V2Routes의 앞단(preflight)이 이미 거쳤다. 여기서는 경로·본문·슬롯 소속만 본다 (파일 복사본 경로는 4번의 syncRoutes)
 
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { PEER_PATHS } from '../../shared/peerProtocol.ts'
+import { PEER_LIMITS, PEER_PATHS } from '../../shared/peerProtocol.ts'
 import type { PairingHost } from '../peer/pairing'
 import type { PeerHost, HostResult } from '../peer/peerHost'
 import { V2_PROTOCOL_VERSION, v2Fail } from './v2.ts'
@@ -12,6 +12,7 @@ const BODY_MAX = 64 * 1024
 const PAIR_BODY_MAX = 4 * 1024
 /** 인증 전 짝짓기 호출 속도: 한 주소에서 분당 12번 */
 const PAIR_RATE = { windowMs: 60_000, max: 12 }
+const FILE_NAME_MAX = 200
 const JOB_PATH = /^\/v2\/peer\/jobs\/([^/]{1,64})\/(cancel|ack)$/
 
 export interface PeerRoutesContext {
@@ -116,6 +117,11 @@ export class PeerRoutes {
   /** /v2/peer/* — slotId는 피어 토큰의 슬롯 (휴대폰 토큰은 null → 거부) */
   async peer(req: IncomingMessage, res: ServerResponse, path: string, query: URLSearchParams, slotId: string | null, access: Access) {
     const reply = (r: RemoteResponse | HostResult) => send(res, r, access)
+    // 첨부 올리기를 본문을 읽지 않고 거절할 때는 연결을 닫는다 (keep-alive가 남은 바이트를 다 받지 않게)
+    if (path === PEER_PATHS.attachments && (!slotId || req.method !== 'PUT')) {
+      res.setHeader('Connection', 'close')
+      res.on('finish', () => req.socket.destroy())
+    }
     if (!slotId) return reply(v2Fail('scope_denied'))
     const m = req.method ?? ''
     const host = this.ctx.host
@@ -151,6 +157,10 @@ export class PeerRoutes {
       reply({ status: 200, body: { ok: true } })
       return this.ctx.onUnpair(slotId)
     }
+    if (path === PEER_PATHS.attachments) {
+      if (m !== 'PUT') return reply(v2Fail('method_not_allowed', { allow: 'PUT' }))
+      return this.receiveAttachment(req, res, slotId, reply)
+    }
     if (path === PEER_PATHS.jobs) {
       if (m === 'GET') return reply(host.jobs(slotId, query.get('ids') ?? ''))
       if (m !== 'POST') return reply(v2Fail('method_not_allowed', { allow: 'GET, POST' }))
@@ -163,6 +173,33 @@ export class PeerRoutes {
       return reply(job[2] === 'cancel' ? host.cancel(slotId, job[1]) : host.ack(slotId, job[1]))
     }
     return reply(v2Fail('not_found'))
+  }
+
+  /** PUT /v2/peer/attachments — 바이트 본문(길이 필수), 이름은 x-file-name(URI 인코딩), 종류는 content-type */
+  private async receiveAttachment(req: IncomingMessage, res: ServerResponse, slotId: string, reply: (r: RemoteResponse | HostResult) => void) {
+    // 본문을 다 읽지 않고 거절하면 연결을 닫는다 (올리던 바이트를 받지 않게)
+    const closeAfter = (r: RemoteResponse) => {
+      res.setHeader('Connection', 'close')
+      res.on('finish', () => req.socket.destroy())
+      reply(r)
+    }
+    const lengthText = req.headers['content-length']
+    if (lengthText === undefined) return closeAfter(v2Fail('length_required'))
+    const length = Number(lengthText)
+    if (!Number.isInteger(length) || length < 0) return closeAfter(v2Fail('invalid_request'))
+    if (length > PEER_LIMITS.attachmentMax) return closeAfter(v2Fail('payload_too_large'))
+    let name: string
+    try {
+      name = decodeURIComponent(String(req.headers['x-file-name'] ?? '')).slice(0, FILE_NAME_MAX) || 'file'
+    } catch {
+      return closeAfter(v2Fail('invalid_request'))
+    }
+    // 보낸 쪽 종류는 형식이 맞을 때만 믿는다 (확장자로 모를 때만 쓰인다)
+    const sent = String(req.headers['content-type'] ?? '').split(';')[0].trim().toLowerCase()
+    const mime = /^[\w.+-]+\/[\w.+-]+$/.test(sent) ? sent : ''
+    const raw = await readBody(req, length)
+    if (raw === 'too_large') return
+    reply(this.ctx.host.upload(slotId, name, mime === 'application/octet-stream' ? '' : mime, raw))
   }
 
   /** /v2/call을 피어 토큰으로 불렀을 때 — hello·decide·answerQuestion 말고는 모두 막는다 (설계서 8-1) */

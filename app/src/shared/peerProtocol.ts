@@ -10,6 +10,8 @@ export const PEER_PATHS = {
   staff: '/v2/peer/staff',
   watch: '/v2/peer/watch',
   jobs: '/v2/peer/jobs',
+  /** 일에 붙일 첨부 올리기 (PUT, 바이트 본문) */
+  attachments: '/v2/peer/attachments',
   approvals: '/v2/peer/approvals',
   unpair: '/v2/peer/unpair',
 } as const
@@ -26,6 +28,15 @@ export const PEER_LIMITS = {
   queueTtlMs: 24 * 60 * 60_000,
   instructionMax: 20_000,
   resultMax: 20_000,
+  /** 첨부 한 개 상한 — 휴대폰 올리기(V2_UPLOAD_MAX)와 같다 */
+  attachmentMax: 20 * 1024 * 1024,
+  /** 일 하나에 붙일 수 있는 첨부 수 */
+  attachmentsPerJob: 5,
+  /** B컴: 올린 첨부를 일에 쓸 수 있는 기간 (A컴 큐 수명의 두 배 — 그 안에 일이 오지 않으면 기록만 지운다) */
+  attachmentKeepMs: 48 * 60 * 60_000,
+  /** B컴: 슬롯마다 아직 일에 쓰이지 않은 첨부의 수·용량 상한 (넘으면 413 — 올리기만 하고 쓰지 않는 파일이 쌓이지 않게) */
+  uploadsPendingMax: 20,
+  uploadsPendingBytesMax: 200 * 1024 * 1024,
   /** B컴 수신함 보관: ack 뒤 / ack 없이 */
   inboxAckedKeepMs: 30 * 24 * 60 * 60_000,
   inboxKeepMs: 90 * 24 * 60 * 60_000,
@@ -101,6 +112,16 @@ export interface PeerJobRequest {
   lab?: { name: string; goal?: string }
   workspaceId?: string
   isAutonomous?: boolean
+  /** 이 슬롯이 PUT /v2/peer/attachments로 올린 첨부 id (최대 attachmentsPerJob개) */
+  attachmentIds?: string[]
+}
+
+/** 첨부 올리기 응답 (B컴 경로는 싣지 않는다) */
+export interface PeerAttachmentBrief {
+  id: string
+  name: string
+  mime: string
+  size: number
 }
 
 /** 짝짓기 종류 */

@@ -3,7 +3,8 @@
 // 모든 호출은 슬롯(어느 A컴 토큰인지)에 묶인다 — 다른 슬롯의 일·결재는 건드리지 못한다
 
 import { isJobId, isPeerJobActive, PEER_LIMITS, type PeerApprovalEvent, type PeerJobEvent, type PeerJobRequest, type PeerStaffBrief } from '../../shared/peerProtocol.ts'
-import type { InboxJob, PeerStore } from './peerStore'
+import type { Attachment } from '../../shared/types'
+import type { InboxJob, PeerStore, PeerUpload } from './peerStore'
 import { redactPeerDeep, redactPeerText } from './redact.ts'
 
 export interface PeerHostOffice {
@@ -30,6 +31,10 @@ export interface PeerHostDeps {
   workspaceReady?(workspaceId: string, slotId: string): boolean
   /** A컴이 일을 확인(ack)했다 — 복사본·변경 묶음을 정리할 때 */
   onAcked?(job: InboxJob): void
+  /** 피어가 올린 첨부를 B컴 첨부 저장소에 넣는다 (휴대폰 올리기와 같은 함수). 없으면 첨부 올리기는 404 */
+  saveUpload?(name: string, mime: string, data: Buffer): Attachment
+  /** 일에 쓰이지 않은 채 정리되는 첨부 파일을 지운다 */
+  removeUpload?(id: string): void
 }
 
 export type HostResult = { status: number; body: Record<string, unknown> }
@@ -85,6 +90,16 @@ export class PeerHost {
     }
     const workspaceId = typeof r.workspaceId === 'string' ? r.workspaceId.slice(0, 100) : undefined
     if (workspaceId && !(this.d.workspaceReady?.(workspaceId, slotId) ?? false)) return err(404, 'workspace_not_found')
+    // 첨부: 이 슬롯이 올린 id만 일에 붙인다 (남의 id·모르는 id는 버리고 수만 기록해 지시에 안내)
+    const ids = r.attachmentIds
+    if (ids !== undefined && (!Array.isArray(ids) || ids.some((x) => typeof x !== 'string'))) return err(400, 'invalid_request')
+    if (ids && ids.length > PEER_LIMITS.attachmentsPerJob) return err(400, 'invalid_request', 'too_many_attachments')
+    const attachments: Attachment[] = []
+    for (const id of new Set(ids ?? [])) {
+      const up = this.d.store.uploads.get(id)
+      if (up && up.slotId === slotId) attachments.push(up.attachment)
+    }
+    const dropped = new Set(ids ?? []).size - attachments.length
     const lead = { name: String(r.lead?.name ?? '').slice(0, 60), role: String(r.lead?.role ?? '').slice(0, 60) }
     const job: InboxJob = {
       id: r.jobId,
@@ -95,6 +110,8 @@ export class PeerHost {
       ...(r.lab && typeof r.lab.name === 'string' ? { lab: { name: r.lab.name.slice(0, 100), ...(typeof r.lab.goal === 'string' ? { goal: r.lab.goal.slice(0, 500) } : {}) } } : {}),
       ...(workspaceId ? { workspaceId } : {}),
       ...(r.isAutonomous === true ? { isAutonomous: true } : {}),
+      ...(attachments.length ? { attachments } : {}),
+      ...(dropped ? { droppedAttachments: dropped } : {}),
       state: 'accepted',
       createdAt: this.now(),
     }
@@ -118,7 +135,42 @@ export class PeerHost {
       return err(503, 'staff_busy', '그 직원이 이 PC의 다른 일을 하는 중이에요. 잠시 뒤 다시 보낼게요')
     }
     this.d.store.inbox.put({ ...job, state: 'running' })
+    for (const a of attachments) {
+      const up = this.d.store.uploads.get(a.id)
+      if (up) this.d.store.uploads.put({ ...up, usedBy: job.id })
+    }
     return { status: 202, body: { jobId: job.id, state: 'running' } }
+  }
+
+  /** 첨부 받기 (PUT /v2/peer/attachments): 저장하고 올린 슬롯을 기록한다. 응답에는 B컴 경로를 싣지 않는다 */
+  upload(slotId: string, name: string, mime: string, data: Buffer): HostResult {
+    if (!this.d.saveUpload) return err(404, 'not_found')
+    if (data.length > PEER_LIMITS.attachmentMax) return err(413, 'payload_too_large')
+    this.pruneUploads()
+    // 슬롯마다 아직 일에 쓰이지 않은 첨부의 수·용량 상한 — 넘으면 A컴은 그 첨부 없이 일을 보낸다 (413은 다시 보내지 않는 거절)
+    const pending = this.d.store.uploads.list().filter((u) => u.slotId === slotId && !u.usedBy)
+    const pendingBytes = pending.reduce((n, u) => n + u.attachment.size, 0)
+    if (pending.length >= PEER_LIMITS.uploadsPendingMax || pendingBytes + data.length > PEER_LIMITS.uploadsPendingBytesMax) return err(413, 'upload_quota_exceeded')
+    let saved: Attachment
+    try {
+      saved = this.d.saveUpload(name, mime, data)
+    } catch (e) {
+      // 디스크가 가득 찼거나 첨부 폴더에 쓸 수 없다 — 경로가 섞인 원문은 보내지 않는다 (507은 A컴이 다시 시도한다)
+      return (e as NodeJS.ErrnoException)?.code === 'ENOSPC' ? err(507, 'insufficient_storage') : err(500, 'call_failed')
+    }
+    this.d.store.uploads.put({ id: saved.id, slotId, attachment: saved, createdAt: this.now() })
+    return { status: 201, body: { attachment: { id: saved.id, name: saved.name, mime: saved.mime, size: saved.size } } }
+  }
+
+  /** 오래된 첨부 기록을 지운다. 일에 쓰이지 않은 첨부는 파일도 지운다 (쓰인 파일은 받은 일·기록이 가리키므로 남긴다) */
+  private pruneUploads() {
+    const now = this.now()
+    for (const u of this.d.store.uploads.list()) if (now - u.createdAt > PEER_LIMITS.attachmentKeepMs) this.dropUpload(u)
+  }
+
+  private dropUpload(u: PeerUpload) {
+    this.d.store.uploads.delete(u.id)
+    if (!u.usedBy) this.d.removeUpload?.(u.id)
   }
 
   /** 미완료 일 일괄 조회 (재연결 따라잡기) */
@@ -205,6 +257,7 @@ export class PeerHost {
   /** 슬롯이 사라졌다 (B컴에서 해제·A컴이 unpair): 그 슬롯의 진행 중 일을 취소한다 */
   dropSlot(slotId: string) {
     this.watched.delete(slotId)
+    for (const u of this.d.store.uploads.list()) if (u.slotId === slotId) this.dropUpload(u)
     for (const j of this.d.store.inbox.list()) {
       if (j.slotId !== slotId) continue
       if (isPeerJobActive(j.state)) {
@@ -222,6 +275,7 @@ export class PeerHost {
       const limit = j.ackedAt ? PEER_LIMITS.inboxAckedKeepMs : PEER_LIMITS.inboxKeepMs
       if (now - j.finishedAt > limit) this.d.store.inbox.delete(j.id)
     }
+    this.pruneUploads()
   }
 
   /** 앱을 켤 때: 실행 중이라던 일은 그 세션이 사라졌으니 실패로 닫는다 (같은 일을 다시 실행하지는 않는다) */

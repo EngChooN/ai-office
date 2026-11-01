@@ -219,6 +219,27 @@ queued ─▶ sending ─▶ accepted ─▶ running ─▶ done
 ### 3-5. 대표가 원격 직원에게 직접 지시
 대화창에서 원격 직원에게 말하면 `delegate` 없이도 같은 `peer_job`으로 가고(`lead_id`는 null), 완료 보고는 로컬 직원의 "대표에게 올린 보고"와 같은 알림·안 읽음 표시를 쓴다.
 
+### 3-6. 첨부(이미지·파일) 보내기
+대표가 원격 직원에게 직접 지시할 때 붙인 첨부를 일과 함께 보낸다(리더의 `delegate` 도구는 첨부가 없다).
+- **한도**(`PEER_LIMITS`): 파일당 `attachmentMax` 20MB(휴대폰 `V2_UPLOAD_MAX`와 같다), 일 하나에 `attachmentsPerJob` 5개.
+- **A컴 저장**: `PeerJob.attachments: { path, name, mime, remoteId?, dropped? }[]` — A컴 첨부 폴더의 파일. 6번째부터는 저장할 때 `dropped:'too_many'`.
+- **올리기** — 일을 보내기 직전(복사본 준비 뒤) 첨부를 하나씩:
+```
+PUT /v2/peer/attachments
+Authorization: Bearer <peer token>
+Content-Length: <바이트 수>            -- 필수 (없으면 411 length_required)
+Content-Type: <mime>                   -- 확장자가 우선, 확장자로 모를 때만 이 값(형식이 맞을 때만)
+X-File-Name: <URI 인코딩한 파일 이름>   -- 200자까지
+<바이트>
+→ 201 { attachment: { id, name, mime, size } }   -- B컴 경로는 싣지 않는다
+```
+  B컴은 휴대폰 올리기와 같은 `saveUpload`로 첨부 저장소에 넣고 `peer_upload`(B컴 DB, `{ id, slotId, attachment, createdAt }`)에 **올린 슬롯**을 적는다. 길이가 20MB를 넘으면 본문을 읽기 전에 `413 payload_too_large`(연결 닫음). 디스크가 가득 차면 `507`. 슬롯마다 아직 일에 쓰이지 않은 첨부가 `uploadsPendingMax`(20개)·`uploadsPendingBytesMax`(200MB)를 넘으면 `413 upload_quota_exceeded`(A컴은 그 첨부만 빼고 보낸다). 본문을 읽지 않고 거절하는 경우(토큰 범위 밖·잘못된 메서드 포함)는 연결을 닫는다.
+- 받은 id는 `remoteId`로 A컴 일에 저장한다 → 재시도 때 이미 올린 것은 다시 올리지 않는다. 파일이 사라졌으면 `dropped:'missing'`, 20MB 초과면 `'too_large'`, B컴이 영구히 거절하면(400·401·403·404·410·411·413·415·422 — 예전 B컴은 404) `'rejected'`로 **그 첨부만 빼고** 일을 보낸다. 네트워크 오류·429·5xx는 일 전체를 기존 재시도 흐름(`retryMs`)에 맡긴다.
+- **일 요청**: `POST /v2/peer/jobs` 본문에 `attachmentIds?: string[]`(올린 B컴 id, 최대 5개 — 넘으면 `400 invalid_request` `too_many_attachments`). 뺀 첨부가 있으면 A컴이 지시 끝에 `peer.report.attachDropped`(빠진 파일 이름) 안내를 붙인다.
+- **B컴 수락**: `PeerHost.accept`는 **그 슬롯이 올린 id만** `InboxJob.attachments`(B컴 `Attachment[]`)로 붙이고, 다른 슬롯의 id·모르는 id는 버리고 개수를 `InboxJob.droppedAttachments`에 남긴다. `startJob`은 그 수가 있으면 지시 끝에 `peer.attachMissing` 안내를 붙이고, 첨부를 `Office.instruct(…, attachments)`로 직원에게 넘긴다.
+- **알림**: A컴은 지시할 때 개수·크기 한도를 넘는 첨부를 바로 직원 로그에 `peer.attachSkipped`로 알리고, 일이 끝난 보고에도 못 보낸 첨부를 `peer.report.attachFailed`로 덧붙인다.
+- **정리**: 일에 붙은 첨부는 `peer_upload.usedBy`에 그 일 id를 적는다. 기록은 `attachmentKeepMs`(48시간, A컴 큐 수명의 두 배) 뒤 또는 슬롯 해제 때 지우고, 이때 **일에 쓰이지 않은 첨부는 파일도 지운다**(응답 유실·취소로 남은 파일이 쌓이지 않게). 일에 쓰인 파일은 받은 일·로그가 가리키므로 남긴다.
+
 ---
 
 ## 4. 실시간 진행 — SSE 중계
@@ -406,6 +427,7 @@ Change    { op: 'add'|'modify'|'delete', path, size?, sha256?, baseSha256?, exec
 | `GET /v2/peer/staff` | 얇은 직원 목록(2-1) | 3 |
 | `POST /v2/peer/watch` | 지켜볼 직원 선택(4-2) | 3 |
 | `POST /v2/peer/jobs`, `GET /v2/peer/jobs?ids=`, `POST …/jobs/{id}/cancel`, `…/ack` | 일(3·6절) | 3 |
+| `PUT /v2/peer/attachments` | 일에 붙일 첨부 올리기(3-6) — 바이트 본문, 파일당 20MB | 3 |
 | `GET /v2/peer/approvals` | 미결재 일괄(5-3) | 3 |
 | `POST /v2/peer/unpair` | 해제(1-6) | 3 |
 | `POST /v2/peer/workspaces`, `…/{id}/commit`, `PUT /v2/peer/blobs/{sha256}`, `GET /v2/peer/blobs/{sha256}`, `GET /v2/peer/changesets/{id}` | 파일(7절) | 4 |
@@ -558,3 +580,4 @@ interface PeerHttp { get/put/post(path, …): Promise<…>; stream(path): Readab
   - **가리기(P2)**: B컴에서 나가는 결과·오류·결재 요약(+i18n·질문)·말풍선의 절대 경로는 마지막 이름만, 토큰·비밀번호·긴 무작위 문자열은 `‹가림›`으로(`peer/redact.ts`).
   - **4번 연결**: `/v2/peer/workspaces|blobs|changesets`는 `V2Routes.stream`이 `SyncRoutes`로 넘긴다. `db.ensureSyncTables`, i18n `peerSync` 등록. 통로에 `putBytes/getBytes`(실제 HTTPS 시험 포함). 일 큐는 보내기 전에 랩 프로젝트 폴더로 복사본을 만들어 올리고(`PeerJob.workspaceRoot`→`workspaceId`), 크기·위치 문제(`root_not_allowed`·`workspace_too_large`·`workspace_quota`)면 복사본 없이 일만 보내며 보고에 알린다. B컴은 복사본(해당 슬롯이 commit한 것만)을 직원 작업 폴더로 지정하고, 일이 끝나면 바뀐 파일을 모아 `changesetId`와 함께 돌려준다. A컴은 묶음을 받아 결재함에 `PeerChanges` 카드(`Approval.peerChanges`, diff 없는 목록)로 올린다. ack(B컴 정리)는 묶음을 다 받은 뒤에 보낸다. 앱을 다시 켜면 반영 대기 중인 묶음 카드를 되살린다(`PeerManager.restoreChanges`). 보관 정리는 앱 시작 때 `prune()`.
   - 새 OfficeApi 3개: `peerChangesetDetail(changesetId)`·`peerChangeFileDiff(changesetId, path)`·`peerApplyChanges(changesetId, choice)` — 모두 P(PC 전용), 비서 도구 제외. `choice.mode`: `all`·`safe`·`files`·`reject`.
+- 2026-11-01: 원격 직원에게 첨부(이미지·파일) 보내기(3-6절). 새 경로 `PUT /v2/peer/attachments`, `PeerJobRequest.attachmentIds`, 한도 `attachmentMax` 20MB·`attachmentsPerJob` 5·`attachmentKeepMs` 48시간, B컴 표 `peer_upload`(`usedBy`, 쓰이지 않은 첨부는 정리 때 파일까지 삭제, 슬롯당 대기 첨부 20개·200MB). 이전의 "첨부는 보내지 못해 글만 보냄"(`peer.attachUnsupported`·`peer.attachDropped`)은 없앴다. 예전 B컴(경로 없음, 404)에는 첨부를 빼고 일만 보내고 보고에 알린다.

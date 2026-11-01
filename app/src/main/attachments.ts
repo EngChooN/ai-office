@@ -71,6 +71,12 @@ function write(name: string, mime: string, data: Buffer): Attachment {
   return { id, name, path: file, mime, size: data.length }
 }
 
+/** 저장소에서 첨부 파일을 지운다 (피어가 올렸지만 일에 쓰이지 않은 파일 정리) */
+export function removeAttachment(id: string) {
+  const file = findById(id)
+  if (file) fs.rmSync(file, { force: true })
+}
+
 export function saveUploads(files: UploadFile[]): Attachment[] {
   return files.map((f) => write(f.name, f.mime || mimeOf(f.name), Buffer.from(f.data)))
 }

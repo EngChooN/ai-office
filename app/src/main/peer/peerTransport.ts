@@ -17,7 +17,7 @@ export interface PeerHttpResponse {
 export interface PeerHttp {
   call(method: 'GET' | 'POST' | 'PUT', path: string, body?: unknown, opts?: { idempotencyKey?: string }): Promise<PeerHttpResponse>
   /** 파일 바이트 올리기·받기 (복사본·변경 묶음, 4번). 없는 통로(테스트의 가짜)면 파일 동기화를 쓰지 않는다 */
-  putBytes?(path: string, data: Buffer): Promise<PeerHttpResponse>
+  putBytes?(path: string, data: Buffer, headers?: Record<string, string>): Promise<PeerHttpResponse>
   getBytes?(path: string, limit: number): Promise<{ status: number; data: Buffer | null }>
 }
 
@@ -100,14 +100,11 @@ function requestJson(e: PeerEndpoint, token: string | null, method: string, path
 
 const BYTES_TIMEOUT_MS = 120_000
 
-/** 바이트 올리기(PUT)·받기(GET). 받을 때는 limit을 넘으면 끊는다 */
-function requestBytes(e: PeerEndpoint, token: string, method: 'PUT' | 'GET', path: string, data: Buffer | null, limit: number): Promise<{ status: number; body: Record<string, unknown>; data: Buffer | null }> {
+/** 바이트 올리기(PUT)·받기(GET). 받을 때는 limit을 넘으면 끊는다. extra는 첨부 이름·종류 같은 머리글 (인증·길이는 덮어쓰지 못한다) */
+function requestBytes(e: PeerEndpoint, token: string, method: 'PUT' | 'GET', path: string, data: Buffer | null, limit: number, extra: Record<string, string> = {}): Promise<{ status: number; body: Record<string, unknown>; data: Buffer | null }> {
   return new Promise((resolve, reject) => {
-    const headers: Record<string, string | number> = { 'X-Office-Capabilities': 'iso-office', Authorization: `Bearer ${token}` }
-    if (data) {
-      headers['Content-Type'] = 'application/octet-stream'
-      headers['Content-Length'] = data.length
-    }
+    const headers: Record<string, string | number> = { 'X-Office-Capabilities': 'iso-office', ...(data ? { 'Content-Type': 'application/octet-stream' } : {}), ...extra, Authorization: `Bearer ${token}` }
+    if (data) headers['Content-Length'] = data.length
     const req = https.request(baseOptions(e, path, method, headers), (res) => {
       const chunks: Buffer[] = []
       let size = 0
@@ -150,8 +147,8 @@ export function createPairTransport(host: string, port: number): PairTransport {
 export function createPeerHttp(e: PeerEndpoint & { spki: string }, token: string): PeerHttp {
   return {
     call: (method, path, body, opts) => requestJson(e, token, method, path, body, opts?.idempotencyKey ? { 'Idempotency-Key': opts.idempotencyKey } : {}),
-    putBytes: async (path, data) => {
-      const r = await requestBytes(e, token, 'PUT', path, data, BODY_MAX)
+    putBytes: async (path, data, headers) => {
+      const r = await requestBytes(e, token, 'PUT', path, data, BODY_MAX, headers)
       return { status: r.status, body: r.body }
     },
     getBytes: async (path, limit) => {

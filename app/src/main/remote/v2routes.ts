@@ -9,6 +9,7 @@ import type { Attachment } from '../../shared/types'
 import { bearerToken, hashToken, type AuthGuard } from './auth.ts'
 import { acceptHello, CAPABILITIES_HEADER, HELLO_METHOD, NO_CAPABILITIES, parseCapabilities, shapeFor } from './capabilities.ts'
 import type { EventHub } from './events.ts'
+import { PEER_PATHS } from '../../shared/peerProtocol.ts'
 import { PeerRoutes } from './peerRoutes.ts'
 import { SyncRoutes } from './syncRoutes.ts'
 import { preflight, type RemoteRequest } from './handler.ts'
@@ -93,6 +94,8 @@ export class V2Routes {
     const isEvents = path === '/v2/events'
     const file = path.match(FILE_PATH)
     const isUpload = path === '/v2/attachments'
+    // 피어 첨부 올리기도 바이트 본문이라 거절할 때 연결을 닫는다
+    const isByteUpload = isUpload || path === PEER_PATHS.attachments
     const isPair = PeerRoutes.isPairPath(path)
     const isPeer = PeerRoutes.isPeerPath(path)
     if (!isEvents && !file && !isUpload && !isPair && !isPeer) return false
@@ -110,8 +113,8 @@ export class V2Routes {
     const blocked = this.preflight(auth)
     if (blocked) {
       // 본문을 읽지 않고 거절하는 경우는 연결을 닫는다 (올리던 바이트를 받지 않게)
-      reply(blocked, isUpload ? { Connection: 'close' } : {})
-      if (isUpload) res.on('finish', () => req.socket.destroy())
+      reply(blocked, isByteUpload ? { Connection: 'close' } : {})
+      if (isByteUpload) res.on('finish', () => req.socket.destroy())
       return true
     }
     markAuthed?.()

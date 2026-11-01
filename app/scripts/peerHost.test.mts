@@ -247,3 +247,35 @@ test('질문 답, B컴에서 먼저 처리(gone), 일 끝남, 재연결 대조',
   r.relay.dropPeer('p1')
   assert.equal(r.relay.approvalsOf('p:p1:kim').length, 0)
 })
+
+test('첨부 정리: 일에 쓰이지 않은 첨부는 기간이 지나거나 슬롯을 해제하면 파일까지 지우고, 쓰인 파일은 남긴다', () => {
+  let now = T0
+  let n = 0
+  const removed: string[] = []
+  const store = memoryPeerStore()
+  const office = { startJob: () => 'ok' } as unknown as PeerHostOffice
+  const host = new PeerHost({
+    store,
+    office,
+    publish: () => {},
+    now: () => now,
+    saveUpload: (name, mime, data) => ({ id: `u${++n}`, name, path: `/att/u${n}`, mime, size: data.length }),
+    removeUpload: (id) => void removed.push(id),
+  })
+  const put = (slot: string, size = 1) => host.upload(slot, 'a.txt', 'text/plain', Buffer.alloc(size))
+  const used = put('slotA').body.attachment as { id: string }
+  const orphan = put('slotA').body.attachment as { id: string }
+  assert.equal(host.accept('slotA', req({ attachmentIds: [used.id] })).status, 202)
+  assert.equal(store.uploads.get(used.id)?.usedBy, J1)
+  now += PEER_LIMITS.attachmentKeepMs + 1
+  put('slotB') // 다음 올리기 때 오래된 기록을 정리한다
+  assert.deepEqual([store.uploads.get(used.id), store.uploads.get(orphan.id), removed], [undefined, undefined, [orphan.id]])
+  // 슬롯 해제: 쓰이지 않은 그 슬롯 첨부는 파일까지
+  host.dropSlot('slotB')
+  assert.deepEqual(removed, [orphan.id, 'u3'])
+  // 슬롯마다 쓰이지 않은 첨부 수·용량 상한 → 413 (A컴은 그 첨부만 빼고 보낸다)
+  for (let i = 0; i < PEER_LIMITS.uploadsPendingMax; i++) assert.equal(put('slotC').status, 201)
+  assert.deepEqual([put('slotC').status, put('slotC').body.error], [413, 'upload_quota_exceeded'])
+  assert.equal(put('slotD').status, 201) // 다른 슬롯은 따로 센다
+  assert.equal(put('slotE', PEER_LIMITS.uploadsPendingBytesMax).status, 413)
+})

@@ -3,9 +3,10 @@
 // 네트워크(PeerHttp)·시계·타이머는 밖에서 넣어 준다 — 테스트가 가짜를 넣는다
 
 import crypto from 'node:crypto'
+import fsp from 'node:fs/promises'
 import { isPermanentPeerStatus, isPeerJobActive, PEER_LIMITS, PEER_PATHS, type PeerJobEvent, type PeerJobRequest, type PeerJobState, type PeerLinkState } from '../../shared/peerProtocol.ts'
 import type { PeerHttp } from './peerTransport'
-import type { PeerJob, PeerOutbox, PeerStore } from './peerStore'
+import type { PeerJob, PeerJobAttachment, PeerOutbox, PeerStore } from './peerStore'
 
 export class PeerQueueError extends Error {
   code: 'queue_full' | 'too_long' | 'peer_missing'
@@ -32,6 +33,8 @@ export interface JobQueueDeps {
   newId?(): string
   /** 파일 복사본 (4번) — 없으면 복사본 없이 일만 보낸다 */
   sync?: JobQueueSync
+  /** 못 보낸 첨부가 있을 때 지시 끝에 붙일 안내 (원격 직원이 없는 파일을 찾지 않게) */
+  attachNote?(names: string[]): string
 }
 
 /** 4번 PeerSync 중 일 큐가 쓰는 것 (SyncApi의 일부) */
@@ -96,6 +99,8 @@ export class JobQueue {
   enqueue(p: Pending): PeerJob {
     if (p.instruction.length > PEER_LIMITS.instructionMax) throw new PeerQueueError('too_long')
     if (this.queuedCount(p.peerId) >= PEER_LIMITS.queueMax) throw new PeerQueueError('queue_full')
+    // 첨부는 일 하나에 attachmentsPerJob개까지 — 넘는 것은 빼고 보낸다 (보고에 남는다)
+    if (p.attachments?.length) p = { ...p, attachments: p.attachments.map((a, i) => (i < PEER_LIMITS.attachmentsPerJob ? a : { ...a, dropped: 'too_many' as const })) }
     const job: PeerJob = { ...p, id: this.d.newId?.() ?? crypto.randomUUID(), state: 'queued', attempts: 0, nextTryAt: 0, createdAt: this.now() }
     this.put(job)
     void this.pump(job.peerId)
@@ -139,13 +144,17 @@ export class JobQueue {
       const ready = await this.prepareWorkspace(peerId, j, http)
       if (ready === 'retry') return
       if (!ready) continue
+      const attached = await this.prepareAttachments(peerId, j, http)
+      if (attached === 'retry') return
+      if (!attached) continue
       // 준비하는 동안 취소·완료로 바뀌었으면 보내지 않는다
       const fresh = this.d.store.jobs.get(j.id)
       if (!fresh || fresh.state !== 'queued') continue
       j = fresh
       // 보내는 순간부터 sending — 앱이 죽어도 시작할 때 queued로 되돌려 같은 jobId로 다시 보낸다
       this.put({ ...j, state: 'sending', sentAt: this.now() })
-      const req: PeerJobRequest = { jobId: j.id, staffId: j.remoteStaffId, instruction: j.instruction, ...this.d.context(j), ...(j.workspaceId ? { workspaceId: j.workspaceId } : {}), ...(j.isAutonomous ? { isAutonomous: true } : {}) }
+      const attachmentIds = (j.attachments ?? []).flatMap((a) => (a.remoteId ? [a.remoteId] : []))
+      const req: PeerJobRequest = { jobId: j.id, staffId: j.remoteStaffId, instruction: this.instructionOf(j), ...this.d.context(j), ...(j.workspaceId ? { workspaceId: j.workspaceId } : {}), ...(j.isAutonomous ? { isAutonomous: true } : {}), ...(attachmentIds.length ? { attachmentIds } : {}) }
       let res: Awaited<ReturnType<PeerHttp['call']>>
       try {
         res = await http.call('POST', PEER_PATHS.jobs, req, { idempotencyKey: j.id })
@@ -218,6 +227,73 @@ export class JobQueue {
       this.retryLater(peerId, delayFor(attempts))
       return 'retry'
     }
+  }
+
+  /** 보낼 지시: 못 보낸 첨부가 있으면 끝에 안내를 붙인다 (길이 한도 안으로 원문을 줄여서) */
+  private instructionOf(j: PeerJob) {
+    const names = droppedNames(j)
+    const note = names.length ? this.d.attachNote?.(names) : ''
+    return note ? `${j.instruction.slice(0, Math.max(0, PEER_LIMITS.instructionMax - note.length - 2))}\n\n${note}` : j.instruction
+  }
+
+  /**
+   * 첨부 올리기: 하나씩 PUT하고 받은 B컴 id를 적는다 (다시 시도할 때 이미 올린 것은 건너뛴다). 보내도 된다 → true, 다시 시도 → 'retry', 일을 이미 닫음 → false
+   * 파일이 사라졌거나 너무 크거나 B컴이 영구히 거절하면(413·404 등) 그 첨부만 빼고 보낸다 — 이유는 보고에 남는다
+   */
+  private async prepareAttachments(peerId: string, j: PeerJob, http: PeerHttp): Promise<boolean | 'retry'> {
+    const count = j.attachments?.length ?? 0
+    for (let i = 0; i < count; i++) {
+      const cur = this.d.store.jobs.get(j.id)
+      if (!cur || cur.state !== 'queued' || !cur.attachments) return false
+      const a = cur.attachments[i]
+      if (a.remoteId || a.dropped) continue
+      // 올리는 동안 취소됐으면 적지 않고 멈춘다
+      const mark = (patch: Partial<PeerJobAttachment>) => {
+        const latest = this.d.store.jobs.get(j.id)
+        if (!latest || latest.state !== 'queued' || !latest.attachments) return false
+        this.put({ ...latest, attachments: latest.attachments.map((x, k) => (k === i ? { ...x, ...patch } : x)) })
+        return true
+      }
+      let data: Buffer
+      try {
+        const st = await fsp.stat(a.path)
+        if (!st.isFile() || st.size > PEER_LIMITS.attachmentMax) {
+          if (!mark({ dropped: st.isFile() ? 'too_large' : 'missing' })) return false
+          continue
+        }
+        data = await fsp.readFile(a.path)
+      } catch {
+        if (!mark({ dropped: 'missing' })) return false
+        continue
+      }
+      // 바이트를 못 나르는 통로(테스트의 가짜)면 첨부 없이 보낸다
+      if (!http.putBytes) {
+        if (!mark({ dropped: 'rejected' })) return false
+        continue
+      }
+      let res: Awaited<ReturnType<PeerHttp['call']>> | null = null
+      try {
+        res = await http.putBytes(PEER_PATHS.attachments, data, { 'Content-Type': a.mime || 'application/octet-stream', 'X-File-Name': encodeURIComponent(a.name) })
+      } catch {
+        // 네트워크 끊김: 아래에서 다시 시도
+      }
+      const id = (res?.body.attachment as { id?: unknown } | undefined)?.id
+      if (res && (res.status === 200 || res.status === 201) && typeof id === 'string') {
+        if (!mark({ remoteId: id })) return false
+      } else if (res && (isPermanentPeerStatus(res.status) || res.status === 411 || res.status === 413 || res.status === 415)) {
+        // 다시 보내도 소용없는 거절 (예전 B컴이라 경로가 없음·너무 큼 등)
+        if (!mark({ dropped: 'rejected' })) return false
+      } else {
+        // 전송 오류·429·5xx: 같은 일을 잠시 뒤 다시 (올린 첨부는 건너뛴다)
+        const latest = this.d.store.jobs.get(j.id)
+        if (!latest || latest.state !== 'queued') return false
+        const attempts = latest.attempts + 1
+        this.put({ ...latest, attempts, nextTryAt: this.now() + delayFor(attempts) })
+        this.retryLater(peerId, delayFor(attempts))
+        return 'retry'
+      }
+    }
+    return true
   }
 
   private async pumpOutbox(peerId: string) {
@@ -378,6 +454,9 @@ export class JobQueue {
     this.timers.clear()
   }
 }
+
+/** 일에서 빠진(못 보낸) 첨부 이름 */
+export const droppedNames = (j: Pick<PeerJob, 'attachments'>) => (j.attachments ?? []).filter((a) => a.dropped).map((a) => a.name)
 
 /** B컴이 쓰는 상태 이름을 A컴 상태로 (모르는 값은 accepted) */
 function normalize(s: string): PeerJobState {

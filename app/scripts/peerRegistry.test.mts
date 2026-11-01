@@ -64,12 +64,12 @@ test('원격 직원: 같은 직원은 한 번만, 목록 동기화로 이름 갱
   assert.equal(reg.patchStatus(p.id, [brief('nobody', { status: 'waiting' })]), false)
 })
 
-test('SQLite 저장소: office.db와 같은 DatabaseSync에 표 5개, 넣고 빼고 덮어쓰기', () => {
+test('SQLite 저장소: office.db와 같은 DatabaseSync에 표 6개, 넣고 빼고 덮어쓰기', () => {
   const db = new DatabaseSync(':memory:')
   ensurePeerTables(db)
   ensurePeerTables(db) // 두 번 불러도 괜찮다
   const store = sqlitePeerStore(db)
-  assert.deepEqual((db.prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").all() as { name: string }[]).map((r) => r.name), ['peer', 'peer_inbox', 'peer_job', 'peer_outbox', 'peer_staff'])
+  assert.deepEqual((db.prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").all() as { name: string }[]).map((r) => r.name), ['peer', 'peer_inbox', 'peer_job', 'peer_outbox', 'peer_staff', 'peer_upload'])
   store.peers.put({ id: 'p1', name: 'B', host: 'h', port: 1, spki: 's', slotId: '', pairedAt: 1, lastSeenAt: null })
   store.peers.put({ id: 'p1', name: 'B2', host: 'h', port: 1, spki: 's', slotId: '', pairedAt: 1, lastSeenAt: null })
   assert.equal(store.peers.get('p1')?.name, 'B2')

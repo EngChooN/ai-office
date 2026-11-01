@@ -1,8 +1,9 @@
-// PC 간 연결의 영속 데이터 (A컴: peer·peer_staff·peer_job·peer_outbox / B컴: peer_inbox)
+// PC 간 연결의 영속 데이터 (A컴: peer·peer_staff·peer_job·peer_outbox / B컴: peer_inbox·peer_upload)
 // 표마다 (id, data JSON) 한 줄 — 모양은 코드가 정한다. 테스트는 메모리 구현, 앱은 office.db 구현을 쓴다
 
 import type { DatabaseSync } from 'node:sqlite'
 import type { PeerJobState } from '../../shared/peerProtocol'
+import type { Attachment } from '../../shared/types'
 
 export interface PeerRecord {
   id: string
@@ -52,6 +53,8 @@ export interface PeerJob {
   isWorkspacePushed?: boolean
   /** 복사본을 못 만들어 그냥 보냈다면 그 이유(오류 코드) — 보고에 알린다 */
   workspaceNote?: string
+  /** 함께 보낼 첨부 (A컴 첨부 폴더의 파일). 보낼 때 하나씩 올려 remoteId를 채운다 */
+  attachments?: PeerJobAttachment[]
   /** 돌아온 변경 묶음을 A컴이 받아 결재함에 올렸는가 (실패하면 다시 붙을 때 다시 받는다) */
   changesState?: 'fetched' | 'failed'
   state: PeerJobState
@@ -65,6 +68,15 @@ export interface PeerJob {
   changesetId?: string
   /** 리더에게 [팀원 보고]를 이미 냈는지 (재연결로 같은 결과가 다시 와도 한 번만) */
   isReported?: boolean
+}
+
+/** A컴 일에 붙은 첨부 한 개 — 올렸으면 remoteId(B컴 첨부 id), 못 보내 뺐으면 그 이유 */
+export interface PeerJobAttachment {
+  path: string
+  name: string
+  mime: string
+  remoteId?: string
+  dropped?: 'missing' | 'too_large' | 'too_many' | 'rejected'
 }
 
 /** 보낼 것 (결재 결정·취소·ack) — 일과 같은 큐 규칙 */
@@ -90,6 +102,10 @@ export interface InboxJob {
   lab?: { name: string; goal?: string }
   workspaceId?: string
   isAutonomous?: boolean
+  /** 이 슬롯이 올린 첨부 (B컴 첨부 폴더의 파일) */
+  attachments?: Attachment[]
+  /** 요청에 있었지만 이 슬롯이 올린 것이 아니라 버린 첨부 수 — 지시 끝에 안내한다 */
+  droppedAttachments?: number
   state: PeerJobState
   result?: string
   error?: string
@@ -97,6 +113,17 @@ export interface InboxJob {
   createdAt: number
   finishedAt?: number
   ackedAt?: number
+}
+
+/** B컴: 피어가 올린 첨부 — 올린 슬롯만 그 id를 일에 쓸 수 있다 */
+export interface PeerUpload {
+  /** B컴 첨부 id */
+  id: string
+  slotId: string
+  attachment: Attachment
+  createdAt: number
+  /** 이 첨부를 붙여 받은 일 — 있으면 정리할 때 기록만 지우고 파일은 남긴다 (일·기록이 가리키므로) */
+  usedBy?: string
 }
 
 export interface PeerTable<T extends { id: string }> {
@@ -112,6 +139,7 @@ export interface PeerStore {
   jobs: PeerTable<PeerJob>
   outbox: PeerTable<PeerOutbox>
   inbox: PeerTable<InboxJob>
+  uploads: PeerTable<PeerUpload>
 }
 
 class MemoryTable<T extends { id: string }> implements PeerTable<T> {
@@ -132,10 +160,10 @@ class MemoryTable<T extends { id: string }> implements PeerTable<T> {
 }
 
 export function memoryPeerStore(): PeerStore {
-  return { peers: new MemoryTable(), staff: new MemoryTable(), jobs: new MemoryTable(), outbox: new MemoryTable(), inbox: new MemoryTable() }
+  return { peers: new MemoryTable(), staff: new MemoryTable(), jobs: new MemoryTable(), outbox: new MemoryTable(), inbox: new MemoryTable(), uploads: new MemoryTable() }
 }
 
-const TABLES = ['peer', 'peer_staff', 'peer_job', 'peer_outbox', 'peer_inbox'] as const
+const TABLES = ['peer', 'peer_staff', 'peer_job', 'peer_outbox', 'peer_inbox', 'peer_upload'] as const
 
 /** office.db에 표를 만든다 (db.ts가 한 줄로 부른다) */
 export function ensurePeerTables(db: DatabaseSync) {
@@ -171,5 +199,6 @@ export function sqlitePeerStore(db: DatabaseSync): PeerStore {
     jobs: new SqliteTable(db, 'peer_job'),
     outbox: new SqliteTable(db, 'peer_outbox'),
     inbox: new SqliteTable(db, 'peer_inbox'),
+    uploads: new SqliteTable(db, 'peer_upload'),
   }
 }

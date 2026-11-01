@@ -6,7 +6,7 @@ import { app, BrowserWindow, clipboard, dialog, ipcMain, nativeTheme, Notificati
 import path from 'node:path'
 import { loadRemoteConfig, openDb, peerStore, saveRemoteConfig, syncStore } from './db'
 import { serveArtifacts } from './artifacts'
-import { attachmentById, registerAttachmentScheme, saveUpload, serveAttachments } from './attachments'
+import { attachmentById, registerAttachmentScheme, removeAttachment, saveUpload, serveAttachments } from './attachments'
 import { Office } from './office'
 import { OfficeTray } from './tray'
 import { PetWindows } from './petWindow'
@@ -73,6 +73,9 @@ function createPeer() {
     onAcked: (job) => {
       if (job.workspaceId) void sync.discardWorkspace(job.workspaceId).catch(() => {})
     },
+    // 피어가 올린 첨부는 휴대폰 올리기와 같은 첨부 저장소에
+    saveUpload,
+    removeUpload: removeAttachment,
   })
   // 앱이 꺼지며 끊긴 일은 실패로 닫는다 (같은 일을 다시 실행하지는 않는다)
   host.recover()

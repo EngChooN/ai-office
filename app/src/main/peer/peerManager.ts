@@ -16,7 +16,7 @@ import {
 import type { Approval, Staff } from '../../shared/types'
 import { ApprovalRelay, parseRelayId } from './approvalRelay.ts'
 import type { ApplyChoice, ApplyResult, CardFile, ChangeSetView, PeerChangesCard } from '../../shared/peerSync.ts'
-import { JobQueue, PeerQueueError, type JobQueueSync } from './jobQueue.ts'
+import { droppedNames, JobQueue, PeerQueueError, type JobQueueSync } from './jobQueue.ts'
 import { checkPairInput, pairWithHost, PairFailure, type PairTransport } from './pairing.ts'
 import { PeerClient, type OpenStream, type PeerClientOptions } from './peerClient.ts'
 import { PeerRegistry, type TokenVault } from './peerRegistry.ts'
@@ -67,7 +67,7 @@ export interface PeerManagerDeps {
   clientOptions?: Pick<PeerClientOptions, 'retryMs' | 'offlineAfterMs' | 'idleMs'>
   schedule?: ConstructorParameters<typeof JobQueue>[0]['schedule']
   /** 문구 (화면 언어로) */
-  text(key: 'tag' | 'failed' | 'expired' | 'lost' | 'interrupted' | 'changes' | 'changesFailed' | 'changesSummary' | 'noWorkspace', params?: Record<string, string | number>): string
+  text(key: 'tag' | 'failed' | 'expired' | 'lost' | 'interrupted' | 'changes' | 'changesFailed' | 'changesSummary' | 'noWorkspace' | 'attachDropped' | 'attachFailed', params?: Record<string, string | number>): string
   /** 파일 복사본·변경 묶음 (4번) — 없으면 파일 동기화 없이 일만 오간다 */
   sync?: PeerSyncPort
 }
@@ -110,6 +110,7 @@ export class PeerManager {
       now: d.now,
       schedule: d.schedule,
       sync: d.sync,
+      attachNote: (names) => d.text('attachDropped', { files: names.join(', ') }),
     })
   }
 
@@ -220,6 +221,8 @@ export class PeerManager {
     body = `[${this.d.text('tag', { name: peerName })}] ${body}`.slice(0, PEER_LIMITS.resultMax)
     // 우리가 붙이는 안내는 B컴 글이 아니므로 자른 뒤에 덧붙인다
     if (job.workspaceNote) body += `\n\n${this.d.text('noWorkspace')}`
+    const dropped = droppedNames(job)
+    if (dropped.length) body += `\n\n${this.d.text('attachFailed', { files: dropped.join(', ') })}`
     if (job.state === 'done' && job.changesetId && job.workspaceId) body += `\n\n${await this.fetchChanges(job)}`
     this.d.office.report(job, { name: rec?.name ?? '?', role: rec?.role ?? '', text: body })
   }
@@ -422,7 +425,7 @@ export class PeerManager {
   // ── 일 맡기기 ──
 
   /** 리더(또는 대표)가 원격 직원에게 일을 맡긴다. 저장된 뒤에만 돌아온다 */
-  delegate(targetStaffId: string, instruction: string, from: { leadId: string | null; room?: string; isAutonomous?: boolean }): PeerJob {
+  delegate(targetStaffId: string, instruction: string, from: { leadId: string | null; room?: string; isAutonomous?: boolean; attachments?: { path: string; name: string; mime: string }[] }): PeerJob {
     const parsed = parsePeerStaffId(targetStaffId)
     const rec = parsed && this.registry.staffOf(targetStaffId)
     if (!parsed || !rec) throw new PeerError('no_staff')
@@ -430,7 +433,7 @@ export class PeerManager {
     // 파일 복사본: 이 직원이 든 랩의 프로젝트 폴더가 있으면 일과 함께 보낸다 (복사본은 보낼 때 만든다)
     const workspaceRoot = this.d.sync ? this.d.office.workspaceRoot?.(from.leadId, targetStaffId) : null
     try {
-      return this.queue.enqueue({ peerId: rec.peerId, remoteStaffId: rec.remoteId, leadId: from.leadId, ...(workspaceRoot ? { workspaceRoot } : {}), ...(from.room ? { room: from.room } : {}), ...(from.isAutonomous ? { isAutonomous: true } : {}), instruction })
+      return this.queue.enqueue({ peerId: rec.peerId, remoteStaffId: rec.remoteId, leadId: from.leadId, ...(workspaceRoot ? { workspaceRoot } : {}), ...(from.room ? { room: from.room } : {}), ...(from.isAutonomous ? { isAutonomous: true } : {}), ...(from.attachments?.length ? { attachments: from.attachments.map((a) => ({ path: a.path, name: a.name, mime: a.mime })) } : {}), instruction })
     } catch (e) {
       if (e instanceof PeerQueueError) throw new PeerError(e.code === 'queue_full' ? 'queue_full' : e.code === 'too_long' ? 'too_long' : 'unknown_peer')
       throw e

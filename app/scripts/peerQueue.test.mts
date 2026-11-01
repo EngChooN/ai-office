@@ -325,3 +325,39 @@ test('queuedJobIds: 연결 대기 중인 일 id만, 직원별로 내려준다', 
   assert.deepEqual(w.q.queuedJobIds('p1', 'r2'), [b.id])
   assert.deepEqual(w.q.queuedJobIds('p9'), [])
 })
+
+test('첨부: 일시 오류(503)면 다시 시도하되 이미 올린 첨부는 다시 올리지 않고, 영구 거절(413)은 빼고 보낸다', async () => {
+  const fs = await import('node:fs/promises')
+  const os = await import('node:os')
+  const path = await import('node:path')
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'peer-q-att-'))
+  for (const f of ['a.png', 'b.png', 'c.png']) await fs.writeFile(path.join(dir, f), f)
+  const w = makeWorld()
+  const puts: string[] = []
+  // b.png는 처음 한 번 503, c.png는 늘 413
+  let bFailed = false
+  w.http.putBytes = async (_path, data, headers) => {
+    const name = decodeURIComponent(headers?.['X-File-Name'] ?? '')
+    puts.push(name)
+    if (name === 'b.png' && !bFailed) return (bFailed = true), { status: 503, body: {} }
+    if (name === 'c.png') return { status: 413, body: { error: 'payload_too_large' } }
+    return { status: 201, body: { attachment: { id: `id-${data.toString()}` } } }
+  }
+  const job = w.q.enqueue({ ...w.base, attachments: ['a.png', 'b.png', 'c.png'].map((f) => ({ path: path.join(dir, f), name: f, mime: 'image/png' })) })
+  // 파일 읽기는 스레드 풀을 거치므로 상태가 바뀔 때까지 기다린다
+  const until = async (cond: () => boolean) => {
+    for (let k = 0; k < 200 && !cond(); k++) await new Promise((r) => setTimeout(r, 5))
+  }
+  await until(() => w.timers.length > 0)
+  // 503: 아직 보내지 않고 queued로 기다린다 (a.png는 올린 것으로 기억)
+  assert.equal(w.q.get(job.id)?.state, 'queued')
+  assert.equal(w.sent.some((s) => s.path === '/v2/peer/jobs'), false)
+  assert.equal(w.q.get(job.id)?.attachments?.[0].remoteId, 'id-a.png')
+  w.advance(60_000)
+  w.timers.shift()!.fn()
+  await until(() => w.sent.some((s) => s.path === '/v2/peer/jobs'))
+  assert.deepEqual(puts, ['a.png', 'b.png', 'b.png', 'c.png'])
+  const post = w.sent.find((s) => s.path === '/v2/peer/jobs')!
+  assert.deepEqual(post.body.attachmentIds, ['id-a.png', 'id-b.png'])
+  assert.equal(w.q.get(job.id)?.attachments?.[2].dropped, 'rejected')
+})
