@@ -147,7 +147,9 @@ export function CoachTour({ isOpen, onClose }: { isOpen: boolean; onClose: (isFi
   useEffect(() => {
     if (!isOpen) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return
+      // 둘러보기 위에 뜬 다른 창(⌘K 비서 빠른 창 등)의 Esc는 그 창만 닫는다
+      const isInOtherDialog = document.activeElement?.closest('[role="dialog"]:not([data-coach-tour])')
+      if (e.key !== 'Escape' || e.defaultPrevented || e.isComposing || isInOtherDialog) return
       e.preventDefault()
       onClose(false)
     }
@@ -198,6 +200,7 @@ export function CoachTour({ isOpen, onClose }: { isOpen: boolean; onClose: (isFi
       )}
       <div
         ref={tipRef}
+        data-coach-tour
         role="dialog"
         aria-modal
         className="bg-background fixed flex flex-col gap-3 overflow-y-auto rounded-xl border p-4 shadow-2xl transition-all duration-300"
@@ -222,7 +225,7 @@ export function CoachTour({ isOpen, onClose }: { isOpen: boolean; onClose: (isFi
           {step.icon} {step.menu ? menuTitle(step.menu) : step.title && t(step.title)}
         </div>
         <p className="text-muted-foreground text-sm">{t(step.body, { modKey: MOD_KEY, trayPlace: osText(t('coachTour.trayPlace.mac'), t('coachTour.trayPlace.win')) })}</p>
-        <div className="flex items-center gap-1">
+        <div className="flex flex-wrap items-center gap-1">
           <Button size="sm" variant="ghost" className="px-2" onClick={() => onClose(false)}>
             {t('coachTour.stop')}
           </Button>

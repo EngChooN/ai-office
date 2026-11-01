@@ -80,14 +80,16 @@ function InstallButton({ size, onClick }: { size?: 'sm'; onClick: () => void }) 
 const GUIDE_SETTLE_MS = 1000
 
 /**
- * 첫 안내(환영·준비 점검·둘러보기·연습 고르기·연습 튜토리얼)가 이어지는 동안 true.
+ * 첫 안내(환영·준비 점검·둘러보기·연습 고르기·연습 튜토리얼)와 거기서 이어진 고용 창이 떠 있는 동안 true.
  * isBusy: 둘러보기·연습 고르기가 떠 있는지 (App이 가진 상태)
  */
 function useIsGuideOn(isBusy: boolean) {
   const isLoaded = useOffice((s) => s.isLoaded)
   const isOnboarded = useOffice((s) => s.settings.isOnboarded)
   const isTutorialOn = useOffice((s) => Boolean(s.tutorial?.scenario))
-  const isOn = !isLoaded || !isOnboarded || isBusy || isTutorialOn
+  // 둘러보기 마지막 '직원 고용하기'·완료 화면의 직원 마켓처럼 안내가 고용 창으로 이어지면 그 창을 닫을 때까지
+  const isHireOpen = useOffice((s) => s.hireOpen)
+  const isOn = !isLoaded || !isOnboarded || isBusy || isTutorialOn || isHireOpen
   const [isHeld, setIsHeld] = useState(isOn)
   useEffect(() => {
     if (isOn) return setIsHeld(true)

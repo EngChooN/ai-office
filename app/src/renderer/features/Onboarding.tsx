@@ -153,6 +153,15 @@ export function Onboarding({ onStartTour }: { onStartTour: () => void }) {
     if ((step === 'install' || step === 'login' || step === 'firstTask') && !status) void check()
   }, [step, status, check])
 
+  // 설정 › 안내에서 다시 열면 지난번 화면(완료·오래 걸리는 중)이 아니라 처음부터
+  useEffect(() => {
+    if (isOnboarded) return
+    setStep('welcome')
+    setIsReportOpen(false)
+    firstTask.reset()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 안내가 다시 열릴 때만
+  }, [isOnboarded])
+
   // 첫 업무가 끝나면 완료 화면(ready)으로 넘어간다
   useEffect(() => {
     if (firstTask.phase === 'done') setStep('ready')

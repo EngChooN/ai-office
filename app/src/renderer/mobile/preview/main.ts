@@ -13,6 +13,8 @@ setTimeout(() => {
   if (p.get('select')) s.select(p.get('select'))
   if (p.get('hire') === '1') s.setHireOpen(true)
   if (p.get('more') === '1') useMobileUi.getState().setMoreOpen(true)
+  // 메뉴 둘러보기(코치마크) 캡처용 — 단계는 click=다음,다음… 으로 넘긴다
+  if (p.get('tour') === '1') s.requestTour()
   if (p.get('pconly')) void window.office.resumeInTerminal('s1').then(() => window.office.openClaudeLogin())
 }, 400)
 // click=글자1,글자2: 그 글자가 든 첫 버튼을 차례로 누른다 (회의 카드 열기·"더 보기" 같은 화면 안 상태 캡처용)

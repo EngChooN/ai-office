@@ -38,17 +38,25 @@ export default function App() {
   return <AppBody key={lang} />
 }
 
+/** 처리한 둘러보기·연습 요청 번호 */
+const handledRequests = { tour: 0, practice: 0 }
+
 function AppBody() {
   const [isTourOpen, setIsTourOpen] = useState(false)
   // 코치마크를 끝까지 보면 "한 사이클 해 보기" 선택을 띄운다
   const [isPickerOpen, setIsPickerOpen] = useState(false)
+  // 설정에서 누른 요청은 한 번만 연다 (언어를 바꿔 이 틀을 새로 그려도 다시 열지 않게 처리한 번호를 모듈에 둔다)
   const tourRequest = useOffice((s) => s.tourRequest)
   useEffect(() => {
-    if (tourRequest) setIsTourOpen(true)
+    if (tourRequest <= handledRequests.tour) return
+    handledRequests.tour = tourRequest
+    setIsTourOpen(true)
   }, [tourRequest])
   const practiceRequest = useOffice((s) => s.practiceRequest)
   useEffect(() => {
-    if (practiceRequest) setIsPickerOpen(true)
+    if (practiceRequest <= handledRequests.practice) return
+    handledRequests.practice = practiceRequest
+    setIsPickerOpen(true)
   }, [practiceRequest])
   // 폰(모바일 빌드 · 폭 840 미만)은 아래 탭 틀, 그 밖(PC·태블릿)은 지금 틀 그대로
   const isPhone = useLayout() === 'phone'

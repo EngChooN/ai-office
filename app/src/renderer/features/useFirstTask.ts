@@ -159,7 +159,7 @@ export function useFirstTask() {
     stop,
     dismiss,
     keep,
-    /** 실패 화면에서 고르기로 돌아가기 */
+    /** 실패 화면에서 고르기로 돌아가기 (안내를 다시 열 때도) */
     reset: () => setPhase('pick'),
   }
 }
