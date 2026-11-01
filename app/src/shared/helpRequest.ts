@@ -89,7 +89,9 @@ export class HelpLedger {
     if (input.targetOrigins.some((o) => o.kind === 'help' && o.fromId === input.staffId)) return 'duplicate'
     // 다른 도움 요청을 처리하는 중인 사람에게는 보내지 않는다 — 한 턴에 합쳐 끝나면 결과가 요청별로 갈리지 않는다
     if (input.targetOrigins.some((o) => o.kind === 'help')) return 'busy'
-    const sent = ctx ? (this.roots.get(ctx.rootId)?.sent.get(input.staffId) ?? 0) : 0
+    // 사슬이 없는 첫 요청자는 open()과 같이 자기가 연 원업무로 보낸 수를 센다
+    const rootId = ctx?.rootId ?? [...this.roots].find(([, r]) => r.owner === input.staffId)?.[0]
+    const sent = rootId ? (this.roots.get(rootId)?.sent.get(input.staffId) ?? 0) : 0
     if (sent >= HELP_MAX_PER_TASK) return 'tooMany'
     return null
   }
@@ -129,3 +131,6 @@ export class HelpLedger {
     }
   }
 }
+
+/** 팀장·랩 리드가 아닌 팀원(위임 대상 없음 + 도움 대상 있음)인가 — 카드 배정 대신 도움 요청을 써야 한다 */
+export const mustUseHelp = (delegateCount: number, helpTargetCount: number) => delegateCount === 0 && helpTargetCount > 0

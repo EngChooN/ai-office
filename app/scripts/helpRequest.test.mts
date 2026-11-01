@@ -1,7 +1,7 @@
 // 직원끼리 도움 요청 — 대상 계산·제한 장치·자율 이어받기 단위 테스트 — npm test
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { HELP_TEXT_MAX, HelpLedger, helpDepthOf, helpTargetIds, inHelpContext, type HelpCtx } from '../src/shared/helpRequest.ts'
+import { HELP_TEXT_MAX, HelpLedger, mustUseHelp, helpDepthOf, helpTargetIds, inHelpContext, type HelpCtx } from '../src/shared/helpRequest.ts'
 import { resolveAutonomy } from '../src/shared/autonomy.ts'
 
 const hired = (...ids: string[]) => (id: string) => ids.includes(id)
@@ -157,4 +157,19 @@ test('자율: 자율 표시가 붙은 도움 요청 출처는 받은 직원도 �
   const none = () => false
   assert.equal(resolveAutonomy({ isFull: false, origins: [{ kind: 'help', isAutonomous: true }], isTaskAutonomous: none }), true)
   assert.equal(resolveAutonomy({ isFull: false, origins: [{ kind: 'help' }], isTaskAutonomous: none }), false)
+})
+
+test('제한: 결과 수신 전 4번째 요청 거절 (사슬 없는 첫 요청자)', () => {
+  const m = mini()
+  m.start('a')
+  assert.equal(m.tool('a', 'b'), null)
+  assert.equal(m.tool('a', 'c'), null)
+  assert.equal(m.tool('a', 'd'), null)
+  assert.equal(m.tool('a', 'e'), 'tooMany')
+})
+
+test('add_task: 팀원(위임 대상 없음·도움 대상 있음)은 막고 팀장·혼자 일하는 직원은 허용', () => {
+  assert.equal(mustUseHelp(0, 2), true)
+  assert.equal(mustUseHelp(3, 0), false)
+  assert.equal(mustUseHelp(0, 0), false)
 })

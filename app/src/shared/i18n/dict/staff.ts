@@ -257,6 +257,12 @@ export default {
     ja: 'チームメンバーは企画案を出せません。同僚に頼むには request_help ツールを使ってください。',
     zh: '组员不能提交方案。要请同事帮忙，请使用 request_help（求助）工具。',
   },
+  'staff.tool.add.useHelp': {
+    ko: '팀원은 업무 카드를 만들어 배정할 수 없습니다. 동료에게 부탁하려면 도움 요청(request_help) 도구를 쓰세요.',
+    en: 'Team members cannot create and assign task cards. To ask a teammate for help, use the request_help tool.',
+    ja: 'チームメンバーは業務カードを作って割り当てられません。同僚に頼むには request_help ツールを使ってください。',
+    zh: '组员不能创建并分配任务卡。要请同事帮忙，请使用 request_help（求助）工具。',
+  },
   'staff.tool.help.desc': {
     ko: '같은 팀·랩 동료에게 일을 부탁한다(도움 요청). 결과는 나에게 보고로 돌아오니, 받은 뒤 대표에게 최종 정리해 보고한다. 요청문은 800자 이하, 완료 기준까지 구체적으로.',
     en: 'Ask a teammate in your team or lab for help. The result comes back to you as a report; summarize it for the owner afterwards. Keep the request under 800 characters with concrete completion criteria.',

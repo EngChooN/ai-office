@@ -145,7 +145,7 @@ import { codexBinaryPath } from './ai/codex'
 import { codexUsageAfterFailure, readCodexRateLimits, refreshCodexAssets, shareInFlight } from './ai/codexAssets'
 import { defineTool, registerLocalMcp, type LocalMcpHandle } from './mcp/localMcp'
 import { autoApprove, autoKindOf, autoStep, autoSummaryText, autoWindow, AWAY_ANSWER, formatRemaining, planToConfig, type AutoApprovePlan } from '../shared/autoApprove'
-import { HELP_MAX_PER_TASK, HELP_TEXT_MAX, HelpLedger, helpTargetIds, inHelpContext, type HelpCtx } from '../shared/helpRequest'
+import { HELP_MAX_PER_TASK, HELP_TEXT_MAX, HelpLedger, mustUseHelp, helpTargetIds, inHelpContext, type HelpCtx } from '../shared/helpRequest'
 import { AUTONOMY_TEXT_ASK_MAX, autonomyVerdict, fallbackAnswers, isFullAutonomy, isTaskAutonomous, nextTextAskRetry, resolveAutonomy } from '../shared/autonomy'
 import { commitAll, folderState, pushAndPr, repoRoot, restoreFiles, snapshotTree, treeDiff, workBaseStillValid, workChanges } from './review'
 import { readCodexExternalDay, readExternalDay } from './transcript'
@@ -1684,7 +1684,8 @@ export class Office extends EventEmitter<{
     const s = this.hired.get(a.staffId)
     if (!s) return
     // 도움 요청으로 받은 일에서 나온 결재면 누가 부탁했는지 출처를 붙인다
-    const help = (this.origins.get(a.staffId) ?? []).find((o): o is Extract<Origin, { kind: 'help' }> => o.kind === 'help')
+    const first = (this.origins.get(a.staffId) ?? [])[0]
+    const help = first?.kind === 'help' ? first : undefined
     const requester = help ? this.hired.get(help.fromId) : undefined
     if (requester) a = { ...a, requestedBy: requester.name }
     s.approvals = [...s.approvals, a]
@@ -2421,6 +2422,8 @@ export class Office extends EventEmitter<{
             if (!canCreateCards(this.origins.get(staffId) ?? [])) return text(t('peer.guard.noCard'))
             // 도움 요청으로 받은 일에서는 업무 카드 생성·배정으로 요청 제한을 우회하지 못한다 (카드는 부탁한 사람·팀장 몫)
             if (inHelpContext(this.origins.get(staffId) ?? [])) return text(t('staff.tool.help.noBypass'))
+            // 팀장·랩 리드가 아닌 팀원은 카드로 아무에게나 일을 배정하지 못한다 (동료 부탁은 request_help)
+            if (mustUseHelp(this.delegatesOf(staffId).length, this.helpTargetsOf(staffId).length)) return text(t('staff.tool.add.useHelp'))
             const lab = this.labsOf(staffId).find((l) => l.leadId === staffId) ?? null
             // 자율 업무를 하다 올린 카드는 자율을 물려받는다
             const card = this.createTask({ title, detail: detail ?? '', teamId: this.teamOf(staffId)?.id ?? null, labId: lab?.id ?? null, isAutonomous: this.hasAutonomousOrigin(this.origins.get(staffId) ?? []) })
