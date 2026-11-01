@@ -61,6 +61,10 @@ function PeerBody() {
 
   return (
     <div className="flex flex-col gap-4">
+      <p className="bg-muted/30 text-muted-foreground flex items-start gap-1.5 rounded-lg p-2 text-xs">
+        <AlertTriangleIcon className="mt-0.5 size-3.5 shrink-0 text-status-waiting" />
+        <span>{t('peer.section.accountNotice')}</span>
+      </p>
       <Readiness remote={remote} />
       {role === null ? (
         <RolePicker isDisabled={!isReady} hint={remote.isEnabled ? '' : t('peer.ready.needOn')} onPick={setRole} />
