@@ -12,6 +12,8 @@ const CAR_COLORS = ['#f0834e', '#5aa8d8', '#8fd6c2', '#edb417', '#f2a7b8', '#e9e
 /** 내 사무실 핀이 건물 위에서 오르내리는 폭(px)·주기(초) */
 const PIN_BOB = 2
 const PIN_PERIOD_S = 1.6
+/** 같은 차선 차끼리 앞뒤 거리 (칸, 차 길이 1.84 + 틈) */
+const CAR_GAP = 2.6
 
 const boardCanvas = new WeakMap<ExteriorBoard, HTMLCanvasElement>()
 const outlineCanvas = new WeakMap<ExteriorBoard, HTMLCanvasElement>()
@@ -84,7 +86,12 @@ export class DioramaStreet {
     const [w0, w1] = this.walkSpan
     const [c0, c1] = this.carSpan
     for (let k = 0; k < Math.max(3, Math.round((w1 - w0) / 3)); k++) this.walkers.push(this.newWalker(rnd(w0, w1)))
-    if (!isStill) for (let k = 0; k < 3; k++) this.cars.push(this.newCar(rnd(c0, c1 - 2)))
+    if (!isStill) for (let k = 0; k < 3; k++) this.addCar(this.newCar(rnd(c0, c1 - 2)))
+  }
+
+  /** 같은 차선에 차 길이 + 간격만큼 자리가 비어 있을 때만 넣는다 */
+  private addCar(car: Car) {
+    if (!this.cars.some((c) => c.dir === car.dir && Math.abs(c.gx - car.gx) < CAR_GAP)) this.cars.push(car)
   }
 
   /** 칸 y가 lane인 줄에서 화면 안에 드는 gx 범위 (len = 물체 길이). 양쪽 다 화면 끝에서 조금 더 */
@@ -116,9 +123,7 @@ export class DioramaStreet {
     }
     this.nextCar -= dt
     if (this.nextCar <= 0) {
-      const car = this.newCar()
-      // 같은 차선 앞차와 겹치지 않게
-      if (!this.cars.some((c) => c.dir === car.dir && Math.abs(c.gx - car.gx) < 3)) this.cars.push(car)
+      this.addCar(this.newCar())
       this.nextCar = rnd(2.2, 5.5)
     }
     for (const w of this.walkers) {
@@ -126,6 +131,16 @@ export class DioramaStreet {
       w.t += dt
     }
     for (const c of this.cars) c.gx += c.dir * c.speed * dt
+    // 빠른 차가 앞차를 따라잡으면 간격을 두고 앞차 속도로 뒤따른다 (차끼리 파고들지 않게). 앞선 차부터 본다
+    const ahead = new Map<1 | -1, Car>()
+    for (const c of [...this.cars].sort((a, b) => b.dir * b.gx - a.dir * a.gx)) {
+      const lead = ahead.get(c.dir)
+      if (lead && c.dir * (lead.gx - c.gx) < CAR_GAP) {
+        c.gx = lead.gx - c.dir * CAR_GAP
+        c.speed = Math.min(c.speed, lead.speed)
+      }
+      ahead.set(c.dir, c)
+    }
     this.walkers = this.walkers.filter((w) => w.gx >= this.walkSpan[0] - 0.1 && w.gx <= this.walkSpan[1] + 0.1)
     this.cars = this.cars.filter((c) => c.gx >= this.carSpan[0] - 0.1 && c.gx <= this.carSpan[1] - 1.9)
   }
@@ -161,7 +176,8 @@ export class DioramaStreet {
         c.restore()
       } else c.drawImage(s.img, Math.round(x) - s.o[0], Math.round(y) - s.o[1])
     }
-    for (const car of [...this.cars].sort((a, b) => a.dir - b.dir)) {
+    // 먼 차선(−x) → 가까운 차선, 같은 차선에선 gx가 작은(화면 위쪽) 차부터
+    for (const car of [...this.cars].sort((a, b) => a.dir - b.dir || a.gx - b.gx)) {
       const lane = car.dir === -1 ? lanes.far : lanes.near
       const s = this.sprite(`car-${car.color}-${car.dir}`, () => {
         const sp = artCar(car.color, this.isNight, car.dir)

@@ -100,7 +100,8 @@ export class DemoStageScene extends Phaser.Scene {
   private worldW = 0
   private worldH = 0
   private readonly actors = new Map<string, Actor>()
-  private statics: { obj: Phaser.GameObjects.Image; box: IsoBox }[] = []
+  /** isProp = 무대 위 소품(연단) — 걷는 직원과 같은 층에서 앞뒤를 정한다 */
+  private statics: { obj: Phaser.GameObjects.Image; box: IsoBox; isProp: boolean }[] = []
   private dim!: Phaser.GameObjects.Graphics
   private spot!: Phaser.GameObjects.Image
   private spotBreath!: Phaser.Tweens.Tween
@@ -201,7 +202,7 @@ export class DemoStageScene extends Phaser.Scene {
     this.addArt(key, () => toCanvas(cv))
     const p = this.world({ ...at, z: 0 })
     const obj = this.add.image(p.x, p.y, key).setOrigin(o[0] / cv.w, o[1] / cv.h)
-    this.statics.push({ obj, box: { ...box, x: box.x + at.gx, y: box.y + at.gy } })
+    this.statics.push({ obj, box: { ...box, x: box.x + at.gx, y: box.y + at.gy }, isProp: key === 'stage-lectern' })
   }
 
   /**
@@ -328,11 +329,21 @@ export class DemoStageScene extends Phaser.Scene {
   }
 
   private sortDepth() {
-    const items = [
-      ...this.statics,
-      ...[...this.actors.values()].map((a) => ({ obj: a.img, box: { x: a.at.gx - 0.2, y: a.at.gy - 0.2, w: 0.4, d: 0.4, z: a.at.z, h: PERSON_H } })),
+    // 두 층으로 나눈다: 아래 = 무대 바닥·막·객석 줄·자리에 있는 직원, 위 = 연단·걷거나 무대에 선 직원.
+    // 무대(계단 포함)는 상자 하나라 계단·무대 위를 걷는 직원이 그 안에 들어가고, 줄 사이 통로도 앞줄 상자와 겹쳐 한 층으로 정렬하면 파묻힌다
+    const actorItem = (a: Actor) => ({ obj: a.img, box: { x: a.at.gx - 0.2, y: a.at.gy - 0.2, w: 0.4, d: 0.4, z: a.at.z, h: PERSON_H } })
+    const actors = [...this.actors.values()]
+    const isUp = (a: Actor) => a.path.length > 0 || !near(a.at, a.seat)
+    const layers = [
+      [...this.statics.filter((s) => !s.isProp), ...actors.filter((a) => !isUp(a)).map(actorItem)],
+      [...this.statics.filter((s) => s.isProp), ...actors.filter(isUp).map(actorItem)],
     ]
-    depthOrder(items.map((it) => ({ ...it.box, it }))).forEach(({ it }, i) => it.obj.setDepth(10 + i * 2))
+    let depth = 10
+    for (const items of layers)
+      for (const { it } of depthOrder(items.map((it) => ({ ...it.box, it })))) {
+        it.obj.setDepth(depth)
+        depth += 2
+      }
     const who = this.isLit ? this.presenter() : null
     if (who) who.img.setDepth(LIT_DEPTH)
     for (const a of this.actors.values()) a.shadow.setDepth(a.img.depth - 1)

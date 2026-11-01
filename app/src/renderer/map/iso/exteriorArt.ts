@@ -394,14 +394,20 @@ const bench = () => sprite([...legs(0.1, 0.3, 0.9, 0.7, 0.06, 4, K.metal), bx(0.
 /** 차 한 대 (+x로 달림 — 앞모습이 ↘). dir −1이면 180° 돌려 ↖ */
 export function carSprite(color: string, isNight: boolean, dir: 1 | -1 = 1): Sprite {
   const lamp = isNight ? '#fff3c4' : '#f6f1d0'
-  const parts = [
+  const body = [
     bx(0.08, 0.15, 1.84, 0.7, 2, 6, color),
     bx(0.5, 0.2, 0.95, 0.6, 8, 5, '#cfeefa', { top: color, S: (q) => (q.u < 0.06 || q.u > 0.94 ? color : '#cfeefa'), E: (q) => (q.u < 0.08 || q.u > 0.92 ? color : '#cfeefa') }),
+  ]
+  const outer = [
     ...[0.3, 1.5].flatMap((x) => [bx(x, 0.1, 0.24, 0.08, 0, 4, K.dark), bx(x, 0.82, 0.24, 0.08, 0, 4, K.dark)]),
     bx(1.9, 0.22, 0.04, 0.14, 4, 2, lamp, { flat: true }),
     bx(1.9, 0.64, 0.04, 0.14, 4, 2, lamp, { flat: true }),
   ]
-  return sprite(dir === 1 ? parts : rotate(parts, 2, 2, 1))
+  const turn = (parts: Box[]) => (dir === 1 ? parts : rotate(parts, 2, 2, 1))
+  // 바퀴·전조등은 차체 상자와 겹쳐 자동 정렬이 앞뒤를 못 가른다 — 차체의 안 보이는 면(y·x가 작은 쪽) 밖으로 나온 것은 차체 전에, 나머지는 뒤에 그린다
+  const isFar = (p: Box) => p.y < 0.15 || p.x < 0.08
+  const parts = turn(outer)
+  return sprite([...parts.filter(isFar), ...turn(body), ...parts.filter((p) => !isFar(p))], { noSort: true })
 }
 const bike = () => sprite([bx(0.1, 0.4, 0.8, 0.2, 0, 3, K.metal), bx(0.05, 0.38, 0.9, 0.24, 3, 2, K.blue)])
 const hedge = (w: number) => sprite([bx(0, 0.15, w, 0.7, 0, 4, '#d8c7ae'), bx(0.05, 0.2, w - 0.1, 0.6, 4, 5, K.leaf[1], { top: (q) => (noise(Math.round(q.gx * 16), Math.round(q.gy * 16)) > 0.7 ? K.leaf[2] : K.leaf[1]), S: K.leaf[0], E: K.leaf[0] })])
