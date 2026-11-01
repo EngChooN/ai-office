@@ -24,6 +24,7 @@ Writing rules
 ### Bug fixes
 - Fixed the Tailscale menu bar app flickering on and off. AI Office now checks Tailscale status without making the Tailscale window appear.
 - Fixed the Demo Day spotlight darkening only half of the screen. Now the whole hall dims and only the presenting staff member stays lit.
+- Fixed the new-version notice hiding behind the welcome screen on first launch and popping up as soon as it closed. It now waits until the welcome, setup check, tour, and practice are all finished, and until then only the update mark in the sidebar shows it.
 
 ## [0.18.1] - 2026-10-31
 

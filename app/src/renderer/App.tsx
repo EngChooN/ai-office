@@ -75,7 +75,7 @@ function AppBody() {
       <TutorialGuide />
       <TutorialDone />
       <WhatsNew isBusy={isTourOpen || isPickerOpen} />
-      <UpdateNotice />
+      <UpdateNotice isBusy={isTourOpen || isPickerOpen} />
       <LevelUp isBusy={isTourOpen || isPickerOpen} />
       {!isPhone && <QuickSecretary />}
       {/* PC 주인에게만 (휴대폰에서 QR을 다시 만들면 그 휴대폰이 끊긴다) */}

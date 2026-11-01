@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { notifiableVersion, updateActions, useUpdateStore } from '@/lib/update'
+import { useOffice } from '@/store'
 import { fmtDate, t } from '@shared/i18n'
 import { useIsWhatsNewOpen } from './WhatsNew'
 
@@ -75,13 +76,38 @@ function InstallButton({ size, onClick }: { size?: 'sm'; onClick: () => void }) 
   )
 }
 
-/** 새 버전 안내 — 새 버전을 처음 받으면 한 번 뜨고, 사이드바 배지로 다시 연다 (업데이트 소식 창이 떠 있으면 그 창을 닫은 뒤에) */
-export function UpdateNotice() {
+/** 첫 안내 단계 사이(예: 둘러보기를 마치고 연습 튜토리얼이 시작되기까지)의 짧은 빈틈에 끼어들지 않게, 안내가 끝나고 이만큼 뒤에 띄운다 */
+const GUIDE_SETTLE_MS = 1000
+
+/**
+ * 첫 안내(환영·준비 점검·둘러보기·연습 고르기·연습 튜토리얼)가 이어지는 동안 true.
+ * isBusy: 둘러보기·연습 고르기가 떠 있는지 (App이 가진 상태)
+ */
+function useIsGuideOn(isBusy: boolean) {
+  const isLoaded = useOffice((s) => s.isLoaded)
+  const isOnboarded = useOffice((s) => s.settings.isOnboarded)
+  const isTutorialOn = useOffice((s) => Boolean(s.tutorial?.scenario))
+  const isOn = !isLoaded || !isOnboarded || isBusy || isTutorialOn
+  const [isHeld, setIsHeld] = useState(isOn)
+  useEffect(() => {
+    if (isOn) return setIsHeld(true)
+    const timer = setTimeout(() => setIsHeld(false), GUIDE_SETTLE_MS)
+    return () => clearTimeout(timer)
+  }, [isOn])
+  return isOn || isHeld
+}
+
+/**
+ * 새 버전 안내 — 새 버전을 처음 받으면 한 번 뜨고, 사이드바 배지로 다시 연다.
+ * 업데이트 소식 창이나 첫 안내가 떠 있으면 그것이 끝난 뒤에 (배지는 그동안에도 보인다)
+ */
+export function UpdateNotice({ isBusy }: { isBusy: boolean }) {
   const status = useUpdateStore((s) => s.status)
   const isNoticeOpen = useUpdateStore((s) => s.isNoticeOpen)
   const isWhatsNewOpen = useIsWhatsNewOpen()
+  const isGuideOn = useIsGuideOn(isBusy)
   const [isConfirmOpen, setIsConfirmOpen] = useState(false)
-  const isOpen = isNoticeOpen && !isWhatsNewOpen
+  const isOpen = isNoticeOpen && !isWhatsNewOpen && !isGuideOn
   const version = notifiableVersion(status)
   if (!status?.latest || !version) return null
 
