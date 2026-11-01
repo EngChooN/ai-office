@@ -45,6 +45,8 @@ export interface Approval {
   alwaysRule?: ApprovalRuleDraft
   /** 다른 PC 직원이 바꾼 파일 묶음 결재(toolName 'PeerChanges') — 줄 단위 비교(diff)는 빼고 목록만 든다. 자세히는 peerChangesetDetail */
   peerChanges?: PeerChangesCard
+  /** 도움 요청으로 받은 일에서 나온 결재면 부탁한 직원의 이름 ("OO 님의 요청" 표시용) */
+  requestedBy?: string
 }
 
 export interface StaffQuestion {
