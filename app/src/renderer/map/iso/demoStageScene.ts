@@ -83,6 +83,8 @@ const HEAD_Z = 34
 const DIM_ALPHA = 0.35
 const SPOT_ALPHA = 0.9
 const FX_DEPTH = 55_000
+/** 조명이 켜지면 어두운 막은 이 깊이에 깔고, 발표자(그림자·조명 포함)만 그 위로 올린다 */
+const LIT_DEPTH = FX_DEPTH - 10
 const BOW_GAP = 0.75
 /** 카메라에 담을 범위 (발표장 텍스처 아트 px): 왼쪽은 맨 뒤 선 객석 끝, 아래는 객석 맨 뒷줄 발 아래까지. 오른쪽은 텍스처 끝 */
 const VIEW = { left: 30, top: 2, bottom: STAGE.wallH + 138 }
@@ -164,10 +166,9 @@ export class DemoStageScene extends Phaser.Scene {
         this.addStatic(`${hallRowKey(role, STAGE.seatsPerRow)}-${gy}`, row.cv, row.o, row.box, { gx: STAGE.seatX, gy })
       }
 
-    // 객석만 어둡게 (무대 앞단보다 아래)
-    const front = this.world({ gx: 0, gy: STAGE.platform.d, z: 0 }).y
-    this.dim = this.add.graphics().setDepth(2).setAlpha(0)
-    this.dim.fillStyle(hex(STAGE_COLORS.dim), 1).fillRect(0, front, this.worldW, this.worldH - front)
+    // 발표장 전체를 어둡게 — 줌을 내려 생기는 바깥 여백까지 덮게 넉넉히 깐다 (발표자만 막 위로 올린다)
+    this.dim = this.add.graphics().setDepth(LIT_DEPTH - 2).setAlpha(0)
+    this.dim.fillStyle(hex(STAGE_COLORS.dim), 1).fillRect(-this.worldW, -this.worldH, this.worldW * 3, this.worldH * 3)
 
     const spot = artStageSpot()
     this.addArt('stage-spot', () => toCanvas(spot.cv))
@@ -248,6 +249,7 @@ export class DemoStageScene extends Phaser.Scene {
     const isLit = !next.isDone && (next.phase === 'present' || next.phase === 'remark')
     if (isLit !== this.isLit) {
       this.isLit = isLit
+      this.isDepthDirty = true
       this.tweens.killTweensOf(this.dim)
       this.tweens.add({ targets: this.dim, alpha: isLit ? DIM_ALPHA : 0, duration: isLit ? 400 : 300 })
       this.tweens.add({ targets: this.spot, alpha: isLit ? SPOT_ALPHA : 0, duration: 300 })
@@ -331,6 +333,8 @@ export class DemoStageScene extends Phaser.Scene {
       ...[...this.actors.values()].map((a) => ({ obj: a.img, box: { x: a.at.gx - 0.2, y: a.at.gy - 0.2, w: 0.4, d: 0.4, z: a.at.z, h: PERSON_H } })),
     ]
     depthOrder(items.map((it) => ({ ...it.box, it }))).forEach(({ it }, i) => it.obj.setDepth(10 + i * 2))
+    const who = this.isLit ? this.presenter() : null
+    if (who) who.img.setDepth(LIT_DEPTH)
     for (const a of this.actors.values()) a.shadow.setDepth(a.img.depth - 1)
   }
 
