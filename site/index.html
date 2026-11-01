@@ -136,14 +136,19 @@ h2{font-size:clamp(26px,3.6vw,40px);line-height:1.2;font-weight:700;letter-spaci
 .row{display:grid;grid-template-columns:5fr 7fr;gap:56px;align-items:center}
 .row:nth-child(even){grid-template-columns:7fr 5fr}
 .row:nth-child(even) .txt{order:2}
-.row .ico{display:inline-flex;margin-bottom:18px}
-.row .ico svg{width:22px;height:22px;box-sizing:content-box;padding:9px;border-radius:10px;color:var(--accent);background:rgba(155,140,255,.1);border:1px solid rgba(155,140,255,.2)}
+.row .ico,.nc .ico{display:inline-flex;margin-bottom:18px}
+.row .ico svg,.nc .ico svg{width:22px;height:22px;box-sizing:content-box;padding:9px;border-radius:10px;color:var(--accent);background:rgba(155,140,255,.1);border:1px solid rgba(155,140,255,.2)}
 .row:nth-child(3n+2) .ico svg{color:var(--accent2);background:rgba(255,122,198,.08);border-color:rgba(255,122,198,.2)}
 .row:nth-child(3n) .ico svg{color:#f6a77c;background:rgba(246,167,124,.08);border-color:rgba(246,167,124,.2)}
 .row h3{font-size:clamp(22px,2.4vw,28px);line-height:1.3;font-weight:700;letter-spacing:-.02em;margin-bottom:12px}
 .row p{font-size:16px;color:var(--muted);max-width:440px}
 .row figure{border-radius:18px;box-shadow:0 30px 80px -24px rgba(155,140,255,.14),0 16px 40px rgba(0,0,0,.45)}
 .row figure img{aspect-ratio:1360/860}
+.news-t{margin:104px 0 20px;font-size:clamp(22px,2.4vw,28px);line-height:1.3;font-weight:700;letter-spacing:-.02em}
+.news{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+.nc{border:1px solid var(--line2);border-radius:18px;padding:28px 26px;background:linear-gradient(180deg,var(--panel2),var(--panel))}
+.nc h3{font-size:18px;font-weight:600;margin-bottom:8px}
+.nc p{font-size:15px;color:var(--muted)}
 
 /* 화면 (휴대폰) */
 .shots{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;align-items:start;max-width:920px;margin:0 auto}
@@ -271,7 +276,8 @@ figure:hover{transform:translateY(-4px);border-color:#5A5680}
 
 @media (max-width:960px){
   .top nav{display:none}
-  .steps{grid-template-columns:1fr}
+  .steps,.news{grid-template-columns:1fr}
+  .news-t{margin-top:72px}
   .step:after{display:none}
   .dls{grid-template-columns:1fr}
   .rows{gap:72px}
@@ -373,6 +379,13 @@ figure:hover{transform:translateY(-4px);border-color:#5A5680}
     <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/><path d="M11 9l3 3-1.2.3.8 1.7"/></svg></span><h3><span data-i18n="f6.t"><!--p-->컴퓨터 조작 장비<!--/p--></span><span class="pill" data-i18n="tag.new"><!--p-->새 기능<!--/p--></span></h3><p data-i18n="f6.p"><!--p-->장비를 지급받은 직원은 내 화면을 보고 마우스와 키보드로 직접 작업해요. 화면을 보는 건 바로, 클릭하거나 글을 입력하는 건 결재함에서 내가 승인한 뒤에만 해요. 브라우저를 열어 사이트를 확인하는 장비도 있어요.<!--/p--></p></div><figure class="vid" data-video="computer-approval"><video muted loop playsinline preload="none" data-i18n-label="alt.f6"></video><div class="pic" data-co="computer"><img src="assets/screens/ko/computer.webp" data-shot="computer" data-i18n-alt="alt.f6" loading="lazy" width="1360" height="860"></div></figure></div>
     <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.7 1.8 1.8.7-1.8.7L19 20l-.7-1.8-1.8-.7 1.8-.7z"/></svg></span><h3><span data-i18n="f7.t"><!--p-->비서와 튜토리얼<!--/p--></span><span class="pill" data-i18n="tag.new"><!--p-->새 기능<!--/p--></span></h3><p data-i18n="f7.p"><!--p-->처음 켜면 안내가 사무실 쓰는 법을 알려 주고, 마지막에 직원 한 명에게 예제 업무를 실제로 맡겨 결과까지 확인해요. 잘 안 되면 로그인·사용 한도·시간 초과·네트워크 중 무엇이 원인인지 알려 줘요. 그다음부터는 비서에게 말로 부탁하세요 — 팀 옮기기, 업무 보드 정리, 사무실 꾸미기, 직원 지침 점검까지, 바꾸기 전과 후를 나란히 보여 줘요.<!--/p--></p></div><figure><div class="pic" data-co="secretary"><img src="assets/screens/ko/secretary.webp" data-shot="secretary" data-i18n-alt="alt.f7" loading="lazy" width="1360" height="860"></div></figure></div>
     <div class="row rv"><div class="txt"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 6-7"/></svg></span><h3 data-i18n="f8.t"><!--p-->사용량과 급여 명세서, 터미널 세션 보기<!--/p--></h3><p data-i18n="f8.p"><!--p-->누가 일하고 누가 확인을 기다리는지 한눈에 보고, 직원별 사용량과 Claude·GPT 각각의 플랜 사용량을 카드로 확인해요. 상단바에서도 두 사용률을 함께 볼 수 있어요. 사용량이 거의 다 차면 예약 업무를 잠시 멈춰 알려 줘요. 터미널에서 따로 돌리는 Claude·GPT 작업도 ‘일하는 중’으로 보여요.<!--/p--></p></div><figure><div class="pic" data-co="dashboard"><img src="assets/screens/ko/dashboard.webp" data-shot="dashboard" data-i18n-alt="alt.f8" loading="lazy" width="1360" height="860"></div></figure></div>
+  </div>
+  <h3 class="news-t rv" data-i18n="new.t"><!--p-->최근 들어온 기능<!--/p--></h3>
+  <div class="news">
+    <div class="nc rv"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/><circle cx="16" cy="10" r="2"/></svg></span><h3><span data-i18n="n1.t"><!--p-->바탕화면 비서<!--/p--></span><span class="pill" data-i18n="tag.new"><!--p-->새 기능<!--/p--></span></h3><p data-i18n="n1.p"><!--p-->맥과 윈도우 바탕화면에 비서 캐릭터가 떠 있어요. 앱을 열지 않아도 눌러서 바로 대화하고, 결재·답하기와 결과물 확인까지 할 수 있어요.<!--/p--></p></div>
+    <div class="nc rv"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="8" height="6" rx="1"/><rect x="14" y="13" width="8" height="6" rx="1"/><path d="M6 11v4h8M18 13V9h-8"/></svg></span><h3><span data-i18n="n2.t"><!--p-->다른 PC 직원과 함께 일하기<!--/p--></span><span class="pill" data-i18n="tag.new"><!--p-->새 기능<!--/p--></span></h3><p data-i18n="n2.p"><!--p-->내 컴퓨터끼리 12자리 연결 코드로 짝지으면, 다른 PC의 직원에게 내 랩의 일을 맡길 수 있어요. 진행·답장·결재는 내 앱으로 넘어와요. 안드로이드 휴대폰도 12자리 코드로 연결해요.<!--/p--></p></div>
+    <div class="nc rv"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="8" r="3"/><circle cx="17" cy="8" r="3"/><path d="M2 20a5 5 0 0110 0M12 20a5 5 0 0110 0"/><path d="M10.5 6.5h3l-1-1M13.5 9.5h-3l1 1"/></svg></span><h3><span data-i18n="n3.t"><!--p-->직원끼리 도움 요청<!--/p--></span><span class="pill" data-i18n="tag.new"><!--p-->새 기능<!--/p--></span></h3><p data-i18n="n3.p"><!--p-->팀원도 같은 팀·랩 동료에게 일을 부탁할 수 있어요. 결과는 부탁한 직원에게 돌아가고, 팀장에게는 한 줄 알림이 가요.<!--/p--></p></div>
+    <div class="nc rv"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="4" rx="1"/><rect x="11" y="9" width="10" height="11" rx="1.5"/><path d="M14 13h4M14 16h4"/></svg></span><h3><span data-i18n="n4.t"><!--p-->메뉴바에서 바로<!--/p--></span><span class="pill" data-i18n="tag.new"><!--p-->새 기능<!--/p--></span></h3><p data-i18n="n4.p"><!--p-->새 버전이 나오면 메뉴바 맨 위에서 바로 업데이트해요. 결재함 열기와 전체 멈추기도 메뉴바에서 한 번에 할 수 있어요(윈도우는 알림 영역 아이콘).<!--/p--></p></div>
   </div>
 </div></section>
 
@@ -507,6 +520,11 @@ var I18N = {
     'f5.t': '단체방과 회의실', 'f5.p': '보고와 허락 요청이 채팅으로 흐르고, 결재함이나 단체방에서 바로 승인하거나 답할 수 있어요. 회의실에서는 직원들이 각자 자기 AI(Claude 또는 GPT)로 돌아가며 의견을 내고, 회의록과 할 일이 자동으로 정리돼요.',
     'f6.t': '컴퓨터 조작 장비', 'f6.p': '장비를 지급받은 직원은 내 화면을 보고 마우스와 키보드로 직접 작업해요. 화면을 보는 건 바로, 클릭하거나 글을 입력하는 건 결재함에서 내가 승인한 뒤에만 해요. 브라우저를 열어 사이트를 확인하는 장비도 있어요.',
     'f7.t': '비서와 튜토리얼', 'f7.p': '처음 켜면 안내가 사무실 쓰는 법을 알려 주고, 마지막에 직원 한 명에게 예제 업무를 실제로 맡겨 결과까지 확인해요. 잘 안 되면 로그인·사용 한도·시간 초과·네트워크 중 무엇이 원인인지 알려 줘요. 그다음부터는 비서에게 말로 부탁하세요 — 팀 옮기기, 업무 보드 정리, 사무실 꾸미기, 직원 지침 점검까지, 바꾸기 전과 후를 나란히 보여 줘요.',
+    'new.t': '최근 들어온 기능',
+    'n1.t': '바탕화면 비서', 'n1.p': '맥과 윈도우 바탕화면에 비서 캐릭터가 떠 있어요. 앱을 열지 않아도 눌러서 바로 대화하고, 결재·답하기와 결과물 확인까지 할 수 있어요.',
+    'n2.t': '다른 PC 직원과 함께 일하기', 'n2.p': '내 컴퓨터끼리 12자리 연결 코드로 짝지으면, 다른 PC의 직원에게 내 랩의 일을 맡길 수 있어요. 진행·답장·결재는 내 앱으로 넘어와요. 안드로이드 휴대폰도 12자리 코드로 연결해요.',
+    'n3.t': '직원끼리 도움 요청', 'n3.p': '팀원도 같은 팀·랩 동료에게 일을 부탁할 수 있어요. 결과는 부탁한 직원에게 돌아가고, 팀장에게는 한 줄 알림이 가요.',
+    'n4.t': '메뉴바에서 바로', 'n4.p': '새 버전이 나오면 메뉴바 맨 위에서 바로 업데이트해요. 결재함 열기와 전체 멈추기도 메뉴바에서 한 번에 할 수 있어요(윈도우는 알림 영역 아이콘).',
     'f8.t': '사용량과 급여 명세서, 터미널 세션 보기', 'f8.p': '누가 일하고 누가 확인을 기다리는지 한눈에 보고, 직원별 사용량과 Claude·GPT 각각의 플랜 사용량을 카드로 확인해요. 상단바에서도 두 사용률을 함께 볼 수 있어요. 사용량이 거의 다 차면 예약 업무를 잠시 멈춰 알려 줘요. 터미널에서 따로 돌리는 Claude·GPT 작업도 ‘일하는 중’으로 보여요.',
     'alt.office': 'AI Office 사무실 화면 — 책상 세트와 레벨 가구로 꾸민 층',
     'alt.f1': '직원 고용 창에서 AI를 Codex(GPT, 베타)로 고른 화면',
@@ -596,6 +614,11 @@ var I18N = {
     'f5.t': 'Group chat and meetings', 'f5.p': 'Reports and permission requests flow through chat, and you can approve or reply right there. In the meeting room, each employee speaks with their own AI (Claude or GPT) in turn, and the minutes and to-dos are written up for you.',
     'f6.t': 'Computer control kit', 'f6.p': 'A staff member with the computer kit can look at your screen and work with the mouse and keyboard. Looking is instant; clicking and typing only happen after you approve in the inbox. There’s also a browser kit for checking websites.',
     'f7.t': 'Secretary and tutorial', 'f7.p': 'On first launch, a guided tour shows you around and finishes by handing a sample task to an employee, so you see a real result. If it fails, it tells you the cause: login, usage limit, timeout, or network. After that, just ask the secretary — moving people between teams, tidying the task board, redecorating, checking staff instructions — with before and after shown side by side.',
+    'new.t': 'Recently added',
+    'n1.t': 'Desktop secretary', 'n1.p': 'A secretary character sits on your Mac or Windows desktop. Click it to chat, approve, reply and check results without opening the app.',
+    'n2.t': 'Work with employees on your other PC', 'n2.p': 'Pair your own computers with a 12-digit code and hand work from your lab to an employee on the other PC. Progress, replies and approvals come back to your app. Your Android phone connects with a 12-digit code too.',
+    'n3.t': 'Employees ask each other for help', 'n3.p': 'Team members can ask a colleague in the same team or lab for help. The result goes back to whoever asked, and the team lead gets a one-line note.',
+    'n4.t': 'Right from the menu bar', 'n4.p': 'When a new version is out, update from the top of the menu bar. You can also open the approval inbox or stop everyone from there (on Windows, the tray icon).',
     'f8.t': 'Usage, payroll and terminal sessions', 'f8.p': 'See at a glance who’s working and who’s waiting, with per-employee usage and a card for each of your Claude and GPT plans. The top bar shows both usage rates side by side. When usage runs near the limit, scheduled work pauses and you’re told. Claude and GPT sessions you start in a terminal also show up as “working.”',
     'alt.office': 'AI Office floor decorated with desk sets and level furniture',
     'alt.f1': 'Hiring window with Codex (GPT, beta) chosen as the AI',
@@ -684,6 +707,11 @@ var I18N = {
     'f5.t': 'グループチャットと会議室', 'f5.p': '報告や許可の依頼がチャットで流れ、その場で承認や返信ができます。会議室では社員がそれぞれ自分のAI（ClaudeまたはGPT）で順番に意見を出し、議事録とやることが自動でまとまります。',
     'f6.t': 'パソコン操作の装備', 'f6.p': '装備を支給された社員は、画面を見ながらマウスとキーボードで作業します。見るだけなら即座に、クリックや入力は承認箱で承認した後にだけ行います。サイトを開いて確認するブラウザ装備もあります。',
     'f7.t': '秘書とチュートリアル', 'f7.p': '初回起動時はツアーで使い方を案内し、最後に社員1人へサンプル業務を実際に任せて結果まで確認します。うまくいかないときは、ログイン・使用上限・タイムアウト・ネットワークのどれが原因かを知らせます。そのあとは秘書に話しかけるだけ。チームの異動、業務ボードの整理、オフィスの模様替え、社員の指示の点検まで、変更前と変更後を並べて見せてくれます。',
+    'new.t': '最近追加された機能',
+    'n1.t': 'デスクトップ秘書', 'n1.p': 'MacとWindowsのデスクトップに秘書キャラクターが常駐します。アプリを開かなくてもクリックしてすぐ会話でき、承認・返信や成果物の確認までできます。',
+    'n2.t': '別のPCの社員と一緒に働く', 'n2.p': '自分のパソコン同士を12桁の接続コードでペアにすると、別のPCの社員に自分のラボの仕事を任せられます。進捗・返信・承認は自分のアプリに届きます。Androidスマホも12桁のコードで接続します。',
+    'n3.t': '社員同士で助けを頼む', 'n3.p': 'メンバーも同じチーム・ラボの同僚に仕事を頼めます。結果は頼んだ社員に戻り、チームリーダーには一行の通知が届きます。',
+    'n4.t': 'メニューバーからすぐに', 'n4.p': '新しいバージョンが出たら、メニューバーの一番上からすぐアップデート。承認箱を開く・全員を止めるもメニューバーからワンクリックです(Windowsは通知領域のアイコン)。',
     'f8.t': '使用量と給与明細、ターミナルの作業も', 'f8.p': '誰が働き、誰が確認待ちかをひと目で確認。社員ごとの使用量と、ClaudeとGPTそれぞれのプラン使用量をカードで見られます。上部のバーにも両方の使用率が並びます。使用量が上限に近づくと予約作業を一時停止してお知らせします。ターミナルで別に動かしているClaude・GPTの作業も「作業中」と表示されます。',
     'alt.office': 'AI Office のオフィス画面 — 机セットとレベル家具で飾ったフロア',
     'alt.f1': '社員の採用画面でAIにCodex（GPT・ベータ）を選んだところ',
@@ -772,6 +800,11 @@ var I18N = {
     'f5.t': '群聊与会议室', 'f5.p': '汇报和许可请求通过聊天流转，可以直接在群聊里批准或回复。会议室里每位员工用各自的 AI（Claude 或 GPT）轮流发言，会议纪要和待办会自动整理好。',
     'f6.t': '电脑操作装备', 'f6.p': '配发了装备的员工能看到你的屏幕，并用鼠标和键盘直接操作。查看屏幕无需审批，点击和输入则必须等你在审批箱批准后才会执行。还有可打开网页查看内容的浏览器装备。',
     'f7.t': '秘书与新手引导', 'f7.p': '首次启动时，导览会带你熟悉办公室，最后真的把一个示例任务交给一位员工，让你看到实际结果。如果失败，会告诉你原因：登录、用量上限、超时还是网络。之后直接对秘书说就行：调整团队、整理任务看板、布置办公室、检查员工指令，改动前后并排展示。',
+    'new.t': '最近新增功能',
+    'n1.t': '桌面秘书', 'n1.p': '秘书角色常驻在 Mac 和 Windows 桌面上。不用打开应用，点一下就能对话，还能审批、回复和查看成果。',
+    'n2.t': '与另一台电脑的员工一起工作', 'n2.p': '用 12 位连接码把自己的电脑配对后，就能把你实验室的工作交给另一台电脑上的员工。进度、回复和审批都会回到你的应用。安卓手机也用 12 位码连接。',
+    'n3.t': '员工之间互相求助', 'n3.p': '组员也能请同一团队或实验室的同事帮忙。结果交回给请求的员工，组长会收到一行通知。',
+    'n4.t': '在菜单栏直接操作', 'n4.p': '有新版本时，在菜单栏最上方直接更新。打开审批箱、全部停止也能在菜单栏一键完成（Windows 为通知区域图标）。',
     'f8.t': '用量与工资单，终端会话也能看', 'f8.p': '一眼看清谁在工作、谁在等你确认，员工用量以及 Claude 和 GPT 各自的套餐用量都以卡片显示。顶部栏也会并排显示两者的使用率。用量快满时会暂停定时任务并提醒你。在终端里另外运行的 Claude、GPT 工作，也会显示为“工作中”。',
     'alt.office': 'AI Office 办公室界面 — 用桌椅套装和等级家具装饰的楼层',
     'alt.f1': '在雇用员工窗口中把 AI 选为 Codex（GPT，测试版）',
