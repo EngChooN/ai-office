@@ -99,7 +99,7 @@ class ManualPairTest {
         assertEquals(code12, normalizePairCode("7m3q-h9xk-2vtb"))
         assertEquals(code12, normalizePairCode("  7M3Q H9XK 2VTB "))
         // O→0, I→1, L→1
-        assertEquals("010101010101", normalizePairCode("oilo-ilOI-L0i1"))
+        assertEquals("011011011011", normalizePairCode("oilo-ilOI-L0i1"))
         assertNull(normalizePairCode("7M3QH9XK2VT"))
         assertNull(normalizePairCode("7M3QH9XK2VTBB"))
         assertNull(normalizePairCode("7M3QH9XK2VTU")) // U는 알파벳 밖
