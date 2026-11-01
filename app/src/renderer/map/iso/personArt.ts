@@ -143,7 +143,7 @@ function colors(k: FigureLook) {
 type Col = ReturnType<typeof colors>
 
 // ── 머리 (10×9, 머리 왼쪽 위 = (hx,hy)) ──
-// ↙: 얼굴이 왼쪽 아래를 본다. 앞면(밝음 a) · 세로 2칸 눈(e) · 볼터치(r) · 작은 입(m) · 옆면 그늘(k)과 귀(o)
+// ↙: 얼굴이 왼쪽 아래를 본다. 볼 끝을 깎고 턱을 넓힌 U자 턱(docs/design/face-round C안). 앞면(밝음 a) · 세로 2칸 눈(e) · 볼터치(r) · 작은 입(m) · 옆면 그늘(k)과 귀(o)
 const HEAD_F = [
   '..hhhhh...',
   '.hHHHhhhh.',
@@ -152,8 +152,8 @@ const HEAD_F = [
   'sssssskkdd',
   'seasesokdd',
   'seasesskdd',
-  'rssmrskkd.',
-  '.sssk.....',
+  '.rsmrskkd.',
+  '..ssskk...',
 ]
 // ↖: 뒤통수. 왼쪽에 볼·턱 윤곽과 귀, 아래 목덜미
 const HEAD_B = [
@@ -297,7 +297,7 @@ function headWear(c: Col, k: FigureLook, dir: Dir, hx: number, hy: number): (Par
     for (const x of [0, 1, 3, 4, 5]) list.push([x, 6, c.K])
     parts.push({ flat: part(list) })
   }
-  if (isF && k.face === 3) parts.push({ flat: part([[0, 7, c.d], [1, 7, c.h], [2, 7, c.h], [4, 7, c.h], [5, 7, c.d], [1, 8, c.h], [2, 8, c.h], [3, 8, c.h], [4, 8, c.d], [0, 6, c.d]]) }) // 수염: 입 둘레·턱
+  if (isF && k.face === 3) parts.push({ flat: part([[1, 7, c.d], [2, 7, c.h], [4, 7, c.h], [5, 7, c.d], [2, 8, c.h], [3, 8, c.h], [4, 8, c.h], [5, 8, c.d], [0, 6, c.d], [1, 6, c.d]]) }) // 수염: 입 둘레·턱
   if (isF && k.face === 4) parts.push({ flat: part([[1, 7, c.d], [2, 7, c.h], [4, 7, c.h]]) }) // 콧수염
   return parts
 }
@@ -365,7 +365,6 @@ function hoodPart(c: Col, dir: Dir, hx: number, hy: number) {
 /** 목: 몸통 다음에 외곽선 없이 덧칠. 턱이 짧아 목이 한 칸 드러나고 턱 그림자(z)가 떨어진다 */
 function neckPart(c: Col, y = 10, dx = 0): Flat {
   const P = new Part()
-  P.px(7 + dx, y - 1, c.z)
   P.px(8 + dx, y - 1, c.z)
   P.px(9 + dx, y - 1, OUT)
   P.px(7 + dx, y, c.z)
