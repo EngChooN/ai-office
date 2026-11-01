@@ -639,6 +639,18 @@ export class Office extends EventEmitter<{
     return buildStaffProgress({ status: s.status, origins: this.origins.get(s.id) ?? [], queued: this.manager.backlog(s.id), hasApproval: s.approvals.length > 0, nameOf: (id) => this.hired.get(id)?.name })
   }
 
+  /** 부탁받은 일이 오류·중지로 끝나 결과 없이 사라지지 않게: 요청을 닫고(대상당 1건 제한 해제) 부탁한 직원에게 못 마쳤다고 보고한다 */
+  private failHelpRequests(staffId: string, origins: readonly Origin[], why: 'error' | 'stopped') {
+    const name = this.hired.get(staffId)?.name ?? ''
+    for (const o of origins) {
+      if (o.kind !== 'help') continue
+      const resumeCtx = this.helpLedger.close(o.reqId)
+      if (!this.hired.has(o.fromId)) continue
+      this.instruct(o.fromId, t(why === 'error' ? 'staff.msg.helpFailed.error' : 'staff.msg.helpFailed.stopped', { name }), { kind: 'user', room: o.room, ...(resumeCtx ? { help: resumeCtx } : {}), ...(o.isAutonomous ? { isAutonomous: true } : {}) })
+    }
+    this.helpLedger.release(staffId, [], (id) => [...this.origins.values()].some((os) => os.some((x) => x.kind === 'help' && x.reqId === id)))
+  }
+
   /** 실행 중 예외(SDK·Codex 오류): 대화방에 알리고, 받은 일을 정리하고, 업무 카드를 되돌린다 */
   private onFailed(staffId: string, error: string) {
     const origins = this.origins.get(staffId) ?? []
@@ -647,6 +659,7 @@ export class Office extends EventEmitter<{
     this.taskQueue.set(staffId, [])
     for (const o of origins) if (o.kind === 'process') this.stopRun(o.runId)
     for (const o of origins) if (o.kind === 'peer') this.failPeerJob(o.jobId, staffId, error)
+    this.failHelpRequests(staffId, origins, 'error')
     const taskIds = [...origins.flatMap((o) => (o.kind === 'task' ? [o.taskId] : [])), ...queued.map((q) => q.taskId)]
     for (const id of taskIds) this.returnToTodo(id)
     // 쉬는 중에 세션만 끊긴 경우는 다시 보낼 지시가 없으니 대화방에 알리지 않는다 (상태·기록에는 남는다)
@@ -1070,6 +1083,7 @@ export class Office extends EventEmitter<{
     for (const id of taskIds) this.returnToTodo(id)
     for (const o of origins) if (o.kind === 'process') this.stopRun(o.runId)
     for (const o of origins) if (o.kind === 'peer') this.failPeerJob(o.jobId, staffId, 'stopped')
+    this.failHelpRequests(staffId, origins, 'stopped')
     // Esc·중단 버튼은 대개 말을 걸려고 멈춘 것 — 이야기가 끝나면 하던 카드(기획이면 기획째)를 이어 간다
     const isHard = this.hardStops.delete(staffId)
     if (!isHard && taskIds.length) {

@@ -10,7 +10,7 @@ Writing rules
 ## [미정] (설치본 미빌드)
 
 ### Improvements
-- Team members can now ask teammates in the same team or lab for help. The result goes back to whoever asked, and the team leader gets a one-line notice. Passing a received request on to someone else, overlapping requests to the same person, and more than 3 per job are declined.
+- Team members can now ask teammates in the same team or lab for help. The result goes back to whoever asked, and the team leader gets a one-line notice. Passing a received request on to someone else, overlapping requests to the same person, and more than 3 per job are declined. If the helper's work ends with an error or is stopped, the requester gets an "could not finish" report and can ask the same person again.
 - Dragging the desktop secretary no longer closes its open small window — the window now follows along.
 - Redrew the desktop secretary's expressions (surprised, thinking, happy, worried, focused, sleepy). The eyes now match the pixel style of the default look, and the mouths are clearer.
 - On Mac, clicking the desktop secretary no longer brings the AI Office window to the front or switches to the desktop it's on. Only the secretary's small window opens, and the AI Office window opens only when you press 'Open in app'.

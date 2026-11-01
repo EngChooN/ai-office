@@ -325,6 +325,18 @@ export default {
     ja: '助けの依頼の連鎖で受けた仕事は、他の人に任せたり業務カードを作ったりできません。できる範囲を終えて依頼者に報告してください。',
     zh: '在求助链中收到的工作不能再委派或创建任务卡。请完成能做的部分并向求助者汇报。',
   },
+  'staff.msg.helpFailed.error': {
+    ko: '{name} 님이 부탁한 일을 마치지 못했어요(오류). 필요하면 다른 방법을 찾거나 다시 부탁하세요.',
+    en: '{name} could not finish the work you asked for (error). Find another way or ask again if needed.',
+    ja: '{name}さんは頼まれた仕事を終えられませんでした（エラー）。必要なら別の方法を探すか、もう一度頼んでください。',
+    zh: '{name} 未能完成你请求的工作（出错）。如有需要，请另想办法或再次求助。',
+  },
+  'staff.msg.helpFailed.stopped': {
+    ko: '{name} 님이 부탁한 일을 마치지 못했어요(중지). 필요하면 다른 방법을 찾거나 다시 부탁하세요.',
+    en: '{name} could not finish the work you asked for (stopped). Find another way or ask again if needed.',
+    ja: '{name}さんは頼まれた仕事を終えられませんでした（中止）。必要なら別の方法を探すか、もう一度頼んでください。',
+    zh: '{name} 未能完成你请求的工作（已中止）。如有需要，请另想办法或再次求助。',
+  },
   'staff.msg.helpRequest': {
     ko: '[{from}의 도움 요청] {text}\n(끝나면 결과를 {from}에게 보고하세요)',
     en: '[Help request from {from}] {text}\n(When done, report the result back to {from})',

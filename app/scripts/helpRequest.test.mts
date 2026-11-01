@@ -164,3 +164,21 @@ test('add_task: 팀원(위임 대상 없음·도움 대상 있음)은 막고 팀
   assert.equal(mustUseHelp(3, 0), false)
   assert.equal(mustUseHelp(0, 0), false)
 })
+
+test('실패·중지: 열린 요청을 닫아 같은 대상에게 다시 부탁할 수 있고, 부탁한 사람은 사슬을 이어 재개한다', () => {
+  const l = new HelpLedger()
+  const a: O[] = []
+  const c1 = l.check({ staffId: 'a', targetId: 'b', text: 'x', requesterOrigins: a, targetOrigins: [] })
+  assert.equal(c1, null)
+  const o = l.open('a', 'b', a)
+  const bOrigins: O[] = [{ kind: 'help', fromId: 'a', reqId: o.reqId, help: o.help }]
+  // 대상이 일하는 중이면 중복
+  assert.equal(l.check({ staffId: 'a', targetId: 'b', text: 'x', requesterOrigins: a, targetOrigins: bOrigins }), 'duplicate')
+  // b가 오류로 끝남 — office.failHelpRequests와 같은 호출 순서
+  const ctx = l.close(o.reqId)
+  assert.deepEqual(ctx, { rootId: o.help.rootId, path: ['a'] })
+  l.release('b', [], () => false)
+  // 다시 부탁 가능, 같은 원업무로 센다
+  assert.equal(l.check({ staffId: 'a', targetId: 'b', text: 'x', requesterOrigins: [{ kind: 'user', help: ctx! }], targetOrigins: [] }), null)
+  assert.equal(l.close('없는요청'), null)
+})
