@@ -9,6 +9,19 @@ Writing rules
 
 ## [미정] (설치본 미빌드)
 
+### New features
+- Work together with staff on another PC. In Settings > Connect > Other PC, pair two PCs with a 12-character code, then bring the other PC's staff into your lab and assign them work. Progress, replies, and approvals come back to your app, and if the connection is down the work waits as 'Waiting to connect' and is sent once it reconnects.
+- When staff on another PC change your project files, an approval card shows the changed files and line-by-line differences, and only what you approve is applied.
+- Phones (Android) now connect more securely with an address and a 12-character code.
+
+### Improvements
+- Attachments sent to staff on another PC are tidied up: up to 20MB per file and 5 per task, and unused attachments are deleted automatically after 2 days.
+- Work assigned to staff on another PC can also be canceled with 'Stop this task'.
+- Dragging the desktop secretary no longer closes its open small window — the window now follows along.
+
+### Bug fixes
+- Fixed the Tailscale menu bar app flickering on and off. AI Office now checks Tailscale status without making the Tailscale window appear.
+
 ## [0.18.1] - 2026-10-31
 
 ### Improvements

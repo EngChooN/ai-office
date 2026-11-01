@@ -342,13 +342,14 @@ export class PetWindows {
   private register() {
     if (this.unlisten) return
     this.on('pet:interactive', (isOn) => this.pet?.setIgnoreMouseEvents(!isOn, { forward: true }))
+    // 끄는 동안 펼침 창은 닫지 않고 캐릭터 옆을 따라온다 (놓은 뒤 자리는 placeSettled → place가 다시 잡는다)
     this.on('pet:dragStart', () => {
       this.dragFrom = this.pet?.getBounds() ?? null
-      this.hidePanel()
     })
     this.on('pet:dragMove', (dx, dy) => {
       if (!this.pet || !this.dragFrom || typeof dx !== 'number' || typeof dy !== 'number') return
       this.setBoundsFit(this.pet, { ...this.dragFrom, x: Math.round(this.dragFrom.x + dx), y: Math.round(this.dragFrom.y + dy) })
+      if (this.isPanelWanted && this.panel?.isVisible()) this.setBoundsFit(this.panel, this.panelBounds())
     })
     this.on('pet:dragEnd', () => {
       this.dragFrom = null
