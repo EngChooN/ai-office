@@ -60,12 +60,11 @@ test('제한: 요청문 800자 초과 거절, 800자는 통과', () => {
   assert.equal(m.tool('a', 'b', 'x'.repeat(HELP_TEXT_MAX)), null)
 })
 
-test('제한: 2단계까지 허용(A→B→C), 3번째 단계(C→D)는 거절', () => {
+test('제한: 1단계까지 허용(A→B), 받은 부탁을 다시 넘기기(B→C)는 거절', () => {
   const m = mini()
   m.start('a')
   assert.equal(m.tool('a', 'b'), null)
-  assert.equal(m.tool('b', 'c'), null)
-  assert.equal(m.tool('c', 'd'), 'tooDeep')
+  assert.equal(m.tool('b', 'c'), 'tooDeep')
 })
 
 test('제한: 같은 대상에 처리 중인 내 요청이 있으면 거절', () => {
@@ -98,26 +97,18 @@ test('제한: 원업무가 완전히 끝나면 횟수를 새로 센다', () => {
   for (const t of ['b', 'c', 'd']) assert.equal(m.tool('a', t), null)
 })
 
-test('순환: A→B→A 되돌림 거절, 결과로 재개된 B에서도 A에게 못 보낸다', () => {
+test('되돌림: 부탁받은 B는 A에게도 다시 부탁하지 못한다 (단계 제한이 순환도 막는다)', () => {
   const m = mini()
   m.start('a')
   m.tool('a', 'b')
-  assert.equal(m.tool('b', 'a'), 'cycle')
-  const m2 = mini()
-  m2.start('a')
-  m2.tool('a', 'b')
-  m2.tool('b', 'c')
-  m2.finish('c') // 보고 → B 재개 (사슬 유지)
-  assert.equal(m2.tool('b', 'a'), 'cycle')
-  assert.equal(helpDepthOf(m2.get('b')), 1)
+  assert.equal(m.tool('b', 'a'), 'tooDeep')
+  assert.equal(helpDepthOf(m.get('b')), 1)
 })
 
 test('왕복 세탁 차단: B가 보고해 재개된 A의 깊이는 0이 아니라 사슬을 이어 센다', () => {
   const m = mini()
   m.start('a')
   m.tool('a', 'b')
-  m.tool('b', 'c')
-  m.finish('c')
   m.finish('b')
   assert.deepEqual(m.get('a').at(-1)?.help?.path, ['a'])
   assert.equal(m.reports.at(-1)?.help?.rootId, m.get('a').at(-1)?.help?.rootId)
