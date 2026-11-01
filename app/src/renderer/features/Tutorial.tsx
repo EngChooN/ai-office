@@ -11,6 +11,7 @@ import { t, type TKey } from '@shared/i18n'
 import { DONE_STEP, stepsOf, type TutorialScenario, type TutorialSnapshot, type TutorialView } from '@shared/tutorial'
 import { useTourTarget } from './CoachTour'
 import { navTourTarget } from './nav'
+import { hasDoneFirstTask } from './useFirstTask'
 
 const PAD = 5
 /** 튜토리얼 상태가 아직 없을 때의 빈 목록 — 선택자가 매번 새 배열을 돌려주면 zustand가 끝없이 다시 그린다 */
@@ -54,6 +55,8 @@ export function TutorialPicker({ isOpen, onClose }: { isOpen: boolean; onClose: 
   const completed = useOffice((s) => s.tutorial?.completed ?? NO_COMPLETED)
   const setView = useOffice((s) => s.setView)
   const setHireOpen = useOffice((s) => s.setHireOpen)
+  // 준비 점검에서 첫 업무를 실제로 맡겨 봤으면 '업무 맡기기' 연습은 이미 해 본 것으로 표시한다
+  const isTaskDoneForReal = isOpen && hasDoneFirstTask()
   const start = (scenario: TutorialScenario) => {
     onClose()
     void window.office.tutorialStart(scenario)
@@ -91,9 +94,9 @@ export function TutorialPicker({ isOpen, onClose }: { isOpen: boolean; onClose: 
                 <span className="text-foreground text-sm font-semibold">{t(o.title)}</span>
                 <span className="text-muted-foreground text-xs">{t(o.desc)}</span>
               </span>
-              {o.id !== 'skip' && completed.includes(o.id) && (
+              {o.id !== 'skip' && (completed.includes(o.id) || (o.id === 'task' && isTaskDoneForReal)) && (
                 <span className="text-primary flex shrink-0 items-center gap-0.5 text-[11px] font-semibold [&_svg]:size-3.5">
-                  <CheckIcon /> {t('tutorial.picker.tried')}
+                  <CheckIcon /> {t(completed.includes(o.id) ? 'tutorial.picker.tried' : 'tutorial.picker.triedForReal')}
                 </span>
               )}
             </button>

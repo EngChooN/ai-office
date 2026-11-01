@@ -20,6 +20,7 @@ Writing rules
 - Dragging the desktop secretary no longer closes its open small window — the window now follows along.
 - Redrew the desktop secretary's expressions (surprised, thinking, happy, worried, focused, sleepy). The eyes now match the pixel style of the default look, and the mouths are clearer.
 - The Connect another PC screen now explains that the feature is for connecting your own computers, and not to connect to a PC signed in with someone else's account.
+- After the first task in the setup check, you can choose whether to keep that staff member in the office (kept by default). If the first task takes a long time, the staff member stays in the office and keeps working, and the practice tutorial is only started if you want it. If you already did the first task for real, 'Assign a task' in the practice picker shows 'Done for real'.
 
 ### Bug fixes
 - Fixed the Tailscale menu bar app flickering on and off. AI Office now checks Tailscale status without making the Tailscale window appear.

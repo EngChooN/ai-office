@@ -758,12 +758,21 @@ export default {
     'onboarding.firstTask.meta': { ko: '걸린 시간 {time} · 결재 {n}건', en: 'Took {time} · {n} approvals', ja: '所要時間 {time} · 承認 {n}件', zh: '用时 {time} · 审批 {n} 项' },
     'onboarding.firstTask.viewFull': { ko: '전체 보기', en: 'See the full report', ja: '全文を見る', zh: '查看全文' },
     'onboarding.firstTask.collapse': { ko: '접기', en: 'Show less', ja: '折りたたむ', zh: '收起' },
-    'onboarding.firstTask.keepNote': {
-      ko: '{name} 직원은 첫 업무용이라 안내를 마치면 사무실에서 내보내요. 업무 기록은 남아요.',
-      en: '{name} was hired just for this first task and will leave when you finish setup. The work log stays.',
-      ja: '{name}さんは最初の仕事用なので、案内を終えるとオフィスから外れます。業務記録は残ります。',
-      zh: '{name} 只为第一项任务而来，完成引导后会离开办公室。工作记录会保留。',
+    'onboarding.firstTask.keepStaff': {
+      ko: '{name} 직원을 사무실에 계속 두기',
+      en: 'Keep {name} in the office',
+      ja: '{name}さんをオフィスに残す',
+      zh: '让 {name} 继续留在办公室',
     },
+    'onboarding.firstTask.keepStaffNote': {
+      ko: '끄면 안내를 마칠 때 내보내요. 업무 기록은 남아요.',
+      en: 'If you turn this off, they leave when you finish setup. The work log stays.',
+      ja: 'オフにすると案内を終えるときにオフィスから外れます。業務記録は残ります。',
+      zh: '关闭后，完成引导时员工会离开办公室。工作记录会保留。',
+    },
+    'onboarding.firstTask.slowTitle': { ko: '{name} 직원이 아직 일하는 중이에요', en: '{name} is still working', ja: '{name}さんはまだ作業中です', zh: '{name} 还在工作中' },
+    'onboarding.firstTask.continueInOffice': { ko: '사무실에서 이어 보기', en: 'Keep watching in the office', ja: 'オフィスで続きを見る', zh: '在办公室继续查看' },
+    'onboarding.firstTask.practice': { ko: '연습 튜토리얼 해 보기', en: 'Try the practice tutorial', ja: '練習チュートリアルをやってみる', zh: '试试练习教程' },
     'onboarding.firstTask.failTitle': { ko: '업무를 끝내지 못했어요', en: "The task didn't finish", ja: '仕事を終えられませんでした', zh: '任务没有完成' },
     'onboarding.firstTask.failDesc': {
       ko: '원인을 확인하고 다시 해 봐요. 건너뛰어도 괜찮아요.',
@@ -782,10 +791,10 @@ export default {
       zh: '已达到用量上限。{time} 起可以再次使用',
     },
     'onboarding.firstTask.fail.timeout': {
-      ko: '생각보다 오래 걸려요. 사무실에서 이어서 볼 수 있어요',
-      en: "It's taking longer than expected. You can keep watching from the office",
-      ja: '思ったより時間がかかっています。オフィスで続きを見られます',
-      zh: '比预期花的时间长。可以在办公室继续查看',
+      ko: '생각보다 오래 걸려요. 직원은 사무실에 남아 계속 일하고, 끝나면 보고를 올려요.',
+      en: "It's taking longer than expected. Your staff member stays in the office and keeps working, and will report when done.",
+      ja: '思ったより時間がかかっています。スタッフはオフィスに残って作業を続け、終わったら報告します。',
+      zh: '比预期花的时间长。员工会留在办公室继续工作，完成后会提交报告。',
     },
     'onboarding.firstTask.fail.network': { ko: '인터넷 연결을 확인해 주세요', en: 'Please check your internet connection', ja: 'インターネット接続を確認してください', zh: '请检查网络连接' },
     'onboarding.firstTask.fail.unknown': {

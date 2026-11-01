@@ -112,8 +112,10 @@ export function Onboarding({ onStartTour }: { onStartTour: () => void }) {
   const taskProvider: AiProvider | null = status?.isLoggedIn ? 'claude' : isCodexReady ? 'codex' : null
   const firstTask = useFirstTask()
   const [example, setExample] = useState<FirstTaskExample | null>(null)
-  // 직원은 온보딩을 마치면 내보내므로 보고 전문은 직원 화면이 아니라 여기서 펼쳐 본다
+  // 보고 전문은 직원 화면으로 가지 않고 여기서 펼쳐 본다
   const [isReportOpen, setIsReportOpen] = useState(false)
+  // 첫 업무를 마친 직원을 사무실에 계속 둘지 (완료 화면에서 묻는다, 기본은 남기기)
+  const [isKeepStaff, setIsKeepStaff] = useState(true)
   const pickedExample = example ?? (defaultCwd ? 'folder' : 'ideas')
 
   const check = useCallback(async () => {
@@ -141,8 +143,11 @@ export function Onboarding({ onStartTour }: { onStartTour: () => void }) {
 
   if (!isLoaded || isOnboarded) return null
 
+  // 첫 업무 직원: 끝까지 해냈으면 고른 대로, 시간이 오래 걸리는 중이면 계속 일하게 남기고, 그 밖(실패·건너뛰기)이면 내보낸다
+  const isTimedOut = firstTask.phase === 'failed' && firstTask.fail === 'timeout'
   const finish = () => {
-    firstTask.dismiss()
+    if ((firstTask.phase === 'done' && isKeepStaff) || isTimedOut) firstTask.keep()
+    else firstTask.dismiss()
     void window.office.updateSettings({ isOnboarded: true })
   }
   const handleMarket = () => {
@@ -166,6 +171,15 @@ export function Onboarding({ onStartTour }: { onStartTour: () => void }) {
   }
   // 첫 업무를 건너뛰면 사용량을 쓰지 않는 연습 튜토리얼로 안내한다
   const handleSkipTask = () => {
+    finish()
+    void window.office.tutorialStart('task')
+  }
+  // 시간 초과: 직원은 사무실에 남아 계속 일하고, 연습은 고를 때만
+  const handleContinueInOffice = () => {
+    finish()
+    useOffice.getState().setView('map')
+  }
+  const handlePractice = () => {
     finish()
     void window.office.tutorialStart('task')
   }
@@ -401,7 +415,23 @@ export function Onboarding({ onStartTour }: { onStartTour: () => void }) {
           </>
         )}
 
-        {step === 'firstTask' && firstTask.phase === 'failed' && firstTask.fail && (
+        {/* 시간 초과: 실패가 아니라 오래 걸리는 중 — 직원은 사무실에 남아 계속 일한다 (늦게라도 끝나면 완료 화면으로 바뀐다) */}
+        {step === 'firstTask' && isTimedOut && (
+          <>
+            <CheckHeader step={step} title={t('onboarding.firstTask.slowTitle', { name: staffName })} desc={t('onboarding.firstTask.fail.timeout')} />
+            <div className="flex items-center justify-between">
+              <StepDots step={step} />
+              <div className="flex gap-2">
+                <Button variant="ghost" onClick={handlePractice}>
+                  {t('onboarding.firstTask.practice')}
+                </Button>
+                <Button onClick={handleContinueInOffice}>{t('onboarding.firstTask.continueInOffice')}</Button>
+              </div>
+            </div>
+          </>
+        )}
+
+        {step === 'firstTask' && firstTask.phase === 'failed' && firstTask.fail && !isTimedOut && (
           <>
             <CheckHeader step={step} title={t('onboarding.firstTask.failTitle')} desc={t('onboarding.firstTask.failDesc')} />
             <CheckRow isOk={false} isError title={failText(firstTask.fail)} />
@@ -436,7 +466,13 @@ export function Onboarding({ onStartTour }: { onStartTour: () => void }) {
                 </button>
               </div>
             </div>
-            <p className="text-muted-foreground text-center text-xs">{t('onboarding.firstTask.keepNote', { name: staffName })}</p>
+            <label className="flex items-start gap-2 text-sm">
+              <input type="checkbox" className="mt-0.5" checked={isKeepStaff} onChange={(e) => setIsKeepStaff(e.target.checked)} />
+              <span className="flex flex-col gap-0.5">
+                <span>{t('onboarding.firstTask.keepStaff', { name: staffName })}</span>
+                <span className="text-muted-foreground text-xs">{t('onboarding.firstTask.keepStaffNote')}</span>
+              </span>
+            </label>
           </>
         )}
 

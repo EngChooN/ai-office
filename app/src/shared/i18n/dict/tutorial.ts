@@ -32,6 +32,7 @@ export default {
   'tutorial.picker.meetingDesc': { ko: '팀원 의견을 듣고, 결정을 할 일 카드로 바꿔요.', en: 'Hear the team out and turn decisions into task cards.', ja: 'メンバーの意見を聞き、決定をタスクカードに変えます。', zh: '听取组员意见，把决定变成待办卡片。' },
   'tutorial.picker.skipDesc': { ko: '연습 없이 바로 진짜 직원을 고용해요.', en: 'Skip practice and hire real staff right away.', ja: '練習せずにすぐ本物の社員を雇います。', zh: '不练习，直接雇用真正的员工。' },
   'tutorial.picker.tried': { ko: '해 봤어요', en: 'Done', ja: '体験済み', zh: '已体验' },
+  'tutorial.picker.triedForReal': { ko: '실제로 해 봤어요', en: 'Done for real', ja: '本番で体験済み', zh: '已实际体验' },
   'tutorial.guide.progress': { ko: '연습 · {scenario} {n}/{total}', en: 'Practice · {scenario} {n}/{total}', ja: '練習・{scenario} {n}/{total}', zh: '练习 · {scenario} {n}/{total}' },
   'tutorial.guide.wait': { ko: '{sec}초', en: '{sec}s', ja: '{sec}秒', zh: '{sec}秒' },
   'tutorial.common.finish': { ko: '마무리하기', en: 'Wrap up', ja: '締めくくる', zh: '收尾' },

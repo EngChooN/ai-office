@@ -13,6 +13,23 @@ export type FirstTaskFail = 'login' | 'limit' | 'timeout' | 'network' | 'unknown
 export const FIRST_TASK_TIMEOUT_MS = 90_000
 const PROGRESS_LINES = 3
 
+// 첫 업무를 실제로 끝냈는지 — 연습 고르기에서 '업무 맡기기'에 '실제로 해 봤어요'를 붙인다
+const FIRST_TASK_DONE_KEY = 'aiOffice.firstTaskDone'
+export function hasDoneFirstTask(): boolean {
+  try {
+    return localStorage.getItem(FIRST_TASK_DONE_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+function markFirstTaskDone() {
+  try {
+    localStorage.setItem(FIRST_TASK_DONE_KEY, '1')
+  } catch {
+    // 저장소를 못 쓰면 표시만 빠진다
+  }
+}
+
 const promptOf = (example: FirstTaskExample) => (example === 'folder' ? t('onboarding.firstTask.taskFolder') : t('onboarding.firstTask.taskIdeas'))
 
 /** 오류 글·공급자 상태로 실패 원인을 고른다 (사용자에게 보일 안내 한 줄을 정하는 용도) */
@@ -52,6 +69,7 @@ export function useFirstTask() {
   useEffect(() => {
     if (!isWatching) return
     if (doneLog) {
+      markFirstTaskDone()
       setFinishedAt(doneLog.ts)
       setFail(null)
       setPhase('done')
@@ -112,11 +130,14 @@ export function useFirstTask() {
     await (isBusy ? window.office.interrupt(id, promptOf(example)) : window.office.instruct(id, promptOf(example)))
   }
 
-  /** 첫 업무용 직원을 내보낸다 — 온보딩이 끝나거나(완료·실패·건너뛰기) 그만두면 사무실에 남기지 않는다 (업무 기록은 남는다) */
+  /** 첫 업무용 직원을 내보낸다 — 실패한 채 마치거나 그만두면, 또는 완료 화면에서 남기지 않기로 하면 (업무 기록은 남는다) */
   const dismiss = () => {
     if (staffId) void window.office.fire(staffId)
     setStaffId(null)
   }
+
+  /** 첫 업무용 직원을 사무실에 남긴다 — 완료 화면에서 계속 두기로 했거나, 시간이 오래 걸려 사무실에서 이어 볼 때 */
+  const keep = () => setStaffId(null)
 
   const stop = () => {
     dismiss()
@@ -137,6 +158,7 @@ export function useFirstTask() {
     run,
     stop,
     dismiss,
+    keep,
     /** 실패 화면에서 고르기로 돌아가기 */
     reset: () => setPhase('pick'),
   }
