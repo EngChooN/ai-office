@@ -7,10 +7,20 @@ export const HELP_MAX_DEPTH = 2
 /** 한 직원이 한 업무(한 번의 일 턴) 안에서 보낼 수 있는 요청 수 */
 export const HELP_MAX_PER_TASK = 3
 
+/** 도움 요청 사슬 정보 — 일을 받은 쪽과 결과를 받아 다시 시작한 쪽 모두에 붙어 깊이·횟수·순환을 이어 센다 */
+export interface HelpCtx {
+  /** 처음 부탁한 사람의 일 하나를 가리키는 id (결과로 재개돼도 그대로) */
+  rootId: string
+  /** 요청 사슬의 직원 id (맨 앞이 처음 부탁한 사람, 맨 뒤가 지금 이 일을 가진 사람) */
+  path: string[]
+}
+
 export interface HelpOriginLike {
   kind: string
   fromId?: string
-  depth?: number
+  /** 도움 요청 id (kind=help일 때) */
+  reqId?: string
+  help?: HelpCtx
 }
 
 export interface HelpScope {
@@ -30,21 +40,92 @@ export function helpTargetIds(staffId: string, scope: HelpScope, isHired: (id: s
   return [...ids].filter(isHired)
 }
 
-/** 지금 받은 일 중 도움 요청의 가장 깊은 단계 (없으면 0) */
-export function helpDepthOf(origins: readonly HelpOriginLike[]): number {
-  return origins.reduce((max, o) => (o.kind === 'help' ? Math.max(max, o.depth ?? 1) : max), 0)
+/** 이 직원이 받은 일에 붙은 도움 사슬 중 가장 긴 것 (없으면 null) */
+export function helpCtxOf(origins: readonly HelpOriginLike[]): HelpCtx | null {
+  let best: HelpCtx | null = null
+  for (const o of origins) if (o.help && (!best || o.help.path.length > best.path.length)) best = o.help
+  return best
 }
 
-export type HelpRejection = 'tooLong' | 'tooDeep' | 'duplicate' | 'tooMany'
+/** 지금 받은 일 중 도움 요청의 가장 깊은 단계 (없으면 0) — 결과로 재개된 일도 사슬을 이어 센다 */
+export function helpDepthOf(origins: readonly HelpOriginLike[]): number {
+  const c = helpCtxOf(origins)
+  return c ? c.path.length - 1 : 0
+}
+
+/** 도움 요청 사슬 안에서 받은 일인가 — 이런 일에서는 위임·업무 카드·기획안으로 제한을 우회하지 못하게 막는다 */
+export function inHelpContext(origins: readonly HelpOriginLike[]): boolean {
+  return origins.some((o) => o.kind === 'help' || o.help)
+}
+
+export type HelpRejection = 'tooLong' | 'tooDeep' | 'cycle' | 'busy' | 'duplicate' | 'tooMany'
+
+interface HelpRoot {
+  owner: string
+  sent: Map<string, number>
+  open: Set<string>
+}
 
 /**
- * 요청을 보내도 되는가. 거절 이유를 돌려주고 괜찮으면 null.
- * - requesterOrigins: 요청자가 지금 받은 일 / targetOrigins: 대상이 지금 받은 일 / sentCount: 요청자가 이번 업무에서 이미 보낸 수
+ * 도움 요청 장부: 요청마다 상관 id를 주고, 원업무(root)별로 요청자 보낸 수와 열린 요청을 센다.
+ * 결과가 돌아와 일이 다시 시작돼도 사슬(path)·root가 이어져 깊이·3건·순환 제한이 유지된다.
  */
-export function checkHelpRequest(input: { staffId: string; text: string; requesterOrigins: readonly HelpOriginLike[]; targetOrigins: readonly HelpOriginLike[]; sentCount: number }): HelpRejection | null {
-  if (input.text.length > HELP_TEXT_MAX) return 'tooLong'
-  if (helpDepthOf(input.requesterOrigins) >= HELP_MAX_DEPTH) return 'tooDeep'
-  if (input.targetOrigins.some((o) => o.kind === 'help' && o.fromId === input.staffId)) return 'duplicate'
-  if (input.sentCount >= HELP_MAX_PER_TASK) return 'tooMany'
-  return null
+export class HelpLedger {
+  private roots = new Map<string, HelpRoot>()
+  private reqs = new Map<string, { rootId: string; path: string[] }>()
+  private seq = 0
+
+  private nextId(prefix: string) {
+    this.seq += 1
+    return `${prefix}${this.seq}`
+  }
+
+  /** 요청을 보내도 되는가. 거절 이유를 돌려주고 괜찮으면 null */
+  check(input: { staffId: string; targetId: string; text: string; requesterOrigins: readonly HelpOriginLike[]; targetOrigins: readonly HelpOriginLike[] }): HelpRejection | null {
+    const ctx = helpCtxOf(input.requesterOrigins)
+    if (input.text.length > HELP_TEXT_MAX) return 'tooLong'
+    if (helpDepthOf(input.requesterOrigins) >= HELP_MAX_DEPTH) return 'tooDeep'
+    if (ctx?.path.includes(input.targetId)) return 'cycle'
+    if (input.targetOrigins.some((o) => o.kind === 'help' && o.fromId === input.staffId)) return 'duplicate'
+    // 다른 도움 요청을 처리하는 중인 사람에게는 보내지 않는다 — 한 턴에 합쳐 끝나면 결과가 요청별로 갈리지 않는다
+    if (input.targetOrigins.some((o) => o.kind === 'help')) return 'busy'
+    const sent = ctx ? (this.roots.get(ctx.rootId)?.sent.get(input.staffId) ?? 0) : 0
+    if (sent >= HELP_MAX_PER_TASK) return 'tooMany'
+    return null
+  }
+
+  /** 요청을 기록하고 받는 사람에게 붙일 출처 정보를 돌려준다 (check를 통과한 뒤에 부른다) */
+  open(staffId: string, targetId: string, requesterOrigins: readonly HelpOriginLike[]): { reqId: string; help: HelpCtx } {
+    const cur = helpCtxOf(requesterOrigins)
+    // 받은 일에 사슬이 없는 첫 요청자는 자기 원업무를 하나 열고, 같은 업무의 다음 요청은 같은 원업무로 센다
+    const rootId = cur?.rootId ?? [...this.roots].find(([, r]) => r.owner === staffId)?.[0] ?? this.nextId('root')
+    const base = cur?.path ?? [staffId]
+    let root = this.roots.get(rootId)
+    if (!root) this.roots.set(rootId, (root = { owner: staffId, sent: new Map(), open: new Set() }))
+    root.sent.set(staffId, (root.sent.get(staffId) ?? 0) + 1)
+    const reqId = this.nextId('req')
+    root.open.add(reqId)
+    const path = [...base, targetId]
+    this.reqs.set(reqId, { rootId, path })
+    return { reqId, help: { rootId, path } }
+  }
+
+  /** 받은 쪽이 일을 마쳤다 — 요청을 닫고, 부탁한 사람이 결과로 다시 시작할 때 붙일 사슬 정보를 돌려준다 */
+  close(reqId: string | undefined): HelpCtx | null {
+    const r = reqId ? this.reqs.get(reqId) : undefined
+    if (!r || !reqId) return null
+    this.reqs.delete(reqId)
+    this.roots.get(r.rootId)?.open.delete(reqId)
+    return { rootId: r.rootId, path: r.path.slice(0, -1) }
+  }
+
+  /** 직원이 일을 마쳤다: 그 직원이 연 원업무 중 끝난 것(열린 요청 없음·돌아올 결과 없음)은 센 횟수를 비운다 */
+  release(staffId: string, keptOrigins: readonly HelpOriginLike[], isLive: (reqId: string) => boolean = () => true) {
+    for (const [rootId, root] of this.roots) {
+      for (const id of [...root.open]) if (!isLive(id)) this.close(id)
+      if (root.owner !== staffId || root.open.size > 0) continue
+      if (keptOrigins.some((o) => o.help?.rootId === rootId)) continue
+      this.roots.delete(rootId)
+    }
+  }
 }

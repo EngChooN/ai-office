@@ -301,6 +301,24 @@ export default {
     ja: '1つの業務で送れる助けの依頼（{max}件）を使い切りました。受け取った結果でまとめてください。',
     zh: '本次工作可发出的求助次数（{max} 次）已用完。请用已收到的结果收尾。',
   },
+  'staff.tool.help.cycle': {
+    ko: '{name}은(는) 이 요청 사슬의 앞사람이라 되돌려 부탁할 수 없습니다. 지금 할 수 있는 만큼 마쳐서 보고하세요.',
+    en: '{name} is earlier in this request chain, so you cannot ask them back. Finish what you can and report.',
+    ja: '{name}はこの依頼の連鎖の前にいる人なので、頼み返せません。できる範囲を終えて報告してください。',
+    zh: '{name} 在此求助链的上游，不能反向求助。请完成能做的部分并汇报。',
+  },
+  'staff.tool.help.busy': {
+    ko: '{name}은(는) 다른 직원의 도움 요청을 처리 중이라 결과가 섞일 수 있습니다. 잠시 뒤 다시 요청하세요.',
+    en: '{name} is handling another teammate\'s help request, so results could get mixed. Try again shortly.',
+    ja: '{name}は別の人の助けの依頼を処理中で、結果が混ざるおそれがあります。少し待ってからもう一度依頼してください。',
+    zh: '{name} 正在处理其他同事的求助，结果可能混在一起。请稍后再试。',
+  },
+  'staff.tool.help.noBypass': {
+    ko: '도움 요청 사슬 안에서 받은 일은 다른 직원에게 맡기거나 업무 카드를 만들 수 없습니다. 지금 할 수 있는 만큼 마쳐서 부탁한 사람에게 보고하세요.',
+    en: 'Work received through a help-request chain cannot be delegated or turned into task cards. Finish what you can and report back to the requester.',
+    ja: '助けの依頼の連鎖で受けた仕事は、他の人に任せたり業務カードを作ったりできません。できる範囲を終えて依頼者に報告してください。',
+    zh: '在求助链中收到的工作不能再委派或创建任务卡。请完成能做的部分并向求助者汇报。',
+  },
   'staff.msg.helpRequest': {
     ko: '[{from}의 도움 요청] {text}\n(끝나면 결과를 {from}에게 보고하세요)',
     en: '[Help request from {from}] {text}\n(When done, report the result back to {from})',

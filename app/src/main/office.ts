@@ -145,7 +145,7 @@ import { codexBinaryPath } from './ai/codex'
 import { codexUsageAfterFailure, readCodexRateLimits, refreshCodexAssets, shareInFlight } from './ai/codexAssets'
 import { defineTool, registerLocalMcp, type LocalMcpHandle } from './mcp/localMcp'
 import { autoApprove, autoKindOf, autoStep, autoSummaryText, autoWindow, AWAY_ANSWER, formatRemaining, planToConfig, type AutoApprovePlan } from '../shared/autoApprove'
-import { HELP_MAX_DEPTH, HELP_MAX_PER_TASK, HELP_TEXT_MAX, checkHelpRequest, helpDepthOf, helpTargetIds } from '../shared/helpRequest'
+import { HELP_MAX_PER_TASK, HELP_TEXT_MAX, HelpLedger, helpTargetIds, inHelpContext, type HelpCtx } from '../shared/helpRequest'
 import { AUTONOMY_TEXT_ASK_MAX, autonomyVerdict, fallbackAnswers, isFullAutonomy, isTaskAutonomous, nextTextAskRetry, resolveAutonomy } from '../shared/autonomy'
 import { commitAll, folderState, pushAndPr, repoRoot, restoreFiles, snapshotTree, treeDiff, workBaseStillValid, workChanges } from './review'
 import { readCodexExternalDay, readExternalDay } from './transcript'
@@ -194,7 +194,7 @@ export interface PeerWorkspacePort {
   collectChanges(jobId: string, workspaceId: string): Promise<{ changesetId: string; files: number; bytes: number } | { none: true }>
 }
 
-type Origin = ({ kind: 'user' | 'chat' | 'schedule' } | { kind: 'task'; taskId: string } | { kind: 'delegate'; leadId: string } | { kind: 'help'; fromId: string; depth: number } | { kind: 'process'; runId: string; stepId: string } | { kind: 'peer'; jobId: string }) & { room?: string; isAutonomous?: boolean; text?: string; /** 다른 PC가 맡긴 일에서 파생된 지시 — 승인 주체(피어 jobId)를 이어받는다 */ peerJobId?: string }
+type Origin = ({ kind: 'user' | 'chat' | 'schedule' } | { kind: 'task'; taskId: string } | { kind: 'delegate'; leadId: string } | { kind: 'help'; fromId: string; reqId: string } | { kind: 'process'; runId: string; stepId: string } | { kind: 'peer'; jobId: string }) & { room?: string; isAutonomous?: boolean; text?: string; /** 도움 요청 사슬(원업무·경로) — 받은 일과 결과로 재개된 일 모두에 붙어 깊이·횟수·순환 제한을 이어 간다 */ help?: HelpCtx; /** 다른 PC가 맡긴 일에서 파생된 지시 — 승인 주체(피어 jobId)를 이어받는다 */ peerJobId?: string }
 
 type Counters = Partial<Record<LogType, number>>
 
@@ -636,7 +636,7 @@ export class Office extends EventEmitter<{
 
   private progressOf(s: db.StoredStaff) {
     if (!this.hired.has(s.id)) return null
-    return buildStaffProgress({ status: s.status, origins: this.origins.get(s.id) ?? [], queued: this.manager.backlog(s.id), hasApproval: s.approvals.length > 0 })
+    return buildStaffProgress({ status: s.status, origins: this.origins.get(s.id) ?? [], queued: this.manager.backlog(s.id), hasApproval: s.approvals.length > 0, nameOf: (id) => this.hired.get(id)?.name })
   }
 
   /** 실행 중 예외(SDK·Codex 오류): 대화방에 알리고, 받은 일을 정리하고, 업무 카드를 되돌린다 */
@@ -1572,7 +1572,6 @@ export class Office extends EventEmitter<{
     const s = this.hired.get(staffId)
     if (!s) return
     const isAutoCheckTurn = this.autoChecked.delete(staffId)
-    this.helpSent.delete(staffId) // 한 업무가 끝나면 보낸 도움 요청 수를 다시 센다
     // 일하는 중에 받아 아직 답하지 않은 지시는 다음 결과 몫으로 남긴다 (그 답이 지시가 온 방에 올라가게)
     const { done: origins, keep } = splitFinished(this.origins.get(staffId) ?? [], pending)
     const room = originRoom(origins)
@@ -1599,10 +1598,14 @@ export class Office extends EventEmitter<{
       if (o.kind === 'peer') this.finishPeerJob(o.jobId, staffId, summary)
       // 도움 요청으로 받은 일의 결과는 부탁한 사람에게 보고로 돌아간다 (위임과 같은 경로)
       const reportTo = o.kind === 'delegate' ? o.leadId : o.kind === 'help' ? o.fromId : null
+      // 결과로 부탁한 사람이 다시 시작해도 사슬(원업무·경로)이 이어지도록 요청을 닫으며 정보를 받아 붙인다
+      const resumeCtx = o.kind === 'help' ? this.helpLedger.close(o.reqId) : null
       if (reportTo && this.hired.has(reportTo)) {
-        this.instruct(reportTo, t('staff.msg.memberReport', { name: s.name, role: s.role, text: short }), { kind: 'user', room: o.room, ...(o.peerJobId ? { peerJobId: o.peerJobId } : {}), ...(o.isAutonomous ? { isAutonomous: true } : {}) })
+        this.instruct(reportTo, t('staff.msg.memberReport', { name: s.name, role: s.role, text: short }), { kind: 'user', room: o.room, ...(resumeCtx ? { help: resumeCtx } : {}), ...(o.peerJobId ? { peerJobId: o.peerJobId } : {}), ...(o.isAutonomous ? { isAutonomous: true } : {}) })
       }
     }
+    // 이 직원이 연 도움 요청 원업무가 모두 끝났으면(열린 요청·돌아올 결과 없음) 센 횟수를 비운다 — 받은 요청은 위에서 닫은 뒤에 본다
+    this.helpLedger.release(staffId, keep, (id) => [...this.origins.values()].some((os) => os.some((o) => o.kind === 'help' && o.reqId === id)))
     // 단체방에는 보고 원문을 그대로 남긴다 (긴 보고는 화면에서 접어 보여 준다)
     this.postChat(staffId, summary.slice(0, TASK_RESULT_MAX) || t('notify.chatDone'), undefined, undefined, room, true)
     // 대표에게 올린 보고 — 직원 카드에 안 읽은 개수로 쌓인다 (패널을 열어 두었으면 화면이 곧바로 읽음 처리한다)
@@ -2141,8 +2144,8 @@ export class Office extends EventEmitter<{
     return ids.map((id) => this.hired.get(id)!)
   }
 
-  /** 직원별로 이번 업무에서 보낸 도움 요청 수 (업무가 끝나면 비운다) */
-  private helpSent = new Map<string, number>()
+  /** 도움 요청 장부: 요청별 상관 id·원업무별 보낸 수·사슬 */
+  private helpLedger = new HelpLedger()
 
   private teamContext(staffId: string) {
     const team = this.teamOf(staffId)
@@ -2196,6 +2199,8 @@ export class Office extends EventEmitter<{
           t('staff.tool.delegate.desc'),
           { member: z.string().describe(t('staff.tool.delegate.member')), instruction: z.string().describe(t('staff.tool.delegate.instruction')) },
           async ({ member, instruction }) => {
+            // 도움 요청으로 받은 일에서는 위임으로 깊이·대상·횟수 제한을 우회하지 못한다
+            if (inHelpContext(this.origins.get(staffId) ?? [])) return text(t('staff.tool.help.noBypass'))
             const candidates = this.delegatesOf(staffId)
             const remotes = this.remoteMembersOf(staffId)
             if (candidates.length === 0 && remotes.length === 0) return text(this.helpTargetsOf(staffId).length ? t('staff.tool.delegate.useHelp') : t('staff.tool.delegate.notLeader'))
@@ -2240,10 +2245,10 @@ export class Office extends EventEmitter<{
                   if (this.peerJobOf(staffId)) return text(t('peer.guard.noChain', { name: target.name }))
                   if (heldByOtherPeerJob(this.origins.get(target.id) ?? [], this.peerCwd.get(target.id)?.jobId)) return text(t('peer.guard.busyPeer', { name: target.name }))
                   const myOrigins = this.origins.get(staffId) ?? []
-                  const rejected = checkHelpRequest({ staffId, text: request, requesterOrigins: myOrigins, targetOrigins: this.origins.get(target.id) ?? [], sentCount: this.helpSent.get(staffId) ?? 0 })
+                  const rejected = this.helpLedger.check({ staffId, targetId: target.id, text: request, requesterOrigins: myOrigins, targetOrigins: this.origins.get(target.id) ?? [] })
                   if (rejected) return text(t(`staff.tool.help.${rejected}`, { name: target.name, max: rejected === 'tooLong' ? HELP_TEXT_MAX : HELP_MAX_PER_TASK }))
                   const from = this.hired.get(staffId)!
-                  this.helpSent.set(staffId, (this.helpSent.get(staffId) ?? 0) + 1)
+                  const opened = this.helpLedger.open(staffId, target.id, myOrigins)
                   // 대표 화면·팀장에게 "A → B: 요약 (도움 요청)" 한 줄 — 채팅과 활동 기록, 가벼운 알림
                   const line = tk('log.help', { from: from.name, name: target.name, text: request.length > 80 ? `${request.slice(0, 80)}…` : request })
                   this.log(staffId, 'delegate', line)
@@ -2255,7 +2260,7 @@ export class Office extends EventEmitter<{
                   }
                   // 자율 진행 중이던 일에서 시작된 요청은 자율로 이어 간다
                   const isAuto = this.hasAutonomousOrigin(myOrigins)
-                  this.instruct(target.id, t('staff.msg.helpRequest', { from: from.name, text: request }), { kind: 'help', fromId: staffId, depth: Math.min(helpDepthOf(myOrigins) + 1, HELP_MAX_DEPTH), room: this.roomOf(staffId), ...(isAuto ? { isAutonomous: true } : {}) })
+                  this.instruct(target.id, t('staff.msg.helpRequest', { from: from.name, text: request }), { kind: 'help', fromId: staffId, reqId: opened.reqId, help: opened.help, room: this.roomOf(staffId), ...(isAuto ? { isAutonomous: true } : {}) })
                   return text(t('staff.tool.help.done', { name: target.name }))
                 },
               ),
@@ -2343,6 +2348,7 @@ export class Office extends EventEmitter<{
           },
           async ({ spec, subtasks, task: taskTitle, title, absorbs }) => {
             if (!canCreateCards(this.origins.get(staffId) ?? [])) return text(t('peer.guard.noCard'))
+            if (inHelpContext(this.origins.get(staffId) ?? [])) return text(t('staff.tool.help.noBypass'))
             const candidates = this.delegatesOf(staffId)
             if (candidates.length === 0) return text(this.helpTargetsOf(staffId).length ? t('staff.tool.plan.useHelp') : t('staff.tool.plan.notLeader'))
             const unknown = subtasks.filter((st) => !candidates.some((m) => m.name === st.assignee)).map((st) => st.assignee)
@@ -2413,6 +2419,8 @@ export class Office extends EventEmitter<{
           { title: z.string(), detail: z.string().optional(), assignee: z.string().optional().describe(t('staff.tool.add.assignee')) },
           async ({ title, detail, assignee }) => {
             if (!canCreateCards(this.origins.get(staffId) ?? [])) return text(t('peer.guard.noCard'))
+            // 도움 요청으로 받은 일에서는 업무 카드 생성·배정으로 요청 제한을 우회하지 못한다 (카드는 부탁한 사람·팀장 몫)
+            if (inHelpContext(this.origins.get(staffId) ?? [])) return text(t('staff.tool.help.noBypass'))
             const lab = this.labsOf(staffId).find((l) => l.leadId === staffId) ?? null
             // 자율 업무를 하다 올린 카드는 자율을 물려받는다
             const card = this.createTask({ title, detail: detail ?? '', teamId: this.teamOf(staffId)?.id ?? null, labId: lab?.id ?? null, isAutonomous: this.hasAutonomousOrigin(this.origins.get(staffId) ?? []) })

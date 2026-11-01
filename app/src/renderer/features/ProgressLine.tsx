@@ -30,7 +30,8 @@ export function ProgressLine({ staff, progress, variant }: { staff: Pick<Staff, 
       <div className="flex items-center gap-2">
         {dot}
         <span className={cn('font-medium', meta.text)}>{t(PROGRESS_LABEL[progress.state])}</span>
-        {more && <span className="text-muted-foreground ml-auto">{more}</span>}
+        {progress.requestedBy && <span className="bg-muted text-muted-foreground truncate rounded px-1.5 py-0.5">{t('progress.helpFrom', { name: progress.requestedBy })}</span>}
+        {more && <span className="text-muted-foreground ml-auto shrink-0">{more}</span>}
       </div>
       {progress.text && <p className="mt-1 truncate">{progress.text}</p>}
       {detail && <p className="text-muted-foreground mt-0.5 truncate">{detail}</p>}

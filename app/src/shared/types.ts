@@ -76,6 +76,8 @@ export interface StaffProgress {
   room?: string
   /** 현재 지시 뒤에 대기 중인 지시 수 */
   queued: number
+  /** 현재 지시가 동료의 도움 요청이면 부탁한 직원 이름 ("OO 님이 부탁한 일" 꼬리표) */
+  requestedBy?: string
 }
 
 export interface Staff {
