@@ -5,7 +5,7 @@
       docs/design/desktop-secretary/expression-preview.png (표정별 4배 미리보기)
 
 방향은 expression-concept.png(이디자 시안, 대표 확인). 기준 그림의 두 눈 칸(5×8)을 피부색으로 지운 뒤
-눈·눈썹을 다시 그리고, 입 칸(5×3)에 입을 그린다. 그 밖의 픽셀은 기준 그림과 같아야 한다.
+눈·눈썹을 다시 그리고, 입 칸(5×3)에 입을 그린다. (v2: 아래 COLORS 위 설명 참고) 그 밖의 픽셀은 기준 그림과 같아야 한다.
 
 실행: python3 docs/design/desktop-secretary/face-sprites.py         (만들고 검사)
       python3 docs/design/desktop-secretary/face-sprites.py --check (검사만)
@@ -19,64 +19,74 @@ ROOT = Path(__file__).resolve().parents[3]
 SPRITES = ROOT / 'app/src/renderer/deskPet/sprites'
 PREVIEW = ROOT / 'docs/design/desktop-secretary/expression-preview.png'
 
-# 기준 그림 기준 좌표 (끝 포함). 눈은 왼쪽·오른쪽 각 5×8, 입은 얼굴 가운데 5×3
+# 기준 그림 기준 좌표 (끝 포함). 눈은 왼쪽·오른쪽 각 5×9 (38줄은 밑 그림자), 입은 얼굴 가운데 5×3
 EYE_L, EYE_R, EYE_TOP = 17, 33, 30
 MOUTH_X, MOUTH_Y = 25, 40
 FACE = (17, 30, 37, 42)  # 바뀌어도 되는 영역 — 이 밖은 기준 그림과 픽셀까지 같아야 한다
 
+# v2(2026-11-01, 대표 선택 A-1 '또렷하게'): v1의 1칸 선 눈·순백 빛점이 도트 그림과 어울리지 않아,
+# 평소 눈의 실제 색(기준 그림에서 뽑음)과 2칸 이상 두께만 쓴다. 시안 비교는 face-sprites-v3.py
+_base = Image.open(SPRITES / 'body-idle.png').convert('RGBA').load()
 COLORS = {
-    '.': (0xfd, 0xd9, 0xb2, 255),  # 피부
-    'k': (0x0a, 0x0d, 0x22, 255),  # 눈·눈썹 (기준 눈의 어두운 부분)
-    'n': (0x2b, 0x2f, 0x46, 255),  # 눈 아래쪽 남색
-    'w': (0xff, 0xff, 0xff, 255),  # 흰자·빛
-    'r': (0x9a, 0x3b, 0x3b, 255),  # 입 선
-    'p': (0xe8, 0x80, 0x80, 255),  # 입 안
+    '.': _base[24, 34],                                          # 피부 (두 눈 사이)
+    'A': _base[17, 32], 'K': _base[19, 32], 'G': _base[21, 32],  # 위 어두운 칸: 바깥·가운데·안쪽 회색 테두리
+    'B': _base[17, 35], 'N': _base[19, 35], 'H': _base[21, 35],  # 아래 남색 칸
+    'S': _base[18, 38],                                          # 밑 그림자
+    'm': (0xec, 0xb4, 0xa0, 254),  # 입 가장자리 옅은 색
+    'D': (0xb8, 0x62, 0x5c, 254),  # 입 선
+    'p': (0xe8, 0x8a, 0x86, 254),  # 입 안
 }
+LID = [_base[17 + i, 30] for i in range(5)]  # 평소 위 눈꺼풀 줄 (칸마다 색이 다르다) — 'L'
 
-# 왼쪽 눈 8줄 (오른쪽 눈은 좌우를 뒤집어 그린다 — 눈썹 기울기가 대칭이 되게). '_'는 기준 그림 그대로
-CLOSED = ['.....', '.....', '.....', '.....', '.....', 'kkkkk', 'kkkkk', '.....']
+# 왼쪽 눈 9줄, 0번 칸이 바깥쪽. 오른쪽 눈은 'eyeR'이 없으면 좌우를 뒤집어 그린다 (있으면 그것도 0번이 바깥쪽)
+CLOSED = ['.....', '.....', '.....', '.....', '.....', 'AKKKG', 'AKKKG', '.....', 'SSSS.']
 FACES = {
-    'surprised': {  # 놀람: 동그랗게 뜬 눈 + 'o' 입
-        'eye': ['.kkk.', 'kkwkk', 'kkkkk', 'knnnk', 'knnnk', '.nnn.', '.....', '.....'],
+    'surprised': {  # 놀람: 위 눈꺼풀이 올라가 커진 눈 + 'o' 입
+        'eye': ['.....', 'AKKKG', 'AKKKG', 'AKKKG', 'AKKKG', 'BNNNH', 'BNNNH', 'BNNNH', 'SSSS.'],
         'blink': None,
-        'mouth': ['.rrr.', '.rpr.', '.rrr.'],
+        'mouth': ['.mDm.', '.D.D.', '.mDm.'],
     },
-    'thinking': {  # 생각 중: 눈동자가 위 바깥쪽 + 한쪽으로 다문 입
-        'eye': ['.....', '.kkkk', 'kwkkk', 'kwkkk', 'kwwnk', '.kkk.', '.....', '.....'],
+    'thinking': {  # 생각 중: 두 눈이 위·같은 쪽을 본다 + 한쪽으로 다문 입
+        'eye': ['LLLLL', 'AKKG.', 'AKKG.', 'BNNH.', 'BNNH.', '.....', '.....', '.....', 'SSSS.'],
+        'eyeR': ['LLLLL', '.AKKG', '.AKKG', '.BNNH', '.BNNH', '.....', '.....', '.....', 'SSSS.'],
         'blink': CLOSED,
-        'mouth': ['.....', '..rr.', '.....'],
+        'mouth': ['.....', '...DD', '.....'],
     },
-    'happy': {  # 기쁨: ∩ 눈 + 벌린 웃는 입
-        'eye': ['.....', '.....', '.kkk.', 'k...k', 'k...k', '.....', '.....', '.....'],
+    'happy': {  # 기쁨: 두꺼운 ∩ 눈 + 벌린 웃는 입
+        'eye': ['.....', '.....', '.AKG.', 'AKKKG', 'AG.GK', 'S...S', '.....', '.....', '.....'],
         'blink': None,
-        'mouth': ['rrrrr', '.rpr.', '..r..'],
+        'mouth': ['.....', 'DDDDD', '.DpD.'],
     },
     'worried': {  # 걱정: 안쪽이 올라간 눈썹 + 작은 눈 + 처진 입
-        'eye': ['...kk', '.kk..', '.....', '.kkk.', '.kkk.', '.nnn.', '.....', '.....'],
-        'blink': ['...kk', '.kk..', '.....', '.....', '.....', 'kkkkk', '.....', '.....'],
-        'mouth': ['.....', '.rrr.', 'r...r'],
+        'eye': ['...GG', 'AGG..', '.....', 'AKKKG', 'BNNNH', 'BNNNH', 'BNNNH', '.....', 'SSSS.'],
+        'blink': ['...GG', 'AGG..', '.....', '.....', '.....', 'AKKKG', 'AKKKG', '.....', 'SSSS.'],
+        'mouth': ['.....', '.DDD.', 'D...D'],
     },
     'sleepy': {  # 졸림: 반쯤 감은 눈 + 작게 벌린 입
-        'eye': ['.....', '.....', '.....', '.....', 'kkkkk', 'knnnk', '.nnn.', '.....'],
+        'eye': ['.....', '.....', '.....', '.....', 'AKKKG', 'BNNNH', 'BNNNH', '.....', 'SSSS.'],
         'blink': CLOSED,
-        'mouth': ['.....', '..r..', '.....'],
+        'mouth': ['.....', '.mDm.', '.....'],
     },
     'focused': {  # 집중: 안쪽이 내려간 눈썹 + 또렷한 눈 + 다문 입
-        'eye': ['kk...', '..kkk', '.....', 'kkkkk', 'kkkkk', 'knnnk', 'knnnk', '.....'],
-        'blink': ['kk...', '..kkk', '.....', '.....', '.....', 'kkkkk', 'kkkkk', '.....'],
-        'mouth': ['.....', '.rrr.', '.....'],
+        'eye': ['AG...', '..AKG', '.....', 'AKKKG', 'AKKKG', 'BNNNH', 'BNNNH', '.....', 'SSSS.'],
+        'blink': ['AG...', '..AKG', '.....', '.....', '.....', 'AKKKG', 'AKKKG', '.....', 'SSSS.'],
+        'mouth': ['.....', '.DDD.', '.....'],
     },
 }
 
 
-def paint(base, eye, mouth):
+def color(ch, i):
+    return LID[i] if ch == 'L' else COLORS[ch]
+
+
+def paint(base, eye, mouth, eye_r=None):
     im = base.copy()
     p = im.load()
-    for y, row in enumerate(eye):
-        for i, ch in enumerate(row):
-            if ch != '_':
-                p[EYE_L + i, EYE_TOP + y] = COLORS[ch]
-                p[EYE_R + 4 - i, EYE_TOP + y] = COLORS[ch]
+    eye_r = eye_r or eye
+    for y in range(len(eye)):
+        for i in range(5):
+            p[EYE_L + i, EYE_TOP + y] = color(eye[y][i], i)
+            p[EYE_R + 4 - i, EYE_TOP + y] = color(eye_r[y][i], i)
     for y, row in enumerate(mouth):
         for x, ch in enumerate(row):
             if ch != '.':
@@ -86,9 +96,9 @@ def paint(base, eye, mouth):
 
 def outputs():
     for name, f in FACES.items():
-        yield f'face-{name}', f['eye'], f['mouth']
+        yield f'face-{name}', f['eye'], f['mouth'], f.get('eyeR')
         if f['blink']:
-            yield f'face-{name}-blink', f['blink'], f['mouth']
+            yield f'face-{name}-blink', f['blink'], f['mouth'], None
 
 
 def check(base):
@@ -96,7 +106,7 @@ def check(base):
     bp = base.load()
     x0, y0, x1, y1 = FACE
     bad = []
-    for name, _, _ in outputs():
+    for name, *_ in outputs():
         im = Image.open(SPRITES / f'{name}.png').convert('RGBA')
         if im.size != base.size:
             bad.append(f'{name}: 크기 {im.size}')
@@ -113,12 +123,12 @@ def main():
     base = Image.open(SPRITES / 'body-idle.png').convert('RGBA')
     if '--check' not in sys.argv:
         made = []
-        for name, eye, mouth in outputs():
-            im = paint(base, eye, mouth)
+        for name, eye, mouth, eye_r in outputs():
+            im = paint(base, eye, mouth, eye_r)
             im.save(SPRITES / f'{name}.png')
             made.append(im)
         # 미리보기: 기준 + 표정 6종, 4배 확대, 회색 바탕
-        faces = [base] + [paint(base, f['eye'], f['mouth']) for f in FACES.values()]
+        faces = [base] + [paint(base, f['eye'], f['mouth'], f.get('eyeR')) for f in FACES.values()]
         s, gap = 4, 16
         sheet = Image.new('RGBA', (len(faces) * (base.width * s + gap) + gap, base.height * s + gap * 2), (60, 60, 70, 255))
         for i, im in enumerate(faces):

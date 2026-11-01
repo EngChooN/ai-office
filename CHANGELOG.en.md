@@ -18,6 +18,7 @@ Writing rules
 - Attachments sent to staff on another PC are tidied up: up to 20MB per file and 5 per task, and unused attachments are deleted automatically after 2 days.
 - Work assigned to staff on another PC can also be canceled with 'Stop this task'.
 - Dragging the desktop secretary no longer closes its open small window — the window now follows along.
+- Redrew the desktop secretary's expressions (surprised, thinking, happy, worried, focused, sleepy). The eyes now match the pixel style of the default look, and the mouths are clearer.
 
 ### Bug fixes
 - Fixed the Tailscale menu bar app flickering on and off. AI Office now checks Tailscale status without making the Tailscale window appear.
