@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { AlertTriangleIcon, CheckCircle2Icon, CircleIcon, Loader2Icon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -68,7 +68,7 @@ function PeerBody() {
           <button type="button" className="text-muted-foreground hover:text-foreground w-fit text-xs" onClick={() => setRole(null)}>
             {t('peer.role.back')}
           </button>
-          {role === 'host' ? <HostPart slots={slots} onSlotsChanged={loadSlots} /> : <ClientPart onConnected={handleConnected} />}
+          {role === 'host' ? <HostPart onSlotsChanged={loadSlots} /> : <ClientPart onConnected={handleConnected} />}
         </div>
       )}
       <SlotList slots={slots} onChanged={loadSlots} />
@@ -173,21 +173,22 @@ function RolePicker({ isDisabled, hint, onPick }: { isDisabled: boolean; hint: s
 }
 
 /** 보내는 PC: 들어오면 바로 연결 정보를 만들고, 코드·남은 시간·복사 버튼을 보여 준다. 연결이 생기면 알린다 */
-function HostPart({ slots, onSlotsChanged }: { slots: PeerSlotView[]; onSlotsChanged: () => void }) {
+function HostPart({ onSlotsChanged }: { onSlotsChanged: () => void }) {
   const [win, setWin] = useState<PairWindowView | null>(null)
   const [isExpired, setIsExpired] = useState(false)
   const [error, setError] = useState('')
   const [isCopied, setIsCopied] = useState(false)
   const [now, setNow] = useState(Date.now())
-  const [knownIds, setKnownIds] = useState<Set<string> | null>(null)
   const [newName, setNewName] = useState('')
+  // 코드를 만들기 직전에 받아 둔 연결 목록 — 이것과 비교해야 기존 연결을 새 연결로 착각하지 않는다
+  const knownIds = useRef<Set<string>>(new Set())
 
   const open = useCallback(async () => {
     setError('')
     setIsExpired(false)
     setNewName('')
-    setKnownIds(null)
     try {
+      knownIds.current = new Set((await window.office.peerSlots()).map((x) => x.id))
       setWin(await window.office.peerPairStart('peer'))
       setNow(Date.now())
     } catch (e) {
@@ -199,9 +200,11 @@ function HostPart({ slots, onSlotsChanged }: { slots: PeerSlotView[]; onSlotsCha
     // 역할을 바꾸거나 화면을 떠나면 창을 닫는다
     return () => void window.office.peerPairClose()
   }, [open])
-  // 창이 열린 동안 1초마다 남은 시간, 3초마다 새 연결을 본다
+  // 창이 열린 동안 1초마다 남은 시간, 3초마다 새 연결을 본다.
+  // 창을 열 때 있던 PC 말고 새 PC가 붙으면 "연결됐어요" — 코드는 한 번 쓰면 끝이므로 코드 표시도 거둔다
   useEffect(() => {
     if (!win) return
+    let isActive = true
     const tick = setInterval(() => {
       const n = Date.now()
       setNow(n)
@@ -210,21 +213,22 @@ function HostPart({ slots, onSlotsChanged }: { slots: PeerSlotView[]; onSlotsCha
         setIsExpired(true)
       }
     }, 1000)
-    const poll = setInterval(onSlotsChanged, 3000)
+    const poll = setInterval(() => {
+      void window.office.peerSlots().then((list) => {
+        if (!isActive) return
+        onSlotsChanged()
+        const added = list.find((x) => !knownIds.current.has(x.id))
+        if (!added) return
+        setNewName(added.label)
+        setWin(null)
+      })
+    }, 3000)
     return () => {
+      isActive = false
       clearInterval(tick)
       clearInterval(poll)
     }
   }, [win, onSlotsChanged])
-  // 창을 열 때 있던 PC 말고 새 PC가 붙으면 "연결됐어요" — 코드는 한 번 쓰면 끝이므로 코드 표시도 거둔다
-  useEffect(() => {
-    if (!win) return
-    if (!knownIds) return setKnownIds(new Set(slots.map((x) => x.id)))
-    const added = slots.find((x) => !knownIds.has(x.id))
-    if (!added) return
-    setNewName(added.label)
-    setWin(null)
-  }, [win, slots, knownIds])
 
   const copy = async () => {
     if (!win) return

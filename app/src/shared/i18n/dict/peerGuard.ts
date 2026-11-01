@@ -51,10 +51,10 @@ export default {
     zh: '无法把另一台电脑交付的工作再转给其他电脑上的{name}',
   },
   'peer.error.server_proof_mismatch': {
-    ko: '상대가 올바른 PC인지 확인하지 못해 연결을 중단했어요 (가짜 서버일 수 있어요)',
-    en: 'Could not verify that the other side is the right PC, so the connection was stopped (it may be a fake server)',
-    ja: '相手が正しいPCか確認できず、接続を中止しました（偽のサーバーの可能性があります）',
-    zh: '无法确认对方是正确的电脑，已中止连接（可能是伪造的服务器）',
+    ko: '상대가 올바른 PC인지 확인하지 못해 연결을 중단했어요 (가짜 서버일 수 있어요). 다른 PC에서 연결 정보를 새로 만들어 다시 붙여 넣어 주세요',
+    en: 'Could not verify that the other side is the right PC, so the connection was stopped (it may be a fake server). Create new connection info on the other PC and paste it again',
+    ja: '相手が正しいPCか確認できず、接続を中止しました（偽のサーバーの可能性があります）。相手のPCで接続情報を作り直して、もう一度貼り付けてください',
+    zh: '无法确认对方是正确的电脑，已中止连接（可能是伪造的服务器）。请在对方电脑上重新生成连接信息并再次粘贴',
   },
   'peer.report.changes': {
     ko: '파일 변경 {n}개가 결재함에 있어요. 열어서 확인하고 반영해 주세요',
