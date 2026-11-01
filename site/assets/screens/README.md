@@ -14,6 +14,7 @@ screens/
     meeting.webp          PC 회의실(발언·결정 요청) — 기능 f5
     computer.webp         PC 컴퓨터 조작 결재 카드 + 장비 탭 — 기능 f6
     secretary.webp        PC 비서 확인 카드(전·후 비교, 못 하는 일 안내) — 기능 f7
+    desk-pet.webp         바탕화면 비서(캐릭터 + 펼침 창의 질문·결재 카드)를 그라데이션 바탕화면에 합성 — 기능 n1
     dashboard.webp        PC 대시보드(Claude·GPT 플랜 사용률) — 기능 f8
     exterior.webp         PC 건물 외관 (Lv.20) — 꾸미기 1
     decorate.webp         PC 꾸미기 모드(레벨 전용 가구) — 꾸미기 2
@@ -44,3 +45,4 @@ screens/
   - 외관·꾸미기·데모데이는 같은 데이터에 회사 레벨을 20으로 올려(`setting` 표의 `companyLevelMax`) 찍습니다. 나머지는 Lv.4입니다.
   - 휴대폰은 `pnpm preview:mobile` 주소(`mobile-preview.html?demo=<언어>`)를 390×844 3배로 찍습니다.
   - 찍기 전에 화면 글자의 이메일·`/Users/<이름>`·임시 폴더 경로를 샘플 값으로 바꿉니다. 대시보드의 '오늘' 기록은 자정 직후엔 비니 피해서 찍으세요.
+  - 바탕화면 비서(`desk-pet.webp`)는 실제 바탕화면을 찍지 않습니다. 데모 앱(`isDeskPetOn: true`)의 캐릭터 창(`?view=pet`, 투명)과 펼침 창(`?view=panel`)을 디버그 포트로 3배 캡처한 뒤 그라데이션 바탕화면·메뉴 막대 위에 합성합니다(2720×1720). 빈 HOME으로 띄우면 키체인 암호 창에서 멈추니 HOME은 그대로 둡니다.
