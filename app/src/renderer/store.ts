@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { AUTO_APPROVE_OFF, companyFromXp, DEFAULT_SETTINGS, SECRETARY_FOCUS, SECRETARY_PAGE_FOCUS, withSettingsDefaults, type ChatMessage, type LogEntry, type Manual, type OfficeSnapshot } from '@shared/types'
+import { AUTO_APPROVE_OFF, companyFromXp, DEFAULT_SETTINGS, SECRETARY_FOCUS, SECRETARY_PAGE_FOCUS, viewFromFocus, withSettingsDefaults, type ChatMessage, type LogEntry, type Manual, type OfficeSnapshot } from '@shared/types'
 import { EMPTY_SHOP } from '@shared/economy'
 import { clampFloor } from '@shared/officeLevel'
 import { applyLanguage } from '@/lib/i18n'
@@ -162,6 +162,7 @@ export function connectOffice() {
   const focus = (id: string) => {
     if (id === SECRETARY_FOCUS) useOffice.setState({ isQuickSecretaryOpen: true })
     else if (id === SECRETARY_PAGE_FOCUS) useOffice.getState().setView('secretary')
+    else if (viewFromFocus(id)) useOffice.getState().setView(viewFromFocus(id) as View)
     else select(id)
   }
   const offs = [window.office.onSnapshot(setSnapshot), window.office.onLog(pushLog), window.office.onChat(pushChat), window.office.onFocus(focus)]

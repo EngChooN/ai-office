@@ -48,8 +48,9 @@ export class OfficeTray {
     const count = attentionCount(snap)
     const isAuto = snap.autoApprove.isActive
     // 맥은 아이콘 옆 글자로 확인 필요 수(자동결재 중이면 🤖), 윈도우는 아이콘 옆 글자(setTitle)가 없어 툴팁에 넣는다
-    this.tray.setTitle(`${isAuto ? ' 🤖' : ''}${count ? ` ${count}` : ''}`)
-    this.tray.setToolTip(['AI Office', count ? t('tray.tooltipAttention', { n: count }) : '', isAuto ? t('tray.tooltipAuto') : ''].filter(Boolean).join(' · '))
+    const update = this.extra().update
+    this.tray.setTitle(`${isAuto ? ' 🤖' : ''}${count ? ` ${count}` : ''}${update ? ' ⬆' : ''}`)
+    this.tray.setToolTip(['AI Office', count ? t('tray.tooltipAttention', { n: count }) : '', isAuto ? t('tray.tooltipAuto') : '', update ? t('tray.tooltipUpdate', { version: update.version }) : ''].filter(Boolean).join(' · '))
     this.tray.setContextMenu(Menu.buildFromTemplate(items))
   }
 

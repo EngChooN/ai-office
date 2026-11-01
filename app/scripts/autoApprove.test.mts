@@ -7,7 +7,7 @@ import { BROWSER_EQUIPMENT, browserVerdict } from '../src/shared/browserTools.ts
 import { COMPUTER_EQUIPMENT, computerSummary, computerSummaryI18n, computerVerdict } from '../src/shared/computerTools.ts'
 import { setLang, tr, trOr } from '../src/shared/i18n/index.ts'
 import { buildTrayMenu, menuKey, type TrayMenuActions } from '../src/main/trayMenu.ts'
-import { AUTO_APPROVE_OFF, type OfficeSnapshot, type Staff } from '../src/shared/types.ts'
+import { AUTO_APPROVE_OFF, SECRETARY_FOCUS, VIEW_FOCUS_PREFIX, viewFromFocus, type OfficeSnapshot, type Staff } from '../src/shared/types.ts'
 
 const bash = (command: string) => autoApprove('Bash', { command })
 
@@ -307,11 +307,14 @@ const actions: TrayMenuActions = {
   open: (id) => calls.push(`open:${id ?? ''}`),
   decide: (id, allow) => calls.push(`decide:${id}:${allow}`),
   setAutoApprove: (p) => calls.push(`auto:${JSON.stringify(p)}`),
+  openView: (v) => calls.push(`view:${v}`),
+  installUpdate: () => calls.push('update'),
+  talkToSecretary: () => calls.push('secretary'),
   stopAll: () => calls.push('stopAll'),
   quickTask: () => calls.push('quickTask'),
   setRemoteEnabled: (on) => calls.push(`remote:${on}`),
 }
-const extra = { now: at(23), today: { done: 5, costUsd: 1.234 }, remote: { isEnabled: true, isListening: true, port: 47900 } }
+const extra = { now: at(23), version: '0.19.0', update: null as { version: string; isInstalling: boolean } | null, today: { done: 5, costUsd: 1.234 }, remote: { isEnabled: true, isListening: true, port: 47900 } }
 const labels = (items: any[]): string[] => items.flatMap((i) => [i.label ?? '', ...(Array.isArray(i.submenu) ? labels(i.submenu) : [])])
 const find = (items: any[], re: RegExp): any => {
   for (const i of items) {
@@ -336,17 +339,61 @@ test('메뉴바: 요약·자동결재·결재 대기·직원 전체(팀·랩 하
   assert.deepEqual(groups, ['팀 · 백엔드 (6 · 작업 중 1)', '팀 · 프론트 (6)', '팀 없음 (2)', '랩 · 오피스 랩 (7)', '외부 직원 (1)'])
   for (let i = 0; i < 14; i++) assert.ok(labels(staffRoot.submenu).some((l) => l.includes(`직원${i}`)), `직원${i}`)
   assert.ok(labels(staffRoot.submenu).includes('🟢 직원0 — Edit 실행 중'))
-  assert.ok(all.includes('비서에게 말하기 (준비 중)'))
+  assert.ok(all.includes('비서에게 말하기'))
+  assert.ok(!all.some((l) => l.includes('준비 중')))
   assert.ok(all.includes('📱 휴대폰 연결 · 켜짐 (포트 47900)'))
-  assert.deepEqual(items.slice(-2).map((i) => i.label), ['사무실 열기', '종료'])
+  assert.deepEqual(items.slice(-3).map((i) => i.label), ['사무실 열기', '설정…', '종료'])
 
   calls.length = 0
   find(items, /^지금부터 4시간/).click()
   find(items, /^승인$/).click()
   find(staffRoot.submenu, /직원5/).click()
-  find(items, /^전체 멈추기/).click()
+  find(items, /^전체 멈추기…/).click()
   find(items, /^휴대폰 연결 끄기/).click()
   assert.deepEqual(calls, ['auto:{"mode":"hours","hours":4}', 'decide:a1:true', 'open:s5', 'stopAll', 'remote:false'])
+})
+
+test('메뉴바: 최종 순서 (버전·요약·자동결재·결재 대기·열기 항목·직원 전체·빠른 동작·멈추기 맨 아래·사무실·설정·종료)', () => {
+  const items = buildTrayMenu(snap(), extra, { ...actions, summonDeskPet: () => {} })
+  const top = items.map((i) => (i.type === 'separator' ? '─' : String(i.label)))
+  const idx = (re: RegExp) => top.findIndex((l) => re.test(l))
+  const order = [/^AI Office 0\.19\.0$/, /^작업 중/, /─/, /^🤖 자동결재/, /─/, /^결재 대기/, /^결재함 열기$/, /^업무 보드 열기$/, /^직원 전체/, /─/, /^비서에게 말하기$/, /바탕화면 비서/, /^클립보드로 할 일 추가$/, /^📱/, /^전체 멈추기…$/, /─/, /^사무실 열기$/, /^설정…$/, /^종료$/]
+  let at = -1
+  for (const re of order) {
+    const i = top.findIndex((l, n) => n > at && re.test(l))
+    assert.ok(i > at, `${re} 순서: ${top.join(' | ')}`)
+    at = i
+  }
+  assert.ok(idx(/^전체 멈추기…$/) > idx(/^📱/), '멈추기는 휴대폰 연결 아래')
+})
+
+test('메뉴바: 버전 줄은 비활성, 새 버전이 있으면 눌러서 업데이트(확인은 호출 쪽), 설치 중엔 비활성', () => {
+  const plain = buildTrayMenu(snap(), extra, actions)
+  assert.deepEqual([plain[0].label, plain[0].enabled], ['AI Office 0.19.0', false])
+  const avail = buildTrayMenu(snap(), { ...extra, update: { version: '0.20.0', isInstalling: false } }, actions)
+  assert.equal(avail[0].label, '⬆ 새 버전 0.20.0 · 지금 업데이트')
+  calls.length = 0
+  avail[0].click!({} as never, undefined, {} as never)
+  assert.deepEqual(calls, ['update'])
+  const busy = buildTrayMenu(snap(), { ...extra, update: { version: '0.20.0', isInstalling: true } }, actions)
+  assert.deepEqual([busy[0].label, busy[0].enabled, busy[0].click], ['업데이트 중…', false, undefined])
+  assert.notEqual(menuKey(plain), menuKey(avail))
+})
+
+test('메뉴바: 결재함·업무 보드·설정 열기는 openView로 해당 화면을 연다', () => {
+  const items = buildTrayMenu(snap(), extra, actions)
+  calls.length = 0
+  find(items, /^결재함 열기$/).click()
+  find(items, /^업무 보드 열기$/).click()
+  find(items, /^설정…$/).click()
+  assert.deepEqual(calls, ['view:inbox', 'view:board', 'view:settings'])
+})
+
+test('store focus 분기: __view__: 접두어는 화면 이동, 직원 id·비서 표시는 건드리지 않는다', () => {
+  assert.equal(VIEW_FOCUS_PREFIX, '__view__:')
+  for (const v of ['inbox', 'board', 'settings']) assert.equal(viewFromFocus(VIEW_FOCUS_PREFIX + v), v)
+  assert.equal(viewFromFocus('s1'), null)
+  assert.equal(viewFromFocus(SECRETARY_FOCUS), null)
 })
 
 test('메뉴바: 자동결재 중이면 남은 시간·대신 처리한 수, 끄기. 비서가 연결되면 누를 수 있다', () => {

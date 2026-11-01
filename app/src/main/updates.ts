@@ -148,8 +148,11 @@ export class UpdateChecker {
 }
 
 /** update:* 채널 연결 — 상태가 바뀌면 창에 update:onStatus로 보낸다 */
-export function registerUpdates(getWin: () => BrowserWindow | null) {
-  const checker = new UpdateChecker((status) => getWin()?.webContents.send('update:onStatus', status))
+export function registerUpdates(getWin: () => BrowserWindow | null, onChange?: (status: UpdateStatus) => void) {
+  const checker = new UpdateChecker((status) => {
+    getWin()?.webContents.send('update:onStatus', status)
+    onChange?.(status)
+  })
   ipcMain.handle('update:status', () => checker.status())
   ipcMain.handle('update:check', () => checker.check(true))
   ipcMain.handle('update:download', () => checker.openDownload())

@@ -1,5 +1,5 @@
 // 메뉴바(맥)·알림 영역 트레이(윈도우) 메뉴 내용 — electron 없이 만들어 테스트한다 (그리는 건 tray.ts)
-// 순서: 요약 → 자동결재 → 결재 대기 → 직원 전체(팀·랩 하위 메뉴) → 빠른 동작 → 사무실 열기·종료
+// 순서: 버전·업데이트 → 요약 → 자동결재 → 결재 대기 → 결재함·보드 열기 → 직원 전체 → 빠른 동작(비서·할 일·휴대폰·전체 멈추기) → 사무실·설정·종료
 
 import type { MenuItemConstructorOptions } from 'electron'
 import { AUTO_DAILY_DEFAULT, AUTO_HOURS, formatRemaining, type AutoApprovePlan } from '../shared/autoApprove.ts'
@@ -19,15 +19,20 @@ const STATUS_DOT: Record<string, string> = {
 
 export interface TrayMenuActions {
   open(staffId?: string): void
+  /** 앱 창을 띄우고 그 화면(결재함·업무 보드·설정)으로 바로 이동 */
+  openView(view: 'inbox' | 'board' | 'settings'): void
+  /** 새 버전 설치 (확인 창은 호출 쪽이 띄운다) */
+  installUpdate(): void
   decide(approvalId: string, allow: boolean): void
   setAutoApprove(plan: AutoApprovePlan): void
   /** 자동결재 단계: '완전 자율' 켜기·끄기 */
   setAutoFull(isFull: boolean): void
+  /** 전체 멈추기 (확인 창은 호출 쪽이 띄운다) */
   stopAll(): void
   /** 클립보드 글로 업무 보드에 할 일 추가 */
   quickTask(): void
-  /** 비서에게 말하기 — 비서 기획 뒤 연결 (없으면 메뉴는 "준비 중") */
-  talkToSecretary?: () => void
+  /** 비서에게 말하기 */
+  talkToSecretary(): void
   /** 바탕화면 비서 캐릭터 다시 불러오기 (맥만 — 없으면 메뉴에 없다) */
   summonDeskPet?: () => void
   setRemoteEnabled(isOn: boolean): void
@@ -35,6 +40,10 @@ export interface TrayMenuActions {
 
 export interface TrayExtra {
   now: number
+  /** 앱 버전 (메뉴 맨 윗줄) */
+  version: string
+  /** 새 버전이 있으면 그 버전과 설치 중 여부 (없으면 null) */
+  update: { version: string; isInstalling: boolean } | null
   today: { done: number; costUsd: number }
   /** 휴대폰 연결 상태 (원격이 준비 안 됐으면 null) */
   remote: { isEnabled: boolean; isListening: boolean; port: number } | null
@@ -136,13 +145,21 @@ function autoMenu(snap: OfficeSnapshot, extra: TrayExtra, actions: TrayMenuActio
   return { label: autoApproveLine(snap, extra.now), submenu }
 }
 
+/** 맨 윗줄: 평소엔 버전(비활성), 새 버전이 있으면 눌러서 업데이트, 설치 중이면 비활성 */
+function versionItem(extra: TrayExtra, actions: TrayMenuActions): MenuItemConstructorOptions {
+  const u = extra.update
+  if (!u) return { label: t('tray.version', { version: extra.version }), enabled: false }
+  if (u.isInstalling) return { label: t('tray.updating'), enabled: false }
+  return { label: t('tray.updateAvailable', { version: u.version }), click: () => actions.installUpdate() }
+}
+
 export function buildTrayMenu(snap: OfficeSnapshot, extra: TrayExtra, actions: TrayMenuActions): MenuItemConstructorOptions[] {
   const approvals = snap.staff.flatMap((s) => s.approvals.map((a) => ({ ...a, name: s.name })))
   const waitingExternal = snap.staff.filter((s) => s.kind === 'external' && s.status === 'waiting')
   const count = attentionCount(snap)
   const working = snap.staff.filter((s) => s.status === 'working').length
   const items: MenuItemConstructorOptions[] = [
-    { label: 'AI Office', enabled: false },
+    versionItem(extra, actions),
     {
       label: t('tray.summary', { working, count, done: extra.today.done, cost: extra.today.costUsd.toFixed(2) }),
       enabled: false,
@@ -180,19 +197,16 @@ export function buildTrayMenu(snap: OfficeSnapshot, extra: TrayExtra, actions: T
       label: clip(t('tray.externalWaiting', { name: s.name })),
       click: () => actions.open(s.id),
     })
+  items.push({ label: t('tray.openInbox'), click: () => actions.openView('inbox') }, { label: t('tray.openBoard'), click: () => actions.openView('board') })
   const staff = staffMenu(snap, actions)
-  if (staff.length) items.push({ label: t('tray.allStaff', { n: snap.staff.length }), submenu: staff }, { type: 'separator' })
+  if (staff.length) items.push({ label: t('tray.allStaff', { n: snap.staff.length }), submenu: staff })
+  items.push({ type: 'separator' })
 
   const r = extra.remote
   items.push(
-    {
-      label: t('tray.stopAll'),
-      enabled: working > 0 || snap.staff.some((s) => s.kind === 'hired' && s.status === 'waiting'),
-      click: () => actions.stopAll(),
-    },
-    { label: t('tray.quickTask'), click: () => actions.quickTask() },
-    actions.talkToSecretary ? { label: t('tray.talkSecretary'), click: () => actions.talkToSecretary!() } : { label: t('tray.talkSecretarySoon'), enabled: false },
+    { label: t('tray.talkSecretary'), click: () => actions.talkToSecretary() },
     ...(actions.summonDeskPet ? [{ label: t('deskPet.summon'), click: () => actions.summonDeskPet!() }] : []),
+    { label: t('tray.quickTask'), click: () => actions.quickTask() },
     {
       label: r ? t('tray.phone', { state: r.isListening ? t('tray.phoneOn', { port: r.port }) : r.isEnabled ? t('tray.phoneStarting') : t('tray.phoneOff') }) : t('tray.phoneSoon'),
       enabled: Boolean(r),
@@ -210,8 +224,14 @@ export function buildTrayMenu(snap: OfficeSnapshot, extra: TrayExtra, actions: T
           ]
         : [],
     },
+    {
+      label: t('tray.stopAll'),
+      enabled: working > 0 || snap.staff.some((s) => s.kind === 'hired' && s.status === 'waiting'),
+      click: () => actions.stopAll(),
+    },
     { type: 'separator' },
     { label: t('tray.open'), click: () => actions.open() },
+    { label: t('tray.openSettings'), click: () => actions.openView('settings') },
     { label: t('tray.quit'), role: 'quit' },
   )
   return items

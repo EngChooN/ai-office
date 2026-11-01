@@ -1378,3 +1378,9 @@ export const SECRETARY_FOCUS = '__secretary__'
 
 /** 바탕화면 비서 "앱에서 열기" → 화면에 비서 화면을 열라는 표시 (확인 카드는 그 화면에서 이어 한다) */
 export const SECRETARY_PAGE_FOCUS = '__secretary_page__'
+
+/** 메뉴바 "결재함·업무 보드·설정 열기" → 화면을 그 뷰로 바꾸라는 표시 (뒤에 뷰 이름이 붙는다, onFocus로 온다) */
+export const VIEW_FOCUS_PREFIX = '__view__:'
+
+/** onFocus로 온 값이 화면 이동 표시면 그 뷰 이름, 아니면 null (직원 id와 구분) */
+export const viewFromFocus = (focus: string): string | null => (focus.startsWith(VIEW_FOCUS_PREFIX) ? focus.slice(VIEW_FOCUS_PREFIX.length) : null)

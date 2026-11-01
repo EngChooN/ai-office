@@ -25,7 +25,7 @@ import { SyncError } from '../shared/peerSync'
 import { fileTokenVault } from './peer/peerRegistry'
 import { createOpenStream, createPairTransport, createPeerHttp } from './peer/peerTransport'
 import { Secretary } from './secretary'
-import { SECRETARY_FOCUS, SECRETARY_PAGE_FOCUS } from '../shared/types'
+import { SECRETARY_FOCUS, SECRETARY_PAGE_FOCUS, VIEW_FOCUS_PREFIX } from '../shared/types'
 import { t } from '../shared/i18n/index.ts'
 import { registerUpdates, type UpdateChecker } from './updates'
 import { registerPack } from './staffPack'
@@ -174,14 +174,31 @@ const tray = new OfficeTray(
       showWindow(staffId)
       if (staffId) remote?.publish('focus', staffId)
     },
+    openView: (view) => showWindow(VIEW_FOCUS_PREFIX + view),
+    // 설치가 바로 시작되므로 한 번 확인한 뒤에만 업데이트한다
+    installUpdate: () => {
+      const version = updates?.status().latest?.version
+      if (!version) return
+      void dialog
+        .showMessageBox({ type: 'question', buttons: [t('dialog.cancel'), t('dialog.updateNow')], defaultId: 0, cancelId: 0, message: t('dialog.updateAsk', { version }), detail: t('dialog.updateWarn') })
+        .then(({ response }) => {
+          if (response === 1) void updates?.installNow()
+        })
+    },
     decide: (approvalId, allow) => office.decide(approvalId, allow),
     setAutoApprove: (plan) => office.setAutoApprove(plan),
     setAutoFull: (isFull) => office.setAutoFull(isFull),
+    // 모든 일이 끊기고 자동결재도 꺼지므로 항상 한 번 확인한다 (취소가 기본)
     stopAll: () => {
-      const { stopped, autoWasOn } = office.stopAllWork()
-      // 비상 정지는 자동결재도 함께 끈다 (M4) — 알림에 그 사실을 알린다
-      const body = (stopped ? t('notify.stopped', { n: stopped }) : t('notify.nothingToStop')) + (autoWasOn ? t('notify.autoAlsoOff') : '')
-      new Notification({ title: t('notify.stopAllTitle'), body }).show()
+      void dialog
+        .showMessageBox({ type: 'warning', buttons: [t('dialog.cancel'), t('dialog.stopAllNow')], defaultId: 0, cancelId: 0, message: t('dialog.stopAllAsk'), detail: t('dialog.stopAllWarn') })
+        .then(({ response }) => {
+          if (response !== 1) return
+          const { stopped, autoWasOn } = office.stopAllWork()
+          // 비상 정지는 자동결재도 함께 끈다 (M4) — 알림에 그 사실을 알린다
+          const body = (stopped ? t('notify.stopped', { n: stopped }) : t('notify.nothingToStop')) + (autoWasOn ? t('notify.autoAlsoOff') : '')
+          new Notification({ title: t('notify.stopAllTitle'), body }).show()
+        })
     },
     // 메뉴에서는 글을 받을 수 없어 클립보드 글로 만든다 (첫 줄 = 제목, 나머지 = 내용). 그대로 만들지 않고 확인 창을 띄운다 (M5)
     quickTask: async () => {
@@ -226,7 +243,9 @@ const tray = new OfficeTray(
   },
   () => {
     const r = remote?.status()
-    return { today: office.todaySummary(), remote: r ? { isEnabled: r.isEnabled, isListening: r.isListening, port: r.port } : null }
+    const st = updates?.status()
+    const isInstalling = st ? st.install.phase !== 'idle' && st.install.phase !== 'failed' : false
+    return { version: app.getVersion(), update: st?.state === 'available' && st.latest ? { version: st.latest.version, isInstalling } : null, today: office.todaySummary(), remote: r ? { isEnabled: r.isEnabled, isListening: r.isListening, port: r.port } : null }
   },
 )
 
@@ -380,7 +399,8 @@ app.whenReady().then(async () => {
   peerManager?.start()
   // 보관 기간이 지난 복사본·변경 묶음 정리 (7일·14일)
   void peerSync?.prune().catch(() => {})
-  updates = registerUpdates(() => win)
+  // 업데이트 상태가 바뀌면 메뉴바 줄·아이콘 표시도 다시 그린다
+  updates = registerUpdates(() => win, () => tray.refresh())
   registerPack(() => office, () => win)
   registerSceneExport(() => win)
   // 로그인으로 켜졌으면 창을 띄우지 않는다 — 윈도우는 트레이를 끈 경우 보일 곳이 없어 띄운다
