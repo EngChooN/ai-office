@@ -887,10 +887,10 @@ export default {
     // EquipmentTab.tsx
     'equipment.preset.noShell': { ko: '프로그램 실행 금지', en: 'No running programs', ja: 'プログラム実行禁止', zh: '禁止运行程序' },
     'equipment.preset.noShell.hint': {
-      ko: '직원이 컴퓨터에서 프로그램(명령)을 아예 실행하지 못해요',
-      en: 'Staff cannot run any programs (commands) on the computer',
-      ja: 'スタッフはコンピューターでプログラム（コマンド）を一切実行できません',
-      zh: '员工完全无法在电脑上运行程序（命令）',
+      ko: '직원이 명령 실행 도구(Bash)로는 프로그램을 실행하지 못해요. 연결 도구와 파일 읽기·쓰기는 막지 않아요',
+      en: 'Staff cannot run programs through the command tool (Bash). Connected tools and file reading/writing are not blocked',
+      ja: 'スタッフはコマンド実行ツール（Bash）ではプログラムを実行できません。連携ツールやファイルの読み書きはブロックしません',
+      zh: '员工无法通过命令执行工具（Bash）运行程序。连接的工具和文件读写不受限制',
     },
     'equipment.preset.noShell.detail': { ko: '막는 도구: Bash', en: 'Blocked tool: Bash', ja: 'ブロックするツール: Bash', zh: '阻止的工具：Bash' },
     'equipment.preset.autoShell': { ko: '프로그램 실행 자율', en: 'Run programs freely', ja: 'プログラム実行を自律', zh: '程序运行自主' },
@@ -921,10 +921,10 @@ export default {
     },
     'equipment.preset.noRisky': { ko: '위험한 실행 금지', en: 'Block risky actions', ja: '危険な実行を禁止', zh: '禁止危险操作' },
     'equipment.preset.noRisky.hint': {
-      ko: '파일 한꺼번에 지우기, 관리자 권한 실행, 올린 코드 덮어쓰기, 변경 내용 강제 버리기를 막아요',
-      en: 'Blocks mass file deletion, running as administrator, overwriting uploaded code, and force-discarding changes',
-      ja: 'ファイルの一括削除、管理者権限での実行、アップロード済みコードの上書き、変更の強制破棄をブロックします',
-      zh: '阻止批量删除文件、以管理员权限运行、覆盖已上传的代码、强制丢弃更改',
+      ko: '대표적인 위험 명령(파일 한꺼번에 지우기, 관리자 권한 실행, 올린 코드 덮어쓰기, 변경 내용 강제 버리기)만 막아요. 그 밖의 명령은 막지 못해요',
+      en: 'Blocks only typical risky commands (mass file deletion, running as administrator, overwriting uploaded code, force-discarding changes). Other commands are not covered',
+      ja: '代表的な危険コマンド（ファイルの一括削除、管理者権限での実行、アップロード済みコードの上書き、変更の強制破棄）のみブロックします。それ以外のコマンドは対象外です',
+      zh: '仅阻止典型的危险命令（批量删除文件、以管理员权限运行、覆盖已上传的代码、强制丢弃更改）。其他命令不在范围内',
     },
     'equipment.preset.noRisky.detail': {
       ko: '막는 명령 예: rm -rf·sudo·git push --force·git reset --hard',
