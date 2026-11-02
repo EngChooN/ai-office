@@ -223,7 +223,7 @@ test('M1 판정 대기: 이름을 변수·치환으로 감추거나 eval/source'
 
 test('요약 종류: 수정·명령·기타', () => {
   assert.deepEqual(['Edit', 'Write', 'Bash', 'WebFetch'].map(autoKindOf), ['edit', 'edit', 'command', 'other'])
-  assert.equal(autoSummaryText({ edit: 40, command: 7, other: 0, waiting: 2, answered: 3 }), '자동결재 47건(수정 40·명령 7), 기다리는 것 2건, 대신 답한 질문 3건')
+  assert.equal(autoSummaryText({ edit: 40, command: 7, other: 0, waiting: 2, answered: 3 }), '자동결재 47건(파일 수정 40·프로그램 실행 7), 기다리는 것 2건, 대신 답한 질문 3건')
   assert.equal(autoSummaryText({ edit: 0, command: 0, other: 0, waiting: 0, answered: 0 }), '자동결재 0건, 기다리는 것 0건, 대신 답한 질문 0건')
 })
 
@@ -336,12 +336,12 @@ test('메뉴바: 요약·자동결재·결재 대기·직원 전체(팀·랩 하
   const staffRoot = find(items, /^직원 전체/)
   assert.equal(staffRoot.label, '직원 전체 (15)')
   const groups = staffRoot.submenu.filter((g: any) => g.label).map((g: any) => g.label)
-  assert.deepEqual(groups, ['팀 · 백엔드 (6 · 작업 중 1)', '팀 · 프론트 (6)', '팀 없음 (2)', '랩 · 오피스 랩 (7)', '외부 직원 (1)'])
+  assert.deepEqual(groups, ['팀 · 백엔드 (6 · 작업 중 1)', '팀 · 프론트 (6)', '팀 없음 (2)', '랩 · 오피스 랩 (7)', '앱 밖 직원 (터미널 등) (1)'])
   for (let i = 0; i < 14; i++) assert.ok(labels(staffRoot.submenu).some((l) => l.includes(`직원${i}`)), `직원${i}`)
   assert.ok(labels(staffRoot.submenu).includes('🟢 직원0 — Edit 실행 중'))
   assert.ok(all.includes('비서에게 말하기'))
   assert.ok(!all.some((l) => l.includes('준비 중')))
-  assert.ok(all.includes('📱 휴대폰 연결 · 켜짐 (포트 47900)'))
+  assert.ok(all.includes('📱 휴대폰 연결 · 켜짐'))
   assert.deepEqual(items.slice(-3).map((i) => i.label), ['사무실 열기', '설정…', '종료'])
 
   calls.length = 0

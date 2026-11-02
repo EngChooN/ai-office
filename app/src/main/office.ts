@@ -144,7 +144,7 @@ import { buildStaffProgress, summarizeInstruction } from '../shared/staffProgres
 import { codexBinaryPath } from './ai/codex'
 import { codexUsageAfterFailure, readCodexRateLimits, refreshCodexAssets, shareInFlight } from './ai/codexAssets'
 import { defineTool, registerLocalMcp, type LocalMcpHandle } from './mcp/localMcp'
-import { autoApprove, autoKindOf, autoStep, autoSummaryText, autoWindow, AWAY_ANSWER, formatRemaining, planToConfig, type AutoApprovePlan } from '../shared/autoApprove'
+import { autoApprove, autoActionKey, autoKindOf, autoStep, autoSummaryText, autoWindow, AWAY_ANSWER, formatRemaining, planToConfig, type AutoApprovePlan } from '../shared/autoApprove'
 import { HELP_MAX_PER_TASK, HELP_TEXT_MAX, HelpLedger, mustUseHelp, helpTargetIds, inHelpContext, type HelpCtx } from '../shared/helpRequest'
 import { AUTONOMY_TEXT_ASK_MAX, autonomyVerdict, fallbackAnswers, isFullAutonomy, isTaskAutonomous, nextTextAskRetry, resolveAutonomy } from '../shared/autonomy'
 import { commitAll, folderState, pushAndPr, repoRoot, restoreFiles, snapshotTree, treeDiff, workBaseStillValid, workChanges } from './review'
@@ -1885,7 +1885,7 @@ export class Office extends EventEmitter<{
     if (isAuto && autonomyVerdict(toolName, input, runsWrittenFile || runsBuildFile) === 'deny') {
       this.auto.counts = { ...this.auto.counts, waited: this.auto.counts.waited + 1 }
       record({ kind: 'skipped', toolName, summary, category: autoKindOf(toolName) })
-      this.log(staffId, 'approval', tk('log.autonomousSkip', { tool: toolName, summary }))
+      this.log(staffId, 'approval', tk('log.autonomousSkip', { tool: tk(autoActionKey(toolName)), summary }))
       return Promise.resolve({ deny: t('staff.deny.autonomous', { action: `${toolName} ${maskSecrets(summary)}`.slice(0, 300) }) })
     }
     if (runsWrittenFile || runsBuildFile || autoApprove(toolName, input) === 'wait') {
@@ -4377,7 +4377,7 @@ export class Office extends EventEmitter<{
         `plan:${provider === 'codex' ? 'codex:' : ''}${p.type}:${p.resetsAt ?? 0}`,
         p.percent / 100,
         (ratio) =>
-          (provider === 'codex' ? 'Codex · ' : 'Claude · ') + t('notify.planUsageBody', { window: tx(`planUsage.window.${p.type}`, PLAN_WINDOW_LABEL[p.type] ?? p.type), percent: Math.round(ratio * 100) }) + (p.resetsAt ? t('notify.planReset', { when: fmtDate(p.resetsAt, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) }) : ''),
+          (provider === 'codex' ? 'Codex · ' : 'Claude · ') + t('notify.planUsageBody', { window: tx(`notify.planWindow.${p.type}`, tx(`planUsage.window.${p.type}`, PLAN_WINDOW_LABEL[p.type] ?? p.type)), percent: Math.round(ratio * 100) }) + (p.resetsAt ? t('notify.planReset', { when: fmtDate(p.resetsAt, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) }) : ''),
       )
     }
   }

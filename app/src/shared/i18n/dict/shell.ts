@@ -2,7 +2,7 @@ import type { Entry } from './index.ts'
 
 /** 앱 틀(상단 바·폰 틀·사무실 지도·꾸미기 서랍·첨부·입력 안내) */
 export default {
-  'shell.funds.title': { ko: '회사 자금 — 상점에서 써요', en: 'Company funds — spend them in the shop', ja: '会社の資金 — ショップで使えます', zh: '公司资金 — 可在商店使用' },
+  'shell.funds.title': { ko: '회사 자금(게임 속 돈) — 상점에서 써요', en: 'Company funds (in-game money) — spend them in the shop', ja: '会社の資金（ゲーム内のお金）— ショップで使えます', zh: '公司资金（游戏内的钱）— 可在商店使用' },
   'shell.needsAttention': { ko: '확인 필요 {n}', en: 'Needs attention {n}', ja: '要確認 {n}', zh: '待确认 {n}' },
   'shell.secretary': { ko: '비서', en: 'Secretary', ja: '秘書', zh: '秘书' },
   'shell.hire': { ko: '직원 고용', en: 'Hire staff', ja: '社員を採用', zh: '聘用员工' },
@@ -12,19 +12,19 @@ export default {
   'shell.pickFiles': { ko: '참고 문서', en: 'Reference documents', ja: '参考ドキュメント', zh: '参考文档' },
   'shell.pickFolder': { ko: '작업 폴더', en: 'Work folder', ja: '作業フォルダ', zh: '工作文件夹' },
   'shell.pickFilesDesc': {
-    ko: '파일 고르기 창은 PC에서만 열려요. 경로를 한 줄에 하나씩 적어 주세요.',
-    en: 'The file picker only opens on the PC. Enter one path per line.',
-    ja: 'ファイル選択画面はPCでのみ開けます。パスを1行に1つずつ入力してください。',
-    zh: '文件选择窗口只能在电脑上打开。请每行输入一个路径。',
+    ko: '파일 고르기 창은 PC에서만 열려요. 파일 위치를 한 줄에 하나씩 적어 주세요. (Finder에서 파일을 우클릭 › ‘경로 이름 복사’)',
+    en: 'The file picker only opens on the PC. Enter one file location per line. (In Finder, right-click the file › “Copy as Pathname”)',
+    ja: 'ファイル選択画面はPCでのみ開けます。ファイルの場所を1行に1つずつ入力してください。（Finderでファイルを右クリック › 「パス名をコピー」）',
+    zh: '文件选择窗口只能在电脑上打开。请每行输入一个文件位置。（在 Finder 中右键文件 › “拷贝为路径名称”）',
   },
   'shell.pickFolderDesc': {
-    ko: '폴더 고르기 창은 PC에서만 열려요. 경로를 적거나 최근 폴더에서 골라 주세요.',
-    en: 'The folder picker only opens on the PC. Enter a path or choose a recent folder.',
-    ja: 'フォルダ選択画面はPCでのみ開けます。パスを入力するか、最近のフォルダから選んでください。',
-    zh: '文件夹选择窗口只能在电脑上打开。请输入路径或从最近的文件夹中选择。',
+    ko: '폴더 고르기 창은 PC에서만 열려요. 폴더 위치를 적거나 최근 폴더에서 골라 주세요. (Finder에서 폴더를 우클릭 › ‘경로 이름 복사’)',
+    en: 'The folder picker only opens on the PC. Enter a folder location or choose a recent folder. (In Finder, right-click the folder › “Copy as Pathname”)',
+    ja: 'フォルダ選択画面はPCでのみ開けます。フォルダの場所を入力するか、最近のフォルダから選んでください。（Finderでフォルダを右クリック › 「パス名をコピー」）',
+    zh: '文件夹选择窗口只能在电脑上打开。请输入文件夹位置或从最近的文件夹中选择。（在 Finder 中右键文件夹 › “拷贝为路径名称”）',
   },
-  'shell.filePathPlaceholder': { ko: 'PC의 파일 경로 · 예: ~/projects/app/README.md', en: 'File path on the PC · e.g. ~/projects/app/README.md', ja: 'PCのファイルパス · 例: ~/projects/app/README.md', zh: '电脑上的文件路径 · 例如：~/projects/app/README.md' },
-  'shell.folderPathPlaceholder': { ko: 'PC의 폴더 경로 · 예: ~/projects/app', en: 'Folder path on the PC · e.g. ~/projects/app', ja: 'PCのフォルダパス · 例: ~/projects/app', zh: '电脑上的文件夹路径 · 例如：~/projects/app' },
+  'shell.filePathPlaceholder': { ko: 'PC의 파일 위치 · 예: ~/projects/app/README.md', en: 'File location on the PC · e.g. ~/projects/app/README.md', ja: 'PCのファイルの場所 · 例: ~/projects/app/README.md', zh: '电脑上的文件位置 · 例如：~/projects/app/README.md' },
+  'shell.folderPathPlaceholder': { ko: 'PC의 폴더 위치 · 예: ~/projects/app', en: 'Folder location on the PC · e.g. ~/projects/app', ja: 'PCのフォルダの場所 · 例: ~/projects/app', zh: '电脑上的文件夹位置 · 例如：~/projects/app' },
   'shell.recentFolders': { ko: '최근 폴더', en: 'Recent folders', ja: '最近のフォルダ', zh: '最近的文件夹' },
   'shell.choose': { ko: '선택', en: 'Select', ja: '選択', zh: '选择' },
   'shell.conn.lost': {

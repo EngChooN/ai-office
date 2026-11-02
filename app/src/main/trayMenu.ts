@@ -208,7 +208,7 @@ export function buildTrayMenu(snap: OfficeSnapshot, extra: TrayExtra, actions: T
     ...(actions.summonDeskPet ? [{ label: t('deskPet.summon'), click: () => actions.summonDeskPet!() }] : []),
     { label: t('tray.quickTask'), click: () => actions.quickTask() },
     {
-      label: r ? t('tray.phone', { state: r.isListening ? t('tray.phoneOn', { port: r.port }) : r.isEnabled ? t('tray.phoneStarting') : t('tray.phoneOff') }) : t('tray.phoneSoon'),
+      label: r ? t('tray.phone', { state: r.isListening ? t('tray.phoneOn') : r.isEnabled ? t('tray.phoneStarting') : t('tray.phoneOff') }) : t('tray.phoneSoon'),
       enabled: Boolean(r),
       submenu: r
         ? [

@@ -5,7 +5,7 @@ import { findRiskyCommand } from './bashPolicy.ts'
 import { browserVerdict } from './browserTools.ts'
 import { computerVerdict } from './computerTools.ts'
 import { base, gitSubcommand, lexSegments, resolveCommand, type Segment } from './commandScan.ts'
-import { t } from './i18n/index.ts'
+import { t, type TKey } from './i18n/index.ts'
 
 export type AutoVerdict = 'allow' | 'wait'
 /** 요약에 쓰는 종류: 파일 수정·명령·그 밖 */
@@ -987,6 +987,15 @@ export function autoKindOf(tool: string): AutoKind {
   if (EDIT_TOOLS.has(tool)) return 'edit'
   if (tool === 'Bash') return 'command'
   return 'other'
+}
+
+/** 기록에 보일 동작 이름의 사전 키 — Bash 같은 영어 도구 이름 대신 우리말로 */
+export function autoActionKey(tool: string): TKey {
+  if (EDIT_TOOLS.has(tool)) return 'log.action.edit'
+  if (tool === 'Bash') return 'log.action.command'
+  if (tool === 'Read' || tool === 'Glob' || tool === 'Grep') return 'log.action.read'
+  if (tool === 'WebFetch' || tool === 'WebSearch') return 'log.action.web'
+  return 'log.action.other'
 }
 
 const HHMM = /^([01]\d|2[0-3]):([0-5]\d)$/

@@ -41,6 +41,36 @@ export default {
     ja: '🤖 自律進行: 危険な作業のためスキップ — {tool} {summary}',
     zh: '🤖 自主推进：危险操作已跳过 — {tool} {summary}',
   },
+  'log.action.command': {
+    ko: '프로그램 실행',
+    en: 'program run',
+    ja: 'プログラム実行',
+    zh: '运行程序',
+  },
+  'log.action.edit': {
+    ko: '파일 수정',
+    en: 'file edit',
+    ja: 'ファイル編集',
+    zh: '文件修改',
+  },
+  'log.action.read': {
+    ko: '파일 읽기',
+    en: 'file read',
+    ja: 'ファイル閲覧',
+    zh: '读取文件',
+  },
+  'log.action.web': {
+    ko: '웹 조회',
+    en: 'web lookup',
+    ja: 'Web検索',
+    zh: '网页查询',
+  },
+  'log.action.other': {
+    ko: '기타 작업',
+    en: 'other action',
+    ja: 'その他の作業',
+    zh: '其他操作',
+  },
   'log.autonomousAnswer': {
     ko: '🤖 자율 진행: 비서가 답하지 못해 추천(첫 번째) 선택지로 답함 — {text}',
     en: '🤖 Autonomous: the secretary could not answer, so the recommended (first) option was chosen — {text}',

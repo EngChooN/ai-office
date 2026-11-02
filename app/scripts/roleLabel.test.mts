@@ -9,7 +9,9 @@ test('프리셋 8개는 언어마다 번역되고 ko는 저장값과 같다', ()
   for (const lang of LANGS) {
     setLang(lang)
     for (const r of ROLE_PRESETS) assert.ok(roleLabel(r), `${lang}: ${r}`)
-    if (lang === 'ko') for (const r of ROLE_PRESETS) assert.equal(roleLabel(r), r)
+    // 비개발자용 설명을 덧붙여 보여 주는 직무(저장값과 표시가 다름)는 제외
+    const EXPLAINED = new Set(['QA', '리서처'])
+    if (lang === 'ko') for (const r of ROLE_PRESETS) if (!EXPLAINED.has(r)) assert.equal(roleLabel(r), r)
   }
   setLang('en')
   assert.equal(roleLabel('프론트엔드 개발자'), 'Frontend developer')
