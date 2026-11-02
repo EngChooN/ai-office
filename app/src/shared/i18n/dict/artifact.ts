@@ -3,10 +3,10 @@ import type { Entry } from './index.ts'
 /** 아티팩트 카드·크게 보기 창 */
 export default {
   'artifact.link.confirm': {
-    ko: '아티팩트 안의 링크를 기본 브라우저로 열까요?',
-    en: 'Open this link from the artifact in your default browser?',
-    ja: 'アーティファクト内のリンクを既定のブラウザで開きますか?',
-    zh: '要在默认浏览器中打开工件里的这个链接吗?',
+    ko: '결과물 안의 링크를 기본 브라우저로 열까요?',
+    en: 'Open this link from the result in your default browser?',
+    ja: '結果物内のリンクを既定のブラウザで開きますか?',
+    zh: '要在默认浏览器中打开结果物里的这个链接吗?',
   },
   'artifact.link.open': { ko: '브라우저에서 열기', en: 'Open in browser', ja: 'ブラウザで開く', zh: '在浏览器中打开' },
   'artifact.link.cancel': { ko: '취소', en: 'Cancel', ja: 'キャンセル', zh: '取消' },

@@ -83,9 +83,9 @@ export default {
   'knowledge.editor.tags': { ko: '태그', en: 'Tags', ja: 'タグ', zh: '标签' },
   'knowledge.editor.tagsHint': { ko: '쉼표로 나눠요 (예: 결재, 빌드)', en: 'Separate with commas (e.g. approval, build)', ja: 'カンマで区切ります（例: 承認, ビルド）', zh: '用逗号分隔（例如：审批, 构建）' },
   'knowledge.editor.doc': { ko: '연결할 참고 문서 (선택)', en: 'Linked reference doc (optional)', ja: 'リンクする参考資料（任意）', zh: '关联的参考文档（可选）' },
-  'knowledge.editor.docHint': { ko: '등록한 참고 문서에서 고르거나 전체 경로 입력', en: 'Pick a registered reference doc or enter a full path', ja: '登録済みの参考資料から選ぶか、フルパスを入力', zh: '从已登记的参考文档中选择，或输入完整路径' },
+  'knowledge.editor.docHint': { ko: '등록한 참고 문서에서 고르거나 전체 파일 위치 입력', en: 'Pick a registered reference doc or enter the full file location', ja: '登録済みの参考資料から選ぶか、フルパス（ファイルの場所）を入力', zh: '从已登记的参考文档中选择，或输入完整文件位置' },
   'knowledge.error.invalid': { ko: '제목과 내용을 채워 주세요', en: 'Please fill in the title and details', ja: 'タイトルと内容を入力してください', zh: '请填写标题和内容' },
-  'knowledge.error.docPath': { ko: '참고 문서는 전체 경로로 적어 주세요', en: 'Enter the reference doc as a full path', ja: '参考資料はフルパスで入力してください', zh: '请填写参考文档的完整路径' },
+  'knowledge.error.docPath': { ko: '참고 문서는 전체 파일 위치로 적어 주세요', en: 'Enter the reference doc as a full path', ja: '参考資料はフルパスで入力してください', zh: '请填写参考文档的完整路径' },
   'knowledge.error.missing': { ko: '이미 지워진 지식이에요', en: 'This item was already deleted', ja: 'このナレッジはすでに削除されています', zh: '该知识已被删除' },
   'knowledge.error.save': { ko: '저장하지 못했어요', en: 'Could not save', ja: '保存できませんでした', zh: '无法保存' },
   'knowledge.brief.header': {

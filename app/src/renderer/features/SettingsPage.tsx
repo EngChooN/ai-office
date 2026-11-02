@@ -116,12 +116,18 @@ function InteractionPreview() {
   )
 }
 
-function Section({ id, title, description, children }: { id?: string; title: string; description?: string; children: React.ReactNode }) {
+function Section({ id, title, description, detail, children }: { id?: string; title: string; description?: string; detail?: string; children: React.ReactNode }) {
   return (
     <section id={id} className="bg-card flex max-w-3xl scroll-mt-4 flex-col gap-3 rounded-xl border p-4">
       <div>
         <h2 className="font-semibold">{title}</h2>
         {description && <p className="text-muted-foreground text-xs">{description}</p>}
+        {detail && (
+          <details className="text-muted-foreground mt-1 text-[11px]">
+            <summary className="cursor-pointer">{t('settingsPage.detailTitle')}</summary>
+            <p className="mt-1">{detail}</p>
+          </details>
+        )}
       </div>
       {children}
     </section>
@@ -308,7 +314,7 @@ export function SettingsPage() {
                 <input type="checkbox" checked={settings.isSecretaryWebOn} onChange={(e) => update({ isSecretaryWebOn: e.target.checked })} /> {t('settingsPage.secretaryWeb.toggle')}
               </label>
             </Section>
-            <Section title={t('settingsPage.hooks.title')} description={t('settingsPage.hooks.desc')}>
+            <Section title={t('settingsPage.hooks.title')} description={t('settingsPage.hooks.desc')} detail={t('settingsPage.hooks.detail')}>
               <NotOnWindows reason={t('settingsPage.notOnWindows')} />
               {IS_MOBILE_SHELL ? (
                 <PcOnlyState isOn={hooks?.installed} />
@@ -318,7 +324,7 @@ export function SettingsPage() {
                 </Button>
               )}
             </Section>
-            <Section title={t('settingsPage.askHook.title')} description={t('settingsPage.askHook.desc')}>
+            <Section title={t('settingsPage.askHook.title')} description={t('settingsPage.askHook.desc')} detail={t('settingsPage.askHook.detail')}>
               <NotOnWindows reason={t('settingsPage.notOnWindows')} />
               {IS_MOBILE_SHELL ? (
                 <PcOnlyState isOn={hooks?.isAskInstalled} />

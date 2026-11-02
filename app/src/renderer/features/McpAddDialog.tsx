@@ -113,6 +113,7 @@ export function McpAddDialog({
         <DialogHeader>
           <DialogTitle>{editing ? t('mcpAdd.editTitle') : t('mcpAdd.title')}</DialogTitle>
         </DialogHeader>
+        <p className="text-muted-foreground text-xs">{t('mcpAdd.advanced')}</p>
         {!editing && (
           <div className="flex gap-1">
             {(['command', 'url', 'json'] as const).map((k) => (

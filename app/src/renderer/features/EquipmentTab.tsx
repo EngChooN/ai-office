@@ -10,15 +10,15 @@ import { t } from '@shared/i18n'
 import type { TKey } from '@shared/i18n'
 
 /** 자주 쓰는 도구 권한 묶음 */
-const TOOL_PRESETS: { label: TKey; hint: TKey; allow?: string[]; deny?: string[] }[] = [
-  { label: 'equipment.preset.noShell', hint: 'equipment.preset.noShell.hint', deny: ['Bash'] },
-  { label: 'equipment.preset.autoShell', hint: 'equipment.preset.autoShell.hint', allow: ['Bash'] },
-  { label: 'equipment.preset.autoRead', hint: 'equipment.preset.autoRead.hint', allow: [READ_ONLY_BASH] },
-  { label: 'equipment.preset.noRisky', hint: 'equipment.preset.noRisky.hint', deny: [RISKY_BASH] },
-  { label: 'equipment.preset.noWeb', hint: 'equipment.preset.noWeb.hint', deny: ['WebSearch', 'WebFetch'] },
-  { label: 'equipment.preset.autoWeb', hint: 'equipment.preset.autoWeb.hint', allow: ['WebSearch', 'WebFetch'] },
-  { label: 'equipment.preset.autoEdit', hint: 'equipment.preset.autoEdit.hint', allow: ['Edit', 'Write', 'MultiEdit', 'NotebookEdit'] },
-  { label: 'equipment.preset.autoCapture', hint: 'equipment.preset.autoCapture.hint', allow: ['mcp__office__capture_screen'] },
+const TOOL_PRESETS: { label: TKey; hint: TKey; detail?: TKey; allow?: string[]; deny?: string[] }[] = [
+  { label: 'equipment.preset.noShell', hint: 'equipment.preset.noShell.hint', detail: 'equipment.preset.noShell.detail', deny: ['Bash'] },
+  { label: 'equipment.preset.autoShell', hint: 'equipment.preset.autoShell.hint', detail: 'equipment.preset.autoShell.detail', allow: ['Bash'] },
+  { label: 'equipment.preset.autoRead', hint: 'equipment.preset.autoRead.hint', detail: 'equipment.preset.autoRead.detail', allow: [READ_ONLY_BASH] },
+  { label: 'equipment.preset.noRisky', hint: 'equipment.preset.noRisky.hint', detail: 'equipment.preset.noRisky.detail', deny: [RISKY_BASH] },
+  { label: 'equipment.preset.noWeb', hint: 'equipment.preset.noWeb.hint', detail: 'equipment.preset.noWeb.detail', deny: ['WebSearch', 'WebFetch'] },
+  { label: 'equipment.preset.autoWeb', hint: 'equipment.preset.autoWeb.hint', detail: 'equipment.preset.autoWeb.detail', allow: ['WebSearch', 'WebFetch'] },
+  { label: 'equipment.preset.autoEdit', hint: 'equipment.preset.autoEdit.hint', detail: 'equipment.preset.autoEdit.detail', allow: ['Edit', 'Write', 'MultiEdit', 'NotebookEdit'] },
+  { label: 'equipment.preset.autoCapture', hint: 'equipment.preset.autoCapture.hint', detail: 'equipment.preset.autoCapture.detail', allow: ['mcp__office__capture_screen'] },
 ]
 
 function Chip({ isOn, onClick, children, title, disabled }: { isOn: boolean; onClick: () => void; children: React.ReactNode; title?: string; disabled?: boolean }) {
@@ -98,6 +98,18 @@ export function EquipmentTab({ staff }: { staff: Staff }) {
             </Chip>
           ))}
         </div>
+        {TOOL_PRESETS.some((p) => p.detail && presetOn(p)) && (
+          <details className="text-muted-foreground text-[11px]">
+            <summary className="cursor-pointer py-0.5">{t('equipment.preset.detailTitle')}</summary>
+            <ul className="mt-1 list-disc pl-4">
+              {TOOL_PRESETS.filter((p) => p.detail && presetOn(p)).map((p) => (
+                <li key={p.label}>
+                  <b>{t(p.label)}</b> — {t(p.detail!)}
+                </li>
+              ))}
+            </ul>
+          </details>
+        )}
       </div>
 
       <Button size="sm" className="w-fit" disabled={!isDirty} onClick={handleSave}>

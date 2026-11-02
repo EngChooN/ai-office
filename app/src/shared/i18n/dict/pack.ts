@@ -91,7 +91,7 @@ export default {
   'pack.export.button': { ko: '내보내기', en: 'Export', ja: '書き出し', zh: '导出' },
   'pack.export.title': { ko: '직원 내보내기', en: 'Export staff', ja: '社員の書き出し', zh: '导出员工' },
   'pack.export.hint': {
-    ko: '고른 직원을 파일 하나로 저장해요. 작업 폴더와 이 컴퓨터의 경로는 빠지고, 다른 컴퓨터에서 가져오면 그곳에서 채용돼요.',
+    ko: '고른 직원을 파일 하나로 저장해요. 작업 폴더와 이 컴퓨터의 파일 위치는 빠지고, 다른 컴퓨터에서 가져오면 그곳에서 채용돼요.',
     en: 'Saves the selected staff as one file. Work folders and paths on this computer are left out. Importing on another computer hires them there.',
     ja: '選んだ社員を1つのファイルに保存します。作業フォルダとこのコンピュータのパスは除かれ、別のコンピュータで読み込むとそこで採用されます。',
     zh: '将所选员工保存为一个文件。工作文件夹和本机路径不会包含在内，在其他电脑上导入即可在那里录用。',
@@ -230,7 +230,7 @@ export default {
     zh: '文件中包含文件夹位置。本机的位置不能保存在文件里。',
   },
   'pack.err.lab': { ko: '랩 정보가 올바르지 않아요.', en: 'The lab information is not valid.', ja: 'ラボ情報が正しくありません。', zh: '实验室信息不正确。' },
-  'pack.err.leader': { ko: '랩 리드가 파일의 직원 중에 없어요.', en: 'The lab lead is not among the staff in the file.', ja: 'ラボリーダーがファイルの社員にいません。', zh: '实验室负责人不在文件的员工中。' },
+  'pack.err.leader': { ko: '랩장이 파일의 직원 중에 없어요.', en: 'The lab lead is not among the staff in the file.', ja: 'ラボリーダーがファイルの社員にいません。', zh: '实验室负责人不在文件的员工中。' },
   'pack.err.exportTooBig': {
     ko: '내보낼 내용이 1MB를 넘어요. 매뉴얼을 줄이거나 직원을 나눠서 내보내 주세요.',
     en: 'The export is larger than 1MB. Reduce the manuals or export fewer staff at a time.',
