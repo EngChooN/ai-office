@@ -13,6 +13,14 @@ Writing rules
 - On-screen wording is now plainer and consistent. "Peer PC" became "other PC", rejecting a connection is "send back", workflows are "manual steps run", and plan-usage alerts say "last 5 hours / last 7 days". The menu bar no longer shows a port number.
 - The autonomous-run log now shows "run program / edit file / read file / web lookup" instead of tool names like "Bash", and staff chat hints no longer mention "delegate" or "background".
 - Account/connection status messages (Claude or GPT (Codex) sign-in needed, not installed, etc.) and update-failure messages were rewritten for non-developers.
+- Descriptions for equipment presets, adding connected tools, and external-staff notifications were rewritten in plain language. Long explanations fold under "Details", bracketed terms on the Changes tab are spelled out, and terms that differed between screens are now consistent.
+- The first-run guide is tidier. There are 3 intro cards (hire, instruct, approve), and it tells you up front which account you need (a paid Claude plan or ChatGPT). Setup checks drop the install check and now have 3 steps: sign in → folder → first task. The folder step shows an example plus "Staff can edit files in this folder" and "You can skip this".
+- Claude sign-in opens straight in your browser, so you no longer pick an account type in a terminal window. If the sign-in link arrives in pieces, the app waits for the full link before opening it. If the browser can't open or no link arrives within 10 seconds, it falls back to terminal sign-in. Cancelling sign-in just stops without opening a terminal.
+- While status is being checked (including re-checks), "Next" and "Later" are disabled and "Checking…" is shown.
+- If the first task fails, you get buttons that match the reason: a sign-in problem takes you to the sign-in step, a network problem offers a retry (without a sign-in button), an unknown error offers "view original" and a retry, and if the task takes a long time, "Keep watching" opens that staff member's panel. The finish screen explains where the approval inbox and reports are, adds a shortcut to the inbox, and highlights only one recommended button.
+- The tour is cut to 5 key steps with "See more" at the end. If you skip or stop it, a notice says you can replay it in Settings › Guide. If you have already done a first task, the practice-task picker is skipped.
+- The hire dialog shows only name and role, and folds the rest under "More settings". Performance tiers now have descriptions.
+- Empty-state hints: an office with no staff shows "Hire staff" and "Replay guide" buttons in the banner, an empty staff panel shows example instruction chips, and an empty approval inbox explains itself and offers a hire button. The GPT banner stays hidden until you hire someone if you have no staff.
 
 ## [0.19.2] - 2026-11-02
 
