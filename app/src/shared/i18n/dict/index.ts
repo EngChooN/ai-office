@@ -24,6 +24,7 @@ import artifact from './artifact.ts'
 import peer from './peer.ts'
 import peerGuard from './peerGuard.ts'
 import peerSync from './peerSync.ts'
+import guideHint from './guideHint.ts'
 
 export interface Entry {
   ko: string
@@ -33,7 +34,7 @@ export interface Entry {
 }
 
 /** 영역별 조각 (같은 키가 두 파일에 있으면 테스트가 잡는다) */
-export const DICT_PARTS = { common, settings, featuresA, featuresB, shell, game, main, staff, logs, update, tools, knowledge, pack, gallery, tutorial, board, secretary, sceneExport, autonomy, deskPet, artifact, peer, peerGuard, peerSync, memory }
+export const DICT_PARTS = { common, settings, featuresA, featuresB, shell, game, main, staff, logs, update, tools, knowledge, pack, gallery, tutorial, board, secretary, sceneExport, autonomy, deskPet, artifact, peer, peerGuard, peerSync, memory, guideHint }
 
-export const DICT = { ...common, ...settings, ...featuresA, ...featuresB, ...shell, ...game, ...main, ...staff, ...logs, ...update, ...tools, ...knowledge, ...pack, ...gallery, ...tutorial, ...board, ...secretary, ...sceneExport, ...autonomy, ...deskPet, ...artifact, ...peer, ...peerGuard, ...peerSync, ...memory } satisfies Record<string, Entry>
+export const DICT = { ...common, ...settings, ...featuresA, ...featuresB, ...shell, ...game, ...main, ...staff, ...logs, ...update, ...tools, ...knowledge, ...pack, ...gallery, ...tutorial, ...board, ...secretary, ...sceneExport, ...autonomy, ...deskPet, ...artifact, ...peer, ...peerGuard, ...peerSync, ...memory, ...guideHint } satisfies Record<string, Entry>
 export type TKey = keyof typeof DICT

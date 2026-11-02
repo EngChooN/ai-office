@@ -8,15 +8,17 @@ import { requestSettingsSection } from './SettingsPage'
 import { t } from '@shared/i18n'
 
 // 0.14.0 안내 띠 (한 번만): 업데이트한 사람에게 GPT(Codex) 직원도 쓸 수 있다고 알린다. 닫거나 누르면 다시 띄우지 않는다
+// 직원이 0명이면 빈 사무실 띠가 먼저 떠 있으니 고용한 뒤에 띄운다
 
 export function ProviderBanner() {
   const isLoaded = useOffice((s) => s.isLoaded)
   const isOnboarded = useOffice((s) => s.settings.isOnboarded)
   const isSeen = useOffice((s) => s.settings.isProviderBannerSeen)
   const setView = useOffice((s) => s.setView)
+  const staffCount = useOffice((s) => s.staff.length)
   // 띄울 수도 있는 사람만 Codex 상태를 묻는다 (조회에 몇 초 걸린다)
   const { status } = useProviders(isLoaded && isOnboarded && !isSeen)
-  const action = providerBannerAction({ isLoaded, isOnboarded, isSeen, codexState: status?.codex.state ?? null })
+  const action = providerBannerAction({ isLoaded, isOnboarded, isSeen, codexState: status?.codex.state ?? null, staffCount })
 
   const markSeen = () => void window.office.updateSettings({ isProviderBannerSeen: true })
   useEffect(() => {

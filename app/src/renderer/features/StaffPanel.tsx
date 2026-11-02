@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
+import { memo, useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { ArrowUpIcon, CheckIcon, ChevronDownIcon, ChevronUpIcon, CircleStopIcon, DownloadIcon, SendIcon, SquareTerminalIcon, UserMinusIcon, XIcon, ZapIcon } from 'lucide-react'
 import { NativeSelect } from '@/components/ui/select'
 import { AttachButton, AttachmentView, DraftAttachments, useDraftAttachments } from '@/components/attachments'
@@ -50,6 +50,8 @@ const LOG_LABEL: Record<LogType, TKey> = {
 }
 /** "지시·보고만" 보기에서 남기는 기록 */
 const CONVERSATION_TYPES = new Set<LogType>(['instruction', 'reply'])
+/** 고용 직후 빈 패널에 띄우는 예시 지시 */
+const EXAMPLE_ORDERS: TKey[] = ['guideHint.panel.ex1', 'guideHint.panel.ex2', 'guideHint.panel.ex3']
 const CONVERSATION_ONLY_KEY = 'office:logConversationOnly'
 
 // 기록 보기 방식은 이 기기에서만 기억하면 충분하다 (못 읽으면 전체 보기)
@@ -270,6 +272,7 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
   const liveLogs = useOffice((s) => s.liveLogs)
   const [record, setRecord] = useState<DailyRecord | null>(null)
   const [draft, setDraft] = useState('')
+  const composerRef = useRef<HTMLTextAreaElement>(null)
   const [tab, setTab] = useState<PanelTab>('work')
   const isHired = staff.kind === 'hired'
 
@@ -582,7 +585,30 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
           <div data-split-rest="200" className="short:min-h-[70dvh] relative flex min-h-0 flex-1 flex-col">
             <section ref={logScroll.ref} onScroll={logScroll.onScroll} className="min-h-0 flex-1 overflow-y-auto px-4 pb-4" style={{ fontSize }}>
               <div ref={logScroll.contentRef} className="flex flex-col gap-2">
-                {shownLogs.length === 0 && <p className="text-muted-foreground">{t('staffPanel.log.empty')}</p>}
+                {/* 고용 직후(기록이 하나도 없음): 다음에 할 일을 알려 주고 예시 지시를 칩으로 — 누르면 아래 칸에 채운다 */}
+                {logs.length === 0 && isHired ? (
+                  <div className="flex flex-col gap-2 text-sm">
+                    <p className="text-muted-foreground">{t('guideHint.panel.emptyTitle')}</p>
+                    <span className="text-muted-foreground text-xs">{t('guideHint.panel.examples')}</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {EXAMPLE_ORDERS.map((key) => (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => {
+                            setDraft(t(key))
+                            composerRef.current?.focus()
+                          }}
+                          className="hover:border-primary hover:bg-accent rounded-full border px-2.5 py-1 text-left text-xs transition-colors"
+                        >
+                          {t(key)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  shownLogs.length === 0 && <p className="text-muted-foreground">{t('staffPanel.log.empty')}</p>
+                )}
                 {shownLogs.map((l) => (
                   <LogRow key={logKey(l)} entry={l} />
                 ))}
@@ -603,9 +629,17 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
           )}
           {/* 입력 상자 안: 왼쪽 첨부, 오른쪽 보내기. 일하는 중이면 비어 있을 땐 "멈추기", 글을 쓰면 "끝나면 보내기"·"지금 끼어들기" 두 갈래를 글자로 보여 준다 */}
           {/* 포커스 표시는 감싸개 하나에만 (공용 입력란과 같은 토큰). 안쪽 textarea는 shadow-none으로 끈다 */}
-          <div className="border-input flex items-end gap-1 rounded-lg border px-1.5 py-1 focus-within:border-(--focus-border) focus-within:shadow-(--focus-ring)">
+          {/* 고용 직후 아직 아무 지시도 없으면 이 칸을 강조해 어디에 쓰는지 보여 준다 */}
+          <div
+            data-tour="staff-composer"
+            className={cn(
+              'border-input flex items-end gap-1 rounded-lg border px-1.5 py-1 focus-within:border-(--focus-border) focus-within:shadow-(--focus-ring)',
+              logs.length === 0 && !hasDraft && 'border-primary ring-primary/30 ring-2',
+            )}
+          >
             <AttachButton onPick={draftFiles.add} className="shrink-0" />
             <Textarea
+              ref={composerRef}
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={handleKeyDown}

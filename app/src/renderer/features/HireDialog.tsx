@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { FileUpIcon, FolderOpenIcon, StoreIcon } from 'lucide-react'
+import { ChevronDownIcon, ChevronRightIcon, FileUpIcon, FolderOpenIcon, StoreIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -22,11 +22,11 @@ import { t } from '@shared/i18n'
 import { roleLabel } from '@shared/roleLabel'
 
 // 화면 문구가 들어 있어 렌더할 때 만든다 (언어 바뀜 반영)
-const models = (): { value: ModelChoice; label: string }[] => [
-  { value: 'default', label: t('hire.model.default') },
-  { value: 'opus', label: 'Opus' },
-  { value: 'sonnet', label: 'Sonnet' },
-  { value: 'haiku', label: 'Haiku' },
+const models = (): { value: ModelChoice; label: string; hint: string }[] => [
+  { value: 'default', label: t('hire.model.default'), hint: t('guideHint.model.default') },
+  { value: 'opus', label: 'Opus', hint: t('guideHint.model.opus') },
+  { value: 'sonnet', label: 'Sonnet', hint: t('guideHint.model.sonnet') },
+  { value: 'haiku', label: 'Haiku', hint: t('guideHint.model.haiku') },
 ]
 const approvalModes = (): { value: ApprovalMode; label: string; hint: string }[] => [
   { value: 'ask', label: t('hire.approval.ask'), hint: t('hire.approval.ask.hint') },
@@ -74,6 +74,8 @@ export function HireDialog() {
   const [form, setForm] = useState<HireInput>(emptyForm)
   const [templates, setTemplates] = useState<AgentTemplate[]>([])
   const [isCustomRole, setIsCustomRole] = useState(false)
+  // 처음에는 이름·직무만 보이고 나머지(생김새·팀·폴더·AI·성능 등급·결재 방식·지침)는 '자세히 설정'에 접는다
+  const [isMoreOpen, setIsMoreOpen] = useState(false)
   // 생김새를 직접 고치거나 🎲를 누르기 전까지는 무작위 바탕에 고른 직무의 기본 옷·소품을 입힌다
   const [baseLook, setBaseLook] = useState<Look>(() => randomLook())
   const [isLookEdited, setIsLookEdited] = useState(false)
@@ -95,6 +97,7 @@ export function HireDialog() {
       // 첫 실행 마법사에서 고른 기본 작업 폴더로 시작한다
       setForm({ ...emptyForm(), provider: defaultProvider(providers.status), cwd: useOffice.getState().settings.defaultCwd })
       setIsCustomRole(false)
+      setIsMoreOpen(false)
       setTemplates([])
       setBaseLook(randomLook())
       setIsLookEdited(false)
@@ -178,87 +181,10 @@ export function HireDialog() {
             {canImportFile && <span className="text-muted-foreground text-xs">{t('pack.hire.hint')}</span>}
           </div>
 
-          {/* 업무 모드에선 아바타가 이니셜 원이라 고르지 않는다 (직무 소품을 얹은 무작위 모습으로 고용) */}
-          {!isWorkMode && (
-            <div className="flex flex-col gap-2">
-              <Label>{t('hire.look')}</Label>
-              <AvatarEditor
-                value={avatar}
-                onChange={(next) => {
-                  update({ avatar: next })
-                  setIsLookEdited(true)
-                }}
-              />
-            </div>
-          )}
-
           <div className="flex flex-col gap-2">
             <Label htmlFor="hire-name">{t('hire.name')}</Label>
             <Input id="hire-name" value={form.name} onChange={(e) => update({ name: e.target.value })} placeholder={t('hire.name.placeholder')} autoFocus />
           </div>
-
-          <div className="flex flex-col gap-2">
-            <Label>{t('hire.team')}</Label>
-            <NativeSelect value={form.teamId ?? ''} onChange={(e) => update({ teamId: e.target.value || null })} className="w-48">
-              <option value="">{t('hire.team.none')}</option>
-              {teams.map((team) => (
-                <option key={team.id} value={team.id}>
-                  {team.name}
-                </option>
-              ))}
-            </NativeSelect>
-            <span className="text-muted-foreground text-xs">{t('hire.team.leadHint')}</span>
-          </div>
-
-          {labs.length > 0 && (
-            <div className="flex flex-col gap-2">
-              <Label>{t('hire.labs')}</Label>
-              <div className="flex flex-wrap gap-2">
-                {labs.map((l) => {
-                  const isOn = form.labIds?.includes(l.id) ?? false
-                  return (
-                    <button
-                      key={l.id}
-                      type="button"
-                      onClick={() => update({ labIds: isOn ? form.labIds?.filter((x) => x !== l.id) : [...(form.labIds ?? []), l.id] })}
-                      className={cn('rounded-md border px-2 py-1 text-xs', isOn && 'border-primary bg-accent')}
-                    >
-                      🧪 {l.name}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
-          <div className="flex flex-col gap-2">
-            <Label>{t('hire.folder')}</Label>
-            <div className="flex items-center gap-2">
-              <Button type="button" variant="outline" size="sm" onClick={handlePickFolder}>
-                <FolderOpenIcon /> {t('hire.folder.pick')}
-              </Button>
-              <span className="text-muted-foreground truncate text-xs">{form.cwd ? shortPath(form.cwd) : t('hire.folder.none')}</span>
-            </div>
-          </div>
-
-          {templates.length > 0 && (
-            <div className="flex flex-col gap-2">
-              <Label>{t('hire.templates')}</Label>
-              <div className="flex flex-wrap gap-2">
-                {templates.map((tpl) => (
-                  <button
-                    key={`${tpl.source}-${tpl.name}`}
-                    type="button"
-                    onClick={() => handleTemplate(tpl)}
-                    title={tpl.description}
-                    className={cn('rounded-md border px-2 py-1 text-xs', form.role === tpl.name && 'border-primary bg-accent')}
-                  >
-                    {tpl.name} <span className="text-muted-foreground">· {tpl.source}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
 
           <div className="flex flex-col gap-2">
             <Label>{t('hire.role')}</Label>
@@ -290,50 +216,163 @@ export function HireDialog() {
             {isCustomRole && <Input value={form.role} maxLength={40} onChange={(e) => update({ role: e.target.value })} placeholder={t('hire.role.placeholder')} />}
           </div>
 
-          <div className="flex flex-col gap-2">
-            <Label>{t('hire.provider')}</Label>
-            <ProviderPicker status={providers.status} value={provider} onChange={(p) => p !== provider && update({ provider: p, model: 'default' })} role={isBothReady(providers.status) ? form.role : undefined} />
-            {isBothReady(providers.status) && engineReason(form.role) && <span className="text-muted-foreground text-xs">{engineReason(form.role)}</span>}
-            <span className="text-muted-foreground text-xs">
-              {providers.isChecking && !providers.status
-                ? t('hire.provider.checking')
-                : [t('hire.provider.locked'), ...notReady.map((p) => t('hire.provider.notReady', { name: PROVIDER_NAME[p] }))].join(' ')}
-            </span>
+          {/* 직원 상태를 아직 모르거나 고른 AI가 준비 안 됐으면 이유가 보이게 접지 않는다 */}
+          {!isProviderReady && (
+            <div className="flex flex-col gap-2">
+              <Label>{t('hire.provider')}</Label>
+              <ProviderPicker status={providers.status} value={provider} onChange={(p) => p !== provider && update({ provider: p, model: 'default' })} role={isBothReady(providers.status) ? form.role : undefined} />
+              {isBothReady(providers.status) && engineReason(form.role) && <span className="text-muted-foreground text-xs">{engineReason(form.role)}</span>}
+              <span className="text-muted-foreground text-xs">
+                {providers.isChecking && !providers.status
+                  ? t('hire.provider.checking')
+                  : [t('hire.provider.locked'), ...notReady.map((p) => t('hire.provider.notReady', { name: PROVIDER_NAME[p] }))].join(' ')}
+              </span>
+            </div>
+          )}
+
+          <div className="flex flex-col gap-1">
+            <button
+              type="button"
+              onClick={() => setIsMoreOpen((v) => !v)}
+              aria-expanded={isMoreOpen}
+              className="text-primary flex w-fit items-center gap-1 text-sm font-medium"
+            >
+              {isMoreOpen ? <ChevronDownIcon className="size-4" /> : <ChevronRightIcon className="size-4" />}
+              {isMoreOpen ? t('guideHint.hire.less') : t('guideHint.hire.more')}
+            </button>
+            {!isMoreOpen && <span className="text-muted-foreground text-xs">{t('guideHint.hire.moreDesc')}</span>}
           </div>
 
-          <div className="flex gap-6">
+          {isMoreOpen && (
+            <>
+            {/* 업무 모드에선 아바타가 이니셜 원이라 고르지 않는다 (직무 소품을 얹은 무작위 모습으로 고용) */}
+            {!isWorkMode && (
+              <div className="flex flex-col gap-2">
+                <Label>{t('hire.look')}</Label>
+                <AvatarEditor
+                  value={avatar}
+                  onChange={(next) => {
+                    update({ avatar: next })
+                    setIsLookEdited(true)
+                  }}
+                />
+              </div>
+            )}
+
             <div className="flex flex-col gap-2">
-              <Label>{t('hire.model')}</Label>
-              {isCodex ? (
-                <NativeSelect value={form.model} onChange={(e) => update({ model: e.target.value as ModelChoice })} className="w-48">
-                  <option value="default">{codex?.defaultModel ? t('hire.model.codexDefault', { model: codex.defaultModel }) : t('hire.model.default')}</option>
-                  {(codex?.models ?? []).map((m) => (
-                    <option key={m} value={m}>
-                      {m}
-                    </option>
+              <Label>{t('hire.team')}</Label>
+              <NativeSelect value={form.teamId ?? ''} onChange={(e) => update({ teamId: e.target.value || null })} className="w-48">
+                <option value="">{t('hire.team.none')}</option>
+                {teams.map((team) => (
+                  <option key={team.id} value={team.id}>
+                    {team.name}
+                  </option>
+                ))}
+              </NativeSelect>
+              <span className="text-muted-foreground text-xs">{t('hire.team.leadHint')}</span>
+            </div>
+
+            {labs.length > 0 && (
+              <div className="flex flex-col gap-2">
+                <Label>{t('hire.labs')}</Label>
+                <div className="flex flex-wrap gap-2">
+                  {labs.map((l) => {
+                    const isOn = form.labIds?.includes(l.id) ?? false
+                    return (
+                      <button
+                        key={l.id}
+                        type="button"
+                        onClick={() => update({ labIds: isOn ? form.labIds?.filter((x) => x !== l.id) : [...(form.labIds ?? []), l.id] })}
+                        className={cn('rounded-md border px-2 py-1 text-xs', isOn && 'border-primary bg-accent')}
+                      >
+                        🧪 {l.name}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            <div className="flex flex-col gap-2">
+              <Label>{t('hire.folder')}</Label>
+              <div className="flex items-center gap-2">
+                <Button type="button" variant="outline" size="sm" onClick={handlePickFolder}>
+                  <FolderOpenIcon /> {t('hire.folder.pick')}
+                </Button>
+                <span className="text-muted-foreground truncate text-xs">{form.cwd ? shortPath(form.cwd) : t('hire.folder.none')}</span>
+              </div>
+            </div>
+
+            {templates.length > 0 && (
+              <div className="flex flex-col gap-2">
+                <Label>{t('hire.templates')}</Label>
+                <div className="flex flex-wrap gap-2">
+                  {templates.map((tpl) => (
+                    <button
+                      key={`${tpl.source}-${tpl.name}`}
+                      type="button"
+                      onClick={() => handleTemplate(tpl)}
+                      title={tpl.description}
+                      className={cn('rounded-md border px-2 py-1 text-xs', form.role === tpl.name && 'border-primary bg-accent')}
+                    >
+                      {tpl.name} <span className="text-muted-foreground">· {tpl.source}</span>
+                    </button>
                   ))}
-                </NativeSelect>
-              ) : (
-                <Segmented options={models()} value={form.model} onChange={(model) => update({ model })} />
-              )}
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label>{t('hire.approval')}</Label>
-              <Segmented options={approvalModes()} value={form.approvalMode} onChange={(approvalMode) => update({ approvalMode })} />
-              <span className="text-muted-foreground text-xs">{approvalModes().find((m) => m.value === form.approvalMode)?.hint}</span>
-            </div>
-          </div>
+                </div>
+              </div>
+            )}
 
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="hire-prompt">{t('hire.prompt')}</Label>
-            <Textarea
-              id="hire-prompt"
-              value={form.systemPrompt}
-              onChange={(e) => update({ systemPrompt: e.target.value })}
-              placeholder={t('hire.prompt.placeholder')}
-              className="max-h-48 min-h-20"
-            />
-          </div>
+              {isProviderReady && (
+              <div className="flex flex-col gap-2">
+                <Label>{t('hire.provider')}</Label>
+                <ProviderPicker status={providers.status} value={provider} onChange={(p) => p !== provider && update({ provider: p, model: 'default' })} role={isBothReady(providers.status) ? form.role : undefined} />
+                {isBothReady(providers.status) && engineReason(form.role) && <span className="text-muted-foreground text-xs">{engineReason(form.role)}</span>}
+                <span className="text-muted-foreground text-xs">
+                  {providers.isChecking && !providers.status
+                    ? t('hire.provider.checking')
+                    : [t('hire.provider.locked'), ...notReady.map((p) => t('hire.provider.notReady', { name: PROVIDER_NAME[p] }))].join(' ')}
+                </span>
+              </div>
+              )}
+
+            <div className="flex gap-6">
+              <div className="flex flex-col gap-2">
+                <Label>{t('hire.model')}</Label>
+                {isCodex ? (
+                  <NativeSelect value={form.model} onChange={(e) => update({ model: e.target.value as ModelChoice })} className="w-48">
+                    <option value="default">{codex?.defaultModel ? t('hire.model.codexDefault', { model: codex.defaultModel }) : t('hire.model.default')}</option>
+                    {(codex?.models ?? []).map((m) => (
+                      <option key={m} value={m}>
+                        {m}
+                      </option>
+                    ))}
+                  </NativeSelect>
+                ) : (
+                  <>
+                    <Segmented options={models()} value={form.model} onChange={(model) => update({ model })} />
+                    <span className="text-muted-foreground text-xs">{models().find((m) => m.value === form.model)?.hint}</span>
+                  </>
+                )}
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label>{t('hire.approval')}</Label>
+                <Segmented options={approvalModes()} value={form.approvalMode} onChange={(approvalMode) => update({ approvalMode })} />
+                <span className="text-muted-foreground text-xs">{approvalModes().find((m) => m.value === form.approvalMode)?.hint}</span>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="hire-prompt">{t('hire.prompt')}</Label>
+              <Textarea
+                id="hire-prompt"
+                value={form.systemPrompt}
+                onChange={(e) => update({ systemPrompt: e.target.value })}
+                placeholder={t('hire.prompt.placeholder')}
+                className="max-h-48 min-h-20"
+              />
+            </div>
+            </>
+          )}
 
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => setHireOpen(false)}>

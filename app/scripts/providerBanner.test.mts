@@ -27,3 +27,12 @@ test('GPT 직원 안내 띠: 옛 버전 설정에서 올라오면 아직 안 본
   assert.equal(s.isProviderBannerSeen, false)
   assert.equal(providerBannerAction({ isLoaded: true, isOnboarded: s.isOnboarded, isSeen: s.isProviderBannerSeen, codexState: 'loggedOut' }), 'show')
 })
+
+test('GPT 직원 안내 띠: 직원이 0명이면 빈 사무실 띠와 쌓이지 않게 고용할 때까지 기다린다', () => {
+  assert.equal(providerBannerAction({ ...base, staffCount: 0 }), 'hide')
+  assert.equal(providerBannerAction({ ...base, staffCount: 1 }), 'show')
+  // 기다리는 동안 본 것으로 적지 않는다 — 고용하면 그때 뜬다
+  assert.notEqual(providerBannerAction({ ...base, staffCount: 0 }), 'markSeen')
+  // 새 설치는 직원 수와 상관없이 띄우지 않는다
+  assert.equal(providerBannerAction({ ...base, isOnboarded: false, staffCount: 3 }), 'markSeen')
+})

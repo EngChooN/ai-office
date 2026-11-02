@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import { useOffice, useWorkMode, type View } from '@/store'
 import { MOD_KEY, osText } from '@/lib/platform'
 import { cn } from '@/lib/utils'
+import { showToast } from '@/lib/toast'
 import { menuTitle, navTourTarget } from './nav'
 import { IS_MOBILE_SHELL } from '@/shell'
 import { isVisibleBox, placeTip, TIP_MARGIN } from './coachTip'
@@ -47,29 +48,40 @@ const menuStep = (chapter: Chapter, menu: View, icon: string, body: TKey, isOpen
   body,
 })
 
-const STEPS: TourStep[] = [
+/** 처음 보는 핵심 5단계: 사무실 → 고용 → 지시 → 결재 → 첫 고용. 나머지는 마지막에 '더 보기'를 눌렀을 때만 */
+const CORE_STEPS: TourStep[] = [
   menuStep('office', 'map', '🏢', 'coachTour.map.body'),
+  { chapter: 'office', target: 'hire', icon: '🧑‍💼', title: 'coachTour.hire.title', body: 'coachTour.hire.body' },
+  menuStep('work', 'chat', '💬', 'coachTour.chat.body'),
+  menuStep('review', 'inbox', '✅', 'coachTour.inbox.body', false),
+]
+const LAST_STEP: TourStep = { chapter: 'company', target: 'hire', icon: '🚀', title: 'coachTour.firstHire.title', body: 'coachTour.firstHire.body', hasHireButton: true }
+/** '더 보기': 핵심 단계 뒤, 마지막 단계 앞에 이어진다 (장 순서대로) */
+const MORE_STEPS: TourStep[] = [
   { chapter: 'office', target: 'hud', view: 'map', icon: '📈', title: 'coachTour.hud.title', body: 'coachTour.hud.body' },
   menuStep('office', 'secretary', '✨', 'coachTour.secretary.body'),
   { chapter: 'office', target: '', icon: '🧑‍💻', title: 'coachTour.deskPet.title', body: 'coachTour.deskPet.body', isDesktopOnly: true },
-  { chapter: 'office', target: 'hire', icon: '🧑‍💼', title: 'coachTour.hire.title', body: 'coachTour.hire.body' },
   menuStep('office', 'dashboard', '🗂️', 'coachTour.dashboard.body'),
   menuStep('office', 'org', '🧭', 'coachTour.org.body'),
   menuStep('work', 'board', '📋', 'coachTour.board.body'),
-  menuStep('work', 'chat', '💬', 'coachTour.chat.body'),
   menuStep('work', 'meeting', '🗣️', 'coachTour.meeting.body'),
   menuStep('work', 'manuals', '📘', 'coachTour.manuals.body'),
   menuStep('work', 'schedule', '⏰', 'coachTour.schedule.body'),
-  menuStep('review', 'inbox', '✅', 'coachTour.inbox.body', false),
   menuStep('review', 'report', '📑', 'coachTour.report.body'),
   menuStep('review', 'payroll', '💳', 'coachTour.payroll.body'),
   menuStep('company', 'shop', '🛍️', 'coachTour.shop.body', false),
   menuStep('company', 'settings', '⚙️', 'coachTour.settings.body'),
   menuStep('company', 'updates', '📣', 'coachTour.updates.body'),
-  { chapter: 'company', target: 'hire', icon: '🚀', title: 'coachTour.firstHire.title', body: 'coachTour.firstHire.body', hasHireButton: true },
 ]
 /** 업무 모드에서 숨긴 화면을 설명하는 단계 */
 const GAME_TARGETS = new Set(['nav-map', 'hud', 'nav-shop'])
+
+/** 보여 줄 단계: 핵심(또는 '더 보기'면 핵심+나머지를 장 순서대로) → 마지막 단계. 업무 모드·휴대폰에서 못 쓰는 단계는 뺀다 */
+function tourSteps(isMore: boolean, isWorkMode: boolean): TourStep[] {
+  const chapterOrder = (s: TourStep) => CHAPTERS.findIndex((c) => c.id === s.chapter)
+  const body = isMore ? [...CORE_STEPS, ...MORE_STEPS].sort((a, b) => chapterOrder(a) - chapterOrder(b)) : CORE_STEPS
+  return [...body, LAST_STEP].filter((s) => !(isWorkMode && GAME_TARGETS.has(s.target)) && !(IS_MOBILE_SHELL && s.isDesktopOnly))
+}
 const PAD = 6
 /** 높이를 재기 전 첫 자리 계산에 쓰는 설명 상자 높이 */
 const TIP_H_GUESS = 220
@@ -113,7 +125,9 @@ export function CoachTour({ isOpen, onClose }: { isOpen: boolean; onClose: (isFi
   const setView = useOffice((s) => s.setView)
   const isWorkMode = useWorkMode()
   const setHireOpen = useOffice((s) => s.setHireOpen)
-  const steps = useMemo(() => STEPS.filter((s) => !(isWorkMode && GAME_TARGETS.has(s.target)) && !(IS_MOBILE_SHELL && s.isDesktopOnly)), [isWorkMode])
+  // '더 보기'를 누르면 핵심 단계 사이에 나머지를 끼워 장 순서대로 다시 늘어놓는다
+  const [isMore, setIsMore] = useState(false)
+  const steps = useMemo(() => tourSteps(isMore, isWorkMode), [isWorkMode, isMore])
   const [index, setIndex] = useState(0)
   const step = steps[Math.min(index, steps.length - 1)]
   const rect = useTourTarget(isOpen ? step.target : null)
@@ -123,7 +137,9 @@ export function CoachTour({ isOpen, onClose }: { isOpen: boolean; onClose: (isFi
   const [view, setViewSize] = useState(() => ({ w: window.innerWidth, h: window.innerHeight }))
 
   useEffect(() => {
-    if (isOpen) setIndex(0)
+    if (!isOpen) return
+    setIndex(0)
+    setIsMore(false)
   }, [isOpen])
 
   useLayoutEffect(() => {
@@ -151,7 +167,7 @@ export function CoachTour({ isOpen, onClose }: { isOpen: boolean; onClose: (isFi
       const isInOtherDialog = document.activeElement?.closest('[role="dialog"]:not([data-coach-tour])')
       if (e.key !== 'Escape' || e.defaultPrevented || e.isComposing || isInOtherDialog) return
       e.preventDefault()
-      onClose(false)
+      stop()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -161,6 +177,12 @@ export function CoachTour({ isOpen, onClose }: { isOpen: boolean; onClose: (isFi
     if (isOpen && step.view) setView(step.view)
   }, [isOpen, step, setView])
 
+  // 그만 보기: 다시 보는 곳을 알려 준다
+  function stop() {
+    onClose(false)
+    showToast(t('guideHint.replayToast'))
+  }
+
   if (!isOpen) return null
   const isLast = index >= steps.length - 1
   const finish = () => {
@@ -168,6 +190,12 @@ export function CoachTour({ isOpen, onClose }: { isOpen: boolean; onClose: (isFi
     setView('map')
   }
   const next = () => (isLast ? finish() : setIndex(index + 1))
+  // 마지막 단계에서 '더 보기': 나머지를 끼워 넣고, 핵심 단계 다음(처음 보는 단계)부터 이어 본다
+  const showMore = () => {
+    const seen = new Set(steps)
+    setIsMore(true)
+    setIndex(Math.max(0, tourSteps(true, isWorkMode).findIndex((s) => !seen.has(s))))
+  }
   // 고용 창으로 바로: 연습 고르기는 띄우지 않는다 (설정 › 안내에서 언제든 할 수 있다)
   const hire = () => {
     onClose(false)
@@ -226,7 +254,7 @@ export function CoachTour({ isOpen, onClose }: { isOpen: boolean; onClose: (isFi
         </div>
         <p className="text-muted-foreground text-sm">{t(step.body, { modKey: MOD_KEY, trayPlace: osText(t('coachTour.trayPlace.mac'), t('coachTour.trayPlace.win')) })}</p>
         <div className="flex flex-wrap items-center gap-1">
-          <Button size="sm" variant="ghost" className="px-2" onClick={() => onClose(false)}>
+          <Button size="sm" variant="ghost" className="px-2" onClick={stop}>
             {t('coachTour.stop')}
           </Button>
           <Button size="sm" variant="ghost" className="px-2" onClick={skipChapter}>
@@ -236,6 +264,11 @@ export function CoachTour({ isOpen, onClose }: { isOpen: boolean; onClose: (isFi
             {index > 0 && (
               <Button size="sm" variant="outline" onClick={() => setIndex(index - 1)}>
                 {t('coachTour.prev')}
+              </Button>
+            )}
+            {isLast && !isMore && (
+              <Button size="sm" variant="outline" onClick={showMore}>
+                {t('coachTour.more')}
               </Button>
             )}
             {step.hasHireButton && (

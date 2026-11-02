@@ -3,11 +3,12 @@ import { useOffice } from '@/store'
 import { encodeLook, randomLook } from '@shared/look'
 import type { AiProvider, LogEntry, PlanUsage } from '@shared/types'
 import { t, trOr } from '@shared/i18n'
+import type { FirstTaskFailKind } from '@/lib/firstTaskFlow'
 
 // 온보딩 첫 업무: 직원 1명을 고용해 예제 업무를 실제로 맡기고, 결과·실패를 지켜본다 (화면은 Onboarding.tsx)
 export type FirstTaskExample = 'folder' | 'ideas'
 export type FirstTaskPhase = 'pick' | 'running' | 'done' | 'failed'
-export type FirstTaskFail = 'login' | 'limit' | 'timeout' | 'network' | 'unknown'
+export type FirstTaskFail = FirstTaskFailKind
 
 /** 이 시간이 넘으면 실패로 보여 준다 (직원은 계속 일하고, 늦게라도 끝나면 완료로 바뀐다) */
 export const FIRST_TASK_TIMEOUT_MS = 90_000
@@ -49,6 +50,8 @@ export function useFirstTask() {
   const [finishedAt, setFinishedAt] = useState(0)
   const [now, setNow] = useState(0)
   const [fail, setFail] = useState<FirstTaskFail | null>(null)
+  // 실패한 오류 원문 — '알 수 없는 문제'일 때 접어서 보여 준다
+  const [errorText, setErrorText] = useState('')
   const [limitAt, setLimitAt] = useState<number | null>(null)
   const seenApprovals = useRef(new Set<string>())
   const staff = useOffice((s) => (staffId ? s.staff.find((x) => x.id === staffId) : undefined))
@@ -77,6 +80,7 @@ export function useFirstTask() {
     }
     if (!errorLog) return
     const text = `${trOr(errorLog.textI18n, errorLog.text)} ${staff?.activity ?? ''}`
+    setErrorText(text.trim())
     const provider = staff?.provider ?? 'claude'
     void window.office.providerStatus().then((providers) => {
       const s = useOffice.getState()
@@ -125,6 +129,7 @@ export function useFirstTask() {
     setStartedAt(at)
     setNow(at)
     setFail(null)
+    setErrorText('')
     setPhase('running')
     const isBusy = useOffice.getState().staff.find((x) => x.id === id)?.status === 'working'
     await (isBusy ? window.office.interrupt(id, promptOf(example)) : window.office.instruct(id, promptOf(example)))
@@ -148,6 +153,8 @@ export function useFirstTask() {
     phase,
     staff,
     fail,
+    errorText,
+    staffId,
     limitAt,
     report,
     progress,

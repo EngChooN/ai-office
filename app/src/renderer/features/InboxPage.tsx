@@ -1,4 +1,4 @@
-import { CheckCheckIcon, CheckIcon } from 'lucide-react'
+import { CheckCheckIcon, CheckIcon, UserPlusIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Page } from '@/components/ui/page'
 import { useOffice } from '@/store'
@@ -80,7 +80,19 @@ export function InboxPage() {
         </div>
       )}
       {approvals.length === 0 && externalWaiting.length === 0 && decisions.length === 0 && checkingRuns.length === 0 && waitingPlans.length === 0 && (
-        <p className="text-muted-foreground text-sm">{t('inbox.empty')}</p>
+        // 비었을 때: 결재가 언제 생기는지 알려 주고, 직원이 없으면 고용으로 보낸다
+        <div className="text-muted-foreground flex max-w-3xl flex-col items-start gap-2 text-sm">
+          <p>{t('inbox.empty')}</p>
+          <p className="text-xs">{t('guideHint.inbox.emptyDesc')}</p>
+          {!staff.some((x) => x.kind === 'hired') && (
+            <>
+              <p className="text-xs">{t('guideHint.inbox.noStaff')}</p>
+              <Button size="sm" onClick={() => useOffice.getState().setHireOpen(true)}>
+                <UserPlusIcon /> {t('shell.hire')}
+              </Button>
+            </>
+          )}
+        </div>
       )}
       <div className="flex max-w-3xl flex-col gap-3">
         {approvals.map((a) => (

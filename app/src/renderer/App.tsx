@@ -28,6 +28,7 @@ import { useLayout } from '@/layout/useLayout'
 import { useLang } from '@/lib/i18n'
 import { connectOffice, useOffice, useWorkMode } from './store'
 import { ToastHost } from '@/lib/toast'
+import { shouldOfferPractice } from '@/lib/firstTaskFlow'
 import { t } from '@shared/i18n'
 
 export default function App() {
@@ -80,7 +81,8 @@ function AppBody() {
         isOpen={isTourOpen}
         onClose={(isFinished) => {
           setIsTourOpen(false)
-          setIsPickerOpen(isFinished)
+          // 이미 실제 업무를 해 본 사람에게는 연습 고르기를 또 띄우지 않는다 (설정 › 안내에서 언제든)
+          setIsPickerOpen(isFinished && shouldOfferPractice(useOffice.getState().staff))
         }}
       />
       <TutorialPicker isOpen={isPickerOpen} onClose={() => setIsPickerOpen(false)} />
@@ -177,16 +179,25 @@ function DesktopShell({ children }: { children?: React.ReactNode }) {
   )
 }
 
-/** 사무실에 직원이 없을 때: 직원 마켓으로 안내 */
+/** 사무실에 직원이 없을 때: 고용·직원 마켓으로 안내하고, 건너뛴 첫 실행 안내를 다시 여는 길도 둔다 */
 function EmptyOfficeHint() {
   const openMarket = useOffice((s) => s.openMarket)
+  const setHireOpen = useOffice((s) => s.setHireOpen)
   return (
-    <div className="bg-accent/50 flex shrink-0 items-center gap-3 border-b px-4 py-2 text-sm">
+    <div className="bg-accent/50 flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b px-4 py-2 text-sm">
       <StoreIcon className="size-4 shrink-0" />
-      <span>{t('market.empty.hint')}</span>
-      <Button size="sm" className="ml-auto" onClick={openMarket}>
-        {t('market.bring')}
-      </Button>
+      <span>{t('guideHint.empty.hint')}</span>
+      <div className="ml-auto flex gap-1.5">
+        <Button size="sm" variant="ghost" onClick={() => void window.office.updateSettings({ isOnboarded: false })}>
+          {t('guideHint.replay')}
+        </Button>
+        <Button size="sm" variant="outline" onClick={openMarket}>
+          {t('market.bring')}
+        </Button>
+        <Button size="sm" onClick={() => setHireOpen(true)}>
+          <UserPlusIcon /> {t('shell.hire')}
+        </Button>
+      </div>
     </div>
   )
 }

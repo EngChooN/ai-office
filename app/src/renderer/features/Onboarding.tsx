@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
-import { CheckCircle2Icon, CircleAlertIcon, CircleDashedIcon, CircleXIcon, CopyIcon, ExternalLinkIcon, FolderOpenIcon, Loader2Icon, LogInIcon, RefreshCwIcon } from 'lucide-react'
+import { CheckCircle2Icon, CircleAlertIcon, CircleDashedIcon, CircleXIcon, FolderOpenIcon, InboxIcon, Loader2Icon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { IS_WINDOWS, osText } from '@/lib/platform'
+import { osText } from '@/lib/platform'
+import { showToast } from '@/lib/toast'
+import { FAIL_ACTIONS, type FirstTaskAction, showsErrorDetail } from '@/lib/firstTaskFlow'
 import { useOffice } from '@/store'
 import type { AiProvider, ClaudeStatus } from '@shared/types'
 import { Avatar } from './StaffCard'
@@ -11,15 +13,12 @@ import { isAnyReady, ProviderCards, RecheckButton, useProviders } from './Provid
 import { fmtDate, t, trOr, type TKey } from '@shared/i18n'
 import { type FirstTaskExample, type FirstTaskFail, useFirstTask } from './useFirstTask'
 
-// 공식 설치 명령: 맥은 터미널, 윈도우는 PowerShell에 붙여 넣는다
-const INSTALL_COMMAND = osText('curl -fsSL https://claude.ai/install.sh | bash', 'irm https://claude.ai/install.ps1 | iex')
-const DOCS_URL = 'https://docs.claude.com/en/docs/claude-code/setup'
 const WELCOME_AVATARS = [1, 13, 5, 18, 2, 22]
-// 준비 점검은 설치 → 로그인 → 작업 폴더를 한 단계씩 (막히면 그 자리의 버튼으로 해결)
+// 준비 점검은 로그인 → 작업 폴더를 한 단계씩 (막히면 그 자리의 버튼으로 해결). 터미널용 Claude Code 설치는 선택이라 점검에서 뺐다
 // 마지막 점검(firstTask)은 직원 1명에게 예제 업무를 실제로 맡겨 본다 — 고르기·일하는 중·실패는 그 안의 상태
-const STEPS = ['welcome', 'install', 'login', 'folder', 'firstTask', 'ready'] as const
+const STEPS = ['welcome', 'login', 'folder', 'firstTask', 'ready'] as const
 type Step = (typeof STEPS)[number]
-const CHECK_STEPS: Step[] = ['install', 'login', 'folder', 'firstTask']
+const CHECK_STEPS: Step[] = ['login', 'folder', 'firstTask']
 const ACCOUNT_NAME: Record<AiProvider, string> = { claude: 'Claude', codex: 'ChatGPT' }
 const FAIL_TEXT: Record<FirstTaskFail, TKey> = {
   login: 'onboarding.firstTask.fail.login',
@@ -27,6 +26,12 @@ const FAIL_TEXT: Record<FirstTaskFail, TKey> = {
   timeout: 'onboarding.firstTask.fail.timeout',
   network: 'onboarding.firstTask.fail.network',
   unknown: 'onboarding.firstTask.fail.unknown',
+}
+const ACTION_TEXT: Record<FirstTaskAction, TKey> = {
+  toLogin: 'onboarding.firstTask.recheckLogin',
+  retry: 'onboarding.firstTask.retry',
+  openStaff: 'onboarding.firstTask.continueInOffice',
+  practice: 'onboarding.firstTask.practice',
 }
 
 const fmtSeconds = (ms: number) => t('onboarding.firstTask.seconds', { n: Math.round(ms / 1000) })
@@ -78,7 +83,7 @@ function CheckRow({
   )
 }
 
-/** 점검 단계 머리말 — "1/3 설치 확인" */
+/** 점검 단계 머리말 — "1/3 Claude 로그인" */
 function CheckHeader({ step, title, desc }: { step: Step; title: string; desc: string }) {
   return (
     <div className="flex flex-col gap-1">
@@ -92,8 +97,23 @@ function CheckHeader({ step, title, desc }: { step: Step; title: string; desc: s
 /**
  * 점검 단계 아래: 이전 / 다음 (아직 안 됐으면 "나중에 할게요"로 넘어간다).
  * onSkipToTour: 막혀서 다음으로 못 갈 때 남은 점검을 건너뛰고 둘러보기로 가는 길
+ * isChecking: 상태를 확인하는 동안은 넘어가지 못하게 막고 '확인 중…'을 보인다
  */
-function CheckFooter({ step, isOk, isBlocked, onMove, onSkipToTour }: { step: Step; isOk: boolean; isBlocked?: boolean; onMove: (step: Step) => void; onSkipToTour?: () => void }) {
+function CheckFooter({
+  step,
+  isOk,
+  isBlocked,
+  isChecking,
+  onMove,
+  onSkipToTour,
+}: {
+  step: Step
+  isOk: boolean
+  isBlocked?: boolean
+  isChecking?: boolean
+  onMove: (step: Step) => void
+  onSkipToTour?: () => void
+}) {
   const i = STEPS.indexOf(step)
   return (
     <div className="flex items-center justify-between">
@@ -108,31 +128,35 @@ function CheckFooter({ step, isOk, isBlocked, onMove, onSkipToTour }: { step: St
             {t('onboarding.provider.laterTour')}
           </Button>
         )}
-        <Button variant={isOk ? 'default' : 'outline'} onClick={() => onMove(STEPS[i + 1])} disabled={isBlocked}>
-          {isOk || isBlocked ? t('onboarding.next') : t('onboarding.later')}
+        <Button variant={isOk ? 'default' : 'outline'} onClick={() => onMove(STEPS[i + 1])} disabled={isBlocked || isChecking}>
+          {isChecking ? (
+            <>
+              <Loader2Icon className="animate-spin" /> {t('onboarding.checking')}
+            </>
+          ) : isOk || isBlocked ? (
+            t('onboarding.next')
+          ) : (
+            t('onboarding.later')
+          )}
         </Button>
       </div>
     </div>
   )
 }
 
-/** 첫 실행 안내: 앱 소개 → 준비 점검 마법사(설치·로그인·작업 폴더) → 둘러보기(코치마크) */
+/** 첫 실행 안내: 앱 소개 → 준비 점검 마법사(로그인·작업 폴더·첫 업무) → 둘러보기(코치마크) */
 export function Onboarding({ onStartTour }: { onStartTour: () => void }) {
   const isOnboarded = useOffice((s) => s.settings.isOnboarded)
   const isLoaded = useOffice((s) => s.isLoaded)
   const [step, setStep] = useState<Step>('welcome')
   const [status, setStatus] = useState<ClaudeStatus | null>(null)
   const [isChecking, setIsChecking] = useState(false)
-  const [isCopied, setIsCopied] = useState(false)
   const defaultCwd = useOffice((s) => s.settings.defaultCwd)
   // Claude가 준비돼 있으면 Codex는 묻지 않는다 (Claude만 쓰는 사용자의 화면은 그대로)
   const isClaudeOut = step === 'login' && status?.isLoggedIn === false
-  const isTerminalMissing = step === 'install' && status?.hasTerminalClaude === false
-  const providers = useProviders(isClaudeOut || isTerminalMissing || (step === 'firstTask' && !status?.isLoggedIn))
+  const providers = useProviders(isClaudeOut || (step === 'firstTask' && !status?.isLoggedIn))
   const isProviderReady = isAnyReady(providers.status)
-  // GPT(Codex)가 이미 준비됐으면 터미널용 Claude Code는 정말 선택 — 설치를 기다리지 않고 넘어간다
   const isCodexReady = providers.status?.codex.state === 'ready'
-  const isInstallOk = Boolean(status?.hasTerminalClaude) || isCodexReady
   // 첫 업무 직원: Claude 로그인이 돼 있으면 Claude, 아니면 GPT만 준비된 사용자도 막히지 않게 GPT
   const taskProvider: AiProvider | null = status?.isLoggedIn ? 'claude' : isCodexReady ? 'codex' : null
   const firstTask = useFirstTask()
@@ -150,7 +174,7 @@ export function Onboarding({ onStartTour }: { onStartTour: () => void }) {
   }, [])
 
   useEffect(() => {
-    if ((step === 'install' || step === 'login' || step === 'firstTask') && !status) void check()
+    if ((step === 'login' || step === 'firstTask') && !status) void check()
   }, [step, status, check])
 
   // 설정 › 안내에서 다시 열면 지난번 화면(완료·오래 걸리는 중)이 아니라 처음부터
@@ -167,8 +191,8 @@ export function Onboarding({ onStartTour }: { onStartTour: () => void }) {
     if (firstTask.phase === 'done') setStep('ready')
   }, [firstTask.phase])
 
-  // 설치 명령을 붙여 넣거나 로그인 창을 띄운 뒤에는 될 때까지 조용히 다시 확인한다
-  const isWaitingFix = (isTerminalMissing && !isCodexReady) || (step === 'login' && status?.isLoggedIn === false)
+  // 로그인 창을 띄운 뒤에는 될 때까지 조용히 다시 확인한다
+  const isWaitingFix = step === 'login' && status?.isLoggedIn === false
   useEffect(() => {
     if (!isWaitingFix) return
     const timer = setInterval(() => void window.office.claudeStatus().then(setStatus), 4000)
@@ -184,13 +208,28 @@ export function Onboarding({ onStartTour }: { onStartTour: () => void }) {
     else firstTask.dismiss()
     void window.office.updateSettings({ isOnboarded: true })
   }
+  // 소개에서 건너뛰면 다시 보는 곳을 알려 준다
+  const handleSkip = () => {
+    finish()
+    showToast(t('guideHint.replayToast'))
+  }
   const handleMarket = () => {
     finish()
     useOffice.getState().openMarket()
   }
-  const handleCopy = () => {
-    void navigator.clipboard.writeText(INSTALL_COMMAND)
-    setIsCopied(true)
+  // 첫 업무 직원(남겨 둔 경우)의 패널을 연다 — 보고를 다시 보고 다음 일을 맡기는 곳
+  const openTaskStaff = () => {
+    const s = useOffice.getState()
+    s.setView('map')
+    if (firstTask.staffId && s.staff.some((x) => x.id === firstTask.staffId)) s.select(firstTask.staffId)
+  }
+  const handleStartNow = () => {
+    finish()
+    openTaskStaff()
+  }
+  const handleInbox = () => {
+    finish()
+    useOffice.getState().setView('inbox')
   }
   const handlePickFolder = async () => {
     const dir = await window.office.pickFolder()
@@ -208,10 +247,10 @@ export function Onboarding({ onStartTour }: { onStartTour: () => void }) {
     finish()
     void window.office.tutorialStart('task')
   }
-  // 시간 초과: 직원은 사무실에 남아 계속 일하고, 연습은 고를 때만
+  // 시간 초과: 직원은 사무실에 남아 계속 일하고, 그 직원 패널을 열어 이어 본다 (연습은 고를 때만)
   const handleContinueInOffice = () => {
     finish()
-    useOffice.getState().setView('map')
+    openTaskStaff()
   }
   const handlePractice = () => {
     finish()
@@ -222,6 +261,19 @@ export function Onboarding({ onStartTour }: { onStartTour: () => void }) {
     setStatus(null)
     setStep('login')
   }
+  const ACTION_HANDLER: Record<FirstTaskAction, () => void> = {
+    toLogin: handleRecheckLogin,
+    retry: handleRunTask,
+    openStaff: handleContinueInOffice,
+    practice: handlePractice,
+  }
+  /** 실패 종류에 맞는 버튼만 (첫 버튼이 추천) */
+  const failButtons = (fail: FirstTaskFail) =>
+    FAIL_ACTIONS[fail].map((a, i) => (
+      <Button key={a} variant={i === 0 ? 'default' : 'outline'} onClick={ACTION_HANDLER[a]}>
+        {t(ACTION_TEXT[a])}
+      </Button>
+    ))
   const failText = (fail: FirstTaskFail) =>
     fail === 'limit' && firstTask.limitAt ? t('onboarding.firstTask.fail.limitAt', { time: fmtDate(firstTask.limitAt, { timeStyle: 'short' }) }) : t(FAIL_TEXT[fail])
   const staffName = firstTask.staff?.name ?? t('onboarding.firstTask.staffName')
@@ -251,9 +303,6 @@ export function Onboarding({ onStartTour }: { onStartTour: () => void }) {
                 { icon: '🧑‍💼', title: t('onboarding.card.hire.title'), body: t('onboarding.card.hire.body') },
                 { icon: '💬', title: t('onboarding.card.instruct.title'), body: t('onboarding.card.instruct.body') },
                 { icon: '✅', title: t('onboarding.card.approve.title'), body: t('onboarding.card.approve.body') },
-                { icon: '🧭', title: t('onboarding.card.team.title'), body: t('onboarding.card.team.body') },
-                { icon: '📘', title: t('onboarding.card.manual.title'), body: t('onboarding.card.manual.body') },
-                { icon: '📈', title: t('onboarding.card.growth.title'), body: t('onboarding.card.growth.body') },
               ].map((c) => (
                 <div key={c.title} className="bg-card flex flex-col gap-1 rounded-xl border p-4">
                   <span className="text-2xl">{c.icon}</span>
@@ -262,42 +311,18 @@ export function Onboarding({ onStartTour }: { onStartTour: () => void }) {
                 </div>
               ))}
             </div>
+            {/* 유료 계정이 필요하다는 사실을 로그인 단계 전에 알린다 */}
+            <p className="bg-muted rounded-lg px-3 py-2 text-center text-sm">{t('onboarding.welcome.needs')}</p>
             <p className="text-muted-foreground text-center text-xs">{t('onboarding.welcome.footer')}</p>
             <div className="flex items-center justify-between">
               <StepDots step={step} />
               <div className="flex gap-2">
-                <Button variant="ghost" onClick={finish}>
+                <Button variant="ghost" onClick={handleSkip}>
                   {t('onboarding.skip')}
                 </Button>
-                <Button onClick={() => setStep('install')}>{t('onboarding.start')}</Button>
+                <Button onClick={() => setStep('login')}>{t('onboarding.start')}</Button>
               </div>
             </div>
-          </>
-        )}
-
-        {step === 'install' && (
-          <>
-            <CheckHeader step={step} title={t('onboarding.install.title')} desc={t('onboarding.install.desc')} />
-            <CheckRow isOk title={t('onboarding.engine.title')}>
-              <span className="text-muted-foreground text-xs">{t('onboarding.engine.desc')}</span>
-            </CheckRow>
-            <CheckRow isOk={isInstallOk} isOptional isLoading={isChecking && !status} title={status?.hasTerminalClaude ? t('onboarding.terminal.installed') : t('onboarding.terminal.title')}>
-              <span className="text-muted-foreground text-xs">{t('onboarding.terminal.desc')}</span>
-              {isTerminalMissing && isCodexReady && <span className="text-muted-foreground text-xs">{t('onboarding.terminal.codexReady')}</span>}
-              {status && !status.hasTerminalClaude && (
-                <div className="flex flex-wrap items-center gap-2">
-                  {IS_WINDOWS && <span className="text-muted-foreground w-full text-xs">{t('onboarding.terminal.winHint')}</span>}
-                  <code className="bg-muted rounded px-2 py-1 text-xs">{INSTALL_COMMAND}</code>
-                  <Button size="sm" variant="outline" onClick={handleCopy}>
-                    <CopyIcon /> {isCopied ? t('onboarding.copied') : t('onboarding.copy')}
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={() => window.open(DOCS_URL)}>
-                    <ExternalLinkIcon /> {t('onboarding.installGuide')}
-                  </Button>
-                </div>
-              )}
-            </CheckRow>
-            <CheckFooter step={step} isOk={isInstallOk} onMove={setStep} />
           </>
         )}
 
@@ -309,11 +334,16 @@ export function Onboarding({ onStartTour }: { onStartTour: () => void }) {
               isChecking={providers.isChecking}
               onRecheck={() => void providers.check()}
               claudeExtra={
-                <ol className="text-muted-foreground list-decimal space-y-0.5 pl-4 text-xs">
-                  <li>{t('onboarding.login.step1', { window: osText(t('onboarding.login.window.mac'), t('onboarding.login.window.win')) })}</li>
-                  <li>{t('onboarding.login.step2')}</li>
-                  <li>{t('onboarding.login.step3')}</li>
-                </ol>
+                <div className="text-muted-foreground flex flex-col gap-1 text-xs">
+                  <span>{t('onboarding.login.desc')}</span>
+                  <ol className="list-decimal space-y-0.5 pl-4">
+                    <li>{t('onboarding.login.step1')}</li>
+                    <li>{t('onboarding.login.step2')}</li>
+                    <li>{t('onboarding.login.step3')}</li>
+                  </ol>
+                  {/* 브라우저를 못 열면 터미널 창으로 돌아간다 — 그때 할 일 */}
+                  <span>{t('onboarding.login.terminalFallback', { window: osText(t('onboarding.login.window.mac'), t('onboarding.login.window.win')) })}</span>
+                </div>
               }
             />
             <RecheckButton
@@ -323,34 +353,27 @@ export function Onboarding({ onStartTour }: { onStartTour: () => void }) {
                 void providers.check()
               }}
             />
-            <CheckFooter step={step} isOk={isProviderReady} isBlocked={Boolean(providers.status) && !isProviderReady} onMove={setStep} onSkipToTour={handleTour} />
+            <CheckFooter
+              step={step}
+              isOk={isProviderReady}
+              isBlocked={Boolean(providers.status) && !isProviderReady}
+              isChecking={!providers.status}
+              onMove={setStep}
+              onSkipToTour={handleTour}
+            />
           </>
         )}
 
         {step === 'login' && !isClaudeOut && (
           <>
             <CheckHeader step={step} title={t('onboarding.loginStep.title')} desc={t('onboarding.loginStep.desc')} />
-            <CheckRow isOk={Boolean(status?.isLoggedIn)} isLoading={isChecking && !status} title={status?.isLoggedIn ? t('onboarding.login.done', { email: status.email ?? '' }) : t('onboarding.login.needed')}>
-              {status && !status.isLoggedIn && (
-                <>
-                  <span className="text-muted-foreground text-xs">{t('onboarding.login.desc')}</span>
-                  <ol className="text-muted-foreground list-decimal space-y-0.5 pl-4 text-xs">
-                    <li>{t('onboarding.login.step1', { window: osText(t('onboarding.login.window.mac'), t('onboarding.login.window.win')) })}</li>
-                    <li>{t('onboarding.login.step2')}</li>
-                    <li>{t('onboarding.login.step3')}</li>
-                  </ol>
-                  <div className="flex gap-2">
-                    <Button size="sm" onClick={() => void window.office.openClaudeLogin()}>
-                      <LogInIcon /> {t('onboarding.login.open')}
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => void check()} disabled={isChecking}>
-                      <RefreshCwIcon /> {t('onboarding.login.recheck')}
-                    </Button>
-                  </div>
-                </>
-              )}
-            </CheckRow>
-            <CheckFooter step={step} isOk={Boolean(status?.isLoggedIn)} onMove={setStep} />
+            {/* 로그아웃 상태는 위 공급자 카드가 맡는다 — 여기는 확인 중이거나 로그인된 상태 */}
+            <CheckRow
+              isOk={Boolean(status?.isLoggedIn)}
+              isLoading={!status}
+              title={status?.isLoggedIn ? t('onboarding.login.done', { email: status.email ?? '' }) : t('onboarding.checking')}
+            />
+            <CheckFooter step={step} isOk={Boolean(status?.isLoggedIn)} isChecking={!status} onMove={setStep} />
           </>
         )}
 
@@ -358,6 +381,11 @@ export function Onboarding({ onStartTour }: { onStartTour: () => void }) {
           <>
             <CheckHeader step={step} title={t('onboarding.folder.title')} desc={t('onboarding.folder.desc')} />
             <CheckRow isOk={Boolean(defaultCwd)} title={defaultCwd ? t('onboarding.folder.done', { path: shortPath(defaultCwd) }) : t('onboarding.folder.none')}>
+              <ul className="text-muted-foreground list-disc space-y-0.5 pl-4 text-xs">
+                <li>{t('onboarding.folder.example', { example: osText('~/Documents/report', 'C:\\Users\\me\\Documents\\report') })}</li>
+                <li>{t('onboarding.folder.permission')}</li>
+                <li>{t('onboarding.folder.optional')}</li>
+              </ul>
               <Button size="sm" variant={defaultCwd ? 'outline' : 'default'} onClick={() => void handlePickFolder()} className="w-fit">
                 <FolderOpenIcon /> {defaultCwd ? t('onboarding.folder.change') : t('onboarding.folder.pick')}
               </Button>
@@ -371,8 +399,19 @@ export function Onboarding({ onStartTour }: { onStartTour: () => void }) {
             <CheckHeader step={step} title={t('onboarding.firstTask.title')} desc={t('onboarding.firstTask.desc')} />
             <CheckRow isOk={false} isLoading={isChecking || providers.isChecking} title={t('onboarding.firstTask.unavailable')}>
               <span className="text-muted-foreground text-xs">{t('onboarding.firstTask.unavailableDesc')}</span>
+              {/* 다음에 할 일을 고르게: 로그인 단계로 돌아가거나, 사용량 없이 연습 */}
+              {!(isChecking || providers.isChecking) && (
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" onClick={handleRecheckLogin}>
+                    {t('onboarding.firstTask.recheckLogin')}
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={handlePractice}>
+                    {t('onboarding.firstTask.practice')}
+                  </Button>
+                </div>
+              )}
             </CheckRow>
-            <CheckFooter step={step} isOk={false} onMove={setStep} />
+            <CheckFooter step={step} isOk={false} isChecking={isChecking || providers.isChecking} onMove={setStep} />
           </>
         )}
 
@@ -455,12 +494,7 @@ export function Onboarding({ onStartTour }: { onStartTour: () => void }) {
             <CheckHeader step={step} title={t('onboarding.firstTask.slowTitle', { name: staffName })} desc={t('onboarding.firstTask.fail.timeout')} />
             <div className="flex items-center justify-between">
               <StepDots step={step} />
-              <div className="flex gap-2">
-                <Button variant="ghost" onClick={handlePractice}>
-                  {t('onboarding.firstTask.practice')}
-                </Button>
-                <Button onClick={handleContinueInOffice}>{t('onboarding.firstTask.continueInOffice')}</Button>
-              </div>
+              <div className="flex gap-2">{failButtons('timeout')}</div>
             </div>
           </>
         )}
@@ -468,17 +502,22 @@ export function Onboarding({ onStartTour }: { onStartTour: () => void }) {
         {step === 'firstTask' && firstTask.phase === 'failed' && firstTask.fail && !isTimedOut && (
           <>
             <CheckHeader step={step} title={t('onboarding.firstTask.failTitle')} desc={t('onboarding.firstTask.failDesc')} />
-            <CheckRow isOk={false} isError title={failText(firstTask.fail)} />
+            <CheckRow isOk={false} isError title={failText(firstTask.fail)}>
+              {/* 원인을 이름 붙이지 못한 실패는 오류 원문을 접어 둔다 */}
+              {showsErrorDetail(firstTask.fail) && firstTask.errorText && (
+                <details className="text-muted-foreground text-xs">
+                  <summary className="cursor-pointer">{t('onboarding.firstTask.errorDetail')}</summary>
+                  <pre className="bg-muted mt-1 max-h-40 overflow-auto rounded p-2 whitespace-pre-wrap">{firstTask.errorText}</pre>
+                </details>
+              )}
+            </CheckRow>
             <div className="flex items-center justify-between">
               <StepDots step={step} />
               <div className="flex gap-2">
                 <Button variant="ghost" onClick={handleSkipTask}>
                   {t('onboarding.firstTask.skip')}
                 </Button>
-                <Button variant={firstTask.fail === 'login' ? 'default' : 'outline'} onClick={handleRecheckLogin}>
-                  {t('onboarding.firstTask.recheckLogin')}
-                </Button>
-                {firstTask.fail !== 'login' && firstTask.fail !== 'limit' && <Button onClick={handleRunTask}>{t('onboarding.firstTask.retry')}</Button>}
+                {failButtons(firstTask.fail)}
               </div>
             </div>
           </>
@@ -507,6 +546,13 @@ export function Onboarding({ onStartTour }: { onStartTour: () => void }) {
                 <span className="text-muted-foreground text-xs">{t('onboarding.firstTask.keepStaffNote')}</span>
               </span>
             </label>
+            {/* 보고·결재를 다시 보는 곳 */}
+            <div className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs">
+              <span>{t('onboarding.ready.where')}</span>
+              <Button size="sm" variant="outline" className="h-6 px-2 text-xs" onClick={handleInbox}>
+                <InboxIcon /> {t('onboarding.ready.toInbox')}
+              </Button>
+            </div>
           </>
         )}
 
@@ -523,13 +569,16 @@ export function Onboarding({ onStartTour }: { onStartTour: () => void }) {
             <div className="flex items-center justify-between">
               <StepDots step={step} />
               <div className="flex gap-2">
-                <Button variant="outline" onClick={handleMarket}>
+                {/* 추천은 하나만 강조: 첫 업무를 해 봤으면 바로 일 맡기기, 아니면 둘러보기 */}
+                <Button variant="ghost" onClick={handleMarket}>
                   {t('market.bring')}
                 </Button>
-                <Button variant="ghost" onClick={finish}>
+                <Button variant={firstTask.phase === 'done' ? 'default' : 'outline'} onClick={handleStartNow}>
                   {t('onboarding.startNow')}
                 </Button>
-                <Button onClick={handleTour}>{t('onboarding.tour')}</Button>
+                <Button variant={firstTask.phase === 'done' ? 'outline' : 'default'} onClick={handleTour}>
+                  {t('onboarding.tour')}
+                </Button>
               </div>
             </div>
           </>

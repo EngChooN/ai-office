@@ -6,6 +6,7 @@ import { promisify } from 'node:util'
 import { shell } from 'electron'
 import type { ClaudeStatus, ProvidersStatus } from '../shared/types'
 import { claudeBinaryPath } from './ai/claude'
+import { CLAUDE_LOGIN_ARGS, loginClaudeInBrowser } from './ai/claudeLogin'
 import { codexBinaryPath } from './ai/codex'
 import { loginCodex } from './ai/codexLogin'
 import { classifyClaude, isRunFailure, isTimedOut, keepPrevOnUnknown, probeCodex } from './ai/providerStatus'
@@ -67,17 +68,18 @@ async function whichClaude() {
   }
 }
 
-/** 로그인은 브라우저 인증이 오가는 대화형 과정이라 터미널 창에서 연다 */
+/** 로그인: 먼저 앱이 직접 띄워 로그인 주소를 브라우저로 열고, 주소를 못 잡으면(10초) 예전처럼 터미널 창에서 연다 */
 export async function openClaudeLogin() {
+  if ((await loginClaudeInBrowser(claudeBinaryPath(), (url) => shell.openExternal(url))) === 'browser') return
   // 윈도우: 따로 떼어 낸(detached) 콘솔 프로그램은 자기 명령 창을 띄운다
   if (IS_WINDOWS) {
-    const child = spawn(claudeBinaryPath(), ['auth', 'login'], { detached: true, stdio: 'ignore' })
+    const child = spawn(claudeBinaryPath(), CLAUDE_LOGIN_ARGS, { detached: true, stdio: 'ignore' })
     // 실행 파일이 없거나 못 띄우면 main 프로세스가 죽지 않게 기록만 남긴다 (화면은 "다시 확인"으로 상태를 본다)
     child.on('error', (e) => console.error('[setup] 로그인 창을 열지 못했습니다:', e))
     child.unref()
     return
   }
-  const cmd = `'${claudeBinaryPath().replaceAll("'", "'\\''")}' auth login`
+  const cmd = `'${claudeBinaryPath().replaceAll("'", "'\\''")}' ${CLAUDE_LOGIN_ARGS.join(' ')}`
   const script = `tell application "Terminal"\nactivate\ndo script "${cmd.replaceAll('\\', '\\\\').replaceAll('"', '\\"')}"\nend tell`
   await run('osascript', ['-e', script])
   return true
