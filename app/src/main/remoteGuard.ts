@@ -26,7 +26,9 @@ export function restrictRemoteArgs(method: string, args: unknown[], ctx: RemoteG
 }
 
 /** 원격에서 자동결재는 끄기와 '지금부터 N시간'(최대 12시간, 저절로 꺼짐)만 — 매일 반복하는 시간대는 PC에서만 */
-export const isRemoteAutoAllowed = (plan: { mode: string }) => plan.mode === 'off' || plan.mode === 'hours'
+export const REMOTE_AUTO_MAX_HOURS = 12
+export const isRemoteAutoAllowed = (plan: { mode: string; hours?: number }) =>
+  plan.mode === 'off' || (plan.mode === 'hours' && typeof plan.hours === 'number' && Number.isFinite(plan.hours) && plan.hours > 0 && plan.hours <= REMOTE_AUTO_MAX_HOURS)
 
 /** "앞으로 항상 승인" 규칙을 원격에서 만들 수 없는 도구 (Bash — 한 번 누른 승인이 모든 명령 허가가 되지 않게) */
 export const isRemoteRuleBlocked = (toolName: string) => /^bash$/i.test(toolName.trim())
@@ -40,3 +42,6 @@ export function isRemoteManualDirAllowed(dir: string | null | undefined, labDirs
 
 /** 원격에서는 프로젝트·랩 폴더 매뉴얼만 만들고 고친다 — 전역(~/.claude/skills) 매뉴얼은 만들기·고치기·프로젝트로 옮기기 모두 PC에서만 */
 export const isRemoteManualScopeAllowed = (scope: string, previousScope?: string | null) => scope === 'project' && previousScope !== 'user'
+
+/** 원격에서 지울 수 있는 매뉴얼: 프로젝트·랩 폴더 매뉴얼만 (전역 매뉴얼 삭제는 PC에서만) */
+export const isRemoteManualDeleteAllowed = (scope: string) => scope === 'project'

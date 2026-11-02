@@ -96,7 +96,7 @@ import { importFile, mimeOf } from './attachments'
 import { saveArtifactFile } from './artifacts'
 import { replaceArtifactRef } from '../shared/artifact'
 import type { RemoteOfficePort } from './remote/handler.ts'
-import { isRemoteAutoAllowed, isRemoteManualDirAllowed, isRemoteManualScopeAllowed, isRemoteRuleBlocked } from './remoteGuard'
+import { isRemoteAutoAllowed, isRemoteManualDeleteAllowed, isRemoteManualDirAllowed, isRemoteManualScopeAllowed, isRemoteRuleBlocked } from './remoteGuard'
 import { pickStaffPatch, type StaffPatch } from './staffPatch'
 import { isRemoteCall, REMOTE_MARK, remoteMarked } from './remoteContext'
 import * as db from './db'
@@ -2618,6 +2618,8 @@ export class Office extends EventEmitter<{
   deleteManual(file: string) {
     const m = this.listManuals().find((x) => x.path === file)
     if (!m) throw new InvalidArgsError('등록된 매뉴얼이 아니에요')
+    // 전역 매뉴얼은 모든 프로젝트에 영향 — 휴대폰에서는 지우지 못한다
+    if (isRemoteCall() && !isRemoteManualDeleteAllowed(m.scope)) throw new InvalidArgsError('전역 매뉴얼은 PC에서 해 주세요 (프로젝트·랩 폴더 매뉴얼만 휴대폰에서 할 수 있어요)')
     removeManual(file)
     for (const s of this.hired.values())
       if (Array.isArray(s.equipment.skills) && s.equipment.skills.includes(m.name)) this.setEquipment(s.id, { ...s.equipment, skills: s.equipment.skills.filter((n) => n !== m.name) })

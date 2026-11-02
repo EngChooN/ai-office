@@ -93,17 +93,19 @@ export function ManualsPage() {
                     <Button size="sm" variant="outline" onClick={() => setTraining(m)}>
                       <GraduationCapIcon /> {t('manuals.trainCount', { count: trainedCount(m) })}
                     </Button>
-                    {/* 전역 매뉴얼은 모든 프로젝트에 영향 — 고치기는 PC에서만 */}
+                    {/* 전역 매뉴얼은 모든 프로젝트에 영향 — 고치기·지우기는 PC에서만 */}
                     {IS_MOBILE_SHELL && m.scope === 'user' ? (
                       <span className="text-muted-foreground ml-auto text-[10px]">{t('manuals.userPcOnly')}</span>
                     ) : (
-                      <Button size="icon" variant="ghost" className="ml-auto size-8" onClick={() => setEditing({ input: { ...m }, previousPath: m.path })} aria-label={t('manuals.edit')}>
-                        <PencilIcon className="size-4" />
-                      </Button>
+                      <>
+                        <Button size="icon" variant="ghost" className="ml-auto size-8" onClick={() => setEditing({ input: { ...m }, previousPath: m.path })} aria-label={t('manuals.edit')}>
+                          <PencilIcon className="size-4" />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="size-8" onClick={() => void handleDelete(m)} aria-label={t('manuals.delete')}>
+                          <Trash2Icon className="size-4" />
+                        </Button>
+                      </>
                     )}
-                    <Button size="icon" variant="ghost" className="size-8" onClick={() => void handleDelete(m)} aria-label={t('manuals.delete')}>
-                      <Trash2Icon className="size-4" />
-                    </Button>
                   </div>
                 </div>
               ))}

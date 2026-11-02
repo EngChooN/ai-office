@@ -7,7 +7,7 @@ import { AuthGuard, ipKey, newToken } from '../src/main/remote/auth.ts'
 import { createSelfSignedCert } from '../src/main/remote/cert.ts'
 import { AUTHED_RESERVED, MAX_CONNECTIONS_PER_ADDRESS, RemoteServer } from '../src/main/remote/server.ts'
 import { handleV2Call, pickFields, V2_METHODS, type V2CallDeps } from '../src/main/remote/v2.ts'
-import { isRemoteAutoAllowed, isRemoteManualDirAllowed, isRemoteManualScopeAllowed, isRemoteRuleBlocked, restrictRemoteArgs } from '../src/main/remoteGuard.ts'
+import { isRemoteAutoAllowed, isRemoteManualDeleteAllowed, isRemoteManualDirAllowed, isRemoteManualScopeAllowed, isRemoteRuleBlocked, restrictRemoteArgs } from '../src/main/remoteGuard.ts'
 import { remoteSafeEquipment } from '../src/shared/staffPack.ts'
 import { READ_ONLY_BASH, RISKY_BASH } from '../src/shared/bashPolicy.ts'
 
@@ -51,7 +51,13 @@ test('PC 쪽 방어: 이미 켜 둔 "위험 명령 금지"는 원격이 빼지 �
 
 test('원격 자동결재는 끄기·N시간만, 항상 승인 규칙은 Bash 제외, 매뉴얼은 랩 폴더만', () => {
   assert.equal(isRemoteAutoAllowed({ mode: 'off' }), true)
-  assert.equal(isRemoteAutoAllowed({ mode: 'hours' }), true, '지금부터 N시간은 휴대폰에서도')
+  assert.equal(isRemoteAutoAllowed({ mode: 'hours', hours: 1 }), true, '지금부터 N시간은 휴대폰에서도')
+  assert.equal(isRemoteAutoAllowed({ mode: 'hours', hours: 12 }), true, '12시간까지')
+  assert.equal(isRemoteAutoAllowed({ mode: 'hours', hours: 12.01 }), false, '12시간 넘으면 거절')
+  assert.equal(isRemoteAutoAllowed({ mode: 'hours', hours: 24 }), false, 'PC 최대치 24시간도 원격에선 거절')
+  assert.equal(isRemoteAutoAllowed({ mode: 'hours', hours: 0 }), false)
+  assert.equal(isRemoteAutoAllowed({ mode: 'hours', hours: Number.NaN }), false)
+  assert.equal(isRemoteAutoAllowed({ mode: 'hours' }), false, '시간이 없으면 거절')
   assert.equal(isRemoteAutoAllowed({ mode: 'daily' }), false, '매일 시간대는 PC에서만')
   assert.equal(isRemoteRuleBlocked('Bash'), true)
   assert.equal(isRemoteRuleBlocked(' bash '), true)
@@ -70,6 +76,8 @@ test('원격 매뉴얼 범위: 프로젝트만, 전역 매뉴얼 생성·수정�
   assert.equal(isRemoteManualScopeAllowed('user'), false)
   assert.equal(isRemoteManualScopeAllowed('user', 'user'), false)
   assert.equal(isRemoteManualScopeAllowed('project', 'user'), false)
+  assert.equal(isRemoteManualDeleteAllowed('project'), true)
+  assert.equal(isRemoteManualDeleteAllowed('user'), false, '전역 매뉴얼 삭제는 PC에서만')
 })
 
 // ── 3) S 분류: hire·updateStaff·recruitExternal ─────────
