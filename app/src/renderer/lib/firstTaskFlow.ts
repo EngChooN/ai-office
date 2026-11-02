@@ -24,11 +24,15 @@ export const showsErrorDetail = (fail: FirstTaskFailKind) => fail === 'unknown'
  * 로그인 단계 갈림길 — Claude·Codex(ChatGPT)를 함께 확인하고 둘 중 하나만 준비돼도 통과한다.
  * claudeLoggedIn: claudeStatus 결과(아직 모르면 null) · providers: 두 공급자 상태(아직 모르면 null).
  * isChecking: 둘 다 결과가 올 때까지는 확인 중 · isOk: 하나라도 준비됨 · isBlocked: 둘 다 확인했는데 둘 다 안 됨(첫 업무를 못 해 둘러보기로)
+ * isBothReady: 둘 다 준비됨 · taskProvider: 첫 업무를 맡길 공급자 — 통과 판단과 같은 기준으로 Claude 먼저, 아니면 Codex
  */
 export function loginGate(claudeLoggedIn: boolean | null, providers: Record<'claude' | 'codex', { state: string }> | null) {
   const isChecking = claudeLoggedIn === null || providers === null
-  const isOk = claudeLoggedIn === true || Boolean(providers && (providers.claude.state === 'ready' || providers.codex.state === 'ready'))
-  return { isChecking, isOk, isBlocked: !isChecking && !isOk }
+  const isClaudeReady = claudeLoggedIn === true || providers?.claude.state === 'ready'
+  const isCodexReady = providers?.codex.state === 'ready'
+  const isOk = isClaudeReady || isCodexReady
+  const taskProvider: 'claude' | 'codex' | null = isClaudeReady ? 'claude' : isCodexReady ? 'codex' : null
+  return { isChecking, isOk, isBlocked: !isChecking && !isOk, isBothReady: isClaudeReady && isCodexReady, taskProvider }
 }
 
 /** 둘러보기를 끝까지 본 뒤 연습 고르기를 띄울지 — 이미 실제 업무를 해 본 직원이 있으면 생략한다 */

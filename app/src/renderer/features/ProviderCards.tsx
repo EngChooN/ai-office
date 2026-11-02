@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils'
 import type { AiProvider, ProvidersStatus, ProviderStatus } from '@shared/types'
 import { t, type TKey } from '@shared/i18n'
 import { isProviderStale } from '@/lib/providerRecheck'
+import { createLatestRequest } from '@/lib/latestRequest'
 import { useOffice } from '@/store'
 
 // 공급자(Claude·Codex) 설치·로그인 상태 카드 — 설정 화면과 첫 실행 온보딩 로그인 단계가 함께 쓴다
@@ -27,22 +28,26 @@ export function useProviders(isEnabled = true) {
   const [status, setStatus] = useState<ProvidersStatus | null>(() => cached?.status ?? null)
   const [isChecking, setIsChecking] = useState(false)
   const lastCheckedAt = useRef(cached?.at ?? 0)
-  const isInFlight = useRef(false)
+  // 겹친 조회는 마지막에 보낸 것의 응답만 쓴다 (먼저 보낸 느린 응답이 최신 결과를 덮지 않게)
+  const requests = useRef(createLatestRequest()).current
   /** isSilent: 주기적으로 다시 볼 때 — 확인 중 표시·버튼 막기 없이, 이미 묻는 중이면 건너뛴다 */
-  const check = useCallback(async ({ isSilent = false }: { isSilent?: boolean } = {}) => {
-    if (isSilent && isInFlight.current) return
-    if (!isSilent) setIsChecking(true)
-    isInFlight.current = true
-    try {
-      const s = await window.office.providerStatus()
-      lastCheckedAt.current = Date.now()
-      cached = { status: s, at: lastCheckedAt.current }
-      setStatus(s)
-    } finally {
-      isInFlight.current = false
-      if (!isSilent) setIsChecking(false)
-    }
-  }, [])
+  const check = useCallback(
+    async ({ isSilent = false }: { isSilent?: boolean } = {}) => {
+      if (isSilent && requests.isPending) return
+      if (!isSilent) setIsChecking(true)
+      try {
+        const { value: s, isLatest } = await requests.run(() => window.office.providerStatus())
+        if (!isLatest) return
+        lastCheckedAt.current = Date.now()
+        cached = { status: s, at: lastCheckedAt.current }
+        setStatus(s)
+      } finally {
+        // 다른 요청이 아직 묻는 중이면 확인 중 표시를 그대로 둔다
+        if (!requests.isPending) setIsChecking(false)
+      }
+    },
+    [requests],
+  )
   useEffect(() => {
     if (isEnabled && (!status || isProviderStale(lastCheckedAt.current, Date.now()))) void check()
   }, [isEnabled, status, check])
@@ -50,11 +55,11 @@ export function useProviders(isEnabled = true) {
   useEffect(() => {
     if (!isEnabled) return
     const onFocus = () => {
-      if (!isInFlight.current && isProviderStale(lastCheckedAt.current, Date.now())) void check()
+      if (!requests.isPending && isProviderStale(lastCheckedAt.current, Date.now())) void check()
     }
     window.addEventListener('focus', onFocus)
     return () => window.removeEventListener('focus', onFocus)
-  }, [isEnabled, check])
+  }, [isEnabled, check, requests])
   return { status, isChecking, check }
 }
 

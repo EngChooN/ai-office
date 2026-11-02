@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { CheckCircle2Icon, CircleAlertIcon, CircleDashedIcon, CircleXIcon, FolderOpenIcon, InboxIcon, Loader2Icon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { osText } from '@/lib/platform'
 import { showToast } from '@/lib/toast'
 import { FAIL_ACTIONS, type FirstTaskAction, loginGate, showsErrorDetail } from '@/lib/firstTaskFlow'
+import { createLatestRequest } from '@/lib/latestRequest'
 import { useOffice } from '@/store'
 import type { AiProvider, ClaudeStatus } from '@shared/types'
 import { Avatar } from './StaffCard'
@@ -155,12 +156,11 @@ export function Onboarding({ onStartTour }: { onStartTour: () => void }) {
   // 로그인 단계는 아래에서 Claude·Codex를 직접 함께 확인한다. 첫 업무 단계는 Claude가 안 될 때만 Codex를 본다
   const providers = useProviders(step === 'firstTask' && !status?.isLoggedIn)
   const checkProviders = providers.check
-  const isCodexReady = providers.status?.codex.state === 'ready'
   // 둘 중 하나만 준비돼도 통과 — 둘 다 결과가 올 때까지는 확인 중
   const gate = loginGate(status ? status.isLoggedIn : null, providers.status)
-  const isBothReady = Boolean(status?.isLoggedIn || providers.status?.claude.state === 'ready') && isCodexReady
-  // 첫 업무 직원: Claude 로그인이 돼 있으면 Claude, 아니면 GPT만 준비된 사용자도 막히지 않게 GPT
-  const taskProvider: AiProvider | null = status?.isLoggedIn ? 'claude' : isCodexReady ? 'codex' : null
+  const isBothReady = gate.isBothReady
+  // 첫 업무 직원: 통과 판단과 같은 기준으로 Claude가 되면 Claude, 아니면 GPT만 준비된 사용자도 막히지 않게 GPT
+  const taskProvider: AiProvider | null = gate.taskProvider
   const firstTask = useFirstTask()
   const [example, setExample] = useState<FirstTaskExample | null>(null)
   // 보고 전문은 직원 화면으로 가지 않고 여기서 펼쳐 본다
@@ -169,11 +169,22 @@ export function Onboarding({ onStartTour }: { onStartTour: () => void }) {
   const [isKeepStaff, setIsKeepStaff] = useState(true)
   const pickedExample = example ?? (defaultCwd ? 'folder' : 'ideas')
 
-  const check = useCallback(async () => {
-    setIsChecking(true)
-    setStatus(await window.office.claudeStatus())
-    setIsChecking(false)
-  }, [])
+  // Claude 조회도 겹치면 마지막에 보낸 것의 응답만 쓴다 (4초 조용한 조회·다시 확인이 겹칠 때)
+  const claudeRequests = useRef(createLatestRequest()).current
+  /** isSilent: 주기적으로 다시 볼 때 — 확인 중 표시 없이, 이미 묻는 중이면 건너뛴다 */
+  const check = useCallback(
+    async ({ isSilent = false }: { isSilent?: boolean } = {}) => {
+      if (isSilent && claudeRequests.isPending) return
+      if (!isSilent) setIsChecking(true)
+      try {
+        const { value, isLatest } = await claudeRequests.run(() => window.office.claudeStatus())
+        if (isLatest) setStatus(value)
+      } finally {
+        if (!claudeRequests.isPending) setIsChecking(false)
+      }
+    },
+    [claudeRequests],
+  )
 
   useEffect(() => {
     if (step === 'firstTask' && !status) void check()
@@ -205,11 +216,11 @@ export function Onboarding({ onStartTour }: { onStartTour: () => void }) {
   useEffect(() => {
     if (!isWaitingFix) return
     const timer = setInterval(() => {
-      void window.office.claudeStatus().then(setStatus)
+      void check({ isSilent: true })
       void checkProviders({ isSilent: true })
     }, 4000)
     return () => clearInterval(timer)
-  }, [isWaitingFix, checkProviders])
+  }, [isWaitingFix, check, checkProviders])
 
   if (!isLoaded || isOnboarded) return null
 

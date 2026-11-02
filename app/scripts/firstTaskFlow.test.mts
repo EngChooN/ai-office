@@ -31,21 +31,24 @@ test('둘러보기 뒤 연습 고르기: 실제 업무를 해 본 직원이 있�
 
 test('로그인 단계: Claude·Codex 중 하나만 준비돼도 통과, 둘 다 안 되면 막고 둘러보기로', () => {
   const st = (claude: string, codex: string) => ({ claude: { state: claude }, codex: { state: codex } })
+  const pass = { isChecking: false, isOk: true, isBlocked: false }
   // Claude만
-  assert.deepEqual(loginGate(true, st('ready', 'missing')), { isChecking: false, isOk: true, isBlocked: false })
+  assert.deepEqual(loginGate(true, st('ready', 'missing')), { ...pass, isBothReady: false, taskProvider: 'claude' })
   // Codex만 (Claude 로그아웃)
-  assert.deepEqual(loginGate(false, st('loggedOut', 'ready')), { isChecking: false, isOk: true, isBlocked: false })
-  // 둘 다
-  assert.deepEqual(loginGate(true, st('ready', 'ready')), { isChecking: false, isOk: true, isBlocked: false })
+  assert.deepEqual(loginGate(false, st('loggedOut', 'ready')), { ...pass, isBothReady: false, taskProvider: 'codex' })
+  // 둘 다 — 첫 업무는 Claude
+  assert.deepEqual(loginGate(true, st('ready', 'ready')), { ...pass, isBothReady: true, taskProvider: 'claude' })
   // 둘 다 안 됨
-  assert.deepEqual(loginGate(false, st('loggedOut', 'missing')), { isChecking: false, isOk: false, isBlocked: true })
-  assert.deepEqual(loginGate(false, st('missing', 'loggedOut')), { isChecking: false, isOk: false, isBlocked: true })
+  const blocked = { isChecking: false, isOk: false, isBlocked: true, isBothReady: false, taskProvider: null }
+  assert.deepEqual(loginGate(false, st('loggedOut', 'missing')), blocked)
+  assert.deepEqual(loginGate(false, st('missing', 'loggedOut')), blocked)
 })
 
 test('로그인 단계: 두 결과가 다 오기 전에는 확인 중 — 막힘으로 판단하지 않는다', () => {
-  assert.deepEqual(loginGate(null, null), { isChecking: true, isOk: false, isBlocked: false })
-  assert.deepEqual(loginGate(false, null), { isChecking: true, isOk: false, isBlocked: false })
-  assert.deepEqual(loginGate(null, { claude: { state: 'loggedOut' }, codex: { state: 'missing' } }), { isChecking: true, isOk: false, isBlocked: false })
+  const checking = { isChecking: true, isOk: false, isBlocked: false, isBothReady: false, taskProvider: null }
+  assert.deepEqual(loginGate(null, null), checking)
+  assert.deepEqual(loginGate(false, null), checking)
+  assert.deepEqual(loginGate(null, { claude: { state: 'loggedOut' }, codex: { state: 'missing' } }), checking)
   // 한쪽 결과만으로도 준비됨은 알 수 있다 (버튼은 확인 중이라 화면에서 막힌다)
   assert.equal(loginGate(true, null).isOk, true)
 })
@@ -53,4 +56,19 @@ test('로그인 단계: 두 결과가 다 오기 전에는 확인 중 — 막힘
 test('로그인 단계: claudeStatus와 공급자 조회 중 한쪽만 Claude 준비를 알려도 통과', () => {
   assert.equal(loginGate(false, { claude: { state: 'ready' }, codex: { state: 'missing' } }).isOk, true)
   assert.equal(loginGate(true, { claude: { state: 'loggedOut' }, codex: { state: 'missing' } }).isOk, true)
+})
+
+test('로그인 단계: 통과시킨 쪽과 첫 업무 공급자가 어긋나지 않는다', () => {
+  // claudeStatus는 로그아웃인데 공급자 조회가 Claude 준비라고 해 통과했다면, 첫 업무도 Claude로 (예전엔 공급자가 없어 막혔다)
+  const onlyProviders = loginGate(false, { claude: { state: 'ready' }, codex: { state: 'missing' } })
+  assert.equal(onlyProviders.taskProvider, 'claude')
+  assert.equal(loginGate(false, { claude: { state: 'ready' }, codex: { state: 'ready' } }).isBothReady, true)
+  // 통과면 언제나 맡길 공급자가 있고, 막히면 없다
+  const states = ['ready', 'loggedOut', 'missing', 'broken', 'unknown']
+  for (const claudeLoggedIn of [true, false, null])
+    for (const claude of states)
+      for (const codex of states) {
+        const g = loginGate(claudeLoggedIn, { claude: { state: claude }, codex: { state: codex } })
+        assert.equal(g.taskProvider !== null, g.isOk, `${claudeLoggedIn}/${claude}/${codex}`)
+      }
 })
