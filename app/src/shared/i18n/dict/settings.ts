@@ -24,7 +24,6 @@ export default {
     ja: '選んだ方が失敗したら、準備済みのもう一方のAIエンジンでもう一度試します。',
     zh: '所选的一方失败时，会改用另一个已就绪的 AI 引擎再试一次。',
   },
-  'provider.beta': { ko: '베타', en: 'Beta', ja: 'ベータ', zh: '测试版' },
   'provider.state.checking': { ko: '확인 중', en: 'Checking', ja: '確認中', zh: '检查中' },
   'provider.state.missing': { ko: '설치 안 됨', en: 'Not installed', ja: '未インストール', zh: '未安装' },
   'provider.state.broken': { ko: '실행 실패', en: 'Failed to run', ja: '実行に失敗', zh: '运行失败' },
@@ -93,6 +92,18 @@ export default {
   'provider.banner.open': { ko: '연결하러 가기', en: 'Connect', ja: 'つなげる', zh: '去连接' },
   'onboarding.provider.laterTour': { ko: '나중에 연결하고 둘러보기', en: 'Connect later and look around', ja: '後で接続して見て回る', zh: '稍后连接，先看看' },
   'onboarding.provider.title': { ko: 'AI 계정 연결', en: 'Connect an AI account', ja: 'AIアカウントの接続', zh: '连接 AI 账号' },
+  'onboarding.provider.checkingDesc': {
+    ko: 'Claude와 ChatGPT(Codex) 계정을 함께 확인하고 있어요. 둘 중 하나만 연결돼 있으면 충분해요.',
+    en: 'Checking your Claude and ChatGPT (Codex) accounts. Either one is enough.',
+    ja: 'Claude と ChatGPT（Codex）のアカウントをあわせて確認しています。どちらか1つがつながっていれば十分です。',
+    zh: '正在同时检查 Claude 和 ChatGPT（Codex）账号。只要连接其中一个就够了。',
+  },
+  'onboarding.provider.bothDesc': {
+    ko: 'Claude와 ChatGPT(Codex) 계정이 모두 준비됐어요. 직원을 고용할 때 어느 쪽으로 일할지 고를 수 있어요.',
+    en: 'Both your Claude and ChatGPT (Codex) accounts are ready. You can choose which one each new staff member uses when you hire.',
+    ja: 'Claude と ChatGPT（Codex）のアカウントがどちらも準備できています。スタッフを雇うときにどちらで働くか選べます。',
+    zh: 'Claude 和 ChatGPT（Codex）账号都已就绪。雇用员工时可以选择用哪一个工作。',
+  },
   'onboarding.provider.gateDesc': {
     ko: '직원을 움직일 AI 계정이 필요해요. Claude와 GPT(Codex) 중 하나만 연결하면 넘어갈 수 있어요. 아직 계정이 없으면 나중에 연결하고 먼저 둘러봐도 돼요.',
     en: 'Your staff need an AI account. Connect either Claude or GPT (Codex) to continue. No account yet? You can connect later and look around first.',

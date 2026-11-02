@@ -4,12 +4,12 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { osText } from '@/lib/platform'
 import { showToast } from '@/lib/toast'
-import { FAIL_ACTIONS, type FirstTaskAction, showsErrorDetail } from '@/lib/firstTaskFlow'
+import { FAIL_ACTIONS, type FirstTaskAction, loginGate, showsErrorDetail } from '@/lib/firstTaskFlow'
 import { useOffice } from '@/store'
 import type { AiProvider, ClaudeStatus } from '@shared/types'
 import { Avatar } from './StaffCard'
 import { shortPath } from './status'
-import { isAnyReady, ProviderCards, RecheckButton, useProviders } from './ProviderCards'
+import { ProviderCards, RecheckButton, useProviders } from './ProviderCards'
 import { fmtDate, t, trOr, type TKey } from '@shared/i18n'
 import { type FirstTaskExample, type FirstTaskFail, useFirstTask } from './useFirstTask'
 
@@ -83,7 +83,7 @@ function CheckRow({
   )
 }
 
-/** 점검 단계 머리말 — "1/3 Claude 로그인" */
+/** 점검 단계 머리말 — "1/3 AI 계정 연결" */
 function CheckHeader({ step, title, desc }: { step: Step; title: string; desc: string }) {
   return (
     <div className="flex flex-col gap-1">
@@ -152,11 +152,13 @@ export function Onboarding({ onStartTour }: { onStartTour: () => void }) {
   const [status, setStatus] = useState<ClaudeStatus | null>(null)
   const [isChecking, setIsChecking] = useState(false)
   const defaultCwd = useOffice((s) => s.settings.defaultCwd)
-  // Claude가 준비돼 있으면 Codex는 묻지 않는다 (Claude만 쓰는 사용자의 화면은 그대로)
-  const isClaudeOut = step === 'login' && status?.isLoggedIn === false
-  const providers = useProviders(isClaudeOut || (step === 'firstTask' && !status?.isLoggedIn))
-  const isProviderReady = isAnyReady(providers.status)
+  // 로그인 단계는 아래에서 Claude·Codex를 직접 함께 확인한다. 첫 업무 단계는 Claude가 안 될 때만 Codex를 본다
+  const providers = useProviders(step === 'firstTask' && !status?.isLoggedIn)
+  const checkProviders = providers.check
   const isCodexReady = providers.status?.codex.state === 'ready'
+  // 둘 중 하나만 준비돼도 통과 — 둘 다 결과가 올 때까지는 확인 중
+  const gate = loginGate(status ? status.isLoggedIn : null, providers.status)
+  const isBothReady = Boolean(status?.isLoggedIn || providers.status?.claude.state === 'ready') && isCodexReady
   // 첫 업무 직원: Claude 로그인이 돼 있으면 Claude, 아니면 GPT만 준비된 사용자도 막히지 않게 GPT
   const taskProvider: AiProvider | null = status?.isLoggedIn ? 'claude' : isCodexReady ? 'codex' : null
   const firstTask = useFirstTask()
@@ -174,8 +176,15 @@ export function Onboarding({ onStartTour }: { onStartTour: () => void }) {
   }, [])
 
   useEffect(() => {
-    if ((step === 'login' || step === 'firstTask') && !status) void check()
+    if (step === 'firstTask' && !status) void check()
   }, [step, status, check])
+
+  // 로그인 단계에 들어올 때마다 두 공급자를 함께 새로 확인한다 (지난 결과를 그대로 믿지 않는다)
+  useEffect(() => {
+    if (step !== 'login') return
+    void check()
+    void checkProviders()
+  }, [step, check, checkProviders])
 
   // 설정 › 안내에서 다시 열면 지난번 화면(완료·오래 걸리는 중)이 아니라 처음부터
   useEffect(() => {
@@ -191,13 +200,16 @@ export function Onboarding({ onStartTour }: { onStartTour: () => void }) {
     if (firstTask.phase === 'done') setStep('ready')
   }, [firstTask.phase])
 
-  // 로그인 창을 띄운 뒤에는 될 때까지 조용히 다시 확인한다
-  const isWaitingFix = step === 'login' && status?.isLoggedIn === false
+  // 로그인 창을 띄운 뒤에는 둘 다 준비될 때까지 두 공급자를 조용히 다시 확인한다 (하나만 돼도 통과지만, 나머지도 되면 ✓로 보이게)
+  const isWaitingFix = step === 'login' && !gate.isChecking && !isBothReady
   useEffect(() => {
     if (!isWaitingFix) return
-    const timer = setInterval(() => void window.office.claudeStatus().then(setStatus), 4000)
+    const timer = setInterval(() => {
+      void window.office.claudeStatus().then(setStatus)
+      void checkProviders({ isSilent: true })
+    }, 4000)
     return () => clearInterval(timer)
-  }, [isWaitingFix])
+  }, [isWaitingFix, checkProviders])
 
   if (!isLoaded || isOnboarded) return null
 
@@ -326,13 +338,17 @@ export function Onboarding({ onStartTour }: { onStartTour: () => void }) {
           </>
         )}
 
-        {step === 'login' && isClaudeOut && (
+        {step === 'login' && (
           <>
-            <CheckHeader step={step} title={t('onboarding.provider.title')} desc={isProviderReady ? t('onboarding.provider.passDesc') : t('onboarding.provider.gateDesc')} />
+            <CheckHeader
+              step={step}
+              title={t('onboarding.provider.title')}
+              desc={t(gate.isChecking ? 'onboarding.provider.checkingDesc' : isBothReady ? 'onboarding.provider.bothDesc' : gate.isOk ? 'onboarding.provider.passDesc' : 'onboarding.provider.gateDesc')}
+            />
             <ProviderCards
               status={providers.status}
-              isChecking={providers.isChecking}
-              onRecheck={() => void providers.check()}
+              isChecking={isChecking || providers.isChecking}
+              onRecheck={() => void checkProviders()}
               claudeExtra={
                 <div className="text-muted-foreground flex flex-col gap-1 text-xs">
                   <span>{t('onboarding.login.desc')}</span>
@@ -350,30 +366,17 @@ export function Onboarding({ onStartTour }: { onStartTour: () => void }) {
               isChecking={isChecking || providers.isChecking}
               onCheck={() => {
                 void check()
-                void providers.check()
+                void checkProviders()
               }}
             />
             <CheckFooter
               step={step}
-              isOk={isProviderReady}
-              isBlocked={Boolean(providers.status) && !isProviderReady}
-              isChecking={isChecking || providers.isChecking || !providers.status}
+              isOk={gate.isOk}
+              isBlocked={gate.isBlocked}
+              isChecking={isChecking || providers.isChecking || gate.isChecking}
               onMove={setStep}
               onSkipToTour={handleTour}
             />
-          </>
-        )}
-
-        {step === 'login' && !isClaudeOut && (
-          <>
-            <CheckHeader step={step} title={t('onboarding.loginStep.title')} desc={t('onboarding.loginStep.desc')} />
-            {/* 로그아웃 상태는 위 공급자 카드가 맡는다 — 여기는 확인 중이거나 로그인된 상태 */}
-            <CheckRow
-              isOk={Boolean(status?.isLoggedIn)}
-              isLoading={!status}
-              title={status?.isLoggedIn ? t('onboarding.login.done', { email: status.email ?? '' }) : t('onboarding.checking')}
-            />
-            <CheckFooter step={step} isOk={Boolean(status?.isLoggedIn)} isChecking={isChecking || !status} onMove={setStep} />
           </>
         )}
 

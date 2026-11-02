@@ -20,6 +20,17 @@ export const FAIL_ACTIONS: Record<FirstTaskFailKind, FirstTaskAction[]> = {
 /** 오류 원문을 접어서 보여 줄 실패 (원인을 이름 붙이지 못한 경우) */
 export const showsErrorDetail = (fail: FirstTaskFailKind) => fail === 'unknown'
 
+/**
+ * 로그인 단계 갈림길 — Claude·Codex(ChatGPT)를 함께 확인하고 둘 중 하나만 준비돼도 통과한다.
+ * claudeLoggedIn: claudeStatus 결과(아직 모르면 null) · providers: 두 공급자 상태(아직 모르면 null).
+ * isChecking: 둘 다 결과가 올 때까지는 확인 중 · isOk: 하나라도 준비됨 · isBlocked: 둘 다 확인했는데 둘 다 안 됨(첫 업무를 못 해 둘러보기로)
+ */
+export function loginGate(claudeLoggedIn: boolean | null, providers: Record<'claude' | 'codex', { state: string }> | null) {
+  const isChecking = claudeLoggedIn === null || providers === null
+  const isOk = claudeLoggedIn === true || Boolean(providers && (providers.claude.state === 'ready' || providers.codex.state === 'ready'))
+  return { isChecking, isOk, isBlocked: !isChecking && !isOk }
+}
+
 /** 둘러보기를 끝까지 본 뒤 연습 고르기를 띄울지 — 이미 실제 업무를 해 본 직원이 있으면 생략한다 */
 export function shouldOfferPractice(staff: { kind: string; isPractice?: boolean; tokensIn: number; tokensOut: number }[]): boolean {
   return !staff.some((s) => s.kind === 'hired' && !s.isPractice && s.tokensIn + s.tokensOut > 0)

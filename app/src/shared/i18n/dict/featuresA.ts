@@ -602,13 +602,6 @@ export default {
     'onboarding.skip': { ko: '건너뛰기', en: 'Skip', ja: 'スキップ', zh: '跳过' },
     'onboarding.start': { ko: '시작하기', en: 'Get started', ja: 'はじめる', zh: '开始' },
     'onboarding.checkStep': { ko: '준비 점검 {n}/{total}', en: 'Setup check {n}/{total}', ja: '準備チェック {n}/{total}', zh: '准备检查 {n}/{total}' },
-    'onboarding.loginStep.title': { ko: 'Claude 로그인', en: 'Sign in to Claude', ja: 'Claude にログイン', zh: '登录 Claude' },
-    'onboarding.loginStep.desc': {
-      ko: '직원이 일하려면 Claude 계정 로그인이 필요해요. 로그인하면 자동으로 확인돼요.',
-      en: 'Your staff need a signed-in Claude account to work. Once you sign in, it is detected automatically.',
-      ja: 'スタッフが働くには Claude アカウントへのログインが必要です。ログインすると自動で確認されます。',
-      zh: '员工工作需要登录 Claude 账号。登录后会自动检测。',
-    },
     'onboarding.folder.title': { ko: '작업 폴더', en: 'Work folder', ja: '作業フォルダー', zh: '工作文件夹' },
     'onboarding.folder.desc': {
       ko: '직원이 일할 프로젝트 폴더를 골라 두면 직원을 고용할 때 기본으로 채워져요. 직원마다 나중에 바꿀 수 있어요.',
@@ -639,7 +632,6 @@ export default {
       zh: '也可以不选。没有文件夹也能交代写作、整理之类的工作。',
     },
     'onboarding.later': { ko: '나중에 할게요', en: "I'll do it later", ja: '後でやります', zh: '稍后再说' },
-    'onboarding.login.done': { ko: 'Claude 계정 로그인됨 · {email}', en: 'Signed in to Claude · {email}', ja: 'Claudeアカウントにログイン済み · {email}', zh: '已登录 Claude 账号 · {email}' },
     'onboarding.login.needed': { ko: 'Claude 계정 로그인이 필요해요', en: 'Sign in to your Claude account', ja: 'Claudeアカウントへのログインが必要です', zh: '需要登录 Claude 账号' },
     'onboarding.login.desc': {
       ko: 'Claude Pro·Max 구독 계정으로 로그인해요. 직원이 쓰는 사용량은 이 계정에서 나가요. 무료 플랜으로는 직원이 일할 수 없어요 — ChatGPT 계정이 있으면 GPT 직원으로 시작해도 돼요.',

@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { CheckCircle2Icon, CircleAlertIcon, Loader2Icon, LogInIcon, RefreshCwIcon } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import type { AiProvider, ProvidersStatus, ProviderStatus } from '@shared/types'
@@ -8,7 +7,7 @@ import { t, type TKey } from '@shared/i18n'
 import { isProviderStale } from '@/lib/providerRecheck'
 import { useOffice } from '@/store'
 
-// 공급자(Claude·Codex) 설치·로그인 상태 카드 — 설정 화면과 첫 실행 온보딩 게이트가 함께 쓴다
+// 공급자(Claude·Codex) 설치·로그인 상태 카드 — 설정 화면과 첫 실행 온보딩 로그인 단계가 함께 쓴다
 
 export const PROVIDERS: AiProvider[] = ['claude', 'codex']
 /** 설정 화면 'AI 공급자' 칸 — 안내 띠가 여기로 스크롤한다 */
@@ -20,9 +19,6 @@ const DESC_KEY: Record<AiProvider, Record<ProviderStatus['state'], TKey>> = {
   codex: { missing: 'provider.codex.missing', broken: 'provider.codex.broken', loggedOut: 'provider.codex.loggedOut', ready: 'provider.codex.ready', unknown: 'provider.codex.unknown' },
 }
 
-/** 둘 중 하나라도 준비됐는지 — 온보딩 게이트의 통과 조건 */
-export const isAnyReady = (s: ProvidersStatus | null) => Boolean(s && PROVIDERS.some((p) => s[p].state === 'ready'))
-
 /** 두 공급자 상태를 함께 조회한다 (Codex는 잠깐 실행해 묻기 때문에 몇 초 걸릴 수 있다) */
 // 마지막 조회 결과는 화면끼리 함께 쓴다 — 고용 창·프로필을 열 때마다 Codex를 다시 띄우지 않게 (30분 지나면 새로)
 let cached: { status: ProvidersStatus; at: number } | null = null
@@ -32,8 +28,10 @@ export function useProviders(isEnabled = true) {
   const [isChecking, setIsChecking] = useState(false)
   const lastCheckedAt = useRef(cached?.at ?? 0)
   const isInFlight = useRef(false)
-  const check = useCallback(async () => {
-    setIsChecking(true)
+  /** isSilent: 주기적으로 다시 볼 때 — 확인 중 표시·버튼 막기 없이, 이미 묻는 중이면 건너뛴다 */
+  const check = useCallback(async ({ isSilent = false }: { isSilent?: boolean } = {}) => {
+    if (isSilent && isInFlight.current) return
+    if (!isSilent) setIsChecking(true)
     isInFlight.current = true
     try {
       const s = await window.office.providerStatus()
@@ -42,7 +40,7 @@ export function useProviders(isEnabled = true) {
       setStatus(s)
     } finally {
       isInFlight.current = false
-      setIsChecking(false)
+      if (!isSilent) setIsChecking(false)
     }
   }, [])
   useEffect(() => {
@@ -99,11 +97,6 @@ export function ProviderCard({ provider, status, isChecking, onRecheck, children
     <div className={cn('bg-card flex min-w-0 flex-col gap-2 rounded-xl border p-4 text-sm', state && !isReady && 'border-status-waiting/60')}>
       <div className="flex items-center gap-2">
         <span className="font-semibold">{PROVIDER_NAME[provider]}</span>
-        {provider === 'codex' && (
-          <Badge variant="outline" className="text-muted-foreground">
-            {t('provider.beta')}
-          </Badge>
-        )}
         <span className={cn('ml-auto flex items-center gap-1 text-xs', isReady ? 'text-status-working' : state ? 'text-status-waiting' : 'text-muted-foreground')}>
           {!status ? <Loader2Icon className="size-3.5 animate-spin" /> : isReady ? <CheckCircle2Icon className="size-3.5" /> : <CircleAlertIcon className="size-3.5" />}
           {status ? t(STATE_KEY[status.state]) : t('provider.state.checking')}

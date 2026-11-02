@@ -7,7 +7,7 @@ type Text = Record<Lang, string>
 /** 언어와 상관없는 글 (명령·좌표) */
 const same = (s: string): Text => ({ ko: s, en: s, ja: s, zh: s })
 
-/** 직원: id · 이름 · 직무 · 아바타 · 팀 · 공급자(없으면 Claude, codex = GPT 베타) */
+/** 직원: id · 이름 · 직무 · 아바타 · 팀 · 공급자(없으면 Claude, codex = GPT) */
 export const DEMO_STAFF: { id: string; name: Text; role: Text; avatar: number; teamId: string; provider?: 'codex' }[] = [
   { id: 'd1', avatar: 1, teamId: 'dt1', name: { ko: '강리더', en: 'Leo Lead', ja: '森リード', zh: '林领航' }, role: { ko: '팀장', en: 'Team Lead', ja: 'チームリーダー', zh: '团队负责人' } },
   { id: 'd2', avatar: 5, teamId: 'dt2', name: { ko: '오플랜', en: 'Paula Plan', ja: '小野プラン', zh: '周策划' }, role: { ko: '기획자 (PM)', en: 'Product Manager', ja: 'プロダクトマネージャー', zh: '产品经理' } },

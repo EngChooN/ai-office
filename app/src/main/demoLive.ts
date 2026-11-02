@@ -24,7 +24,7 @@ export interface DemoLive {
   external: { sessionId: string; cwd: string; name: string; startedAt: number }[]
 }
 
-/** 촬영용 공급자 상태: Claude·Codex 모두 로그인된 것으로 (빈 HOME이라 실제로는 Codex가 꺼져 고용 창의 GPT·베타가 안 보인다). 데모가 아니면 null */
+/** 촬영용 공급자 상태: Claude·Codex 모두 로그인된 것으로 (빈 HOME이라 실제로는 Codex가 꺼져 고용 창의 GPT 고르기가 안 보인다). 데모가 아니면 null */
 export function demoProviders(env: NodeJS.ProcessEnv = process.env): ProvidersStatus | null {
   if (env[DEMO_ENV] !== '1') return null
   const ready = (authMethod: string, plan: string, models: string[]) => ({ state: 'ready' as const, account: 'you@example.com', authMethod, plan, models, defaultModel: models[0] ?? '', error: '' })

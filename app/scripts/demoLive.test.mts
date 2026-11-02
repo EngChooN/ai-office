@@ -44,7 +44,7 @@ test('켜면 시각을 지금 기준으로 바꾸고, 질문이 아닌 결재엔
   assert.equal(d.external[0].startedAt, now - 18 * 60_000)
 })
 
-test('demoProviders: 데모일 때만 Claude·Codex 모두 준비됨 (고용 창의 GPT·베타가 보이게)', () => {
+test('demoProviders: 데모일 때만 Claude·Codex 모두 준비됨 (고용 창의 GPT 고르기가 보이게)', () => {
   assert.equal(demoProviders({}), null)
   const p = demoProviders({ [DEMO_ENV]: '1' })!
   assert.equal(p.claude.state, 'ready')

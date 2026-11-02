@@ -21,6 +21,8 @@ Writing rules
 - The tour is cut to 5 key steps with "See more" at the end. If you skip or stop it, a notice says you can replay it in Settings › Guide. If you have already done a first task, the practice-task picker is skipped.
 - The hire dialog shows only name and role, and folds the rest under "More settings". Performance tiers now have descriptions.
 - Empty-state hints: an office with no staff shows "Hire staff" and "Replay guide" buttons in the banner, an empty staff panel shows example instruction chips, and an empty approval inbox explains itself and offers a hire button. The GPT banner stays hidden until you hire someone if you have no staff.
+- The sign-in step of the first-run guide now checks your Claude and ChatGPT (Codex) accounts together. Both account cards are always shown side by side, and either one being ready is enough to continue. When both are ready, both show a ✓.
+- The "Beta" label on GPT (Codex) staff is gone. GPT is now fully supported, just like Claude.
 
 ## [0.19.2] - 2026-11-02
 

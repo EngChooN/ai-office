@@ -1,7 +1,7 @@
 // 첫 실행 안내 갈림길: 실패 종류별 버튼 표·오류 원문 접기·연습 고르기 생략 — npm test
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { FAIL_ACTIONS, shouldOfferPractice, showsErrorDetail } from '../src/renderer/lib/firstTaskFlow.ts'
+import { FAIL_ACTIONS, loginGate, shouldOfferPractice, showsErrorDetail } from '../src/renderer/lib/firstTaskFlow.ts'
 
 test('첫 업무 실패: 종류에 맞는 버튼만 보인다', () => {
   assert.deepEqual(FAIL_ACTIONS.login, ['toLogin'])
@@ -27,4 +27,30 @@ test('둘러보기 뒤 연습 고르기: 실제 업무를 해 본 직원이 있�
   assert.equal(shouldOfferPractice([{ ...hired, tokensIn: 120, tokensOut: 30 }]), false)
   assert.equal(shouldOfferPractice([{ ...hired, tokensIn: 120, isPractice: true }]), true, '연습 회사 직원은 세지 않는다')
   assert.equal(shouldOfferPractice([{ kind: 'external', tokensIn: 500, tokensOut: 0 }]), true, '외부 직원은 세지 않는다')
+})
+
+test('로그인 단계: Claude·Codex 중 하나만 준비돼도 통과, 둘 다 안 되면 막고 둘러보기로', () => {
+  const st = (claude: string, codex: string) => ({ claude: { state: claude }, codex: { state: codex } })
+  // Claude만
+  assert.deepEqual(loginGate(true, st('ready', 'missing')), { isChecking: false, isOk: true, isBlocked: false })
+  // Codex만 (Claude 로그아웃)
+  assert.deepEqual(loginGate(false, st('loggedOut', 'ready')), { isChecking: false, isOk: true, isBlocked: false })
+  // 둘 다
+  assert.deepEqual(loginGate(true, st('ready', 'ready')), { isChecking: false, isOk: true, isBlocked: false })
+  // 둘 다 안 됨
+  assert.deepEqual(loginGate(false, st('loggedOut', 'missing')), { isChecking: false, isOk: false, isBlocked: true })
+  assert.deepEqual(loginGate(false, st('missing', 'loggedOut')), { isChecking: false, isOk: false, isBlocked: true })
+})
+
+test('로그인 단계: 두 결과가 다 오기 전에는 확인 중 — 막힘으로 판단하지 않는다', () => {
+  assert.deepEqual(loginGate(null, null), { isChecking: true, isOk: false, isBlocked: false })
+  assert.deepEqual(loginGate(false, null), { isChecking: true, isOk: false, isBlocked: false })
+  assert.deepEqual(loginGate(null, { claude: { state: 'loggedOut' }, codex: { state: 'missing' } }), { isChecking: true, isOk: false, isBlocked: false })
+  // 한쪽 결과만으로도 준비됨은 알 수 있다 (버튼은 확인 중이라 화면에서 막힌다)
+  assert.equal(loginGate(true, null).isOk, true)
+})
+
+test('로그인 단계: claudeStatus와 공급자 조회 중 한쪽만 Claude 준비를 알려도 통과', () => {
+  assert.equal(loginGate(false, { claude: { state: 'ready' }, codex: { state: 'missing' } }).isOk, true)
+  assert.equal(loginGate(true, { claude: { state: 'loggedOut' }, codex: { state: 'missing' } }).isOk, true)
 })
