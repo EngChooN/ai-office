@@ -20,8 +20,16 @@ export const cancelClaudeLogin = () => active?.cancel()
 
 /** 주소 뒤에 이 글자가 오면 주소가 끝까지 들어온 것이다 */
 const URL_CHARS = String.raw`[^\s"'<>\x60]+`
-/** 주소 뒤 구분 글자가 안 오면(출력이 주소에서 끊김) 이만큼 더 기다린 뒤 들어온 데까지로 연다 */
+/** 주소 뒤 구분 글자가 안 오면(출력이 주소에서 끊김) 이만큼 더 기다린 뒤 들어온 데까지로 연다 — 인증에 꼭 필요한 값이 다 있을 때만 */
 export const LOGIN_URL_SETTLE_MS = 300
+/** 인증 주소에 꼭 있어야 하는 값 — 하나라도 없으면 쿼리가 아직 덜 들어온 주소다 */
+const REQUIRED_OAUTH_PARAMS = ['client_id', 'redirect_uri', 'state']
+
+/** 구분 글자 없이 끝난 주소도 열어도 되는지 — 인증에 필요한 값이 모두 들어왔는지 본다 */
+export function isCompleteOAuthUrl(url: string): boolean {
+  const params = new URL(url).searchParams
+  return REQUIRED_OAUTH_PARAMS.every((key) => !!params.get(key))
+}
 
 /**
  * CLI 출력에서 로그인 주소를 찾는다 — 글자 색 코드를 지우고, Claude·Anthropic 주소 중 인증(oauth·authorize) 주소만.
@@ -112,11 +120,12 @@ export function loginClaudeInBrowser(
       output += chunk.toString('utf8')
       const url = extractLoginUrl(output, { isCompleteOnly: true })
       if (url) return open(url)
-      // 주소가 출력 끝에서 끊겼을 수 있다 — 나머지 조각을 잠깐 기다렸다가 들어온 데까지로 연다
+      // 주소가 출력 끝에서 끊겼을 수 있다 — 나머지 조각을 잠깐 기다렸다가, 필요한 값이 다 들어왔으면 연다.
+      // 덜 들어왔으면 계속 기다리고, 끝내 안 오면 urlTimer가 터미널 방식으로 넘긴다
       clearTimeout(settleTimer)
       if (extractLoginUrl(output)) settleTimer = setTimeout(() => {
         const partial = extractLoginUrl(output)
-        if (partial) open(partial)
+        if (partial && isCompleteOAuthUrl(partial)) open(partial)
       }, settleMs)
     }
     child.stdout?.on('data', onData)
