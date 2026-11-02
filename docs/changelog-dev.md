@@ -4,8 +4,11 @@
 
 ## [미정] (설치본 미빌드)
 
+## [0.19.3] - 2026-11-02
+
 ### 개선
-- 대화 기억 길이(`Staff.memory`: short·normal·long·full, staff.memory 열): `rotateLimits`로 새 대화 넘김 기준을 직원별로(짧게 40k/20k, 보통 80k/20k, 길게 160k/80k, 최대 넘기지 않음 — 이어지는 지시/새 카드). updateStaff 허용 필드에 추가(잘못된 값은 버림), 휴대폰 v2도 허용. 직원 패널 자율 진행 줄 오른쪽 `MemoryLengthSelect`(마우스 올리면 설명).
+- 화면 문구 A·B부: 용어 통일·도구 이름 우리말·포트 표기 제거, 장비 프리셋·연결 도구 추가·외부 직원 알림 설명 쉽게, '자세히' 접기 (ko/en/ja/zh).
+- 첫 사용 흐름(문서 C 1~20): 소개 3장, 준비 점검 로그인→폴더→첫 업무, Claude 브라우저 로그인(주소 조각 모아 열기·10초 뒤 터미널 대체·취소 구분), 확인 중 단계 이동 막기, 첫 업무 실패 이유별 버튼, 둘러보기 5단계, 빈 화면 안내. 로그인 단계 Claude·Codex 함께 확인, GPT(Codex) 베타 표시 제거.
 - 휴대폰에서 켜기 허용: 자율 진행(`createTask`·`updateTask`·`instructAutonomous` 원격 차단 제거, v2 `instruct` 넷째 자리 `{ isAutonomous }`·`createTask.isAutonomous` 허용, 켜면 `notify.remoteAutonomy`), 자동결재 `hours`(`isRemoteAutoAllowed` off·hours, `daily`·완전 자율은 PC만, 켜면 `notify.remoteAutoOn`). 계속 PC 전용인 칸은 휴대폰에서 `PcOnlyState`·비활성으로 표시: 직원 작업 폴더, 채용 폴더·결재 방식, 외부 직원 정식 채용 결재 방식, 장비 도구 칩, 화면 캡처 허용, 전역 매뉴얼(만들기 위치·고치기), Bash 규칙의 '앞으로 자동 승인' 버튼 숨김. 근거: 자율 진행·N시간 자동결재는 위험 작업(`autoApprove` wait)을 여전히 건너뛰거나 기다리고 기간이 정해져 있으며, 휴대폰은 이미 결재를 하나씩 승인할 수 있다.
 - 리뷰 반영·후속: 원격 자동결재 최대 12시간(`isRemoteAutoAllowed`), 원격 전역 매뉴얼 삭제 차단(`isRemoteManualDeleteAllowed`·휴대폰 버튼 숨김), 랩 작업 폴더 PC 전용(v2 `createLab`·`updateLab` `cwd` 제외, `restrictRemoteArgs`가 새 랩 `cwd: null`, 랩 만들기 화면 `PcOnlyState`), `hello` 능력 `remote-autonomy` — 예전 PC면 `remoteOffice`가 자율 진행·`hours` 켜기를 막고 `shell.pcUpdateFeature` 안내.
 
