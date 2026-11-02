@@ -4,7 +4,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { test } from 'node:test'
-import { CLAUDE_LOGIN_ARGS, cancelClaudeLogin, extractLoginUrl, isCompleteOAuthUrl, loginClaudeInBrowser } from '../src/main/ai/claudeLogin.ts'
+import { CLAUDE_LOGIN_ARGS, cancelClaudeLogin, extractLoginUrl, loginClaudeInBrowser } from '../src/main/ai/claudeLogin.ts'
 
 const AUTH_URL = 'https://claude.ai/oauth/authorize?code=true&client_id=abc&response_type=code&redirect_uri=http%3A%2F%2Flocalhost%3A54545%2Fcallback&state=xyz'
 
@@ -72,41 +72,27 @@ test('브라우저 로그인: 주소 없이 먼저 끝나거나 실행 파일이
 test('브라우저 로그인: 주소가 경로·쿼리로 나뉘어 들어와도 끝까지 모은 주소를 연다', { skip: process.platform === 'win32' }, async () => {
   const opened: string[] = []
   const [head, query] = AUTH_URL.split('?')
-  const bin = fakeCli(`process.stdout.write('Visit:\\n${head}'); setTimeout(() => process.stdout.write('?${query}\\n'), 150); setTimeout(() => {}, 2000)`)
-  const result = await loginClaudeInBrowser(bin, (url) => void opened.push(url), { args: [], urlWaitMs: 3000, settleMs: 1000, totalMs: 1500 })
+  const bin = fakeCli(`process.stdout.write('Visit:\\n${head}'); setTimeout(() => process.stdout.write('?${query}\\n'), 500); setTimeout(() => {}, 2000)`)
+  const result = await loginClaudeInBrowser(bin, (url) => void opened.push(url), { args: [], urlWaitMs: 3000, totalMs: 2500 })
   assert.equal(result, 'browser')
   assert.deepEqual(opened, [AUTH_URL])
 })
 
-test('브라우저 로그인: 주소 뒤에 줄바꿈이 끝내 안 오면 잠깐 기다린 뒤 들어온 데까지로 연다', { skip: process.platform === 'win32' }, async () => {
+test('브라우저 로그인: 주소가 값 중간에서 끊겨도 나머지가 늦게 와야 연다 — 앞 조각(state=x)으로 열지 않는다', { skip: process.platform === 'win32' }, async () => {
+  const opened: string[] = []
+  const cut = AUTH_URL.length - 2 // …&state=x | yz
+  const bin = fakeCli(`process.stdout.write('${AUTH_URL.slice(0, cut)}'); setTimeout(() => process.stdout.write('${AUTH_URL.slice(cut)}\\n'), 500); setTimeout(() => {}, 2000)`)
+  const result = await loginClaudeInBrowser(bin, (url) => void opened.push(url), { args: [], urlWaitMs: 3000, totalMs: 2500 })
+  assert.equal(result, 'browser')
+  assert.deepEqual(opened, [AUTH_URL])
+})
+
+test('브라우저 로그인: 주소 뒤에 줄바꿈이 끝내 안 오면 열지 않고 시간이 지나면 fallback', { skip: process.platform === 'win32' }, async () => {
   const opened: string[] = []
   const bin = fakeCli(`process.stdout.write('${AUTH_URL}'); setTimeout(() => {}, 2000)`)
-  const result = await loginClaudeInBrowser(bin, (url) => void opened.push(url), { args: [], urlWaitMs: 3000, settleMs: 100, totalMs: 1500 })
-  assert.equal(result, 'browser')
-  assert.deepEqual(opened, [AUTH_URL])
-})
-
-test('브라우저 로그인: 쿼리가 기다리는 시간보다 늦게 와도 쿼리 없는 주소를 열지 않고 끝까지 기다린다', { skip: process.platform === 'win32' }, async () => {
-  const opened: string[] = []
-  const [head, query] = AUTH_URL.split('?')
-  const bin = fakeCli(`process.stdout.write('${head}'); setTimeout(() => process.stdout.write('?${query}'), 500); setTimeout(() => {}, 2000)`)
-  const result = await loginClaudeInBrowser(bin, (url) => void opened.push(url), { args: [], urlWaitMs: 3000, settleMs: 100, totalMs: 2500 })
-  assert.equal(result, 'browser')
-  assert.deepEqual(opened, [AUTH_URL])
-})
-
-test('브라우저 로그인: 필요한 값이 끝내 안 들어온 주소는 열지 않고 시간이 지나면 fallback', { skip: process.platform === 'win32' }, async () => {
-  const opened: string[] = []
-  const bin = fakeCli(`process.stdout.write('https://claude.ai/oauth/authorize?code=true&client_id=abc'); setTimeout(() => {}, 2000)`)
-  const result = await loginClaudeInBrowser(bin, (url) => void opened.push(url), { args: [], urlWaitMs: 600, settleMs: 100 })
+  const result = await loginClaudeInBrowser(bin, (url) => void opened.push(url), { args: [], urlWaitMs: 600 })
   assert.equal(result, 'fallback')
   assert.deepEqual(opened, [])
-})
-
-test('인증 주소 완성 판정: client_id·redirect_uri·state가 모두 있어야 한다', () => {
-  assert.equal(isCompleteOAuthUrl(AUTH_URL), true)
-  assert.equal(isCompleteOAuthUrl(AUTH_URL.split('?')[0]), false)
-  assert.equal(isCompleteOAuthUrl('https://claude.ai/oauth/authorize?client_id=abc&redirect_uri=x&state='), false, '값이 빈 state')
 })
 
 test('브라우저 로그인: 브라우저 열기가 실패하면 프로세스를 끝내고 fallback', { skip: process.platform === 'win32' }, async () => {

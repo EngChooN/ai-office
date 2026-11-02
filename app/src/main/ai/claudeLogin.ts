@@ -18,18 +18,8 @@ let active: { cancel: () => void } | null = null
 /** 진행 중인 로그인을 끝낸다 (새 로그인 시작·앱 종료 때) */
 export const cancelClaudeLogin = () => active?.cancel()
 
-/** 주소 뒤에 이 글자가 오면 주소가 끝까지 들어온 것이다 */
+/** 주소 뒤에 이 글자가 오면 주소가 끝까지 들어온 것이다 — 안 오면 주소 중간에서 끊겼는지 알 수 없으니 열지 않는다 */
 const URL_CHARS = String.raw`[^\s"'<>\x60]+`
-/** 주소 뒤 구분 글자가 안 오면(출력이 주소에서 끊김) 이만큼 더 기다린 뒤 들어온 데까지로 연다 — 인증에 꼭 필요한 값이 다 있을 때만 */
-export const LOGIN_URL_SETTLE_MS = 300
-/** 인증 주소에 꼭 있어야 하는 값 — 하나라도 없으면 쿼리가 아직 덜 들어온 주소다 */
-const REQUIRED_OAUTH_PARAMS = ['client_id', 'redirect_uri', 'state']
-
-/** 구분 글자 없이 끝난 주소도 열어도 되는지 — 인증에 필요한 값이 모두 들어왔는지 본다 */
-export function isCompleteOAuthUrl(url: string): boolean {
-  const params = new URL(url).searchParams
-  return REQUIRED_OAUTH_PARAMS.every((key) => !!params.get(key))
-}
 
 /**
  * CLI 출력에서 로그인 주소를 찾는다 — 글자 색 코드를 지우고, Claude·Anthropic 주소 중 인증(oauth·authorize) 주소만.
@@ -63,9 +53,8 @@ export function loginClaudeInBrowser(
   {
     args = CLAUDE_LOGIN_ARGS,
     urlWaitMs = LOGIN_URL_WAIT_MS,
-    settleMs = LOGIN_URL_SETTLE_MS,
     totalMs = LOGIN_TOTAL_MS,
-  }: { args?: string[]; urlWaitMs?: number; settleMs?: number; totalMs?: number } = {},
+  }: { args?: string[]; urlWaitMs?: number; totalMs?: number } = {},
 ): Promise<LoginResult> {
   cancelClaudeLogin()
   return new Promise((resolve) => {
@@ -81,12 +70,10 @@ export function loginClaudeInBrowser(
     /** 주소를 찾아 브라우저를 여는 중 — 더 들어오는 출력은 보지 않는다 */
     let isOpening = false
     let output = ''
-    let settleTimer: ReturnType<typeof setTimeout> | undefined
     const answer = (result: LoginResult) => {
       if (isAnswered) return
       isAnswered = true
       clearTimeout(urlTimer)
-      clearTimeout(settleTimer)
       if (result !== 'browser') stop()
       resolve(result)
     }
@@ -104,7 +91,6 @@ export function loginClaudeInBrowser(
       if (isOpening || isAnswered) return
       isOpening = true
       clearTimeout(urlTimer)
-      clearTimeout(settleTimer)
       Promise.resolve()
         .then(() => openUrl(url))
         .then(
@@ -118,15 +104,9 @@ export function loginClaudeInBrowser(
     const onData = (chunk: Buffer) => {
       if (isAnswered || isOpening) return
       output += chunk.toString('utf8')
+      // 주소 뒤 구분 글자가 와야 연다 — 출력 끝에서 끊긴 주소는 나머지를 기다리고, 끝내 안 오면 urlTimer가 터미널 방식으로 넘긴다
       const url = extractLoginUrl(output, { isCompleteOnly: true })
-      if (url) return open(url)
-      // 주소가 출력 끝에서 끊겼을 수 있다 — 나머지 조각을 잠깐 기다렸다가, 필요한 값이 다 들어왔으면 연다.
-      // 덜 들어왔으면 계속 기다리고, 끝내 안 오면 urlTimer가 터미널 방식으로 넘긴다
-      clearTimeout(settleTimer)
-      if (extractLoginUrl(output)) settleTimer = setTimeout(() => {
-        const partial = extractLoginUrl(output)
-        if (partial && isCompleteOAuthUrl(partial)) open(partial)
-      }, settleMs)
+      if (url) open(url)
     }
     child.stdout?.on('data', onData)
     child.stderr?.on('data', onData)
