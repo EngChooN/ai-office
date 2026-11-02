@@ -10,8 +10,10 @@ import { COMPANY_LEVELS } from '../../shared/officeLevel.ts'
 import { PEER_CAPABILITY } from '../../shared/peerProtocol.ts'
 
 export const ISO_OFFICE = 'iso-office'
+/** 휴대폰에서 자율 진행·'지금부터 N시간' 자동결재를 켤 수 있는 PC (hello로만 확인 — 예전 PC면 폰이 "PC를 업데이트해 주세요"를 띄운다) */
+export const REMOTE_AUTONOMY = 'remote-autonomy'
 /** 지금 서버가 아는 능력 (모르는 값은 받아도 버린다) */
-export const KNOWN_CAPABILITIES: readonly string[] = [ISO_OFFICE, PEER_CAPABILITY]
+export const KNOWN_CAPABILITIES: readonly string[] = [ISO_OFFICE, PEER_CAPABILITY, REMOTE_AUTONOMY]
 /** 요청·이벤트 스트림 연결에 능력을 싣는 헤더 (쉼표로 여러 개) */
 export const CAPABILITIES_HEADER = 'x-office-capabilities'
 /** 예전 폰 번들의 회사 레벨 표 길이 */

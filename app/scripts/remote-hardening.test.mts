@@ -82,6 +82,15 @@ test('원격 매뉴얼 범위: 프로젝트만, 전역 매뉴얼 생성·수정�
 
 // ── 3) S 분류: hire·updateStaff·recruitExternal ─────────
 
+test('랩 작업 폴더는 원격에서 정하지 못한다', () => {
+  const [lab] = pickFields('createLab', [{ name: 'a', goal: '', cwd: '/etc', leadId: null, memberIds: [], color: 'x' }]) as [Record<string, unknown>]
+  assert.equal('cwd' in lab, false)
+  const [, patch] = pickFields('updateLab', ['lab1', { name: 'b', cwd: '/etc' }]) as [string, Record<string, unknown>]
+  assert.equal('cwd' in patch, false)
+  const [restricted] = restrictRemoteArgs('createLab', [{ name: 'a' }], { defaultCwd: '/home' }) as [Record<string, unknown>]
+  assert.equal(restricted.cwd, null)
+})
+
 test('hire·updateStaff 허용 필드에서 작업 폴더·승인 방식을 뺀다', () => {
   const [hired] = pickFields('hire', [{ name: 'a', role: 'b', avatar: 1, model: 'default', systemPrompt: '', teamId: null, cwd: '/', approvalMode: 'acceptEdits' }]) as [Record<string, unknown>]
   assert.equal('cwd' in hired || 'approvalMode' in hired, false)

@@ -237,8 +237,9 @@ export const V2_FIELDS: Partial<Record<OfficeMethod, Record<number, string[]>>> 
   hire: { 0: fieldsExcept('hire', 0, ['cwd', 'approvalMode'], { name: true, role: true, avatar: true, model: true, provider: true, systemPrompt: true, teamId: true, labIds: true }) },
   updateStaff: { 1: fieldsExcept('updateStaff', 1, ['cwd'], { teamId: true, name: true, role: true, model: true, avatar: true, systemPrompt: true, memory: true }) },
   updateTeam: { 1: fieldsOf('updateTeam', 1, { name: true, color: true, leadId: true, floor: true }) },
-  createLab: { 0: fieldsOf('createLab', 0, { name: true, color: true, goal: true, cwd: true, leadId: true, memberIds: true, manuals: true }) },
-  updateLab: { 1: fieldsOf('updateLab', 1, { name: true, color: true, goal: true, cwd: true, leadId: true, memberIds: true, manuals: true }) },
+  // 랩 작업 폴더는 직원 작업 폴더처럼 PC에서만 (restrict가 새 랩은 폴더 없음으로 채운다)
+  createLab: { 0: fieldsExcept('createLab', 0, ['cwd'], { name: true, color: true, goal: true, leadId: true, memberIds: true, manuals: true }) },
+  updateLab: { 1: fieldsExcept('updateLab', 1, ['cwd'], { name: true, color: true, goal: true, leadId: true, memberIds: true, manuals: true }) },
   setRefDocs: { 0: fieldsOf('setRefDocs', 0, { kind: true, id: true }) },
   recruitExternal: { 1: fieldsExcept('recruitExternal', 1, ['approvalMode'], { role: true, model: true, teamId: true }) },
   // 원격은 MCP·스킬·예산만 — Bash 같은 허용·금지 도구는 PC에서만

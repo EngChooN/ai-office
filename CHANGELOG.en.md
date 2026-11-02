@@ -25,7 +25,8 @@ Writing rules
 - The "Beta" label on GPT (Codex) staff is gone. GPT is now fully supported, just like Claude.
 - You can now turn on autonomous mode from the phone app. The "Autonomous" checkbox appears in the instruction box and on task cards. Risky actions are still skipped in autonomous mode, and the PC gets a notice when it is turned on from the phone.
 - From the phone app you can turn on auto-approval for 1, 4, 8, or 12 hours from now. It turns itself off when the time is up, and the PC gets a notice when it is turned on. A daily time range and full autonomy are still set only on the PC.
-- Settings the phone can't change now say "You can change this on the PC." This covers a staff member's work folder, the folder and approval style when hiring, the approval style when formally hiring external staff, tool allow/block in equipment, allowing staff screen capture, and editing or deleting My-account manuals. Auto-approval from the phone can be turned on for at most 12 hours. In the approval inbox, "Always allow" no longer appears on the phone for program-run requests (tapping it used to approve only that one request).
+- Settings the phone can't change now say "You can change this on the PC." This covers a staff member's work folder, the folder and approval style when hiring, the approval style when formally hiring external staff, tool allow/block in equipment, allowing staff screen capture, editing or deleting My-account manuals, and a lab's work folder. Auto-approval from the phone can be turned on for at most 12 hours. In the approval inbox, "Always allow" no longer appears on the phone for program-run requests (tapping it used to approve only that one request).
+- If the PC app is an older version when you turn on autonomous mode or auto-approval from the phone, you now see a prompt to update AI Office on the PC instead of an error.
 
 ## [0.19.2] - 2026-11-02
 

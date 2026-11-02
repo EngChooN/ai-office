@@ -128,6 +128,33 @@ test('어댑터: 실패는 RemoteCallError(status·code·method 보존)로 rejec
 
 const tick = () => new Promise((r) => setTimeout(r, 0))
 
+test('어댑터: 예전 PC(remote-autonomy 모름)면 자율 진행·N시간 자동결재 켜기는 보내지 않고 "PC 업데이트" 안내', async () => {
+  const f = fakeBridge((m) => (m.type === 'call' && m.method === 'hello' ? { capabilities: ['iso-office'] } : { ok: true }))
+  const { h, notices } = handlers()
+  const s = createRemoteOffice(f.bridge, h)
+  f.emit({ type: 'connection', state: 'open' })
+  await tick()
+  const before = f.sent.length
+  await assert.rejects(s.office.instruct('kim', 'hi', [], { isAutonomous: true }), (e: { code?: string }) => e.code === 'pc_update_required')
+  await assert.rejects(s.office.createTask({ title: 'a', detail: '', teamId: null, isAutonomous: true } as never), (e: { code?: string }) => e.code === 'pc_update_required')
+  await assert.rejects(s.office.setAutoApprove({ mode: 'hours', hours: 4 }), (e: { code?: string }) => e.code === 'pc_update_required')
+  assert.equal(f.sent.length, before, '서버에 보내지 않는다')
+  assert.equal(notices.length, 3)
+  // 평소 지시·끄기는 그대로 보낸다
+  await s.office.instruct('kim', 'hi')
+  await s.office.setAutoApprove({ mode: 'off' })
+  assert.equal(f.sent.length, before + 2)
+})
+
+test('어댑터: 새 PC(remote-autonomy 앎)면 자율 진행 켜기를 그대로 보낸다', async () => {
+  const f = fakeBridge((m) => (m.type === 'call' && m.method === 'hello' ? { capabilities: ['iso-office', 'remote-autonomy'] } : { ok: true }))
+  const s = createRemoteOffice(f.bridge, handlers().h)
+  f.emit({ type: 'connection', state: 'open' })
+  await tick()
+  await s.office.instruct('kim', 'hi', [], { isAutonomous: true })
+  assert.equal(f.sent.at(-1)?.method, 'instruct')
+})
+
 test('어댑터: 연결될 때마다(처음·재연결·resync) hello로 PC 능력을 확인한다 — 새 PC면 칸 배치를 그대로 보낸다', async () => {
   const f = fakeBridge((m) => (m.type === 'call' && m.method === 'hello' ? { capabilities: ['iso-office'] } : { uid: 'g1' }))
   const checked: boolean[] = []
@@ -137,7 +164,7 @@ test('어댑터: 연결될 때마다(처음·재연결·resync) hello로 PC 능�
   await tick()
   assert.equal(s.isoOffice(), true)
   assert.deepEqual(checked, [true])
-  assert.deepEqual(f.sent[0], { type: 'call', method: 'hello', args: [{ capabilities: ['iso-office'] }] })
+  assert.deepEqual(f.sent[0], { type: 'call', method: 'hello', args: [{ capabilities: ['iso-office', 'remote-autonomy'] }] })
   assert.deepEqual(await s.office.placeGridItem('plant', 1, 2, 3, 1), { uid: 'g1' })
   f.emit({ type: 'connection', state: 'reconnecting' })
   f.emit({ type: 'connection', state: 'open' })

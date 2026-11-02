@@ -55,6 +55,8 @@ export const PC_ONLY_TEXT = {
 
 /** 화면이 그릴 수 있다고 PC에 알리는 능력 (ready features → 셸이 헤더 X-Office-Capabilities로) */
 export const SCREEN_CAPABILITIES = ['iso-office'] as const
+/** hello로만 묻는 능력: PC가 휴대폰의 자율 진행·N시간 자동결재 켜기를 아는지 (헤더에는 싣지 않는다) */
+export const REMOTE_AUTONOMY = 'remote-autonomy'
 /** PC가 예전 버전이라 칸 배치를 못 할 때 */
 export const pcUpdateText = () => t('shell.pcUpdate')
 /** PC가 예전 버전이라 가구 말고 다른 기능(마켓 채용·엔진 바꾸기 등)을 못 할 때 */
@@ -121,6 +123,8 @@ export function createRemoteOffice(bridge: Bridge, h: RemoteHandlers): RemoteSes
 
   // PC가 iso-office를 아는지 (hello는 상태를 남기지 않는 확인용 — 능력 판정은 셸이 싣는 헤더로 요청마다)
   let isoOffice: boolean | null = null
+  // PC가 휴대폰의 자율 진행·N시간 자동결재를 아는지: null = 확인 전 (그때는 그냥 보낸다)
+  let pcAutonomy: boolean | null = null
   let helloSeq = 0
   const setIsoOffice = (v: boolean) => {
     isoOffice = v
@@ -129,11 +133,17 @@ export function createRemoteOffice(bridge: Bridge, h: RemoteHandlers): RemoteSes
   const checkPc = async () => {
     const seq = ++helloSeq
     try {
-      const r = (await call('hello', [{ capabilities: [...SCREEN_CAPABILITIES] }])) as { capabilities?: unknown } | null
-      if (seq === helloSeq) setIsoOffice(Array.isArray(r?.capabilities) && r.capabilities.includes('iso-office'))
+      const r = (await call('hello', [{ capabilities: [...SCREEN_CAPABILITIES, REMOTE_AUTONOMY] }])) as { capabilities?: unknown } | null
+      if (seq !== helloSeq) return
+      const caps = Array.isArray(r?.capabilities) ? r.capabilities : []
+      pcAutonomy = caps.includes(REMOTE_AUTONOMY)
+      setIsoOffice(caps.includes('iso-office'))
     } catch (raw) {
       // 예전 PC는 hello를 모른다(404 unknown_method). 연결 실패 같은 다른 오류는 판단을 미룬다
-      if (seq === helloSeq && (raw as RemoteCallError).code === 'unknown_method') setIsoOffice(false)
+      if (seq === helloSeq && (raw as RemoteCallError).code === 'unknown_method') {
+        pcAutonomy = false
+        setIsoOffice(false)
+      }
     }
   }
   const gridCall = (method: OfficeMethod) => async (...args: unknown[]) => {
@@ -150,6 +160,16 @@ export function createRemoteOffice(bridge: Bridge, h: RemoteHandlers): RemoteSes
       throw refuse()
     }
   }
+
+  // 예전 PC는 휴대폰의 자율 진행·N시간 자동결재 켜기를 모른다 — 알 수 없는 오류(또는 조용히 평소 업무로) 대신 "PC를 업데이트해 주세요"
+  const autonomyCall = (method: OfficeMethod, isTurningOn: (args: unknown[]) => boolean) => async (...args: unknown[]) => {
+    if (pcAutonomy === false && isTurningOn(args)) {
+      h.notice(pcUpdateFeatureText())
+      throw new RemoteCallError(method, { status: 0, code: 'pc_update_required', message: pcUpdateFeatureText() })
+    }
+    return call(method, args)
+  }
+  const flag = (v: unknown, key: string) => typeof v === 'object' && v !== null && (v as Record<string, unknown>)[key]
 
   // PC 전용 동작은 서버에 보내지 않고 같은 모양의 값을 돌려준다 (서버도 같은 것을 422 pc_only로 막는다)
   const overrides: Partial<Record<OfficeMethod, (...args: never[]) => Promise<unknown>>> = {
@@ -200,6 +220,10 @@ export function createRemoteOffice(bridge: Bridge, h: RemoteHandlers): RemoteSes
       }
     },
     snapshot: async (...args: unknown[]) => fillOldSnapshot(await call('snapshot', args)),
+    instruct: autonomyCall('instruct', (a) => Boolean(flag(a[3], 'isAutonomous'))),
+    createTask: autonomyCall('createTask', (a) => Boolean(flag(a[0], 'isAutonomous'))),
+    updateTask: autonomyCall('updateTask', (a) => flag(a[1], 'isAutonomous') === true),
+    setAutoApprove: autonomyCall('setAutoApprove', (a) => flag(a[0], 'mode') === 'hours'),
   }
 
   const listeners = new Map<string, Set<(payload: unknown) => void>>()

@@ -20,6 +20,9 @@ export function restrictRemoteArgs(method: string, args: unknown[], ctx: RemoteG
     // 기존 외부 세션을 직원으로: 승인은 늘 묻기
     case 'recruitExternal':
       return patchAt(1, { approvalMode: 'ask' })
+    // 새 랩: 작업 폴더는 비워 둔다 (폴더는 PC에서 정한다)
+    case 'createLab':
+      return patchAt(0, { cwd: null })
     default:
       return args
   }
