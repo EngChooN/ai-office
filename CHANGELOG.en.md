@@ -9,6 +9,9 @@ Writing rules
 
 ## [미정] (설치본 미빌드)
 
+### Bug fixes
+- Fixed the [Install guide] button mentioned in the message not appearing when you try to continue a GPT (Codex) staff member on a computer without Codex. The button now opens the install guide in your browser.
+
 ## [0.19.3] - 2026-11-02
 
 ### Improvements

@@ -38,6 +38,8 @@ import { PcOnlyState } from '@/components/pc-only-state'
 import { ChangesetCard } from './ChangesetCard'
 
 const EXTERNAL_REFRESH_MS = 5000
+/** Codex 프로그램 설치 안내 (OpenAI 공식 문서) */
+const CODEX_INSTALL_URL = 'https://developers.openai.com/codex/cli'
 const LOG_LABEL: Record<LogType, TKey> = {
   instruction: 'staffPanel.log.instruction',
   reply: 'staffPanel.log.reply',
@@ -466,7 +468,17 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
           <XIcon />
         </Button>
       </header>
-      {resumeError && <p className="text-status-error border-b px-4 py-2 text-xs">{resumeError}</p>}
+      {resumeError && (
+        <p className="text-status-error flex flex-wrap items-center gap-2 border-b px-4 py-2 text-xs">
+          {resumeError}
+          {/* Codex 프로그램이 없을 때는 설치 명령 대신 설치 안내 페이지로 보낸다 */}
+          {resumeError === t('staffPanel.resume.codexMissing') && (
+            <Button size="sm" variant="outline" className="h-6 px-2 text-xs" onClick={() => window.open(CODEX_INSTALL_URL)}>
+              {t('staffPanel.resume.codexInstall')}
+            </Button>
+          )}
+        </p>
+      )}
 
       {staff.approvals.length > 0 && (
         <section
