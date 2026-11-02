@@ -138,12 +138,15 @@ test('어댑터: 예전 PC(remote-autonomy 모름)면 자율 진행·N시간 자
   await assert.rejects(s.office.instruct('kim', 'hi', [], { isAutonomous: true }), (e: { code?: string }) => e.code === 'pc_update_required')
   await assert.rejects(s.office.createTask({ title: 'a', detail: '', teamId: null, isAutonomous: true } as never), (e: { code?: string }) => e.code === 'pc_update_required')
   await assert.rejects(s.office.setAutoApprove({ mode: 'hours', hours: 4 }), (e: { code?: string }) => e.code === 'pc_update_required')
+  await assert.rejects(s.office.updateTask('t1', { isAutonomous: true } as never), (e: { code?: string }) => e.code === 'pc_update_required')
   assert.equal(f.sent.length, before, '서버에 보내지 않는다')
-  assert.equal(notices.length, 3)
+  assert.equal(notices.length, 4)
   // 평소 지시·끄기는 그대로 보낸다
   await s.office.instruct('kim', 'hi')
   await s.office.setAutoApprove({ mode: 'off' })
-  assert.equal(f.sent.length, before + 2)
+  await s.office.updateTask('t1', { isAutonomous: false } as never)
+  assert.equal(f.sent.length, before + 3)
+  assert.equal(f.sent.at(-1)?.method, 'updateTask')
 })
 
 test('어댑터: 새 PC(remote-autonomy 앎)면 자율 진행 켜기를 그대로 보낸다', async () => {
