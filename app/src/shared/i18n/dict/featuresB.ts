@@ -768,6 +768,12 @@ export default {
   'autoApprove.fromNow': { ko: '지금부터', en: 'From now', ja: '今から', zh: '从现在起' },
   'autoApprove.hours': { ko: '{n}시간', en: '{n}h', ja: '{n}時間', zh: '{n}小时' },
   'autoApprove.everyDay': { ko: '매일', en: 'Daily', ja: '毎日', zh: '每天' },
+  'autoApprove.dailyPcOnly': {
+    ko: '매일 시간대는 PC에서만 정할 수 있어요. 휴대폰에서는 "지금부터"로 켜 주세요.',
+    en: 'A daily time range can only be set on the PC. On the phone, turn it on with "From now".',
+    ja: '毎日の時間帯は PC でのみ設定できます。スマホでは「今から」でオンにしてください。',
+    zh: '每天的时间段只能在电脑上设置。在手机上请用“从现在起”开启。',
+  },
   'autoApprove.start': { ko: '시작', en: 'Start', ja: '開始', zh: '开始' },
   'autoApprove.end': { ko: '끝', en: 'End', ja: '終了', zh: '结束' },
   'autoApprove.applyRange': { ko: '이 시간대로', en: 'Use these hours', ja: 'この時間帯にする', zh: '使用此时间段' },

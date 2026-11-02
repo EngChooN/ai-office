@@ -305,9 +305,14 @@ export function SettingsPage() {
               <ApprovalRulesList />
             </Section>
             <Section title={t('settingsPage.staffCapture.title')} description={t('settingsPage.staffCapture.desc')}>
-              <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" checked={settings.isStaffCaptureOn} onChange={(e) => update({ isStaffCaptureOn: e.target.checked })} /> {t('settingsPage.staffCapture.toggle')}
-              </label>
+              {/* 화면 캡처 허용은 PC에서만 (PC가 휴대폰에서 온 값을 버린다) */}
+              {IS_MOBILE_SHELL ? (
+                <PcOnlyState isOn={settings.isStaffCaptureOn} />
+              ) : (
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={settings.isStaffCaptureOn} onChange={(e) => update({ isStaffCaptureOn: e.target.checked })} /> {t('settingsPage.staffCapture.toggle')}
+                </label>
+              )}
             </Section>
             <Section title={t('settingsPage.secretaryWeb.title')} description={t('settingsPage.secretaryWeb.desc')}>
               <label className="flex items-center gap-2 text-sm">

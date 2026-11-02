@@ -20,6 +20,8 @@ import { StaffMarketDialog } from './StaffMarketDialog'
 import { showToast } from '@/lib/toast'
 import { t } from '@shared/i18n'
 import { roleLabel } from '@shared/roleLabel'
+import { PcOnlyState } from '@/components/pc-only-state'
+import { IS_MOBILE_SHELL } from '@/shell'
 
 // 화면 문구가 들어 있어 렌더할 때 만든다 (언어 바뀜 반영)
 const models = (): { value: ModelChoice; label: string; hint: string }[] => [
@@ -296,11 +298,15 @@ export function HireDialog() {
             <div className="flex flex-col gap-2">
               <Label>{t('hire.folder')}</Label>
               <div className="flex items-center gap-2">
-                <Button type="button" variant="outline" size="sm" onClick={handlePickFolder}>
-                  <FolderOpenIcon /> {t('hire.folder.pick')}
-                </Button>
+                {/* 휴대폰에서 채용하면 작업 폴더는 기본 폴더로 정해진다 (PC가 다시 채운다) — 고르는 버튼 대신 안내 */}
+                {!IS_MOBILE_SHELL && (
+                  <Button type="button" variant="outline" size="sm" onClick={handlePickFolder}>
+                    <FolderOpenIcon /> {t('hire.folder.pick')}
+                  </Button>
+                )}
                 <span className="text-muted-foreground truncate text-xs">{form.cwd ? shortPath(form.cwd) : t('hire.folder.none')}</span>
               </div>
+              {IS_MOBILE_SHELL && <PcOnlyState />}
             </div>
 
             {templates.length > 0 && (
@@ -356,8 +362,18 @@ export function HireDialog() {
               </div>
               <div className="flex flex-col gap-2">
                 <Label>{t('hire.approval')}</Label>
-                <Segmented options={approvalModes()} value={form.approvalMode} onChange={(approvalMode) => update({ approvalMode })} />
-                <span className="text-muted-foreground text-xs">{approvalModes().find((m) => m.value === form.approvalMode)?.hint}</span>
+                {/* 휴대폰에서 채용하면 늘 '매번 묻기' (파일 수정 자동 승인은 PC에서만) */}
+                {IS_MOBILE_SHELL ? (
+                  <>
+                    <span className="text-xs">{t('hire.approval.ask')}</span>
+                    <PcOnlyState />
+                  </>
+                ) : (
+                  <>
+                    <Segmented options={approvalModes()} value={form.approvalMode} onChange={(approvalMode) => update({ approvalMode })} />
+                    <span className="text-muted-foreground text-xs">{approvalModes().find((m) => m.value === form.approvalMode)?.hint}</span>
+                  </>
+                )}
               </div>
             </div>
 

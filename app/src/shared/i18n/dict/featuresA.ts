@@ -318,6 +318,7 @@ export default {
   'manuals.section.personal': { ko: '📘 개인 매뉴얼 — 직원에게 교육', en: '📘 Personal manuals — trained to staff', ja: '📘 個人マニュアル — スタッフに研修', zh: '📘 个人手册 — 培训给员工' },
   'manuals.empty': { ko: '아직 없어요.', en: 'None yet.', ja: 'まだありません。', zh: '暂无。' },
   'manuals.scopeUser': { ko: '내 계정', en: 'My account', ja: 'マイアカウント', zh: '我的账户' },
+  'manuals.userPcOnly': { ko: '내 계정 매뉴얼은 PC에서 고칠 수 있어요.', en: 'My-account manuals can be edited on the PC.', ja: 'マイアカウントのマニュアルは PC で編集できます。', zh: '“我的账户”手册可在电脑上修改。' },
   'manuals.noDescription': { ko: '설명 없음', en: 'No description', ja: '説明なし', zh: '无说明' },
   'manuals.noSteps': { ko: '단계 없음', en: 'No steps', ja: 'ステップなし', zh: '无步骤' },
   'manuals.trainCount': { ko: '교육 {count}', en: 'Train {count}', ja: '研修 {count}', zh: '培训 {count}' },

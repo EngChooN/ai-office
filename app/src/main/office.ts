@@ -939,9 +939,9 @@ export class Office extends EventEmitter<{
     return isFullAutonomy(this.auto.config, Date.now()) || this.hasAutonomousOrigin(this.origins.get(staffId) ?? [])
   }
 
-  /** 지시창에서 '자율 진행'을 켜고 보낸 지시 — 켜기는 PC에서만 (원격이면 평소 지시로) */
+  /** 지시창에서 '자율 진행'을 켜고 보낸 지시 — 휴대폰에서 켜면 PC에 알린다 (위험 작업은 자율 진행이어도 건너뛴다) */
   instructAutonomous(staffId: string, text: string, attachments: Attachment[] = []) {
-    if (isRemoteCall()) throw new InvalidArgsError(t('autonomy.pcOnly'))
+    this.notifyRemoteChange('notify.remoteAutonomy')
     // 카드 없는 지시의 글 질문 재지시 횟수는 새 자율 지시마다 새로 센다
     this.textAskRetries.delete(staffId)
     this.instruct(staffId, text, { kind: 'user', isAutonomous: true }, attachments, '', true)
@@ -1723,10 +1723,10 @@ export class Office extends EventEmitter<{
 
   /** 켜기(N시간·매일 시간대)·끄기. 켜져 있던 것을 끄면 그때까지의 요약을 보낸다 */
   setAutoApprove(plan: AutoApprovePlan): AutoApproveState {
-    // 휴대폰에서는 끄기만 — 켜기·범위 넓히기는 PC에서만 (토큰만으로 결재 없이 명령이 돌지 않게)
+    // 휴대폰에서는 끄기와 'N시간' 켜기만 — 매일 시간대·완전 자율은 PC에서만. 휴대폰에서 바꾸면 PC에 알린다
     if (isRemoteCall()) {
-      if (!isRemoteAutoAllowed(plan)) throw new InvalidArgsError('자동결재는 PC에서만 켤 수 있어요')
-      this.notifyRemoteChange('notify.remoteAuto')
+      if (!isRemoteAutoAllowed(plan)) throw new InvalidArgsError(t('autoApprove.dailyPcOnly'))
+      this.notifyRemoteChange(plan.mode === 'off' ? 'notify.remoteAuto' : 'notify.remoteAutoOn')
     }
     // '완전 자율' 단계는 고르지 않았으면 지금 단계를 따른다. 원격에서 끄면 단계도 내린다 (다시 켜기는 PC에서)
     const isFull = isRemoteCall() ? false : (plan.isFull ?? Boolean(this.auto.config.isFull))
@@ -2894,8 +2894,8 @@ export class Office extends EventEmitter<{
     this.scheduleEmit()
   }
 
-  /** 휴대폰에서 장비·자동결재·규칙이 바뀌면 PC에 알린다 (원격 호출 안에서만) */
-  private notifyRemoteChange(bodyKey: 'notify.remoteEquipment' | 'notify.remoteAuto' | 'notify.remoteRule', vars: Record<string, string> = {}) {
+  /** 휴대폰에서 장비·자동결재·자율 진행·규칙이 바뀌면 PC에 알린다 (원격 호출 안에서만) */
+  private notifyRemoteChange(bodyKey: 'notify.remoteEquipment' | 'notify.remoteAuto' | 'notify.remoteAutoOn' | 'notify.remoteAutonomy' | 'notify.remoteRule', vars: Record<string, string> = {}) {
     if (!isRemoteCall()) return
     this.emit('notify', { title: t('notify.remoteChange'), body: t(bodyKey, vars), staffId: '' })
   }
@@ -3313,8 +3313,8 @@ export class Office extends EventEmitter<{
 
   createTask(input: { title: string; detail: string; teamId: string | null; labId?: string | null; attachments?: Attachment[]; isAutonomous?: boolean }): Task {
     const now = Date.now()
-    // 자율 진행 켜기는 PC에서만
-    if (input.isAutonomous && isRemoteCall()) throw new InvalidArgsError(t('autonomy.pcOnly'))
+    // 휴대폰에서 자율 진행을 켜면 PC에 알린다
+    if (input.isAutonomous) this.notifyRemoteChange('notify.remoteAutonomy')
     const { isAutonomous, ...rest } = input
     const task: Task = { id: crypto.randomUUID(), ...rest, labId: input.labId ?? null, status: 'todo', assigneeId: null, result: '', createdAt: now, updatedAt: now, ...(isAutonomous ? { isAutonomous: true } : {}) }
     this.saveTask(task)
@@ -3324,8 +3324,8 @@ export class Office extends EventEmitter<{
   updateTask(taskId: string, patch: Partial<Pick<Task, 'title' | 'detail' | 'status' | 'teamId' | 'labId' | 'assigneeId' | 'isAutonomous'>>) {
     const t = this.tasks.get(taskId)
     if (!t) return
-    // 자율 진행은 PC에서만 켠다 — 휴대폰은 끄기만
-    if (patch.isAutonomous && isRemoteCall()) throw new InvalidArgsError(tr('autonomy.pcOnly'))
+    // 휴대폰에서 자율 진행을 켜면 PC에 알린다
+    if (patch.isAutonomous && !t.isAutonomous) this.notifyRemoteChange('notify.remoteAutonomy')
     this.saveTask({ ...t, ...patch, updatedAt: Date.now() })
     if (t.parentId && patch.status) this.advancePlan(t.parentId)
     if (t.isPractice && patch.status === 'done') this.tutorial.notify('taskDone', taskId)

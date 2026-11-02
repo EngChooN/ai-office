@@ -34,6 +34,7 @@ import { fmtDate, t, trOr, type TKey } from '@shared/i18n'
 import { toolDisplayName } from '@shared/computerTools'
 import { roleLabel } from '@shared/roleLabel'
 import { IS_MOBILE_SHELL } from '@/shell'
+import { PcOnlyState } from '@/components/pc-only-state'
 import { ChangesetCard } from './ChangesetCard'
 
 const EXTERNAL_REFRESH_MS = 5000
@@ -900,16 +901,21 @@ function WorkDir({ staff }: { staff: Staff }) {
       ) : (
         <span>{t('staffPanel.workDir.none')}</span>
       )}
-      <div className="flex gap-1.5">
-        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => void handlePick()}>
-          {staff.ownCwd ? t('staffPanel.workDir.change') : t('staffPanel.workDir.pick')}
-        </Button>
-        {staff.ownCwd && (
-          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => void window.office.updateStaff(staff.id, { cwd: '' })}>
-            {t('staffPanel.workDir.clear')}
+      {/* 작업 폴더는 직원이 읽고 쓰는 범위라 PC에서만 바꾼다 (PC가 휴대폰에서 온 값을 버린다) */}
+      {IS_MOBILE_SHELL ? (
+        <PcOnlyState />
+      ) : (
+        <div className="flex gap-1.5">
+          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => void handlePick()}>
+            {staff.ownCwd ? t('staffPanel.workDir.change') : t('staffPanel.workDir.pick')}
           </Button>
-        )}
-      </div>
+          {staff.ownCwd && (
+            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => void window.office.updateStaff(staff.id, { cwd: '' })}>
+              {t('staffPanel.workDir.clear')}
+            </Button>
+          )}
+        </div>
+      )}
       <span className="text-muted-foreground text-[11px]">{t('staffPanel.workDir.hint')}</span>
     </div>
   )
@@ -997,11 +1003,15 @@ function ExternalActions({ staff }: { staff: Staff }) {
                 </option>
               ))}
             </NativeSelect>
+            {/* 휴대폰에서 정식 채용하면 늘 '매번 묻기' (파일 수정 자동 승인은 PC에서만) */}
             <NativeSelect value={approvalMode} onChange={(e) => setApprovalMode(e.target.value as ApprovalMode)} className="h-8 w-28 text-xs">
               <option value="ask">{t('staffPanel.external.approveAll')}</option>
-              <option value="acceptEdits">{t('staffPanel.external.acceptEdits')}</option>
+              <option value="acceptEdits" disabled={IS_MOBILE_SHELL}>
+                {t('staffPanel.external.acceptEdits')}
+              </option>
             </NativeSelect>
           </div>
+          {IS_MOBILE_SHELL && <PcOnlyState />}
           <div className="flex gap-2">
             <Button size="sm" onClick={handleRecruit}>
               {t('staffPanel.external.recruit')}

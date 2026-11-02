@@ -14,6 +14,7 @@ import type { Manual, ManualInput, ManualKind, ProcessStep } from '@shared/types
 import { t, type TKey } from '@shared/i18n'
 import { Avatar } from './StaffCard'
 import { shortPath } from './status'
+import { IS_MOBILE_SHELL } from '@/shell'
 
 const NAME_RE = /^[a-z0-9][a-z0-9-]{1,62}$/
 const KIND_LABEL: Record<ManualKind, TKey> = { personal: 'manuals.kind.personal', process: 'manuals.kind.process' }
@@ -44,7 +45,8 @@ export function ManualsPage() {
     void refresh()
   }, [refresh])
 
-  const projectDirs = useMemo(() => [...new Set([...staff.map((s) => s.cwd), ...labs.flatMap((l) => (l.cwd ? [l.cwd] : []))])], [staff, labs])
+  // 휴대폰에서는 랩 폴더에만 만들 수 있다 (PC가 다른 폴더를 막는다)
+  const projectDirs = useMemo(() => [...new Set([...(IS_MOBILE_SHELL ? [] : staff.map((s) => s.cwd)), ...labs.flatMap((l) => (l.cwd ? [l.cwd] : []))])], [staff, labs])
   const trainedCount = (m: Manual) =>
     m.kind === 'personal'
       ? staff.filter((s) => s.equipment.skills === 'all' || s.equipment.skills.includes(m.name)).length
@@ -91,9 +93,14 @@ export function ManualsPage() {
                     <Button size="sm" variant="outline" onClick={() => setTraining(m)}>
                       <GraduationCapIcon /> {t('manuals.trainCount', { count: trainedCount(m) })}
                     </Button>
-                    <Button size="icon" variant="ghost" className="ml-auto size-8" onClick={() => setEditing({ input: { ...m }, previousPath: m.path })} aria-label={t('manuals.edit')}>
-                      <PencilIcon className="size-4" />
-                    </Button>
+                    {/* 전역 매뉴얼은 모든 프로젝트에 영향 — 고치기는 PC에서만 */}
+                    {IS_MOBILE_SHELL && m.scope === 'user' ? (
+                      <span className="text-muted-foreground ml-auto text-[10px]">{t('manuals.userPcOnly')}</span>
+                    ) : (
+                      <Button size="icon" variant="ghost" className="ml-auto size-8" onClick={() => setEditing({ input: { ...m }, previousPath: m.path })} aria-label={t('manuals.edit')}>
+                        <PencilIcon className="size-4" />
+                      </Button>
+                    )}
                     <Button size="icon" variant="ghost" className="size-8" onClick={() => void handleDelete(m)} aria-label={t('manuals.delete')}>
                       <Trash2Icon className="size-4" />
                     </Button>
@@ -196,17 +203,23 @@ function ManualEditor({ initial, previousPath, projectDirs, onClose }: { initial
                 onChange={(e) => (e.target.value === '__user__' ? update({ scope: 'user', projectDir: null }) : update({ scope: 'project', projectDir: e.target.value }))}
                 className="min-w-0 flex-1"
               >
-                <option value="__user__">{t('manuals.editor.locationUser')}</option>
+                <option value="__user__" disabled={IS_MOBILE_SHELL}>
+                  {t('manuals.editor.locationUser')}
+                </option>
                 {[...new Set([...projectDirs, ...(form.projectDir ? [form.projectDir] : [])])].map((d) => (
                   <option key={d} value={d}>
                     {t('manuals.editor.locationProject', { path: shortPath(d) })}
                   </option>
                 ))}
               </NativeSelect>
-              <Button type="button" size="sm" variant="outline" onClick={() => void handlePickFolder()}>
-                {t('manuals.editor.pickFolder')}
-              </Button>
+              {!IS_MOBILE_SHELL && (
+                <Button type="button" size="sm" variant="outline" onClick={() => void handlePickFolder()}>
+                  {t('manuals.editor.pickFolder')}
+                </Button>
+              )}
             </div>
+            {/* 휴대폰에서는 랩 폴더 매뉴얼만 (전역은 PC에서만) */}
+            {IS_MOBILE_SHELL && form.scope === 'user' && <p className="text-muted-foreground text-xs">{t('manuals.userPcOnly')}</p>}
           </div>
         </div>
         <div className="flex flex-col gap-1">

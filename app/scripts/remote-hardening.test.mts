@@ -49,9 +49,10 @@ test('PC 쪽 방어: 이미 켜 둔 "위험 명령 금지"는 원격이 빼지 �
 
 // ── 2) 규칙·자동결재·매뉴얼 ─────────────────────────────
 
-test('원격 자동결재는 끄기만, 항상 승인 규칙은 Bash 제외, 매뉴얼은 랩 폴더만', () => {
+test('원격 자동결재는 끄기·N시간만, 항상 승인 규칙은 Bash 제외, 매뉴얼은 랩 폴더만', () => {
   assert.equal(isRemoteAutoAllowed({ mode: 'off' }), true)
-  for (const mode of ['hours', 'daily']) assert.equal(isRemoteAutoAllowed({ mode }), false, mode)
+  assert.equal(isRemoteAutoAllowed({ mode: 'hours' }), true, '지금부터 N시간은 휴대폰에서도')
+  assert.equal(isRemoteAutoAllowed({ mode: 'daily' }), false, '매일 시간대는 PC에서만')
   assert.equal(isRemoteRuleBlocked('Bash'), true)
   assert.equal(isRemoteRuleBlocked(' bash '), true)
   assert.equal(isRemoteRuleBlocked('Edit'), false)

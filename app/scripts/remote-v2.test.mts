@@ -637,9 +637,10 @@ test('L2: 객체 인자는 메서드별 허용 필드만 — updateTask에 id·�
       assert.ok((V2_FIELDS as Record<string, Record<number, string[]>>)[name]?.[i], `${name} args[${i}]`)
     })
   }
-  // isAutonomous는 끄기만 쓰인다 (켜기는 office가 원격 호출을 막는다)
+  // 자율 진행은 휴대폰에서도 켜고 끈다 (켜면 office가 PC에 알린다)
   assert.deepEqual(V2_FIELDS.updateTask![1].sort(), ['assigneeId', 'detail', 'isAutonomous', 'labId', 'status', 'teamId', 'title'])
-  assert.ok(!V2_FIELDS.createTask![0].includes('isAutonomous'), '카드 만들기에서 자율 켜기는 PC에서만')
+  assert.ok(V2_FIELDS.createTask![0].includes('isAutonomous'), '카드 만들기에서 자율 켜기')
+  assert.deepEqual(V2_FIELDS.instruct![3], ['isAutonomous'], '지시창 자율 진행')
   assert.ok(!V2_FIELDS.setAutoApprove![0].includes('isFull'), '완전 자율은 PC에서만')
 })
 

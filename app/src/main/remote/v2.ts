@@ -87,7 +87,8 @@ export const V2_METHODS: Record<OfficeMethod, MethodSpec> = {
   hireMarket: S('s s?'),
   fire: R('s'),
   updateStaff: S('s o'),
-  instruct: R('s s a?', [2]),
+  // 넷째 자리: { isAutonomous } — 휴대폰에서도 자율 진행으로 보낼 수 있다 (켜면 PC에 알린다)
+  instruct: R('s s a? o?', [2]),
   loadStaffCommands: R('s'),
   saveAttachments: { cls: 'U', args: 'a' },
   openAttachment: P('download_file', 's'),
@@ -160,7 +161,7 @@ export const V2_METHODS: Record<OfficeMethod, MethodSpec> = {
   resumePlan: R('s'),
   reviewPlan: R('s b s'),
   answerQuestion: R('s o'),
-  // 자동결재: 휴대폰에서도 켜고 끈다 (기획서 — 대표가 밖에서 켜 두고 잠들 수 있게)
+  // 자동결재: 휴대폰에서도 'N시간' 켜기·끄기 (기획서 — 대표가 밖에서 켜 두고 잠들 수 있게). 매일 시간대는 office가 막는다
   autoApproveStatus: R(),
   setAutoApprove: R('o'),
   // 완전 자율: 휴대폰에서는 끄기만 (켜기는 office가 막는다)
@@ -244,10 +245,11 @@ export const V2_FIELDS: Partial<Record<OfficeMethod, Record<number, string[]>>> 
   setEquipment: { 1: fieldsExcept('setEquipment', 1, ['allowedTools', 'disallowedTools'], { mcpServers: true, skills: true, monthlyBudgetUsd: true, lightModelOff: true }) },
   saveManual: { 0: fieldsOf('saveManual', 0, { name: true, description: true, kind: true, scope: true, projectDir: true, body: true, steps: true }) },
   startRun: { 0: fieldsOf('startRun', 0, { manualName: true, scope: true, input: true, attachments: true, taskId: true }) },
-  // 자율 진행 켜기는 PC에서만
-  createTask: { 0: fieldsExcept('createTask', 0, ['isAutonomous'], { title: true, detail: true, teamId: true, labId: true, attachments: true }) },
+  instruct: { 3: fieldsOf('instruct', 3, { isAutonomous: true }) },
+  // 자율 진행 켜기도 휴대폰에서 (위험 작업은 자율 진행이어도 건너뛰고, 켜면 PC에 알린다)
+  createTask: { 0: fieldsOf('createTask', 0, { title: true, detail: true, teamId: true, labId: true, attachments: true, isAutonomous: true }) },
   moveStaff: { 1: fieldsOf('moveStaff', 1, { teamId: true, joinLabIds: true, leaveLabIds: true }) },
-  // isAutonomous는 끄기만 통과 (켜기는 office가 막는다)
+  // isAutonomous 켜기·끄기 모두 (켜면 office가 PC에 알린다)
   updateTask: { 1: fieldsOf('updateTask', 1, { title: true, detail: true, status: true, teamId: true, labId: true, assigneeId: true, isAutonomous: true }) },
   // 완전 자율 단계는 PC에서만
   setAutoApprove: { 0: fieldsExcept('setAutoApprove', 0, ['isFull'], { mode: true, hours: true, start: true, end: true }) },

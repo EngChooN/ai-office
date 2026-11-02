@@ -8,6 +8,8 @@ import { McpSection } from './McpSection'
 import { NotOnWindows } from '@/components/not-on-windows'
 import { t } from '@shared/i18n'
 import type { TKey } from '@shared/i18n'
+import { PcOnlyState } from '@/components/pc-only-state'
+import { IS_MOBILE_SHELL } from '@/shell'
 
 /** 자주 쓰는 도구 권한 묶음 */
 const TOOL_PRESETS: { label: TKey; hint: TKey; detail?: TKey; allow?: string[]; deny?: string[] }[] = [
@@ -90,9 +92,11 @@ export function EquipmentTab({ staff }: { staff: Staff }) {
       <div className="flex flex-col gap-2">
         <h3 className="text-xs font-semibold">🛡️ {t('equipment.tools.title')}</h3>
         <NotOnWindows reason={t('equipment.tools.captureMacOnly')} />
+        {/* 도구 허용·금지는 PC에서만 (PC가 휴대폰에서 온 값을 버린다) — 지금 상태만 보여 준다 */}
+        {IS_MOBILE_SHELL && <PcOnlyState />}
         <div className="grid grid-cols-2 gap-1">
           {TOOL_PRESETS.map((p) => (
-            <Chip key={p.label} isOn={presetOn(p)} onClick={() => togglePreset(p)}>
+            <Chip key={p.label} isOn={presetOn(p)} onClick={() => togglePreset(p)} disabled={IS_MOBILE_SHELL}>
               <span className="font-medium">{t(p.label)}</span>
               <div className="text-muted-foreground text-[10px]">{t(p.hint)}</div>
             </Chip>

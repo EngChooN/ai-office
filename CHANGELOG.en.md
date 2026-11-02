@@ -23,6 +23,9 @@ Writing rules
 - Empty-state hints: an office with no staff shows "Hire staff" and "Replay guide" buttons in the banner, an empty staff panel shows example instruction chips, and an empty approval inbox explains itself and offers a hire button. The GPT banner stays hidden until you hire someone if you have no staff.
 - The sign-in step of the first-run guide now checks your Claude and ChatGPT (Codex) accounts together. Both account cards are always shown side by side, and either one being ready is enough to continue. When both are ready, both show a ✓.
 - The "Beta" label on GPT (Codex) staff is gone. GPT is now fully supported, just like Claude.
+- You can now turn on autonomous mode from the phone app. The "Autonomous" checkbox appears in the instruction box and on task cards. Risky actions are still skipped in autonomous mode, and the PC gets a notice when it is turned on from the phone.
+- From the phone app you can turn on auto-approval for 1, 4, 8, or 12 hours from now. It turns itself off when the time is up, and the PC gets a notice when it is turned on. A daily time range and full autonomy are still set only on the PC.
+- Settings the phone can't change now say "You can change this on the PC." This covers a staff member's work folder, the folder and approval style when hiring, the approval style when formally hiring external staff, tool allow/block in equipment, allowing staff screen capture, and editing My-account manuals. In the approval inbox, "Always allow" no longer appears on the phone for program-run requests (tapping it used to approve only that one request).
 
 ## [0.19.2] - 2026-11-02
 

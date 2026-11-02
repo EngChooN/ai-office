@@ -6,6 +6,7 @@
 
 ### 개선
 - 대화 기억 길이(`Staff.memory`: short·normal·long·full, staff.memory 열): `rotateLimits`로 새 대화 넘김 기준을 직원별로(짧게 40k/20k, 보통 80k/20k, 길게 160k/80k, 최대 넘기지 않음 — 이어지는 지시/새 카드). updateStaff 허용 필드에 추가(잘못된 값은 버림), 휴대폰 v2도 허용. 직원 패널 자율 진행 줄 오른쪽 `MemoryLengthSelect`(마우스 올리면 설명).
+- 휴대폰에서 켜기 허용: 자율 진행(`createTask`·`updateTask`·`instructAutonomous` 원격 차단 제거, v2 `instruct` 넷째 자리 `{ isAutonomous }`·`createTask.isAutonomous` 허용, 켜면 `notify.remoteAutonomy`), 자동결재 `hours`(`isRemoteAutoAllowed` off·hours, `daily`·완전 자율은 PC만, 켜면 `notify.remoteAutoOn`). 계속 PC 전용인 칸은 휴대폰에서 `PcOnlyState`·비활성으로 표시: 직원 작업 폴더, 채용 폴더·결재 방식, 외부 직원 정식 채용 결재 방식, 장비 도구 칩, 화면 캡처 허용, 전역 매뉴얼(만들기 위치·고치기), Bash 규칙의 '앞으로 자동 승인' 버튼 숨김. 근거: 자율 진행·N시간 자동결재는 위험 작업(`autoApprove` wait)을 여전히 건너뛰거나 기다리고 기간이 정해져 있으며, 휴대폰은 이미 결재를 하나씩 승인할 수 있다.
 
 ## [0.19.2] - 2026-11-02
 

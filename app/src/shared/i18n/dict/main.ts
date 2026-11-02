@@ -110,6 +110,8 @@ export default {
   'notify.remoteChange': { ko: '📱 휴대폰에서 설정이 바뀌었어요', en: '📱 Settings changed from the phone', ja: '📱 スマホから設定が変更されました', zh: '📱 手机端更改了设置' },
   'notify.remoteEquipment': { ko: '{name} 님의 장비를 바꿨어요. 내가 한 일이 아니라면 휴대폰 연결을 끄거나 QR을 다시 만들어 주세요.', en: "{name}'s equipment was changed. If this wasn't you, turn off the phone link or regenerate the QR.", ja: '{name} さんの装備が変更されました。心当たりがなければスマホ連携をオフにするかQRを作り直してください。', zh: '{name} 的装备被更改。如果不是你操作的，请关闭手机连接或重新生成二维码。' },
   'notify.remoteAuto': { ko: '자동결재를 껐어요.', en: 'Auto-approval was turned off.', ja: '自動承認をオフにしました。', zh: '已关闭自动审批。' },
+  'notify.remoteAutoOn': { ko: '자동결재를 켰어요. 내가 한 일이 아니라면 휴대폰 연결을 끄거나 QR을 다시 만들어 주세요.', en: "Auto-approval was turned on. If this wasn't you, turn off the phone link or regenerate the QR.", ja: '自動承認をオンにしました。心当たりがなければスマホ連携をオフにするかQRを作り直してください。', zh: '已开启自动审批。如果不是你操作的，请关闭手机连接或重新生成二维码。' },
+  'notify.remoteAutonomy': { ko: '업무를 자율 진행으로 맡겼어요. 내가 한 일이 아니라면 휴대폰 연결을 끄거나 QR을 다시 만들어 주세요.', en: "A task was set to autonomous mode. If this wasn't you, turn off the phone link or regenerate the QR.", ja: '業務を自律進行で任せました。心当たりがなければスマホ連携をオフにするかQRを作り直してください。', zh: '已将任务设为自主推进。如果不是你操作的，请关闭手机连接或重新生成二维码。' },
   'notify.remoteRule': { ko: '"앞으로 항상 승인" 규칙이 바뀌었어요. 설정에서 확인해 주세요.', en: 'An "always approve" rule changed. Please check it in settings.', ja: '「今後は常に承認」ルールが変更されました。設定で確認してください。', zh: '“始终批准”规则已更改，请在设置中确认。' },
   'notify.planUsage': { ko: '📊 AI 요금제 사용량', en: '📊 AI plan usage', ja: '📊 AIプランの使用量', zh: '📊 AI 套餐用量' },
   'notify.planUsageBody': { ko: 'AI 요금제 사용량 {percent}% ({window})', en: 'AI plan usage {percent}% ({window})', ja: 'AIプランの使用量 {percent}%（{window}）', zh: 'AI 套餐用量 {percent}%（{window}）' },

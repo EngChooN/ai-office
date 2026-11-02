@@ -25,8 +25,8 @@ export function restrictRemoteArgs(method: string, args: unknown[], ctx: RemoteG
   }
 }
 
-/** 원격에서 자동결재는 끄기만 */
-export const isRemoteAutoAllowed = (plan: { mode: string }) => plan.mode === 'off'
+/** 원격에서 자동결재는 끄기와 '지금부터 N시간'(최대 12시간, 저절로 꺼짐)만 — 매일 반복하는 시간대는 PC에서만 */
+export const isRemoteAutoAllowed = (plan: { mode: string }) => plan.mode === 'off' || plan.mode === 'hours'
 
 /** "앞으로 항상 승인" 규칙을 원격에서 만들 수 없는 도구 (Bash — 한 번 누른 승인이 모든 명령 허가가 되지 않게) */
 export const isRemoteRuleBlocked = (toolName: string) => /^bash$/i.test(toolName.trim())

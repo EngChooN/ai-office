@@ -74,7 +74,7 @@ export function AutoApproveSection() {
   const { error, isBusy, run: setPlan } = usePlan()
   const [fullError, setFullError] = useState<string | null>(null)
   const isFull = Boolean(config.isFull)
-  // 단계 바꾸기: '완전 자율' 켜기·끄기 (기간은 그대로). 휴대폰에서는 끄기만
+  // 단계 바꾸기: '완전 자율' 켜기·끄기 (기간은 그대로). 휴대폰에서는 끄기만 (자동결재 'N시간' 켜기·끄기는 휴대폰에서도)
   const handleFull = async (next: boolean) => {
     try {
       await window.office.setAutoFull(next)
@@ -116,15 +116,20 @@ export function AutoApproveSection() {
           </Button>
         ))}
       </div>
-      <div className="flex flex-wrap items-center gap-1.5">
-        <span className="text-muted-foreground w-16 text-xs">{t('autoApprove.everyDay')}</span>
-        <Input type="time" value={start} onChange={(e) => setStart(e.target.value)} className="phone:w-32 h-7 w-28 text-xs" aria-label={t('autoApprove.start')} />
-        <span className="text-muted-foreground text-xs">~</span>
-        <Input type="time" value={end} onChange={(e) => setEnd(e.target.value)} className="phone:w-32 h-7 w-28 text-xs" aria-label={t('autoApprove.end')} />
-        <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" disabled={isBusy || !start || !end || start === end} onClick={() => void setPlan({ mode: 'daily', start, end })}>
-          {config.mode === 'daily' && config.start === start && config.end === end ? <CheckIcon /> : null} {t('autoApprove.applyRange')}
-        </Button>
-      </div>
+      {/* 매일 시간대는 PC에서만 — 휴대폰은 '지금부터 N시간'만 (저절로 꺼진다) */}
+      {IS_MOBILE_SHELL ? (
+        <p className="text-muted-foreground text-xs">{t('autoApprove.dailyPcOnly')}</p>
+      ) : (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-muted-foreground w-16 text-xs">{t('autoApprove.everyDay')}</span>
+          <Input type="time" value={start} onChange={(e) => setStart(e.target.value)} className="phone:w-32 h-7 w-28 text-xs" aria-label={t('autoApprove.start')} />
+          <span className="text-muted-foreground text-xs">~</span>
+          <Input type="time" value={end} onChange={(e) => setEnd(e.target.value)} className="phone:w-32 h-7 w-28 text-xs" aria-label={t('autoApprove.end')} />
+          <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" disabled={isBusy || !start || !end || start === end} onClick={() => void setPlan({ mode: 'daily', start, end })}>
+            {config.mode === 'daily' && config.start === start && config.end === end ? <CheckIcon /> : null} {t('autoApprove.applyRange')}
+          </Button>
+        </div>
+      )}
       {config.mode !== 'off' && (
         <Button size="sm" variant="outline" className="border-destructive/60 w-fit" disabled={isBusy} onClick={() => void setPlan({ mode: 'off' })}>
           {t('autoApprove.turnOff')}
@@ -242,6 +247,8 @@ export function AutoHandledList() {
 export function AlwaysApproveButton({ approval, staffName }: { approval: Approval; staffName: string }) {
   const [isBusy, setIsBusy] = useState(false)
   if (!approval.alwaysRule) return null
+  // 명령(Bash) 규칙은 PC에서만 만든다 — 휴대폰에서는 PC가 이번 한 번만 승인하므로 버튼을 두지 않는다
+  if (IS_MOBILE_SHELL && /^bash$/i.test(approval.alwaysRule.toolName.trim())) return null
   const rule = ruleLabel(approval.alwaysRule)
   const handleClick = async () => {
     if (!window.confirm(t('rule.confirm', { name: staffName, rule }))) return
