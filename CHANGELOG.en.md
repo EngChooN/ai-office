@@ -9,6 +9,11 @@ Writing rules
 
 ## [미정] (설치본 미빌드)
 
+### Improvements
+- On-screen wording is now plainer and consistent. "Peer PC" became "other PC", rejecting a connection is "send back", workflows are "manual steps run", and plan-usage alerts say "last 5 hours / last 7 days". The menu bar no longer shows a port number.
+- The autonomous-run log now shows "run program / edit file / read file / web lookup" instead of tool names like "Bash", and staff chat hints no longer mention "delegate" or "background".
+- Account/connection status messages (Claude or GPT (Codex) sign-in needed, not installed, etc.) and update-failure messages were rewritten for non-developers.
+
 ## [0.19.2] - 2026-11-02
 
 ### Improvements

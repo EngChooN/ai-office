@@ -9,7 +9,7 @@ import { OFFICE_EVENTS, OFFICE_METHODS, type OfficeEvent, type OfficeMethod } fr
 import type { AiProvider, Attachment, OfficeApi, UploadFile } from '../../shared/types.ts'
 import type { PackResult } from '../../shared/staffPack.ts'
 import type { Bridge, BridgeError } from './bridge.ts'
-import { t } from '../../shared/i18n/index.ts'
+import { t, type TKey } from '../../shared/i18n/index.ts'
 
 /** 원격 호출 실패 — 데스크톱 IPC가 던지는 자리(Promise reject)와 같아서 화면의 오류 처리가 그대로 동작한다 */
 export class RemoteCallError extends Error {
@@ -62,10 +62,14 @@ export const pcUpdateFeatureText = () => t('shell.pcUpdateFeature')
 /** 칸 배치 메서드 — 예전 PC(iso-office 모름)에는 보내지 않는다 */
 const GRID_METHODS = new Set<OfficeMethod>(['placeGridItem', 'moveGridItem', 'setGridItemOn', 'stowAllGrid', 'restoreGridItems', 'moveSeatSet'])
 
-/** 연결이 끊기는 호출의 확인 문구 (배치안 7-2절) */
-const CONFIRM_TEXT: Partial<Record<OfficeMethod, string>> = {
-  regenerateRemoteQr: '이 휴대폰 연결이 바로 끊겨요.\n새 QR을 만들면 지금 연결된 휴대폰이 모두 끊겨요. 다시 쓰려면 PC 화면의 새 QR을 찍어야 해요.',
-  setRemoteEnabled: '이 휴대폰 연결이 바로 끊겨요.\n원격 연결을 끄거나 포트를 바꾸면 이 휴대폰도 바로 끊기고, 다시 켜려면 PC 앞에서 켜야 해요.',
+/** 연결이 끊기는 호출의 확인 문구 (배치안 7-2절) — 언어가 바뀌어도 맞게 부를 때마다 사전에서 읽는다 */
+const CONFIRM_KEY: Partial<Record<OfficeMethod, TKey>> = {
+  regenerateRemoteQr: 'remote.confirm.regenerateQr',
+  setRemoteEnabled: 'remote.confirm.setEnabled',
+}
+const confirmText = (method: OfficeMethod, fallback: string) => {
+  const key = CONFIRM_KEY[method]
+  return key ? t(key) : fallback
 }
 
 const EVENT_NAME: Record<OfficeEvent, string> = { onSnapshot: 'snapshot', onLog: 'log', onChat: 'chat', onFocus: 'focus', onRemoteStatus: 'remoteStatus', onGalleryChanged: 'galleryChanged' }
@@ -106,7 +110,7 @@ export function createRemoteOffice(bridge: Bridge, h: RemoteHandlers): RemoteSes
     } catch (raw) {
       const e = raw as BridgeError
       if (e.code === 'confirm_required' && !confirm) {
-        if (await h.confirm(CONFIRM_TEXT[method as OfficeMethod] ?? e.message)) return call(method, args, true)
+        if (await h.confirm(confirmText(method as OfficeMethod, e.message))) return call(method, args, true)
         throw new RemoteCallError(method, { status: 0, code: 'confirm_cancelled', message: '취소했어요' })
       }
       // PC만 할 수 있는 기능을 서버가 막았으면(어댑터가 모르는 새 기능 포함) 안내를 띄운다

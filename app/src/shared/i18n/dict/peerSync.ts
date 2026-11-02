@@ -49,7 +49,7 @@ export default {
   'peerSync.error.workspace_quota': { ko: '다른 PC에 복사본을 둘 자리가 부족해요', en: 'The other PC does not have room for more copies', ja: '相手のPCにコピーを置く容量が足りません', zh: '对方电脑没有足够空间存放副本' },
   'peerSync.error.workspace_not_found': { ko: '복사본을 찾을 수 없어요', en: 'The copy could not be found', ja: 'コピーが見つかりません', zh: '找不到副本' },
   'peerSync.error.changes_too_large': { ko: '바뀐 파일이 너무 많거나 커서 가져오지 못했어요. 다른 PC에서 직접 확인해 주세요', en: 'Too many or too large changes to bring back. Check them on the other PC', ja: '変更が多すぎる・大きすぎるため取り込めませんでした。相手のPCで確認してください', zh: '更改太多或太大，无法带回。请在对方电脑上查看' },
-  'peerSync.error.changes_rejected': { ko: '작업 폴더 밖 파일이 있어 안전을 위해 변경 전체를 받지 않았어요', en: 'Some files were outside the work folder, so all changes were refused for safety', ja: '作業フォルダの外のファイルがあるため、安全のため変更をすべて受け取りませんでした', zh: '存在工作文件夹之外的文件，为安全起见未接收全部更改' },
+  'peerSync.error.changes_rejected': { ko: '받은 변경 내용이 안전 검사를 통과하지 못해 전체를 받지 않았어요 (작업 폴더 밖 파일, 맞지 않는 버전, 잘못된 형식 등)', en: 'The received changes failed the safety check, so all of them were refused (for example files outside the work folder, a mismatched version, or a bad format)', ja: '受け取った変更が安全確認を通らなかったため、すべて受け取りませんでした（作業フォルダ外のファイル、バージョン不一致、形式不正など）', zh: '收到的更改未通过安全检查，因此未接收全部更改（例如工作文件夹之外的文件、版本不匹配或格式错误）' },
   'peerSync.error.changeset_not_found': { ko: '변경 묶음을 찾을 수 없어요', en: 'The change set could not be found', ja: '変更セットが見つかりません', zh: '找不到更改集' },
   'peerSync.error.blob_mismatch': { ko: '받은 파일 내용이 맞지 않아 변경 전체를 받지 않았어요', en: 'Received file contents did not match, so all changes were refused', ja: '受け取った内容が一致しないため変更をすべて受け取りませんでした', zh: '收到的文件内容不一致，已拒收全部更改' },
   'peerSync.error.blob_missing': { ko: '파일 내용이 아직 다 오지 않았어요', en: 'Some file contents have not arrived yet', ja: 'ファイルの内容がまだすべて届いていません', zh: '部分文件内容尚未到达' },

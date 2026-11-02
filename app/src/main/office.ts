@@ -4377,7 +4377,7 @@ export class Office extends EventEmitter<{
         `plan:${provider === 'codex' ? 'codex:' : ''}${p.type}:${p.resetsAt ?? 0}`,
         p.percent / 100,
         (ratio) =>
-          (provider === 'codex' ? 'Codex · ' : 'Claude · ') + t('notify.planUsageBody', { window: tx(`notify.planWindow.${p.type}`, tx(`planUsage.window.${p.type}`, PLAN_WINDOW_LABEL[p.type] ?? p.type)), percent: Math.round(ratio * 100) }) + (p.resetsAt ? t('notify.planReset', { when: fmtDate(p.resetsAt, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) }) : ''),
+          (provider === 'codex' ? 'GPT(Codex) · ' : 'Claude · ') + t('notify.planUsageBody', { window: tx(`notify.planWindow.${p.type}`, tx(`planUsage.window.${p.type}`, PLAN_WINDOW_LABEL[p.type] ?? p.type)), percent: Math.round(ratio * 100) }) + (p.resetsAt ? t('notify.planReset', { when: fmtDate(p.resetsAt, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) }) : ''),
       )
     }
   }
