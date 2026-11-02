@@ -774,6 +774,12 @@ export default {
     ja: '毎日の時間帯は PC でのみ設定できます。スマホでは「今から」でオンにしてください。',
     zh: '每天的时间段只能在电脑上设置。在手机上请用“从现在起”开启。',
   },
+  'autoApprove.remoteMaxHours': {
+    ko: '휴대폰에서는 자동결재를 최대 12시간까지 켤 수 있어요.',
+    en: 'On the phone, auto-approval can be turned on for at most 12 hours.',
+    ja: 'スマホでは自動決裁を最大 12 時間までオンにできます。',
+    zh: '在手机上最多可开启 12 小时自动审批。',
+  },
   'autoApprove.start': { ko: '시작', en: 'Start', ja: '開始', zh: '开始' },
   'autoApprove.end': { ko: '끝', en: 'End', ja: '終了', zh: '结束' },
   'autoApprove.applyRange': { ko: '이 시간대로', en: 'Use these hours', ja: 'この時間帯にする', zh: '使用此时间段' },

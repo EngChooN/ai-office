@@ -1725,7 +1725,7 @@ export class Office extends EventEmitter<{
   setAutoApprove(plan: AutoApprovePlan): AutoApproveState {
     // 휴대폰에서는 끄기와 'N시간' 켜기만 — 매일 시간대·완전 자율은 PC에서만. 휴대폰에서 바꾸면 PC에 알린다
     if (isRemoteCall()) {
-      if (!isRemoteAutoAllowed(plan)) throw new InvalidArgsError(t('autoApprove.dailyPcOnly'))
+      if (!isRemoteAutoAllowed(plan)) throw new InvalidArgsError(t(plan.mode === 'hours' ? 'autoApprove.remoteMaxHours' : 'autoApprove.dailyPcOnly'))
       this.notifyRemoteChange(plan.mode === 'off' ? 'notify.remoteAuto' : 'notify.remoteAutoOn')
     }
     // '완전 자율' 단계는 고르지 않았으면 지금 단계를 따른다. 원격에서 끄면 단계도 내린다 (다시 켜기는 PC에서)
