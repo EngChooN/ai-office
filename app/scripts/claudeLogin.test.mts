@@ -1,10 +1,10 @@
-// Claude 로그인: CLI 출력에서 로그인 주소 찾기 + 가짜 CLI로 브라우저 열기·폴백(주소 없음·먼저 종료·실행 실패) — npm test
+// Claude 로그인: CLI 출력에서 로그인 주소 찾기 + 가짜 CLI로 브라우저 열기·폴백(주소 없음·먼저 종료·실행 실패·열기 실패)·조각난 출력·취소 — npm test
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { test } from 'node:test'
-import { CLAUDE_LOGIN_ARGS, extractLoginUrl, loginClaudeInBrowser } from '../src/main/ai/claudeLogin.ts'
+import { CLAUDE_LOGIN_ARGS, cancelClaudeLogin, extractLoginUrl, loginClaudeInBrowser } from '../src/main/ai/claudeLogin.ts'
 
 const AUTH_URL = 'https://claude.ai/oauth/authorize?code=true&client_id=abc&response_type=code&redirect_uri=http%3A%2F%2Flocalhost%3A54545%2Fcallback&state=xyz'
 
@@ -26,6 +26,14 @@ test('로그인 주소 찾기: 인증 주소가 아니거나 다른 사이트면
   assert.equal(extractLoginUrl(`See https://docs.claude.com/x then ${AUTH_URL}`), AUTH_URL)
 })
 
+test('로그인 주소 찾기: 끝까지 들어온 주소만 고를 때는 뒤에 공백·줄바꿈이 와야 한다', () => {
+  const [head] = AUTH_URL.split('?')
+  assert.equal(extractLoginUrl(head, { isCompleteOnly: true }), null, '쿼리가 아직 안 들어온 앞 조각')
+  assert.equal(extractLoginUrl(AUTH_URL, { isCompleteOnly: true }), null, '출력 끝에서 끊긴 주소')
+  assert.equal(extractLoginUrl(`${AUTH_URL}\n`, { isCompleteOnly: true }), AUTH_URL)
+  assert.equal(extractLoginUrl(`\u001b[36m${AUTH_URL}\u001b[39m`, { isCompleteOnly: true }), null, '색 코드만 오고 줄바꿈 전')
+})
+
 test('로그인 명령: 구독 계정 플래그로 계정 종류 메뉴를 건너뛴다', () => {
   assert.deepEqual(CLAUDE_LOGIN_ARGS, ['auth', 'login', '--claudeai'])
 })
@@ -41,7 +49,7 @@ function fakeCli(script: string): string {
 test('브라우저 로그인: 출력에 주소가 나오면 그 주소를 열고 browser', { skip: process.platform === 'win32' }, async () => {
   const opened: string[] = []
   const bin = fakeCli(`process.stdout.write('Browser didn\\'t open? Visit:\\n${AUTH_URL}\\n'); setTimeout(() => {}, 2000)`)
-  const result = await loginClaudeInBrowser(bin, (url) => void opened.push(url), { args: [], urlWaitMs: 3000, totalMs: 500 })
+  const result = await loginClaudeInBrowser(bin, (url) => void opened.push(url), { args: [], urlWaitMs: 3000, totalMs: 2500 })
   assert.equal(result, 'browser')
   assert.deepEqual(opened, [AUTH_URL])
 })
@@ -59,4 +67,46 @@ test('브라우저 로그인: 주소 없이 먼저 끝나거나 실행 파일이
   const bin = fakeCli(`process.stderr.write('Raw mode is not supported\\n'); process.exit(1)`)
   assert.equal(await loginClaudeInBrowser(bin, () => {}, { args: [], urlWaitMs: 5000 }), 'fallback')
   assert.equal(await loginClaudeInBrowser(path.join(os.tmpdir(), 'no-such-claude-bin'), () => {}, { args: [], urlWaitMs: 5000 }), 'fallback')
+})
+
+test('브라우저 로그인: 주소가 경로·쿼리로 나뉘어 들어와도 끝까지 모은 주소를 연다', { skip: process.platform === 'win32' }, async () => {
+  const opened: string[] = []
+  const [head, query] = AUTH_URL.split('?')
+  const bin = fakeCli(`process.stdout.write('Visit:\\n${head}'); setTimeout(() => process.stdout.write('?${query}\\n'), 150); setTimeout(() => {}, 2000)`)
+  const result = await loginClaudeInBrowser(bin, (url) => void opened.push(url), { args: [], urlWaitMs: 3000, settleMs: 1000, totalMs: 1500 })
+  assert.equal(result, 'browser')
+  assert.deepEqual(opened, [AUTH_URL])
+})
+
+test('브라우저 로그인: 주소 뒤에 줄바꿈이 끝내 안 오면 잠깐 기다린 뒤 들어온 데까지로 연다', { skip: process.platform === 'win32' }, async () => {
+  const opened: string[] = []
+  const bin = fakeCli(`process.stdout.write('${AUTH_URL}'); setTimeout(() => {}, 2000)`)
+  const result = await loginClaudeInBrowser(bin, (url) => void opened.push(url), { args: [], urlWaitMs: 3000, settleMs: 100, totalMs: 1500 })
+  assert.equal(result, 'browser')
+  assert.deepEqual(opened, [AUTH_URL])
+})
+
+test('브라우저 로그인: 브라우저 열기가 실패하면 프로세스를 끝내고 fallback', { skip: process.platform === 'win32' }, async () => {
+  const marker = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'co-claude-login-')), 'alive')
+  // 살아 있는 동안 표시 파일을 계속 새로 쓴다 — 정리되면 더 쓰지 않는다
+  const bin = fakeCli(`process.stdout.write('${AUTH_URL}\\n'); setInterval(() => require('fs').writeFileSync(${JSON.stringify(marker)}, String(Date.now())), 50)`)
+  const result = await loginClaudeInBrowser(bin, () => Promise.reject(new Error('no browser')), { args: [], urlWaitMs: 3000, totalMs: 10_000 })
+  assert.equal(result, 'fallback')
+  await new Promise((r) => setTimeout(r, 300))
+  const last = fs.existsSync(marker) ? Number(fs.readFileSync(marker, 'utf8')) : 0
+  await new Promise((r) => setTimeout(r, 300))
+  const after = fs.existsSync(marker) ? Number(fs.readFileSync(marker, 'utf8')) : 0
+  assert.equal(after, last, '프로세스가 정리돼 더 이상 쓰지 않는다')
+})
+
+test('브라우저 로그인: 주소를 기다리는 중 취소(다시 누름·앱 종료)하면 cancelled — 터미널로 가지 않는다', { skip: process.platform === 'win32' }, async () => {
+  const bin = fakeCli(`setTimeout(() => {}, 5000)`)
+  const first = loginClaudeInBrowser(bin, () => {}, { args: [], urlWaitMs: 5000 })
+  setTimeout(cancelClaudeLogin, 100)
+  assert.equal(await first, 'cancelled')
+  // 새 로그인을 시작해도 앞의 호출은 cancelled
+  const second = loginClaudeInBrowser(bin, () => {}, { args: [], urlWaitMs: 5000 })
+  const third = loginClaudeInBrowser(bin, () => {}, { args: [], urlWaitMs: 200 })
+  assert.equal(await second, 'cancelled')
+  assert.equal(await third, 'fallback')
 })

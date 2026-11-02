@@ -68,9 +68,10 @@ async function whichClaude() {
   }
 }
 
-/** 로그인: 먼저 앱이 직접 띄워 로그인 주소를 브라우저로 열고, 주소를 못 잡으면(10초) 예전처럼 터미널 창에서 연다 */
+/** 로그인: 먼저 앱이 직접 띄워 로그인 주소를 브라우저로 열고, 주소를 못 잡거나 브라우저를 못 열면 예전처럼 터미널 창에서 연다 */
 export async function openClaudeLogin() {
-  if ((await loginClaudeInBrowser(claudeBinaryPath(), (url) => shell.openExternal(url))) === 'browser') return
+  // 'cancelled'(다시 누름·앱 종료로 취소)는 터미널도 열지 않는다 — 새 호출이 이어받는다
+  if ((await loginClaudeInBrowser(claudeBinaryPath(), (url) => shell.openExternal(url))) !== 'fallback') return
   // 윈도우: 따로 떼어 낸(detached) 콘솔 프로그램은 자기 명령 창을 띄운다
   if (IS_WINDOWS) {
     const child = spawn(claudeBinaryPath(), CLAUDE_LOGIN_ARGS, { detached: true, stdio: 'ignore' })

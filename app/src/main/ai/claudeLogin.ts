@@ -11,16 +11,27 @@ export const LOGIN_URL_WAIT_MS = 10_000
 const LOGIN_TOTAL_MS = 5 * 60_000
 const LOGIN_HOSTS = ['claude.ai', 'claude.com', 'anthropic.com']
 
+export type LoginResult = 'browser' | 'fallback' | 'cancelled'
+
 let active: { cancel: () => void } | null = null
 
 /** 진행 중인 로그인을 끝낸다 (새 로그인 시작·앱 종료 때) */
 export const cancelClaudeLogin = () => active?.cancel()
 
-/** CLI 출력에서 로그인 주소를 찾는다 — 글자 색 코드를 지우고, Claude·Anthropic 주소 중 인증(oauth·authorize) 주소만 */
-export function extractLoginUrl(output: string): string | null {
+/** 주소 뒤에 이 글자가 오면 주소가 끝까지 들어온 것이다 */
+const URL_CHARS = String.raw`[^\s"'<>\x60]+`
+/** 주소 뒤 구분 글자가 안 오면(출력이 주소에서 끊김) 이만큼 더 기다린 뒤 들어온 데까지로 연다 */
+export const LOGIN_URL_SETTLE_MS = 300
+
+/**
+ * CLI 출력에서 로그인 주소를 찾는다 — 글자 색 코드를 지우고, Claude·Anthropic 주소 중 인증(oauth·authorize) 주소만.
+ * isCompleteOnly: 주소 뒤에 공백·줄바꿈 등이 따라온 것(끝까지 들어온 주소)만 — 출력이 조각나 들어올 때 앞 조각으로 확정하지 않게
+ */
+export function extractLoginUrl(output: string, { isCompleteOnly = false }: { isCompleteOnly?: boolean } = {}): string | null {
   // eslint-disable-next-line no-control-regex -- 터미널 색·커서 코드
   const plain = output.replace(/\u001b\[[0-9;?]*[A-Za-z]|\u001b\][^\u0007]*\u0007/g, '')
-  for (const raw of plain.match(/https:\/\/[^\s"'<>`]+/g) ?? []) {
+  const pattern = new RegExp(`https://${URL_CHARS}${isCompleteOnly ? `(?=[\\s"'<>\x60])` : ''}`, 'g')
+  for (const raw of plain.match(pattern) ?? []) {
     const candidate = raw.replace(/[).,;\]]+$/, '')
     try {
       const url = new URL(candidate)
@@ -35,13 +46,19 @@ export function extractLoginUrl(output: string): string | null {
 
 /**
  * 로그인 주소를 브라우저로 연다. 'browser': 주소를 열었다(인증이 끝날 때까지 프로세스를 살려 둔다) ·
- * 'fallback': 주소를 못 잡았다(실행 실패·먼저 종료·시간 초과) — 호출하는 쪽이 터미널 창으로 연다
+ * 'fallback': 주소를 못 잡았거나 브라우저를 못 열었다(실행 실패·먼저 종료·시간 초과·열기 실패) — 호출하는 쪽이 터미널 창으로 연다 ·
+ * 'cancelled': 새 로그인 시작·앱 종료로 취소됐다 — 아무것도 하지 않는다
  */
 export function loginClaudeInBrowser(
   binary: string,
   openUrl: (url: string) => Promise<void> | void,
-  { args = CLAUDE_LOGIN_ARGS, urlWaitMs = LOGIN_URL_WAIT_MS, totalMs = LOGIN_TOTAL_MS }: { args?: string[]; urlWaitMs?: number; totalMs?: number } = {},
-): Promise<'browser' | 'fallback'> {
+  {
+    args = CLAUDE_LOGIN_ARGS,
+    urlWaitMs = LOGIN_URL_WAIT_MS,
+    settleMs = LOGIN_URL_SETTLE_MS,
+    totalMs = LOGIN_TOTAL_MS,
+  }: { args?: string[]; urlWaitMs?: number; settleMs?: number; totalMs?: number } = {},
+): Promise<LoginResult> {
   cancelClaudeLogin()
   return new Promise((resolve) => {
     let child: ReturnType<typeof spawn>
@@ -53,12 +70,16 @@ export function loginClaudeInBrowser(
       return
     }
     let isAnswered = false
+    /** 주소를 찾아 브라우저를 여는 중 — 더 들어오는 출력은 보지 않는다 */
+    let isOpening = false
     let output = ''
-    const answer = (result: 'browser' | 'fallback') => {
+    let settleTimer: ReturnType<typeof setTimeout> | undefined
+    const answer = (result: LoginResult) => {
       if (isAnswered) return
       isAnswered = true
       clearTimeout(urlTimer)
-      if (result === 'fallback') stop()
+      clearTimeout(settleTimer)
+      if (result !== 'browser') stop()
       resolve(result)
     }
     const stop = () => {
@@ -66,17 +87,37 @@ export function loginClaudeInBrowser(
       if (active === me) active = null
       child.kill()
     }
-    const me = { cancel: () => (isAnswered ? stop() : answer('fallback')) }
+    const me = { cancel: () => (isAnswered ? stop() : answer('cancelled')) }
     active = me
     const urlTimer = setTimeout(() => answer('fallback'), urlWaitMs)
     const totalTimer = setTimeout(stop, totalMs)
+    /** 브라우저가 열린 뒤에야 'browser'로 확정한다 — 열기에 실패하면 프로세스를 정리하고 터미널 방식으로 */
+    const open = (url: string) => {
+      if (isOpening || isAnswered) return
+      isOpening = true
+      clearTimeout(urlTimer)
+      clearTimeout(settleTimer)
+      Promise.resolve()
+        .then(() => openUrl(url))
+        .then(
+          () => answer('browser'),
+          (e) => {
+            console.error('[setup] 로그인 주소를 열지 못했습니다:', e)
+            answer('fallback')
+          },
+        )
+    }
     const onData = (chunk: Buffer) => {
-      if (isAnswered) return
+      if (isAnswered || isOpening) return
       output += chunk.toString('utf8')
-      const url = extractLoginUrl(output)
-      if (!url) return
-      answer('browser')
-      void Promise.resolve(openUrl(url)).catch((e) => console.error('[setup] 로그인 주소를 열지 못했습니다:', e))
+      const url = extractLoginUrl(output, { isCompleteOnly: true })
+      if (url) return open(url)
+      // 주소가 출력 끝에서 끊겼을 수 있다 — 나머지 조각을 잠깐 기다렸다가 들어온 데까지로 연다
+      clearTimeout(settleTimer)
+      if (extractLoginUrl(output)) settleTimer = setTimeout(() => {
+        const partial = extractLoginUrl(output)
+        if (partial) open(partial)
+      }, settleMs)
     }
     child.stdout?.on('data', onData)
     child.stderr?.on('data', onData)

@@ -97,7 +97,7 @@ function CheckHeader({ step, title, desc }: { step: Step; title: string; desc: s
 /**
  * 점검 단계 아래: 이전 / 다음 (아직 안 됐으면 "나중에 할게요"로 넘어간다).
  * onSkipToTour: 막혀서 다음으로 못 갈 때 남은 점검을 건너뛰고 둘러보기로 가는 길
- * isChecking: 상태를 확인하는 동안은 넘어가지 못하게 막고 '확인 중…'을 보인다
+ * isChecking: 상태를 확인하는 동안은(이미 받은 결과가 있어도 다시 확인 중이면) 다음·건너뛰기를 막고 '확인 중…'을 보인다
  */
 function CheckFooter({
   step,
@@ -124,7 +124,7 @@ function CheckFooter({
         </Button>
         {/* 공급자가 하나도 준비되지 않으면 첫 업무를 할 수 없어 "나중에" 대신 둘러보기로 보낸다 (계정은 나중에 설정 › 연결에서) */}
         {isBlocked && onSkipToTour && (
-          <Button variant="outline" onClick={onSkipToTour}>
+          <Button variant="outline" onClick={onSkipToTour} disabled={isChecking}>
             {t('onboarding.provider.laterTour')}
           </Button>
         )}
@@ -357,7 +357,7 @@ export function Onboarding({ onStartTour }: { onStartTour: () => void }) {
               step={step}
               isOk={isProviderReady}
               isBlocked={Boolean(providers.status) && !isProviderReady}
-              isChecking={!providers.status}
+              isChecking={isChecking || providers.isChecking || !providers.status}
               onMove={setStep}
               onSkipToTour={handleTour}
             />
@@ -373,7 +373,7 @@ export function Onboarding({ onStartTour }: { onStartTour: () => void }) {
               isLoading={!status}
               title={status?.isLoggedIn ? t('onboarding.login.done', { email: status.email ?? '' }) : t('onboarding.checking')}
             />
-            <CheckFooter step={step} isOk={Boolean(status?.isLoggedIn)} isChecking={!status} onMove={setStep} />
+            <CheckFooter step={step} isOk={Boolean(status?.isLoggedIn)} isChecking={isChecking || !status} onMove={setStep} />
           </>
         )}
 
