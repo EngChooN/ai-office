@@ -62,7 +62,7 @@ export default {
   'staffPanel.profile.tasksDone': { ko: '완료 업무', en: 'Tasks done', ja: '完了した業務', zh: '已完成任务' },
   'staffPanel.profile.toolCalls': { ko: '도구 사용', en: 'Tool uses', ja: 'ツール使用', zh: '工具使用' },
   'staffPanel.profile.approvals': { ko: '결재', en: 'Approvals', ja: '決裁', zh: '审批' },
-  'staffPanel.profile.totalPay': { ko: '벌어 온 회사 자금(게임 속 돈)', en: 'Company funds earned (in-game money)', ja: '稼いだ会社資金（ゲーム内のお金）', zh: '赚到的公司资金（游戏内货币）' },
+  'staffPanel.profile.totalPay': { ko: '누적 AI 사용 비용', en: 'Total AI usage cost', ja: 'AI利用コスト累計', zh: '累计 AI 使用费用' },
   'staffPanel.profile.xp': { ko: '경험치 {n}', en: 'XP {n}', ja: '経験値 {n}', zh: '经验值 {n}' },
   'staffPanel.profile.xpRule': { ko: '완료 +30 · 위임 +10 · 결재 +5 · 도구 +2 · 지시 +1', en: 'Done +30 · Delegate +10 · Approval +5 · Tool +2 · Order +1', ja: '完了 +30 · 委任 +10 · 決裁 +5 · ツール +2 · 指示 +1', zh: '完成 +30 · 委派 +10 · 审批 +5 · 工具 +2 · 指令 +1' },
   'staffPanel.profile.skills': { ko: '익힌 매뉴얼', en: 'Learned manuals', ja: '習得したマニュアル', zh: '已学手册' },
