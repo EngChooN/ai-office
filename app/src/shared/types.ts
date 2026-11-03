@@ -49,6 +49,8 @@ export interface Approval {
   peerChanges?: PeerChangesCard
   /** 도움 요청으로 받은 일에서 나온 결재면 부탁한 직원의 이름 ("OO 님의 요청" 표시용) */
   requestedBy?: string
+  /** 앱을 껐다 켜며 되살린 결재 — 살아 있는 세션 요청이 아니라, 처리하면 새 지시로 이어 간다 */
+  isRestored?: boolean
 }
 
 export interface StaffQuestion {

@@ -128,6 +128,18 @@ export default {
     ja: '{answer}（過去の決定: {name} さんが以前受けた同じ決定に従いました）',
     zh: '{answer}（以往决定：沿用了 {name} 之前收到的相同决定）',
   },
+  'staff.msg.restoredApproved': {
+    ko: '[대표 승인] 앱을 다시 켜기 전에 올린 결재({tool}: {summary})를 대표가 승인했습니다. 같은 작업을 다시 실행해 이어 가세요.',
+    en: '[Owner approved] The owner approved the request you sent before the app restarted ({tool}: {summary}). Run the same action again and continue.',
+    ja: '[代表の承認] アプリの再起動前に出した承認依頼（{tool}: {summary}）を代表が承認しました。同じ作業をもう一度実行して続けてください。',
+    zh: '[代表已批准] 应用重启前提交的审批（{tool}：{summary}）已获代表批准。请再次执行同一操作并继续。',
+  },
+  'staff.msg.restoredRejected': {
+    ko: '[대표 반려] 앱을 다시 켜기 전에 올린 결재({tool}: {summary})를 대표가 반려했습니다. 다른 방법을 찾거나, 어렵다면 멈추고 보고하세요.',
+    en: '[Owner rejected] The owner rejected the request you sent before the app restarted ({tool}: {summary}). Find another way, or stop and report if that is not possible.',
+    ja: '[代表の却下] アプリの再起動前に出した承認依頼（{tool}: {summary}）を代表が却下しました。別の方法を探すか、難しければ止めて報告してください。',
+    zh: '[代表已驳回] 应用重启前提交的审批（{tool}：{summary}）已被代表驳回。请另想办法，若做不到请停止并汇报。',
+  },
   'staff.msg.textAnswer': {
     ko: '[대표 답변] 질문: {question}\n답: {answer}\n이 답으로 이어서 진행하세요.',
     en: '[Owner’s answer] Question: {question}\nAnswer: {answer}\nContinue with this answer.',

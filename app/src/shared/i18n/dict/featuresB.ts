@@ -553,6 +553,7 @@ export default {
   'progress.approval': { ko: '확인을 기다려요', en: 'Waiting for your review', ja: '確認待ちです', zh: '等待确认' },
   'progress.error': { ko: '오류로 멈췄어요 · 다시 보내 주세요', en: 'Stopped due to an error · Please send it again', ja: 'エラーで停止しました · もう一度送ってください', zh: '因错误而停止 · 请重新发送' },
   'progress.helpFrom': { ko: '{name} 님이 부탁한 일', en: 'Requested by {name}', ja: '{name}さんからの依頼', zh: '{name} 请求的工作' },
+  'approval.restored': { ko: '앱을 다시 켜서 이어 가는 결재', en: 'Approval carried over after an app restart', ja: 'アプリの再起動後に引き継いだ承認', zh: '应用重启后延续的审批' },
   'approval.requestedBy': { ko: '{name} 님의 요청', en: "{name}'s request", ja: '{name}さんの依頼', zh: '{name} 的请求' },
   'progress.more': { ko: '대기 {count}건', en: '{count} waiting', ja: '待機 {count}件', zh: '等待 {count} 条' },
   'status.noFolder': { ko: '폴더 지정 없음', en: 'No folder set', ja: 'フォルダー未指定', zh: '未指定文件夹' },

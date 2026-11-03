@@ -87,6 +87,7 @@ import { abortable, demoOutcome, addPraise, cleanSpeech, settleStaleMeeting, dat
 import { InvalidArgsError } from '../shared/errors'
 import { addUnread, clearUnread, unreadOf, type UnreadReports } from '../shared/unreadReports'
 import { planBoardCleanup, type BoardCleanupPlan } from '../shared/boardCleanup'
+import { OneShotAllow, isPersistable, restoredInstruction, splitRestorable, toPending, toRestoredApproval, withPending, withoutPending, type PendingApproval } from './pendingApprovals.ts'
 import { plansToAdvanceOnStart, shouldReopenForAnswer, tasksToReturnToTodo } from '../shared/taskResume'
 import { remoteSafeEquipment } from '../shared/staffPack'
 import * as shopGrid from './shopGrid'
@@ -229,6 +230,14 @@ export class Office extends EventEmitter<{
   private askedInTurn = new Set<string>()
   /** 글 질문으로 올린 결재 id → 직원·질문 문장 (답하면 새 지시로 보낸다) */
   private textAsks = new Map<string, { staffId: string; question: string; taskId: string | null }>()
+  /** 저장해 둔 결재·질문 (앱을 껐다 켜도 이어 가려고 — pendingApprovals.ts) */
+  private pending: readonly PendingApproval[] = []
+  /** 앱을 다시 켜며 되살린 결재 id → 저장 내용 (살아 있는 세션 요청이 없어 decide·answerQuestion이 새 지시로 이어 간다) */
+  private restoredAsks = new Map<string, PendingApproval>()
+  /** 복원 결재를 승인해 다시 실행할 때 한 번만 통과시키는 허용 */
+  private oneShot = new OneShotAllow()
+  /** 앱을 끄는 중 — 세션이 닫히며 결재가 취소돼도 저장본은 남긴다 */
+  private isStopping = false
   /** 자율 진행에서 글 질문을 "스스로 판단해 계속" 재지시로 바꾼 횟수 (업무 카드 id, 카드가 없으면 직원 id별) */
   private textAskRetries = new Map<string, number>()
   /** 직원별로 마지막에 글 질문으로 올린 문장 — 같은 질문을 되풀이해 올리지 않는다 */
@@ -341,6 +350,7 @@ export class Office extends EventEmitter<{
       log: (id, type, text) => this.log(id, type, text),
       requestApproval: (a) => this.addApproval(a),
       autoDecide: (id, toolName, input, summary, questions) => this.autoDecide(id, toolName, input, summary, questions),
+      takeOneShotAllow: (id, toolName, summary) => this.oneShot.take(id, toolName, summary),
       isAutonomous: (id) => this.isAutonomous(id),
       cancelApproval: (id) => this.dropApproval(id, '취소됨'),
       rateLimit: (info, provider) => (provider === 'codex' ? this.onCodexRateLimit(info) : this.onRateLimit(info)),
@@ -533,6 +543,7 @@ export class Office extends EventEmitter<{
     this.tutorial.load()
     // 앱이 꺼져 있는 동안 기간이 끝났으면 켜자마자 요약한다
     this.syncAutoWindow()
+    this.restorePendingApprovals()
     this.scheduleTimer = setInterval(() => {
       this.releaseHeldIfRecovered()
       this.runDueSchedules()
@@ -552,6 +563,7 @@ export class Office extends EventEmitter<{
   stop() {
     if (this.scheduleTimer) clearInterval(this.scheduleTimer)
     this.tutorial.stop()
+    this.isStopping = true
     this.watcher.stop()
     this.manager.stopAll()
   }
@@ -968,6 +980,8 @@ export class Office extends EventEmitter<{
     const label = tk(result === 'withdrawn' ? 'log.withdrawn' : result === 'superseded' ? 'log.superseded' : 'log.firedCanceled')
     for (const a of list) {
       this.textAsks.delete(a.id)
+      this.restoredAsks.delete(a.id)
+      this.unpersistApproval(a.id)
       this.demoApprovalIds.delete(a.id)
       this.log(s.id, 'approval', { list: [label, `: ${a.toolName} `, a.summaryI18n ?? a.summary], sep: '' })
       this.settleChat({ id: a.id, result })
@@ -1136,6 +1150,7 @@ export class Office extends EventEmitter<{
       const a = s.approvals.find((x) => x.id === approvalId)
       if (!a) continue
       s.approvals = s.approvals.filter((x) => x.id !== approvalId)
+      this.unpersistApproval(approvalId)
       this.log(s.id, 'approval', `${reason}: ${a.toolName} ${a.summary}`)
       this.patch(s.id, { status: s.approvals.length ? 'waiting' : 'working' })
       this.settleChat({ id: approvalId, result: 'canceled' })
@@ -1148,6 +1163,7 @@ export class Office extends EventEmitter<{
     if (this.peer?.isRelayedApproval(approvalId)) return this.peer.decide(approvalId, allow)
     // 글 질문 카드의 "넘기기" = 답 없이 닫기 (이미 끝난 턴이라 이어갈 도구 호출이 없다)
     if (this.textAsks.has(approvalId)) return this.closeTextAsk(approvalId, null, via)
+    if (this.restoredAsks.has(approvalId)) return this.closeRestored(approvalId, { allow }, via)
     // 외부 직원 질문은 "넘기기" = 원래 창에서 답하도록 놓아 준다
     if (this.watcher.release(approvalId)) {
       this.settleChat({ id: approvalId, result: 'skipped' })
@@ -1161,6 +1177,7 @@ export class Office extends EventEmitter<{
       const a = s.approvals.find((x) => x.id === approvalId)
       if (!a) continue
       s.approvals = s.approvals.filter((x) => x.id !== approvalId)
+      this.unpersistApproval(approvalId)
       this.log(s.id, 'approval', { list: [via ? `${via} ` : '', tk(allow ? 'log.approved' : 'log.rejected'), `: ${a.toolName} `, a.summaryI18n ?? a.summary], sep: '' })
       this.patch(s.id, { status: s.approvals.length ? 'waiting' : 'working' })
       // 질문을 반려 = 넘기기 (답 없이 알아서 판단)
@@ -1172,12 +1189,14 @@ export class Office extends EventEmitter<{
   answerQuestion(approvalId: string, answers: Record<string, string>, via = '') {
     if (this.peer?.isRelayedApproval(approvalId)) return this.peer.answerQuestion(approvalId, answers)
     if (this.textAsks.has(approvalId)) return this.closeTextAsk(approvalId, answers, via)
+    if (this.restoredAsks.has(approvalId)) return this.closeRestored(approvalId, { answers }, via)
     if (!this.watcher.answer(approvalId, answers) && !this.manager.answer(approvalId, answers) && !this.demoApprovalIds.delete(approvalId)) return false
     this.settleChat({ id: approvalId, result: 'answered', answer: answersText(answers) })
     for (const s of this.hired.values()) {
       const a = s.approvals.find((x) => x.id === approvalId)
       if (!a) continue
       s.approvals = s.approvals.filter((x) => x.id !== approvalId)
+      this.unpersistApproval(approvalId)
       this.rememberAnswers(s, a, answers)
       this.log(
         s.id,
@@ -1197,6 +1216,7 @@ export class Office extends EventEmitter<{
     const ask = this.textAsks.get(approvalId)
     if (!ask) return false
     this.textAsks.delete(approvalId)
+    this.unpersistApproval(approvalId)
     const s = this.hired.get(ask.staffId)
     if (s) {
       const a = s.approvals.find((x) => x.id === approvalId)
@@ -1696,6 +1716,90 @@ export class Office extends EventEmitter<{
     }
   }
 
+  /** 올라온 결재를 저장한다 (데모·다른 PC 중계는 제외) */
+  private persistApproval(a: Approval) {
+    if (!isPersistable(a) || this.demoApprovalIds.has(a.id)) return
+    const first = (this.origins.get(a.staffId) ?? []).flatMap((o) => (o.kind === 'task' ? [o.taskId] : []))[0]
+    const taskId = this.textAsks.get(a.id)?.taskId ?? first ?? null
+    this.pending = withPending(this.pending, toPending(a, taskId))
+    this.savePending()
+  }
+
+  /** 결재가 닫혔으니 저장본을 지운다 (앱을 끄는 중에 세션이 닫히며 취소된 것은 남긴다) */
+  private unpersistApproval(id: string) {
+    if (this.isStopping) return
+    const next = withoutPending(this.pending, id)
+    if (next === this.pending) return
+    this.pending = next
+    this.savePending()
+  }
+
+  private savePending() {
+    try {
+      db.savePendingApprovals(this.pending)
+    } catch (e) {
+      console.error('[office] savePendingApprovals', e)
+    }
+  }
+
+  /** 앱을 켤 때 닫히지 않은 결재를 그 직원의 결재함에 다시 올린다. 7일 넘은 것·퇴사한 직원 것은 로그만 남기고 버린다 */
+  private restorePendingApprovals() {
+    if (this.demoApprovalIds.size) return
+    let stored: PendingApproval[] = []
+    try {
+      stored = db.loadPendingApprovals()
+    } catch (e) {
+      console.error('[office] loadPendingApprovals', e)
+    }
+    if (!stored.length) return
+    const { restore, expired, gone } = splitRestorable(stored, Date.now(), (id) => this.hired.has(id))
+    for (const p of [...expired, ...gone]) {
+      if (this.hired.has(p.staffId)) this.log(p.staffId, 'approval', `복원 안 함(7일 지남): ${p.toolName} ${p.summary}`.slice(0, 300))
+      else console.error('[office] 직원이 없어 결재를 복원하지 않음', p.id)
+    }
+    this.pending = restore
+    this.savePending()
+    for (const p of restore) {
+      const s = this.hired.get(p.staffId)
+      if (!s) continue
+      s.approvals = [...s.approvals, toRestoredApproval(p)]
+      this.restoredAsks.set(p.id, p)
+      s.status = 'waiting'
+      s.activity = p.questions ? '대표 답변 대기' : `결재 대기: ${p.toolName}`
+    }
+    if (restore.length) this.scheduleEmit()
+  }
+
+  /**
+   * 되살린 결재를 닫는다. 이 카드는 살아 있는 세션 요청이 아니라서 결과를 새 지시로 보내 이어 간다.
+   * 승인이면 같은 작업이 다시 결재에 걸리지 않게 한 번만 자동 허용한다. 연결된 업무 카드는 진행 중으로 되돌린다
+   */
+  private closeRestored(approvalId: string, decision: { allow: boolean } | { answers: Record<string, string> } | null, via: string) {
+    const p = this.restoredAsks.get(approvalId)
+    if (!p) return false
+    this.restoredAsks.delete(approvalId)
+    this.unpersistApproval(approvalId)
+    const s = this.hired.get(p.staffId)
+    if (s) {
+      const a = s.approvals.find((x) => x.id === approvalId)
+      s.approvals = s.approvals.filter((x) => x.id !== approvalId)
+      if (a && decision && 'answers' in decision) this.rememberAnswers(s, a, decision.answers)
+      const what = decision && 'answers' in decision ? { list: [tk('log.answered'), `: ${answersText(decision.answers)}`], sep: '' } : tk(decision?.allow ? 'log.approved' : 'log.rejected')
+      this.log(s.id, 'approval', { list: [via ? `${via} ` : '', what, ': ', a ? (a.summaryI18n ?? a.summary) : p.summary], sep: '' })
+      this.patch(s.id, s.approvals.length ? { status: 'waiting' } : { status: 'idle', activity: '' })
+    }
+    const answers = decision && 'answers' in decision ? decision.answers : null
+    this.settleChat(answers ? { id: approvalId, result: 'answered', answer: answersText(answers) } : { id: approvalId, result: p.questions ? 'skipped' : decision && 'allow' in decision && decision.allow ? 'approved' : 'rejected' })
+    const text = restoredInstruction(p, p.questions ? (answers ? { answers } : null) : decision)
+    if (!text || !s) return true
+    if (decision && 'allow' in decision && decision.allow && !p.questions) this.oneShot.grant(p.staffId, p.toolName, p.summary)
+    const card = p.taskId ? this.tasks.get(p.taskId) : undefined
+    const isReopened = Boolean(card) && shouldReopenForAnswer(card)
+    if (card && isReopened) this.saveTask({ ...card, status: 'doing', updatedAt: Date.now() })
+    this.instruct(p.staffId, text, card && isReopened ? { kind: 'task', taskId: card.id } : { kind: 'user' })
+    return true
+  }
+
   private addApproval(a: Approval) {
     const s = this.hired.get(a.staffId)
     if (!s) return
@@ -1705,6 +1809,7 @@ export class Office extends EventEmitter<{
     const requester = help ? this.hired.get(help.fromId) : undefined
     if (requester) a = { ...a, requestedBy: requester.name }
     s.approvals = [...s.approvals, a]
+    this.persistApproval(a)
     if (a.questions) {
       this.patch(s.id, { status: 'waiting', activity: '대표 답변 대기' })
       this.postChat(s.id, `질문이 있어요 ❓ ${a.summary}`.slice(0, CHAT_TEXT_MAX), undefined, { id: a.id })

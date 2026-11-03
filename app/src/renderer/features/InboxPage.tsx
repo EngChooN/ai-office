@@ -113,6 +113,7 @@ export function InboxPage() {
                 </span>
               </div>
               {a.requestedBy && <div className="text-muted-foreground mt-0.5 text-xs">{t('approval.requestedBy', { name: a.requestedBy })}</div>}
+              {a.isRestored && <div className="text-muted-foreground mt-0.5 text-xs">↻ {t('approval.restored')}</div>}
               {a.questions ? (
                 <div className="mt-2">
                   <QuestionBox approval={a} />

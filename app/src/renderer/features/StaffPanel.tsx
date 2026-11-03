@@ -503,6 +503,7 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
           {!split.isFolded && staff.approvals.map((a) => (
             <div key={a.id} className="bg-muted flex flex-col gap-2 rounded-lg p-3">
               {a.requestedBy && <div className="text-muted-foreground text-xs">{t('approval.requestedBy', { name: a.requestedBy })}</div>}
+              {a.isRestored && <div className="text-muted-foreground text-xs">↻ {t('approval.restored')}</div>}
               {a.questions ? (
                 <QuestionBox approval={a} />
               ) : a.peerChanges && !IS_MOBILE_SHELL ? (

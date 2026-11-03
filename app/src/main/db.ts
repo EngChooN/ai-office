@@ -1,6 +1,7 @@
 import { DatabaseSync } from 'node:sqlite'
 import type { AutoApproveConfig } from '../shared/autoApprove'
 import type { ApprovalRule } from '../shared/approvalRules'
+import type { PendingApproval } from './pendingApprovals.ts'
 import type { KnowledgeEntry } from '../shared/knowledge'
 import type { GalleryEntry, Praise } from '../shared/gallery'
 import type { UnreadReports } from '../shared/unreadReports'
@@ -708,6 +709,21 @@ export function loadAutoApprove(): Partial<StoredAutoApprove> {
 
 export function saveAutoApprove(v: StoredAutoApprove) {
   run("INSERT INTO setting (key, value) VALUES ('autoApprove', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", JSON.stringify(v))
+}
+
+/** 결재함에 올라와 아직 닫히지 않은 결재·질문 (앱을 껐다 켜도 이어 가려고 저장) */
+export function loadPendingApprovals(): PendingApproval[] {
+  const row = get<{ value: string }>("SELECT value FROM setting WHERE key = 'pendingApprovals'")
+  try {
+    const v = row ? JSON.parse(row.value) : []
+    return Array.isArray(v) ? (v as PendingApproval[]) : []
+  } catch {
+    return []
+  }
+}
+
+export function savePendingApprovals(list: readonly PendingApproval[]) {
+  run("INSERT INTO setting (key, value) VALUES ('pendingApprovals', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", JSON.stringify(list))
 }
 
 /** "앞으로 항상 승인" 규칙 */

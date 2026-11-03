@@ -43,6 +43,8 @@ export interface HiredHooks {
    * 질문이면 answers(질문 → 답)를 채워 돌려준다. deny가 있으면 결재함에 올리지 않고 그 사유로 거부한다 (자율 진행의 위험 작업)
    */
   autoDecide(staffId: string, toolName: string, input: Record<string, unknown>, summary: string, questions?: StaffQuestion[]): Promise<{ answers?: Record<string, string>; deny?: string }> | null
+  /** 복원 결재를 승인해 다시 실행하는 도구면 한 번만 결재 없이 통과 (같은 직원·도구·요약) */
+  takeOneShotAllow(staffId: string, toolName: string, summary: string): boolean
   /** 지금 자율 진행 중인가 (위험 명령 금지를 강제로 켠다) */
   isAutonomous(staffId: string): boolean
   /** Claude 구독 사용률 알림 (값이 바뀔 때만 온다) */
@@ -294,6 +296,7 @@ class Worker {
           isRefDocRead(toolName, input, refDocPaths, os.homedir())
         if (isAllowed) return Promise.resolve<ToolDecision>({ behavior: 'allow' })
         const questions = toolName === QUESTION_TOOL ? toQuestions(input) : undefined
+        if (!questions && this.hooks.takeOneShotAllow(s.id, toolName, summarizeInput(input, toolName))) return Promise.resolve<ToolDecision>({ behavior: 'allow' })
         const auto = this.hooks.autoDecide(s.id, toolName, input, summarizeInput(input, toolName), questions)
         if (!auto) return this.askApproval(toolName, input, signal, questions)
         // 대신 답(비서 등)을 만들다 실패하면 평소처럼 대표를 기다린다
