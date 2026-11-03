@@ -79,6 +79,28 @@ test('가리기: 끝에 구분자가 없는 마지막 폴더 이름(확장자 �
   for (const [raw, want] of cases) assert.equal(scrubErrorText(raw, MAC), want)
 })
 
+test('가리기: 파일 이름 뒤 같은 줄 글은 남기고, 점이 든 폴더 이름은 파일로 보지 않고 가린다', () => {
+  const cases: [string, string][] = [
+    ['cannot read /a/b/c.ts of undefined', 'cannot read …/c.ts of undefined'],
+    ['open /Volumes/Work/secret plan.md failed', 'open …/secret plan.md failed'],
+    ['cwd=/Volumes/Acme.Inc', 'cwd=…/***'],
+    ["ENOENT: scandir '/Volumes/Work/Acme.Corp'", "ENOENT: scandir '…/***'"],
+    ['open /Volumes/Work/Release v2.0 notes', 'open …/***'],
+    ['open /Volumes/Work/SecretProj of undefined', 'open …/***'],
+    ['at /Applications/AI Office.app/x/main.js:1:2', 'at …/main.js:1:2'],
+    ['open /Volumes/Work/README.MD', 'open …/README.MD'],
+  ]
+  for (const [raw, want] of cases) assert.equal(scrubErrorText(raw, MAC), want)
+})
+
+test('가리기: 공백 없이 긴 글도 통째로 버리지 않고 자른 자리의 토큰만 버린다', () => {
+  const s = scrubErrorText(`${'error,'.repeat(3_400)}sk-ant-api03-ABCDEFGHIJKLMNOP`, MAC)
+  assert.ok(s.startsWith('error,error,'), s.slice(0, 40))
+  assert.ok(!s.includes('sk-'), s.slice(-40))
+  // 토큰 글자만으로 된 아주 긴 글은 가림 표시만
+  assert.equal(scrubErrorText('A1b2'.repeat(6_000), MAC), '***')
+})
+
 test('가리기: RAW_MAX 경계에 걸친 토큰 앞부분을 남기지 않는다', () => {
   // 긴 경로는 …/ 로 줄어 경계의 토큰이 800자 안에 들어온다
   const s = scrubErrorText(`/${'d/'.repeat(9_994)}x.ts\nsk-ant-api03-ABCDEFGHIJKLMNOP`, MAC)

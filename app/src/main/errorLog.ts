@@ -28,16 +28,22 @@ export interface ScrubEnv {
 const PATH = /(?:\b(?:file|smb|afp|nfs|cifs|webdavs?):\/+|\\\\|(?<![A-Za-z0-9])[A-Za-z]:[\\/]|(?<![^\s"'`(=:,[])~[\\/]|(?<![^\s"'`(=:,[])\/(?![\s/]))[^\n]*[\\/]/gi
 
 /**
- * 가린 경로 뒤 마지막 이름 (따옴표·괄호·쉼표·`:줄번호`·줄 끝 앞까지). 확장자가 없으면 폴더 이름일 수 있어(cwd=/Volumes/Work/SecretProj) 그것도 가린다.
- * 파일 이름(x.ts·secret business plan.ts)은 오류 위치를 찾는 데 필요해 남긴다
+ * 가린 경로 뒤 마지막 이름 (따옴표·괄호·쉼표·`:줄번호`·줄 끝 앞까지). 파일 이름이 아니면 폴더 이름일 수 있어(cwd=/Volumes/Work/SecretProj) 그것도 가린다.
+ * 파일 이름(x.ts·secret business plan.ts)과 그 뒤 같은 줄 글(c.ts of undefined)은 오류 위치·내용을 알아보는 데 필요해 남긴다
  */
 const PATH_TAIL = /…\/([^\n'"`)\],]+?)(?=:\d|['"`)\],]|$)/gm
-const FILE_NAME = /\.[A-Za-z0-9]{1,10}$/
+/** 흔한 파일 확장자만 파일로 본다 — 점이 든 폴더 이름(/Volumes/Acme.Inc·v2.0)은 파일이 아니라 가린다 */
+const FILE_EXT =
+  'js|mjs|cjs|jsx|ts|mts|cts|tsx|json|jsonc|md|mdx|txt|log|html?|css|scss|less|vue|svelte|py|rb|go|rs|java|kts?|swift|c|cc|cpp|cxx|h|hpp|cs|php|sh|bash|zsh|ps1|bat|cmd|ya?ml|toml|ini|env|xml|csv|tsv|sql|lock|plist|gradle|asar|node|wasm|map|png|jpe?g|gif|svg|webp|ico|pdf|zip|gz|tar|dmg|exe|dll|so|dylib|apk|app|db|sqlite3?'
+/** 이름 앞쪽이 파일 이름으로 끝나는가 (공백이 든 파일 이름 → 확장자 뒤가 공백이거나 끝) */
+const FILE_NAME = new RegExp(`^.*?\\.(?:${FILE_EXT})(?=\\s|$)`, 'i')
 
-/** 마지막 공백 뒤(잘린 낱말)를 버린다 — 정규식 \S+$ 는 긴 낱말에서 느려 뒤에서부터 찾는다 */
+/** 자른 자리에 걸친 낱말을 버린다 — 마지막 공백 뒤, 공백이 없으면 토큰에 쓰이지 않는 마지막 글자 뒤. 정규식 \S+$ 는 긴 낱말에서 느려 뒤에서부터 찾는다 */
 function cutAtSpace(s: string): string {
   for (let i = s.length - 1; i >= 0; i--) if (/\s/.test(s[i])) return s.slice(0, i + 1)
-  return ''
+  for (let i = s.length - 1; i >= 0; i--) if (!/[A-Za-z0-9_-]/.test(s[i])) return s.slice(0, i + 1)
+  // 통째로 토큰 글자뿐인 긴 글은 비밀값일 수 있어 가림 표시만 남긴다
+  return MASK
 }
 
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
