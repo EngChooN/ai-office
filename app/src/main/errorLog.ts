@@ -27,6 +27,19 @@ export interface ScrubEnv {
  */
 const PATH = /(?:\b(?:file|smb|afp|nfs|cifs|webdavs?):\/+|\\\\|(?<![A-Za-z0-9])[A-Za-z]:[\\/]|(?<![^\s"'`(=:,[])~[\\/]|(?<![^\s"'`(=:,[])\/(?![\s/]))[^\n]*[\\/]/gi
 
+/**
+ * 가린 경로 뒤 마지막 이름 (따옴표·괄호·쉼표·`:줄번호`·줄 끝 앞까지). 확장자가 없으면 폴더 이름일 수 있어(cwd=/Volumes/Work/SecretProj) 그것도 가린다.
+ * 파일 이름(x.ts·secret business plan.ts)은 오류 위치를 찾는 데 필요해 남긴다
+ */
+const PATH_TAIL = /…\/([^\n'"`)\],]+?)(?=:\d|['"`)\],]|$)/gm
+const FILE_NAME = /\.[A-Za-z0-9]{1,10}$/
+
+/** 마지막 공백 뒤(잘린 낱말)를 버린다 — 정규식 \S+$ 는 긴 낱말에서 느려 뒤에서부터 찾는다 */
+function cutAtSpace(s: string): string {
+  for (let i = s.length - 1; i >= 0; i--) if (/\s/.test(s[i])) return s.slice(0, i + 1)
+  return ''
+}
+
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
 export function defaultScrubEnv(): ScrubEnv {
@@ -41,12 +54,13 @@ export function defaultScrubEnv(): ScrubEnv {
 
 /** 오류 글 가리기: 홈 경로 → ~, 경로는 파일 이름만, 비밀값 가리기 두 가지(토큰·키·긴 무작위 문자열), 마지막에 이메일·사용자 이름·컴퓨터 이름 → *** */
 export function scrubErrorText(text: string, env: ScrubEnv): string {
-  let s = text.slice(0, RAW_MAX)
+  // 자른 자리에 걸친 낱말은 버린다 (잘린 토큰 앞부분이 짧아져 비밀값 가리기의 최소 길이에 안 걸린 채 남지 않게)
+  let s = text.length > RAW_MAX ? cutAtSpace(text.slice(0, RAW_MAX)) : text
   if (env.home.length > 1) {
     // 윈도우는 \와 / 둘 다, 대소문자 구분 없이
     for (const home of new Set([env.home, env.home.replaceAll('\\', '/')])) s = s.replace(new RegExp(escapeRe(home), 'gi'), '~')
   }
-  s = s.replace(PATH, '…/')
+  s = s.replace(PATH, '…/').replace(PATH_TAIL, (m, tail: string) => (FILE_NAME.test(tail) ? m : `…/${MASK}`))
   // 토큰·키를 이름보다 먼저 가린다 (sk-alice-… 를 이름으로 먼저 끊으면 토큰 모양이 깨져 나머지가 남는다). 가림 표시는 ***로 맞춘다 (redactPeerText의 ‹가림› — 다시 가려도 같은 글이 되게)
   s = redactPeerText(maskSecrets(s)).replaceAll(PEER_MASK, MASK)
   s = s.replace(EMAIL, MASK)

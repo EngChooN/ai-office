@@ -67,6 +67,24 @@ test('가리기: 파일 URL·UNC·공백·괄호가 든 경로도 폴더 이름 
   assert.equal(scrubErrorText('TypeError: a/b is not 1/2, see https://github.com/x/y and/or retry', MAC), 'TypeError: a/b is not 1/2, see https://github.com/x/y and/or retry')
 })
 
+test('가리기: 끝에 구분자가 없는 마지막 폴더 이름(확장자 없음)도 가린다, 파일 이름은 남긴다', () => {
+  const cases: [string, string][] = [
+    ['cwd=/Volumes/Work/SecretProj', 'cwd=…/***'],
+    ['open /tmp/Acme Deal', 'open …/***'],
+    ["ENOENT: scandir '/Volumes/Work/Acme-Merger'", "ENOENT: scandir '…/***'"],
+    ['spawn git ENOENT (cwd /Users/hong.gildong/clients/AcmeCorp)', 'spawn git ENOENT (cwd …/***)'],
+    ['C:\\Clients\\Acme Merger, retry', '…/***, retry'],
+    ['open /Volumes/Work/plan.md', 'open …/plan.md'],
+  ]
+  for (const [raw, want] of cases) assert.equal(scrubErrorText(raw, MAC), want)
+})
+
+test('가리기: RAW_MAX 경계에 걸친 토큰 앞부분을 남기지 않는다', () => {
+  // 긴 경로는 …/ 로 줄어 경계의 토큰이 800자 안에 들어온다
+  const s = scrubErrorText(`/${'d/'.repeat(9_994)}x.ts\nsk-ant-api03-ABCDEFGHIJKLMNOP`, MAC)
+  assert.ok(!s.includes('sk-'), s.slice(-40))
+})
+
 test('가리기: 토큰·키를 이름보다 먼저 가린다 (토큰 속 사용자 이름이 가림을 깨지 않는다)', () => {
   const env = { home: '/Users/alice', names: ['alice'] }
   for (const token of ['sk-alice-1234567890abcdefghij', 'ghp_alice1234567890ABCDEFGHIJ']) {
