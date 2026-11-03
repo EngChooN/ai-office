@@ -69,7 +69,7 @@ Claude 직원과 GPT 직원을 함께 **고용**해 하나의 사무실처럼 �
 - 필요 조건: 그 맥에서 Claude(Claude Code) 또는 GPT(ChatGPT·Codex) 중 하나 이상에 로그인되어 있을 것. 둘 다 연결하면 직원마다 고를 수 있다 (직원은 그 계정으로 일하고 비용도 그 계정에 청구)
 - 다시 빌드: `cd app && pnpm make`
 
-## 윈도우 (1차 · 시험판)
+## 윈도우
 - 설치: `AI-Office-win-x64-Setup.exe`를 내려받아 실행하면 사용자 폴더에 설치되고 시작 메뉴·바탕화면에 바로가기가 생겨요(관리자 권한 불필요). 이후 업데이트는 앱 안에서 눌러 새 Setup.exe로 진행돼요
 - 빌드: `cd app && pnpm install && pnpm make:win` → `app/out/make/squirrel.windows/x64/AI-Office-win-x64-Setup.exe` (맥에는 wine이 없어 설치 파일을 못 만들어요. GitHub Actions `win-installer`로 빌드)
   - 맥에서 만들어도 된다. `pnpm-workspace.yaml`의 `supportedArchitectures`로 윈도우 x64용 claude 실행 파일 패키지까지 받아 둔다(설정을 바꾼 뒤 `pnpm install` 한 번 필요)

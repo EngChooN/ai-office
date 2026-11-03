@@ -69,7 +69,7 @@ Claude の社員と GPT の社員を一緒に**採用**し、ひとつのオフ�
 - 必要条件: その Mac で Claude（Claude Code）または GPT（ChatGPT・Codex）のどちらか1つ以上にログインしていること。両方つなぐと社員ごとに選べます（社員はそのアカウントで働き、料金もそのアカウントに請求されます）
 - 再ビルド: `cd app && pnpm make`
 
-## Windows（第1弾 · 試験版）
+## Windows
 - インストール: `AI-Office-win-x64-Setup.exe` をダウンロードして実行すると、ユーザーフォルダにインストールされ、スタートメニューとデスクトップにショートカットができます（管理者権限は不要）。以降のアップデートはアプリ内から新しい Setup.exe で行われます
 - ビルド: `cd app && pnpm install && pnpm make:win` → `app/out/make/squirrel.windows/x64/AI-Office-win-x64-Setup.exe`（Mac には wine がなくインストーラーを作れません。GitHub Actions の `win-installer` でビルド）
   - Mac でビルドしても構いません。`pnpm-workspace.yaml` の `supportedArchitectures` により、Windows x64 用の claude 実行ファイルパッケージも取得されます（設定を変えたあと `pnpm install` を一度実行してください）

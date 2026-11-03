@@ -69,7 +69,7 @@ A free, open-source desktop app (Electron) where you **hire** Claude staff and G
 - Requirement: at least one of Claude (Claude Code) or GPT (ChatGPT · Codex) must be signed in on that Mac. With both connected you choose per employee (staff work under that account, and usage is billed to it)
 - Rebuild: `cd app && pnpm make`
 
-## Windows (first release · beta)
+## Windows
 - Install: download and run `AI-Office-win-x64-Setup.exe`. It installs into your user folder and adds Start menu and desktop shortcuts (no admin rights needed). Later updates run from inside the app using a new Setup.exe
 - Build: `cd app && pnpm install && pnpm make:win` → `app/out/make/squirrel.windows/x64/AI-Office-win-x64-Setup.exe` (a Mac has no wine, so it cannot build the installer; build it with the GitHub Actions `win-installer` workflow)
   - You can build it on a Mac too. `supportedArchitectures` in `pnpm-workspace.yaml` also fetches the claude executable package for Windows x64 (after changing the setting, run `pnpm install` once)

@@ -69,7 +69,7 @@
 - 前提条件：该 Mac 上已登录 Claude（Claude Code）或 GPT（ChatGPT · Codex）中的至少一个。两者都连接时可按员工选择（员工使用该账户工作，费用也计入该账户）
 - 重新构建：`cd app && pnpm make`
 
-## Windows（第一阶段 · 试用版）
+## Windows
 - 安装：下载并运行 `AI-Office-win-x64-Setup.exe`，会安装到用户文件夹，并创建开始菜单和桌面快捷方式（无需管理员权限）。之后的更新在应用内通过新的 Setup.exe 进行
 - 构建：`cd app && pnpm install && pnpm make:win` → `app/out/make/squirrel.windows/x64/AI-Office-win-x64-Setup.exe`（Mac 没有 wine，无法生成安装程序，请用 GitHub Actions 的 `win-installer` 构建）
   - 在 Mac 上构建也可以。`pnpm-workspace.yaml` 中的 `supportedArchitectures` 会同时下载 Windows x64 用 claude 可执行文件包（修改设置后需要运行一次 `pnpm install`）
