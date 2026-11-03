@@ -18,7 +18,7 @@
 </div>
 
 <p align="center">
-  <img src="docs/launch/gif/office-10s.gif" width="800" alt="AI Office の実際の画面 — 席で働く社員、承認依頼、報告">
+  <img src="docs/launch/gif/office-1.0.gif" width="800" alt="AI Office の実際の画面 — 席で働く社員、承認依頼、報告">
 </p>
 
 ## ⬇️ ダウンロード

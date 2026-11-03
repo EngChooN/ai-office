@@ -18,7 +18,7 @@ A free, open-source desktop app: hand out work in plain words, approve the impor
 </div>
 
 <p align="center">
-  <img src="docs/launch/gif/office-10s.gif" width="800" alt="AI Office in action — staff at their desks, an approval request, and a report">
+  <img src="docs/launch/gif/office-1.0.gif" width="800" alt="AI Office in action — staff at their desks, an approval request, and a report">
 </p>
 
 ## ⬇️ Download

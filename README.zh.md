@@ -18,7 +18,7 @@
 </div>
 
 <p align="center">
-  <img src="docs/launch/gif/office-10s.gif" width="800" alt="AI Office 实际画面 — 员工在工位工作、审批请求与汇报">
+  <img src="docs/launch/gif/office-1.0.gif" width="800" alt="AI Office 实际画面 — 员工在工位工作、审批请求与汇报">
 </p>
 
 ## ⬇️ 下载

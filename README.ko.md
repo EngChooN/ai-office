@@ -18,7 +18,7 @@
 </div>
 
 <p align="center">
-  <img src="docs/launch/gif/office-10s.gif" width="800" alt="AI Office 실제 화면 — 자리에서 일하는 직원, 결재 요청, 보고">
+  <img src="docs/launch/gif/office-1.0.gif" width="800" alt="AI Office 실제 화면 — 자리에서 일하는 직원, 결재 요청, 보고">
 </p>
 
 ## ⬇️ 다운로드
