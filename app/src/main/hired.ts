@@ -277,6 +277,7 @@ class Worker {
       systemPromptAppend: capPrompt([t('staff.identity', { name: s.name, role: s.role }), t('staff.language'), this.hooks.context(s.id), refDocs.prompt, browserGuide, computerGuide, t('staff.captureGuide'), capPrompt(s.systemPrompt, PERSONA_MAX)].filter(Boolean).join('\n'), PROMPT_MAX),
       mcpServers: { ...mcpServers, office: this.hooks.officeTools(s.id) },
       selectedMcp: s.equipment.mcpServers,
+      shellNetwork: s.provider === 'codex' && s.equipment.shellNetwork === true,
       skills: s.equipment.skills,
       disallowedTools: s.equipment.disallowedTools.filter((t) => !isBashPolicyMark(t)),
       canUseTool: (toolName, input, signal) => {

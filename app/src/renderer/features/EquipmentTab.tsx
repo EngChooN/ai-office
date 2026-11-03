@@ -89,6 +89,17 @@ export function EquipmentTab({ staff }: { staff: Staff }) {
         </label>
       )}
 
+      {/* 셸 네트워크는 GPT(Codex) 직원만 — Claude 직원은 샌드박스가 달라 해당 없다 */}
+      {staff.provider === 'codex' && (
+        <label className="flex items-start gap-2 text-xs">
+          <input type="checkbox" className="mt-0.5" checked={eq.shellNetwork === true} onChange={(e) => setEq((x) => ({ ...x, shellNetwork: e.target.checked }))} />
+          <span>
+            {t('equipment.shellNetwork')}
+            <span className="block text-muted-foreground">{t('equipment.shellNetwork.hint')}</span>
+          </span>
+        </label>
+      )}
+
       <div className="flex flex-col gap-2">
         <h3 className="text-xs font-semibold">🛡️ {t('equipment.tools.title')}</h3>
         <NotOnWindows reason={t('equipment.tools.captureMacOnly')} />

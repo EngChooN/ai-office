@@ -47,6 +47,8 @@ export interface RuntimeStartOpts {
   selectedMcp: string[]
   skills: string[] | 'all' | undefined
   disallowedTools: string[]
+  /** Codex 전용: 셸 샌드박스에서 네트워크(인터넷·로컬 포트)를 허용 */
+  shellNetwork?: boolean
   /** 도구 사용 전 결재 */
   canUseTool(toolName: string, input: Record<string, unknown>, signal: AbortSignal): Promise<ToolDecision>
   /** 도구 실행 직전: deny 사유를 돌려주면 막는다 */

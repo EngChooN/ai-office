@@ -1046,6 +1046,13 @@ export default {
     },
     'mcpAdd.submit': { ko: '추가', en: 'Add', ja: '追加', zh: '添加' },
     'mcpAdd.save': { ko: '고치기', en: 'Save', ja: '保存', zh: '保存' },
+    'equipment.shellNetwork': { ko: '셸 네트워크 허용', en: 'Allow shell network access', ja: 'シェルのネットワークを許可', zh: '允许 Shell 访问网络' },
+    'equipment.shellNetwork.hint': {
+      ko: '켜면 직원이 실행하는 명령이 인터넷과 내 컴퓨터의 로컬 포트에도 접근할 수 있어요. 파일 쓰기 범위와 결재 방식은 그대로예요',
+      en: 'When on, commands the staff run can reach the internet and local ports on this computer. File-write scope and approvals stay the same',
+      ja: 'オンにすると、スタッフが実行するコマンドがインターネットやこのコンピューターのローカルポートにもアクセスできます。ファイルの書き込み範囲と承認方式は変わりません',
+      zh: '开启后，员工运行的命令可以访问互联网和本机的本地端口。文件写入范围和审批方式不变',
+    },
     'equipment.lightModel': { ko: '간단한 업무(분류·요약·정리)는 가벼운 모델로 자동 전환', en: 'Switch to a lighter model for simple tasks (sorting, summaries, tidy-ups)', ja: '簡単な業務（分類・要約・整理）は軽いモデルに自動で切り替え', zh: '简单任务（分类、摘要、整理）自动切换到轻量模型' },
     'equipment.skills.title': { ko: '매뉴얼(스킬)', en: 'Manuals (skills)', ja: 'マニュアル（スキル）', zh: '手册（技能）' },
     'equipment.skills.all': { ko: '쓸 수 있는 매뉴얼 전부', en: 'All available manuals', ja: '使えるマニュアルすべて', zh: '所有可用手册' },

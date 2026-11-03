@@ -242,8 +242,8 @@ export const V2_FIELDS: Partial<Record<OfficeMethod, Record<number, string[]>>> 
   updateLab: { 1: fieldsExcept('updateLab', 1, ['cwd'], { name: true, color: true, goal: true, leadId: true, memberIds: true, manuals: true }) },
   setRefDocs: { 0: fieldsOf('setRefDocs', 0, { kind: true, id: true }) },
   recruitExternal: { 1: fieldsExcept('recruitExternal', 1, ['approvalMode'], { role: true, model: true, teamId: true }) },
-  // 원격은 MCP·스킬·예산만 — Bash 같은 허용·금지 도구는 PC에서만
-  setEquipment: { 1: fieldsExcept('setEquipment', 1, ['allowedTools', 'disallowedTools'], { mcpServers: true, skills: true, monthlyBudgetUsd: true, lightModelOff: true }) },
+  // 원격은 MCP·스킬·예산만 — Bash 같은 허용·금지 도구와 셸 네트워크 허용은 PC에서만
+  setEquipment: { 1: fieldsExcept('setEquipment', 1, ['allowedTools', 'disallowedTools', 'shellNetwork'], { mcpServers: true, skills: true, monthlyBudgetUsd: true, lightModelOff: true }) },
   saveManual: { 0: fieldsOf('saveManual', 0, { name: true, description: true, kind: true, scope: true, projectDir: true, body: true, steps: true }) },
   startRun: { 0: fieldsOf('startRun', 0, { manualName: true, scope: true, input: true, attachments: true, taskId: true }) },
   instruct: { 3: fieldsOf('instruct', 3, { isAutonomous: true }) },

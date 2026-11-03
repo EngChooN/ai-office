@@ -278,6 +278,8 @@ export interface Equipment {
   monthlyBudgetUsd: number
   /** true면 간단한 업무(분류·요약·정리)도 직원의 모델 그대로 쓴다 (기본: 가벼운 모델로 자동 전환) */
   lightModelOff?: boolean
+  /** true면 GPT(Codex) 직원의 셸이 인터넷·로컬 포트를 쓸 수 있다 (기본 false — 작업 폴더 안 쓰기 샌드박스는 네트워크가 꺼져 있다) */
+  shellNetwork?: boolean
 }
 
 export interface EquipmentCatalog {

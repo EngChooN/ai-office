@@ -96,6 +96,9 @@ export function approvalSettings(_mode: 'ask' | 'acceptEdits') {
   return { approvalPolicy: 'untrusted', sandbox: 'workspace-write' } as const
 }
 
+/** 셸 네트워크 허용 시 app-server 프로세스에 넘기는 -c 설정 (workspace-write 샌드박스의 network_access) */
+export const shellNetworkArgs = (on: boolean | undefined): string[] => (on ? ['-c', 'sandbox_workspace_write.network_access=true'] : [])
+
 /** model/list 결과에서 모델을 고른다: 요청한 모델이 목록에 있으면 그것, 아니면 기본(isDefault), 그것도 없으면 첫 번째 */
 export function pickModel(list: { id: string; isDefault?: boolean; hidden?: boolean }[], wanted: string | undefined): string | undefined {
   if (wanted && list.some((m) => m.id === wanted)) return wanted
