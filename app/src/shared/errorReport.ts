@@ -52,7 +52,8 @@ export function fitIssueBody(base: string, log: string, truncatedNote: string, m
   if (full.length <= max) return { body: full, isTruncated: false }
   const note = `\n\n${truncatedNote}`
   const room = max - base.length - open.length - close.length - note.length - 2 // '\n…'
-  if (room <= 0) return { body: base + note, isTruncated: true }
+  // 안내까지 못 넣으면 본문만 (본문 자체는 자르지 않는다 — 기록 때문에 상한을 넘기지 않게만)
+  if (room <= 0) return { body: base.length + note.length <= max ? base + note : base, isTruncated: true }
   let cut = log.slice(0, room)
   const lineEnd = cut.lastIndexOf('\n')
   if (lineEnd > room / 2) cut = cut.slice(0, lineEnd) // 가능하면 줄 끝에서 자른다

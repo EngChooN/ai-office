@@ -59,6 +59,8 @@ test('가리기: 파일 URL·UNC·공백·괄호가 든 경로도 폴더 이름 
     ["ENOENT: open '/Volumes/Bob's Drive/Acme-Merger/x.ts'", "ENOENT: open '…/x.ts'"],
     ['smb://nas/Clients/Acme-Merger/p.ts', '…/p.ts'],
     ['at file:///Users/hong.gildong/clients/Acme-Merger/x.js:1:2', 'at …/x.js:1:2'],
+    ['/Acme Merger/secret.ts:12:3', '…/secret.ts:12:3'],
+    ['open /Acme (Merger)/private.ts', 'open …/private.ts'],
   ]
   for (const [raw, want] of cases) assert.equal(scrubErrorText(raw, MAC), want)
   // 경로가 아닌 a/b·URL은 그대로 둔다
@@ -152,8 +154,11 @@ test('본문: 오류 글 속 ``` 이 코드 블록을 깨지 않는다', () => {
   assert.equal(body.split('```').length - 1, 2)
 })
 
-test('본문: 기본 글만으로 상한에 닿으면 기록 없이 안내만', () => {
-  const { body, isTruncated } = fitIssueBody('b'.repeat(100), 'log', 'NOTE', 90)
-  assert.equal(isTruncated, true)
-  assert.ok(!body.includes(ERROR_LOG_HEADING) && body.endsWith('NOTE'))
+test('본문: 기본 글만으로 상한에 닿으면 기록 없이 안내만, 안내도 못 넣으면 본문만 (상한을 넘기지 않는다)', () => {
+  const fitsNote = fitIssueBody('b'.repeat(80), 'log', 'NOTE', 90)
+  assert.equal(fitsNote.isTruncated, true)
+  assert.equal(fitsNote.body, `${'b'.repeat(80)}\n\nNOTE`)
+  const noRoom = fitIssueBody('b'.repeat(5995), 'x', 'NOTE')
+  assert.equal(noRoom.isTruncated, true)
+  assert.equal(noRoom.body, 'b'.repeat(5995))
 })
