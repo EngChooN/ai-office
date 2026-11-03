@@ -9,6 +9,9 @@ Writing rules
 
 ## [미정] (설치본 미빌드)
 
+### New features
+- When you send feedback and errors happened recently, the app asks whether to include the error records. You can preview them and uncheck the box to leave them out. Home folder locations, names, emails, passwords and similar values are hidden, and if the records are long only part is included and the full records are copied for you to paste. Not sent from phones.
+
 ### Improvements
 - On-screen wording is plainer, and words with the same meaning now match: "AI engine (Claude/GPT)", "team leader / lab head", "AI usage costs" vs. "company funds (in-game money)", and "manual steps". Program names and commands in the Changes tab and auto-approve notes are folded under "Details".
 

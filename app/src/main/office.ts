@@ -150,6 +150,7 @@ import { AUTONOMY_TEXT_ASK_MAX, autonomyVerdict, fallbackAnswers, isFullAutonomy
 import { commitAll, folderState, pushAndPr, repoRoot, restoreFiles, snapshotTree, treeDiff, workBaseStillValid, workChanges } from './review'
 import { readCodexExternalDay, readExternalDay } from './transcript'
 import { Tutorial } from './tutorial'
+import { errorLog } from './errorLog'
 
 const SCHEDULE_TICK_MS = 30_000
 const CHAT_HISTORY = 300
@@ -653,6 +654,7 @@ export class Office extends EventEmitter<{
 
   /** 실행 중 예외(SDK·Codex 오류): 대화방에 알리고, 받은 일을 정리하고, 업무 카드를 되돌린다 */
   private onFailed(staffId: string, error: string) {
+    errorLog.record('staff', error) // 피드백에 붙일 최근 오류 기록 (직원 이름은 넣지 않는다)
     const origins = this.origins.get(staffId) ?? []
     const queued = this.taskQueue.get(staffId) ?? []
     this.origins.set(staffId, [])

@@ -4,6 +4,7 @@ import { OFFICE_EVENTS, OFFICE_METHODS } from './shared/officeApiShape'
 import type { OfficeUpdateApi, UpdateStatus } from './shared/updateCheck'
 import type { OfficePackApi } from './shared/staffPack'
 import type { OfficeSceneApi } from './shared/sceneExport'
+import type { OfficeErrorsApi } from './shared/errorReport'
 
 // 메서드는 office:<이름> invoke, on* 은 같은 이름 채널 구독으로 연결한다 (목록은 shared/officeApiShape — 원격 v2와 같은 목록)
 const METHODS = OFFICE_METHODS
@@ -77,3 +78,10 @@ const scene: OfficeSceneApi = {
   pickFolder: () => ipcRenderer.invoke('scene:pickFolder'),
 }
 contextBridge.exposeInMainWorld('officeScene', scene)
+
+// 피드백에 붙일 최근 오류 기록 (PC 전용 errors:* 채널 — 휴대폰으로 PC 오류를 보내지 않게 OfficeApi 밖에 둔다)
+const errors: OfficeErrorsApi = {
+  list: () => ipcRenderer.invoke('errors:list'),
+  report: (text) => ipcRenderer.send('errors:report', String(text).slice(0, 20_000)),
+}
+contextBridge.exposeInMainWorld('officeErrors', errors)

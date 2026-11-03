@@ -8,6 +8,16 @@ import { loadPage } from '@/layout/pages'
 document.documentElement.dataset.platform = window.office.platform
 watchSystemMode()
 
+// 화면에서 난 오류를 피드백용 최근 오류 기록에 남긴다 (PC 앱 창만 officeErrors가 있다 — 메인이 가려서 넣는다)
+if (window.officeErrors) {
+  const report = window.officeErrors.report
+  window.addEventListener('error', (e) => {
+    if (/ResizeObserver loop/.test(e.message)) return // 화면 크기 바꿀 때 나는 무해한 경고
+    report(e.error instanceof Error ? e.error.stack || e.message : e.message)
+  })
+  window.addEventListener('unhandledrejection', (e) => report(e.reason instanceof Error ? e.reason.stack || String(e.reason) : String(e.reason)))
+}
+
 // 바탕화면 비서 창(petPreload가 officePet을 준다)은 앱 화면을 불러오지 않고 비서 창 화면만 띄운다
 const root = createRoot(document.getElementById('root')!)
 if (window.officePet) {

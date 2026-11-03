@@ -1,11 +1,10 @@
-import { MessageSquareIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useOffice, useWorkMode } from '@/store'
 import { t } from '@shared/i18n'
 import { NAV_GROUPS, useNavBadges, useOpenGroup } from './nav'
 import { NAV_GROUP_DEFS, groupBadge, groupOfView, visibleGroups } from './navGroups'
 import { useUpdateBadge } from './AppUpdate'
-import { openFeedbackIssue } from '@/lib/feedback'
+import { FeedbackButton } from './FeedbackButton'
 
 export function Sidebar() {
   const view = useOffice((s) => s.view)
@@ -49,14 +48,7 @@ export function Sidebar() {
           )
         })}
       </div>
-      <button
-        type="button"
-        onClick={openFeedbackIssue}
-        className="text-muted-foreground hover:bg-accent/60 hover:text-foreground mt-1 flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-left text-xs"
-      >
-        <MessageSquareIcon className="size-3.5 shrink-0" />
-        <span className="min-w-0 flex-1 truncate whitespace-nowrap" title={t('settingsPage.guide.feedback')}>{t('settingsPage.guide.feedback')}</span>
-      </button>
+      <FeedbackButton />
     </nav>
   )
 }

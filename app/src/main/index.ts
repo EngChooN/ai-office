@@ -38,8 +38,16 @@ import { codexBinaryPath } from './ai/codex'
 import { refreshCodexAssets } from './ai/codexAssets'
 import { lastProviderStatus, providerStatus } from './setup'
 import { WINDOW_BG, type UiMode } from '../shared/uiTheme'
+import { errorLog } from './errorLog'
 
 registerAttachmentScheme()
+// 최근 오류 기록 (피드백에 붙인다): 지켜보기만 하고 원래 처리(오류 창·경고)는 바꾸지 않는다
+process.on('uncaughtExceptionMonitor', (err) => errorLog.record('main', err))
+process.on('unhandledRejection', (reason) => {
+  console.error('[main] 처리되지 않은 오류:', reason)
+  errorLog.record('main', reason)
+})
+app.on('render-process-gone', (_e, _wc, d) => errorLog.record('renderer', `render process gone: ${d.reason} (exit ${d.exitCode})`))
 const office = new Office()
 let win: BrowserWindow | null = null
 
@@ -332,6 +340,11 @@ function registerIpc() {
   ipcMain.handle('pet:summon', (e) => {
     if (e.sender === win?.webContents) pet.summon()
   })
+  // 피드백에 붙일 최근 오류 기록 (앱 창에서만 — 휴대폰으로 PC 오류를 보내지 않게 OfficeApi 밖에 둔다)
+  ipcMain.handle('errors:list', (e) => (e.sender === win?.webContents ? errorLog.list() : []))
+  ipcMain.on('errors:report', (e, text: unknown) => {
+    if (e.sender === win?.webContents && typeof text === 'string') errorLog.record('renderer', text)
+  })
 
   office.on('snapshot', (s) => {
     syncNativeTheme(s.settings.uiMode)
@@ -378,6 +391,7 @@ if (IS_WINDOWS) app.setAppUserModelId('com.joonyoung.claude-office')
 app.whenReady().then(async () => {
   // 같은 데이터 폴더를 쓰는 다른 AI Office(설치본·개발 앱)가 켜져 있으면 DB를 열기 전에 멈춘다
   if (!acquireDataLock()) return quitForDataLock()
+  errorLog.open(path.join(app.getPath('userData'), 'error-log.json'))
   // 개발 실행 때도 Dock에 앱 아이콘을 보여 준다 (설치본은 번들 아이콘을 쓴다)
   if (!app.isPackaged) app.dock?.setIcon(path.join(app.getAppPath(), 'build', 'icon.png'))
   openDb()

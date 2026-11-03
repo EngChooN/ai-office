@@ -699,6 +699,28 @@ export default {
     ja: '何が不便だったか、どうなると良いかを書いてください。（不具合ならどの手順で起きたかも）',
     zh: '请写下哪里不方便、希望怎样改进。（如果是故障，也请写下是按什么步骤出现的）',
   },
+  'feedback.errors.title': { ko: '최근 오류 기록 {n}건을 함께 보낼까요?', en: 'Send {n} recent error records too?', ja: '最近のエラー記録 {n} 件も一緒に送りますか？', zh: '要一起发送最近的 {n} 条错误记录吗？' },
+  'feedback.errors.desc': {
+    ko: '문제를 고치는 데 큰 도움이 돼요. 홈 폴더 위치·이름·이메일·비밀번호 같은 값은 가려서 보내요. 피드백은 누구나 볼 수 있는 곳에 올라가니 아래 내용을 한번 확인해 주세요.',
+    en: 'This helps a lot in fixing problems. Your home folder location, names, emails, passwords and similar values are hidden. Feedback is posted where anyone can see it, so please check the content below.',
+    ja: '問題の修正にとても役立ちます。ホームフォルダの場所・名前・メールアドレス・パスワードなどの値は隠して送ります。フィードバックは誰でも見られる場所に投稿されるので、下の内容を確認してください。',
+    zh: '这对修复问题很有帮助。主文件夹位置、名字、邮箱、密码等内容会被隐藏后再发送。反馈会发布在任何人都能看到的地方，请先确认下面的内容。',
+  },
+  'feedback.errors.include': { ko: '오류 기록 함께 보내기', en: 'Include error records', ja: 'エラー記録も送る', zh: '一起发送错误记录' },
+  'feedback.errors.preview': { ko: '함께 보낼 내용', en: 'What will be sent', ja: '一緒に送る内容', zh: '将一起发送的内容' },
+  'feedback.errors.continue': { ko: '피드백 쓰러 가기', en: 'Write feedback', ja: 'フィードバックを書く', zh: '去写反馈' },
+  'feedback.errors.truncated': {
+    ko: '(오류 기록이 길어서 일부만 넣었어요. 앱의 피드백 보내기 창에서 전체 기록을 보고 붙여 넣어 주세요.)',
+    en: '(The error records were too long, so only part is included. You can see the full records in the app’s feedback window and paste them here.)',
+    ja: '（エラー記録が長いため一部だけ入れました。アプリのフィードバック画面で全体の記録を見て貼り付けてください。）',
+    zh: '（错误记录太长，只放入了一部分。请在应用的反馈窗口查看完整记录并粘贴到这里。）',
+  },
+  'feedback.errors.truncatedCopied': {
+    ko: '(오류 기록이 길어서 일부만 넣었어요. 전체 기록을 복사해 두었으니 여기에 붙여 넣어 주세요.)',
+    en: '(The error records were too long, so only part is included. The full records have been copied — please paste them here.)',
+    ja: '（エラー記録が長いため一部だけ入れました。全体の記録をコピーしてあるので、ここに貼り付けてください。）',
+    zh: '（错误记录太长，只放入了一部分。完整记录已复制，请粘贴到这里。）',
+  },
   'settingsPage.layout.title': { ko: '사무실 배치', en: 'Office layout', ja: 'オフィスの配置', zh: '办公室布局' },
   'settingsPage.layout.desc': {
     ko: "사무실 지도 오른쪽 위 '꾸미기'를 누르면 소품을 끌어서 옮길 수 있어요.",
