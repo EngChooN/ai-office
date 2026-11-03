@@ -18,5 +18,7 @@ export function buildStaffProgress(a: { status: StaffStatus; origins: readonly {
   const state: StaffProgress['state'] = a.status === 'error' ? 'error' : a.hasApproval || a.status === 'waiting' ? 'approval' : a.status === 'working' ? 'working' : 'queued'
   // 동료의 도움 요청으로 받은 일이면 부탁한 사람 이름을 붙인다 (그 직원이 없어졌으면 생략)
   const requestedBy = cur.kind === 'help' && cur.fromId ? a.nameOf?.(cur.fromId) : undefined
-  return { state, text: cur.text ?? '', ...(cur.room ? { room: cur.room } : {}), queued: a.queued, ...(requestedBy ? { requestedBy } : {}) }
+  // 대기 중 카드: 처리 중(첫 항목) 뒤에 줄 선 일 중 런타임이 센 수만큼 (같은 업무 카드는 origins에 한 번만 있어 더 적을 수 있다)
+  const waiting = a.origins.slice(1, 1 + a.queued).flatMap((o) => (o.text ? [{ text: o.text }] : []))
+  return { state, text: cur.text ?? '', ...(cur.room ? { room: cur.room } : {}), queued: a.queued, ...(requestedBy ? { requestedBy } : {}), ...(waiting.length ? { waiting } : {}) }
 }

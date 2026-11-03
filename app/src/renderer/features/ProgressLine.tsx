@@ -38,3 +38,32 @@ export function ProgressLine({ staff, progress, variant }: { staff: Pick<Staff, 
     </section>
   )
 }
+
+/** 대기 중 카드에 펼쳐 두는 최대 수 — 넘으면 "대기 N건"으로 접는다 */
+const WAITING_OPEN_MAX = 3
+
+/** 일하는 중에 받아 줄 선 지시 — 기록을 위로 스크롤해도 보이게 입력칸 바로 위(스크롤 영역 밖)에 둔다. 처리를 시작하거나 대기열이 비면 progress에서 빠져 사라진다 */
+export function WaitingCards({ waiting }: { waiting: readonly { text: string }[] }) {
+  const cards = waiting.map((w, i) => (
+    <li key={i} className="border-status-waiting/40 bg-status-waiting/10 flex min-w-0 flex-col gap-0.5 rounded-lg border px-3 py-2">
+      <span className="text-status-waiting flex items-center gap-1.5 text-[11px] font-medium">
+        <span className="bg-status-waiting size-1.5 shrink-0 rounded-full" />
+        {t('progress.waiting.label')}
+      </span>
+      <p className="line-clamp-2 min-w-0 text-xs break-words">{w.text}</p>
+      <span className="text-muted-foreground text-[11px]">{t('progress.queued')}</span>
+    </li>
+  ))
+  return (
+    <section aria-label={t('progress.waiting.list')} className="max-h-[40%] shrink-0 overflow-y-auto border-t px-4 py-2">
+      {waiting.length > WAITING_OPEN_MAX ? (
+        <details>
+          <summary className="text-status-waiting cursor-pointer text-xs font-medium">{t('progress.more', { count: waiting.length })}</summary>
+          <ol className="mt-2 flex flex-col gap-1.5">{cards}</ol>
+        </details>
+      ) : (
+        <ol className="flex flex-col gap-1.5">{cards}</ol>
+      )}
+    </section>
+  )
+}

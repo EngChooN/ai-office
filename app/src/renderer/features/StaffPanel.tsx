@@ -20,7 +20,7 @@ import { ReviewTab } from './ReviewTab'
 import { StaffExportDialog } from './StaffExportDialog'
 import { LiveMiniView } from './LiveMiniView'
 import { Avatar, StatusDot } from './StaffCard'
-import { ProgressLine } from './ProgressLine'
+import { ProgressLine, WaitingCards } from './ProgressLine'
 import { AutonomyCheck } from './Autonomy'
 import { MemoryLengthSelect } from './MemoryLength'
 import { useProviders } from './ProviderCards'
@@ -630,6 +630,7 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
             </section>
             <JumpToBottom isNear={logScroll.isNear} unread={logScroll.unread} onClick={() => logScroll.scrollToBottom(true)} />
           </div>
+          {staff.progress?.waiting && <WaitingCards waiting={staff.progress.waiting} />}
         </>
       )}
 
