@@ -21,6 +21,12 @@ export interface ScrubEnv {
   names: string[]
 }
 
+/**
+ * 경로 시작(file://·smb:// 같은 파일 URL, \\server·\\?\ 같은 UNC, C:\, ~/, 두 단계 이상의 /절대/경로)부터 그 줄의 마지막 / 또는 \ 까지.
+ * 폴더 이름에 공백·괄호·따옴표가 있어도 폴더가 남지 않게 줄 끝 쪽 마지막 구분자까지 넓게 지운다 (공개 이슈라 덜 남기는 쪽)
+ */
+const PATH = /(?:\b(?:file|smb|afp|nfs|cifs|webdavs?):\/+|\\\\|(?<![A-Za-z0-9])[A-Za-z]:[\\/]|(?<![^\s"'`(=:,[])~[\\/]|(?<![^\s"'`(=:,[])\/(?!\/)[^\s/\\"'`)<>|,;]+\/)[^\n]*[\\/]/gi
+
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
 export function defaultScrubEnv(): ScrubEnv {
@@ -33,18 +39,19 @@ export function defaultScrubEnv(): ScrubEnv {
   return { home: os.homedir(), names: [user, os.hostname().replace(/\.local$/i, '')] }
 }
 
-/** 오류 글 가리기: 홈 경로 → ~, 이메일·사용자 이름·컴퓨터 이름 → ***, 그다음 비밀값 가리기 두 가지(토큰·키·절대 경로·긴 무작위 문자열) */
+/** 오류 글 가리기: 홈 경로 → ~, 경로는 파일 이름만, 비밀값 가리기 두 가지(토큰·키·긴 무작위 문자열), 마지막에 이메일·사용자 이름·컴퓨터 이름 → *** */
 export function scrubErrorText(text: string, env: ScrubEnv): string {
   let s = text.slice(0, RAW_MAX)
   if (env.home.length > 1) {
     // 윈도우는 \와 / 둘 다, 대소문자 구분 없이
     for (const home of new Set([env.home, env.home.replaceAll('\\', '/')])) s = s.replace(new RegExp(escapeRe(home), 'gi'), '~')
   }
+  s = s.replace(PATH, '…/')
+  // 토큰·키를 이름보다 먼저 가린다 (sk-alice-… 를 이름으로 먼저 끊으면 토큰 모양이 깨져 나머지가 남는다). 가림 표시는 ***로 맞춘다 (redactPeerText의 ‹가림› — 다시 가려도 같은 글이 되게)
+  s = redactPeerText(maskSecrets(s)).replaceAll(PEER_MASK, MASK)
   s = s.replace(EMAIL, MASK)
   // 짧은 이름(2자 이하)은 보통 낱말까지 가려 버려 뺀다
   for (const name of env.names) if (name.length >= 3) s = s.replace(new RegExp(`(?<![A-Za-z0-9])${escapeRe(name)}(?![A-Za-z0-9])`, 'gi'), MASK)
-  // 가림 표시는 ***로 맞춘다 (redactPeerText의 ‹가림› — 다시 가려도 같은 글이 되게)
-  s = redactPeerText(maskSecrets(s)).replaceAll(PEER_MASK, MASK)
   return s.length > ERROR_MESSAGE_MAX ? `${s.slice(0, ERROR_MESSAGE_MAX)}…` : s
 }
 

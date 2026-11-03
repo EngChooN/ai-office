@@ -49,8 +49,32 @@ test('가리기: 홈 아래 폴더 이름(프로젝트·고객 이름)은 남기
   assert.match(s, /index\.js:123:5/)
 })
 
+test('가리기: 파일 URL·UNC·공백·괄호가 든 경로도 폴더 이름 없이 파일 이름·줄 번호만 남긴다', () => {
+  const cases: [string, string][] = [
+    ['    at run (file:///Volumes/Acme-Merger/private.ts:12:3)', '    at run (…/private.ts:12:3)'],
+    ['\\\\server\\Clients\\Acme-Merger\\private.ts:12:3', '…/private.ts:12:3'],
+    ['/Volumes/Acme Merger/secret business plan.ts:12:3', '…/secret business plan.ts:12:3'],
+    ['at x (\\\\?\\C:\\Clients\\Acme-Merger\\p.ts:1:2)', 'at x (…/p.ts:1:2)'],
+    ['at fn (C:\\Program Files (x86)\\Acme-Merger\\x.js:1:2)', 'at fn (…/x.js:1:2)'],
+    ["ENOENT: open '/Volumes/Bob's Drive/Acme-Merger/x.ts'", "ENOENT: open '…/x.ts'"],
+    ['smb://nas/Clients/Acme-Merger/p.ts', '…/p.ts'],
+    ['at file:///Users/hong.gildong/clients/Acme-Merger/x.js:1:2', 'at …/x.js:1:2'],
+  ]
+  for (const [raw, want] of cases) assert.equal(scrubErrorText(raw, MAC), want)
+  // 경로가 아닌 a/b·URL은 그대로 둔다
+  assert.equal(scrubErrorText('TypeError: a/b is not 1/2, see https://github.com/x/y and/or retry', MAC), 'TypeError: a/b is not 1/2, see https://github.com/x/y and/or retry')
+})
+
+test('가리기: 토큰·키를 이름보다 먼저 가린다 (토큰 속 사용자 이름이 가림을 깨지 않는다)', () => {
+  const env = { home: '/Users/alice', names: ['alice'] }
+  for (const token of ['sk-alice-1234567890abcdefghij', 'ghp_alice1234567890ABCDEFGHIJ']) {
+    const s = scrubErrorText(`401 ${token}`, env)
+    assert.equal(s, '401 ***')
+  }
+})
+
 test('가리기: 이미 가린 글을 다시 가려도 그대로다 (파일에서 읽을 때 한 번 더 가린다)', () => {
-  const raw = 'Error at /Users/hong.gildong/a/b.ts:1:2 for hong.gildong@example.com Authorization: Bearer abcdefghijklmnop sk-ABCDEFGHIJKLMNOPQRSTUV'
+  const raw = 'Error at /Users/hong.gildong/a/b.ts:1:2 file:///Volumes/Acme Merger/c.ts sk-hong.gildong-1234567890abcdef for hong.gildong@example.com Authorization: Bearer abcdefghijklmnop sk-ABCDEFGHIJKLMNOPQRSTUV'
   const once = scrubErrorText(raw, MAC)
   assert.equal(scrubErrorText(once, MAC), once)
 })
