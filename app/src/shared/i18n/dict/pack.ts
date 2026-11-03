@@ -240,7 +240,7 @@ export default {
   'pack.err.labMissing': { ko: '랩을 찾을 수 없어요.', en: 'The lab cannot be found.', ja: 'ラボが見つかりません。', zh: '找不到该实验室。' },
   'pack.err.labNoMembers': { ko: '이 랩에는 직원이 없어 내보낼 수 없어요.', en: 'This lab has no staff, so it cannot be exported.', ja: 'このラボには社員がいないため書き出せません。', zh: '该实验室没有员工，无法导出。' },
   'pack.err.marketMissing': { ko: '마켓에서 그 직원을 찾을 수 없어요.', en: 'That staff member is not in the market.', ja: 'マーケットにその社員がいません。', zh: '员工市场中没有该员工。' },
-  'pack.err.provider': { ko: '엔진은 Claude나 GPT 중에서 골라 주세요.', en: 'Choose Claude or GPT as the engine.', ja: 'エンジンは Claude か GPT から選んでください。', zh: '请从 Claude 或 GPT 中选择引擎。' },
+  'pack.err.provider': { ko: 'AI 엔진은 Claude나 GPT 중에서 골라 주세요.', en: 'Choose Claude or GPT as the AI engine.', ja: 'AIエンジンは Claude か GPT から選んでください。', zh: '请从 Claude 或 GPT 中选择 AI 引擎。' },
   'engine.recommended': { ko: '추천', en: 'Recommended', ja: 'おすすめ', zh: '推荐' },
   'engine.reason.lead': {
     ko: '일을 나누고 맡기는 사무실 도구를 가장 안정적으로 써요.',
@@ -273,9 +273,9 @@ export default {
     zh: '以不同于编写代码的 Claude 员工的视角来审查。',
   },
   'engine.reason.qa': {
-    ko: '만든 쪽과 다른 엔진이라 놓친 경우를 찾기 좋아요.',
-    en: 'A different engine from the builder, so it is good at catching missed cases.',
-    ja: '作った側と別のエンジンなので、見落としを見つけやすいです。',
+    ko: '만든 쪽과 다른 AI 엔진이라 놓친 경우를 찾기 좋아요.',
+    en: 'A different AI engine from the builder, so it is good at catching missed cases.',
+    ja: '作った側と別のAIエンジンなので、見落としを見つけやすいです。',
     zh: '与开发方使用不同引擎，更容易发现遗漏的情况。',
   },
   'engine.reason.researcher': {

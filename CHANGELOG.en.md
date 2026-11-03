@@ -9,6 +9,9 @@ Writing rules
 
 ## [미정] (설치본 미빌드)
 
+### Improvements
+- On-screen wording is plainer, and words with the same meaning now match: "AI engine (Claude/GPT)", "team leader / lab head", "AI usage costs" vs. "company funds (in-game money)", and "manual steps". Program names and commands in the Changes tab and auto-approve notes are folded under "Details".
+
 ### Bug fixes
 - Fixed the [Install guide] button mentioned in the message not appearing when you try to continue a GPT (Codex) staff member on a computer without Codex. The button now opens the install guide in your browser.
 

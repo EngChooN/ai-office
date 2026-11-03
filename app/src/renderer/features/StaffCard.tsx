@@ -17,6 +17,8 @@ import { isRemoteDim, RemoteBadge } from './RemoteBadge'
 interface Props {
   staff: Staff
   isLead?: boolean
+  /** 랩 묶음에서 보일 때 — 리더 표시를 '랩장'으로 */
+  isLab?: boolean
   isSelected: boolean
   onSelect: (id: string) => void
 }
@@ -80,12 +82,13 @@ export function UnreadBadge({ staff, className }: { staff: Staff; className?: st
   )
 }
 
-export function LeadMark() {
+/** isLab: 랩장 표시 (기본은 팀장) */
+export function LeadMark({ isLab = false }: { isLab?: boolean }) {
   const isWorkMode = useWorkMode()
   if (!isWorkMode) return <span className="shrink-0 text-status-waiting">★</span>
   return (
     <Badge variant="outline" className="border-primary/40 text-primary h-4 shrink-0 px-1.5 text-[10px]">
-      {t('staffCard.lead')}
+      {t(isLab ? 'staffCard.labLead' : 'staffCard.lead')}
     </Badge>
   )
 }
@@ -117,7 +120,7 @@ const CARD_TONE: Record<Staff['status'], string> = {
   offline: 'bg-card hover:bg-accent opacity-60 hover:opacity-100',
 }
 
-export function StaffCard({ staff, isLead = false, isSelected, onSelect }: Props) {
+export function StaffCard({ staff, isLead = false, isLab = false, isSelected, onSelect }: Props) {
   const isWorkMode = useWorkMode()
   const tasks = useOffice((s) => s.tasks)
   const task = useMemo(() => (staff.kind === 'hired' ? currentTask(tasks, staff.id) : null), [tasks, staff.kind, staff.id])
@@ -141,7 +144,7 @@ export function StaffCard({ staff, isLead = false, isSelected, onSelect }: Props
         <Avatar avatar={staff.avatar} name={staff.name} teamId={staff.teamId} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 font-semibold">
-            {isLead && <LeadMark />}
+            {isLead && <LeadMark isLab={isLab} />}
             <span className="min-w-0 truncate">{staff.name}</span>
             {staff.isPractice && <PracticeBadge />}
             <RemoteBadge staff={staff} />

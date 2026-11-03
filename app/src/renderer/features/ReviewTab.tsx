@@ -78,7 +78,7 @@ export function ReviewTab({ staff }: { staff: Staff }) {
   return (
     <section data-split-rest className="flex min-h-0 flex-1 flex-col">
       <div className="border-b px-4 py-2 empty:hidden">
-        <NotOnWindows reason={t('review.windowsNote')} />
+        <NotOnWindows reason={t('review.windowsNote')} detail={t('review.windowsNote.detail')} />
       </div>
       <div className="flex items-center gap-2 border-b px-4 py-2 text-xs">
         <span className="font-mono">{changes.branch || t('review.detachedHead')}</span>
@@ -94,7 +94,15 @@ export function ReviewTab({ staff }: { staff: Staff }) {
         {isHired && revert && (
           <div className="flex flex-col gap-2 border-b px-4 py-2 text-xs">
             {!revert.available ? (
-              <p className="text-muted-foreground">{t(revert.stale ? 'review.revert.stale' : 'review.revert.noBase')}</p>
+              <div className="text-muted-foreground">
+                <p>{t(revert.stale ? 'review.revert.stale' : 'review.revert.noBase')}</p>
+                {revert.stale && (
+                  <details className="mt-1 text-[11px]">
+                    <summary className="cursor-pointer">{t('common.more')}</summary>
+                    <p className="mt-1">{t('review.revert.staleDetail')}</p>
+                  </details>
+                )}
+              </div>
             ) : revert.files.length === 0 && revert.skipped.length === 0 ? (
               <p className="text-muted-foreground">{t('review.revert.none')}</p>
             ) : (

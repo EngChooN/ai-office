@@ -13,6 +13,8 @@ import { isRemoteDim, RemoteBadge } from './RemoteBadge'
 interface Props {
   staff: Staff
   isLead?: boolean
+  /** 랩 묶음에서 보일 때 — 리더 표시를 '랩장'으로 */
+  isLab?: boolean
   isSelected: boolean
   onSelect: (id: string) => void
 }
@@ -27,7 +29,7 @@ const ROW_TONE: Record<Staff['status'], string> = {
 }
 
 /** 대시보드 목록 보기의 한 줄 — 직원이 많을 때 훑어 찾기 위한 것. 누르면 카드와 같은 onSelect */
-export function StaffRow({ staff, isLead = false, isSelected, onSelect }: Props) {
+export function StaffRow({ staff, isLead = false, isLab = false, isSelected, onSelect }: Props) {
   const tasks = useOffice((s) => s.tasks)
   const task = useMemo(() => (staff.kind === 'hired' ? currentTask(tasks, staff.id) : null), [tasks, staff.kind, staff.id])
   // 지금 하는 일: 맡은 보드 업무가 있으면 그것, 없으면 최근 활동
@@ -41,7 +43,7 @@ export function StaffRow({ staff, isLead = false, isSelected, onSelect }: Props)
       <Avatar avatar={staff.avatar} name={staff.name} teamId={staff.teamId} className="size-8" />
       <div className="flex w-40 min-w-0 shrink-0 flex-col">
         <div className="flex items-center gap-1.5 text-sm font-semibold">
-          {isLead && <LeadMark />}
+          {isLead && <LeadMark isLab={isLab} />}
           <span className="min-w-0 truncate">{staff.name}</span>
           {staff.isPractice && <PracticeBadge />}
           <RemoteBadge staff={staff} />

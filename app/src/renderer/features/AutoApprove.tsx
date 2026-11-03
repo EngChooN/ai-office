@@ -143,6 +143,10 @@ export function AutoApproveSection() {
       <p className="text-muted-foreground text-xs">
         {t('autoApprove.help', { scope: autoScopeText() })}
       </p>
+      <details className="text-muted-foreground text-[11px]">
+        <summary className="cursor-pointer">{t('common.more')}</summary>
+        <p className="mt-1">{t('autoApprove.scopeDetail')}</p>
+      </details>
     </div>
   )
 }

@@ -2730,7 +2730,7 @@ export class Office extends EventEmitter<{
       const t = this.tasks.get(run.taskId)
       if (t) this.saveTask({ ...t, status: 'doing', updatedAt: now })
     }
-    this.postChat('me', `▶️ ${scopeName}에서 "${manual.name}" 프로세스를 시작했어요 (${manual.steps.length}단계)`)
+    this.postChat('me', tr('chat.runStarted', { scope: scopeName, manual: manual.name, n: manual.steps.length }))
     this.runStep(run)
     return run
   }
@@ -2811,7 +2811,7 @@ export class Office extends EventEmitter<{
       if (t) this.saveTask({ ...t, status: 'review', result: last.slice(0, CHAT_TEXT_MAX), updatedAt: Date.now() })
     }
     this.saveRunObj(run)
-    this.postChat('me', `🏁 "${run.manualName}" 프로세스를 마쳤어요 (${run.scope.name})`)
+    this.postChat('me', tr('chat.runFinished', { manual: run.manualName, scope: run.scope.name }))
     this.emit('notify', { title: t('notify.processDone'), body: `${run.manualName} · ${run.scope.name}`, staffId: '' })
   }
 

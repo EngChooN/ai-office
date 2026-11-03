@@ -212,7 +212,7 @@ function LabCard({ lab, staff, teams }: { lab: Lab; staff: Staff[]; teams: Team[
             <button key={m.id} type="button" onClick={() => select(m.id)} className="flex items-center gap-2 py-1 text-left">
               <Avatar avatar={m.avatar} name={m.name} teamId={m.teamId} className="size-7" />
               <span className="flex min-w-0 flex-1 items-center gap-1 text-sm">
-                {lab.leadId === m.id && <LeadMark />}
+                {lab.leadId === m.id && <LeadMark isLab />}
                 <span className="truncate">{m.name}</span>
               </span>
               {team && (

@@ -167,13 +167,13 @@ export function Dashboard() {
                 {staffView === 'list' ? (
                   <div className="bg-card flex flex-col divide-y overflow-hidden rounded-xl border">
                     {[...g.members].sort(byUrgency).map((s) => (
-                      <StaffRow key={s.id} staff={s} isLead={g.leadId === s.id} isSelected={s.id === selectedId} onSelect={select} />
+                      <StaffRow key={s.id} staff={s} isLead={g.leadId === s.id} isLab={g.kind === 'lab'} isSelected={s.id === selectedId} onSelect={select} />
                     ))}
                   </div>
                 ) : (
                   <div className="grid grid-cols-[repeat(auto-fill,minmax(250px,1fr))] gap-3">
                     {[...g.members].sort(byUrgency).map((s) => (
-                      <StaffCard key={s.id} staff={s} isLead={g.leadId === s.id} isSelected={s.id === selectedId} onSelect={select} />
+                      <StaffCard key={s.id} staff={s} isLead={g.leadId === s.id} isLab={g.kind === 'lab'} isSelected={s.id === selectedId} onSelect={select} />
                     ))}
                   </div>
                 )}
