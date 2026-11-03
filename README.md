@@ -37,7 +37,7 @@ Free. You only need to be signed in to **Claude** or **GPT (ChatGPT)** on your c
 
 | | What | Description |
 |:-:|---|---|
-| 👥 | **Claude and GPT staff together** | Pick Claude or GPT for each employee. Either one alone is enough to start (GPT staff are beta). |
+| 👥 | **Claude and GPT staff together** | Pick Claude or GPT for each employee. Either one alone is enough to start. |
 | 💬 | **Hire, then just tell them** | Choose a role and a look, then @mention staff in the group chat. The right person picks up unassigned work. |
 | ✅ | **Approve what matters** | File changes and commands wait in your approval inbox first. One click to undo what staff changed. |
 | 🧑‍💼 | **Team leads split big jobs** | Give a big task to a team lead: it plans, splits, asks you to confirm, then reports. Track it on the task board. |
