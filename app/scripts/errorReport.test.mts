@@ -43,6 +43,18 @@ test('가리기: 토큰·API 키·인증 머리글·URL 비밀번호·키=값', 
   for (const v of [...secrets, 'plainvalue123', 'abc123def456']) assert.ok(!s.includes(v), `${v} 가 남음: ${s}`)
 })
 
+test('가리기: 홈 아래 폴더 이름(프로젝트·고객 이름)은 남기지 않고 파일 이름·줄 번호만 남긴다', () => {
+  const s = scrubErrorText('    at run (/Users/hong.gildong/clients/acme-corp/app/index.js:123:5)', MAC)
+  assert.ok(!s.includes('acme-corp') && !s.includes('clients'), s)
+  assert.match(s, /index\.js:123:5/)
+})
+
+test('가리기: 이미 가린 글을 다시 가려도 그대로다 (파일에서 읽을 때 한 번 더 가린다)', () => {
+  const raw = 'Error at /Users/hong.gildong/a/b.ts:1:2 for hong.gildong@example.com Authorization: Bearer abcdefghijklmnop sk-ABCDEFGHIJKLMNOPQRSTUV'
+  const once = scrubErrorText(raw, MAC)
+  assert.equal(scrubErrorText(once, MAC), once)
+})
+
 test('가리기: 짧은 이름(2자 이하)은 낱말을 망가뜨리지 않게 건드리지 않는다', () => {
   assert.equal(scrubErrorText('TypeError: x is not a function', { home: '/home/jo', names: ['jo'] }), 'TypeError: x is not a function')
 })

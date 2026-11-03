@@ -9,6 +9,7 @@ import { ERROR_LOG_MAX, ERROR_MESSAGE_MAX, type ErrorEntry, type ErrorSource } f
 import { redactPeerText } from './peer/redact.ts'
 
 const MASK = '***'
+const PEER_MASK = '‹가림›'
 /** 가리기 전에 읽는 길이 상한 (아주 긴 글에서 느려지지 않게) */
 const RAW_MAX = 20_000
 const EMAIL = /[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+/g
@@ -42,7 +43,8 @@ export function scrubErrorText(text: string, env: ScrubEnv): string {
   s = s.replace(EMAIL, MASK)
   // 짧은 이름(2자 이하)은 보통 낱말까지 가려 버려 뺀다
   for (const name of env.names) if (name.length >= 3) s = s.replace(new RegExp(`(?<![A-Za-z0-9])${escapeRe(name)}(?![A-Za-z0-9])`, 'gi'), MASK)
-  s = redactPeerText(maskSecrets(s))
+  // 가림 표시는 ***로 맞춘다 (redactPeerText의 ‹가림› — 다시 가려도 같은 글이 되게)
+  s = redactPeerText(maskSecrets(s)).replaceAll(PEER_MASK, MASK)
   return s.length > ERROR_MESSAGE_MAX ? `${s.slice(0, ERROR_MESSAGE_MAX)}…` : s
 }
 
