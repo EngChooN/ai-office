@@ -2,7 +2,7 @@
 
 버전은 SemVer. 기능 크기 기준으로 올린다. 버전마다 **새 기능 / 개선 / 버그 수정**으로 나눠 적는다(앱의 "업데이트 소식"이 이 파일을 그대로 보여 준다).
 
-## [미정] (설치본 미빌드)
+## [1.0.0] - 2026-11-03
 
 ### 새 기능
 - 피드백에 오류 기록 첨부: `main/errorLog.ts`(처리되지 않은 예외 `uncaughtExceptionMonitor`·`unhandledRejection`, `render-process-gone`, 화면 `error`·`unhandledrejection`, 직원 실행 실패 `Office.onFailed`) 최근 20건을 `userData/error-log.json`에 둔다. 넣을 때 한 번 가림(홈 → `~`, 이메일·사용자 이름·컴퓨터 이름 → `***`, 그다음 `maskSecrets` + `redactPeerText`), 읽을 때 다시 가림, 한 건 800자. 통로는 OfficeApi 밖 `window.officeErrors`(`errors:list`·`errors:report`, 앱 창 sender만) — 모바일 빌드·원격 v2에는 없다. `FeedbackButton`이 확인 창(미리 보기·체크 기본 켬), `shared/errorReport.ts` `fitIssueBody`가 본문 6000자 안으로 자르고 잘리면 전체 기록을 클립보드에 복사·안내.

@@ -7,13 +7,16 @@ Writing rules
 - Write from the user's point of view, describing "what you can now do." Do not use technical names (file paths, program or library names, English abbreviations). If one is truly needed, put it once in parentheses after a plain-language explanation.
 - Development details (how it was built, where files are) go in `SPEC.md` and `docs/changelog-dev.md`.
 
-## [미정] (설치본 미빌드)
+## [1.0.0] - 2026-11-03
 
 ### New features
 - When you send feedback and errors happened recently, the app asks whether to include the error records. You can preview them and uncheck the box to leave them out. Home folder locations, names, emails, passwords and similar values are hidden, and if the records are long only part is included and the full records are copied for you to paste. Not sent from phones.
+- Approvals and questions in the inbox are now saved. After you quit and reopen the app, those from the last 7 days come back as "Continue" cards, and approving, rejecting or answering sends them to that staff member as a new instruction. An approved item is auto-allowed once for the same tool and content.
+- You can turn on "allow shell network" per GPT (Codex) staff member (off by default). The approval mode and the range of files they can edit stay the same, and it cannot be changed from a phone.
 
 ### Improvements
 - On-screen wording is plainer, and words with the same meaning now match: "AI engine (Claude/GPT)", "team leader / lab head", "AI usage costs" vs. "company funds (in-game money)", and "manual steps". Program names and commands in the Changes tab and auto-approve notes are folded under "Details".
+- AI Office is now the official 1.0.0 release. Beta and trial labels were removed from the README and intro page, and the office picture on the front page now shows the current screen.
 
 ### Bug fixes
 - Fixed the [Install guide] button mentioned in the message not appearing when you try to continue a GPT (Codex) staff member on a computer without Codex. The button now opens the install guide in your browser.
