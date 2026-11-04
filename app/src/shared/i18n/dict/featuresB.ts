@@ -555,8 +555,10 @@ export default {
   'progress.helpFrom': { ko: '{name} 님이 부탁한 일', en: 'Requested by {name}', ja: '{name}さんからの依頼', zh: '{name} 请求的工作' },
   'approval.restored': { ko: '앱을 다시 켜서 이어 가는 결재', en: 'Approval carried over after an app restart', ja: 'アプリの再起動後に引き継いだ承認', zh: '应用重启后延续的审批' },
   'approval.requestedBy': { ko: '{name} 님의 요청', en: "{name}'s request", ja: '{name}さんの依頼', zh: '{name} 的请求' },
-  'progress.waiting.label': { ko: '대기 중', en: 'Waiting', ja: '待機中', zh: '等待中' },
-  'progress.waiting.list': { ko: '대기 중인 지시', en: 'Waiting instructions', ja: '待機中の指示', zh: '等待中的指令' },
+  'progress.waiting.label': { ko: '대기 메시지 · 지금 하는 일이 끝나면 보내요', en: 'Queued message · sent when the current task ends', ja: '待機メッセージ · 今の作業が終わったら送ります', zh: '排队消息 · 当前任务结束后发送' },
+  'progress.waiting.list': { ko: '대기 메시지', en: 'Queued messages', ja: '待機メッセージ', zh: '排队消息' },
+  'progress.waiting.sendNow': { ko: '지금 보내기', en: 'Send now', ja: '今すぐ送る', zh: '立即发送' },
+  'progress.waiting.cancel': { ko: '취소', en: 'Cancel', ja: 'キャンセル', zh: '取消' },
   'progress.more': { ko: '대기 {count}건', en: '{count} waiting', ja: '待機 {count}件', zh: '等待 {count} 条' },
   'status.noFolder': { ko: '폴더 지정 없음', en: 'No folder set', ja: 'フォルダー未指定', zh: '未指定文件夹' },
   // OS별 문구 (lib/platform.ts)

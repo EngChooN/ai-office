@@ -80,8 +80,8 @@ export interface StaffProgress {
   room?: string
   /** 현재 지시 뒤에 대기 중인 지시 수 */
   queued: number
-  /** 대기 중인 지시 요약 (받은 순서, 대기 중 카드) — 없으면 생략 */
-  waiting?: { text: string }[]
+  /** 대기 메시지: 일하는 중에 직원 패널에서 보낸 지시 (받은 순서, 입력칸 위에 표시) — 없으면 생략. id는 '지금 보내기'·'취소'에 쓴다 */
+  waiting?: { id: string; text: string }[]
   /** 현재 지시가 동료의 도움 요청이면 부탁한 직원 이름 ("OO 님이 부탁한 일" 꼬리표) */
   requestedBy?: string
 }
@@ -1015,6 +1015,8 @@ export interface OfficeApi {
   artifactReveal(id: string, version?: number): Promise<void>
   /** 하던 일을 멈춘다. 지시를 같이 주면 멈춘 뒤 바로 그 지시를 받는다 (끼어들기) */
   interrupt(staffId: string, text?: string, attachments?: Attachment[]): Promise<void>
+  /** 대기 메시지 처리: now = 하던 일을 멈추고 바로 전한다 (끼어들기), cancel = 보내지 않고 지운다 */
+  waitingAction(staffId: string, messageId: string, action: 'now' | 'cancel'): Promise<void>
   /** 직원 대화를 Claude Code(터미널)에서 이어서 연다. 못 열면 이유 문장, 열었으면 '' */
   resumeInTerminal(staffId: string): Promise<string>
   /** 직원 엔진(Claude ↔ GPT)을 바꾼다. 쉬는 중·새 엔진 준비됐을 때만, 대화는 새로 시작 (PC 전용) */

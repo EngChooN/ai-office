@@ -152,6 +152,7 @@ import { commitAll, folderState, pushAndPr, repoRoot, restoreFiles, snapshotTree
 import { readCodexExternalDay, readExternalDay } from './transcript'
 import { Tutorial } from './tutorial'
 import { errorLog } from './errorLog'
+import { shouldWait, WaitingMessages } from './waitingMessages'
 
 const SCHEDULE_TICK_MS = 30_000
 const CHAT_HISTORY = 300
@@ -649,7 +650,7 @@ export class Office extends EventEmitter<{
 
   private progressOf(s: db.StoredStaff) {
     if (!this.hired.has(s.id)) return null
-    return buildStaffProgress({ status: s.status, origins: this.origins.get(s.id) ?? [], queued: this.manager.backlog(s.id), hasApproval: s.approvals.length > 0, nameOf: (id) => this.hired.get(id)?.name })
+    return buildStaffProgress({ status: s.status, origins: this.origins.get(s.id) ?? [], queued: this.manager.backlog(s.id), hasApproval: s.approvals.length > 0, nameOf: (id) => this.hired.get(id)?.name, waiting: this.waitingMsgs.list(s.id) })
   }
 
   /** 부탁받은 일이 오류·중지로 끝나 결과 없이 사라지지 않게: 요청을 닫고(대상당 1건 제한 해제) 부탁한 직원에게 못 마쳤다고 보고한다 */
@@ -679,6 +680,7 @@ export class Office extends EventEmitter<{
     // 쉬는 중에 세션만 끊긴 경우는 다시 보낼 지시가 없으니 대화방에 알리지 않는다 (상태·기록에는 남는다)
     if (origins.length || queued.length) this.postChat(staffId, t('chat.runError', { error: error.slice(0, 200) }), undefined, undefined, originRoom(origins))
     this.releaseHeld(staffId)
+    this.releaseWaiting(staffId)
     this.scheduleEmit()
   }
 
@@ -820,6 +822,7 @@ export class Office extends EventEmitter<{
     // 결재 카드도 정리한다 (안 닫으면 단체방에 눌러도 반응 없는 카드가 남는다) — 엔진 대기는 remove가 거부로 푼다
     if (s) this.closeCards(s, s.approvals, 'canceled')
     this.lastTextAsk.delete(staffId)
+    this.waitingMsgs.clear(staffId)
     this.manager.remove(staffId)
     this.hired.delete(staffId)
     this.commands.delete(staffId)
@@ -958,7 +961,7 @@ export class Office extends EventEmitter<{
     this.notifyRemoteChange('notify.remoteAutonomy')
     // 카드 없는 지시의 글 질문 재지시 횟수는 새 자율 지시마다 새로 센다
     this.textAskRetries.delete(staffId)
-    this.instruct(staffId, text, { kind: 'user', isAutonomous: true }, attachments, '', true)
+    this.instructFromPanel(staffId, text, attachments, { kind: 'user', isAutonomous: true })
   }
 
   /**
@@ -1063,6 +1066,38 @@ export class Office extends EventEmitter<{
     }
   }
 
+  /** 대기 메시지: 일하는 중에 직원 패널에서 보낸 지시 — 하던 일이 끝나면 하나씩 보내고, 그때 기록에 넣는다 */
+  private waitingMsgs = new WaitingMessages<Origin, Attachment>()
+
+  /** 직원 패널에서 보낸 지시: 일하는 중이면 대기 메시지로 들고 있다가 끝나면 보낸다 (결재를 기다리는 중·/명령은 지금처럼 바로) */
+  instructFromPanel(staffId: string, text: string, attachments: Attachment[] = [], origin: Origin = { kind: 'user' }) {
+    const s = this.hired.get(staffId)
+    if (s && !s.isPractice && !this.peer?.isRemoteStaff(staffId) && shouldWait({ status: s.status, approvals: s.approvals.length, text, isSlash: Boolean(parseSlash(text)) })) {
+      this.waitingMsgs.add(staffId, { text, origin, attachments })
+      this.scheduleEmit()
+      return
+    }
+    this.instruct(staffId, text, origin, attachments, '', true)
+  }
+
+  /** 대기 메시지 '지금 보내기'(하던 일을 멈추고 바로 전한다 — 끼어들기)·'취소' */
+  async waitingAction(staffId: string, messageId: string, action: 'now' | 'cancel') {
+    const msg = this.waitingMsgs.take(staffId, messageId)
+    if (!msg) return
+    this.scheduleEmit()
+    if (action === 'cancel') return
+    // 그사이 손이 비었으면 끊을 일이 없다 — 보통 지시로 보낸다
+    if (this.hired.get(staffId)?.status !== 'working') return this.instruct(staffId, msg.text, msg.origin, msg.attachments, '', true)
+    await this.interrupt(staffId, msg.text, msg.attachments)
+  }
+
+  /** 하던 일이 끝났으면 대기 메시지를 하나 보낸다 (남은 것은 그 답이 끝난 뒤에). 보냈으면 true */
+  private releaseWaiting(staffId: string) {
+    const next = this.waitingMsgs.shift(staffId)
+    if (next) this.instruct(staffId, next.text, next.origin, next.attachments, '', true)
+    return Boolean(next)
+  }
+
   /** 하던 일을 멈춘다. 지시를 같이 주면 멈춘 뒤 그 지시를 바로 받는다 (끼어들기 — 하던 업무 카드는 그대로 이어 간다) */
   async interrupt(staffId: string, text?: string, attachments: Attachment[] = []) {
     // 다른 PC 직원: 맡긴 일을 취소한다 (그 PC에 취소를 보낸다). 지시를 같이 주면 새 일로 보낸다
@@ -1107,6 +1142,7 @@ export class Office extends EventEmitter<{
       this.postChat(staffId, '하던 일을 멈췄어요. 이야기가 끝나면 하던 업무를 이어서 할게요. (완전히 멈추려면 업무 보드에서 멈추기)')
     } else this.postChat(staffId, '하던 일을 멈췄어요. 다시 시켜 주시면 이어서 할게요.')
     this.releaseHeld(staffId)
+    this.releaseWaiting(staffId)
   }
 
   private returnToTodo(taskId: string) {
@@ -1657,7 +1693,8 @@ export class Office extends EventEmitter<{
       this.finishingRoom.delete(staffId)
     }
     // 아직 답할 지시가 남았으면 다음 업무 카드는 그 답까지 마친 뒤에 맡긴다
-    if (pending === 0) {
+    // 대표가 일하는 중에 보낸 대기 메시지가 다음 업무 카드보다 먼저다
+    if (pending === 0 && !this.releaseWaiting(staffId)) {
       const queued = this.taskQueue.get(staffId) ?? []
       const nextTask = queued.shift()
       this.taskQueue.set(staffId, queued)

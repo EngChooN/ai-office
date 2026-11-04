@@ -20,6 +20,7 @@ export const OFFICE_METHODS = [
   'instruct',
   'loadStaffCommands',
   'interrupt',
+  'waitingAction',
   'decide',
   'getRecord',
   'listAgentTemplates',

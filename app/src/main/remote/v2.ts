@@ -98,6 +98,7 @@ export const V2_METHODS: Record<OfficeMethod, MethodSpec> = {
   artifactOpenExternal: P('open_on_pc', 's n?'),
   artifactReveal: P('open_on_pc', 's n?'),
   interrupt: R('s s? a?', [2]),
+  waitingAction: R('s s s'),
   resumeInTerminal: P('open_on_pc', 's'),
   // 엔진 바꾸기: 로그인 상태·쉬는 중인지는 PC(office.changeEngine)가 다시 확인하고, 엔진 값도 claude·codex만 받는다
   changeEngine: R('s s'),

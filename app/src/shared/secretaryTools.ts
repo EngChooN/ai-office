@@ -117,6 +117,8 @@ export const SECRETARY_TOOLS: Record<OfficeMethod, ToolSpec> = {
   // ── 제외 (32) — PC 화면이 필요하거나 연결·보안, 되돌릴 수 없는 외부 전송, 사용자가 즐기는 부분 ──
   // 마켓 채용은 사람이 마켓 창에서 고른다 (비서는 hire로 직접 고용한다)
   hireMarket: exclude,
+  // 대기 메시지 버튼은 패널에서 대표가 누르는 것 — 비서가 대신 보내거나 지우지 않는다
+  waitingAction: exclude,
   // 완전 자율(묻지 않고 끝까지)은 대표가 직접 켠다
   setAutoFull: exclude,
   pickFolder: exclude,

@@ -82,7 +82,7 @@ export function createOfficeHandlers(office: Office, remoteApi: () => RemoteServ
     fire: (id: string) => office.fire(id),
     updateStaff: (id: string, patch: Parameters<Office['updateStaff']>[1]) => office.updateStaff(id, patch),
     instruct: (id: string, text: string, attachments?: Parameters<Office['instruct']>[3], opts?: { isAutonomous?: boolean }) =>
-      opts?.isAutonomous ? office.instructAutonomous(id, text, attachments ?? []) : office.instruct(id, text, { kind: 'user' }, attachments ?? [], '', true),
+      opts?.isAutonomous ? office.instructAutonomous(id, text, attachments ?? []) : office.instructFromPanel(id, text, attachments ?? []),
     saveAttachments: (files: Parameters<typeof saveUploads>[0]) => saveUploads(files),
     openAttachment: async (id: string) => {
       const file = findById(id)
@@ -94,6 +94,7 @@ export function createOfficeHandlers(office: Office, remoteApi: () => RemoteServ
     artifactOpenExternal: (id: string, version?: number) => artifactOpenExternal(String(id), typeof version === 'number' ? version : undefined),
     artifactReveal: async (id: string, version?: number) => artifactReveal(String(id), typeof version === 'number' ? version : undefined),
     interrupt: (id: string, text?: string, attachments?: Attachment[]) => office.interrupt(id, text, attachments),
+    waitingAction: (id: string, messageId: string, action: string) => office.waitingAction(id, messageId, action === 'now' ? 'now' : 'cancel'),
     resumeInTerminal: (id: string) => office.resumeInTerminal(id),
     changeEngine: (id: string, provider: Parameters<Office['changeEngine']>[1]) => office.changeEngine(id, provider),
     decide: (approvalId: string, allow: boolean) => office.decide(approvalId, allow),
