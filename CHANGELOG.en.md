@@ -7,6 +7,14 @@ Writing rules
 - Write from the user's point of view, describing "what you can now do." Do not use technical names (file paths, program or library names, English abbreviations). If one is truly needed, put it once in parentheses after a plain-language explanation.
 - Development details (how it was built, where files are) go in `SPEC.md` and `docs/changelog-dev.md`.
 
+## [1.0.1] - 2026-11-04
+
+### New features
+- Instructions you send to a staff member from the panel (including the phone) while they are working now line up as "Waiting messages" above the input box, and are delivered in order when the current work finishes (before the next task on the task board). Hover over one (always visible on touch screens) to see "Send now" (stops the current work and delivers it right away) and "Cancel." Messages sent while waiting for an approval or question, and /commands, are still delivered immediately. Quitting the app clears waiting messages.
+
+### Bug fixes
+- The error records attached to feedback now hide personal paths and folder names more thoroughly. A trailing folder name, folder names containing dots, and the start of a secret value cut off at the length limit are hidden too, while text after a file name on the same line is kept so the error location is still visible.
+
 ## [1.0.0] - 2026-11-03
 
 ### New features
