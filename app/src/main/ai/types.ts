@@ -29,6 +29,8 @@ export type RuntimeEvent =
   | { type: 'context'; tokens: number }
   | { type: 'text'; text: string }
   | { type: 'fileTouched'; path: string }
+  /** 앱이 보내지 않은 턴을 엔진이 스스로 시작 (Codex /goal 이어 하기) — 이 턴의 result를 업무 끝으로 받는다 */
+  | { type: 'autoTurn' }
   /** 한 턴의 끝. costUsd·tokens는 세션 시작부터의 누적 */
   | { type: 'result'; ok: boolean; subtype: string; text: string; numTurns: number; costUsd: number; tokensIn: number; tokensOut: number }
   | { type: 'error'; error: unknown }

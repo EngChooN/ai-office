@@ -112,7 +112,8 @@ export function codexSlash(text: string): CodexSlash | null {
   if (m[1] === 'review') return { method: 'review/start', params: { target: arg ? { type: 'custom', instructions: arg } : { type: 'uncommittedChanges' } }, arg }
   // /goal 만 치면 조건이 없으니 보내지 않고 글로 둔다(세션이 안내) — 호출부가 arg 없는 goal을 거른다
   if (/^clear$/i.test(arg)) return { method: 'thread/goal/clear', params: {}, arg }
-  return arg ? { method: 'thread/goal/set', params: { objective: arg }, arg } : null
+  // 새 목표는 늘 진행 중으로 — 상태를 빼면 직전 목표의 '완료'가 남아 Codex가 이어 하지 않는다 (실제 Codex 0.164로 확인)
+  return arg ? { method: 'thread/goal/set', params: { objective: arg, status: 'active', origin: 'user' }, arg } : null
 }
 
 /** app-server를 띄워 요청 몇 개를 차례로 보내고 응답(result)을 모아 돌려준다. 실패한 요청은 null */

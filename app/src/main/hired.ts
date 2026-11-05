@@ -406,6 +406,14 @@ class Worker {
       this.hooks.touched(id, m.path)
       return
     }
+    // 손이 빈 뒤 엔진이 스스로 연 턴(Codex 목표 이어 하기)은 새 업무로 받는다 — 안 그러면 끝 결과를 버려 '작업 중'에 멈춘다
+    if (m.type === 'autoTurn') {
+      if (this.isRunning) return
+      this.isRunning = true
+      this.hooks.workStarted(id)
+      this.hooks.update(id, { status: 'working', activity: '' })
+      return
+    }
     if (m.type === 'result') {
       // costUsd·tokens는 세션 단위 누적값 → 직전 기록과의 차이만 저장
       const totals = { tokensIn: m.tokensIn, tokensOut: m.tokensOut }

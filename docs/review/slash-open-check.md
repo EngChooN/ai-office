@@ -28,3 +28,24 @@
 
 ## 다시 막은 명령
 - `loop`(별칭 `proactive`) — `shared/slashCommands.ts`의 `APP_BUILTINS`에서 빼고 `BLOCKED_COMMANDS`에 추가. 목록 수신 전·후 모두 막힘.
+
+## Codex 명령 — 앱 화면 확인 (2026-11-05)
+
+확인 방법: 확인용 앱(AI_OFFICE_USER_DATA=~/claude-office-qa, CDP 9447)에 Codex 직원 '코덱스시험'(기본 모델, ~/claude-office-qa-work)을 뽑아 직원 창 입력칸에서 보냈다.
+
+| 명령 | 결과 | 판단 |
+|---|---|---|
+| 자동완성 `/` | `/compact`·`/goal`·`/review`가 '기본 명령'으로 맨 위, 그 아래 Codex 스킬 | 정상 |
+| `/model gpt-5` | 보내지 않고 "앱에서 쓸 수 없어요" 안내 | 정상 |
+| `/goal …` | "목표를 정했어요" 뒤 Codex가 스스로 턴을 열어 이어 함. 목표를 이루면 `update_goal(complete)`로 스스로 끝냄 | **버그 2건 수정** (아래) |
+| `/goal clear` | "목표를 해제했어요", 반복 멈춤 | 정상 |
+| 목표 반복 중 '멈추기' | 진행 중 턴이 끊기고(turn_aborted) 다시 시작하지 않음 | 정상 |
+| `/review` (바뀐 파일 없음) | git 상태를 보고 "working tree is clean" 보고 후 대기 | 동작. 답이 영어로 옴 |
+| `/compact` | Codex 기록에 compacted, '업무 완료'로 끝 | 동작. 채팅에는 '완료' 줄만 남음 |
+
+### 고친 버그
+1. **목표 이어 하기 턴이 '작업 중'에 멈춤** — 앱이 보내지 않은 턴(Codex가 목표로 연 턴)의 끝 결과를 "지시와 상관없는 결과"로 버렸다. Codex가 지시 없이 턴을 열면 `autoTurn` 이벤트를 보내 새 업무로 받는다 (`codex.ts`·`hired.ts`, 시험: netResumeFlow 마지막 경우).
+2. **두 번째 `/goal`이 시작되지 않음** — 목표만 바꾸면 직전 목표의 `complete` 상태가 남았다. `thread/goal/set`에 `status: 'active'`, `origin: 'user'`를 같이 보낸다.
+
+### 남은 위험
+- 목표를 이룰 수 없거나 모델이 완료 표시를 못 하면(예: "도구 쓰지 말 것") Codex가 몇 초마다 턴을 계속 연다(1분 반에 30번). 멈추기·`/goal clear`로 멈춘다. 횟수 제한은 아직 없다.

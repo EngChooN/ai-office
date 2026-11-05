@@ -275,6 +275,8 @@ export class CodexRuntime implements AgentRuntime {
     const params = m.params ?? {}
     if (m.id !== undefined) return void this.onRequest(m.id, method, params, gen)
     if (method === 'turn/started') {
+      // 보낸 지시가 없는데 열린 턴 — 목표(/goal)를 이어 가려고 Codex가 스스로 연 것
+      if (!this.turnActive) this.onEvent({ type: 'autoTurn' })
       this.turnActive = true
       this.turnId = String((params.turn as Json | undefined)?.id ?? '')
       if (this.interruptPending) {

@@ -158,7 +158,7 @@ test('Codex 기본 명령: /compact·/review·/goal을 app-server 메서드로 �
   assert.equal(codexSlash('/compact 핵심만 남겨')?.method, 'thread/compact/start')
   assert.deepEqual(codexSlash('/review')?.params, { target: { type: 'uncommittedChanges' } })
   assert.deepEqual(codexSlash('/review  보안 위주로 ')?.params, { target: { type: 'custom', instructions: '보안 위주로' } })
-  assert.deepEqual(codexSlash('/goal 테스트 다 통과'), { method: 'thread/goal/set', params: { objective: '테스트 다 통과' }, arg: '테스트 다 통과' })
+  assert.deepEqual(codexSlash('/goal 테스트 다 통과'), { method: 'thread/goal/set', params: { objective: '테스트 다 통과', status: 'active', origin: 'user' }, arg: '테스트 다 통과' })
   assert.equal(codexSlash('/goal clear')?.method, 'thread/goal/clear')
   assert.equal(codexSlash('/goal CLEAR')?.method, 'thread/goal/clear')
   // 조건 없는 /goal, 다른 명령, 비슷한 이름, 일반 글은 그대로 글로 보낸다

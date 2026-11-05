@@ -30,6 +30,7 @@ register('./officeLoaderHooks.mjs', import.meta.url)
 const { Office } = await import('../src/main/office.ts')
 const { ClaudeRuntime } = await import('../src/main/ai/claude.ts')
 const { CodexRuntime } = await import('../src/main/ai/codex.ts')
+const { codexSlash } = await import('../src/main/ai/codexAssets.ts')
 const { NET_CHECK_INTERVAL_MS, NET_PARK_MAX_MS, NET_RESUME_MAX_TRIES } = await import('../src/shared/netResume.ts')
 const { t } = await import('../src/shared/i18n/index.ts')
 const db = await import('../src/main/db.ts')
@@ -416,4 +417,21 @@ test('Claude가 같은 실패를 "returned an error result"로 한 번 더 던�
   online = true
   await tickNet()
   assert.equal(claude(a).sent.filter((x) => x === RESUME()).length, 1)
+})
+
+// ── 그 밖: Codex /goal 뒤 Codex가 스스로 연 턴 ───
+
+test('Codex: /goal로 목표를 정한 뒤 Codex가 스스로 이어 간 턴도 업무로 받아, 끝나면 대기로 돌아온다', async () => {
+  const a = hire('목표', 'codex')
+  await settle()
+  office.instruct(a, '/goal a.txt 첫 줄 알려 주기')
+  const self = codex(a) as unknown as { afterSlash(slash: unknown, r: unknown): void }
+  self.afterSlash(codexSlash('/goal a.txt 첫 줄 알려 주기'), { result: {} })
+  await settle()
+  assert.equal(staff(a).status, 'idle', '목표를 정하면 그 명령은 끝난다')
+  codex(a).notify('turn/started', { turn: { id: 't2' } })
+  assert.equal(staff(a).status, 'working', '스스로 연 턴은 일하는 중으로 보인다')
+  codex(a).finish('a.txt 첫 줄은 hi입니다.')
+  await settle()
+  assert.equal(staff(a).status, 'idle', '끝 결과를 버리지 않아 작업 중에 멈추지 않는다')
 })
