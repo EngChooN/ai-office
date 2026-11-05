@@ -116,6 +116,7 @@ const CARD_TONE: Record<Staff['status'], string> = {
   working: 'bg-card hover:bg-accent border-status-working/50',
   waiting: 'border-status-waiting bg-status-waiting/10 hover:bg-status-waiting/15',
   error: 'border-status-error bg-status-error/10 hover:bg-status-error/15',
+  netWait: 'border-status-waiting/50 bg-card hover:bg-accent',
   idle: 'bg-card hover:bg-accent',
   offline: 'bg-card hover:bg-accent opacity-60 hover:opacity-100',
 }

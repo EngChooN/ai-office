@@ -107,7 +107,7 @@ export interface ResponderCandidate {
   isLead: boolean
 }
 
-const STATUS_ORDER: Record<StaffStatus, number> = { idle: 0, working: 1, waiting: 2, offline: 3, error: 4 }
+const STATUS_ORDER: Record<StaffStatus, number> = { idle: 0, working: 1, netWait: 1, waiting: 2, offline: 3, error: 4 }
 
 /** 직무 이름만으로는 안 잡히는 일 낱말 (직무에 앞 낱말이 들어 있으면 뒤 낱말도 맞춰 본다) */
 const ROLE_EXTRA_WORDS: readonly [string, readonly string[]][] = [

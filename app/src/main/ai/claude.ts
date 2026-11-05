@@ -11,6 +11,7 @@ import { HIRED_ENV } from '../external'
 import { contextOf } from '../sessionRotate'
 import { PendingSends } from './pendingSends'
 import { exeName } from '../platform'
+import { isNetworkError } from '../../shared/networkError.ts'
 import type { AgentRuntime, AiBackend, AskOptions, AskResult, RuntimeEvent, RuntimeStartOpts, SecretaryEvent, SecretaryRun, SecretaryRunOpts } from './types'
 
 // SDK는 ESM 전용이라 externals로 두고 require(esm)로 불러온다
@@ -251,7 +252,9 @@ export class ClaudeRuntime implements AgentRuntime {
     if (m.type === 'result') {
       // 이 턴이 처리한 지시를 먼저 지운다 — 결과를 받은 쪽이 queued로 "남은 지시가 있나"를 본다
       this.pending.settle(m.user_message_uuids ?? (m.user_message_uuid ? [m.user_message_uuid] : undefined))
-      emit({ type: 'result', ok: m.subtype === 'success', subtype: m.subtype, text: m.subtype === 'success' ? m.result : '', numTurns: m.num_turns, costUsd: m.total_cost_usd, ...usageTotals(m.modelUsage) })
+      // API 연결 실패는 subtype success·is_error true로 온다 ("API Error: Can't reach the API server … (ENOTFOUND)") — 인터넷 오류만 실패로 넘긴다 (다른 API 오류는 지금처럼 답 글로)
+      const isNetFail = m.subtype === 'success' && m.is_error && isNetworkError(m.result)
+      emit({ type: 'result', ok: m.subtype === 'success' && !isNetFail, subtype: m.subtype, text: m.subtype === 'success' ? m.result : '', numTurns: m.num_turns, costUsd: m.total_cost_usd, ...usageTotals(m.modelUsage) })
     }
   }
 }

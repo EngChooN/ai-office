@@ -100,6 +100,8 @@ export default {
   'notify.report': { ko: '{name} 업무 보고', en: 'Work report from {name}', ja: '{name}の業務報告', zh: '{name} 的工作报告' },
   'notify.reportDone': { ko: '완료했습니다.', en: 'Done.', ja: '完了しました。', zh: '已完成。' },
   'chat.runError': { ko: '오류로 멈췄어요. 다시 보내 주세요. ({error})', en: 'Stopped due to an error. Please send it again. ({error})', ja: 'エラーで停止しました。もう一度送ってください。({error})', zh: '因错误而停止。请重新发送。({error})' },
+  'chat.netParked': { ko: '🔌 인터넷이 끊겨 하던 일을 잠시 멈췄어요. 연결되면 이어서 할게요.', en: '🔌 The internet dropped, so I paused my task. I’ll continue once it’s back.', ja: '🔌 インターネットが切れたので作業を一時停止しました。つながったら続けます。', zh: '🔌 网络断开，我先暂停了手头的工作。连接恢复后会继续。' },
+  'chat.netResumed': { ko: '🔌 인터넷이 다시 연결돼서 하던 일을 이어서 할게요.', en: '🔌 The internet is back. Continuing my task.', ja: '🔌 インターネットが再接続したので作業を続けます。', zh: '🔌 网络已恢复，我继续手头的工作。' },
   'chat.runStarted': { ko: '▶️ {scope}에서 "{manual}" 매뉴얼 단계 진행을 시작했어요 ({n}단계)', en: '▶️ Started the manual steps of "{manual}" in {scope} ({n} steps)', ja: '▶️ {scope}で「{manual}」のマニュアル段階進行を始めました（{n}段階）', zh: '▶️ 已在{scope}开始按“{manual}”手册步骤进行（共 {n} 步）' },
   'chat.runFinished': { ko: '🏁 "{manual}" 매뉴얼 단계 진행을 마쳤어요 ({scope})', en: '🏁 Finished the manual steps of "{manual}" ({scope})', ja: '🏁 「{manual}」のマニュアル段階進行を終えました（{scope}）', zh: '🏁 已完成“{manual}”手册步骤（{scope}）' },
   'notify.chatDone': { ko: '업무를 마쳤어요.', en: 'Finished the work.', ja: '作業を終えました。', zh: '已完成工作。' },

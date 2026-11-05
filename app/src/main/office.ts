@@ -4,7 +4,7 @@ import { EventEmitter } from 'node:events'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { app } from 'electron'
+import { app, net } from 'electron'
 import { z } from 'zod'
 import type { PeerManager } from './peer/peerManager'
 import type { PeerHost, PeerHostOffice } from './peer/peerHost'
@@ -152,6 +152,7 @@ import { commitAll, folderState, pushAndPr, repoRoot, restoreFiles, snapshotTree
 import { readCodexExternalDay, readExternalDay } from './transcript'
 import { Tutorial } from './tutorial'
 import { errorLog } from './errorLog'
+import { NET_CHECK_INTERVAL_MS, NetParking } from '../shared/netResume.ts'
 import { shouldWait, WaitingMessages } from './waitingMessages'
 
 const SCHEDULE_TICK_MS = 30_000
@@ -284,6 +285,11 @@ export class Office extends EventEmitter<{
   private companyLevelMax = 0
   /** 업무 카드는 한 사람에게 한 번에 하나씩 — 일하는 중이면 끝날 때까지 기다리는 카드 */
   private taskQueue = new Map<string, { taskId: string; context: string }[]>()
+  /** 인터넷이 끊겨 멈춘 직원의 받은 일·대기 카드 — 연결되면 이어 간다 (저장하지 않는다: 앱을 끄면 사라진다) */
+  private netParked = new NetParking<Origin, { taskId: string; context: string }>()
+  /** 보관한 일이 있을 때만 도는 연결 확인 타이머 */
+  private netTimer: ReturnType<typeof setInterval> | null = null
+  private isNetChecking = false
   /** 대화하려고 멈춘 직원 → 멈춘 업무 카드. 그 직원과 이야기가 끝나면 이어서 맡긴다 */
   private resumeAfterTalk = new Map<string, string[]>()
   /** 자동 점검 지시를 받은 직원 — 그 턴이 끝나면 다시 점검하지 않는다 (무한 반복 방지) */
@@ -563,6 +569,7 @@ export class Office extends EventEmitter<{
 
   stop() {
     if (this.scheduleTimer) clearInterval(this.scheduleTimer)
+    if (this.netTimer) clearInterval(this.netTimer)
     this.tutorial.stop()
     this.isStopping = true
     this.watcher.stop()
@@ -628,7 +635,8 @@ export class Office extends EventEmitter<{
       s.cwdSource = dir.source
       return
     }
-    if (s.status === 'working' || s.approvals.length) return
+    // 인터넷 연결을 기다리는 직원도 같은 세션에서 이어 가야 하니 폴더를 바꾸지 않는다
+    if (s.status === 'working' || s.status === 'netWait' || s.approvals.length) return
     s.cwd = dir.cwd
     s.cwdSource = dir.source
     this.manager.resetSession(s.id)
@@ -665,13 +673,19 @@ export class Office extends EventEmitter<{
     this.helpLedger.release(staffId, [], (id) => [...this.origins.values()].some((os) => os.some((x) => x.kind === 'help' && x.reqId === id)))
   }
 
-  /** 실행 중 예외(SDK·Codex 오류): 대화방에 알리고, 받은 일을 정리하고, 업무 카드를 되돌린다 */
+  /** 실행 중 예외(SDK·Codex 오류): 인터넷이 끊긴 것이면 받은 일을 보관해 연결되면 이어 가고, 아니면 받은 일을 정리한다 */
   private onFailed(staffId: string, error: string) {
     errorLog.record('staff', error) // 피드백에 붙일 최근 오류 기록 (직원 이름은 넣지 않는다)
+    if (this.parkForNetwork(staffId, error)) return
     const origins = this.origins.get(staffId) ?? []
     const queued = this.taskQueue.get(staffId) ?? []
     this.origins.set(staffId, [])
     this.taskQueue.set(staffId, [])
+    this.settleFailed(staffId, error, origins, queued)
+  }
+
+  /** 오류로 끝난 받은 일 정리: 대화방에 알리고, 부탁·피어 일을 닫고, 업무 카드를 되돌린다 (보관했다 포기한 일도 여기로) */
+  private settleFailed(staffId: string, error: string, origins: Origin[], queued: readonly { taskId: string }[]) {
     for (const o of origins) if (o.kind === 'process') this.stopRun(o.runId)
     for (const o of origins) if (o.kind === 'peer') this.failPeerJob(o.jobId, staffId, error)
     this.failHelpRequests(staffId, origins, 'error')
@@ -679,6 +693,85 @@ export class Office extends EventEmitter<{
     for (const id of taskIds) this.returnToTodo(id)
     // 쉬는 중에 세션만 끊긴 경우는 다시 보낼 지시가 없으니 대화방에 알리지 않는다 (상태·기록에는 남는다)
     if (origins.length || queued.length) this.postChat(staffId, t('chat.runError', { error: error.slice(0, 200) }), undefined, undefined, originRoom(origins))
+    this.releaseHeld(staffId)
+    this.releaseWaiting(staffId)
+    this.scheduleEmit()
+  }
+
+  // ── 인터넷이 끊겼다 돌아오면 이어 하기 (shared/netResume.ts) ──────────
+
+  /** 인터넷 오류면 받은 일·대기 카드를 꺼내 보관한다. 카드는 진행 중 그대로, 대기 지시도 보내지 않는다. 보관했으면 true */
+  private parkForNetwork(staffId: string, error: string) {
+    if (!this.hired.has(staffId)) return false
+    const origins = this.origins.get(staffId) ?? []
+    if (!this.netParked.park(staffId, error, origins, this.taskQueue.get(staffId) ?? [])) return false
+    this.origins.set(staffId, [])
+    this.taskQueue.set(staffId, [])
+    this.patch(staffId, { status: 'netWait', activity: '' })
+    this.log(staffId, 'status', tk('log.netParked'))
+    this.postChat(staffId, t('chat.netParked'), undefined, undefined, originRoom(origins))
+    if (!this.netTimer) {
+      this.netTimer = setInterval(() => void this.checkNetwork(), NET_CHECK_INTERVAL_MS)
+      this.netTimer.unref?.()
+    }
+    return true
+  }
+
+  /** 보관을 풀고 평소 오류처럼 정리한다 (대표가 새로 지시·중지했거나, 오래 연결되지 않았을 때) */
+  private cancelNetPark(staffId: string) {
+    const p = this.netParked.cancel(staffId)
+    if (!p) return
+    this.patch(staffId, { status: 'idle', activity: '' })
+    this.settleFailed(staffId, p.error, p.origins, p.queued)
+  }
+
+  /** 연결 확인 (보관한 일이 있을 때만 돈다): 오래된 보관은 포기하고, 인터넷이 돌아왔으면 모두 이어 간다 */
+  private async checkNetwork() {
+    if (this.isNetChecking) return
+    this.isNetChecking = true
+    try {
+      for (const [id, p] of this.netParked.takeExpired()) {
+        this.patch(id, { status: 'idle', activity: '' })
+        this.settleFailed(id, p.error, p.origins, p.queued)
+      }
+      if (!this.netParked.size) {
+        if (this.netTimer) clearInterval(this.netTimer)
+        this.netTimer = null
+        return
+      }
+      if (!net.isOnline() || !(await this.isApiReachable())) return
+      for (const id of this.netParked.ids()) this.resumeAfterNetwork(id)
+    } finally {
+      this.isNetChecking = false
+    }
+  }
+
+  /** 보관 중인 직원이 쓰는 AI 서버에 닿는지 가볍게 본다 (응답 코드와 상관없이 답이 오면 연결된 것) */
+  private async isApiReachable() {
+    const hosts = new Set(this.netParked.ids().map((id) => (this.hired.get(id)?.provider === 'codex' ? 'https://chatgpt.com' : 'https://api.anthropic.com')))
+    for (const url of hosts) {
+      try {
+        await net.fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(5000) })
+      } catch {
+        return false
+      }
+    }
+    return true
+  }
+
+  /** 연결이 돌아왔다: 보관한 받은 일·카드를 되돌리고 같은 세션에 이어 하라고 보낸 뒤, 그동안 미뤄 둔 지시를 보낸다 */
+  private resumeAfterNetwork(staffId: string) {
+    const p = this.netParked.resume(staffId)
+    const s = this.hired.get(staffId)
+    if (!p || !s) return
+    // 받은 일은 보관한 그대로 되돌린다 — 이어 하라는 지시는 새 출처를 더하지 않는다 (위임·부탁 보고가 두 번 가지 않게)
+    this.origins.set(staffId, [...p.origins, ...(this.origins.get(staffId) ?? [])])
+    this.taskQueue.set(staffId, [...p.queued, ...(this.taskQueue.get(staffId) ?? [])])
+    this.patch(staffId, { status: 'working', activity: '' })
+    this.log(staffId, 'status', tk('log.netResumed'))
+    this.postChat(staffId, t('chat.netResumed'), undefined, undefined, originRoom(p.origins))
+    const text = this.isAutonomous(staffId) ? `${t('staff.msg.netResume')}\n\n${t('staff.msg.autonomous')}` : t('staff.msg.netResume')
+    this.manager.instruct(staffId, text, [], false)
     this.releaseHeld(staffId)
     this.releaseWaiting(staffId)
     this.scheduleEmit()
@@ -809,7 +902,7 @@ export class Office extends EventEmitter<{
     const s = this.hired.get(staffId)
     if (!s) return '고용 직원만 열 수 있어요.'
     if (!s.sessionId) return '아직 대화가 없어요. 한 번 지시한 뒤에 열 수 있어요.'
-    if (s.status === 'working' || s.status === 'waiting') return '일하는 중에는 열 수 없어요. 일이 끝난 뒤에 열어 주세요.'
+    if (s.status === 'working' || s.status === 'waiting' || s.status === 'netWait') return '일하는 중에는 열 수 없어요. 일이 끝난 뒤에 열어 주세요.'
     // 열 수 없으면(Codex CLI 없음) 사무실 쪽 세션은 그대로 둔다
     if (s.provider === 'codex' && !(await findCodexCli())) return t('staffPanel.resume.codexMissing')
     this.manager.restart(staffId)
@@ -823,6 +916,9 @@ export class Office extends EventEmitter<{
     if (s) this.closeCards(s, s.approvals, 'canceled')
     this.lastTextAsk.delete(staffId)
     this.waitingMsgs.clear(staffId)
+    // 인터넷 연결을 기다리며 보관한 카드는 할 일로 되돌린다
+    const parked = this.netParked.cancel(staffId)
+    if (parked) for (const id of [...parked.origins.flatMap((o) => (o.kind === 'task' ? [o.taskId] : [])), ...parked.queued.map((q) => q.taskId)]) this.returnToTodo(id)
     this.manager.remove(staffId)
     this.hired.delete(staffId)
     this.commands.delete(staffId)
@@ -853,7 +949,7 @@ export class Office extends EventEmitter<{
     if (provider !== 'claude' && provider !== 'codex') return { error: t('engineChange.error.notReady', { engine: String(provider) }) }
     if (s.provider === provider) return { error: '' }
     // 상태를 묻는 사이 일을 받았을 수 있어 두 번 본다
-    const isBusy = () => s.status === 'working' || s.status === 'waiting'
+    const isBusy = () => s.status === 'working' || s.status === 'waiting' || s.status === 'netWait'
     if (isBusy()) return { error: t('engineChange.error.busy') }
     const status = lastProviderStatus() ?? (await providerStatus().catch(() => null))
     if (status?.[provider].state !== 'ready') return { error: t('engineChange.error.notReady', { engine: ENGINE_NAME[provider] }) }
@@ -913,6 +1009,11 @@ export class Office extends EventEmitter<{
     const s = this.hired.get(staffId)
     // 연습 직원은 AI를 부르지 않는다 (튜토리얼 진행은 대본이 맡는다)
     if (!s || s.isPractice) return
+    // 인터넷 연결을 기다리는 중: 대표가 직접 보낸 말이면 보관을 풀고(평소 오류 정리) 새 지시로 받는다. 그 밖의 지시는 이어 간 뒤에 보낸다
+    if (this.netParked.has(staffId)) {
+      if (!isDirect) return void this.heldLocal.set(staffId, [...(this.heldLocal.get(staffId) ?? []), { text, origin, attachments, via, isDirect }])
+      this.cancelNetPark(staffId)
+    }
     // 피어 일이 걸린 직원에게 온 로컬 지시는 대기 (/명령은 중단 같은 제어라 그대로 통과)
     if (shouldHoldLocal(this.origins.get(staffId) ?? [], origin, Boolean(parseSlash(text))) || (this.peerCwd.has(staffId) && !(origin.kind === 'peer' || origin.peerJobId) && !parseSlash(text))) return this.holdLocal(staffId, text, origin, attachments, via, isDirect)
     // 피어 일에서 파생된 지시: 그 일이 끝났으면 버리고, 다른 피어 일이 쓰는 중이면 대기
@@ -1109,6 +1210,14 @@ export class Office extends EventEmitter<{
     }
     const s = this.hired.get(staffId)
     if (!s) return
+    // 인터넷 연결을 기다리던 일은 돌고 있는 턴이 없다 — 보관을 풀어 정리하고, 지시가 있으면 새로 보낸다
+    if (this.netParked.has(staffId)) {
+      this.hardStops.delete(staffId)
+      this.cancelNetPark(staffId)
+      if (text?.trim()) return this.instruct(staffId, text, { kind: 'user' }, attachments, '', true)
+      this.log(staffId, 'status', tk('log.stopped'))
+      return
+    }
     if (text?.trim()) {
       this.log(staffId, 'status', tk('log.interrupted'))
       this.log(staffId, 'instruction', text, attachments)
@@ -1644,6 +1753,7 @@ export class Office extends EventEmitter<{
     const s = this.hired.get(staffId)
     if (!s) return
     const isAutoCheckTurn = this.autoChecked.delete(staffId)
+    this.netParked.succeeded(staffId) // 이어 간 일이 정상으로 끝났으면 이어 가기 횟수를 비운다
     // 일하는 중에 받아 아직 답하지 않은 지시는 다음 결과 몫으로 남긴다 (그 답이 지시가 온 방에 올라가게)
     const { done: origins, keep } = splitFinished(this.origins.get(staffId) ?? [], pending)
     const room = originRoom(origins)
@@ -2170,7 +2280,7 @@ export class Office extends EventEmitter<{
 
   /** 메뉴바 "전체 멈추기": 일하는 직원을 모두 멈춘다 (업무 카드는 할 일로 — 저절로 이어 하지 않는다) */
   stopAllWork() {
-    const working = [...this.hired.values()].filter((s) => s.status === 'working' || s.status === 'waiting')
+    const working = [...this.hired.values()].filter((s) => s.status === 'working' || s.status === 'waiting' || s.status === 'netWait')
     for (const s of working) {
       this.hardStops.add(s.id)
       void this.interrupt(s.id)
@@ -3134,7 +3244,7 @@ export class Office extends EventEmitter<{
 
   async revertWork(staffId: string) {
     const st = this.hired.get(staffId)
-    if (st && (st.status === 'working' || st.status === 'waiting')) return { ok: false, output: t('review.revert.busy'), restored: 0 }
+    if (st && (st.status === 'working' || st.status === 'waiting' || st.status === 'netWait')) return { ok: false, output: t('review.revert.busy'), restored: 0 }
     const plan = await this.revertPlan(staffId)
     if (!plan.available) return { ok: false, output: t('review.revert.unavailable'), restored: 0 }
     if (plan.files.length === 0) return { ok: true, output: t('review.revert.nothing'), restored: 0 }
@@ -3676,7 +3786,7 @@ export class Office extends EventEmitter<{
 
   /** 어느 직원이든 이 카드를 하고 있거나 대기열에 넣어 두었는지 */
   private isBusyTask(taskId: string) {
-    return [...this.origins.values()].some((list) => list.some((o) => o.kind === 'task' && o.taskId === taskId))
+    return [...this.origins.values(), this.netParked.allOrigins()].some((list) => list.some((o) => o.kind === 'task' && o.taskId === taskId))
   }
 
   // ── 튜토리얼 연습 회사 ────────────────────────────────

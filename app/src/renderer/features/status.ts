@@ -17,6 +17,7 @@ export const STATUS_META: Record<StaffStatus, { readonly label: string; dot: str
   idle: meta('status.idle', 'bg-status-idle', 'text-status-idle'),
   offline: meta('status.offline', 'bg-status-idle', 'text-status-idle'),
   error: meta('status.error', 'bg-status-error', 'text-status-error'),
+  netWait: meta('status.netWait', 'bg-status-waiting', 'text-status-waiting'),
 }
 
 export function formatCost(usd: number) {

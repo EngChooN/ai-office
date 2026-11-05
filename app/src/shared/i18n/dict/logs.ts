@@ -48,6 +48,8 @@ export default {
   'engineChange.error.notReady': { ko: '{engine}이(가) 설치·로그인되어 있지 않아요. 설정에서 먼저 연결해 주세요.', en: "{engine} isn't installed or signed in. Connect it in Settings first.", ja: '{engine} がインストール・ログインされていません。先に設定で接続してください。', zh: '{engine} 未安装或未登录，请先在设置中连接。' },
   'log.interrupted': { ko: '하던 일을 멈추고 새 지시를 받았습니다.', en: 'Stopped what I was doing and took a new instruction.', ja: '作業を中断して新しい指示を受けました。', zh: '已停下手头工作并接收新指示。' },
   'log.stopped': { ko: '업무를 중단시켰습니다.', en: 'Task was stopped.', ja: '業務を中断しました。', zh: '任务已中止。' },
+  'log.netParked': { ko: '인터넷이 끊겨 하던 일을 잠시 멈췄습니다. 연결되면 이어서 합니다.', en: 'Paused the task because the internet dropped. Will continue once reconnected.', ja: 'インターネットが切れたため作業を一時停止しました。つながったら続けます。', zh: '网络断开，已暂停当前工作。连接恢复后会继续。' },
+  'log.netResumed': { ko: '인터넷이 다시 연결되어 하던 일을 이어서 합니다.', en: 'The internet is back. Continuing the task.', ja: 'インターネットが再接続したので作業を続けます。', zh: '网络已恢复，继续当前工作。' },
   'log.sec': { ko: '{n}초', en: '{n}s', ja: '{n}秒', zh: '{n}秒' },
   'log.answered': { ko: '답변', en: 'Answer', ja: '回答', zh: '回答' },
   'log.approved': { ko: '승인', en: 'Approved', ja: '承認', zh: '批准' },

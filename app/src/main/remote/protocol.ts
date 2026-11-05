@@ -104,8 +104,15 @@ const TOOL_ACTIVITY = /^(?:mcp__[\w-]+__([\w-]+)|([A-Z][A-Za-z]+))(?:\s|$)/
 /** 도구 호출이 아닌 활동(직원이 쓴 문장·내부 안내)은 내용 없이 이 문구로 */
 export const FREE_ACTIVITY = '작업 중'
 
+/** 인터넷 연결을 기다리는 직원의 활동 문장 */
+export const NET_WAIT_ACTIVITY = '인터넷 연결 대기'
+
+/** 휴대폰 앱은 netWait를 모른다 — 하던 일을 아직 쥐고 있으니 일하는 중으로 보낸다 (활동 문장으로 구분) */
+export const remoteStatus = (status: Staff['status']) => (status === 'netWait' ? 'working' : status)
+
 /** 원격으로 보내는 활동 문장: 도구 호출은 "Bash 실행 중"처럼 이름만, 오류는 "오류가 났어요", 그 밖의 글은 내용 없이 "작업 중" */
 export function remoteActivity(status: Staff['status'], activity: string) {
+  if (status === 'netWait') return NET_WAIT_ACTIVITY
   if (!activity) return ''
   if (status === 'error') return '오류가 났어요'
   const tool = activity.match(TOOL_ACTIVITY)
@@ -122,7 +129,7 @@ export function toRemoteStaff(s: Staff, pendingPlans: number) {
     role: s.role,
     // 외부에서 데려온 직원은 세션 해시(최대 2^32 근처)를 avatar로 써서 32비트 정수를 넘는다 → 같은 생김새의 작은 번호로 (규격 5-1)
     avatar: canonicalAvatar(s.avatar),
-    status: s.status,
+    status: remoteStatus(s.status),
     activity: remoteActivity(s.status, s.activity),
     statusSince: s.statusSince,
     pendingDecisions: s.approvals.length + pendingPlans,
@@ -135,7 +142,7 @@ export function statusBody(staff: Staff[], tasks: Task[], serverVersion: string)
   const hired = staff.filter((s) => s.kind === 'hired')
   const plans = waitingPlans(tasks)
   const summary = { working: 0, waiting: 0, error: 0, idle: 0, offline: 0 }
-  for (const s of hired) summary[s.status]++
+  for (const s of hired) summary[remoteStatus(s.status)]++
   return {
     serverVersion,
     staff: hired.map((s) => toRemoteStaff(s, plans.filter((t) => t.assigneeId === s.id).length)),

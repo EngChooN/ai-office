@@ -7,6 +7,11 @@ Writing rules
 - Write from the user's point of view, describing "what you can now do." Do not use technical names (file paths, program or library names, English abbreviations). If one is truly needed, put it once in parentheses after a plain-language explanation.
 - Development details (how it was built, where files are) go in `SPEC.md` and `docs/changelog-dev.md`.
 
+## [Unreleased]
+
+### New features
+- If the internet drops while an employee is working, the employee keeps the task and its card, shows 'Reconnecting', and automatically continues once the internet is back (up to 3 times per task, within 6 hours). If you send a new instruction or stop them in the meantime, they stop waiting and wrap up as before.
+
 ## [1.0.1] - 2026-11-04
 
 ### New features

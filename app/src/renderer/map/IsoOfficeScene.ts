@@ -75,7 +75,7 @@ const OUTLINE = 0x2a2230
 /** 직원 그림자는 직원 깊이에서 이만큼 아래 */
 const SHADOW_BELOW = 0.01
 const DEPTH = { floor: -10_000, night: 50_000, levelUp: 55_000, label: 60_000, tooltip: 61_000 } as const
-const STATUS_LABEL: Record<Staff['status'], string> = { working: '작업 중', waiting: '확인 필요', idle: '대기', offline: '퇴근', error: '오류' }
+const STATUS_LABEL: Record<Staff['status'], string> = { working: '작업 중', waiting: '확인 필요', idle: '대기', offline: '퇴근', error: '오류', netWait: '연결 대기' }
 const EMOTES: Partial<Record<string, string>> = { 'working>idle': '✅', 'idle>working': '💡', '*>waiting': '🙋', '*>error': '💦' }
 /** 쉬는 직원이 고르는 행동 비율 (칸 사무실에 맞게 줄인 값) */
 const PLAN_WEIGHTS: ['desk' | 'fun' | 'rest' | 'office' | 'wander' | 'visit', number][] = [

@@ -20,7 +20,8 @@ import { DEFAULT_UI_MODE, DEFAULT_UI_THEME, sanitizeUi, type UiMode, type UiThem
 import type { I18nArg, I18nText, LangSetting } from './i18n/index.ts'
 
 export type StaffKind = 'hired' | 'external'
-export type StaffStatus = 'idle' | 'working' | 'waiting' | 'offline' | 'error'
+/** netWait: 인터넷이 끊겨 하던 일을 보관해 두고 연결을 기다리는 중 (연결되면 이어 간다) */
+export type StaffStatus = 'idle' | 'working' | 'waiting' | 'offline' | 'error' | 'netWait'
 /** 직원·내부 AI를 돌리는 공급자 (고용 후 변경 불가) */
 export type AiProvider = 'claude' | 'codex'
 /** 앱 내부 AI(비서·요약)가 쓸 공급자 — auto는 쓸 수 있는 쪽 (둘 다면 Claude) */
@@ -72,8 +73,8 @@ export interface StaffStats {
 
 /** 직원이 지금 처리 중인(또는 처리를 기다리는) 지시 — 답이 오면 사라진다 */
 export interface StaffProgress {
-  /** queued: 앞 작업이 끝나면 처리 · working: 처리 중 · approval: 결재 대기 · error: 오류로 멈춤 */
-  state: 'queued' | 'working' | 'approval' | 'error'
+  /** queued: 앞 작업이 끝나면 처리 · working: 처리 중 · approval: 결재 대기 · error: 오류로 멈춤 · netWait: 인터넷 연결 대기 */
+  state: 'queued' | 'working' | 'approval' | 'error' | 'netWait'
   /** 현재(가장 먼저 받은) 지시 요약 */
   text: string
   /** 지시가 온 대화방 (없으면 직원 1:1) */

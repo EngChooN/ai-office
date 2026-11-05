@@ -13,7 +13,7 @@ import { StaffRow } from './StaffRow'
 import { useStaffView } from './staffView'
 import { STATUS_META } from './status'
 
-const STATUS_ORDER: Record<Staff['status'], number> = { waiting: 0, error: 1, working: 2, idle: 3, offline: 4 }
+const STATUS_ORDER: Record<Staff['status'], number> = { waiting: 0, error: 1, netWait: 2, working: 2, idle: 3, offline: 4 }
 const byUrgency = (a: Staff, b: Staff) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status]
 
 type GroupKind = 'team' | 'lab' | 'project' | 'none'

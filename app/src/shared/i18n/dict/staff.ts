@@ -116,6 +116,12 @@ export default {
     ja: '[自動チェック] 報告に残りの仕事がありますが、いま任されている仕事がありません。今すぐチームメンバーに任せるか、タスクカードとして上げてください。代表の判断を待っている場合は何もせず、一行だけで返答してください。',
     zh: '[自动检查] 汇报中还有剩余工作，但目前没有已交办的任务。请现在交给团队成员，或作为任务卡片提交。如果正在等待代表决定，请不要做任何操作，只用一句话回复。',
   },
+  'staff.msg.netResume': {
+    ko: '[연결 복구] 인터넷이 끊겨 방금 하던 일이 중간에 멈췄습니다. 연결이 돌아왔으니 끊겼던 일을 이어서 해 주세요. 이미 끝낸 단계는 다시 하지 말고 남은 부분부터 하세요.',
+    en: '[Reconnected] Your work was interrupted because the internet dropped. The connection is back, so please continue where you left off. Do not redo steps you already finished; pick up from what remains.',
+    ja: '[接続復旧] インターネットが切れたため、作業が途中で止まりました。接続が戻ったので、中断した作業を続けてください。終わった手順はやり直さず、残りから進めてください。',
+    zh: '[连接恢复] 由于网络断开，刚才的工作中途停止了。现在连接已恢复，请继续之前中断的工作。已完成的步骤不要重做，从剩下的部分开始。',
+  },
   'staff.msg.withdrawn': {
     ko: '[결재 철회] 대표가 직접 새 지시를 해서 기다리던 결재를 거두었습니다. 필요하면 바뀐 내용으로 다시 결재를 올리세요.',
     en: '[Approval withdrawn] The owner sent a new instruction directly, so your pending approval was withdrawn. If you still need it, request approval again based on the new instruction.',

@@ -25,7 +25,7 @@ export function buildStaffProgress(a: {
 }): StaffProgress | null {
   const cur = a.origins[0]
   if (!cur) return null
-  const state: StaffProgress['state'] = a.status === 'error' ? 'error' : a.hasApproval || a.status === 'waiting' ? 'approval' : a.status === 'working' ? 'working' : 'queued'
+  const state: StaffProgress['state'] = a.status === 'error' ? 'error' : a.status === 'netWait' ? 'netWait' : a.hasApproval || a.status === 'waiting' ? 'approval' : a.status === 'working' ? 'working' : 'queued'
   // 동료의 도움 요청으로 받은 일이면 부탁한 사람 이름을 붙인다 (그 직원이 없어졌으면 생략)
   const requestedBy = cur.kind === 'help' && cur.fromId ? a.nameOf?.(cur.fromId) : undefined
   const waiting = (a.waiting ?? []).map((w) => ({ id: w.id, text: w.text.slice(0, WAITING_TEXT_MAX) }))

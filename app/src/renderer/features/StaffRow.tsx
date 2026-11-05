@@ -24,6 +24,7 @@ const ROW_TONE: Record<Staff['status'], string> = {
   working: 'hover:bg-accent',
   waiting: 'bg-status-waiting/10 hover:bg-status-waiting/15',
   error: 'bg-status-error/10 hover:bg-status-error/15',
+  netWait: 'hover:bg-accent',
   idle: 'hover:bg-accent',
   offline: 'opacity-60 hover:bg-accent hover:opacity-100',
 }

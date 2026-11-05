@@ -14,6 +14,7 @@ import { COMPUTER_EQUIPMENT, computerSummary, computerSummaryI18n, computerVerdi
 import { parseSlash, type RawCommand } from '../shared/slashCommands.ts'
 import { browserOutputDir } from './browser'
 import { computerPermissionNotice } from './computer'
+import { isNetworkError } from '../shared/networkError.ts'
 import { createRuntime, modelIdFor, type AgentRuntime, type RateLimitInfo, type RuntimeEvent, type RuntimeMcpServer, type ToolDecision } from './ai'
 
 const ACTIVITY_MAX = 80
@@ -443,6 +444,16 @@ class Worker {
         return
       }
 
+      // 인터넷이 끊겨 실패한 턴은 오류로 넘긴다 — office가 받은 일을 보관했다가 연결되면 같은 세션에서 이어 간다
+      if (!m.ok && isNetworkError(m.text)) {
+        this.isRunning = false
+        this.rt.dropQueued()
+        this.hooks.update(id, { status: 'error', activity: m.text.slice(0, ACTIVITY_MAX), costUsd: this.staff.costUsd, tokensIn: this.staff.tokensIn, tokensOut: this.staff.tokensOut })
+        this.hooks.log(id, 'error', m.text)
+        this.hooks.failed(id, m.text)
+        this.applyPendingRestart()
+        return
+      }
       const isError = !m.ok
       // /compact처럼 답 글이 없는 명령은 "실행했어요"로 보고한다
       const summary = m.ok ? m.text || (slash ? t('slash.ran', { name: slash }) : '') : `오류로 중단 (${m.subtype})`

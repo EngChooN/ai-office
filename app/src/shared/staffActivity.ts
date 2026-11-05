@@ -32,7 +32,7 @@ export function buildStaffActivity(staff: Pick<Staff, 'id' | 'name' | 'status' |
 
 const mins = (ms: number) => (ms < 60_000 ? '방금' : ms < 3_600_000 ? `${Math.floor(ms / 60_000)}분 전` : `${Math.floor(ms / 3_600_000)}시간 ${Math.floor((ms % 3_600_000) / 60_000)}분 전`)
 const hhmm = (ts: number) => new Date(ts).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })
-const STATUS: Record<string, string> = { idle: '대기', working: '일하는 중', waiting: '결재·답을 기다리는 중', offline: '꺼짐', error: '오류', }
+const STATUS: Record<string, string> = { idle: '대기', working: '일하는 중', waiting: '결재·답을 기다리는 중', offline: '꺼짐', error: '오류', netWait: '인터넷 연결 대기' }
 
 /** 비서에게 줄 짧은 글 + 한 줄 판단 단서 */
 export function compactStaffActivity(a: StaffActivity, now: number): string {
@@ -47,6 +47,7 @@ export function compactStaffActivity(a: StaffActivity, now: number): string {
   let hint: string
   if (a.pendingApprovals.length) hint = '결재·질문 대기 때문에 멈춰 있어요. 대표가 답하면 이어져요.'
   else if (a.status === 'error') hint = '오류 상태예요. 최근 오류를 확인하세요.'
+  else if (a.status === 'netWait') hint = '인터넷이 끊겨 하던 일을 잠시 멈췄어요. 연결되면 저절로 이어서 해요.'
   else if (a.status === 'working') hint = a.idleMs !== null && a.idleMs >= 10 * 60_000 ? '일하는 중인데 10분 넘게 활동 기록이 없어요. 오래 생각 중이거나 멈췄을 수 있어요.' : '최근에 활동이 있어 일하는 중으로 보여요.'
   else hint = '지금 일하는 중이 아니에요.'
   lines.push(`판단 단서: ${hint}`)
