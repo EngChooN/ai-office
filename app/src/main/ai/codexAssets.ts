@@ -84,9 +84,35 @@ export function parseRateLimits(result: unknown): RateLimitInfo | null {
   return { status: blocked ? 'rejected' : worst >= 0.8 ? 'allowed_warning' : 'allowed', rateLimitType: primaryKey, utilization: unified[primaryKey].utilization, resetsAt: unified[primaryKey].resetsAt, unifiedWindows: unified }
 }
 
-/** Codex는 슬래시 명령이 없어 스킬 목록으로 대신한다 (이름·설명을 자동완성에 그대로) */
+/**
+ * Codex 기본 명령 — 앱이 app-server 메서드로 연결한다 (builtin이라 설명은 사전 slash.desc.*).
+ * 스킬과 이름이 겹치면 이쪽이 이긴다
+ */
+export const CODEX_COMMANDS: RawCommand[] = [
+  { name: 'compact', description: '', argumentHint: '', builtin: true },
+  { name: 'review', description: '', argumentHint: '[target]', builtin: true },
+  { name: 'goal', description: '', argumentHint: '<condition>', builtin: true },
+]
+
+/** 스킬 목록 앞에 기본 명령을 붙인다 (이름·설명을 자동완성에 그대로) */
 export function skillsAsCommands(skills: CodexSkill[]): RawCommand[] {
-  return skills.filter((s) => s.enabled).map((s) => ({ name: s.name, description: s.description.split('\n')[0].slice(0, 160), argumentHint: '' }))
+  const own = new Set(CODEX_COMMANDS.map((c) => c.name))
+  const rest = skills.filter((s) => s.enabled && !own.has(s.name)).map((s) => ({ name: s.name, description: s.description.split('\n')[0].slice(0, 160), argumentHint: '' }))
+  return [...CODEX_COMMANDS, ...rest]
+}
+
+/** 지시 글이 Codex 기본 명령이면 보낼 app-server 요청을 만든다 (threadId는 보낼 때 붙인다). 아니면 null */
+export type CodexSlash = { method: 'thread/compact/start' | 'review/start' | 'thread/goal/set' | 'thread/goal/clear'; params: object; arg: string }
+export function codexSlash(text: string): CodexSlash | null {
+  const m = /^\/(compact|review|goal)(?:\s+([\s\S]*))?$/.exec(text.trim())
+  if (!m) return null
+  const arg = (m[2] ?? '').trim()
+  // compact는 app-server가 지시문을 받지 않는다 (threadId만) — 인자는 무시한다
+  if (m[1] === 'compact') return { method: 'thread/compact/start', params: {}, arg }
+  if (m[1] === 'review') return { method: 'review/start', params: { target: arg ? { type: 'custom', instructions: arg } : { type: 'uncommittedChanges' } }, arg }
+  // /goal 만 치면 조건이 없으니 보내지 않고 글로 둔다(세션이 안내) — 호출부가 arg 없는 goal을 거른다
+  if (/^clear$/i.test(arg)) return { method: 'thread/goal/clear', params: {}, arg }
+  return arg ? { method: 'thread/goal/set', params: { objective: arg }, arg } : null
 }
 
 /** app-server를 띄워 요청 몇 개를 차례로 보내고 응답(result)을 모아 돌려준다. 실패한 요청은 null */

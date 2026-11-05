@@ -88,7 +88,7 @@ test('FallbackBackend.secretary: 말하기 전 오류 결과면 다음 공급자
 test('Codex 스킬·MCP 원천: 이름·종류만 남기고 비밀 값은 읽지 않는다', () => {
   const skills = parseSkills({ data: [{ cwd: '/a', skills: [{ name: 'x', description: 'd1\nd2', path: '/s/x/SKILL.md', scope: 'user', enabled: true }, { name: 'off', description: '', path: '/s/off/SKILL.md', scope: 'user', enabled: false }] }, { cwd: '/b', skills: [{ name: 'x', description: 'd1', path: '/s/x/SKILL.md', scope: 'user' }] }] })
   assert.equal(skills.length, 2)
-  assert.deepEqual(skillsAsCommands(skills), [{ name: 'x', description: 'd1', argumentHint: '' }])
+  assert.deepEqual(skillsAsCommands(skills).filter((c) => !c.builtin), [{ name: 'x', description: 'd1', argumentHint: '' }])
   const mcp = parseMcpServers({ config: { mcp_servers: { figma: { command: 'npx', env: { TOKEN: 'secret' }, enabled: false }, web: { url: 'https://x', http_headers: { a: 'secret' } }, bad: {} } } })
   assert.deepEqual(mcp, [{ name: 'figma', transport: 'stdio', enabled: false }, { name: 'web', transport: 'http', enabled: true }])
   assert.ok(!JSON.stringify(mcp).includes('secret'))

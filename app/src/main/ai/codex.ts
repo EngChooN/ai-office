@@ -8,8 +8,10 @@ import type { RawCommand } from '../../shared/slashCommands.ts'
 import { HIRED_ENV } from '../external'
 import { exeName } from '../platform'
 import { codexMcpConfig } from './codexMcp'
-import { codexAssets, codexQuery, codexSkillRoots, parseRateLimits, parseSkills, skillsAsCommands } from './codexAssets'
+import { codexAssets, codexQuery, codexSlash, type CodexSlash, codexSkillRoots, parseRateLimits, parseSkills, skillsAsCommands } from './codexAssets'
+import { codexCostUsd } from './codexPricing'
 import { approvalResponse, approvalSettings, approvalTool, newCodexState, pickModel, shellNetworkArgs, toolOfItem, translateNotification, CODEX_APPROVAL_METHODS, type CodexState } from './codexEvents'
+import { t } from '../../shared/i18n/index.ts'
 import type { AgentRuntime, RuntimeEvent, RuntimeStartOpts } from './types'
 
 /** Codex app-server 패키지 폴더 (bin/codex-app-server + bin/codex-code-mode-host + codex-path/rg).
@@ -47,7 +49,7 @@ export function toCodexInput(text: string, attachments: Attachment[]) {
 export class CodexRuntime implements AgentRuntime {
   readonly provider = 'codex' as const
   private child: ChildProcessByStdio<Writable, Readable, null> | null = null
-  private inbox: { text: string; attachments: Attachment[] }[] = []
+  private inbox: { text: string; attachments: Attachment[]; slash?: CodexSlash }[] = []
   private opts: RuntimeStartOpts | null = null
   private modelId: string | undefined
   private state: CodexState = newCodexState()
@@ -84,7 +86,7 @@ export class CodexRuntime implements AgentRuntime {
   }
 
   send(text: string, attachments: Attachment[]) {
-    this.inbox.push({ text, attachments })
+    this.inbox.push({ text, attachments, slash: codexSlash(text) ?? undefined })
     void this.pump()
   }
 
@@ -127,7 +129,7 @@ export class CodexRuntime implements AgentRuntime {
     this.close()
   }
 
-  /** Codex에는 슬래시 명령이 없다 — 스킬 목록으로 대체한다 (프로젝트 스킬까지 보려고 작업 폴더로 한 번 묻는다) */
+  /** 기본 명령(/compact·/review·/goal)은 앱이 연결해 두고, 나머지는 스킬 목록으로 채운다 (프로젝트 스킬까지 보려고 작업 폴더로 한 번 묻는다) */
   async loadCommands(opts: { cwd: string }): Promise<RawCommand[]> {
     const [r] = await codexQuery(codexBinaryPath(), [['skills/list', { cwds: [opts.cwd] }]])
     return skillsAsCommands(r ? parseSkills(r) : codexAssets.skills)
@@ -235,12 +237,31 @@ export class CodexRuntime implements AgentRuntime {
     const model = this.modelId && this.modelId !== this.state.model ? await this.resolveModel(this.modelId) : this.state.model
     if (gen !== this.generation) return
     this.state.model = model
-    const r = await this.call('turn/start', { threadId: this.threadId, model, input: toCodexInput(next.text, next.attachments) })
+    const r = next.slash
+      ? await this.call(next.slash.method, { threadId: this.threadId, ...next.slash.params })
+      : await this.call('turn/start', { threadId: this.threadId, model, input: toCodexInput(next.text, next.attachments) })
     if (gen !== this.generation) return
+    if (next.slash && !r.error) return this.afterSlash(next.slash, r)
     if (r.error) {
       this.turnActive = false
       this.onEvent({ type: 'error', error: r.error.message ?? '지시를 보내지 못했습니다' })
     }
+  }
+
+  /** 명령 요청 성공 후: 턴을 여는 명령(compact·review)은 turn/completed까지 기다리고, 목표 설정·해제는 바로 끝낸다 */
+  private afterSlash(slash: CodexSlash, r: Rpc) {
+    if (slash.method === 'review/start') {
+      // review 턴은 turn/started 알림이 오지 않아 응답에서 turnId를 잡는다 (중단 가능하게)
+      const id = ((r.result as { turn?: { id?: string } } | undefined)?.turn?.id) ?? ''
+      if (id && !this.turnId) this.turnId = id
+      return
+    }
+    if (slash.method === 'thread/compact/start') return
+    const text = slash.method === 'thread/goal/clear' ? t('codex.goal.cleared') : t('codex.goal.set', { goal: slash.arg })
+    this.turnActive = false
+    this.onEvent({ type: 'text', text })
+    this.onEvent({ type: 'result', ok: true, subtype: 'success', text, numTurns: 1, costUsd: codexCostUsd(this.state.model, this.state.usage), tokensIn: this.state.usage.inputTokens, tokensOut: this.state.usage.outputTokens })
+    void this.pump()
   }
 
   private onMessage(m: Rpc, gen: number) {

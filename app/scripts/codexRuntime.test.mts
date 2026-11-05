@@ -151,3 +151,24 @@ test('비서: 예고(commentary)만 하고 턴이 끝나면 최종 답 없이 �
   translateNotification('item/completed', msg('commentary', '확인해 볼게요.'), c)
   assert.equal(endedBeforeFinal('turn/completed', { turn: { status: 'interrupted' } }, c), false)
 })
+
+test('Codex 기본 명령: /compact·/review·/goal을 app-server 메서드로 바꾼다', async () => {
+  const { codexSlash } = await import('../src/main/ai/codexAssets.ts')
+  assert.deepEqual(codexSlash('/compact'), { method: 'thread/compact/start', params: {}, arg: '' })
+  assert.equal(codexSlash('/compact 핵심만 남겨')?.method, 'thread/compact/start')
+  assert.deepEqual(codexSlash('/review')?.params, { target: { type: 'uncommittedChanges' } })
+  assert.deepEqual(codexSlash('/review  보안 위주로 ')?.params, { target: { type: 'custom', instructions: '보안 위주로' } })
+  assert.deepEqual(codexSlash('/goal 테스트 다 통과'), { method: 'thread/goal/set', params: { objective: '테스트 다 통과' }, arg: '테스트 다 통과' })
+  assert.equal(codexSlash('/goal clear')?.method, 'thread/goal/clear')
+  assert.equal(codexSlash('/goal CLEAR')?.method, 'thread/goal/clear')
+  // 조건 없는 /goal, 다른 명령, 비슷한 이름, 일반 글은 그대로 글로 보낸다
+  for (const t of ['/goal', '/reviewer', '/compactx', '/model', '안녕 /compact']) assert.equal(codexSlash(t), null)
+})
+
+test('Codex 명령 목록: 기본 명령 3개가 앞에 오고 같은 이름의 스킬은 빠진다', async () => {
+  const { skillsAsCommands } = await import('../src/main/ai/codexAssets.ts')
+  const sk = (name: string, enabled = true) => ({ name, description: `${name} 설명`, enabled }) as never
+  const list = skillsAsCommands([sk('review'), sk('pdf'), sk('off', false)])
+  assert.deepEqual(list.map((c) => c.name), ['compact', 'review', 'goal', 'pdf'])
+  assert.ok(list.slice(0, 3).every((c) => c.builtin === true))
+})

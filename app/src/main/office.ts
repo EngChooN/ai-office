@@ -111,7 +111,7 @@ import { browserMcpConfig } from './browser'
 import { computerMcpConfig } from './computer'
 import { COMPUTER_EQUIPMENT, computerSummaryI18n } from '../shared/computerTools.ts'
 import { BROWSER_EQUIPMENT } from '../shared/browserTools.ts'
-import { parseSlash, parseTranslations, pendingDescriptions, slashAction, toStaffCommands, translationPrompt, type RawCommand, type StaffCommand } from '../shared/slashCommands.ts'
+import { CLAUDE_MODEL_CHOICES, parseModelArg, parseSlash, parseTranslations, pendingDescriptions, slashAction, toStaffCommands, translationPrompt, type RawCommand, type StaffCommand } from '../shared/slashCommands.ts'
 import { listManuals, removeManual, saveManual } from './manuals'
 import {
   ACHIEVEMENTS,
@@ -1094,19 +1094,35 @@ export class Office extends EventEmitter<{
   }
 
   /**
-   * 앱이 직접 처리하는 /명령: /clear(새 대화)와 막힌 기본 명령(안내만). 처리했으면 true — 나머지 /명령은 세션에 그대로 간다
+   * 앱이 직접 처리하는 /명령: /clear(새 대화), 앱 설정 명령(/model 등), 막힌 기본 명령(안내만). 처리했으면 true — 나머지 /명령은 세션에 그대로 간다
    */
   private handleSlash(staffId: string, text: string, origin: Origin) {
-    const action = slashAction(text, this.commands.get(staffId)?.raw)
-    if (action.kind !== 'clear' && action.kind !== 'blocked') return false
-    const notice = action.kind === 'clear' ? t('slash.cleared') : t('slash.blocked', { name: action.name })
+    const s = this.hired.get(staffId)
+    const action = slashAction(text, this.commands.get(staffId)?.raw, s?.provider ?? 'claude')
+    if (action.kind !== 'clear' && action.kind !== 'blocked' && action.kind !== 'setting') return false
+    let notice: string
     if (action.kind === 'clear') {
+      notice = t('slash.cleared')
       this.manager.resetSession(staffId)
       this.scheduleEmit()
-    }
+    } else if (action.kind === 'setting') notice = this.applySettingCommand(staffId, action.name, action.args)
+    else notice = t('slash.blocked', { name: action.name })
     this.log(staffId, 'status', notice)
     if (origin.kind === 'chat') this.postChat(OFFICE_SENDER, `${this.hired.get(staffId)?.name}: ${notice}`, undefined, undefined, origin.room)
     return true
+  }
+
+  /** /model은 직원 모델을 기존 변경 경로(updateStaff)로 바꾸고, 앱에 대응 설정이 없는 /effort·/fast·/advisor는 안내만 한다. 알려 줄 글을 돌려준다 */
+  private applySettingCommand(staffId: string, name: 'model' | 'effort' | 'fast' | 'advisor', args: string) {
+    if (name !== 'model') return t('slash.noSetting', { name })
+    const choices = CLAUDE_MODEL_CHOICES.join(', ')
+    const current = this.hired.get(staffId)?.model ?? 'default'
+    if (!args.trim()) return t('slash.model.current', { current, choices })
+    const model = parseModelArg(args)
+    if (!model) return t('slash.model.unknown', { arg: args.trim().slice(0, 40), current, choices })
+    if (model === current) return t('slash.model.same', { model })
+    this.updateStaff(staffId, { model })
+    return t('slash.model.changed', { model })
   }
 
   /** 앱 언어로 보여 줄 명령 설명 — 기본 명령은 사전, 나머지는 번역 캐시 (없으면 원문) */

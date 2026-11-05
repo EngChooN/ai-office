@@ -26,17 +26,36 @@ export interface RawCommand {
 }
 
 /** 앱에서 그대로 쓸 수 있는 기본 명령 — 나머지 기본 명령은 목록에서 빼고, 직접 치면 안내만 한다 */
-export const APP_BUILTINS = new Set(['compact', 'clear', 'init', 'review', 'security-review', 'pr-comments', 'context'])
+export const APP_BUILTINS = new Set([
+  'compact', 'clear', 'init', 'review', 'security-review', 'pr-comments', 'context', 'goal',
+  // 작업형 명령 (스킬이 builtin으로 온다)
+  'deep-research', 'dataviz', 'verify', 'debug', 'code-review', 'simplify', 'batch', 'schedule', 'claude-api', 'workflow-authoring', 'run',
+  'run-skill-generator', 'plugin-authoring', 'design-sync', 'insights', 'recap', 'team-onboarding', 'skill-doctor', 'list-agents',
+  // 안전한 설정 명령 (앱의 결재를 우회하지 않는 것만)
+  'reload-skills', 'reload-plugins', 'autocompact', 'doctor', 'output-style',
+  // 앱 설정에 연결하는 명령 (SETTING_COMMANDS)
+  'model', 'effort', 'fast', 'advisor',
+])
+
+/** 앱 설정으로 처리하는 명령 — /model은 직원 모델을 바꾸고, 나머지는 앱에 대응 설정이 없어 안내만 한다 (Claude 직원만) */
+export const SETTING_COMMANDS = new Set(['model', 'effort', 'fast', 'advisor'])
+
+/** 세션이 인자 안내를 비워 보내지만 인자가 꼭 필요한 기본 명령 — 목록에서 Enter가 바로 보내지 않고 채우기만 하게 */
+const BUILTIN_HINTS: Record<string, string> = { goal: '<condition>' }
 
 /**
  * 목록을 받기 전에도 막는 기본 명령 — 로그인·설정·터미널 화면 전용이거나 앱이 따로 관리하는 것(모델·권한·장비).
  * 목록을 받은 뒤에는 isBuiltin이면서 APP_BUILTINS에 없는 것도 막는다
  */
 export const BLOCKED_COMMANDS = new Set([
-  'login', 'logout', 'config', 'settings', 'theme', 'vim', 'terminal-setup', 'exit', 'quit', 'doctor', 'ide', 'install-github-app', 'install-slack-app',
-  'mcp', 'permissions', 'allowed-tools', 'hooks', 'agents', 'model', 'fast', 'output-style', 'statusline', 'status', 'resume', 'continue', 'rewind', 'checkpoint',
+  'login', 'logout', 'config', 'settings', 'theme', 'vim', 'terminal-setup', 'exit', 'quit', 'ide', 'install-github-app', 'install-slack-app',
+  'mcp', 'permissions', 'allowed-tools', 'hooks', 'agents', 'statusline', 'status', 'resume', 'continue', 'rewind', 'checkpoint',
   'add-dir', 'memory', 'export', 'upgrade', 'bug', 'feedback', 'privacy-settings', 'release-notes', 'plugin', 'plugins', 'migrate-installer', 'keybindings',
   'sandbox', 'help', 'tasks', 'bashes', 'todos', 'rename', 'copy', 'mobile', 'desktop', 'chrome', 'remote-env', 'login-method', 'extra-usage', 'usage', 'cost',
+  // 앱의 결재를 우회할 수 있어 막는 설정 명령 (목록을 받기 전에도 같게)
+  'update-config', 'fewer-permission-prompts', 'auto-mode-setup', 'import',
+  // 끝없이 되풀이하는 작업(5분 주기 등)을 세션 안에 만들어 앱이 모르는 사이 토큰을 쓰고, 앱에서는 끌 방법이 없어서 막는다 (/proactive는 별칭)
+  'loop', 'proactive',
 ])
 
 const CLEAR_ALIASES = new Set(['clear', 'reset', 'new'])
@@ -54,7 +73,8 @@ export function toStaffCommands(raw: RawCommand[], terminalOnly: string[] = []):
     const isBuiltin = c.builtin === true
     if (isBuiltin ? !APP_BUILTINS.has(name) : builtinNames.has(name)) continue
     const description = (c.description ?? '').trim()
-    byName.set(name, { name, description, localizedDescription: description, argumentHint: (c.argumentHint ?? '').trim(), isBuiltin })
+    const argumentHint = (c.argumentHint ?? '').trim() || (isBuiltin ? (BUILTIN_HINTS[name] ?? '') : '')
+    byName.set(name, { name, description, localizedDescription: description, argumentHint, isBuiltin })
   }
   return [...byName.values()].sort((a, b) => Number(b.isBuiltin) - Number(a.isBuiltin) || a.name.localeCompare(b.name))
 }
@@ -72,6 +92,8 @@ export type SlashAction =
   | { kind: 'pass'; name: string }
   /** 앱의 세션 초기화(새 대화)로 처리 */
   | { kind: 'clear' }
+  /** 앱 설정으로 처리 (/model 등) — 세션에 보내지 않는다. args는 명령 뒤 글 */
+  | { kind: 'setting'; name: 'model' | 'effort' | 'fast' | 'advisor'; args: string }
   /** 앱에서 쓸 수 없는 기본 명령 — 보내지 않고 안내만 */
   | { kind: 'blocked'; name: string }
 
@@ -79,16 +101,28 @@ export type SlashAction =
  * 보낸 글 판정. commands는 이 직원 세션의 원본 목록(있으면 별칭·기본 명령 여부를 본다).
  * 기본 명령이 같은 이름을 가지면 그쪽이 실행되므로, 커스텀 명령과 이름이 겹쳐도 막는다
  */
-export function slashAction(text: string, raw: RawCommand[] = []): SlashAction {
+export function slashAction(text: string, raw: RawCommand[] = [], provider: 'claude' | 'codex' = 'claude'): SlashAction {
   const parsed = parseSlash(text)
   if (!parsed) return { kind: 'none' }
   const typed = parsed.name
   const builtin = raw.find((c) => c.builtin && (c.name === typed || c.aliases?.includes(typed)))
   const name = builtin?.name ?? typed
   if (CLEAR_ALIASES.has(name) && (builtin || name === 'clear')) return { kind: 'clear' }
+  if (SETTING_COMMANDS.has(name)) {
+    // 설정 명령은 Claude 직원만 — Codex 직원에게는 앱이 모델을 따로 관리하므로 안내만. 목록 수신 전(raw 없음)에도 같게
+    if (provider === 'codex') return { kind: 'blocked', name: typed }
+    if (builtin || !raw.length) return { kind: 'setting', name: name as 'model' | 'effort' | 'fast' | 'advisor', args: parsed.args }
+  }
   if (BLOCKED_COMMANDS.has(name) && (builtin || !raw.some((c) => c.name === name))) return { kind: 'blocked', name: typed }
   if (builtin && !APP_BUILTINS.has(name)) return { kind: 'blocked', name: typed }
   return { kind: 'pass', name }
+}
+
+/** /model 뒤 글 → 직원 모델. 앱이 아는 별칭(default·opus·sonnet·haiku, 대소문자 무관)만 받고 나머지는 null */
+export const CLAUDE_MODEL_CHOICES = ['default', 'opus', 'sonnet', 'haiku'] as const
+export function parseModelArg(args: string): (typeof CLAUDE_MODEL_CHOICES)[number] | null {
+  const v = args.trim().toLowerCase()
+  return CLAUDE_MODEL_CHOICES.find((m) => m === v) ?? null
 }
 
 /**
@@ -108,6 +142,8 @@ export function runsOnEnter(c: Pick<StaffCommand, 'argumentHint'>): boolean {
 export function matchCommands(commands: StaffCommand[], query: string, limit = 50): StaffCommand[] {
   const q = query.replace(/^\//, '').toLowerCase()
   if (!q) return commands.slice(0, limit)
+  // 친 이름이 막힌 명령이면 비운다 — 안 비우면 퍼지 매치(/config → /autocompact)가 Enter·Tab으로 엉뚱한 명령을 보낸다. PC·휴대폰 공통
+  if (slashAction(`/${q}`).kind === 'blocked') return []
   const rank = (c: StaffCommand) => {
     const n = c.name.toLowerCase()
     if (n.startsWith(q)) return 0
