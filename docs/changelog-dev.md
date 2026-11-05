@@ -2,6 +2,15 @@
 
 버전은 SemVer. 기능 크기 기준으로 올린다. 버전마다 **새 기능 / 개선 / 버그 수정**으로 나눠 적는다(앱의 "업데이트 소식"이 이 파일을 그대로 보여 준다).
 
+## [1.0.2] - 2026-11-05
+
+### 새 기능
+- 직원 채팅 / 명령 열기: Claude 작업형 19개·설정 5개를 열고 `/loop`(`/proactive`)는 계속 막음. `/model`은 직원 모델(default·opus·sonnet·haiku)을 바꾸고(다음 지시부터), `/effort`·`/fast`·`/advisor`는 안내만. 막힌 이름을 치면 자동완성을 비워 Enter가 다른 명령을 고르지 않음. Codex는 `/compact`·`/review`·`/goal`을 app-server 요청으로 연결, `/goal pause`·`/goal resume`은 상태만 바꿈. 지시 없이 연 목표 턴은 `autoTurn`으로 새 업무로 받고, 마지막 지시 뒤 20턴이면 목표를 멈추고(paused) 안내, 그 사이 열린 다음 턴은 바로 끊음. `thread/goal/set`에 `status active`·`origin user`를 같이 보내 두 번째 목표도 시작.
+- 인터넷 끊김 자동 이어 하기: 인터넷 오류(ENOTFOUND·ECONNREFUSED·fetch failed·Codex "waiting for network" 등)로 멈추면 받은 일·대기 카드를 보관하고 `netWait`로 둠. 보관이 있을 때만 15초마다 `net.isOnline` + AI 서버 HEAD로 확인해 돌아오면 같은 세션에 이어 하라고 보내고 미뤄 둔 지시를 보냄. 같은 일 3번·6시간까지, 직접 지시·중지면 보관을 풀고 `settleFailed`. Claude SDK의 `subtype success`·`is_error true` 결과는 인터넷 오류일 때만 실패로 넘김. 휴대폰에는 작업 중 + '인터넷 연결 대기' 활동으로 보냄.
+
+### 버그 수정
+- 보관 중에 Claude가 같은 실패를 한 번 더 던지면 상태가 '오류'로 바뀌고 이어 가기 횟수가 지워지던 문제(보관 중 실패는 연결 대기를 그대로 둠). 통합 시험 `scripts/netResumeFlow.test.mts`(12건).
+
 ## [1.0.1] - 2026-11-04
 
 ### 새 기능

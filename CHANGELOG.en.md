@@ -7,7 +7,7 @@ Writing rules
 - Write from the user's point of view, describing "what you can now do." Do not use technical names (file paths, program or library names, English abbreviations). If one is truly needed, put it once in parentheses after a plain-language explanation.
 - Development details (how it was built, where files are) go in `SPEC.md` and `docs/changelog-dev.md`.
 
-## [Unreleased]
+## [1.0.2] - 2026-11-05
 
 ### New features
 - More / commands are available in staff chat. 19 task commands (deep research, debug, code review, simplify, batch work, schedule and more) and 5 setting commands such as reloading skills and plugins are now open, and typing a model name like `/model sonnet` (default, opus, sonnet, haiku) switches that employee's model right away (applies from the next instruction). Settings the app doesn't have (thinking depth, fast mode, advisor) only show a notice. GPT (Codex) employees can now use `/compact` (shorten the conversation), `/review` (code review) and `/goal <condition>` (set a goal; `/goal pause`·`/goal resume` pause or continue it, `/goal clear` removes it). If a goal keeps going 20 times without finishing, it pauses itself and lets you know.
