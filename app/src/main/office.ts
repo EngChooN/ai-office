@@ -138,7 +138,7 @@ import {
   type Zone,
 } from '../shared/economy'
 import { HiredStaffManager } from './hired'
-import { askAsProvider, askOnce, type RateLimitInfo } from './ai'
+import { askAsProvider, askOnce, type createRuntime, type RateLimitInfo } from './ai'
 import { probeMcpStatus, sdk } from './ai/claude'
 import { splitFinished } from './ai/pendingSends'
 import { buildStaffProgress, summarizeInstruction } from '../shared/staffProgress'
@@ -350,8 +350,13 @@ export class Office extends EventEmitter<{
   answerWhileAway: (staff: Staff, questions: StaffQuestion[]) => Promise<Record<string, string> | null> = async (_staff, questions) =>
     Object.fromEntries(questions.map((q) => [q.question, AWAY_ANSWER]))
 
-  constructor() {
+  /** 인터넷이 돌아왔나 (보관한 일이 있을 때 NET_CHECK_INTERVAL_MS마다) — 시험에서는 끊김·복구를 흉내 내는 함수로 바꾼다 */
+  private isNetBack: () => Promise<boolean>
+
+  /** opts: 시험에서 가짜 엔진(makeRuntime)과 연결 확인(isNetBack)을 끼울 때만 넘긴다 */
+  constructor(opts: { makeRuntime?: typeof createRuntime; isNetBack?: () => Promise<boolean> } = {}) {
     super()
+    this.isNetBack = opts.isNetBack ?? (async () => net.isOnline() && (await this.isApiReachable()))
     this.manager = new HiredStaffManager({
       update: (id, patch) => this.patch(id, patch),
       log: (id, type, text) => this.log(id, type, text),
@@ -404,7 +409,7 @@ export class Office extends EventEmitter<{
         this.scheduleEmit()
         void this.translateCommands(id)
       },
-    })
+    }, opts.makeRuntime)
     this.watcher = new ExternalWatcher(
       {
         sync: (external) => {
@@ -676,6 +681,8 @@ export class Office extends EventEmitter<{
   /** 실행 중 예외(SDK·Codex 오류): 인터넷이 끊긴 것이면 받은 일을 보관해 연결되면 이어 가고, 아니면 받은 일을 정리한다 */
   private onFailed(staffId: string, error: string) {
     errorLog.record('staff', error) // 피드백에 붙일 최근 오류 기록 (직원 이름은 넣지 않는다)
+    // 보관 중에는 돌고 있는 턴이 없다 — 늦게 온 같은 실패(Claude가 세션을 닫으며 "returned an error result"로 다시 던진 것)는 연결 대기를 그대로 둔다
+    if (this.netParked.has(staffId)) return void this.patch(staffId, { status: 'netWait', activity: '' })
     if (this.parkForNetwork(staffId, error)) return
     const origins = this.origins.get(staffId) ?? []
     const queued = this.taskQueue.get(staffId) ?? []
@@ -739,7 +746,7 @@ export class Office extends EventEmitter<{
         this.netTimer = null
         return
       }
-      if (!net.isOnline() || !(await this.isApiReachable())) return
+      if (!(await this.isNetBack())) return
       for (const id of this.netParked.ids()) this.resumeAfterNetwork(id)
     } finally {
       this.isNetChecking = false

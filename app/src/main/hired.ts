@@ -115,11 +115,12 @@ class Worker {
   constructor(
     private staff: Staff,
     private hooks: HiredHooks,
+    makeRuntime: typeof createRuntime,
   ) {
     // 이어받는 세션의 첫 result는 이전 누적을 포함하므로, 이미 기록한 값부터 차감한다
     this.baseline = { cost: staff.costUsd, tokensIn: staff.tokensIn, tokensOut: staff.tokensOut }
     this.modelNow = staff.model
-    this.rt = createRuntime(staff.provider, (e) => this.handle(e))
+    this.rt = makeRuntime(staff.provider, (e) => this.handle(e))
   }
 
   private modelId(m: Staff['model']) {
@@ -495,10 +496,14 @@ function summarizeInput(input: unknown, toolName = ''): string {
 export class HiredStaffManager {
   private workers = new Map<string, Worker>()
 
-  constructor(private hooks: HiredHooks) {}
+  /** makeRuntime: 시험에서 가짜 엔진을 끼울 때만 바꾼다 */
+  constructor(
+    private hooks: HiredHooks,
+    private makeRuntime: typeof createRuntime = createRuntime,
+  ) {}
 
   add(staff: Staff) {
-    this.workers.set(staff.id, new Worker(staff, this.hooks))
+    this.workers.set(staff.id, new Worker(staff, this.hooks, this.makeRuntime))
   }
 
   remove(staffId: string) {
