@@ -29,7 +29,7 @@ register('./officeLoaderHooks.mjs', import.meta.url)
 
 const { Office } = await import('../src/main/office.ts')
 const { ClaudeRuntime } = await import('../src/main/ai/claude.ts')
-const { CodexRuntime } = await import('../src/main/ai/codex.ts')
+const { CodexRuntime, GOAL_AUTO_TURN_MAX } = await import('../src/main/ai/codex.ts')
 const { codexSlash } = await import('../src/main/ai/codexAssets.ts')
 const { NET_CHECK_INTERVAL_MS, NET_PARK_MAX_MS, NET_RESUME_MAX_TRIES } = await import('../src/shared/netResume.ts')
 const { t } = await import('../src/shared/i18n/index.ts')
@@ -434,4 +434,35 @@ test('Codex: /goal로 목표를 정한 뒤 Codex가 스스로 이어 간 턴도 
   codex(a).finish('a.txt 첫 줄은 hi입니다.')
   await settle()
   assert.equal(staff(a).status, 'idle', '끝 결과를 버리지 않아 작업 중에 멈추지 않는다')
+})
+
+test(`Codex: 지시 없이 이어 간 목표 턴이 ${GOAL_AUTO_TURN_MAX}번에 닿으면 목표를 멈추고 알린다, 새 지시를 하면 다시 센다`, async () => {
+  const a = hire('끝없는목표', 'codex')
+  await settle()
+  const calls: [string, Record<string, unknown>][] = []
+  const self = codex(a) as unknown as { call(m: string, p: Record<string, unknown>): Promise<unknown>; threadId: string | null }
+  self.threadId = 'th1'
+  self.call = async (m, p) => (calls.push([m, p]), { result: {} })
+  const autoTurn = async () => {
+    codex(a).notify('turn/started', { turn: { id: 'tg' } })
+    codex(a).finish('아직')
+    await settle()
+  }
+  for (let i = 1; i < GOAL_AUTO_TURN_MAX; i++) await autoTurn()
+  assert.equal(calls.length, 0, '한도 전에는 목표를 건드리지 않는다')
+  await autoTurn()
+  assert.deepEqual(calls, [['thread/goal/set', { threadId: 'th1', status: 'paused', origin: 'automatic' }]])
+  const logs = office.getRecord(a).logs.map((l) => l.text)
+  assert.ok(logs.some((x) => x === t('codex.goal.limit', { n: GOAL_AUTO_TURN_MAX })), '멈춘 까닭을 남긴다')
+  assert.equal(staff(a).status, 'idle')
+  // 멈춤을 받는 사이 Codex가 이미 연 다음 턴은 업무로 받지 않고, 그 턴의 글도 남기지 않는다 (실제 Codex 0.164에서 생김)
+  const before = office.getRecord(a).logs.length
+  await autoTurn()
+  assert.equal(staff(a).status, 'idle', '한도를 넘은 턴 때문에 작업 중에 멈추지 않는다')
+  assert.equal(office.getRecord(a).logs.length, before)
+  // 새 지시를 하면 처음부터 다시 센다
+  office.instruct(a, '/goal resume')
+  calls.length = 0
+  for (let i = 1; i < GOAL_AUTO_TURN_MAX; i++) await autoTurn()
+  assert.equal(calls.length, 0)
 })

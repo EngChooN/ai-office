@@ -10,7 +10,7 @@ Writing rules
 ## [Unreleased]
 
 ### New features
-- More / commands are available in staff chat. 19 task commands (deep research, debug, code review, simplify, batch work, schedule and more) and 5 setting commands such as reloading skills and plugins are now open, and typing a model name like `/model sonnet` (default, opus, sonnet, haiku) switches that employee's model right away (applies from the next instruction). Settings the app doesn't have (thinking depth, fast mode, advisor) only show a notice. GPT (Codex) employees can now use `/compact` (shorten the conversation), `/review` (code review) and `/goal <condition>` (set a goal; `/goal clear` removes it).
+- More / commands are available in staff chat. 19 task commands (deep research, debug, code review, simplify, batch work, schedule and more) and 5 setting commands such as reloading skills and plugins are now open, and typing a model name like `/model sonnet` (default, opus, sonnet, haiku) switches that employee's model right away (applies from the next instruction). Settings the app doesn't have (thinking depth, fast mode, advisor) only show a notice. GPT (Codex) employees can now use `/compact` (shorten the conversation), `/review` (code review) and `/goal <condition>` (set a goal; `/goal pause`·`/goal resume` pause or continue it, `/goal clear` removes it). If a goal keeps going 20 times without finishing, it pauses itself and lets you know.
 - If the internet drops while an employee is working, the employee keeps the task and its card, shows 'Reconnecting', and automatically continues once the internet is back (up to 3 times per task, within 6 hours). If you send a new instruction or stop them in the meantime, they stop waiting and wrap up as before.
 
 ## [1.0.1] - 2026-11-04

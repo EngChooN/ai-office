@@ -24,6 +24,8 @@ export function codexPackageDir() {
 export const codexBinaryPath = () => path.join(codexPackageDir(), 'bin', exeName('codex-app-server'))
 
 const CLIENT_INFO = { name: 'ai-office', title: 'AI Office', version: '0' }
+/** 마지막 지시 뒤 Codex가 목표(/goal)로 스스로 이어 갈 수 있는 턴 수 — 넘으면 목표를 멈춘다 (끝을 못 내면 몇 초마다 끝없이 돈다) */
+export const GOAL_AUTO_TURN_MAX = 20
 const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
 
 type Json = Record<string, unknown>
@@ -68,6 +70,10 @@ export class CodexRuntime implements AgentRuntime {
   private aborts = new Set<AbortController>()
   private skillCleanup: (() => void) | null = null
   private skillRoots: string[] = []
+  /** 마지막 지시 뒤 Codex가 목표로 스스로 연 턴 수 — GOAL_AUTO_TURN_MAX에 닿으면 목표를 멈춘다 */
+  private autoTurns = 0
+  /** 한도를 넘어 Codex가 연 목표 턴을 끊는 중 — 그 턴의 알림은 버린다 */
+  private quietStop = false
 
   constructor(private onEvent: (e: RuntimeEvent) => void) {}
 
@@ -86,6 +92,7 @@ export class CodexRuntime implements AgentRuntime {
   }
 
   send(text: string, attachments: Attachment[]) {
+    this.autoTurns = 0
     this.inbox.push({ text, attachments, slash: codexSlash(text) ?? undefined })
     void this.pump()
   }
@@ -115,6 +122,7 @@ export class CodexRuntime implements AgentRuntime {
     this.turnId = null
     this.turnActive = false
     this.interruptPending = false
+    this.quietStop = false
     for (const r of this.pending.values()) r({ error: { message: 'closed' } })
     this.pending.clear()
   }
@@ -257,11 +265,20 @@ export class CodexRuntime implements AgentRuntime {
       return
     }
     if (slash.method === 'thread/compact/start') return
-    const text = slash.method === 'thread/goal/clear' ? t('codex.goal.cleared') : t('codex.goal.set', { goal: slash.arg })
+    const text =
+      slash.method === 'thread/goal/clear' ? t('codex.goal.cleared') : slash.arg === 'pause' ? t('codex.goal.paused') : slash.arg === 'resume' ? t('codex.goal.resumed') : t('codex.goal.set', { goal: slash.arg })
     this.turnActive = false
     this.onEvent({ type: 'text', text })
     this.onEvent({ type: 'result', ok: true, subtype: 'success', text, numTurns: 1, costUsd: codexCostUsd(this.state.model, this.state.usage), tokensIn: this.state.usage.inputTokens, tokensOut: this.state.usage.outputTokens })
     void this.pump()
+  }
+
+  /** 목표 이어 하기 횟수 초과: 목표를 멈추고(지운 것은 아님) 알린다 */
+  private async pauseGoal(gen: number) {
+    if (!this.threadId) return
+    const r = await this.call('thread/goal/set', { threadId: this.threadId, status: 'paused', origin: 'automatic' })
+    if (gen !== this.generation || r.error) return
+    this.onEvent({ type: 'text', text: t('codex.goal.limit', { n: GOAL_AUTO_TURN_MAX }) })
   }
 
   private onMessage(m: Rpc, gen: number) {
@@ -276,7 +293,17 @@ export class CodexRuntime implements AgentRuntime {
     if (m.id !== undefined) return void this.onRequest(m.id, method, params, gen)
     if (method === 'turn/started') {
       // 보낸 지시가 없는데 열린 턴 — 목표(/goal)를 이어 가려고 Codex가 스스로 연 것
-      if (!this.turnActive) this.onEvent({ type: 'autoTurn' })
+      if (!this.turnActive) {
+        // 목표를 끝내지 못하면 몇 초마다 끝없이 턴을 연다 — 정한 횟수에 닿으면 이 턴까지만 하고 목표를 멈춘다.
+        // Codex는 멈춤을 턴 사이에 받으면서 다음 턴을 이미 열기도 한다 — 한도를 넘은 턴은 알리지 않고 바로 끊는다
+        if (++this.autoTurns > GOAL_AUTO_TURN_MAX) {
+          this.quietStop = true
+          this.interruptPending = true
+        } else {
+          this.onEvent({ type: 'autoTurn' })
+          if (this.autoTurns === GOAL_AUTO_TURN_MAX) void this.pauseGoal(gen)
+        }
+      }
       this.turnActive = true
       this.turnId = String((params.turn as Json | undefined)?.id ?? '')
       if (this.interruptPending) {
@@ -290,8 +317,11 @@ export class CodexRuntime implements AgentRuntime {
       if (info) this.onEvent({ type: 'rateLimit', info })
     }
     if (method === 'item/started') this.onItemStarted(params.item as Json | undefined)
-    for (const e of translateNotification(method, params, this.state)) this.onEvent(e)
+    // 한도를 넘어 끊은 턴은 사용량 외에는 앱에 알리지 않는다 (업무로 받지 않았다)
+    const events = translateNotification(method, params, this.state)
+    if (!this.quietStop) for (const e of events) this.onEvent(e)
     if (method === 'turn/completed') {
+      this.quietStop = false
       this.turnActive = false
       this.turnId = null
       this.interruptPending = false

@@ -212,6 +212,14 @@ export default {
     zh: '已设定目标: {goal}',
   },
   'codex.goal.cleared': { ko: '목표를 해제했어요', en: 'Goal cleared', ja: '目標を解除しました', zh: '已取消目标' },
+  'codex.goal.paused': { ko: '목표를 잠시 멈췄어요 (/goal resume으로 다시 시작)', en: 'Goal paused (/goal resume to continue)', ja: '目標を一時停止しました (/goal resume で再開)', zh: '已暂停目标（/goal resume 继续）' },
+  'codex.goal.resumed': { ko: '목표를 다시 이어 해요', en: 'Goal resumed', ja: '目標を再開しました', zh: '已继续目标' },
+  'codex.goal.limit': {
+    ko: '목표를 {n}번 이어 해도 끝나지 않아 잠시 멈췄어요. 계속하려면 /goal resume, 그만하려면 /goal clear를 보내 주세요',
+    en: 'Paused the goal after {n} continuations without finishing. Send /goal resume to continue or /goal clear to stop',
+    ja: '目標を{n}回続けても終わらないため一時停止しました。続けるには /goal resume、やめるには /goal clear を送ってください',
+    zh: '目标已连续推进 {n} 次仍未完成，已暂停。继续请发送 /goal resume，停止请发送 /goal clear',
+  },
   'slash.desc.security-review': {
     ko: '지금 브랜치(작업 줄기)의 변경에 보안 문제가 없는지 살펴봐요',
     en: 'Check the changes on the current branch (line of work) for security problems',
@@ -231,10 +239,10 @@ export default {
     zh: '显示当前对话占用了多少记忆空间 (上下文)',
   },
   'slash.desc.goal': {
-    ko: '목표를 정하면 그 조건을 채울 때까지 멈추지 않고 이어서 일해요 (/goal clear로 해제)',
-    en: 'Set a goal and keep working until the condition is met (/goal clear to remove it)',
-    ja: '目標を決めると、その条件を満たすまで止まらずに作業を続けます (/goal clear で解除)',
-    zh: '设定目标后会一直工作到满足条件为止（/goal clear 取消）',
+    ko: '목표를 정하면 그 조건을 채울 때까지 멈추지 않고 이어서 일해요 (/goal pause·resume으로 멈춤·재개, /goal clear로 해제)',
+    en: 'Set a goal and keep working until the condition is met (/goal pause·resume to pause or continue, /goal clear to remove it)',
+    ja: '目標を決めると、その条件を満たすまで止まらずに作業を続けます (/goal pause・resume で一時停止・再開、/goal clear で解除)',
+    zh: '设定目标后会一直工作到满足条件为止（/goal pause·resume 暂停或继续，/goal clear 取消）',
   },
   'slash.desc.deep-research': {
     ko: '주제를 여러 자료로 깊이 조사해 근거가 달린 보고서를 만들어요',

@@ -161,6 +161,9 @@ test('Codex 기본 명령: /compact·/review·/goal을 app-server 메서드로 �
   assert.deepEqual(codexSlash('/goal 테스트 다 통과'), { method: 'thread/goal/set', params: { objective: '테스트 다 통과', status: 'active', origin: 'user' }, arg: '테스트 다 통과' })
   assert.equal(codexSlash('/goal clear')?.method, 'thread/goal/clear')
   assert.equal(codexSlash('/goal CLEAR')?.method, 'thread/goal/clear')
+  // pause·resume은 목표 글이 아니라 상태만 바꾼다
+  assert.deepEqual(codexSlash('/goal pause'), { method: 'thread/goal/set', params: { status: 'paused', origin: 'user' }, arg: 'pause' })
+  assert.deepEqual(codexSlash('/goal Resume'), { method: 'thread/goal/set', params: { status: 'active', origin: 'user' }, arg: 'resume' })
   // 조건 없는 /goal, 다른 명령, 비슷한 이름, 일반 글은 그대로 글로 보낸다
   for (const t of ['/goal', '/reviewer', '/compactx', '/model', '안녕 /compact']) assert.equal(codexSlash(t), null)
 })
