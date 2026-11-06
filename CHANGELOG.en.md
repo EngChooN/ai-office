@@ -7,6 +7,13 @@ Writing rules
 - Write from the user's point of view, describing "what you can now do." Do not use technical names (file paths, program or library names, English abbreviations). If one is truly needed, put it once in parentheses after a plain-language explanation.
 - Development details (how it was built, where files are) go in `SPEC.md` and `docs/changelog-dev.md`.
 
+## [미정] (설치본 미빌드)
+
+### New features
+- Team and lab chat rooms now show a member status bar at the top: who is working, what they are doing, and who needs your review. Work from task cards and the staff panel shows too. Hover for details, click to open that staff panel. The main room shows only people who are working or need review.
+- In chat rooms you can now choose 'Send when done' or 'Interrupt now' for a staff member who is working, just like in the staff panel. Messages sent with 'Send when done' wait above the input box, where you can send them now or cancel.
+- Chat rooms now have '📘 Manuals' and '/ Commands' buttons under the input box, so you can pick the manuals and commands the recipient (the team or lab lead if no one is mentioned) can use.
+
 ## [1.0.3] - 2026-11-06
 
 ### New features

@@ -2,6 +2,13 @@
 
 버전은 SemVer. 기능 크기 기준으로 올린다. 버전마다 **새 기능 / 개선 / 버그 수정**으로 나눠 적는다(앱의 "업데이트 소식"이 이 파일을 그대로 보여 준다).
 
+## [미정] (설치본 미빌드)
+
+### 새 기능
+- 대화방 구성원 상태 줄(`RoomStatusStrip`·`StatusTip`, ChatPage 머리): 팀·랩 방은 `chatRoomMembers` 전원, 전체 방은 idle·offline 제외. 직원 status·progress.text(머리말 `[..]` 뺌)·activity로 그려서 업무 카드(origin task, room 없음)·1:1 지시 일도 보인다(기존 `progressesForRoom`은 room이 맞는 지시만 — 랩 방에서 카드 작업이 안 보이던 원인). 6명 넘으면 +N명 접기, 마우스 올리면 포털 말풍선, 누르면 직원 패널.
+- 대화방 대기 메시지·끼어들기: `sendChat` 네 번째 인자 `mode?: ChatSendMode`('wait'·'now', 원격 v2 `s?` 추가). 앱 대화방은 늘 mode를 넘겨 받는 사람이 working이면 `instructFromPanel`(shown=머리말 없는 본문)로 대기 메시지, now면 `interruptWith`(chat origin을 남겨 결과가 그 방으로). mode가 없으면(비서·바탕화면 비서·예전 휴대폰) 예전처럼 바로. `StaffProgress.waiting[].room` 추가, `WaitingCards`는 `items`(staffId·name)로 바꿔 대화방은 이 방 대기 메시지만 입력칸 위에. 대기 메시지 '지금 보내기'도 chat origin이면 방을 이어 간다.
+- 대화방 '📘 매뉴얼'·'/ 명령' 버튼: 멘션 받는 사람 → 없으면 팀장·랩장의 `@이름 /`를 넣어 SlashMenu를 mode별로 연다. 받을 사람을 못 정하면(전체 방) `@`로 사람부터 고르게 하고 고르면 `/`까지. 쓰던 글은 고른 명령 뒤에 다시 붙인다. 문구 `dict/chatStatus.ts`.
+
 ## [1.0.3] - 2026-11-06
 
 ### 새 기능

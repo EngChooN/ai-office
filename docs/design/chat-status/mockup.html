@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<title>대화방 상태·매뉴얼·명령 시안</title>
+<style>
+  :root {
+    --bg: #14131C; --fg: #EDEBF8; --card: #201F2D; --muted: #292739; --mfg: #A7A3C4;
+    --primary: #9B8CFF; --pfg: #1A1240; --accent: #302D47; --border: #34314A; --input: #413E5C;
+    --working: #4ADE80; --waiting: #F2C94C; --idle: #9A98AC; --error: #FF6B6B; --chrome: #181723;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #0d0c13; color: var(--fg); font: 13px/1.5 -apple-system, "Apple SD Gothic Neo", "Pretendard", sans-serif; padding: 28px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .lead { color: var(--mfg); margin: 0 0 24px; max-width: 1100px; }
+  .grid { display: grid; grid-template-columns: repeat(2, 600px); gap: 28px 32px; }
+  .case h2 { font-size: 15px; margin: 0 0 4px; display: flex; gap: 8px; align-items: center; }
+  .tag { font-size: 11px; padding: 1px 8px; border-radius: 99px; background: var(--accent); color: var(--mfg); font-weight: 500; }
+  .tag.bad { background: #3a1f25; color: var(--error); }
+  .tag.new { background: #22213a; color: var(--primary); }
+  .case p.note { color: var(--mfg); margin: 0 0 10px; font-size: 12px; min-height: 36px; }
+  .screen { width: 600px; height: 640px; background: var(--bg); border: 1px solid var(--border); border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; position: relative; }
+  .head { padding: 14px 20px 10px; border-bottom: 1px solid var(--border); }
+  .head .t { font-size: 16px; font-weight: 600; }
+  .head .d { font-size: 11px; color: var(--mfg); }
+  .tabs { display: flex; gap: 6px; margin-top: 8px; }
+  .tabs span { font-size: 11px; padding: 3px 10px; border-radius: 99px; border: 1px solid var(--border); color: var(--mfg); }
+  .tabs span.on { background: var(--accent); color: var(--fg); border-color: var(--accent); }
+  .msgs { flex: 1; padding: 14px 20px; display: flex; flex-direction: column; gap: 10px; overflow: hidden; }
+  .row { display: flex; gap: 8px; }
+  .row.me { flex-direction: row-reverse; }
+  .av { width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0; display: grid; place-items: center; font-size: 12px; font-weight: 700; color: #1a1240; }
+  .av.s { width: 20px; height: 20px; border-radius: 6px; font-size: 10px; }
+  .a1 { background: #F7B267; } .a2 { background: #8BD3DD; } .a3 { background: #C3AED6; } .a4 { background: #9EE493; }
+  .col { display: flex; flex-direction: column; gap: 2px; max-width: 75%; }
+  .row.me .col { align-items: flex-end; }
+  .name { font-size: 11px; color: var(--mfg); }
+  .bub { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 7px 12px; }
+  .row.me .bub { background: var(--primary); color: var(--pfg); border: 0; }
+  .time { font-size: 10px; color: var(--mfg); }
+  .sys { align-self: center; background: var(--muted); color: var(--mfg); font-size: 11px; padding: 3px 12px; border-radius: 99px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
+  .d-w { background: var(--working); box-shadow: 0 0 0 3px rgba(74,222,128,.18); }
+  .d-a { background: var(--waiting); } .d-i { background: var(--idle); } .d-e { background: var(--error); }
+  .c-w { color: var(--working); } .c-a { color: var(--waiting); } .c-e { color: var(--error); }
+  .prog { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--mfg); }
+  .prog b { color: var(--fg); font-weight: 600; }
+  .composer { border-top: 1px solid var(--border); padding: 10px 16px 10px; }
+  .recv { font-size: 11px; color: var(--mfg); margin-bottom: 6px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .chip { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; padding: 2px 8px 2px 3px; border-radius: 99px; background: var(--muted); color: var(--fg); }
+  .inrow { display: flex; gap: 8px; align-items: flex-end; }
+  .iconbtn { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--border); display: grid; place-items: center; color: var(--mfg); flex-shrink: 0; }
+  .input { flex: 1; min-height: 34px; border: 1px solid var(--input); border-radius: 8px; padding: 7px 10px; color: var(--mfg); font-size: 12px; }
+  .input.typed { color: var(--fg); }
+  .send { height: 34px; padding: 0 12px; border-radius: 8px; background: var(--primary); color: var(--pfg); display: grid; place-items: center; font-weight: 600; flex-shrink: 0; }
+  .ghost { height: 30px; padding: 0 9px; border-radius: 7px; font-size: 11px; color: var(--fg); display: inline-flex; align-items: center; gap: 4px; }
+  .outline { border: 1px solid var(--border); }
+  .tools { display: flex; gap: 2px; margin-top: 6px; align-items: center; }
+  .hl { outline: 2px dashed var(--primary); outline-offset: 3px; border-radius: 8px; }
+  .hl-note { position: absolute; background: var(--primary); color: var(--pfg); font-size: 11px; font-weight: 700; border-radius: 99px; width: 20px; height: 20px; display: grid; place-items: center; }
+  /* 상태 줄 */
+  .strip { display: flex; gap: 6px; margin-top: 9px; flex-wrap: nowrap; overflow: hidden; }
+  .st { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border); background: var(--card); border-radius: 99px; padding: 3px 10px 3px 3px; font-size: 11px; white-space: nowrap; }
+  .st .what { color: var(--mfg); max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
+  .st.work { border-color: rgba(74,222,128,.45); }
+  .st.appr { border-color: rgba(242,201,76,.5); }
+  .pop { position: absolute; background: var(--card); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.6); padding: 10px 12px; font-size: 12px; }
+  .pop .k { color: var(--mfg); font-size: 11px; }
+  .menu { position: absolute; left: 16px; bottom: 112px; width: 340px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.6); padding: 6px; }
+  .menu .gh { font-size: 10px; color: var(--mfg); padding: 4px 8px 2px; }
+  .menu .it { display: flex; justify-content: space-between; gap: 10px; padding: 5px 8px; border-radius: 6px; font-size: 12px; }
+  .menu .it.on { background: var(--accent); }
+  .menu .it span:last-child { color: var(--mfg); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 190px; }
+  .menu .who { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-bottom: 1px solid var(--border); margin-bottom: 4px; font-size: 11px; color: var(--mfg); }
+  .menu .who .chip { cursor: pointer; }
+  .wait { border: 1px solid rgba(242,201,76,.4); background: rgba(242,201,76,.08); border-radius: 8px; padding: 7px 10px; display: flex; gap: 8px; align-items: flex-start; margin-bottom: 8px; }
+  .wait .lab { color: var(--waiting); font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 5px; }
+  .btnp { background: var(--primary); color: var(--pfg); border-radius: 6px; padding: 3px 8px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+  .btno { border: 1px solid var(--border); color: var(--mfg); border-radius: 6px; padding: 3px 8px; font-size: 11px; white-space: nowrap; }
+  .legend { margin-top: 28px; max-width: 1232px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px 18px; }
+  .legend h3 { margin: 0 0 6px; font-size: 14px; }
+  .legend li { margin: 3px 0; color: var(--mfg); }
+  .legend b { color: var(--fg); }
+</style>
+</head>
+<body>
+<h1>대화방에 상태 · 대기 · 매뉴얼 · /명령 넣기 — 시안</h1>
+<p class="lead">랩 대화방 기준으로 그렸습니다. 팀 방도 똑같이 보이고, 전체 방은 사람이 많아 '일하는 사람·확인 필요한 사람'만 보입니다. 점선 테두리가 새로 생기는 부분입니다.</p>
+
+<div class="grid">
+
+<!-- 0. 지금 -->
+<section class="case">
+  <h2>지금 <span class="tag bad">문제</span></h2>
+  <p class="note">박개발·최디자가 업무 카드로 일하는 중인데 랩 방에는 아무 표시가 없습니다. 지금은 <b>이 방에서 직접 시킨 일</b>만 맨 아래에 한 줄로 보이고, 업무 카드·1:1 지시로 하는 일은 안 보입니다.</p>
+  <div class="screen">
+    <div class="head">
+      <div class="t">ai-office 전담 랩 방</div>
+      <div class="d">랩장과 랩 멤버만 있는 방이에요. 아무도 부르지 않으면 랩장이 받아 나눠 맡겨요.</div>
+      <div class="tabs"><span>전체</span><span>기획팀</span><span class="on">ai-office 전담 랩</span></div>
+    </div>
+    <div class="msgs">
+      <div class="row me"><div class="col"><div class="bub">대화방에도 작업 상태 보이게 해 줘</div><div class="time">11. 7. 오후 2:10</div></div></div>
+      <div class="row"><div class="av a1">이</div><div class="col"><div class="name">이리드</div><div class="bub">기획안 올렸어요. 결재함에서 확인해 주세요.</div><div class="time">11. 7. 오후 2:14</div></div></div>
+      <div class="sys">기획안이 승인되어 박개발·최디자에게 업무 카드 2장을 나눴어요</div>
+      <div style="flex:1"></div>
+      <div style="text-align:center;color:var(--mfg);font-size:11px;opacity:.7">(여기서 끝 — 누가 무엇을 하는지 알 수 없음)</div>
+    </div>
+    <div class="composer">
+      <div class="inrow"><div class="iconbtn">📎</div><div class="input">랩에게 메시지 (@이름·@전체 로 지시 · Shift+Enter 줄바꿈)</div><div class="send">➤</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- A. 상태 줄 -->
+<section class="case">
+  <h2>A. 방 위에 '구성원 상태' 줄 <span class="tag new">새로</span></h2>
+  <p class="note">방 제목 아래에 구성원마다 작은 칸을 둡니다. <b>점 색 = 상태</b>(초록 작업 중 · 노랑 확인 필요 · 회색 쉬는 중), 옆에 <b>지금 하는 일</b>이 한 줄로. 어디서 받은 일이든 다 보입니다. 마우스를 올리면 자세히, 누르면 그 직원 패널이 열립니다.</p>
+  <div class="screen">
+    <div class="head">
+      <div class="t">ai-office 전담 랩 방</div>
+      <div class="d">랩장과 랩 멤버만 있는 방이에요. 아무도 부르지 않으면 랩장이 받아 나눠 맡겨요.</div>
+      <div class="tabs"><span>전체</span><span>기획팀</span><span class="on">ai-office 전담 랩</span></div>
+      <div class="strip hl">
+        <span class="st work"><span class="av s a2">박</span>박개발 <span class="dot d-w"></span><span class="what">대화방 상태 줄 만드는 중</span></span>
+        <span class="st appr"><span class="av s a3">최</span>최디자 <span class="dot d-a"></span><span class="c-a">확인 필요</span></span>
+        <span class="st"><span class="av s a1">이</span>이리드 <span class="dot d-i"></span><span class="what">쉬는 중</span></span>
+        <span class="st"><span class="av s a4">김</span>김기획 <span class="dot d-i"></span></span>
+      </div>
+    </div>
+    <div class="pop" style="left:22px;top:150px;width:300px">
+      <div style="display:flex;gap:6px;align-items:center;font-weight:600"><span class="av s a2">박</span>박개발 · 개발자 <span class="dot d-w" style="margin-left:4px"></span><span class="c-w" style="font-weight:500;font-size:11px">작업 중</span></div>
+      <div class="k" style="margin-top:6px">맡은 일</div>
+      <div>업무 카드 「대화방 상단 구성원 상태 줄」</div>
+      <div class="k" style="margin-top:4px">지금 하는 것</div>
+      <div>ChatPage.tsx 고치는 중 · 12분째</div>
+      <div class="k" style="margin-top:4px">뒤에 기다리는 일 1건</div>
+      <div class="k" style="margin-top:6px;color:var(--primary)">누르면 직원 패널 열기 →</div>
+    </div>
+    <div class="msgs" style="padding-top:150px">
+      <div class="row"><div class="av a1">이</div><div class="col"><div class="name">이리드</div><div class="bub">기획안 올렸어요. 결재함에서 확인해 주세요.</div></div></div>
+      <div class="sys">기획안이 승인되어 박개발·최디자에게 업무 카드 2장을 나눴어요</div>
+      <div style="flex:1"></div>
+    </div>
+    <div class="composer">
+      <div class="inrow"><div class="iconbtn">📎</div><div class="input">랩에게 메시지 (@이름·@전체 로 지시 · Shift+Enter 줄바꿈)</div><div class="send">➤</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- B. 매뉴얼 / 명령 -->
+<section class="case">
+  <h2>B. 입력칸 아래 '매뉴얼 · / 명령' 버튼 <span class="tag new">새로</span></h2>
+  <p class="note">직원 패널처럼 입력칸 아래에 두 버튼을 둡니다. 누르면 <b>받을 사람</b>을 먼저 보여 주고(기본은 랩장, 눌러서 바꿈) 그 사람이 쓸 수 있는 매뉴얼·명령 목록을 띄웁니다. 고르면 입력칸에 <b>@이리드 /이름</b>이 채워집니다.</p>
+  <div class="screen">
+    <div class="head">
+      <div class="t">ai-office 전담 랩 방</div>
+      <div class="tabs"><span>전체</span><span>기획팀</span><span class="on">ai-office 전담 랩</span></div>
+      <div class="strip">
+        <span class="st work"><span class="av s a2">박</span>박개발 <span class="dot d-w"></span><span class="what">대화방 상태 줄 만드는 중</span></span>
+        <span class="st"><span class="av s a1">이</span>이리드 <span class="dot d-i"></span><span class="what">쉬는 중</span></span>
+        <span class="st"><span class="av s a4">김</span>김기획 <span class="dot d-i"></span></span>
+      </div>
+    </div>
+    <div class="msgs">
+      <div class="row"><div class="av a1">이</div><div class="col"><div class="name">이리드</div><div class="bub">다음 할 일 알려 주세요.</div></div></div>
+    </div>
+    <div class="menu">
+      <div class="who">받는 사람 <span class="chip"><span class="av s a1">이</span>이리드 (랩장) ▾</span><span style="margin-left:auto">바꾸기</span></div>
+      <div class="gh">내 매뉴얼</div>
+      <div class="it on"><span>📘 issue-flow</span><span>사용자 이슈 확인→수정→배포</span></div>
+      <div class="it"><span>📘 배포 안내 쓰기</span><span>변경 내역 대조해 안내문</span></div>
+      <div class="gh">Claude 명령</div>
+      <div class="it"><span>/review</span><span>바뀐 코드 검토</span></div>
+      <div class="it"><span>/compact</span><span>대화 요약해 가볍게</span></div>
+    </div>
+    <div class="composer">
+      <div class="inrow"><div class="iconbtn">📎</div><div class="input">랩에게 메시지 (@이름·@전체 로 지시 · Shift+Enter 줄바꿈)</div><div class="send">➤</div></div>
+      <div class="tools hl"><span class="ghost">📘 매뉴얼</span><span class="ghost" style="background:var(--accent)">/ 명령</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- C. 일하는 중에 보낼 때 -->
+<section class="case">
+  <h2>C. 일하는 직원에게 보낼 때 · 대기 메시지 <span class="tag new">새로</span></h2>
+  <p class="note">받는 사람이 일하는 중이면 받는 사람 줄에 <b>"작업 중"</b>을 표시하고, 보내기 버튼이 직원 패널처럼 <b>끝나면 보내기 / 지금 끼어들기</b>로 바뀝니다. '끝나면 보내기'로 보낸 말은 입력칸 위 <b>대기 카드</b>로 남아 지금 보내기·취소를 할 수 있습니다.</p>
+  <div class="screen">
+    <div class="head">
+      <div class="t">ai-office 전담 랩 방</div>
+      <div class="tabs"><span>전체</span><span>기획팀</span><span class="on">ai-office 전담 랩</span></div>
+      <div class="strip">
+        <span class="st work"><span class="av s a2">박</span>박개발 <span class="dot d-w"></span><span class="what">대화방 상태 줄 만드는 중</span></span>
+        <span class="st"><span class="av s a1">이</span>이리드 <span class="dot d-i"></span><span class="what">쉬는 중</span></span>
+      </div>
+    </div>
+    <div class="msgs">
+      <div class="row me"><div class="col"><div class="bub">@박개발 대화방 위에 상태 줄 만들어 줘</div></div></div>
+      <div class="prog"><span class="av s a2">박</span><b>박개발</b><span class="dot d-w"></span><span class="c-w" style="font-weight:600">작업 중</span><span>· ChatPage.tsx 고치는 중</span><span>· 대기 1건</span></div>
+      <div style="flex:1"></div>
+    </div>
+    <div class="composer">
+      <div class="wait hl">
+        <div style="flex:1"><div class="lab"><span class="dot d-a" style="width:6px;height:6px"></span>대기 메시지 · 박개발 님이 지금 하는 일이 끝나면 보내요</div><div style="font-size:12px;margin-top:2px">@박개발 색 조금 더 밝게</div></div>
+        <span class="btnp">지금 보내기</span><span class="btno">취소</span>
+      </div>
+      <div class="recv hl">받는 사람 <span class="chip"><span class="av s a2">박</span>박개발 <span class="dot d-w" style="width:6px;height:6px"></span><span class="c-w">작업 중</span></span></div>
+      <div class="inrow"><div class="iconbtn">📎</div><div class="input typed">@박개발 버튼 글자도 키워 줘</div>
+        <span class="ghost outline hl" style="height:34px">끝나면 보내기</span><span class="send hl" style="font-size:12px">⚡ 지금 끼어들기</span></div>
+      <div class="tools"><span class="ghost">📘 매뉴얼</span><span class="ghost">/ 명령</span></div>
+    </div>
+  </div>
+</section>
+
+</div>
+
+<div class="legend">
+  <h3>정리 — 무엇이 바뀌나</h3>
+  <ul>
+    <li><b>A. 구성원 상태 줄 (지금 문제 해결):</b> 팀·랩 방은 구성원 전원, 전체 방은 '작업 중·확인 필요·오류'인 사람만 보입니다. 업무 카드나 1:1로 받은 일도 다 보입니다. 사람이 많으면 "+3명"으로 접습니다.</li>
+    <li><b>맨 아래 진행 줄(지금도 있음):</b> 이 방에서 시킨 일은 지금처럼 대화 맨 아래에 "작업 중 · 무엇 하는 중 · 대기 N건"으로 계속 보입니다.</li>
+    <li><b>B. 매뉴얼 · / 명령 버튼:</b> 지금은 "@이름 /"를 직접 쳐야만 나오는 메뉴를 버튼으로 엽니다. 받는 사람 기본값은 팀장·랩장입니다.</li>
+    <li><b>C. 대기 메시지 · 끼어들기:</b> 직원 패널과 같은 규칙을 대화방에도 적용합니다. 지금은 대화방에서 보낸 말이 그냥 줄 서고 확인·취소할 곳이 없습니다.</li>
+    <li>폰 화면에서는 A 상태 줄을 옆으로 밀어 보는 한 줄로, B 버튼은 입력칸 아래 작은 글자로 둡니다.</li>
+  </ul>
+</div>
+</body>
+</html>

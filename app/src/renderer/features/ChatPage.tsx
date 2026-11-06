@@ -1,16 +1,17 @@
 import { memo, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
-import { CheckIcon, ChevronDownIcon, ChevronRightIcon, FlaskConicalIcon, MegaphoneIcon, MessagesSquareIcon, SendIcon, UsersIcon } from 'lucide-react'
+import { createPortal } from 'react-dom'
+import { CheckIcon, ChevronDownIcon, ChevronRightIcon, FlaskConicalIcon, MegaphoneIcon, MessagesSquareIcon, SendIcon, UsersIcon, ZapIcon } from 'lucide-react'
 import { useShallow } from 'zustand/react/shallow'
 import { Button } from '@/components/ui/button'
 import { AttachButton, AttachmentView, DraftAttachments, useDraftAttachments } from '@/components/attachments'
 import { cn } from '@/lib/utils'
 import { handleComposerKey, NEWLINE_HINT } from '@/lib/composerKeys'
-import { commandDescription, commandItem, manualItem, SlashMenu, usePersonalManuals, useSlashKeys, useStaffCommands } from '@/components/slash-menu'
+import { commandDescription, commandItem, manualItem, SlashMenu, usePersonalManuals, useSlashKeys, useStaffCommands, type SlashMode } from '@/components/slash-menu'
 import { matchCommands, runsOnEnter } from '@shared/slashCommands'
 import { useOffice } from '@/store'
-import type { Approval, ChatApproval, ChatApprovalResult, ChatMessage, Lab, Staff, Team } from '@shared/types'
+import type { Approval, ChatApproval, ChatApprovalResult, ChatMessage, ChatSendMode, Lab, Staff, StaffStatus, Team } from '@shared/types'
 import { chatApprovalView } from '@shared/chatApproval'
-import { chatLines, chatRoomMentionTargets, findRoom, labRoomId, parseRoom, roomLabs, roomTeams, type ChatLine, type ChatRoomInfo } from '@shared/chatRooms'
+import { chatLines, chatRoomMembers, chatRoomMentionTargets, findRoom, labRoomId, parseRoom, roomLabs, roomTeams, type ChatLine, type ChatRoomInfo } from '@shared/chatRooms'
 import { ALL_MENTION, mentionTargets, mentionToken, OFFICE_SENDER, parseMentions, type MentionKind, type MentionTarget } from '@shared/mention'
 import { fmtDate, t, type TKey } from '@shared/i18n'
 import { roleLabel } from '@shared/roleLabel'
@@ -19,7 +20,8 @@ import { Markdown } from '@/components/markdown'
 import { MentionText, MentionTextarea, remarkMentions } from '@/components/mention-text'
 import { JumpToBottom, useStickToBottom } from '@/components/stick-to-bottom'
 import { QuestionBox } from './QuestionBox'
-import { ProgressLine } from './ProgressLine'
+import { ProgressLine, WaitingCards } from './ProgressLine'
+import { STATUS_META } from './status'
 import { progressesForRoom } from '@shared/progressView'
 import { AlwaysApproveButton } from './AutoApprove'
 
@@ -60,11 +62,119 @@ export function ChatPage() {
         <p className="text-muted-foreground short:hidden text-xs">{description}</p>
         <RemoteLine />
         <RoomTabs current={room?.room} />
+        <RoomStatusStrip room={room} />
       </div>
       <MessageList room={room?.room} />
       <Composer room={room} />
     </div>
   )
+}
+
+/** 상태 줄에 펼쳐 두는 사람 수 — 넘으면 "+N명"으로 접는다 */
+const STRIP_MAX = 6
+/** 일하는 사람·확인이 필요한 사람을 앞에 */
+const STATUS_ORDER: Record<StaffStatus, number> = { working: 0, waiting: 1, error: 2, netWait: 3, idle: 4, offline: 5 }
+/** 지시 요약 앞 머리말("[업무 보드] ", "[OO 랩] ")은 상태 줄에서 뺀다 */
+const stripHead = (text: string) => text.replace(/^\[[^\]]+\]\s*/, '')
+
+/**
+ * 구성원 상태 줄 (방 제목 아래): 누가 무슨 일을 하는지 — 이 방에서 시킨 일뿐 아니라 업무 카드·1:1 지시로 하는 일도 보인다.
+ * 팀·랩 방은 구성원 전원, 전체 방은 일하는 중·확인 필요·오류인 사람만. 마우스를 올리면 자세히, 누르면 직원 패널
+ */
+function RoomStatusStrip({ room }: { room: RoomInfo | undefined }) {
+  const staff = useOffice((s) => s.staff)
+  const select = useOffice((s) => s.select)
+  const [isOpen, setIsOpen] = useState(false)
+  const [tip, setTip] = useState<{ staff: Staff; rect: DOMRect } | null>(null)
+  const people = useMemo(() => {
+    const hired = staff.filter((s) => s.kind === 'hired' && !s.isPractice)
+    const list = room ? chatRoomMembers(room, hired) : hired.filter((s) => s.status !== 'idle' && s.status !== 'offline')
+    return [...list].sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status])
+  }, [staff, room])
+  if (people.length === 0) return null
+  const shown = isOpen ? people : people.slice(0, STRIP_MAX)
+  const tipStaff = tip && people.find((p) => p.id === tip.staff.id)
+  return (
+    <div aria-label={t('chat.status.list')} className={cn('short:hidden mt-2 flex gap-1.5', isOpen ? 'flex-wrap' : 'overflow-hidden')}>
+      {shown.map((s) => {
+        const meta = STATUS_META[s.status]
+        const doing = s.status === 'working' ? stripHead(s.progress?.text ?? '') || s.activity : ''
+        return (
+          <button
+            key={s.id}
+            type="button"
+            onClick={() => select(s.id)}
+            onMouseEnter={(e) => setTip({ staff: s, rect: e.currentTarget.getBoundingClientRect() })}
+            onMouseLeave={() => setTip(null)}
+            onFocus={(e) => setTip({ staff: s, rect: e.currentTarget.getBoundingClientRect() })}
+            onBlur={() => setTip(null)}
+            className={cn(
+              'bg-card hover:bg-accent flex max-w-60 min-w-0 shrink-0 items-center gap-1.5 rounded-full border py-0.5 pr-2.5 pl-0.5 text-xs',
+              s.status === 'working' && 'border-status-working/50',
+              (s.status === 'waiting' || s.status === 'netWait') && 'border-status-waiting/50',
+              s.status === 'error' && 'border-status-error/50',
+            )}
+          >
+            <Avatar avatar={s.avatar} name={s.name} teamId={s.teamId} className="size-5" />
+            <span className="shrink-0 font-medium">{s.name}</span>
+            <span className={cn('size-2 shrink-0 rounded-full', meta.dot, s.status === 'working' && 'animate-pulse')} />
+            <span className={cn('min-w-0 truncate', doing ? 'text-muted-foreground' : meta.text)}>{doing || meta.label}</span>
+          </button>
+        )
+      })}
+      {people.length > STRIP_MAX && (
+        <button type="button" onClick={() => setIsOpen((v) => !v)} className="text-muted-foreground hover:bg-accent shrink-0 rounded-full border px-2.5 py-0.5 text-xs">
+          {isOpen ? t('chat.status.less') : t('chat.status.more', { count: people.length - STRIP_MAX })}
+        </button>
+      )}
+      {tip && tipStaff && createPortal(<StatusTip staff={tipStaff} rect={tip.rect} />, document.body)}
+    </div>
+  )
+}
+
+/** 상태 줄 칸에 마우스를 올리면 뜨는 설명: 맡은 일 · 지금 하는 것 · 뒤에 기다리는 일 */
+function StatusTip({ staff: s, rect }: { staff: Staff; rect: DOMRect }) {
+  const meta = STATUS_META[s.status]
+  const task = s.progress?.text ? stripHead(s.progress.text) : ''
+  const queued = s.progress?.queued ?? 0
+  return (
+    <div
+      role="tooltip"
+      className="bg-popover text-popover-foreground pointer-events-none fixed z-50 flex w-72 flex-col gap-1 rounded-lg border p-3 text-xs shadow-lg"
+      style={{ left: Math.min(rect.left, window.innerWidth - 296), top: rect.bottom + 6 }}
+    >
+      <div className="flex items-center gap-1.5 font-medium">
+        {s.name} · {roleLabel(s.role)}
+        <span className={cn('ml-1 size-2 shrink-0 rounded-full', meta.dot)} />
+        <span className={meta.text}>{meta.label}</span>
+      </div>
+      {task && (
+        <>
+          <span className="text-muted-foreground mt-1 text-[11px]">{t('chat.status.task')}</span>
+          <p className="line-clamp-2">{task}</p>
+        </>
+      )}
+      {s.status === 'working' && s.activity && (
+        <>
+          <span className="text-muted-foreground text-[11px]">{t('chat.status.now')}</span>
+          <p className="line-clamp-2">{s.activity}</p>
+        </>
+      )}
+      {queued > 0 && <span className="text-muted-foreground text-[11px]">{t('chat.status.queued', { count: queued })}</span>}
+      <span className="text-primary mt-1 text-[11px]">{t('chat.status.open')}</span>
+    </div>
+  )
+}
+
+/** 이 방에서 보낸 대기 메시지 (일하는 직원에게 '끝나면 보내기'로 보낸 말) — 입력칸 바로 위 */
+function RoomWaiting({ room }: { room: string | undefined }) {
+  const staff = useOffice((s) => s.staff)
+  const items = useMemo(
+    () => staff.flatMap((s) => (s.progress?.waiting ?? []).filter((w) => (w.room ?? undefined) === (room || undefined)).map((w) => ({ ...w, staffId: s.id, name: s.name }))),
+    [staff, room],
+  )
+  if (items.length === 0) return null
+  return <WaitingCards items={items} className="mx-auto w-full max-w-3xl border-t-0 px-0" />
 }
 
 /** 다른 PC 직원이 랩에 있으면 "원격 · 피어명" 한 줄 (연결이 끊긴 PC는 흐리게) */
@@ -359,31 +469,52 @@ function Composer({ room }: { room: RoomInfo | undefined }) {
   const commands = useStaffCommands(recipientIds, slashQuery !== null)
   const manualNames = new Set(usePersonalManuals(slashQuery !== null).map((m) => m.name))
   const matched = slashQuery === null || !commands ? [] : matchCommands(commands, slashQuery)
-  const slashCommands = [...matched.filter((c) => manualNames.has(c.name)), ...matched.filter((c) => !manualNames.has(c.name))]
+  // 📘 매뉴얼·/ 명령 버튼으로 열면 그쪽만 보인다
+  const [slashMode, setSlashMode] = useState<SlashMode>('all')
+  useEffect(() => {
+    if (slashQuery === null) setSlashMode('all')
+  }, [slashQuery])
+  const slashCommands = [
+    ...(slashMode === 'command' ? [] : matched.filter((c) => manualNames.has(c.name))),
+    ...(slashMode === 'manual' ? [] : matched.filter((c) => !manualNames.has(c.name))),
+  ]
   const slashItems = commands && slashCommands.map((c) => (manualNames.has(c.name) ? manualItem(c.name, commandDescription(c)) : commandItem(c)))
   // 꼭 넣을 인자가 없는 명령은 Enter면 바로 보낸다 (매뉴얼·Tab·클릭은 채우기만)
   const handleSlashPick = (i: number, isEnter = false) => {
     const command = slashCommands[i]
     const filled = draft.replace(/\/\S*$/, `/${command.name}`)
+    // 버튼을 누를 때 쓰고 있던 글은 명령 뒤에 다시 붙인다
+    const rest = slashRest.current
+    slashRest.current = ''
+    if (rest) return setDraft(`${filled} ${rest}`)
     if (isEnter && runsOnEnter(command) && !manualNames.has(command.name)) return void handleSend(filled)
     setDraft(`${filled} `)
   }
   const slashKeys = useSlashKeys(slashCommands.length, slashQuery, handleSlashPick)
 
   const draftFiles = useDraftAttachments()
-  const handleSend = async (typed = draft) => {
+  // 직원 패널처럼: 일하는 직원에게는 기본(Enter)이 '끝나면 보내기'(대기 메시지), '지금 끼어들기'는 하던 일을 멈추고 바로 전한다
+  const handleSend = async (typed = draft, mode: ChatSendMode = 'wait') => {
     const text = typed.trim()
     if (!text && draftFiles.files.length === 0) return
     setDraft('')
+    slashRest.current = ''
     const attachments = await draftFiles.upload()
     draftFiles.clear()
-    void window.office.sendChat(text, attachments, room?.room)
+    void window.office.sendChat(text, attachments, room?.room, mode)
   }
   // 같은 이름의 직원·팀·랩이 있으면 "@디자인(팀)"처럼 종류를 붙여 고른 대상에게 가게 한다
   // 고른 뒤에는 입력창에 포커스를 주고 커서를 끝(넣은 "@이름 " 뒤)으로 — 글이 바뀐 다음 프레임에 옮긴다
   const inputId = useId()
   const handleMention = (tg: MentionTarget) => {
-    setDraft((d) => d.replace(/@(\S*)$/, `${mentionToken(tg, targets)} `))
+    // 매뉴얼·명령 버튼으로 받는 사람부터 고르던 중이면 "@이름 /"까지 넣어 바로 메뉴를 띄운다
+    const slash = pendingSlash.current
+    pendingSlash.current = null
+    if (slash) setSlashMode(slash)
+    setDraft((d) => d.replace(/@(\S*)$/, `${mentionToken(tg, targets)} ${slash ? '/' : ''}`))
+    focusEnd()
+  }
+  const focusEnd = () => {
     requestAnimationFrame(() => {
       const el = document.getElementById(inputId)
       if (!(el instanceof HTMLTextAreaElement)) return
@@ -412,6 +543,35 @@ function Composer({ room }: { room: RoomInfo | undefined }) {
 
   // 멘션 없이 보내면 누가 받는지: 전체 방은 알맞은 한 명, 팀·랩 방은 팀장·랩 리드(없으면 방 안에서 한 명)
   const roomLead = room?.leadId ? staffById.get(room.leadId) : undefined
+
+  // 📘 매뉴얼·/ 명령 버튼: 받는 사람(멘션 → 없으면 팀장·랩장)의 "@이름 /"를 넣어 메뉴를 띄운다.
+  // 받을 사람을 정할 수 없으면(전체 방) "@"로 사람부터 고르게 한다. 쓰던 글은 고른 명령 뒤에 다시 붙인다
+  const slashRest = useRef('')
+  const pendingSlash = useRef<'manual' | 'command' | null>(null)
+  const openSlash = (mode: 'manual' | 'command') => {
+    const body = parsed?.body ?? ''
+    const rest = body.startsWith('/') ? '' : body
+    const prefix = parsed && parsed.recipientIds.length > 0 ? (draft.trimEnd().endsWith(body) ? draft.trimEnd().slice(0, draft.trimEnd().length - body.length).trimEnd() : '') : ''
+    const leadTarget = roomLead && targets.find((tg) => tg.kind === 'staff' && tg.memberIds[0] === roomLead.id)
+    slashRest.current = prefix ? rest : draft.trim()
+    if (prefix || leadTarget) {
+      setSlashMode(mode)
+      setDraft(`${prefix || mentionToken(leadTarget!, targets)} /`)
+    } else {
+      pendingSlash.current = mode
+      setDraft('@')
+    }
+    focusEnd()
+  }
+
+  // 받는 사람 중 지금 일하는 직원 — 있으면 보내기 버튼이 '끝나면 보내기 · 지금 끼어들기'로 바뀐다 (결재 대기·/명령·다른 PC 직원은 바로 보낸다)
+  const targetIds = parsed && parsed.matched.length > 0 ? parsed.recipientIds : roomLead ? [roomLead.id] : []
+  const busy = targetIds.flatMap((id) => {
+    const s = staffById.get(id)
+    return s && s.status === 'working' && s.approvals.length === 0 && !s.remote ? [s] : []
+  })
+  const hasDraft = Boolean(draft.trim()) || draftFiles.files.length > 0
+  const isBusySend = busy.length > 0 && hasDraft && !parsed?.body.startsWith('/')
   const isLab = room?.kind === 'lab'
   const noneLabel = !room
     ? t('chat.recipientsNone')
@@ -428,6 +588,7 @@ function Composer({ room }: { room: RoomInfo | undefined }) {
           active={slashKeys.active}
           onPick={handleSlashPick}
           note={recipientIds.length > 1 ? t('slashMenu.commonOnly', { count: recipientIds.length }) : undefined}
+          emptyText={slashMode === 'manual' ? t('slashMenu.emptyManual') : undefined}
           className="absolute bottom-full left-4 mb-1 w-80 max-w-[calc(100%-2rem)]"
         />
       )}
@@ -466,9 +627,16 @@ function Composer({ room }: { room: RoomInfo | undefined }) {
           ))}
         </div>
       )}
+      <RoomWaiting room={room?.room} />
       <div className="mx-auto mb-2 max-w-3xl">
         <DraftAttachments files={draftFiles.files} onRemove={draftFiles.remove} />
         {parsed && <Recipients parsed={parsed} staffOf={(id) => staffById.get(id)} hasStaff={hired.length > 0} noneLabel={noneLabel} />}
+        {isBusySend && (
+          <p className="text-status-working mt-1 flex items-center gap-1.5 text-xs">
+            <span className="bg-status-working size-1.5 shrink-0 animate-pulse rounded-full" />
+            {t('chat.busyNote', { names: busy.map((s) => s.name).join(', ') })}
+          </p>
+        )}
       </div>
       <div className="mx-auto flex max-w-3xl items-end gap-2">
         <AttachButton onPick={draftFiles.add} className="size-9" />
@@ -489,11 +657,32 @@ function Composer({ room }: { room: RoomInfo | undefined }) {
           placeholder={t(!room ? 'chat.placeholder' : isLab ? 'chat.labRoom.placeholder' : 'chat.room.placeholder', { all: ALL_MENTION, newline: String(NEWLINE_HINT) })}
           className="field-sizing-content max-h-32 min-h-9 resize-none py-[7px]"
         />
-        {/* 폰: 직원 패널·비서 보내기처럼 정원 */}
-        <Button onClick={() => void handleSend()} disabled={!draft.trim() && draftFiles.files.length === 0} className="phone:w-10 phone:px-0">
-          <SendIcon />
-        </Button>
+        {isBusySend ? (
+          <div className="flex shrink-0 gap-1">
+            <Button variant="ghost" className="px-2 text-xs" onClick={() => void handleSend()} title={t('staffPanel.composer.queueTitle')}>
+              {t('staffPanel.composer.queue')}
+            </Button>
+            <Button className="px-2.5 text-xs" onClick={() => void handleSend(draft, 'now')} title={t('staffPanel.composer.interruptTitle')}>
+              <ZapIcon /> {t('staffPanel.composer.interrupt')}
+            </Button>
+          </div>
+        ) : (
+          /* 폰: 직원 패널·비서 보내기처럼 정원 */
+          <Button onClick={() => void handleSend()} disabled={!hasDraft} className="phone:w-10 phone:px-0">
+            <SendIcon />
+          </Button>
+        )}
       </div>
+      {hired.length > 0 && (
+        <div className="typing:hidden mx-auto mt-1 flex max-w-3xl items-center gap-1">
+          <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => openSlash('manual')} title={t('chat.manualButtonTitle')}>
+            {t('slashMenu.manualButton')}
+          </Button>
+          <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => openSlash('command')} title={t('chat.commandButtonTitle')}>
+            {t('slashMenu.button')}
+          </Button>
+        </div>
+      )}
     </div>
   )
 }

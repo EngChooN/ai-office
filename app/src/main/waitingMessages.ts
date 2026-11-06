@@ -6,6 +6,8 @@ export interface WaitingMessage<O, A> {
   text: string
   origin: O
   attachments: A[]
+  /** 화면에 보일 글 (대화방 지시는 머리말 "[OO 랩]" 없이 보낸 글 그대로) — 없으면 text */
+  shown?: string
 }
 
 /** 패널 지시를 대기 메시지로 들고 있을까 — 일하는 중일 때만. 결재·질문을 기다리는 중(대표 말이 결재를 거둔다)·/명령(멈추기 같은 제어)·빈 글은 바로 전한다 */

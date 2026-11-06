@@ -22,6 +22,9 @@ import type { I18nArg, I18nText, LangSetting } from './i18n/index.ts'
 export type StaffKind = 'hired' | 'external'
 /** netWait: 인터넷이 끊겨 하던 일을 보관해 두고 연결을 기다리는 중 (연결되면 이어 간다) */
 export type StaffStatus = 'idle' | 'working' | 'waiting' | 'offline' | 'error' | 'netWait'
+
+/** 대화방에서 일하는 직원에게 보낼 때: wait = 끝나면 보내기(대기 메시지) · now = 지금 끼어들기 */
+export type ChatSendMode = 'wait' | 'now'
 /** 직원·내부 AI를 돌리는 공급자 (고용 후 변경 불가) */
 export type AiProvider = 'claude' | 'codex'
 /** 앱 내부 AI(비서·요약)가 쓸 공급자 — auto는 쓸 수 있는 쪽 (둘 다면 Claude) */
@@ -82,7 +85,7 @@ export interface StaffProgress {
   /** 현재 지시 뒤에 대기 중인 지시 수 */
   queued: number
   /** 대기 메시지: 일하는 중에 직원 패널에서 보낸 지시 (받은 순서, 입력칸 위에 표시) — 없으면 생략. id는 '지금 보내기'·'취소'에 쓴다 */
-  waiting?: { id: string; text: string }[]
+  waiting?: { id: string; text: string; /** 대화방에서 보낸 대기 메시지면 그 방 (없으면 직원 패널·전체 방) */ room?: string }[]
   /** 현재 지시가 동료의 도움 요청이면 부탁한 직원 이름 ("OO 님이 부탁한 일" 꼬리표) */
   requestedBy?: string
 }
@@ -1178,7 +1181,8 @@ export interface OfficeApi {
 
   chatHistory(): Promise<ChatMessage[]>
   /** room: 팀 대화방(팀 id)·랩 대화방('lab:<랩 id>') — 비우면 전체 방 */
-  sendChat(text: string, attachments?: Attachment[], room?: string): Promise<void>
+  /** mode: 앱 대화방에서 보낼 때 — wait = 일하는 직원에게는 대기 메시지로, now = 하던 일을 멈추고 바로 (없으면 예전처럼 바로) */
+  sendChat(text: string, attachments?: Attachment[], room?: string, mode?: ChatSendMode): Promise<void>
 
   timeline(sinceMs: number): Promise<LogEntry[]>
   /** 직원 한 명의 세션 활동 (마지막 활동·상태·대기 결재·최근 도구·오류·대기열) — 읽기 전용 */

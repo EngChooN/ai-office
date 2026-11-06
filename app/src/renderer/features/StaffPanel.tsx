@@ -630,7 +630,7 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
             </section>
             <JumpToBottom isNear={logScroll.isNear} unread={logScroll.unread} onClick={() => logScroll.scrollToBottom(true)} />
           </div>
-          {staff.progress?.waiting && <WaitingCards staffId={staff.id} waiting={staff.progress.waiting} />}
+          {staff.progress?.waiting && <WaitingCards items={staff.progress.waiting.map((w) => ({ ...w, staffId: staff.id }))} />}
         </>
       )}
 

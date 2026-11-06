@@ -62,3 +62,8 @@ test('도움 요청 문구 4개 언어', async () => {
   const B = (await import('../src/shared/i18n/dict/featuresB.ts')).default as Record<string, Record<string, string>>
   for (const k of ['progress.helpFrom', 'approval.requestedBy']) for (const l of ['ko', 'en', 'ja', 'zh']) assert.ok(B[k][l].includes('{name}'))
 })
+
+test('대기 메시지: 대화방에서 보낸 것은 그 방을 달고, 방이 없으면 필드를 뺀다', () => {
+  const p = buildStaffProgress({ status: 'working', origins: [o('a')], queued: 0, hasApproval: false, waiting: [{ id: 'w1', text: 'b', room: 'lab:x' }, { id: 'w2', text: 'c', room: undefined }] })
+  assert.deepEqual(p?.waiting, [{ id: 'w1', text: 'b', room: 'lab:x' }, { id: 'w2', text: 'c' }])
+})

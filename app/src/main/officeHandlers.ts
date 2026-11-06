@@ -176,7 +176,7 @@ export function createOfficeHandlers(office: Office, remoteApi: () => RemoteServ
     runScheduleNow: (id: string) => office.runScheduleNow(id),
     releasePlanHold: () => office.releasePlanHold(),
     chatHistory: () => office.chatHistory(),
-    sendChat: (text: string, attachments?: Parameters<Office['sendChat']>[1], room?: string) => office.sendChat(text, attachments ?? [], room ?? undefined),
+    sendChat: (text: string, attachments?: Parameters<Office['sendChat']>[1], room?: string, mode?: string) => office.sendChat(text, attachments ?? [], room ?? undefined, mode === 'wait' || mode === 'now' ? mode : undefined),
     timeline: (since: number) => office.timeline(since),
     staffActivity: (id: string) => office.staffActivity(id),
     dailyReport: (date: number) => office.dailyReport(date),

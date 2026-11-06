@@ -64,6 +64,7 @@ import {
   SECRETARY_ID,
   PLAN_WINDOW_LABEL,
   type ChatApproval,
+  type ChatSendMode,
   ChangeFile,
   WorkRevertInfo,
 } from '../shared/types'
@@ -663,7 +664,7 @@ export class Office extends EventEmitter<{
 
   private progressOf(s: db.StoredStaff) {
     if (!this.hired.has(s.id)) return null
-    return buildStaffProgress({ status: s.status, origins: this.origins.get(s.id) ?? [], queued: this.manager.backlog(s.id), hasApproval: s.approvals.length > 0, nameOf: (id) => this.hired.get(id)?.name, waiting: this.waitingMsgs.list(s.id) })
+    return buildStaffProgress({ status: s.status, origins: this.origins.get(s.id) ?? [], queued: this.manager.backlog(s.id), hasApproval: s.approvals.length > 0, nameOf: (id) => this.hired.get(id)?.name, waiting: this.waitingMsgs.list(s.id).map((w) => ({ id: w.id, text: w.shown ?? w.text, room: w.origin.room })) })
   }
 
   /** 부탁받은 일이 오류·중지로 끝나 결과 없이 사라지지 않게: 요청을 닫고(대상당 1건 제한 해제) 부탁한 직원에게 못 마쳤다고 보고한다 */
@@ -1193,11 +1194,11 @@ export class Office extends EventEmitter<{
   /** 대기 메시지: 일하는 중에 직원 패널에서 보낸 지시 — 하던 일이 끝나면 하나씩 보내고, 그때 기록에 넣는다 */
   private waitingMsgs = new WaitingMessages<Origin, Attachment>()
 
-  /** 직원 패널에서 보낸 지시: 일하는 중이면 대기 메시지로 들고 있다가 끝나면 보낸다 (결재를 기다리는 중·/명령은 지금처럼 바로) */
-  instructFromPanel(staffId: string, text: string, attachments: Attachment[] = [], origin: Origin = { kind: 'user' }) {
+  /** 직원 패널·대화방에서 보낸 지시: 일하는 중이면 대기 메시지로 들고 있다가 끝나면 보낸다 (결재를 기다리는 중·/명령은 지금처럼 바로). shown = 화면에 보일 글 */
+  instructFromPanel(staffId: string, text: string, attachments: Attachment[] = [], origin: Origin = { kind: 'user' }, shown?: string) {
     const s = this.hired.get(staffId)
     if (s && !s.isPractice && !this.peer?.isRemoteStaff(staffId) && shouldWait({ status: s.status, approvals: s.approvals.length, text, isSlash: Boolean(parseSlash(text)) })) {
-      this.waitingMsgs.add(staffId, { text, origin, attachments })
+      this.waitingMsgs.add(staffId, { text, origin, attachments, ...(shown ? { shown } : {}) })
       this.scheduleEmit()
       return
     }
@@ -1212,7 +1213,7 @@ export class Office extends EventEmitter<{
     if (action === 'cancel') return
     // 그사이 손이 비었으면 끊을 일이 없다 — 보통 지시로 보낸다
     if (this.hired.get(staffId)?.status !== 'working') return this.instruct(staffId, msg.text, msg.origin, msg.attachments, '', true)
-    await this.interrupt(staffId, msg.text, msg.attachments)
+    await this.interruptWith(staffId, msg.text, msg.attachments, msg.origin)
   }
 
   /** 하던 일이 끝났으면 대기 메시지를 하나 보낸다 (남은 것은 그 답이 끝난 뒤에). 보냈으면 true */
@@ -1220,6 +1221,13 @@ export class Office extends EventEmitter<{
     const next = this.waitingMsgs.shift(staffId)
     if (next) this.instruct(staffId, next.text, next.origin, next.attachments, '', true)
     return Boolean(next)
+  }
+
+  /** 끼어들기: 대화방에서 온 지시는 출처(방)를 남겨 결과가 그 방에 올라가게 한다. 직원 패널 지시는 지금처럼 출처 없이 */
+  private async interruptWith(staffId: string, text: string, attachments: Attachment[], origin: Origin) {
+    if (origin.kind !== 'chat' || this.peer?.isRemoteStaff(staffId)) return this.interrupt(staffId, text, attachments)
+    this.log(staffId, 'status', tk('log.interrupted'))
+    await this.interrupt(staffId, text, attachments, origin)
   }
 
   /**
@@ -4549,7 +4557,7 @@ export class Office extends EventEmitter<{
    * room이 팀 id면 그 팀 방, 'lab:<랩 id>'면 그 랩 방: 부를 수 있는 건 방 참여자와 @전체(= 팀·랩 전원),
    * 아무도 안 부르면 팀장·랩 리드가 받는다
    */
-  sendChat(text: string, attachments: Attachment[] = [], room?: string) {
+  sendChat(text: string, attachments: Attachment[] = [], room?: string, mode?: ChatSendMode) {
     const allTeams = [...this.teams.values()]
     const allLabs = [...this.labs.values()]
     const info = findRoom(room, allTeams, allLabs)
@@ -4576,13 +4584,20 @@ export class Office extends EventEmitter<{
     const head = info ? roomHead(info) : '[단체방]'
     const message = body.startsWith('/') ? body : `${head} ${body || '첨부 파일을 확인해 주세요.'}`
     const origin: Origin = { kind: 'chat', room }
+    // 앱 대화방(mode)은 직원 패널처럼: 일하는 중이면 대기 메시지로 들고 있거나(wait) 하던 일을 멈추고 바로 전한다(now).
+    // mode가 없으면(비서·바탕화면 비서·휴대폰) 예전처럼 바로 보낸다
+    const deliver = (id: string) => {
+      if (mode === 'now' && this.hired.get(id)?.status === 'working') return void this.interruptWith(id, message, attachments, origin)
+      if (mode) return this.instructFromPanel(id, message, attachments, origin, body.startsWith('/') ? undefined : body || undefined)
+      this.instruct(id, message, origin, attachments, '', true)
+    }
     if (matched.length === 0) {
       const leadIds = new Set([...teams, ...labs].map((g) => g.leadId))
       const candidates = hired.map((s) => ({ id: s.id, role: s.role, status: s.status, isOverBudget: false, isLead: leadIds.has(s.id) }))
       const id = info ? pickRoomResponder(body, info.leadId, candidates) : pickResponder(body, candidates)
       if (!id) return say('모든 직원이 이번 달 예산을 다 써서 전달하지 못했어요.')
       say(`${this.hired.get(id)?.name} 님이 받았어요.`)
-      return this.instruct(id, message, origin, attachments, '', true)
+      return deliver(id)
     }
     const empty = matched.filter((t) => t.memberIds.length === 0).map((t) => t.name)
     if (empty.length) say(`${empty.join(', ')}에는 고용 직원 구성원이 없어요.`)
@@ -4592,7 +4607,7 @@ export class Office extends EventEmitter<{
       const groups = matched.filter((t) => t.kind !== 'staff' && t.memberIds.length > 0).map((t) => t.name)
       say(`${groups.length ? `${groups.join(', ')} 포함 ` : ''}${recipientIds.length}명에게 전달했어요.`)
     }
-    for (const id of recipientIds) this.instruct(id, message, origin, attachments, '', true)
+    for (const id of recipientIds) deliver(id)
   }
 
   /** 직원이 지금 하는 일의 방 — 팀·랩 방에서 온 지시를 처리 중이면 그 방 (없으면 전체 방) */
