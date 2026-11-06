@@ -7,6 +7,9 @@
 ### 새 기능
 - 리더 끼어들기: 사무실 MCP `delegate`에 `interrupt?: 'continue' | 'replace'`. 대상이 일하는 중(working·waiting·netWait·보관)일 때만 적용, 쉬면 무시. continue는 `Office.interrupt(id, text, [], origin)` — 끊긴 턴은 hired의 `stopping='resume'`로 보고에서 빠지므로 delegate 출처를 받은 일 맨 뒤에 쌓아(같은 리더 출처가 있으면 하나만) 결과가 `[팀원 보고]`로 리더에게 감. replace는 `dropWork`(onStopped에서 뺀 정리: 카드·대기 카드 할 일로, 프로세스 멈춤, 피어·도움 요청 중단)·`resumeAfterTalk` 삭제 뒤 `[지시 변경]` 머리말을 붙여 같은 경로로 보냄. 결재 없음, `log.delegateInterrupt`·`log.delegateReplace`를 양쪽 기록에. 기존 위임 안전장치 그대로 + 피어 일을 하는 대상은 끼어들지 않음, 다른 PC 직원은 줄 세우고 안내. 시험 `scripts/delegateInterrupt.test.mts`(6건).
 
+### 개선
+- 짝짓기·휴대폰 연결 시간 제한 없앰: `PEER_LIMITS.pairWindowMs`·`PairingWindow`의 until·`live()`·now 주입 삭제(창은 성공·`close()`·앱 종료·3번 틀림에만 닫힘), `PairWindowView.until`은 늘 `null`, `PairingWindow.kind` 추가. 원격은 `QR_SHOW_MS`·`issueToken` 타이머 삭제 — `shownToken`은 휴대폰이 그 토큰으로 처음 붙을 때(`onAccess`에서 isTokenUsed 처음 기록)·재발급·앱 종료에만 지움, `openPairing('phone')`·`finishPairing`·`qr()`·`isQrReady`는 만료를 보지 않음. `RemoteQr.until` 삭제, `RemoteStatus.pairOpen` 추가 — PhoneCode는 이 값으로, PeerSection은 3초 조회로 창이 닫혔는지 보고 코드를 거둠. i18n `peer.host.untilUsed`·`remote.qr.untilUsed`·`peer.host.closed`(옛 until·left·expired·hideIn 삭제). 시험 peerE2E 3건 추가(5분·1시간 뒤에도 열림·성공 시 닫힘, 3번 틀림, 휴대폰 1시간 뒤 연결·붙으면 QR 거둠), peerPairing 5분 시험 교체. 안드로이드는 만료 가정 없음(410 `pair_closed`만 처리).
+
 ## [1.0.2] - 2026-11-05
 
 ### 새 기능

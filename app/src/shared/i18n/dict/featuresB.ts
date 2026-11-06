@@ -294,7 +294,7 @@ export default {
   'remote.qr.step3': { ko: '이 QR을 비춰요.', en: 'Point it at this QR code.', ja: 'このQRを読み取ります。', zh: '扫描此二维码。' },
   'remote.qr.lan': { ko: '같은 와이파이: {address}', en: 'Same Wi-Fi: {address}', ja: '同じWi-Fi：{address}', zh: '同一 Wi-Fi：{address}' },
   'remote.qr.outside': { ko: '밖에서: {address}', en: 'From outside: {address}', ja: '外出先から：{address}', zh: '外部：{address}' },
-  'remote.qr.hideIn': { ko: '{time} 뒤에 QR이 가려져요', en: 'QR code hides in {time}', ja: '{time}後にQRが非表示になります', zh: '二维码将在 {time} 后隐藏' },
+  'remote.qr.untilUsed': { ko: '휴대폰이 연결되거나 QR을 다시 만들 때까지 열려 있어요', en: 'Stays open until a phone connects or you create a new QR code', ja: 'スマホが接続するかQRを作り直すまで表示されます', zh: '在手机连接或重新生成二维码之前一直有效' },
   'remote.qr.connected': { ko: '연결됐어요', en: 'Connected', ja: '接続しました', zh: '已连接' },
   'remote.qr.tokenUsed': {
     ko: '이미 연결된 휴대폰이 있어서 QR을 가려 뒀어요. 연결 열쇠는 다시 꺼내 볼 수 없어서, 새 휴대폰을 연결하려면 QR을 다시 만들어야 해요. 다시 만들면 연결된 휴대폰이 모두 끊겨요.',
@@ -303,10 +303,10 @@ export default {
     zh: '已有手机连接，二维码已隐藏。连接密钥无法再次查看，若要连接新手机需重新生成二维码。重新生成后所有已连接的手机都会断开。',
   },
   'remote.qr.hidden': {
-    ko: 'QR이 가려졌어요. 원격을 껐다 켜거나 QR을 다시 만들면 새 QR이 나와요.',
-    en: 'The QR code is hidden. Turn remote off and on again, or create a new QR code to get a new one.',
-    ja: 'QRが非表示になりました。リモートをオフ・オンするか、QRを作り直すと新しいQRが表示されます。',
-    zh: '二维码已隐藏。关闭再开启远程连接或重新生成二维码，即可获得新的二维码。',
+    ko: 'QR을 보여 줄 수 없어요. 원격을 껐다 켜거나 QR을 다시 만들면 새 QR이 나와요.',
+    en: "The QR code can't be shown. Turn remote off and on again, or create a new QR code to get a new one.",
+    ja: 'QRを表示できません。リモートをオフ・オンするか、QRを作り直すと新しいQRが表示されます。',
+    zh: '无法显示二维码。关闭再开启远程连接或重新生成二维码，即可获得新的二维码。',
   },
   'remote.qr.noHost': {
     ko: '휴대폰이 붙을 주소를 찾지 못했어요. 이전 단계에서 주소를 넣어 주세요.',

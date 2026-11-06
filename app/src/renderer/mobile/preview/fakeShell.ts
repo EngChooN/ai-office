@@ -276,6 +276,7 @@ const remoteStatus = {
   isKeyRegenerated: false,
   isFullAccess: true,
   isQrReady: false,
+  pairOpen: null,
 }
 
 const slip = {

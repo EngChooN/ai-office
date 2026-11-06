@@ -21,10 +21,6 @@ const COPIED_MS = 1500
 export const OPEN_REMOTE_GUIDE_EVENT = 'office:open-remote-guide'
 const errText = (e: unknown) => ipcErrorText(e, t('peer.error.failed'))
 const timeText = (ms: number) => fmtDate(ms, { hour: '2-digit', minute: '2-digit' })
-const mmss = (ms: number) => {
-  const s = Math.ceil(ms / 1000)
-  return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
-}
 
 type Role = 'host' | 'client'
 
@@ -177,13 +173,12 @@ function RolePicker({ isDisabled, hint, onPick }: { isDisabled: boolean; hint: s
   )
 }
 
-/** 보내는 PC: 들어오면 바로 연결 정보를 만들고, 코드·남은 시간·복사 버튼을 보여 준다. 연결이 생기면 알린다 */
+/** 보내는 PC: 들어오면 바로 연결 정보를 만들고, 코드·복사 버튼을 보여 준다(시간 제한 없음). 연결이 생기면 알린다 */
 function HostPart({ onSlotsChanged }: { onSlotsChanged: () => void }) {
   const [win, setWin] = useState<PairWindowView | null>(null)
-  const [isExpired, setIsExpired] = useState(false)
+  const [isClosed, setIsClosed] = useState(false)
   const [error, setError] = useState('')
   const [isCopied, setIsCopied] = useState(false)
-  const [now, setNow] = useState(Date.now())
   const [newName, setNewName] = useState('')
   // 코드를 만들기 직전에 받아 둔 연결 목록 — 이것과 비교해야 기존 연결을 새 연결로 착각하지 않는다
   const knownIds = useRef<Set<string>>(new Set())
@@ -195,7 +190,7 @@ function HostPart({ onSlotsChanged }: { onSlotsChanged: () => void }) {
     const seq = ++openSeq.current
     const isStale = () => seq !== openSeq.current
     setError('')
-    setIsExpired(false)
+    setIsClosed(false)
     setNewName('')
     try {
       const base = await window.office.peerSlots()
@@ -208,7 +203,6 @@ function HostPart({ onSlotsChanged }: { onSlotsChanged: () => void }) {
         return
       }
       setWin(opened)
-      setNow(Date.now())
     } catch (e) {
       if (!isStale()) setError(errText(e))
     }
@@ -223,32 +217,28 @@ function HostPart({ onSlotsChanged }: { onSlotsChanged: () => void }) {
       void window.office.peerPairClose()
     }
   }, [open])
-  // 창이 열린 동안 1초마다 남은 시간, 3초마다 새 연결을 본다.
-  // 창을 열 때 있던 PC 말고 새 PC가 붙으면 "연결됐어요" — 코드는 한 번 쓰면 끝이므로 코드 표시도 거둔다
+  // 창이 열린 동안 3초마다 새 연결과 창 상태를 본다 (시간 제한은 없다).
+  // 창을 열 때 있던 PC 말고 새 PC가 붙으면 "연결됐어요" — 코드는 한 번 쓰면 끝이므로 코드 표시도 거둔다.
+  // 새 연결 없이 창이 닫혔으면(코드 3번 틀림) 닫혔다고 알린다
   useEffect(() => {
     if (!win) return
     let isActive = true
-    const tick = setInterval(() => {
-      const n = Date.now()
-      setNow(n)
-      if (n >= win.until) {
-        setWin(null)
-        setIsExpired(true)
-      }
-    }, 1000)
     const poll = setInterval(() => {
-      void window.office.peerSlots().then((list) => {
+      void Promise.all([window.office.peerSlots(), window.office.remoteStatus()]).then(([list, status]) => {
         if (!isActive) return
         onSlotsChanged()
         const added = list.find((x) => !knownIds.current.has(x.id))
-        if (!added) return
-        setNewName(added.label)
-        setWin(null)
+        if (added) {
+          setNewName(added.label)
+          setWin(null)
+        } else if (status.pairOpen !== 'peer') {
+          setWin(null)
+          setIsClosed(true)
+        }
       })
     }, 3000)
     return () => {
       isActive = false
-      clearInterval(tick)
       clearInterval(poll)
     }
   }, [win, onSlotsChanged])
@@ -272,7 +262,7 @@ function HostPart({ onSlotsChanged }: { onSlotsChanged: () => void }) {
           <div className="flex min-w-0 flex-col gap-1.5">
             <span className="text-muted-foreground">{t('peer.host.code')}</span>
             <span className="selectable font-mono text-xl font-semibold tracking-wider">{formatPairCode(win.code)}</span>
-            <span className="text-muted-foreground tabular-nums">{t('peer.host.left', { time: mmss(win.until - now) })}</span>
+            <span className="text-muted-foreground">{t('peer.host.untilUsed')}</span>
             <span className="text-muted-foreground">
               {t('peer.host.address')} · <span className="selectable font-mono">{win.host}:{win.port}</span>
             </span>
@@ -289,9 +279,9 @@ function HostPart({ onSlotsChanged }: { onSlotsChanged: () => void }) {
           </div>
         </div>
       )}
-      {!win && (isExpired || error || newName) && (
+      {!win && (isClosed || error || newName) && (
         <div className="flex items-center gap-2">
-          {isExpired && <p className="text-muted-foreground">{t('peer.host.expired')}</p>}
+          {isClosed && <p className="text-muted-foreground">{t('peer.host.closed')}</p>}
           <Button size="sm" variant="outline" onClick={() => void open()}>
             {newName ? t('peer.host.another') : error ? t('peer.host.retry') : t('peer.host.renew')}
           </Button>

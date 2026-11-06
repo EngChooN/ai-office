@@ -62,7 +62,7 @@ function rawReq(port: number, path: string, token: string, method = 'GET', body?
 }
 
 /** B컴: 실제 RemoteService + PeerHost. 직원은 가짜 */
-function makeB(port: number) {
+function makeB(port: number, now?: () => number) {
   const phoneToken = newToken()
   let config: RemoteConfig = { ...DEFAULT_REMOTE_CONFIG, port, host: '127.0.0.1', mode: 'router', tokenHash: null, isTokenUsed: true, isLanNoticeSeen: true, isTsNoticeSeen: true }
   let keys = createSelfSignedCert()
@@ -106,6 +106,7 @@ function makeB(port: number) {
     changed: () => {},
     upnp: null,
     listenHost: '127.0.0.1',
+    now,
     v2: {
       call: (m) => (calls.push(m), m === 'snapshot' ? { company: { level: 1 }, tasks: [], staff: [{ id: 'kim', name: '김배포', role: '배포', avatar: 3, provider: 'claude', model: 'default', status: 'working', activity: '배포 중', cwd: '/secret', systemPrompt: '비밀' }] } : m === 'remoteStatus' ? svc.status() : undefined),
       attachment: () => null,
@@ -404,6 +405,72 @@ test('휴대폰 IP 입력: 같은 짝짓기 길(/v2/pair/*)로 휴대폰 토큰�
     assert.equal((await rawReq(port, '/v1/status', r.token)).status, 200)
     // 휴대폰 토큰으로는 피어 경로를 못 쓴다
     assert.equal((await rawReq(port, '/v2/peer/staff', r.token)).body.error, 'scope_denied')
+  } finally {
+    await B.svc.disable()
+  }
+})
+
+const HOUR = 60 * 60_000
+
+test('짝짓기 창은 시간 제한이 없다: 5분·1시간이 지나도 열려 있고, 연결에 성공하면 닫힌다', { timeout: 20_000 }, async () => {
+  const port = await freePort()
+  let clock = Date.now()
+  const B = makeB(port, () => clock)
+  try {
+    await B.svc.enable(port)
+    const win = (await B.svc.openPairing('peer'))!
+    assert.equal(win.until, null)
+    clock += 5 * 60_000 + 1
+    assert.equal(B.svc.pairingView()?.code, win.code)
+    clock += HOUR
+    assert.deepEqual([B.svc.pairingView()?.code, B.svc.status().pairOpen], [win.code, 'peer'])
+    const r = await pairWithHost(createPairTransport('127.0.0.1', port), { code: win.code, clientName: 'A컴', kind: 'peer' })
+    assert.ok(r.slotId)
+    assert.deepEqual([B.svc.pairingView(), B.svc.status().pairOpen], [null, null])
+  } finally {
+    await B.svc.disable()
+  }
+})
+
+test('짝짓기 창은 코드를 3번 틀리면 닫힌다 (시간이 지나도 보호는 그대로)', { timeout: 20_000 }, async () => {
+  const port = await freePort()
+  let clock = Date.now()
+  const B = makeB(port, () => clock)
+  try {
+    await B.svc.enable(port)
+    const win = (await B.svc.openPairing('peer'))!
+    clock += HOUR
+    const wrong = win.code === '0000-0000-0000' ? '1111-1111-1111' : '0000-0000-0000'
+    for (const left of [2, 1, 0]) await assert.rejects(pairWithHost(createPairTransport('127.0.0.1', port), { code: wrong, clientName: 'A', kind: 'peer' }), (e: PairFailure) => e.code === 'wrong_code' && e.remaining === left)
+    assert.deepEqual([B.svc.pairingView(), B.svc.status().pairOpen], [null, null])
+    await assert.rejects(pairWithHost(createPairTransport('127.0.0.1', port), { code: win.code, clientName: 'A', kind: 'peer' }), (e: PairFailure) => e.code === 'closed')
+  } finally {
+    await B.svc.disable()
+  }
+})
+
+test('휴대폰 연결도 시간 제한이 없다: 1시간 뒤에도 같은 QR 토큰으로 코드 연결이 되고, 붙으면 QR을 거둔다', { timeout: 20_000 }, async () => {
+  const port = await freePort()
+  let clock = Date.now()
+  const B = makeB(port, () => clock)
+  try {
+    await B.svc.enable(port)
+    const win = (await B.svc.openPairing('phone'))!
+    const tokenHash = B.config().tokenHash
+    assert.equal(B.svc.status().isQrReady, true)
+    clock += 5 * 60_000 + 1
+    assert.ok(B.svc.qr(), '5분 뒤에도 QR이 보인다')
+    clock += HOUR
+    // 창을 다시 열어도 QR 토큰을 새로 만들지 않는다 (예전에는 5분이 지나면 새 토큰 → 붙어 있던 휴대폰이 끊겼다)
+    const again = (await B.svc.openPairing('phone'))!
+    assert.notEqual(again.code, win.code)
+    assert.equal(B.config().tokenHash, tokenHash)
+    assert.deepEqual([B.svc.status().isQrReady, B.svc.status().pairOpen], [true, 'phone'])
+    const r = await pairWithHost(createPairTransport('127.0.0.1', port), { code: again.code, clientName: '내 폰', kind: 'phone' })
+    assert.equal(B.svc.status().pairOpen, null)
+    assert.equal((await rawReq(port, '/v1/status', r.token)).status, 200)
+    // 이 토큰으로 휴대폰이 붙었으니 QR(토큰 원문)은 거둔다
+    assert.deepEqual([B.svc.status().isQrReady, B.svc.status().isTokenUsed, B.svc.qr()], [false, true, null])
   } finally {
     await B.svc.disable()
   }

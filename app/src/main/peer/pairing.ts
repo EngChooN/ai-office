@@ -1,4 +1,4 @@
-// PC 짝짓기 (설계서 1-4절 v2 규격): B컴이 5분짜리 짝짓기 창을 열고, A컴(또는 휴대폰)이 12자 코드로 인증서를 묶어 토큰을 받는다
+// PC 짝짓기 (설계서 1-4절 v2 규격): B컴이 짝짓기 창을 열고(시간 제한 없음 — 성공·닫기·앱 종료·3번 틀림에만 닫힌다), A컴(또는 휴대폰)이 12자 코드로 인증서를 묶어 토큰을 받는다
 // 코드는 PBKDF2 키(K)의 재료로만 쓰고 네트워크에 보내지 않는다 — 양쪽이 clientProof·serverProof로 서로를 증명한다
 // 서버 쪽(PairingWindow)과 클라이언트 쪽(pairWithHost)이 같은 키·증명 함수를 쓴다. 네트워크는 밖에서 넣어 준다 (테스트가 가짜를 넣는다)
 
@@ -57,13 +57,11 @@ export interface PairingInfo {
 }
 
 export class PairingWindow implements PairingHost {
-  private win: { kind: PairKind; code: string; until: number; tries: number; info: PairingInfo } | null = null
+  private win: { kind: PairKind; code: string; tries: number; info: PairingInfo } | null = null
   private hellos = new Map<string, string>()
-  private now: () => number
   private onChange: () => void
 
-  constructor(opts: { now?: () => number; onChange?: () => void } = {}) {
-    this.now = opts.now ?? Date.now
+  constructor(opts: { onChange?: () => void } = {}) {
     this.onChange = opts.onChange ?? (() => {})
   }
 
@@ -71,7 +69,7 @@ export class PairingWindow implements PairingHost {
   open(kind: PairKind, info: PairingInfo, code?: string): PairWindowView {
     const c = (code && normalizePairCode(code)) || Array.from({ length: PEER_LIMITS.pairCodeLength }, () => PAIR_CODE_ALPHABET[crypto.randomInt(0, PAIR_CODE_ALPHABET.length)]).join('')
     this.hellos.clear()
-    this.win = { kind, code: c, until: this.now() + PEER_LIMITS.pairWindowMs, tries: 0, info }
+    this.win = { kind, code: c, tries: 0, info }
     this.onChange()
     return this.view()!
   }
@@ -83,24 +81,24 @@ export class PairingWindow implements PairingHost {
     if (was) this.onChange()
   }
 
-  private live() {
-    if (this.win && this.win.until <= this.now()) this.close()
-    return this.win
+  get isOpen() {
+    return this.win !== null
   }
 
-  get isOpen() {
-    return this.live() !== null
+  /** 지금 열린 창의 종류 (닫혀 있으면 null) */
+  get kind(): PairKind | null {
+    return this.win?.kind ?? null
   }
 
   view(): PairWindowView | null {
-    const w = this.live()
+    const w = this.win
     if (!w) return null
     const code = formatPairCode(w.code)
-    return { kind: w.kind, code, host: w.info.host, port: w.info.port, fingerprint: fingerprintShort(w.info.spki), until: w.until, copyText: `${w.info.host}:${w.info.port} ${code}` }
+    return { kind: w.kind, code, host: w.info.host, port: w.info.port, fingerprint: fingerprintShort(w.info.spki), until: null, copyText: `${w.info.host}:${w.info.port} ${code}` }
   }
 
   hello(nonceA: unknown) {
-    const w = this.live()
+    const w = this.win
     if (!w) return 'pair_closed' as const
     if (typeof nonceA !== 'string' || !NONCE_RE.test(nonceA)) return 'invalid' as const
     const nonceB = crypto.randomBytes(16).toString('base64url')
@@ -111,7 +109,7 @@ export class PairingWindow implements PairingHost {
   }
 
   async confirm(body: { nonceA?: unknown; nonceB?: unknown; clientProof?: unknown; peerLabel?: unknown }): Promise<PairConfirmResult> {
-    const w = this.live()
+    const w = this.win
     if (!w) return { ok: false, code: 'pair_closed' }
     // 시도는 계산 전에 센다 — 동시에 여러 개를 보내도 3번을 넘겨 시험할 수 없다
     w.tries++

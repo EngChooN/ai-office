@@ -13,18 +13,18 @@ import { OPEN_REMOTE_GUIDE_EVENT } from './PeerSection'
 import type { AccessEntry, RemoteMode, RemoteQr, RemoteStatus } from '@shared/types'
 
 // 설정 › 휴대폰 연결: 켜기·끄기, 연결 방식(Tailscale·같은 네트워크 전용·고급 공유기 포트), Tailscale 단계 안내, 첫 연결 가이드(켜기 → 포트 → 공유기 → 주소 → QR), QR 다시 만들기, 지문, 최근 접속 기록
-// 화면에는 토큰 원문·해시가 오지 않는다. QR 그림만 잠깐 받아 보여 주고 5분 뒤 가린다
+// 화면에는 토큰 원문·해시가 오지 않는다. QR 그림만 받아 보여 주고, 휴대폰이 붙으면(또는 QR을 다시 만들면) 거둔다 — 시간 제한은 없다
 
 const STEP_KEYS = ['remote.step.on', 'remote.step.port', 'remote.step.router', 'remote.step.address', 'remote.step.qr'] as const
 const RECENT_SHOWN = 5
 const TAILSCALE_DOWNLOAD_URL = 'https://tailscale.com/download'
 const TS_POLL_MS = 3000
+const timeText = (ms: number) => fmtDate(ms, { hour: '2-digit', minute: '2-digit' })
 const MODES: { mode: RemoteMode; label: string; desc?: string }[] = [
   { mode: 'tailscale', label: 'remote.mode.tailscale', desc: 'remote.mode.tailscale.desc' },
   { mode: 'lan', label: 'remote.mode.lan', desc: 'remote.lanMode.on' },
   { mode: 'router', label: 'remote.mode.router', desc: 'remote.mode.router.desc' },
 ]
-const timeText = (ms: number) => fmtDate(ms, { hour: '2-digit', minute: '2-digit' })
 
 function useRemoteStatus() {
   const [status, setStatus] = useState<RemoteStatus | null>(null)
@@ -160,7 +160,7 @@ export function RemoteSection() {
           {status.isEnabled ? t('remote.reopenGuide') : t('remote.start')}
         </Button>
       </div>
-      {status.isEnabled && !IS_MOBILE_SHELL && <PhoneCode />}
+      {status.isEnabled && !IS_MOBILE_SHELL && <PhoneCode pairOpen={status.pairOpen} />}
       {status.fingerprint && (
         <p className="text-muted-foreground text-[11px]">
           {t('remote.fingerprint')} <span className="selectable font-mono break-all">{status.fingerprint}</span>
@@ -172,15 +172,14 @@ export function RemoteSection() {
   )
 }
 
-/** 휴대폰용 연결 코드(12자) — QR을 못 찍는 안드로이드가 주소+코드를 직접 입력할 때. 5분 뒤 화면에서 지운다 */
-function PhoneCode() {
+/** 휴대폰용 연결 코드(12자) — QR을 못 찍는 안드로이드가 주소+코드를 직접 입력할 때.
+ *  시간 제한 없이 연결되거나(코드 1회용) 코드를 3번 틀리거나 다른 창을 열어 휴대폰용 창이 닫히면 화면에서 지운다 */
+function PhoneCode({ pairOpen }: { pairOpen: RemoteStatus['pairOpen'] }) {
   const [win, setWin] = useState<PairWindowView | null>(null)
   const [error, setError] = useState('')
   useEffect(() => {
-    if (!win) return
-    const timer = setTimeout(() => setWin(null), Math.max(0, win.until - Date.now()))
-    return () => clearTimeout(timer)
-  }, [win])
+    if (win && pairOpen !== 'phone') setWin(null)
+  }, [win, pairOpen])
   const show = async () => {
     setError('')
     try {
@@ -198,7 +197,7 @@ function PhoneCode() {
           <span className="text-muted-foreground selectable ml-2 font-mono">
             {win.host}:{win.port}
           </span>
-          <span className="text-muted-foreground ml-2">{t('peer.host.until', { time: timeText(win.until) })}</span>
+          <span className="text-muted-foreground ml-2">{t('peer.host.untilUsed')}</span>
         </p>
       ) : (
         <Button size="sm" variant="outline" className="w-fit" onClick={() => void show()}>
@@ -473,36 +472,16 @@ function RemoteGuide({
   )
 }
 
-/** QR이 숨기까지 남은 시간 — 1초마다 이 줄만 다시 그린다 */
-function QrHideIn({ until }: { until: number }) {
-  const [now, setNow] = useState(() => Date.now())
-  useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 1000)
-    return () => clearInterval(timer)
-  }, [])
-  const left = Math.max(0, until - now)
-  return <span className="text-status-waiting">{t('remote.qr.hideIn', { time: `${Math.floor(left / 60_000)}:${String(Math.floor((left % 60_000) / 1000)).padStart(2, '0')}` })}</span>
-}
-
 /** QR 단계: 휴대폰이 처음 상태 조회에 성공하면 "연결됐어요" */
 function QrStep({ status, setStatus, onClose }: { status: RemoteStatus; setStatus: (s: RemoteStatus) => void; onClose: () => void }) {
   const [qr, setQr] = useState<RemoteQr | null>(null)
-  const [isExpired, setExpired] = useState(false)
   const [shownAt] = useState(() => Date.now())
+  // 휴대폰이 붙으면 isQrReady가 false로 바뀌어 QR을 거둔다 (시간 제한은 없다)
   useEffect(() => {
     void window.office.remoteQr().then(setQr)
   }, [status.isQrReady, status.connectHost, status.port])
-  // 숨길 시각에 한 번만 다시 그린다 (남은 시간 글자는 QrHideIn이 혼자 1초마다 고친다)
-  useEffect(() => {
-    if (!qr) return
-    const left = qr.until - Date.now()
-    setExpired(left <= 0)
-    if (left <= 0) return
-    const timer = setTimeout(() => setExpired(true), left)
-    return () => clearTimeout(timer)
-  }, [qr])
   const isConnected = status.recentAccess.some((e) => e.at >= shownAt && e.path === '/v1/status' && e.status === 200)
-  const isVisible = Boolean(qr && !isExpired)
+  const isVisible = Boolean(qr && status.isQrReady)
 
   const handleRegenerate = async () => {
     if (!window.confirm(t('remote.regenerateConfirm'))) return
@@ -534,14 +513,13 @@ function QrStep({ status, setStatus, onClose }: { status: RemoteStatus; setStatu
                 {qr.host}:{qr.port}
               </span>
             )}
-            <QrHideIn until={qr.until} />
-            {isConnected && (
-              <span className="text-status-working flex items-center gap-1">
-                <CheckCircle2Icon className="size-3.5" /> {t('remote.qr.connected')}
-              </span>
-            )}
+            <span className="text-muted-foreground">{t('remote.qr.untilUsed')}</span>
           </div>
         </div>
+      ) : isConnected ? (
+        <span className="text-status-working flex items-center gap-1">
+          <CheckCircle2Icon className="size-3.5" /> {t('remote.qr.connected')}
+        </span>
       ) : (
         <Banner tone="warning">
           {status.isTokenUsed

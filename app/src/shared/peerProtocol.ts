@@ -18,7 +18,6 @@ export const PEER_PATHS = {
 
 /** 숫자 한도는 모두 초기값 (설계서 O-12) */
 export const PEER_LIMITS = {
-  pairWindowMs: 5 * 60_000,
   pairCodeLength: 12,
   pairMaxWrong: 3,
   maxSlots: 8,
@@ -135,10 +134,11 @@ export interface PairWindowView {
   port: number
   /** 인증서 지문 앞 8자리 (눈으로 확인용) */
   fingerprint: string
-  until: number
+  /** 짝짓기 창은 시간 제한이 없다 — 연결 성공·닫기·앱 종료·코드 3번 틀림에만 닫힌다 (예전 앱과 모양을 맞추려 남긴 칸, 늘 null) */
+  until: null
   /** 다른 PC 짝짓기용 QR 그림(SVG data URL) — 토큰은 없고 1회용 코드만 든다 (휴대폰용은 기존 QR을 쓴다) */
   qr?: string
-  /** "연결 정보 복사"로 클립보드에 넣을 한 줄 (주소:포트 코드) — 코드와 같은 5분 수명 */
+  /** "연결 정보 복사"로 클립보드에 넣을 한 줄 (주소:포트 코드) — 코드와 같은 수명 (창이 닫히면 못 쓴다) */
   copyText: string
 }
 

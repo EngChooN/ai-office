@@ -12,6 +12,9 @@ Writing rules
 ### New features
 - Team leaders and lab leads can now step in while a teammate is working and give a new instruction. They can pause the current work, deliver the new instruction first and then carry on, or have the teammate drop the current work (their task cards go back to To do) and do only the new instruction. Who stopped whose work is recorded for both people, and the result is reported back to the leader as before. Teammates on another PC are not interrupted; the instruction is delivered after their current work.
 
+### Improvements
+- The 5-minute time limit on connecting another PC or a phone is gone. The connection code and QR code stay open until a device connects, you close them, you quit the app, or the code is entered wrong 3 times. You can now take your time connecting PCs that are far apart, like a work PC and a home PC.
+
 ## [1.0.2] - 2026-11-05
 
 ### New features

@@ -677,7 +677,7 @@ test('QA: 지금 하는 일에는 도구 이름만 (명령 전문·경로는 보
 
 test('QA: 원격을 다시 켜면 QR이 준비된다 — 붙은 휴대폰이 없으면 새 토큰, 있으면 토큰을 지킨다', async () => {
   const port = await freePort()
-  // 같은 실행 안에서 껐다 켜면(QR 5분 안) 보이던 QR을 그대로 쓴다
+  // 같은 실행 안에서 껐다 켜면(아직 아무 휴대폰도 안 붙었으면) 보이던 QR을 그대로 쓴다
   const same = makeService(port)
   try {
     await same.svc.enable(port)

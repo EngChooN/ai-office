@@ -23,8 +23,6 @@ import * as upnp from './upnp.ts'
 /** 기본 포트 (규격 8절 예시값 · 기획서 D4 확정 전 임시) */
 export const DEFAULT_REMOTE_PORT = 47900
 const ACCESS_KEEP = 20
-/** QR(토큰 원문)을 화면에 보여 주는 시간 — 지나면 메모리에서도 지운다 */
-export const QR_SHOW_MS = 5 * 60_000
 const LEASE_RENEW_MS = 30 * 60_000
 /** 전용 모드에서 네트워크 카드 주소가 바뀌었는지 보는 간격 */
 export const NETWORK_WATCH_MS = 5000
@@ -102,8 +100,8 @@ export class RemoteService {
   private renewTimer: ReturnType<typeof setInterval> | null = null
   private access: AccessEntry[] = []
   private error: RemoteStatus['error'] = null
-  /** QR을 보여 주는 동안만 들고 있는 토큰 원문 */
-  private shownToken: { token: string; until: number } | null = null
+  /** QR을 보여 주는 동안만 들고 있는 토큰 원문 — 시간 제한 없이, 휴대폰이 이 토큰으로 처음 붙거나 QR을 다시 만들거나 앱을 끌 때까지 */
+  private shownToken: { token: string } | null = null
   private isReady = true
   /** 저장된 키를 못 읽어 새로 만들었는지 (PC 화면에 "새 QR로 다시 연결" 안내) */
   private isKeyRegenerated = false
@@ -171,14 +169,14 @@ export class RemoteService {
 
   // ── 다른 PC 연결 (B컴 쪽, 설계서 1절) ──
 
-  private pairing = new PairingWindow({ now: () => this.now(), onChange: () => this.deps.changed() })
+  private pairing = new PairingWindow({ onChange: () => this.deps.changed() })
 
-  /** 짝짓기 창 열기 (5분). 서버가 떠 있고 이 PC의 주소를 알아야 한다. 휴대폰용은 QR과 같은 토큰을 쓰므로 QR이 없으면 새로 만든다 */
+  /** 짝짓기 창 열기 (시간 제한 없음 — 연결 성공·닫기·앱 종료·코드 3번 틀림에만 닫힌다). 서버가 떠 있고 이 PC의 주소를 알아야 한다. 휴대폰용은 QR과 같은 토큰을 쓰므로 QR이 없으면 새로 만든다 */
   async openPairing(kind: PairKind): Promise<PairWindowView | null> {
     if (!this.server.isListening || !this.keys) return null
     const host = this.connectHost()?.host
     if (!host) return null
-    if (kind === 'phone' && !(this.shownToken && this.shownToken.until > this.now())) await this.regenerate()
+    if (kind === 'phone' && !this.shownToken) await this.regenerate()
     // 새 인증서·포트로 다시 열렸을 수 있으니 열기 전에 서버 상태를 다시 확인한다
     if (!this.server.isListening || !this.keys) return null
     const spki = spkiFingerprint(this.keys.certPem)
@@ -199,7 +197,7 @@ export class RemoteService {
   private finishPairing(r: { kind: PairKind; label: string }): { token: string; slotId?: string } | null {
     if (r.kind === 'phone') {
       const shown = this.shownToken
-      return shown && shown.until > this.now() ? { token: shown.token } : null
+      return shown ? { token: shown.token } : null
     }
     const made = this.guard.addPeerSlot(r.label, this.now())
     if (!made) return null
@@ -288,7 +286,8 @@ export class RemoteService {
       error: this.error,
       lockedUntil: this.guard.latestLock(this.now()),
       recentAccess: this.access,
-      isQrReady: Boolean(this.shownToken && this.shownToken.until > this.now()),
+      isQrReady: Boolean(this.shownToken),
+      pairOpen: this.pairing.kind,
       isTokenUsed: this.config.isTokenUsed || this.guard.isTokenUsed,
       isFullAccess: true,
       isKeyRegenerated: this.isKeyRegenerated,
@@ -342,8 +341,7 @@ export class RemoteService {
     this.config = { ...this.config, port, isEnabled: true }
     // 처음이거나, 지금 토큰으로 붙은 휴대폰이 없으면 새 토큰을 내서 QR을 바로 보여 준다 (끊을 휴대폰이 없으니 안전).
     // 이미 붙은 휴대폰이 있으면 토큰을 그대로 둬서 그 휴대폰이 계속 붙게 한다 (원문이 없어 QR은 다시 만들어야 보인다)
-    const isQrShowing = Boolean(this.shownToken && this.shownToken.until > this.now())
-    if (!this.config.tokenHash || (!this.config.isTokenUsed && !this.guard.isTokenUsed && !isQrShowing)) this.issueToken()
+    if (!this.config.tokenHash || (!this.config.isTokenUsed && !this.guard.isTokenUsed && !this.shownToken)) this.issueToken()
     this.save()
     await this.open()
     return this.status()
@@ -435,18 +433,18 @@ export class RemoteService {
     return this.status()
   }
 
-  /** 보여 줄 QR (토큰 원문이 메모리에 있을 때만 — 지나면 다시 만들어야 한다) */
+  /** 보여 줄 QR (토큰 원문이 메모리에 있을 때만 — 휴대폰이 붙은 뒤에는 다시 만들어야 한다) */
   qr(): RemoteQr | null {
     const shown = this.shownToken
     const host = this.connectHost()?.host
-    if (!shown || shown.until <= this.now() || !this.keys || !host) return null
+    if (!shown || !this.keys || !host) return null
     // 같은 와이파이의 휴대폰은 lan으로 먼저 붙는다 (공유기가 외부 주소로 되돌아 들어오기를 못 하는 집이 많다)
     const lan = lanForQr(host, this.lanHost())
     const isTs = this.isTailscale
     // pv = 이 PC가 아는 가장 높은 프로토콜 (v2 규격 2-1절). v는 1.0.x 앱이 거부하지 않게 계속 1
     const payload = { v: 1, host, port: this.config.port, token: shown.token, spki: spkiFingerprint(this.keys.certPem), ...(lan ? { lan } : {}), ...(this.v2 ? { pv: 2 } : {}), ...(this.config.lanOnly ? { lo: true } : {}), ...(isTs ? { ts: true } : {}) }
     if (!isValidQrPayload(payload)) return null
-    return { image: qrImage(payload), host, lan: lan ?? null, port: payload.port, until: shown.until }
+    return { image: qrImage(payload), host, lan: lan ?? null, port: payload.port }
   }
 
   /** 앱이 끝나는 중이면 503으로 답하고 포트를 닫는다 (공유기 매핑도 지운다) */
@@ -461,11 +459,7 @@ export class RemoteService {
     this.ensureKeys()
     const { token } = this.guard.rotate()
     this.config = { ...this.config, isTokenUsed: false }
-    this.shownToken = { token, until: this.now() + QR_SHOW_MS }
-    setTimeout(() => {
-      if (this.shownToken?.token === token) this.shownToken = null
-      this.deps.changed()
-    }, QR_SHOW_MS).unref?.()
+    this.shownToken = { token }
   }
 
   private ensureKeys() {
@@ -574,8 +568,12 @@ export class RemoteService {
         stream: (req, res, ctx) => this.v2?.stream(req, res, ctx) ?? false,
         onAccess: (entry) => {
           this.access = [entry, ...this.access].slice(0, ACCESS_KEEP)
-          // 이 토큰으로 휴대폰이 처음 붙었으면 기억한다 (다음에 켤 때 토큰을 바꾸지 않게)
-          if (this.guard.isTokenUsed && !this.config.isTokenUsed) this.save()
+          // 이 토큰으로 휴대폰이 처음 붙었으면 기억한다 (다음에 켤 때 토큰을 바꾸지 않게).
+          // 붙었으니 QR(토큰 원문)도 거둔다 — 시간 제한이 없으므로 여기가 QR이 닫히는 곳이다
+          if (this.guard.isTokenUsed && !this.config.isTokenUsed) {
+            this.shownToken = null
+            this.save()
+          }
           this.deps.changed()
         },
       })

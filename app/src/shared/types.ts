@@ -921,8 +921,10 @@ export interface RemoteStatus {
   isKeyRegenerated: boolean
   /** 항상 true — 전체 기능 스위치는 없앴다(원격이 켜져 있으면 v2를 바로 쓴다). 모바일 미리보기 셸이 이 모양으로 상태를 만들고, 이미 나간 화면 묶음이 읽어도 깨지지 않게 남긴다 */
   isFullAccess: true
-  /** QR을 지금 보여 줄 수 있는지 (토큰 원문이 메모리에 있음) */
+  /** QR을 지금 보여 줄 수 있는지 (토큰 원문이 메모리에 있음 — 휴대폰이 이 토큰으로 처음 붙으면 false) */
   isQrReady: boolean
+  /** 지금 열린 짝짓기 창의 종류 (닫혀 있으면 null) — 코드 3번 틀림·연결 성공으로 창이 닫히면 화면도 코드를 거둔다 */
+  pairOpen: PairKind | null
 }
 
 /** 지금 보여 줄 연결 QR (토큰이 담겨 있으므로 화면에만, 파일·클립보드로 남기지 않는다) */
@@ -935,8 +937,6 @@ export interface RemoteQr {
   /** 같은 와이파이에서 쓰는 이 PC의 주소 (외부 주소와 같으면 null) */
   lan: string | null
   port: number
-  /** 이 시각이 지나면 가린다 */
-  until: number
 }
 
 export interface OfficeApi {
@@ -959,7 +959,7 @@ export interface OfficeApi {
   dismissRemoteTsNotice(): Promise<RemoteStatus>
   dismissRemoteLanNotice(): Promise<RemoteStatus>
 
-  /** 다른 PC 연결 (docs/specs/multi-pc-protocol.md). B컴: 짝짓기 창 열기(5분, 코드·지문)·닫기, 이 PC에 연결된 PC 슬롯 목록·해제. 휴대폰용(kind 'phone')은 QR 옆에 코드를 보여 준다 */
+  /** 다른 PC 연결 (docs/specs/multi-pc-protocol.md). B컴: 짝짓기 창 열기(시간 제한 없음, 코드·지문)·닫기, 이 PC에 연결된 PC 슬롯 목록·해제. 휴대폰용(kind 'phone')은 QR 옆에 코드를 보여 준다 */
   peerPairStart(kind?: PairKind): Promise<PairWindowView>
   peerPairClose(): Promise<void>
   peerSlots(): Promise<PeerSlotView[]>
