@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<title>대화방 메신저 기능 시안</title>
+<style>
+  :root {
+    --bg: #14131C; --fg: #EDEBF8; --card: #201F2D; --muted: #292739; --mfg: #A7A3C4;
+    --primary: #9B8CFF; --pfg: #1A1240; --accent: #302D47; --border: #34314A; --input: #413E5C;
+    --working: #4ADE80; --waiting: #F2C94C; --idle: #9A98AC; --error: #FF6B6B; --chrome: #181723;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #0d0c13; color: var(--fg); font: 13px/1.5 -apple-system, "Apple SD Gothic Neo", "Pretendard", sans-serif; padding: 28px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .lead { color: var(--mfg); margin: 0 0 24px; max-width: 1100px; }
+  .grid { display: grid; grid-template-columns: repeat(2, 600px); gap: 28px 32px; }
+  .case h2 { font-size: 15px; margin: 0 0 4px; display: flex; gap: 8px; align-items: center; }
+  .tag { font-size: 11px; padding: 1px 8px; border-radius: 99px; background: var(--accent); color: var(--mfg); font-weight: 500; }
+  .tag.bad { background: #3a1f25; color: var(--error); }
+  .tag.new { background: #22213a; color: var(--primary); }
+  .case p.note { color: var(--mfg); margin: 0 0 10px; font-size: 12px; min-height: 36px; }
+  .screen { width: 600px; height: 640px; background: var(--bg); border: 1px solid var(--border); border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; position: relative; }
+  .head { padding: 14px 20px 10px; border-bottom: 1px solid var(--border); }
+  .head .t { font-size: 16px; font-weight: 600; }
+  .head .d { font-size: 11px; color: var(--mfg); }
+  .tabs { display: flex; gap: 6px; margin-top: 8px; }
+  .tabs span { font-size: 11px; padding: 3px 10px; border-radius: 99px; border: 1px solid var(--border); color: var(--mfg); }
+  .tabs span.on { background: var(--accent); color: var(--fg); border-color: var(--accent); }
+  .msgs { flex: 1; padding: 14px 20px; display: flex; flex-direction: column; gap: 10px; overflow: hidden; }
+  .row { display: flex; gap: 8px; }
+  .row.me { flex-direction: row-reverse; }
+  .av { width: 28px; height: 28px; border-radius: 8px; flex-shrink: 0; display: grid; place-items: center; font-size: 12px; font-weight: 700; color: #1a1240; }
+  .av.s { width: 20px; height: 20px; border-radius: 6px; font-size: 10px; }
+  .a1 { background: #F7B267; } .a2 { background: #8BD3DD; } .a3 { background: #C3AED6; } .a4 { background: #9EE493; }
+  .col { display: flex; flex-direction: column; gap: 2px; max-width: 75%; }
+  .row.me .col { align-items: flex-end; }
+  .name { font-size: 11px; color: var(--mfg); }
+  .bub { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 7px 12px; }
+  .row.me .bub { background: var(--primary); color: var(--pfg); border: 0; }
+  .time { font-size: 10px; color: var(--mfg); }
+  .sys { align-self: center; background: var(--muted); color: var(--mfg); font-size: 11px; padding: 3px 12px; border-radius: 99px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
+  .d-w { background: var(--working); box-shadow: 0 0 0 3px rgba(74,222,128,.18); }
+  .d-a { background: var(--waiting); } .d-i { background: var(--idle); } .d-e { background: var(--error); }
+  .c-w { color: var(--working); } .c-a { color: var(--waiting); } .c-e { color: var(--error); }
+  .prog { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--mfg); }
+  .prog b { color: var(--fg); font-weight: 600; }
+  .composer { border-top: 1px solid var(--border); padding: 10px 16px 10px; }
+  .recv { font-size: 11px; color: var(--mfg); margin-bottom: 6px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .chip { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; padding: 2px 8px 2px 3px; border-radius: 99px; background: var(--muted); color: var(--fg); }
+  .inrow { display: flex; gap: 8px; align-items: flex-end; }
+  .iconbtn { width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--border); display: grid; place-items: center; color: var(--mfg); flex-shrink: 0; }
+  .input { flex: 1; min-height: 34px; border: 1px solid var(--input); border-radius: 8px; padding: 7px 10px; color: var(--mfg); font-size: 12px; }
+  .input.typed { color: var(--fg); }
+  .send { height: 34px; padding: 0 12px; border-radius: 8px; background: var(--primary); color: var(--pfg); display: grid; place-items: center; font-weight: 600; flex-shrink: 0; }
+  .ghost { height: 30px; padding: 0 9px; border-radius: 7px; font-size: 11px; color: var(--fg); display: inline-flex; align-items: center; gap: 4px; }
+  .outline { border: 1px solid var(--border); }
+  .tools { display: flex; gap: 2px; margin-top: 6px; align-items: center; }
+  .hl { outline: 2px dashed var(--primary); outline-offset: 3px; border-radius: 8px; }
+  .hl-note { position: absolute; background: var(--primary); color: var(--pfg); font-size: 11px; font-weight: 700; border-radius: 99px; width: 20px; height: 20px; display: grid; place-items: center; }
+  /* 상태 줄 */
+  .strip { display: flex; gap: 6px; margin-top: 9px; flex-wrap: nowrap; overflow: hidden; }
+  .st { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border); background: var(--card); border-radius: 99px; padding: 3px 10px 3px 3px; font-size: 11px; white-space: nowrap; }
+  .st .what { color: var(--mfg); max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
+  .st.work { border-color: rgba(74,222,128,.45); }
+  .st.appr { border-color: rgba(242,201,76,.5); }
+  .pop { position: absolute; background: var(--card); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.6); padding: 10px 12px; font-size: 12px; }
+  .pop .k { color: var(--mfg); font-size: 11px; }
+  .menu { position: absolute; left: 16px; bottom: 112px; width: 340px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.6); padding: 6px; }
+  .menu .gh { font-size: 10px; color: var(--mfg); padding: 4px 8px 2px; }
+  .menu .it { display: flex; justify-content: space-between; gap: 10px; padding: 5px 8px; border-radius: 6px; font-size: 12px; }
+  .menu .it.on { background: var(--accent); }
+  .menu .it span:last-child { color: var(--mfg); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 190px; }
+  .menu .who { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-bottom: 1px solid var(--border); margin-bottom: 4px; font-size: 11px; color: var(--mfg); }
+  .menu .who .chip { cursor: pointer; }
+  .wait { border: 1px solid rgba(242,201,76,.4); background: rgba(242,201,76,.08); border-radius: 8px; padding: 7px 10px; display: flex; gap: 8px; align-items: flex-start; margin-bottom: 8px; }
+  .wait .lab { color: var(--waiting); font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 5px; }
+  .btnp { background: var(--primary); color: var(--pfg); border-radius: 6px; padding: 3px 8px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+  .btno { border: 1px solid var(--border); color: var(--mfg); border-radius: 6px; padding: 3px 8px; font-size: 11px; white-space: nowrap; }
+  .legend { margin-top: 28px; max-width: 1232px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px 18px; }
+  .legend h3 { margin: 0 0 6px; font-size: 14px; }
+  .legend li { margin: 3px 0; color: var(--mfg); }
+  .legend b { color: var(--fg); }
+</style>
+</head><body>
+<style>
+  .screen { height: auto; min-height: 0; }
+  .msgs { overflow: visible; }
+  .stat { font-size: 10.5px; color: var(--mfg); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+  .stat .p { display: inline-flex; align-items: center; gap: 4px; }
+  .stat .ok { color: var(--working); }
+  .stat a, .lnk { color: var(--primary); text-decoration: underline; text-underline-offset: 2px; }
+  .hov { position: relative; }
+  .hovbar { position: absolute; right: -6px; top: -14px; display: flex; gap: 2px; background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 2px; box-shadow: 0 4px 14px rgba(0,0,0,.5); }
+  .hovbar span { font-size: 11px; padding: 2px 7px; border-radius: 6px; }
+  .hovbar span.on { background: var(--accent); }
+  .quote { border-left: 3px solid var(--primary); background: var(--muted); border-radius: 6px; padding: 4px 8px; font-size: 11px; color: var(--mfg); margin-bottom: 4px; }
+  .row.me .bub .quote { background: rgba(26,18,64,.15); color: #2c2366; border-left-color: #1a1240; }
+  .qbar { display: flex; align-items: center; gap: 8px; border-left: 3px solid var(--primary); background: var(--muted); border-radius: 6px; padding: 5px 8px; font-size: 11px; color: var(--mfg); margin-bottom: 8px; }
+  .qbar b { color: var(--fg); }
+  .qbar .x { margin-left: auto; }
+  .acts { display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap; }
+  .act { font-size: 11px; border: 1px solid var(--border); background: var(--bg); border-radius: 99px; padding: 2px 10px; color: var(--fg); }
+  .act.done { border-color: rgba(74,222,128,.5); color: var(--working); }
+  .badge { display: inline-grid; place-items: center; min-width: 16px; height: 16px; padding: 0 5px; border-radius: 99px; background: var(--error); color: #fff; font-size: 10px; font-weight: 700; margin-left: 4px; }
+  .newline { display: flex; align-items: center; gap: 8px; color: var(--error); font-size: 10.5px; }
+  .newline::before, .newline::after { content: ""; flex: 1; height: 1px; background: rgba(255,107,107,.45); }
+  .side { width: 150px; border-right: 1px solid var(--border); background: var(--chrome); padding: 10px 8px; font-size: 12px; display: flex; flex-direction: column; gap: 2px; }
+  .side div { padding: 5px 8px; border-radius: 6px; color: var(--mfg); display: flex; align-items: center; justify-content: space-between; }
+  .side div.on { background: var(--accent); color: var(--fg); }
+  .taskcard { border: 1px solid var(--border); background: var(--card); border-radius: 10px; padding: 8px 10px; font-size: 12px; }
+  .taskcard .src { font-size: 10px; color: var(--primary); background: #22213a; border-radius: 99px; padding: 1px 7px; }
+  .board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 12px; }
+  .board .colh { font-size: 11px; color: var(--mfg); margin-bottom: 6px; }
+  .board .taskcard { margin-bottom: 6px; }
+  .sendgrp { display: flex; }
+  .sendgrp .send { border-radius: 8px 0 0 8px; }
+  .sendgrp .caret { height: 34px; width: 22px; border-radius: 0 8px 8px 0; background: #8576f0; color: var(--pfg); display: grid; place-items: center; border-left: 1px solid rgba(26,18,64,.25); font-size: 10px; }
+  .smenu { position: absolute; right: 16px; width: 250px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,.6); padding: 6px; font-size: 12px; }
+  .smenu .it { padding: 6px 8px; border-radius: 6px; display: flex; justify-content: space-between; }
+  .smenu .it.on { background: var(--accent); }
+  .smenu .it span:last-child { color: var(--mfg); font-size: 11px; }
+  .smenu .gh { font-size: 10px; color: var(--mfg); padding: 4px 8px 2px; }
+  .pills { display: flex; gap: 4px; flex-wrap: wrap; padding: 2px 8px 6px; }
+  .pills span { font-size: 11px; border: 1px solid var(--border); border-radius: 99px; padding: 2px 8px; }
+  .pills span.on { background: var(--primary); color: var(--pfg); border-color: var(--primary); font-weight: 600; }
+  .sched { border: 1px solid rgba(155,140,255,.45); background: rgba(155,140,255,.08); border-radius: 8px; padding: 7px 10px; display: flex; gap: 8px; align-items: center; margin-bottom: 6px; font-size: 12px; }
+  .sched .lab { color: var(--primary); font-size: 11px; font-weight: 600; white-space: nowrap; }
+  .sched .txt { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fg); }
+  .searchbar { display: flex; align-items: center; gap: 8px; margin-top: 9px; border: 1px solid var(--input); border-radius: 8px; padding: 5px 10px; font-size: 12px; }
+  .searchbar .cnt { margin-left: auto; color: var(--mfg); font-size: 11px; white-space: nowrap; }
+  mark { background: rgba(242,201,76,.35); color: inherit; border-radius: 3px; padding: 0 1px; }
+  mark.cur { background: var(--waiting); color: #1a1240; }
+  .res { border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; font-size: 12px; display: flex; flex-direction: column; gap: 1px; }
+  .res .m { font-size: 10.5px; color: var(--mfg); }
+  .res.on { background: var(--accent); }
+  .grid { grid-template-columns: repeat(2, 600px); }
+  .sec { margin: 40px 0 6px; font-size: 18px; border-top: 1px solid var(--border); padding-top: 22px; max-width: 1232px; }
+  .sec small { font-size: 12px; color: var(--mfg); font-weight: 400; margin-left: 8px; }
+</style>
+
+<h1>대화방을 메신저처럼 — 기능별 시안</h1>
+<p class="lead">랩 대화방 기준으로 그렸습니다(팀 방·전체 방도 같은 모습). <b>점선 테두리</b>가 새로 생기는 부분입니다. 각 기능마다 일이 진행되는 순서대로 경우를 나눴습니다.</p>
+
+<!-- ───────────── 1. 처리 상태 ───────────── -->
+<h2 class="sec">1. 내 메시지 아래 처리 상태 <small>카톡의 '1'처럼 — 지시가 어디까지 갔는지 보여 줍니다</small></h2>
+<div class="grid">
+<section class="case">
+  <h2>1-1. 한 명에게 — 받음 → 작업 중 → 완료</h2>
+  <p class="note">같은 메시지의 상태가 시간에 따라 바뀌는 모습을 세 줄로 나란히 그렸습니다. 완료되면 <b>'보고 보기'</b>를 눌러 그 보고로 바로 이동합니다.</p>
+  <div class="screen"><div class="msgs">
+    <div class="row me"><div class="col"><div class="bub">@이리드 로그인 화면 문구 쉬운 말로 바꿔 줘</div>
+      <div class="stat hl"><span class="p"><span class="c-w">✓</span> 이리드 받음</span><span class="time">오후 2:10</span></div></div></div>
+    <div class="sys">… 잠시 뒤</div>
+    <div class="row me"><div class="col"><div class="bub">@이리드 로그인 화면 문구 쉬운 말로 바꿔 줘</div>
+      <div class="stat hl"><span class="p"><span class="dot d-w"></span> 이리드 작업 중 · 3분째</span><span class="time">오후 2:10</span></div></div></div>
+    <div class="sys">… 끝나면</div>
+    <div class="row me"><div class="col"><div class="bub">@이리드 로그인 화면 문구 쉬운 말로 바꿔 줘</div>
+      <div class="stat hl"><span class="p ok">✓ 이리드 완료</span><a>보고 보기</a><span class="time">오후 2:10</span></div></div></div>
+  </div></div>
+</section>
+
+<section class="case">
+  <h2>1-2. 여러 명에게 · 대기 · 확인 필요 · 오류</h2>
+  <p class="note">여러 명이면 <b>'3명 중 1명 완료'</b>로 묶고, 마우스를 올리면 사람별로 펼칩니다. 하던 일이 있어 기다리는 중, 결재를 기다리는 중, 오류도 같은 자리에 나옵니다.</p>
+  <div class="screen"><div class="msgs" style="position:relative">
+    <div class="row me"><div class="col"><div class="bub">@전체 이번 주 한 일 정리해서 올려 줘</div>
+      <div class="stat hl"><span class="p"><span class="c-w">✓</span> 3명 중 1명 완료</span><span class="p"><span class="dot d-w"></span> 1명 작업 중</span><span class="p"><span class="dot d-a"></span> 1명 대기</span></div></div></div>
+    <div class="pop" style="right:20px;top:72px;width:260px">
+      <div class="prog" style="margin-bottom:4px"><span class="c-w">✓</span><b>박개발</b> 완료 <a class="lnk" style="margin-left:auto">보고 보기</a></div>
+      <div class="prog" style="margin-bottom:4px"><span class="dot d-w"></span><b>최디자</b> 작업 중 · 1분째</div>
+      <div class="prog"><span class="dot d-a"></span><b>이리드</b> 하던 일 끝나면 전해요</div>
+    </div>
+    <div style="height:86px"></div>
+    <div class="row me"><div class="col"><div class="bub">@박개발 배포 스크립트 돌려 줘</div>
+      <div class="stat hl"><span class="p c-a"><span class="dot d-a"></span> 박개발 결재 기다리는 중</span><a>결재하기</a></div></div></div>
+    <div class="row me"><div class="col"><div class="bub">@최디자 아이콘 시안 3개</div>
+      <div class="stat hl"><span class="p c-e">⚠ 최디자 오류로 멈춤</span><a>다시 시키기</a></div></div></div>
+  </div></div>
+</section>
+</div>
+
+<!-- ───────────── 2. 답장 ───────────── -->
+<h2 class="sec">2. 답장(인용) <small>보고를 집어서 "여기만 고쳐 줘"</small></h2>
+<div class="grid">
+<section class="case">
+  <h2>2-1. 말풍선에 마우스 → '답장' → 입력칸 위에 인용</h2>
+  <p class="note">직원 말풍선에 마우스를 올리면 작은 메뉴가 뜹니다. '답장'을 누르면 입력칸 위에 인용 줄이 생기고, <b>받는 사람이 그 직원으로 자동 지정</b>됩니다(@이름 안 써도 됨).</p>
+  <div class="screen"><div class="msgs">
+    <div class="row"><div class="av a1">이</div><div class="col"><div class="name">이리드</div>
+      <div class="bub hov">로그인 화면 문구 바꿨어요.<br>1) 아이디 → 이메일<br>2) 비밀번호 찾기 → 비밀번호를 잊었어요<br>3) 자동 로그인 → 로그인 유지
+        <div class="hovbar hl"><span class="on">↩ 답장</span><span>👍</span><span>복사</span></div></div>
+      <div class="time">오후 2:16</div></div></div>
+  </div>
+  <div class="composer">
+    <div class="qbar hl">↩ <b>이리드</b>에게 답장 · 로그인 화면 문구 바꿨어요. 1) 아이디 → 이메일… <span class="x">✕</span></div>
+    <div class="recv">받는 사람 <span class="chip"><span class="av s a1">이</span>이리드</span></div>
+    <div class="inrow"><div class="iconbtn">📎</div><div class="input typed">3번은 '로그인 상태 유지'로 해 줘</div><div class="send">➤</div></div>
+  </div></div>
+</section>
+
+<section class="case">
+  <h2>2-2. 보낸 뒤 — 인용이 붙은 말풍선</h2>
+  <p class="note">보낸 말풍선 위에 인용이 작게 붙어 무엇에 대한 말인지 보입니다. <b>인용을 누르면 원래 보고로 이동</b>합니다. 직원에게는 인용한 보고 내용도 함께 전해져서 다시 설명하지 않아도 됩니다.</p>
+  <div class="screen"><div class="msgs">
+    <div class="row"><div class="av a1">이</div><div class="col"><div class="name">이리드</div>
+      <div class="bub">로그인 화면 문구 바꿨어요. 1) 아이디 → 이메일 2) … 3) 자동 로그인 → 로그인 유지</div><div class="time">오후 2:16</div></div></div>
+    <div class="row me"><div class="col"><div class="bub hl"><div class="quote">↩ 이리드 · 로그인 화면 문구 바꿨어요. 1) 아이디 → 이메일…</div>3번은 '로그인 상태 유지'로 해 줘</div>
+      <div class="stat"><span class="p"><span class="dot d-w"></span> 이리드 작업 중</span><span class="time">오후 2:18</span></div></div></div>
+    <div class="row"><div class="av a1">이</div><div class="col"><div class="name">이리드</div>
+      <div class="bub"><div class="quote">↩ 나 · 3번은 '로그인 상태 유지'로 해 줘</div>바꿨어요. 3) 자동 로그인 → 로그인 상태 유지</div><div class="time">오후 2:19</div></div></div>
+  </div></div>
+</section>
+</div>
+
+<!-- ───────────── 3. 빠른 버튼 ───────────── -->
+<h2 class="sec">3. 보고 말풍선의 빠른 버튼 <small>글 안 써도 피드백</small></h2>
+<div class="grid">
+<section class="case">
+  <h2>3-1. 완료 보고 아래 버튼 3개</h2>
+  <p class="note">'끝났어요' 보고에만 버튼이 붙습니다(중간 대화에는 안 붙음). <b>👍 좋아요</b> = 확인 끝, <b>🔁 다시 해 줘</b> = 무엇을 바꿀지 적게 입력칸을 엶, <b>🔍 더 자세히</b> = 바로 "더 자세히 설명해 줘"를 보냄.</p>
+  <div class="screen"><div class="msgs">
+    <div class="row"><div class="av a2">박</div><div class="col"><div class="name">박개발 · 완료 보고</div>
+      <div class="bub">이번 주 한 일 정리했어요. 대화방 상태 줄, 대기 메시지, 매뉴얼 버튼 3가지를 끝냈고 테스트 1173건 통과했어요.</div>
+      <div class="acts hl"><span class="act">👍 좋아요</span><span class="act">🔁 다시 해 줘</span><span class="act">🔍 더 자세히</span></div>
+      <div class="time">오후 3:02</div></div></div>
+  </div></div>
+</section>
+
+<section class="case">
+  <h2>3-2. 누른 뒤의 모습</h2>
+  <p class="note">위: 👍를 누르면 버튼이 <b>'👍 확인했어요'</b>로 바뀌고, 업무 카드가 있으면 '완료'로 옮깁니다. 아래: 🔁을 누르면 답장(2번)처럼 인용과 '다시 해 줘: '가 입력칸에 채워집니다.</p>
+  <div class="screen"><div class="msgs">
+    <div class="row"><div class="av a2">박</div><div class="col"><div class="name">박개발 · 완료 보고</div>
+      <div class="bub">이번 주 한 일 정리했어요. …</div>
+      <div class="acts hl"><span class="act done">👍 확인했어요 · 오후 3:05</span></div></div></div>
+    <div class="row"><div class="av a3">최</div><div class="col"><div class="name">최디자 · 완료 보고</div>
+      <div class="bub">아이콘 시안 3개 올렸어요.</div>
+      <div class="acts"><span class="act">👍 좋아요</span><span class="act" style="background:var(--accent)">🔁 다시 해 줘</span><span class="act">🔍 더 자세히</span></div></div></div>
+  </div>
+  <div class="composer">
+    <div class="qbar">↩ <b>최디자</b>에게 다시 요청 · 아이콘 시안 3개 올렸어요. <span class="x">✕</span></div>
+    <div class="inrow"><div class="iconbtn">📎</div><div class="input typed hl">다시 해 줘: 색을 더 밝게|</div><div class="send">➤</div></div>
+  </div></div>
+</section>
+</div>
+
+<!-- ───────────── 4. 안 읽은 배지 ───────────── -->
+<h2 class="sec">4. 방별 안 읽은 수 <small>어느 방에 새 보고가 왔는지 한눈에</small></h2>
+<div class="grid">
+<section class="case">
+  <h2>4-1. 방 탭과 왼쪽 메뉴에 숫자</h2>
+  <p class="note">다른 방에 직원 말이 오면 탭에 빨간 숫자가 붙고, 왼쪽 메뉴의 '대화방'에도 전체 합이 붙습니다. <b>결재·질문이 있는 방은 노란 점</b>을 따로 붙여 급한 방을 구분합니다.</p>
+  <div class="screen" style="flex-direction:row">
+    <div class="side hl"><div>사무실</div><div>업무 보드</div><div class="on">대화방 <span class="badge">5</span></div><div>결재함 <span class="badge" style="background:var(--waiting);color:#1a1240">1</span></div><div>일정</div></div>
+    <div style="flex:1;display:flex;flex-direction:column">
+      <div class="head"><div class="t">전체 대화방</div>
+        <div class="tabs hl"><span class="on">전체</span><span>기획팀 <span class="badge">2</span></span><span>ai-office 랩 <span class="badge">3</span> <span class="dot d-a" style="margin-left:2px"></span></span></div></div>
+      <div class="msgs"><div class="row"><div class="av a4">정</div><div class="col"><div class="name">정리드</div><div class="bub">오늘 일정 공유드려요.</div></div></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="case">
+  <h2>4-2. 방에 들어가면 — '여기부터 새 메시지'</h2>
+  <p class="note">방에 들어가면 숫자가 사라지고, 마지막으로 본 곳에 <b>빨간 구분선</b>이 생깁니다. 읽지 않은 곳부터 이어 읽을 수 있습니다.</p>
+  <div class="screen"><div class="head"><div class="t">ai-office 전담 랩 방</div>
+    <div class="tabs"><span>전체</span><span>기획팀 <span class="badge">2</span></span><span class="on">ai-office 랩</span></div></div>
+    <div class="msgs">
+      <div class="row me"><div class="col"><div class="bub">@이리드 대화방 개선 정리해 줘</div><div class="stat"><span class="p ok">✓ 이리드 완료</span></div></div></div>
+      <div class="newline hl">여기부터 새 메시지 3개</div>
+      <div class="row"><div class="av a1">이</div><div class="col"><div class="name">이리드</div><div class="bub">기획안 올렸어요.</div></div></div>
+      <div class="row"><div class="av a2">박</div><div class="col"><div class="name">박개발</div><div class="bub">결재 부탁드려요: 패키지 설치</div></div></div>
+      <div class="row"><div class="av a3">최</div><div class="col"><div class="name">최디자</div><div class="bub">시안 3개 올렸어요.</div></div></div>
+    </div></div>
+</section>
+</div>
+
+<!-- ───────────── 5. 업무 카드 자동 기록 ───────────── -->
+<h2 class="sec">5. 대화로 시킨 일 → 업무 카드에 자동 기록 <small>말로만 시켜도 정리는 앱이</small></h2>
+<div class="grid">
+<section class="case">
+  <h2>5-1. 대화방 — 지시 아래 '📋 카드' 연결</h2>
+  <p class="note">대화로 일을 시키면 업무 보드에 카드가 저절로 생기고, 내 메시지 상태 줄 옆에 <b>📋 카드 이름</b>이 붙습니다. 누르면 카드가 열립니다. 인사·짧은 질문처럼 일이 아닌 말은 카드를 만들지 않습니다(아래 참고).</p>
+  <div class="screen"><div class="msgs">
+    <div class="row me"><div class="col"><div class="bub">@이리드 로그인 화면 문구 쉬운 말로 바꿔 줘</div>
+      <div class="stat"><span class="p"><span class="dot d-w"></span> 이리드 작업 중</span><span class="hl" style="padding:0 4px">📋 <a>로그인 화면 문구 바꾸기</a></span></div></div></div>
+    <div class="row"><div class="av a1">이</div><div class="col"><div class="name">이리드 · 완료 보고</div>
+      <div class="bub">바꿨어요. 결과물 1개, 바꾼 파일 2개.</div>
+      <div class="acts"><span class="act hl">📋 카드 열기 (결과물·바꾼 파일·비용)</span><span class="act">👍 좋아요</span><span class="act">🔁 다시 해 줘</span></div></div></div>
+    <div class="row me"><div class="col"><div class="bub">@이리드 고마워요!</div>
+      <div class="stat"><span class="p"><span class="c-w">✓</span> 이리드 받음</span><span style="opacity:.7">(카드 안 만듦 — 일이 아닌 말)</span></div></div></div>
+  </div></div>
+</section>
+
+<section class="case">
+  <h2>5-2. 업무 보드 — '💬 대화방에서' 표시</h2>
+  <p class="note">보드에서는 대화로 생긴 카드에 <b>어느 방에서 온 일인지</b> 표시가 붙고, 누르면 그 대화로 돌아갑니다. 진행·완료 칸 이동, 결과물·비용·되돌리기가 기존 카드와 똑같이 붙습니다.</p>
+  <div class="screen"><div class="head"><div class="t">업무 보드</div></div>
+    <div class="board">
+      <div><div class="colh">할 일</div><div class="taskcard">홈페이지 소개글 다듬기<div style="margin-top:4px"><span class="src" style="color:var(--mfg);background:var(--muted)">직접 만든 카드</span></div></div></div>
+      <div><div class="colh">진행 중</div><div class="taskcard hl">로그인 화면 문구 바꾸기<div style="margin-top:4px;display:flex;gap:4px;align-items:center"><span class="src">💬 ai-office 랩 방</span><span class="dot d-w"></span><span style="font-size:10px;color:var(--mfg)">이리드</span></div></div></div>
+      <div><div class="colh">완료</div><div class="taskcard hl">이번 주 한 일 정리<div style="margin-top:4px;display:flex;gap:4px;align-items:center"><span class="src">💬 전체 방</span><span style="font-size:10px;color:var(--working)">👍 확인함</span></div></div></div>
+    </div></div>
+</section>
+</div>
+
+<!-- ───────────── 6. 예약·반복 ───────────── -->
+<h2 class="sec">6. 예약 보내기 · 반복 지시 <small>"내일 아침 9시에", "매주 월요일마다"</small></h2>
+<div class="grid">
+<section class="case">
+  <h2>6-1. 보내기 옆 ▾ → 예약·반복 고르기</h2>
+  <p class="note">보내기 버튼 옆 작은 ▾를 누르면 메뉴가 뜹니다. 자주 쓰는 시간은 <b>버튼 한 번</b>으로, 그 밖의 시간은 '직접 고르기'로 정합니다. 반복은 기존 예약 업무처럼 시각과 요일(매일·평일·특정 요일)로 정합니다.</p>
+  <div class="screen" style="position:relative"><div class="msgs" style="min-height:250px"></div>
+    <div class="smenu hl" style="bottom:62px">
+      <div class="it"><span>➤ 지금 보내기</span><span>Enter</span></div>
+      <div class="gh">🕘 예약 보내기</div>
+      <div class="pills"><span>오늘 오후 6시</span><span class="on">내일 오전 9시</span><span>월요일 오전 9시</span><span>직접 고르기…</span></div>
+      <div class="gh">🔁 반복 지시</div>
+      <div class="pills"><span>매일 오전 9시</span><span>평일 오전 9시</span><span>매주 월 9시</span><span>직접…</span></div>
+    </div>
+    <div class="composer">
+      <div class="recv">받는 사람 <span class="chip"><span class="av s a1">이</span>이리드</span></div>
+      <div class="inrow"><div class="iconbtn">📎</div><div class="input typed">어제 들어온 사용자 피드백 정리해 줘</div><div class="sendgrp"><div class="send">➤</div><div class="caret hl">▾</div></div></div>
+    </div></div>
+</section>
+
+<section class="case">
+  <h2>6-2. 예약 카드 → 그 시간에 자동 전송</h2>
+  <p class="note">예약한 말은 입력칸 위 <b>보라색 카드</b>로 남아 지금 보내기·고치기·취소를 할 수 있습니다. 시간이 되면 내 말풍선에 '🕘 예약' 표시를 달고 보냅니다. 반복 지시는 기존 <b>일정</b> 화면에서도 보이고 고칠 수 있습니다.</p>
+  <div class="screen"><div class="msgs">
+    <div class="row me"><div class="col"><div class="bub">@이리드 어제 들어온 사용자 피드백 정리해 줘</div>
+      <div class="stat"><span class="hl" style="padding:0 4px">🕘 예약 · 오전 9:00 보냄</span><span class="p"><span class="dot d-w"></span> 이리드 작업 중</span></div></div></div>
+    <div class="row me"><div class="col"><div class="bub">@전체 이번 주 한 일 정리해서 올려 줘</div>
+      <div class="stat"><span class="hl" style="padding:0 4px">🔁 매주 월 9:00 · 3번째</span><span class="p"><span class="c-w">✓</span> 3명 받음</span></div></div></div>
+  </div>
+  <div class="composer">
+    <div class="sched hl"><span class="lab">🕘 내일 오전 9:00</span><span class="txt">@이리드 어제 들어온 사용자 피드백 정리해 줘</span><span class="btnp">지금 보내기</span><span class="btno">고치기</span><span class="btno">취소</span></div>
+    <div class="sched hl"><span class="lab">🔁 매주 월 9:00</span><span class="txt">@전체 이번 주 한 일 정리해서 올려 줘</span><span class="btno">고치기</span><span class="btno">멈추기</span></div>
+    <div class="inrow"><div class="iconbtn">📎</div><div class="input">랩에게 메시지</div><div class="sendgrp"><div class="send">➤</div><div class="caret">▾</div></div></div>
+  </div></div>
+</section>
+</div>
+
+<!-- ───────────── 8. 검색 ───────────── -->
+<h2 class="sec">8. 대화 검색 <small>지난 지시·보고 찾기 (지금은 최근 300개만 보임)</small></h2>
+<div class="grid">
+<section class="case">
+  <h2>8-1. 이 방에서 찾기 — 위아래로 넘기기</h2>
+  <p class="note">방 제목 옆 🔍(또는 ⌘F)로 검색칸을 엽니다. 찾은 말에 노란 표시가 붙고, <b>↑↓로 하나씩 이동</b>합니다. 300개보다 오래된 대화도 찾아서 그 위치까지 불러옵니다.</p>
+  <div class="screen"><div class="head"><div class="t" style="display:flex;justify-content:space-between">ai-office 전담 랩 방 <span style="font-size:14px">🔍</span></div>
+    <div class="searchbar hl">🔍 <span>로그인</span><span class="cnt">3개 중 2번째 · ↑ ↓ · ✕</span></div></div>
+    <div class="msgs">
+      <div class="row me"><div class="col"><div class="bub">@이리드 <mark>로그인</mark> 화면 문구 쉬운 말로 바꿔 줘</div></div></div>
+      <div class="row"><div class="av a1">이</div><div class="col"><div class="name">이리드</div><div class="bub" style="outline:2px solid var(--waiting)"><mark class="cur">로그인</mark> 화면 문구 바꿨어요. 3) 자동 <mark>로그인</mark> → 유지</div></div></div>
+    </div></div>
+</section>
+
+<section class="case">
+  <h2>8-2. 모든 방에서 찾기 — 결과 목록</h2>
+  <p class="note">검색칸의 '모든 방'을 켜면 방·사람·날짜가 붙은 결과 목록이 뜹니다. 결과를 누르면 <b>그 방의 그 메시지로 이동</b>합니다. 사람으로 거르기(@이리드)도 됩니다.</p>
+  <div class="screen"><div class="head"><div class="t">대화 찾기</div>
+    <div class="searchbar hl">🔍 <span>피드백</span><span class="cnt"><span class="chip" style="padding:2px 8px">이 방</span> <span class="chip" style="padding:2px 8px;background:var(--primary);color:var(--pfg)">모든 방</span></span></div></div>
+    <div class="msgs">
+      <div class="res on"><span>어제 들어온 사용자 <mark>피드백</mark> 정리해 줘</span><span class="m">ai-office 랩 · 나 → 이리드 · 11월 7일 오전 9:00</span></div>
+      <div class="res"><span><mark>피드백</mark> 12건 정리했어요. 가장 많은 건 로그인…</span><span class="m">ai-office 랩 · 이리드 · 11월 7일 오전 9:14</span></div>
+      <div class="res"><span>지난달 <mark>피드백</mark> 요약 보고</span><span class="m">전체 방 · 정리드 · 10월 2일</span></div>
+    </div></div>
+</section>
+</div>
+
+<div class="legend">
+  <h3>공통 규칙 · 결정해 주실 점</h3>
+  <ul>
+    <li><b>휴대폰·바탕화면 비서</b>에서는 1(상태)·4(배지)를 같이 보이고, 2·3·6·8은 PC 앱부터 넣습니다.</li>
+    <li><b>5번 카드 자동 기록</b>: 일이 아닌 말(인사·짧은 질문)은 카드를 안 만드는 기준이 필요합니다. 시안은 "직원이 실제로 일을 시작하면 카드 생성"으로 그렸습니다. 카드가 너무 많아지면 보드에서 '대화에서 온 카드 숨기기'를 켤 수 있게 합니다.</li>
+    <li><b>3번 👍 좋아요</b>는 카드를 '완료'로 옮깁니다. 직원에게 따로 말이 가지는 않습니다(토큰 안 씀).</li>
+    <li><b>6번 반복 지시</b>는 앱이 켜져 있을 때만 보내집니다. 꺼져 있던 시간의 예약은 앱을 켜면 "놓친 예약 1건 — 지금 보낼까요?"로 묻습니다.</li>
+  </ul>
+</div>
+</body>
+</html>

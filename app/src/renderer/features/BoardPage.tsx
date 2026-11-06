@@ -1,3 +1,4 @@
+import { findRoom } from '@shared/chatRooms'
 import { useEffect, useState, type DragEvent, type FormEvent } from 'react'
 import { PlayIcon, PlusIcon, SquareIcon, Trash2Icon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -178,6 +179,23 @@ export function BoardPage() {
   )
 }
 
+/** 대화방 지시로 저절로 생긴 카드: 어느 방에서 온 일인지 — 누르면 그 대화로 */
+function FromChatChip({ from }: { from: NonNullable<Task['fromChat']> }) {
+  const teams = useOffice((s) => s.teams)
+  const labs = useOffice((s) => s.labs)
+  const info = findRoom(from.room ?? undefined, teams, labs)
+  const open = () => {
+    const { openChatRoom, focusChat } = useOffice.getState()
+    openChatRoom(info?.room ?? null)
+    focusChat(from.chatId)
+  }
+  return (
+    <button type="button" onClick={open} title={t('board.fromChatTitle')} className="bg-primary/15 text-primary hover:bg-primary/25 w-fit max-w-full truncate rounded px-1.5 text-[10px] font-semibold">
+      {t('board.fromChat', { room: info?.name ?? t('chat.room.allName') })}
+    </button>
+  )
+}
+
 function TaskCard({ task }: { task: Task }) {
   const staff = useOffice(useShallow((s) => s.staff.filter((x) => x.kind === 'hired')))
   const team = useOffice((s) => s.teams.find((tm) => tm.id === task.teamId))
@@ -254,8 +272,9 @@ function TaskCard({ task }: { task: Task }) {
         </div>
       )}
       <TaskAutonomy task={task} />
-      {(team || lab || task.isPractice) && (
+      {(team || lab || task.isPractice || task.fromChat) && (
         <div className="flex flex-wrap gap-1">
+          {task.fromChat && <FromChatChip from={task.fromChat} />}
           {task.isPractice && <PracticeBadge className="w-fit" />}
           {team && (
             <span className="w-fit rounded px-1.5 text-[10px] font-semibold text-white" style={{ background: team.color }}>

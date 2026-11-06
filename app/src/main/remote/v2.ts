@@ -207,7 +207,13 @@ export const V2_METHODS: Record<OfficeMethod, MethodSpec> = {
   releasePlanHold: R(),
   chatHistory: R(),
   // 세 번째 room(팀 id 또는 'lab:<랩 id>')은 선택 — 없으면 전체 방 (예전 앱 호환). 네 번째 mode(wait·now)도 선택 — 없으면 예전처럼 바로 보낸다
-  sendChat: R('s a? s? s?', [1]),
+  // 다섯째 replyTo(답장할 메시지 id)도 선택
+  sendChat: R('s a? s? s? n?', [1]),
+  reactChat: R('n s'),
+  searchChat: R('s ~s?'),
+  chatAround: R('n'),
+  saveChatReservation: R('o'),
+  chatReservationAction: R('s s'),
   timeline: R('n'),
   staffActivity: R('s'),
   dailyReport: R('n'),
@@ -260,6 +266,9 @@ export const V2_FIELDS: Partial<Record<OfficeMethod, Record<number, string[]>>> 
   // 진행 입력은 종류마다 필드가 달라(view는 화면 이름만 더) 공통 키로 고를 수 없어 직접 적는다
   tutorialAct: { 0: ['type', 'view'] },
   saveSchedule: { 0: fieldsOf('saveSchedule', 0, { id: true, staffId: true, label: true, time: true, weekdays: true, instruction: true, enabled: true }) },
+  // 첨부는 휴대폰에서 받지 않는다 (경로를 믿을 수 없다)
+  // 첨부는 휴대폰에서 받지 않는다 (경로를 믿을 수 없다)
+  saveChatReservation: { 0: fieldsExcept('saveChatReservation', 0, ['attachments'], { id: true, kind: true, text: true, room: true, at: true, time: true, weekdays: true, enabled: true }) },
   secretaryRun: { 1: fieldsOf('secretaryRun', 1, { fromStep: true, edits: true, revised: true, excluded: true }) },
   updateSettings: {
     // 화면 캡처 허용은 PC에서만 (폰에서 대표 화면 캡처 권한을 켜지 못하게). PC 화면 모드·색 테마·바탕화면 비서도 PC에서만

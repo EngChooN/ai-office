@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { CheckIcon, RotateCcwIcon, SquareIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -17,6 +17,18 @@ export function PlanCard({ task, isCompact = false }: { task: Task; isCompact?: 
   const [isReviseBlocked, setIsReviseBlocked] = useState(false)
   const isTutorialTask = useTutorialTaskId() === task.id
   const plan = task.plan
+  // 대화방 기획안 카드에서 '결재함에서 보기'로 왔으면 이 카드로 스크롤하고 잠깐 강조한다
+  const planFocus = useOffice((s) => s.planFocus)
+  const ref = useRef<HTMLDivElement>(null)
+  const [isFlash, setIsFlash] = useState(false)
+  useEffect(() => {
+    if (isCompact || planFocus !== task.id || !ref.current) return
+    ref.current.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    setIsFlash(true)
+    useOffice.getState().openPlanInInbox(null)
+    const timer = setTimeout(() => setIsFlash(false), 1600)
+    return () => clearTimeout(timer)
+  }, [planFocus, task.id, isCompact])
   if (!plan) return null
   const lead = staff.find((s) => s.id === task.assigneeId)
   const isWaiting = plan.status === 'waiting'
@@ -29,7 +41,7 @@ export function PlanCard({ task, isCompact = false }: { task: Task; isCompact?: 
   }
 
   return (
-    <div className={cn('bg-card flex flex-col gap-3 rounded-xl border p-4 text-sm', isWaiting && 'border-status-waiting')}>
+    <div ref={ref} className={cn('bg-card flex flex-col gap-3 rounded-xl border p-4 text-sm', isWaiting && 'border-status-waiting', isFlash && 'ring-primary ring-2')}>
       {!isCompact && (
         <div className="flex items-center gap-2">
           {lead && <Avatar avatar={lead.avatar} name={lead.name} teamId={lead.teamId} className="size-6" />}

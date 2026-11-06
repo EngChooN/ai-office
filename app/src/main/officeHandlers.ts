@@ -176,7 +176,14 @@ export function createOfficeHandlers(office: Office, remoteApi: () => RemoteServ
     runScheduleNow: (id: string) => office.runScheduleNow(id),
     releasePlanHold: () => office.releasePlanHold(),
     chatHistory: () => office.chatHistory(),
-    sendChat: (text: string, attachments?: Parameters<Office['sendChat']>[1], room?: string, mode?: string) => office.sendChat(text, attachments ?? [], room ?? undefined, mode === 'wait' || mode === 'now' ? mode : undefined),
+    sendChat: (text: string, attachments?: Parameters<Office['sendChat']>[1], room?: string, mode?: string, replyTo?: number) =>
+      office.sendChat(text, attachments ?? [], room ?? undefined, mode === 'wait' || mode === 'now' ? mode : undefined, typeof replyTo === 'number' ? replyTo : undefined),
+    reactChat: (id: number, kind: string) => office.reactChat(id, kind === 'like' ? 'like' : 'none'),
+    searchChat: (query: string, room?: string | null) => office.searchChat(String(query ?? ''), room === null ? null : typeof room === 'string' ? room : undefined),
+    chatAround: (id: number) => office.chatAround(id),
+    saveChatReservation: (input: Parameters<Office['saveChatReservation']>[0]) => office.saveChatReservation(input),
+    chatReservationAction: (id: string, action: string) =>
+      office.chatReservationAction(id, action === 'send' || action === 'skip' || action === 'pause' || action === 'resume' ? action : 'cancel'),
     timeline: (since: number) => office.timeline(since),
     staffActivity: (id: string) => office.staffActivity(id),
     dailyReport: (date: number) => office.dailyReport(date),

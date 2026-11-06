@@ -46,6 +46,11 @@ import {
   type BudgetPeriod,
   type PeriodUsage,
   type Schedule,
+  type ChatDelivery,
+  type ChatReservation,
+  type ChatReservationAction,
+  type ChatReservationInput,
+  type ChatSearchHit,
   type Settings,
   type Staff,
   type StaffActivity,
@@ -78,7 +83,7 @@ import { shouldNudgeBackground, shouldNudgeLead } from '../shared/leadNudge'
 import { NO_HOLD, planHold, type HeldItem, type PlanHoldState } from '../shared/planHold'
 import { detectTextQuestion, toTextQuestions } from '../shared/textQuestion'
 import { mentionTargets, OFFICE_SENDER, parseMentions, pickResponder } from '../shared/mention'
-import { chatRoomMembers, chatRoomMentionTargets, findRoom, originRoom, pickRoomResponder, roomHead } from '../shared/chatRooms'
+import { chatRoomMembers, chatRoomMentionTargets, findRoom, labRoomId, originRoom, parseRoom, pickRoomResponder, roomHead } from '../shared/chatRooms'
 import { mergeRefDocs, normalizeRefDocPath, refDocKey, refDocsPrompt, sanitizeRefDocs } from '../shared/refDocs'
 import { draftCovered, isSameRule, matchRule, ruleLabel, type ApprovalRule } from '../shared/approvalRules'
 import { askDecisionInput, matchPastDecisions, sameAskDecisions } from '../shared/askDecision'
@@ -143,6 +148,7 @@ import { askAsProvider, askOnce, type createRuntime, type RateLimitInfo } from '
 import { probeMcpStatus, sdk } from './ai/claude'
 import { splitFinished } from './ai/pendingSends'
 import { buildStaffProgress, summarizeInstruction } from '../shared/staffProgress'
+import { expireMissed, isReservationDue, reservationDay, settleMissedOnStart } from '../shared/chatReservations'
 import { codexBinaryPath } from './ai/codex'
 import { codexUsageAfterFailure, readCodexRateLimits, refreshCodexAssets, shareInFlight } from './ai/codexAssets'
 import { defineTool, registerLocalMcp, type LocalMcpHandle } from './mcp/localMcp'
@@ -199,7 +205,14 @@ export interface PeerWorkspacePort {
   collectChanges(jobId: string, workspaceId: string): Promise<{ changesetId: string; files: number; bytes: number } | { none: true }>
 }
 
-type Origin = ({ kind: 'user' | 'chat' | 'schedule' } | { kind: 'task'; taskId: string } | { kind: 'delegate'; leadId: string } | { kind: 'help'; fromId: string; reqId: string } | { kind: 'process'; runId: string; stepId: string } | { kind: 'peer'; jobId: string }) & { room?: string; isAutonomous?: boolean; text?: string; /** 도움 요청 사슬(원업무·경로) — 받은 일과 결과로 재개된 일 모두에 붙어 깊이·횟수·순환 제한을 이어 간다 */ help?: HelpCtx; /** 다른 PC가 맡긴 일에서 파생된 지시 — 승인 주체(피어 jobId)를 이어받는다 */ peerJobId?: string }
+/** 받은 일들이 걸린 업무 카드 (보드 카드 + 대화 지시로 만든 카드) */
+/** 답장 말풍선에 남기는 인용 글 길이 · 직원에게 함께 전하는 인용 글 길이 */
+const REPLY_QUOTE_MAX = 140
+const REPLY_CONTEXT_MAX = 1500
+
+const cardIdsOf = (origins: readonly Origin[]) => origins.flatMap((o) => (o.kind === 'task' ? [o.taskId] : o.cardId ? [o.cardId] : []))
+
+type Origin = ({ kind: 'user' | 'chat' | 'schedule' } | { kind: 'task'; taskId: string } | { kind: 'delegate'; leadId: string } | { kind: 'help'; fromId: string; reqId: string } | { kind: 'process'; runId: string; stepId: string } | { kind: 'peer'; jobId: string }) & { room?: string; isAutonomous?: boolean; text?: string; /** 대화방에서 내가 보낸 메시지 id (처리 상태를 그 말풍선에 남긴다) */ chatId?: number; /** 이 대화 지시로 일을 시작하며 만든 업무 카드 */ cardId?: string; /** 도움 요청 사슬(원업무·경로) — 받은 일과 결과로 재개된 일 모두에 붙어 깊이·횟수·순환 제한을 이어 간다 */ help?: HelpCtx; /** 다른 PC가 맡긴 일에서 파생된 지시 — 승인 주체(피어 jobId)를 이어받는다 */ peerJobId?: string }
 
 type Counters = Partial<Record<LogType, number>>
 
@@ -251,6 +264,7 @@ export class Office extends EventEmitter<{
   private holdBypassUntil = 0
   private meetings: Meeting[] = []
   private schedules = new Map<string, Schedule>()
+  private chatReservations = new Map<string, ChatReservation>()
   private settings!: Settings
   private counters = new Map<string, Counters>()
   /** 직원별 마지막으로 본 상태와 그 상태가 시작된 시각 */
@@ -493,6 +507,11 @@ export class Office extends EventEmitter<{
     this.shop = db.loadShop()
     this.companyLevelMax = db.loadCompanyLevelMax()
     for (const s of db.loadSchedules()) this.schedules.set(s.id, s)
+    for (const r of db.loadChatReservations()) this.chatReservations.set(r.id, r)
+    // 꺼져 있는 동안 지난 예약은 바로 보내지 않고 '놓침'으로 두어 대표가 고르게 한다
+    const missed = settleMissedOnStart([...this.chatReservations.values()], new Date())
+    for (const r of missed) this.putReservation(r)
+    if (missed.some((r) => r.isMissed)) this.emit('notify', { title: t('chat.reserve.missedTitle'), body: t('chat.reserve.missedBody', { count: missed.filter((r) => r.isMissed).length }), staffId: '' })
     this.meetings = db.loadMeetings(MEETING_KEEP).map((m) => {
       const settled = settleStaleMeeting(m, Date.now())
       // 데모데이는 닫은 결과를 저장까지 해서 다시 켜도 진행 표시(3/7 등)가 남지 않게 한다
@@ -560,6 +579,7 @@ export class Office extends EventEmitter<{
     this.scheduleTimer = setInterval(() => {
       this.releaseHeldIfRecovered()
       this.runDueSchedules()
+      this.runDueChatReservations()
       this.runDemoDayIfDue()
       // 자동결재: 기간이 끝나면 저절로 끄고 요약, 켜져 있으면 남은 시간을 새로 보낸다
       if (this.syncAutoWindow()) this.scheduleEmit()
@@ -602,6 +622,7 @@ export class Office extends EventEmitter<{
       tasks: [...this.tasks.values()],
       meetings: this.meetings,
       schedules: [...this.schedules.values()],
+      chatReservations: [...this.chatReservations.values()],
       settings: this.settings,
       monthCostUsd,
       planUsage: this.planUsage,
@@ -697,8 +718,9 @@ export class Office extends EventEmitter<{
     for (const o of origins) if (o.kind === 'process') this.stopRun(o.runId)
     for (const o of origins) if (o.kind === 'peer') this.failPeerJob(o.jobId, staffId, error)
     this.failHelpRequests(staffId, origins, 'error')
-    const taskIds = [...origins.flatMap((o) => (o.kind === 'task' ? [o.taskId] : [])), ...queued.map((q) => q.taskId)]
+    const taskIds = [...cardIdsOf(origins), ...queued.map((q) => q.taskId)]
     for (const id of taskIds) this.returnToTodo(id)
+    for (const o of origins) this.setDelivery(o.chatId, staffId, { state: 'error' })
     // 쉬는 중에 세션만 끊긴 경우는 다시 보낼 지시가 없으니 대화방에 알리지 않는다 (상태·기록에는 남는다)
     if (origins.length || queued.length) this.postChat(staffId, t('chat.runError', { error: error.slice(0, 200) }), undefined, undefined, originRoom(origins))
     this.releaseHeld(staffId)
@@ -1195,14 +1217,16 @@ export class Office extends EventEmitter<{
   private waitingMsgs = new WaitingMessages<Origin, Attachment>()
 
   /** 직원 패널·대화방에서 보낸 지시: 일하는 중이면 대기 메시지로 들고 있다가 끝나면 보낸다 (결재를 기다리는 중·/명령은 지금처럼 바로). shown = 화면에 보일 글 */
+  /** 일하는 중이면 대기 메시지로 들고 있다가 끝나면 보낸다. 들고 있으면 true */
   instructFromPanel(staffId: string, text: string, attachments: Attachment[] = [], origin: Origin = { kind: 'user' }, shown?: string) {
     const s = this.hired.get(staffId)
     if (s && !s.isPractice && !this.peer?.isRemoteStaff(staffId) && shouldWait({ status: s.status, approvals: s.approvals.length, text, isSlash: Boolean(parseSlash(text)) })) {
       this.waitingMsgs.add(staffId, { text, origin, attachments, ...(shown ? { shown } : {}) })
       this.scheduleEmit()
-      return
+      return true
     }
     this.instruct(staffId, text, origin, attachments, '', true)
+    return false
   }
 
   /** 대기 메시지 '지금 보내기'(하던 일을 멈추고 바로 전한다 — 끼어들기)·'취소' */
@@ -1210,7 +1234,8 @@ export class Office extends EventEmitter<{
     const msg = this.waitingMsgs.take(staffId, messageId)
     if (!msg) return
     this.scheduleEmit()
-    if (action === 'cancel') return
+    if (action === 'cancel') return void this.setDelivery(msg.origin.chatId, staffId, { state: 'canceled' })
+    this.setDelivery(msg.origin.chatId, staffId, { state: 'received' })
     // 그사이 손이 비었으면 끊을 일이 없다 — 보통 지시로 보낸다
     if (this.hired.get(staffId)?.status !== 'working') return this.instruct(staffId, msg.text, msg.origin, msg.attachments, '', true)
     await this.interruptWith(staffId, msg.text, msg.attachments, msg.origin)
@@ -1219,7 +1244,10 @@ export class Office extends EventEmitter<{
   /** 하던 일이 끝났으면 대기 메시지를 하나 보낸다 (남은 것은 그 답이 끝난 뒤에). 보냈으면 true */
   private releaseWaiting(staffId: string) {
     const next = this.waitingMsgs.shift(staffId)
-    if (next) this.instruct(staffId, next.text, next.origin, next.attachments, '', true)
+    if (next) {
+      this.setDelivery(next.origin.chatId, staffId, { state: 'received' })
+      this.instruct(staffId, next.text, next.origin, next.attachments, '', true)
+    }
     return Boolean(next)
   }
 
@@ -1293,8 +1321,9 @@ export class Office extends EventEmitter<{
     const queued = this.taskQueue.get(staffId) ?? []
     this.origins.set(staffId, [])
     this.taskQueue.set(staffId, [])
-    const taskIds = [...origins.flatMap((o) => (o.kind === 'task' ? [o.taskId] : [])), ...queued.map((q) => q.taskId)]
+    const taskIds = [...cardIdsOf(origins), ...queued.map((q) => q.taskId)]
     for (const id of taskIds) this.returnToTodo(id)
+    for (const o of origins) this.setDelivery(o.chatId, staffId, { state: 'stopped' })
     for (const o of origins) if (o.kind === 'process') this.stopRun(o.runId)
     for (const o of origins) if (o.kind === 'peer') this.failPeerJob(o.jobId, staffId, 'stopped')
     this.failHelpRequests(staffId, origins, 'stopped')
@@ -1810,8 +1839,9 @@ export class Office extends EventEmitter<{
     else this.lastDoneTask.delete(staffId)
     const short = summary.length > CHAT_TEXT_MAX ? `${summary.slice(0, CHAT_TEXT_MAX)}…` : summary
     for (const o of origins) {
-      if (o.kind === 'task') {
-        const t = this.tasks.get(o.taskId)
+      const cardId = o.kind === 'task' ? o.taskId : o.cardId
+      if (cardId) {
+        const t = this.tasks.get(cardId)
         // 리드의 기획안이 확인 대기·하위 업무 진행 중이면 아직 끝난 게 아니다 (취합 보고가 끝나야 검토로)
         const isPlanOpen = Boolean(t?.plan) && !t?.plan?.isAggregating
         if (t && t.status === 'doing' && !isPlanOpen) {
@@ -1835,8 +1865,10 @@ export class Office extends EventEmitter<{
     }
     // 이 직원이 연 도움 요청 원업무가 모두 끝났으면(열린 요청·돌아올 결과 없음) 센 횟수를 비운다 — 받은 요청은 위에서 닫은 뒤에 본다
     this.helpLedger.release(staffId, keep, (id) => [...this.origins.values()].some((os) => os.some((o) => o.kind === 'help' && o.reqId === id)))
-    // 단체방에는 보고 원문을 그대로 남긴다 (긴 보고는 화면에서 접어 보여 준다)
-    this.postChat(staffId, summary.slice(0, TASK_RESULT_MAX) || t('notify.chatDone'), undefined, undefined, room, true)
+    // 단체방에는 보고 원문을 그대로 남긴다 (긴 보고는 화면에서 접어 보여 준다). 이어진 카드가 있으면 보고에 붙여 '카드 열기'·👍로 쓴다
+    const reportTaskId = origins.map((o) => (o.kind === 'task' ? o.taskId : o.cardId)).find((id) => id && this.tasks.has(id))
+    const report = this.postChat(staffId, summary.slice(0, TASK_RESULT_MAX) || t('notify.chatDone'), undefined, undefined, room, true, reportTaskId ? { taskId: reportTaskId } : {})
+    for (const o of origins) this.setDelivery(o.chatId, staffId, { state: 'done', reportId: report.id })
     // 대표에게 올린 보고 — 직원 카드에 안 읽은 개수로 쌓인다 (패널을 열어 두었으면 화면이 곧바로 읽음 처리한다)
     this.unreadReports = addUnread(this.unreadReports, staffId)
     db.saveUnreadReports(this.unreadReports)
@@ -2701,10 +2733,13 @@ export class Office extends EventEmitter<{
             const unknown = subtasks.filter((st) => !candidates.some((m) => m.name === st.assignee)).map((st) => st.assignee)
             if (unknown.length) return text(t('staff.tool.plan.unknown', { names: unknown.join(', ') }))
             // 한 번에 여러 업무를 받았을 수 있으니 카드 제목으로 어느 업무의 기획안인지 고른다
-            const myTasks = (this.origins.get(staffId) ?? []).flatMap((o) => (o.kind === 'task' && this.tasks.get(o.taskId)) || [])
+            // 대화방 지시로 저절로 만든 카드도 그 업무의 카드다 — 기획안이 따로 카드를 또 만들지 않게
+            const myTasks = cardIdsOf(this.origins.get(staffId) ?? []).flatMap((id) => this.tasks.get(id) ?? [])
             const picked = pickPlanCard(myTasks, { task: taskTitle, title })
             if ('error' in picked) return text(picked.error)
             let task = picked.card
+            // 대화 지시로 만든 카드는 제목이 지시 요약이다 — 리드가 붙인 기획 제목으로 바꾼다
+            if (task?.fromChat && title?.trim()) task = { ...task, title: title.trim().slice(0, 60) }
             if (!task) {
               const lab = this.labsOf(staffId).find((l) => l.leadId === staffId) ?? null
               task = {
@@ -2747,7 +2782,12 @@ export class Office extends EventEmitter<{
             }
             this.saveTask({ ...task, plan, status: 'doing', updatedAt: Date.now() })
             const lead = this.hired.get(staffId)!
-            this.postChat(staffId, t('staff.tool.plan.posted', { title: task.title, n: plan.subtasks.length }))
+            // 대화방에 확인 카드로: 일을 맡긴 방, 없으면(보드·직원 패널로 맡긴 일) 리드의 랩 방 → 팀 방 → 전체 방
+            const leadLab = this.labsOf(staffId).find((l) => l.leadId === staffId)
+            const planRoomId = this.roomOf(staffId) ?? (leadLab ? labRoomId(leadLab.id) : this.teamOf(staffId)?.id)
+            // 방이 없는 팀·랩(연습·프로젝트)이면 전체 방
+            const planRoom = findRoom(planRoomId, [...this.teams.values()], [...this.labs.values()])?.room
+            this.postChat(staffId, t('staff.tool.plan.posted', { title: task.title, n: plan.subtasks.length }), undefined, undefined, planRoom, false, { plan: { taskId: task.id, proposedAt: plan.proposedAt } })
             const absorbNote = absorbs?.length
               ? `${t('staff.tool.plan.absorbFound', { n: absorbed.ids.length })}${absorbed.unmatched.length ? t('staff.tool.plan.absorbMissing', { titles: absorbed.unmatched.join(', ') }) : ''}`
               : ''
@@ -3724,7 +3764,7 @@ export class Office extends EventEmitter<{
   }
 
   private isWorkingOn(staffId: string, taskId: string) {
-    return (this.origins.get(staffId) ?? []).some((o) => o.kind === 'task' && o.taskId === taskId)
+    return cardIdsOf(this.origins.get(staffId) ?? []).includes(taskId)
   }
 
   resumePlan(taskId: string) {
@@ -4557,14 +4597,17 @@ export class Office extends EventEmitter<{
    * room이 팀 id면 그 팀 방, 'lab:<랩 id>'면 그 랩 방: 부를 수 있는 건 방 참여자와 @전체(= 팀·랩 전원),
    * 아무도 안 부르면 팀장·랩 리드가 받는다
    */
-  sendChat(text: string, attachments: Attachment[] = [], room?: string, mode?: ChatSendMode) {
+  sendChat(text: string, attachments: Attachment[] = [], room?: string, mode?: ChatSendMode, replyToId?: number, scheduled?: ChatMessage['scheduled']) {
     const allTeams = [...this.teams.values()]
     const allLabs = [...this.labs.values()]
     const info = findRoom(room, allTeams, allLabs)
     // 없어졌거나 방이 없는 팀·랩(project·연습)이면 전체 방으로
     room = info?.room
     const say = (line: string) => this.postChat(OFFICE_SENDER, line, undefined, undefined, room)
-    this.postChat('me', text, attachments, undefined, room)
+    // 답장: 인용한 말의 앞부분을 말풍선에 남기고, 직원에게는 인용 내용을 함께 전한다
+    const quoted = replyToId ? db.getChat(replyToId) : null
+    const replyTo = quoted ? { id: quoted.id, from: quoted.from, text: quoted.text.replace(/\s+/g, ' ').trim().slice(0, REPLY_QUOTE_MAX) } : undefined
+    const mine = this.postChat('me', text, attachments, undefined, room, false, { ...(replyTo ? { replyTo } : {}), ...(scheduled ? { scheduled } : {}) })
     // 앱이 직접 처리하는 단체방 명령: /데모데이
     if (!room && /^\/(데모데이|demoday)$/i.test(text.trim())) return this.runDemoDayNow()
     // 튜토리얼 연습 직원·팀·랩은 단체방 대상에서 뺀다 (AI 호출 없음)
@@ -4577,19 +4620,34 @@ export class Office extends EventEmitter<{
     const teams = allTeams.filter((t) => !t.isPractice)
     const labs = allLabs.filter((l) => !l.isPractice)
     const targets = info ? chatRoomMentionTargets(info, hired) : mentionTargets(hired, teams, labs)
-    const { matched, recipientIds, body } = parseMentions(text, targets)
+    const parsedMentions = parseMentions(text, targets)
+    const { body } = parsedMentions
+    // 멘션 없이 직원 말에 답장하면 그 직원이 받는다
+    const replyStaff = quoted && parsedMentions.matched.length === 0 ? hired.find((s) => s.id === quoted.from) : undefined
+    const matched = replyStaff ? [{ key: `staff:${replyStaff.id}`, kind: 'staff' as const, name: replyStaff.name, memberIds: [replyStaff.id] }] : parsedMentions.matched
+    const recipientIds = replyStaff ? [replyStaff.id] : parsedMentions.recipientIds
     // 멘션만 있고 할 말이 없으면 여러 명에게 빈 지시가 가지 않게 막는다. 첨부만 있으면 첨부를 보라고 전한다
     if (!body && attachments.length === 0) return say('내용이 없어 전달하지 않았어요.')
     // `@이름 /명령`은 머리말 없이 그대로 보내야 세션이 명령으로 알아듣는다
     const head = info ? roomHead(info) : '[단체방]'
-    const message = body.startsWith('/') ? body : `${head} ${body || '첨부 파일을 확인해 주세요.'}`
-    const origin: Origin = { kind: 'chat', room }
+    const quote = replyTo ? `${t('chat.reply.context', { name: quoted?.from === 'me' ? t('chat.reply.me') : (this.hired.get(quoted?.from ?? '')?.name ?? ''), text: (quoted?.text ?? '').slice(0, REPLY_CONTEXT_MAX) })}\n\n` : ''
+    const message = body.startsWith('/') ? body : `${head} ${quote}${body || '첨부 파일을 확인해 주세요.'}`
+    const origin: Origin = { kind: 'chat', room, chatId: mine.id }
     // 앱 대화방(mode)은 직원 패널처럼: 일하는 중이면 대기 메시지로 들고 있거나(wait) 하던 일을 멈추고 바로 전한다(now).
     // mode가 없으면(비서·바탕화면 비서·휴대폰) 예전처럼 바로 보낸다
+    // 받은 직원마다 처리 상태를 남긴다 (받음 → 작업 중 → 완료). 대기 메시지로 들고 있으면 '대기'
     const deliver = (id: string) => {
-      if (mode === 'now' && this.hired.get(id)?.status === 'working') return void this.interruptWith(id, message, attachments, origin)
-      if (mode) return this.instructFromPanel(id, message, attachments, origin, body.startsWith('/') ? undefined : body || undefined)
-      this.instruct(id, message, origin, attachments, '', true)
+      const o: Origin = { ...origin }
+      if (mode === 'now' && this.hired.get(id)?.status === 'working') {
+        this.setDelivery(mine.id, id, { state: 'received' })
+        return void this.interruptWith(id, message, attachments, o)
+      }
+      if (mode) {
+        const isHeld = this.instructFromPanel(id, message, attachments, o, body.startsWith('/') ? undefined : body || undefined)
+        return this.setDelivery(mine.id, id, { state: isHeld ? 'waiting' : 'received' })
+      }
+      this.setDelivery(mine.id, id, { state: 'received' })
+      this.instruct(id, message, o, attachments, '', true)
     }
     if (matched.length === 0) {
       const leadIds = new Set([...teams, ...labs].map((g) => g.leadId))
@@ -4616,8 +4674,144 @@ export class Office extends EventEmitter<{
   }
 
   /** room을 안 주면 보낸 직원이 처리 중인 지시의 방으로 (결재·질문·위임·중간 보고가 지시 온 방에 올라간다) */
-  private postChat(from: string, text: string, attachments?: Attachment[], approval?: ChatApproval, room = this.roomOf(from), isReport = false) {
-    this.emit('chat', db.insertChat(from, text, attachments, approval, room, isReport))
+  private postChat(from: string, text: string, attachments?: Attachment[], approval?: ChatApproval, room = this.roomOf(from), isReport = false, meta: db.ChatMeta = {}) {
+    const m = db.insertChat(from, text, attachments, approval, room, isReport, meta)
+    this.emit('chat', m)
+    return m
+  }
+
+  /** 내가 보낸 대화방 지시의 처리 상태를 받은 직원 몫만 고친다 (chatId가 없으면 대화방 지시가 아니다) */
+  private setDelivery(chatId: number | undefined, staffId: string, patch: Partial<ChatDelivery>) {
+    if (!chatId) return
+    const m = db.updateChatMeta(chatId, (meta) => {
+      const list = meta.deliveries ?? []
+      const prev = list.find((d) => d.staffId === staffId)
+      // 끝난 상태(완료·오류·멈춤·취소)는 같은 지시의 늦게 온 신호로 되돌리지 않는다
+      if (prev && prev.state !== 'received' && prev.state !== 'waiting' && (patch.state === 'received' || patch.state === 'waiting')) return meta
+      const next: ChatDelivery = { ...(prev ?? { staffId, state: 'received' }), ...patch }
+      return { ...meta, deliveries: prev ? list.map((d) => (d.staffId === staffId ? next : d)) : [...list, next] }
+    })
+    if (m) this.emit('chatUpdate', m)
+  }
+
+  /**
+   * 대화방 지시로 직원이 실제로 일을 시작하면(도구를 처음 쓰면) 업무 카드를 저절로 만든다 — 인사·짧은 답에는 카드가 생기지 않는다.
+   * 지금 하는 지시(줄 선 지시 제외) 중 아직 카드가 없는 대화방 지시 하나에만
+   */
+  private cardForChatWork(staffId: string) {
+    const s = this.hired.get(staffId)
+    if (!s || s.isPractice || s.status !== 'working') return
+    const origins = this.origins.get(staffId) ?? []
+    const current = origins.slice(0, Math.max(1, origins.length - this.manager.backlog(staffId)))
+    const o = current.find((x) => x.kind === 'chat' && x.chatId && !x.cardId)
+    // 이미 업무 카드로 하는 일이 같이 있으면 그 카드에 붙는다 — 새로 만들지 않는다
+    if (!o?.chatId || current.some((x) => x.kind === 'task' || x.cardId)) return
+    const chat = db.getChat(o.chatId)
+    if (!chat) return
+    const room = o.room ?? null
+    const parsed = parseRoom(room ?? undefined)
+    const body = chat.text.replace(/(^|\s)@\S+/g, ' ').trim() || chat.text
+    const now = Date.now()
+    const task: Task = {
+      id: crypto.randomUUID(),
+      title: summarizeInstruction(body).slice(0, 60),
+      detail: body,
+      status: 'doing',
+      assigneeId: staffId,
+      teamId: parsed?.kind === 'team' ? parsed.id : (s.teamId ?? null),
+      labId: parsed?.kind === 'lab' ? parsed.id : null,
+      ...(chat.attachments?.length ? { attachments: chat.attachments } : {}),
+      result: '',
+      createdAt: now,
+      updatedAt: now,
+      fromChat: { room, chatId: o.chatId },
+    }
+    this.saveTask(task)
+    this.taskStartedAt.set(task.id, now)
+    o.cardId = task.id
+    this.setDelivery(o.chatId, staffId, { taskId: task.id })
+  }
+
+  /** 보고 말풍선 반응: 👍 = 확인 끝 — 이어진 카드가 확인 대기면 완료로 옮긴다 (직원에게 말이 가지 않는다) */
+  reactChat(messageId: number, kind: 'like' | 'none') {
+    const m = db.updateChatMeta(messageId, (meta) => ({ ...meta, reaction: kind === 'like' ? { kind: 'like', at: Date.now() } : undefined }))
+    if (!m) return
+    this.emit('chatUpdate', m)
+    const task = m.taskId ? this.tasks.get(m.taskId) : undefined
+    if (kind === 'like' && task && task.status === 'review') this.updateTask(task.id, { status: 'done' })
+  }
+
+  searchChat(query: string, room?: string | null): ChatSearchHit[] {
+    const loaded = new Set(db.recentChat(CHAT_HISTORY).map((m) => m.id))
+    return db.searchChat(query, room, OFFICE_SENDER).map((message) => ({ message, isOld: !loaded.has(message.id) }))
+  }
+
+  chatAround(messageId: number) {
+    return db.chatAround(messageId)
+  }
+
+  // ── 대화방 예약 보내기·반복 지시 ─────────────────────
+
+  private putReservation(r: ChatReservation) {
+    db.upsertChatReservation(r)
+    this.chatReservations.set(r.id, r)
+    this.scheduleEmit()
+  }
+
+  saveChatReservation(input: ChatReservationInput) {
+    const prev = this.chatReservations.get(input.id)
+    const text = input.text.trim()
+    if (!text && !input.attachments?.length) return
+    const isOnce = input.kind === 'once'
+    this.putReservation({
+      id: input.id,
+      kind: isOnce ? 'once' : 'repeat',
+      text,
+      room: input.room || null,
+      ...(input.attachments?.length ? { attachments: input.attachments } : {}),
+      ...(isOnce ? { at: input.at ?? Date.now() } : { time: input.time ?? '09:00', weekdays: input.weekdays?.length ? input.weekdays : [1, 2, 3, 4, 5] }),
+      enabled: input.enabled,
+      lastRunDate: prev?.lastRunDate ?? null,
+      sentCount: prev?.sentCount ?? 0,
+      createdAt: prev?.createdAt ?? Date.now(),
+    })
+  }
+
+  chatReservationAction(id: string, action: ChatReservationAction): void {
+    const r = this.chatReservations.get(id)
+    if (!r) return
+    if (action === 'cancel') {
+      db.deleteChatReservation(id)
+      this.chatReservations.delete(id)
+      return this.scheduleEmit()
+    }
+    if (action === 'send') return this.sendReservation(r)
+    if (action === 'skip') {
+      // 한 번 예약을 건너뛰면 지운다. 반복은 오늘 몫만 건너뛴다
+      if (r.kind === 'once') return this.chatReservationAction(id, 'cancel')
+      return this.putReservation({ ...r, isMissed: false, missedAt: undefined, lastRunDate: reservationDay(new Date()) })
+    }
+    this.putReservation({ ...r, enabled: action === 'resume' })
+  }
+
+  private sendReservation(r: ChatReservation) {
+    if (r.kind === 'once') {
+      db.deleteChatReservation(r.id)
+      this.chatReservations.delete(r.id)
+      this.scheduleEmit()
+    } else this.putReservation({ ...r, isMissed: false, missedAt: undefined, lastRunDate: reservationDay(new Date()), sentCount: r.sentCount + 1 })
+    // 방이 없어졌으면 sendChat이 전체 방으로 보낸다
+    this.sendChat(r.text, r.attachments ?? [], r.room ?? undefined, 'wait', undefined, { kind: r.kind, reservationId: r.id })
+  }
+
+  private runDueChatReservations() {
+    const now = new Date()
+    for (const r of [...this.chatReservations.values()]) {
+      const expired = expireMissed(r, now)
+      if (expired) this.putReservation(expired)
+      const cur = expired ?? r
+      if (isReservationDue(cur, now)) this.sendReservation(cur)
+    }
   }
 
   /** 결재·질문 처리 결과를 단체방 메시지에 남긴다 (어디서 처리했든 — 결재함·단체방·휴대폰) */
@@ -4752,6 +4946,7 @@ export class Office extends EventEmitter<{
     c[type] = (c[type] ?? 0) + 1
     this.counters.set(staffId, c)
     this.emit('log', db.insertLog(staffId, type, remoteMarked(type, text), attachments, i18n))
+    if (type === 'tool') this.cardForChatWork(staffId)
     this.scheduleEmit()
   }
 

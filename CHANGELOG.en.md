@@ -13,6 +13,14 @@ Writing rules
 - Team and lab chat rooms now show a member status bar at the top: who is working, what they are doing, and who needs your review. Work from task cards and the staff panel shows too. Hover for details, click to open that staff panel. The main room shows only people who are working or need review.
 - In chat rooms you can now choose 'Send when done' or 'Interrupt now' for a staff member who is working, just like in the staff panel. Messages sent with 'Send when done' wait above the input box, where you can send them now or cancel.
 - Chat rooms now have '📘 Manuals' and '/ Commands' buttons under the input box, so you can pick the manuals and commands the recipient (the team or lab lead if no one is mentioned) can use.
+- Chat rooms now work more like a messenger. Under each instruction you send, you'll see 'Received → Working → Done', with 'View report' to jump to the report. For several recipients it shows '1 of 3 done' and expands per person when clicked. Waiting for approval and stopped-by-error show there too.
+- Hover a message for 'Reply' and 'Copy'. Replying to a staff report sends it to that person without an @mention, together with the quoted report. Click a quote to jump to the original.
+- Staff reports now have '👍 Looks good', '🔁 Redo' and '🔍 More detail' buttons. 👍 marks it checked and moves the linked task card from review to done (nothing is sent to the staff).
+- Room tabs and the 'Chat' menu show unread staff messages, and rooms with a waiting approval or question get a yellow dot. Entering a room shows a 'new messages' line.
+- Work asked in a chat room now gets a task card automatically once the staff actually starts working (not for greetings or short answers). The card shows '💬 room' and opens that chat when clicked, with outputs, cost and undo like other cards.
+- The ▾ next to Send lets you schedule a message (today 6 PM, tomorrow 9 AM, Monday 9 AM, or pick a time) or repeat it (every day, weekdays, Mondays 9 AM, or custom). Scheduled messages wait above the input box where you can send now, edit, cancel or pause. If the app was off at the scheduled time, it asks whether to send when you open it.
+- Search chats with 🔍 next to the room title (or ⌘F). 'This room' highlights matches and steps through them with ↑↓; 'All rooms' lists results with room, sender and date and jumps to the message. Older messages not on screen are found too.
+- When a lead submits a plan, a 'Plan review request' card appears in the chat room. 'Open in Inbox' opens that plan right away. For work assigned by task card, it goes to the lead's lab room (or team room), and the card updates after you approve or ask for changes.
 
 ## [1.0.3] - 2026-11-06
 

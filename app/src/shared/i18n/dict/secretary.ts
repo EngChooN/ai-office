@@ -38,6 +38,8 @@ export default {
   'secretary.tool.runScheduleNow': { ko: '예약 업무 지금 실행', en: 'Run scheduled task now', ja: '予約業務を今すぐ実行', zh: '立即执行定时任务' },
   'secretary.tool.releasePlanHold': { ko: '한도 보류 중인 업무 바로 시작', en: 'Start work held by plan limit now', ja: '上限で保留中の業務をすぐ開始', zh: '立即开始因额度暂停的任务' },
   'secretary.tool.sendChat': { ko: '단체방에 말하기', en: 'Post to group chat', ja: 'グループチャットに書く', zh: '在群聊发言' },
+  'secretary.tool.saveChatReservation': { ko: '대화방 예약 보내기 저장', en: 'Save a scheduled chat message', ja: 'チャット予約送信を保存', zh: '保存聊天室定时消息' },
+  'secretary.tool.chatReservationAction': { ko: '대화방 예약 보내기·취소', en: 'Send or cancel a scheduled chat message', ja: 'チャット予約の送信・取り消し', zh: '发送或取消聊天室定时消息' },
   'secretary.tool.saveManual': { ko: '매뉴얼 저장', en: 'Save manual', ja: 'マニュアルを保存', zh: '保存手册' },
   'secretary.tool.deleteManual': { ko: '매뉴얼 지우기', en: 'Delete manual', ja: 'マニュアルを削除', zh: '删除手册' },
   'secretary.tool.trainStaff': { ko: '직원 교육', en: 'Train staff', ja: 'スタッフ教育', zh: '培训员工' },

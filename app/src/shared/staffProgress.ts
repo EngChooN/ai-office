@@ -17,7 +17,7 @@ export function summarizeInstruction(text: string): string {
  */
 export function buildStaffProgress(a: {
   status: StaffStatus
-  origins: readonly { kind?: string; fromId?: string; text?: string; room?: string }[]
+  origins: readonly { kind?: string; fromId?: string; text?: string; room?: string; chatId?: number }[]
   queued: number
   hasApproval: boolean
   nameOf?: (id: string) => string | undefined
@@ -29,5 +29,7 @@ export function buildStaffProgress(a: {
   // 동료의 도움 요청으로 받은 일이면 부탁한 사람 이름을 붙인다 (그 직원이 없어졌으면 생략)
   const requestedBy = cur.kind === 'help' && cur.fromId ? a.nameOf?.(cur.fromId) : undefined
   const waiting = (a.waiting ?? []).map((w) => ({ id: w.id, text: w.text.slice(0, WAITING_TEXT_MAX), ...(w.room ? { room: w.room } : {}) }))
-  return { state, text: cur.text ?? '', ...(cur.room ? { room: cur.room } : {}), queued: a.queued + waiting.length, ...(requestedBy ? { requestedBy } : {}), ...(waiting.length ? { waiting } : {}) }
+  // 대화방에서 받은 지시들 (맨 앞 = 지금 하는 것) — 내 말풍선 아래 '작업 중·차례 기다림' 표시에 쓴다
+  const chatIds = a.origins.flatMap((o) => (o.chatId ? [o.chatId] : []))
+  return { state, text: cur.text ?? '', ...(cur.room ? { room: cur.room } : {}), queued: a.queued + waiting.length, ...(requestedBy ? { requestedBy } : {}), ...(waiting.length ? { waiting } : {}), ...(chatIds.length ? { chatIds, ...(cur.chatId ? { chatId: cur.chatId } : {}) } : {}) }
 }

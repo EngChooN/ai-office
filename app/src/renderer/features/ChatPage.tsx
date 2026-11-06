@@ -1,6 +1,6 @@
 import { memo, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { CheckIcon, ChevronDownIcon, ChevronRightIcon, FlaskConicalIcon, MegaphoneIcon, MessagesSquareIcon, SendIcon, UsersIcon, ZapIcon } from 'lucide-react'
+import { CheckIcon, ChevronDownIcon, ChevronRightIcon, FlaskConicalIcon, MegaphoneIcon, MessagesSquareIcon, SearchIcon, SendIcon, UsersIcon, ZapIcon } from 'lucide-react'
 import { useShallow } from 'zustand/react/shallow'
 import { Button } from '@/components/ui/button'
 import { AttachButton, AttachmentView, DraftAttachments, useDraftAttachments } from '@/components/attachments'
@@ -24,6 +24,8 @@ import { ProgressLine, WaitingCards } from './ProgressLine'
 import { STATUS_META } from './status'
 import { progressesForRoom } from '@shared/progressView'
 import { AlwaysApproveButton } from './AutoApprove'
+import { BubbleMenu, ChatSearch, DeliveryLine, PlanNotice, ReplyBar, ReplyQuote, ReportActions, ReservationCards, ReserveMenu, reservationInput, useSearchHighlight } from './ChatExtras'
+import { firstUnread, roomKey, roomsWithPendingApproval, seenOf, unreadByRoom } from '@shared/chatUnread'
 
 const MENTION_MAX = 6
 const KIND_ORDER: MentionKind[] = ['all', 'team', 'lab', 'staff']
@@ -55,16 +57,35 @@ export function ChatPage() {
   const room = useChatRoom()
   const title = !room ? t('chat.title') : room.kind === 'lab' ? t('chat.labRoom.title', { lab: room.name }) : t('chat.room.title', { team: room.name })
   const description = t(!room ? 'chat.description' : room.kind === 'lab' ? 'chat.labRoom.description' : 'chat.room.description', { all: ALL_MENTION })
+  // 대화 찾기: 제목 옆 🔍 또는 ⌘F·Ctrl+F
+  const [isSearchOpen, setIsSearchOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  useEffect(() => {
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'f') {
+        e.preventDefault()
+        setIsSearchOpen(true)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
   return (
     <div className="flex h-full flex-col">
       <div className="phone:px-4 phone:py-3 short:py-1.5 typing:hidden border-b px-6 py-4">
-        <h1 className="short:text-base text-lg font-semibold">{title}</h1>
+        <div className="flex items-start gap-2">
+          <h1 className="short:text-base flex-1 text-lg font-semibold">{title}</h1>
+          <Button size="sm" variant="ghost" className="size-8 p-0" onClick={() => setIsSearchOpen((v) => !v)} title={t('chat.search.open')} aria-label={t('chat.search.open')}>
+            <SearchIcon />
+          </Button>
+        </div>
         <p className="text-muted-foreground short:hidden text-xs">{description}</p>
         <RemoteLine />
         <RoomTabs current={room?.room} />
+        {isSearchOpen && <ChatSearch room={room?.room} onClose={() => setIsSearchOpen(false)} onQuery={setSearchQuery} />}
         <RoomStatusStrip room={room} />
       </div>
-      <MessageList room={room?.room} />
+      <MessageList room={room?.room} searchQuery={isSearchOpen ? searchQuery : ''} />
       <Composer room={room} />
     </div>
   )
@@ -201,6 +222,12 @@ function RoomTabs({ current }: { current: string | undefined }) {
   const teams = useOffice((s) => s.teams)
   const labs = useOffice((s) => s.labs)
   const setChatRoom = useOffice((s) => s.setChatRoom)
+  const chat = useOffice((s) => s.chat)
+  const chatSeen = useOffice((s) => s.chatSeen)
+  const staff = useOffice((s) => s.staff)
+  const unread = useMemo(() => (chatSeen ? unreadByRoom(chat, chatSeen) : {}), [chat, chatSeen])
+  const pendingIds = useMemo(() => new Set(staff.flatMap((s) => s.approvals.map((a) => a.id))), [staff])
+  const approvalRooms = useMemo(() => roomsWithPendingApproval(chat, pendingIds), [chat, pendingIds])
   const teamRooms = roomTeams(teams)
   const labRooms = roomLabs(labs)
   if (teamRooms.length === 0 && labRooms.length === 0) return null
@@ -215,6 +242,13 @@ function RoomTabs({ current }: { current: string | undefined }) {
     >
       {color && <span className="size-2 rounded-full" style={{ background: color }} />}
       {label}
+      {/* 지금 보고 있는 방은 숫자를 붙이지 않는다 (곧 읽음 처리) */}
+      {!isActive && (unread[roomKey(key === 'all' ? null : key)] ?? 0) > 0 && (
+        <span className="bg-status-error rounded-full px-1.5 text-[10px] leading-4 font-semibold text-white" aria-label={t('chat.unread.count', { count: unread[roomKey(key === 'all' ? null : key)] })}>
+          {unread[roomKey(key === 'all' ? null : key)]}
+        </span>
+      )}
+      {approvalRooms.has(roomKey(key === 'all' ? null : key)) && <span className="bg-status-waiting size-1.5 rounded-full" title={t('chat.unread.approval')} />}
     </button>
   )
   const groupLabel = (key: string, label: string) => (
@@ -236,7 +270,7 @@ function RoomTabs({ current }: { current: string | undefined }) {
 const lineKey = (l: ChatLine) => (l.kind === 'message' ? String(l.message.id) : `room:${l.room}:${l.lastId}`)
 
 // 입력 중엔 메시지 목록이 다시 그려지지 않도록 목록과 입력창을 나눠 각자 구독한다
-function MessageList({ room }: { room: string | undefined }) {
+function MessageList({ room, searchQuery }: { room: string | undefined; searchQuery: string }) {
   const chat = useOffice((s) => s.chat)
   const staff = useOffice((s) => s.staff)
   const teams = useOffice((s) => s.teams)
@@ -261,6 +295,36 @@ function MessageList({ room }: { room: string | undefined }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [last?.id])
 
+  // 안 읽은 수: 방에 들어온 순간 마지막으로 본 자리를 잡아 '여기부터 새 메시지' 줄을 긋고, 보고 있는 방은 바로 읽음으로
+  const chatSeen = useOffice((s) => s.chatSeen)
+  const markChatSeen = useOffice((s) => s.markChatSeen)
+  // 들어올 때 안 읽었던 글만 센다 (보는 중에 새로 온 글은 줄을 옮기지 않는다)
+  const [entered, setEntered] = useState<{ room: string; divider: { id: number; count: number } | null } | null>(null)
+  useEffect(() => {
+    if (chatSeen && entered?.room !== roomKey(room)) setEntered({ room: roomKey(room), divider: firstUnread(chat, room, seenOf(chatSeen, room)) })
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 방에 들어올 때 한 번
+  }, [chatSeen, room, entered?.room])
+  const divider = entered && entered.room === roomKey(room) ? entered.divider : null
+  const lastInRoom = useMemo(() => chat.reduce((max, m) => (roomKey(m.room) === roomKey(room) ? Math.max(max, m.id) : max), 0), [chat, room])
+  useEffect(() => {
+    if (lastInRoom) markChatSeen(room, lastInRoom)
+  }, [lastInRoom, room, markChatSeen])
+
+  // 답장 인용·보고 보기·검색 결과로 갈 때: 그 말풍선으로 스크롤하고 잠깐 강조한다
+  const chatFocus = useOffice((s) => s.chatFocus)
+  const [flashId, setFlashId] = useState<number | null>(null)
+  useEffect(() => {
+    if (!chatFocus) return
+    const el = scroll.ref.current?.querySelector(`[data-chat-id="${chatFocus.id}"]`)
+    if (!el) return
+    el.scrollIntoView({ block: 'center' })
+    setFlashId(chatFocus.id)
+    const timer = setTimeout(() => setFlashId(null), 1600)
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 새로 가라고 할 때와 그 말풍선이 그려졌을 때
+  }, [chatFocus, lines.length])
+  useSearchHighlight(scroll.contentRef.current, searchQuery, lines)
+
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
       <div ref={scroll.ref} onScroll={scroll.onScroll} className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
@@ -274,8 +338,11 @@ function MessageList({ room }: { room: string | undefined }) {
             const m = line.message
             const sender = staff.find((s) => s.id === m.from)
             return (
+              <div key={m.id} data-chat-id={m.id} className={cn('flex flex-col gap-3 rounded-2xl transition-shadow', flashId === m.id && 'ring-primary/70 ring-2 ring-offset-4 ring-offset-background')}>
+              {divider?.id === m.id && (
+                <div className="text-status-error flex items-center gap-2 text-[11px] before:h-px before:flex-1 before:bg-status-error/40 after:h-px after:flex-1 after:bg-status-error/40">{t('chat.unread.divider', { count: divider.count })}</div>
+              )}
               <Bubble
-                key={m.id}
                 message={m}
                 senderId={sender?.id}
                 senderName={sender?.name ?? t('common.formerStaff')}
@@ -285,6 +352,7 @@ function MessageList({ room }: { room: string | undefined }) {
                 mentions={mentions}
                 onSelect={select}
               />
+              </div>
             )
           })}
           <ProgressLines room={room} />
@@ -365,8 +433,16 @@ const Bubble = memo(function Bubble({
         </button>
       )}
       <div className={cn('flex max-w-[75%] flex-col gap-0.5', isMe && 'items-end')}>
-        {!isMe && <span className="text-muted-foreground text-xs">{senderName}</span>}
-        <div className={cn('selectable min-w-0 rounded-2xl px-3 py-2 text-sm', isMe ? 'bg-primary text-primary-foreground whitespace-pre-wrap' : 'bg-card border')}>
+        {!isMe && (
+          <span className="text-muted-foreground text-xs">
+            {senderName}
+            {m.isReport && ` · ${t('chat.report.label')}`}
+          </span>
+        )}
+        {/* 기획안 확인 요청은 글 대신 카드로만 (같은 말을 두 번 보이지 않게) */}
+        <div className={cn('group selectable relative min-w-0 rounded-2xl px-3 py-2 text-sm', isMe ? 'bg-primary text-primary-foreground whitespace-pre-wrap' : 'bg-card border', m.plan && 'hidden')}>
+          <BubbleMenu message={m} isMe={isMe} />
+          {m.replyTo && <ReplyQuote reply={m.replyTo} isMe={isMe} />}
           <FoldableText text={m.text}>{isMe ? <MentionText text={m.text} targets={mentions} onPrimary /> : <Markdown plugins={plugins}>{m.text}</Markdown>}</FoldableText>
           {m.attachments?.length ? (
             <div className="mt-2">
@@ -375,7 +451,13 @@ const Bubble = memo(function Bubble({
           ) : null}
           {m.approval && <ApprovalActions link={m.approval} pending={pendingApproval} staffName={senderName} />}
         </div>
-        <span className="text-muted-foreground text-[10px]">{fmtDate(m.ts, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+        {m.plan && <PlanNotice plan={m.plan} />}
+        {!isMe && m.isReport && !m.plan && <ReportActions message={m} />}
+        {isMe && <DeliveryLine message={m} />}
+        <span className="text-muted-foreground text-[10px]">
+          {m.scheduled && <span className="text-primary mr-1">{t(m.scheduled.kind === 'once' ? 'chat.reserve.sentOnce' : 'chat.reserve.sentRepeat')}</span>}
+          {fmtDate(m.ts, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+        </span>
       </div>
     </div>
   )
@@ -493,15 +575,50 @@ function Composer({ room }: { room: RoomInfo | undefined }) {
   const slashKeys = useSlashKeys(slashCommands.length, slashQuery, handleSlashPick)
 
   const draftFiles = useDraftAttachments()
+  // 답장: 입력칸 위 인용 줄. 멘션 없이 직원 말에 답하면 그 직원이 받는다
+  const reply = useOffice((s) => s.chatReply)
+  const setReply = useOffice((s) => s.setChatReply)
+  const replied = useOffice((s) => (s.chatReply ? s.chat.find((m) => m.id === s.chatReply!.id) : undefined))
+  const replyStaff = replied && (!parsed || parsed.matched.length === 0) ? staffById.get(replied.from) : undefined
+  // 다른 화면이 넣어 달라는 글(예약 고치기·다시 보내기·🔁)
+  const chatDraft = useOffice((s) => s.chatDraft)
+  useEffect(() => {
+    if (!chatDraft) return
+    setDraft(chatDraft.text)
+    focusEnd()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 새로 넣으라고 할 때만
+  }, [chatDraft?.nonce])
+  useEffect(() => {
+    if (reply) focusEnd()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reply?.id, reply?.mode])
+  // 방을 옮기면 답장 줄을 내린다 (다른 방 메시지에 답하지 않게)
+  useEffect(() => () => setReply(null), [room?.room, setReply])
   // 직원 패널처럼: 일하는 직원에게는 기본(Enter)이 '끝나면 보내기'(대기 메시지), '지금 끼어들기'는 하던 일을 멈추고 바로 전한다
   const handleSend = async (typed = draft, mode: ChatSendMode = 'wait') => {
     const text = typed.trim()
     if (!text && draftFiles.files.length === 0) return
     setDraft('')
     slashRest.current = ''
+    const replyTo = reply?.id
+    setReply(null)
     const attachments = await draftFiles.upload()
     draftFiles.clear()
-    void window.office.sendChat(text, attachments, room?.room, mode)
+    void window.office.sendChat(text, attachments, room?.room, mode, replyTo)
+  }
+  // 보내기 옆 ▾: 예약 보내기·반복 지시
+  const [isReserveOpen, setIsReserveOpen] = useState(false)
+  const [reserveNote, setReserveNote] = useState('')
+  const handleReserve = async (pick: Parameters<typeof reservationInput>[0]) => {
+    const text = draft.trim()
+    if (!text) return setReserveNote(t('chat.reserve.empty'))
+    setIsReserveOpen(false)
+    setReserveNote('')
+    setDraft('')
+    setReply(null)
+    const attachments = await draftFiles.upload()
+    draftFiles.clear()
+    void window.office.saveChatReservation(reservationInput(pick, text, room?.room ?? null, attachments))
   }
   // 같은 이름의 직원·팀·랩이 있으면 "@디자인(팀)"처럼 종류를 붙여 고른 대상에게 가게 한다
   // 고른 뒤에는 입력창에 포커스를 주고 커서를 끝(넣은 "@이름 " 뒤)으로 — 글이 바뀐 다음 프레임에 옮긴다
@@ -565,7 +682,7 @@ function Composer({ room }: { room: RoomInfo | undefined }) {
   }
 
   // 받는 사람 중 지금 일하는 직원 — 있으면 보내기 버튼이 '끝나면 보내기 · 지금 끼어들기'로 바뀐다 (결재 대기·/명령·다른 PC 직원은 바로 보낸다)
-  const targetIds = parsed && parsed.matched.length > 0 ? parsed.recipientIds : roomLead ? [roomLead.id] : []
+  const targetIds = parsed && parsed.matched.length > 0 ? parsed.recipientIds : replyStaff ? [replyStaff.id] : roomLead ? [roomLead.id] : []
   const busy = targetIds.flatMap((id) => {
     const s = staffById.get(id)
     return s && s.status === 'working' && s.approvals.length === 0 && !s.remote ? [s] : []
@@ -573,7 +690,9 @@ function Composer({ room }: { room: RoomInfo | undefined }) {
   const hasDraft = Boolean(draft.trim()) || draftFiles.files.length > 0
   const isBusySend = busy.length > 0 && hasDraft && !parsed?.body.startsWith('/')
   const isLab = room?.kind === 'lab'
-  const noneLabel = !room
+  const noneLabel = replyStaff
+    ? t('chat.reply.to', { name: replyStaff.name })
+    : !room
     ? t('chat.recipientsNone')
     : roomLead
       ? t(isLab ? 'chat.labRoom.recipientsLead' : 'chat.room.recipientsLead', { name: roomLead.name })
@@ -627,8 +746,10 @@ function Composer({ room }: { room: RoomInfo | undefined }) {
           ))}
         </div>
       )}
+      <ReservationCards room={room?.room} />
       <RoomWaiting room={room?.room} />
       <div className="mx-auto mb-2 max-w-3xl">
+        {reply && <ReplyBar reply={reply} onCancel={() => setReply(null)} />}
         <DraftAttachments files={draftFiles.files} onRemove={draftFiles.remove} />
         {parsed && <Recipients parsed={parsed} staffOf={(id) => staffById.get(id)} hasStaff={hired.length > 0} noneLabel={noneLabel} />}
         {isBusySend && (
@@ -672,7 +793,24 @@ function Composer({ room }: { room: RoomInfo | undefined }) {
             <SendIcon />
           </Button>
         )}
+        <Button variant="ghost" className="w-6 shrink-0 px-0" onClick={() => setIsReserveOpen((v) => !v)} title={t('chat.reserve.menu')} aria-label={t('chat.reserve.menu')} aria-expanded={isReserveOpen}>
+          <ChevronDownIcon />
+        </Button>
       </div>
+      {isReserveOpen && (
+        <ReserveMenu
+          onPick={(p) => void handleReserve(p)}
+          onSendNow={() => {
+            setIsReserveOpen(false)
+            void handleSend()
+          }}
+          onClose={() => {
+            setIsReserveOpen(false)
+            setReserveNote('')
+          }}
+        />
+      )}
+      {reserveNote && <p className="text-status-waiting mx-auto mt-1 max-w-3xl text-xs">{reserveNote}</p>}
       {hired.length > 0 && (
         <div className="typing:hidden mx-auto mt-1 flex max-w-3xl items-center gap-1">
           <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => openSlash('manual')} title={t('chat.manualButtonTitle')}>

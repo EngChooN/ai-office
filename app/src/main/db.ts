@@ -21,6 +21,7 @@ import {
   type ProcessRun,
   type ChatApproval,
   type ChatMessage,
+  type ChatReservation,
   type HireInput,
   type LogEntry,
   type LogType,
@@ -130,6 +131,8 @@ export function openDb() {
   if (!taskCols.includes('is_practice')) db.exec('ALTER TABLE task ADD COLUMN is_practice INTEGER')
   if (!taskCols.includes('is_autonomous')) db.exec('ALTER TABLE task ADD COLUMN is_autonomous INTEGER')
   if (!taskCols.includes('artifacts')) db.exec('ALTER TABLE task ADD COLUMN artifacts TEXT')
+  // 대화방 지시로 저절로 만든 카드 — { room, chatId } (JSON)
+  if (!taskCols.includes('from_chat')) db.exec('ALTER TABLE task ADD COLUMN from_chat TEXT')
   // 첨부(JSON 배열)는 로그·단체방·업무 카드에 붙는다
   const teamCols = (db.prepare('PRAGMA table_info(team)').all() as { name: string }[]).map((c) => c.name)
   if (!teamCols.includes('manuals')) db.exec('ALTER TABLE team ADD COLUMN manuals TEXT')
@@ -148,6 +151,9 @@ export function openDb() {
   if (!chatCols.includes('room')) db.exec('ALTER TABLE chat ADD COLUMN room TEXT')
   // 직원이 대표에게 올린 업무 보고 (1) — 바탕화면 비서가 완료 카드로 보여 준다. 기존 메시지는 보고 여부를 모른다(NULL)
   if (!chatCols.includes('is_report')) db.exec('ALTER TABLE chat ADD COLUMN is_report INTEGER')
+  // 답장·처리 상태·반응·이어진 카드·예약 표시 (JSON) — 새 칸을 늘리지 않고 한 칸에 모은다
+  if (!chatCols.includes('meta')) db.exec('ALTER TABLE chat ADD COLUMN meta TEXT')
+  db.exec('CREATE TABLE IF NOT EXISTS chat_reservation (id TEXT PRIMARY KEY, data TEXT NOT NULL, created_at INTEGER NOT NULL)')
 }
 
 const run = (sql: string, ...params: (string | number | null)[]) => db.prepare(sql).run(...params)
@@ -407,6 +413,7 @@ interface TaskRow {
   is_practice: number | null
   is_autonomous: number | null
   artifacts: string | null
+  from_chat?: string | null
 }
 
 export function loadTasks(): Task[] {
@@ -429,7 +436,18 @@ export function loadTasks(): Task[] {
     ...(r.is_practice ? { isPractice: true } : {}),
     ...(r.is_autonomous ? { isAutonomous: true } : {}),
     ...parseArtifacts(r.artifacts),
+    ...parseFromChat(r.from_chat),
   }))
+}
+
+function parseFromChat(raw: string | null | undefined): Pick<Task, 'fromChat'> {
+  if (!raw) return {}
+  try {
+    const v = JSON.parse(raw) as Task['fromChat']
+    return v && typeof v.chatId === 'number' ? { fromChat: { room: v.room ?? null, chatId: v.chatId } } : {}
+  } catch {
+    return {}
+  }
 }
 
 /** 깨진 JSON이어도 카드 목록 전체가 막히지 않도록 빈 목록으로 본다 */
@@ -445,14 +463,15 @@ function parseArtifacts(raw: string | null): Pick<Task, 'artifacts'> {
 
 export function upsertTask(t: Task) {
   run(
-    `INSERT INTO task (id, title, detail, status, assignee_id, team_id, result, created_at, updated_at, lab_id, attachments, parent_id, plan, meeting_id, usage, is_practice, is_autonomous, artifacts) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO task (id, title, detail, status, assignee_id, team_id, result, created_at, updated_at, lab_id, attachments, parent_id, plan, meeting_id, usage, is_practice, is_autonomous, artifacts, from_chat) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET title = excluded.title, detail = excluded.detail, status = excluded.status, assignee_id = excluded.assignee_id,
        team_id = excluded.team_id, result = excluded.result, updated_at = excluded.updated_at, lab_id = excluded.lab_id, attachments = excluded.attachments,
        parent_id = excluded.parent_id, plan = excluded.plan, meeting_id = excluded.meeting_id, usage = excluded.usage, is_practice = excluded.is_practice, is_autonomous = excluded.is_autonomous,
-       artifacts = excluded.artifacts`,
+       artifacts = excluded.artifacts, from_chat = excluded.from_chat`,
     t.id, t.title, t.detail, t.status, t.assigneeId, t.teamId, t.result, t.createdAt, t.updatedAt, t.labId, t.attachments?.length ? JSON.stringify(t.attachments) : null,
     t.parentId ?? null, t.plan ? JSON.stringify(t.plan) : null, t.meetingId ?? null, t.usage ? JSON.stringify(t.usage) : null, t.isPractice ? 1 : null, t.isAutonomous ? 1 : null,
     t.artifacts?.length ? JSON.stringify(t.artifacts) : null,
+    t.fromChat ? JSON.stringify(t.fromChat) : null,
   )
 }
 
@@ -527,7 +546,25 @@ export function deleteScheduleRow(id: string) {
 
 // ── 단체방 ──────────────────────────────────────────────
 
-type ChatRow = { id: number; ts: number; sender: string; text: string; attachments: string | null; approval: string | null; room: string | null; is_report?: number | null }
+type ChatRow = { id: number; ts: number; sender: string; text: string; attachments: string | null; approval: string | null; room: string | null; is_report?: number | null; meta?: string | null }
+
+/** chat.meta 칸에 모아 두는 것 */
+export type ChatMeta = Pick<ChatMessage, 'replyTo' | 'deliveries' | 'reaction' | 'taskId' | 'scheduled' | 'plan'>
+
+function parseChatMeta(raw: string | null | undefined): ChatMeta {
+  if (!raw) return {}
+  try {
+    const v = JSON.parse(raw) as ChatMeta
+    return v && typeof v === 'object' ? v : {}
+  } catch {
+    return {}
+  }
+}
+
+const metaJson = (meta: ChatMeta) => {
+  const clean = Object.fromEntries(Object.entries(meta).filter(([, v]) => v !== undefined && !(Array.isArray(v) && v.length === 0)))
+  return Object.keys(clean).length ? JSON.stringify(clean) : null
+}
 
 const toChatMessage = (r: ChatRow): ChatMessage => ({
   id: r.id,
@@ -538,14 +575,16 @@ const toChatMessage = (r: ChatRow): ChatMessage => ({
   approval: r.approval ? (JSON.parse(r.approval) as ChatApproval) : undefined,
   ...(r.room ? { room: r.room } : {}),
   ...(r.is_report ? { isReport: true } : {}),
+  ...parseChatMeta(r.meta),
 })
 
 /** room: 팀 대화방(팀 id)·랩 대화방('lab:<랩 id>') — 비우면 전체 방 */
-export function insertChat(from: string, text: string, attachments?: Attachment[], approval?: ChatApproval, room?: string, isReport = false): ChatMessage {
+export function insertChat(from: string, text: string, attachments?: Attachment[], approval?: ChatApproval, room?: string, isReport = false, meta: ChatMeta = {}): ChatMessage {
   const ts = Date.now()
   const raw = attachments?.length ? JSON.stringify(attachments) : null
+  const metaRaw = metaJson(meta)
   const { lastInsertRowid } = run(
-    'INSERT INTO chat (ts, sender, text, attachments, approval, room, is_report) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    'INSERT INTO chat (ts, sender, text, attachments, approval, room, is_report, meta) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
     ts,
     from,
     text,
@@ -553,8 +592,65 @@ export function insertChat(from: string, text: string, attachments?: Attachment[
     approval ? JSON.stringify(approval) : null,
     room || null,
     isReport ? 1 : null,
+    metaRaw,
   )
-  return { id: Number(lastInsertRowid), ts, from, text, attachments: attachments?.length ? attachments : undefined, approval, ...(room ? { room } : {}), ...(isReport ? { isReport: true } : {}) }
+  return { id: Number(lastInsertRowid), ts, from, text, attachments: attachments?.length ? attachments : undefined, approval, ...(room ? { room } : {}), ...(isReport ? { isReport: true } : {}), ...(metaRaw ? parseChatMeta(metaRaw) : {}) }
+}
+
+export function getChat(id: number): ChatMessage | null {
+  const row = get<ChatRow>('SELECT * FROM chat WHERE id = ?', id)
+  return row ? toChatMessage(row) : null
+}
+
+/** 메시지의 meta를 고친다 — 바뀐 메시지 (없으면 null) */
+export function updateChatMeta(id: number, change: (meta: ChatMeta) => ChatMeta): ChatMessage | null {
+  const row = get<ChatRow>('SELECT * FROM chat WHERE id = ?', id)
+  if (!row) return null
+  const meta = metaJson(change(parseChatMeta(row.meta)))
+  run('UPDATE chat SET meta = ? WHERE id = ?', meta, id)
+  return toChatMessage({ ...row, meta })
+}
+
+const CHAT_SEARCH_MAX = 100
+
+/** 대화 찾기: 글에 query가 들어간 메시지를 최근 것부터. room이 undefined면 모든 방, null이면 전체 방 (앱 안내 글은 뺀다) */
+export function searchChat(query: string, room: string | null | undefined, officeSender: string): ChatMessage[] {
+  const q = query.trim()
+  if (!q) return []
+  const like = `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`
+  const roomSql = room === undefined ? '' : room === null ? " AND COALESCE(room, '') = ''" : ' AND room = ?'
+  const params: (string | number)[] = [like, officeSender, ...(room ? [room] : []), CHAT_SEARCH_MAX]
+  return all<ChatRow>(`SELECT * FROM chat WHERE text LIKE ? ESCAPE '\\' AND sender != ?${roomSql} ORDER BY id DESC LIMIT ?`, ...params).map(toChatMessage)
+}
+
+/** 한 메시지와 같은 방의 앞뒤 대화 (오래된 검색 결과로 갈 때 화면에 붙인다) */
+export function chatAround(id: number, span = 30): ChatMessage[] {
+  const row = get<ChatRow>('SELECT * FROM chat WHERE id = ?', id)
+  if (!row) return []
+  const room = row.room || ''
+  const before = all<ChatRow>("SELECT * FROM chat WHERE COALESCE(room, '') = ? AND id < ? ORDER BY id DESC LIMIT ?", room, id, span)
+  const after = all<ChatRow>("SELECT * FROM chat WHERE COALESCE(room, '') = ? AND id > ? ORDER BY id LIMIT ?", room, id, span)
+  return [...before.reverse(), row, ...after].map(toChatMessage)
+}
+
+// ── 대화방 예약 보내기·반복 지시 ──────────────────────────
+
+export function loadChatReservations(): ChatReservation[] {
+  return all<{ data: string }>('SELECT data FROM chat_reservation ORDER BY created_at').flatMap((r) => {
+    try {
+      return [JSON.parse(r.data) as ChatReservation]
+    } catch {
+      return []
+    }
+  })
+}
+
+export function upsertChatReservation(r: ChatReservation) {
+  run('INSERT INTO chat_reservation (id, data, created_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data', r.id, JSON.stringify(r), r.createdAt)
+}
+
+export function deleteChatReservation(id: string) {
+  run('DELETE FROM chat_reservation WHERE id = ?', id)
 }
 
 /** 결재 처리 결과를 그 결재의 단체방 메시지에 남긴다 — 바뀐 메시지(없거나 이미 결과가 있으면 null) */

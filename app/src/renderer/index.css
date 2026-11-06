@@ -729,3 +729,9 @@
     transform: none;
   }
 }
+
+/* 대화 찾기: 찾은 말 표시 (CSS Custom Highlight) */
+::highlight(chat-search) {
+  background-color: color-mix(in srgb, var(--status-waiting) 45%, transparent);
+  color: inherit;
+}

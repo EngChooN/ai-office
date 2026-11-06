@@ -6,6 +6,7 @@ import { applyLanguage } from '@/lib/i18n'
 import { applyUiTheme } from '@/lib/uiTheme'
 import { t } from '@shared/i18n'
 import { appendChat } from '@shared/chatRooms'
+import { markSeen, type ChatSeen } from '@shared/chatUnread'
 
 export type View = 'secretary' | 'map' | 'dashboard' | 'org' | 'board' | 'inbox' | 'chat' | 'meeting' | 'manuals' | 'knowledge' | 'gallery' | 'schedule' | 'report' | 'payroll' | 'settings' | 'updates' | 'shop'
 
@@ -62,6 +63,23 @@ interface OfficeState extends OfficeSnapshot {
   setQuickSecretaryOpen(open: boolean): void
   pushLog(entry: LogEntry): void
   pushChat(m: ChatMessage): void
+  /** 화면에 불러온 범위 밖의 대화(검색 결과 앞뒤)를 제자리에 끼워 넣는다 */
+  mergeChat(list: ChatMessage[]): void
+  /** 방마다 마지막으로 본 메시지 (안 읽은 수) — 이 PC에만 저장 */
+  chatSeen: ChatSeen | null
+  markChatSeen(room: string | null | undefined, lastId: number): void
+  /** 입력칸 위 답장 줄: reply = 답장 · redo = 🔁 다시 해 줘 */
+  chatReply: { id: number; mode: 'reply' | 'redo' } | null
+  setChatReply(reply: { id: number; mode: 'reply' | 'redo' } | null): void
+  /** 입력칸에 넣을 글 (예약 '고치기', 오류 '다시 보내기', 🔁) — nonce가 바뀔 때마다 한 번 넣는다 */
+  chatDraft: { text: string; nonce: number } | null
+  setChatDraft(text: string): void
+  /** 이 메시지로 스크롤하고 잠깐 강조한다 (답장 인용·보고 보기·검색 결과) */
+  chatFocus: { id: number; nonce: number } | null
+  focusChat(id: number): void
+  /** 결재함을 열며 이 카드의 기획안으로 스크롤한다 (대화방 기획안 카드 '결재함에서 보기') */
+  planFocus: string | null
+  openPlanInInbox(taskId: string | null): void
 }
 
 /** 사무실을 그릴 레벨: 미리보기가 있으면 그 레벨. 화면은 모두 이 값으로 층수·외관을 정한다 */
@@ -139,7 +157,49 @@ export const useOffice = create<OfficeState>((set) => ({
   pushLog: (entry) => set((s) => ({ liveLogs: [...s.liveLogs.slice(-LIVE_LOG_MAX + 1), entry] })),
   // 같은 id면 결재 결과로 바뀐 메시지 → 제자리에서 바꾼다. 방마다 최근 CHAT_MAX개
   pushChat: (m) => set((s) => ({ chat: appendChat(s.chat, m, CHAT_MAX) })),
+  mergeChat: (list) =>
+    set((s) => {
+      const byId = new Map(s.chat.map((m) => [m.id, m]))
+      for (const m of list) if (!byId.has(m.id)) byId.set(m.id, m)
+      return { chat: [...byId.values()].sort((a, b) => a.id - b.id) }
+    }),
+  chatSeen: null,
+  markChatSeen: (room, lastId) =>
+    set((s) => {
+      if (!s.chatSeen) return {}
+      const next = markSeen(s.chatSeen, room, lastId)
+      if (next === s.chatSeen) return {}
+      saveChatSeen(next)
+      return { chatSeen: next }
+    }),
+  chatReply: null,
+  setChatReply: (chatReply) => set({ chatReply }),
+  chatDraft: null,
+  setChatDraft: (text) => set((s) => ({ chatDraft: { text, nonce: (s.chatDraft?.nonce ?? 0) + 1 } })),
+  chatFocus: null,
+  focusChat: (id) => set((s) => ({ chatFocus: { id, nonce: (s.chatFocus?.nonce ?? 0) + 1 } })),
+  planFocus: null,
+  openPlanInInbox: (planFocus) => set((s) => (planFocus ? { planFocus, view: shownView('inbox', s.settings.isWorkMode) } : { planFocus })),
 }))
+
+const CHAT_SEEN_KEY = 'aiOffice.chatSeen'
+
+function loadChatSeen(): ChatSeen | null {
+  try {
+    const v = JSON.parse(localStorage.getItem(CHAT_SEEN_KEY) ?? 'null') as ChatSeen | null
+    return v && typeof v.baseline === 'number' && v.rooms && typeof v.rooms === 'object' ? v : null
+  } catch {
+    return null
+  }
+}
+
+function saveChatSeen(seen: ChatSeen) {
+  try {
+    localStorage.setItem(CHAT_SEEN_KEY, JSON.stringify(seen))
+  } catch {
+    // 저장하지 못해도 이번 실행 동안은 화면 상태로 센다
+  }
+}
 
 /**
  * 단체방 기록을 다시 읽는다. 응답을 기다리는 사이 실시간으로 온 글(onChat)은 응답으로 덮어쓰지 않고 그 위에 다시 얹는다
@@ -148,7 +208,15 @@ export const useOffice = create<OfficeState>((set) => ({
 export function loadChatHistory() {
   const before = new Set(useOffice.getState().chat)
   void window.office.chatHistory().then((history) =>
-    useOffice.setState((s) => ({ chat: s.chat.filter((m) => !before.has(m)).reduce((chat, m) => appendChat(chat, m, CHAT_MAX), history) })),
+    useOffice.setState((s) => {
+      // 처음 켠 PC는 지금까지의 대화를 다 읽은 것으로 시작한다
+      let chatSeen = s.chatSeen ?? loadChatSeen()
+      if (!chatSeen) {
+        chatSeen = { baseline: history.reduce((max, m) => Math.max(max, m.id), 0), rooms: {} }
+        saveChatSeen(chatSeen)
+      }
+      return { chat: s.chat.filter((m) => !before.has(m)).reduce((chat, m) => appendChat(chat, m, CHAT_MAX), history), chatSeen }
+    }),
   )
 }
 

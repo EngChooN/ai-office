@@ -25,6 +25,7 @@ export type StaffStatus = 'idle' | 'working' | 'waiting' | 'offline' | 'error' |
 
 /** 대화방에서 일하는 직원에게 보낼 때: wait = 끝나면 보내기(대기 메시지) · now = 지금 끼어들기 */
 export type ChatSendMode = 'wait' | 'now'
+export type ChatReservationAction = 'send' | 'cancel' | 'skip' | 'pause' | 'resume'
 /** 직원·내부 AI를 돌리는 공급자 (고용 후 변경 불가) */
 export type AiProvider = 'claude' | 'codex'
 /** 앱 내부 AI(비서·요약)가 쓸 공급자 — auto는 쓸 수 있는 쪽 (둘 다면 Claude) */
@@ -88,6 +89,10 @@ export interface StaffProgress {
   waiting?: { id: string; text: string; /** 대화방에서 보낸 대기 메시지면 그 방 (없으면 직원 패널·전체 방) */ room?: string }[]
   /** 현재 지시가 동료의 도움 요청이면 부탁한 직원 이름 ("OO 님이 부탁한 일" 꼬리표) */
   requestedBy?: string
+  /** 지금 하는 지시가 대화방 메시지면 그 id */
+  chatId?: number
+  /** 받은 일 중 대화방 메시지 id들 (지금 하는 것 + 차례를 기다리는 것) */
+  chatIds?: number[]
 }
 
 export interface Staff {
@@ -462,6 +467,8 @@ export interface Task {
   isPractice?: boolean
   /** 자율 진행: 묻지 않고 끝까지 (질문은 대신 답·기획안은 자동 승인·위험 작업은 건너뛰고 보고). 하위 업무·위임받은 일도 따른다 */
   isAutonomous?: boolean
+  /** 대화방 지시로 직원이 일을 시작하며 저절로 만든 카드 — 어느 방의 어느 메시지인지 */
+  fromChat?: { room: string | null; chatId: number }
 }
 
 export interface TaskUsage {
@@ -640,6 +647,69 @@ export interface ChatMessage {
   room?: string
   /** 직원이 대표에게 올린 업무 보고 (바탕화면 비서의 완료 카드) — 인사·중간 글·첨부·결재 글은 아니다 */
   isReport?: boolean
+  /** 답장: 인용한 메시지 (보낼 때의 글 앞부분) */
+  replyTo?: ChatReplyRef
+  /** 내가 보낸 지시가 받은 직원마다 어디까지 갔는지 (받음·대기·완료·오류·멈춤) */
+  deliveries?: ChatDelivery[]
+  /** 보고 말풍선에 누른 반응 (👍 = 확인 끝) */
+  reaction?: { kind: 'like'; at: number }
+  /** 이 보고(또는 지시)와 이어진 업무 카드 */
+  taskId?: string
+  /** 예약·반복으로 보낸 말 */
+  scheduled?: { kind: 'once' | 'repeat'; reservationId: string }
+  /** 리드가 올린 기획안 확인 요청 — 그 카드의 기획안 (다시 올리면 proposedAt이 바뀐다) */
+  plan?: { taskId: string; proposedAt: number }
+}
+
+export interface ChatReplyRef {
+  id: number
+  from: string
+  text: string
+}
+
+/** received: 직원에게 전함 · waiting: 하던 일이 끝나면 전함(대기 메시지) · done: 보고함 · error: 오류로 멈춤 · stopped: 멈춤 · canceled: 대기 메시지를 취소함 */
+export type ChatDeliveryState = 'received' | 'waiting' | 'done' | 'error' | 'stopped' | 'canceled'
+
+export interface ChatDelivery {
+  staffId: string
+  state: ChatDeliveryState
+  /** 끝난 보고 메시지 id */
+  reportId?: number
+  /** 일을 시작하며 만든 업무 카드 */
+  taskId?: string
+}
+
+/** 대화방 예약 보내기·반복 지시: once는 at(시각)에 한 번, repeat는 기존 예약 업무처럼 time·weekdays에 */
+export interface ChatReservation {
+  id: string
+  kind: 'once' | 'repeat'
+  text: string
+  /** 보낼 방 (비면 전체 방) */
+  room: string | null
+  attachments?: Attachment[]
+  /** once: 보낼 시각(ms) */
+  at?: number
+  /** repeat: HH:MM */
+  time?: string
+  /** repeat: 0=일 ~ 6=토 */
+  weekdays?: number[]
+  enabled: boolean
+  lastRunDate: string | null
+  /** 반복으로 보낸 횟수 */
+  sentCount: number
+  /** 앱이 꺼져 있어 보낼 시각을 놓쳤다 — 앱을 켜면 보낼지 묻는다 (반복은 다음 날이 되면 저절로 풀린다) */
+  isMissed?: boolean
+  /** 놓친 보낼 시각 */
+  missedAt?: number
+  createdAt: number
+}
+
+export type ChatReservationInput = Omit<ChatReservation, 'lastRunDate' | 'sentCount' | 'createdAt' | 'isMissed' | 'missedAt'>
+
+export interface ChatSearchHit {
+  message: ChatMessage
+  /** 방 안에서 지금 화면에 불러온 범위 밖이면 true (그 메시지까지 불러와야 한다) */
+  isOld: boolean
 }
 
 /** approved·rejected: 결재 승인·반려 / answered: 질문에 답함 / skipped: 질문 넘김 / canceled: 세션 쪽에서 사라짐 */
@@ -722,6 +792,8 @@ export interface OfficeSnapshot {
   tasks: Task[]
   meetings: Meeting[]
   schedules: Schedule[]
+  /** 대화방 예약 보내기·반복 지시 */
+  chatReservations?: ChatReservation[]
   settings: Settings
   monthCostUsd: number
   /** Claude 구독 사용률 (직원이 일할 때 Claude가 알려 준 마지막 값) */
@@ -1182,7 +1254,18 @@ export interface OfficeApi {
   chatHistory(): Promise<ChatMessage[]>
   /** room: 팀 대화방(팀 id)·랩 대화방('lab:<랩 id>') — 비우면 전체 방 */
   /** mode: 앱 대화방에서 보낼 때 — wait = 일하는 직원에게는 대기 메시지로, now = 하던 일을 멈추고 바로 (없으면 예전처럼 바로) */
-  sendChat(text: string, attachments?: Attachment[], room?: string, mode?: ChatSendMode): Promise<void>
+  /** replyTo: 답장할 메시지 id — 멘션이 없으면 그 메시지를 보낸 직원이 받는다 */
+  sendChat(text: string, attachments?: Attachment[], room?: string, mode?: ChatSendMode, replyTo?: number): Promise<void>
+  /** 보고 말풍선 반응: like = 👍 확인 끝 (이어진 업무 카드가 확인 대기면 완료로) · none = 취소 */
+  reactChat(messageId: number, kind: 'like' | 'none'): Promise<void>
+  /** 대화 찾기: room이 undefined면 모든 방, null이면 전체 방, 문자열이면 그 방 */
+  searchChat(query: string, room?: string | null): Promise<ChatSearchHit[]>
+  /** 한 메시지 앞뒤 대화 (화면에 불러온 범위 밖의 검색 결과로 갈 때) */
+  chatAround(messageId: number): Promise<ChatMessage[]>
+  /** 대화방 예약·반복 지시 저장 (id가 같으면 고친다) */
+  saveChatReservation(input: ChatReservationInput): Promise<void>
+  /** send = 지금 보내기 · cancel = 지우기 · skip = 놓친 반복을 이번만 건너뛰기 · pause/resume = 반복 멈추기·다시 */
+  chatReservationAction(id: string, action: ChatReservationAction): Promise<void>
 
   timeline(sinceMs: number): Promise<LogEntry[]>
   /** 직원 한 명의 세션 활동 (마지막 활동·상태·대기 결재·최근 도구·오류·대기열) — 읽기 전용 */

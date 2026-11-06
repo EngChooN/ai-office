@@ -3,6 +3,7 @@ import { useOffice, useWorkMode, type View } from '@/store'
 import { GAME_VIEWS, NAV_GROUP_DEFS, groupEntryView, groupOfView, rememberTab, tourTarget, type NavGroupDef, type NavGroupId } from './navGroups'
 import { pendingMeetingDecisions } from '@shared/meetingDecisions'
 import { t, type TKey } from '@shared/i18n'
+import { unreadByRoom } from '@shared/chatUnread'
 
 // 메뉴 목록 한 곳: PC 사이드바와 폰 아래 탭·더보기가 같은 순서·이름·아이콘을 쓴다
 
@@ -94,7 +95,9 @@ export function useNavBadges(): Partial<Record<View, number>> {
   const checkingRuns = useOffice((s) => s.runs.filter((r) => r.status === 'checking').length)
   const waitingPlans = useOffice((s) => s.tasks.filter((t) => t.plan?.status === 'waiting').length)
   const pendingDecisions = pendingMeetingDecisions(meetings).length
+  const chatUnread = useOffice((s) => (s.chatSeen ? Object.values(unreadByRoom(s.chat, s.chatSeen)).reduce((n, c) => n + c, 0) : 0))
   return {
+    chat: chatUnread,
     inbox: staff.reduce((n, s) => n + s.approvals.length + (s.kind === 'external' && s.status === 'waiting' && s.approvals.length === 0 ? 1 : 0), 0) + pendingDecisions + checkingRuns + waitingPlans,
     meeting: pendingDecisions,
     board: tasks.filter((t) => t.status === 'review').length,
