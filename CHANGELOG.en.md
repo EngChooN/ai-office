@@ -7,6 +7,11 @@ Writing rules
 - Write from the user's point of view, describing "what you can now do." Do not use technical names (file paths, program or library names, English abbreviations). If one is truly needed, put it once in parentheses after a plain-language explanation.
 - Development details (how it was built, where files are) go in `SPEC.md` and `docs/changelog-dev.md`.
 
+## [Unreleased]
+
+### New features
+- Team leaders and lab leads can now step in while a teammate is working and give a new instruction. They can pause the current work, deliver the new instruction first and then carry on, or have the teammate drop the current work (their task cards go back to To do) and do only the new instruction. Who stopped whose work is recorded for both people, and the result is reported back to the leader as before. Teammates on another PC are not interrupted; the instruction is delivered after their current work.
+
 ## [1.0.2] - 2026-11-05
 
 ### New features

@@ -63,6 +63,8 @@ export default {
   'log.autoApprove': { ko: '🤖 자동결재 승인: {tool} {summary}', en: '🤖 Auto-approved: {tool} {summary}', ja: '🤖 自動承認: {tool} {summary}', zh: '🤖 自动批准: {tool} {summary}' },
   'log.help': { ko: '{from} → {name}: {text} (도움 요청)', en: '{from} → {name}: {text} (help request)', ja: '{from} → {name}: {text}（助けの依頼）', zh: '{from} → {name}: {text}（求助）' },
   'log.helpNotify': { ko: '도움 요청: {from} → {name}', en: 'Help request: {from} → {name}', ja: '助けの依頼: {from} → {name}', zh: '求助: {from} → {name}' },
+  'log.delegateInterrupt': { ko: '{lead}이(가) {name}의 일을 멈추고 새 지시를 먼저 전했습니다 (하던 일은 이어 감).', en: "{lead} stopped {name}'s work and delivered a new instruction first (the earlier work continues).", ja: '{lead}が{name}の作業を止めて新しい指示を先に伝えました（元の作業は続行）。', zh: '{lead} 停下了 {name} 的工作并先传达了新指示（原工作继续）。' },
+  'log.delegateReplace': { ko: '{lead}이(가) {name}의 일을 멈추고 새 지시로 바꿨습니다 (하던 일은 할 일로).', en: "{lead} stopped {name}'s work and replaced it with a new instruction (the earlier work went back to To do).", ja: '{lead}が{name}の作業を止めて新しい指示に切り替えました（元の作業は未着手へ）。', zh: '{lead} 停下了 {name} 的工作并改为新指示（原工作退回待办）。' },
   'log.delegate': { ko: '{name}에게 위임: {text}', en: 'Delegated to {name}: {text}', ja: '{name}に委任: {text}', zh: '委派给 {name}: {text}' },
   'log.externalHired': { ko: '터미널에서 하던 일을 그대로 이어받아 정식 채용되었습니다.', en: 'Hired, picking up the work that was running in the terminal.', ja: 'ターミナルでの作業をそのまま引き継いで正式採用されました。', zh: '已正式录用，并接手在终端中进行的工作。' },
   'log.cloned': { ko: '{name}의 대화를 복사해 사무실에서 이어서 일합니다.', en: "Copied {name}'s conversation and continuing in the office.", ja: '{name}の会話をコピーして、オフィスで続けます。', zh: '已复制 {name} 的对话，在办公室继续工作。' },
