@@ -2,7 +2,7 @@
 
 버전은 SemVer. 기능 크기 기준으로 올린다. 버전마다 **새 기능 / 개선 / 버그 수정**으로 나눠 적는다(앱의 "업데이트 소식"이 이 파일을 그대로 보여 준다).
 
-## [Unreleased]
+## [1.0.3] - 2026-11-06
 
 ### 새 기능
 - 리더 끼어들기: 사무실 MCP `delegate`에 `interrupt?: 'continue' | 'replace'`. 대상이 일하는 중(working·waiting·netWait·보관)일 때만 적용, 쉬면 무시. continue는 `Office.interrupt(id, text, [], origin)` — 끊긴 턴은 hired의 `stopping='resume'`로 보고에서 빠지므로 delegate 출처를 받은 일 맨 뒤에 쌓아(같은 리더 출처가 있으면 하나만) 결과가 `[팀원 보고]`로 리더에게 감. replace는 `dropWork`(onStopped에서 뺀 정리: 카드·대기 카드 할 일로, 프로세스 멈춤, 피어·도움 요청 중단)·`resumeAfterTalk` 삭제 뒤 `[지시 변경]` 머리말을 붙여 같은 경로로 보냄. 결재 없음, `log.delegateInterrupt`·`log.delegateReplace`를 양쪽 기록에. 기존 위임 안전장치 그대로 + 피어 일을 하는 대상은 끼어들지 않음, 다른 PC 직원은 줄 세우고 안내. 시험 `scripts/delegateInterrupt.test.mts`(6건).
