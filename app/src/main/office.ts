@@ -83,7 +83,7 @@ import { shouldNudgeBackground, shouldNudgeLead } from '../shared/leadNudge'
 import { NO_HOLD, planHold, type HeldItem, type PlanHoldState } from '../shared/planHold'
 import { detectTextQuestion, toTextQuestions } from '../shared/textQuestion'
 import { mentionTargets, OFFICE_SENDER, parseMentions, pickResponder } from '../shared/mention'
-import { chatRoomMembers, chatRoomMentionTargets, findRoom, labRoomId, originRoom, parseRoom, pickRoomResponder, roomHead } from '../shared/chatRooms'
+import { cardRoom, chatRoomMembers, chatRoomMentionTargets, findRoom, labRoomId, originRoom, parseRoom, pickRoomResponder, roomHead } from '../shared/chatRooms'
 import { mergeRefDocs, normalizeRefDocPath, refDocKey, refDocsPrompt, sanitizeRefDocs } from '../shared/refDocs'
 import { draftCovered, isSameRule, matchRule, ruleLabel, type ApprovalRule } from '../shared/approvalRules'
 import { askDecisionInput, matchPastDecisions, sameAskDecisions } from '../shared/askDecision'
@@ -1029,6 +1029,11 @@ export class Office extends EventEmitter<{
    * isDirect: 대표가 직접 보낸 말(직원 패널·단체방·휴대폰) — 기다리던 결재는 철회하고, 도구 결재로 멈춰 있었으면 끼어들어 바로 전한다
    */
   instruct(staffId: string, text: string, origin: Origin = { kind: 'user' }, attachments: Attachment[] = [], via = '', isDirect = false) {
+    // 업무 카드 지시는 그 카드의 방으로 (보고·결과물·질문이 지시가 시작된 랩·팀 방에 올라가게)
+    if (origin.kind === 'task' && !origin.room) {
+      const room = this.taskRoom(origin.taskId)
+      if (room) origin = { ...origin, room }
+    }
     // 직전에 끝낸 같은 카드로 돌아온 대표 피드백(검토 반려)은 새 카드가 아니다 — 대화를 이어 간다
     const isNewCard =
       origin.kind === 'task' &&
@@ -1448,13 +1453,15 @@ export class Office extends EventEmitter<{
       this.log(s.id, 'approval', { list: [via ? `${via} ` : '', answers ? { list: [tk('log.answered'), `: ${answersText(answers)}`], sep: '' } : tk('log.rejected'), ': ', a ? (a.summaryI18n ?? a.summary) : ask.question], sep: '' })
       this.patch(s.id, { status: s.approvals.length ? 'waiting' : 'idle', activity: '' })
     }
-    this.settleChat(answers ? { id: approvalId, result: 'answered', answer: answersText(answers) } : { id: approvalId, result: 'skipped' })
+    const asked = this.settleChat(answers ? { id: approvalId, result: 'answered', answer: answersText(answers) } : { id: approvalId, result: 'skipped' })
     if (answers) {
       // 질문으로 끝난 첫 턴은 카드를 검토로 넘겼다 — 답으로 이어지는 턴이 같은 카드의 결과·비용이 되게 다시 진행 중으로 돌리고 그 카드로 지시한다
       const card = ask.taskId ? this.tasks.get(ask.taskId) : undefined
       const isReopened = Boolean(card) && shouldReopenForAnswer(card)
       if (card && isReopened) this.saveTask({ ...card, status: 'doing', updatedAt: Date.now() })
-      this.instruct(ask.staffId, t('staff.msg.textAnswer', { question: ask.question, answer: Object.values(answers).join(' / ') }), card && isReopened ? { kind: 'task', taskId: card.id } : { kind: 'user' })
+      // 답으로 이어 가는 일의 보고는 질문이 올라간 방으로
+      const room = asked?.room ?? undefined
+      this.instruct(ask.staffId, t('staff.msg.textAnswer', { question: ask.question, answer: Object.values(answers).join(' / ') }), card && isReopened ? { kind: 'task', taskId: card.id, room } : { kind: 'user', room })
     }
     return true
   }
@@ -2017,14 +2024,16 @@ export class Office extends EventEmitter<{
       this.patch(s.id, s.approvals.length ? { status: 'waiting' } : { status: 'idle', activity: '' })
     }
     const answers = decision && 'answers' in decision ? decision.answers : null
-    this.settleChat(answers ? { id: approvalId, result: 'answered', answer: answersText(answers) } : { id: approvalId, result: p.questions ? 'skipped' : decision && 'allow' in decision && decision.allow ? 'approved' : 'rejected' })
+    const asked = this.settleChat(answers ? { id: approvalId, result: 'answered', answer: answersText(answers) } : { id: approvalId, result: p.questions ? 'skipped' : decision && 'allow' in decision && decision.allow ? 'approved' : 'rejected' })
     const text = restoredInstruction(p, p.questions ? (answers ? { answers } : null) : decision)
     if (!text || !s) return true
     if (decision && 'allow' in decision && decision.allow && !p.questions) this.oneShot.grant(p.staffId, p.toolName, p.summary)
     const card = p.taskId ? this.tasks.get(p.taskId) : undefined
     const isReopened = Boolean(card) && shouldReopenForAnswer(card)
     if (card && isReopened) this.saveTask({ ...card, status: 'doing', updatedAt: Date.now() })
-    this.instruct(p.staffId, text, card && isReopened ? { kind: 'task', taskId: card.id } : { kind: 'user' })
+    // 결재 뒤 이어 가는 일의 보고는 결재가 올라간 방으로
+    const room = asked?.room ?? undefined
+    this.instruct(p.staffId, text, card && isReopened ? { kind: 'task', taskId: card.id, room } : { kind: 'user', room })
     return true
   }
 
@@ -2761,7 +2770,7 @@ export class Office extends EventEmitter<{
                 assigneeId: staffId,
                 status: 'doing',
               }
-              this.origins.set(staffId, [...(this.origins.get(staffId) ?? []), { kind: 'task', taskId: task.id }])
+              this.origins.set(staffId, [...(this.origins.get(staffId) ?? []), { kind: 'task', taskId: task.id, room: this.roomOf(staffId) ?? this.taskRoom(task.id) }])
             }
             // 회의 결과 카드에 이미 들어 있는 할 일은 따로 카드가 없다 — 못 찾았다고 알리지 않는다
             const ownItems = meetingCardItems(task.detail)
@@ -4675,6 +4684,11 @@ export class Office extends EventEmitter<{
     return originRoom(this.origins.get(from) ?? []) ?? this.finishingRoom.get(from)
   }
 
+  /** 업무 카드의 방: 대화 지시로 만든 카드면 그 방, 기획 하위 업무면 기획 카드의 방, 랩 카드면 랩 방 (그 밖·방 없는 랩은 전체 방) */
+  private taskRoom(taskId: string): string | undefined {
+    return cardRoom(taskId, (id) => this.tasks.get(id), (labId) => findRoom(labRoomId(labId), [...this.teams.values()], [...this.labs.values()])?.room)
+  }
+
   /** room을 안 주면 보낸 직원이 처리 중인 지시의 방으로 (결재·질문·위임·중간 보고가 지시 온 방에 올라간다) */
   private postChat(from: string, text: string, attachments?: Attachment[], approval?: ChatApproval, room = this.roomOf(from), isReport = false, meta: db.ChatMeta = {}) {
     const m = db.insertChat(from, text, attachments, approval, room, isReport, meta)
@@ -4823,6 +4837,7 @@ export class Office extends EventEmitter<{
   private settleChat(approval: ChatApproval) {
     const m = db.settleChatApproval(approval)
     if (m) this.emit('chatUpdate', m)
+    return m
   }
 
   // ── 기록·급여·보고서 ──────────────────────────────────

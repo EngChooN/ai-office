@@ -97,6 +97,22 @@ export function originRoom(origins: { room?: string }[]): string | undefined {
   return origins.find((o) => o.room)?.room
 }
 
+type RoomCard = { fromChat?: { room: string | null } | null; parentId?: string | null; labId?: string | null }
+
+/**
+ * 업무 카드의 방: 대화 지시로 만든 카드면 그 방, 기획 하위 업무면 기획 카드의 방, 랩 카드면 랩 방 (그 밖은 전체 방 = undefined).
+ * labRoom은 방이 있는 랩이면 그 방을 돌려준다
+ */
+export function cardRoom(taskId: string, getTask: (id: string) => RoomCard | undefined, labRoom: (labId: string) => string | undefined): string | undefined {
+  let task = getTask(taskId)
+  for (let depth = 0; task && depth < 6; depth++) {
+    if (task.fromChat) return task.fromChat.room ?? undefined
+    if (!task.parentId) return task.labId ? labRoom(task.labId) : undefined
+    task = getTask(task.parentId)
+  }
+  return undefined
+}
+
 /** 단체방 한 줄: 메시지 그대로이거나, 전체 방에서 팀 방 글을 접은 요약 */
 export type ChatLine = { kind: 'message'; message: ChatMessage } | { kind: 'roomSummary'; room: string; count: number; firstId: number; lastId: number; ts: number }
 

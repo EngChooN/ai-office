@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
   appendChat,
+  cardRoom,
   chatLines,
   chatRoomMembers,
   chatRoomMentionTargets,
@@ -217,4 +218,28 @@ test('결과 방·전체 방 요약: 랩 방도 팀 방과 같이', () => {
     chatLines([msg(1), msg(2, 'lab:L1'), msg(3, 'dev')], 'lab:L1').map((l) => (l.kind === 'message' ? l.message.id : -1)),
     [2],
   )
+})
+
+test('업무 카드의 방: 대화 카드는 그 방, 기획 하위 업무는 기획 카드의 방, 랩 카드는 랩 방, 그 밖은 전체 방', () => {
+  const tasks: Record<string, { fromChat?: { room: string | null }; parentId?: string | null; labId?: string | null }> = {
+    chatCard: { fromChat: { room: 'lab:L1' } },
+    mainChatCard: { fromChat: { room: null }, labId: 'L1' },
+    sub: { parentId: 'chatCard' },
+    subOfSub: { parentId: 'sub' },
+    labCard: { labId: 'L1' },
+    noRoomLab: { labId: 'L2' },
+    plain: {},
+    loopA: { parentId: 'loopB' },
+    loopB: { parentId: 'loopA' },
+  }
+  const room = (id: string) => cardRoom(id, (x) => tasks[x], (labId) => (labId === 'L1' ? 'lab:L1' : undefined))
+  assert.equal(room('chatCard'), 'lab:L1')
+  assert.equal(room('sub'), 'lab:L1')
+  assert.equal(room('subOfSub'), 'lab:L1')
+  assert.equal(room('labCard'), 'lab:L1')
+  assert.equal(room('mainChatCard'), undefined)
+  assert.equal(room('noRoomLab'), undefined)
+  assert.equal(room('plain'), undefined)
+  assert.equal(room('missing'), undefined)
+  assert.equal(room('loopA'), undefined)
 })
