@@ -67,3 +67,31 @@ test('대기 메시지: 대화방에서 보낸 것은 그 방을 달고, 방이 
   const p = buildStaffProgress({ status: 'working', origins: [o('a')], queued: 0, hasApproval: false, waiting: [{ id: 'w1', text: 'b', room: 'lab:x' }, { id: 'w2', text: 'c', room: undefined }] })
   assert.deepEqual(p?.waiting, [{ id: 'w1', text: 'b', room: 'lab:x' }, { id: 'w2', text: 'c' }])
 })
+
+// 상태 줄 방 = 보고 게시와 같은 규칙(roomForOrigins) — Office.progressOf와 같은 연결
+import { roomForOrigins } from '../src/shared/chatRooms.ts'
+import { progressesForRoom } from '../src/shared/progressView.ts'
+
+test('상태 줄 방: 랩 방 지시→랩 방, 단체방 지시→전체 방, 위임 하위 일→리드 지시 방, 패널 지시→소속 방', () => {
+  const progressIn = (origin: { kind: string; room?: string; text?: string }, home: string | undefined, waitingRoomOrigin?: { kind: string; room?: string }) => {
+    const mapped = [{ ...origin, room: roomForOrigins([origin], () => undefined, home) }]
+    const waiting = waitingRoomOrigin ? [{ id: 'w1', text: '대기', room: roomForOrigins([waitingRoomOrigin], () => undefined, home) }] : undefined
+    return buildStaffProgress({ status: 'working', origins: mapped, queued: 0, hasApproval: false, waiting })
+  }
+  const staff = (progress: ReturnType<typeof progressIn>) => [{ id: 's', progress }]
+  const lab = progressIn({ kind: 'chat', room: 'lab:L1' }, 'dev')
+  const global = progressIn({ kind: 'chat', room: '' }, 'lab:L1')
+  const delegated = progressIn({ kind: 'delegate', room: 'lab:L1' }, 'dev')
+  const panel = progressIn({ kind: 'user' }, 'lab:L1')
+  assert.equal(lab?.room, 'lab:L1')
+  assert.equal(global?.room, undefined, '전체 방 = room 없음')
+  assert.equal(delegated?.room, 'lab:L1')
+  assert.equal(panel?.room, 'lab:L1')
+  assert.equal(progressesForRoom(staff(lab), 'lab:L1').length, 1)
+  assert.equal(progressesForRoom(staff(lab), undefined).length, 0, '랩 방 일은 단체방에 안 뜬다')
+  assert.equal(progressesForRoom(staff(global), undefined).length, 1)
+  assert.equal(progressesForRoom(staff(global), 'lab:L1').length, 0, '단체방 일은 랩 방에 안 뜬다')
+  const w = progressIn({ kind: 'chat', room: '' }, 'dev', { kind: 'chat', room: 'lab:L1' })
+  assert.equal(w?.waiting?.[0]?.room, 'lab:L1')
+  assert.equal(progressIn({ kind: 'chat', room: '' }, 'dev', { kind: 'chat', room: '' })?.waiting?.[0]?.room, undefined)
+})

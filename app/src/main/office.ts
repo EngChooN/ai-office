@@ -83,7 +83,7 @@ import { shouldNudgeBackground, shouldNudgeLead } from '../shared/leadNudge'
 import { NO_HOLD, planHold, type HeldItem, type PlanHoldState } from '../shared/planHold'
 import { detectTextQuestion, toTextQuestions } from '../shared/textQuestion'
 import { mentionTargets, OFFICE_SENDER, parseMentions, pickResponder } from '../shared/mention'
-import { cardRoom, chatRoomMembers, chatRoomMentionTargets, findRoom, labRoomId, originRoom, parseRoom, pickRoomResponder, roomHead } from '../shared/chatRooms'
+import { cardRoom, chatRoomMembers, chatRoomMentionTargets, findRoom, GLOBAL_ROOM, homeRoom, labRoomId, originRoom, parseRoom, roomForOrigins as roomForOriginsOf, pickRoomResponder, roomHead } from '../shared/chatRooms'
 import { mergeRefDocs, normalizeRefDocPath, refDocKey, refDocsPrompt, sanitizeRefDocs } from '../shared/refDocs'
 import { draftCovered, isSameRule, matchRule, ruleLabel, type ApprovalRule } from '../shared/approvalRules'
 import { askDecisionInput, matchPastDecisions, sameAskDecisions } from '../shared/askDecision'
@@ -685,7 +685,7 @@ export class Office extends EventEmitter<{
 
   private progressOf(s: db.StoredStaff) {
     if (!this.hired.has(s.id)) return null
-    return buildStaffProgress({ status: s.status, origins: this.origins.get(s.id) ?? [], queued: this.manager.backlog(s.id), hasApproval: s.approvals.length > 0, nameOf: (id) => this.hired.get(id)?.name, waiting: this.waitingMsgs.list(s.id).map((w) => ({ id: w.id, text: w.shown ?? w.text, room: w.origin.room })) })
+    return buildStaffProgress({ status: s.status, origins: (this.origins.get(s.id) ?? []).map((o, i) => ({ ...o, room: this.roomForOrigins(s.id, [o]) })), queued: this.manager.backlog(s.id), hasApproval: s.approvals.length > 0, nameOf: (id) => this.hired.get(id)?.name, waiting: this.waitingMsgs.list(s.id).map((w) => ({ id: w.id, text: w.shown ?? w.text, room: this.roomForOrigins(s.id, [w.origin]) })) })
   }
 
   /** 부탁받은 일이 오류·중지로 끝나 결과 없이 사라지지 않게: 요청을 닫고(대상당 1건 제한 해제) 부탁한 직원에게 못 마쳤다고 보고한다 */
@@ -722,7 +722,7 @@ export class Office extends EventEmitter<{
     for (const id of taskIds) this.returnToTodo(id)
     for (const o of origins) this.setDelivery(o.chatId, staffId, { state: 'error' })
     // 쉬는 중에 세션만 끊긴 경우는 다시 보낼 지시가 없으니 대화방에 알리지 않는다 (상태·기록에는 남는다)
-    if (origins.length || queued.length) this.postChat(staffId, t('chat.runError', { error: error.slice(0, 200) }), undefined, undefined, originRoom(origins))
+    if (origins.length || queued.length) this.postChat(staffId, t('chat.runError', { error: error.slice(0, 200) }), undefined, undefined, this.roomForOrigins(staffId, origins))
     this.releaseHeld(staffId)
     this.releaseWaiting(staffId)
     this.scheduleEmit()
@@ -739,7 +739,7 @@ export class Office extends EventEmitter<{
     this.taskQueue.set(staffId, [])
     this.patch(staffId, { status: 'netWait', activity: '' })
     this.log(staffId, 'status', tk('log.netParked'))
-    this.postChat(staffId, t('chat.netParked'), undefined, undefined, originRoom(origins))
+    this.postChat(staffId, t('chat.netParked'), undefined, undefined, this.roomForOrigins(staffId, origins))
     if (!this.netTimer) {
       this.netTimer = setInterval(() => void this.checkNetwork(), NET_CHECK_INTERVAL_MS)
       this.netTimer.unref?.()
@@ -799,7 +799,7 @@ export class Office extends EventEmitter<{
     this.taskQueue.set(staffId, [...p.queued, ...(this.taskQueue.get(staffId) ?? [])])
     this.patch(staffId, { status: 'working', activity: '' })
     this.log(staffId, 'status', tk('log.netResumed'))
-    this.postChat(staffId, t('chat.netResumed'), undefined, undefined, originRoom(p.origins))
+    this.postChat(staffId, t('chat.netResumed'), undefined, undefined, this.roomForOrigins(staffId, p.origins))
     const text = this.isAutonomous(staffId) ? `${t('staff.msg.netResume')}\n\n${t('staff.msg.autonomous')}` : t('staff.msg.netResume')
     this.manager.instruct(staffId, text, [], false)
     this.releaseHeld(staffId)
@@ -1030,9 +1030,9 @@ export class Office extends EventEmitter<{
    */
   instruct(staffId: string, text: string, origin: Origin = { kind: 'user' }, attachments: Attachment[] = [], via = '', isDirect = false) {
     // 업무 카드 지시는 그 카드의 방으로 (보고·결과물·질문이 지시가 시작된 랩·팀 방에 올라가게)
-    if (origin.kind === 'task' && !origin.room) {
+    if (origin.kind === 'task' && origin.room === undefined) {
       const room = this.taskRoom(origin.taskId)
-      if (room) origin = { ...origin, room }
+      if (room !== undefined) origin = { ...origin, room }
     }
     // 직전에 끝낸 같은 카드로 돌아온 대표 피드백(검토 반려)은 새 카드가 아니다 — 대화를 이어 간다
     const isNewCard =
@@ -1460,7 +1460,7 @@ export class Office extends EventEmitter<{
       const isReopened = Boolean(card) && shouldReopenForAnswer(card)
       if (card && isReopened) this.saveTask({ ...card, status: 'doing', updatedAt: Date.now() })
       // 답으로 이어 가는 일의 보고는 질문이 올라간 방으로
-      const room = asked?.room ?? undefined
+      const room = asked ? (asked.room ?? GLOBAL_ROOM) : undefined
       this.instruct(ask.staffId, t('staff.msg.textAnswer', { question: ask.question, answer: Object.values(answers).join(' / ') }), card && isReopened ? { kind: 'task', taskId: card.id, room } : { kind: 'user', room })
     }
     return true
@@ -1489,7 +1489,7 @@ export class Office extends EventEmitter<{
         const card = taskId ? this.tasks.get(taskId) : undefined
         const isReopened = Boolean(card) && shouldReopenForAnswer(card)
         if (card && isReopened) this.saveTask({ ...card, status: 'doing', updatedAt: Date.now() })
-        const room = originRoom(origins)
+        const room = this.roomForOrigins(staffId, origins)
         this.instruct(staffId, t('staff.msg.autonomousContinue', { question: found.question }), card && isReopened ? { kind: 'task', taskId: card.id, room } : { kind: 'user', room, isAutonomous: true })
         return
       }
@@ -1524,7 +1524,7 @@ export class Office extends EventEmitter<{
         this.log(`p:${job.peerId}:${job.remoteStaffId}`, job.state === 'done' ? 'reply' : 'error', info.text)
         const lead = job.leadId ? this.hired.get(job.leadId) : null
         if (lead) {
-          this.instruct(lead.id, t('staff.msg.memberReport', info), { kind: 'user', ...(job.room ? { room: job.room } : {}), ...(job.isAutonomous ? { isAutonomous: true } : {}) })
+          this.instruct(lead.id, t('staff.msg.memberReport', info), { kind: 'user', ...(job.room !== undefined ? { room: job.room } : {}), ...(job.isAutonomous ? { isAutonomous: true } : {}) })
           return
         }
         // 대표가 직접 시킨 일: 직원의 보고처럼 단체방에 올리고 알린다
@@ -1625,7 +1625,7 @@ export class Office extends EventEmitter<{
     const skipped = attachments.filter((a, i) => i >= PEER_LIMITS.attachmentsPerJob || a.size > PEER_LIMITS.attachmentMax)
     if (skipped.length) this.log(staffId, 'error', t('peer.attachSkipped', { name: rec.name, files: skipped.map((a) => a.name).join(', '), max: PEER_LIMITS.attachmentsPerJob, mb: PEER_LIMITS.attachmentMax / 1024 / 1024 }))
     try {
-      this.peer!.delegate(staffId, text, { leadId: null, ...(origin.room ? { room: origin.room } : {}), ...(origin.isAutonomous ? { isAutonomous: true } : {}), ...(attachments.length ? { attachments } : {}) })
+      this.peer!.delegate(staffId, text, { leadId: null, ...(origin.room !== undefined ? { room: origin.room } : {}), ...(origin.isAutonomous ? { isAutonomous: true } : {}), ...(attachments.length ? { attachments } : {}) })
     } catch (e) {
       const msg = this.peerErrorText(e, rec.name)
       this.log(staffId, 'error', msg)
@@ -1651,7 +1651,7 @@ export class Office extends EventEmitter<{
     if (!isDup) this.heldLocal.set(staffId, [...list, { text, origin, attachments, via, isDirect }])
     const name = this.hired.get(staffId)?.name ?? ''
     this.log(staffId, 'status', t('peer.guard.held', { name }))
-    if (origin.kind === 'user' || origin.kind === 'chat') this.postChat(OFFICE_SENDER, t('peer.guard.held', { name }), undefined, undefined, origin.room)
+    if (origin.kind === 'user' || origin.kind === 'chat') this.postChat(OFFICE_SENDER, t('peer.guard.held', { name }), undefined, undefined, this.roomForOrigins(staffId, [origin]))
   }
 
   /** 피어 일(또는 그 복사본 작업·변경 모으기)이 아직 이 직원을 쓰고 있는가 */
@@ -1841,7 +1841,7 @@ export class Office extends EventEmitter<{
     this.netParked.succeeded(staffId) // 이어 간 일이 정상으로 끝났으면 이어 가기 횟수를 비운다
     // 일하는 중에 받아 아직 답하지 않은 지시는 다음 결과 몫으로 남긴다 (그 답이 지시가 온 방에 올라가게)
     const { done: origins, keep } = splitFinished(this.origins.get(staffId) ?? [], pending)
-    const room = originRoom(origins)
+    const room = this.roomForOrigins(staffId, origins)
     this.origins.set(staffId, keep)
     const doneTask = origins.find((o) => o.kind === 'task')
     if (doneTask && doneTask.kind === 'task') this.lastDoneTask.set(staffId, doneTask.taskId)
@@ -1883,7 +1883,7 @@ export class Office extends EventEmitter<{
     db.saveUnreadReports(this.unreadReports)
     this.scheduleEmit()
     this.emit('notify', { title: t('notify.report', { name: s.name }), body: short.slice(0, 120) || t('notify.reportDone'), staffId })
-    if (room) this.finishingRoom.set(staffId, room)
+    this.finishingRoom.set(staffId, room)
     try {
       // 피어 일의 결과는 그대로 A컴에 돌려준다 — 글 질문 카드를 올리면 답이 피어 문맥 밖에서 이어져 승인 주체·복사본 폴더가 끊긴다
       if (!peerJobOfOrigins(origins)) this.registerTextQuestion(staffId, summary, origins, isAutoCheckTurn)
@@ -2032,7 +2032,7 @@ export class Office extends EventEmitter<{
     const isReopened = Boolean(card) && shouldReopenForAnswer(card)
     if (card && isReopened) this.saveTask({ ...card, status: 'doing', updatedAt: Date.now() })
     // 결재 뒤 이어 가는 일의 보고는 결재가 올라간 방으로
-    const room = asked?.room ?? undefined
+    const room = asked ? (asked.room ?? GLOBAL_ROOM) : undefined
     this.instruct(p.staffId, text, card && isReopened ? { kind: 'task', taskId: card.id, room } : { kind: 'user', room })
     return true
   }
@@ -2770,7 +2770,7 @@ export class Office extends EventEmitter<{
                 assigneeId: staffId,
                 status: 'doing',
               }
-              this.origins.set(staffId, [...(this.origins.get(staffId) ?? []), { kind: 'task', taskId: task.id, room: this.roomOf(staffId) ?? this.taskRoom(task.id) }])
+              this.origins.set(staffId, [...(this.origins.get(staffId) ?? []), { kind: 'task', taskId: task.id, room: originRoom(this.origins.get(staffId) ?? []) ?? this.taskRoom(task.id) ?? this.roomOf(staffId) }])
             }
             // 회의 결과 카드에 이미 들어 있는 할 일은 따로 카드가 없다 — 못 찾았다고 알리지 않는다
             const ownItems = meetingCardItems(task.detail)
@@ -2795,7 +2795,7 @@ export class Office extends EventEmitter<{
             const lead = this.hired.get(staffId)!
             // 대화방에 확인 카드로: 일을 맡긴 방, 없으면(보드·직원 패널로 맡긴 일) 리드의 랩 방 → 팀 방 → 전체 방
             const leadLab = this.labsOf(staffId).find((l) => l.leadId === staffId)
-            const planRoomId = this.roomOf(staffId) ?? (leadLab ? labRoomId(leadLab.id) : this.teamOf(staffId)?.id)
+            const planRoomId = originRoom(this.origins.get(staffId) ?? []) ?? (leadLab ? labRoomId(leadLab.id) : this.teamOf(staffId)?.id) ?? this.roomOf(staffId)
             // 방이 없는 팀·랩(연습·프로젝트)이면 전체 방
             const planRoom = findRoom(planRoomId, [...this.teams.values()], [...this.labs.values()])?.room
             this.postChat(staffId, t('staff.tool.plan.posted', { title: task.title, n: plan.subtasks.length }), undefined, undefined, planRoom, false, { plan: { taskId: task.id, proposedAt: plan.proposedAt } })
@@ -4613,7 +4613,7 @@ export class Office extends EventEmitter<{
     const allLabs = [...this.labs.values()]
     const info = findRoom(room, allTeams, allLabs)
     // 없어졌거나 방이 없는 팀·랩(project·연습)이면 전체 방으로
-    room = info?.room
+    room = info?.room ?? GLOBAL_ROOM
     const say = (line: string) => this.postChat(OFFICE_SENDER, line, undefined, undefined, room)
     // 답장: 인용한 말의 앞부분을 말풍선에 남기고, 직원에게는 인용 내용을 함께 전한다
     const quoted = replyToId ? db.getChat(replyToId) : null
@@ -4679,9 +4679,25 @@ export class Office extends EventEmitter<{
     for (const id of recipientIds) deliver(id)
   }
 
-  /** 직원이 지금 하는 일의 방 — 팀·랩 방에서 온 지시를 처리 중이면 그 방 (없으면 전체 방) */
-  private roomOf(from: string): string | undefined {
-    return originRoom(this.origins.get(from) ?? []) ?? this.finishingRoom.get(from)
+  /**
+   * 지시들이 올라갈 방 (보고 게시·상태 줄 공통 규칙): 지시에 실린 방 → 업무 카드의 방 → 직원의 소속 방 → 전체 방.
+   * 전체 방에서 시작된 지시는 GLOBAL_ROOM('')이 실려 있어 소속 방으로 새지 않는다. 돌려주는 값 ''은 전체 방
+   */
+  private roomForOrigins(staffId: string, origins: readonly Origin[]): string {
+    return roomForOriginsOf([...origins], (id) => this.taskRoom(id), this.homeRoomOf(staffId))
+  }
+
+  private homeRoomOf(staffId: string): string | undefined {
+    const s = this.hired.get(staffId)
+    if (!s || s.isPractice) return undefined
+    return homeRoom(s, [...this.teams.values()], [...this.labs.values()])
+  }
+
+  /** 직원이 지금 하는 일의 방 ('' = 전체 방) — 하던 일이 없으면 방금 끝낸 일의 방, 그것도 없으면 소속 방 */
+  private roomOf(from: string): string {
+    const origins = this.origins.get(from) ?? []
+    if (origins.length) return this.roomForOrigins(from, origins)
+    return this.finishingRoom.get(from) ?? this.homeRoomOf(from) ?? GLOBAL_ROOM
   }
 
   /** 업무 카드의 방: 대화 지시로 만든 카드면 그 방, 기획 하위 업무면 기획 카드의 방, 랩 카드면 랩 방 (그 밖·방 없는 랩은 전체 방) */
@@ -4690,7 +4706,7 @@ export class Office extends EventEmitter<{
   }
 
   /** room을 안 주면 보낸 직원이 처리 중인 지시의 방으로 (결재·질문·위임·중간 보고가 지시 온 방에 올라간다) */
-  private postChat(from: string, text: string, attachments?: Attachment[], approval?: ChatApproval, room = this.roomOf(from), isReport = false, meta: db.ChatMeta = {}) {
+  private postChat(from: string, text: string, attachments?: Attachment[], approval?: ChatApproval, room: string | undefined = this.roomOf(from), isReport = false, meta: db.ChatMeta = {}) {
     const m = db.insertChat(from, text, attachments, approval, room, isReport, meta)
     this.emit('chat', m)
     return m
@@ -4724,7 +4740,7 @@ export class Office extends EventEmitter<{
     if (!o?.chatId || current.some((x) => x.kind === 'task' || x.cardId)) return
     const chat = db.getChat(o.chatId)
     if (!chat) return
-    const room = o.room ?? null
+    const room = o.room || null
     const parsed = parseRoom(room ?? undefined)
     const body = chat.text.replace(/(^|\s)@\S+/g, ' ').trim() || chat.text
     const now = Date.now()

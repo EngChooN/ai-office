@@ -92,21 +92,52 @@ export function roomHead(info: Pick<ChatRoomInfo, 'kind' | 'name'>): string {
   return info.kind === 'lab' ? `[${info.name} 랩]` : `[${info.name} 방]`
 }
 
-/** 지시 출처들에서 결과를 올릴 방 — 팀·랩 방에서 온 지시가 있으면 그 방, 없으면 전체 방(undefined) */
+/** 전체 방에서 시작된 일임을 뜻하는 명시값 — room이 undefined면 "정해지지 않음"이라 소속 방으로 간다 */
+export const GLOBAL_ROOM = ''
+
+/** 지시 출처들에서 결과를 올릴 방 — 첫 번째로 방이 정해진 지시의 값. GLOBAL_ROOM('')이면 전체 방에서 온 지시, undefined면 정해진 방 없음 */
 export function originRoom(origins: { room?: string }[]): string | undefined {
-  return origins.find((o) => o.room)?.room
+  return origins.find((o) => o.room !== undefined)?.room
+}
+
+/**
+ * 직원의 소속 방: 고용 팀에 방이 있으면 그 팀 방, 아니면 방 있는 랩 중 소속이 하나뿐이거나 리드인 랩이 하나면 그 랩 방.
+ * 그래도 하나로 정해지지 않으면 undefined (= 전체 방)
+ */
+export function homeRoom(staff: Pick<Staff, 'id' | 'teamId'>, teams: TeamLike[], labs: LabLike[]): string | undefined {
+  const team = roomTeams(teams).find((t) => t.id === staff.teamId)
+  if (team) return team.id
+  const mine = roomLabs(labs).filter((l) => l.memberIds.includes(staff.id) || l.leadId === staff.id)
+  const led = mine.filter((l) => l.leadId === staff.id)
+  const pick = mine.length === 1 ? mine[0] : led.length === 1 ? led[0] : undefined
+  return pick ? labRoomId(pick.id) : undefined
+}
+
+/**
+ * 지시들이 올라갈 방 — 보고 게시와 대화방 상태 줄이 같이 쓰는 규칙: 지시에 실린 방 → 업무 카드의 방 → 직원의 소속 방 → 전체 방.
+ * 전체 방에서 시작된 지시는 GLOBAL_ROOM이 실려 있어 소속 방으로 새지 않는다. 돌려주는 ''은 전체 방
+ */
+export function roomForOrigins(origins: readonly { kind?: string; room?: string; taskId?: string }[], taskRoomOf: (taskId: string) => string | undefined, home: string | undefined): string {
+  const explicit = originRoom([...origins])
+  if (explicit !== undefined) return explicit
+  for (const o of origins) {
+    if (o.kind !== 'task' || !o.taskId) continue
+    const r = taskRoomOf(o.taskId)
+    if (r !== undefined) return r
+  }
+  return home ?? GLOBAL_ROOM
 }
 
 type RoomCard = { fromChat?: { room: string | null } | null; parentId?: string | null; labId?: string | null }
 
 /**
- * 업무 카드의 방: 대화 지시로 만든 카드면 그 방, 기획 하위 업무면 기획 카드의 방, 랩 카드면 랩 방 (그 밖은 전체 방 = undefined).
- * labRoom은 방이 있는 랩이면 그 방을 돌려준다
+ * 업무 카드의 방: 대화 지시로 만든 카드면 그 방(전체 방이면 GLOBAL_ROOM), 기획 하위 업무면 기획 카드의 방, 랩 카드면 랩 방.
+ * 그 밖은 undefined (= 정해진 방 없음 → 담당 직원의 소속 방). labRoom은 방이 있는 랩이면 그 방을 돌려준다
  */
 export function cardRoom(taskId: string, getTask: (id: string) => RoomCard | undefined, labRoom: (labId: string) => string | undefined): string | undefined {
   let task = getTask(taskId)
   for (let depth = 0; task && depth < 6; depth++) {
-    if (task.fromChat) return task.fromChat.room ?? undefined
+    if (task.fromChat) return task.fromChat.room ?? GLOBAL_ROOM
     if (!task.parentId) return task.labId ? labRoom(task.labId) : undefined
     task = getTask(task.parentId)
   }

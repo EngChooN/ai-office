@@ -11,7 +11,10 @@ import {
   labRoomId,
   labRoomMembers,
   labRoomMentionTargets,
+  GLOBAL_ROOM,
+  homeRoom,
   originRoom,
+  roomForOrigins,
   parseRoom,
   pickRoomResponder,
   roomHead,
@@ -80,6 +83,7 @@ test('팀장이 없거나 예산을 다 썼으면 방 안에서 pickResponder', 
 test('결과 방: 출처 중 팀 방이 있으면 그 방, 없으면 전체 방', () => {
   assert.equal(originRoom([]), undefined)
   assert.equal(originRoom([{}, { room: undefined }]), undefined)
+  assert.equal(originRoom([{}, { room: '' }, { room: 'dev' }]), '', '빈 값은 명시적 전체 방')
   assert.equal(originRoom([{}, { room: 'dev' }]), 'dev')
 })
 
@@ -237,9 +241,54 @@ test('업무 카드의 방: 대화 카드는 그 방, 기획 하위 업무는 �
   assert.equal(room('sub'), 'lab:L1')
   assert.equal(room('subOfSub'), 'lab:L1')
   assert.equal(room('labCard'), 'lab:L1')
-  assert.equal(room('mainChatCard'), undefined)
+  assert.equal(room('mainChatCard'), '', '전체 방에서 만든 카드는 명시적 전체 방')
   assert.equal(room('noRoomLab'), undefined)
   assert.equal(room('plain'), undefined)
   assert.equal(room('missing'), undefined)
   assert.equal(room('loopA'), undefined)
+})
+
+// ── 방 정하기 새 규칙: 지시 방 → 카드 방 → 소속 방 → 전체 방 ──────────────
+const rteams = [
+  { id: 'dev', name: '개발', leadId: 'kim', kind: 'hired' as const },
+  { id: 'prj', name: '프로젝트', leadId: null, kind: 'project' as const },
+]
+const rlabs = [
+  { id: 'L1', name: '랩1', leadId: 'x', memberIds: ['x', 'solo', 'multi', 'leader'] },
+  { id: 'L2', name: '랩2', leadId: 'leader', memberIds: ['multi', 'leader'] },
+  { id: 'L3', name: '랩3', leadId: 'y', memberIds: ['y', 'multi', 'leader'] },
+]
+
+test('homeRoom: 팀 방이 있으면 팀 방, 없으면 랩이 하나뿐일 때·리드인 랩이 하나일 때 그 랩 방', () => {
+  assert.equal(homeRoom({ id: 'kim', teamId: 'dev' }, rteams, rlabs), 'dev')
+  assert.equal(homeRoom({ id: 'solo', teamId: null }, rteams, rlabs), 'lab:L1')
+  assert.equal(homeRoom({ id: 'leader', teamId: 'prj' }, rteams, rlabs), 'lab:L2', '팀 방 없음·소속 3곳이지만 리드인 랩은 하나')
+})
+
+test('homeRoom: 소속 방이 없거나 하나로 못 정하면 undefined(전체 방)', () => {
+  assert.equal(homeRoom({ id: 'nobody', teamId: null }, rteams, rlabs), undefined)
+  assert.equal(homeRoom({ id: 'multi', teamId: null }, rteams, rlabs), undefined, '여러 랩 소속·리드 아님')
+  assert.equal(homeRoom({ id: 'solo', teamId: null }, rteams, [{ ...rlabs[0], isPractice: true }]), undefined, '연습 랩은 방이 없다')
+})
+
+test('roomForOrigins: 대화방 전체 방 지시는 소속 방으로 새지 않고 전체 방 유지', () => {
+  assert.equal(roomForOrigins([{ kind: 'chat', room: GLOBAL_ROOM }], () => undefined, 'lab:L1'), '')
+  assert.equal(roomForOrigins([{ kind: 'user', room: GLOBAL_ROOM }], () => undefined, 'dev'), '', '답 뒤 이어 간 일도')
+})
+
+test('roomForOrigins: 랩 방 지시는 그 방, 위임 하위 일은 리드가 실은 방', () => {
+  assert.equal(roomForOrigins([{ kind: 'chat', room: 'lab:L1' }], () => undefined, 'dev'), 'lab:L1')
+  assert.equal(roomForOrigins([{ kind: 'delegate', room: 'lab:L1' }], () => undefined, 'dev'), 'lab:L1')
+})
+
+test('roomForOrigins: 직원 패널 지시·예약 업무는 소속 방, 카드는 카드 방 우선', () => {
+  assert.equal(roomForOrigins([{ kind: 'user' }], () => undefined, 'dev'), 'dev')
+  assert.equal(roomForOrigins([{ kind: 'schedule' }], () => undefined, 'lab:L1'), 'lab:L1')
+  assert.equal(roomForOrigins([{ kind: 'task', taskId: 't1' }], (id) => (id === 't1' ? 'lab:L3' : undefined), 'dev'), 'lab:L3')
+  assert.equal(roomForOrigins([{ kind: 'task', taskId: 't2' }], () => undefined, 'dev'), 'dev')
+})
+
+test('roomForOrigins: 소속 방 없는 직원의 패널 지시는 전체 방', () => {
+  assert.equal(roomForOrigins([{ kind: 'user' }], () => undefined, undefined), '')
+  assert.equal(roomForOrigins([], () => undefined, undefined), '')
 })
