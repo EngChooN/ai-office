@@ -18,6 +18,11 @@ export function isReservationDue(r: ChatReservation, now: Date): boolean {
   return Boolean(r.weekdays?.includes(now.getDay())) && r.lastRunDate !== reservationDay(now) && (r.time ?? '99:99') <= hhmm(now)
 }
 
+/** 반복 예약을 만들거나 다시 켤 때: 오늘 시각이 이미 지났으면 오늘 몫은 보낸 것으로 쳐서 다음 차례부터 보낸다 */
+export function skipPassedToday(r: ChatReservation, now: Date): ChatReservation {
+  return r.kind === 'repeat' && isReservationDue(r, now) ? { ...r, lastRunDate: reservationDay(now) } : r
+}
+
 /**
  * 앱을 켰을 때: 꺼져 있던 동안 보낼 시각이 지난 예약을 '놓침'으로 표시한다 (보낼지 대표가 고른다).
  * 반복 예약은 오늘 몫만 보고, 어제 놓친 표시는 다음 날이 되면 풀어 평소처럼 보낸다

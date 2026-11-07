@@ -148,7 +148,7 @@ import { askAsProvider, askOnce, type createRuntime, type RateLimitInfo } from '
 import { probeMcpStatus, sdk } from './ai/claude'
 import { splitFinished } from './ai/pendingSends'
 import { buildStaffProgress, summarizeInstruction } from '../shared/staffProgress'
-import { expireMissed, isReservationDue, reservationDay, settleMissedOnStart } from '../shared/chatReservations'
+import { expireMissed, isReservationDue, reservationDay, settleMissedOnStart, skipPassedToday } from '../shared/chatReservations'
 import { codexBinaryPath } from './ai/codex'
 import { codexUsageAfterFailure, readCodexRateLimits, refreshCodexAssets, shareInFlight } from './ai/codexAssets'
 import { defineTool, registerLocalMcp, type LocalMcpHandle } from './mcp/localMcp'
@@ -1304,7 +1304,9 @@ export class Office extends EventEmitter<{
     this.officeMcp.get(staffId)?.dispose()
     this.officeMcp.delete(staffId)
     void this.persistWork(staffId) // 마지막 수정까지 반영한 폴더 상태로 다시 저장
-    const taskIds = this.dropWork(staffId)
+    // 대화 지시로 만든 카드는 이어 가지 않는다 (예전처럼 멈춘 대화 지시는 다시 시켜야 시작)
+    const chatCards = new Set((this.origins.get(staffId) ?? []).flatMap((o) => (o.kind !== 'task' && o.cardId ? [o.cardId] : [])))
+    const taskIds = this.dropWork(staffId).filter((id) => !chatCards.has(id))
     // Esc·중단 버튼은 대개 말을 걸려고 멈춘 것 — 이야기가 끝나면 하던 카드(기획이면 기획째)를 이어 간다
     const isHard = this.hardStops.delete(staffId)
     if (!isHard && taskIds.length) {
@@ -4763,7 +4765,7 @@ export class Office extends EventEmitter<{
     const text = input.text.trim()
     if (!text && !input.attachments?.length) return
     const isOnce = input.kind === 'once'
-    this.putReservation({
+    const next: ChatReservation = {
       id: input.id,
       kind: isOnce ? 'once' : 'repeat',
       text,
@@ -4774,7 +4776,9 @@ export class Office extends EventEmitter<{
       lastRunDate: prev?.lastRunDate ?? null,
       sentCount: prev?.sentCount ?? 0,
       createdAt: prev?.createdAt ?? Date.now(),
-    })
+    }
+    // 오후에 '평일 9시 반복'을 만들면 바로 한 번 나가지 않게, 오늘 몫은 건너뛴다
+    this.putReservation(skipPassedToday(next, new Date()))
   }
 
   chatReservationAction(id: string, action: ChatReservationAction): void {
@@ -4792,7 +4796,7 @@ export class Office extends EventEmitter<{
       if (r.kind === 'once') return this.chatReservationAction(id, 'cancel')
       return this.putReservation({ ...r, isMissed: false, missedAt: undefined, lastRunDate: reservationDay(new Date()) })
     }
-    this.putReservation({ ...r, enabled: action === 'resume' })
+    this.putReservation(action === 'resume' ? skipPassedToday({ ...r, enabled: true }, new Date()) : { ...r, enabled: false })
   }
 
   private sendReservation(r: ChatReservation) {

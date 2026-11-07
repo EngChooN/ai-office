@@ -1,7 +1,7 @@
 // 대화방 메신저 기능: 예약·반복 보낼 차례·놓친 예약, 안 읽은 수, 진행 정보의 대화 메시지 id
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { expireMissed, isReservationDue, reservationDay, settleMissedOnStart } from '../src/shared/chatReservations.ts'
+import { expireMissed, isReservationDue, reservationDay, settleMissedOnStart, skipPassedToday } from '../src/shared/chatReservations.ts'
 import { firstUnread, markSeen, roomsWithPendingApproval, unreadByRoom } from '../src/shared/chatUnread.ts'
 import { buildStaffProgress } from '../src/shared/staffProgress.ts'
 import { OFFICE_SENDER } from '../src/shared/mention.ts'
@@ -25,6 +25,13 @@ test('반복 예약: 그 요일 그 시각이 지났고 오늘 아직 안 보냈
   assert.equal(isReservationDue(repeat('10:00', [1]), mon930), false)
   assert.equal(isReservationDue(repeat('09:00', [2]), mon930), false)
   assert.equal(isReservationDue(repeat('09:00', [1], { lastRunDate: reservationDay(mon930) }), mon930), false)
+})
+
+test('반복 예약을 오늘 시각이 지난 뒤 만들거나 다시 켜면 오늘은 건너뛰고 다음 차례부터', () => {
+  assert.equal(skipPassedToday(repeat('09:00', [1]), mon930).lastRunDate, reservationDay(mon930))
+  assert.equal(skipPassedToday(repeat('10:00', [1]), mon930).lastRunDate, null)
+  assert.equal(skipPassedToday(repeat('09:00', [2]), mon930).lastRunDate, null)
+  assert.equal(skipPassedToday(once(0), mon930).lastRunDate, null)
 })
 
 test('앱을 켰을 때: 지난 예약은 바로 보내지 않고 놓침으로 표시한다', () => {
