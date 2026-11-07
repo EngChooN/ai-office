@@ -4785,7 +4785,8 @@ export class Office extends EventEmitter<{
       this.chatReservations.delete(id)
       return this.scheduleEmit()
     }
-    if (action === 'send') return this.sendReservation(r)
+    // 반복 예약은 오늘 이미 보냈으면 또 보내지 않는다 ('지금 보내기' 두 번 누름·비서 연달아 호출)
+    if (action === 'send') return r.kind !== 'once' && r.lastRunDate === reservationDay(new Date()) ? undefined : this.sendReservation(r)
     if (action === 'skip') {
       // 한 번 예약을 건너뛰면 지운다. 반복은 오늘 몫만 건너뛴다
       if (r.kind === 'once') return this.chatReservationAction(id, 'cancel')

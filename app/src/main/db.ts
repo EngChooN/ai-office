@@ -618,7 +618,7 @@ export function searchChat(query: string, room: string | null | undefined, offic
   const q = query.trim()
   if (!q) return []
   const like = `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`
-  const roomSql = room === undefined ? '' : room === null ? " AND COALESCE(room, '') = ''" : ' AND room = ?'
+  const roomSql = room === undefined ? '' : !room ? " AND COALESCE(room, '') = ''" : ' AND room = ?'
   const params: (string | number)[] = [like, officeSender, ...(room ? [room] : []), CHAT_SEARCH_MAX]
   return all<ChatRow>(`SELECT * FROM chat WHERE text LIKE ? ESCAPE '\\' AND sender != ?${roomSql} ORDER BY id DESC LIMIT ?`, ...params).map(toChatMessage)
 }

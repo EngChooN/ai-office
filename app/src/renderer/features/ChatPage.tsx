@@ -319,10 +319,15 @@ function MessageList({ room, searchQuery }: { room: string | undefined; searchQu
     if (!el) return
     el.scrollIntoView({ block: 'center' })
     setFlashId(chatFocus.id)
-    const timer = setTimeout(() => setFlashId(null), 1600)
-    return () => clearTimeout(timer)
+    // 한 번 갔으면 비운다 — 남겨 두면 새 메시지가 올 때마다·방에 다시 들어올 때마다 그 말풍선으로 되돌아간다
+    useOffice.setState({ chatFocus: null })
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 새로 가라고 할 때와 그 말풍선이 그려졌을 때
   }, [chatFocus, lines.length])
+  useEffect(() => {
+    if (flashId === null) return
+    const timer = setTimeout(() => setFlashId(null), 1600)
+    return () => clearTimeout(timer)
+  }, [flashId])
   useSearchHighlight(scroll.contentRef.current, searchQuery, lines)
 
   return (
@@ -586,6 +591,8 @@ function Composer({ room }: { room: RoomInfo | undefined }) {
     if (!chatDraft) return
     setDraft(chatDraft.text)
     focusEnd()
+    // 넣었으면 비운다 — 남겨 두면 대화방에 다시 들어올 때마다 옛 글이 또 채워진다
+    useOffice.setState({ chatDraft: null })
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 새로 넣으라고 할 때만
   }, [chatDraft?.nonce])
   useEffect(() => {
