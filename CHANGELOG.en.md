@@ -7,7 +7,7 @@ Writing rules
 - Write from the user's point of view, describing "what you can now do." Do not use technical names (file paths, program or library names, English abbreviations). If one is truly needed, put it once in parentheses after a plain-language explanation.
 - Development details (how it was built, where files are) go in `SPEC.md` and `docs/changelog-dev.md`.
 
-## [미정] (설치본 미빌드)
+## [1.1.0] - 2026-11-07
 
 ### New features
 - Team and lab chat rooms now show a member status bar at the top: who is working, what they are doing, and who needs your review. Work from task cards and the staff panel shows too. Hover for details, click to open that staff panel. The main room shows only people who are working or need review.
@@ -21,6 +21,18 @@ Writing rules
 - The ▾ next to Send lets you schedule a message (today 6 PM, tomorrow 9 AM, Monday 9 AM, or pick a time) or repeat it (every day, weekdays, Mondays 9 AM, or custom). Scheduled messages wait above the input box where you can send now, edit, cancel or pause. If the app was off at the scheduled time, it asks whether to send when you open it.
 - Search chats with 🔍 next to the room title (or ⌘F). 'This room' highlights matches and steps through them with ↑↓; 'All rooms' lists results with room, sender and date and jumps to the message. Older messages not on screen are found too.
 - When a lead submits a plan, a 'Plan review request' card appears in the chat room. 'Open in Inbox' opens that plan right away. For work assigned by task card, it goes to the lead's lab room (or team room), and the card updates after you approve or ask for changes.
+
+### Improvements
+- Please note: on the phone, the chat room status line does not update live. Reopen the room to see the latest.
+- Please note: scheduled and recurring messages are sent only while the PC app is running. If you missed one because the app was off, it asks whether to send it when you start the app.
+
+### Bug fixes
+- Fixed chat rooms repeatedly jumping back to an earlier message bubble.
+- Fixed old text being filled back into the input box.
+- Fixed a recurring message's "Send now" going out twice.
+- Fixed an error when searching a room with an empty name.
+- Fixed a recurring message going out once right away when created or turned back on after its time had already passed.
+- Fixed a chat room instruction stopped with Esc starting again on its own.
 
 ## [1.0.3] - 2026-11-06
 
