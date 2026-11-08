@@ -131,10 +131,10 @@ export default {
     zh: '这台电脑没有安装 Node.js（免费程序），无法使用。请在 nodejs.org 点击“LTS”按钮安装后重新打开。',
   },
   'staff.browser.sharedBusy': {
-    ko: '지금은 다른 직원이 공용 브라우저 로그인을 쓰는 중이라 브라우저를 쓸 수 없습니다. 브라우저가 필요하면 대표에게 "다른 직원이 공용 로그인을 쓰는 중이라 지금은 브라우저를 못 써요"라고 알리세요.',
-    en: 'Another staff member is using the shared browser login right now, so you cannot use the browser. If you need it, tell the owner: "Another staff member is using the shared login, so I cannot use the browser right now."',
-    ja: '今は別のスタッフが共有ブラウザログインを使用中のため、ブラウザは使えません。必要な場合は代表に「別のスタッフが共有ログインを使用中のため、今はブラウザを使えません」と伝えてください。',
-    zh: '目前其他员工正在使用共用浏览器登录，因此无法使用浏览器。如需使用，请告诉代表：“其他员工正在使用共用登录，现在无法使用浏览器。”',
+    ko: '지금은 다른 직원이 공용 브라우저 로그인을 쓰는 중이라 브라우저를 쓸 수 없습니다. 브라우저가 필요하면 대표에게 "다른 직원이 공용 로그인을 쓰는 중이라 지금은 브라우저를 못 써요"라고 알리세요. 그 직원의 일이 끝나면 풀리니 "잠시 뒤 다시 지시하면 쓸 수 있어요"라고 함께 알리세요.',
+    en: 'Another staff member is using the shared browser login right now, so you cannot use the browser. If you need it, tell the owner: "Another staff member is using the shared login, so I cannot use the browser right now." Also add that it frees up when that staff member finishes: "Give me the instruction again in a little while and I can use it."',
+    ja: '今は別のスタッフが共有ブラウザログインを使用中のため、ブラウザは使えません。必要な場合は代表に「別のスタッフが共有ログインを使用中のため、今はブラウザを使えません」と伝えてください。その作業が終われば使えるようになるので、「しばらくしてからもう一度指示すれば使えます」も添えてください。',
+    zh: '目前其他员工正在使用共用浏览器登录，因此无法使用浏览器。如需使用，请告诉代表：“其他员工正在使用共用登录，现在无法使用浏览器。”并补充：对方工作结束后即可使用，“请稍后再次下达指示即可使用”。',
   },
   'equip.browser.sepWhy': {
     ko: '직원 브라우저는 내 크롬과 따로 써요. 직원이 내 로그인·비밀번호를 마음대로 쓰지 못하게 하려는 보안 때문이에요.',

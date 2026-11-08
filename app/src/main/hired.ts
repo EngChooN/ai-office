@@ -78,6 +78,8 @@ export interface HiredHooks {
   officeTools(staffId: string): RuntimeMcpServer
   /** 공용 브라우저 로그인을 다른 직원이 쓰고 있어 이 직원에게는 브라우저를 못 붙였는가 */
   browserBlocked?(staffId: string): boolean
+  /** 한가해졌을 때 공용 브라우저 락을 쥐었거나 막혀 있던 직원이면 놓고 true — 세션을 닫아 크롬을 끝내고 다음 지시 때 다시 연다 */
+  releaseBrowser?(staffId: string): boolean
   /** 세션 시작 시 덧붙이는 팀 맥락 */
   context(staffId: string): string
   /** 세션 시작 시 정하는 참고 문서: 프롬프트 안내와 결재 없이 읽을 경로 (둘이 어긋나지 않게 한 번에 받는다) */
@@ -572,11 +574,17 @@ class Worker {
 
   /** 일하는 동안 미뤄 둔 재시작은 손이 비었을 때 적용한다 (finished에서 다음 업무가 왔으면 또 미룬다) */
   private applyPendingRestart() {
-    if (this.isRunning || !this.pendingRestart) return
+    if (this.isRunning) return
+    if (!this.pendingRestart) {
+      // 백그라운드 작업이 돌고 있으면 닫지 않는다 (함께 죽는다)
+      if (this.backgroundTasks.length === 0 && this.hooks.releaseBrowser?.(this.staff.id)) this.closeSession()
+      return
+    }
     const kind = this.pendingRestart
     this.pendingRestart = null
     if (kind === 'reset') this.resetSession()
     else this.closeSession()
+    this.hooks.releaseBrowser?.(this.staff.id)
   }
 }
 

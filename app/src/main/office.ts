@@ -406,6 +406,7 @@ export class Office extends EventEmitter<{
       },
       isScreenCaptureOn: () => this.settings.isStaffCaptureOn,
       browserBlocked: (id) => this.browserBlocked.has(id),
+      releaseBrowser: (id) => this.releaseBrowserFor(id),
       equippedMcp: (id) => {
         const s = this.hired.get(id)
         if (!s) return {}
@@ -974,6 +975,7 @@ export class Office extends EventEmitter<{
     const parked = this.netParked.cancel(staffId)
     if (parked) for (const id of [...parked.origins.flatMap((o) => (o.kind === 'task' ? [o.taskId] : [])), ...parked.queued.map((q) => q.taskId)]) this.returnToTodo(id)
     this.manager.remove(staffId)
+    this.releaseBrowserFor(staffId)
     this.hired.delete(staffId)
     this.commands.delete(staffId)
     db.deleteStaff(staffId)
@@ -2675,6 +2677,13 @@ export class Office extends EventEmitter<{
   /** 공용 브라우저 로그인 사용 중 표시 — 그 직원의 세션이 닫히면 놓은 것으로 본다 (Playwright MCP는 세션의 자식 프로세스) */
   private browserLock = createBrowserLock((id) => this.manager.isSessionOpen(id))
   private browserBlocked = new Set<string>()
+  /** 공용 브라우저 락을 쥐었거나 막혀 있던 직원이면 정리하고 true (호출한 쪽이 세션을 닫는다) */
+  private releaseBrowserFor(id: string) {
+    const held = this.browserLock.holder() === id
+    const blocked = this.browserBlocked.delete(id)
+    if (held) this.browserLock.release(id)
+    return held || blocked
+  }
 
   /** 직원별 사무실 MCP 등록 (해고·종료 때 토큰을 폐기한다) */
   private officeMcp = new Map<string, LocalMcpHandle>()
@@ -4028,6 +4037,7 @@ export class Office extends EventEmitter<{
     this.meetings = this.meetings.filter((m) => !m.isPractice)
     for (const id of staffIds) {
       this.manager.remove(id)
+      this.releaseBrowserFor(id)
       this.hired.delete(id)
       this.counters.delete(id)
       db.deleteStaff(id)
