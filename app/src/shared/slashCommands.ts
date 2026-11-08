@@ -148,7 +148,8 @@ export function matchCommands(commands: StaffCommand[], query: string, limit = 5
     const n = c.name.toLowerCase()
     if (n.startsWith(q)) return 0
     if (n.includes(q)) return 1
-    if (c.description.toLowerCase().includes(q) || c.localizedDescription.toLowerCase().includes(q)) return 2
+    // 예전 PC가 보낸 목록(휴대폰 원격)에는 localizedDescription이 없을 수 있다 — 없으면 원문 설명으로 (#12)
+    if (c.description.toLowerCase().includes(q) || (c.localizedDescription ?? '').toLowerCase().includes(q)) return 2
     return -1
   }
   return commands

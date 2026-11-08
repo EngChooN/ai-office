@@ -12,6 +12,7 @@ import { canPlace, REASON_TEXT, type FloorState } from '@shared/iso/place'
 import { isAutoSeat, rotateSeatSet, seatSetOf, seatsOf } from '@shared/iso/seats'
 import { setAutoOff, useSeatStatus } from './seatStatus'
 import { isReducedMotion } from '@/lib/reducedMotion'
+import { keyName } from '@/lib/keyName'
 import type { IsoOfficeScene } from '../IsoOfficeScene'
 
 /** 들고 있는 가구. uid가 있으면 놓여 있던 것을 옮기는 중 */
@@ -373,7 +374,7 @@ export class DecorController {
   private onKey(e: KeyboardEvent) {
     if (!this.isOn || isTyping(e.target) || this.scene.sys.isSleeping()) return
     const { hold, selected, stowAsk } = useDecor.getState()
-    const key = e.key.length === 1 ? e.key.toLowerCase() : e.key
+    const key = keyName(e)
     const arrows: Record<string, [number, number]> = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] }
     if (key === 'r' || key === 'ㄱ') this.rotate(e.shiftKey ? -1 : 1)
     else if (key === 'Enter' && hold) this.confirm(e.shiftKey)

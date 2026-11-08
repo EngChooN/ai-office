@@ -29,6 +29,7 @@ import { useLang } from '@/lib/i18n'
 import { connectOffice, useOffice, useWorkMode } from './store'
 import { ToastHost } from '@/lib/toast'
 import { shouldOfferPractice } from '@/lib/firstTaskFlow'
+import { keyName } from '@/lib/keyName'
 import { t } from '@shared/i18n'
 
 export default function App() {
@@ -65,7 +66,7 @@ function AppBody() {
   useEffect(() => {
     if (isPhone) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key.toLowerCase() !== 'k' || !(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey) return
+      if (keyName(e) !== 'k' || !(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey) return
       e.preventDefault()
       const s = useOffice.getState()
       s.setQuickSecretaryOpen(!s.isQuickSecretaryOpen)

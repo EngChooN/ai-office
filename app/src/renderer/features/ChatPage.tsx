@@ -26,6 +26,7 @@ import { progressesForRoom } from '@shared/progressView'
 import { AlwaysApproveButton } from './AutoApprove'
 import { BubbleMenu, ChatSearch, DeliveryLine, PlanNotice, ReplyBar, ReplyQuote, ReportActions, ReservationCards, ReserveMenu, reservationInput, useSearchHighlight } from './ChatExtras'
 import { firstUnread, roomKey, roomsWithPendingApproval, seenOf, unreadByRoom } from '@shared/chatUnread'
+import { keyName } from '@/lib/keyName'
 
 const MENTION_MAX = 6
 const KIND_ORDER: MentionKind[] = ['all', 'team', 'lab', 'staff']
@@ -62,7 +63,7 @@ export function ChatPage() {
   const [searchQuery, setSearchQuery] = useState('')
   useEffect(() => {
     const onKey = (e: globalThis.KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'f') {
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && keyName(e) === 'f') {
         e.preventDefault()
         setIsSearchOpen(true)
       }

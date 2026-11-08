@@ -1189,6 +1189,11 @@ export default {
   'schedule.lastRun': { ko: '마지막 실행 {date}', en: 'Last run {date}', ja: '最終実行 {date}', zh: '上次执行 {date}' },
   'schedule.enabled': { ko: '사용', en: 'On', ja: '有効', zh: '启用' },
   'schedule.runNow': { ko: '지금 실행', en: 'Run now', ja: '今すぐ実行', zh: '立即执行' },
+  'schedule.edit': { ko: '편집', en: 'Edit', ja: '編集', zh: '编辑' },
+  'schedule.editing': { ko: '"{label}" 예약을 고치는 중이에요', en: 'Editing the "{label}" schedule', ja: '「{label}」の予約を編集中です', zh: '正在编辑定时任务“{label}”' },
+  'schedule.saveEdit': { ko: '변경 저장', en: 'Save changes', ja: '変更を保存', zh: '保存更改' },
+  'schedule.nextRun': { ko: '다음 실행 {when}', en: 'Next run {when}', ja: '次回実行 {when}', zh: '下次执行 {when}' },
+  'schedule.nextRunSoon': { ko: '곧 실행', en: 'Running soon', ja: 'まもなく実行', zh: '即将执行' },
   // slashMenu — '/' 자동완성 (직원 채팅·단체방·휴대폰)
   'slashMenu.button': { ko: '/ 명령', en: '/ Commands', ja: '/ コマンド', zh: '/ 命令' },
   'slashMenu.buttonTitle': {

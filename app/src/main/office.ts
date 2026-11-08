@@ -81,6 +81,7 @@ import { decisionSections, decisionSectionsOf, decisionsContext, delegatedPrompt
 import { isAbsorbedOpen, matchAbsorbed, meetingCardItems, meetingResultCard, pickPlanCard } from '../shared/planTasks'
 import { shouldNudgeBackground, shouldNudgeLead } from '../shared/leadNudge'
 import { NO_HOLD, planHold, type HeldItem, type PlanHoldState } from '../shared/planHold'
+import { isScheduleDue } from '../shared/schedule'
 import { detectTextQuestion, toTextQuestions } from '../shared/textQuestion'
 import { mentionTargets, OFFICE_SENDER, parseMentions, pickResponder } from '../shared/mention'
 import { cardRoom, chatRoomMembers, chatRoomMentionTargets, findRoom, GLOBAL_ROOM, homeRoom, labRoomId, originRoom, parseRoom, roomExists, roomForOrigins as roomForOriginsOf, roomsForOrigins as roomsForOriginsOf, resolveOriginRoom, pickRoomResponder, roomHead } from '../shared/chatRooms'
@@ -4584,10 +4585,9 @@ export class Office extends EventEmitter<{
 
   private runDueSchedules() {
     const now = new Date()
-    const hhmm = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
     const today = dateKey(now)
     for (const s of this.schedules.values()) {
-      if (!s.enabled || s.lastRunDate === today || !s.weekdays.includes(now.getDay()) || s.time > hhmm) continue
+      if (!isScheduleDue(s, now)) continue
       // 한도가 거의 찼으면 오늘 한 것으로 치지 않고 보류 — 회복되면 같은 날 안에 자동으로 돈다
       if (this.holdJob({ kind: 'schedule', id: s.id, label: s.label, staffId: s.staffId })) continue
       this.runSchedule(s, today)
