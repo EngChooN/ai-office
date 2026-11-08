@@ -45,6 +45,8 @@ export interface HiredHooks {
    * 질문이면 answers(질문 → 답)를 채워 돌려준다. deny가 있으면 결재함에 올리지 않고 그 사유로 거부한다 (자율 진행의 위험 작업)
    */
   autoDecide(staffId: string, toolName: string, input: Record<string, unknown>, summary: string, questions?: StaffQuestion[]): Promise<{ answers?: Record<string, string>; deny?: string }> | null
+  /** 직원이 파일을 고치려 한다고 기록 (결재 방식과 상관없이 — 나중에 그 파일을 실행하는 명령을 걸러내려고) */
+  noteWrite(staffId: string, toolName: string, input: Record<string, unknown>): void
   /** 복원 결재를 승인해 다시 실행하는 도구면 한 번만 결재 없이 통과 (같은 직원·도구·요약) */
   takeOneShotAllow(staffId: string, toolName: string, summary: string): boolean
   /** 자동결재가 대표를 기다리게 한 이유 (이번 결재 카드에 붙인다) */
@@ -393,6 +395,7 @@ class Worker {
           // 자율 진행 중이면 대표에게 부탁하라는 대신 건너뛰고 보고에 남기라고 알린다
           return { deny: this.hooks.isAutonomous(s.id) ? t('staff.deny.autonomous', { action: `${risky}: ${String(command).slice(0, 200)}` }) : t('staff.deny.risky', { risky }) }
         }
+        if (isEditTool(toolName)) this.hooks.noteWrite(s.id, toolName, toolInput as Record<string, unknown>)
         // 파일 수정 자동 승인(acceptEdits)이어도 실행 위험 경로(.git/hooks·.github/workflows·.husky·.claude …)는 묻는다. 자율 진행 중이면 거부
         if (s.approvalMode === 'acceptEdits' && isEditTool(toolName) && autoWaitReason(toolName, toolInput as Record<string, unknown>) === 'danger-path') {
           this.hooks.log(s.id, 'tool', `위험 경로 쓰기: ${summarizeInput(toolInput, toolName)}`.slice(0, ACTIVITY_MAX))
@@ -416,7 +419,7 @@ class Worker {
       // 화면 언어가 바뀌어도 다시 번역되게 (컴퓨터 조작 요약만 — 나머지 요약은 입력 원문이라 번역할 게 없다)
       summaryI18n: (!questions && computerSummaryI18n(toolName, input)) || undefined,
       createdAt: Date.now(),
-      waitReason: this.hooks.takeWaitReason(this.staff.id),
+      waitReason: this.hooks.takeWaitReason(this.staff.id) ?? (this.staff.approvalMode === 'acceptEdits' && isEditTool(toolName) && autoWaitReason(toolName, input) === 'danger-path' ? 'danger-path' : undefined),
       questions,
       // 결재 카드의 "앞으로 항상 승인" — 위험 명령·질문이면 붙지 않는다
       alwaysRule: questions ? undefined : (ruleDraftFor(toolName, input) ?? undefined),

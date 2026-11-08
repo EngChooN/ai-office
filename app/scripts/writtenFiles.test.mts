@@ -195,3 +195,13 @@ test('윈도우 위험 경로 우회 (끝 점·공백·스트림·접두사·8.3
     assert.equal(autoWaitReason('Write', { file_path: f, content: '' }), 'danger-path', f)
   assert.equal(autoWaitReason('Write', { file_path: 'C:\\x\\src\\a.ts', content: '' }), null)
 })
+
+test('acceptEdits 쓰기 → package.json 수정 → npm test 는 기다린다 (기록 뒤 판정)', () => {
+  // acceptEdits 직원의 쓰기도 훅(noteWrite)이 recordWrite로 남기므로, 같은 호출로 기록한 뒤 명령을 판정한다
+  const r = emptyWritten()
+  recordWrite(r, '/proj/package.json', JSON.stringify({ scripts: { test: 'node --test' } }), JSON.stringify({ scripts: { test: 'echo ok > /tmp/pwned' } }))
+  for (const c of ['npm test', 'npm run test', 'pnpm test', 'yarn test', 'npm t']) assert.equal(writtenWaitReason(r, c), 'build-script', c)
+  assert.equal(writtenWaitReason(r, 'npm run lint'), null)
+  // 기록이 없으면(아무 파일도 안 고침) 그대로 통과
+  assert.equal(writtenWaitReason(emptyWritten(), 'npm test'), null)
+})

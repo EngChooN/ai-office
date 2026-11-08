@@ -380,6 +380,7 @@ export class Office extends EventEmitter<{
       log: (id, type, text) => this.log(id, type, text),
       requestApproval: (a) => this.addApproval(a),
       autoDecide: (id, toolName, input, summary, questions) => this.autoDecide(id, toolName, input, summary, questions),
+      noteWrite: (id, toolName, input) => this.noteWrite(id, toolName, input),
       takeWaitReason: (id) => this.takeWaitReason(id),
       takeOneShotAllow: (id, toolName, summary) => this.oneShot.take(id, toolName, summary),
       isAutonomous: (id) => this.isAutonomous(id),
@@ -2147,7 +2148,6 @@ export class Office extends EventEmitter<{
     const step = autoStep(this.auto.config, this.auto.wasActive, Date.now())
     if (step.event === 'start') {
       this.auto = { ...this.auto, wasActive: true, counts: { edit: 0, command: 0, other: 0, answered: 0, waited: 0 } }
-      this.autoWritten.clear()
       const endsAt = autoWindow(step.config, Date.now()).endsAt
       const until = endsAt ? new Date(endsAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : ''
       this.postChat('me', `🤖 자동결재를 시작해요${until ? ` (${until}까지, ${formatRemaining(endsAt! - Date.now())})` : ''}. 위험 명령·푸시·외부 전송은 기다렸다가 결재함에 남겨요.`)
@@ -2182,6 +2182,28 @@ export class Office extends EventEmitter<{
   private writtenKey(staffId: string) {
     const task = (this.origins.get(staffId) ?? []).find((o) => o.kind === 'task')
     return `${staffId}:${task && task.kind === 'task' ? task.taskId : ''}`
+  }
+
+  /**
+   * 직원이 파일을 고친다고 기록한다 — 결재 방식·자동결재 켜짐 여부와 상관없이 모든 쓰기를 남긴다
+   * (수정은 자율 직원의 즉시 허용 쓰기도 포함. 자동결재가 나중에 켜져도 그전에 고친 파일을 실행하는 명령을 걸러내려고). 고치기 전 내용과 비교해 바뀐 스크립트·타깃만 남긴다
+   */
+  noteWrite(staffId: string, toolName: string, input: Record<string, unknown>) {
+    if (autoKindOf(toolName) !== 'edit') return
+    const paths = [input.file_path, input.notebook_path, ...(Array.isArray(input.files) ? input.files : [])].filter((p): p is string => typeof p === 'string' && p !== '')
+    const key = this.writtenKey(staffId)
+    for (const p of new Set(paths)) {
+      let before: string | null = null
+      try {
+        before = fs.readFileSync(p, 'utf8')
+      } catch {
+        /* 새 파일 */
+      }
+      const after = this.contentAfterWrite(toolName, input, before)
+      const rec = this.autoWritten.get(key) ?? emptyWritten()
+      recordWrite(rec, p, before, after, after !== null)
+      this.autoWritten.set(key, rec)
+    }
   }
 
   /** 업무 시작·완료·중단, 자율 진행 시작 때 이 직원의 쓰기 기록을 비운다 */
@@ -2296,23 +2318,8 @@ export class Office extends EventEmitter<{
       this.saveAutoSoon()
       return null
     }
-    // 자동 승인한 쓰기의 파일 경로를 기억해 둔다 (위에서 실행 명령을 걸러내려고). 고치기 전 내용과 비교해 바뀐 스크립트·타깃만 남긴다
-    if (autoKindOf(toolName) === 'edit') {
-      const p = typeof input.file_path === 'string' ? input.file_path : typeof input.notebook_path === 'string' ? input.notebook_path : ''
-      if (p) {
-        let before: string | null = null
-        try {
-          before = fs.readFileSync(p, 'utf8')
-        } catch {
-          /* 새 파일 */
-        }
-        const after = this.contentAfterWrite(toolName, input, before)
-        const key = this.writtenKey(staffId)
-        const rec = this.autoWritten.get(key) ?? emptyWritten()
-        recordWrite(rec, p, before, after, after !== null)
-        this.autoWritten.set(key, rec)
-      }
-    }
+    // 승인한 쓰기의 파일 경로는 훅(noteWrite)이 이미 기록했다 — 여기서도 한 번 더 남겨 훅을 거치지 않은 경로도 놓치지 않는다
+    if (autoKindOf(toolName) === 'edit') this.noteWrite(staffId, toolName, input)
     const category = autoKindOf(toolName)
     this.auto.counts = { ...this.auto.counts, [category]: this.auto.counts[category] + 1 }
     // 자동 승인한 MCP 호출은 인자를 2KB까지 남긴다 (L1 — 짧은 요약으로 묻히지 않게)
