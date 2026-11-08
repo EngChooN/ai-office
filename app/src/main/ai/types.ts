@@ -53,8 +53,8 @@ export interface RuntimeStartOpts {
   shellNetwork?: boolean
   /** 도구 사용 전 결재 */
   canUseTool(toolName: string, input: Record<string, unknown>, signal: AbortSignal): Promise<ToolDecision>
-  /** 도구 실행 직전: deny 사유를 돌려주면 막는다 */
-  onToolUse(toolName: string, input: unknown): { deny: string } | null
+  /** 도구 실행 직전: deny 사유를 돌려주면 막고, ask면 권한 모드와 상관없이 결재(canUseTool)로 되돌린다 */
+  onToolUse(toolName: string, input: unknown): { deny: string } | { ask: true } | null
 }
 
 /** 직원 1명 = 세션 1개 */

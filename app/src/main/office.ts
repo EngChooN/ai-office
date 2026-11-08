@@ -2203,6 +2203,8 @@ export class Office extends EventEmitter<{
     if (before === null) return null
     const apply = (text: string, e: { old_string?: unknown; new_string?: unknown; replace_all?: unknown }) => {
       if (typeof e.old_string !== 'string' || typeof e.new_string !== 'string') return null
+      // 바꿀 글이 디스크 내용에 없으면 어떻게 바뀌었는지 알 수 없다 (→ 전부 바뀐 것으로 본다)
+      if (!text.includes(e.old_string)) return null
       return e.replace_all ? text.split(e.old_string).join(e.new_string) : text.replace(e.old_string, () => e.new_string as string)
     }
     if (toolName === 'Edit') return apply(before, input)

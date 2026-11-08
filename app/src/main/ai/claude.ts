@@ -225,6 +225,7 @@ export class ClaudeRuntime implements AgentRuntime {
                 async (input) => {
                   if (input.hook_event_name === 'PreToolUse') {
                     const verdict = o.onToolUse(input.tool_name, input.tool_input)
+                    if (verdict && 'ask' in verdict) return { hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'ask' } }
                     if (verdict) return { hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: verdict.deny } }
                   }
                   return {}

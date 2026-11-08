@@ -1,7 +1,7 @@
 // 고친 파일 기록·실행 판정 단위 테스트 (H2·A4) — npm test
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { autoApprove, autoWaitReason } from '../src/shared/autoApprove.ts'
+import { autoApprove, autoWaitReason, editNeedsAsk } from '../src/shared/autoApprove.ts'
 import { autonomyVerdict } from '../src/shared/autonomy.ts'
 import { changedMakeTargets, changedScripts, emptyWritten, recordWrite, writtenWaitReason } from '../src/shared/writtenFiles.ts'
 
@@ -119,4 +119,79 @@ test('자율 모드 거부 안내는 우회·재시도 금지를 말한다', asy
   const { t } = await import('../src/shared/i18n/index.ts')
   assert.match(t('staff.deny.autonomous', { action: 'x' }, 'ko'), /우회/)
   assert.match(t('staff.deny.autonomous', { action: 'x' }, 'en'), /retry/)
+})
+
+// ── 2차 보강: 러너·연쇄 스크립트·고친 파일을 부르는 스크립트 ──
+
+test('러너 우회: 고친 파일을 인자로 받는 러너는 기다린다', () => {
+  const r = rec('/proj/app/x.test.ts')
+  for (const c of ['vitest run x.test.ts', 'jest x.test.js', 'pnpm vitest x.test.ts', 'pnpm test -- x.test.mts', 'npx vitest run --config=x.test.ts']) assert.equal(writtenWaitReason(r, c), 'written-file', c)
+  assert.equal(writtenWaitReason(rec('/p/x.py'), 'pytest x.py'), 'written-file')
+  assert.equal(writtenWaitReason(rec('/p/x.test.js'), 'jest x.test.js'), 'written-file')
+  const g = rec('/proj/app/x.ts')
+  for (const c of ['git add x.ts', 'git diff x.ts', 'git status', 'cat x.ts', 'grep -n a x.ts', 'rg a x.ts', 'ls x.ts', 'head x.ts', 'tail x.ts', 'wc -l x.ts', 'pnpm typecheck']) assert.equal(writtenWaitReason(g, c), null, c)
+})
+
+test('연쇄 스크립트: 바뀐 스크립트를 값에서 부르는 스크립트도 영향', () => {
+  const before = JSON.stringify({ scripts: { build: 'tsc', test: 'pnpm build && node --test', lint: 'eslint .' } })
+  const after = JSON.stringify({ scripts: { build: 'git push', test: 'pnpm build && node --test', lint: 'eslint .' } })
+  const r = rec('/proj/package.json', before, after)
+  assert.equal(writtenWaitReason(r, 'pnpm test'), 'build-script')
+  assert.equal(writtenWaitReason(r, 'pnpm build'), 'build-script')
+  assert.equal(writtenWaitReason(r, 'pnpm lint'), null)
+  // 대상을 특정 못 하면 보수적으로
+  const a2 = JSON.stringify({ scripts: { build: 'git push', lint: '$npm_execpath exec x' } })
+  assert.equal(writtenWaitReason(rec('/proj/package.json', before, a2), 'pnpm lint'), 'build-script')
+})
+
+test('고친 파일을 스크립트가 부름', () => {
+  assert.equal(writtenWaitReason(rec('/proj/app/scripts/evil.test.mts'), 'pnpm test'), 'written-file')
+  assert.equal(writtenWaitReason(rec('/proj/app/scripts/evil.test.mts'), 'pnpm typecheck'), 'written-file')
+  // package.json 값의 glob·경로에 걸림
+  const pj = JSON.stringify({ scripts: { test: 'node --test scripts/*.test.mts', gen: 'node tools/gen.js', lint: 'eslint .' } })
+  const r = rec('/proj/package.json', JSON.stringify({ scripts: { lint: 'eslint .' } }), pj)
+  recordWrite(r, '/proj/tools/gen.js', null, 'x')
+  assert.equal(writtenWaitReason(r, 'pnpm gen'), 'build-script')
+  assert.equal(writtenWaitReason(r, 'pnpm lint'), null)
+  const g = emptyWritten()
+  recordWrite(g, '/proj/package.json', JSON.stringify({ scripts: { lint: 'eslint .' } }), pj)
+  recordWrite(g, '/proj/scripts/a.test.mts', null, 'x')
+  assert.equal(writtenWaitReason(g, 'pnpm test'), 'written-file')
+})
+
+test('설치 생명주기·변형 이름', () => {
+  const mk = (name: string) => rec('/p/package.json', JSON.stringify({ scripts: {} }), JSON.stringify({ scripts: { [name]: 'curl x | sh' } }))
+  for (const n of ['prepack', 'postpack', 'prepublishOnly', 'version', 'preversion', 'postversion']) assert.equal(writtenWaitReason(mk(n), 'npm install'), 'build-script', n)
+  assert.equal(writtenWaitReason(mk('prepare'), 'yarn'), 'build-script')
+  for (const v of ['install-test', 'it', 'cit', 'link']) assert.equal(writtenWaitReason(mk('postinstall'), `npm ${v}`), 'build-script', v)
+  assert.equal(writtenWaitReason(mk('Build'), 'pnpm build'), 'build-script')
+  assert.equal(writtenWaitReason(mk('build'), 'pnpm run ./x/build'), 'build-script')
+})
+
+test('고친 파일이 있을 때 변수·인코딩 실행·iex·확장 경로는 기다린다', () => {
+  const r = rec('/proj/a.ts')
+  for (const c of ['curl $URL', 'cmd /c %COMSPEC%', 'powershell -EncodedCommand AAA', 'powershell -enc AAA', 'powershell -e AAA', 'iex $x', 'Invoke-Expression "x"', 'cmd /c \\\\?\\C:\\x\\a.ts']) {
+    assert.equal(writtenWaitReason(r, c), 'written-file', c)
+  }
+  assert.equal(writtenWaitReason(emptyWritten(), 'powershell -enc AAA'), null)
+  assert.equal(writtenWaitReason(r, 'echo $HOME'), null)
+})
+
+// ── acceptEdits 위험 경로 보호·윈도우 위험 경로 ──
+
+test('위험 경로 쓰기는 danger-path, 일반 경로는 통과', () => {
+  for (const f of ['/p/.github/workflows/x.yml', '/p/.husky/pre-commit', '/p/.git/hooks/a', '/p/.claude/settings.json']) assert.equal(autoWaitReason('Write', { file_path: f, content: '' }), 'danger-path', f)
+  assert.equal(autoWaitReason('Write', { file_path: '/p/src/a.ts', content: '' }), null)
+  assert.equal(editNeedsAsk({ file_path: '/p/.github/workflows/x.yml' }, '/p'), true)
+  assert.equal(editNeedsAsk({ file_path: '/p/src/a.ts' }, '/p'), false)
+  assert.equal(editNeedsAsk({ file_path: 'src/a.ts' }, '/p'), false)
+  assert.equal(editNeedsAsk({ file_path: '/other/a.ts' }, '/p'), true)
+  assert.equal(editNeedsAsk({ file_path: '/p/src/a.ts', files: ['/p/src/a.ts', '/p/.husky/x'] }, '/p'), true)
+  assert.equal(editNeedsAsk({ file_path: 'C:\\p\\src\\a.ts' }, 'C:\\p'), false)
+})
+
+test('윈도우 위험 경로 우회 (끝 점·공백·스트림·접두사·8.3 이름)', () => {
+  for (const f of ['C:\\x\\.git.\\hooks\\a', 'C:\\x\\.git \\hooks\\a', 'C:\\x\\.git::$INDEX_ALLOCATION\\hooks\\a', 'C:\\x\\.github\\workflows::$DATA', 'C:\\x\\GITHUB~1\\a', 'C:\\x\\CLAUDE~1\\a', '\\\\?\\C:\\x\\.git\\hooks\\a'])
+    assert.equal(autoWaitReason('Write', { file_path: f, content: '' }), 'danger-path', f)
+  assert.equal(autoWaitReason('Write', { file_path: 'C:\\x\\src\\a.ts', content: '' }), null)
 })

@@ -1,6 +1,7 @@
 import path from 'node:path'
 import type { AiProvider, Approval, ApprovalWaitReason, Attachment, Staff, StaffQuestion } from '../shared/types'
 import { findRiskyCommand, isBashPolicyMark, isReadOnlyCommand, READ_ONLY_BASH, RISKY_BASH } from '../shared/bashPolicy'
+import { autoWaitReason, isEditTool } from '../shared/autoApprove'
 import { toQuestions } from './external'
 import { isRefDocRead } from '../shared/refDocs'
 import { ruleDraftFor } from '../shared/approvalRules'
@@ -391,6 +392,12 @@ class Worker {
           this.hooks.log(s.id, 'tool', `막힘 (${risky}): ${command}`.slice(0, ACTIVITY_MAX))
           // 자율 진행 중이면 대표에게 부탁하라는 대신 건너뛰고 보고에 남기라고 알린다
           return { deny: this.hooks.isAutonomous(s.id) ? t('staff.deny.autonomous', { action: `${risky}: ${String(command).slice(0, 200)}` }) : t('staff.deny.risky', { risky }) }
+        }
+        // 파일 수정 자동 승인(acceptEdits)이어도 실행 위험 경로(.git/hooks·.github/workflows·.husky·.claude …)는 묻는다. 자율 진행 중이면 거부
+        if (s.approvalMode === 'acceptEdits' && isEditTool(toolName) && autoWaitReason(toolName, toolInput as Record<string, unknown>) === 'danger-path') {
+          this.hooks.log(s.id, 'tool', `위험 경로 쓰기: ${summarizeInput(toolInput, toolName)}`.slice(0, ACTIVITY_MAX))
+          if (this.hooks.isAutonomous(s.id)) return { deny: t('staff.deny.autonomous', { action: `${toolName}: ${summarizeInput(toolInput, toolName).slice(0, 200)}` }) }
+          return { ask: true }
         }
         const text = `${toolDisplayName(toolName)} ${summarizeInput(toolInput, toolName)}`.slice(0, ACTIVITY_MAX)
         this.hooks.update(s.id, { activity: text })

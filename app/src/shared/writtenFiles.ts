@@ -16,9 +16,13 @@ export interface WrittenRecord {
   allMake: boolean
   /** 기본 타깃(첫 타깃) — `make`만 쓴 명령이 어느 타깃인지 */
   makeDefault: string
+  /** 고친 package.json에서 본 scripts 전체 (이름 → 값) — 연쇄 스크립트·고친 파일을 부르는 스크립트를 찾는 데 쓴다 */
+  scriptValues: Record<string, string>
+  /** 고친 파일이 테스트(*.test.*·*.spec.*)이거나 scripts/ 아래라 스크립트·테스트 러너가 부를 수 있다 */
+  runnable: boolean
 }
 
-export const emptyWritten = (): WrittenRecord => ({ files: new Set(), scripts: new Set(), allScripts: false, makeTargets: new Set(), allMake: false, makeDefault: '' })
+export const emptyWritten = (): WrittenRecord => ({ files: new Set(), scripts: new Set(), allScripts: false, makeTargets: new Set(), allMake: false, makeDefault: '', scriptValues: {}, runnable: false })
 
 /** `//`·`/./`·`..`·역슬래시를 정리한 경로 (소문자 — macOS 기본 파일 시스템은 대소문자를 구분하지 않는다) */
 export function normWrittenPath(raw: string): string {
@@ -137,10 +141,13 @@ export function recordWrite(rec: WrittenRecord, filePath: string, before: string
   if (!p) return
   rec.files.add(p)
   const name = base(p)
+  if (/\.(test|spec)\.[^/]+$/.test(name) || /(^|\/)(scripts|__tests__|tests?)\//.test(p)) rec.runnable = true
   if (name === 'package.json') {
     const names = afterKnown ? changedScripts(before, after) : null
     if (!names) rec.allScripts = true
     else for (const n of names) rec.scripts.add(n)
+    const vals = afterKnown ? scriptsOf(after) : null
+    if (vals) Object.assign(rec.scriptValues, vals)
   } else if (isMakefile(name)) {
     if (!afterKnown) rec.allMake = true
     else {
@@ -150,17 +157,76 @@ export function recordWrite(rec: WrittenRecord, filePath: string, before: string
       if (c.first) rec.makeDefault = c.first
     }
   }
+  closeScripts(rec)
+}
+
+/** 스크립트 값 안의 npm·pnpm·yarn 호출이 부르는 스크립트 이름들. 대상을 특정 못 하면 unknown */
+function scriptRefs(value: string, known: Set<string>): { names: string[]; unknown: boolean } {
+  const names: string[] = []
+  let unknown = /\$\{?npm_execpath/i.test(value)
+  for (const part of value.split(/&&|\|\||[;|&\n]/)) {
+    const words = part.trim().split(/\s+/).filter((w) => !/^[A-Za-z_][A-Za-z0-9_]*=/.test(w))
+    if (!words.length) continue
+    const runner = base(words[0].replace(/^["']|["']$/g, '')).replace(/\.(cmd|exe)$/i, '').toLowerCase()
+    if (!['npm', 'pnpm', 'yarn', 'bun'].includes(runner)) continue
+    const rest = words.slice(1).map((w) => w.replace(/^["']|["']$/g, '')).filter((w) => !w.startsWith('-'))
+    const hit = rest.map((w) => NPM_BUILTIN_SCRIPTS[w] ?? w).filter((w) => known.has(w) || NPM_BUILTIN_SCRIPTS[w])
+    names.push(...hit)
+    // 대상이 스크립트 이름도 설치 동사도 아니면(`pnpm exec x`·변수 등) 특정 못 함
+    if (!hit.length && !rest.some((w) => INSTALL_VERBS.has(w)) || rest.some((w) => /[$%]/.test(w))) unknown = true
+  }
+  return { names, unknown }
+}
+
+const globRe = (g: string) => new RegExp('(^|/)' + g.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*\*\/?/g, '\u0000').replace(/\*/g, '[^/]*').replace(/\?/g, '[^/]').replace(/\u0000/g, '(.*/)?') + '$')
+
+/** 스크립트 값이 고친 파일의 경로·파일명을 쓰거나 glob(`scripts/*.test.mts`)에 걸리는가 */
+function valueTouchesFile(rec: WrittenRecord, value: string): boolean {
+  for (const w0 of value.split(/\s+/)) {
+    const w = w0.replace(/^["']|["']$/g, '')
+    if (!w || w.startsWith('-') && !w.includes('=')) continue
+    const word = w.startsWith('-') ? w.slice(w.indexOf('=') + 1) : w
+    if (/[*?]/.test(word)) {
+      const re = globRe(normWrittenPath(word).replace(/^\//, ''))
+      for (const f of rec.files) if (re.test(f)) return true
+    } else if (pointsAt(rec, word)) return true
+  }
+  return false
+}
+
+/** 바뀐 스크립트를 값 안에서 부르는 스크립트, 고친 파일을 부르는 스크립트도 영향 대상으로 (고정점 반복) */
+function closeScripts(rec: WrittenRecord) {
+  const vals = rec.scriptValues
+  const known = new Set(Object.keys(vals))
+  if (!known.size) return
+  for (let changed = true; changed;) {
+    changed = false
+    for (const [n, v] of Object.entries(vals)) {
+      if (rec.scripts.has(n)) continue
+      const refs = scriptRefs(v, known)
+      if (valueTouchesFile(rec, v) || refs.names.some((r) => scriptAffected(rec, r)) || (refs.unknown && rec.scripts.size > 0)) {
+        rec.scripts.add(n)
+        changed = true
+      }
+    }
+  }
 }
 
 // ── 명령 판정 ─────────────────────────────────────
 
-const INTERPRETERS = new Set(['bash', 'sh', 'zsh', 'dash', 'ksh', 'fish', 'source', '.', 'node', 'nodejs', 'python', 'python2', 'python3', 'ruby', 'perl', 'php', 'tsx', 'ts-node', 'deno', 'bun', 'npx', 'bunx', 'pnpx', 'osascript', 'pwsh', 'powershell', 'cmd', 'cscript', 'wscript', 'start', '&', 'call'])
 /** 경로 없이 이름만 써도 그 파일을 실행하는 윈도우 확장자 */
 const RUNNABLE_EXT = /\.(cmd|bat|ps1|exe|com|vbs|wsf)$/i
 const NPM_RUNNERS = new Set(['npm', 'pnpm', 'yarn', 'bun'])
 const NPM_BUILTIN_SCRIPTS: Record<string, string> = { test: 'test', t: 'test', tst: 'test', start: 'start', stop: 'stop', restart: 'restart' }
-const INSTALL_LIFECYCLE = ['preinstall', 'install', 'postinstall', 'prepare', 'prepublish']
-const INSTALL_VERBS = new Set(['install', 'i', 'ci', 'add', 'update', 'up', 'rebuild', 'link'])
+const INSTALL_LIFECYCLE = ['preinstall', 'install', 'postinstall', 'prepare', 'prepublish', 'prepublishOnly', 'prepack', 'postpack', 'version', 'preversion', 'postversion']
+const INSTALL_VERBS = new Set(['install', 'i', 'ci', 'add', 'update', 'up', 'rebuild', 'link', 'install-test', 'it', 'cit', 'install-ci-test', 'ln', 'version'])
+/** 고친 파일을 가리켜도 실행하지 않는 무해한 명령 (읽기·검색·git 기록 등) */
+const HARMLESS = new Set(['cat', 'grep', 'egrep', 'fgrep', 'rg', 'ag', 'ls', 'head', 'tail', 'wc', 'less', 'more', 'file', 'stat', 'diff', 'cmp', 'echo', 'printf', 'which', 'tree', 'nl', 'sort', 'uniq', 'realpath', 'basename', 'dirname', 'shasum', 'md5', 'md5sum', 'sha256sum', 'rm', 'cp', 'mv', 'touch', 'mkdir', 'open', 'code', 'type', 'dir', 'findstr', 'select-string', 'get-content', 'test', '['])
+const HARMLESS_GIT = new Set(['add', 'diff', 'status', 'log', 'show', 'blame', 'ls-files', 'rm', 'restore', 'reset', 'commit', 'check-ignore', 'stash', 'mv'])
+/** 인자 없이도 고친 테스트를 돌릴 수 있는 테스트 러너 */
+const TEST_RUNNERS = new Set(['vitest', 'jest', 'mocha', 'pytest', 'py.test', 'ava', 'tap', 'playwright', 'cypress', 'phpunit', 'rspec', 'tsx', 'ts-node'])
+/** PowerShell 인코딩 실행·식 실행 — 실행 내용을 명령줄에서 읽을 수 없다 */
+const OPAQUE_EXEC = /^-(e|ec|en|enc|enco|encod|encode|encoded|encodedc|encodedco|encodedcom|encodedcomm|encodedcomma|encodedcomman|encodedcommand)$/i
 
 /** 인자가 기록된 파일과 같은 경로인가 — 절대 경로는 전체 일치, 상대 경로는 기록된 경로의 끝부분과 일치 (작업 폴더를 몰라도 안전한 쪽으로) */
 function pointsAt(rec: WrittenRecord, arg: string): boolean {
@@ -173,7 +239,14 @@ function pointsAt(rec: WrittenRecord, arg: string): boolean {
 }
 
 function scriptAffected(rec: WrittenRecord, name: string): boolean {
-  return rec.allScripts || rec.scripts.has(name) || rec.scripts.has('pre' + name) || rec.scripts.has('post' + name)
+  if (rec.allScripts || rec.scripts.has(name) || rec.scripts.has('pre' + name) || rec.scripts.has('post' + name)) return true
+  // 대소문자만 다른 이름도 같은 스크립트로 본다 (대소문자 구분 없는 파일 시스템·러너 대비)
+  const l = name.toLowerCase()
+  for (const n of rec.scripts) {
+    const m = n.toLowerCase()
+    if (m === l || m === 'pre' + l || m === 'post' + l) return true
+  }
+  return false
 }
 
 /** 윈도우 실행 방식을 위해 원문과 `\`→`/` 판본을 둘 다 본다 (렉서는 `\`를 이스케이프로 지운다). 더 많이 기다리는 쪽 */
@@ -186,22 +259,37 @@ export function writtenWaitReason(rec: WrittenRecord, command: string): Approval
 /** 인자 하나 또는 그 안의 공백으로 나뉜 낱말이 기록된 파일을 가리키는가 (`cmd /c "x.bat a"`, `powershell -Command ".\\x.ps1"`) */
 const argPoints = (rec: WrittenRecord, a: string) => pointsAt(rec, a) || (/\s/.test(a) && a.split(/\s+/).some((w) => pointsAt(rec, w)))
 
+/** 인자 모양만으로 실행 내용을 못 믿는 경우: `%VAR%`·`$VAR`·인코딩 실행·iex·`\\?\\` 경로 */
+const opaqueArg = (a: string) => /%[^%\s]+%|\$[A-Za-z_{(]/.test(a) || OPAQUE_EXEC.test(a) || /^(iex|invoke-expression)$/i.test(a) || a.includes('//?/') || a.includes('\\\\?\\')
+
 function scanWritten(rec: WrittenRecord, command: string): ApprovalWaitReason | null {
   let buildHit = false
   for (const seg of lexSegments(command)) {
     const { cmd, args } = resolveCommand(seg)
     if (!cmd) continue
     const name = base(cmd).replace(/\.exe$/i, '')
-    // 1) 고친 파일을 직접 실행 (./x · /abs/x · x.cmd) 하거나 인터프리터에 넘김
+    const lname = name.toLowerCase()
+    const npmWords = NPM_RUNNERS.has(lname) ? args.filter((a) => !a.startsWith('-')) : []
+    const installOnly = npmWords.length > 0 && npmWords.every((w) => INSTALL_VERBS.has(w))
+    const harmless = HARMLESS.has(lname) || (lname === 'git' && HARMLESS_GIT.has(args.find((a) => !a.startsWith('-')) ?? ''))
+    // 1) 고친 파일을 직접 실행 (./x · /abs/x · x.cmd) 하거나 다른 명령(러너·인터프리터)의 인자로 넘김 — 무해한 명령만 제외
     if (rec.files.size) {
       if ((cmd.includes('/') || RUNNABLE_EXT.test(cmd)) && pointsAt(rec, cmd)) return 'written-file'
-      if (INTERPRETERS.has(name.toLowerCase()) && args.some((a) => argPoints(rec, a))) return 'written-file'
+      if (!harmless && args.some((a) => argPoints(rec, a) || (a.startsWith('-') && a.includes('=') && argPoints(rec, a.slice(a.indexOf('=') + 1))))) return 'written-file'
+      // 변수·인코딩 실행·iex·`\\?\` 경로는 무엇을 실행하는지 알 수 없다
+      if (!harmless && (args.some(opaqueArg) || /^(iex|invoke-expression)$/i.test(lname))) return 'written-file'
+      // 고친 파일이 테스트이거나 scripts/ 아래면 스크립트·테스트 러너 실행은 그 파일을 부를 수 있다
+      if (rec.runnable && ((NPM_RUNNERS.has(lname) && !installOnly && npmWords.length > 0) || TEST_RUNNERS.has(lname))) return 'written-file'
     }
     // 2) 바뀐 package.json 스크립트 실행
-    if ((rec.scripts.size || rec.allScripts) && NPM_RUNNERS.has(name)) {
-      const words = args.filter((a) => !a.startsWith('-'))
-      const verbs = new Set(words)
-      const hits = words.some((w) => scriptAffected(rec, NPM_BUILTIN_SCRIPTS[w] ?? w)) || ([...verbs].some((w) => INSTALL_VERBS.has(w)) && INSTALL_LIFECYCLE.some((n) => scriptAffected(rec, n)))
+    if ((rec.scripts.size || rec.allScripts) && NPM_RUNNERS.has(lname)) {
+      const words = npmWords
+      const hits =
+        words.some((w) => scriptAffected(rec, NPM_BUILTIN_SCRIPTS[w] ?? w)) ||
+        (!installOnly && words.some((w) => w.includes('/'))) ||
+        (words.some((w) => INSTALL_VERBS.has(w)) && INSTALL_LIFECYCLE.some((n) => scriptAffected(rec, n))) ||
+        // 인자 없는 `yarn`은 설치
+        (lname === 'yarn' && words.length === 0 && INSTALL_LIFECYCLE.some((n) => scriptAffected(rec, n)))
       if (hits) buildHit = true
     }
     // 3) 바뀐 Makefile 타깃 실행

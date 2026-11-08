@@ -501,10 +501,13 @@ const FILE_WRITERS = new Set(['tee', 'cp', 'mv', 'ln', 'install', 'sed', 'touch'
 const LAST_ARG_TARGET = new Set(['cp', 'mv', 'install', 'rsync'])
 /** `//`·`/./`·`..`를 정리한 경로 (.git//config · .git/./config · a/../.git/config 도 같은 곳으로 본다) */
 function normPath(raw: string) {
-  const p = raw.replace(/\\/g, '/')
+  // 윈도우 `\\?\`·`\\.\` 접두사는 벗긴다
+  const p = raw.replace(/\\/g, '/').replace(/^\/\/[?.]\//, '/')
   const abs = p.startsWith('/')
   const out: string[] = []
-  for (const part of p.split('/')) {
+  for (let part of p.split('/')) {
+    // 윈도우는 구성요소 끝의 점·공백과 `:스트림` 접미사(`.git::$INDEX_ALLOCATION`)를 무시한다 (드라이브 `C:`는 남긴다)
+    if (!/^[a-zA-Z]:$/.test(part)) part = part.replace(/:.*$/, '').replace(/[. ]+$/, '') || (/^\.+$/.test(part) ? part : '')
     if (!part || part === '.') continue
     if (part === '..') {
       if (out.length && out[out.length - 1] !== '..') out.pop()
@@ -918,7 +921,7 @@ const DANGEROUS_WRITE = [
   /(^|\/)(crontab|cron\.d)(\/|$)/i,
   /Start Menu\/Programs\/Startup(\/|$)/i, // 윈도우 시작프로그램
   /(^|\/)(Windows)?PowerShell\/(v[\d.]+\/)?[^/]*profile\.ps1$/i, // PowerShell 프로필
-  /\.github\/workflows\//i,
+  /\.github\/workflows(\/|$)/i,
   /(^|\/)(\.gitlab-ci\.yml|\.circleci\/|azure-pipelines\.yml|Jenkinsfile|\.travis\.yml|bitbucket-pipelines\.yml)/i,
   // A4: git 설정·훅 관리자·디렉터리 환경·에디터 작업
   /(^|\/)\.gitconfig$/i,
@@ -929,11 +932,28 @@ const DANGEROUS_WRITE = [
 ]
 /** 홈 바로 밑 셸 rc 도 본다 */
 function isDangerousWritePath(rawPath: string, content: string) {
+  // 윈도우 8.3 짧은 이름(GITHUB~1·CLAUDE~1)은 무엇을 가리키는지 알 수 없으니 위험 경로로 본다
+  if (/~\d/.test(rawPath)) return true
   const p = normPath(rawPath) // 윈도우 역슬래시·`//`·`/./`·`..` 도 같은 규칙으로 본다
   if (DANGEROUS_WRITE.some((re) => re.test(p))) return true
   // #! 로 시작하는(실행되는) 파일
   if (content.trimStart().startsWith('#!')) return true
   return false
+}
+
+export const isEditTool = (tool: string) => tool === 'Write' || tool === 'Edit' || tool === 'MultiEdit' || tool === 'NotebookEdit'
+
+/** Codex '파일 수정 자동 승인': 고칠 경로 중 실행 위험 경로이거나 작업 폴더 밖이면 바로 허용하지 않고 결재로 돌린다 */
+export function editNeedsAsk(input: Record<string, unknown>, cwd: string): boolean {
+  const files = [input.file_path, ...(Array.isArray(input.files) ? input.files : [])].filter((f): f is string => typeof f === 'string')
+  if (!files.length) return true
+  const root = normPath(cwd).toLowerCase().replace(/^[a-z]:(?=\/|$)/, '')
+  return files.some((f) => {
+    if (!f || autoWaitReason('Edit', { file_path: f })) return true
+    const n = normPath(f).toLowerCase().replace(/^[a-z]:(?=\/|$)/, '')
+    if (n.startsWith('..')) return true
+    return n.startsWith('/') && !!root && n !== root && !n.startsWith(root.replace(/\/$/, '') + '/')
+  })
 }
 
 /**

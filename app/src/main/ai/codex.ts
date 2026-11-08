@@ -12,6 +12,7 @@ import { codexAssets, codexQuery, codexSlash, type CodexSlash, codexSkillRoots, 
 import { codexCostUsd } from './codexPricing'
 import { approvalResponse, approvalSettings, approvalTool, newCodexState, pickModel, shellNetworkArgs, toolOfItem, translateNotification, CODEX_APPROVAL_METHODS, type CodexState } from './codexEvents'
 import { t } from '../../shared/i18n/index.ts'
+import { editNeedsAsk } from '../../shared/autoApprove.ts'
 import type { AgentRuntime, RuntimeEvent, RuntimeStartOpts } from './types'
 
 /** Codex app-server 패키지 폴더 (bin/codex-app-server + bin/codex-code-mode-host + codex-path/rg).
@@ -342,7 +343,7 @@ export class CodexRuntime implements AgentRuntime {
     const tool = item ? toolOfItem(item) : null
     if (!item || !tool || !this.opts) return
     const verdict = this.opts.onToolUse(tool.toolName, tool.input)
-    if (!verdict) return
+    if (!verdict || 'ask' in verdict) return // ask는 승인 요청 쪽(onRequest)이 결재로 돌린다
     const id = String(item.id)
     this.denied.set(id, verdict.deny)
     // 승인 정책상 묻지 않고 도는 도구(읽기 명령·웹 검색 등)는 승인 응답으로 막을 수 없으니, 요청이 오지 않으면 턴을 끊는다
@@ -365,7 +366,7 @@ export class CodexRuntime implements AgentRuntime {
     const tool = approvalTool(method, params, this.state)
     if (!tool) return void reply(approvalResponse({ behavior: 'deny', message: '알 수 없는 승인 요청' }, method))
     // 결재 방식 '파일 수정 자동 승인'(Claude acceptEdits와 같은 수준): 파일 수정만 바로 허용하고 셸·기타는 평소 결재로
-    if (this.opts.approvalMode === 'acceptEdits' && tool.toolName === 'Edit') return void reply(approvalResponse({ behavior: 'allow' }, method))
+    if (this.opts.approvalMode === 'acceptEdits' && tool.toolName === 'Edit' && !editNeedsAsk(tool.input, this.opts.cwd)) return void reply(approvalResponse({ behavior: 'allow' }, method))
     const ac = new AbortController()
     this.aborts.add(ac)
     try {
