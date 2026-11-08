@@ -486,6 +486,21 @@ export class WrittenStore {
     }
     return m
   }
+  /** 고친 파일의 절대 경로를 쓴 그대로와 실경로 둘 다 돌려준다 — 폴더 키는 실경로(`/private/tmp/…`)인데 직원은 `/tmp/…`로 쓰기도 해서.
+   *  둘 다 기록하면 실경로 폴더 비교와 명령 글자 비교가 모두 맞는다 */
+  aliases(filePath: string): string[] {
+    const p = normWrittenPath(filePath)
+    if (!p.startsWith('/')) return [filePath]
+    const i = p.lastIndexOf('/')
+    let dir = p.slice(0, i) || '/'
+    try {
+      dir = this.resolve(dir)
+    } catch {
+      return [filePath]
+    }
+    const real = normWrittenPath((dir === '/' ? '' : dir) + '/' + p.slice(i + 1))
+    return real && real !== p ? [filePath, real] : [filePath]
+  }
   /** 기록을 꺼내거나 새로 만든다 (상한을 넘으면 보수적으로 runnable) */
   rec(cwd: string): WrittenRecord {
     const k = this.key(cwd)

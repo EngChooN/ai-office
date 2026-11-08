@@ -296,6 +296,15 @@ test('상위·하위 폴더에서 일하는 직원끼리도 서로의 기록을 
   const s3 = new WrittenStore((c) => c.replace(/^\/tmp(?=\/|$)/, '/private/tmp'))
   recordWrite(s3.rec('/tmp/x'), '/tmp/x/package.json', pkg({ test: 'a' }), pkg({ test: 'b' }))
   assert.equal(writtenWaitReason(s3.get('/private/tmp/x')!, 'npm test'), 'build-script')
+  // QA 5번: 상위(P) 직원이 `/tmp/…/app/package.json`으로 고치고 하위(P/app) 직원이 npm test — 파일도 실경로로 기록해야 맞는다
+  const s5 = new WrittenStore((c) => c.replace(/^\/tmp(?=\/|$)/, '/private/tmp'))
+  for (const a of s5.aliases('/tmp/p/app/package.json')) recordWrite(s5.rec('/tmp/p'), a, pkg({ test: 'a' }), pkg({ test: 'b' }))
+  assert.equal(writtenWaitReason(s5.get('/tmp/p/app', 'npm test')!, 'npm test'), 'build-script')
+  for (const a of s5.aliases('/tmp/p/scripts/e.mts')) recordWrite(s5.rec('/tmp/p'), a, null, 'x')
+  assert.equal(writtenWaitReason(s5.get('/tmp/p/app', 'node /tmp/p/scripts/e.mts')!, 'node /tmp/p/scripts/e.mts'), 'written-file')
+  assert.equal(s5.get('/tmp/q', 'npm test'), undefined)
+  assert.deepEqual(s5.aliases('src/a.ts'), ['src/a.ts'])
+  assert.deepEqual(new WrittenStore().aliases('/repo/a.ts'), ['/repo/a.ts'])
   // 풀이가 실패해도(없는 폴더) 원래 경로로
   const s4 = new WrittenStore(() => { throw new Error('ENOENT') })
   recordWrite(s4.rec('/gone'), '/gone/package.json', pkg({ test: 'a' }), pkg({ test: 'b' }))

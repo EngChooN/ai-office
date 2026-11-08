@@ -2207,7 +2207,7 @@ export class Office extends EventEmitter<{
         /* 새 파일 */
       }
       const after = this.contentAfterWrite(toolName, input, before)
-      recordWrite(this.autoWritten.rec(cwd), p, before, after, after !== null)
+      for (const a of this.autoWritten.aliases(p)) recordWrite(this.autoWritten.rec(cwd), a, before, after, after !== null)
     }
   }
 
