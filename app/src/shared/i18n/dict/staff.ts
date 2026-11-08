@@ -36,6 +36,12 @@ export default {
   'staff.ctx.leadLab': { ko: ' (리드)', en: ' (lead)', ja: '（リード）', zh: '（负责人）' },
   'staff.ctx.goalNone': { ko: '미정', en: 'not set', ja: '未定', zh: '未定' },
   'staff.ctx.labCwd': { ko: ' · 프로젝트 폴더: {cwd}', en: ' · project folder: {cwd}', ja: ' · プロジェクトフォルダ: {cwd}', zh: ' · 项目文件夹：{cwd}' },
+  'mcp.notReady': {
+    ko: '사무실이 아직 준비 중이에요. 잠시 뒤 다시 보내 주세요.',
+    en: 'The office is still getting ready. Please send it again in a moment.',
+    ja: 'オフィスはまだ準備中です。少し待ってからもう一度送ってください。',
+    zh: '办公室还在准备中，请稍后再发送一次。',
+  },
   'staff.ctx.noCwd': {
     ko: '작업 폴더가 정해져 있지 않습니다. 지시에 나온 프로젝트 폴더(없으면 랩의 프로젝트 폴더)로 가서 일하고, 어느 프로젝트인지 모호하면 먼저 물어보세요.',
     en: 'No working folder is set. Work in the project folder named in the instruction (or the lab’s project folder if none is named), and ask first if it is unclear which project is meant.',

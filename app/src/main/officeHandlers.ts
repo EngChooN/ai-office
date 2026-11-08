@@ -15,6 +15,7 @@ import type { Office } from './office'
 import type { RemoteService } from './remote/service.ts'
 import type { PairKind } from '../shared/peerProtocol'
 import type { ApplyChoice } from '../shared/peerSync'
+import { whenLocalMcpReady } from './mcp/localMcp'
 import { InvalidArgsError } from '../shared/errors'
 import { t } from '../shared/i18n/index.ts'
 import { peerErrorKey } from './peer/peerErrors'
@@ -45,6 +46,10 @@ export function createOfficeHandlers(office: Office, remoteApi: () => RemoteServ
     } catch (e) {
       throw new InvalidArgsError(t(peerErrorKey(e)))
     }
+  }
+  // 앱을 켠 직후엔 도구 서버가 아직 안 떴을 수 있다 — 지시를 보내기 전에 기다리고, 못 뜨면 안내만 띄운다
+  const needMcp = async () => {
+    if (!(await whenLocalMcpReady())) throw new InvalidArgsError(t('mcp.notReady'))
   }
   return {
     snapshot: () => office.snapshot(),
@@ -81,8 +86,10 @@ export function createOfficeHandlers(office: Office, remoteApi: () => RemoteServ
     hireMarket: (id: string, provider?: unknown) => hireMarket(office, id, provider ?? undefined),
     fire: (id: string) => office.fire(id),
     updateStaff: (id: string, patch: Parameters<Office['updateStaff']>[1]) => office.updateStaff(id, patch),
-    instruct: (id: string, text: string, attachments?: Parameters<Office['instruct']>[3], opts?: { isAutonomous?: boolean }) =>
-      opts?.isAutonomous ? office.instructAutonomous(id, text, attachments ?? []) : office.instructFromPanel(id, text, attachments ?? []),
+    instruct: async (id: string, text: string, attachments?: Parameters<Office['instruct']>[3], opts?: { isAutonomous?: boolean }) => {
+      await needMcp()
+      return opts?.isAutonomous ? office.instructAutonomous(id, text, attachments ?? []) : office.instructFromPanel(id, text, attachments ?? [])
+    },
     saveAttachments: (files: Parameters<typeof saveUploads>[0]) => saveUploads(files),
     openAttachment: async (id: string) => {
       const file = findById(id)
@@ -176,8 +183,10 @@ export function createOfficeHandlers(office: Office, remoteApi: () => RemoteServ
     runScheduleNow: (id: string) => office.runScheduleNow(id),
     releasePlanHold: () => office.releasePlanHold(),
     chatHistory: () => office.chatHistory(),
-    sendChat: (text: string, attachments?: Parameters<Office['sendChat']>[1], room?: string, mode?: string, replyTo?: number) =>
-      office.sendChat(text, attachments ?? [], room ?? undefined, mode === 'wait' || mode === 'now' ? mode : undefined, typeof replyTo === 'number' ? replyTo : undefined),
+    sendChat: async (text: string, attachments?: Parameters<Office['sendChat']>[1], room?: string, mode?: string, replyTo?: number) => {
+      await needMcp()
+      return office.sendChat(text, attachments ?? [], room ?? undefined, mode === 'wait' || mode === 'now' ? mode : undefined, typeof replyTo === 'number' ? replyTo : undefined)
+    },
     reactChat: (id: number, kind: string) => office.reactChat(id, kind === 'like' ? 'like' : 'none'),
     searchChat: (query: string, room?: string | null) => office.searchChat(String(query ?? ''), room === null ? null : typeof room === 'string' ? room : undefined),
     chatAround: (id: number) => office.chatAround(id),

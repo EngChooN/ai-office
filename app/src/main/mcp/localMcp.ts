@@ -121,10 +121,12 @@ async function onRequest(req: http.IncomingMessage, res: http.ServerResponse) {
   send(200, batch ? replies : replies[0])
 }
 
-/** 서버를 띄운다 (이미 떠 있으면 그대로). 앱 시작 때 한 번 기다린다 */
+/** 서버를 띄운다 (이미 떠 있으면 그대로, 시작 중이면 같은 약속을 돌려준다). 실패하면 다음 호출에서 다시 시도한다 */
+let starting: Promise<void> | null = null
 export function startLocalMcp(): Promise<void> {
   if (server) return Promise.resolve()
-  return new Promise((resolve, reject) => {
+  if (starting) return starting
+  const attempt = new Promise<void>((resolve, reject) => {
     const s = http.createServer((req, res) => void onRequest(req, res).catch(() => res.headersSent || (res.writeHead(500), res.end())))
     s.once('error', reject)
     s.listen(0, '127.0.0.1', () => {
@@ -133,6 +135,24 @@ export function startLocalMcp(): Promise<void> {
       resolve()
     })
   })
+  starting = attempt
+  attempt.then(
+    () => void (starting = null),
+    () => void (starting = null),
+  )
+  return attempt
+}
+
+/** 서버가 준비될 때까지 최대 timeoutMs 기다린다. 준비되면 true, 시간 안에 못 뜨거나 시작이 실패하면 false (실패 뒤 호출하면 다시 시작을 시도한다) */
+export async function whenLocalMcpReady(timeoutMs = 10_000): Promise<boolean> {
+  if (server) return true
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const timeout = new Promise<false>((resolve) => void (timer = setTimeout(() => resolve(false), timeoutMs)))
+  try {
+    return await Promise.race([startLocalMcp().then(() => true, () => false), timeout])
+  } finally {
+    clearTimeout(timer)
+  }
 }
 
 export function stopLocalMcp() {
