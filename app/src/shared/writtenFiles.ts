@@ -20,9 +20,11 @@ export interface WrittenRecord {
   scriptValues: Record<string, string>
   /** 고친 파일이 테스트(*.test.*·*.spec.*)이거나 scripts/ 아래라 스크립트·테스트 러너가 부를 수 있다 */
   runnable: boolean
+  /** 대상 위치를 다 알 수 없는 쓰기(Bash 등)가 있었다 — 상위 폴더 기록이라도 하위 폴더 전체에 적용한다 */
+  unplaced: boolean
 }
 
-export const emptyWritten = (): WrittenRecord => ({ files: new Set(), scripts: new Set(), allScripts: false, makeTargets: new Set(), allMake: false, makeDefault: '', scriptValues: {}, runnable: false })
+export const emptyWritten = (): WrittenRecord => ({ files: new Set(), scripts: new Set(), allScripts: false, makeTargets: new Set(), allMake: false, makeDefault: '', scriptValues: {}, runnable: false, unplaced: false })
 
 /** `//`·`/./`·`..`·역슬래시를 정리한 경로 (소문자 — macOS 기본 파일 시스템은 대소문자를 구분하지 않는다) */
 export function normWrittenPath(raw: string): string {
@@ -220,7 +222,7 @@ export function recordBashWrite(rec: WrittenRecord, command: string): boolean {
   for (const t of targets) recordWrite(rec, t, null, null, false)
   // 로그·메모·임시 폴더로만 쓰는 명령(`pnpm test > out.log`, `| tee run.txt`)은 러너를 막지 않는다 — 대상을 다 알고 전부 그런 곳일 때만
   const harmless = targets.length > 0 && targets.every((t) => /\.(log|txt|md|out)$/i.test(t) || normWrittenPath(t).startsWith('/tmp/'))
-  if (!harmless) rec.runnable = true
+  if (!harmless) rec.runnable = rec.unplaced = true
   return true
 }
 
@@ -394,6 +396,33 @@ function scanWritten(rec: WrittenRecord, command: string): ApprovalWaitReason | 
 /** 폴더당 고친 파일 기록 상한 — 넘으면 러너 실행을 기다린다 */
 export const WRITTEN_FILES_MAX = 500
 
+/** 다른 폴더를 대상으로 실행하는 옵션 (npm·pnpm·yarn·make) */
+const DIR_FLAG = /^(-C|--prefix|--dir|--cwd|--directory|-w|--workspaces?|-ws|-r|--recursive|--filter|-F|-g|--global|--include-workspace-root)(=|$)|^-C./
+/**
+ * 명령이 작업 폴더 밖을 대상으로 러너를 돌릴 수 있는가 — `cd`·`pushd`, `-C`·`--prefix`·`-r` 같은 폴더 옵션,
+ * `npm_config_*` 대입, 러너·빌드 명령 인자의 절대·상위·홈 경로. 그러면 모든 폴더의 기록을 합쳐 본다
+ */
+export function movesDir(command: string): boolean {
+  for (const seg of lexSegments(command.replace(/\\/g, '/'))) {
+    const { cmd, args, assigns, via } = resolveCommand(seg)
+    if (via.some((v) => base(v).toLowerCase() === 'env') && seg.tokens.some((t) => /^-[A-Za-z]*C/.test(t))) return true
+    if (assigns.some((a) => /^npm_config_|^(pwd|init_cwd)=/i.test(a))) return true
+    if (!cmd) continue
+    const lname = base(cmd).replace(/\.(exe|cmd)$/i, '').toLowerCase()
+    if (lname === 'cd' || lname === 'pushd' || lname === 'popd') return true
+    if (seg.tokens.some((t) => /^--chdir(=|$)/.test(t))) return true
+    // 셸 -c 안의 문자열도 본다
+    if (['bash', 'sh', 'zsh', 'dash', 'ksh'].includes(lname)) {
+      const i = args.findIndex((a) => /^-[A-Za-z]*c/.test(a))
+      if (i >= 0 && (args[i + 1] === undefined || movesDir(args[i + 1]))) return true
+      continue
+    }
+    if (!NPM_RUNNERS.has(lname) && !TEST_RUNNERS.has(lname) && !['make', 'gmake', 'npx', 'pnpx', 'bunx'].includes(lname)) continue
+    if (args.some((a) => DIR_FLAG.test(a) || /^(\/|~|\.\.(\/|$))|=(\/|~|\.\.)/.test(a) || a.includes('/../'))) return true
+  }
+  return false
+}
+
 /** 두 폴더 키가 같거나 한쪽이 다른 쪽 안에 있는가 (`/` 루트는 모든 절대 경로의 조상) */
 const nested = (a: string, b: string) => a === b || a.startsWith(b === '/' ? '/' : b + '/') || b.startsWith(a === '/' ? '/' : a + '/')
 
@@ -416,19 +445,27 @@ export class WrittenStore {
   }
   /** 같은 폴더와 상위·하위 폴더의 기록을 합쳐 본다 — 모노레포에서 `/repo` 직원이 고친 `app/package.json`을 `/repo/app` 직원이 실행해도 기다리게.
    *  다른 폴더 기록의 상대 경로는 그 폴더 기준 절대 경로로 풀어 합친다 (더 기다리는 쪽) */
-  get(cwd: string): WrittenRecord | undefined {
+  get(cwd: string, command = ''): WrittenRecord | undefined {
     const k = this.key(cwd)
-    const hits = [...this.byFolder].filter(([f]) => nested(f, k))
+    const all = command !== '' && movesDir(command)
+    const abs = (f: string, p: string) => (p.startsWith('/') || !f.startsWith('/') ? p : normWrittenPath(f + '/' + p))
+    const under = (p: string, d: string) => p === d || p.startsWith(d === '/' ? '/' : d + '/')
+    // 이 폴더 안의 파일이거나, 이 폴더까지 오는 길목 폴더에 바로 놓인 파일(상위 package.json·Makefile·설정 — npm은 위로 올라가며 찾는다)
+    const relevant = (p: string) => under(p, k) || under(k, p.slice(0, p.lastIndexOf('/')) || '/')
+    // 상위 폴더 기록은 관련 파일이 있거나 위치 불명 쓰기가 있을 때만 — 홈 폴더 직원이 proj1을 고쳐도 proj2는 기다리지 않게.
+    // 명령이 다른 폴더로 옮겨 가면(cd·-C·--prefix 등) 모든 폴더의 기록을 본다
+    const hits = [...this.byFolder].filter(([f, r]) => all || (nested(f, k) && (under(f, k) || r.unplaced || [...r.files].some((p) => relevant(abs(f, p))))))
     if (!hits.length) return undefined
     if (hits.length === 1 && hits[0][0] === k) return hits[0][1]
     const m = emptyWritten()
     for (const [f, r] of hits) {
-      for (const p of r.files) m.files.add(p.startsWith('/') || !f.startsWith('/') ? p : normWrittenPath(f + '/' + p))
+      for (const p of r.files) m.files.add(abs(f, p))
       for (const s of r.scripts) m.scripts.add(s)
       for (const t of r.makeTargets) m.makeTargets.add(t)
       m.allScripts ||= r.allScripts
       m.allMake ||= r.allMake
       m.runnable ||= r.runnable
+      m.unplaced ||= r.unplaced
       // 기본 타깃이 폴더마다 다를 수 있다 — 바뀐 Makefile이 둘 이상이면 `make`만 써도 기다린다
       if (r.makeDefault) {
         if (m.makeDefault && m.makeDefault !== r.makeDefault) m.allMake = true

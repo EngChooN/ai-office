@@ -2304,7 +2304,7 @@ export class Office extends EventEmitter<{
     // 자동결재 중에 직원이 쓴 파일을 실행하는 명령은 기다린다 (H2 — 승인된 쓰기 + 실행으로 대기 규칙을 우회하지 못하게)
     // 경로 전체가 같고 실제로 실행할 때만, package.json·Makefile은 바뀐 스크립트·타깃을 돌릴 때만 (A4)
     const command = toolName === 'Bash' && typeof input.command === 'string' ? input.command : ''
-    const written = this.autoWritten.get(this.writtenCwd(staffId))
+    const written = this.autoWritten.get(this.writtenCwd(staffId), command)
     const writtenReason = command !== '' && written ? writtenWaitReason(written, command) : null
     const runsWrittenFile = writtenReason !== null
     // 자율 진행: 기다려야 할 도구는 결재함에 올리지 않고 거부한다 — 직원은 보고의 "대표 확인 필요"에 남기고 나머지를 계속한다

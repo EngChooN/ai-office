@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { autoApprove, autoWaitReason, editNeedsAsk } from '../src/shared/autoApprove.ts'
 import { autonomyVerdict } from '../src/shared/autonomy.ts'
-import { changedMakeTargets, changedScripts, emptyWritten, recordBashWrite, recordWrite, WrittenStore, WRITTEN_FILES_MAX, writtenWaitReason } from '../src/shared/writtenFiles.ts'
+import { changedMakeTargets, changedScripts, emptyWritten, movesDir, recordBashWrite, recordWrite, WrittenStore, WRITTEN_FILES_MAX, writtenWaitReason } from '../src/shared/writtenFiles.ts'
 
 const rec = (path: string, before: string | null = null, after: string | null = 'x') => {
   const r = emptyWritten()
@@ -300,4 +300,30 @@ test('상위·하위 폴더에서 일하는 직원끼리도 서로의 기록을 
   const s4 = new WrittenStore(() => { throw new Error('ENOENT') })
   recordWrite(s4.rec('/gone'), '/gone/package.json', pkg({ test: 'a' }), pkg({ test: 'b' }))
   assert.equal(writtenWaitReason(s4.get('/gone')!, 'npm test'), 'build-script')
+})
+
+test('홈 폴더 직원의 기록은 관련 프로젝트에만 — 다른 폴더로 옮겨 실행하면 모든 기록을 본다', () => {
+  const pkg = (scripts: Record<string, string>) => JSON.stringify({ scripts })
+  const s = new WrittenStore()
+  // 홈(~) 직원이 파일 도구로 proj1 테스트 파일을 고침
+  recordWrite(s.rec('/users/me'), '/users/me/proj1/src/a.test.ts', null, 'x')
+  assert.equal(writtenWaitReason(s.get('/users/me/proj1', 'pnpm test')!, 'pnpm test'), 'written-file')
+  assert.equal(s.get('/users/me/proj2', 'pnpm test'), undefined)
+  // proj2 직원이 proj1로 옮겨 가 실행하면 기다린다
+  for (const c of ['cd ../proj1 && pnpm test', 'pnpm -C ../proj1 test', 'npm --prefix=/users/me/proj1 test', 'pnpm -r test', 'npm_config_prefix=../proj1 npm test', 'vitest ../proj1']) {
+    assert.equal(movesDir(c), true, c)
+    assert.equal(writtenWaitReason(s.get('/users/me/proj2', c)!, c), 'written-file', c)
+  }
+  // 중첩 셸은 autoWaitReason이 따로 기다리게 한다 — 여기선 폴더 이동 판정만
+  assert.equal(movesDir('bash -c "cd ../proj1 && pnpm test"'), true)
+  for (const c of ['pnpm test', 'npm run lint', 'vitest run src', 'git -C ../x status']) assert.equal(movesDir(c), false, c)
+  // 위치를 다 모르는 Bash 쓰기가 섞이면 하위 폴더 전체에 적용
+  recordBashWrite(s.rec('/users/me'), 'python3 -c "open(1)"')
+  assert.equal(writtenWaitReason(s.get('/users/me/proj2', 'pnpm test')!, 'pnpm test'), 'written-file')
+  // 길목 폴더의 package.json(npm은 위로 올라가며 찾는다)은 하위 폴더에도 적용
+  const t = new WrittenStore()
+  recordWrite(t.rec('/repo'), '/repo/package.json', pkg({ test: 'a' }), pkg({ test: 'b' }))
+  assert.equal(writtenWaitReason(t.get('/repo/app/src', 'npm test')!, 'npm test'), 'build-script')
+  recordWrite(t.rec('/w'), '/w/lib/package.json', pkg({ test: 'a' }), pkg({ test: 'b' }))
+  assert.equal(t.get('/w/app', 'npm test'), undefined)
 })
