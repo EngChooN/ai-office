@@ -801,6 +801,8 @@ export interface Settings {
   isStaffCaptureOn: boolean
   /** 비서가 웹 검색·웹 읽기로 최신 정보를 찾아 답한다 (Claude·GPT 비서 모두). 기본 켬 */
   isSecretaryWebOn: boolean
+  /** 토큰 절약 모드: 새로 고용하는 직원의 기본값만 Haiku + 기억 짧게 (Codex는 기억만). 기존 직원은 바꾸지 않는다. 없으면 끔 */
+  tokenSaverMode?: boolean
 }
 
 /** Codex 사용률을 못 읽은 이유 — 실행 파일 없음·응답 없음·응답 해석 실패·5시간/주간 창 없음 */
@@ -906,6 +908,8 @@ export interface HireInput {
   approvalMode: ApprovalMode
   teamId: string | null
   labIds?: string[]
+  /** 대화 기억 길이 — 생략하면 보통 (토큰 절약 모드면 짧게) */
+  memory?: MemoryLength
 }
 
 export interface AgentTemplate {

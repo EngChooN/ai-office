@@ -241,7 +241,7 @@ const fieldsExcept = <M extends OfficeMethod, I extends number, X extends keyof 
  */
 export const V2_FIELDS: Partial<Record<OfficeMethod, Record<number, string[]>>> = {
   // 원격은 작업 폴더·승인 방식을 정하지 못한다 (restrict가 기본 폴더와 'ask'로 채운다)
-  hire: { 0: fieldsExcept('hire', 0, ['cwd', 'approvalMode'], { name: true, role: true, avatar: true, model: true, provider: true, systemPrompt: true, teamId: true, labIds: true }) },
+  hire: { 0: fieldsExcept('hire', 0, ['cwd', 'approvalMode'], { name: true, role: true, avatar: true, model: true, provider: true, systemPrompt: true, teamId: true, labIds: true, memory: true }) },
   updateStaff: { 1: fieldsExcept('updateStaff', 1, ['cwd'], { teamId: true, name: true, role: true, model: true, avatar: true, systemPrompt: true, memory: true }) },
   updateTeam: { 1: fieldsOf('updateTeam', 1, { name: true, color: true, leadId: true, floor: true }) },
   // 랩 작업 폴더는 직원 작업 폴더처럼 PC에서만 (restrict가 새 랩은 폴더 없음으로 채운다)
@@ -272,7 +272,7 @@ export const V2_FIELDS: Partial<Record<OfficeMethod, Record<number, string[]>>> 
   secretaryRun: { 1: fieldsOf('secretaryRun', 1, { fromStep: true, edits: true, revised: true, excluded: true }) },
   updateSettings: {
     // 화면 캡처 허용은 PC에서만 (폰에서 대표 화면 캡처 권한을 켜지 못하게). PC 화면 모드·색 테마·바탕화면 비서도 PC에서만
-    0: fieldsExcept('updateSettings', 0, ['isStaffCaptureOn', 'uiMode', 'uiTheme', 'isDeskPetOn', 'deskPetSize', 'deskPetOpacity'], { monthlyBudgetUsd: true, tokenBudget: true, theme: true, dayNight: true, plants: true, isChatterOn: true, workHours: true, layout: true, isTrayOn: true, launchAtLogin: true, isOnboarded: true, defaultCwd: true, isWorkMode: true, isFullAccessNoticeSeen: true, isProviderBannerSeen: true, internalAi: true, language: true, demoDay: true, isSecretaryWebOn: true }),
+    0: fieldsExcept('updateSettings', 0, ['isStaffCaptureOn', 'uiMode', 'uiTheme', 'isDeskPetOn', 'deskPetSize', 'deskPetOpacity'], { monthlyBudgetUsd: true, tokenBudget: true, theme: true, dayNight: true, plants: true, isChatterOn: true, workHours: true, layout: true, isTrayOn: true, launchAtLogin: true, isOnboarded: true, defaultCwd: true, isWorkMode: true, isFullAccessNoticeSeen: true, isProviderBannerSeen: true, internalAi: true, language: true, demoDay: true, isSecretaryWebOn: true, tokenSaverMode: true }),
   },
 }
 

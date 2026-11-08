@@ -78,6 +78,7 @@ import { recordBashWrite, recordWrite, WrittenStore, writtenWaitReason } from '.
 import { buildStaffActivity } from '../shared/staffActivity'
 import { answersText } from '../shared/chatApproval'
 import { defaultProvider, ENGINE_NAME, engineUnsupportedMcp, fitEngineModel, isEngineMismatch } from '../shared/engineModel'
+import { hireDefaults } from '../shared/tokenSaving.ts'
 import { findCodexCli, lastProviderStatus, openResumeInTerminal, providerStatus } from './setup'
 import { decisionSections, decisionSectionsOf, decisionsContext, delegatedPrompt, parseDelegatedChoice, recordAnswer, recordDelegated, splitDecision, withDecisionSections } from '../shared/meetingDecisions'
 import { isAbsorbedOpen, matchAbsorbed, meetingCardItems, meetingResultCard, pickPlanCard } from '../shared/planTasks'
@@ -887,12 +888,16 @@ export class Office extends EventEmitter<{
   /** isPractice: 튜토리얼 연습 직원 (세션·인사·기록 없음). 첫 실제 고용이면 남아 있는 연습 회사를 먼저 지운다 */
   hire(input: HireInput, isPractice = false): Staff {
     if (!isPractice && this.hasPracticeData()) this.tutorial.cleanup()
+    // 토큰 절약 모드: 고용 창이 비워 보낸 값만 채운다 (연습 직원은 제외)
+    const saver = isPractice ? {} : hireDefaults(this.settings.tokenSaverMode, input.provider ?? defaultProvider(lastProviderStatus()))
+    input = { ...input, model: input.model || (saver.model ?? 'default'), memory: input.memory ?? saver.memory }
     const fit = fitEngineModel(input.provider ?? defaultProvider(lastProviderStatus()), input.model, lastProviderStatus()?.codex.models ?? [])
     input = { ...input, ...fit }
     const id = crypto.randomUUID()
     const hiredAt = Date.now()
     const deskIndex = this.nextDesk()
     db.insertStaff(id, input, deskIndex, hiredAt, isPractice)
+    if (input.memory && input.memory !== 'normal') db.updateStaffRow(id, { memory: input.memory })
     const staff: db.StoredStaff = {
       id,
       kind: 'hired',

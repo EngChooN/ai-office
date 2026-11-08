@@ -11,6 +11,7 @@ import { AvatarEditor } from './AvatarEditor'
 import { useShallow } from 'zustand/react/shallow'
 import { useOffice, useWorkMode } from '@/store'
 import { NativeSelect } from '@/components/ui/select'
+import { hireDefaults } from '@shared/tokenSaving'
 import { newStaffApprovalMode, ROLE_PRESETS, type AgentTemplate, type ApprovalMode, type HireInput, type ModelChoice } from '@shared/types'
 import { PROVIDER_NAME, PROVIDERS, useProviders } from './ProviderCards'
 import { engineReason, isBothReady, ProviderPicker } from './ProviderPicker'
@@ -73,6 +74,7 @@ export function HireDialog() {
   const teams = useOffice(useShallow((s) => s.teams.filter((team) => team.kind === 'hired' && !team.isPractice)))
   const labs = useOffice((s) => s.labs)
   const isWorkMode = useWorkMode()
+  const isSaverOn = useOffice((s) => s.settings.tokenSaverMode)
   const [form, setForm] = useState<HireInput>(emptyForm)
   const [templates, setTemplates] = useState<AgentTemplate[]>([])
   const [isCustomRole, setIsCustomRole] = useState(false)
@@ -97,7 +99,10 @@ export function HireDialog() {
   useEffect(() => {
     if (isOpen) {
       // 첫 실행 마법사에서 고른 기본 작업 폴더로 시작한다
-      setForm({ ...emptyForm(), provider: defaultProvider(providers.status), cwd: useOffice.getState().settings.defaultCwd })
+      const { settings } = useOffice.getState()
+      const provider = defaultProvider(providers.status)
+      // 토큰 절약 모드면 Haiku + 기억 짧게로 시작한다 (Codex는 기억만)
+      setForm({ ...emptyForm(), provider, ...hireDefaults(settings.tokenSaverMode, provider), cwd: settings.defaultCwd })
       setIsCustomRole(false)
       setIsMoreOpen(false)
       setTemplates([])
@@ -112,7 +117,7 @@ export function HireDialog() {
     const s = providers.status
     if (!isOpen || !s || s[form.provider ?? 'claude'].state === 'ready') return
     const next = defaultProvider(s)
-    if (s[next].state === 'ready') setForm((f) => ({ ...f, provider: next, model: 'default' }))
+    if (s[next].state === 'ready') setForm((f) => ({ ...f, provider: next, model: 'default', ...hireDefaults(useOffice.getState().settings.tokenSaverMode, next) }))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, providers.status])
 
@@ -222,7 +227,7 @@ export function HireDialog() {
           {!isProviderReady && (
             <div className="flex flex-col gap-2">
               <Label>{t('hire.provider')}</Label>
-              <ProviderPicker status={providers.status} value={provider} onChange={(p) => p !== provider && update({ provider: p, model: 'default' })} role={isBothReady(providers.status) ? form.role : undefined} />
+              <ProviderPicker status={providers.status} value={provider} onChange={(p) => p !== provider && update({ provider: p, model: 'default', ...hireDefaults(isSaverOn, p) })} role={isBothReady(providers.status) ? form.role : undefined} />
               {isBothReady(providers.status) && engineReason(form.role) && <span className="text-muted-foreground text-xs">{engineReason(form.role)}</span>}
               <span className="text-muted-foreground text-xs">
                 {providers.isChecking && !providers.status
@@ -331,7 +336,7 @@ export function HireDialog() {
               {isProviderReady && (
               <div className="flex flex-col gap-2">
                 <Label>{t('hire.provider')}</Label>
-                <ProviderPicker status={providers.status} value={provider} onChange={(p) => p !== provider && update({ provider: p, model: 'default' })} role={isBothReady(providers.status) ? form.role : undefined} />
+                <ProviderPicker status={providers.status} value={provider} onChange={(p) => p !== provider && update({ provider: p, model: 'default', ...hireDefaults(isSaverOn, p) })} role={isBothReady(providers.status) ? form.role : undefined} />
                 {isBothReady(providers.status) && engineReason(form.role) && <span className="text-muted-foreground text-xs">{engineReason(form.role)}</span>}
                 <span className="text-muted-foreground text-xs">
                   {providers.isChecking && !providers.status

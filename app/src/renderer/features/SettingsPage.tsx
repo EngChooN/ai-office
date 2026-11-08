@@ -319,6 +319,11 @@ export function SettingsPage() {
                 <input type="checkbox" checked={settings.isSecretaryWebOn} onChange={(e) => update({ isSecretaryWebOn: e.target.checked })} /> {t('settingsPage.secretaryWeb.toggle')}
               </label>
             </Section>
+            <Section title={t('settingsPage.tokenSaver.title')} description={t('settingsPage.tokenSaver.desc')}>
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={settings.tokenSaverMode === true} onChange={(e) => update({ tokenSaverMode: e.target.checked })} /> {t('settingsPage.tokenSaver.toggle')}
+              </label>
+            </Section>
             <Section title={t('settingsPage.hooks.title')} description={t('settingsPage.hooks.desc')} detail={t('settingsPage.hooks.detail')}>
               <NotOnWindows reason={t('settingsPage.notOnWindows')} />
               {IS_MOBILE_SHELL ? (

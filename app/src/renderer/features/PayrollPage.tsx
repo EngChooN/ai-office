@@ -11,6 +11,7 @@ import { SecretaryFace } from './secretary/SecretaryFace'
 import { SECRETARY_ID } from '@shared/types'
 import { t, type TKey } from '@shared/i18n'
 import { roleLabel } from '@shared/roleLabel'
+import { TokenSaverTop3 } from './TokenSaverTop3'
 
 /** 직원별 토큰을 볼 기간 — 오늘·이번 주는 지금 기준, 달은 고른 달 */
 type Range = 'day' | 'week' | 'month'
@@ -44,6 +45,7 @@ export function PayrollPage() {
     >
       <PlanHoldBanner className="mb-4 max-w-3xl" />
       <PlanUsageCard />
+      <TokenSaverTop3 />
 
       <div className="mb-3 flex max-w-3xl items-center gap-2">
         <div role="radiogroup" aria-label={t('payroll.range.label')} className="flex gap-1.5">
