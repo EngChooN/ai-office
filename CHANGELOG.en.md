@@ -7,6 +7,29 @@ Writing rules
 - Write from the user's point of view, describing "what you can now do." Do not use technical names (file paths, program or library names, English abbreviations). If one is truly needed, put it once in parentheses after a plain-language explanation.
 - Development details (how it was built, where files are) go in `SPEC.md` and `docs/changelog-dev.md`.
 
+## [1.1.2] - 2026-11-08
+
+### Improvements
+- The schedule list now has an 'Edit' button. Change the time, days and instruction, then press 'Save changes' to update the same schedule; its last-run record is kept. The list also shows the 'Next run' time.
+- The reason an approval is waiting is now shown in one line, for example 'Waiting because this command is unfamiliar', 'Waiting because this is risky (delete, push, or sending data out)' or 'Waiting because it wants to run a file it just edited'.
+- The approval screen and staff profile now show whether auto-approve is on and what this staff member's approval mode is. When it is off, a 'Turn on' button takes you to Settings.
+- The usage card shows 'Updated N minutes ago'.
+- Newly hired staff now default to the 'Edits are automatic' approval mode: file edits are not asked, while risky things like delete or push are still asked. Staff hired from the phone stay on 'Ask for everything'.
+- Auto-approve and autonomous mode now ask less often than necessary. They wait only when a staff member actually runs a file they just edited. Touching a similarly named file, or running test and check commands after editing a settings file, no longer blocks.
+- At the same time, workarounds are blocked more firmly. Editing a file and then running it directly or indirectly, writing a file with a command and running it right away, or moving to another folder to run it still waits. Edited-file records are kept per work folder, and a shortcut folder counts as the same folder.
+- When autonomous mode rejects something, staff are told not to work around it or retry another way, and to leave it in the 'Needs owner check' list.
+- Windows paths and ways of running commands are now judged by the same rules.
+- If the GPT (Codex) component is missing from the app, you are told to 'update the app to the latest version'. When connecting fails or cannot be checked, the card shows a 'Check again' button.
+- Differences by device: only the Mac app was missing the Codex component; Windows is not affected. The phone app keeps the same number with no code change and uses the new screens sent by the PC.
+- Please note: **If you use Mac 1.1.0 or 1.1.1, please update to 1.1.2.** Those two Mac builds were missing GPT (Codex), so GPT staff could not connect.
+- Please note: usage is not live. It updates only while staff are working and when you press the refresh button, and the card shows when it was last updated.
+- Please note: for safety, auto-approve is still cautious, so unfamiliar commands and running scripts staff wrote themselves are still asked.
+
+### Bug fixes
+- Fixed GPT (Codex) staff not connecting in Mac 1.1.0 and 1.1.1. Building a Mac installer now stops if Codex is missing, so this cannot happen again.
+- Fixed a 'toLowerCase' error when editing a schedule or using shortcuts (⌘K, ⌘F, decorate keys). Input without a key name, such as Windows autofill, no longer causes an error. Command suggestion lists from older PCs are also filtered without errors.
+- Closed a gap where staff could write a file with an auto-allowed command and run it right away to avoid approval. Also fixed edited files being passed as tested when reached through a shortcut folder such as /tmp.
+
 ## [1.1.1] - 2026-11-08
 
 ### Bug fixes
