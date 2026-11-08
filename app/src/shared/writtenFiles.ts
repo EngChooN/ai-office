@@ -394,14 +394,49 @@ function scanWritten(rec: WrittenRecord, command: string): ApprovalWaitReason | 
 /** 폴더당 고친 파일 기록 상한 — 넘으면 러너 실행을 기다린다 */
 export const WRITTEN_FILES_MAX = 500
 
+/** 두 폴더 키가 같거나 한쪽이 다른 쪽 안에 있는가 (`/` 루트는 모든 절대 경로의 조상) */
+const nested = (a: string, b: string) => a === b || a.startsWith(b === '/' ? '/' : b + '/') || b.startsWith(a === '/' ? '/' : a + '/')
+
 /** 작업 폴더(정규화 경로) 단위 기록 보관소 — 업무·직원이 바뀌어도, 시간이 지나도 비우지 않는다 (만료가 곧 우회) */
 export class WrittenStore {
   private byFolder = new Map<string, WrittenRecord>()
-  key(cwd: string) {
-    return normWrittenPath(cwd)
+  /** resolve: 폴더 실경로 풀이 (심볼릭 링크·macOS `/tmp`→`/private/tmp`). 메인 프로세스가 realpath를 넘긴다 */
+  private resolve: (cwd: string) => string
+  constructor(resolve: (cwd: string) => string = (c) => c) {
+    this.resolve = resolve
   }
+  key(cwd: string) {
+    let p = cwd
+    try {
+      p = this.resolve(cwd)
+    } catch {
+      // 없는 폴더 등은 원래 경로로
+    }
+    return normWrittenPath(p)
+  }
+  /** 같은 폴더와 상위·하위 폴더의 기록을 합쳐 본다 — 모노레포에서 `/repo` 직원이 고친 `app/package.json`을 `/repo/app` 직원이 실행해도 기다리게.
+   *  다른 폴더 기록의 상대 경로는 그 폴더 기준 절대 경로로 풀어 합친다 (더 기다리는 쪽) */
   get(cwd: string): WrittenRecord | undefined {
-    return this.byFolder.get(this.key(cwd))
+    const k = this.key(cwd)
+    const hits = [...this.byFolder].filter(([f]) => nested(f, k))
+    if (!hits.length) return undefined
+    if (hits.length === 1 && hits[0][0] === k) return hits[0][1]
+    const m = emptyWritten()
+    for (const [f, r] of hits) {
+      for (const p of r.files) m.files.add(p.startsWith('/') || !f.startsWith('/') ? p : normWrittenPath(f + '/' + p))
+      for (const s of r.scripts) m.scripts.add(s)
+      for (const t of r.makeTargets) m.makeTargets.add(t)
+      m.allScripts ||= r.allScripts
+      m.allMake ||= r.allMake
+      m.runnable ||= r.runnable
+      // 기본 타깃이 폴더마다 다를 수 있다 — 바뀐 Makefile이 둘 이상이면 `make`만 써도 기다린다
+      if (r.makeDefault) {
+        if (m.makeDefault && m.makeDefault !== r.makeDefault) m.allMake = true
+        m.makeDefault = r.makeDefault
+      }
+      Object.assign(m.scriptValues, r.scriptValues)
+    }
+    return m
   }
   /** 기록을 꺼내거나 새로 만든다 (상한을 넘으면 보수적으로 runnable) */
   rec(cwd: string): WrittenRecord {

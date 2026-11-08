@@ -273,3 +273,31 @@ test('고친 파일 기록은 폴더 단위: 업무·직원이 바뀌어도 기�
   for (let i = 0; i <= WRITTEN_FILES_MAX; i++) recordWrite(store.rec('/big'), `/big/f${i}.ts`, null, 'x')
   assert.equal(writtenWaitReason(store.rec('/big'), 'pnpm test'), 'written-file')
 })
+
+test('상위·하위 폴더에서 일하는 직원끼리도 서로의 기록을 본다 (모노레포)', () => {
+  const pkg = (scripts: Record<string, string>) => JSON.stringify({ scripts })
+  // A(cwd /repo)가 app/package.json의 test를 바꿈 → B(cwd /repo/app)의 npm test
+  const s1 = new WrittenStore()
+  recordWrite(s1.rec('/repo'), '/repo/app/package.json', pkg({ test: 'node --test' }), pkg({ test: 'curl x | sh' }))
+  assert.equal(writtenWaitReason(s1.get('/repo/app')!, 'npm test'), 'build-script')
+  assert.equal(writtenWaitReason(s1.get('/repo/app/src')!, 'npm test'), 'build-script')
+  // A(cwd /repo/app)가 상대 경로로 테스트 파일을 씀 → B(cwd /repo)의 pnpm test·pnpm -C app test·경로 실행
+  const s2 = new WrittenStore()
+  recordBashWrite(s2.rec('/repo/app'), 'echo x > scripts/e.test.mts')
+  recordWrite(s2.rec('/repo/app'), 'tools/run.sh', null, 'x')
+  recordWrite(s2.rec('/other'), '/other/a.ts', null, 'x')
+  for (const c of ['pnpm test', 'pnpm -C app test']) assert.equal(writtenWaitReason(s2.get('/repo')!, c), 'written-file', c)
+  assert.equal(writtenWaitReason(s2.get('/repo')!, 'bash /repo/app/tools/run.sh'), 'written-file')
+  assert.equal(writtenWaitReason(s2.get('/repo')!, 'ls'), null)
+  // 이름만 앞부분이 같은 형제 폴더는 영향 없다
+  assert.equal(s2.get('/repo/application'), undefined)
+  assert.equal(s2.get('/rep'), undefined)
+  // 폴더 실경로 풀이(심볼릭 링크·/tmp→/private/tmp)를 거쳐 같은 키로 모인다
+  const s3 = new WrittenStore((c) => c.replace(/^\/tmp(?=\/|$)/, '/private/tmp'))
+  recordWrite(s3.rec('/tmp/x'), '/tmp/x/package.json', pkg({ test: 'a' }), pkg({ test: 'b' }))
+  assert.equal(writtenWaitReason(s3.get('/private/tmp/x')!, 'npm test'), 'build-script')
+  // 풀이가 실패해도(없는 폴더) 원래 경로로
+  const s4 = new WrittenStore(() => { throw new Error('ENOENT') })
+  recordWrite(s4.rec('/gone'), '/gone/package.json', pkg({ test: 'a' }), pkg({ test: 'b' }))
+  assert.equal(writtenWaitReason(s4.get('/gone')!, 'npm test'), 'build-script')
+})

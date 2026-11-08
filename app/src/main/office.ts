@@ -347,7 +347,7 @@ export class Office extends EventEmitter<{
   private unreadReports: UnreadReports = {}
   /** 직원·업무 카드별로 대신 승인해 준 쓰기 기록 (그 파일을 실행하거나 바뀐 스크립트·타깃을 돌리는 명령만 기다린다, H2·A4). 키는 직원id + 카드id */
   /** 작업 폴더(정규화 경로) → 고친 파일 기록 */
-  private autoWritten = new WrittenStore()
+  private autoWritten = new WrittenStore((cwd) => fs.realpathSync.native(cwd))
   /** 자동결재가 기다리게 한 이유 — 곧 올라올 결재 카드가 가져간다 (직원별) */
   private waitReasons = new Map<string, ApprovalWaitReason>()
   /**
