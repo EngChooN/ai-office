@@ -5,6 +5,7 @@ import { NAV_GROUPS, useNavBadges, useOpenGroup } from './nav'
 import { NAV_GROUP_DEFS, groupBadge, groupOfView, visibleGroups } from './navGroups'
 import { useUpdateBadge } from './AppUpdate'
 import { FeedbackButton } from './FeedbackButton'
+import { DonateButton } from './DonateButton'
 
 export function Sidebar() {
   const view = useOffice((s) => s.view)
@@ -49,6 +50,7 @@ export function Sidebar() {
         })}
       </div>
       <FeedbackButton />
+      <DonateButton />
     </nav>
   )
 }

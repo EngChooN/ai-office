@@ -719,6 +719,7 @@ export default {
   'settingsPage.guide.tour': { ko: '메뉴 둘러보기 다시 보기', en: 'Replay the menu tour', ja: 'メニューツアーをもう一度見る', zh: '重新查看菜单导览' },
   'settingsPage.guide.practice': { ko: '연습 튜토리얼 해 보기', en: 'Try the practice tutorial', ja: '練習チュートリアルをやってみる', zh: '试试练习教程' },
   'settingsPage.guide.feedback': { ko: '피드백 보내기', en: 'Send feedback', ja: 'フィードバックを送る', zh: '发送反馈' },
+  'sidebar.donate': { ko: '후원하기', en: 'Support us', ja: '支援する', zh: '赞助支持' },
   'settingsPage.guide.feedbackPrompt': {
     ko: '무엇이 불편했는지, 어떻게 하면 좋을지 적어 주세요. (오류라면 어떤 순서로 했을 때 생겼는지도요)',
     en: 'Tell us what bothered you and what would make it better. (For a bug, please include the steps that caused it.)',
