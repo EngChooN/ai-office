@@ -96,3 +96,27 @@ test('자율 진행: 고친 파일 실행은 거부, 무관한 명령은 통과'
   assert.equal(autonomyVerdict('Bash', { command: 'bash /repo/run.sh' }, w('bash /repo/run.sh')), 'deny')
   assert.equal(autonomyVerdict('Bash', { command: 'git add run.sh' }, w('git add run.sh')), 'allow')
 })
+
+test('윈도우 경로·실행 방식: 구분자·드라이브·대소문자·따옴표를 같게 본다', () => {
+  const r = rec('C:\\Repo\\Tools\\Run.ps1')
+  for (const c of ['.\\Tools\\run.ps1', 'powershell -File C:\\repo\\tools\\run.ps1', 'pwsh -NoProfile -File "C:\\Repo\\Tools\\Run.ps1"', 'powershell -Command ".\\Tools\\Run.ps1"', '& .\\Tools\\Run.ps1', 'node c:/repo/tools/run.ps1', 'cd C:\\Repo && .\\Tools\\Run.ps1']) assert.equal(writtenWaitReason(r, c), 'written-file', c)
+  // 다른 폴더의 같은 이름·비실행 명령은 통과
+  for (const c of ['powershell -File D:\\other\\Tools\\other\\run.ps1', 'type C:\\Repo\\Tools\\Run.ps1', 'git add Tools\\Run.ps1']) assert.equal(writtenWaitReason(r, c), null, c)
+})
+
+test('윈도우: cmd /c x.bat · x.cmd · node .\\x.js', () => {
+  const b = rec('C:\\Repo\\build.bat')
+  for (const c of ['cmd /c build.bat', 'cmd /c "C:\\Repo\\build.bat"', 'cmd.exe /c "build.bat --fast"', 'build.bat', '.\\build.bat', 'call build.bat']) assert.equal(writtenWaitReason(b, c), 'written-file', c)
+  const m = rec('C:\\Repo\\x.cmd')
+  assert.equal(writtenWaitReason(m, 'x.cmd'), 'written-file')
+  const j = rec('C:\\Repo\\src\\x.js')
+  assert.equal(writtenWaitReason(j, 'node .\\src\\x.js'), 'written-file')
+  assert.equal(writtenWaitReason(j, 'node .\\lib\\y.js'), null)
+  assert.equal(writtenWaitReason(j, 'echo x.js'), null)
+})
+
+test('자율 모드 거부 안내는 우회·재시도 금지를 말한다', async () => {
+  const { t } = await import('../src/shared/i18n/index.ts')
+  assert.match(t('staff.deny.autonomous', { action: 'x' }, 'ko'), /우회/)
+  assert.match(t('staff.deny.autonomous', { action: 'x' }, 'en'), /retry/)
+})

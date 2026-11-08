@@ -22,8 +22,11 @@ export const emptyWritten = (): WrittenRecord => ({ files: new Set(), scripts: n
 
 /** `//`·`/./`·`..`·역슬래시를 정리한 경로 (소문자 — macOS 기본 파일 시스템은 대소문자를 구분하지 않는다) */
 export function normWrittenPath(raw: string): string {
-  const p = raw.replace(/\\/g, '/')
-  const abs = p.startsWith('/')
+  // 따옴표로 감싼 경로·윈도우 드라이브 문자(C:)는 벗기고 절대 경로로 본다
+  let p = raw.trim().replace(/^(["'])(.*)\1$/, '$2').replace(/\\/g, '/')
+  const drive = /^[a-zA-Z]:(?=\/|$)/.test(p)
+  if (drive) p = p.slice(2)
+  const abs = p.startsWith('/') || drive
   const out: string[] = []
   for (const part of p.split('/')) {
     if (!part || part === '.') continue
@@ -151,7 +154,9 @@ export function recordWrite(rec: WrittenRecord, filePath: string, before: string
 
 // ── 명령 판정 ─────────────────────────────────────
 
-const INTERPRETERS = new Set(['bash', 'sh', 'zsh', 'dash', 'ksh', 'fish', 'source', '.', 'node', 'nodejs', 'python', 'python2', 'python3', 'ruby', 'perl', 'php', 'tsx', 'ts-node', 'deno', 'bun', 'npx', 'bunx', 'pnpx', 'osascript', 'pwsh', 'powershell'])
+const INTERPRETERS = new Set(['bash', 'sh', 'zsh', 'dash', 'ksh', 'fish', 'source', '.', 'node', 'nodejs', 'python', 'python2', 'python3', 'ruby', 'perl', 'php', 'tsx', 'ts-node', 'deno', 'bun', 'npx', 'bunx', 'pnpx', 'osascript', 'pwsh', 'powershell', 'cmd', 'cscript', 'wscript', 'start', '&', 'call'])
+/** 경로 없이 이름만 써도 그 파일을 실행하는 윈도우 확장자 */
+const RUNNABLE_EXT = /\.(cmd|bat|ps1|exe|com|vbs|wsf)$/i
 const NPM_RUNNERS = new Set(['npm', 'pnpm', 'yarn', 'bun'])
 const NPM_BUILTIN_SCRIPTS: Record<string, string> = { test: 'test', t: 'test', tst: 'test', start: 'start', stop: 'stop', restart: 'restart' }
 const INSTALL_LIFECYCLE = ['preinstall', 'install', 'postinstall', 'prepare', 'prepublish']
@@ -171,18 +176,26 @@ function scriptAffected(rec: WrittenRecord, name: string): boolean {
   return rec.allScripts || rec.scripts.has(name) || rec.scripts.has('pre' + name) || rec.scripts.has('post' + name)
 }
 
-/** 이 명령이 방금 쓴 파일을 실행하거나, 그 파일이 바꾼 스크립트·타깃을 돌리면 이유를, 아니면 null */
+/** 윈도우 실행 방식을 위해 원문과 `\`→`/` 판본을 둘 다 본다 (렉서는 `\`를 이스케이프로 지운다). 더 많이 기다리는 쪽 */
 export function writtenWaitReason(rec: WrittenRecord, command: string): ApprovalWaitReason | null {
   if (!command || (!rec.files.size && !rec.scripts.size && !rec.allScripts && !rec.makeTargets.size && !rec.allMake)) return null
+  const win = command.replace(/\\/g, '/')
+  return scanWritten(rec, command) ?? (win !== command ? scanWritten(rec, win) : null)
+}
+
+/** 인자 하나 또는 그 안의 공백으로 나뉜 낱말이 기록된 파일을 가리키는가 (`cmd /c "x.bat a"`, `powershell -Command ".\\x.ps1"`) */
+const argPoints = (rec: WrittenRecord, a: string) => pointsAt(rec, a) || (/\s/.test(a) && a.split(/\s+/).some((w) => pointsAt(rec, w)))
+
+function scanWritten(rec: WrittenRecord, command: string): ApprovalWaitReason | null {
   let buildHit = false
   for (const seg of lexSegments(command)) {
     const { cmd, args } = resolveCommand(seg)
     if (!cmd) continue
-    const name = base(cmd)
-    // 1) 고친 파일을 직접 실행 (./x · /abs/x) 하거나 인터프리터에 넘김
+    const name = base(cmd).replace(/\.exe$/i, '')
+    // 1) 고친 파일을 직접 실행 (./x · /abs/x · x.cmd) 하거나 인터프리터에 넘김
     if (rec.files.size) {
-      if (cmd.includes('/') && pointsAt(rec, cmd)) return 'written-file'
-      if (INTERPRETERS.has(name) && args.some((a) => pointsAt(rec, a))) return 'written-file'
+      if ((cmd.includes('/') || RUNNABLE_EXT.test(cmd)) && pointsAt(rec, cmd)) return 'written-file'
+      if (INTERPRETERS.has(name.toLowerCase()) && args.some((a) => argPoints(rec, a))) return 'written-file'
     }
     // 2) 바뀐 package.json 스크립트 실행
     if ((rec.scripts.size || rec.allScripts) && NPM_RUNNERS.has(name)) {

@@ -22,10 +22,10 @@ export default {
     zh: '[自主推进] 代表不在，无法回答。刚才问的问题（“{question}”）请按推荐方案自行判断并继续推进，并把这一假设写在结果汇报的“假设”一栏。',
   },
   'staff.deny.autonomous': {
-    ko: '자율 모드: 이 작업은 하지 않음 ({action}). 결과 보고의 "대표 확인 필요" 목록에 명령을 남기고 나머지를 계속하라.',
-    en: 'Autonomous mode: this action was not performed ({action}). Leave the command in the "Needs owner check" list of your final report and continue with the rest.',
-    ja: '自律モード: この作業は行いません（{action}）。結果報告の「代表の確認が必要」リストにコマンドを残し、残りを続けてください。',
-    zh: '自主模式：不执行此操作（{action}）。请把该命令留在结果汇报的“需代表确认”列表中，然后继续其余工作。',
+    ko: '자율 모드: 이 작업은 하지 않음 ({action}). 다른 방법으로 우회하거나 다시 시도하지 말고, 결과 보고의 "대표 확인 필요" 목록에 명령을 남기고 나머지를 계속하라.',
+    en: 'Autonomous mode: this action was not performed ({action}). Do not work around it or retry another way; leave the command in the "Needs owner check" list of your final report and continue with the rest.',
+    ja: '自律モード: この作業は行いません（{action}）。別の方法で回避したり再試行したりせず、結果報告の「代表の確認が必要」リストにコマンドを残し、残りを続けてください。',
+    zh: '自主模式：不执行此操作（{action}）。不要绕过或换方法重试，请把该命令留在结果汇报的“需代表确认”列表中，然后继续其余工作。',
   },
   'staff.tool.plan.autoApproved': {
     ko: '자율 진행이라 기획안이 자동 승인됐어요. 하위 업무 {n}건을 순서대로 진행하고, 모두 끝나면 결과를 모아 보내 드려요. 이번 턴은 여기서 마치세요.{note}',
