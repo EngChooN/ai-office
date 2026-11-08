@@ -685,7 +685,10 @@ export class Office extends EventEmitter<{
 
   private progressOf(s: db.StoredStaff) {
     if (!this.hired.has(s.id)) return null
-    return buildStaffProgress({ status: s.status, origins: (this.origins.get(s.id) ?? []).map((o) => ({ ...o, room: this.roomForOrigins(s.id, [o]) })), queued: this.manager.backlog(s.id), hasApproval: s.approvals.length > 0, nameOf: (id) => this.hired.get(id)?.name, waiting: this.waitingMsgs.list(s.id).map((w) => ({ id: w.id, text: w.shown ?? w.text, room: this.roomForOrigins(s.id, [w.origin]) })) })
+    // 방 없는 지시는 보고와 같은 규칙(roomsForOrigins의 첫 방)으로 묶는다 — 섞인 턴에서 상태 줄과 보고가 다른 방에 뜨지 않게
+    const origins = this.origins.get(s.id) ?? []
+    const fallbackRoom = this.roomsForOrigins(s.id, origins)[0]
+    return buildStaffProgress({ status: s.status, origins: origins.map((o) => ({ ...o, room: this.originRoomOf(o, fallbackRoom) })), queued: this.manager.backlog(s.id), hasApproval: s.approvals.length > 0, nameOf: (id) => this.hired.get(id)?.name, waiting: this.waitingMsgs.list(s.id).map((w) => ({ id: w.id, text: w.shown ?? w.text, room: this.roomForOrigins(s.id, [w.origin]) })) })
   }
 
   /** 부탁받은 일이 오류·중지로 끝나 결과 없이 사라지지 않게: 요청을 닫고(대상당 1건 제한 해제) 부탁한 직원에게 못 마쳤다고 보고한다 */
@@ -1885,6 +1888,7 @@ export class Office extends EventEmitter<{
     db.saveUnreadReports(this.unreadReports)
     this.scheduleEmit()
     this.emit('notify', { title: t('notify.report', { name: s.name }), body: short.slice(0, 120) || t('notify.reportDone'), staffId })
+    // 글 질문 카드는 직원당 하나(결재함 카드는 방이 없다)라 보고가 여러 방에 갔어도 하나만 올린다 — 알림 방 기준은 보고 방 중 첫 방
     this.finishingRoom.set(staffId, room)
     try {
       // 피어 일의 결과는 그대로 A컴에 돌려준다 — 글 질문 카드를 올리면 답이 피어 문맥 밖에서 이어져 승인 주체·복사본 폴더가 끊긴다

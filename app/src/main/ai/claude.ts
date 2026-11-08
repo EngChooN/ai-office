@@ -219,9 +219,13 @@ export class ClaudeRuntime implements AgentRuntime {
 
   private async consume(q: Query) {
     try {
-      for await (const m of q) this.translate(m)
+      for await (const m of q) {
+        // 닫힌(교체된) 세션의 늦은 이벤트는 새 세션의 지시를 건드리지 않게 버린다
+        if (this.q !== q) break
+        this.translate(m)
+      }
     } catch (e) {
-      this.onEvent({ type: 'error', error: e })
+      if (this.q === q) this.onEvent({ type: 'error', error: e })
     } finally {
       if (this.q === q) {
         this.q = null
