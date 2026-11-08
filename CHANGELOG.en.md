@@ -7,6 +7,20 @@ Writing rules
 - Write from the user's point of view, describing "what you can now do." Do not use technical names (file paths, program or library names, English abbreviations). If one is truly needed, put it once in parentheses after a plain-language explanation.
 - Development details (how it was built, where files are) go in `SPEC.md` and `docs/changelog-dev.md`.
 
+## [1.1.3] - 2026-11-08
+
+### Improvements
+- The payroll page has a new 'Save tokens this week: Top 3'. Among staff who used the most tokens this week, it shows those who could save by lowering a setting one step, with the reason. Press 'Save' to lower the model one step or reduce conversation memory to Normal, and 'Undo' to put it back.
+- Settings has a new 'Token saver mode'. When on, newly hired staff start with the Haiku model and short conversation memory (GPT staff get short memory only). It does not change existing staff or staff hired by the AI secretary.
+- The staff browser equipment screen now explains why it is separate from your Chrome (a safeguard so staff cannot freely use your logins and passwords) and that logging in once in the staff window keeps you logged in next time.
+- New 'Share one login across all staff' option (off by default). When on, a site one staff member logged in to carries over to the others. Only one staff member can use the browser at a time; when their work ends it passes to the next, and others are told the browser is busy meanwhile. Existing per-staff logins are kept.
+- Differences by device: all of this is on the PC app. The phone app keeps the same number with no code change and uses the new screens sent by the PC.
+- Please note: 'Use my own Chrome directly' is not included, because it would give staff access to all of your logins.
+- If you like the app, you can cheer us on with the 'Support us' button in the sidebar. It opens the support page in your default browser.
+
+### Bug fixes
+- Fixed the 'local MCP server has not started yet' error when giving staff an instruction or asking the secretary right after launching the app (#10). The app now waits up to 10 seconds for the office to be ready, and if it still is not, tells you 'The office is still getting ready. Please send it again in a moment.'
+
 ## [1.1.2] - 2026-11-08
 
 ### Improvements
