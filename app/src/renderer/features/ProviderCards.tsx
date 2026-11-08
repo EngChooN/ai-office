@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import type { AiProvider, ProvidersStatus, ProviderStatus } from '@shared/types'
 import { t, type TKey } from '@shared/i18n'
-import { isProviderStale } from '@/lib/providerRecheck'
+import { isProviderStale, providerCardAction } from '@/lib/providerRecheck'
 import { createLatestRequest } from '@/lib/latestRequest'
 import { useOffice } from '@/store'
 
@@ -98,6 +98,7 @@ function CodexLogin({ disabled, onDone }: { disabled: boolean; onDone?: () => vo
 export function ProviderCard({ provider, status, isChecking, onRecheck, children }: { provider: AiProvider; status: ProviderStatus | null; isChecking: boolean; onRecheck?: () => void; children?: React.ReactNode }) {
   const state = status?.state
   const isReady = state === 'ready'
+  const action = providerCardAction(provider, state)
   return (
     <div className={cn('bg-card flex min-w-0 flex-col gap-2 rounded-xl border p-4 text-sm', state && !isReady && 'border-status-waiting/60')}>
       <div className="flex items-center gap-2">
@@ -114,12 +115,14 @@ export function ProviderCard({ provider, status, isChecking, onRecheck, children
         </>
       )}
       {children}
-      {status && !isReady && provider === 'claude' && status.state === 'loggedOut' && (
+      {action === 'claudeLogin' && (
         <Button size="sm" className="w-fit" onClick={() => void window.office.openClaudeLogin()} disabled={isChecking}>
           <LogInIcon /> {t('onboarding.login.open')}
         </Button>
       )}
-      {status && status.state === 'loggedOut' && provider === 'codex' && <CodexLogin disabled={isChecking} onDone={onRecheck} />}
+      {/* 로그인이 끝나면(성공·실패 모두) 상태를 다시 본다 */}
+      {action === 'codexLogin' && <CodexLogin disabled={isChecking} onDone={onRecheck} />}
+      {action === 'recheck' && onRecheck && <RecheckButton isChecking={isChecking} onCheck={onRecheck} />}
     </div>
   )
 }

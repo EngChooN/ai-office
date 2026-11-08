@@ -56,10 +56,10 @@ export default {
   },
   'provider.claude.ready': { ko: 'Claude 직원을 고용할 수 있어요.', en: 'You can hire Claude staff.', ja: 'Claudeスタッフを雇えます。', zh: '可以雇用 Claude 员工。' },
   'provider.codex.missing': {
-    ko: 'GPT(Codex) 프로그램을 찾지 못했어요. 연결하지 않아도 Claude 직원은 그대로 쓸 수 있어요.',
-    en: 'Couldn\'t find the GPT (Codex) program. Your Claude staff work fine without it.',
-    ja: 'GPT（Codex）プログラムが見つかりませんでした。つながなくてもClaudeスタッフはそのまま使えます。',
-    zh: '找不到 GPT（Codex）程序。不连接也不影响 Claude 员工的使用。',
+    ko: '앱에 GPT(Codex) 구성 요소가 빠져 있어요. 앱을 최신 버전으로 업데이트해 주세요. Claude 직원은 그대로 쓸 수 있어요.',
+    en: 'The GPT (Codex) component is missing from the app. Please update the app to the latest version. Your Claude staff work fine without it.',
+    ja: 'アプリにGPT（Codex）の構成要素が含まれていません。アプリを最新バージョンにアップデートしてください。Claudeスタッフはそのまま使えます。',
+    zh: '应用中缺少 GPT（Codex）组件。请将应用更新到最新版本。不影响 Claude 员工的使用。',
   },
   'provider.codex.broken': {
     ko: 'GPT(Codex) 프로그램은 있지만 실행하지 못했어요. 다시 확인해 보세요. Claude 직원은 그대로 쓸 수 있어요.',
