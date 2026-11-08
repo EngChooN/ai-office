@@ -76,6 +76,8 @@ export default {
     zh: '代表没有回答而是跳过了。请按最稳妥的方案判断并继续。',
   },
   'staff.deny.rejected': { ko: '사무실에서 반려했습니다.', en: 'Rejected by the office.', ja: 'オフィスで却下されました。', zh: '办公室已驳回。' },
+  'staff.err.noResponse': { ko: '{min}분 넘게 엔진에서 응답이 없어 멈춘 것으로 보고 연결을 끊었어요. 다시 보내 주세요.', en: 'No response from the engine for over {min} min, so the connection was closed. Please send it again.', ja: '{min}分以上エンジンから応答がないため接続を切りました。もう一度送ってください。', zh: '引擎超过 {min} 分钟没有响应，已断开连接。请重新发送。' },
+  'staff.err.forceClosed': { ko: '엔진이 끊기 요청에 응답하지 않아 세션을 강제로 닫고 새로 시작해요.', en: 'The engine did not answer the interrupt, so the session was force-closed and will restart.', ja: 'エンジンが中断に応答しないため、セッションを強制終了して再開します。', zh: '引擎未响应中断请求，已强制关闭会话并重新开始。' },
   'staff.deny.equip': { ko: '장비 교체로 세션을 다시 시작합니다.', en: 'Restarting the session because of an equipment change.', ja: '装備の交換のためセッションを再開します。', zh: '因更换装备，会话将重新开始。' },
   'staff.deny.fired': { ko: '직원이 퇴사했습니다.', en: 'The employee has left the company.', ja: '社員が退職しました。', zh: '该员工已离职。' },
   'staff.deny.cancelled': { ko: '요청이 취소되었습니다.', en: 'The request was cancelled.', ja: 'リクエストがキャンセルされました。', zh: '请求已取消。' },

@@ -83,6 +83,9 @@ export interface HiredHooks {
   commands(staffId: string, raw: RawCommand[], terminalOnly: string[]): void
 }
 
+/** 지시를 보낸 뒤 엔진에서 첫 이벤트가 이만큼 안 오면 멈춘 것으로 본다 / 끼어들기(interrupt) 응답을 이만큼 기다린 뒤 강제로 끊는다 (시험에서 줄여 쓴다) */
+export const stallTiming = { firstResponseMs: 5 * 60_000, interruptMs: 10_000 }
+
 const OFFICE_TOOL_PREFIX = 'mcp__office__'
 const QUESTION_TOOL = 'AskUserQuestion'
 
@@ -111,6 +114,8 @@ class Worker {
   private terminalOnly: string[] = []
   /** 세션에서 돌고 있는 백그라운드 작업 (SDK background_tasks_changed — 받을 때마다 통째로 바꾼다) */
   private backgroundTasks: string[] = []
+  /** 지시를 보낸 뒤 첫 이벤트를 기다리는 감시 (이벤트가 하나라도 오면 풀린다) */
+  private firstResponseTimer: ReturnType<typeof setTimeout> | null = null
 
   constructor(
     private staff: Staff,
@@ -146,10 +151,40 @@ class Worker {
       this.rt.setModel(this.modelId(light))
     }
     if (!this.isRunning && !slash) this.hooks.workStarted(this.staff.id)
+    const wasRunning = this.isRunning
     this.rt.send(text, attachments)
     if (!this.rt.isOpen) this.start()
     this.isRunning = true
+    if (!wasRunning) this.watchFirstResponse()
     this.hooks.update(this.staff.id, { status: 'working', activity: '지시 확인 중' })
+  }
+
+  private clearFirstResponseTimer() {
+    if (this.firstResponseTimer) clearTimeout(this.firstResponseTimer)
+    this.firstResponseTimer = null
+  }
+
+  /** 엔진이 지시에 첫 반응(이벤트)도 안 하면 '지시 확인 중'에 영영 멈추므로, 일정 시간 뒤 오류로 바꾸고 엔진을 끊는다 */
+  private watchFirstResponse() {
+    this.clearFirstResponseTimer()
+    this.firstResponseTimer = setTimeout(() => {
+      this.firstResponseTimer = null
+      if (!this.isRunning) return
+      this.abandonSession(t('staff.err.noResponse', { min: Math.max(1, Math.round(stallTiming.firstResponseMs / 60_000)) }))
+    }, stallTiming.firstResponseMs)
+    this.firstResponseTimer.unref?.()
+  }
+
+  /** 응답 없는 엔진을 강제로 닫고 오류로 정리한다 — 받은 일 정리·대표 알림은 failed가 맡고, 다음 지시는 세션을 새로 열어 받는다 */
+  private abandonSession(error: string) {
+    this.clearFirstResponseTimer()
+    this.stopping = null
+    this.isRunning = false
+    this.rt.dropQueued()
+    this.rt.close()
+    this.hooks.update(this.staff.id, { status: 'error', activity: error.slice(0, ACTIVITY_MAX) })
+    this.hooks.log(this.staff.id, 'error', error)
+    this.hooks.failed(this.staff.id, error)
   }
 
   decide(approvalId: string, allow: boolean) {
@@ -189,7 +224,28 @@ class Worker {
       return
     }
     this.stopping = followUp ? 'resume' : 'stop'
-    await this.rt.interrupt()
+    // 엔진이 응답하지 않으면 끊기를 무한정 기다리지 않는다 — 시간이 지나면 세션을 강제로 닫고 새로 시작한다
+    const isAnswered = await new Promise<boolean>((resolve) => {
+      const timer = setTimeout(() => resolve(false), stallTiming.interruptMs)
+      this.rt.interrupt().then(
+        () => (clearTimeout(timer), resolve(true)),
+        () => (clearTimeout(timer), resolve(false)),
+      )
+    })
+    if (!isAnswered) {
+      this.clearFirstResponseTimer()
+      this.stopping = null
+      this.isRunning = false
+      this.rt.dropQueued()
+      this.rt.close()
+      this.hooks.log(this.staff.id, 'status', t('staff.err.forceClosed'))
+      if (!followUp) {
+        this.hooks.update(this.staff.id, { status: 'idle', activity: '' })
+        this.hooks.stopped(this.staff.id)
+        this.applyPendingRestart()
+        return
+      }
+    }
     if (followUp) this.send(followUp.text, followUp.attachments)
   }
 
@@ -247,6 +303,7 @@ class Worker {
   }
 
   stop() {
+    this.clearFirstResponseTimer()
     for (const resolve of this.pending.values()) resolve({ behavior: 'deny', message: t('staff.deny.fired'), interrupt: true })
     this.pending.clear()
     this.rt.dispose()
@@ -362,6 +419,7 @@ class Worker {
 
   private handle(m: RuntimeEvent) {
     const id = this.staff.id
+    this.clearFirstResponseTimer() // 엔진이 응답했다
     if (m.type === 'error') {
       this.isRunning = false
       // 받은 일은 office가 모두 정리한다 — 남은 입력이 출처 없이 다시 실행되지 않게 같이 버린다
