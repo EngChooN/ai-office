@@ -685,7 +685,7 @@ export class Office extends EventEmitter<{
 
   private progressOf(s: db.StoredStaff) {
     if (!this.hired.has(s.id)) return null
-    // 방 없는 지시는 보고와 같은 규칙(roomsForOrigins의 첫 방)으로 묶는다 — 섞인 턴에서 상태 줄과 보고가 다른 방에 뜨지 않게
+    // 방이 안 정해진 지시는 보고가 올라가는 방 중 첫 방(roomsForOrigins의 첫 값)에 묶는다 — 방이 정해진 지시는 보고와 같은 방에 뜬다
     const origins = this.origins.get(s.id) ?? []
     const fallbackRoom = this.roomsForOrigins(s.id, origins)[0]
     return buildStaffProgress({ status: s.status, origins: origins.map((o) => ({ ...o, room: this.originRoomOf(o, fallbackRoom) })), queued: this.manager.backlog(s.id), hasApproval: s.approvals.length > 0, nameOf: (id) => this.hired.get(id)?.name, waiting: this.waitingMsgs.list(s.id).map((w) => ({ id: w.id, text: w.shown ?? w.text, room: this.roomForOrigins(s.id, [w.origin]) })) })

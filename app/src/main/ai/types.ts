@@ -75,6 +75,8 @@ export interface AgentRuntime {
   dropQueued(): void
   /** 세션만 닫는다 — 다음 send 때 다시 열 수 있다 */
   close(): void
+  /** 세션을 닫되, 일하는 중 받아 아직 결과가 안 온 줄 선 지시는 새 세션에서 다시 보내도록 남긴다 (끼어들기 강제 종료용). 처리 중이던 지시는 버린다 */
+  closeKeepingQueued(): void
   /** 영구 종료 */
   dispose(): void
   /** 슬래시 명령 목록 (세션이 없으면 잠깐 띄워 묻고 닫는다) */

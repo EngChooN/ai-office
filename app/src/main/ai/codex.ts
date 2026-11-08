@@ -132,6 +132,11 @@ export class CodexRuntime implements AgentRuntime {
     this.aborts.clear()
   }
 
+  /** Codex는 줄 선 지시를 앱 쪽 inbox에 두므로 닫아도 남는다 */
+  closeKeepingQueued() {
+    this.close()
+  }
+
   dispose() {
     this.inbox = []
     this.close()

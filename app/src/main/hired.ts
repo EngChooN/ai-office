@@ -101,8 +101,8 @@ class Worker {
   private pendingRestart: 'restart' | 'reset' | null = null
   /** 중단을 요청한 뒤 끊긴 결과를 기다리는 중 — resume이면 끊고 바로 새 지시를 이어 받는다 (끼어들기) */
   private stopping: 'stop' | 'resume' | null = null
-  /** 세션을 강제로 닫을 때마다 올려서, 겹친 끼어들기가 새 세션을 다시 닫지 않게 한다 */
-  private epoch = 0
+  /** 끊기 요청마다 올린다 — 마지막 요청만 세션을 강제로 닫고, 세션을 닫은 경로도 올려서 늦은 요청이 새 세션을 다시 닫지 않게 한다 */
+  private interruptSeq = 0
   private baseline: { cost: number; tokensIn: number; tokensOut: number }
   /** 직전에 모델을 부를 때 보낸 문맥 크기 (null: 아직 모름 — 앱을 켠 뒤 첫 지시 때 기록 끝부분에서 읽는다) */
   private contextTokens: number | null = null
@@ -180,7 +180,7 @@ class Worker {
   /** 응답 없는 엔진을 강제로 닫고 오류로 정리한다 — 받은 일 정리·대표 알림은 failed가 맡고, 다음 지시는 세션을 새로 열어 받는다 */
   private abandonSession(error: string) {
     this.clearFirstResponseTimer()
-    this.epoch++
+    this.interruptSeq++
     this.stopping = null
     this.isRunning = false
     this.rt.dropQueued()
@@ -228,7 +228,7 @@ class Worker {
       return
     }
     this.stopping = followUp ? 'resume' : 'stop'
-    const epoch = this.epoch
+    const seq = ++this.interruptSeq
     // 엔진이 응답하지 않으면 끊기를 무한정 기다리지 않는다 — 시간이 지나면 세션을 강제로 닫고 새로 시작한다
     const isAnswered = await new Promise<boolean>((resolve) => {
       const timer = setTimeout(() => resolve(false), stallTiming.interruptMs)
@@ -237,10 +237,10 @@ class Worker {
         () => (clearTimeout(timer), resolve(false)),
       )
     })
-    // 기다리는 사이 결과가 와서 중단 처리가 끝났거나 다른 경로가 이미 세션을 닫았으면 다시 닫지 않는다
-    const alreadyHandled = this.stopping === null || this.epoch !== epoch
-    if (!isAnswered && !alreadyHandled) {
-      this.epoch++
+    // 기다리는 사이 결과가 와서 중단 처리가 끝났거나, 더 나중 끊기 요청·다른 경로가 있으면 여기서 세션을 닫지 않는다
+    const isHandled = this.stopping === null || seq !== this.interruptSeq
+    if (!isAnswered && !isHandled) {
+      this.interruptSeq++
       this.clearFirstResponseTimer()
       this.stopping = null
       this.isRunning = false
@@ -253,8 +253,9 @@ class Worker {
         this.applyPendingRestart()
         return
       }
-      // 끼어들기: 줄 선 지시는 살려 새 세션에서 이어 간다 (정상 끼어들기와 같다)
-      this.rt.close()
+      // 끼어들기: 일하는 중 받은 줄 선 지시는 새 세션에서 다시 보낸다 (정상 끼어들기와 같다)
+      this.rt.closeKeepingQueued()
+      this.applyPendingRestart()
     }
     if (followUp) this.send(followUp.text, followUp.attachments)
   }

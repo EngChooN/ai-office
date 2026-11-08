@@ -90,6 +90,8 @@ export class ClaudeRuntime implements AgentRuntime {
   private q: Query | null = null
   /** 보냈지만 아직 결과가 오지 않은 지시 — SDK가 inbox를 바로 비우므로 따로 센다 */
   private pending = new PendingSends()
+  /** 보낸 지시 원본 (결과가 오면 지운다) — 세션을 강제로 닫을 때 줄 선 지시를 다시 보내는 데 쓴다 */
+  private sentMsgs = new Map<string, SDKUserMessage>()
 
   constructor(private onEvent: (e: RuntimeEvent) => void) {}
 
@@ -106,22 +108,41 @@ export class ClaudeRuntime implements AgentRuntime {
   dropQueued() {
     this.inbox = []
     this.pending.keepOnly([])
+    this.sentMsgs.clear()
   }
 
   send(text: string, attachments: Attachment[]) {
     const uuid = crypto.randomUUID()
+    const msg: SDKUserMessage = { type: 'user', message: { role: 'user', content: toContent(text, attachments) }, parent_tool_use_id: null, uuid }
     this.pending.add(uuid)
-    this.inbox.push({ type: 'user', message: { role: 'user', content: toContent(text, attachments) }, parent_tool_use_id: null, uuid })
+    this.sentMsgs.set(uuid, msg)
+    this.inbox.push(msg)
     this.wake?.()
   }
 
   /** 세션에 넘긴 지시는 닫힌 세션에서 결과가 오지 않는다 — 아직 inbox에 있는 것만 다음 세션 몫으로 남긴다 */
   private forgetDelivered() {
     this.pending.keepOnly(this.inbox.flatMap((m) => (m.uuid ? [m.uuid] : [])))
+    this.pruneSent()
+  }
+
+  private pruneSent() {
+    const live = new Set<string>([this.pending.head, ...this.pending.waiting])
+    for (const id of this.sentMsgs.keys()) if (!live.has(id)) this.sentMsgs.delete(id)
   }
 
   async interrupt() {
     await this.q?.interrupt()
+  }
+
+  closeKeepingQueued() {
+    // 이미 세션에 넘어가 결과가 안 온 줄 선 지시(맨 앞 처리 중 지시는 뺀다) — 닫으면 결과가 오지 않으니 inbox 앞에 다시 넣는다
+    const inInbox = new Set<string | undefined>(this.inbox.map((m) => m.uuid))
+    const redo = this.pending.waiting.flatMap((id) => (!inInbox.has(id) && this.sentMsgs.has(id) ? [this.sentMsgs.get(id)!] : []))
+    this.close()
+    this.inbox.unshift(...redo)
+    this.pending.replace(this.inbox.flatMap((m) => (m.uuid ? [m.uuid] : [])))
+    for (const m of redo) if (m.uuid) this.sentMsgs.set(m.uuid, m)
   }
 
   setModel(modelId: string | undefined) {
@@ -256,6 +277,7 @@ export class ClaudeRuntime implements AgentRuntime {
     if (m.type === 'result') {
       // 이 턴이 처리한 지시를 먼저 지운다 — 결과를 받은 쪽이 queued로 "남은 지시가 있나"를 본다
       this.pending.settle(m.user_message_uuids ?? (m.user_message_uuid ? [m.user_message_uuid] : undefined))
+      this.pruneSent()
       // API 연결 실패는 subtype success·is_error true로 온다 ("API Error: Can't reach the API server … (ENOTFOUND)") — 인터넷 오류만 실패로 넘긴다 (다른 API 오류는 지금처럼 답 글로)
       const isNetFail = m.subtype === 'success' && m.is_error && isNetworkError(m.result)
       emit({ type: 'result', ok: m.subtype === 'success' && !isNetFail, subtype: m.subtype, text: m.subtype === 'success' ? m.result : '', numTurns: m.num_turns, costUsd: m.total_cost_usd, ...usageTotals(m.modelUsage) })

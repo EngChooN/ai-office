@@ -39,6 +39,13 @@ class FakeClaude extends ClaudeRuntime {
   }
   override start() {
     this.open = true
+    this.drain()
+  }
+  /** 실제 SDK처럼 inbox를 바로 세션으로 가져간다 — 가져간 지시는 닫힌 뒤 결과가 오지 않는다 */
+  delivered: string[] = []
+  private drain() {
+    const self = this as unknown as { inbox: { message: { content: unknown } }[] }
+    for (const m of self.inbox.splice(0)) this.delivered.push(JSON.stringify(m.message.content))
   }
   override close() {
     this.closes++
@@ -54,6 +61,7 @@ class FakeClaude extends ClaudeRuntime {
   override send(text: string, attachments: Parameters<ClaudeRuntime['send']>[1]) {
     super.send(text, attachments)
     this.sent.push(text)
+    if (this.open) this.drain()
   }
   override async interrupt() {
     if (this.hangInterrupt) await new Promise(() => {})
@@ -179,7 +187,7 @@ test('끼어들기 강제 종료 뒤 옛 세션의 늦은 오류는 새로 보�
   assert.equal(staff(m).status, 'working', '옛 세션의 늦은 오류가 새 지시를 실패로 만들지 않는다')
 })
 
-test('끼어들기 강제 종료는 줄 선 지시를 버리지 않고 새 세션에서 이어 간다', async () => {
+test('끼어들기 강제 종료는 이미 세션에 넘어간 줄 선 지시를 새 세션에서 다시 보낸다', async () => {
   const team = office.createTeam('프론트', '#888')
   const lead = hire('정리드', team.id)
   const m = hire('최팀원', team.id)
@@ -188,11 +196,12 @@ test('끼어들기 강제 종료는 줄 선 지시를 버리지 않고 새 세�
   office.instruct(m, '하던 일')
   rt(m).init()
   office.instruct(m, '줄 선 일')
-  const before = rt(m).queued
   rt(m).hangInterrupt = true
   ;(office as unknown as { delegateFrom(l: string, n: string, i: string, x?: string): string }).delegateFrom(lead, '최팀원', '급한 버그부터', 'replace')
-  for (let i = 0; i < 50 && !rt(m).sent.at(-1)?.includes('급한 버그부터'); i++) await wait(40)
-  assert.ok(rt(m).queued >= before, '줄 선 지시가 남아 있다')
+  for (let i = 0; i < 50 && !rt(m).delivered.at(-1)?.includes('급한 버그부터'); i++) await wait(40)
+  const lines = rt(m).delivered.filter((d) => d.includes('줄 선 일') || d.includes('급한 버그부터'))
+  assert.equal(lines.length, 3, '줄 선 일(처음) + 줄 선 일(다시) + 새 지시')
+  assert.ok(lines[1].includes('줄 선 일') && lines[2].includes('급한 버그부터'), '줄 선 지시가 새 지시보다 먼저 다시 전해졌다')
 })
 
 test('10초 안에 결과가 와서 중지 처리가 끝났으면 강제 경로가 중지를 두 번 알리지 않는다', async () => {
@@ -202,11 +211,11 @@ test('10초 안에 결과가 와서 중지 처리가 끝났으면 강제 경로�
   office.instruct(m, '하던 일')
   rt(m).init()
   rt(m).hangInterrupt = true
+  const closesBefore = rt(m).closes
   const done = office.interrupt(m)
   rt(m).result('')
   await done
-  const closesAfter = rt(m).closes
   await wait(250)
-  assert.equal(rt(m).closes, closesAfter, '이미 처리된 중지는 세션을 다시 닫지 않는다')
+  assert.equal(rt(m).closes, closesBefore, '이미 처리된 중지는 세션을 다시 닫지 않는다')
   assert.equal(staff(m).status, 'idle')
 })

@@ -16,6 +16,21 @@ export class PendingSends {
     return Math.max(0, this.ids.length - 1)
   }
 
+  /** 맨 앞(처리 중) 지시의 id */
+  get head() {
+    return this.ids[0] ?? ''
+  }
+
+  /** 맨 앞(처리 중) 지시 뒤에 줄 선 지시의 id (순서대로) */
+  get waiting() {
+    return this.ids.slice(1)
+  }
+
+  /** 목록을 통째로 바꾼다 (세션을 다시 열며 줄 선 지시를 되살릴 때) */
+  replace(ids: readonly string[]) {
+    this.ids = [...ids]
+  }
+
   add(id: string) {
     this.ids.push(id)
   }
