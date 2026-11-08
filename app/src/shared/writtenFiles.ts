@@ -390,3 +390,25 @@ function scanWritten(rec: WrittenRecord, command: string): ApprovalWaitReason | 
   }
   return buildHit ? 'build-script' : null
 }
+
+/** 폴더당 고친 파일 기록 상한 — 넘으면 러너 실행을 기다린다 */
+export const WRITTEN_FILES_MAX = 500
+
+/** 작업 폴더(정규화 경로) 단위 기록 보관소 — 업무·직원이 바뀌어도, 시간이 지나도 비우지 않는다 (만료가 곧 우회) */
+export class WrittenStore {
+  private byFolder = new Map<string, WrittenRecord>()
+  key(cwd: string) {
+    return normWrittenPath(cwd)
+  }
+  get(cwd: string): WrittenRecord | undefined {
+    return this.byFolder.get(this.key(cwd))
+  }
+  /** 기록을 꺼내거나 새로 만든다 (상한을 넘으면 보수적으로 runnable) */
+  rec(cwd: string): WrittenRecord {
+    const k = this.key(cwd)
+    let r = this.byFolder.get(k)
+    if (!r) this.byFolder.set(k, (r = emptyWritten()))
+    if (r.files.size > WRITTEN_FILES_MAX) r.runnable = true
+    return r
+  }
+}

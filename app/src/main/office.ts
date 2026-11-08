@@ -74,7 +74,7 @@ import {
   WorkRevertInfo,
   type ApprovalWaitReason,
 } from '../shared/types'
-import { emptyWritten, recordBashWrite, recordWrite, writtenWaitReason, type WrittenRecord } from '../shared/writtenFiles'
+import { recordBashWrite, recordWrite, WrittenStore, writtenWaitReason } from '../shared/writtenFiles'
 import { buildStaffActivity } from '../shared/staffActivity'
 import { answersText } from '../shared/chatApproval'
 import { defaultProvider, ENGINE_NAME, engineUnsupportedMcp, fitEngineModel, isEngineMismatch } from '../shared/engineModel'
@@ -346,7 +346,8 @@ export class Office extends EventEmitter<{
   /** 직원별 안 읽은 보고 개수 (대표가 직원 패널을 열면 지운다) */
   private unreadReports: UnreadReports = {}
   /** 직원·업무 카드별로 대신 승인해 준 쓰기 기록 (그 파일을 실행하거나 바뀐 스크립트·타깃을 돌리는 명령만 기다린다, H2·A4). 키는 직원id + 카드id */
-  private autoWritten = new Map<string, WrittenRecord>()
+  /** 작업 폴더(정규화 경로) → 고친 파일 기록 */
+  private autoWritten = new WrittenStore()
   /** 자동결재가 기다리게 한 이유 — 곧 올라올 결재 카드가 가져간다 (직원별) */
   private waitReasons = new Map<string, ApprovalWaitReason>()
   /**
@@ -2179,9 +2180,10 @@ export class Office extends EventEmitter<{
   }
 
   /** 이 직원이 지금 맡은 업무 카드에 묶은 쓰기 기록 (카드가 없으면 카드 없는 지시 하나로 본다) */
-  private writtenKey(staffId: string) {
-    const task = (this.origins.get(staffId) ?? []).find((o) => o.kind === 'task')
-    return `${staffId}:${task && task.kind === 'task' ? task.taskId : ''}`
+  /** 직원의 작업 폴더 — 고친 파일 기록은 업무·직원이 아니라 폴더 단위다 (다른 업무·다른 직원이 같은 폴더에서 실행해도 기다리게) */
+  private writtenCwd(staffId: string) {
+    const s = this.hired.get(staffId) ?? this.external.find((x) => x.id === staffId)
+    return s?.cwd || `staff:${staffId}`
   }
 
   /**
@@ -2191,13 +2193,12 @@ export class Office extends EventEmitter<{
   noteWrite(staffId: string, toolName: string, input: Record<string, unknown>) {
     if (toolName === 'Bash' && typeof input.command === 'string') {
       // 자동 허용된 Bash로 파일을 쓰면 (리다이렉트·tee·cp·mv·sed -i 등) 이후 스크립트·러너 실행을 기다리게 한다
-      const rec = this.autoWritten.get(this.writtenKey(staffId)) ?? emptyWritten()
-      if (recordBashWrite(rec, input.command)) this.autoWritten.set(this.writtenKey(staffId), rec)
+      recordBashWrite(this.autoWritten.rec(this.writtenCwd(staffId)), input.command)
       return
     }
     if (autoKindOf(toolName) !== 'edit') return
     const paths = [input.file_path, input.notebook_path, ...(Array.isArray(input.files) ? input.files : [])].filter((p): p is string => typeof p === 'string' && p !== '')
-    const key = this.writtenKey(staffId)
+    const cwd = this.writtenCwd(staffId)
     for (const p of new Set(paths)) {
       let before: string | null = null
       try {
@@ -2206,15 +2207,12 @@ export class Office extends EventEmitter<{
         /* 새 파일 */
       }
       const after = this.contentAfterWrite(toolName, input, before)
-      const rec = this.autoWritten.get(key) ?? emptyWritten()
-      recordWrite(rec, p, before, after, after !== null)
-      this.autoWritten.set(key, rec)
+      recordWrite(this.autoWritten.rec(cwd), p, before, after, after !== null)
     }
   }
 
-  /** 업무 시작·완료·중단, 자율 진행 시작 때 이 직원의 쓰기 기록을 비운다 */
+  /** 업무 경계에서 '기다리는 이유'만 비운다 — 고친 파일 기록은 폴더 단위로 남긴다 (업무를 바꿔도 우회 못 하게) */
   private clearWritten(staffId: string) {
-    for (const k of [...this.autoWritten.keys()]) if (k.startsWith(`${staffId}:`)) this.autoWritten.delete(k)
     this.waitReasons.delete(staffId)
   }
 
@@ -2306,7 +2304,7 @@ export class Office extends EventEmitter<{
     // 자동결재 중에 직원이 쓴 파일을 실행하는 명령은 기다린다 (H2 — 승인된 쓰기 + 실행으로 대기 규칙을 우회하지 못하게)
     // 경로 전체가 같고 실제로 실행할 때만, package.json·Makefile은 바뀐 스크립트·타깃을 돌릴 때만 (A4)
     const command = toolName === 'Bash' && typeof input.command === 'string' ? input.command : ''
-    const written = this.autoWritten.get(this.writtenKey(staffId))
+    const written = this.autoWritten.get(this.writtenCwd(staffId))
     const writtenReason = command !== '' && written ? writtenWaitReason(written, command) : null
     const runsWrittenFile = writtenReason !== null
     // 자율 진행: 기다려야 할 도구는 결재함에 올리지 않고 거부한다 — 직원은 보고의 "대표 확인 필요"에 남기고 나머지를 계속한다

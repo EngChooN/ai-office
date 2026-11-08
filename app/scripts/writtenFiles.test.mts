@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { autoApprove, autoWaitReason, editNeedsAsk } from '../src/shared/autoApprove.ts'
 import { autonomyVerdict } from '../src/shared/autonomy.ts'
-import { changedMakeTargets, changedScripts, emptyWritten, recordBashWrite, recordWrite, writtenWaitReason } from '../src/shared/writtenFiles.ts'
+import { changedMakeTargets, changedScripts, emptyWritten, recordBashWrite, recordWrite, WrittenStore, WRITTEN_FILES_MAX, writtenWaitReason } from '../src/shared/writtenFiles.ts'
 
 const rec = (path: string, before: string | null = null, after: string | null = 'x') => {
   const r = emptyWritten()
@@ -253,4 +253,23 @@ test('Bash 쓰기 우회 입력(git·대상 불명·붙인 리다이렉트·중�
     assert.equal(r.runnable, false, `${w} runnable`)
     for (const c of ['pnpm test', 'npm test']) assert.equal(writtenWaitReason(r, c), null, `${w} → ${c}`)
   }
+})
+
+test('고친 파일 기록은 폴더 단위: 업무·직원이 바뀌어도 기다리고, 다른 폴더는 영향 없다', () => {
+  const store = new WrittenStore()
+  const pkg = (scripts: Record<string, string>) => JSON.stringify({ scripts })
+  // 업무 A: package.json 수정 → 업무 B(같은 직원·같은 폴더)에서 npm test
+  recordWrite(store.rec('/repo/app'), '/repo/app/package.json', pkg({ test: 'node --test' }), pkg({ test: 'echo ok > /tmp/pwned' }))
+  assert.equal(writtenWaitReason(store.get('/repo/app')!, 'npm test'), 'build-script')
+  // 다른 직원이 같은 폴더(표기만 다름)에서 실행해도 기다린다
+  assert.equal(writtenWaitReason(store.get('/repo//app/./')!, 'npm test'), 'build-script')
+  // 다른 폴더·기록 없는 폴더는 영향 없다
+  assert.equal(store.get('/other/app'), undefined)
+  recordWrite(store.rec('/other/app'), '/other/app/src/a.ts', null, 'x')
+  assert.equal(writtenWaitReason(store.get('/other/app')!, 'npm test'), null)
+  // 같은 폴더의 일반 명령은 통과
+  for (const c of ['ls', 'git status', 'node a.js', 'npm run lint']) assert.equal(writtenWaitReason(store.get('/repo/app')!, c), null, c)
+  // 파일 수 상한을 넘으면 러너 실행을 기다린다
+  for (let i = 0; i <= WRITTEN_FILES_MAX; i++) recordWrite(store.rec('/big'), `/big/f${i}.ts`, null, 'x')
+  assert.equal(writtenWaitReason(store.rec('/big'), 'pnpm test'), 'written-file')
 })
