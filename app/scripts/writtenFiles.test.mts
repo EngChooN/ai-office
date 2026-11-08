@@ -303,6 +303,18 @@ test('상위·하위 폴더에서 일하는 직원끼리도 서로의 기록을 
   for (const a of s5.aliases('/tmp/p/scripts/e.mts')) recordWrite(s5.rec('/tmp/p'), a, null, 'x')
   assert.equal(writtenWaitReason(s5.get('/tmp/p/app', 'node /tmp/p/scripts/e.mts')!, 'node /tmp/p/scripts/e.mts'), 'written-file')
   assert.equal(s5.get('/tmp/q', 'npm test'), undefined)
+  // 아직 없는 폴더의 새 파일도 있는 조상까지 올라가 실경로로
+  const exists = new Set(['/private/tmp', '/private/tmp/p', '/'])
+  const s6 = new WrittenStore((c) => {
+    const r = c.replace(/^\/tmp(?=\/|$)/, '/private/tmp')
+    if (!exists.has(r)) throw new Error('ENOENT')
+    return r
+  })
+  assert.deepEqual(s6.aliases('/tmp/p/newdir/sub/a.test.mts'), ['/tmp/p/newdir/sub/a.test.mts', '/private/tmp/p/newdir/sub/a.test.mts'])
+  for (const a of s6.aliases('/tmp/p/newdir/package.json')) recordWrite(s6.rec('/tmp/p'), a, null, pkg({ test: 'b' }))
+  exists.add('/private/tmp/p/newdir')
+  assert.equal(writtenWaitReason(s6.get('/tmp/p/newdir', 'npm test')!, 'npm test'), 'build-script')
+  assert.deepEqual(s6.aliases('/nowhere/x.ts'), ['/nowhere/x.ts'])
   assert.deepEqual(s5.aliases('src/a.ts'), ['src/a.ts'])
   assert.deepEqual(new WrittenStore().aliases('/repo/a.ts'), ['/repo/a.ts'])
   // 풀이가 실패해도(없는 폴더) 원래 경로로

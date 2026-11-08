@@ -491,14 +491,21 @@ export class WrittenStore {
   aliases(filePath: string): string[] {
     const p = normWrittenPath(filePath)
     if (!p.startsWith('/')) return [filePath]
-    const i = p.lastIndexOf('/')
-    let dir = p.slice(0, i) || '/'
-    try {
-      dir = this.resolve(dir)
-    } catch {
-      return [filePath]
+    // 아직 없는 폴더에 새 파일을 쓰기도 한다(Write가 폴더를 만든다) — 있는 가장 가까운 조상까지 올라가 풀고 나머지를 붙인다
+    let dir = p
+    let tail = ''
+    let real = ''
+    while (dir !== '/' && dir !== '') {
+      const i = dir.lastIndexOf('/')
+      tail = dir.slice(i) + tail
+      dir = dir.slice(0, i) || '/'
+      try {
+        real = normWrittenPath(this.resolve(dir).replace(/\/+$/, '') + tail)
+        break
+      } catch {
+        // 없는 폴더 — 한 단계 위로
+      }
     }
-    const real = normWrittenPath((dir === '/' ? '' : dir) + '/' + p.slice(i + 1))
     return real && real !== p ? [filePath, real] : [filePath]
   }
   /** 기록을 꺼내거나 새로 만든다 (상한을 넘으면 보수적으로 runnable) */
