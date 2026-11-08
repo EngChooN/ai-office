@@ -8,7 +8,8 @@ import { PlanCard } from './PlanCard'
 import { QuestionBox, StopWorkButton } from './QuestionBox'
 import { RunCard } from './RunCard'
 import { Avatar } from './StaffCard'
-import { AlwaysApproveButton, AutoHandledList } from './AutoApprove'
+import { AlwaysApproveButton, ApprovalStatusChips, AutoHandledList } from './AutoApprove'
+import { WaitReasonLine } from './WaitReasonLine'
 import { shortPath, workDirLabel } from './status'
 import { fmtDate, t, trOr } from '@shared/i18n'
 import { toolDisplayName } from '@shared/computerTools'
@@ -51,6 +52,9 @@ export function InboxPage() {
         )
       }
     >
+      <div className="mb-4 max-w-3xl">
+        <ApprovalStatusChips />
+      </div>
       {waitingPlans.length > 0 && (
         <div className="mb-6 flex max-w-3xl flex-col gap-3">
           <h2 className="text-status-waiting text-sm font-semibold">{t('inbox.section.plans')}</h2>
@@ -113,6 +117,7 @@ export function InboxPage() {
                 </span>
               </div>
               {a.requestedBy && <div className="text-muted-foreground mt-0.5 text-xs">{t('approval.requestedBy', { name: a.requestedBy })}</div>}
+              <WaitReasonLine reason={a.waitReason} className="mt-0.5" />
               {a.isRestored && <div className="text-muted-foreground mt-0.5 text-xs">↻ {t('approval.restored')}</div>}
               {a.questions ? (
                 <div className="mt-2">

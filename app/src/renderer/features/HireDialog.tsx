@@ -11,7 +11,7 @@ import { AvatarEditor } from './AvatarEditor'
 import { useShallow } from 'zustand/react/shallow'
 import { useOffice, useWorkMode } from '@/store'
 import { NativeSelect } from '@/components/ui/select'
-import { ROLE_PRESETS, type AgentTemplate, type ApprovalMode, type HireInput, type ModelChoice } from '@shared/types'
+import { newStaffApprovalMode, ROLE_PRESETS, type AgentTemplate, type ApprovalMode, type HireInput, type ModelChoice } from '@shared/types'
 import { PROVIDER_NAME, PROVIDERS, useProviders } from './ProviderCards'
 import { engineReason, isBothReady, ProviderPicker } from './ProviderPicker'
 import { defaultProvider } from '@shared/engineModel'
@@ -44,7 +44,7 @@ const emptyForm = (): HireInput => ({
   model: 'default',
   cwd: '',
   systemPrompt: '',
-  approvalMode: 'ask',
+  approvalMode: newStaffApprovalMode(IS_MOBILE_SHELL),
   teamId: null,
   labIds: [],
 })

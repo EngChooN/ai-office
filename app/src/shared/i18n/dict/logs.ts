@@ -25,6 +25,7 @@ export default {
   'elapsed.day': { ko: '{n}일째', en: '{n}d', ja: '{n}日経過', zh: '已 {n} 天' },
   'ago.min': { ko: '{n}분 전', en: '{n}m ago', ja: '{n}分前', zh: '{n} 分钟前' },
   'ago.hour': { ko: '{n}시간 전', en: '{n}h ago', ja: '{n}時間前', zh: '{n} 小时前' },
+  'ago.day': { ko: '{n}일 전', en: '{n}d ago', ja: '{n}日前', zh: '{n} 天前' },
   'log.rotated': {
     ko: '대화가 길어져(한 번에 약 {k}천 토큰) 새 대화로 이어 갑니다. 직전 보고를 인수인계로 넘겨요.',
     en: 'The conversation grew long (about {k} thousand tokens at once), so continuing in a new one. Handing over the last report.',

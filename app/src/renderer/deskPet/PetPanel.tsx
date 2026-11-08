@@ -18,6 +18,7 @@ import { useOffice } from "@/store";
 import { SecretaryComposer } from "@/features/secretary/SecretaryChat";
 import { SecretaryFace } from "@/features/secretary/SecretaryFace";
 import { QuestionBox } from "@/features/QuestionBox";
+import { WaitReasonLine } from "@/features/WaitReasonLine";
 import {
   EMPTY_SECRETARY,
   type AutoHandled,
@@ -671,6 +672,7 @@ function ApprovalCard({
       <p className="text-muted-foreground truncate text-xs">
         {[a.staffName, a.staffRole].filter(Boolean).join(" · ")}
       </p>
+      <WaitReasonLine reason={a.waitReason} />
       {/* 여기서 답할 질문은 질문 글이 곧 제목 (QuestionBox가 보여 준다) */}
       {!isInline && (
         <p

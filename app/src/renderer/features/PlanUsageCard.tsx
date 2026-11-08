@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { HourglassIcon, InfoIcon, PlayIcon, RefreshCwIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -16,6 +16,35 @@ const typeLabel = (type: string) => (type in PLAN_WINDOW_LABEL ? t(`planUsage.wi
 const COMPACT_TYPES = new Set(['five_hour', 'seven_day'])
 const WARN_PERCENT = 80
 const MINUTE_MS = 60_000
+/** 마지막 갱신이 이보다 오래되면 주의 색 */
+const STALE_MS = 30 * MINUTE_MS
+const HOUR_MS = 60 * MINUTE_MS
+const DAY_MS = 24 * HOUR_MS
+
+/** "마지막 갱신 3분 전" — 하루가 넘어도 날짜 대신 "2일 전" (뒤에 '{시각} 기준'이 따로 붙는다) */
+function updatedAgoText(ms: number) {
+  if (ms < MINUTE_MS) return t('planUsage.updatedJustNow')
+  const ago = ms < HOUR_MS ? t('ago.min', { n: Math.floor(ms / MINUTE_MS) }) : ms < DAY_MS ? t('ago.hour', { n: Math.floor(ms / HOUR_MS) }) : t('ago.day', { n: Math.floor(ms / DAY_MS) })
+  return t('planUsage.updatedAgo', { ago })
+}
+
+/** "마지막 갱신 3분 전 · 11/8 14:30 기준" — 1분마다 화면만 다시 그린다 (조회는 하지 않는다) */
+function UpdatedAt({ at }: { at: number }) {
+  const [now, setNow] = useState(() => Date.now())
+  // 새 값을 받으면(at 바뀜) 바로 맞추고, 그 뒤로 1분마다
+  useEffect(() => {
+    setNow(Date.now())
+    const id = setInterval(() => setNow(Date.now()), MINUTE_MS)
+    return () => clearInterval(id)
+  }, [at])
+  const ms = Math.max(0, now - at)
+  const ago = updatedAgoText(ms)
+  return (
+    <span className={cn('ml-auto min-w-0 truncate text-[11px]', ms >= STALE_MS ? 'text-status-waiting' : 'text-muted-foreground')}>
+      {ago} · {t('planUsage.asOf', { time: fmtDate(at, { month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit' }) })}
+    </span>
+  )
+}
 
 /** "2시간 10분 뒤" 같은 남은 시간 */
 function untilText(at: number) {
@@ -109,11 +138,7 @@ export function PlanUsageCard({ isCompact = false }: { isCompact?: boolean }) {
         ) : (
           <span className="text-muted-foreground text-xs">{t('planUsage.forReference')}</span>
         )}
-        {updatedAt > 0 && (
-          <span className="text-muted-foreground ml-auto text-[11px]">
-            {t('planUsage.asOf', { time: fmtDate(updatedAt, { month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit' }) })}
-          </span>
-        )}
+        {updatedAt > 0 && <UpdatedAt at={updatedAt} />}
         <Button
           size="sm"
           variant="ghost"

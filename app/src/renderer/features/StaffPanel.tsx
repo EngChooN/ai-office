@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils'
 import { useShallow } from 'zustand/react/shallow'
 import { handleComposerKey, NEWLINE_HINT, SEND_HINT, STOP_HINT } from '@/lib/composerKeys'
 import { useOffice, useWorkMode } from '@/store'
-import { ROLE_PRESETS, type AiProvider, type ApprovalMode, type DailyRecord, type LogEntry, type LogType, type ModelChoice, type Staff } from '@shared/types'
+import { newStaffApprovalMode, ROLE_PRESETS, type AiProvider, type ApprovalMode, type DailyRecord, type LogEntry, type LogType, type ModelChoice, type Staff } from '@shared/types'
 import { ENGINE_NAME } from '@shared/engineModel'
 import { ApprovalSplitHandle, useApprovalSplit } from './ApprovalSplit'
 import { AvatarEditor } from './AvatarEditor'
@@ -36,6 +36,8 @@ import { roleLabel } from '@shared/roleLabel'
 import { IS_MOBILE_SHELL } from '@/shell'
 import { PcOnlyState } from '@/components/pc-only-state'
 import { ChangesetCard } from './ChangesetCard'
+import { ApprovalStatusChips } from './AutoApprove'
+import { WaitReasonLine } from './WaitReasonLine'
 
 const EXTERNAL_REFRESH_MS = 5000
 /** Codex 프로그램 설치 안내 (OpenAI 공식 문서) */
@@ -503,6 +505,7 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
           {!split.isFolded && staff.approvals.map((a) => (
             <div key={a.id} className="bg-muted flex flex-col gap-2 rounded-lg p-3">
               {a.requestedBy && <div className="text-muted-foreground text-xs">{t('approval.requestedBy', { name: a.requestedBy })}</div>}
+              <WaitReasonLine reason={a.waitReason} />
               {a.isRestored && <div className="text-muted-foreground text-xs">↻ {t('approval.restored')}</div>}
               {a.questions ? (
                 <QuestionBox approval={a} />
@@ -815,6 +818,12 @@ function Profile({ staff }: { staff: Staff }) {
           ))}
         </NativeSelect>
       </label>
+      {staff.kind === 'hired' && (
+        <div className="flex flex-col gap-1 text-xs">
+          <span className="text-muted-foreground">{t('hire.approval')}</span>
+          <ApprovalStatusChips staff={staff} />
+        </div>
+      )}
       <WorkDir staff={staff} />
       {staff.kind === 'hired' && <StaffRefDocs staff={staff} />}
       <div className="flex flex-col gap-1 text-xs">
@@ -943,7 +952,7 @@ function ExternalActions({ staff }: { staff: Staff }) {
   const [role, setRole] = useState<string>(ROLE_PRESETS[1])
   const [model, setModel] = useState<ModelChoice>('default')
   const [teamId, setTeamId] = useState('')
-  const [approvalMode, setApprovalMode] = useState<ApprovalMode>('ask')
+  const [approvalMode, setApprovalMode] = useState<ApprovalMode>(newStaffApprovalMode(IS_MOBILE_SHELL))
   const [order, setOrder] = useState('')
   const [isSending, setIsSending] = useState(false)
 

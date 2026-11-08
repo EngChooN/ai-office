@@ -35,6 +35,11 @@ export type ClaudeModel = 'default' | 'opus' | 'sonnet' | 'haiku'
 /** 직원 모델: Claude는 별칭, Codex는 'default' 또는 model/list의 모델 id */
 export type ModelChoice = ClaudeModel | (string & {})
 export type ApprovalMode = 'ask' | 'acceptEdits'
+/**
+ * 새로 뽑는 직원(고용·외부 직원 정식 채용)의 기본 결재 방식 — PC는 '파일 수정만 자동'(위험 경로 쓰기는 훅이 결재로 돌린다),
+ * 휴대폰은 자동 승인이 PC 전용이라 '모두 결재'. 외부 연동 직원·팩·체험 직원·기존 직원 저장값은 이 값을 쓰지 않는다
+ */
+export const newStaffApprovalMode = (isMobile: boolean): ApprovalMode => (isMobile ? 'ask' : 'acceptEdits')
 /** 대화 기억 길이: 대화가 얼마나 길어지면 새 대화로 넘길지 (짧게·보통·길게·최대=넘기지 않음) */
 export type MemoryLength = 'short' | 'normal' | 'long' | 'full'
 

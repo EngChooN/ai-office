@@ -7,7 +7,7 @@ import { useOffice } from '@/store'
 import { AUTO_DAILY_DEFAULT, AUTO_HOURS, formatRemaining, type AutoApprovePlan } from '@shared/autoApprove'
 import { ruleLabel, type ApprovalRule } from '@shared/approvalRules'
 import { maskSecrets } from '@shared/redact'
-import type { Approval, AutoHandled } from '@shared/types'
+import type { Approval, AutoHandled, Staff } from '@shared/types'
 import { useNow } from './status'
 import { fmtDate, t, trOr } from '@shared/i18n'
 import { toolDisplayName } from '@shared/computerTools'
@@ -200,6 +200,37 @@ export function AutoApproveBadge({ isCompact = false }: { isCompact?: boolean })
             {t('autoApprove.changeInSettings')}
           </Button>
         </div>
+      )}
+    </div>
+  )
+}
+
+/** 자동결재가 지금 켜져 있는지(+ staff를 주면 이 직원의 결재 방식) 한 줄 칩 — 결재함 위·직원 프로필. 꺼져 있으면 [켜기]로 설정을 연다 */
+export function ApprovalStatusChips({ staff }: { staff?: Staff }) {
+  const { auto, text } = useAutoStatus()
+  const isLoaded = useOffice((s) => s.isLoaded)
+  const setView = useOffice((s) => s.setView)
+  if (!isLoaded) return null
+  const isOff = !auto.isActive && auto.config.mode !== 'daily'
+  // 켜져 있으면 "자동결재 중 · 2시간 남음", 아니면 "자동결재 · 꺼짐" / "자동결재 · 매일 22:00–07:00"
+  const autoText = auto.isActive ? text : `${t('approvalStatus.auto')} · ${text}`
+  const chip = 'bg-muted inline-flex max-w-full min-w-0 items-center gap-1 rounded-full px-2 py-0.5'
+  return (
+    <div className="flex min-w-0 flex-wrap items-center gap-1.5 text-xs">
+      {staff?.kind === 'hired' && (
+        <span className={chip}>
+          <span className="text-muted-foreground shrink-0">{t('approvalStatus.staffMode')}</span>
+          <span className="truncate font-medium">{t(staff.approvalMode === 'acceptEdits' ? 'hire.approval.acceptEdits' : 'hire.approval.ask')}</span>
+        </span>
+      )}
+      <span className={cn(chip, auto.isActive && 'bg-status-working/15 text-status-working')}>
+        <BotIcon className="size-3 shrink-0" />
+        <span className="truncate">{autoText}</span>
+      </span>
+      {isOff && (
+        <Button size="sm" variant="ghost" className="h-6 px-2 text-xs" title={t('approvalStatus.turnOnTitle')} onClick={() => setView('settings')}>
+          {t('approvalStatus.turnOn')}
+        </Button>
       )}
     </div>
   )

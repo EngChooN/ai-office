@@ -10,6 +10,7 @@ import { t, trOr, fmtNumber, type TKey } from '@shared/i18n'
 import { PlanHoldBanner, PlanUsageCard } from './PlanUsageCard'
 import { Avatar } from './StaffCard'
 import { formatTokens, STATUS_META, useNow } from './status'
+import { WaitReasonLine } from './WaitReasonLine'
 import { toolDisplayName } from '@shared/computerTools'
 
 const NOW_TICK_MS = 60_000
@@ -251,6 +252,7 @@ function AttentionRow({ item, staff, now, isGuarded }: { item: AttentionItem; st
         <KindBadge kind={item.kind} ratio={item.ratio} />
         {item.createdAt > 0 && <span className="text-muted-foreground ml-auto shrink-0 text-xs tabular-nums">{formatElapsed(Math.max(0, now - item.createdAt))}</span>}
       </div>
+      <WaitReasonLine reason={item.approval?.waitReason} />
       {body && (
         // 바로 승인할 결재는 자르지 않고 전부 보여 준다 (120자 이하라 몇 줄 안 된다)
         <p className={cn('text-muted-foreground selectable text-xs break-all', !isInlineApproval && 'line-clamp-2')} title={body}>
