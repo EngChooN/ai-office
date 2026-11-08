@@ -116,7 +116,17 @@ function RoomStatusStrip({ room }: { room: RoomInfo | undefined }) {
   const shown = isOpen ? people : people.slice(0, STRIP_MAX)
   const tipStaff = tip && people.find((p) => p.id === tip.staff.id)
   return (
-    <div aria-label={t('chat.status.list')} className={cn('short:hidden mt-2 flex gap-1.5', isOpen ? 'flex-wrap' : 'overflow-hidden')}>
+    <div
+      aria-label={t('chat.status.list')}
+      // 접힌 줄은 가로로 넘긴다 — 마우스 휠(세로)도 가로 이동으로 바꿔 준다
+      onWheel={(e) => {
+        const el = e.currentTarget
+        if (isOpen || e.deltaY === 0 || Math.abs(e.deltaX) > Math.abs(e.deltaY) || el.scrollWidth <= el.clientWidth) return
+        el.scrollLeft += e.deltaY
+      }}
+      onScroll={() => setTip(null)}
+      className={cn('short:hidden mt-2 flex gap-1.5', isOpen ? 'flex-wrap' : 'overflow-x-auto overflow-y-hidden [scrollbar-width:none]')}
+    >
       {shown.map((s) => {
         const meta = STATUS_META[s.status]
         const doing = s.status === 'working' ? stripHead(s.progress?.text ?? '') || s.activity : ''
