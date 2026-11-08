@@ -150,8 +150,6 @@ test('replace: 엔진이 끊기 요청에 응답하지 않아도 강제로 닫�
   assert.equal(staff(m).status, 'working')
 })
 
-const instructed = (id: string, text: string) => office.instruct(id, text)
-
 test('끼어들기 강제 종료 뒤 옛 세션의 늦은 오류는 새로 보낸 지시를 실패 처리하지 않는다', async () => {
   const team = office.createTeam('프론트', '#888')
   const lead = hire('정리드', team.id)
@@ -174,7 +172,7 @@ test('끼어들기 강제 종료 뒤 옛 세션의 늦은 오류는 새로 보�
   ;(rt(m) as unknown as { q: unknown }).q = old
   void (rt(m) as unknown as { consume(q: unknown): Promise<void> }).consume(old)
   ;(office as unknown as { delegateFrom(l: string, n: string, i: string, x?: string): string }).delegateFrom(lead, '최팀원', '급한 버그부터', 'replace')
-  await wait(220)
+  for (let i = 0; i < 50 && !rt(m).sent.at(-1)?.includes('급한 버그부터'); i++) await wait(40)
   assert.ok(rt(m).sent.at(-1)?.includes('급한 버그부터'))
   lateFail()
   await settle()
@@ -193,7 +191,7 @@ test('끼어들기 강제 종료는 줄 선 지시를 버리지 않고 새 세�
   const before = rt(m).queued
   rt(m).hangInterrupt = true
   ;(office as unknown as { delegateFrom(l: string, n: string, i: string, x?: string): string }).delegateFrom(lead, '최팀원', '급한 버그부터', 'replace')
-  await wait(220)
+  for (let i = 0; i < 50 && !rt(m).sent.at(-1)?.includes('급한 버그부터'); i++) await wait(40)
   assert.ok(rt(m).queued >= before, '줄 선 지시가 남아 있다')
 })
 
@@ -212,4 +210,3 @@ test('10초 안에 결과가 와서 중지 처리가 끝났으면 강제 경로�
   assert.equal(rt(m).closes, closesAfter, '이미 처리된 중지는 세션을 다시 닫지 않는다')
   assert.equal(staff(m).status, 'idle')
 })
-void instructed
