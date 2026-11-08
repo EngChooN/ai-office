@@ -592,10 +592,11 @@ test('첨부: A컴 파일을 올리고 일과 함께 보내면 B컴 직원 지�
     assert.equal(B.started.at(-1)!.attachments?.length, 5)
     assert.equal((await rawReq(port, '/v2/peer/attachments', token, 'POST', {})).status, 405)
     // A컴 일 큐도 6번째부터는 빼고 보낸다
-    const many = A.mgr.delegate(rec.id, '여섯 개', { leadId: null, attachments: Array.from({ length: 6 }, () => ({ path: path.join(dirA, '화면.png'), name: '화면.png', mime: 'image/png' })) })
+    const many = A.mgr.delegate(rec.id, '여섯 개', { leadId: null, room: '', attachments: Array.from({ length: 6 }, () => ({ path: path.join(dirA, '화면.png'), name: '화면.png', mime: 'image/png' })) })
     await until(() => B.started.some((j) => j.id === many.id), '여섯 개 일')
     assert.equal(B.started.find((j) => j.id === many.id)!.attachments?.length, 5)
     assert.equal(A.mgr.jobs().find((j) => j.id === many.id)!.attachments?.[5].dropped, 'too_many')
+    assert.equal(A.mgr.jobs().find((j) => j.id === many.id)!.room, '', '전체 방(\'\')은 일 큐에서 버려지지 않는다')
     // 슬롯을 해제하면 그 슬롯이 올린 첨부 기록도 지운다
     B.svc.revokePeerSlot(B.svc.peerSlots().find((s) => s.id !== slotA)!.id)
     assert.equal(B.store.uploads.get(up2.body.attachment.id), undefined)

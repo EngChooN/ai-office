@@ -95,3 +95,18 @@ test('상태 줄 방: 랩 방 지시→랩 방, 단체방 지시→전체 방, �
   assert.equal(w?.waiting?.[0]?.room, 'lab:L1')
   assert.equal(progressIn({ kind: 'chat', room: '' }, 'dev', { kind: 'chat', room: '' })?.waiting?.[0]?.room, undefined)
 })
+
+test('여러 방의 지시가 섞이면 다른 방 지시도 그 방 상태 줄에 뜬다 (섞이지 않으면 others 없음)', async () => {
+  const { progressesForRoom } = await import('../src/shared/progressView.ts')
+  const mixed = buildStaffProgress({ status: 'working', origins: [{ text: 'A 일', room: 'tA', chatId: 1 }, { text: '전체 일', room: '', chatId: 2 }, { text: 'A 일 2', room: 'tA', chatId: 3 }], queued: 2, hasApproval: false })!
+  assert.deepEqual(mixed.others, [{ text: '전체 일', chatId: 2 }])
+  const s = [{ id: 'x', progress: mixed }]
+  assert.equal(progressesForRoom(s, 'tA')[0].progress.text, 'A 일')
+  const g = progressesForRoom(s, '')
+  assert.equal(g.length, 1)
+  assert.equal(g[0].progress.text, '전체 일')
+  assert.equal(g[0].progress.chatId, 2)
+  assert.equal(progressesForRoom(s, 'tB').length, 0)
+  const plain = buildStaffProgress({ status: 'working', origins: [{ text: 'A', room: 'tA' }, { text: 'B', room: 'tA' }], queued: 1, hasApproval: false })!
+  assert.equal(plain.others, undefined)
+})

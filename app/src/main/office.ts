@@ -83,7 +83,7 @@ import { shouldNudgeBackground, shouldNudgeLead } from '../shared/leadNudge'
 import { NO_HOLD, planHold, type HeldItem, type PlanHoldState } from '../shared/planHold'
 import { detectTextQuestion, toTextQuestions } from '../shared/textQuestion'
 import { mentionTargets, OFFICE_SENDER, parseMentions, pickResponder } from '../shared/mention'
-import { cardRoom, chatRoomMembers, chatRoomMentionTargets, findRoom, GLOBAL_ROOM, homeRoom, labRoomId, originRoom, parseRoom, roomForOrigins as roomForOriginsOf, pickRoomResponder, roomHead } from '../shared/chatRooms'
+import { cardRoom, chatRoomMembers, chatRoomMentionTargets, findRoom, GLOBAL_ROOM, homeRoom, labRoomId, originRoom, parseRoom, roomExists, roomForOrigins as roomForOriginsOf, roomsForOrigins as roomsForOriginsOf, resolveOriginRoom, pickRoomResponder, roomHead } from '../shared/chatRooms'
 import { mergeRefDocs, normalizeRefDocPath, refDocKey, refDocsPrompt, sanitizeRefDocs } from '../shared/refDocs'
 import { draftCovered, isSameRule, matchRule, ruleLabel, type ApprovalRule } from '../shared/approvalRules'
 import { askDecisionInput, matchPastDecisions, sameAskDecisions } from '../shared/askDecision'
@@ -685,7 +685,7 @@ export class Office extends EventEmitter<{
 
   private progressOf(s: db.StoredStaff) {
     if (!this.hired.has(s.id)) return null
-    return buildStaffProgress({ status: s.status, origins: (this.origins.get(s.id) ?? []).map((o, i) => ({ ...o, room: this.roomForOrigins(s.id, [o]) })), queued: this.manager.backlog(s.id), hasApproval: s.approvals.length > 0, nameOf: (id) => this.hired.get(id)?.name, waiting: this.waitingMsgs.list(s.id).map((w) => ({ id: w.id, text: w.shown ?? w.text, room: this.roomForOrigins(s.id, [w.origin]) })) })
+    return buildStaffProgress({ status: s.status, origins: (this.origins.get(s.id) ?? []).map((o) => ({ ...o, room: this.roomForOrigins(s.id, [o]) })), queued: this.manager.backlog(s.id), hasApproval: s.approvals.length > 0, nameOf: (id) => this.hired.get(id)?.name, waiting: this.waitingMsgs.list(s.id).map((w) => ({ id: w.id, text: w.shown ?? w.text, room: this.roomForOrigins(s.id, [w.origin]) })) })
   }
 
   /** 부탁받은 일이 오류·중지로 끝나 결과 없이 사라지지 않게: 요청을 닫고(대상당 1건 제한 해제) 부탁한 직원에게 못 마쳤다고 보고한다 */
@@ -1841,7 +1841,8 @@ export class Office extends EventEmitter<{
     this.netParked.succeeded(staffId) // 이어 간 일이 정상으로 끝났으면 이어 가기 횟수를 비운다
     // 일하는 중에 받아 아직 답하지 않은 지시는 다음 결과 몫으로 남긴다 (그 답이 지시가 온 방에 올라가게)
     const { done: origins, keep } = splitFinished(this.origins.get(staffId) ?? [], pending)
-    const room = this.roomForOrigins(staffId, origins)
+    const rooms = this.roomsForOrigins(staffId, origins)
+    const room = rooms[0]
     this.origins.set(staffId, keep)
     const doneTask = origins.find((o) => o.kind === 'task')
     if (doneTask && doneTask.kind === 'task') this.lastDoneTask.set(staffId, doneTask.taskId)
@@ -1876,8 +1877,9 @@ export class Office extends EventEmitter<{
     this.helpLedger.release(staffId, keep, (id) => [...this.origins.values()].some((os) => os.some((o) => o.kind === 'help' && o.reqId === id)))
     // 단체방에는 보고 원문을 그대로 남긴다 (긴 보고는 화면에서 접어 보여 준다). 이어진 카드가 있으면 보고에 붙여 '카드 열기'·👍로 쓴다
     const reportTaskId = origins.map((o) => (o.kind === 'task' ? o.taskId : o.cardId)).find((id) => id && this.tasks.has(id))
-    const report = this.postChat(staffId, summary.slice(0, TASK_RESULT_MAX) || t('notify.chatDone'), undefined, undefined, room, true, reportTaskId ? { taskId: reportTaskId } : {})
-    for (const o of origins) this.setDelivery(o.chatId, staffId, { state: 'done', reportId: report.id })
+    // 여러 방의 지시를 한 턴에 처리했으면 같은 보고를 그 방들 각각에 올린다
+    const reports = new Map(rooms.map((r) => [r, this.postChat(staffId, summary.slice(0, TASK_RESULT_MAX) || t('notify.chatDone'), undefined, undefined, r, true, reportTaskId ? { taskId: reportTaskId } : {})]))
+    for (const o of origins) this.setDelivery(o.chatId, staffId, { state: 'done', reportId: (reports.get(this.originRoomOf(o, room)) ?? reports.get(room)!).id })
     // 대표에게 올린 보고 — 직원 카드에 안 읽은 개수로 쌓인다 (패널을 열어 두었으면 화면이 곧바로 읽음 처리한다)
     this.unreadReports = addUnread(this.unreadReports, staffId)
     db.saveUnreadReports(this.unreadReports)
@@ -4684,7 +4686,21 @@ export class Office extends EventEmitter<{
    * 전체 방에서 시작된 지시는 GLOBAL_ROOM('')이 실려 있어 소속 방으로 새지 않는다. 돌려주는 값 ''은 전체 방
    */
   private roomForOrigins(staffId: string, origins: readonly Origin[]): string {
-    return roomForOriginsOf([...origins], (id) => this.taskRoom(id), this.homeRoomOf(staffId))
+    return roomForOriginsOf(origins, (id) => this.taskRoom(id), this.homeRoomOf(staffId), (r) => this.roomAlive(r))
+  }
+
+  /** 한 턴에 여러 방의 지시가 섞였으면 방마다 (지시 순서). 섞이지 않았으면 방 하나 */
+  private roomsForOrigins(staffId: string, origins: readonly Origin[]): string[] {
+    return roomsForOriginsOf(origins, (id) => this.taskRoom(id), this.homeRoomOf(staffId), (r) => this.roomAlive(r))
+  }
+
+  /** 지시 하나가 올라갈 방 (섞인 턴에서 지시별 방 — 방이 안 정해지면 rooms[0]) */
+  private originRoomOf(o: Origin, fallback: string): string {
+    return resolveOriginRoom(o, (id) => this.taskRoom(id), (r) => this.roomAlive(r)) ?? fallback
+  }
+
+  private roomAlive(room: string): boolean {
+    return roomExists(room, [...this.teams.values()], [...this.labs.values()])
   }
 
   private homeRoomOf(staffId: string): string | undefined {

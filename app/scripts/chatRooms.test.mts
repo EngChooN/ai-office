@@ -292,3 +292,23 @@ test('roomForOrigins: 소속 방 없는 직원의 패널 지시는 전체 방', 
   assert.equal(roomForOrigins([{ kind: 'user' }], () => undefined, undefined), '')
   assert.equal(roomForOrigins([], () => undefined, undefined), '')
 })
+
+test('roomForOrigins: 없어진 팀·랩 방은 건너뛰고 카드 방 → 소속 방 → 전체 방 순서로 넘어간다', async () => {
+  const { roomForOrigins, roomsForOrigins, roomExists } = await import('../src/shared/chatRooms.ts')
+  const teams = [{ id: 'tA', name: 'A', color: '#000', leadId: null, kind: 'hired' }] as never[]
+  const isRoom = (r: string) => roomExists(r, teams, [])
+  assert.equal(isRoom(''), true)
+  assert.equal(isRoom('tA'), true)
+  assert.equal(isRoom('tGone'), false)
+  assert.equal(isRoom('lab:gone'), false)
+  // 지시 방이 없어졌으면 카드 방, 카드 방도 없어졌으면 소속 방, 소속 방도 없으면 전체 방
+  assert.equal(roomForOrigins([{ kind: 'task', taskId: 'c', room: 'tGone' }], () => 'tA', 'tHome', isRoom), 'tA')
+  assert.equal(roomForOrigins([{ kind: 'task', taskId: 'c', room: 'tGone' }], () => 'tGone2', 'tA', isRoom), 'tA')
+  assert.equal(roomForOrigins([{ kind: 'user', room: 'tGone' }], () => undefined, undefined, isRoom), '')
+  // 지시에 전체 방이 실려 있으면 그대로 전체 방
+  assert.equal(roomForOrigins([{ kind: 'user', room: '' }], () => 'tA', 'tA', isRoom), '')
+  // 여러 방이 섞인 지시: 방마다 (중복 없이, 지시 순서)
+  assert.deepEqual(roomsForOrigins([{ room: 'tA' }, { room: '' }, { room: 'tA' }], () => undefined, 'tA', isRoom), ['tA', ''])
+  assert.deepEqual(roomsForOrigins([{ room: 'tA' }, {}], () => undefined, 'tHome', isRoom), ['tA'], '방이 안 정해진 지시는 다른 방이 있으면 거기 묻는다')
+  assert.deepEqual(roomsForOrigins([], () => undefined, undefined, isRoom), [''])
+})

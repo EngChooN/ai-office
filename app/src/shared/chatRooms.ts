@@ -113,19 +113,39 @@ export function homeRoom(staff: Pick<Staff, 'id' | 'teamId'>, teams: TeamLike[],
   return pick ? labRoomId(pick.id) : undefined
 }
 
-/**
- * 지시들이 올라갈 방 — 보고 게시와 대화방 상태 줄이 같이 쓰는 규칙: 지시에 실린 방 → 업무 카드의 방 → 직원의 소속 방 → 전체 방.
- * 전체 방에서 시작된 지시는 GLOBAL_ROOM이 실려 있어 소속 방으로 새지 않는다. 돌려주는 ''은 전체 방
- */
-export function roomForOrigins(origins: readonly { kind?: string; room?: string; taskId?: string }[], taskRoomOf: (taskId: string) => string | undefined, home: string | undefined): string {
-  const explicit = originRoom([...origins])
-  if (explicit !== undefined) return explicit
-  for (const o of origins) {
-    if (o.kind !== 'task' || !o.taskId) continue
+/** 지금 있는 방인가 — 전체 방('')은 항상 있고, 팀·랩 방은 팀·랩이 남아 있어야 한다 */
+export function roomExists(room: string, teams: TeamLike[], labs: LabLike[]): boolean {
+  return room === GLOBAL_ROOM || findRoom(room, teams, labs) !== undefined
+}
+
+type OriginLike = { kind?: string; room?: string; taskId?: string }
+
+/** 지시 하나가 가리키는 방: 지시에 실린 방 → 업무 카드의 방. 둘 다 없거나 없어진 방이면 undefined (소속 방으로 넘어간다) */
+export function resolveOriginRoom(o: OriginLike, taskRoomOf: (taskId: string) => string | undefined, isRoom: (room: string) => boolean = () => true): string | undefined {
+  if (o.room !== undefined && isRoom(o.room)) return o.room
+  if (o.kind === 'task' && o.taskId) {
     const r = taskRoomOf(o.taskId)
-    if (r !== undefined) return r
+    if (r !== undefined && isRoom(r)) return r
   }
-  return home ?? GLOBAL_ROOM
+  return undefined
+}
+
+/**
+ * 지시들이 올라갈 방들 — "각 방에서 한 말은 그 방에만". 지시마다 (지시 방 → 카드 방)을 보고, 모두 없으면 직원의 소속 방 → 전체 방.
+ * 한 턴에 여러 방의 지시가 섞였으면 방이 여럿(지시 순서, 중복 없음). 돌려주는 ''은 전체 방
+ */
+export function roomsForOrigins(origins: readonly OriginLike[], taskRoomOf: (taskId: string) => string | undefined, home: string | undefined, isRoom?: (room: string) => boolean): string[] {
+  const rooms: string[] = []
+  for (const o of origins) {
+    const r = resolveOriginRoom(o, taskRoomOf, isRoom)
+    if (r !== undefined && !rooms.includes(r)) rooms.push(r)
+  }
+  return rooms.length ? rooms : [home ?? GLOBAL_ROOM]
+}
+
+/** 대표 방 하나만 필요할 때(질문·결재·오류 알림 등): roomsForOrigins의 첫 방 */
+export function roomForOrigins(origins: readonly OriginLike[], taskRoomOf: (taskId: string) => string | undefined, home: string | undefined, isRoom?: (room: string) => boolean): string {
+  return roomsForOrigins(origins, taskRoomOf, home, isRoom)[0]
 }
 
 type RoomCard = { fromChat?: { room: string | null } | null; parentId?: string | null; labId?: string | null }

@@ -31,5 +31,15 @@ export function buildStaffProgress(a: {
   const waiting = (a.waiting ?? []).map((w) => ({ id: w.id, text: w.text.slice(0, WAITING_TEXT_MAX), ...(w.room ? { room: w.room } : {}) }))
   // 대화방에서 받은 지시들 (맨 앞 = 지금 하는 것) — 내 말풍선 아래 '작업 중·차례 기다림' 표시에 쓴다
   const chatIds = a.origins.flatMap((o) => (o.chatId ? [o.chatId] : []))
-  return { state, text: cur.text ?? '', ...(cur.room ? { room: cur.room } : {}), queued: a.queued + waiting.length, ...(requestedBy ? { requestedBy } : {}), ...(waiting.length ? { waiting } : {}), ...(chatIds.length ? { chatIds, ...(cur.chatId ? { chatId: cur.chatId } : {}) } : {}) }
+  // 한 턴에 여러 방의 지시가 섞였으면 다른 방의 지시도 그 방 상태 줄에 뜨도록 방마다 첫 지시를 싣는다
+  const seen = new Set([cur.room ?? ''])
+  const others: NonNullable<StaffProgress['others']> = []
+  for (const o of a.origins.slice(1)) {
+    if (o.room === undefined) continue
+    const r = o.room
+    if (seen.has(r)) continue
+    seen.add(r)
+    others.push({ text: o.text ?? '', ...(r ? { room: r } : {}), ...(o.chatId ? { chatId: o.chatId } : {}) })
+  }
+  return { state, text: cur.text ?? '', ...(cur.room ? { room: cur.room } : {}), ...(others.length ? { others } : {}), queued: a.queued + waiting.length, ...(requestedBy ? { requestedBy } : {}), ...(waiting.length ? { waiting } : {}), ...(chatIds.length ? { chatIds, ...(cur.chatId ? { chatId: cur.chatId } : {}) } : {}) }
 }

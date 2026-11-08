@@ -83,6 +83,8 @@ export interface StaffProgress {
   text: string
   /** 지시가 온 대화방 (없으면 직원 1:1) */
   room?: string
+  /** 한 턴에 다른 방의 지시도 섞여 있을 때, 그 방들의 첫 지시 (그 방 상태 줄에 뜬다) — 섞이지 않았으면 생략 */
+  others?: { text: string; room?: string; chatId?: number }[]
   /** 현재 지시 뒤에 대기 중인 지시 수 */
   queued: number
   /** 대기 메시지: 일하는 중에 직원 패널에서 보낸 지시 (받은 순서, 입력칸 위에 표시) — 없으면 생략. id는 '지금 보내기'·'취소'에 쓴다 */

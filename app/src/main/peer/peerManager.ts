@@ -433,7 +433,7 @@ export class PeerManager {
     // 파일 복사본: 이 직원이 든 랩의 프로젝트 폴더가 있으면 일과 함께 보낸다 (복사본은 보낼 때 만든다)
     const workspaceRoot = this.d.sync ? this.d.office.workspaceRoot?.(from.leadId, targetStaffId) : null
     try {
-      return this.queue.enqueue({ peerId: rec.peerId, remoteStaffId: rec.remoteId, leadId: from.leadId, ...(workspaceRoot ? { workspaceRoot } : {}), ...(from.room ? { room: from.room } : {}), ...(from.isAutonomous ? { isAutonomous: true } : {}), ...(from.attachments?.length ? { attachments: from.attachments.map((a) => ({ path: a.path, name: a.name, mime: a.mime })) } : {}), instruction })
+      return this.queue.enqueue({ peerId: rec.peerId, remoteStaffId: rec.remoteId, leadId: from.leadId, ...(workspaceRoot ? { workspaceRoot } : {}), ...(from.room !== undefined ? { room: from.room } : {}), ...(from.isAutonomous ? { isAutonomous: true } : {}), ...(from.attachments?.length ? { attachments: from.attachments.map((a) => ({ path: a.path, name: a.name, mime: a.mime })) } : {}), instruction })
     } catch (e) {
       if (e instanceof PeerQueueError) throw new PeerError(e.code === 'queue_full' ? 'queue_full' : e.code === 'too_long' ? 'too_long' : 'unknown_peer')
       throw e
