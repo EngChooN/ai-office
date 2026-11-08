@@ -109,8 +109,10 @@ const config: ForgeConfig = {
       for (const dir of result.outputPaths) {
         const resources = result.platform === 'darwin' ? path.join(dir, fs.readdirSync(dir).find((f) => f.endsWith('.app')) ?? '', 'Contents', 'Resources') : path.join(dir, 'resources')
         pruneLocales(dir)
+        // Codex 없이 묶인 설치본은 GPT 직원이 연결되지 않는다(#13·#14, 1.1.0·1.1.1 맥) — 일부러 뺄 때만 AI_OFFICE_ALLOW_NO_CODEX=1
         if (fs.existsSync(codexSrc)) fs.cpSync(codexSrc, path.join(resources, 'codex'), { recursive: true, verbatimSymlinks: true })
-        else console.warn(`[codex] ${codexSrc} 없음 — Codex 번들 없이 패키징합니다 (node scripts/fetch-codex.mts ${result.platform}-${result.arch})`)
+        else if (process.env.AI_OFFICE_ALLOW_NO_CODEX === '1') console.warn(`[codex] ${codexSrc} 없음 — AI_OFFICE_ALLOW_NO_CODEX=1 이라 Codex 번들 없이 패키징합니다`)
+        else throw new Error(`[codex] ${codexSrc} 없음 — 먼저 node scripts/fetch-codex.mts ${result.platform}-${result.arch} 를 실행하세요 (Codex 없이 묶으려면 AI_OFFICE_ALLOW_NO_CODEX=1)`)
       }
       if (result.platform !== 'darwin') return
       const identity = macSignIdentity()

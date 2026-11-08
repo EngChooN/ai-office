@@ -35,8 +35,8 @@
 ## 4. 빌드·설치 순서
 1. 위 판단 → 번호 결정, 3번 항목 수정
 2. `cd app && pnpm typecheck && pnpm test` (통과해야 빌드)
-3. 맥 `pnpm make` → `app/out/make/dmg/arm64/AI-Office.dmg` / 윈도우는 GitHub Actions `win-installer`로 빌드 → `AI-Office-win-x64-Setup.exe` 아티팩트
-4. 맥은 `/Applications/AI Office.app` 교체 후 `CFBundleShortVersionString`이 새 버전인지 확인
+3. 맥은 먼저 `node scripts/fetch-codex.mts darwin-arm64`(Codex 번들, `app/vendor/codex` — 없으면 패키징이 멈춤. 1.1.0·1.1.1 맥은 이게 빠져 GPT 직원이 연결되지 않았음 #13·#14), 그다음 `pnpm make` → `app/out/make/dmg/arm64/AI-Office.dmg` / 윈도우는 GitHub Actions `win-installer`로 빌드 → `AI-Office-win-x64-Setup.exe` 아티팩트
+4. 맥은 `/Applications/AI Office.app` 교체 후 `CFBundleShortVersionString`이 새 버전인지, `Contents/Resources/codex/bin/codex-app-server`가 있는지 확인
 - 이 맥은 쉘에 node가 없을 수 있어 nvm의 node 경로(예: v24)와 `~/Library/pnpm`을 PATH에 넣어 실행.
 - 실행 중인 앱이 있으면 종료 여부를 먼저 확인(작업 중인 세션이 날아갈 수 있음).
 - **맥 서명(권한 유지):** 맥 빌드는 로그인 키체인의 자체 서명 인증서 `Claude Office Local Signing`으로 서명합니다. 같은 인증서면 업데이트 뒤에도 화면 기록·손쉬운 사용 권한이 유지됩니다. 인증서가 없으면 ad-hoc으로 빌드됩니다(권한을 다시 물음). 한 번만 만듭니다(개인 키는 저장소·공유 폴더에 두지 않음):
