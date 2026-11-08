@@ -43,9 +43,13 @@ class FakeClaude extends ClaudeRuntime {
   }
   /** 실제 SDK처럼 inbox를 바로 세션으로 가져간다 — 가져간 지시는 닫힌 뒤 결과가 오지 않는다 */
   delivered: string[] = []
+  deliveredIds: (string | undefined)[] = []
   private drain() {
-    const self = this as unknown as { inbox: { message: { content: unknown } }[] }
-    for (const m of self.inbox.splice(0)) this.delivered.push(JSON.stringify(m.message.content))
+    const self = this as unknown as { inbox: { uuid?: string; message: { content: unknown } }[] }
+    for (const m of self.inbox.splice(0)) {
+      this.delivered.push(JSON.stringify(m.message.content))
+      this.deliveredIds.push(m.uuid)
+    }
   }
   override close() {
     this.closes++
@@ -202,6 +206,9 @@ test('끼어들기 강제 종료는 이미 세션에 넘어간 줄 선 지시를
   const lines = rt(m).delivered.filter((d) => d.includes('줄 선 일') || d.includes('급한 버그부터'))
   assert.equal(lines.length, 3, '줄 선 일(처음) + 줄 선 일(다시) + 새 지시')
   assert.ok(lines[1].includes('줄 선 일') && lines[2].includes('급한 버그부터'), '줄 선 지시가 새 지시보다 먼저 다시 전해졌다')
+  const ids = rt(m).delivered.flatMap((d, i) => (d.includes('줄 선 일') ? [rt(m).deliveredIds[i]] : []))
+  assert.equal(ids.length, 2)
+  assert.ok(ids[0] && ids[1] && ids[0] !== ids[1], '다시 보낸 지시는 처음과 다른 uuid를 쓴다')
 })
 
 test('10초 안에 결과가 와서 중지 처리가 끝났으면 강제 경로가 중지를 두 번 알리지 않는다', async () => {
@@ -218,4 +225,23 @@ test('10초 안에 결과가 와서 중지 처리가 끝났으면 강제 경로�
   await wait(250)
   assert.equal(rt(m).closes, closesBefore, '이미 처리된 중지는 세션을 다시 닫지 않는다')
   assert.equal(staff(m).status, 'idle')
+})
+
+test('replace가 겹쳐도 마지막 요청만 강제 종료하고 두 새 지시 모두 전해진다', async () => {
+  const team = office.createTeam('프론트', '#888')
+  const lead = hire('정리드', team.id)
+  const m = hire('최팀원', team.id)
+  office.updateTeam(team.id, { leadId: lead })
+  await settle()
+  office.instruct(m, '하던 일')
+  rt(m).init()
+  rt(m).hangInterrupt = true
+  const d = office as unknown as { delegateFrom(l: string, n: string, i: string, x?: string): string }
+  const closesBefore = rt(m).closes
+  d.delegateFrom(lead, '최팀원', '지시 A', 'replace')
+  d.delegateFrom(lead, '최팀원', '지시 B', 'replace')
+  for (let i = 0; i < 50 && !rt(m).delivered.at(-1)?.includes('지시 B'); i++) await wait(40)
+  assert.ok(rt(m).delivered.some((x) => x.includes('지시 A')), '지시 A도 전달된다')
+  assert.ok(rt(m).delivered.some((x) => x.includes('지시 B')), '지시 B도 전달된다')
+  assert.equal(rt(m).closes - closesBefore, 1, '세션은 한 번만 강제로 닫힌다')
 })

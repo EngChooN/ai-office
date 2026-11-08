@@ -138,7 +138,12 @@ export class ClaudeRuntime implements AgentRuntime {
   closeKeepingQueued() {
     // 이미 세션에 넘어가 결과가 안 온 줄 선 지시(맨 앞 처리 중 지시는 뺀다) — 닫으면 결과가 오지 않으니 inbox 앞에 다시 넣는다
     const inInbox = new Set<string | undefined>(this.inbox.map((m) => m.uuid))
-    const redo = this.pending.waiting.flatMap((id) => (!inInbox.has(id) && this.sentMsgs.has(id) ? [this.sentMsgs.get(id)!] : []))
+    // 같은 sessionId로 resume하므로 CLI가 uuid로 중복을 거를 수 있다 — 새 uuid를 붙여 다시 보낸다.
+    // 주의: SDK가 줄 선 지시를 끊긴 턴에 이미 합쳤을 수 있어 일부 작업이 겹칠 수 있다(보고 중복은 없다).
+    const redo = this.pending.waiting.flatMap((id) => {
+      const m = this.sentMsgs.get(id)
+      return !inInbox.has(id) && m ? [{ ...m, uuid: crypto.randomUUID() }] : []
+    })
     this.close()
     this.inbox.unshift(...redo)
     this.pending.replace(this.inbox.flatMap((m) => (m.uuid ? [m.uuid] : [])))
