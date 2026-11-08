@@ -145,38 +145,70 @@ const LAST_ARG = new Set(['cp', 'mv', 'install', 'rsync'])
  * Bash 명령이 파일을 쓰는지 본다 (리다이렉트 >·>>, tee·cp·mv·sed -i 등). 읽기 명령은 writes=false.
  * targets는 뽑을 수 있었던 대상 경로 — 못 뽑아도 writes=true면 보수적으로 쓰기로 본다.
  */
-export function bashWrites(command: string): { writes: boolean; targets: string[] } {
+export function bashWrites(command: string, depth = 0): { writes: boolean; targets: string[] } {
   const targets: string[] = []
   let writes = false
+  const unknownTarget = (t: string) => /[$`*?]/.test(t)
   for (const seg of lexSegments(command)) {
     const toks = seg.tokens.filter((t) => t !== '')
     for (let k = 0; k < toks.length; k++) {
-      const m = REDIRECT_OUT.exec(toks[k])
+      // 낱말 안 어디서든 `>`를 본다 (echo x>file) — `=>`·`->`·`<<`·`>(`는 제외
+      const m = /^(?:[^<>=-]|[^<>]*[^<>=\s-])??(?:\d*|&)(?:>>|>\||>&|>|&>>|&>)(?![(])(.*)$/.exec(toks[k]) ?? REDIRECT_OUT.exec(toks[k])
       if (!m) continue
-      const t = m[1] || toks[k + 1] || ''
+      const t = m[m.length - 1] || toks[k + 1] || ''
       if (/^(\d+|-|&\d*)$/.test(t) || t.startsWith('/dev/')) continue
       writes = true
-      if (t && !/[$`*?]/.test(t)) targets.push(t)
+      if (t && !unknownTarget(t)) targets.push(t)
     }
     const { cmd, args } = resolveCommand(seg)
     if (!cmd) continue
-    const name = base(cmd)
-    const pos = args.filter((a) => !a.startsWith('-')).map((a) => a.replace(/^of=/, ''))
-    if (name === 'sed' && !args.some((a) => /^-[A-Za-z]*[iI]|^--in-place/.test(a))) continue // sed -i 만 쓰기
-    if (name === 'sort' && !args.some((a) => /^-[A-Za-z]*o|^--output/.test(a))) continue
-    if (name === 'base64' && !args.some((a) => /^-[A-Za-z]*o|^--output/.test(a))) continue
-    if ((name === 'tar' && !args.some((a) => /^-?[A-Za-z]*x|^--extract|^-[A-Za-z]*c|^--create/.test(a))) || (name === 'unzip' && args.some((a) => /^-[A-Za-z]*[lpvt]/.test(a)))) continue
+    const name = base(cmd).toLowerCase()
+    const pos = args.filter((a) => !a.startsWith('-') && !/^\d*<|^<</.test(a)).map((a) => a.replace(/^of=/, ''))
+    const hasFlag = (re: RegExp) => args.some((a) => re.test(a))
+    // 셸 -c: 안의 문자열을 다시 검사한다
+    if (['bash', 'sh', 'zsh', 'dash', 'ksh'].includes(name)) {
+      const i = args.findIndex((a) => /^-[A-Za-z]*c/.test(a))
+      if (i >= 0 && args[i + 1] !== undefined && depth < 4) {
+        const inner = bashWrites(args[i + 1], depth + 1)
+        if (inner.writes) writes = true
+        targets.push(...inner.targets)
+      } else if (i >= 0) writes = true
+      continue
+    }
+    // 인터프리터 한 줄·표준입력(heredoc): 무엇을 쓰는지 알 수 없어 쓰기로 본다. `node a.js` 같은 파일 실행은 기존 규칙이 본다
+    if (/^(python[\d.]*|node|nodejs|deno|bun|ruby|perl|php)$/.test(name)) {
+      const inline = hasFlag(/^-[A-Za-z]*[ecpi]$|^-[A-Za-z]*[ei]|^--(eval|print)$/) && !hasFlag(/^-m$/)
+      if (inline || (args.includes('-') || (pos.length === 0 && !hasFlag(/^(-[Vvm]|--version|--help)$/)))) writes = true
+      continue
+    }
+    if (name === 'curl') {
+      if (hasFlag(/^-[A-Za-z]*[oO]|^--(output|remote-name)/)) writes = true
+      for (let k = 0; k < args.length; k++) if (/^-[A-Za-z]*o$|^--output$/.test(args[k]) && args[k + 1] && !unknownTarget(args[k + 1])) targets.push(args[k + 1])
+      continue
+    }
+    if (name === 'wget') {
+      writes = true
+      for (let k = 0; k < args.length; k++) if (/^-[A-Za-z]*O$|^--output-document$/.test(args[k]) && args[k + 1] && !unknownTarget(args[k + 1])) targets.push(args[k + 1])
+      continue
+    }
+    if (name === 'sed' && !hasFlag(/^-[A-Za-z]*[iI]|^--in-place/)) continue // sed -i 만 쓰기
+    if ((name === 'sort' || name === 'base64') && !hasFlag(/^-[A-Za-z]*o|^--output/)) continue
+    if ((name === 'tar' && !hasFlag(/^-?[A-Za-z]*x|^--extract|^-[A-Za-z]*c|^--create/)) || (name === 'unzip' && hasFlag(/^-[A-Za-z]*[lpvt]/))) continue
     if (name === 'npm' || name === 'pnpm' || name === 'yarn') {
       if (pos[0] === 'pkg' && (pos[1] === 'set' || pos[1] === 'delete' || pos[1] === 'fix')) (writes = true), targets.push('package.json')
       continue
     }
     if (name === 'git') {
-      if (pos[0] === 'apply' || pos[0] === 'am' || pos[0] === 'checkout' || pos[0] === 'restore' || pos[0] === 'stash') writes = true
+      const sub = pos[0]
+      // checkout -b·stash list/show 는 작업 파일을 바꾸지 않는다 (결재 과다 방지)
+      if (sub === 'apply' || sub === 'am' || sub === 'restore') writes = true
+      else if (sub === 'checkout' && !hasFlag(/^-[bB]$|^--orphan/)) writes = true
+      else if (sub === 'stash' && !['list', 'show'].includes(pos[1] ?? '')) writes = true
       continue
     }
     if (!BASH_WRITERS.has(name)) continue
     writes = true
-    targets.push(...(LAST_ARG.has(name) ? pos.slice(-1) : pos).filter((a) => !/[$`*?]/.test(a)))
+    targets.push(...(LAST_ARG.has(name) ? pos.slice(-1) : pos).filter((a) => !unknownTarget(a)))
   }
   return { writes, targets }
 }
@@ -187,7 +219,7 @@ export function recordBashWrite(rec: WrittenRecord, command: string): boolean {
   if (!writes) return false
   for (const t of targets) recordWrite(rec, t, null, null, false)
   // 로그·메모·임시 폴더로만 쓰는 명령(`pnpm test > out.log`, `| tee run.txt`)은 러너를 막지 않는다 — 대상을 다 알고 전부 그런 곳일 때만
-  const harmless = targets.length > 0 && targets.every((t) => /\.(log|txt|md|out)$/i.test(t) || /^\/tmp\//.test(t))
+  const harmless = targets.length > 0 && targets.every((t) => /\.(log|txt|md|out)$/i.test(t) || normWrittenPath(t).startsWith('/tmp/'))
   if (!harmless) rec.runnable = true
   return true
 }
@@ -308,7 +340,7 @@ function scriptAffected(rec: WrittenRecord, name: string): boolean {
 
 /** 윈도우 실행 방식을 위해 원문과 `\`→`/` 판본을 둘 다 본다 (렉서는 `\`를 이스케이프로 지운다). 더 많이 기다리는 쪽 */
 export function writtenWaitReason(rec: WrittenRecord, command: string): ApprovalWaitReason | null {
-  if (!command || (!rec.files.size && !rec.scripts.size && !rec.allScripts && !rec.makeTargets.size && !rec.allMake)) return null
+  if (!command || (!rec.files.size && !rec.scripts.size && !rec.allScripts && !rec.makeTargets.size && !rec.allMake && !rec.runnable)) return null
   const win = command.replace(/\\/g, '/')
   return scanWritten(rec, command) ?? (win !== command ? scanWritten(rec, win) : null)
 }
@@ -336,8 +368,9 @@ function scanWritten(rec: WrittenRecord, command: string): ApprovalWaitReason | 
       // 변수·인코딩 실행·iex·`\\?\` 경로는 무엇을 실행하는지 알 수 없다
       if (!harmless && (args.some(opaqueArg) || /^(iex|invoke-expression)$/i.test(lname))) return 'written-file'
       // 고친 파일이 테스트이거나 scripts/ 아래면 스크립트·테스트 러너 실행은 그 파일을 부를 수 있다
-      if (rec.runnable && ((NPM_RUNNERS.has(lname) && !installOnly && npmWords.length > 0) || TEST_RUNNERS.has(lname))) return 'written-file'
     }
+    // 파일을 특정 못 한 쓰기(Bash 등)도 runnable이면 스크립트·테스트 러너 실행은 기다린다
+    if (rec.runnable && ((NPM_RUNNERS.has(lname) && !installOnly && npmWords.length > 0) || TEST_RUNNERS.has(lname))) return 'written-file'
     // 2) 바뀐 package.json 스크립트 실행
     if ((rec.scripts.size || rec.allScripts) && NPM_RUNNERS.has(lname)) {
       const words = npmWords

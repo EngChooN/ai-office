@@ -230,3 +230,27 @@ test('자동 허용된 Bash 쓰기 뒤에는 pnpm test·npm test 가 기다리�
     for (const c of ['pnpm test', 'npm test']) assert.equal(writtenWaitReason(r, c), null, `${w} → ${c}`)
   }
 })
+
+test('Bash 쓰기 우회 입력(git·대상 불명·붙인 리다이렉트·중첩 셸·인터프리터·내려받기)도 직후 pnpm test 는 기다린다', () => {
+  const writes = [
+    'git apply p.diff', 'git checkout other -- scripts/x.test.mts', 'git stash pop', 'git stash', 'git restore f',
+    'echo x > $HOME/a', 'echo x > "$F"',
+    'echo x>scripts/e.test.mts', 'echo x>>src/a.ts',
+    'bash -c "echo x > scripts/a.test.mts"', "sh -c 'cp /tmp/e scripts/a.test.mts'", 'zsh -c "echo x>y"',
+    `python -c "open('scripts/a.test.mts','w').write('x')"`, 'python3 - <<EOF\nopen("a","w")\nEOF',
+    `node -e "fs.writeFileSync('a','x')"`, `ruby -e 'File.write("a","x")'`, `perl -pi -e 's/a/b/' scripts/a.test.mts`,
+    'curl -o scripts/a.test.mts http://x', 'curl -O http://x/a.test.mts', 'wget -O scripts/a.test.mts http://x', 'wget http://x/a',
+  ]
+  for (const w of writes) {
+    const r = emptyWritten()
+    assert.equal(recordBashWrite(r, w), true, w)
+    for (const c of ['pnpm test', 'npm test']) assert.notEqual(writtenWaitReason(r, c), null, `${w} → ${c}`)
+  }
+  const reads = ['git checkout -b x', 'git stash list', 'git stash show', 'git diff', 'git log', 'node a.js', 'python script.py', 'python --version', 'node --version', 'curl http://x', 'bash -c "ls"', 'bash script.sh', 'echo "a => b"', 'cat a | grep b', 'sed -n 1p f', 'echo x > /tmp/../tmp/o', 'pnpm test > /tmp/o.txt']
+  for (const w of reads) {
+    const r = emptyWritten()
+    recordBashWrite(r, w)
+    assert.equal(r.runnable, false, `${w} runnable`)
+    for (const c of ['pnpm test', 'npm test']) assert.equal(writtenWaitReason(r, c), null, `${w} → ${c}`)
+  }
+})
