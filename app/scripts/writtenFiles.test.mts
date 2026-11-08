@@ -316,7 +316,9 @@ test('홈 폴더 직원의 기록은 관련 프로젝트에만 — 다른 폴더
   }
   // 중첩 셸은 autoWaitReason이 따로 기다리게 한다 — 여기선 폴더 이동 판정만
   assert.equal(movesDir('bash -c "cd ../proj1 && pnpm test"'), true)
-  for (const c of ['pnpm test', 'npm run lint', 'vitest run src', 'git -C ../x status']) assert.equal(movesDir(c), false, c)
+  for (const c of ['pnpm test', 'npm run lint', 'vitest run src', 'git status']) assert.equal(movesDir(c), false, c)
+  // 다른 폴더를 가리키는 읽기 명령은 기록을 합쳐도 통과
+  assert.equal(writtenWaitReason(s.get('/users/me/proj2', 'git -C ../proj1 status')!, 'git -C ../proj1 status'), null)
   // 위치를 다 모르는 Bash 쓰기가 섞이면 하위 폴더 전체에 적용
   recordBashWrite(s.rec('/users/me'), 'python3 -c "open(1)"')
   assert.equal(writtenWaitReason(s.get('/users/me/proj2', 'pnpm test')!, 'pnpm test'), 'written-file')
@@ -326,4 +328,18 @@ test('홈 폴더 직원의 기록은 관련 프로젝트에만 — 다른 폴더
   assert.equal(writtenWaitReason(t.get('/repo/app/src', 'npm test')!, 'npm test'), 'build-script')
   recordWrite(t.rec('/w'), '/w/lib/package.json', pkg({ test: 'a' }), pkg({ test: 'b' }))
   assert.equal(t.get('/w/app', 'npm test'), undefined)
+})
+
+test('다른 폴더 파일을 절대·상위 경로로 실행해도 기다린다 (어떤 명령이든)', () => {
+  const s = new WrittenStore()
+  recordWrite(s.rec('/repo'), '/repo/scripts/e.mts', null, 'x')
+  recordWrite(s.rec('/repo/a'), '/repo/a/x.mts', null, 'x')
+  for (const [cwd, c] of [['/repo/app', 'node /repo/scripts/e.mts'], ['/repo/app', 'node ../scripts/e.mts'], ['/repo/b', 'node ../a/x.mts'], ['/repo/b', 'sh -c true; tsx ../a/x.mts']]) {
+    assert.equal(movesDir(c), true, c)
+    assert.equal(writtenWaitReason(s.get(cwd, c)!, c), 'written-file', c)
+  }
+  for (const c of ['turbo run test', 'nx run a:test', 'lerna run test', 'find . -name x -exec pnpm -C ../a test ;']) assert.equal(movesDir(c), true, c)
+  // 읽기 명령은 기록을 합쳐도 통과
+  assert.equal(writtenWaitReason(s.get('/repo/app', 'cat /repo/scripts/e.mts')!, 'cat /repo/scripts/e.mts'), null)
+  assert.equal(writtenWaitReason(s.get('/repo/app', 'ls ..')!, 'ls ..'), null)
 })

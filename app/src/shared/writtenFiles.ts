@@ -325,7 +325,10 @@ function pointsAt(rec: WrittenRecord, arg: string): boolean {
   const n = normWrittenPath(arg)
   if (!n) return false
   if (n.startsWith('/')) return rec.files.has(n)
-  for (const f of rec.files) if (f === n || f.endsWith('/' + n)) return true
+  // `../a/x.mts`는 작업 폴더를 몰라도 `a/x.mts`로 끝나는 기록과 맞춘다 (더 기다리는 쪽)
+  const tail = n.replace(/^(\.\.\/)+/, '')
+  if (!tail || tail === '..') return false
+  for (const f of rec.files) if (f === tail || f.endsWith('/' + tail)) return true
   return false
 }
 
@@ -396,11 +399,13 @@ function scanWritten(rec: WrittenRecord, command: string): ApprovalWaitReason | 
 /** 폴더당 고친 파일 기록 상한 — 넘으면 러너 실행을 기다린다 */
 export const WRITTEN_FILES_MAX = 500
 
+/** 여러 패키지를 돌리는 모노레포 러너 */
+const MONO_RUNNERS = new Set(['turbo', 'nx', 'lerna', 'rush', 'rushx', 'moon', 'wireit', 'ultra'])
 /** 다른 폴더를 대상으로 실행하는 옵션 (npm·pnpm·yarn·make) */
 const DIR_FLAG = /^(-C|--prefix|--dir|--cwd|--directory|-w|--workspaces?|-ws|-r|--recursive|--filter|-F|-g|--global|--include-workspace-root)(=|$)|^-C./
 /**
  * 명령이 작업 폴더 밖을 대상으로 러너를 돌릴 수 있는가 — `cd`·`pushd`, `-C`·`--prefix`·`-r` 같은 폴더 옵션,
- * `npm_config_*` 대입, 러너·빌드 명령 인자의 절대·상위·홈 경로. 그러면 모든 폴더의 기록을 합쳐 본다
+ * `npm_config_*` 대입, 모노레포 러너, 아무 명령 인자의 절대·상위·홈 경로. 그러면 모든 폴더의 기록을 합쳐 본다
  */
 export function movesDir(command: string): boolean {
   for (const seg of lexSegments(command.replace(/\\/g, '/'))) {
@@ -417,8 +422,14 @@ export function movesDir(command: string): boolean {
       if (i >= 0 && (args[i + 1] === undefined || movesDir(args[i + 1]))) return true
       continue
     }
-    if (!NPM_RUNNERS.has(lname) && !TEST_RUNNERS.has(lname) && !['make', 'gmake', 'npx', 'pnpx', 'bunx'].includes(lname)) continue
-    if (args.some((a) => DIR_FLAG.test(a) || /^(\/|~|\.\.(\/|$))|=(\/|~|\.\.)/.test(a) || a.includes('/../'))) return true
+    // 모노레포 러너는 다른 패키지를 돌린다
+    if (MONO_RUNNERS.has(lname)) return true
+    // find -exec·-execdir 뒤 명령도 본다
+    const ex = args.findIndex((a) => /^-(exec|execdir|ok|okdir)$/.test(a))
+    if (lname === 'find' && ex >= 0 && movesDir(args.slice(ex + 1).filter((a) => a !== ';' && a !== '+').join(' '))) return true
+    // 어떤 명령이든 절대·홈·상위 경로 인자는 다른 폴더 파일을 가리킬 수 있다 (`node /repo/scripts/e.mts`)
+    if (args.some((a) => /^(\/|~|\.\.(\/|$))|=(\/|~|\.\.)/.test(a) || a.includes('/../'))) return true
+    if ((NPM_RUNNERS.has(lname) || TEST_RUNNERS.has(lname) || ['make', 'gmake', 'npx', 'pnpx', 'bunx'].includes(lname)) && args.some((a) => DIR_FLAG.test(a))) return true
   }
   return false
 }
