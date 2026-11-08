@@ -117,7 +117,7 @@ import { ExternalWatcher, upgradeAskHook } from './external'
 import { loadDemoLive } from './demoLive'
 import { customMcpList, equipmentCatalog, mcpConfigs, saveCustomMcpList, setMcpProbe } from './equipment'
 import { parseCustomMcp, removeCustomMcp, upsertCustomMcp, type CustomMcpInput } from '../shared/customMcp.ts'
-import { browserMcpConfig } from './browser'
+import { browserMcpConfig, createBrowserLock } from './browser'
 import { computerMcpConfig } from './computer'
 import { COMPUTER_EQUIPMENT, computerSummaryI18n } from '../shared/computerTools.ts'
 import { BROWSER_EQUIPMENT } from '../shared/browserTools.ts'
@@ -405,6 +405,7 @@ export class Office extends EventEmitter<{
         return { prompt: refDocsPrompt({ ...merged, docs: listed }), paths: merged.docs.map((d) => d.path) }
       },
       isScreenCaptureOn: () => this.settings.isStaffCaptureOn,
+      browserBlocked: (id) => this.browserBlocked.has(id),
       equippedMcp: (id) => {
         const s = this.hired.get(id)
         if (!s) return {}
@@ -413,7 +414,14 @@ export class Office extends EventEmitter<{
           s.equipment.mcpServers.flatMap((name) => {
             // 기본 장비 '브라우저': 직원별 프로필로 Playwright MCP를 붙인다 (실행 환경이 없으면 빼고 연다)
             if (name === BROWSER_EQUIPMENT) {
-              const config = browserMcpConfig(s.id)
+              const isShared = this.settings.sharedBrowserLogin === true
+              // 공용 로그인: 한 번에 한 직원만 (같은 프로필을 크롬 둘이 열 수 없다)
+              this.browserBlocked.delete(id)
+              if (isShared && !this.browserLock.claim(id)) {
+                this.browserBlocked.add(id)
+                return []
+              }
+              const config = browserMcpConfig(s.id, isShared)
               return config ? [[name, config]] : []
             }
             // 기본 장비 '컴퓨터 조작'(맥 전용)
@@ -2663,6 +2671,10 @@ export class Office extends EventEmitter<{
     lines.push(this.isAutonomous(staffId) ? t('staff.ctx.autonomyGuide') : t('staff.ctx.askGuide'))
     return lines.join('\n')
   }
+
+  /** 공용 브라우저 로그인 사용 중 표시 — 그 직원의 세션이 닫히면 놓은 것으로 본다 (Playwright MCP는 세션의 자식 프로세스) */
+  private browserLock = createBrowserLock((id) => this.manager.isSessionOpen(id))
+  private browserBlocked = new Set<string>()
 
   /** 직원별 사무실 MCP 등록 (해고·종료 때 토큰을 폐기한다) */
   private officeMcp = new Map<string, LocalMcpHandle>()

@@ -64,16 +64,41 @@ export function browserProfileDir(staffId: string) {
   return path.join(app.getPath('userData'), 'browser', staffId)
 }
 
+/** 브라우저 프로필 폴더 — 기본은 직원별(browser/<staffId>/profile), 공용 로그인을 켜면 모두가 browser/_shared/profile 하나를 쓴다 */
+export function browserProfilePath(userData: string, staffId: string, isShared: boolean) {
+  return path.join(userData, 'browser', isShared ? '_shared' : staffId, 'profile')
+}
+
+/**
+ * 공용 프로필 사용 중 표시 (메모리에만). 크롬은 같은 프로필을 동시에 못 열어서 한 번에 한 직원만 붙인다.
+ * 사용 중 직원의 세션이 닫혀 있으면(isAlive=false) 놓은 것으로 보고 다음 직원이 넘겨받는다
+ */
+export function createBrowserLock(isAlive: (staffId: string) => boolean = () => true) {
+  let holder: string | null = null
+  return {
+    /** 잡았으면 true, 다른 직원이 쓰는 중이면 false */
+    claim(staffId: string): boolean {
+      if (holder && holder !== staffId && isAlive(holder)) return false
+      holder = staffId
+      return true
+    },
+    release(staffId: string) {
+      if (holder === staffId) holder = null
+    },
+    holder: () => holder,
+  }
+}
+
 /** 스크린샷이 저장되는 폴더 (보고에 이미지로 붙일 때 이 경로를 쓴다) */
 export function browserOutputDir(staffId: string) {
   return path.join(browserProfileDir(staffId), 'output')
 }
 
 /** 세션 mcpServers에 넣을 Playwright MCP 설정. 실행 환경이 없으면 null */
-export function browserMcpConfig(staffId: string): McpConfig | null {
+export function browserMcpConfig(staffId: string, isShared = false): McpConfig | null {
   const npx = findNpx()
   if (!npx) return null
-  const profile = path.join(browserProfileDir(staffId), 'profile')
+  const profile = browserProfilePath(app.getPath('userData'), staffId, isShared)
   const output = browserOutputDir(staffId)
   fs.mkdirSync(profile, { recursive: true })
   fs.mkdirSync(output, { recursive: true })

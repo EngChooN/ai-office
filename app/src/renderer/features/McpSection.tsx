@@ -9,6 +9,7 @@ import { BROWSER_EQUIPMENT } from '@shared/browserTools'
 import { COMPUTER_EQUIPMENT } from '@shared/computerTools'
 import type { CustomMcp } from '@shared/customMcp'
 import type { AiProvider, Equipment, EquipmentCatalog, EquipmentMcp, McpSourceKind } from '@shared/types'
+import { useOffice } from '@/store'
 import { McpAddDialog, type McpAddTab } from './McpAddDialog'
 
 // 장비 탭 › 연결 도구: 한 줄에 상태 점·이름·켜기 스위치. 출처·명령·이유·고치기/삭제는 줄을 펼쳐서 본다 + 새로 고침 + 직접 추가
@@ -48,6 +49,7 @@ export function McpSection({
   /** 직원의 공급자 — 연결할 수 없는 출처는 숨긴다 (Claude 직원: Codex 설정, Codex 직원: claude.ai 커넥터) */
   provider?: AiProvider
 }) {
+  const isSharedLogin = useOffice((s) => s.settings.sharedBrowserLogin === true)
   const [refresh, setRefresh] = useState<RefreshState>('idle')
   const [dialog, setDialog] = useState<{ tab: McpAddTab; editing: CustomMcp | null } | null>(null)
   const servers = (catalog?.mcpServers ?? []).filter((m) => (provider === 'codex' ? m.sourceKind !== 'claudeai' : m.sourceKind !== 'codex'))
@@ -129,6 +131,19 @@ export function McpSection({
       {refresh === 'failed' && <p className="text-status-waiting text-[11px]">{t('equipment.mcp.refreshFail')}</p>}
       {catalog && isEmpty && <p className="text-muted-foreground text-xs">{t('equipment.mcp.empty')}</p>}
 
+      {catalog && listed.some((m) => m.name === BROWSER_EQUIPMENT) && (
+        <div className="text-muted-foreground flex flex-col gap-1.5 rounded-md border px-2 py-2 text-[11px]">
+          <span>🌐 {t('equip.browser.sepWhy')}</span>
+          <span>{t('equip.browser.loginKept')}</span>
+          {!IS_MOBILE_SHELL && (
+            <label className="text-foreground flex items-center gap-2 pt-1 font-medium">
+              <Switch checked={isSharedLogin} onCheckedChange={(v) => void window.office.updateSettings({ sharedBrowserLogin: v })} aria-label={t('equip.browser.shared.label')} />
+              {t('equip.browser.shared.label')}
+            </label>
+          )}
+          {!IS_MOBILE_SHELL && <span>{t('equip.browser.shared.desc')}</span>}
+        </div>
+      )}
       {catalog && listed.length > 0 && <div className="divide-y rounded-md border">{listed.map((m) => rowOf(m))}</div>}
 
       {catalog && claudeai.length > 0 && (

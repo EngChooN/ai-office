@@ -76,6 +76,8 @@ export interface HiredHooks {
   failed(staffId: string, error: string): void
   /** 사무실 MCP 도구(팀 조회·위임·보드). 직원마다 같은 서버를 붙이고 권한은 도구 안에서 판단한다 */
   officeTools(staffId: string): RuntimeMcpServer
+  /** 공용 브라우저 로그인을 다른 직원이 쓰고 있어 이 직원에게는 브라우저를 못 붙였는가 */
+  browserBlocked?(staffId: string): boolean
   /** 세션 시작 시 덧붙이는 팀 맥락 */
   context(staffId: string): string
   /** 세션 시작 시 정하는 참고 문서: 프롬프트 안내와 결재 없이 읽을 경로 (둘이 어긋나지 않게 한 번에 받는다) */
@@ -318,6 +320,10 @@ class Worker {
     this.rt.close()
   }
 
+  get isSessionOpen() {
+    return this.rt.isOpen
+  }
+
   stop() {
     this.clearFirstResponseTimer()
     for (const resolve of this.pending.values()) resolve({ behavior: 'deny', message: t('staff.deny.fired'), interrupt: true })
@@ -340,7 +346,7 @@ class Worker {
     const refDocs = this.hooks.refDocs(s.id)
     const refDocPaths = new Set(refDocs.paths)
     const mcpServers = this.hooks.equippedMcp(s.id)
-    const browserGuide = mcpServers[BROWSER_EQUIPMENT] ? t('staff.browser.guide', { dir: browserOutputDir(s.id) }) : ''
+    const browserGuide = mcpServers[BROWSER_EQUIPMENT] ? t('staff.browser.guide', { dir: browserOutputDir(s.id) }) : this.hooks.browserBlocked?.(s.id) ? t('staff.browser.sharedBusy') : ''
     // 맥 권한이 빠진 채 누르면 클릭이 무시되고 시스템 설정만 열리니, 시작할 때 빠진 권한을 미리 알려 준다
     const computerNotice = mcpServers[COMPUTER_EQUIPMENT] ? computerPermissionNotice() : null
     const computerGuide = mcpServers[COMPUTER_EQUIPMENT] ? [t('staff.computer.guide'), computerNotice && t('staff.computer.noPermission', { notice: computerNotice })].filter(Boolean).join('\n') : ''
@@ -599,6 +605,10 @@ export class HiredStaffManager {
   remove(staffId: string) {
     this.workers.get(staffId)?.stop()
     this.workers.delete(staffId)
+  }
+
+  isSessionOpen(staffId: string) {
+    return this.workers.get(staffId)?.isSessionOpen ?? false
   }
 
   instruct(staffId: string, text: string, attachments: Attachment[] = [], fresh = false) {

@@ -13,7 +13,7 @@ import { BATCH_GUIDE, BATCH_ITEMS_MAX, BATCH_METHOD, CARD_STEPS_MAX, methodsOfKi
 import { EMPTY_SECRETARY, SECRETARY_ID, type AutoHandled, type DailyRecord, type EngineChangeResult, type LogEntry, type Manual, type OfficeSnapshot, type Payslip, type SecretaryCard, type SecretaryCompare, type SecretaryMessage, type SecretaryRunOptions, type SecretaryState, type Staff, type StaffActivity, type StaffQuestion } from '../shared/types'
 import * as db from './db'
 import { aiBackend, askOnce, type SecretaryEvent, type SecretaryRun } from './ai'
-import { defineTool, registerLocalMcp, type LocalMcpHandle } from './mcp/localMcp'
+import { defineTool, registerLocalMcp, whenLocalMcpReady, type LocalMcpHandle } from './mcp/localMcp'
 import type { Office } from './office'
 import type { OfficeHandlers } from './officeHandlers'
 import { awayAnswers, decideAway, mustHoldQuestion, RateWindow, SecretaryDesk, wrapDocument, type EditTarget } from './secretaryCore'
@@ -339,6 +339,11 @@ export class Secretary {
     // 지금 현황 요약을 미리 넣어 두면 "다들 뭐 해?" 같은 질문은 조회 없이 한 번에 답한다 (호출 수 = 토큰, QA)
     const status = wrapDocument('지금 사무실 (요약 — 이걸로 답할 수 있으면 다시 조회하지 않는다)', compactOverview(this.office.snapshot(), 'all'))
     // 질문마다 새 토큰 — 끝나면 폐기한다
+    // 앱을 켠 직후면 도구 서버가 뜰 때까지 기다린다 (못 뜨면 안내 문구로 끝낸다)
+    if (!(await whenLocalMcpReady())) {
+      this.add({ role: 'secretary', text: t('mcp.notReady'), isError: true })
+      return
+    }
     const toolsHandle = this.tools()
     const q = aiBackend().secretary({
       prompt: [status, context, `대표의 새 질문: ${text}`].filter(Boolean).join('\n\n'),

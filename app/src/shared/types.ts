@@ -801,6 +801,8 @@ export interface Settings {
   isStaffCaptureOn: boolean
   /** 비서가 웹 검색·웹 읽기로 최신 정보를 찾아 답한다 (Claude·GPT 비서 모두). 기본 켬 */
   isSecretaryWebOn: boolean
+  /** 모든 직원이 브라우저 로그인(프로필)을 하나로 같이 쓴다. 없으면 꺼짐 — 직원별 따로 */
+  sharedBrowserLogin?: boolean
   /** 토큰 절약 모드: 새로 고용하는 직원의 기본값만 Haiku + 기억 짧게 (Codex는 기억만). 기존 직원은 바꾸지 않는다. 없으면 끔 */
   tokenSaverMode?: boolean
 }

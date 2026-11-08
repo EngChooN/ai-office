@@ -130,6 +130,31 @@ export default {
     ja: 'このコンピューターに Node.js（無料のプログラム）がないため使えません。nodejs.org の「LTS」ボタンからインストールしてから開き直してください。',
     zh: '这台电脑没有安装 Node.js（免费程序），无法使用。请在 nodejs.org 点击“LTS”按钮安装后重新打开。',
   },
+  'staff.browser.sharedBusy': {
+    ko: '지금은 다른 직원이 공용 브라우저 로그인을 쓰는 중이라 브라우저를 쓸 수 없습니다. 브라우저가 필요하면 대표에게 "다른 직원이 공용 로그인을 쓰는 중이라 지금은 브라우저를 못 써요"라고 알리세요.',
+    en: 'Another staff member is using the shared browser login right now, so you cannot use the browser. If you need it, tell the owner: "Another staff member is using the shared login, so I cannot use the browser right now."',
+    ja: '今は別のスタッフが共有ブラウザログインを使用中のため、ブラウザは使えません。必要な場合は代表に「別のスタッフが共有ログインを使用中のため、今はブラウザを使えません」と伝えてください。',
+    zh: '目前其他员工正在使用共用浏览器登录，因此无法使用浏览器。如需使用，请告诉代表：“其他员工正在使用共用登录，现在无法使用浏览器。”',
+  },
+  'equip.browser.sepWhy': {
+    ko: '직원 브라우저는 내 크롬과 따로 써요. 직원이 내 로그인·비밀번호를 마음대로 쓰지 못하게 하려는 보안 때문이에요.',
+    en: 'The staff browser is kept separate from your own Chrome, so staff cannot freely use your logins and passwords. It is a security choice.',
+    ja: 'スタッフのブラウザはあなたの Chrome とは別です。スタッフがあなたのログインやパスワードを勝手に使えないようにするためのセキュリティです。',
+    zh: '员工浏览器与你自己的 Chrome 是分开的，这样员工就不能随意使用你的登录和密码，这是出于安全考虑。',
+  },
+  'equip.browser.loginKept': {
+    ko: '한 번 로그인하면 다음에도 로그인이 유지돼요.',
+    en: 'Sign in once and you stay signed in next time.',
+    ja: '一度ログインすれば、次回もログインが維持されます。',
+    zh: '登录一次后，下次仍会保持登录状态。',
+  },
+  'equip.browser.shared.label': { ko: '모든 직원이 같은 로그인 쓰기', en: 'Share one login across all staff', ja: '全スタッフで同じログインを使う', zh: '所有员工共用同一个登录' },
+  'equip.browser.shared.desc': {
+    ko: '켜면 한 직원이 로그인한 사이트를 다른 직원도 이어 써요. 한 번에 한 직원만 브라우저를 쓸 수 있고, 기존 직원별 로그인은 그대로 남아요.',
+    en: 'When on, a site one staff member signed in to is also signed in for the others. Only one staff member can use the browser at a time, and existing per-staff logins are kept.',
+    ja: 'オンにすると、あるスタッフがログインしたサイトを他のスタッフも続けて使えます。ブラウザは一度に1人しか使えず、これまでのスタッフ別ログインはそのまま残ります。',
+    zh: '开启后，一名员工登录过的网站，其他员工也可直接沿用。同一时间只有一名员工能使用浏览器，原有的各员工登录会保留。',
+  },
   'staff.browser.guide': {
     ko: '브라우저 도구(mcp__office-browser__*)로 너만 쓰는 크롬 창을 다룰 수 있다. 페이지 이동·클릭·입력은 대표 결재를 거친다. 스크린샷은 {dir} 폴더에 저장되니, 보고에 화면을 붙일 때는 그 파일 경로로 report_image를 쓴다.',
     en: 'You can drive your own Chrome window with the browser tools (mcp__office-browser__*). Navigating, clicking and typing go through the boss for approval. Screenshots are saved in {dir}; to attach one to a report, call report_image with that file path.',
