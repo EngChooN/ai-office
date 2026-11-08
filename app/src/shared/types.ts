@@ -38,6 +38,20 @@ export type ApprovalMode = 'ask' | 'acceptEdits'
 /** 대화 기억 길이: 대화가 얼마나 길어지면 새 대화로 넘길지 (짧게·보통·길게·최대=넘기지 않음) */
 export type MemoryLength = 'short' | 'normal' | 'long' | 'full'
 
+/** 자동결재·자율 진행 중에도 결재함에서 대표를 기다리는 이유 (결재 카드 문구는 이 값으로 고른다) */
+export type ApprovalWaitReason =
+  | 'risky' // 삭제·푸시·외부 전송 등 위험 명령
+  | 'command' // 스크립트 실행·목록에 없는 명령
+  | 'danger-path' // 셸 설정·CI·.claude 등 실행 위험 경로 쓰기
+  | 'capture' // 화면 캡처
+  | 'browser' // 브라우저 조작
+  | 'computer' // 컴퓨터 조작
+  | 'mcp' // 쓰기·전송 가능성이 있는 외부 도구
+  | 'url' // 값이 붙은 주소 요청
+  | 'question' // 비서가 답하지 못한 직원의 질문
+  | 'written-file' // 방금 고친 파일을 실행하는 명령
+  | 'build-script' // 방금 바꾼 package.json 스크립트·Makefile 타깃을 실행하는 명령
+
 export interface Approval {
   id: string
   staffId: string
@@ -56,6 +70,8 @@ export interface Approval {
   requestedBy?: string
   /** 앱을 껐다 켜며 되살린 결재 — 살아 있는 세션 요청이 아니라, 처리하면 새 지시로 이어 간다 */
   isRestored?: boolean
+  /** 자동결재·자율 진행 중인데도 기다리는 이유 (자동결재 밖의 평소 결재에는 없다) */
+  waitReason?: ApprovalWaitReason
 }
 
 export interface StaffQuestion {

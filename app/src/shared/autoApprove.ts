@@ -6,6 +6,7 @@ import { browserVerdict } from './browserTools.ts'
 import { computerVerdict } from './computerTools.ts'
 import { base, gitSubcommand, lexSegments, resolveCommand, type Segment } from './commandScan.ts'
 import { t, type TKey } from './i18n/index.ts'
+import type { ApprovalWaitReason } from './types.ts'
 
 export type AutoVerdict = 'allow' | 'wait'
 /** 요약에 쓰는 종류: 파일 수정·명령·그 밖 */
@@ -940,27 +941,33 @@ function isDangerousWritePath(rawPath: string, content: string) {
  * 대기 = 위험 명령 · 푸시·외부 전송 · 스크립트 실행 · 실행 위험 경로 쓰기 · 화면 캡처 · 브라우저 조작. 질문(AskUserQuestion)은 따로 답한다
  */
 export function autoApprove(tool: string, input: Record<string, unknown>): AutoVerdict {
+  return autoWaitReason(tool, input) ? 'wait' : 'allow'
+}
+
+/** 대표를 기다려야 하면 그 이유(코드값), 대신 승인해도 되면 null — autoApprove의 판정과 늘 같다 */
+export function autoWaitReason(tool: string, input: Record<string, unknown>): ApprovalWaitReason | null {
   if (tool === 'Bash') {
     const command = typeof input.command === 'string' ? input.command : ''
-    return commandWaits(command) ? 'wait' : 'allow'
+    if (!commandWaits(command)) return null
+    return command.trim() && findRiskyCommand(command) ? 'risky' : 'command'
   }
   if (tool === 'Write' || tool === 'Edit' || tool === 'MultiEdit' || tool === 'NotebookEdit') {
     const p = typeof input.file_path === 'string' ? input.file_path : typeof input.notebook_path === 'string' ? input.notebook_path : ''
     const content = typeof input.content === 'string' ? input.content : typeof input.new_string === 'string' ? input.new_string : ''
-    return isDangerousWritePath(p, content) ? 'wait' : 'allow'
+    return isDangerousWritePath(p, content) ? 'danger-path' : null
   }
-  if (tool === 'WebSearch') return 'allow'
+  if (tool === 'WebSearch') return null
   if (tool === 'WebFetch') {
     const url = typeof input.url === 'string' ? input.url : ''
-    return /[?#]/.test(url) ? 'wait' : 'allow'
+    return /[?#]/.test(url) ? 'url' : null
   }
-  if (tool === 'mcp__office__capture_screen') return 'wait'
+  if (tool === 'mcp__office__capture_screen') return 'capture'
   // 브라우저 장비: 조회만 허용, 이동·클릭·입력·업로드·제출은 대표를 기다린다 (결재 판정과 같은 기준 — browserTools)
   const browser = browserVerdict(tool, input)
-  if (browser) return browser
+  if (browser) return browser === 'wait' ? 'browser' : null
   // 컴퓨터 조작 장비: 화면 보기만 허용, 이동·클릭·입력·스크롤은 대표를 기다린다 (computerTools)
   const computer = computerVerdict(tool, input)
-  if (computer) return computer
+  if (computer) return computer === 'wait' ? 'computer' : null
   if (tool.startsWith('mcp__')) {
     const name = tool.slice(tool.indexOf('__', 5) + 2)
     // 이름의 모든 낱말을 본다 (camelCase·_·- 로 쪼갬). 쓰기 동사가 하나라도 섞이면 기다린다 (A5 — get_or_create 등)
@@ -969,10 +976,10 @@ export function autoApprove(tool: string, input: Record<string, unknown>): AutoV
       .split(/[^A-Za-z]+/)
       .filter(Boolean)
       .map((w) => w.toLowerCase())
-    if (words.some((w) => WRITE_VERBS.has(w))) return 'wait'
-    return words.some((w) => READ_VERBS.has(w)) ? 'allow' : 'wait'
+    if (words.some((w) => WRITE_VERBS.has(w))) return 'mcp'
+    return words.some((w) => READ_VERBS.has(w)) ? null : 'mcp'
   }
-  return 'allow'
+  return null
 }
 
 /** 자동으로 허용하는 MCP 읽기 동사 (나머지는 기다린다 — 대표 결정). `query`는 임의 SQL이 될 수 있어 뺀다 (A5) */

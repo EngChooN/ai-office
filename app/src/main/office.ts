@@ -72,7 +72,9 @@ import {
   type ChatSendMode,
   ChangeFile,
   WorkRevertInfo,
+  type ApprovalWaitReason,
 } from '../shared/types'
+import { emptyWritten, recordWrite, writtenWaitReason, type WrittenRecord } from '../shared/writtenFiles'
 import { buildStaffActivity } from '../shared/staffActivity'
 import { answersText } from '../shared/chatApproval'
 import { defaultProvider, ENGINE_NAME, engineUnsupportedMcp, fitEngineModel, isEngineMismatch } from '../shared/engineModel'
@@ -153,7 +155,7 @@ import { expireMissed, isReservationDue, reservationDay, settleMissedOnStart, sk
 import { codexBinaryPath } from './ai/codex'
 import { codexUsageAfterFailure, readCodexRateLimits, refreshCodexAssets, shareInFlight } from './ai/codexAssets'
 import { defineTool, registerLocalMcp, type LocalMcpHandle } from './mcp/localMcp'
-import { autoApprove, autoActionKey, autoKindOf, autoStep, autoSummaryText, autoWindow, AWAY_ANSWER, formatRemaining, planToConfig, type AutoApprovePlan } from '../shared/autoApprove'
+import { autoWaitReason, autoActionKey, autoKindOf, autoStep, autoSummaryText, autoWindow, AWAY_ANSWER, formatRemaining, planToConfig, type AutoApprovePlan } from '../shared/autoApprove'
 import { HELP_MAX_PER_TASK, HELP_TEXT_MAX, HelpLedger, mustUseHelp, helpTargetIds, inHelpContext, type HelpCtx } from '../shared/helpRequest'
 import { AUTONOMY_TEXT_ASK_MAX, autonomyVerdict, fallbackAnswers, isFullAutonomy, isTaskAutonomous, nextTextAskRetry, resolveAutonomy } from '../shared/autonomy'
 import { commitAll, folderState, pushAndPr, repoRoot, restoreFiles, snapshotTree, treeDiff, workBaseStillValid, workChanges } from './review'
@@ -343,10 +345,10 @@ export class Office extends EventEmitter<{
   private praise: Record<string, Praise> = {}
   /** 직원별 안 읽은 보고 개수 (대표가 직원 패널을 열면 지운다) */
   private unreadReports: UnreadReports = {}
-  /** 이번 자동결재 기간에 대신 승인해 준 쓰기의 파일 경로·이름 (그 파일을 실행하는 명령은 기다린다, H2) */
-  private autoWritten = new Set<string>()
-  /** 이번 기간에 package.json·Makefile을 자동 승인으로 썼는지 (이후 npm run·make 실행은 기다린다, A4) */
-  private autoWroteBuildFile = false
+  /** 직원·업무 카드별로 대신 승인해 준 쓰기 기록 (그 파일을 실행하거나 바뀐 스크립트·타깃을 돌리는 명령만 기다린다, H2·A4). 키는 직원id + 카드id */
+  private autoWritten = new Map<string, WrittenRecord>()
+  /** 자동결재가 기다리게 한 이유 — 곧 올라올 결재 카드가 가져간다 (직원별) */
+  private waitReasons = new Map<string, ApprovalWaitReason>()
   /**
    * 자동결재 중 직원 질문에 답하는 자리 — 비서 기획에서 이 함수를 바꿔 끼운다 (질문 → 답 표를 돌려준다).
    * 비서가 생기기 전까지는 모든 질문에 "대표 부재 중, 알아서 판단하고 진행"
@@ -378,6 +380,7 @@ export class Office extends EventEmitter<{
       log: (id, type, text) => this.log(id, type, text),
       requestApproval: (a) => this.addApproval(a),
       autoDecide: (id, toolName, input, summary, questions) => this.autoDecide(id, toolName, input, summary, questions),
+      takeWaitReason: (id) => this.takeWaitReason(id),
       takeOneShotAllow: (id, toolName, summary) => this.oneShot.take(id, toolName, summary),
       isAutonomous: (id) => this.isAutonomous(id),
       cancelApproval: (id) => this.dropApproval(id, '취소됨'),
@@ -713,6 +716,7 @@ export class Office extends EventEmitter<{
     const origins = this.origins.get(staffId) ?? []
     const queued = this.taskQueue.get(staffId) ?? []
     this.origins.set(staffId, [])
+    this.clearWritten(staffId)
     this.taskQueue.set(staffId, [])
     this.settleFailed(staffId, error, origins, queued)
   }
@@ -740,6 +744,7 @@ export class Office extends EventEmitter<{
     const origins = this.origins.get(staffId) ?? []
     if (!this.netParked.park(staffId, error, origins, this.taskQueue.get(staffId) ?? [])) return false
     this.origins.set(staffId, [])
+    this.clearWritten(staffId)
     this.taskQueue.set(staffId, [])
     this.patch(staffId, { status: 'netWait', activity: '' })
     this.log(staffId, 'status', tk('log.netParked'))
@@ -1067,6 +1072,7 @@ export class Office extends EventEmitter<{
     const origins = this.origins.get(staffId) ?? []
     // 같은 카드는 받은 업무에 한 번만 (피드백으로 다시 보낼 때도 카드는 하나)
     const isSameTask = origin.kind === 'task' && origins.some((o) => o.kind === 'task' && o.taskId === origin.taskId)
+    if (!isSameTask && origin.kind === 'task') this.clearWritten(staffId)
     if (!isSameTask) this.origins.set(staffId, [...origins, origin.text ? origin : { ...origin, text: summarizeInstruction(text) }])
     // 자율 진행이면 지시 끝에 머리말을 붙인다 — 지침(시스템 프롬프트)은 세션을 새로 열어야 바뀌므로 (끝에 붙여 가벼운 업무 판정은 그대로)
     if (!parseSlash(text) && this.isAutonomous(staffId)) text = `${text}\n\n${t('staff.msg.autonomous')}`
@@ -1101,6 +1107,7 @@ export class Office extends EventEmitter<{
     this.notifyRemoteChange('notify.remoteAutonomy')
     // 카드 없는 지시의 글 질문 재지시 횟수는 새 자율 지시마다 새로 센다
     this.textAskRetries.delete(staffId)
+    this.clearWritten(staffId)
     this.instructFromPanel(staffId, text, attachments, { kind: 'user', isAutonomous: true })
   }
 
@@ -1331,6 +1338,7 @@ export class Office extends EventEmitter<{
     const origins = this.origins.get(staffId) ?? []
     const queued = this.taskQueue.get(staffId) ?? []
     this.origins.set(staffId, [])
+    this.clearWritten(staffId)
     this.taskQueue.set(staffId, [])
     const taskIds = [...cardIdsOf(origins), ...queued.map((q) => q.taskId)]
     for (const id of taskIds) this.returnToTodo(id)
@@ -1848,6 +1856,7 @@ export class Office extends EventEmitter<{
     const rooms = this.roomsForOrigins(staffId, origins)
     const room = rooms[0]
     this.origins.set(staffId, keep)
+    this.clearWritten(staffId)
     const doneTask = origins.find((o) => o.kind === 'task')
     if (doneTask && doneTask.kind === 'task') this.lastDoneTask.set(staffId, doneTask.taskId)
     else this.lastDoneTask.delete(staffId)
@@ -2139,7 +2148,6 @@ export class Office extends EventEmitter<{
     if (step.event === 'start') {
       this.auto = { ...this.auto, wasActive: true, counts: { edit: 0, command: 0, other: 0, answered: 0, waited: 0 } }
       this.autoWritten.clear()
-      this.autoWroteBuildFile = false
       const endsAt = autoWindow(step.config, Date.now()).endsAt
       const until = endsAt ? new Date(endsAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : ''
       this.postChat('me', `🤖 자동결재를 시작해요${until ? ` (${until}까지, ${formatRemaining(endsAt! - Date.now())})` : ''}. 위험 명령·푸시·외부 전송은 기다렸다가 결재함에 남겨요.`)
@@ -2170,6 +2178,42 @@ export class Office extends EventEmitter<{
     this.saveAuto()
   }
 
+  /** 이 직원이 지금 맡은 업무 카드에 묶은 쓰기 기록 (카드가 없으면 카드 없는 지시 하나로 본다) */
+  private writtenKey(staffId: string) {
+    const task = (this.origins.get(staffId) ?? []).find((o) => o.kind === 'task')
+    return `${staffId}:${task && task.kind === 'task' ? task.taskId : ''}`
+  }
+
+  /** 업무 시작·완료·중단, 자율 진행 시작 때 이 직원의 쓰기 기록을 비운다 */
+  private clearWritten(staffId: string) {
+    for (const k of [...this.autoWritten.keys()]) if (k.startsWith(`${staffId}:`)) this.autoWritten.delete(k)
+    this.waitReasons.delete(staffId)
+  }
+
+  /** 결재 카드가 가져갈 '기다리는 이유' (한 번 가져가면 비운다) */
+  private takeWaitReason(staffId: string) {
+    const r = this.waitReasons.get(staffId)
+    this.waitReasons.delete(staffId)
+    return r
+  }
+
+  /** 쓰기 도구 입력으로 고친 뒤 파일 내용을 만든다 (알 수 없으면 null) */
+  private contentAfterWrite(toolName: string, input: Record<string, unknown>, before: string | null): string | null {
+    if (toolName === 'Write') return typeof input.content === 'string' ? input.content : null
+    if (before === null) return null
+    const apply = (text: string, e: { old_string?: unknown; new_string?: unknown; replace_all?: unknown }) => {
+      if (typeof e.old_string !== 'string' || typeof e.new_string !== 'string') return null
+      return e.replace_all ? text.split(e.old_string).join(e.new_string) : text.replace(e.old_string, () => e.new_string as string)
+    }
+    if (toolName === 'Edit') return apply(before, input)
+    if (toolName === 'MultiEdit' && Array.isArray(input.edits)) {
+      let cur: string | null = before
+      for (const e of input.edits as Record<string, unknown>[]) cur = cur === null ? null : apply(cur, e)
+      return cur
+    }
+    return null
+  }
+
   /**
    * 결재 요청을 대표 대신 판정한다 (hired.ts가 결재함에 올리기 전에 부른다). 자동결재 밖이거나 기다려야 하면 null → 평소처럼 결재함.
    * 질문은 answerWhileAway로 답을 만들어 돌려준다
@@ -2178,6 +2222,7 @@ export class Office extends EventEmitter<{
     // 다른 PC가 맡긴 일의 결재는 그 PC(A컴) 대표가 정한다 — 이 PC의 자동 승인·"항상 승인" 규칙·자동결재를 쓰지 않는다 (설계서 5-4)
     if (this.peerJobOf(staffId)) return null
     if (questions?.length) this.askedInTurn.add(staffId)
+    this.waitReasons.delete(staffId)
     // 대표가 전에 답한 같은 질문(최근 30일·엄격한 기준)이면 그 답을 따른다 — 애매하면 평소처럼 결재함
     const past = questions?.length ? this.answerFromPast(staffId, questions) : null
     if (past) return Promise.resolve({ answers: past })
@@ -2215,6 +2260,7 @@ export class Office extends EventEmitter<{
           this.auto.counts = { ...this.auto.counts, waited: this.auto.counts.waited + 1 }
           this.saveAutoSoon()
           this.log(staffId, 'approval', tk('log.autoWait', { took: tk('log.sec', { n: tookSec() }) }))
+          this.waitReasons.set(staffId, 'question')
           throw new Error('대표를 기다림')
         }
         const text = Object.entries(answers)
@@ -2228,32 +2274,41 @@ export class Office extends EventEmitter<{
       })
     }
     // 자동결재 중에 직원이 쓴 파일을 실행하는 명령은 기다린다 (H2 — 승인된 쓰기 + 실행으로 대기 규칙을 우회하지 못하게)
+    // 경로 전체가 같고 실제로 실행할 때만, package.json·Makefile은 바뀐 스크립트·타깃을 돌릴 때만 (A4)
     const command = toolName === 'Bash' && typeof input.command === 'string' ? input.command : ''
-    const runsWrittenFile = command !== '' && [...this.autoWritten].some((p) => p && command.includes(p))
-    // A4: package.json·Makefile 쓰기는 허용하되, 그 기간에 쓴 뒤 npm run·make 등으로 실행하면 기다린다 (스크립트에 푸시·배포를 심을 수 있어서)
-    const runsBuildFile = command !== '' && this.autoWroteBuildFile && /(^|[^\w.])(npm|pnpm|yarn|bun|npx|make|rake|gradle|mvn|\.\/gradlew|\.\/mvnw)(\s|$)/.test(command)
+    const written = this.autoWritten.get(this.writtenKey(staffId))
+    const writtenReason = command !== '' && written ? writtenWaitReason(written, command) : null
+    const runsWrittenFile = writtenReason !== null
     // 자율 진행: 기다려야 할 도구는 결재함에 올리지 않고 거부한다 — 직원은 보고의 "대표 확인 필요"에 남기고 나머지를 계속한다
-    if (isAuto && autonomyVerdict(toolName, input, runsWrittenFile || runsBuildFile) === 'deny') {
+    if (isAuto && autonomyVerdict(toolName, input, runsWrittenFile) === 'deny') {
       this.auto.counts = { ...this.auto.counts, waited: this.auto.counts.waited + 1 }
       record({ kind: 'skipped', toolName, summary, category: autoKindOf(toolName) })
       this.log(staffId, 'approval', tk('log.autonomousSkip', { tool: tk(autoActionKey(toolName)), summary }))
       return Promise.resolve({ deny: t('staff.deny.autonomous', { action: `${toolName} ${maskSecrets(summary)}`.slice(0, 300) }) })
     }
-    if (runsWrittenFile || runsBuildFile || autoApprove(toolName, input) === 'wait') {
+    const waitReason = writtenReason ?? autoWaitReason(toolName, input)
+    if (waitReason) {
+      this.waitReasons.set(staffId, waitReason)
       // 대기로 넘긴 건수 — 요약의 "기다리는 것 N건"
       this.auto.counts = { ...this.auto.counts, waited: this.auto.counts.waited + 1 }
       this.saveAutoSoon()
       return null
     }
-    // 자동 승인한 쓰기의 파일 경로·이름을 기억해 둔다 (위에서 실행 명령을 걸러내려고)
+    // 자동 승인한 쓰기의 파일 경로를 기억해 둔다 (위에서 실행 명령을 걸러내려고). 고치기 전 내용과 비교해 바뀐 스크립트·타깃만 남긴다
     if (autoKindOf(toolName) === 'edit') {
       const p = typeof input.file_path === 'string' ? input.file_path : typeof input.notebook_path === 'string' ? input.notebook_path : ''
       if (p) {
-        this.autoWritten.add(p)
-        const b = p.split('/').pop()
-        if (b) this.autoWritten.add(b)
-        // 빌드 설정 파일을 썼으면 기억 (이후 npm run·make 실행은 기다림, A4)
-        if (b === 'package.json' || b === 'Makefile' || b === 'makefile') this.autoWroteBuildFile = true
+        let before: string | null = null
+        try {
+          before = fs.readFileSync(p, 'utf8')
+        } catch {
+          /* 새 파일 */
+        }
+        const after = this.contentAfterWrite(toolName, input, before)
+        const key = this.writtenKey(staffId)
+        const rec = this.autoWritten.get(key) ?? emptyWritten()
+        recordWrite(rec, p, before, after, after !== null)
+        this.autoWritten.set(key, rec)
       }
     }
     const category = autoKindOf(toolName)

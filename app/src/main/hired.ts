@@ -1,5 +1,5 @@
 import path from 'node:path'
-import type { AiProvider, Approval, Attachment, Staff, StaffQuestion } from '../shared/types'
+import type { AiProvider, Approval, ApprovalWaitReason, Attachment, Staff, StaffQuestion } from '../shared/types'
 import { findRiskyCommand, isBashPolicyMark, isReadOnlyCommand, READ_ONLY_BASH, RISKY_BASH } from '../shared/bashPolicy'
 import { toQuestions } from './external'
 import { isRefDocRead } from '../shared/refDocs'
@@ -46,6 +46,8 @@ export interface HiredHooks {
   autoDecide(staffId: string, toolName: string, input: Record<string, unknown>, summary: string, questions?: StaffQuestion[]): Promise<{ answers?: Record<string, string>; deny?: string }> | null
   /** 복원 결재를 승인해 다시 실행하는 도구면 한 번만 결재 없이 통과 (같은 직원·도구·요약) */
   takeOneShotAllow(staffId: string, toolName: string, summary: string): boolean
+  /** 자동결재가 대표를 기다리게 한 이유 (이번 결재 카드에 붙인다) */
+  takeWaitReason(staffId: string): ApprovalWaitReason | undefined
   /** 지금 자율 진행 중인가 (위험 명령 금지를 강제로 켠다) */
   isAutonomous(staffId: string): boolean
   /** Claude 구독 사용률 알림 (값이 바뀔 때만 온다) */
@@ -407,6 +409,7 @@ class Worker {
       // 화면 언어가 바뀌어도 다시 번역되게 (컴퓨터 조작 요약만 — 나머지 요약은 입력 원문이라 번역할 게 없다)
       summaryI18n: (!questions && computerSummaryI18n(toolName, input)) || undefined,
       createdAt: Date.now(),
+      waitReason: this.hooks.takeWaitReason(this.staff.id),
       questions,
       // 결재 카드의 "앞으로 항상 승인" — 위험 명령·질문이면 붙지 않는다
       alwaysRule: questions ? undefined : (ruleDraftFor(toolName, input) ?? undefined),
