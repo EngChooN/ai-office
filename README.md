@@ -52,7 +52,7 @@ Free. You only need to be signed in to **Claude** or **GPT (ChatGPT)** on your c
 
 ## 🔗 Links
 
-[Website](https://engchoon.github.io/ai-office/) · [Report a problem / feedback](https://github.com/EngChooN/ai-office/issues/new) · [All releases](https://github.com/EngChooN/ai-office/releases/latest)
+[Website](https://engchoon.github.io/ai-office/) · [Report a problem / feedback](https://github.com/EngChooN/ai-office/issues/new) · [All releases](https://github.com/EngChooN/ai-office/releases/latest) · [Support us](https://fairy.hada.io/)
 
 ---
 

@@ -52,7 +52,7 @@
 
 ## 🔗 リンク
 
-[紹介サイト](https://engchoon.github.io/ai-office/) · [不具合・ご意見を送る](https://github.com/EngChooN/ai-office/issues/new) · [すべてのリリース](https://github.com/EngChooN/ai-office/releases/latest)
+[紹介サイト](https://engchoon.github.io/ai-office/) · [不具合・ご意見を送る](https://github.com/EngChooN/ai-office/issues/new) · [すべてのリリース](https://github.com/EngChooN/ai-office/releases/latest) · [支援する](https://fairy.hada.io/)
 
 ---
 
