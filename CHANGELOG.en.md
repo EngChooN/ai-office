@@ -7,6 +7,19 @@ Writing rules
 - Write from the user's point of view, describing "what you can now do." Do not use technical names (file paths, program or library names, English abbreviations). If one is truly needed, put it once in parentheses after a plain-language explanation.
 - Development details (how it was built, where files are) go in `SPEC.md` and `docs/changelog-dev.md`.
 
+## [1.1.1] - 2026-11-08
+
+### Bug fixes
+- Fixed the member status bar above chat rooms not being scrollable sideways when it overflowed. You can now swipe sideways or use the mouse wheel, and the previously hidden 'More' button is visible.
+- Fixed reports, outputs and the status bar for work assigned in lab and team chat rooms going to the main room. This includes sub-tasks and combined reports after a plan is approved, work resumed after answering a question or approval, and work handed over through task cards. They now stay in the room you asked in.
+- Work assigned in the main (group) room now stays in the main room, including main-room work given to staff on another PC.
+- If the team room you assigned work from is deleted, in-progress reports no longer disappear; they show in the staff member's own room or the main room.
+- When instructions from several rooms are handled together, the report is posted once in each room.
+- Fixed staff getting stuck forever on 'Checking the instruction'. With no response for 5 minutes, it now shows an error and cleans up.
+- Interrupting or stopping a staff member who is not responding now force-closes and restarts them. Queued instructions are no longer lost and are sent again.
+- Please note: a queued instruction that was partly processed just before a forced restart may repeat part of its work (reports are not duplicated).
+- Please note: this fix was checked with automated tests rather than by clicking through the real app screen.
+
 ## [1.1.0] - 2026-11-07
 
 ### New features
