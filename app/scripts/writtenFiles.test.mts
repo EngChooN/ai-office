@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { autoApprove, autoWaitReason, editNeedsAsk } from '../src/shared/autoApprove.ts'
 import { autonomyVerdict } from '../src/shared/autonomy.ts'
-import { changedMakeTargets, changedScripts, emptyWritten, recordWrite, writtenWaitReason } from '../src/shared/writtenFiles.ts'
+import { changedMakeTargets, changedScripts, emptyWritten, recordBashWrite, recordWrite, writtenWaitReason } from '../src/shared/writtenFiles.ts'
 
 const rec = (path: string, before: string | null = null, after: string | null = 'x') => {
   const r = emptyWritten()
@@ -204,4 +204,29 @@ test('acceptEdits 쓰기 → package.json 수정 → npm test 는 기다린다 (
   assert.equal(writtenWaitReason(r, 'npm run lint'), null)
   // 기록이 없으면(아무 파일도 안 고침) 그대로 통과
   assert.equal(writtenWaitReason(emptyWritten(), 'npm test'), null)
+})
+
+test('자동 허용된 Bash 쓰기 뒤에는 pnpm test·npm test 가 기다리고, 읽기 명령 뒤에는 통과한다', () => {
+  const writes = [
+    'echo "execSync(1)" > scripts/evil.test.mts',
+    'cat > scripts/evil.test.mts <<EOF\nx\nEOF',
+    'cp /tmp/e.mts scripts/evil.test.mts',
+    'mv /tmp/e.mts scripts/evil.test.mts',
+    "sed -i 's/a/b/' scripts/x.test.mts",
+    'npm pkg set scripts.test=x',
+    'echo x > package.json',
+    'echo x > src/a.ts',
+    'echo x | tee src/b.ts',
+  ]
+  for (const w of writes) {
+    const r = emptyWritten()
+    assert.equal(recordBashWrite(r, w), true, w)
+    for (const c of ['pnpm test', 'npm test']) assert.notEqual(writtenWaitReason(r, c), null, `${w} → ${c}`)
+  }
+  const reads = ['echo x', 'ls', 'git status', 'cat file', 'ls 2>&1', 'grep a b > /dev/null', 'pnpm test 2>&1 | tee run.log', 'pnpm test > /tmp/o.txt']
+  for (const w of reads) {
+    const r = emptyWritten()
+    recordBashWrite(r, w)
+    for (const c of ['pnpm test', 'npm test']) assert.equal(writtenWaitReason(r, c), null, `${w} → ${c}`)
+  }
 })

@@ -135,6 +135,63 @@ export function changedMakeTargets(before: string | null, after: string | null):
 
 const isMakefile = (name: string) => /^(gnumakefile|makefile)$/i.test(name)
 
+const REDIRECT_OUT = /^(?:\d*|&)(?:>>|>\||>&|>|&>>|&>)(.*)$/
+/** 파일을 쓰는 명령 (인자가 쓰기 대상) */
+const BASH_WRITERS = new Set(['tee', 'cp', 'mv', 'ln', 'install', 'sed', 'touch', 'truncate', 'dd', 'rsync', 'patch', 'tar', 'unzip', 'zip', 'xxd', 'sort', 'split', 'csplit', 'base64'])
+/** 마지막 인자만 쓰기 대상인 명령 */
+const LAST_ARG = new Set(['cp', 'mv', 'install', 'rsync'])
+
+/**
+ * Bash 명령이 파일을 쓰는지 본다 (리다이렉트 >·>>, tee·cp·mv·sed -i 등). 읽기 명령은 writes=false.
+ * targets는 뽑을 수 있었던 대상 경로 — 못 뽑아도 writes=true면 보수적으로 쓰기로 본다.
+ */
+export function bashWrites(command: string): { writes: boolean; targets: string[] } {
+  const targets: string[] = []
+  let writes = false
+  for (const seg of lexSegments(command)) {
+    const toks = seg.tokens.filter((t) => t !== '')
+    for (let k = 0; k < toks.length; k++) {
+      const m = REDIRECT_OUT.exec(toks[k])
+      if (!m) continue
+      const t = m[1] || toks[k + 1] || ''
+      if (/^(\d+|-|&\d*)$/.test(t) || t.startsWith('/dev/')) continue
+      writes = true
+      if (t && !/[$`*?]/.test(t)) targets.push(t)
+    }
+    const { cmd, args } = resolveCommand(seg)
+    if (!cmd) continue
+    const name = base(cmd)
+    const pos = args.filter((a) => !a.startsWith('-')).map((a) => a.replace(/^of=/, ''))
+    if (name === 'sed' && !args.some((a) => /^-[A-Za-z]*[iI]|^--in-place/.test(a))) continue // sed -i 만 쓰기
+    if (name === 'sort' && !args.some((a) => /^-[A-Za-z]*o|^--output/.test(a))) continue
+    if (name === 'base64' && !args.some((a) => /^-[A-Za-z]*o|^--output/.test(a))) continue
+    if ((name === 'tar' && !args.some((a) => /^-?[A-Za-z]*x|^--extract|^-[A-Za-z]*c|^--create/.test(a))) || (name === 'unzip' && args.some((a) => /^-[A-Za-z]*[lpvt]/.test(a)))) continue
+    if (name === 'npm' || name === 'pnpm' || name === 'yarn') {
+      if (pos[0] === 'pkg' && (pos[1] === 'set' || pos[1] === 'delete' || pos[1] === 'fix')) (writes = true), targets.push('package.json')
+      continue
+    }
+    if (name === 'git') {
+      if (pos[0] === 'apply' || pos[0] === 'am' || pos[0] === 'checkout' || pos[0] === 'restore' || pos[0] === 'stash') writes = true
+      continue
+    }
+    if (!BASH_WRITERS.has(name)) continue
+    writes = true
+    targets.push(...(LAST_ARG.has(name) ? pos.slice(-1) : pos).filter((a) => !/[$`*?]/.test(a)))
+  }
+  return { writes, targets }
+}
+
+/** 자동 허용된 Bash 쓰기를 기록한다 — 경로를 뽑으면 그 경로도, 항상 runnable을 켜 이후 스크립트·러너 실행을 기다리게 한다 */
+export function recordBashWrite(rec: WrittenRecord, command: string): boolean {
+  const { writes, targets } = bashWrites(command)
+  if (!writes) return false
+  for (const t of targets) recordWrite(rec, t, null, null, false)
+  // 로그·메모·임시 폴더로만 쓰는 명령(`pnpm test > out.log`, `| tee run.txt`)은 러너를 막지 않는다 — 대상을 다 알고 전부 그런 곳일 때만
+  const harmless = targets.length > 0 && targets.every((t) => /\.(log|txt|md|out)$/i.test(t) || /^\/tmp\//.test(t))
+  if (!harmless) rec.runnable = true
+  return true
+}
+
 /** 직원이 파일을 고쳤다고 기록한다. before·after는 고치기 전·후 내용 (알 수 없으면 null) */
 export function recordWrite(rec: WrittenRecord, filePath: string, before: string | null, after: string | null, afterKnown = true) {
   const p = normWrittenPath(filePath)

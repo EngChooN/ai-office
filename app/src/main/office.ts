@@ -74,7 +74,7 @@ import {
   WorkRevertInfo,
   type ApprovalWaitReason,
 } from '../shared/types'
-import { emptyWritten, recordWrite, writtenWaitReason, type WrittenRecord } from '../shared/writtenFiles'
+import { emptyWritten, recordBashWrite, recordWrite, writtenWaitReason, type WrittenRecord } from '../shared/writtenFiles'
 import { buildStaffActivity } from '../shared/staffActivity'
 import { answersText } from '../shared/chatApproval'
 import { defaultProvider, ENGINE_NAME, engineUnsupportedMcp, fitEngineModel, isEngineMismatch } from '../shared/engineModel'
@@ -2189,6 +2189,12 @@ export class Office extends EventEmitter<{
    * (수정은 자율 직원의 즉시 허용 쓰기도 포함. 자동결재가 나중에 켜져도 그전에 고친 파일을 실행하는 명령을 걸러내려고). 고치기 전 내용과 비교해 바뀐 스크립트·타깃만 남긴다
    */
   noteWrite(staffId: string, toolName: string, input: Record<string, unknown>) {
+    if (toolName === 'Bash' && typeof input.command === 'string') {
+      // 자동 허용된 Bash로 파일을 쓰면 (리다이렉트·tee·cp·mv·sed -i 등) 이후 스크립트·러너 실행을 기다리게 한다
+      const rec = this.autoWritten.get(this.writtenKey(staffId)) ?? emptyWritten()
+      if (recordBashWrite(rec, input.command)) this.autoWritten.set(this.writtenKey(staffId), rec)
+      return
+    }
     if (autoKindOf(toolName) !== 'edit') return
     const paths = [input.file_path, input.notebook_path, ...(Array.isArray(input.files) ? input.files : [])].filter((p): p is string => typeof p === 'string' && p !== '')
     const key = this.writtenKey(staffId)
