@@ -13,6 +13,9 @@ Writing rules
 - Earlier conversations no longer disappear from a staff member's work panel when the date changes. The panel shows the most recent records regardless of date, and scrolling all the way up loads earlier ones. A date divider like 'Fri, November 6' marks each new day, and 'This is the first record' appears when there is nothing older. The usage line at the top still shows today only.
 - The work panel stays smooth even with a very long history, because records outside the screen are not drawn. Staff on another PC and staff running outside the app show earlier records the same way.
 
+### Bug fixes
+- Fixed a scroll bar appearing in the queued message box above the chat input even when there was only one message.
+
 ## [1.1.3] - 2026-11-08
 
 ### Improvements
