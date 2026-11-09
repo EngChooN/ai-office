@@ -24,6 +24,7 @@ const { ClaudeRuntime } = await import('../src/main/ai/claude.ts')
 const db = await import('../src/main/db.ts')
 const { stallTiming } = await import('../src/main/hired.ts')
 const { startLocalMcp, stopLocalMcp } = await import('../src/main/mcp/localMcp.ts')
+const { BROWSER_EQUIPMENT } = await import('../src/shared/browserTools.ts')
 
 await startLocalMcp()
 after(() => {
@@ -121,7 +122,21 @@ const wait = (ms: number) => new Promise((r) => setTimeout(r, ms))
 type Priv = { browserLock: { claim(id: string): boolean; holder(): string | null }; browserBlocked: Set<string> }
 const priv = () => office as unknown as Priv
 
-test('락을 쥔 직원의 턴이 끝나면 락을 놓고 세션을 닫아, 다른 직원이 잡을 수 있다', async () => {
+test('기다리는 직원이 없으면 락을 쥔 직원의 턴이 끝나도 락과 세션을 그대로 둔다 (끝날 때마다 창이 닫히지 않게)', async () => {
+  const team = office.createTeam('프론트', '#888')
+  const a = hire('가직원', team.id)
+  await settle()
+  office.instruct(a, '로그인 해 주세요')
+  rt(a).init()
+  assert.equal(priv().browserLock.claim(a), true)
+  const before = rt(a).closes
+  rt(a).result('끝')
+  await settle()
+  assert.equal(priv().browserLock.holder(), a)
+  assert.equal(rt(a).closes, before)
+})
+
+test('다른 직원이 막혀 기다리면 락을 쥔 직원의 턴이 끝날 때 락을 놓고 세션을 닫는다', async () => {
   const team = office.createTeam('프론트', '#888')
   const a = hire('가직원', team.id)
   const b = hire('나직원', team.id)
@@ -129,12 +144,34 @@ test('락을 쥔 직원의 턴이 끝나면 락을 놓고 세션을 닫아, 다�
   office.instruct(a, '로그인 해 주세요')
   rt(a).init()
   assert.equal(priv().browserLock.claim(a), true)
-  assert.equal(priv().browserLock.claim(b), false)
+  priv().browserBlocked.add(b)
   const before = rt(a).closes
   rt(a).result('끝')
   await settle()
   assert.equal(priv().browserLock.holder(), null)
   assert.ok(rt(a).closes > before, '락을 쥐었던 직원의 세션을 닫았다')
+  assert.equal(priv().browserLock.claim(b), true)
+})
+
+test('락을 쥔 직원이 쉬는 중에 다른 직원이 막히면 쥔 직원의 세션을 바로 닫아, 다음 지시 때 막힌 직원이 받는다', async () => {
+  office.updateSettings({ sharedBrowserLogin: true })
+  const team = office.createTeam('프론트', '#888')
+  const a = hire('가직원', team.id)
+  const b = hire('나직원', team.id)
+  await settle()
+  office.instruct(a, '로그인 해 주세요')
+  rt(a).init()
+  assert.equal(priv().browserLock.claim(a), true)
+  rt(a).result('끝')
+  await settle()
+  assert.equal(priv().browserLock.holder(), a, '쉬는 동안에도 락은 쥐고 있다')
+  office.setEquipment(b, { ...staff(b).equipment, mcpServers: [BROWSER_EQUIPMENT] })
+  await settle()
+  const before = rt(a).closes
+  office.instruct(b, '사이트 확인')
+  await settle()
+  assert.equal(priv().browserBlocked.has(b), true, '이번 턴은 브라우저 없이 연다')
+  assert.ok(rt(a).closes > before, '쉬던 직원의 세션을 닫았다')
   assert.equal(priv().browserLock.claim(b), true)
 })
 

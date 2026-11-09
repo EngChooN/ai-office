@@ -423,6 +423,9 @@ export class Office extends EventEmitter<{
               this.browserBlocked.delete(id)
               if (isShared && !this.browserLock.claim(id)) {
                 this.browserBlocked.add(id)
+                // 쥔 직원은 일이 끝나도 락을 들고 있으니, 쉬는 중이면 지금 닫고 일하는 중이면 끝날 때 닫는다 (다음 지시 때 이 직원이 받는다)
+                const holder = this.browserLock.holder()
+                if (holder) this.manager.restart(holder)
                 return []
               }
               const config = browserMcpConfig(s.id, isShared)
