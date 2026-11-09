@@ -1884,6 +1884,8 @@ export class Office extends EventEmitter<{
     const s = this.hired.get(staffId)
     if (!s) return
     const isAutoCheckTurn = this.autoChecked.delete(staffId)
+    // 1회 자동 허용은 승인 뒤 다시 실행하는 그 일 안에서만 (기다리는 지시가 남았으면 그 일이 아직 안 돌았을 수 있어 둔다)
+    if (!pending) this.oneShot.revoke(staffId)
     this.netParked.succeeded(staffId) // 이어 간 일이 정상으로 끝났으면 이어 가기 횟수를 비운다
     // 일하는 중에 받아 아직 답하지 않은 지시는 다음 결과 몫으로 남긴다 (그 답이 지시가 온 방에 올라가게)
     const { done: origins, keep } = splitFinished(this.origins.get(staffId) ?? [], pending)
@@ -2039,7 +2041,7 @@ export class Office extends EventEmitter<{
     if (!stored.length) return
     const { restore, expired, gone } = splitRestorable(stored, Date.now(), (id) => this.hired.has(id))
     for (const p of [...expired, ...gone]) {
-      if (this.hired.has(p.staffId)) this.log(p.staffId, 'approval', `복원 안 함(7일 지남): ${p.toolName} ${p.summary}`.slice(0, 300))
+      if (this.hired.has(p.staffId)) this.log(p.staffId, 'approval', tk('log.notRestoredExpired', { tool: p.toolName, summary: p.summary.slice(0, 280) }))
       else console.error('[office] 직원이 없어 결재를 복원하지 않음', p.id)
     }
     this.pending = restore

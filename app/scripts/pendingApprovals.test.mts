@@ -63,6 +63,15 @@ test('1회 자동 허용은 한 번만 통한다', () => {
   assert.equal(g.take('s1', 'Bash', 'pnpm build', NOW + 2), false)
 })
 
+test('1회 자동 허용은 직원의 일이 끝나 거두면 쓸 수 없다', () => {
+  const g = new OneShotAllow()
+  g.grant('s1', 'Bash', 'ls', NOW)
+  g.grant('s2', 'Bash', 'ls', NOW)
+  g.revoke('s1')
+  assert.equal(g.take('s1', 'Bash', 'ls', NOW + 1), false)
+  assert.equal(g.take('s2', 'Bash', 'ls', NOW + 1), true)
+})
+
 test('1회 자동 허용은 유효 시간이 지나면 쓸 수 없다', () => {
   const g = new OneShotAllow()
   g.grant('s1', 'Bash', 'ls', NOW)

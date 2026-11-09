@@ -61,6 +61,7 @@ export default {
   'log.pastDecision': { ko: '📚 지난 결정으로 자동 답함 ({name} 님이 받은 결정): {text}', en: '📚 Answered from a past decision (given to {name}): {text}', ja: '📚 過去の決定で自動回答（{name} さんが受けた決定）: {text}', zh: '📚 已按以往决定自动回答（{name} 曾收到的决定）: {text}' },
   'log.autoWait': { ko: '🤖 자동결재: 이 질문은 대표님 답을 기다려요 ({took} 만에 판정)', en: '🤖 Auto-approve: this question waits for your answer (decided in {took})', ja: '🤖 自動承認: この質問は代表の回答を待ちます（{took}で判定）', zh: '🤖 自动审批：此问题等待你的回答（{took} 内判定）' },
   'log.autoAnswer': { ko: '🤖 자동결재 답변 ({took}): {text}', en: '🤖 Auto-approve answer ({took}): {text}', ja: '🤖 自動承認の回答（{took}）: {text}', zh: '🤖 自动审批回答（{took}）: {text}' },
+  'log.notRestoredExpired': { ko: '복원 안 함(7일 지남): {tool} {summary}', en: 'Not restored (over 7 days old): {tool} {summary}', ja: '復元しません(7日経過): {tool} {summary}', zh: '未恢复(已超过7天): {tool} {summary}' },
   'log.autoApprove': { ko: '🤖 자동결재 승인: {tool} {summary}', en: '🤖 Auto-approved: {tool} {summary}', ja: '🤖 自動承認: {tool} {summary}', zh: '🤖 自动批准: {tool} {summary}' },
   'log.help': { ko: '{from} → {name}: {text} (도움 요청)', en: '{from} → {name}: {text} (help request)', ja: '{from} → {name}: {text}（助けの依頼）', zh: '{from} → {name}: {text}（求助）' },
   'log.helpNotify': { ko: '도움 요청: {from} → {name}', en: 'Help request: {from} → {name}', ja: '助けの依頼: {from} → {name}', zh: '求助: {from} → {name}' },

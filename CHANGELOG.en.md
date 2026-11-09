@@ -12,8 +12,10 @@ Writing rules
 ### Improvements
 - Earlier conversations no longer disappear from a staff member's work panel when the date changes. The panel shows the most recent records regardless of date, and scrolling all the way up loads earlier ones. A date divider like 'Fri, November 6' marks each new day, and 'This is the first record' appears when there is nothing older. The usage line at the top still shows today only.
 - The work panel stays smooth even with a very long history, because records outside the screen are not drawn. Staff on another PC and staff running outside the app show earlier records the same way.
+- When you approve an approval that was restored after restarting the app, the same approval is skipped once while that work is redone. That skip now ends as soon as the work finishes, so the same action in other work by that staff member asks for approval again.
 
 ### Bug fixes
+- Fixed log entries for old approvals that were not restored showing in Korean on English, Japanese, and Chinese screens.
 - Fixed a scroll bar appearing in the queued message box above the chat input even when there was only one message.
 - Fixed your chat bubble overflowing off the left edge (hiding what you wrote) when replying to a long message. The quoted line is now shortened to fit the bubble.
 

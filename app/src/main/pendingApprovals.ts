@@ -5,7 +5,7 @@ import type { Approval, StaffQuestion } from '../shared/types'
 
 /** 복원한 지 이 기간이 지난 결재는 되살리지 않는다 */
 export const PENDING_APPROVAL_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000
-/** 복원 결재를 승인했을 때 다시 실행하며 한 번 자동 허용하는 유효 시간 */
+/** 복원 결재를 승인했을 때 다시 실행하며 한 번 자동 허용하는 유효 시간 (그 전에 직원의 일이 끝나면 바로 거둔다) */
 export const ONE_SHOT_ALLOW_TTL_MS = 10 * 60 * 1000
 
 export interface PendingApproval {
@@ -18,8 +18,6 @@ export interface PendingApproval {
   createdAt: number
   /** 연결된 업무 카드 */
   taskId: string | null
-  /** 글 질문 카드(text:…)인가 — 도구 결재·AskUserQuestion과 구분 */
-  isText?: boolean
 }
 
 /** 저장할 수 있는 결재인가: 다른 PC 중계(PeerChanges)·외부 직원 질문은 저장하지 않는다 */
@@ -35,7 +33,6 @@ export function toPending(a: Approval, taskId: string | null): PendingApproval {
     ...(a.questions ? { questions: a.questions } : {}),
     createdAt: a.createdAt,
     taskId,
-    ...(a.id.startsWith('text:') ? { isText: true } : {}),
   }
 }
 
@@ -82,6 +79,11 @@ export class OneShotAllow {
     if (i < 0) return false
     this.grants.splice(i, 1)
     return true
+  }
+
+  /** 그 직원의 남은 허용을 모두 버린다 — 다시 실행하는 일이 끝나면 다른 일에서 같은 호출이 결재 없이 통과하지 않게 */
+  revoke(staffId: string) {
+    this.grants = this.grants.filter((g) => g.staffId !== staffId)
   }
 }
 
