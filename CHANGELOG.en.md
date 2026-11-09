@@ -7,7 +7,8 @@ Writing rules
 - Write from the user's point of view, describing "what you can now do." Do not use technical names (file paths, program or library names, English abbreviations). If one is truly needed, put it once in parentheses after a plain-language explanation.
 - Development details (how it was built, where files are) go in `SPEC.md` and `docs/changelog-dev.md`.
 
-## [미정] (installer not built)
+## [1.1.4] - 2026-11-09
+- Device differences: all changes are in the PC app. The phone app keeps the same version number with no code changes and uses the new screens sent by the PC.
 
 ### Improvements
 - Earlier conversations no longer disappear from a staff member's work panel when the date changes. The panel shows the most recent records regardless of date, and scrolling all the way up loads earlier ones. A date divider like 'Fri, November 6' marks each new day, and 'This is the first record' appears when there is nothing older. The usage line at the top still shows today only.
@@ -15,6 +16,7 @@ Writing rules
 - When you approve an approval that was restored after restarting the app, the same approval is skipped once while that work is redone. That skip now ends as soon as the work finishes, so the same action in other work by that staff member asks for approval again.
 
 ### Bug fixes
+- Fixed the sidebar 'Support us' button and the website's support link opening a different page instead of the AI Office support page.
 - Fixed log entries for old approvals that were not restored showing in Korean on English, Japanese, and Chinese screens.
 - Fixed a scroll bar appearing in the queued message box above the chat input even when there was only one message.
 - Fixed your chat bubble overflowing off the left edge (hiding what you wrote) when replying to a long message. The quoted line is now shortened to fit the bubble.
