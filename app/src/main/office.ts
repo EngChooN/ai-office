@@ -36,6 +36,7 @@ import {
   type AutoHandled,
   type ChatMessage,
   type DailyRecord,
+  type RecordPage,
   type HireInput,
   type LogEntry,
   type LogType,
@@ -76,6 +77,7 @@ import {
 } from '../shared/types'
 import { recordBashWrite, recordWrite, WrittenStore, writtenWaitReason } from '../shared/writtenFiles'
 import { buildStaffActivity } from '../shared/staffActivity'
+import { clampRecordLimit, pageLogs, RECORD_PAGE, RECORD_RECENT } from '../shared/recordLogs'
 import { answersText } from '../shared/chatApproval'
 import { defaultProvider, ENGINE_NAME, engineUnsupportedMcp, fitEngineModel, isEngineMismatch } from '../shared/engineModel'
 import { hireDefaults } from '../shared/tokenSaving.ts'
@@ -1850,16 +1852,31 @@ export class Office extends EventEmitter<{
     return buildStaffActivity(this.liveStaff(s), db.logsSince(staffId, now - 24 * 3_600_000), queue, now)
   }
 
+  /** 직원 기록: 날짜와 상관없이 최근 RECORD_RECENT개 + 오늘 사용량 (사용량은 오늘 0시부터) */
   getRecord(staffId: string): DailyRecord {
     const since = startOfDay(new Date())
     const hired = this.hired.get(staffId)
-    if (hired) return { staffId, logs: db.logsSince(staffId, since), ...db.usageSince(staffId, since) }
+    if (hired) return { staffId, ...db.logsPage(staffId, RECORD_RECENT), ...db.usageSince(staffId, since) }
     // 다른 PC 직원: 이 PC에서 보낸 지시와 돌아온 보고만 기록에 있다 (사용량은 그 PC에서 센다)
-    if (this.peer?.isRemoteStaff(staffId)) return { staffId, logs: db.logsSince(staffId, since), costUsd: 0, tokensIn: 0, tokensOut: 0 }
+    if (this.peer?.isRemoteStaff(staffId)) return { staffId, ...db.logsPage(staffId, RECORD_RECENT), costUsd: 0, tokensIn: 0, tokensOut: 0 }
+    const ext = this.readExternalRecord(staffId, since)
+    if (!ext) return { staffId, logs: [], hasMore: false, costUsd: 0, tokensIn: 0, tokensOut: 0 }
+    return { staffId, costUsd: 0, tokensIn: ext.tokensIn, tokensOut: ext.tokensOut, ...pageLogs(ext.logs, RECORD_RECENT) }
+  }
+
+  /** 업무 패널에서 위로 올릴 때: beforeId보다 앞선 기록 limit개 */
+  getRecordBefore(staffId: string, beforeId: number, limit?: number): RecordPage {
+    const n = clampRecordLimit(limit, RECORD_PAGE)
+    if (this.hired.has(staffId) || this.peer?.isRemoteStaff(staffId)) return db.logsPage(staffId, n, beforeId)
+    const ext = this.readExternalRecord(staffId, startOfDay(new Date()))
+    return ext ? pageLogs(ext.logs, n, beforeId) : { logs: [], hasMore: false }
+  }
+
+  /** 외부 직원 세션 기록 전체(파일 처음부터)와 since부터 쓴 토큰. Codex는 ~/.codex/sessions, Claude는 ~/.claude/projects */
+  private readExternalRecord(staffId: string, since: number) {
     const ext = this.external.find((s) => s.id === staffId)
-    if (!ext?.sessionId) return { staffId, logs: [], costUsd: 0, tokensIn: 0, tokensOut: 0 }
-    // Codex 세션은 ~/.codex/sessions, Claude 세션은 ~/.claude/projects 기록에서 읽는다
-    return { staffId, costUsd: 0, ...(ext.provider === 'codex' ? readCodexExternalDay(staffId, ext.sessionId, since) : readExternalDay(staffId, ext.cwd, ext.sessionId, since)) }
+    if (!ext?.sessionId) return null
+    return ext.provider === 'codex' ? readCodexExternalDay(staffId, ext.sessionId, since, undefined, 0) : readExternalDay(staffId, ext.cwd, ext.sessionId, since, 0)
   }
 
   private onFinished(staffId: string, summary: string, backgroundTasks: string[] = [], pending = 0) {

@@ -7,6 +7,12 @@ Writing rules
 - Write from the user's point of view, describing "what you can now do." Do not use technical names (file paths, program or library names, English abbreviations). If one is truly needed, put it once in parentheses after a plain-language explanation.
 - Development details (how it was built, where files are) go in `SPEC.md` and `docs/changelog-dev.md`.
 
+## [미정] (installer not built)
+
+### Improvements
+- Earlier conversations no longer disappear from a staff member's work panel when the date changes. The panel shows the most recent records regardless of date, and scrolling all the way up loads earlier ones. A date divider like 'Fri, November 6' marks each new day, and 'This is the first record' appears when there is nothing older. The usage line at the top still shows today only.
+- The work panel stays smooth even with a very long history, because records outside the screen are not drawn. Staff on another PC and staff running outside the app show earlier records the same way.
+
 ## [1.1.3] - 2026-11-08
 
 ### Improvements

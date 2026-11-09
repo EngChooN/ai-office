@@ -104,6 +104,7 @@ export const V2_METHODS: Record<OfficeMethod, MethodSpec> = {
   changeEngine: R('s s'),
   decide: R('s b'),
   getRecord: R('s'),
+  getRecordBefore: R('s n n?'),
   listAgentTemplates: S('s'),
   pickFolder: P('enter_path'),
   hooksStatus: R(),

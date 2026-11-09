@@ -186,7 +186,8 @@ OfficeApi는 **메서드 84개 + 값 1개(`platform`) + 이벤트 5개**다(구�
 | 13 | `interrupt` | R | 첨부 인자 | |
 | 14 | `resumeInTerminal` | P | | `open_on_pc` |
 | 15 | `decide` | R | | 판정 409 |
-| 16 | `getRecord` | R | | |
+| 16 | `getRecord` | R | | 날짜와 상관없이 최근 기록 300개(id 오름차순) + 오늘 사용량. 1.1.4 예정부터 `hasMore`(더 이전 기록 있음)를 함께 보낸다 |
+| 16-1 | `getRecordBefore` | R | | 1.1.4 예정: `(staffId, beforeId, limit?)` → `{ logs, hasMore }` — beforeId보다 앞선 기록 limit개(기본 200, 최대 500). 업무 패널에서 위로 올릴 때. 예전 PC는 404 |
 | 17 | `listAgentTemplates` | S | | `cwd` 폴더를 읽는다 |
 | 18 | `pickFolder` | P | | `enter_path` |
 | 19 | `hooksStatus` | R | | |

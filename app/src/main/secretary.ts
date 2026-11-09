@@ -416,7 +416,7 @@ export class Secretary {
     const snap = () => this.office.snapshot()
     const staffName = (id: string) => snap().staff.find((x) => x.id === id)?.name ?? '퇴사자'
     if (method === 'snapshot') return compactOverview(result as OfficeSnapshot)
-    if (method === 'getRecord') return compactLogs((result as DailyRecord).logs, 30).join('\n') || '오늘 기록이 없어요.'
+    if (method === 'getRecord') return compactLogs((result as DailyRecord).logs, 30).join('\n') || '기록이 없어요.'
     if (method === 'staffActivity') return compactStaffActivity(result as StaffActivity, Date.now())
     if (method === 'timeline') {
       const logs = result as LogEntry[]
@@ -446,7 +446,7 @@ export class Secretary {
           { section: z.enum(['all', 'people', 'approvals', 'tasks', 'org', 'settings', 'schedules']).optional() },
           async ({ section }) => doc(`현황: ${section ?? 'all'}`, compactOverview(this.office.snapshot(), section ?? 'all')),
         ),
-        defineTool('staff_detail', '직원 한 명 자세히: 업무 지침 원문(점검·첨삭용)·작업 폴더·결재 방식·장비(연결 도구·스킬·예산)·참고 문서·결재 대기·오늘 기록.', { staffId: z.string() }, async ({ staffId }) => {
+        defineTool('staff_detail', '직원 한 명 자세히: 업무 지침 원문(점검·첨삭용)·작업 폴더·결재 방식·장비(연결 도구·스킬·예산)·참고 문서·결재 대기·최근 기록.', { staffId: z.string() }, async ({ staffId }) => {
           const snap = this.office.snapshot()
           const record = snap.staff.some((x) => x.id === staffId && x.kind === 'hired') ? this.office.getRecord(staffId) : null
           return doc('직원', compactStaffDetail(snap, staffId, record))

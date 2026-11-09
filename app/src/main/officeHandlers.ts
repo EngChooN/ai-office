@@ -106,6 +106,7 @@ export function createOfficeHandlers(office: Office, remoteApi: () => RemoteServ
     changeEngine: (id: string, provider: Parameters<Office['changeEngine']>[1]) => office.changeEngine(id, provider),
     decide: (approvalId: string, allow: boolean) => office.decide(approvalId, allow),
     getRecord: (id: string) => office.getRecord(id),
+    getRecordBefore: (id: string, beforeId: number, limit?: number) => office.getRecordBefore(id, beforeId, limit),
     listAgentTemplates: (cwd: string) => listAgentTemplates(cwd),
     pickFolder: async () => {
       const r = await dialog.showOpenDialog({ properties: ['openDirectory'] })

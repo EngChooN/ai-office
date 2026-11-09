@@ -922,12 +922,22 @@ export interface AgentTemplate {
   source: string
 }
 
+/** 직원 기록: 날짜와 상관없이 최근 기록(logs)과 오늘 사용량(costUsd·tokens)은 따로 센다 */
 export interface DailyRecord {
   staffId: string
+  /** 최근 기록 (id 오름차순, 날짜와 상관없이 최근 RECORD_RECENT개) */
   logs: LogEntry[]
+  /** logs보다 앞선 기록이 더 있음 (getRecordBefore로 이어 불러온다). 예전 PC는 보내지 않는다 */
+  hasMore?: boolean
   costUsd: number
   tokensIn: number
   tokensOut: number
+}
+
+/** 이전 기록 한 묶음 (id 오름차순) */
+export interface RecordPage {
+  logs: LogEntry[]
+  hasMore: boolean
 }
 
 export interface PayslipRow {
@@ -1128,6 +1138,8 @@ export interface OfficeApi {
   changeEngine(staffId: string, provider: AiProvider): Promise<EngineChangeResult>
   decide(approvalId: string, allow: boolean): Promise<void>
   getRecord(staffId: string): Promise<DailyRecord>
+  /** beforeId보다 앞선 기록 limit개 (기본 RECORD_PAGE) — 업무 패널에서 위로 올릴 때 */
+  getRecordBefore(staffId: string, beforeId: number, limit?: number): Promise<RecordPage>
   listAgentTemplates(cwd: string): Promise<AgentTemplate[]>
   pickFolder(): Promise<string | null>
   hooksStatus(): Promise<HooksStatus>

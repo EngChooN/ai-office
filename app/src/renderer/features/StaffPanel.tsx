@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
+import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { ArrowUpIcon, CheckIcon, ChevronDownIcon, ChevronUpIcon, CircleStopIcon, DownloadIcon, SendIcon, SquareTerminalIcon, UserMinusIcon, XIcon, ZapIcon } from 'lucide-react'
 import { NativeSelect } from '@/components/ui/select'
 import { AttachButton, AttachmentView, DraftAttachments, useDraftAttachments } from '@/components/attachments'
@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils'
 import { useShallow } from 'zustand/react/shallow'
 import { handleComposerKey, NEWLINE_HINT, SEND_HINT, STOP_HINT } from '@/lib/composerKeys'
 import { useOffice, useWorkMode } from '@/store'
-import { newStaffApprovalMode, ROLE_PRESETS, type AiProvider, type ApprovalMode, type DailyRecord, type LogEntry, type LogType, type ModelChoice, type Staff } from '@shared/types'
+import { newStaffApprovalMode, ROLE_PRESETS, type AiProvider, type ApprovalMode, type LogEntry, type LogType, type ModelChoice, type Staff } from '@shared/types'
 import { ENGINE_NAME } from '@shared/engineModel'
 import { ApprovalSplitHandle, useApprovalSplit } from './ApprovalSplit'
 import { AvatarEditor } from './AvatarEditor'
@@ -38,8 +38,9 @@ import { PcOnlyState } from '@/components/pc-only-state'
 import { ChangesetCard } from './ChangesetCard'
 import { ApprovalStatusChips } from './AutoApprove'
 import { WaitReasonLine } from './WaitReasonLine'
+import { useStaffRecord, type OlderState } from './useStaffRecord'
+import { dayKey, dayStarts } from '@shared/recordLogs'
 
-const EXTERNAL_REFRESH_MS = 5000
 /** Codex 프로그램 설치 안내 (OpenAI 공식 문서) */
 const CODEX_INSTALL_URL = 'https://developers.openai.com/codex/cli'
 const LOG_LABEL: Record<LogType, TKey> = {
@@ -212,9 +213,10 @@ export function StaffPanel() {
 const logKey = (l: LogEntry) => `${l.id}-${l.ts}`
 
 // 지시를 입력하는 동안 기록 줄이 다시 그려지지 않도록 한 줄씩 메모한다
+// 긴 기록: 화면 밖 줄은 그리기·배치를 건너뛴다(content-visibility). 높이는 한 번 그려진 값을 기억하고 처음엔 두 줄쯤으로 잡는다
 const LogRow = memo(function LogRow({ entry: l }: { entry: LogEntry }) {
   return (
-    <div className="flex gap-2">
+    <div className="flex gap-2 [contain-intrinsic-size:auto_2.5em] [content-visibility:auto]">
       <span className="text-muted-foreground w-[3.4em] shrink-0 tabular-nums">
         {fmtDate(l.ts, {
           hour: '2-digit',
@@ -231,6 +233,39 @@ const LogRow = memo(function LogRow({ entry: l }: { entry: LogEntry }) {
     </div>
   )
 })
+
+const DAY_LABEL: Intl.DateTimeFormatOptions = { month: 'long', day: 'numeric', weekday: 'short' }
+
+/** 날짜가 바뀌는 자리의 구분선 (예: 11월 6일 (금), 올해가 아니면 연도도) */
+const DayDivider = memo(function DayDivider({ ts }: { ts: number }) {
+  const now = new Date()
+  const date = fmtDate(ts, new Date(ts).getFullYear() === now.getFullYear() ? DAY_LABEL : { ...DAY_LABEL, year: 'numeric' })
+  const key = dayKey(ts)
+  const label =
+    key === dayKey(now.getTime())
+      ? t('staffPanel.log.today', { date })
+      : key === dayKey(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1).getTime())
+        ? t('staffPanel.log.yesterday', { date })
+        : date
+  return (
+    <div role="separator" className="text-muted-foreground flex items-center gap-2 py-1 text-[11px] font-medium">
+      <span className="bg-border h-px flex-1" />
+      {label}
+      <span className="bg-border h-px flex-1" />
+    </div>
+  )
+})
+
+/** 기록 맨 위: 이전 기록을 불러오는 중·다시 시도·더 보기, 더 없으면 '처음 기록이에요' */
+function OlderLogsTop({ hasMore, state, onLoad }: { hasMore: boolean; state: OlderState; onLoad: () => void }) {
+  if (!hasMore) return <p className="text-muted-foreground py-1 text-center text-[11px]">{t('staffPanel.log.first')}</p>
+  if (state === 'loading') return <p className="text-muted-foreground py-1 text-center text-[11px]" aria-live="polite">{t('staffPanel.log.loadingOlder')}</p>
+  return (
+    <button type="button" onClick={onLoad} className="text-muted-foreground hover:text-foreground py-1 text-center text-[11px] underline-offset-2 hover:underline">
+      {t(state === 'error' ? 'staffPanel.log.loadOlderFailed' : 'staffPanel.log.loadOlder')}
+    </button>
+  )
+}
 
 /** 패널 왼쪽 가장자리를 끌어 폭을 바꾼다. 더블클릭하면 기본 폭으로 */
 function ResizeHandle({ width, onResize }: { width: number; onResize: (width: number) => void }) {
@@ -275,20 +310,15 @@ function ResizeHandle({ width, onResize }: { width: number; onResize: (width: nu
 function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; onResize: (width: number) => void }) {
   const select = useOffice((s) => s.select)
   const liveLogs = useOffice((s) => s.liveLogs)
-  const [record, setRecord] = useState<DailyRecord | null>(null)
   const [draft, setDraft] = useState('')
   const composerRef = useRef<HTMLTextAreaElement>(null)
   const [tab, setTab] = useState<PanelTab>('work')
   const isHired = staff.kind === 'hired'
 
-  useEffect(() => {
-    const load = () => void window.office.getRecord(staff.id).then(setRecord)
-    load()
-    if (isHired) return
-    const timer = setInterval(load, EXTERNAL_REFRESH_MS)
-    return () => clearInterval(timer)
-    // 고용 직원은 턴이 끝나 비용이 바뀔 때마다 오늘 사용량을 다시 읽는다
-  }, [staff.id, isHired, staff.costUsd])
+  // 기록은 날짜와 상관없이 최근부터, 위로 올리면 이전 기록을 이어 붙인다 (사용량은 오늘 것만)
+  const logScrollRef = useRef<HTMLDivElement>(null)
+  const history = useStaffRecord(staff.id, isHired, staff.costUsd, logScrollRef)
+  const record = history.usage
 
   // 패널을 열면 보고를 확인한 것 — 카드의 안 읽은 보고 배지를 지운다 (열어 둔 채 새 보고가 와도 곧바로 지운다)
   const unread = staff.unreadReports ?? 0
@@ -296,12 +326,13 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
     if (unread > 0) void window.office.markReportsRead(staff.id)
   }, [staff.id, unread])
 
-  const logs = useMemo<LogEntry[]>(() => {
-    const base = record?.logs ?? []
+  const logs = useMemo<readonly LogEntry[]>(() => {
+    const base = history.logs ?? []
     if (!isHired) return base
     const lastId = base.at(-1)?.id ?? 0
-    return [...base, ...liveLogs.filter((l) => l.staffId === staff.id && l.id > lastId)]
-  }, [record, liveLogs, staff.id, isHired])
+    const live = liveLogs.filter((l) => l.staffId === staff.id && l.id > lastId)
+    return live.length ? [...base, ...live] : base
+  }, [history.logs, liveLogs, staff.id, isHired])
   const [isConversationOnly, setIsConversationOnly] = useState(readConversationOnly)
   const [logFont, setLogFont] = useState(readLogFont)
   const fontSize = LOG_FONT_SIZES[logFont]
@@ -318,6 +349,24 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
 
   // 직원을 바꾸면 패널째 새로 그려져(key) 바닥에서 시작한다
   const logScroll = useStickToBottom(shownLogs, logKey, `${tab}:${isConversationOnly}`)
+  const dayStartIds = useMemo(() => dayStarts(shownLogs), [shownLogs])
+  const stickRef = logScroll.ref
+  const setLogScrollEl = useCallback(
+    (el: HTMLDivElement | null) => {
+      stickRef.current = el
+      logScrollRef.current = el
+    },
+    [stickRef],
+  )
+  // 불러온 뒤에도 맨 위 가까이면(화면이 덜 찼거나 '지시·보고만'으로 거의 다 가려지면) 한 묶음 더 부른다
+  const { maybeLoadOlder } = history
+  useEffect(() => {
+    if (tab === 'work') maybeLoadOlder()
+  }, [tab, shownLogs, maybeLoadOlder])
+  const handleLogScroll = () => {
+    logScroll.onScroll()
+    maybeLoadOlder()
+  }
 
   const todayTokens = isHired ? null : record ? record.tokensIn + record.tokensOut : 0
   const handleClose = () => select(null)
@@ -600,7 +649,7 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
           </div>
           {/* 가로 폰: 패널 전체를 밀어 올려 보도록 기록 칸 높이를 지킨다 */}
           <div data-split-rest="200" className="short:min-h-[70dvh] relative flex min-h-0 flex-1 flex-col">
-            <section ref={logScroll.ref} onScroll={logScroll.onScroll} className="min-h-0 flex-1 overflow-y-auto px-4 pb-4" style={{ fontSize }}>
+            <section ref={setLogScrollEl} onScroll={handleLogScroll} className="min-h-0 flex-1 overflow-y-auto px-4 pb-4" style={{ fontSize }}>
               <div ref={logScroll.contentRef} className="flex flex-col gap-2">
                 {/* 고용 직후(기록이 하나도 없음): 다음에 할 일을 알려 주고 예시 지시를 칩으로 — 누르면 아래 칸에 채운다 */}
                 {logs.length === 0 && isHired ? (
@@ -626,8 +675,12 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
                 ) : (
                   shownLogs.length === 0 && <p className="text-muted-foreground">{t('staffPanel.log.empty')}</p>
                 )}
+                {history.logs !== undefined && logs.length > 0 && <OlderLogsTop hasMore={history.hasMore} state={history.older} onLoad={() => void history.loadOlder()} />}
                 {shownLogs.map((l) => (
-                  <LogRow key={logKey(l)} entry={l} />
+                  <Fragment key={logKey(l)}>
+                    {dayStartIds.has(l.id) && <DayDivider ts={l.ts} />}
+                    <LogRow entry={l} />
+                  </Fragment>
                 ))}
               </div>
             </section>

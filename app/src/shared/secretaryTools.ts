@@ -22,6 +22,8 @@ export const SECRETARY_TOOLS: Record<OfficeMethod, ToolSpec> = {
   // ── 조회 (25) ──
   snapshot: read,
   getRecord: read,
+  // 업무 패널 스크롤용 — 비서는 getRecord의 최근 기록으로 충분하다
+  getRecordBefore: exclude,
   chatHistory: read,
   timeline: read,
   staffActivity: read,

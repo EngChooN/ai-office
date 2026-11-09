@@ -3,7 +3,7 @@ import os from 'node:os'
 import path from 'node:path'
 import type { LogEntry } from '../shared/types'
 
-// 외부 직원의 "오늘 한 일"은 Claude Code 트랜스크립트(jsonl)에서 읽는다
+// 외부 직원의 기록은 Claude Code 트랜스크립트(jsonl)에서 읽는다 (사용량은 since부터, 기록은 logSince부터)
 
 const PROJECTS_DIR = path.join(os.homedir(), '.claude', 'projects')
 // 직원 패널에서 마크다운으로 전체를 보여 주므로 넉넉히 읽는다
@@ -24,7 +24,8 @@ function transcriptPath(cwd: string, sessionId: string) {
   return path.join(PROJECTS_DIR, cwd.replace(/[^a-zA-Z0-9]/g, '-'), `${sessionId}.jsonl`)
 }
 
-export function readExternalDay(staffId: string, cwd: string, sessionId: string, since: number) {
+/** 외부 Claude 세션: since부터 쓴 토큰과 logSince(기본 since)부터의 기록. 기록 id는 파일 줄 순서라 logSince가 같으면 늘 같다 */
+export function readExternalDay(staffId: string, cwd: string, sessionId: string, since: number, logSince = since) {
   const logs: LogEntry[] = []
   let tokensIn = 0
   let tokensOut = 0
@@ -45,20 +46,21 @@ export function readExternalDay(staffId: string, cwd: string, sessionId: string,
       continue
     }
     const ts = line.timestamp ? Date.parse(line.timestamp) : 0
-    if (ts < since || line.isSidechain) continue
+    if (ts < Math.min(since, logSince) || line.isSidechain) continue
     const content = line.message?.content
-    if (line.type === 'user' && typeof content === 'string' && !content.startsWith('<')) {
+    const isLogged = ts >= logSince
+    if (isLogged && line.type === 'user' && typeof content === 'string' && !content.startsWith('<')) {
       logs.push({ id: seq++, staffId, ts, type: 'instruction', text: content.slice(0, TEXT_MAX) })
     }
     if (line.type === 'assistant') {
       // 한 API 응답이 블록마다 줄로 나뉘어 같은 usage가 반복되므로 requestId로 한 번만 센다
       const u = line.message?.usage
-      if (u && line.requestId && !countedRequests.has(line.requestId)) {
+      if (ts >= since && u && line.requestId && !countedRequests.has(line.requestId)) {
         countedRequests.add(line.requestId)
         tokensIn += (u.input_tokens ?? 0) + (u.cache_read_input_tokens ?? 0) + (u.cache_creation_input_tokens ?? 0)
         tokensOut += u.output_tokens ?? 0
       }
-      if (Array.isArray(content)) {
+      if (isLogged && Array.isArray(content)) {
         for (const b of content) {
           if (b.type === 'text' && b.text?.trim()) logs.push({ id: seq++, staffId, ts, type: 'reply', text: b.text.slice(0, TEXT_MAX) })
           if (b.type === 'tool_use' && b.name) logs.push({ id: seq++, staffId, ts, type: 'tool', text: b.name })
@@ -96,8 +98,8 @@ function findCodexFile(dir: string, sessionId: string) {
   return null
 }
 
-/** Codex 외부 세션의 오늘 한 일 (지시·답·도구 이름, 오늘 쓴 토큰). 기록을 못 찾으면 빈 결과 */
-export function readCodexExternalDay(staffId: string, sessionId: string, since: number, dir = CODEX_SESSIONS_DIR) {
+/** Codex 외부 세션의 기록(지시·답·도구 이름, logSince부터)과 since부터 쓴 토큰. 기록을 못 찾으면 빈 결과 */
+export function readCodexExternalDay(staffId: string, sessionId: string, since: number, dir = CODEX_SESSIONS_DIR, logSince = since) {
   const logs: LogEntry[] = []
   let tokensIn = 0
   let tokensOut = 0
@@ -134,7 +136,7 @@ export function readCodexExternalDay(staffId: string, sessionId: string, since: 
         baseOut = lastOut
       }
     }
-    if (ts < since || line.type !== 'response_item') continue
+    if (ts < logSince || line.type !== 'response_item') continue
     if (p.type === 'message') {
       const text = (p.content ?? []).map((c) => c.text ?? '').join('').trim()
       if (!text) continue

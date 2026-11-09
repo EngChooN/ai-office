@@ -23,6 +23,7 @@ export const OFFICE_METHODS = [
   'waitingAction',
   'decide',
   'getRecord',
+  'getRecordBefore',
   'listAgentTemplates',
   'pickFolder',
   'pickFiles',

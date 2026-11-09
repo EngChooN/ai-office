@@ -68,6 +68,7 @@ export function openDb() {
     );
     CREATE INDEX IF NOT EXISTS log_staff_ts ON log (staff_id, ts);
     CREATE INDEX IF NOT EXISTS log_ts ON log (ts);
+    CREATE INDEX IF NOT EXISTS log_staff_id ON log (staff_id, id);
     CREATE TABLE IF NOT EXISTS usage (
       id INTEGER PRIMARY KEY AUTOINCREMENT, staff_id TEXT NOT NULL, ts INTEGER NOT NULL,
       cost_usd REAL NOT NULL, tokens_in INTEGER NOT NULL, tokens_out INTEGER NOT NULL
@@ -303,6 +304,16 @@ export function insertLog(staffId: string, type: LogType, text: string, attachme
 
 export function logsSince(staffId: string, since: number): LogEntry[] {
   return all<LogRow>('SELECT * FROM log WHERE staff_id = ? AND ts >= ? ORDER BY ts', staffId, since).map(toLog)
+}
+
+/** 직원 기록을 최근부터 limit개 (beforeId가 있으면 그보다 앞선 것만). 돌려줄 때는 id 오름차순 */
+export function logsPage(staffId: string, limit: number, beforeId?: number): { logs: LogEntry[]; hasMore: boolean } {
+  const rows =
+    beforeId === undefined
+      ? all<LogRow>('SELECT * FROM log WHERE staff_id = ? ORDER BY id DESC LIMIT ?', staffId, limit + 1)
+      : all<LogRow>('SELECT * FROM log WHERE staff_id = ? AND id < ? ORDER BY id DESC LIMIT ?', staffId, beforeId, limit + 1)
+  const hasMore = rows.length > limit
+  return { logs: rows.slice(0, limit).reverse().map(toLog), hasMore }
 }
 
 export function allLogsBetween(since: number, until: number): LogEntry[] {

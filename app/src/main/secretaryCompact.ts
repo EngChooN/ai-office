@@ -99,18 +99,24 @@ export function compactStaffDetail(snap: OfficeSnapshot, staffId: string, record
     s.systemPrompt || '(비어 있음)',
   ]
   if (s.approvals.length) lines.push('### 결재 대기', ...s.approvals.map((a) => `- [${a.id}] ${a.toolName}: ${clip(a.summary, 200)}`))
-  if (record) lines.push('### 오늘 기록 (최근)', ...compactLogs(record.logs, 15))
+  if (record) lines.push('### 최근 기록', ...compactLogs(record.logs, 15, now))
   return capText(lines.join('\n'), COMPACT_MAX + 4000)
 }
 
 const LOG_LABEL: Record<string, string> = { instruction: '지시', reply: '보고', result: '완료', error: '오류', approval: '결재', status: '상태', delegate: '위임', commit: '커밋', tool: '도구' }
 
 /** 기록은 도구 줄을 빼고 최근 것부터 n줄 */
-export function compactLogs(logs: LogEntry[], n = 30) {
+export function compactLogs(logs: LogEntry[], n = 30, now = Date.now()) {
   return logs
     .filter((l) => l.type !== 'tool')
     .slice(-n)
-    .map((l) => `- ${hhmm(l.ts)} ${LOG_LABEL[l.type] ?? l.type}: ${clip(l.text)}`)
+    .map((l) => `- ${logTime(l.ts, now)} ${LOG_LABEL[l.type] ?? l.type}: ${clip(l.text)}`)
+}
+
+/** 기록은 날짜를 넘나들므로 오늘이 아닌 줄은 날짜를 붙인다 (예: 11/6 14:05) */
+function logTime(ts: number, now: number) {
+  const d = new Date(ts)
+  return new Date(now).toDateString() === d.toDateString() ? hhmm(ts) : `${d.getMonth() + 1}/${d.getDate()} ${hhmm(ts)}`
 }
 
 export interface PeriodInput {

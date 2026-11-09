@@ -30,7 +30,7 @@
 - **알림 받기**: 권한 요청·질문·완료 시 "직원이 손 든다" + OS 알림
 - **지시하기**: 직원에게 메시지 전송, 권한 승인/거절
 - **직원 고용**: 역할·이름·아바타·모델·프롬프트·작업 폴더를 정해 SDK 세션 생성 (`.claude/agents` 정의 불러오기)
-- **기록 보기**: 직원별 오늘 한 일·토큰 사용량
+- **기록 보기**: 직원별 업무 기록(날짜와 상관없이 최근부터, 위로 올리면 이전 기록)·오늘 토큰 사용량
 
 ### 3-2. 이후 로드맵 (선택된 아이디어, 순서 미정)
 - 인사·조직: 부서/팀 배치(프로젝트별 방), 팀장 에이전트(일 쪼개서 분배·취합), 직원 프로필·성장(누적 실적·레벨)
@@ -125,6 +125,7 @@
 | 46 | 1.1.1: 방 판정·응답 없는 엔진 복구 | 보고 게시·상태 줄이 같은 방 판정(지시 방→카드 방→소속 방→명시적 전체 방, 3c4654f·3dd1676·9483ab3), 첫 응답 5분 감시와 끼어들기 강제 재시작·줄 선 지시 재전달(478a895·517221b·3f8bec3·ccecfdc), 방 멤버 상태 줄 가로 스크롤·휠 이동(292e675). 강제 재시작 직전 일부 처리된 줄 선 지시는 작업이 일부 겹칠 수 있음(보고 중복 없음). |
 | 47 | 1.1.2: Codex 번들 필수·예약 편집·자동결재 정밀화 | 맥 패키징 때 Codex 번들이 없으면 중단(AI_OFFICE_ALLOW_NO_CODEX=1만 예외)·Codex 구성 요소 없음 안내와 '다시 확인' 버튼(b8dff5a·ee46cb2, #13·#14), 예약 편집·다음 실행·key 없는 키 이벤트 보호(4773d4f, #12), 자동결재 고친 파일 추적(경로 전체·작업 폴더별 실경로 기록·Bash 쓰기 우회 차단·윈도우 경로)·기다리는 이유 한 줄·자동결재 상태 칩·사용량 갱신 시각·새 직원 기본 수정은 자율(휴대폰은 모두 묻기)(931a07d~a5062de, #14, 조사 app/docs/issue-14-approval-usage.md). |
 | 48 | 1.1.3: MCP 준비 대기·토큰 절약·공용 브라우저 로그인·후원 | 시작 직후 지시·비서 질문이 로컬 MCP 준비를 최대 10초 기다림(613a3b4·9b7cbc5, #10)·`shared/tokenSaving.ts` 급여 '아끼기 Top 3'와 `tokenSaverMode`(새 직원만, d3a1526, #12·#14)·`sharedBrowserLogin` 공용 프로필 `_shared`(한 번에 한 직원, 턴이 끝나면 락 해제, 9b7cbc5·4d897e0, #11)·사이드바 후원 버튼(019c88a) |
+| 49 | [미정] 1.1.4 예정: 업무 패널 이전 기록 | `getRecord`의 오늘 0시 조건을 없애고 최근 300개(`db.logsPage`, 색인 `log_staff_id(staff_id, id)`), 사용량은 오늘 0시부터 그대로. `getRecordBefore(staffId, beforeId, limit?)`(기본 200·최대 500, 원격 `R('s n n?')`, 비서 제외)로 id 커서 이어 불러오기 — 다른 PC 직원은 같은 DB, 외부 직원은 세션 파일을 처음부터 읽어(`logSince=0`, id=줄 순서) `shared/recordLogs.ts` `pageLogs`로 자른다. 화면 `renderer/features/useStaffRecord.ts`: 다시 읽어도 불러온 이전 기록은 `mergeLogs`로 유지, 앞에 붙일 때 늘어난 높이만큼 scrollTop 보정, 맨 위 400px 안이면 자동으로 더 부름('지시·보고만'으로 다 가려져도 이어 부름). 날짜 구분선 `dayStarts`(오늘·어제 표시, 다른 해면 연도). 최적화는 가상 스크롤 대신 기록 줄 `content-visibility: auto`(+`contain-intrinsic-size: auto 2.5em`) — 바닥 고정·스크롤 보정·찾기를 그대로 두고 화면 밖 줄의 배치·그리기만 건너뜀. 비서 `compactLogs`는 오늘이 아닌 줄에 날짜를 붙임. 데스크펫 패널 코드는 그대로(같은 getRecord라 최근 기록이 보임). 시험 `scripts/recordHistory.test.mts`(9건) |
 | 44 | 1.0.3: 팀장 끼어들기 | **delegate `interrupt`** `continue`(끊고 먼저 전한 뒤 이어 감)·`replace`(`dropWork`로 카드 할 일로, `[지시 변경]`), delegate 출처 유지해 리더 보고, 결재 없이 양쪽 기록, 다른 PC 직원은 줄 세움 | 안드로이드 `versionCode` 44 |
 | 43 | 1.0.2: 직원 채팅 / 명령 확대 · 인터넷 끊김 자동 이어 하기 | **/ 명령** Claude 작업형 19·설정 5 열기(`/loop` 막음), `/model` → 직원 모델, Codex `/compact`·`/review`·`/goal`(pause·resume·clear, `autoTurn`, 20턴 한도) · **연결 대기** `netWait`(받은 일·카드 보관, 15초마다 연결 확인 후 같은 세션 이어 하기, 3번·6시간) | 안드로이드 `versionCode` 43 |
 | 34 | 0.17.0: 바탕화면 비서 캐릭터(맥 전용) | **창** `main/petWindow.ts`(투명·항상 위 캐릭터 창 + 펼침 창, 맥에서만 띄움, 화면·전원 이벤트 위치 보정, 끌 때 창·`pet:*` IPC 정리), `petPreload.ts`. **화면** `renderer/deskPet/*`(캐릭터·배지·펼침 창, 표정 6종 `sprites/face-*.png`). **규칙** `shared/deskPet.ts`(가장자리 붙기·크기 80~160·투명도 40~100%·움직임·표정 우선순위), `shared/questionAnswer.ts`(답 묶기 규칙, `QuestionBox`와 공유). 펼침 창 결재·답하기는 앱과 같은 `handlers.decide`·`handlers.answerQuestion`을 쓰고 main에서 다시 확인. 설정 > 연결에서 켜고 끄기, 메뉴 막대에서 다시 불러오기. 테스트 `deskPet`. |
