@@ -52,7 +52,7 @@
 
 ## 🔗 링크
 
-[소개 사이트](https://engchoon.github.io/ai-office/) · [불편한 점·의견 보내기](https://github.com/EngChooN/ai-office/issues/new) · [모든 릴리즈](https://github.com/EngChooN/ai-office/releases/latest) · [후원하기](https://fairy.hada.io/)
+[소개 사이트](https://engchoon.github.io/ai-office/) · [불편한 점·의견 보내기](https://github.com/EngChooN/ai-office/issues/new) · [모든 릴리즈](https://github.com/EngChooN/ai-office/releases/latest) · [후원하기](https://fairy.hada.io/@ai-office)
 
 ---
 

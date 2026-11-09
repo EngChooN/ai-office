@@ -52,7 +52,7 @@
 
 ## 🔗 链接
 
-[介绍网站](https://engchoon.github.io/ai-office/) · [反馈问题 / 意见](https://github.com/EngChooN/ai-office/issues/new) · [所有版本](https://github.com/EngChooN/ai-office/releases/latest) · [赞助支持](https://fairy.hada.io/)
+[介绍网站](https://engchoon.github.io/ai-office/) · [反馈问题 / 意见](https://github.com/EngChooN/ai-office/issues/new) · [所有版本](https://github.com/EngChooN/ai-office/releases/latest) · [赞助支持](https://fairy.hada.io/@ai-office)
 
 ---
 

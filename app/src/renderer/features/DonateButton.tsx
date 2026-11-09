@@ -1,7 +1,7 @@
 import { HeartIcon } from 'lucide-react'
 import { t } from '@shared/i18n'
 
-const DONATE_URL = 'https://fairy.hada.io/'
+const DONATE_URL = 'https://fairy.hada.io/@ai-office'
 
 /** 사이드바 '후원하기' — 대표의 후원 페이지를 기본 브라우저로 연다 (앱 창의 setWindowOpenHandler가 https 주소를 밖으로 넘긴다) */
 export function DonateButton() {
