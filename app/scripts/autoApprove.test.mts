@@ -1,9 +1,10 @@
 // 자동결재(대표 부재 중) 판정·기간·요약, 메뉴바 메뉴 내용 단위 테스트 — npm test
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { autoApprove, autoKindOf, autoStep, autoSummaryText, autoWindow, commandWaits, formatRemaining, planToConfig } from '../src/shared/autoApprove.ts'
+import { autoApprove, autoWaitReason, autoKindOf, autoStep, autoSummaryText, autoWindow, commandWaits, formatRemaining, planToConfig } from '../src/shared/autoApprove.ts'
 import { findRiskyCommand } from '../src/shared/bashPolicy.ts'
-import { BROWSER_EQUIPMENT, browserVerdict } from '../src/shared/browserTools.ts'
+import { BROWSER_EQUIPMENT, browserAutoVerdict, browserVerdict, isSecretBrowserInput } from '../src/shared/browserTools.ts'
+import { autonomyVerdict } from '../src/shared/autonomy.ts'
 import { COMPUTER_EQUIPMENT, computerSummary, computerSummaryI18n, computerVerdict } from '../src/shared/computerTools.ts'
 import { setLang, tr, trOr } from '../src/shared/i18n/index.ts'
 import { buildTrayMenu, menuKey, type TrayMenuActions } from '../src/main/trayMenu.ts'
@@ -425,6 +426,82 @@ test('브라우저 장비: 조회는 허용, 이동·클릭·입력·업로드·
   // 다른 MCP 서버의 같은 이름 도구는 브라우저 판정이 아니라 평소 MCP 규칙을 따른다
   assert.equal(browserVerdict('mcp__playwright__browser_snapshot', {}), null)
   assert.equal(browserVerdict('mcp__office__capture_screen', {}), null)
+})
+
+test('브라우저 자동 허용: 켠 직원은 이동·클릭·입력·게시·전송·파일 올리기를 넘기고, 끈 직원은 지금처럼 기다린다', () => {
+  const b = (name: string) => `mcp__${BROWSER_EQUIPMENT}__${name}`
+  const on = { browserAuto: true }
+  const cases: [string, Record<string, unknown>][] = [
+    ['browser_navigate', { url: 'https://example.com/write' }],
+    ['browser_navigate_back', {}],
+    ['browser_click', { element: '게시 버튼', ref: 'e12' }],
+    ['browser_type', { element: '본문', ref: 'e3', text: '안녕하세요', submit: true }],
+    ['browser_press_key', { key: 'Enter' }],
+    ['browser_fill_form', { fields: [{ name: '제목', type: 'textbox', ref: 'e1', value: '공지' }] }],
+    ['browser_file_upload', { paths: ['/tmp/a.png'] }],
+    ['browser_select_option', { element: '분류', ref: 'e4', values: ['공지'] }],
+    ['browser_tabs', { action: 'new' }],
+    ['browser_handle_dialog', { accept: true }],
+    ['browser_mouse_click_xy', { x: 10, y: 20 }],
+  ]
+  for (const [name, input] of cases) {
+    assert.equal(autoApprove(b(name), input), 'wait', `꺼짐 ${name}`)
+    assert.equal(autoApprove(b(name), input, { browserAuto: false }), 'wait', `false ${name}`)
+    assert.equal(autoApprove(b(name), input, on), 'allow', `켜짐 ${name}`)
+    assert.equal(autonomyVerdict(b(name), input, false, on), 'allow', `자율 ${name}`)
+    assert.equal(autonomyVerdict(b(name), input), 'deny', `자율 꺼짐 ${name}`)
+  }
+  // 조회는 켜든 끄든 허용
+  assert.equal(browserAutoVerdict(b('browser_snapshot'), {}), 'allow')
+  // 브라우저가 아닌 도구는 판정하지 않고, 다른 대기 이유는 그대로다
+  assert.equal(browserAutoVerdict('mcp__slack__send_message', {}), null)
+  assert.equal(autoWaitReason('mcp__slack__send_message', { text: 'hi' }, on), 'mcp')
+  assert.equal(autoWaitReason('Bash', { command: 'git push' }, on), autoWaitReason('Bash', { command: 'git push' }))
+  assert.equal(autoApprove('Bash', { command: 'git push' }, on), 'wait')
+  assert.equal(autoWaitReason('mcp__office__capture_screen', {}, on), 'capture')
+  // 자율 진행에서 직원이 쓴 파일을 실행하는 명령은 켜도 거부
+  assert.equal(autonomyVerdict(b('browser_click'), { ref: 'e1' }, true, on), 'deny')
+})
+
+test('브라우저 자동 허용: 페이지 코드 실행·쿠키·저장소·가로채기·파일 남기기·모르는 새 도구는 켜도 기다린다', () => {
+  const b = (name: string) => `mcp__${BROWSER_EQUIPMENT}__${name}`
+  for (const name of ['browser_evaluate', 'browser_run_code_unsafe', 'browser_cookie_set', 'browser_cookie_list', 'browser_localstorage_set', 'browser_sessionstorage_get', 'browser_storage_state', 'browser_set_storage_state', 'browser_route', 'browser_network_state_set', 'browser_pdf_save', 'browser_start_recording', 'browser_webmcp_call', 'browser_install', 'browser_something_new']) {
+    assert.equal(autoWaitReason(b(name), {}, { browserAuto: true }), 'browser', name)
+  }
+})
+
+test('브라우저 자동 허용: 로그인·결제 칸 입력은 켜도 기다린다 (칸 이름 4개 언어 · 카드번호 모양 값)', () => {
+  const b = (name: string) => `mcp__${BROWSER_EQUIPMENT}__${name}`
+  const on = { browserAuto: true }
+  const waits: [string, Record<string, unknown>][] = [
+    ['browser_type', { element: 'Password textbox', ref: 'e5', text: 'hunter2' }],
+    ['browser_type', { element: '비밀번호 입력', ref: 'e5', text: 'x' }],
+    ['browser_type', { element: 'userPassword', ref: 'e5', text: 'x' }],
+    ['browser_type', { element: 'パスワード', ref: 'e5', text: 'x' }],
+    ['browser_type', { element: '密码', ref: 'e5', text: 'x' }],
+    ['browser_type', { element: '카드 번호', ref: 'e6', text: '1234' }],
+    ['browser_type', { element: 'CVC', ref: 'e7', text: '123' }],
+    ['browser_type', { element: '인증번호', ref: 'e7', text: '482910' }],
+    ['browser_press_sequentially', { element: 'OTP code', ref: 'e8', text: '123456' }],
+    ['browser_type', { element: '메모', ref: 'e9', text: '4111 1111 1111 1111' }],
+    ['browser_fill_form', { fields: [{ name: '아이디', type: 'textbox', ref: 'e1', value: 'me' }, { name: '비밀번호', type: 'textbox', ref: 'e2', value: 'x' }] }],
+    ['browser_fill_form', { fields: [{ name: 'Card number', type: 'textbox', ref: 'e1', value: '4111-1111-1111-1111' }] }],
+    ['browser_select_option', { element: '결제 수단', ref: 'e3', values: ['신용카드'] }],
+  ]
+  for (const [name, input] of waits) {
+    assert.equal(isSecretBrowserInput(name, input), true, JSON.stringify(input))
+    assert.equal(autoWaitReason(b(name), input, on), 'browser', JSON.stringify(input))
+  }
+  // 보통 칸·짧은 숫자·전화번호 같은 값은 넘긴다
+  for (const [name, input] of [
+    ['browser_type', { element: '검색어', ref: 'e1', text: '관악산 등산로' }],
+    ['browser_type', { element: '제목', ref: 'e2', text: '2026년 11월 공지' }],
+    ['browser_type', { element: 'Compass note', ref: 'e2', text: 'x' }],
+    ['browser_fill_form', { fields: [{ name: '연락처', type: 'textbox', ref: 'e1', value: '010-1234-5678' }] }],
+  ] as [string, Record<string, unknown>][]) {
+    assert.equal(isSecretBrowserInput(name, input), false, JSON.stringify(input))
+    assert.equal(autoApprove(b(name), input, on), 'allow', JSON.stringify(input))
+  }
 })
 
 test('컴퓨터 조작 장비: 화면 보기만 허용, 이동·클릭·입력·스크롤은 결재를 기다린다', () => {

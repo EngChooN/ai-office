@@ -40,6 +40,8 @@ export function EquipmentTab({ staff }: { staff: Staff }) {
   useEffect(() => {
     void window.office.equipmentCatalog(staff.cwd).then(setCatalog)
   }, [staff.cwd])
+  // 브라우저 자동 허용은 결재 카드·직원 요청으로도 바뀐다 — 열어 둔 탭에도 따라 바꿔 저장할 때 되돌리지 않게
+  useEffect(() => setEq((e) => ({ ...e, browserAuto: staff.equipment.browserAuto })), [staff.equipment.browserAuto])
 
   const toggleIn = (list: string[], v: string) => (list.includes(v) ? list.filter((x) => x !== v) : [...list, v])
   const presetOn = (p: (typeof TOOL_PRESETS)[number]) => (p.allow ?? []).every((tool) => eq.allowedTools.includes(tool)) && (p.deny ?? []).every((tool) => eq.disallowedTools.includes(tool))
@@ -86,6 +88,17 @@ export function EquipmentTab({ staff }: { staff: Staff }) {
         <label className="flex items-center gap-2 text-xs">
           <input type="checkbox" checked={!eq.lightModelOff} onChange={(e) => setEq((x) => ({ ...x, lightModelOff: !e.target.checked }))} />
           {t('equipment.lightModel')}
+        </label>
+      )}
+
+      {/* 브라우저 자동 허용: 자동결재·자율 진행 중 브라우저 조작을 결재 없이 (PC에서만 바꾼다 — 휴대폰 값은 PC가 무시한다) */}
+      {!IS_MOBILE_SHELL && (
+        <label className="flex items-start gap-2 text-xs">
+          <input type="checkbox" className="mt-0.5" checked={eq.browserAuto === true} onChange={(e) => setEq((x) => ({ ...x, browserAuto: e.target.checked }))} />
+          <span>
+            {t('equipment.browserAuto')}
+            <span className="block text-muted-foreground">{t('equipment.browserAuto.hint')}</span>
+          </span>
         </label>
       )}
 

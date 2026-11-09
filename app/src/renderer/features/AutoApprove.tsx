@@ -281,6 +281,21 @@ export function AutoHandledList() {
 /** 결재 승인 옆 "앞으로 자동 승인" — 이 직원의 같은 종류 요청을 규칙으로 넘긴다. 위험 명령·질문이면 버튼이 없다 */
 export function AlwaysApproveButton({ approval, staffName }: { approval: Approval; staffName: string }) {
   const [isBusy, setIsBusy] = useState(false)
+  // 브라우저 결재 카드는 규칙 대신 "브라우저 자동 허용"을 켠다 — PC에서만 (휴대폰에서 한 번 누른 승인이 앞으로의 허가가 되지 않게)
+  if (approval.browserAutoOffer) {
+    if (IS_MOBILE_SHELL) return null
+    const handleBrowserAuto = async () => {
+      if (!window.confirm(t('browserAuto.confirm', { name: staffName }))) return
+      setIsBusy(true)
+      await window.office.approveAlways(approval.id)
+      setIsBusy(false)
+    }
+    return (
+      <Button size="sm" variant="ghost" className="text-xs" disabled={isBusy} title={t('equipment.browserAuto.hint')} onClick={() => void handleBrowserAuto()}>
+        <CheckCheckIcon /> {t('browserAuto.button')}
+      </Button>
+    )
+  }
   if (!approval.alwaysRule) return null
   // 명령(Bash) 규칙은 PC에서만 만든다 — 휴대폰에서는 PC가 이번 한 번만 승인하므로 버튼을 두지 않는다
   if (IS_MOBILE_SHELL && /^bash$/i.test(approval.alwaysRule.toolName.trim())) return null

@@ -77,6 +77,8 @@ export interface Approval {
   isRestored?: boolean
   /** 자동결재·자율 진행 중인데도 기다리는 이유 (자동결재 밖의 평소 결재에는 없다) */
   waitReason?: ApprovalWaitReason
+  /** 브라우저 결재 카드의 "이 직원 브라우저 자동 허용" 버튼을 보일지 (자동 허용으로 넘길 수 있는 조작이고 아직 꺼져 있을 때) */
+  browserAutoOffer?: boolean
 }
 
 export interface StaffQuestion {
@@ -316,6 +318,8 @@ export interface Equipment {
   lightModelOff?: boolean
   /** true면 GPT(Codex) 직원의 셸이 인터넷·로컬 포트를 쓸 수 있다 (기본 false — 작업 폴더 안 쓰기 샌드박스는 네트워크가 꺼져 있다) */
   shellNetwork?: boolean
+  /** true면 자동결재·자율 진행 중 브라우저 이동·클릭·입력·제출을 결재 없이 한다 (로그인·결제 칸 입력 등은 그대로 기다린다 — browserAutoVerdict). 대표만 켠다 */
+  browserAuto?: boolean
 }
 
 export interface EquipmentCatalog {

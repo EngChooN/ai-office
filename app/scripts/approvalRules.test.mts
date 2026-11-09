@@ -30,6 +30,11 @@ test('초안: 자동결재가 기다리는 WebFetch·쓰기 MCP·브라우저 �
   assert.equal(ruleDraftFor('WebFetch', { url: 'https://x.io/?token=abc' }), null)
   assert.equal(ruleDraftFor('mcp__slack__send_message', { text: 'hi' }), null)
   assert.equal(ruleDraftFor('mcp__office-browser__browser_click', { ref: 'e1' }), null)
+  // 브라우저 자동 허용 켜기는 대표가 매번 승인한다 — 규칙도, 예전에 만든 규칙 매칭도 없다
+  assert.equal(ruleDraftFor('mcp__office__browser_auto', { on: true }), null)
+  assert.equal(matchRule([rule('kim', 'mcp__office__browser_auto', [])], 'kim', 'mcp__office__browser_auto', { on: true }), null)
+  // 브라우저 자동 허용(장비 설정)은 규칙 매칭과 따로다 — 규칙이 있어도 브라우저 조작은 맞지 않는다
+  assert.equal(matchRule([rule('kim', 'mcp__office-browser__browser_click', [])], 'kim', 'mcp__office-browser__browser_click', { ref: 'e1' }), null)
   assert.deepEqual(ruleDraftFor('WebFetch', { url: 'https://x.io/docs' }), { toolName: 'WebFetch', patterns: [] })
   assert.deepEqual(ruleDraftFor('mcp__github__get_issue', { id: 1 }), { toolName: 'mcp__github__get_issue', patterns: [] })
   // 예전에 만든 쓰기 MCP 규칙이 있어도 맞지 않는다

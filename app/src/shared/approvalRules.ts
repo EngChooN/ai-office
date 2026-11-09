@@ -2,6 +2,7 @@
 // 위험 명령·푸시·외부 전송·스크립트 실행·실행 위험 경로 쓰기는 규칙을 만들 수 없고, 규칙이 있어도 늘 대표를 기다린다 (자동결재와 같은 기준)
 
 import { autoApprove, commandWaits } from './autoApprove.ts'
+import { BROWSER_AUTO_TOOL } from './browserTools.ts'
 import { base, gitSubcommand, lexSegments, resolveCommand } from './commandScan.ts'
 import { t } from './i18n/index.ts'
 
@@ -20,8 +21,8 @@ export interface ApprovalRule extends ApprovalRuleDraft {
 
 /** 하위 명령까지 봐야 뜻이 갈리는 명령 — "npm test"와 "npm publish"는 다른 규칙 */
 const SUBCOMMAND_TOOLS = new Set(['git', 'npm', 'pnpm', 'yarn', 'bun', 'cargo', 'go', 'docker', 'gh', 'make', 'pip', 'pip3', 'uv', 'poetry', 'swift', 'flutter', 'dart', 'gradle', 'kubectl', 'brew'])
-/** 규칙으로 넘길 수 없는 도구 — 질문은 답이 필요하고, 화면 캡처는 대표 화면이 그대로 찍힌다 */
-const NEVER_RULE = new Set(['AskUserQuestion', 'ExitPlanMode', 'mcp__office__capture_screen'])
+/** 규칙으로 넘길 수 없는 도구 — 질문은 답이 필요하고, 화면 캡처는 대표 화면이 그대로 찍히고, 브라우저 자동 허용 켜기는 대표가 매번 승인한다 */
+const NEVER_RULE = new Set(['AskUserQuestion', 'ExitPlanMode', 'mcp__office__capture_screen', BROWSER_AUTO_TOOL])
 
 /** 명령 한 토막의 머리: 이름 + (필요하면) 하위 명령. 알 수 없으면 null */
 function segmentKey(cmd: string | null, args: string[]): string | null {

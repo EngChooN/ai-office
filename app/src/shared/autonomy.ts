@@ -1,7 +1,7 @@
 // 자율 진행(묻지 않고 끝까지): 켜졌는지 판정 · 위험 도구 거부 · 질문 대체 답 · 글 질문 재지시 횟수 — electron 없이 테스트한다
 // 대표 결정(2026-10-30): 업무별 스위치(하위·위임 상속) + 자동결재의 '완전 자율' 단계. 위험 작업은 건너뛰고 보고에 남긴다. 기획안은 자동 승인
 
-import { autoApprove, autoWindow, AWAY_ANSWER, type AutoApproveConfig } from './autoApprove.ts'
+import { autoApprove, autoWindow, AWAY_ANSWER, type AutoApproveConfig, type AutoOptions } from './autoApprove.ts'
 import type { StaffQuestion, Task } from './types.ts'
 
 /** 업무 하나에서 글 질문을 "스스로 판단해 계속" 재지시로 바꾸는 최대 횟수 (넘으면 평소처럼 결재함 질문) */
@@ -45,9 +45,9 @@ export type AutonomyVerdict = 'allow' | 'deny'
  * 자율 진행 중 도구 판정: 자동결재가 대표를 기다릴 도구(삭제·배포·push·외부 전송·스크립트 실행·쓰기 MCP 등)는 결재함으로 보내지 않고 거부한다.
  * extraWait = 자동결재 기간에 쓴 파일·빌드 설정을 실행하는 명령처럼 office가 따로 거르는 경우
  */
-export function autonomyVerdict(tool: string, input: Record<string, unknown>, extraWait = false): AutonomyVerdict {
+export function autonomyVerdict(tool: string, input: Record<string, unknown>, extraWait = false, opts: AutoOptions = {}): AutonomyVerdict {
   if (extraWait) return 'deny'
-  return autoApprove(tool, input) === 'wait' ? 'deny' : 'allow'
+  return autoApprove(tool, input, opts) === 'wait' ? 'deny' : 'allow'
 }
 
 /** 질문 도구에 비서가 답하지 못했을 때의 대체 답: 질문마다 첫 번째(추천) 선택지, 선택지가 없으면 "알아서 판단" */

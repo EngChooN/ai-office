@@ -1053,6 +1053,13 @@ export default {
       ja: 'オンにすると、スタッフが実行するコマンドがインターネットやこのコンピューターのローカルポートにもアクセスできます。ファイルの書き込み範囲と承認方式は変わりません',
       zh: '开启后，员工运行的命令可以访问互联网和本机的本地端口。文件写入范围和审批方式不变',
     },
+    'equipment.browserAuto': { ko: '브라우저 자동 허용', en: 'Auto-allow browser', ja: 'ブラウザを自動許可', zh: '自动允许浏览器' },
+    'equipment.browserAuto.hint': {
+      ko: '켜면 자동결재·자율 진행 중 브라우저 이동·클릭·입력·게시·전송·파일 올리기를 결재 없이 해요. 로그인·결제 칸 입력과 페이지 코드 실행·쿠키 조작은 계속 결재를 받아요',
+      en: 'When on, browser navigating, clicking, typing, posting, submitting and file uploads need no approval during auto-approval or autonomous work. Login and payment fields, running page code and cookie changes still need approval',
+      ja: 'オンにすると、自動承認・自律進行中のブラウザの移動・クリック・入力・投稿・送信・ファイルのアップロードを決裁なしで行います。ログイン・決済欄への入力、ページのコード実行、Cookie の操作は引き続き決裁が必要です',
+      zh: '开启后，自动审批或自主进行期间的浏览器跳转、点击、输入、发布、提交和上传文件无需审批。在登录或支付栏输入、运行页面代码和修改 Cookie 仍需审批',
+    },
     'equipment.lightModel': { ko: '간단한 업무(분류·요약·정리)는 가벼운 모델로 자동 전환', en: 'Switch to a lighter model for simple tasks (sorting, summaries, tidy-ups)', ja: '簡単な業務（分類・要約・整理）は軽いモデルに自動で切り替え', zh: '简单任务（分类、摘要、整理）自动切换到轻量模型' },
     'equipment.skills.title': { ko: '매뉴얼(스킬)', en: 'Manuals (skills)', ja: 'マニュアル（スキル）', zh: '手册（技能）' },
     'equipment.skills.all': { ko: '쓸 수 있는 매뉴얼 전부', en: 'All available manuals', ja: '使えるマニュアルすべて', zh: '所有可用手册' },

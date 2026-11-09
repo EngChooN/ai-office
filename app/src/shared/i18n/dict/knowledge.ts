@@ -42,6 +42,32 @@ export default {
   'log.ruleApprove': { ko: '규칙으로 자동 승인: {tool} {summary}', en: 'Auto-approved by rule: {tool} {summary}', ja: 'ルールで自動承認: {tool} {summary}', zh: '按规则自动批准：{tool} {summary}' },
   'log.ruleAdded': { ko: '자동 승인 규칙 추가: {rule}', en: 'Auto-approve rule added: {rule}', ja: '自動承認ルールを追加: {rule}', zh: '已添加自动批准规则：{rule}' },
 
+  // 브라우저 자동 허용 (장비 설정 browserAuto — 규칙과 따로)
+  'browserAuto.button': { ko: '브라우저 자동 허용', en: 'Auto-allow browser', ja: 'ブラウザを自動許可', zh: '自动允许浏览器' },
+  'browserAuto.confirm': {
+    ko: '이번 요청을 승인하고, 앞으로 {name} 님이 자동결재·자율 진행 중에 하는 브라우저 이동·클릭·입력·게시·전송·파일 올리기를 묻지 않고 진행할까요?\n로그인·결제 칸 입력과 페이지 코드 실행·쿠키 조작은 계속 결재를 받아요. 직원 장비 탭에서 언제든 끌 수 있어요.',
+    en: 'Approve this request and, from now on, let {name} navigate, click, type, post, submit and upload files in the browser without asking during auto-approval or autonomous work?\nTyping into login or payment fields, running page code and changing cookies still need approval. You can turn this off anytime in the staff Equipment tab.',
+    ja: 'このリクエストを承認し、今後 {name} さんが自動承認・自律進行中に行うブラウザの移動・クリック・入力・投稿・送信・ファイルのアップロードを確認せずに進めますか？\nログイン・決済欄への入力、ページのコード実行、Cookie の操作は引き続き承認が必要です。スタッフの装備タブでいつでもオフにできます。',
+    zh: '批准本次请求，并且以后 {name} 在自动审批或自主进行期间的浏览器跳转、点击、输入、发布、提交和上传文件都不再询问吗？\n在登录或支付栏输入、运行页面代码和修改 Cookie 仍需审批。可随时在员工装备页关闭。',
+  },
+  'log.browserAutoOn': { ko: '브라우저 자동 허용을 켰어요', en: 'Browser auto-allow turned on', ja: 'ブラウザの自動許可をオンにしました', zh: '已开启浏览器自动允许' },
+  'log.browserAutoOff': { ko: '브라우저 자동 허용을 껐어요', en: 'Browser auto-allow turned off', ja: 'ブラウザの自動許可をオフにしました', zh: '已关闭浏览器自动允许' },
+  'staff.tool.browserAuto.desc': {
+    ko: '브라우저 자동 허용 켜기·끄기. 대표가 "브라우저 조작(게시·전송 포함)을 알아서 해도 된다"고 분명히 말했을 때만 on=true로 부르세요 — 결재함에 올라가 대표가 승인해야 켜져요. 켜지면 자동결재·자율 진행 중 이동·클릭·입력·제출을 결재 없이 하고, 로그인·결제 칸 입력은 계속 결재를 받아요. 대표가 그만하라고 하면 on=false로 바로 끄세요.',
+    en: 'Turn browser auto-allow on or off. Call with on=true only when the CEO clearly says you may operate the browser (including posting and sending) on your own — it goes to the inbox and turns on only after the CEO approves. While on, navigating, clicking, typing and submitting need no approval during auto-approval or autonomous work; typing into login or payment fields still does. When the CEO says to stop, call with on=false right away.',
+    ja: 'ブラウザの自動許可のオン・オフ。代表が「ブラウザ操作（投稿・送信を含む）は任せる」とはっきり言ったときだけ on=true で呼んでください — 決裁箱に上がり、代表が承認して初めてオンになります。オンの間は自動承認・自律進行中の移動・クリック・入力・送信を決裁なしで行い、ログイン・決済欄への入力は引き続き決裁を受けます。代表がやめるよう言ったら on=false ですぐにオフにしてください。',
+    zh: '开启或关闭浏览器自动允许。只有当老板明确表示可以自行操作浏览器（包括发布和发送）时才用 on=true 调用——它会进入审批箱，老板批准后才开启。开启期间，自动审批或自主进行中的跳转、点击、输入和提交无需审批；在登录或支付栏输入仍需审批。老板说停止时，立即用 on=false 关闭。',
+  },
+  'staff.tool.browserAuto.on': { ko: 'true면 켜기(대표 승인 필요), false면 끄기', en: 'true to turn on (needs CEO approval), false to turn off', ja: 'true でオン（代表の承認が必要）、false でオフ', zh: 'true 为开启（需老板批准），false 为关闭' },
+  'staff.tool.browserAuto.onDone': {
+    ko: '브라우저 자동 허용을 켰어요. 자동결재·자율 진행 중 이동·클릭·입력·제출은 결재 없이 진행돼요(로그인·결제 칸 입력은 계속 결재).',
+    en: 'Browser auto-allow is on. During auto-approval or autonomous work, navigating, clicking, typing and submitting go ahead without approval (login and payment fields still need approval).',
+    ja: 'ブラウザの自動許可をオンにしました。自動承認・自律進行中の移動・クリック・入力・送信は決裁なしで進みます（ログイン・決済欄への入力は引き続き決裁）。',
+    zh: '已开启浏览器自动允许。自动审批或自主进行期间，跳转、点击、输入和提交无需审批（登录和支付栏仍需审批）。',
+  },
+  'staff.tool.browserAuto.offDone': { ko: '브라우저 자동 허용을 껐어요. 브라우저 조작은 다시 결재를 받아요.', en: 'Browser auto-allow is off. Browser actions need approval again.', ja: 'ブラウザの自動許可をオフにしました。ブラウザ操作は再び決裁が必要です。', zh: '已关闭浏览器自动允许。浏览器操作重新需要审批。' },
+  'staff.tool.browserAuto.peer': { ko: '다른 PC가 맡긴 일에서는 브라우저 자동 허용을 켤 수 없어요.', en: 'Browser auto-allow cannot be turned on for work assigned from another PC.', ja: '他の PC から任された仕事ではブラウザの自動許可をオンにできません。', zh: '在其他电脑委派的工作中无法开启浏览器自动允许。' },
+
   // 회사 지식 창고
   'nav.knowledge': { ko: '지식 창고', en: 'Knowledge', ja: 'ナレッジ倉庫', zh: '知识库' },
   'knowledge.title': { ko: '회사 지식 창고', en: 'Company knowledge', ja: '社内ナレッジ倉庫', zh: '公司知识库' },

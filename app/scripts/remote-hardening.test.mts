@@ -20,7 +20,8 @@ const callOf = (over: Partial<V2CallDeps> = {}) => {
 // ── 1) 원격 장비: Bash 허용·금지 필드는 아예 받지 않는다 ─────────
 
 test('setEquipment 허용 필드: MCP·스킬·예산만 — allowedTools·disallowedTools는 버린다', () => {
-  const [, picked] = pickFields('setEquipment', ['kim', { mcpServers: ['a'], skills: 'all', allowedTools: ['Bash'], disallowedTools: [], monthlyBudgetUsd: 5, lightModelOff: true }]) as [string, Record<string, unknown>]
+  // 브라우저 자동 허용(browserAuto)도 PC에서만 켠다 — 휴대폰 값은 버린다
+  const [, picked] = pickFields('setEquipment', ['kim', { mcpServers: ['a'], skills: 'all', allowedTools: ['Bash'], disallowedTools: [], monthlyBudgetUsd: 5, lightModelOff: true, browserAuto: true }]) as [string, Record<string, unknown>]
   assert.deepEqual(Object.keys(picked).sort(), ['lightModelOff', 'mcpServers', 'monthlyBudgetUsd', 'skills'])
 })
 

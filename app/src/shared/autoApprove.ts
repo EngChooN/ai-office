@@ -2,7 +2,7 @@
 // 대표 결정(2026-10-23): 위험 명령을 뺀 전부 자동 승인. 위험 명령(RISKY_BASH)과 푸시·외부 전송은 대표를 기다린다
 
 import { findRiskyCommand } from './bashPolicy.ts'
-import { browserVerdict } from './browserTools.ts'
+import { browserAutoVerdict, browserVerdict } from './browserTools.ts'
 import { computerVerdict } from './computerTools.ts'
 import { base, gitSubcommand, lexSegments, resolveCommand, type Segment } from './commandScan.ts'
 import { t, type TKey } from './i18n/index.ts'
@@ -960,12 +960,17 @@ export function editNeedsAsk(input: Record<string, unknown>, cwd: string): boole
  * 자동결재 판정: 'allow'면 대표 대신 승인, 'wait'면 평소처럼 결재함에서 대표를 기다린다.
  * 대기 = 위험 명령 · 푸시·외부 전송 · 스크립트 실행 · 실행 위험 경로 쓰기 · 화면 캡처 · 브라우저 조작. 질문(AskUserQuestion)은 따로 답한다
  */
-export function autoApprove(tool: string, input: Record<string, unknown>): AutoVerdict {
-  return autoWaitReason(tool, input) ? 'wait' : 'allow'
+export function autoApprove(tool: string, input: Record<string, unknown>, opts: AutoOptions = {}): AutoVerdict {
+  return autoWaitReason(tool, input, opts) ? 'wait' : 'allow'
+}
+
+/** 직원별로 넓힌 자동 판정 — browserAuto: 대표가 켠 브라우저 자동 허용(장비 설정). "항상 승인" 규칙은 이 값을 쓰지 않는다 */
+export interface AutoOptions {
+  browserAuto?: boolean
 }
 
 /** 대표를 기다려야 하면 그 이유(코드값), 대신 승인해도 되면 null — autoApprove의 판정과 늘 같다 */
-export function autoWaitReason(tool: string, input: Record<string, unknown>): ApprovalWaitReason | null {
+export function autoWaitReason(tool: string, input: Record<string, unknown>, opts: AutoOptions = {}): ApprovalWaitReason | null {
   if (tool === 'Bash') {
     const command = typeof input.command === 'string' ? input.command : ''
     if (!commandWaits(command)) return null
@@ -983,7 +988,8 @@ export function autoWaitReason(tool: string, input: Record<string, unknown>): Ap
   }
   if (tool === 'mcp__office__capture_screen') return 'capture'
   // 브라우저 장비: 조회만 허용, 이동·클릭·입력·업로드·제출은 대표를 기다린다 (결재 판정과 같은 기준 — browserTools)
-  const browser = browserVerdict(tool, input)
+  // 브라우저 자동 허용을 켠 직원은 이동·클릭·입력·제출까지 넘긴다 (로그인·결제 칸 입력·페이지 코드 실행 등은 그대로 기다린다)
+  const browser = opts.browserAuto ? browserAutoVerdict(tool, input) : browserVerdict(tool, input)
   if (browser) return browser === 'wait' ? 'browser' : null
   // 컴퓨터 조작 장비: 화면 보기만 허용, 이동·클릭·입력·스크롤은 대표를 기다린다 (computerTools)
   const computer = computerVerdict(tool, input)

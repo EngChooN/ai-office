@@ -122,7 +122,7 @@ import { parseCustomMcp, removeCustomMcp, upsertCustomMcp, type CustomMcpInput }
 import { browserMcpConfig, createBrowserLock } from './browser'
 import { computerMcpConfig } from './computer'
 import { COMPUTER_EQUIPMENT, computerSummaryI18n } from '../shared/computerTools.ts'
-import { BROWSER_EQUIPMENT } from '../shared/browserTools.ts'
+import { BROWSER_AUTO_TOOL, BROWSER_EQUIPMENT } from '../shared/browserTools.ts'
 import { CLAUDE_MODEL_CHOICES, parseModelArg, parseSlash, parseTranslations, pendingDescriptions, slashAction, toStaffCommands, translationPrompt, type RawCommand, type StaffCommand } from '../shared/slashCommands.ts'
 import { listManuals, removeManual, saveManual } from './manuals'
 import {
@@ -2289,6 +2289,11 @@ export class Office extends EventEmitter<{
     // 대표가 전에 답한 같은 질문(최근 30일·엄격한 기준)이면 그 답을 따른다 — 애매하면 평소처럼 결재함
     const past = questions?.length ? this.answerFromPast(staffId, questions) : null
     if (past) return Promise.resolve({ answers: past })
+    // 브라우저 자동 허용 켜기는 자동결재·자율 진행 중에도 대표가 결재함에서 직접 승인한다 (직원이 스스로 켜지 못하게)
+    if (toolName === BROWSER_AUTO_TOOL) {
+      this.waitReasons.set(staffId, 'browser')
+      return null
+    }
     // 대표가 만든 "앞으로 항상 승인" 규칙 — 자동결재 기간과 상관없이 (위험 명령은 matchRule이 늘 거른다)
     if (!questions?.length && matchRule(this.rules, staffId, toolName, input)) {
       this.log(staffId, 'approval', tk('log.ruleApprove', { tool: toolName, summary }))
@@ -2343,13 +2348,15 @@ export class Office extends EventEmitter<{
     const writtenReason = command !== '' && written ? writtenWaitReason(written, command) : null
     const runsWrittenFile = writtenReason !== null
     // 자율 진행: 기다려야 할 도구는 결재함에 올리지 않고 거부한다 — 직원은 보고의 "대표 확인 필요"에 남기고 나머지를 계속한다
-    if (isAuto && autonomyVerdict(toolName, input, runsWrittenFile) === 'deny') {
+    // 대표가 켠 브라우저 자동 허용 — 이동·클릭·입력·제출을 넘긴다 (로그인·결제 칸 입력 등은 그대로 — browserAutoVerdict)
+    const autoOpts = { browserAuto: s.equipment.browserAuto === true }
+    if (isAuto && autonomyVerdict(toolName, input, runsWrittenFile, autoOpts) === 'deny') {
       this.auto.counts = { ...this.auto.counts, waited: this.auto.counts.waited + 1 }
       record({ kind: 'skipped', toolName, summary, category: autoKindOf(toolName) })
       this.log(staffId, 'approval', tk('log.autonomousSkip', { tool: tk(autoActionKey(toolName)), summary }))
       return Promise.resolve({ deny: t('staff.deny.autonomous', { action: `${toolName} ${maskSecrets(summary)}`.slice(0, 300) }) })
     }
-    const waitReason = writtenReason ?? autoWaitReason(toolName, input)
+    const waitReason = writtenReason ?? autoWaitReason(toolName, input, autoOpts)
     if (waitReason) {
       this.waitReasons.set(staffId, waitReason)
       // 대기로 넘긴 건수 — 요약의 "기다리는 것 N건"
@@ -2403,7 +2410,13 @@ export class Office extends EventEmitter<{
   /** 결재를 승인하면서 규칙을 만든다. 같은 규칙에 들어가는 이 직원의 다른 대기 결재도 함께 승인한다 */
   approveAlways(approvalId: string, via = '') {
     const s = [...this.hired.values()].find((x) => x.approvals.some((a) => a.id === approvalId))
-    const draft = s?.approvals.find((a) => a.id === approvalId)?.alwaysRule
+    const approval = s?.approvals.find((a) => a.id === approvalId)
+    // 브라우저 결재 카드: 규칙 대신 이 직원의 브라우저 자동 허용을 켠다 (휴대폰에서는 이번 한 번만 승인)
+    if (s && approval?.browserAutoOffer) {
+      if (!isRemoteCall()) this.setBrowserAuto(s.id, true)
+      return this.decide(approvalId, true, via)
+    }
+    const draft = approval?.alwaysRule
     if (!s || !draft) return false
     // 휴대폰에서는 승인만 — Bash 규칙은 만들지 않는다 (한 번 누른 승인이 앞으로의 모든 명령 허가가 되지 않게)
     if (isRemoteCall() && isRemoteRuleBlocked(draft.toolName)) return this.decide(approvalId, true, via)
@@ -2420,6 +2433,16 @@ export class Office extends EventEmitter<{
       if (id === approvalId) isDone = ok
     }
     return isDone
+  }
+
+  /** 브라우저 자동 허용 켜기·끄기 (장비 설정 browserAuto). 세션을 다시 열지 않는다 — 판정은 결재 때마다 이 값을 본다 */
+  private setBrowserAuto(staffId: string, on: boolean) {
+    const s = this.hired.get(staffId)
+    if (!s || (s.equipment.browserAuto === true) === on) return
+    s.equipment = { ...s.equipment, browserAuto: on }
+    db.saveEquipment(staffId, s.equipment)
+    this.log(staffId, 'approval', tk(on ? 'log.browserAutoOn' : 'log.browserAutoOff', {}))
+    this.scheduleEmit()
   }
 
   deleteApprovalRule(ruleId: string) {
@@ -2789,6 +2812,17 @@ export class Office extends EventEmitter<{
             } catch {
               return text(t('staff.tool.learning.invalid'))
             }
+          },
+        ),
+        defineTool(
+          'browser_auto',
+          t('staff.tool.browserAuto.desc'),
+          { on: z.boolean().describe(t('staff.tool.browserAuto.on')) },
+          async ({ on }) => {
+            // 켜기는 결재함에서 대표가 승인한 뒤에야 여기 온다 (hired.ts canUseTool · autoDecide). 다른 PC가 맡긴 일에서는 켜지 않는다
+            if (on && this.peerJobOf(staffId)) return text(t('staff.tool.browserAuto.peer'))
+            this.setBrowserAuto(staffId, on)
+            return text(t(on ? 'staff.tool.browserAuto.onDone' : 'staff.tool.browserAuto.offDone'))
           },
         ),
         defineTool(
@@ -3385,9 +3419,15 @@ export class Office extends EventEmitter<{
     if (equipment.skills !== 'all' && !Array.isArray(equipment.skills)) equipment.skills = s.equipment.skills ?? 'all'
     // 휴대폰이 보낸 값은 Bash 허용을 걸러 내고 "위험 명령 금지"를 못 빼게 한다 (PC 쪽 방어 — 가져온 장비와 같은 규칙)
     if (isRemoteCall()) {
-      equipment = remoteSafeEquipment(s.equipment, equipment)
+      // 브라우저 자동 허용은 PC에서만 바꾼다
+      equipment = { ...remoteSafeEquipment(s.equipment, equipment), browserAuto: s.equipment.browserAuto }
       this.notifyRemoteChange('notify.remoteEquipment', { name: s.name })
     }
+    // 브라우저 자동 허용만 바꿨으면 하던 일을 끊지 않는다 (세션 설정과 상관없는 값)
+    const prev = s.equipment
+    const isOnlyBrowserAuto = [...new Set([...Object.keys(equipment), ...Object.keys(prev)])].every((k) => k === 'browserAuto' || JSON.stringify(equipment[k as keyof Equipment]) === JSON.stringify(prev[k as keyof Equipment]))
+    if (isOnlyBrowserAuto) return this.setBrowserAuto(staffId, equipment.browserAuto === true)
+    if ((equipment.browserAuto === true) !== (s.equipment.browserAuto === true)) this.log(staffId, 'approval', tk(equipment.browserAuto ? 'log.browserAutoOn' : 'log.browserAutoOff', {}))
     s.equipment = equipment
     db.saveEquipment(staffId, equipment)
     this.manager.restart(staffId)

@@ -10,7 +10,7 @@ import os from 'node:os'
 import { insertUsage, saveSessionId } from './db'
 import { findCodexRollout, readCodexTail } from './ai/codexSession'
 import { findSessionFile, handoffText, readSessionTail, rotateLimits } from './sessionRotate'
-import { BROWSER_EQUIPMENT, browserVerdict } from '../shared/browserTools.ts'
+import { BROWSER_AUTO_TOOL, BROWSER_EQUIPMENT, browserAutoVerdict, browserVerdict } from '../shared/browserTools.ts'
 import { COMPUTER_EQUIPMENT, computerSummary, computerSummaryI18n, computerVerdict, toolDisplayName } from '../shared/computerTools.ts'
 import { parseSlash, type RawCommand } from '../shared/slashCommands.ts'
 import { browserOutputDir } from './browser'
@@ -371,12 +371,15 @@ class Worker {
         const command = toolName === 'Bash' && typeof input.command === 'string' ? input.command : null
         // 사무실 내부 도구(팀 조회·위임)와 장비로 허용한 도구는 결재 없이 쓴다
         // 화면 캡처는 대표 화면이 그대로 찍히므로, 설정의 '직원 화면 캡처 허용'이 켜져 있으면(기본) 모두, 꺼지면 장비에서 "화면 캡처 자율"을 켠 직원만 결재 없이 찍는다
+        // 브라우저 자동 허용 켜기는 장비·규칙과 상관없이 늘 대표 승인을 거친다 (끄기는 바로)
+        const isBrowserAutoGrant = toolName === BROWSER_AUTO_TOOL && input.on !== false
         const isAllowed =
-          (toolName.startsWith(OFFICE_TOOL_PREFIX) && (toolName !== `${OFFICE_TOOL_PREFIX}capture_screen` || this.hooks.isScreenCaptureOn() || s.equipment.allowedTools.includes(toolName))) ||
+          !isBrowserAutoGrant &&
+          ((toolName.startsWith(OFFICE_TOOL_PREFIX) && (toolName !== `${OFFICE_TOOL_PREFIX}capture_screen` || this.hooks.isScreenCaptureOn() || s.equipment.allowedTools.includes(toolName))) ||
           s.equipment.allowedTools.some((t) => toolName === t || toolName.startsWith(`mcp__${t}__`)) ||
           (command !== null && s.equipment.allowedTools.includes(READ_ONLY_BASH) && isReadOnlyCommand(command)) ||
           // 등록된 참고 문서를 읽는 건 결재 없이 ("모두 결재" 직원도)
-          isRefDocRead(toolName, input, refDocPaths, os.homedir())
+          isRefDocRead(toolName, input, refDocPaths, os.homedir()))
         if (isAllowed) return Promise.resolve<ToolDecision>({ behavior: 'allow' })
         const questions = toolName === QUESTION_TOOL ? toQuestions(input) : undefined
         if (!questions && this.hooks.takeOneShotAllow(s.id, toolName, summarizeInput(input, toolName))) return Promise.resolve<ToolDecision>({ behavior: 'allow' })
@@ -431,6 +434,8 @@ class Worker {
       questions,
       // 결재 카드의 "앞으로 항상 승인" — 위험 명령·질문이면 붙지 않는다
       alwaysRule: questions ? undefined : (ruleDraftFor(toolName, input) ?? undefined),
+      // 브라우저 결재 카드의 "이 직원 브라우저 자동 허용" — 자동 허용으로 넘길 수 있는 조작이고 아직 꺼져 있을 때만
+      ...(!questions && this.staff.equipment.browserAuto !== true && browserVerdict(toolName, input) === 'wait' && browserAutoVerdict(toolName, input) === 'allow' ? { browserAutoOffer: true } : {}),
     }
     return new Promise<ToolDecision>((resolve) => {
       this.pending.set(approval.id, resolve)
