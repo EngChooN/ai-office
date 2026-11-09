@@ -408,7 +408,8 @@ export class Office extends EventEmitter<{
       },
       isScreenCaptureOn: () => this.settings.isStaffCaptureOn,
       browserBlocked: (id) => this.browserBlocked.has(id),
-      releaseBrowser: (id) => this.releaseBrowserFor(id),
+      // 일이 끝나도 공용 브라우저는 다른 직원이 기다릴 때만 놓는다 (안 그러면 끝날 때마다 창이 닫힌다)
+      releaseBrowser: (id) => (this.browserLock.holder() === id && ![...this.browserBlocked].some((b) => b !== id) ? false : this.releaseBrowserFor(id)),
       equippedMcp: (id) => {
         const s = this.hired.get(id)
         if (!s) return {}
