@@ -15,6 +15,7 @@ Writing rules
 
 ### Bug fixes
 - Fixed a scroll bar appearing in the queued message box above the chat input even when there was only one message.
+- Fixed your chat bubble overflowing off the left edge (hiding what you wrote) when replying to a long message. The quoted line is now shortened to fit the bubble.
 
 ## [1.1.3] - 2026-11-08
 

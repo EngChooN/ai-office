@@ -457,7 +457,7 @@ const Bubble = memo(function Bubble({
           </span>
         )}
         {/* 기획안 확인 요청은 글 대신 카드로만 (같은 말을 두 번 보이지 않게) */}
-        <div className={cn('group selectable relative min-w-0 rounded-2xl px-3 py-2 text-sm', isMe ? 'bg-primary text-primary-foreground whitespace-pre-wrap' : 'bg-card border', m.plan && 'hidden')}>
+        <div className={cn('group selectable relative max-w-full min-w-0 rounded-2xl px-3 py-2 text-sm', isMe ? 'bg-primary text-primary-foreground whitespace-pre-wrap' : 'bg-card border', m.plan && 'hidden')}>
           <BubbleMenu message={m} isMe={isMe} />
           {m.replyTo && <ReplyQuote reply={m.replyTo} isMe={isMe} />}
           <FoldableText text={m.text}>{isMe ? <MentionText text={m.text} targets={mentions} onPrimary /> : <Markdown plugins={plugins}>{m.text}</Markdown>}</FoldableText>
