@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react'
-import { mergeLogs, RECORD_PAGE } from '@shared/recordLogs'
+import { mergeLogs, mergeRecent, RECORD_PAGE, type LoadedRecord } from '@shared/recordLogs'
 import type { DailyRecord, LogEntry } from '@shared/types'
 
 const EXTERNAL_REFRESH_MS = 5000
 /** 맨 위에서 이만큼 안으로 올라오면 이전 기록을 미리 불러온다 */
 const LOAD_OLDER_PX = 400
 
-type Loaded = { logs: readonly LogEntry[]; hasMore: boolean }
+type Loaded = LoadedRecord
 export type OlderState = 'idle' | 'loading' | 'error'
 
 /**
@@ -25,11 +25,7 @@ export function useStaffRecord(staffId: string, isHired: boolean, costUsd: numbe
       void window.office.getRecord(staffId).then((r) => {
         if (!isLive) return
         setUsage(r)
-        setLoaded((prev) => {
-          if (!prev || prev.logs.length === 0) return { logs: r.logs, hasMore: r.hasMore ?? false }
-          const logs = mergeLogs(prev.logs, r.logs)
-          return logs === prev.logs ? prev : { ...prev, logs }
-        })
+        setLoaded((prev) => mergeRecent(prev, { logs: r.logs, hasMore: r.hasMore ?? false }))
       })
     load()
     const timer = isHired ? undefined : setInterval(load, EXTERNAL_REFRESH_MS)

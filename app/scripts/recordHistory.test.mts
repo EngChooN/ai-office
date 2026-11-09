@@ -9,7 +9,7 @@ import { register } from 'node:module'
 import { DatabaseSync } from 'node:sqlite'
 import { after, mock, test } from 'node:test'
 import type { LogEntry } from '../src/shared/types.ts'
-import { clampRecordLimit, dayKey, dayStarts, mergeLogs, pageLogs, RECORD_PAGE, RECORD_PAGE_MAX, RECORD_RECENT } from '../src/shared/recordLogs.ts'
+import { clampRecordLimit, dayKey, dayStarts, mergeLogs, mergeRecent, pageLogs, RECORD_PAGE, RECORD_PAGE_MAX, RECORD_RECENT } from '../src/shared/recordLogs.ts'
 import { readCodexExternalDay } from '../src/main/transcript.ts'
 
 register('./dbLoaderHooks.mjs', import.meta.url)
@@ -144,6 +144,19 @@ test('mergeLogs: 앞·뒤에 붙이기, 겹침은 한 번만, 새것이 없으�
   // 이전 기록을 불러온 뒤 최근 기록을 다시 읽어도 이전 기록이 남는다
   const older = mergeLogs(a, [log(1), log(2)])
   assert.deepEqual(ids(mergeLogs(older, [log(4), log(5), log(6)])), [1, 2, 3, 4, 5, 6])
+})
+
+test('mergeRecent: 새 줄이 한 번에 많아 사이가 비면 최근 기록부터 새로 시작한다', () => {
+  const prev = { logs: [log(1), log(2), log(3)], hasMore: false }
+  // 겹치거나 바로 이어지면(더 이전 없음) 합친다
+  assert.deepEqual(ids(mergeRecent(prev, { logs: [log(3), log(4)], hasMore: true }).logs), [1, 2, 3, 4])
+  assert.deepEqual(ids(mergeRecent(prev, { logs: [log(4), log(5)], hasMore: false }).logs), [1, 2, 3, 4, 5])
+  // 겹치지 않는데 앞에 더 있으면 틈 — 이어 붙이지 않는다
+  const gap = mergeRecent(prev, { logs: [log(500), log(501)], hasMore: true })
+  assert.deepEqual(ids(gap.logs), [500, 501])
+  assert.equal(gap.hasMore, true)
+  assert.equal(mergeRecent(prev, { logs: [log(2), log(3)], hasMore: true }), prev, '바뀐 게 없으면 같은 객체')
+  assert.deepEqual(ids(mergeRecent(null, { logs: [log(9)], hasMore: true }).logs), [9])
 })
 
 test('dayStarts: 날짜가 바뀌는 첫 줄마다 구분선 (자정 경계)', () => {

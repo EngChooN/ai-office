@@ -48,6 +48,21 @@ export function mergeLogs(a: readonly LogEntry[], b: readonly LogEntry[]): reado
   return [...a, ...fresh].sort((x, y) => x.id - y.id)
 }
 
+/**
+ * 다시 읽은 최근 기록(r)을 이미 불러온 기록(prev)에 합친다.
+ * 최근 기록이 이미 가진 마지막 줄과 겹치지 않는데 그 앞에 기록이 더 있으면(한 턴에 새 줄이 RECORD_RECENT개를 넘음)
+ * 사이가 비므로 이어 붙이지 않고 최근 기록부터 새로 시작한다 — 이전 기록은 위로 올리면 다시 불러온다
+ */
+export type LoadedRecord = { logs: readonly LogEntry[]; hasMore: boolean }
+
+export function mergeRecent(prev: LoadedRecord | null, r: LoadedRecord): LoadedRecord {
+  const last = prev?.logs.at(-1)
+  if (!prev || !last) return r
+  if (r.hasMore && r.logs.length > 0 && r.logs[0].id > last.id) return { logs: r.logs, hasMore: true }
+  const logs = mergeLogs(prev.logs, r.logs)
+  return logs === prev.logs ? prev : { ...prev, logs }
+}
+
 /** 날짜 구분선을 나눌 그 기기의 날짜 (YYYY-M-D) */
 export const dayKey = (ts: number) => {
   const d = new Date(ts)
