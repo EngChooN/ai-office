@@ -198,7 +198,8 @@ function StatusTip({ staff: s, rect }: { staff: Staff; rect: DOMRect }) {
   )
 }
 
-/** 이 방에서 보낸 대기 메시지 (일하는 직원에게 '끝나면 보내기'로 보낸 말) — 입력칸 바로 위 */
+/** 이 방에서 보낸 대기 메시지 (일하는 직원에게 '끝나면 보내기'로 보낸 말) — 입력칸 바로 위.
+ *  기본 max-h-[40%]는 여기서 너무 작게 잡혀 한 장에도 스크롤이 생기므로 고정 높이로 둔다 */
 function RoomWaiting({ room }: { room: string | undefined }) {
   const staff = useOffice((s) => s.staff)
   const items = useMemo(
@@ -206,7 +207,7 @@ function RoomWaiting({ room }: { room: string | undefined }) {
     [staff, room],
   )
   if (items.length === 0) return null
-  return <WaitingCards items={items} className="mx-auto w-full max-w-3xl border-t-0 px-0" />
+  return <WaitingCards items={items} className="mx-auto max-h-40 w-full max-w-3xl border-t-0 px-0" />
 }
 
 /** 다른 PC 직원이 랩에 있으면 "원격 · 피어명" 한 줄 (연결이 끊긴 PC는 흐리게) */
