@@ -7,7 +7,8 @@ Writing rules
 - Write from the user's point of view, describing "what you can now do." Do not use technical names (file paths, program or library names, English abbreviations). If one is truly needed, put it once in parentheses after a plain-language explanation.
 - Development details (how it was built, where files are) go in `SPEC.md` and `docs/changelog-dev.md`.
 
-## [미정] (설치본 미빌드)
+## [1.1.5] - 2026-11-09
+- Device differences: all changes are in the PC app. The phone app keeps the same version number with no code changes and uses the new screens sent by the PC. Browser auto-allow cannot be turned on or off from the phone.
 
 ### New features
 - You can now give a staff member browser auto-allow. While it is on, they navigate, click, type, post, submit and upload files in the browser without approval during auto-approval or autonomous work. Turn it on with the switch in the staff Equipment tab or the 'Auto-allow browser' button on a browser approval card, or tell the staff member "go ahead and post and send too" and approve the request they raise. To turn it off, use the Equipment tab or tell them to stop. Typing into login or payment fields, running code in the page and changing cookies still need approval even when it is on. It cannot be turned on from the phone.
