@@ -146,7 +146,7 @@ export function ConfirmCard({ card }: { card: SecretaryCard }) {
                 <div className="grid grid-cols-1 gap-1.5 @md:grid-cols-2">
                   {Object.entries(s.editable).map(([name, value]) => {
                     const engine = edits[i + 1]?.엔진 ?? s.editable?.엔진
-                    const models = engine === 'codex' ? ['default', ...(providers?.codex.models ?? [])] : ['default', 'opus', 'sonnet', 'haiku']
+                    const models = engine === 'codex' ? ['default', ...(providers?.codex.models ?? [])] : ['default', 'fable', 'opus', 'sonnet', 'haiku']
                     const cur = edits[i + 1]?.[name] ?? value
                     return (
                       <label key={name} className="text-muted-foreground flex items-center gap-1.5 text-[11px]">

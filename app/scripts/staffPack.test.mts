@@ -50,6 +50,12 @@ test('정상 파일은 통과하고, 없는 장비만 빠진다', () => {
   assert.deepEqual(r.excluded.sort(), ['ghost-skill', 'no-such-mcp'])
 })
 
+test('Fable 모델 직원 팩도 가져온다', () => {
+  const r = validatePackObject(packOf([{ name: '지수', role: 'QA', avatar: 0, model: 'fable' }]), known)
+  assert.equal(r.ok, true)
+  if (r.ok) assert.equal(r.pack.staff[0].model, 'fable')
+})
+
 test('skills가 all이면 그대로 두고, 빠진 필드는 기본값으로 채운다', () => {
   const r = validatePackObject(packOf([{ name: '지수', role: 'QA', avatar: 0, model: 'default' }]), known)
   assert.equal(r.ok, true)

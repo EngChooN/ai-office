@@ -34,6 +34,8 @@ export function claudeBinaryPath() {
 
 const MODEL_ID: Record<ClaudeModel, string | undefined> = {
   default: undefined,
+  // Fable은 별칭이 아니라 버전까지 고정한 전체 이름으로 부른다 (화면·저장값은 'fable')
+  fable: 'claude-fable-5-1',
   opus: 'opus',
   sonnet: 'sonnet',
   haiku: 'haiku',

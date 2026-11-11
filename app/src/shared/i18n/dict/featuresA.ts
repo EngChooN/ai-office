@@ -1131,6 +1131,7 @@ export default {
       zh: '{name} 尚未连接。可在设置的 AI 账号中连接。',
     },
     'hire.provider.checking': { ko: '연결 상태를 확인하는 중…', en: 'Checking connections…', ja: '接続状態を確認中…', zh: '正在检查连接…' },
+    'hire.model.usageLegend': { ko: '● 사용량(많을수록 한도가 빨리 참)', en: '● Usage (more fills your limit faster)', ja: '● 使用量（多いほど上限に早く達します）', zh: '● 用量（越多越快用完额度）' },
     'hire.model.codexDefault': { ko: '기본 ({model})', en: 'Default ({model})', ja: 'デフォルト（{model}）', zh: '默认（{model}）' },
     'hire.approval': { ko: '결재 방식', en: 'Approval mode', ja: '承認方式', zh: '审批方式' },
     'hire.prompt': { ko: '업무 지침 (선택)', en: 'Work guidelines (optional)', ja: '業務指針（任意）', zh: '工作准则（可选）' },

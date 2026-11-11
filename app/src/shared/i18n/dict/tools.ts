@@ -420,10 +420,10 @@ export default {
     zh: '更改回答的语气与格式（输出风格）',
   },
   'slash.desc.model': {
-    ko: '이 직원의 모델을 바꿔요 (default·opus·sonnet·haiku). 값 없이 치면 지금 모델을 알려 줘요',
-    en: 'Change this employee’s model (default, opus, sonnet, haiku). Without a value it shows the current model',
-    ja: 'この社員のモデルを変えます (default・opus・sonnet・haiku)。値なしで入力すると現在のモデルを表示します',
-    zh: '更改该员工的模型（default、opus、sonnet、haiku）。不带值则显示当前模型',
+    ko: '이 직원의 모델을 바꿔요 (default·fable·opus·sonnet·haiku). 값 없이 치면 지금 모델을 알려 줘요',
+    en: 'Change this employee’s model (default, fable, opus, sonnet, haiku). Without a value it shows the current model',
+    ja: 'この社員のモデルを変えます (default・fable・opus・sonnet・haiku)。値なしで入力すると現在のモデルを表示します',
+    zh: '更改该员工的模型（default、fable、opus、sonnet、haiku）。不带值则显示当前模型',
   },
   'slash.desc.effort': {
     ko: '생각 깊이 설정이에요. 앱에는 이 설정이 없어 안내만 해요',

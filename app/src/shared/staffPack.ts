@@ -26,7 +26,7 @@ export const PACK_LIMITS = {
   budgetMax: 100000,
 } as const
 
-const MODELS: readonly ModelChoice[] = ['default', 'opus', 'sonnet', 'haiku']
+const MODELS: readonly ModelChoice[] = ['default', 'fable', 'opus', 'sonnet', 'haiku']
 const GPT_MODEL_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/
 // 매뉴얼 이름 규칙은 main/manuals.ts의 NAME_RE와 같다 (main 쪽은 파일을 쓰므로 여기서 따로 둔다)
 const MANUAL_NAME_RE = /^[a-z0-9][a-z0-9-]{1,62}$/

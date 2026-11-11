@@ -31,7 +31,7 @@ export type AiProvider = 'claude' | 'codex'
 /** 앱 내부 AI(비서·요약)가 쓸 공급자 — auto는 쓸 수 있는 쪽 (둘 다면 Claude) */
 export type InternalAi = 'auto' | 'claude' | 'codex'
 /** Claude 모델 별칭 */
-export type ClaudeModel = 'default' | 'opus' | 'sonnet' | 'haiku'
+export type ClaudeModel = 'default' | 'fable' | 'opus' | 'sonnet' | 'haiku'
 /** 직원 모델: Claude는 별칭, Codex는 'default' 또는 model/list의 모델 id */
 export type ModelChoice = ClaudeModel | (string & {})
 export type ApprovalMode = 'ask' | 'acceptEdits'

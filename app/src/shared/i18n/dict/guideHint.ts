@@ -17,11 +17,17 @@ export default {
     ja: 'おまかせ（おすすめ）',
     zh: '自动选择（推荐）',
   },
+  'guideHint.model.fable': {
+    ko: '가장 어려운 일 · 가장 느림',
+    en: 'Hardest tasks · slowest',
+    ja: '最も難しい仕事向け · 最も遅い',
+    zh: '最难的工作 · 最慢',
+  },
   'guideHint.model.opus': {
-    ko: '가장 똑똑해요 · 느리고 사용량이 많아요',
-    en: 'Smartest · slower and uses more',
-    ja: '最も賢い · 遅めで使用量が多め',
-    zh: '最聪明 · 较慢，用量较多',
+    ko: '아주 똑똑해요 · 느리고 사용량이 많아요',
+    en: 'Very smart · slower and uses more',
+    ja: 'とても賢い · 遅めで使用量が多め',
+    zh: '非常聪明 · 较慢，用量较多',
   },
   'guideHint.model.sonnet': {
     ko: '똑똑함과 빠르기의 균형',

@@ -118,8 +118,8 @@ export function slashAction(text: string, raw: RawCommand[] = [], provider: 'cla
   return { kind: 'pass', name }
 }
 
-/** /model 뒤 글 → 직원 모델. 앱이 아는 별칭(default·opus·sonnet·haiku, 대소문자 무관)만 받고 나머지는 null */
-export const CLAUDE_MODEL_CHOICES = ['default', 'opus', 'sonnet', 'haiku'] as const
+/** /model 뒤 글 → 직원 모델. 앱이 아는 별칭(default·fable·opus·sonnet·haiku, 대소문자 무관)만 받고 나머지는 null */
+export const CLAUDE_MODEL_CHOICES = ['default', 'fable', 'opus', 'sonnet', 'haiku'] as const
 export function parseModelArg(args: string): (typeof CLAUDE_MODEL_CHOICES)[number] | null {
   const v = args.trim().toLowerCase()
   return CLAUDE_MODEL_CHOICES.find((m) => m === v) ?? null

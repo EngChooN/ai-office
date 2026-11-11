@@ -5,7 +5,7 @@ import type { AgentTemplate, ModelChoice } from '../shared/types'
 
 // 고용 화면의 "에이전트 불러오기": <작업 폴더>/.claude/agents 와 ~/.claude/agents 의 정의를 읽는다
 
-const MODELS: ModelChoice[] = ['opus', 'sonnet', 'haiku']
+const MODELS: ModelChoice[] = ['fable', 'opus', 'sonnet', 'haiku']
 
 function parse(file: string, source: string): AgentTemplate | null {
   const raw = fs.readFileSync(file, 'utf8')

@@ -1,4 +1,4 @@
-import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
+import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { ArrowUpIcon, CheckIcon, ChevronDownIcon, ChevronUpIcon, CircleStopIcon, DownloadIcon, SendIcon, SquareTerminalIcon, UserMinusIcon, XIcon, ZapIcon } from 'lucide-react'
 import { NativeSelect } from '@/components/ui/select'
 import { AttachButton, AttachmentView, DraftAttachments, useDraftAttachments } from '@/components/attachments'
@@ -24,6 +24,7 @@ import { ProgressLine, WaitingCards } from './ProgressLine'
 import { AutonomyCheck } from './Autonomy'
 import { MemoryLengthSelect } from './MemoryLength'
 import { useProviders } from './ProviderCards'
+import { claudeModelName, CLAUDE_MODEL_ROWS, usageDotsText } from './modelOptions'
 import { formatCost, formatTokens, shortPath, workDirLabel } from './status'
 import { Markdown } from '@/components/markdown'
 import { JumpToBottom, useStickToBottom } from '@/components/stick-to-bottom'
@@ -143,19 +144,31 @@ const TAB_LABEL: Record<PanelTab, TKey> = {
   equip: 'staffPanel.tab.equip',
   profile: 'staffPanel.tab.profile',
 }
-const MODELS: ModelChoice[] = ['default', 'opus', 'sonnet', 'haiku']
 /** 기본 모델만 번역하고 모델 이름은 그대로 */
-const CLAUDE_MODEL_NAME: Record<string, string> = { opus: 'Opus', sonnet: 'Sonnet', haiku: 'Haiku' }
-const modelLabel = (model: Staff['model']) => (model === 'default' ? t('staffPanel.model.default') : (CLAUDE_MODEL_NAME[model] ?? model))
+const modelLabel = (model: Staff['model']) => (model === 'default' ? t('staffPanel.model.default') : claudeModelName(model))
 
 /** 프로필의 모델 고르기 — Codex 직원은 Codex가 알려 준 모델 목록 (고른 모델이 목록에 없어도 남겨 둔다) */
 function ModelSelect({ staff }: { staff: Staff }) {
   const isCodex = staff.provider === 'codex'
   const { status } = useProviders(isCodex)
   const codexModels = status?.codex.models ?? []
-  const options = isCodex ? ['default', ...codexModels, ...(staff.model === 'default' || codexModels.includes(staff.model) ? [] : [staff.model])] : MODELS
+  const onChange = (e: ChangeEvent<HTMLSelectElement>) => void window.office.updateStaff(staff.id, { model: e.target.value as ModelChoice })
+  if (!isCodex) {
+    // Claude: 기본 → Fable → Opus → Sonnet → Haiku, 오른쪽에 사용량 점(글자), 기본 아래 구분선
+    return (
+      <NativeSelect value={staff.model} onChange={onChange}>
+        {CLAUDE_MODEL_ROWS.map((r) => (
+          <Fragment key={r.value}>
+            <option value={r.value}>{r.dots ? `${modelLabel(r.value)}  ${usageDotsText(r.dots)}` : modelLabel(r.value)}</option>
+            {r.value === 'default' && <hr />}
+          </Fragment>
+        ))}
+      </NativeSelect>
+    )
+  }
+  const options = ['default', ...codexModels, ...(staff.model === 'default' || codexModels.includes(staff.model) ? [] : [staff.model])]
   return (
-    <NativeSelect value={staff.model} onChange={(e) => void window.office.updateStaff(staff.id, { model: e.target.value as ModelChoice })}>
+    <NativeSelect value={staff.model} onChange={onChange}>
       {options.map((m) => (
         <option key={m} value={m}>
           {modelLabel(m)}
@@ -1065,6 +1078,7 @@ function ExternalActions({ staff }: { staff: Staff }) {
             </NativeSelect>
             <NativeSelect value={model} onChange={(e) => setModel(e.target.value as ModelChoice)} className="h-8 w-24 text-xs">
               <option value="default">{t('staffPanel.external.modelDefault')}</option>
+              <option value="fable">Fable</option>
               <option value="opus">Opus</option>
               <option value="sonnet">Sonnet</option>
               <option value="haiku">Haiku</option>

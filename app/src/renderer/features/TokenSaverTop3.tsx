@@ -6,6 +6,7 @@ import { pickSavers, type Saver, type SaverAction } from '@shared/tokenSaving'
 import type { PayslipRow, Staff } from '@shared/types'
 import { Avatar } from './StaffCard'
 import { formatTokens } from './status'
+import { claudeModelName } from './modelOptions'
 
 const patchOf = (a: SaverAction, isUndo: boolean) => {
   const value = isUndo ? a.from : a.to
@@ -74,7 +75,7 @@ export function TokenSaverTop3() {
                     <Button size="sm" variant="outline" onClick={() => void apply(saver, false)}>
                       {t('tokenSaver.save')}
                     </Button>
-                    <span className="text-muted-foreground text-[11px]">{t(saver.action.kind === 'model' ? 'tokenSaver.hint.model' : 'tokenSaver.hint.memory')}</span>
+                    <span className="text-muted-foreground text-[11px]">{saver.action.kind === 'model' ? t('tokenSaver.hint.model', { to: claudeModelName(saver.action.to) }) : t('tokenSaver.hint.memory')}</span>
                   </>
                 )}
               </div>

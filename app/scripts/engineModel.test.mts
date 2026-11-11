@@ -16,6 +16,12 @@ test('어긋난 저장 값 판별', () => {
   assert.equal(isEngineMismatch('codex', 'haiku'), true)
   assert.equal(isEngineMismatch('codex', 'default'), false)
 })
+test('Fable: Claude 별칭으로 저장 (전체 이름은 저장값이 아님), GPT 엔진에선 기본 모델', () => {
+  assert.equal(isEngineMismatch('claude', 'fable'), false)
+  assert.deepEqual(fitEngineModel('claude', 'fable'), { provider: 'claude', model: 'fable' })
+  assert.deepEqual(fitEngineModel('codex', 'fable'), { provider: 'codex', model: 'default' })
+  assert.equal(isEngineMismatch('claude', 'claude-fable-5-1'), true)
+})
 test('엔진 안내는 GPT가 연결됐을 때만', () => {
   const st = (state: string) => ({ claude: {}, codex: { state, models: ['gpt-6-sol'], defaultModel: 'gpt-6-sol' } }) as never
   assert.equal(engineGuide(st('notInstalled')), '')

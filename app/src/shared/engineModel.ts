@@ -3,7 +3,7 @@ import type { AiProvider, EquipmentCatalog, McpSourceKind, ModelChoice, Provider
 /** 엔진을 정하지 않았을 때 쓸 공급자: Claude가 준비됐으면 Claude, 아니면 준비된 Codex (모르면 Claude) */
 export const defaultProvider = (s: ProvidersStatus | null | undefined): AiProvider => (s && s.claude.state !== 'ready' && s.codex.state === 'ready' ? 'codex' : 'claude')
 
-const CLAUDE_MODELS = new Set(['default', 'opus', 'sonnet', 'haiku'])
+const CLAUDE_MODELS = new Set(['default', 'fable', 'opus', 'sonnet', 'haiku'])
 const looksGpt = (m: string, codexModels: string[]) => codexModels.includes(m) || /^(gpt|o\d|codex)/i.test(m)
 
 /** 엔진과 모델을 맞춘다: Claude 엔진은 Claude 별칭만, GPT 모델 이름이 들어오면 GPT 엔진으로, GPT 엔진에 Claude 별칭이 오면 기본 모델로 */
@@ -37,7 +37,7 @@ export function engineGuide(status: ProvidersStatus | null | undefined): string 
 엔진(고용)
 - 직원은 엔진이 둘입니다: Claude(provider "claude") 또는 GPT(provider "codex"). 직원 목록에 직원마다 엔진이 나옵니다.
 - hire의 provider는 대표가 GPT·Codex를 말했을 때만 "codex", Claude를 말했을 때만 "claude"입니다. 말하지 않았으면 provider를 생략합니다(앱이 연결된 엔진으로 정합니다).
-- provider "claude"면 model은 "default"|"opus"|"sonnet"|"haiku" 중에서, provider "codex"면 model은 "default" 또는 쓸 수 있는 GPT 모델 중에서 고릅니다(Claude 모델 이름을 넣지 않습니다). 쓸 수 있는 GPT 모델: ${models}${x.defaultModel ? ` (기본 ${x.defaultModel})` : ''}. 대표가 모델을 말하지 않았으면 "default"로 둡니다.
+- provider "claude"면 model은 "default"|"fable"|"opus"|"sonnet"|"haiku" 중에서, provider "codex"면 model은 "default" 또는 쓸 수 있는 GPT 모델 중에서 고릅니다(Claude 모델 이름을 넣지 않습니다). 쓸 수 있는 GPT 모델: ${models}${x.defaultModel ? ` (기본 ${x.defaultModel})` : ''}. 대표가 모델을 말하지 않았으면 "default"로 둡니다.
 - updateStaff의 model도 그 직원의 엔진에 맞는 모델이어야 합니다.`
 }
 

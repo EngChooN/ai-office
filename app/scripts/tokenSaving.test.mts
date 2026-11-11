@@ -31,6 +31,17 @@ test('이유는 실제 값: Opus → Sonnet 한 단계, 기억 최대·길게 �
   assert.deepEqual(saverFor(staff('a', { memory: 'long' })), { reason: 'memoryLong', action: { kind: 'memory', from: 'long', to: 'normal' } })
 })
 
+test('Fable → Opus 한 단계 (Opus → Sonnet은 그대로), Codex는 제외', () => {
+  assert.deepEqual(saverFor(staff('a', { model: 'fable' })), { reason: 'fable', action: { kind: 'model', from: 'fable', to: 'opus' } })
+  assert.deepEqual(saverFor(staff('a', { model: 'fable', memory: 'full' }))?.action, { kind: 'model', from: 'fable', to: 'opus' })
+  assert.equal(saverFor(staff('a', { provider: 'codex', model: 'fable' })), null)
+})
+
+test('[아끼기] 안내 문구는 낮출 모델 이름을 변수로 받는다 (Fable → Opus가 Sonnet으로 안내되지 않게)', () => {
+  assert.match(src('src/shared/i18n/dict/tokenSaving.ts'), /'tokenSaver\.hint\.model'[\s\S]*?\{to\}/)
+  assert.match(src('src/renderer/features/TokenSaverTop3.tsx'), /tokenSaver\.hint\.model', \{ to:/)
+})
+
 test('둘 다 해당하면 모델 먼저, 바꿀 것은 하나', () => {
   assert.deepEqual(saverFor(staff('a', { model: 'opus', memory: 'full' }))?.action, { kind: 'model', from: 'opus', to: 'sonnet' })
 })

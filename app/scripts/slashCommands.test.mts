@@ -159,9 +159,10 @@ test('setting: /model·/effort·/fast·/advisor는 앱 설정 처리 (목록 전
 })
 
 test('parseModelArg: 별칭(대소문자·공백 무시)만 받고 모르는 값은 null', () => {
-  assert.deepEqual(CLAUDE_MODEL_CHOICES, ['default', 'opus', 'sonnet', 'haiku'])
+  assert.deepEqual(CLAUDE_MODEL_CHOICES, ['default', 'fable', 'opus', 'sonnet', 'haiku'])
+  assert.equal(parseModelArg('Fable'), 'fable')
   assert.equal(parseModelArg('opus'), 'opus')
   assert.equal(parseModelArg('  SoNNet '), 'sonnet')
   assert.equal(parseModelArg('Default'), 'default')
-  for (const bad of ['', 'gpt-5', 'claude-opus-4-1', 'opus sonnet', 'opus[1m]']) assert.equal(parseModelArg(bad), null, bad)
+  for (const bad of ['', 'gpt-5', 'claude-opus-4-1', 'claude-fable-5-1', 'opus sonnet', 'opus[1m]']) assert.equal(parseModelArg(bad), null, bad)
 })
