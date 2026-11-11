@@ -32,13 +32,13 @@ import { commandItem, manualItem, SlashMenu, usePersonalManuals, useSlashKeys, u
 import { matchCommands, runsOnEnter } from '@shared/slashCommands'
 import { mergeRefDocs, REF_DOCS_TOTAL } from '@shared/refDocs'
 import { fmtDate, t, trOr, type TKey } from '@shared/i18n'
-import { toolDisplayName } from '@shared/computerTools'
 import { roleLabel } from '@shared/roleLabel'
 import { IS_MOBILE_SHELL } from '@/shell'
 import { PcOnlyState } from '@/components/pc-only-state'
 import { ChangesetCard } from './ChangesetCard'
 import { ApprovalStatusChips } from './AutoApprove'
 import { WaitReasonLine } from './WaitReasonLine'
+import { ApprovalSummary } from './ApprovalSummary'
 import { useStaffRecord, type OlderState } from './useStaffRecord'
 import { dayKey, dayStarts } from '@shared/recordLogs'
 import { DuoIcon, IconText } from '@/components/duo-icon'
@@ -605,16 +605,20 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
           {!split.isFolded && staff.approvals.map((a) => (
             <div key={a.id} className="bg-muted side:border side:border-status-waiting side:bg-card side:rounded-xl flex flex-col gap-2 rounded-lg p-3">
               {a.requestedBy && <div className="text-muted-foreground text-xs">{t('approval.requestedBy', { name: a.requestedBy })}</div>}
-              <WaitReasonLine reason={a.waitReason} />
-              {a.isRestored && <div className="text-muted-foreground text-xs">↻ {t('approval.restored')}</div>}
+              {(a.questions || (a.peerChanges && !IS_MOBILE_SHELL)) && (
+                <>
+                  <WaitReasonLine reason={a.waitReason} />
+                  {a.isRestored && <div className="text-muted-foreground text-xs">↻ {t('approval.restored')}</div>}
+                </>
+              )}
               {a.questions ? (
                 <QuestionBox approval={a} />
               ) : a.peerChanges && !IS_MOBILE_SHELL ? (
                 <ChangesetCard approval={a} staffName={staff.name} />
               ) : (
                 <>
-                  <div className="text-sm font-medium">{toolDisplayName(a.toolName)}</div>
-                  <div className="text-muted-foreground selectable side:text-[11px] line-clamp-3 font-mono text-xs break-all">{trOr(a.summaryI18n, a.summary)}</div>
+                  {/* 카드 바탕이 bg-muted라 원문 박스만 bg-card로 (분할 왼쪽 칸 카드는 bg-card라 그대로 bg-muted) */}
+                  <ApprovalSummary approval={a} boxClassName="bg-card side:bg-muted" />
                   <div className="flex flex-wrap gap-2">
                     <Button size="sm" onClick={() => void window.office.decide(a.id, true)}>
                       <CheckIcon /> {t('staffPanel.approvals.approve')}

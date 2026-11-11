@@ -64,6 +64,8 @@ export interface Approval {
   summary: string
   /** summary를 화면 언어로 다시 만들 키+인자 (컴퓨터 조작 등). 없으면(예전 결재·원문 그대로인 요약) summary를 보인다 */
   summaryI18n?: I18nArg
+  /** 카드 제목에 보일 효과 한 문장 (shared/approvalEffect.ts). 없으면(풀 수 없는 명령·질문·예전 결재) 원문만 보인다. 허용 규칙 매칭에는 쓰지 않는다 */
+  effectI18n?: I18nText
   createdAt: number
   /** 직원의 질문(AskUserQuestion)이면 질문 목록 — 승인·반려 대신 답을 고른다 */
   questions?: StaffQuestion[]

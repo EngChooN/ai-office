@@ -10,9 +10,9 @@ import { RunCard } from './RunCard'
 import { Avatar } from './StaffCard'
 import { AlwaysApproveButton, ApprovalStatusChips, AutoHandledList } from './AutoApprove'
 import { WaitReasonLine } from './WaitReasonLine'
+import { ApprovalSummary } from './ApprovalSummary'
 import { shortPath, workDirLabel } from './status'
-import { fmtDate, t, trOr } from '@shared/i18n'
-import { toolDisplayName } from '@shared/computerTools'
+import { fmtDate, t } from '@shared/i18n'
 import { roleLabel } from '@shared/roleLabel'
 import { IS_MOBILE_SHELL } from '@/shell'
 import { ChangesetCard } from './ChangesetCard'
@@ -118,21 +118,16 @@ export function InboxPage() {
                 </span>
               </div>
               {a.requestedBy && <div className="text-muted-foreground mt-0.5 text-xs">{t('approval.requestedBy', { name: a.requestedBy })}</div>}
-              <WaitReasonLine reason={a.waitReason} className="mt-0.5" />
-              {a.isRestored && <div className="text-muted-foreground mt-0.5 text-xs">↻ {t('approval.restored')}</div>}
-              {a.questions ? (
-                <div className="mt-2">
-                  <QuestionBox approval={a} />
-                </div>
-              ) : a.peerChanges && !IS_MOBILE_SHELL ? (
-                <div className="mt-2">
-                  <ChangesetCard approval={a} staffName={a.staff.name} />
-                </div>
-              ) : (
+              {a.questions || (a.peerChanges && !IS_MOBILE_SHELL) ? (
                 <>
-                  <div className="mt-1 text-sm font-medium">{toolDisplayName(a.toolName)}</div>
-                  <pre className="bg-muted text-muted-foreground selectable mt-1 max-h-32 overflow-auto rounded p-2 font-mono text-xs break-all whitespace-pre-wrap">{trOr(a.summaryI18n, a.summary)}</pre>
+                  <WaitReasonLine reason={a.waitReason} className="mt-0.5" />
+                  {a.isRestored && <div className="text-muted-foreground mt-0.5 text-xs">↻ {t('approval.restored')}</div>}
+                  <div className="mt-2">{a.questions ? <QuestionBox approval={a} /> : <ChangesetCard approval={a} staffName={a.staff.name} />}</div>
                 </>
+              ) : (
+                <div className="mt-1">
+                  <ApprovalSummary approval={a} />
+                </div>
               )}
             </div>
             {!a.questions && !(a.peerChanges && !IS_MOBILE_SHELL) && (

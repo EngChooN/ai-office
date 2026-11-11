@@ -2684,13 +2684,13 @@ export class Office extends EventEmitter<{
     return t(interrupt === 'replace' ? 'staff.tool.delegate.replaced' : 'staff.tool.delegate.interrupted', { name: target.name })
   }
 
-  /** 이 직원이 도움을 요청할 수 있는 동료: 같은 팀·같은 랩의 이 PC 직원(본인 제외). 팀장·랩 리드는 delegate를 쓰므로 비어 있다 */
+  /** 이 직원이 도움을 요청할 수 있는 동료: 같은 팀·같은 랩의 이 PC 직원(본인 제외). 랩 리드는 delegate를 쓰므로 비어 있고, 팀장은 자기 팀원을 뺀 같은 랩 직원만 남는다 */
   private helpTargetsOf(staffId: string) {
     const team = this.teamOf(staffId)
     const labs = this.labsOf(staffId)
     const ids = helpTargetIds(
       staffId,
-      { teamMemberIds: team ? this.membersOf(team.id).map((m) => m.id) : [], labMemberIds: labs.map((l) => l.memberIds), isLead: team?.leadId === staffId || labs.some((l) => l.leadId === staffId) },
+      { teamMemberIds: team ? this.membersOf(team.id).map((m) => m.id) : [], labMemberIds: labs.map((l) => l.memberIds), isLabLead: labs.some((l) => l.leadId === staffId), isTeamLead: team?.leadId === staffId },
       (id) => this.hired.has(id),
     )
     return ids.map((id) => this.hired.get(id)!)

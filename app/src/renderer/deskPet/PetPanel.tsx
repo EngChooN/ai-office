@@ -53,6 +53,7 @@ import {
 import { toolDisplayName } from "@shared/computerTools";
 import { maskSecrets } from "@shared/redact";
 import { t, trOr } from "@shared/i18n";
+import { approvalHeadline } from "@shared/approvalEffect";
 
 // 펼침 창: 머리줄(상대 고르기 · 작업 중 N명 · 결재 N) · 대화 흐름(메시지 + 결재·질문·완료 카드를 시간순) · 입력창
 // 디자인: docs/design/desktop-secretary/README.md "대화 흐름·윈도우 배치 추가 시안". 섞는 규칙은 shared/deskPet.ts (mergeFeed·staffFeed·roomFeed·doneFromChat)
@@ -67,7 +68,7 @@ const NO_LOGS: LogEntry[] = [];
 const STAFF_REFRESH_MS = 4000;
 
 const titleOf = (a: PetApproval) =>
-  `${a.staffName} · ${trOr(a.summaryI18n, a.summary)}`;
+  `${a.staffName} · ${approvalHeadline(a)}`;
 const optionName = (o: PetTargetOption) =>
   o.target.kind === "secretary"
     ? t("secretary.name")
@@ -661,7 +662,9 @@ function ApprovalCard({
   const done = actions.settledOf.get(a.id);
   const state: ItemState | undefined = actions.states[a.id];
   const title = titleOf(a);
-  const summary = trOr(a.summaryI18n, a.summary);
+  const summary = approvalHeadline(a);
+  // 효과 문장이 제목이면 원문은 그 아래 작은 고정폭 두 줄로 (펫 창은 좁아 접기 대신 줄임 + 마우스를 올리면 전체)
+  const raw = a.effectI18n ? trOr(a.summaryI18n, a.summary) : null;
   const isInline = !done && !!a.questions?.length && fitsPetPanel(a.questions);
   return (
     <div
@@ -680,6 +683,14 @@ function ApprovalCard({
           title={summary}
         >
           {summary}
+        </p>
+      )}
+      {!isInline && raw && (
+        <p
+          className="text-muted-foreground line-clamp-2 font-mono text-[11px] break-all"
+          title={raw}
+        >
+          {raw}
         </p>
       )}
       {done ? (

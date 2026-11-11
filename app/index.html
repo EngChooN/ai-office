@@ -9,7 +9,7 @@
         var c = {}
         try { c = JSON.parse(localStorage.getItem('office.uiTheme') || '{}') || {} } catch (e) {}
         var mode = c.mode === 'light' || c.mode === 'dark' ? c.mode : window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-        var theme = /^(lavender|blue|terracotta|sage|rose|mono)$/.test(c.theme) ? c.theme : 'lavender'
+        var theme = /^(lavender|blue|terracotta|sage|rose|mono|aurora|twilight|candy|meadow)$/.test(c.theme) ? c.theme : 'lavender'
         var r = document.documentElement
         r.dataset.mode = mode
         r.dataset.theme = theme

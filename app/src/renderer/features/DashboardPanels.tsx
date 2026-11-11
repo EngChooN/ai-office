@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils'
 import { useOffice } from '@/store'
 import { BUDGET_WARN_RATIO, FEED_TYPES, formatAgo, formatElapsed, usageRatio, type AttentionItem, type AttentionKind, type SummaryKey } from '@shared/dashboard'
 import type { BudgetPeriod, LogEntry, Payslip, Staff } from '@shared/types'
-import { t, trOr, fmtNumber, type TKey } from '@shared/i18n'
+import { t, tr, trOr, fmtNumber, type TKey } from '@shared/i18n'
 import { PlanHoldBanner, PlanUsageCard } from './PlanUsageCard'
 import { Avatar } from './StaffCard'
 import { formatTokens, STATUS_META, useNow } from './status'
@@ -233,8 +233,11 @@ function AttentionRow({ item, staff, now, isGuarded }: { item: AttentionItem; st
   const summary = item.approval?.summary ?? ''
   const isLongApproval = item.kind === 'approval' && (summary.length > INLINE_APPROVAL_MAX || summary.includes('\n'))
   const isInlineApproval = item.kind === 'approval' && !isLongApproval
+  // 효과 문장이 있으면 그게 본문(두 줄까지), 원문은 마우스를 올리면. 바로 승인/결재함 구분은 계속 원문 길이로
+  const effect = item.kind === 'approval' && item.approval?.effectI18n ? tr(item.approval.effectI18n) : null
   const body =
-    item.kind === 'approval'
+    effect ??
+    (item.kind === 'approval'
       ? `${toolDisplayName(item.approval?.toolName ?? '')} · ${summary}`
       : item.kind === 'question'
         ? item.approval?.questions?.[0]?.question
@@ -242,7 +245,7 @@ function AttentionRow({ item, staff, now, isGuarded }: { item: AttentionItem; st
           ? staff?.activity
           : isGlobalBudget
             ? t('dashboardPanels.budget.globalNear')
-            : t('dashboardPanels.budget.staffNear')
+            : t('dashboardPanels.budget.staffNear'))
   return (
     <div role="button" tabIndex={0} onClick={open} onKeyDown={handleKeyDown} className="hover:bg-accent/60 focus-ring-inset flex cursor-pointer flex-col gap-1.5 border-t px-4 py-3 first:border-t-0">
       <div className="flex min-w-0 items-center gap-2">
@@ -255,7 +258,7 @@ function AttentionRow({ item, staff, now, isGuarded }: { item: AttentionItem; st
       <WaitReasonLine reason={item.approval?.waitReason} />
       {body && (
         // 바로 승인할 결재는 자르지 않고 전부 보여 준다 (120자 이하라 몇 줄 안 된다)
-        <p className={cn('text-muted-foreground selectable text-xs break-all', !isInlineApproval && 'line-clamp-2')} title={body}>
+        <p className={cn('selectable text-xs', effect ? 'line-clamp-2 break-keep [overflow-wrap:anywhere]' : 'text-muted-foreground break-all', !isInlineApproval && 'line-clamp-2')} title={effect ? summary : body}>
           {body}
         </p>
       )}

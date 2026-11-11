@@ -14,6 +14,7 @@ export interface PendingApproval {
   toolName: string
   summary: string
   summaryI18n?: Approval['summaryI18n']
+  effectI18n?: Approval['effectI18n']
   questions?: StaffQuestion[]
   createdAt: number
   /** 연결된 업무 카드 */
@@ -30,6 +31,7 @@ export function toPending(a: Approval, taskId: string | null): PendingApproval {
     toolName: a.toolName,
     summary: a.summary,
     ...(a.summaryI18n ? { summaryI18n: a.summaryI18n } : {}),
+    ...(a.effectI18n ? { effectI18n: a.effectI18n } : {}),
     ...(a.questions ? { questions: a.questions } : {}),
     createdAt: a.createdAt,
     taskId,
@@ -59,6 +61,7 @@ export const toRestoredApproval = (p: PendingApproval): Approval => ({
   toolName: p.toolName,
   summary: p.summary,
   ...(p.summaryI18n ? { summaryI18n: p.summaryI18n } : {}),
+  ...(p.effectI18n ? { effectI18n: p.effectI18n } : {}),
   createdAt: p.createdAt,
   ...(p.questions ? { questions: p.questions } : {}),
   isRestored: true,

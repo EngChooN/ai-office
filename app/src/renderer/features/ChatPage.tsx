@@ -13,7 +13,7 @@ import type { Approval, ChatApproval, ChatApprovalResult, ChatMessage, ChatSendM
 import { chatApprovalView } from '@shared/chatApproval'
 import { chatLines, chatRoomMentionTargets, findRoom, labRoomId, parseRoom, type ChatLine, type ChatRoomInfo } from '@shared/chatRooms'
 import { ALL_MENTION, mentionTargets, mentionToken, OFFICE_SENDER, parseMentions, type MentionKind, type MentionTarget } from '@shared/mention'
-import { fmtDate, t, type TKey } from '@shared/i18n'
+import { fmtDate, t, tr, type TKey } from '@shared/i18n'
 import { roleLabel } from '@shared/roleLabel'
 import { Avatar } from './StaffCard'
 import { Markdown } from '@/components/markdown'
@@ -543,15 +543,19 @@ function ApprovalActions({ link, pending, staffName }: { link: ChatApproval; pen
         <QuestionBox approval={a} />
       </div>
     )
+  // 말풍선 글(저장된 원문)은 그대로 두고, 효과 문장이 있으면 버튼 위에 제목처럼 한 줄 (화면 언어를 바꾸면 다시 번역된다)
   return (
-    <div className="mt-2 flex flex-wrap gap-2 border-t pt-2">
-      <Button size="sm" onClick={() => void window.office.decide(a.id, true)}>
-        <CheckIcon /> {t('inbox.approve')}
-      </Button>
-      <AlwaysApproveButton approval={a} staffName={staffName} />
-      <Button size="sm" variant="outline" onClick={() => void window.office.decide(a.id, false)}>
-        {t('inbox.reject')}
-      </Button>
+    <div className="mt-2 flex flex-col gap-2 border-t pt-2">
+      {a.effectI18n && <p className="text-sm font-medium break-keep [overflow-wrap:anywhere]">{tr(a.effectI18n)}</p>}
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" onClick={() => void window.office.decide(a.id, true)}>
+          <CheckIcon /> {t('inbox.approve')}
+        </Button>
+        <AlwaysApproveButton approval={a} staffName={staffName} />
+        <Button size="sm" variant="outline" onClick={() => void window.office.decide(a.id, false)}>
+          {t('inbox.reject')}
+        </Button>
+      </div>
     </div>
   )
 }

@@ -31,7 +31,8 @@ import {
   type PetBubble,
   type PetFlashFace,
 } from "@shared/deskPet";
-import { t, trOr } from "@shared/i18n";
+import { t } from "@shared/i18n";
+import { approvalHeadline } from "@shared/approvalEffect";
 import { PetSprite, type PetPose } from "./PetSprite";
 import { PetBadge, type PetBadgeKind } from "./PetBadge";
 
@@ -107,7 +108,7 @@ export function PetCharacter() {
     if (!fresh.length) return;
     setNewApproval({
       count: approvals.length,
-      title: `${approvals[0].staffName} · ${trOr(approvals[0].summaryI18n, approvals[0].summary)}`,
+      title: `${approvals[0].staffName} · ${approvalHeadline(approvals[0])}`,
     });
     if (isFirst) return;
     motion.play("alert");

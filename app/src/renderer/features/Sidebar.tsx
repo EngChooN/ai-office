@@ -18,7 +18,7 @@ export function Sidebar() {
   const currentId = groupOfView(NAV_GROUP_DEFS, view)?.id
 
   return (
-    <nav className="flex min-h-0 w-44 shrink-0 flex-col gap-0.5 border-r p-2">
+    <nav className="flex min-h-0 w-44 shrink-0 flex-col gap-0.5 border-r p-2" style={{ backgroundImage: 'var(--sidebar-bg, none)' }}>
       {/* 창이 낮으면 메뉴만 스크롤하고 아래 의견 보내기는 남긴다. 포커스 테두리가 잘리지 않게 안쪽 여백을 둔다 */}
       <div className="-m-1 flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto p-1">
         {groups.map((g) => {

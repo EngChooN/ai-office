@@ -7,14 +7,16 @@ import { resolveAutonomy } from '../src/shared/autonomy.ts'
 const hired = (...ids: string[]) => (id: string) => ids.includes(id)
 
 test('대상: 같은 팀·같은 랩 직원, 본인 제외, 중복 제거', () => {
-  const ids = helpTargetIds('a', { teamMemberIds: ['a', 'b', 'c'], labMemberIds: [['a', 'c', 'd']], isLead: false }, hired('a', 'b', 'c', 'd'))
+  const ids = helpTargetIds('a', { teamMemberIds: ['a', 'b', 'c'], labMemberIds: [['a', 'c', 'd']], isLabLead: false, isTeamLead: false }, hired('a', 'b', 'c', 'd'))
   assert.deepEqual(ids.sort(), ['b', 'c', 'd'])
 })
 
 test('대상: 팀장·랩 리드는 없음(delegate 사용), 고용 안 된 직원·다른 PC 직원은 뺀다', () => {
-  assert.deepEqual(helpTargetIds('a', { teamMemberIds: ['a', 'b'], labMemberIds: [], isLead: true }, hired('a', 'b')), [])
-  assert.deepEqual(helpTargetIds('a', { teamMemberIds: ['a', 'b', 'remote'], labMemberIds: [], isLead: false }, hired('a', 'b')), ['b'])
-  assert.deepEqual(helpTargetIds('a', { teamMemberIds: [], labMemberIds: [], isLead: false }, hired('a')), [])
+  assert.deepEqual(helpTargetIds('a', { teamMemberIds: ['a', 'b'], labMemberIds: [], isLabLead: true, isTeamLead: false }, hired('a', 'b')), [])
+  // 팀장은 자기 팀원(b)을 빼고 같은 랩의 다른 팀·팀 없는 직원(d)에게만 도움 요청
+  assert.deepEqual(helpTargetIds('a', { teamMemberIds: ['a', 'b'], labMemberIds: [['a', 'b', 'd']], isLabLead: false, isTeamLead: true }, hired('a', 'b', 'd')), ['d'])
+  assert.deepEqual(helpTargetIds('a', { teamMemberIds: ['a', 'b', 'remote'], labMemberIds: [], isLabLead: false, isTeamLead: false }, hired('a', 'b')), ['b'])
+  assert.deepEqual(helpTargetIds('a', { teamMemberIds: [], labMemberIds: [], isLabLead: false, isTeamLead: false }, hired('a')), [])
 })
 
 type O = { kind: string; fromId?: string; reqId?: string; help?: HelpCtx }

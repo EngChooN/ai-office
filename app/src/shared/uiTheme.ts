@@ -4,7 +4,7 @@ import type { TKey } from './i18n/index.ts'
 // 색 값은 renderer/index.css의 [data-theme][data-mode] 토큰이 기준 (docs/design-refresh/themes/tokens.css)
 
 export type UiMode = 'system' | 'light' | 'dark'
-export type UiThemeId = 'lavender' | 'blue' | 'terracotta' | 'sage' | 'rose' | 'mono'
+export type UiThemeId = 'lavender' | 'blue' | 'terracotta' | 'sage' | 'rose' | 'mono' | 'aurora' | 'twilight' | 'candy' | 'meadow'
 export type ResolvedMode = 'light' | 'dark'
 
 export const DEFAULT_UI_MODE: UiMode = 'system'
@@ -23,6 +23,7 @@ export interface UiThemeOption {
 export const UI_THEME_GROUPS: { id: string; titleKey?: TKey; themes: UiThemeOption[] }[] = [
   {
     id: 'basic',
+    titleKey: 'uiTheme.group.basic',
     themes: [
       { id: 'lavender', labelKey: 'uiTheme.name.lavender', swatchFrom: '#8B7BFF', swatchTo: '#FF7AC6' },
       { id: 'blue', labelKey: 'uiTheme.name.blue', swatchFrom: '#6C9BFF', swatchTo: '#35D0E0' },
@@ -30,6 +31,16 @@ export const UI_THEME_GROUPS: { id: string; titleKey?: TKey; themes: UiThemeOpti
       { id: 'sage', labelKey: 'uiTheme.name.sage', swatchFrom: '#C8E86A', swatchTo: '#1F9A68' },
       { id: 'rose', labelKey: 'uiTheme.name.rose', swatchFrom: '#FF9AB8', swatchTo: '#D6336C' },
       { id: 'mono', labelKey: 'uiTheme.name.mono', swatchFrom: '#E5E5E5', swatchTo: '#171717' },
+    ],
+  },
+  {
+    id: 'gradient',
+    titleKey: 'uiTheme.group.gradient',
+    themes: [
+      { id: 'aurora', labelKey: 'uiTheme.name.aurora', swatchFrom: '#7C6CFF', swatchTo: '#14B8A6' },
+      { id: 'twilight', labelKey: 'uiTheme.name.twilight', swatchFrom: '#6366F1', swatchTo: '#F97316' },
+      { id: 'candy', labelKey: 'uiTheme.name.candy', swatchFrom: '#D946EF', swatchTo: '#38BDF8' },
+      { id: 'meadow', labelKey: 'uiTheme.name.meadow', swatchFrom: '#22C55E', swatchTo: '#F5B21A' },
     ],
   },
 ]

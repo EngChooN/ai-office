@@ -5,6 +5,7 @@ import { autoWaitReason, isEditTool } from '../shared/autoApprove'
 import { toQuestions } from './external'
 import { isRefDocRead } from '../shared/refDocs'
 import { ruleDraftFor } from '../shared/approvalRules'
+import { effectOf } from '../shared/approvalEffect'
 import { t, tk, type I18nArg } from '../shared/i18n/index.ts'
 import os from 'node:os'
 import { insertUsage, saveSessionId } from './db'
@@ -429,6 +430,8 @@ class Worker {
       summary: questions ? questions.map((q) => q.question).join(' / ') : summarizeInput(input, toolName),
       // 화면 언어가 바뀌어도 다시 번역되게 (컴퓨터 조작 요약만 — 나머지 요약은 입력 원문이라 번역할 게 없다)
       summaryI18n: (!questions && computerSummaryI18n(toolName, input)) || undefined,
+      // 카드 제목의 효과 한 줄 — 표시용이라 summary(규칙·일회 허용 매칭 키)는 그대로 둔다
+      effectI18n: (!questions && effectOf(toolName, input)) || undefined,
       createdAt: Date.now(),
       waitReason: this.hooks.takeWaitReason(this.staff.id) ?? (this.staff.approvalMode === 'acceptEdits' && isEditTool(toolName) && autoWaitReason(toolName, input) === 'danger-path' ? 'danger-path' : undefined),
       questions,

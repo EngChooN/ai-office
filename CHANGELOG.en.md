@@ -7,6 +7,23 @@ Writing rules
 - Write from the user's point of view, describing "what you can now do." Do not use technical names (file paths, program or library names, English abbreviations). If one is truly needed, put it once in parentheses after a plain-language explanation.
 - Development details (how it was built, where files are) go in `SPEC.md` and `docs/changelog-dev.md`.
 
+## [1.2.0] - 2026-11-11
+- Device differences: the phone app carries the new screens under the same version number (fold split view, icons, approval one-liner, Fable model). Color themes can only be changed in the PC app.
+
+### New features
+- Four new color themes: Aurora, Twilight, Candy and Meadow. The left menu gets a gradient that blends two colors, in both light and dark. In Settings > Color theme they appear in two groups, 'Solid colors' and 'Two-color gradients'.
+- Approval cards now show a one-line result. For approvals we can read with confidence (creating or editing a file, reading a web page, deleting, pushing, downloading or sending), the card title says what it will do in one sentence, and you can expand the original command with 'Show command'. Anything uncertain is still shown as the original text.
+- Wide phones such as foldables (width 600 or more) now split the screen left and right. In chat rooms the left side shows rooms, meeting rooms and what staff are doing, and the right side shows the conversation. The staff panel also uses two columns. It has a one-line input and a ＋ / ⋯ menu, and only the left column hides when the keyboard opens.
+- Emoji across the screens are replaced with 20 duotone icons that mix lines with a soft fill. Text saved in chats, logs and the dictionary is left as is and only displayed as icons; the original emoji stays as the accessible name.
+- You can choose the Fable model. The hire window is now a card-style list and the staff panel shows model usage dots. When token saving steps a model down, Fable goes to Opus.
+
+### Improvements
+- Help requests are improved. A team lead keeps using delegation for their own team members and can ask for help from staff in the same lab who are not on the team. Lab leads keep using delegation.
+- During auto-approval or autonomous work, the one-line reason for waiting now wraps cleanly on narrow screens. Approval cards in the inbox and the staff panel show the same order: title, reason, restored, command.
+
+### Bug fixes
+- Fixed the ＋ and ⋯ menus being cut off by the footer or left column in split view, and tapping ＋ no longer closes the keyboard of the input box.
+
 ## [1.1.5] - 2026-11-09
 - Device differences: all changes are in the PC app. The phone app keeps the same version number with no code changes and uses the new screens sent by the PC. Browser auto-allow cannot be turned on or off from the phone.
 

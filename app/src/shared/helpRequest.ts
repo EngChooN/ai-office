@@ -30,15 +30,18 @@ export interface HelpScope {
   teamMemberIds: readonly string[]
   /** 이 직원이 속한 랩들의 멤버 id */
   labMemberIds: readonly (readonly string[])[]
-  /** 이 직원이 팀장이거나 랩 리드인가 — 그러면 delegate를 쓰고 도움 요청은 쓰지 않는다 */
-  isLead: boolean
+  /** 이 직원이 랩 리드인가 — 랩 멤버 전원에게 delegate를 쓰므로 도움 요청은 쓰지 않는다 */
+  isLabLead: boolean
+  /** 이 직원이 팀장인가 — 팀원에게는 delegate를 쓰고, 팀원이 아닌 같은 랩 직원에게만 도움 요청을 쓴다 */
+  isTeamLead: boolean
 }
 
-/** 도움 요청 대상 id: 같은 팀·같은 랩의 직원 중 본인을 뺀 사람. 팀장·랩 리드는 없음(delegate 사용) */
+/** 도움 요청 대상 id: 같은 팀·같은 랩의 직원 중 본인을 뺀 사람. 랩 리드는 없음(delegate 사용), 팀장은 자기 팀원(delegate 사용)을 뺀 사람 */
 export function helpTargetIds(staffId: string, scope: HelpScope, isHired: (id: string) => boolean): string[] {
-  if (scope.isLead) return []
+  if (scope.isLabLead) return []
   const ids = new Set<string>([...scope.teamMemberIds, ...scope.labMemberIds.flat()])
   ids.delete(staffId)
+  if (scope.isTeamLead) for (const id of scope.teamMemberIds) ids.delete(id)
   return [...ids].filter(isHired)
 }
 
