@@ -242,7 +242,7 @@ const LogRow = memo(function LogRow({ entry: l }: { entry: LogEntry }) {
       <span className={cn('w-[2.6em] shrink-0 font-medium', LOG_COLOR[l.type] ?? 'text-muted-foreground')}>{t(LOG_LABEL[l.type])}</span>
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         {/* 지시는 대표가 엔터로 나눈 줄을 그대로 살린다 (마크다운은 한 줄 바꿈을 이어 붙인다) */}
-        {l.type === 'reply' || l.type === 'result' ? <Markdown>{l.text}</Markdown> : l.type === 'instruction' ? <Markdown className="[&_li]:whitespace-pre-line [&_p]:whitespace-pre-line">{l.text}</Markdown> : <span className="selectable break-words whitespace-pre-wrap"><IconText text={trOr(l.textI18n, l.text)} size={13} /></span>}
+        {l.type === 'reply' || l.type === 'result' ? <Markdown>{l.text}</Markdown> : l.type === 'instruction' ? <Markdown className="[&_li]:whitespace-pre-line [&_p]:whitespace-pre-line">{l.text}</Markdown> : <span className="selectable break-words whitespace-pre-wrap"><IconText text={trOr(l.textI18n, l.text)} size={13} isLeadingOnly /></span>}
         <AttachmentView attachments={l.attachments} size="sm" />
       </div>
     </div>

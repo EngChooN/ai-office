@@ -161,7 +161,7 @@ export function ReviewTab({ staff }: { staff: Staff }) {
             </div>
           )}
           {changes.ahead > 0 && !changes.hasGh && <p className="text-muted-foreground text-xs">{t('review.needGh')}</p>}
-          {output && <pre className="bg-muted selectable max-h-24 overflow-auto rounded p-2 text-[11px] whitespace-pre-wrap"><IconText text={output} size={12} /></pre>}
+          {output && <pre className="bg-muted selectable max-h-24 overflow-auto rounded p-2 text-[11px] whitespace-pre-wrap"><IconText text={output} size={12} isLeadingOnly /></pre>}
         </footer>
       )}
       <Dialog open={isConfirming} onOpenChange={setIsConfirming}>

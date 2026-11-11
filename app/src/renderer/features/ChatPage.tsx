@@ -64,7 +64,7 @@ function MeText({ text, targets }: { text: string; targets: MentionTarget[] }) {
   if (!icon) return <MentionText text={text} targets={targets} onPrimary />
   return (
     <>
-      <DuoIcon name={icon} size={15} className="mr-1" />
+      <DuoIcon name={icon} size={15} label={text.slice(0, text.length - rest.length).trim()} className="mr-1" />
       <MentionText text={rest} targets={targets} onPrimary />
     </>
   )
@@ -453,7 +453,7 @@ const Bubble = memo(function Bubble({
   if (m.from === OFFICE_SENDER)
     return (
       <div className="flex justify-center">
-        <span className="bg-muted text-muted-foreground rounded-full px-3 py-1 text-xs"><IconText text={m.text} size={13} /></span>
+        <span className="bg-muted text-muted-foreground rounded-full px-3 py-1 text-xs"><IconText text={m.text} size={13} isLeadingOnly /></span>
       </div>
     )
   return (

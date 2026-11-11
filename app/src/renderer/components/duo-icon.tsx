@@ -1,5 +1,5 @@
 import type { SVGProps } from 'react'
-import { splitEdgeIcon, type DuoName } from '@shared/iconText'
+import { splitEdgeIcon, splitLeadingIcon, type DuoName } from '@shared/iconText'
 import { cn } from '@/lib/utils'
 import { DUO_ICON_DATA, type DuoPart } from './duo-icon-data'
 
@@ -48,11 +48,14 @@ export function DuoIcon({ name, size = 16, label, className, ...rest }: { name: 
 
 /**
  * 글 맨 앞(없으면 맨 끝) 이모지가 20종이면 아이콘으로 바꿔 보여 준다 — 저장된 채팅·기록과 사전 문구가 그대로 쓴다.
- * 저장 문자열·사전은 바꾸지 않으므로 옛 기록과 OS 알림(이모지 그대로)도 같은 글을 쓴다
+ * 저장 문자열·사전은 바꾸지 않으므로 옛 기록과 OS 알림(이모지 그대로)도 같은 글을 쓴다.
+ * isLeadingOnly: 직원·명령이 쓴 본문(기록 줄·알림 말풍선·명령 출력)은 맨 앞만 — 본문 끝 '…👍'은 글자 그대로 둔다.
+ * 아이콘은 원래 이모지를 aria-label로 달아 스크린리더가 이모지 때처럼 읽는다
  */
-export function IconText({ text, size = 15, className }: { text: string; size?: number; className?: string }) {
-  const { icon, rest, isEnd } = splitEdgeIcon(text)
+export function IconText({ text, size = 15, className, isLeadingOnly }: { text: string; size?: number; className?: string; isLeadingOnly?: boolean }) {
+  const { icon, rest, isEnd }: ReturnType<typeof splitEdgeIcon> = isLeadingOnly ? splitLeadingIcon(text) : splitEdgeIcon(text)
   if (!icon) return <>{text}</>
-  const mark = <DuoIcon name={icon} size={size} className={cn(isEnd ? 'ml-1' : 'mr-1', className)} />
+  const emoji = (isEnd ? text.slice(rest.length) : text.slice(0, text.length - rest.length)).trim()
+  const mark = <DuoIcon name={icon} size={size} label={emoji} className={cn(isEnd ? 'ml-1' : 'mr-1', className)} />
   return isEnd ? <>{rest}{mark}</> : <>{mark}{rest}</>
 }
