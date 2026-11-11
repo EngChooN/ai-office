@@ -18,6 +18,7 @@ import { PACK_LIMITS } from '@shared/staffPack'
 import { labRoomId } from '@shared/chatRooms'
 import { PcOnlyState } from '@/components/pc-only-state'
 import { IS_MOBILE_SHELL } from '@/shell'
+import { DuoIcon } from '@/components/duo-icon'
 
 const LAB_COLORS = [...TEAM_COLORS].reverse()
 /** 새 일감 첫 줄을 카드 제목으로 쓸 때 최대 길이 */
@@ -81,7 +82,7 @@ export function LabSection() {
   return (
     <section className="mt-8">
       <div className="mb-3 flex items-center gap-2">
-        <h2 className="text-sm font-semibold">🧪 {t('lab.title')}</h2>
+        <h2 className="text-sm font-semibold"><DuoIcon name="lab" size={16} className="mr-1" />{t('lab.title')}</h2>
         <span className="text-muted-foreground text-xs">{t('lab.description')}</span>
         {!isCreating && (
           <Button size="sm" variant="outline" className="ml-auto" onClick={() => setIsCreating(true)} disabled={staff.length === 0}>
@@ -270,12 +271,12 @@ function LabWork({ lab }: { lab: Lab }) {
   }
   return (
     <div className="flex flex-col gap-2 border-t pt-2">
-      <div className="text-xs font-semibold">🔁 {t('lab.work.title')}</div>
+      <div className="text-xs font-semibold"><DuoIcon name="repeat" size={12} className="mr-1" />{t('lab.work.title')}</div>
       <NativeSelect value={selected} onChange={(e) => setManual(e.target.value)} className="h-7 text-xs">
         {lead && <option value="">{t('lab.work.noManual', { name: lead.name })}</option>}
         {manuals.map((m) => (
           <option key={m} value={m}>
-            📘 {m}
+            <DuoIcon name="manual" size={12} className="mr-1" />{m}
           </option>
         ))}
       </NativeSelect>

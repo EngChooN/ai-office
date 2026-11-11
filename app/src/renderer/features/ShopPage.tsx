@@ -31,6 +31,7 @@ import { drawChairEmpty, drawDesk, type ChairStyle, type DeskStyle } from '@/map
 import { useDecor } from '@/map/iso/decor'
 import { drawSurfaceThumb, drawThumb } from '@/map/iso/isoArt'
 import { fmtDate, fmtNumber, t, type TKey } from '@shared/i18n'
+import { DuoIcon, IconText } from '@/components/duo-icon'
 
 type Tab = 'deals' | ShopCategory | 'collection' | 'missions' | 'ledger'
 const TABS: Tab[] = ['deals', 'furniture', 'level', 'wallpaper', 'floor', 'desk', 'chair', 'collection', 'missions', 'ledger']
@@ -308,12 +309,12 @@ function Collection() {
               <div className="flex flex-wrap gap-1">
                 {set.itemIds.map((id) => (
                   <span key={id} className={cn('rounded-full border px-2 py-0.5 text-[11px]', owned[id] ? 'bg-primary/15 text-primary border-primary/40' : 'text-muted-foreground')}>
-                    {owned[id] ? '✓ ' : ''}
+                    {owned[id] && <DuoIcon name="done" size={12} className="mr-1" />}
                     {shopItem(id)?.name}
                   </span>
                 ))}
               </div>
-              <div className={cn('text-xs', isDone ? 'font-semibold text-status-waiting' : 'text-muted-foreground')}>{isDone ? `🏆 ${t('shop.collection.done', { reward: formatWon(set.reward) })}` : t('shop.collection.reward', { reward: formatWon(set.reward) })}</div>
+              <div className={cn('text-xs', isDone ? 'font-semibold text-status-waiting' : 'text-muted-foreground')}>{isDone ? <><DuoIcon name="trophy" size={12} className="mr-1" />{t('shop.collection.done', { reward: formatWon(set.reward) })}</> : t('shop.collection.reward', { reward: formatWon(set.reward) })}</div>
             </div>
           )
         })}
@@ -366,7 +367,7 @@ function Missions({ onNotice }: { onNotice: (m: string) => void }) {
         {view.daily.map(row)}
       </section>
       <section className="flex flex-col gap-2">
-        <h2 className="text-sm font-semibold">🏅 {t('shop.mission.achievements')}</h2>
+        <h2 className="text-sm font-semibold"><DuoIcon name="trophy" size={16} className="mr-1" />{t('shop.mission.achievements')}</h2>
         {view.achievements.map(row)}
       </section>
     </div>
@@ -407,7 +408,7 @@ function ApplyControl({ item }: { item: ShopItem }) {
         {staff.map((s) => (
           <option key={s.id} value={s.id}>
             {s.name}
-            {shop.gear[s.id]?.[slot] === item.id ? ' ✓' : ''}
+            {shop.gear[s.id]?.[slot] === item.id && <DuoIcon name="done" size={12} className="ml-1" />}
           </option>
         ))}
       </NativeSelect>
@@ -491,7 +492,7 @@ function Ledger() {
       {rows.length === 0 && <p className="text-muted-foreground text-sm">{t('shop.ledger.empty')}</p>}
       {rows.map((r, i) => (
         <div key={i} className="flex items-center gap-3 border-b py-2 text-sm">
-          <span>{LEDGER_ICON[r.kind]}</span>
+          <span><IconText text={LEDGER_ICON[r.kind]} size={14} /></span>
           <span className="min-w-0 flex-1 truncate">{r.label}</span>
           <span className="text-muted-foreground text-xs">{fmtDate(r.ts, { month: 'numeric', day: 'numeric' })}</span>
           <span className={cn('w-28 text-right font-semibold tabular-nums', r.amount < 0 ? 'text-status-error' : 'text-status-working')}>

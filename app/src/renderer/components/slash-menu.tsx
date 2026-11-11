@@ -4,6 +4,7 @@ import { useOffice } from '@/store'
 import { slashAction, type StaffCommand } from '@shared/slashCommands'
 import type { Manual } from '@shared/types'
 import { t } from '@shared/i18n'
+import { IconText } from '@/components/duo-icon'
 
 /** 자동완성 한 줄 — /명령, 또는 직원 채팅의 개인 매뉴얼·랩·팀 프로세스 */
 export interface SlashItem {
@@ -127,7 +128,7 @@ export function SlashMenu({ query, items, active, onPick, note, emptyText, class
           className={cn('hover:bg-accent flex flex-col rounded px-2 py-1.5 text-left', i === active && 'bg-accent')}
         >
           <span className="flex items-center gap-2">
-            <span className="truncate font-medium">{item.label}</span>
+            <span className="truncate font-medium"><IconText text={item.label} size={13} /></span>
             {item.argumentHint && <span className="text-muted-foreground truncate font-mono text-[10px]">{item.argumentHint}</span>}
             <span className="text-muted-foreground ml-auto shrink-0 pl-2 text-[10px]">{item.tag}</span>
           </span>

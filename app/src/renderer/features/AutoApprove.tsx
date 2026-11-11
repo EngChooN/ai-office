@@ -12,6 +12,7 @@ import { useNow } from './status'
 import { fmtDate, t, trOr } from '@shared/i18n'
 import { toolDisplayName } from '@shared/computerTools'
 import { IS_MOBILE_SHELL } from '@/shell'
+import { DuoIcon } from '@/components/duo-icon'
 
 // 자동결재(대표 부재 중) 화면 3곳: 설정 칸 · 상단 바 표시 · 결재함 "자동 처리됨" 목록
 // + "앞으로 항상 승인" 규칙: 결재 승인 옆 버튼 · 설정의 규칙 목록 (approveAlways·approvalRules·deleteApprovalRule)
@@ -86,7 +87,7 @@ export function AutoApproveSection() {
   return (
     <div className="flex flex-col gap-3 text-sm">
       <p className="flex flex-wrap items-center gap-x-2 text-xs">
-        <span className={auto.isActive ? 'text-status-working font-medium' : 'text-muted-foreground'}>🤖 {text}</span>
+        <span className={auto.isActive ? 'text-status-working font-medium' : 'text-muted-foreground'}><DuoIcon name="ai" size={14} className="mr-1" />{text}</span>
         {(auto.isActive || handled > 0 || c.answered > 0) && (
           <span className="text-muted-foreground">
             · {t('autoApprove.handledCount', { n: handled })}
@@ -249,7 +250,7 @@ export function AutoHandledList() {
   if (items.length === 0) return null
   return (
     <details className="mb-6 max-w-3xl" open={isActive}>
-      <summary className="text-muted-foreground cursor-pointer text-sm font-semibold">🤖 {t('autoApprove.handledList', { n: items.length })}</summary>
+      <summary className="text-muted-foreground cursor-pointer text-sm font-semibold"><DuoIcon name="ai" size={14} className="mr-1" />{t('autoApprove.handledList', { n: items.length })}</summary>
       <ul className="mt-2 flex flex-col divide-y rounded-lg border text-xs">
         {items.map((h) => (
           <li key={h.id} className="flex items-start gap-2 px-3 py-2">

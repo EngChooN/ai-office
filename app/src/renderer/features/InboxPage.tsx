@@ -16,6 +16,7 @@ import { toolDisplayName } from '@shared/computerTools'
 import { roleLabel } from '@shared/roleLabel'
 import { IS_MOBILE_SHELL } from '@/shell'
 import { ChangesetCard } from './ChangesetCard'
+import { DuoIcon, IconText } from '@/components/duo-icon'
 
 /** 결재함: 모든 직원의 권한 요청을 한곳에서 도장 찍는다 */
 export function InboxPage() {
@@ -76,7 +77,7 @@ export function InboxPage() {
           <h2 className="text-status-waiting text-sm font-semibold">{t('inbox.section.decisions')}</h2>
           {decisions.map(({ meeting, decision }) => (
             <div key={decision.id} className="flex flex-col gap-1">
-              <span className="text-muted-foreground text-xs">📋 {meeting.topic}</span>
+              <span className="text-muted-foreground text-xs"><DuoIcon name="meeting" size={12} className="mr-1" />{meeting.topic}</span>
               <DecisionBox meeting={meeting} decision={decision} />
               <EndMeetingButtons meetingId={meeting.id} />
             </div>
@@ -86,7 +87,7 @@ export function InboxPage() {
       {approvals.length === 0 && externalWaiting.length === 0 && decisions.length === 0 && checkingRuns.length === 0 && waitingPlans.length === 0 && (
         // 비었을 때: 결재가 언제 생기는지 알려 주고, 직원이 없으면 고용으로 보낸다
         <div className="text-muted-foreground flex max-w-3xl flex-col items-start gap-2 text-sm">
-          <p>{t('inbox.empty')}</p>
+          <p><IconText text={t('inbox.empty')} size={16} /></p>
           <p className="text-xs">{t('guideHint.inbox.emptyDesc')}</p>
           {!staff.some((x) => x.kind === 'hired') && (
             <>

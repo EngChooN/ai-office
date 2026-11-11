@@ -15,6 +15,7 @@ import { t, type TKey } from '@shared/i18n'
 import { Avatar } from './StaffCard'
 import { shortPath } from './status'
 import { IS_MOBILE_SHELL } from '@/shell'
+import { DuoIcon, IconText } from '@/components/duo-icon'
 
 const NAME_RE = /^[a-z0-9][a-z0-9-]{1,62}$/
 const KIND_LABEL: Record<ManualKind, TKey> = { personal: 'manuals.kind.personal', process: 'manuals.kind.process' }
@@ -75,7 +76,7 @@ export function ManualsPage() {
     >
       {(['process', 'personal'] as const).map((kind) => (
         <section key={kind} className="mb-8">
-          <h2 className="mb-3 text-sm font-semibold">{kind === 'process' ? t('manuals.section.process') : t('manuals.section.personal')}</h2>
+          <h2 className="mb-3 text-sm font-semibold"><IconText text={kind === 'process' ? t('manuals.section.process') : t('manuals.section.personal')} size={16} /></h2>
           <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-3">
             {manuals.filter((m) => m.kind === kind).length === 0 && <p className="text-muted-foreground text-sm">{t('manuals.empty')}</p>}
             {manuals
@@ -175,7 +176,7 @@ function ManualEditor({ initial, previousPath, projectDirs, onClose }: { initial
 
         {staff.length > 0 && (
           <div className="bg-muted/40 flex flex-col gap-2 rounded-lg border p-3">
-            <Label className="text-xs">{t('manuals.editor.draftLabel')}</Label>
+            <Label className="text-xs"><IconText text={t('manuals.editor.draftLabel')} size={13} /></Label>
             <div className="flex gap-2">
               <NativeSelect value={drafter} onChange={(e) => setDrafter(e.target.value)} className="h-8 w-36 text-xs">
                 {staff.map((s) => (
@@ -260,7 +261,7 @@ function ManualEditor({ initial, previousPath, projectDirs, onClose }: { initial
                 <Textarea value={step.instruction} onChange={(e) => updateStep(i, { instruction: e.target.value })} placeholder={t('manuals.editor.instructionPlaceholder')} className="min-h-14 text-xs" />
                 <div className="flex flex-wrap items-center gap-3 text-xs">
                   <label className="flex items-center gap-1">
-                    <input type="checkbox" checked={step.needsMyCheck} onChange={(e) => updateStep(i, { needsMyCheck: e.target.checked })} /> {t('manuals.editor.needsMyCheck')}
+                    <input type="checkbox" checked={step.needsMyCheck} onChange={(e) => updateStep(i, { needsMyCheck: e.target.checked })} /> <IconText text={t('manuals.editor.needsMyCheck')} size={13} />
                   </label>
                   <label className="flex items-center gap-1">
                     {t('manuals.editor.onRevise')}
@@ -323,7 +324,7 @@ function TrainDialog({ manual, onClose }: { manual: Manual; onClose: () => void 
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{t('manuals.train.title', { name: manual.name })}</DialogTitle>
+          <DialogTitle><IconText text={t('manuals.train.title', { name: manual.name })} size={18} /></DialogTitle>
           <DialogDescription>{manual.kind === 'personal' ? t('manuals.train.descPersonal') : t('manuals.train.descProcess')}</DialogDescription>
         </DialogHeader>
         {manual.kind === 'personal' ? (
@@ -339,7 +340,7 @@ function TrainDialog({ manual, onClose }: { manual: Manual; onClose: () => void 
             <div className="flex flex-wrap gap-2">
               {labs.map((l) => (
                 <button key={l.id} type="button" onClick={() => toggle(labIds, setLabIds, l.id)} className={chip(labIds.includes(l.id))}>
-                  🧪 {l.name}
+                  <DuoIcon name="lab" size={13} className="mr-1" />{l.name}
                 </button>
               ))}
             </div>

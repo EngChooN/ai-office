@@ -7,6 +7,7 @@ import { t } from '@shared/i18n'
 import { parseCustomMcp } from '@shared/customMcp'
 import type { CustomMcp, CustomMcpInput } from '@shared/customMcp'
 import type { EquipmentMcp } from '@shared/types'
+import { DuoIcon } from '@/components/duo-icon'
 
 // 장비 탭 › 연결 도구 추가·고치기 (PC 전용): 명령 / 주소(URL) / JSON 붙여넣기
 // 검사는 main(parseCustomMcp)이 하고, 거절 문구(mcp.err.*)를 칸 아래에 그대로 보여 준다. 추가해도 자동으로 켜지 않는다
@@ -185,11 +186,11 @@ export function McpAddDialog({
 
           {shadows.map((s) => (
             <p key={`${s.source}-${s.name}`} className="text-status-waiting text-xs">
-              ⚠ {t('mcpAdd.shadow', { source: s.source, name: s.name })}
+              <DuoIcon name="warn" size={13} className="mr-1" />{t('mcpAdd.shadow', { source: s.source, name: s.name })}
             </p>
           ))}
           {/* JSON은 붙여 넣는 대로 읽은 결과를, 나머지는 추가를 눌렀을 때 거절 이유를 보여 준다 */}
-          {(error || (tab === 'json' && json.trim() && previewError)) && <p className="text-status-error text-xs">⚠ {error || previewError}</p>}
+          {(error || (tab === 'json' && json.trim() && previewError)) && <p className="text-status-error text-xs"><DuoIcon name="warn" size={13} className="mr-1" />{error || previewError}</p>}
         </div>
 
         <DialogFooter>

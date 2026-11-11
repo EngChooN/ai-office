@@ -13,6 +13,7 @@ import { shortPath } from './status'
 import { ProviderCards, RecheckButton, useProviders } from './ProviderCards'
 import { fmtDate, t, trOr, type TKey } from '@shared/i18n'
 import { type FirstTaskExample, type FirstTaskFail, useFirstTask } from './useFirstTask'
+import { DuoIcon, IconText } from '@/components/duo-icon'
 
 const WELCOME_AVATARS = [1, 13, 5, 18, 2, 22]
 // 준비 점검은 로그인 → 작업 폴더를 한 단계씩 (막히면 그 자리의 버튼으로 해결). 터미널용 Claude Code 설치는 선택이라 점검에서 뺐다
@@ -328,7 +329,7 @@ export function Onboarding({ onStartTour }: { onStartTour: () => void }) {
                 { icon: '✅', title: t('onboarding.card.approve.title'), body: t('onboarding.card.approve.body') },
               ].map((c) => (
                 <div key={c.title} className="bg-card flex flex-col gap-1 rounded-xl border p-4">
-                  <span className="text-2xl">{c.icon}</span>
+                  <span className="text-2xl"><IconText text={c.icon} size={26} /></span>
                   <span className="font-semibold">{c.title}</span>
                   <span className="text-muted-foreground text-xs">{c.body}</span>
                 </div>
@@ -540,7 +541,7 @@ export function Onboarding({ onStartTour }: { onStartTour: () => void }) {
         {step === 'ready' && firstTask.phase === 'done' && (
           <>
             <div className="flex flex-col gap-2 text-center">
-              <span className="text-5xl">🎉</span>
+              <DuoIcon name="party" size={48} />
               <h1 className="text-2xl font-bold">{t('onboarding.firstTask.done')}</h1>
               <p className="text-muted-foreground">{t('onboarding.firstTask.doneDesc', { name: staffName })}</p>
             </div>

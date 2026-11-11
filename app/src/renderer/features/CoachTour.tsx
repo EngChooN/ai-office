@@ -9,6 +9,7 @@ import { IS_MOBILE_SHELL } from '@/shell'
 import { isVisibleBox, placeTip, TIP_MARGIN } from './coachTip'
 import { t } from '@shared/i18n'
 import type { TKey } from '@shared/i18n'
+import { IconText } from '@/components/duo-icon'
 
 type Chapter = 'office' | 'work' | 'review' | 'company'
 
@@ -250,7 +251,7 @@ export function CoachTour({ isOpen, onClose }: { isOpen: boolean; onClose: (isFi
           </div>
         </div>
         <div className="font-semibold">
-          {step.icon} {step.menu ? menuTitle(step.menu) : step.title && t(step.title)}
+          <IconText text={step.icon} size={18} /> {step.menu ? menuTitle(step.menu) : step.title && t(step.title)}
         </div>
         <p className="text-muted-foreground text-sm">{t(step.body, { modKey: MOD_KEY, trayPlace: osText(t('coachTour.trayPlace.mac'), t('coachTour.trayPlace.win')) })}</p>
         <div className="flex flex-wrap items-center gap-1">

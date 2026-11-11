@@ -9,6 +9,7 @@ import { t } from '@shared/i18n'
 import type { Task } from '@shared/types'
 import { Avatar } from './StaffCard'
 import { useTutorialTaskId } from './Tutorial'
+import { DuoIcon } from '@/components/duo-icon'
 
 /** 리드의 기획안: 기획서와 하위 업무 안을 보고 승인(배정)하거나 피드백과 함께 다시 */
 export function PlanCard({ task, isCompact = false }: { task: Task; isCompact?: boolean }) {
@@ -45,7 +46,7 @@ export function PlanCard({ task, isCompact = false }: { task: Task; isCompact?: 
       {!isCompact && (
         <div className="flex items-center gap-2">
           {lead && <Avatar avatar={lead.avatar} name={lead.name} teamId={lead.teamId} className="size-6" />}
-          <span className="font-semibold">🗂️ {task.title}</span>
+          <span className="font-semibold"><DuoIcon name="plan" size={16} className="mr-1" />{task.title}</span>
           <span className="text-muted-foreground text-xs">{t('planCard.byLead', { name: lead?.name ?? '' })}</span>
         </div>
       )}

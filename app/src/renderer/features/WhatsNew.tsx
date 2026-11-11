@@ -8,6 +8,7 @@ import { whatsNewAction } from '@/lib/whatsNew'
 import { useOffice } from '@/store'
 import { t } from '@shared/i18n'
 import { ReleaseNotes } from './UpdatesPage'
+import { DuoIcon } from '@/components/duo-icon'
 
 const SEEN_KEY = 'office:lastSeenVersion'
 
@@ -69,7 +70,7 @@ export function WhatsNew({ isBusy }: { isBusy: boolean }) {
     <Dialog open={isOpen} onOpenChange={(open) => !open && close()}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>🎉 {t('whatsNew.title', { version: APP_VERSION })}</DialogTitle>
+          <DialogTitle><DuoIcon name="party" size={18} className="mr-1.5" />{t('whatsNew.title', { version: APP_VERSION })}</DialogTitle>
           <DialogDescription>{t('whatsNew.desc')}</DialogDescription>
         </DialogHeader>
         <ReleaseNotes release={release} />

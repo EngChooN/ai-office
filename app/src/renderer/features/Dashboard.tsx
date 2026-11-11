@@ -12,6 +12,7 @@ import { StaffCard } from './StaffCard'
 import { StaffRow } from './StaffRow'
 import { useStaffView } from './staffView'
 import { STATUS_META } from './status'
+import { IconText } from '@/components/duo-icon'
 
 const STATUS_ORDER: Record<Staff['status'], number> = { waiting: 0, error: 1, netWait: 2, working: 2, idle: 3, offline: 4 }
 const byUrgency = (a: Staff, b: Staff) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status]
@@ -161,7 +162,7 @@ export function Dashboard() {
                   ) : (
                     <span className={cn('size-2.5 rounded-full', !g.color && 'bg-muted-foreground')} style={g.color ? { background: g.color } : undefined} />
                   )}
-                  {isWorkMode ? g.label : `${GROUP_EMOJI[g.kind]}${g.label}`}
+                  {!isWorkMode && <IconText text={GROUP_EMOJI[g.kind]} size={14} />}{g.label}
                   <span className="text-muted-foreground font-normal">{g.members.length}</span>
                 </h3>
                 {staffView === 'list' ? (

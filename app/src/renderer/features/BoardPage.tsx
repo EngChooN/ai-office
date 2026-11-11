@@ -24,6 +24,8 @@ import { formatCost, formatTokens } from './status'
 import { roleLabel } from '@shared/roleLabel'
 import { IS_MOBILE_SHELL } from '@/shell'
 import { AutonomyCheck, TaskAutonomy } from './Autonomy'
+import { DuoIcon, IconText } from '@/components/duo-icon'
+import { stripIconEmoji } from '@shared/iconText'
 
 const COLUMNS: { status: TaskStatus; label: TKey; hint: TKey | null }[] = [
   {
@@ -268,7 +270,7 @@ function TaskCard({ task }: { task: Task }) {
       {(parent || planLabel) && (
         <div className="flex flex-wrap gap-1 text-[10px]">
           {parent && <span className="bg-muted text-muted-foreground max-w-full truncate rounded px-1.5">↳ {parent.title}</span>}
-          {planLabel && <span className={cn('rounded px-1.5 font-semibold', task.plan?.status === 'waiting' ? 'bg-status-waiting text-background' : 'bg-primary/15 text-primary')}>{planLabel}</span>}
+          {planLabel && <span className={cn('rounded px-1.5 font-semibold', task.plan?.status === 'waiting' ? 'bg-status-waiting text-background' : 'bg-primary/15 text-primary')}><IconText text={planLabel} size={12} /></span>}
         </div>
       )}
       <TaskAutonomy task={task} />
@@ -283,7 +285,7 @@ function TaskCard({ task }: { task: Task }) {
           )}
           {lab && (
             <span className="w-fit rounded border px-1.5 text-[10px] font-semibold" style={{ borderColor: lab.color, color: lab.color }}>
-              🧪 {lab.name}
+              <DuoIcon name="lab" size={14} className="mr-1" />{lab.name}
             </span>
           )}
         </div>
@@ -303,7 +305,7 @@ function TaskCard({ task }: { task: Task }) {
         </button>
       )}
       {task.usage && (
-        <span className="text-muted-foreground text-[10px] tabular-nums">{t('board.card.usage', { tokens: formatTokens(task.usage.tokens), cost: formatCost(task.usage.costUsd) })}</span>
+        <span className="text-muted-foreground text-[10px] tabular-nums"><IconText size={11} text={t('board.card.usage', { tokens: formatTokens(task.usage.tokens), cost: formatCost(task.usage.costUsd) })} /></span>
       )}
       <TaskDetail task={task} isOpen={isOpen} onOpenChange={setIsOpen} />
       {/* 휴대폰: 카드 끌어 옮기기가 터치에서 안 되니 칸을 골라 옮긴다 */}
@@ -328,7 +330,7 @@ function TaskCard({ task }: { task: Task }) {
       ) : task.status === 'todo' && processScopes.length > 0 ? (
         <>
           <NativeSelect value="" onChange={(e) => startProcess(e.target.value)} className="h-7 text-xs">
-            <option value="">{t('board.runProcess')}</option>
+            <option value="">{stripIconEmoji(t('board.runProcess'))}</option>
             {processScopes.flatMap((sc) =>
               sc.manuals.map((m) => (
                 <option key={`${sc.id}-${m}`} value={`${sc.kind}|${sc.id}|${m}`}>
@@ -493,7 +495,7 @@ function ActiveRuns() {
   if (runs.length === 0) return null
   return (
     <section className="flex flex-col gap-2">
-      <h2 className="text-sm font-semibold">{t('board.activeRuns', { count: runs.length })}</h2>
+      <h2 className="text-sm font-semibold"><IconText text={t('board.activeRuns', { count: runs.length })} size={16} /></h2>
       <div className="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] gap-3">
         {runs.map((r) => (
           <RunCard key={r.id} run={r} />

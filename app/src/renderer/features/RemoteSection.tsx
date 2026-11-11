@@ -11,6 +11,7 @@ import { ipcErrorText } from '@shared/ipcError'
 import { formatPairCode, type PairWindowView } from '@shared/peerProtocol'
 import { OPEN_REMOTE_GUIDE_EVENT } from './PeerSection'
 import type { AccessEntry, RemoteMode, RemoteQr, RemoteStatus } from '@shared/types'
+import { DuoIcon } from '@/components/duo-icon'
 
 // 설정 › 휴대폰 연결: 켜기·끄기, 연결 방식(Tailscale·같은 네트워크 전용·고급 공유기 포트), Tailscale 단계 안내, 첫 연결 가이드(켜기 → 포트 → 공유기 → 주소 → QR), QR 다시 만들기, 지문, 최근 접속 기록
 // 화면에는 토큰 원문·해시가 오지 않는다. QR 그림만 받아 보여 주고, 휴대폰이 붙으면(또는 QR을 다시 만들면) 거둔다 — 시간 제한은 없다
@@ -231,7 +232,7 @@ function TailscaleSteps({ status, setStatus }: { status: RemoteStatus; setStatus
       </p>
       <ol className="flex flex-col gap-0.5">
         <li className={stepClass(!isRunning, isRunning)}>
-          {isRunning ? '✓ ' : ''}
+          {isRunning && <DuoIcon name="done" size={13} className="mr-1" />}
           {t('remote.ts.step1')}
         </li>
         <li className={stepClass(isRunning, false)}>{t('remote.ts.step2')}</li>
@@ -333,7 +334,7 @@ function RemoteGuide({
         <ol className="flex flex-wrap gap-1.5 text-[11px]">
           {STEP_KEYS.map((key, i) => (
             <li key={key} className={cn('rounded-full border px-2 py-0.5', i < step && 'border-status-working/60 text-status-working', i === step && 'border-primary')}>
-              {i < step ? '✓' : i + 1} {t(key)}
+              {i < step ? <DuoIcon name="done" size={13} /> : i + 1} {t(key)}
             </li>
           ))}
         </ol>

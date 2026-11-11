@@ -18,6 +18,7 @@ import { formatWon } from '@shared/economy'
 import { renderPage, retryPage } from './pages'
 import { LoadErrorBoundary } from '@/components/load-error-boundary'
 import { fmtDate, t } from '@shared/i18n'
+import { DuoIcon } from '@/components/duo-icon'
 
 // 폰 틀 (docs/specs/android-pc-layout.md 2절): 상단 바 · 연결 배너 · 기존 화면 · 아래 탭 5칸 · 더보기 시트
 // 화면 컴포넌트·색·아이콘·문구는 PC 것을 그대로 쓰고, 틀만 바꾼다. 직원 패널은 전체 화면 시트(StaffPanel의 phone: 클래스)
@@ -76,7 +77,7 @@ function PhoneTopBar() {
       {/* 자동결재 표시가 뜨면 폭이 모자라 자금은 숨긴다 (상점·급여 명세서에 같은 값) */}
       {!isWorkMode && !isAuto && (
         <button type="button" onClick={() => setView('shop')} className="bg-accent shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold tabular-nums">
-          💰 {formatWon(funds)}
+          <DuoIcon name="money" size={14} className="mr-1" />{formatWon(funds)}
         </button>
       )}
       <AutoApproveBadge isCompact />

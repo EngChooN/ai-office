@@ -27,6 +27,8 @@ import { AlwaysApproveButton } from './AutoApprove'
 import { BubbleMenu, ChatSearch, DeliveryLine, PlanNotice, ReplyBar, ReplyQuote, ReportActions, ReservationCards, ReserveMenu, reservationInput, useSearchHighlight } from './ChatExtras'
 import { firstUnread, roomKey, roomsWithPendingApproval, seenOf, unreadByRoom } from '@shared/chatUnread'
 import { keyName } from '@/lib/keyName'
+import { DuoIcon, IconText } from '@/components/duo-icon'
+import { splitLeadingIcon } from '@shared/iconText'
 
 const MENTION_MAX = 6
 const KIND_ORDER: MentionKind[] = ['all', 'team', 'lab', 'staff']
@@ -51,6 +53,18 @@ function useChatRoom(): RoomInfo | undefined {
   const teams = useOffice((s) => s.teams)
   const labs = useOffice((s) => s.labs)
   return useMemo(() => findRoom(chatRoom, teams, labs), [chatRoom, teams, labs])
+}
+
+/** 내 말풍선(대표 글·앱이 대표 이름으로 남긴 알림) — 맨 앞 이모지가 아이콘 20종이면 아이콘으로 보여 준다(저장 글은 그대로) */
+function MeText({ text, targets }: { text: string; targets: MentionTarget[] }) {
+  const { icon, rest } = splitLeadingIcon(text)
+  if (!icon) return <MentionText text={text} targets={targets} onPrimary />
+  return (
+    <>
+      <DuoIcon name={icon} size={15} className="mr-1" />
+      <MentionText text={rest} targets={targets} onPrimary />
+    </>
+  )
 }
 
 /** 사무실 단체방: 직원 보고·결재 요청·위임이 채팅으로 흐르고, @직원·@팀·@랩·@전체 로 바로 지시한다. 전체 방 + 팀별 방 + 랩별 방 */
@@ -221,7 +235,7 @@ function RemoteLine() {
         const isDim = state === 'offline' || state === 'unpaired'
         return (
           <span key={p} className={isDim ? 'text-muted-foreground' : 'text-primary'} title={t(`peer.state.${state as 'online'}`)}>
-            🌐 {t('peer.chatLine', { name })}
+            <DuoIcon name="remote" size={13} className="mr-1" />{t('peer.chatLine', { name })}
           </span>
         )
       })}
@@ -439,7 +453,7 @@ const Bubble = memo(function Bubble({
   if (m.from === OFFICE_SENDER)
     return (
       <div className="flex justify-center">
-        <span className="bg-muted text-muted-foreground rounded-full px-3 py-1 text-xs">{m.text}</span>
+        <span className="bg-muted text-muted-foreground rounded-full px-3 py-1 text-xs"><IconText text={m.text} size={13} /></span>
       </div>
     )
   return (
@@ -460,7 +474,7 @@ const Bubble = memo(function Bubble({
         <div className={cn('group selectable relative max-w-full min-w-0 rounded-2xl px-3 py-2 text-sm', isMe ? 'bg-primary text-primary-foreground whitespace-pre-wrap' : 'bg-card border', m.plan && 'hidden')}>
           <BubbleMenu message={m} isMe={isMe} />
           {m.replyTo && <ReplyQuote reply={m.replyTo} isMe={isMe} />}
-          <FoldableText text={m.text}>{isMe ? <MentionText text={m.text} targets={mentions} onPrimary /> : <Markdown plugins={plugins}>{m.text}</Markdown>}</FoldableText>
+          <FoldableText text={m.text}>{isMe ? <MeText text={m.text} targets={mentions} /> : <Markdown plugins={plugins}>{m.text}</Markdown>}</FoldableText>
           {m.attachments?.length ? (
             <div className="mt-2">
               <AttachmentView attachments={m.attachments} />
@@ -472,7 +486,7 @@ const Bubble = memo(function Bubble({
         {!isMe && m.isReport && !m.plan && <ReportActions message={m} />}
         {isMe && <DeliveryLine message={m} />}
         <span className="text-muted-foreground text-[10px]">
-          {m.scheduled && <span className="text-primary mr-1">{t(m.scheduled.kind === 'once' ? 'chat.reserve.sentOnce' : 'chat.reserve.sentRepeat')}</span>}
+          {m.scheduled && <span className="text-primary mr-1"><IconText text={t(m.scheduled.kind === 'once' ? 'chat.reserve.sentOnce' : 'chat.reserve.sentRepeat')} size={12} /></span>}
           {fmtDate(m.ts, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
         </span>
       </div>
@@ -521,7 +535,7 @@ function FoldableText({ text, children }: { text: string; children: ReactNode })
 function ApprovalActions({ link, pending, staffName }: { link: ChatApproval; pending: Approval | undefined; staffName: string }) {
   const view = chatApprovalView(link, pending)
   if (view.kind === 'done')
-    return <p className="text-muted-foreground mt-2 border-t pt-2 text-xs break-words">{view.result ? t(RESULT_LABEL[view.result], { answer: view.answer ?? '' }) : t('chat.approval.done')}</p>
+    return <p className="text-muted-foreground mt-2 border-t pt-2 text-xs break-words"><IconText text={view.result ? t(RESULT_LABEL[view.result], { answer: view.answer ?? '' }) : t('chat.approval.done')} size={13} /></p>
   const a = view.approval
   if (a.questions)
     return (
@@ -833,7 +847,7 @@ function Composer({ room }: { room: RoomInfo | undefined }) {
       {hired.length > 0 && (
         <div className="typing:hidden mx-auto mt-1 flex max-w-3xl items-center gap-1">
           <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => openSlash('manual')} title={t('chat.manualButtonTitle')}>
-            {t('slashMenu.manualButton')}
+            <IconText text={t('slashMenu.manualButton')} size={13} />
           </Button>
           <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => openSlash('command')} title={t('chat.commandButtonTitle')}>
             {t('slashMenu.button')}

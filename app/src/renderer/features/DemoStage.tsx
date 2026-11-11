@@ -18,6 +18,7 @@ import { DEMO_COMMENT_MAX, plainSpeech, speechPageAt, wrapSpeech, type DemoReact
 import { liveDemoOf } from './DemoStageHost'
 import { useNow } from './status'
 import { t } from '@shared/i18n'
+import { DuoIcon } from '@/components/duo-icon'
 
 const SLIDE_MS = 3_000
 const TYPING_MS_PER_CHAR = 45
@@ -409,7 +410,7 @@ function ReactionBar({ meeting, presenterId, onReacted }: { meeting: Meeting; pr
           👏 {t('stage.react.clap')}
         </Button>
         <Button size="sm" variant="secondary" className="rounded-full" disabled={isBusy || !!mvpId} onClick={() => void send('mvp')} title={mvpId ? t('stage.react.mvpDone') : undefined}>
-          🏆 {t('stage.react.mvp')}
+          <DuoIcon name="trophy" size={16} className="mr-1" />{t('stage.react.mvp')}
         </Button>
         {isWriting ? (
           <form

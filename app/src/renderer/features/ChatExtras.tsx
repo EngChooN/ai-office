@@ -7,6 +7,7 @@ import { useOffice } from '@/store'
 import { fmtDate, t } from '@shared/i18n'
 import { findRoom } from '@shared/chatRooms'
 import type { ChatDelivery, ChatMessage, ChatReservation, ChatReservationInput, ChatSearchHit, Staff } from '@shared/types'
+import { DuoIcon, IconText } from '@/components/duo-icon'
 
 const TIME_FMT: Intl.DateTimeFormatOptions = { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }
 
@@ -42,9 +43,9 @@ const STATE_KEY = {
 } as const
 
 function StateMark({ state }: { state: ShownState }) {
-  if (state === 'done') return <span className="text-status-working">✓</span>
-  if (state === 'received') return <span className="text-status-working/70">✓</span>
-  if (state === 'error') return <span className="text-status-error">⚠</span>
+  if (state === 'done') return <DuoIcon name="done" size={12} className="text-status-working" />
+  if (state === 'received') return <DuoIcon name="done" size={12} className="text-status-working/70" />
+  if (state === 'error') return <DuoIcon name="warn" size={12} className="text-status-error" />
   const color = state === 'working' ? 'bg-status-working animate-pulse' : state === 'approval' || state === 'waiting' || state === 'queued' ? 'bg-status-waiting' : 'bg-muted-foreground'
   return <span className={cn('inline-block size-1.5 shrink-0 rounded-full', color)} />
 }
@@ -64,7 +65,7 @@ export function DeliveryLine({ message: m }: { message: ChatMessage }) {
   const card = cardId ? tasks.find((x) => x.id === cardId) : undefined
   const cardLink = card && (
     <button type="button" onClick={() => useOffice.getState().setView('board')} title={t('chat.delivery.cardTitle')} className="hover:text-foreground max-w-48 truncate underline-offset-2 hover:underline">
-      📋 {card.title}
+      <DuoIcon name="meeting" size={14} className="mr-1" />{card.title}
     </button>
   )
   if (rows.length === 1) return <div className="text-muted-foreground flex flex-wrap items-center justify-end gap-x-2 text-[11px]"><DeliveryRow row={rows[0]} m={m} />{cardLink}</div>
@@ -76,7 +77,7 @@ export function DeliveryLine({ message: m }: { message: ChatMessage }) {
   return (
     <div className="text-muted-foreground flex flex-col items-end gap-0.5 text-[11px]">
       <button type="button" aria-expanded={isOpen} onClick={() => setIsOpen((v) => !v)} className="hover:text-foreground flex flex-wrap items-center justify-end gap-x-2">
-        <span className="flex items-center gap-1"><span className="text-status-working">✓</span>{t('chat.delivery.summaryDone', { total: rows.length, count: done })}</span>
+        <span className="flex items-center gap-1"><DuoIcon name="done" size={12} className="text-status-working" />{t('chat.delivery.summaryDone', { total: rows.length, count: done })}</span>
         {working > 0 && <span className="flex items-center gap-1"><StateMark state="working" />{t('chat.delivery.summaryWorking', { count: working })}</span>}
         {waiting > 0 && <span className="flex items-center gap-1"><StateMark state="waiting" />{t('chat.delivery.summaryWaiting', { count: waiting })}</span>}
         {attention > 0 && <span className="text-status-waiting flex items-center gap-1">{t('chat.delivery.summaryAttention', { count: attention })}</span>}
@@ -175,7 +176,7 @@ export function ReportActions({ message: m }: { message: ChatMessage }) {
     return (
       <div className="mt-1 flex flex-wrap gap-1.5">
         <button type="button" onClick={() => void window.office.reactChat(m.id, 'none')} title={t('chat.quick.unlike')} className={cn(chip, 'border-status-working/50 text-status-working')}>
-          {t('chat.quick.liked', { time: fmtDate(m.reaction.at, { hour: '2-digit', minute: '2-digit' }) })}
+          <IconText text={t('chat.quick.liked', { time: fmtDate(m.reaction.at, { hour: '2-digit', minute: '2-digit' }) })} size={13} />
         </button>
         {hasCard && <CardChip className={chip} />}
       </div>
@@ -188,10 +189,10 @@ export function ReportActions({ message: m }: { message: ChatMessage }) {
   return (
     <div className="mt-1 flex flex-wrap gap-1.5">
       <button type="button" onClick={() => void window.office.reactChat(m.id, 'like')} title={t('chat.quick.likeTitle')} className={chip}>
-        {t('chat.quick.like')}
+        <IconText text={t('chat.quick.like')} size={13} />
       </button>
       <button type="button" onClick={redo} className={chip}>
-        {t('chat.quick.redo')}
+        <IconText text={t('chat.quick.redo')} size={13} />
       </button>
       <button type="button" onClick={() => void window.office.sendChat(t('chat.quick.moreText'), [], m.room, 'wait', m.id)} className={chip}>
         {t('chat.quick.more')}
@@ -204,7 +205,7 @@ export function ReportActions({ message: m }: { message: ChatMessage }) {
 function CardChip({ className }: { className: string }) {
   return (
     <button type="button" onClick={() => useOffice.getState().setView('board')} title={t('chat.delivery.cardTitle')} className={className}>
-      {t('chat.quick.openCard')}
+      <IconText text={t('chat.quick.openCard')} size={13} />
     </button>
   )
 }
@@ -224,7 +225,7 @@ export function PlanNotice({ plan }: { plan: NonNullable<ChatMessage['plan']> })
   return (
     <div className={cn('bg-card mt-1 flex w-80 max-w-full flex-col gap-1.5 rounded-xl border p-3', isWaiting && 'border-primary/50')}>
       <div className="text-primary flex items-center gap-1.5 text-[11px] font-bold">
-        {t(isWaiting ? 'chat.plan.title' : 'chat.plan.titleDone')}
+        <IconText text={t(isWaiting ? 'chat.plan.title' : 'chat.plan.titleDone')} size={16} />
         <span className={cn('rounded-full px-2 text-[10px]', pill)}>{t(`chat.plan.${status}`)}</span>
       </div>
       <div className="text-sm font-semibold break-words">{task?.title ?? ''}</div>
@@ -299,7 +300,7 @@ export function ReserveMenu({ onPick, onSendNow, onClose }: { onPick: (p: Reserv
         <span>➤ {t('chat.reserve.sendNow')}</span>
         <span className="text-muted-foreground text-[11px]">Enter</span>
       </button>
-      <span className="text-muted-foreground px-2 pt-1 text-[10px]">{t('chat.reserve.onceGroup')}</span>
+      <span className="text-muted-foreground px-2 pt-1 text-[10px]"><IconText text={t('chat.reserve.onceGroup')} size={11} /></span>
       <div className="flex flex-wrap gap-1 px-2 pb-1">
         {today18 > Date.now() && (
           <button type="button" className={pill} onClick={() => onPick({ kind: 'once', at: today18 })}>
@@ -316,7 +317,7 @@ export function ReserveMenu({ onPick, onSendNow, onClose }: { onPick: (p: Reserv
           {t('chat.reserve.custom')}
         </button>
       </div>
-      <span className="text-muted-foreground px-2 text-[10px]">{t('chat.reserve.repeatGroup')}</span>
+      <span className="text-muted-foreground px-2 text-[10px]"><IconText text={t('chat.reserve.repeatGroup')} size={11} /></span>
       <div className="flex flex-wrap gap-1 px-2 pb-1">
         <button type="button" className={pill} onClick={() => onPick({ kind: 'repeat', time: '09:00', weekdays: [0, 1, 2, 3, 4, 5, 6] })}>
           {t('chat.reserve.daily9')}
@@ -392,7 +393,7 @@ export function ReservationCards({ room }: { room: string | undefined }) {
         if (r.isMissed)
           return (
             <div key={r.id} className="border-status-waiting/50 bg-status-waiting/10 flex flex-wrap items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs">
-              <span className="text-status-waiting shrink-0 text-[11px] font-semibold">{t('chat.reserve.missed', { when: fmtDate(r.missedAt ?? r.at ?? 0, TIME_FMT) })}</span>
+              <span className="text-status-waiting shrink-0 text-[11px] font-semibold"><IconText text={t('chat.reserve.missed', { when: fmtDate(r.missedAt ?? r.at ?? 0, TIME_FMT) })} size={12} /></span>
               <span className="min-w-0 flex-1 truncate">{r.text}</span>
               <span className="text-muted-foreground basis-full text-[11px]">{t('chat.reserve.missedAsk')}</span>
               <button type="button" className={primary} onClick={() => act(r.id, 'send')}>{t('chat.reserve.sendNow')}</button>
@@ -402,7 +403,7 @@ export function ReservationCards({ room }: { room: string | undefined }) {
         return (
           <div key={r.id} className={cn('border-primary/45 bg-primary/5 flex items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs', !r.enabled && 'opacity-60')}>
             <span className="text-primary shrink-0 text-[11px] font-semibold">
-              {r.kind === 'once' ? '🕘' : '🔁'} {when}
+              <DuoIcon name={r.kind === 'once' ? 'schedule' : 'repeat'} size={13} className="mr-1" />{when}
               {!r.enabled && ` · ${t('chat.reserve.paused')}`}
               {r.kind === 'repeat' && r.sentCount > 0 && ` · ${t('chat.reserve.sentCount', { count: r.sentCount })}`}
             </span>

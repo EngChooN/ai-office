@@ -31,6 +31,7 @@ import { ToastHost } from '@/lib/toast'
 import { shouldOfferPractice } from '@/lib/firstTaskFlow'
 import { keyName } from '@/lib/keyName'
 import { t } from '@shared/i18n'
+import { DuoIcon } from '@/components/duo-icon'
 
 export default function App() {
   useEffect(() => connectOffice(), [])
@@ -138,7 +139,7 @@ function DesktopShell({ children }: { children?: React.ReactNode }) {
             className="bg-accent shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold tabular-nums [-webkit-app-region:no-drag]"
             title={t('shell.funds.title')}
           >
-            💰 {formatWon(funds)}
+            <DuoIcon name="money" size={14} className="mr-1" />{formatWon(funds)}
           </button>
         )}
         {/* 실제 한도는 엔진 플랜 사용률 (앱이 환산하던 $·예산 대신) — 직원이 쓰는 엔진만, 둘 다면 엔진 이름을 붙여 */}

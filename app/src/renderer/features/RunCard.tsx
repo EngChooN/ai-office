@@ -10,6 +10,7 @@ import { t, type TKey } from '@shared/i18n'
 import { Avatar } from './StaffCard'
 import { Markdown } from '@/components/markdown'
 import { roleLabel } from '@shared/roleLabel'
+import { DuoIcon } from '@/components/duo-icon'
 
 const STATUS: Record<RunStatus, { label: TKey; className: string }> = {
   running: { label: 'runCard.status.running', className: 'bg-primary text-primary-foreground animate-pulse' },
@@ -34,7 +35,7 @@ export function RunCard({ run, isCompact = false }: { run: ProcessRun; isCompact
     <div className={cn('bg-card flex flex-col gap-2 rounded-xl border p-3 text-sm', run.status === 'checking' && 'border-status-waiting')}>
       <button type="button" onClick={() => setIsOpen((v) => !v)} className="flex items-center gap-2 text-left">
         <span className={cn('rounded px-1.5 text-[10px] font-semibold', STATUS[run.status].className)}>{t(STATUS[run.status].label)}</span>
-        <span className="flex-1 truncate font-medium">📘 {run.manualName}</span>
+        <span className="flex-1 truncate font-medium"><DuoIcon name="manual" size={14} className="mr-1" />{run.manualName}</span>
         <span className="text-muted-foreground text-xs">{run.scope.name}</span>
       </button>
       {/* 단계 진행도 */}
@@ -49,7 +50,7 @@ export function RunCard({ run, isCompact = false }: { run: ProcessRun; isCompact
             )}
           >
             {i + 1}. {s.title}
-            {s.needsMyCheck && ' 🙋'}
+            {s.needsMyCheck && <DuoIcon name="ask" size={12} className="ml-1" />}
           </span>
         ))}
       </div>
@@ -62,7 +63,7 @@ export function RunCard({ run, isCompact = false }: { run: ProcessRun; isCompact
       {isOpen && <AttachmentView attachments={run.attachments} size="sm" />}
       {run.status === 'checking' && (
         <div className="flex flex-col gap-2 border-t pt-2">
-          <div className="text-xs font-semibold">🙋 {t('runCard.pleaseCheck', { step: step?.title ?? '' })}</div>
+          <div className="text-xs font-semibold"><DuoIcon name="ask" size={13} className="mr-1" />{t('runCard.pleaseCheck', { step: step?.title ?? '' })}</div>
           <Markdown className="bg-muted max-h-64 overflow-auto rounded p-2 text-xs">{run.pendingOutput.slice(0, PREVIEW_MAX)}</Markdown>
           <Textarea value={feedback} onChange={(e) => setFeedback(e.target.value)} placeholder={t('runCard.feedbackPlaceholder')} className="min-h-12 text-xs" />
           <div className="flex gap-2">
@@ -82,7 +83,7 @@ export function RunCard({ run, isCompact = false }: { run: ProcessRun; isCompact
             {run.history.map((h, i) => (
               <div key={i} className="bg-muted/50 rounded p-2">
                 <div className="font-medium">
-                  {run.steps.find((s) => s.id === h.stepId)?.title} · {h.staffName} {h.verdict === 'revise' ? '↩️ revise' : h.verdict === 'approve' ? '✅' : ''}
+                  {run.steps.find((s) => s.id === h.stepId)?.title} · {h.staffName} {h.verdict === 'revise' ? '↩️ revise' : h.verdict === 'approve' ? <DuoIcon name="done" size={12} /> : ''}
                 </div>
                 <Markdown className="text-muted-foreground max-h-40 overflow-auto">{h.output}</Markdown>
               </div>

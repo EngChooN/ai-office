@@ -13,6 +13,7 @@ import { roleLabel } from '@shared/roleLabel'
 import { unreadLabel } from '@shared/unreadReports'
 import { AutonomyBadge } from './Autonomy'
 import { isRemoteDim, RemoteBadge } from './RemoteBadge'
+import { DuoIcon } from '@/components/duo-icon'
 
 interface Props {
   staff: Staff
@@ -181,7 +182,7 @@ export function StaffCard({ staff, isLead = false, isLab = false, isSelected, on
         {/* 데모데이 칭찬 배지 (대표 박수·MVP 누적) */}
         {!!(staff.praise?.claps || staff.praise?.mvps) && (
           <Badge variant="outline" title={t('staffCard.praise', { claps: staff.praise.claps, mvps: staff.praise.mvps })}>
-            {staff.praise.mvps > 0 && `🏆${staff.praise.mvps} `}👏{staff.praise.claps}
+            {staff.praise.mvps > 0 && <><DuoIcon name="trophy" size={12} />{staff.praise.mvps} </>}👏{staff.praise.claps}
           </Badge>
         )}
         {staff.kind === 'external' ? (

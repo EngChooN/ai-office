@@ -24,6 +24,7 @@ import { t } from '@shared/i18n'
 import { roleLabel } from '@shared/roleLabel'
 import { PcOnlyState } from '@/components/pc-only-state'
 import { IS_MOBILE_SHELL } from '@/shell'
+import { DuoIcon } from '@/components/duo-icon'
 
 // 화면 문구가 들어 있어 렌더할 때 만든다 (언어 바뀜 반영)
 const approvalModes = (): { value: ApprovalMode; label: string; hint: string }[] => [
@@ -287,7 +288,7 @@ export function HireDialog() {
                         onClick={() => update({ labIds: isOn ? form.labIds?.filter((x) => x !== l.id) : [...(form.labIds ?? []), l.id] })}
                         className={cn('rounded-md border px-2 py-1 text-xs', isOn && 'border-primary bg-accent')}
                       >
-                        🧪 {l.name}
+                        <DuoIcon name="lab" size={13} className="mr-1" />{l.name}
                       </button>
                     )
                   })}

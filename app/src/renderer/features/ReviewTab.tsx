@@ -10,6 +10,7 @@ import { IS_MOBILE_SHELL } from '@/shell'
 import type { Staff, WorkChanges, WorkRevertInfo } from '@shared/types'
 import { t, type TKey } from '@shared/i18n'
 import { shortPath } from './status'
+import { IconText } from '@/components/duo-icon'
 
 const STATUS_LABEL: Record<string, TKey> = { M: 'review.file.modified', A: 'review.file.added', D: 'review.file.deleted', R: 'review.file.renamed', '??': 'review.file.new', '?': 'review.file.changed' }
 
@@ -160,7 +161,7 @@ export function ReviewTab({ staff }: { staff: Staff }) {
             </div>
           )}
           {changes.ahead > 0 && !changes.hasGh && <p className="text-muted-foreground text-xs">{t('review.needGh')}</p>}
-          {output && <pre className="bg-muted selectable max-h-24 overflow-auto rounded p-2 text-[11px] whitespace-pre-wrap">{output}</pre>}
+          {output && <pre className="bg-muted selectable max-h-24 overflow-auto rounded p-2 text-[11px] whitespace-pre-wrap"><IconText text={output} size={12} /></pre>}
         </footer>
       )}
       <Dialog open={isConfirming} onOpenChange={setIsConfirming}>

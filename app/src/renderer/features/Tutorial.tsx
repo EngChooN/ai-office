@@ -12,6 +12,7 @@ import { DONE_STEP, stepsOf, type TutorialScenario, type TutorialSnapshot, type 
 import { useTourTarget } from './CoachTour'
 import { navTourTarget } from './nav'
 import { hasDoneFirstTask } from './useFirstTask'
+import { DuoIcon, IconText } from '@/components/duo-icon'
 
 const PAD = 5
 /** 튜토리얼 상태가 아직 없을 때의 빈 목록 — 선택자가 매번 새 배열을 돌려주면 zustand가 끝없이 다시 그린다 */
@@ -200,10 +201,10 @@ export function TutorialDone() {
     <Dialog open onOpenChange={(open) => !open && end()}>
       <DialogContent className="max-w-sm text-center">
         <DialogHeader className="items-center text-center sm:text-center">
-          <DialogTitle className="text-xl">{t('tutorial.done.title')}</DialogTitle>
+          <DialogTitle className="text-xl"><IconText text={t('tutorial.done.title')} size={20} /></DialogTitle>
           <DialogDescription>{t(scenario === 'task' ? 'tutorial.done.task' : 'tutorial.done.meeting')}</DialogDescription>
         </DialogHeader>
-        {tut.reward > 0 && <div className="bg-accent mx-auto rounded-full px-3 py-1 text-sm font-semibold tabular-nums">💰 {t('tutorial.done.reward', { amount: formatWon(tut.reward) })}</div>}
+        {tut.reward > 0 && <div className="bg-accent mx-auto rounded-full px-3 py-1 text-sm font-semibold tabular-nums"><DuoIcon name="money" size={14} className="mr-1" />{t('tutorial.done.reward', { amount: formatWon(tut.reward) })}</div>}
         <div className="flex flex-col gap-2">
           <Button onClick={goReal}>{t('tutorial.done.real')}</Button>
           <Button variant="outline" onClick={() => void window.office.tutorialStart(other)}>

@@ -16,6 +16,7 @@ import { AttachmentView } from '@/components/attachments'
 import { buildGroups, groupState, toggleGroup, type PickGroup } from './meetingPick'
 import { meetingRoomOf, nextMeetingRoomLevel } from '@shared/officeLevel'
 import { CEO_NAME, decisionView, type DecisionState, type DecisionView } from '@shared/meetingDecisions'
+import { DuoIcon } from '@/components/duo-icon'
 
 /** 이 인원을 넘으면 회의가 오래 걸린다고 알려 준다 (모두가 바퀴마다 한 번씩 발언) */
 const LONG_MEETING = 10
@@ -306,7 +307,7 @@ export function DecisionBox({ meeting, decision }: { meeting: Meeting; decision:
     <div className={cn('flex flex-col gap-2 rounded-lg border border-l-4 p-3 text-sm', style.box)}>
       <div className="flex items-center gap-2 text-xs">
         <span className="min-w-0 flex-1">
-          <span className="font-semibold">🙋 {decision.askedByName}</span>
+          <span className="font-semibold"><DuoIcon name="ask" size={14} className="mr-1" />{decision.askedByName}</span>
           <span className="text-muted-foreground"> {t('meeting.decision.request')}</span>
         </span>
         <Badge className={cn('border-transparent', labelClass)}>{decisionLabel(view, meeting)}</Badge>

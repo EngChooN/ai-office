@@ -6,6 +6,7 @@ import { COMPANY_LEVELS } from '@shared/types'
 import { legacyLevelOfXp, MAX_LEVEL } from '@shared/officeLevel'
 import { useOffice, useWorkMode } from '@/store'
 import { t } from '@shared/i18n'
+import { IconText } from '@/components/duo-icon'
 
 const SEEN_KEY = 'office:lastSeenLevel'
 /** 사무실 개편(레벨 20단계·칸 배치) 안내를 본 기록 */
@@ -158,7 +159,7 @@ export function LevelUp({ isBusy }: { isBusy: boolean }) {
           </DialogHeader>
         ) : (
           <DialogHeader>
-            <DialogTitle className="text-2xl">{t('levelUp.title', { level })}</DialogTitle>
+            <DialogTitle className="text-2xl"><IconText text={t('levelUp.title', { level })} size={24} /></DialogTitle>
             <DialogDescription>
               {t('levelUp.desc', { title })}
             </DialogDescription>
@@ -178,11 +179,11 @@ export function LevelUp({ isBusy }: { isBusy: boolean }) {
           {t('levelUp.drawerNote')}
         </p>
         {isRevamp && reward === 0 ? (
-          <div className="bg-primary/10 text-primary rounded-lg px-3 py-2 text-center text-sm font-semibold">{t('levelUp.reward.kept')}</div>
+          <div className="bg-primary/10 text-primary rounded-lg px-3 py-2 text-center text-sm font-semibold"><IconText text={t('levelUp.reward.kept')} size={14} /></div>
         ) : isRevamp ? (
-          <div className="bg-primary/10 text-primary rounded-lg px-3 py-2 text-center text-sm font-semibold">{t('levelUp.reward.newLevels', { amount: formatWon(reward) })}</div>
+          <div className="bg-primary/10 text-primary rounded-lg px-3 py-2 text-center text-sm font-semibold"><IconText text={t('levelUp.reward.newLevels', { amount: formatWon(reward) })} size={14} /></div>
         ) : (
-          <div className="bg-primary/10 text-primary rounded-lg px-3 py-2 text-center text-sm font-semibold">{t('levelUp.reward.received', { amount: formatWon(reward) })}</div>
+          <div className="bg-primary/10 text-primary rounded-lg px-3 py-2 text-center text-sm font-semibold"><IconText text={t('levelUp.reward.received', { amount: formatWon(reward) })} size={14} /></div>
         )}
         <DialogFooter>
           <Button

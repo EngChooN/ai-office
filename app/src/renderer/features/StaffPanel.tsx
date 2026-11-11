@@ -41,6 +41,7 @@ import { ApprovalStatusChips } from './AutoApprove'
 import { WaitReasonLine } from './WaitReasonLine'
 import { useStaffRecord, type OlderState } from './useStaffRecord'
 import { dayKey, dayStarts } from '@shared/recordLogs'
+import { DuoIcon, IconText } from '@/components/duo-icon'
 
 /** Codex 프로그램 설치 안내 (OpenAI 공식 문서) */
 const CODEX_INSTALL_URL = 'https://developers.openai.com/codex/cli'
@@ -240,7 +241,7 @@ const LogRow = memo(function LogRow({ entry: l }: { entry: LogEntry }) {
       <span className={cn('w-[2.6em] shrink-0 font-medium', LOG_COLOR[l.type] ?? 'text-muted-foreground')}>{t(LOG_LABEL[l.type])}</span>
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         {/* 지시는 대표가 엔터로 나눈 줄을 그대로 살린다 (마크다운은 한 줄 바꿈을 이어 붙인다) */}
-        {l.type === 'reply' || l.type === 'result' ? <Markdown>{l.text}</Markdown> : l.type === 'instruction' ? <Markdown className="[&_li]:whitespace-pre-line [&_p]:whitespace-pre-line">{l.text}</Markdown> : <span className="selectable break-words whitespace-pre-wrap">{trOr(l.textI18n, l.text)}</span>}
+        {l.type === 'reply' || l.type === 'result' ? <Markdown>{l.text}</Markdown> : l.type === 'instruction' ? <Markdown className="[&_li]:whitespace-pre-line [&_p]:whitespace-pre-line">{l.text}</Markdown> : <span className="selectable break-words whitespace-pre-wrap"><IconText text={trOr(l.textI18n, l.text)} size={13} /></span>}
         <AttachmentView attachments={l.attachments} size="sm" />
       </div>
     </div>
@@ -774,7 +775,7 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
           </div>
           <div className="flex items-center gap-2">
             <Button size="sm" variant="ghost" className="h-8 px-2 text-xs" onClick={() => openSlash('manual')} title={t('slashMenu.manualButtonTitle')}>
-              {t('slashMenu.manualButton')}
+              <IconText text={t('slashMenu.manualButton')} size={13} />
             </Button>
             <Button size="sm" variant="ghost" className="h-8 px-2 text-xs" onClick={() => openSlash('command')} title={t('slashMenu.buttonTitle')}>
               {t('slashMenu.button')}
@@ -843,7 +844,7 @@ function Profile({ staff }: { staff: Staff }) {
         ))}
       </div>
       <div className="flex flex-col gap-1 text-xs">
-        <span className="text-muted-foreground">📘 {t('staffPanel.profile.skills')}</span>
+        <span className="text-muted-foreground"><DuoIcon name="manual" size={13} className="mr-1" />{t('staffPanel.profile.skills')}</span>
         <div className="flex flex-wrap gap-1">
           {staff.equipment.skills === 'all' ? (
             <span className="bg-muted rounded-full px-2 py-0.5">{t('staffPanel.profile.skillsAll')}</span>
@@ -852,7 +853,7 @@ function Profile({ staff }: { staff: Staff }) {
           ) : (
             staff.equipment.skills.map((n) => (
               <span key={n} className="bg-primary/15 text-primary rounded-full px-2 py-0.5 font-medium">
-                📘 {n}
+                <DuoIcon name="manual" size={12} className="mr-1" />{n}
               </span>
             ))
           )}
@@ -1140,7 +1141,7 @@ function useProcessChoices(staff: Staff): ManualChoice[] {
   return [
     ...labs
       .filter((l) => l.memberIds.includes(staff.id))
-      .flatMap((l) => (l.manuals ?? []).map((m): ManualChoice => ({ name: m, label: `${m} · 🧪 ${l.name}`, scope: { kind: 'lab', id: l.id } }))),
+      .flatMap((l) => (l.manuals ?? []).map((m): ManualChoice => ({ name: m, label: `${m} · ${l.name}`, scope: { kind: 'lab', id: l.id } }))),
     ...teams
       .filter((tm) => tm.id === staff.teamId)
       .flatMap((tm) => (tm.manuals ?? []).map((m): ManualChoice => ({ name: m, label: `${m} · ${tm.name}`, scope: { kind: 'team', id: tm.id } }))),
@@ -1152,7 +1153,7 @@ function PickedManual({ manual, onRemove }: { manual: ManualChoice; onRemove: ()
   return (
     <div className="flex items-center gap-2 text-xs">
       <span className="bg-primary/15 text-primary rounded-full px-2 py-0.5 font-medium">
-        {manual.scope ? '🔁' : '📘'} {manual.label}
+        <DuoIcon name={manual.scope ? 'repeat' : 'manual'} size={13} className="mr-1" />{manual.label}
       </span>
       <button type="button" className="text-muted-foreground" onClick={onRemove}>
         {t('staffPanel.manual.remove')}

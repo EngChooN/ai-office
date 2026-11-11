@@ -11,6 +11,8 @@ import type { CustomMcp } from '@shared/customMcp'
 import type { AiProvider, Equipment, EquipmentCatalog, EquipmentMcp, McpSourceKind } from '@shared/types'
 import { useOffice } from '@/store'
 import { McpAddDialog, type McpAddTab } from './McpAddDialog'
+import { DuoIcon, IconText } from '@/components/duo-icon'
+import { stripIconEmoji } from '@shared/iconText'
 
 // 장비 탭 › 연결 도구: 한 줄에 상태 점·이름·켜기 스위치. 출처·명령·이유·고치기/삭제는 줄을 펼쳐서 본다 + 새로 고침 + 직접 추가
 // 휴대폰에서는 목록과 켜기만 (새로 고침·추가·고치기·삭제는 PC 전용 기능)
@@ -133,7 +135,7 @@ export function McpSection({
 
       {catalog && listed.some((m) => m.name === BROWSER_EQUIPMENT) && (
         <div className="text-muted-foreground flex flex-col gap-1.5 rounded-md border px-2 py-2 text-[11px]">
-          <span>🌐 {t('equip.browser.sepWhy')}</span>
+          <span><DuoIcon name="remote" size={13} className="mr-1" />{t('equip.browser.sepWhy')}</span>
           <span>{t('equip.browser.loginKept')}</span>
           {!IS_MOBILE_SHELL && (
             <label className="text-foreground flex items-center gap-2 pt-1 font-medium">
@@ -229,10 +231,10 @@ function McpRow({
         <button type="button" aria-expanded={isOpen} title={t('equipment.mcp.details')} onClick={() => setIsOpen((v) => !v)} className="flex min-w-0 flex-1 items-center gap-2 text-left">
           <ChevronRightIcon className={cn('text-muted-foreground size-3 shrink-0 transition-transform', isOpen && 'rotate-90')} />
           <span title={t(`equipment.mcp.status.${status}`)} className={cn('size-2 shrink-0 rounded-full', STATUS_DOT[status])} />
-          <span className="truncate font-medium">{name}</span>
+          <span className="truncate font-medium"><IconText text={name} size={14} /></span>
           {status !== 'ok' && <span className={cn('shrink-0 text-[11px]', STATUS_TEXT[status])}>{t(`equipment.mcp.status.${status}`)}</span>}
         </button>
-        <Switch checked={isOn} disabled={isDisabled} onCheckedChange={onToggle} aria-label={name} />
+        <Switch checked={isOn} disabled={isDisabled} onCheckedChange={onToggle} aria-label={stripIconEmoji(name)} />
       </div>
       {isOpen && (
         <div className="text-muted-foreground flex flex-col gap-1 pr-2 pb-2 pl-7 text-[11px]">

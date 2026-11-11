@@ -7,6 +7,7 @@ import { t } from '@shared/i18n'
 import { syncErrorCode, type ApplyChoice, type ApplyResult, type CardFile, type PeerChangesCard, type SyncErrorCode } from '@shared/peerSync'
 import type { Hunk } from '@shared/textDiff'
 import type { Approval } from '@shared/types'
+import { DuoIcon } from '@/components/duo-icon'
 
 // 다른 PC 직원이 바꾼 파일 묶음 결재 (toolName 'PeerChanges', docs/design/multi-pc 06 · 결재함)
 // 스냅샷 카드에는 목록만 있다 — 열면 peerChangesetDetail로 지금 이 PC 파일 기준 충돌과 줄 비교를 다시 받는다
@@ -173,7 +174,7 @@ function FileRow({
           </button>
         )}
       </div>
-      {file.verdict === 'conflict' && file.conflict && <span className="text-status-waiting font-medium">⚠ {t(`peerSync.conflict.${file.conflict}`)}</span>}
+      {file.verdict === 'conflict' && file.conflict && <span className="text-status-waiting font-medium"><DuoIcon name="warn" size={14} className="mr-1" />{t(`peerSync.conflict.${file.conflict}`)}</span>}
       {file.verdict === 'same' && <span className="text-muted-foreground">{t('peerSync.verdict.same')}</span>}
       {file.isSensitive && file.verdict === 'apply' && (
         <label className="flex items-start gap-1.5">
