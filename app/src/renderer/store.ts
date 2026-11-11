@@ -14,6 +14,8 @@ interface OfficeState extends OfficeSnapshot {
   selectedId: string | null
   view: View
   hireOpen: boolean
+  /** 분할 화면 상단 바 🔍가 대화 찾기를 열어 달라는 신호 (값이 바뀔 때마다 한 번 연다 — 열림 상태 자체는 대화방이 가진다) */
+  chatSearchRequest: number
   /** 직원 마켓 창 (채용 창 안에서 열린다 — openMarket은 채용 창과 함께 연다) */
   isMarketOpen: boolean
   liveLogs: LogEntry[]
@@ -56,6 +58,7 @@ interface OfficeState extends OfficeSnapshot {
   select(id: string | null): void
   setView(view: View): void
   setHireOpen(open: boolean): void
+  requestChatSearch(): void
   setMarketOpen(open: boolean): void
   openMarket(): void
   /** 비서 빠른 창(⌘K·메뉴바 "비서에게 말하기") */
@@ -110,6 +113,7 @@ export const useOffice = create<OfficeState>((set) => ({
   selectedId: null,
   view: 'map',
   hireOpen: false,
+  chatSearchRequest: 0,
   isMarketOpen: false,
   liveLogs: [],
   chat: [],
@@ -149,6 +153,7 @@ export const useOffice = create<OfficeState>((set) => ({
     }),
   select: (selectedId) => set({ selectedId }),
   setView: (view) => set((s) => ({ view: shownView(view, s.settings.isWorkMode) })),
+  requestChatSearch: () => set((s) => ({ chatSearchRequest: s.chatSearchRequest + 1 })),
   setHireOpen: (hireOpen) => set(hireOpen ? { hireOpen } : { hireOpen, isMarketOpen: false }),
   setMarketOpen: (isMarketOpen) => set({ isMarketOpen }),
   openMarket: () => set({ hireOpen: true, isMarketOpen: true }),

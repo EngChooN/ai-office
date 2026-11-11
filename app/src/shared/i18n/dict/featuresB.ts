@@ -47,6 +47,8 @@ export default {
   'staffPanel.usage.today': { ko: '오늘', en: 'Today', ja: '今日', zh: '今日' },
   'staffPanel.usage.tokens': { ko: '{n} 토큰', en: '{n} tokens', ja: '{n} トークン', zh: '{n} 令牌' },
   'staffPanel.usage.total': { ko: '누적 {cost}', en: 'Total {cost}', ja: '累計 {cost}', zh: '累计 {cost}' },
+  'staffPanel.more': { ko: '더 보기', en: 'More', ja: 'その他', zh: '更多' },
+  'staffPanel.plusMenu': { ko: '첨부·자율 진행·기억 길이·매뉴얼·명령', en: 'Attach, autonomy, memory, manuals, commands', ja: '添付・自律進行・記憶の長さ・マニュアル・コマンド', zh: '附件、自主推进、记忆长度、手册、命令' },
   'staffPanel.font.label': { ko: '글자 크기', en: 'Text size', ja: '文字サイズ', zh: '字号' },
   'staffPanel.font.smaller': { ko: '글자 작게', en: 'Smaller text', ja: '文字を小さく', zh: '缩小文字' },
   'staffPanel.font.larger': { ko: '글자 크게', en: 'Larger text', ja: '文字を大きく', zh: '放大文字' },

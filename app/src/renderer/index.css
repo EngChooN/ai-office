@@ -16,6 +16,10 @@
 @custom-variant portrait (&:where([data-layout=phone]:not([data-short]) *));
 /* 가로 폰에서 키보드가 열린 동안: 남는 높이가 100여 px라 화면 제목을 숨기고 입력창을 남긴다 */
 @custom-variant typing (&:where([data-layout=phone][data-short][data-keyboard] *));
+/* 좌우 분할 (폴드 와이드 커버 등, 폰 배치 중 폭 600 이상·가로 폰 아님) — layoutState.ts isSplit */
+@custom-variant split (&:where([data-layout=phone][data-split] *));
+/* 분할의 왼쪽 칸이 보일 때 (키보드가 닫혀 있음). 키보드가 열리면 split:만 남아 오른쪽 칸이 전폭 */
+@custom-variant side (&:where([data-layout=phone][data-split]:not([data-keyboard]) *));
 /* 좁은 본문: 화면 틀(ui/page)의 폭이 640px 미만일 때 — 창이 좁거나 직원 패널이 본문을 줄였을 때. 폰 배치와 같은 결과가 되게 phone:과 함께 쓴다 */
 @custom-variant narrow {
   @container page (width < 40rem) {

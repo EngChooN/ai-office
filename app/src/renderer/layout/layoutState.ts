@@ -6,6 +6,8 @@
 export const PHONE_MAX_WIDTH = 840
 /** 이보다 낮으면 가로로 돌린 폰 — 폭이 넓어도 폰 배치에 헤더를 접는다 (태블릿은 가로여도 600 이상) */
 export const SHORT_MAX_HEIGHT = 500
+/** 폰 배치 중 이 폭 이상(폴드 와이드 커버 624dp 등, 안드로이드 '중간 폭' 600~840)은 화면을 좌우로 나눈다. 가로 폰은 제외 */
+export const SPLIT_MIN_WIDTH = 600
 /** 입력 중에 높이가 이만큼 줄면 키보드가 열린 것으로 본다 (셸이 ime 값을 안 줄 때) */
 const KEYBOARD_RATIO = 0.8
 
@@ -22,15 +24,23 @@ export interface LayoutState {
   isPhone: boolean
   /** 가로 폰 (높이가 낮아 헤더를 접는다) */
   isShort: boolean
+  /** 좌우 분할 (폰 배치 · 폭 600 이상 · 가로 폰 아님) — 키보드가 열려도 유지하고 왼쪽 칸만 숨긴다 */
+  isSplit: boolean
   isKeyboardOpen: boolean
+}
+
+/** 폭과 키보드를 뺀 높이만으로 정하는 배치 */
+export function decideLayout(width: number, stableHeight: number): Omit<LayoutState, 'isKeyboardOpen'> {
+  const isShort = stableHeight < SHORT_MAX_HEIGHT
+  const isPhone = width < PHONE_MAX_WIDTH || isShort
+  return { isPhone, isShort, isSplit: isPhone && !isShort && width >= SPLIT_MIN_WIDTH }
 }
 
 export function createLayoutTracker(initial: { width: number; height: number }) {
   // 키보드가 없을 때의 높이. 입력 중이 아니거나 폭이 바뀌면(회전·폴드 펼침) 새로 잡는다
   let stableHeight = initial.height
   let lastWidth = initial.width
-  const decide = (width: number, height: number) => ({ isPhone: width < PHONE_MAX_WIDTH || height < SHORT_MAX_HEIGHT, isShort: height < SHORT_MAX_HEIGHT })
-  let state: LayoutState = { ...decide(initial.width, initial.height), isKeyboardOpen: false }
+  let state: LayoutState = { ...decideLayout(initial.width, initial.height), isKeyboardOpen: false }
 
   return {
     get: () => state,
@@ -41,7 +51,7 @@ export function createLayoutTracker(initial: { width: number; height: number }) 
       if (!isTyping || isRotated) stableHeight = height
       // 키보드: 셸이 알려 준 ime > 0 (예전 셸은 입력 중 높이가 크게 줄었는지로)
       const isKeyboardOpen = ime > 0 || (isTyping && height < stableHeight * KEYBOARD_RATIO)
-      state = { ...decide(width, stableHeight), isKeyboardOpen }
+      state = { ...decideLayout(width, stableHeight), isKeyboardOpen }
       return state
     },
   }
@@ -49,13 +59,13 @@ export function createLayoutTracker(initial: { width: number; height: number }) 
 
 // ── 화면이 구독하는 값 (install.ts가 채운다. 데스크톱 빌드는 늘 PC 배치) ──
 
-let current: LayoutState = { isPhone: false, isShort: false, isKeyboardOpen: false }
+let current: LayoutState = { isPhone: false, isShort: false, isSplit: false, isKeyboardOpen: false }
 const listeners = new Set<() => void>()
 
 export const getLayoutState = () => current
 
 export function setLayoutState(next: LayoutState) {
-  if (next.isPhone === current.isPhone && next.isShort === current.isShort && next.isKeyboardOpen === current.isKeyboardOpen) return
+  if (next.isPhone === current.isPhone && next.isShort === current.isShort && next.isSplit === current.isSplit && next.isKeyboardOpen === current.isKeyboardOpen) return
   current = next
   listeners.forEach((cb) => cb())
 }

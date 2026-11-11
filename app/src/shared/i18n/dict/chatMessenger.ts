@@ -61,6 +61,8 @@ export default {
   'chat.room.allName': { ko: '전체 방', en: 'All room', ja: '全体ルーム', zh: '全体群' },
 
   // 6. 예약·반복
+  'chat.side.doing': { ko: '지금 하는 일', en: 'Working on now', ja: 'いまの仕事', zh: '正在做' },
+  'chat.plusMenu': { ko: '첨부·예약·매뉴얼·명령', en: 'Attach, schedule, manuals, commands', ja: '添付・予約・マニュアル・コマンド', zh: '附件、定时、手册、命令' },
   'chat.reserve.menu': { ko: '예약·반복 보내기', en: 'Schedule or repeat', ja: '予約・繰り返し送信', zh: '定时或重复发送' },
   'chat.reserve.sendNow': { ko: '지금 보내기', en: 'Send now', ja: '今すぐ送る', zh: '立即发送' },
   'chat.reserve.onceGroup': { ko: '🕘 예약 보내기', en: '🕘 Send later', ja: '🕘 予約送信', zh: '🕘 定时发送' },

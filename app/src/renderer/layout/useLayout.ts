@@ -12,6 +12,13 @@ export const isPhoneLayout = () => IS_MOBILE_SHELL && getLayoutState().isPhone
 
 const noop = () => () => {}
 
+const isSplitLayout = () => IS_MOBILE_SHELL && getLayoutState().isSplit
+
+/** 좌우 분할(폴드 와이드 커버 등)인지 — 틀(PhoneShell)용. 화면(feature)은 CSS split:·side: 변형을 쓴다 */
+export function useIsSplit(): boolean {
+  return useSyncExternalStore(IS_MOBILE_SHELL ? subscribeLayout : noop, isSplitLayout)
+}
+
 export function useLayout(): Layout {
   const isPhone = useSyncExternalStore(IS_MOBILE_SHELL ? subscribeLayout : noop, isPhoneLayout)
   return isPhone ? 'phone' : 'desktop'

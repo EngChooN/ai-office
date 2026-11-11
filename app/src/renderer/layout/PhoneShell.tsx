@@ -1,5 +1,5 @@
 import { Suspense, useEffect, useState } from 'react'
-import { SparklesIcon, BellIcon, CheckCircle2Icon, EllipsisIcon, FolderIcon, LayoutGridIcon, UserPlusIcon, WifiOffIcon } from 'lucide-react'
+import { SparklesIcon, BellIcon, SearchIcon, CheckCircle2Icon, EllipsisIcon, FolderIcon, LayoutGridIcon, UserPlusIcon, WifiOffIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -19,6 +19,7 @@ import { renderPage, retryPage } from './pages'
 import { LoadErrorBoundary } from '@/components/load-error-boundary'
 import { fmtDate, t } from '@shared/i18n'
 import { DuoIcon } from '@/components/duo-icon'
+import { useIsSplit } from './useLayout'
 
 // 폰 틀 (docs/specs/android-pc-layout.md 2절): 상단 바 · 연결 배너 · 기존 화면 · 아래 탭 5칸 · 더보기 시트
 // 화면 컴포넌트·색·아이콘·문구는 PC 것을 그대로 쓰고, 틀만 바꾼다. 직원 패널은 전체 화면 시트(StaffPanel의 phone: 클래스)
@@ -37,6 +38,8 @@ export function PhoneShell({ children }: { children?: React.ReactNode }) {
   const wasOpen = useMobileUi((s) => s.wasOpen)
   // 끊긴 동안에는 결재·지시가 늦게 들어가 엉뚱하게 처리되지 않게 본문 조작을 막는다 (마지막 화면은 보인다)
   const isOffline = wasOpen && connection !== 'open'
+  // 좌우 분할 대화방은 묶음 탭 줄도 없앤다 (회의실은 왼쪽 칸 목록에)
+  const isSplitChat = useIsSplit() && view === 'chat'
 
   return (
     // 가로 폰: 노치·카메라 구멍이 있는 좌우를 비운다
@@ -45,7 +48,7 @@ export function PhoneShell({ children }: { children?: React.ReactNode }) {
       <ConnectionBanner />
       <main className={cn('flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden', isOffline && 'pointer-events-none opacity-60')}>
         {/* 묶음 화면 위쪽 탭 (PC와 같은 탭 줄) */}
-        <NavTabs />
+        {!isSplitChat && <NavTabs />}
         <div className="min-h-0 flex-1">
           <LoadErrorBoundary key={view} onRetry={() => retryPage(view)}>
             {() => <Suspense fallback={null}>{renderPage(view)}</Suspense>}
@@ -70,12 +73,15 @@ function PhoneTopBar() {
   const setHireOpen = useOffice((s) => s.setHireOpen)
   const isWorkMode = useWorkMode()
   const isAuto = useOffice((s) => s.autoApprove.isActive)
+  const requestChatSearch = useOffice((s) => s.requestChatSearch)
+  // 좌우 분할 대화방: 46px 한 줄에 대화 · 결재 대기 · 🔍 · ＋ (자금은 숨긴다 — 시안). 비서 ✨는 진입점이 여기뿐이라 남긴다
+  const isSplitChat = useIsSplit() && view === 'chat'
   return (
     // 가로 폰에서는 숨기고 같은 버튼을 아래 탭 줄 오른쪽에 둔다 (PhoneTabBar)
-    <header className="short:hidden flex h-12 shrink-0 items-center gap-2 border-b px-3">
+    <header className="short:hidden split:h-[46px] flex h-12 shrink-0 items-center gap-2 border-b px-3">
       <span className="min-w-0 flex-1 truncate font-semibold">{labelOf(view)}</span>
       {/* 자동결재 표시가 뜨면 폭이 모자라 자금은 숨긴다 (상점·급여 명세서에 같은 값) */}
-      {!isWorkMode && !isAuto && (
+      {!isWorkMode && !isAuto && !isSplitChat && (
         <button type="button" onClick={() => setView('shop')} className="bg-accent shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold tabular-nums">
           <DuoIcon name="money" size={14} className="mr-1" />{formatWon(funds)}
         </button>
@@ -84,6 +90,11 @@ function PhoneTopBar() {
       {waitingCount > 0 && (
         <Button size="sm" variant="outline" className="border-status-waiting text-status-waiting shrink-0 px-2" onClick={() => setView('inbox')} aria-label={t('shell.needsAttention', { n: waitingCount })}>
           <BellIcon /> {waitingCount}
+        </Button>
+      )}
+      {isSplitChat && (
+        <Button size="icon" variant="ghost" className="shrink-0" onClick={requestChatSearch} aria-label={t('chat.search.open')}>
+          <SearchIcon />
         </Button>
       )}
       <Button size="icon" variant="outline" className={cn('shrink-0', view === 'secretary' && 'border-primary text-primary')} onClick={() => setView('secretary')} aria-label={t('shell.secretary')}>
@@ -140,7 +151,7 @@ function NoticeBar() {
   if (!notice) return null
   return (
     // 직원 패널(전체 화면 시트)·대화상자 위에도 보이게 떠 있는 한 줄
-    <div role="status" className="bg-card text-foreground short:bottom-[calc(3.5rem+var(--ime,0px))] fixed inset-x-3 bottom-[calc(5rem+var(--ime,0px))] z-[60] rounded-lg border px-3 py-2 text-xs shadow-lg">
+    <div role="status" className="bg-card text-foreground short:bottom-[calc(3.5rem+var(--ime,0px))] split:bottom-[calc(3.875rem+var(--ime,0px))] fixed inset-x-3 bottom-[calc(5rem+var(--ime,0px))] z-[60] rounded-lg border px-3 py-2 text-xs shadow-lg">
       {notice.text}
     </div>
   )
@@ -164,7 +175,8 @@ function PhoneTabBar() {
   // 키보드가 열리면 입력칸이 키보드 바로 위에 붙도록 탭을 숨긴다
   if (isKeyboardOpen) return null
   return (
-    <nav className="short:h-11 flex h-16 shrink-0 border-t">
+    // 좌우 분할: 50px 아이콘만 (배지는 그대로)
+    <nav className="short:h-11 split:h-[50px] flex h-16 shrink-0 border-t">
       {tabs.map((v) => {
         const item = NAV_ITEMS.find((i) => i.view === v)!
         const Icon = v === 'dashboard' ? LayoutGridIcon : item.icon
@@ -197,8 +209,8 @@ function Tab({ label, icon, isSelected, badge, onClick, tour }: { label: string;
     >
       <span className={cn('rounded-full px-4 py-0.5', isSelected && 'bg-accent')}>{icon}</span>
       {/* 가로 폰은 아이콘만 (이름은 읽어 주기용으로 남긴다) */}
-      <span className="short:sr-only truncate">{label}</span>
-      {Boolean(badge) && <span className="bg-status-waiting short:top-0.5 absolute top-1.5 left-1/2 ml-2 rounded-full px-1.5 text-[10px] font-semibold text-background">{badge}</span>}
+      <span className="short:sr-only split:sr-only truncate">{label}</span>
+      {Boolean(badge) && <span className="bg-status-waiting short:top-0.5 split:top-1 absolute top-1.5 left-1/2 ml-2 rounded-full px-1.5 text-[10px] font-semibold text-background">{badge}</span>}
     </button>
   )
 }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ClipboardEvent, type DragEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type ClipboardEvent, type DragEvent, type ReactNode } from 'react'
 import { FileIcon, PaperclipIcon, XIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ArtifactCards } from '@/components/artifact-card'
@@ -42,14 +42,21 @@ export function useDraftAttachments() {
 }
 
 /** 클립 버튼: 파일 고르기 */
-export function AttachButton({ onPick, className }: { onPick: (files: FileList | null) => void; className?: string }) {
+export function AttachButton({ onPick, className, children }: { onPick: (files: FileList | null) => void; className?: string; children?: ReactNode }) {
   const inputRef = useRef<HTMLInputElement>(null)
   return (
     <>
       <input ref={inputRef} type="file" multiple hidden onChange={(e) => (onPick(e.target.files), (e.target.value = ''))} />
+      {/* children이 있으면 메뉴 한 줄 모양 (분할 화면 ＋ 메뉴) */}
+      {children ? (
+        <button type="button" className={className} onClick={() => inputRef.current?.click()}>
+          {children}
+        </button>
+      ) : (
       <Button type="button" size="icon" variant="ghost" className={cn('size-8', className)} onClick={() => inputRef.current?.click()} aria-label={t('attach.attach')} title={t('attach.attachHint')}>
         <PaperclipIcon className="size-4" />
       </Button>
+      )}
     </>
   )
 }

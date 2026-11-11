@@ -1,6 +1,6 @@
 import { memo, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { CheckIcon, ChevronDownIcon, ChevronRightIcon, FlaskConicalIcon, MegaphoneIcon, MessagesSquareIcon, SearchIcon, SendIcon, UsersIcon, ZapIcon } from 'lucide-react'
+import { CheckIcon, ChevronDownIcon, ChevronRightIcon, FlaskConicalIcon, MegaphoneIcon, MessagesSquareIcon, PaperclipIcon, PlusIcon, SearchIcon, SendIcon, UsersIcon, ZapIcon } from 'lucide-react'
 import { useShallow } from 'zustand/react/shallow'
 import { Button } from '@/components/ui/button'
 import { AttachButton, AttachmentView, DraftAttachments, useDraftAttachments } from '@/components/attachments'
@@ -9,9 +9,9 @@ import { handleComposerKey, NEWLINE_HINT } from '@/lib/composerKeys'
 import { commandDescription, commandItem, manualItem, SlashMenu, usePersonalManuals, useSlashKeys, useStaffCommands, type SlashMode } from '@/components/slash-menu'
 import { matchCommands, runsOnEnter } from '@shared/slashCommands'
 import { useOffice } from '@/store'
-import type { Approval, ChatApproval, ChatApprovalResult, ChatMessage, ChatSendMode, Lab, Staff, StaffStatus, Team } from '@shared/types'
+import type { Approval, ChatApproval, ChatApprovalResult, ChatMessage, ChatSendMode, Lab, Staff, Team } from '@shared/types'
 import { chatApprovalView } from '@shared/chatApproval'
-import { chatLines, chatRoomMembers, chatRoomMentionTargets, findRoom, labRoomId, parseRoom, roomLabs, roomTeams, type ChatLine, type ChatRoomInfo } from '@shared/chatRooms'
+import { chatLines, chatRoomMentionTargets, findRoom, labRoomId, parseRoom, type ChatLine, type ChatRoomInfo } from '@shared/chatRooms'
 import { ALL_MENTION, mentionTargets, mentionToken, OFFICE_SENDER, parseMentions, type MentionKind, type MentionTarget } from '@shared/mention'
 import { fmtDate, t, type TKey } from '@shared/i18n'
 import { roleLabel } from '@shared/roleLabel'
@@ -25,10 +25,13 @@ import { STATUS_META } from './status'
 import { progressesForRoom } from '@shared/progressView'
 import { AlwaysApproveButton } from './AutoApprove'
 import { BubbleMenu, ChatSearch, DeliveryLine, PlanNotice, ReplyBar, ReplyQuote, ReportActions, ReservationCards, ReserveMenu, reservationInput, useSearchHighlight } from './ChatExtras'
-import { firstUnread, roomKey, roomsWithPendingApproval, seenOf, unreadByRoom } from '@shared/chatUnread'
+import { firstUnread, roomKey, seenOf } from '@shared/chatUnread'
 import { keyName } from '@/lib/keyName'
 import { DuoIcon, IconText } from '@/components/duo-icon'
 import { splitLeadingIcon } from '@shared/iconText'
+import { doingOf, stripHead, useRoomList, useRoomPeople } from './chatRoomHooks'
+import { ChatSide } from './ChatSide'
+import { PopMenu, PopMenuItem } from '@/components/pop-menu'
 
 const MENTION_MAX = 6
 const KIND_ORDER: MentionKind[] = ['all', 'team', 'lab', 'staff']
@@ -72,8 +75,13 @@ export function ChatPage() {
   const room = useChatRoom()
   const title = !room ? t('chat.title') : room.kind === 'lab' ? t('chat.labRoom.title', { lab: room.name }) : t('chat.room.title', { team: room.name })
   const description = t(!room ? 'chat.description' : room.kind === 'lab' ? 'chat.labRoom.description' : 'chat.room.description', { all: ALL_MENTION })
-  // 대화 찾기: 제목 옆 🔍 또는 ⌘F·Ctrl+F
+  // 대화 찾기: 제목 옆 🔍 또는 ⌘F·Ctrl+F (분할 화면은 상단 바 🔍가 store 신호로 연다)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
+  const searchRequest = useOffice((s) => s.chatSearchRequest)
+  const firstRequest = useRef(searchRequest)
+  useEffect(() => {
+    if (searchRequest !== firstRequest.current) setIsSearchOpen(true)
+  }, [searchRequest])
   const [searchQuery, setSearchQuery] = useState('')
   useEffect(() => {
     const onKey = (e: globalThis.KeyboardEvent) => {
@@ -85,48 +93,49 @@ export function ChatPage() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
+  // 좌우 분할(split:): 머리는 찾기 칸만 남기고, 방 목록·지금 하는 일은 왼쪽 칸(ChatSide, 키보드가 열리면 숨김)으로
   return (
     <div className="flex h-full flex-col">
-      <div className="phone:px-4 phone:py-3 short:py-1.5 typing:hidden border-b px-6 py-4">
-        <div className="flex items-start gap-2">
+      <div className={cn('phone:px-4 phone:py-3 short:py-1.5 typing:hidden split:py-2 border-b px-6 py-4', !isSearchOpen && 'split:hidden')}>
+        <div className="split:hidden flex items-start gap-2">
           <h1 className="short:text-base flex-1 text-lg font-semibold">{title}</h1>
           <Button size="sm" variant="ghost" className="size-8 p-0" onClick={() => setIsSearchOpen((v) => !v)} title={t('chat.search.open')} aria-label={t('chat.search.open')}>
             <SearchIcon />
           </Button>
         </div>
-        <p className="text-muted-foreground short:hidden text-xs">{description}</p>
-        <RemoteLine />
-        <RoomTabs current={room?.room} />
+        <div className="split:hidden">
+          <p className="text-muted-foreground short:hidden text-xs">{description}</p>
+          <RemoteLine />
+          <RoomTabs current={room?.room} />
+        </div>
         {isSearchOpen && <ChatSearch room={room?.room} onClose={() => setIsSearchOpen(false)} onQuery={setSearchQuery} />}
-        <RoomStatusStrip room={room} />
+        <div className="split:hidden">
+          <RoomStatusStrip room={room} />
+        </div>
       </div>
-      <MessageList room={room?.room} searchQuery={isSearchOpen ? searchQuery : ''} />
-      <Composer room={room} />
+      <div className="flex min-h-0 flex-1">
+        <ChatSide room={room} footer={<RemoteLine />} className="side:flex hidden" />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <MessageList room={room?.room} searchQuery={isSearchOpen ? searchQuery : ''} />
+          <Composer room={room} />
+        </div>
+      </div>
     </div>
   )
 }
 
 /** 상태 줄에 펼쳐 두는 사람 수 — 넘으면 "+N명"으로 접는다 */
 const STRIP_MAX = 6
-/** 일하는 사람·확인이 필요한 사람을 앞에 */
-const STATUS_ORDER: Record<StaffStatus, number> = { working: 0, waiting: 1, error: 2, netWait: 3, idle: 4, offline: 5 }
-/** 지시 요약 앞 머리말("[업무 보드] ", "[OO 랩] ")은 상태 줄에서 뺀다 */
-const stripHead = (text: string) => text.replace(/^\[[^\]]+\]\s*/, '')
 
 /**
  * 구성원 상태 줄 (방 제목 아래): 누가 무슨 일을 하는지 — 이 방에서 시킨 일뿐 아니라 업무 카드·1:1 지시로 하는 일도 보인다.
  * 팀·랩 방은 구성원 전원, 전체 방은 일하는 중·확인 필요·오류인 사람만. 마우스를 올리면 자세히, 누르면 직원 패널
  */
 function RoomStatusStrip({ room }: { room: RoomInfo | undefined }) {
-  const staff = useOffice((s) => s.staff)
   const select = useOffice((s) => s.select)
   const [isOpen, setIsOpen] = useState(false)
   const [tip, setTip] = useState<{ staff: Staff; rect: DOMRect } | null>(null)
-  const people = useMemo(() => {
-    const hired = staff.filter((s) => s.kind === 'hired' && !s.isPractice)
-    const list = room ? chatRoomMembers(room, hired) : hired.filter((s) => s.status !== 'idle' && s.status !== 'offline')
-    return [...list].sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status])
-  }, [staff, room])
+  const people = useRoomPeople(room)
   if (people.length === 0) return null
   const shown = isOpen ? people : people.slice(0, STRIP_MAX)
   const tipStaff = tip && people.find((p) => p.id === tip.staff.id)
@@ -144,7 +153,7 @@ function RoomStatusStrip({ room }: { room: RoomInfo | undefined }) {
     >
       {shown.map((s) => {
         const meta = STATUS_META[s.status]
-        const doing = s.status === 'working' ? stripHead(s.progress?.text ?? '') || s.activity : ''
+        const doing = doingOf(s)
         return (
           <button
             key={s.id}
@@ -245,17 +254,8 @@ function RemoteLine() {
 
 /** 방 목록: 전체 / 팀들 / 랩들 (project 종류·연습 팀, 연습 랩은 방이 없다) */
 function RoomTabs({ current }: { current: string | undefined }) {
-  const teams = useOffice((s) => s.teams)
-  const labs = useOffice((s) => s.labs)
   const setChatRoom = useOffice((s) => s.setChatRoom)
-  const chat = useOffice((s) => s.chat)
-  const chatSeen = useOffice((s) => s.chatSeen)
-  const staff = useOffice((s) => s.staff)
-  const unread = useMemo(() => (chatSeen ? unreadByRoom(chat, chatSeen) : {}), [chat, chatSeen])
-  const pendingIds = useMemo(() => new Set(staff.flatMap((s) => s.approvals.map((a) => a.id))), [staff])
-  const approvalRooms = useMemo(() => roomsWithPendingApproval(chat, pendingIds), [chat, pendingIds])
-  const teamRooms = roomTeams(teams)
-  const labRooms = roomLabs(labs)
+  const { teamRooms, labRooms, unread, approvalRooms } = useRoomList()
   if (teamRooms.length === 0 && labRooms.length === 0) return null
   const tab = (key: string, label: string, isActive: boolean, onClick: () => void, color?: string) => (
     <button
@@ -463,7 +463,7 @@ const Bubble = memo(function Bubble({
           <Avatar avatar={senderAvatar} name={senderName} teamId={senderTeamId} className="size-8" />
         </button>
       )}
-      <div className={cn('flex max-w-[75%] flex-col gap-0.5', isMe && 'items-end')}>
+      <div className={cn('split:max-w-[82%] flex max-w-[75%] flex-col gap-0.5', isMe && 'items-end')}>
         {!isMe && (
           <span className="text-muted-foreground text-xs">
             {senderName}
@@ -732,7 +732,7 @@ function Composer({ room }: { room: RoomInfo | undefined }) {
       : t(isLab ? 'chat.labRoom.recipientsNoLead' : 'chat.room.recipientsNoLead')
 
   return (
-    <div className="typing:py-2 relative border-t p-4">
+    <div className="typing:py-2 split:px-3 split:py-2 relative border-t p-4">
       {slashQuery !== null && (
         <SlashMenu
           query={slashQuery}
@@ -784,7 +784,8 @@ function Composer({ room }: { room: RoomInfo | undefined }) {
       <div className="mx-auto mb-2 max-w-3xl">
         {reply && <ReplyBar reply={reply} onCancel={() => setReply(null)} />}
         <DraftAttachments files={draftFiles.files} onRemove={draftFiles.remove} />
-        {parsed && <Recipients parsed={parsed} staffOf={(id) => staffById.get(id)} hasStaff={hired.length > 0} noneLabel={noneLabel} />}
+        {/* 분할 화면은 받는 사람 줄을 @를 쓸 때만 */}
+        {parsed && <div className={cn(parsed.matched.length === 0 && 'split:hidden')}><Recipients parsed={parsed} staffOf={(id) => staffById.get(id)} hasStaff={hired.length > 0} noneLabel={noneLabel} /></div>}
         {isBusySend && (
           <p className="text-status-working mt-1 flex items-center gap-1.5 text-xs">
             <span className="bg-status-working size-1.5 shrink-0 animate-pulse rounded-full" />
@@ -793,7 +794,29 @@ function Composer({ room }: { room: RoomInfo | undefined }) {
         )}
       </div>
       <div className="mx-auto flex max-w-3xl items-end gap-2">
-        <AttachButton onPick={draftFiles.add} className="size-9" />
+        <AttachButton onPick={draftFiles.add} className="split:hidden size-9" />
+        {/* 분할 화면: 첨부·예약·매뉴얼·명령을 ＋ 하나에 (기존 버튼·흐름 그대로) */}
+        <PopMenu icon={<PlusIcon />} label={t('chat.plusMenu')} className="split:block hidden">
+          {(close) => (
+            <>
+              <AttachButton onPick={(files) => (draftFiles.add(files), close())} className="hover:bg-accent flex min-h-9 items-center gap-2 rounded-lg px-2.5 text-left text-sm">
+                <PaperclipIcon className="size-4" />
+                {t('attach.attach')}
+              </AttachButton>
+              <PopMenuItem icon={<DuoIcon name="schedule" size={16} />} onClick={() => (close(), setIsReserveOpen(true))}>
+                {t('chat.reserve.menu')}
+              </PopMenuItem>
+              {hired.length > 0 && (
+                <>
+                  <PopMenuItem onClick={() => (close(), openSlash('manual'))}>
+                    <IconText text={t('slashMenu.manualButton')} size={16} />
+                  </PopMenuItem>
+                  <PopMenuItem onClick={() => (close(), openSlash('command'))}>{t('slashMenu.button')}</PopMenuItem>
+                </>
+              )}
+            </>
+          )}
+        </PopMenu>
         <MentionTextarea
           id={inputId}
           aria-expanded={isMentionOpen}
@@ -826,7 +849,7 @@ function Composer({ room }: { room: RoomInfo | undefined }) {
             <SendIcon />
           </Button>
         )}
-        <Button variant="ghost" className="w-6 shrink-0 px-0" onClick={() => setIsReserveOpen((v) => !v)} title={t('chat.reserve.menu')} aria-label={t('chat.reserve.menu')} aria-expanded={isReserveOpen}>
+        <Button variant="ghost" className="split:hidden w-6 shrink-0 px-0" onClick={() => setIsReserveOpen((v) => !v)} title={t('chat.reserve.menu')} aria-label={t('chat.reserve.menu')} aria-expanded={isReserveOpen}>
           <ChevronDownIcon />
         </Button>
       </div>
@@ -845,7 +868,7 @@ function Composer({ room }: { room: RoomInfo | undefined }) {
       )}
       {reserveNote && <p className="text-status-waiting mx-auto mt-1 max-w-3xl text-xs">{reserveNote}</p>}
       {hired.length > 0 && (
-        <div className="typing:hidden mx-auto mt-1 flex max-w-3xl items-center gap-1">
+        <div className="typing:hidden split:hidden mx-auto mt-1 flex max-w-3xl items-center gap-1">
           <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => openSlash('manual')} title={t('chat.manualButtonTitle')}>
             <IconText text={t('slashMenu.manualButton')} size={13} />
           </Button>
