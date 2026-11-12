@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="ko" data-theme="lavender" data-mode="light">
+<head>
+<meta charset="utf-8">
+<title>업데이트 소식 — 보여 주는 방식 시안 (이디자, 2026-11-12)</title>
+<style>
+/* 앱 index.css 테마 토큰 복사본 (10 테마 × 라이트·다크) */
+[data-theme='lavender'][data-mode='light']{--background: #F6F5FB; --foreground: #221F33; --card: #FFFFFF; --card-foreground: #221F33; --primary: #6C5CE7; --primary-foreground: #FFFFFF; --muted: #ECEAF6; --muted-foreground: #66627F; --accent: #E9E6FA; --border: #DEDAF0; --ring: #8776FF; --surface-sidebar: #EFEDF8; --status-working: #1C7C46; --status-waiting: #9A5B00;}
+[data-theme='lavender'][data-mode='dark']{--background: #14131C; --foreground: #EDEBF8; --card: #201F2D; --card-foreground: #EDEBF8; --primary: #9B8CFF; --primary-foreground: #1A1240; --muted: #292739; --muted-foreground: #A7A3C4; --accent: #302D47; --border: #34314A; --ring: #9B8CFF; --surface-sidebar: #100F17; --status-working: #4ADE80; --status-waiting: #F2C94C;}
+[data-theme='blue'][data-mode='light']{--background: #F5F7FB; --foreground: #1F2633; --card: #FFFFFF; --card-foreground: #1F2633; --primary: #2A67FF; --primary-foreground: #FFFFFF; --muted: #EAEEF6; --muted-foreground: #5E6979; --accent: #E6EDFA; --border: #DAE2F0; --ring: #5184FF; --surface-sidebar: #EDF1F8; --status-working: #1C7C46; --status-waiting: #9A5B00;}
+[data-theme='blue'][data-mode='dark']{--background: #13161C; --foreground: #EBF0F8; --card: #1F242D; --card-foreground: #EBF0F8; --primary: #6C9BFF; --primary-foreground: #122340; --muted: #272E39; --muted-foreground: #A3AFC4; --accent: #2D3747; --border: #313A4A; --ring: #6C9BFF; --surface-sidebar: #0F1217; --status-working: #4ADE80; --status-waiting: #F2C94C;}
+[data-theme='terracotta'][data-mode='light']{--background: #FBF8F5; --foreground: #33281F; --card: #FFFFFF; --card-foreground: #33281F; --primary: #C1511D; --primary-foreground: #FFFFFF; --muted: #F6F0EA; --muted-foreground: #76675C; --accent: #FAEFE6; --border: #F0E4DA; --ring: #DC6E2F; --surface-sidebar: #F8F2ED; --status-working: #1C7C46; --status-waiting: #9A5B00;}
+[data-theme='terracotta'][data-mode='dark']{--background: #1C1713; --foreground: #F8F1EB; --card: #2D261F; --card-foreground: #F8F1EB; --primary: #F08A4B; --primary-foreground: #402712; --muted: #392F27; --muted-foreground: #C4B2A3; --accent: #47392D; --border: #4A3D31; --ring: #F08A4B; --surface-sidebar: #17130F; --status-working: #4ADE80; --status-waiting: #F2C94C;}
+[data-theme='sage'][data-mode='light']{--background: #F5FBF8; --foreground: #1F3329; --card: #FFFFFF; --card-foreground: #1F3329; --primary: #1B7F53; --primary-foreground: #FFFFFF; --muted: #EAF6F0; --muted-foreground: #5A7365; --accent: #E6FAF0; --border: #DAF0E5; --ring: #2E9F71; --surface-sidebar: #EDF8F3; --status-working: #1C7C46; --status-waiting: #9A5B00;}
+[data-theme='sage'][data-mode='dark']{--background: #131C18; --foreground: #EBF8F2; --card: #1F2D26; --card-foreground: #EBF8F2; --primary: #4FD6A0; --primary-foreground: #124029; --muted: #273930; --muted-foreground: #A3C4B3; --accent: #2D473A; --border: #314A3E; --ring: #4FD6A0; --surface-sidebar: #0F1713; --status-working: #4ADE80; --status-waiting: #F2C94C;}
+[data-theme='rose'][data-mode='light']{--background: #FBF5F7; --foreground: #331F26; --card: #FFFFFF; --card-foreground: #331F26; --primary: #D6336C; --primary-foreground: #FFFFFF; --muted: #F6EAEE; --muted-foreground: #7C606A; --accent: #FAE6ED; --border: #F0DAE1; --ring: #F05186; --surface-sidebar: #F8EDF1; --status-working: #1C7C46; --status-waiting: #9A5B00;}
+[data-theme='rose'][data-mode='dark']{--background: #1C1316; --foreground: #F8EBEF; --card: #2D1F24; --card-foreground: #F8EBEF; --primary: #FF7FA8; --primary-foreground: #401221; --muted: #39272D; --muted-foreground: #C4A3AE; --accent: #472D36; --border: #4A3139; --ring: #FF7FA8; --surface-sidebar: #170F12; --status-working: #4ADE80; --status-waiting: #F2C94C;}
+[data-theme='mono'][data-mode='light']{--background: #F7F7F7; --foreground: #171717; --card: #FFFFFF; --card-foreground: #171717; --primary: #171717; --primary-foreground: #FFFFFF; --muted: #EEEEEE; --muted-foreground: #5E5E5E; --accent: #EBEBEB; --border: #E2E2E2; --ring: #525252; --surface-sidebar: #F0F0F0; --status-working: #1C7C46; --status-waiting: #9A5B00;}
+[data-theme='mono'][data-mode='dark']{--background: #121212; --foreground: #EDEDED; --card: #1E1E1E; --card-foreground: #EDEDED; --primary: #EDEDED; --primary-foreground: #141414; --muted: #2A2A2A; --muted-foreground: #A6A6A6; --accent: #333333; --border: #333333; --ring: #D4D4D4; --surface-sidebar: #0E0E0E; --status-working: #4ADE80; --status-waiting: #F2C94C;}
+[data-theme='aurora'][data-mode='light']{--background: #F6F4FA; --foreground: #211B32; --card: #FFFFFF; --card-foreground: #211B32; --primary: #5B4BDB; --primary-foreground: #FFFFFF; --muted: #EDEAF5; --muted-foreground: #655E78; --accent: #E8E2F8; --border: #DFDBEB; --ring: #7C6CFF; --surface-sidebar: #EDEAF6; --status-working: #1C7C46; --status-waiting: #9A5B00;}
+[data-theme='aurora'][data-mode='dark']{--background: #14121C; --foreground: #EDEBF4; --card: #221F2E; --card-foreground: #EDEBF4; --primary: #A99CFF; --primary-foreground: #14102E; --muted: #2E2A3C; --muted-foreground: #ADA8BD; --accent: #39324E; --border: #3D384D; --ring: #A99CFF; --surface-sidebar: #100E16; --status-working: #4ADE80; --status-waiting: #F2C94C;}
+[data-theme='twilight'][data-mode='light']{--background: #F4F5FA; --foreground: #1B1D32; --card: #FFFFFF; --card-foreground: #1B1D32; --primary: #5457D6; --primary-foreground: #FFFFFF; --muted: #EAEBF5; --muted-foreground: #5E6078; --accent: #E2E4F8; --border: #DBDCEB; --ring: #7478FF; --surface-sidebar: #EAEBF6; --status-working: #1C7C46; --status-waiting: #9A5B00;}
+[data-theme='twilight'][data-mode='dark']{--background: #12131C; --foreground: #EBECF4; --card: #1F202E; --card-foreground: #EBECF4; --primary: #9EA2FF; --primary-foreground: #14102E; --muted: #2A2B3C; --muted-foreground: #A8AABD; --accent: #32344E; --border: #38394D; --ring: #9EA2FF; --surface-sidebar: #0E0E16; --status-working: #4ADE80; --status-waiting: #F2C94C;}
+[data-theme='candy'][data-mode='light']{--background: #F9F4FA; --foreground: #2E1B32; --card: #FFFFFF; --card-foreground: #2E1B32; --primary: #B21FC8; --primary-foreground: #FFFFFF; --muted: #F3EAF5; --muted-foreground: #745E78; --accent: #F4E2F8; --border: #E9DBEB; --ring: #C94DDB; --surface-sidebar: #F4EAF6; --status-working: #1C7C46; --status-waiting: #9A5B00;}
+[data-theme='candy'][data-mode='dark']{--background: #1A121C; --foreground: #F3EBF4; --card: #2B1F2E; --card-foreground: #F3EBF4; --primary: #E58CF5; --primary-foreground: #14102E; --muted: #392A3C; --muted-foreground: #BAA8BD; --accent: #49324E; --border: #49384D; --ring: #E58CF5; --surface-sidebar: #150E16; --status-working: #4ADE80; --status-waiting: #F2C94C;}
+[data-theme='meadow'][data-mode='light']{--background: #F4FAF7; --foreground: #1B3224; --card: #FFFFFF; --card-foreground: #1B3224; --primary: #15803D; --primary-foreground: #FFFFFF; --muted: #EAF5EF; --muted-foreground: #5E7869; --accent: #E2F8EB; --border: #DBEBE2; --ring: #2FA860; --surface-sidebar: #EAF6EF; --status-working: #1C7C46; --status-waiting: #9A5B00;}
+[data-theme='meadow'][data-mode='dark']{--background: #121C16; --foreground: #EBF4EF; --card: #1F2E25; --card-foreground: #EBF4EF; --primary: #6EE7A0; --primary-foreground: #14102E; --muted: #2A3C31; --muted-foreground: #A8BDB1; --accent: #324E3D; --border: #384D41; --ring: #6EE7A0; --surface-sidebar: #0E1611; --status-working: #4ADE80; --status-waiting: #F2C94C;}
+[data-mode='light']{--duo-fill-opacity:.42}
+[data-mode='dark']{--duo-fill-opacity:.6}
+*{box-sizing:border-box}
+body{margin:0;font:14px/1.5 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard",sans-serif;background:var(--background);color:var(--foreground)}
+.bar{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;padding:10px 20px;background:var(--surface-sidebar);border-bottom:1px solid var(--border);font-size:13px}
+.bar b{font-weight:700}
+.bar select,.bar button{font:inherit;padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--foreground)}
+.bar .on{background:var(--primary);color:var(--primary-foreground);border-color:var(--primary)}
+.note{color:var(--muted-foreground);font-size:12px}
+.stage{display:flex;gap:28px;align-items:flex-start;padding:20px;flex-wrap:wrap}
+.frame{border:1px solid var(--border);border-radius:14px;background:var(--background);overflow:hidden}
+.frame>.cap{padding:6px 12px;font-size:11px;color:var(--muted-foreground);border-bottom:1px solid var(--border);background:var(--surface-sidebar)}
+.desk{width:820px}.phone{width:375px}
+.page{padding:24px}.phone .page{padding:16px 12px}
+.page h1{margin:0;font-size:20px}.page .desc{margin:2px 0 16px;color:var(--muted-foreground);font-size:13px}
+.list{display:flex;flex-direction:column;gap:12px;max-width:768px}
+
+/* 카드 */
+.card{background:var(--card);color:var(--card-foreground);border:1px solid var(--border);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:12px}
+.phone .card{padding:14px;gap:10px}
+.card.top{border-color:var(--primary)}
+.card.next{border:1.5px solid var(--primary);background:linear-gradient(color-mix(in srgb,var(--primary) 7%,var(--card)),var(--card) 96px)}
+.card.skipped{border:1.5px dashed var(--border);background:var(--card)}
+.hd{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px}
+.hd h2{margin:0;font-size:18px;font-weight:700}
+.phone .hd h2{font-size:17px}
+.date{color:var(--muted-foreground);font-size:12px}
+.chip{border-radius:5px;padding:1px 7px;font-size:11px;font-weight:600;line-height:18px;white-space:nowrap}
+.chip.cur{background:var(--primary);color:var(--primary-foreground)}
+.chip.new{background:var(--primary);color:var(--primary-foreground)}
+.chip.skip{background:var(--muted);color:var(--muted-foreground)}
+.sub{font-size:12px;color:var(--muted-foreground)}
+.counts{display:inline-flex;gap:8px;margin-left:auto;font-size:12px;color:var(--muted-foreground)}
+.phone .hd .counts{margin-left:0;width:100%}
+.row .counts{margin-left:auto}
+.counts span{display:inline-flex;align-items:center;gap:2px}
+
+/* 종류 배지: 색은 아이콘·옅은 배경, 글자는 본문색 */
+.k-feature{--k:var(--status-working)}.k-improve{--k:var(--primary)}.k-fix{--k:var(--status-waiting)}
+.badge{display:inline-flex;align-items:center;gap:4px;min-width:66px;height:22px;padding:0 7px 0 5px;border-radius:6px;background:color-mix(in srgb,var(--k) 12%,var(--card));color:var(--card-foreground);font-size:11.5px;font-weight:600;white-space:nowrap;flex-shrink:0}
+.badge svg,.counts svg{color:var(--k)}
+.sum{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px}
+.sum li{display:flex;gap:10px;align-items:flex-start;font-size:14px;line-height:22px}
+.phone .sum li{gap:8px;font-size:13.5px}
+
+/* 접기 */
+.more{display:flex;align-items:center;gap:4px;width:fit-content;min-height:32px;background:none;border:0;padding:0;color:var(--primary);font:inherit;font-weight:600;font-size:13px;cursor:pointer}
+.phone .more{min-height:44px}
+.more svg{transition:transform .15s}.more[aria-expanded=true] svg{transform:rotate(90deg)}
+.detail{display:none;flex-direction:column;gap:14px;border-top:1px solid var(--border);padding-top:12px}
+.detail.open{display:flex}
+.detail section{display:flex;flex-direction:column;gap:6px}
+.detail ul{margin:0;padding-left:18px;font-size:13.5px;line-height:1.6}
+.detail li+li{margin-top:4px}
+.device{font-size:12px;color:var(--muted-foreground);background:var(--muted);border-radius:8px;padding:8px 10px}
+
+/* 업데이트 줄 */
+.act{display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-top:1px solid var(--border);padding-top:12px}
+.btn{font:inherit;font-size:13px;font-weight:600;height:34px;padding:0 14px;border-radius:8px;border:1px solid var(--primary);background:var(--primary);color:var(--primary-foreground);cursor:pointer;position:relative;overflow:hidden}
+.btn.outline{background:var(--card);color:var(--foreground);border-color:var(--border)}
+.btn .fill{position:absolute;inset:0 auto 0 0;background:color-mix(in srgb,var(--primary-foreground) 25%,transparent)}
+.btn span{position:relative}
+.phone .act{flex-direction:column;align-items:stretch}.phone .btn{height:44px;width:100%}
+
+/* 여러 버전 묶음 */
+.inner{display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--border);padding-top:10px}
+
+/* 지난 버전 한 줄 */
+.divider{display:flex;align-items:center;gap:8px;margin:10px 0 0;font-size:12px;color:var(--muted-foreground);font-weight:600}
+.divider:after{content:"";flex:1;height:1px;background:var(--border)}
+.row{background:var(--card);border:1px solid var(--border);border-radius:10px}
+.row>button{all:unset;box-sizing:border-box;display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;width:100%;padding:10px 16px;min-height:44px;cursor:pointer}
+.row>button b{font-size:15px}
+.row .chev{margin-left:8px;color:var(--muted-foreground);transition:transform .15s}
+.row[open] .chev{transform:rotate(90deg)}
+.row .body{display:none;padding:0 16px 14px;flex-direction:column;gap:10px}
+.row[open] .body{display:flex}
+.phone .row>button{padding:10px 12px}.phone .row .body{padding:0 12px 12px}
+.label{position:absolute;margin:-30px 0 0;font-size:11px;font-weight:700;color:var(--primary)}
+.spec{max-width:1240px;margin:0 20px 40px;padding:16px 20px;border:1px solid var(--border);border-radius:12px;background:var(--card);font-size:13px}
+.spec h3{margin:0 0 6px;font-size:14px}
+.spec ul{margin:0;padding-left:18px}
+</style>
+</head>
+<body>
+<div class="bar">
+  <b>업데이트 소식 시안</b>
+  <label>테마 <select id="theme"></select></label>
+  <span><button data-mode="light" class="on">라이트</button> <button data-mode="dark">다크</button></span>
+  <label>상황 <select id="scene">
+    <option value="next">① 새 버전이 있음 (지금 1.2.0 → 새 1.3.0)</option>
+    <option value="skipped">② 새 버전을 '나중에'로 건너뜀</option>
+    <option value="multi">③ 두 버전 이상 밀림 (지금 1.1.5 → 1.2.0·1.3.0)</option>
+    <option value="none">④ 최신 버전 사용 중 · 휴대폰 앱 (새 버전 카드 없음)</option>
+  </select></label>
+  <label><input type="checkbox" id="openAll"> 상세 펼친 모습</label>
+  <span class="note">버전·날짜·항목 수는 실제 CHANGELOG. 1.3.0 요약은 김기획 초안, 1.2.0 요약은 예시. 1.1.x는 요약 없음(옛 형식).</span>
+</div>
+<div class="stage">
+  <div class="frame desk"><div class="cap">PC · 콘텐츠 폭 768px</div><div class="page" id="desk"></div></div>
+  <div class="frame phone"><div class="cap">폰 세로 · 375px</div><div class="page" id="phone"></div></div>
+</div>
+<div class="spec">
+  <h3>읽는 법</h3>
+  <ul>
+    <li>맨 위 카드 하나만 강조 테두리. 새 버전이 있으면 새 버전 카드가 맨 위(보라 테두리 + 옅은 위쪽 물들임 + '새 버전' 칩), 지금 버전 카드는 보통 테두리로 내려간다.</li>
+    <li>배지 색은 아이콘과 옅은 배경에만. 글자는 본문색이라 라이트 테마에서도 대비 4.5:1 이상.</li>
+    <li>지난 버전은 한 줄로 접힘. 누르면 요약 → 그 안에서 '바뀐 점 모두 보기'.</li>
+  </ul>
+</div>
+<script>
+const ICON={
+ feature:'<path d="M11 3.5l1.9 5.1 5.1 1.9-5.1 1.9L11 17.5l-1.9-5.1L4 10.5l5.1-1.9Z" data-f/><path d="M18.5 15v5M16 17.5h5"/>',
+ improve:'<rect x="3.5" y="3.5" width="17" height="17" rx="4.5" data-f/><path d="M12 16.5V8M8.3 11.5 12 7.8l3.7 3.7"/>',
+ fix:'<path d="M8 10.5a4 4 0 0 1 8 0v4.8a4 4 0 0 1-8 0Z" data-f/><path d="M12 10.5V19"/><path d="M4 13.5h4M16 13.5h4M5 8.8l3 1.8M19 8.8l-3 1.8M5 19.5l3-1.8M19 19.5l-3-1.8"/><path d="M10.2 6.8 9 4.8M13.8 6.8 15 4.8"/>'}
+function icon(k,s=16){const p=ICON[k];const fills=p.split('/>').filter(x=>x.includes('data-f')).map(x=>x.replace(' data-f','')+'/>').join('');
+ return `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${s>=16?`<g transform="translate(1.6 1.8)" stroke-width="1.6" style="fill:var(--ring);stroke:var(--ring);opacity:var(--duo-fill-opacity)">${fills.replace(/fill="none"/g,'')}</g>`:''}<g stroke="currentColor" stroke-width="2.15">${p.replace(/ data-f/g,'')}</g></svg>`}
+const LABEL={feature:'새 기능',improve:'개선',fix:'수정'}, HEAD={feature:'새 기능',improve:'개선',fix:'버그 수정'}
+const chev=`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="m9 6 6 6-6 6"/></svg>`
+const R={
+ '1.3.0':{date:'2026-11-12',c:{feature:5,improve:4,fix:5},
+  sum:[['feature','내 PC 여러 대를 연결해 오가요'],['feature','매뉴얼을 말·예시·직접 쓰기로 만들어요'],['feature','결재 카드가 할 일을 한 줄로 알려요'],['improve','설정과 매뉴얼 문구가 쉬워졌어요'],['fix','메시지 속 링크가 다시 열려요']],
+  only:'PC 앱 전용: PC 연결과 매뉴얼실 새 화면',
+  det:{feature:['내 PC 여러 대를 오가며 쓸 수 있어요(작업 공간). 다른 PC를 연결하면 그 PC의 사무실·직원·대화·결재를 지금 PC에서 그대로 보고 일을 시켜요. 연결한 PC마다 창이 따로 열리고, 왼쪽 위 \'PC 바꾸기\'로 전환해요. …','매뉴얼실에서 새 매뉴얼을 세 갈래로 만들어요: 말로 설명하면 AI가 초안을 써 주기, 예시 7개에서 고르기, 직접 쓰기. …','… (3줄 더)'],improve:['설정 화면을 쉬운 말로 정리했어요. 자주 쓰는 설정은 펼쳐 두고 나머지는 \'더 보기\'로 접었어요.','… (3줄 더)'],fix:['직원이 보낸 메시지의 링크가 안 열리던 문제를 고쳤어요. …','… (4줄 더)']},
+  device:'PC 앱 중심의 묶음이에요. 다른 PC 연결과 매뉴얼실 새 화면은 PC 앱에서 써요.'},
+ '1.2.0':{date:'2026-11-11',c:{feature:5,improve:2,fix:1},
+  sum:[['feature','색 테마 4종이 늘었어요'],['feature','결재 카드에 결과가 한 줄로 보여요'],['feature','넓은 폰에서 화면을 좌우로 나눠 써요'],['improve','이모지가 깔끔한 아이콘으로 바뀌었어요'],['fix','분할 화면 메뉴 잘림을 고쳤어요']],
+  det:{feature:['색 테마 4종이 늘었어요. …','… (4줄 더)'],improve:['… (2줄)'],fix:['분할 화면에서 ＋·⋯ 메뉴가 아래·왼쪽 칸에 잘리던 문제를 고쳤어요.']}},
+ '1.1.5':{date:'2026-11-09',c:{feature:1,fix:1},sum:[],det:{feature:['…'],fix:['…']}},
+ '1.1.4':{date:'2026-11-09',c:{improve:3,fix:4},sum:[],det:{improve:['…'],fix:['…']}},
+ '1.1.3':{date:'2026-11-08',c:{improve:7,fix:1},sum:[],det:{improve:['…'],fix:['…']}},
+}
+const total=v=>Object.values(R[v].c).reduce((a,b)=>a+b,0)
+const fmtDate=d=>{const[,m,dd]=d.split('-');return `${+m}월 ${+dd}일`}
+const counts=v=>`<span class="counts">${Object.entries(R[v].c).map(([k,n])=>`<span class="k-${k}" title="${HEAD[k]} ${n}">${icon(k,14)}${n}</span>`).join('')}</span>`
+const summary=v=>!R[v].sum.length?'':`<ul class="sum">${R[v].sum.map(([k,t])=>`<li><span class="badge k-${k}">${icon(k)}${LABEL[k]}</span><span>${t}</span></li>`).join('')}</ul>${R[v].only?`<div class="sub">${R[v].only}</div>`:''}`
+let uid=0
+const more=(v,open)=>{const id='d'+(++uid);return `<button class="more" aria-expanded="${open}" aria-controls="${id}" onclick="tog(this)">${chev}<span data-c="바뀐 점 ${total(v)}가지 모두 보기" data-o="간단히 보기">${open?'간단히 보기':`바뀐 점 ${total(v)}가지 모두 보기`}</span></button>
+ <div class="detail${open?' open':''}" id="${id}">${Object.entries(R[v].det).map(([k,ls])=>`<section><span class="badge k-${k}" style="width:fit-content">${icon(k)}${HEAD[k]} ${R[v].c[k]}</span><ul>${ls.map(l=>`<li>${l}</li>`).join('')}</ul></section>`).join('')}${R[v].device?`<div class="device"><b>기기별 차이</b> · ${R[v].device}</div>`:''}</div>`}
+const detailOnly=v=>`<div class="detail open" style="border:0;padding:0">${Object.entries(R[v].det).map(([k,ls])=>`<section><span class="badge k-${k}" style="width:fit-content">${icon(k)}${HEAD[k]} ${R[v].c[k]}</span><ul>${ls.map(l=>`<li>${l}</li>`).join('')}</ul></section>`).join('')}</div>`
+function tog(b){const o=b.getAttribute('aria-expanded')!=='true';b.setAttribute('aria-expanded',o);document.getElementById(b.getAttribute('aria-controls')).classList.toggle('open',o);const s=b.querySelector('span');s.textContent=o?s.dataset.o:s.dataset.c}
+const hd=(v,chips)=>`<div class="hd"><h2>v${v}</h2>${chips}<span class="date">${fmtDate(R[v].date)}</span>${counts(v)}</div>`
+const row=(v,open)=>`<div class="row"${open?' open':''}><button onclick="this.parentNode.toggleAttribute('open')"><b>v${v}</b><span class="date">${fmtDate(R[v].date)}</span>${counts(v)}<span class="chev">${chev}</span></button><div class="body">${R[v].sum.length?summary(v)+more(v,false):detailOnly(v)}</div></div>`
+function act(cur,to,skipped){return `<div class="act">${skipped?`<button class="btn outline"><span>v${to}로 업데이트</span></button>`:`<button class="btn"><span>지금 업데이트</span></button>`}<span class="sub">지금 v${cur} → 설치하면 v${to}</span></div>`}
+function render(scene,openAll){
+ const S={next:{cur:'1.2.0',nexts:['1.3.0']},skipped:{cur:'1.2.0',nexts:['1.3.0'],skip:true},multi:{cur:'1.1.5',nexts:['1.3.0','1.2.0']},none:{cur:'1.3.0',nexts:[]}}[scene]
+ const all=Object.keys(R); const curIdx=all.indexOf(S.cur); let h=''
+ if(S.nexts.length===1){const v=S.nexts[0]
+  h+=`<article class="card ${S.skip?'skipped':'next'}"><div class="hd">${S.skip?'<span class="chip skip">건너뛴 버전</span><span class="sub">알림만 껐어요. 원하면 언제든 설치할 수 있어요.</span>':'<span class="chip new">새 버전</span><span class="sub">아직 설치하지 않았어요</span>'}</div>${hd(v,'')}${summary(v)}${more(v,openAll)}${act(S.cur,v,S.skip)}</article>`}
+ if(S.nexts.length>1){const [top,...rest]=S.nexts
+  h+=`<article class="card next"><div class="hd"><span class="chip new">새 버전 ${S.nexts.length}개</span><span class="sub">업데이트하면 한 번에 받아요</span></div>${hd(top,'')}${summary(top)}${more(top,openAll)}<div class="inner"><span class="sub">함께 받는 이전 새 버전</span>${rest.map(v=>row(v,false)).join('')}</div>${act(S.cur,top,false)}</article>`}
+ h+=`<article class="card${S.nexts.length?'':' top'}">${hd(S.cur,'<span class="chip cur">지금 버전</span>')}${R[S.cur].sum.length?summary(S.cur)+more(S.cur,openAll&&!S.nexts.length):detailOnly(S.cur)}</article>`
+ const past=all.slice(curIdx+1)
+ if(past.length) h+=`<div class="divider">지난 버전</div>`+past.map(v=>row(v,false)).join('')
+ return `<h1>업데이트 소식</h1><p class="desc">지금 버전 v${S.cur}. 버전마다 무엇이 바뀌었는지 볼 수 있어요.</p><div class="list">${h}</div>`}
+const themes=['lavender','blue','terracotta','sage','rose','mono','aurora','twilight','candy','meadow']
+const sel=document.getElementById('theme');themes.forEach(t=>sel.add(new Option(t,t)))
+function draw(){const s=document.getElementById('scene').value,o=document.getElementById('openAll').checked;document.getElementById('desk').innerHTML=render(s,o);document.getElementById('phone').innerHTML=render(s,o)}
+sel.onchange=()=>document.documentElement.dataset.theme=sel.value
+document.querySelectorAll('.bar [data-mode]').forEach(b=>b.onclick=()=>{document.documentElement.dataset.mode=b.dataset.mode;document.querySelectorAll('.bar [data-mode]').forEach(x=>x.classList.toggle('on',x===b))})
+document.getElementById('scene').onchange=draw;document.getElementById('openAll').onchange=draw
+const q=new URLSearchParams(location.search);if(q.get('theme')){sel.value=q.get('theme');document.documentElement.dataset.theme=q.get('theme')}if(q.get('mode'))document.querySelector(`.bar [data-mode=${q.get('mode')}]`).click();if(q.get('scene'))document.getElementById('scene').value=q.get('scene');if(q.get('open'))document.getElementById('openAll').checked=true
+draw()
+</script>
+</body>
+</html>

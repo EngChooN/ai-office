@@ -1,9 +1,14 @@
 // 업데이트 알림 — GitHub Release 응답 해석·버전 비교 (순수 함수, main·renderer·테스트가 같이 쓴다)
 // 서버 없이 공개 API(인증 없음)를 읽는다. 설치 파일 주소·크기·sha256을 고르고, 실제 내려받기·설치는 main/appInstall.ts가 한다
 
+import { parseSections, type Release } from './changelogParse.ts'
 import type { Lang } from './i18n/index.ts'
 
 export const RELEASE_API_URL = 'https://api.github.com/repos/EngChooN/ai-office/releases/latest'
+/** 업데이트 전 '새 버전 소식' — 새 버전이 있을 때만 최근 Release 목록을 한 번 읽는다 */
+export const NEWS_PAGE_SIZE = 10
+export const RELEASES_API_URL = `https://api.github.com/repos/EngChooN/ai-office/releases?per_page=${NEWS_PAGE_SIZE}`
+export const RELEASES_PAGE_URL = 'https://github.com/EngChooN/ai-office/releases'
 /** 앱을 켤 때 한 번 확인한 뒤 이 간격으로 다시 확인한다 (인증 없는 API 한도는 시간당 60회) */
 export const UPDATE_CHECK_INTERVAL_MS = 60 * 60 * 1000
 /** 창 포커스·잠자기에서 깨어날 때는 마지막 확인 뒤 이만큼 지났을 때만 다시 확인한다 */
@@ -60,6 +65,14 @@ export interface InstallStatus {
   installError: 'download' | 'verify' | 'prepare' | null
 }
 
+/** 아직 설치하지 않은 새 버전들의 소식 (업데이트 소식 화면 맨 위 카드) */
+export interface UpdateNews {
+  /** 현재보다 높은 버전, 높은 순. 각 버전은 앱 언어 섹션만 */
+  releases: Release[]
+  /** 한 번에 읽는 개수를 넘게 밀려서 더 이전 새 버전이 잘렸을 수 있음 — 화면이 GitHub 링크로 알린다 */
+  isCut: boolean
+}
+
 /** 설정 화면·배지가 보는 상태 (main → renderer) */
 export interface UpdateStatus {
   current: string
@@ -74,6 +87,8 @@ export interface UpdateStatus {
   /** 윈도우에서 zip을 풀어 쓰는 중 — 업데이트하면 설치형으로 넘어가며 옛 폴더는 지워도 된다 */
   isWinZip: boolean
   install: InstallStatus
+  /** 새 버전 소식 — 새 버전이 있고 목록을 읽었을 때만 (모르면 null) */
+  news: UpdateNews | null
 }
 
 /** preload가 여는 업데이트 통로 (데스크톱만 — 모바일 빌드에는 없다) */
@@ -232,4 +247,44 @@ export function parseRelease(json: unknown, target: AssetTarget | null): Release
     asset,
     pageUrl: r.html_url,
   }
+}
+
+// 원격 글이라 크기를 묶는다 — 잘못 올린 거대한 본문이 화면·상태 전달을 무겁게 하지 않게
+const NEWS_MAX_CHARS = 6000
+
+/**
+ * /releases 목록 응답 → 업데이트 전 보여 줄 새 버전 소식. current보다 높고 latest 이하인 정식 버전만, 높은 순.
+ * 본문은 lang 섹션만 골라 주석·이미지를 걷고 섹션으로 나눈다. 응답이 이상하면 빈 목록
+ */
+export function parseNewsList(json: unknown, current: string, latest: string, lang: Lang): UpdateNews {
+  if (!Array.isArray(json)) return { releases: [], isCut: false }
+  const picked: { version: string; body: string; date: string }[] = []
+  let hasOlder = false
+  for (const item of json) {
+    if (!item || typeof item !== 'object') continue
+    const r = item as { tag_name?: unknown; body?: unknown; draft?: unknown; prerelease?: unknown; published_at?: unknown }
+    if (r.draft === true || r.prerelease === true || typeof r.tag_name !== 'string') continue
+    const version = r.tag_name.trim().replace(/^v/, '')
+    if (parseVersion(version) && !isNewerVersion(version, current)) hasOlder = true
+    if (!isNewerVersion(version, current) || (compareVersions(version, latest) ?? 1) > 0) continue
+    if (picked.some((p) => p.version === version)) continue
+    const raw = typeof r.body === 'string' ? r.body : ''
+    // 첫 줄 "# AI Office 1.3.0 (2026-11-12)"의 날짜, 없으면 게시일
+    const date = /^#[ \t].*\((\d{4}-\d{2}-\d{2})\)/.exec(raw)?.[1] ?? (typeof r.published_at === 'string' && /^\d{4}-\d{2}-\d{2}/.test(r.published_at) ? r.published_at.slice(0, 10) : '')
+    picked.push({ version, body: raw, date })
+  }
+  picked.sort((a, b) => compareVersions(b.version, a.version) ?? 0)
+  const releases = picked.map((p) => {
+    let text = pickLanguageSection(p.body, lang)
+      .replace(/\r\n?/g, '\n')
+      .replace(/^#[ \t]+AI Office.*$/m, '')
+      .replace(/<!--[\s\S]*?-->/g, '')
+      .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
+      .trim()
+    if (text.length > NEWS_MAX_CHARS) text = `${text.slice(0, NEWS_MAX_CHARS).trimEnd()}…`
+    return { version: p.version, date: p.date, note: '', sections: parseSections(text) }
+  })
+  // 한 쪽을 꽉 채웠는데 가장 낮은 것도 새 버전이면 그보다 이전 새 버전이 더 있을 수 있다
+  const isCut = json.length >= NEWS_PAGE_SIZE && !hasOlder && releases.length > 0
+  return { releases, isCut }
 }

@@ -1,8 +1,8 @@
 /**
- * 듀오톤 아이콘 20종의 이름과 이모지 대응표 (DOM 없는 순수 데이터 — main·renderer·시험이 같이 본다).
+ * 듀오톤 아이콘 21종의 이름과 이모지 대응표 (DOM 없는 순수 데이터 — main·renderer·시험이 같이 본다).
  * 그림 좌표는 renderer/components/duo-icon-data.ts, 그리는 부품은 duo-icon.tsx
  */
-export const DUO_NAMES = ['done', 'warn', 'reject', 'ask', 'ai', 'repeat', 'schedule', 'manual', 'lab', 'meeting', 'plan', 'money', 'phone', 'remote', 'pause', 'party', 'trophy', 'like', 'new', 'bug'] as const
+export const DUO_NAMES = ['done', 'warn', 'reject', 'ask', 'ai', 'repeat', 'schedule', 'manual', 'lab', 'meeting', 'plan', 'money', 'phone', 'remote', 'pause', 'party', 'trophy', 'like', 'new', 'bug', 'improve'] as const
 export type DuoName = (typeof DUO_NAMES)[number]
 
 /** 이모지 → 아이콘 (디자인 전달 문서의 대체표 그대로). 여기 없는 이모지는 바꾸지 않는다 */

@@ -127,6 +127,7 @@
 | 48 | 1.1.3: MCP 준비 대기·토큰 절약·공용 브라우저 로그인·후원 | 시작 직후 지시·비서 질문이 로컬 MCP 준비를 최대 10초 기다림(613a3b4·9b7cbc5, #10)·`shared/tokenSaving.ts` 급여 '아끼기 Top 3'와 `tokenSaverMode`(새 직원만, d3a1526, #12·#14)·`sharedBrowserLogin` 공용 프로필 `_shared`(한 번에 한 직원, 턴이 끝나면 락 해제, 9b7cbc5·4d897e0, #11)·사이드바 후원 버튼(019c88a) |
 | 49 | 1.1.4: 업무 패널 이전 기록·결재함 정리 | `getRecord`의 오늘 0시 조건을 없애고 최근 300개(`db.logsPage`, 색인 `log_staff_id(staff_id, id)`), 사용량은 오늘 0시부터 그대로. `getRecordBefore(staffId, beforeId, limit?)`(기본 200·최대 500, 원격 `R('s n n?')`, 비서 제외)로 id 커서 이어 불러오기 — 다른 PC 직원은 같은 DB, 외부 직원은 세션 파일을 처음부터 읽어(`logSince=0`, id=줄 순서) `shared/recordLogs.ts` `pageLogs`로 자른다. 화면 `renderer/features/useStaffRecord.ts`: 다시 읽어도 불러온 이전 기록은 `mergeLogs`로 유지, 앞에 붙일 때 늘어난 높이만큼 scrollTop 보정, 맨 위 400px 안이면 자동으로 더 부름('지시·보고만'으로 다 가려져도 이어 부름). 날짜 구분선 `dayStarts`(오늘·어제 표시, 다른 해면 연도). 최적화는 가상 스크롤 대신 기록 줄 `content-visibility: auto`(+`contain-intrinsic-size: auto 2.5em`) — 바닥 고정·스크롤 보정·찾기를 그대로 두고 화면 밖 줄의 배치·그리기만 건너뜀. 비서 `compactLogs`는 오늘이 아닌 줄에 날짜를 붙임. 데스크펫 패널 코드는 그대로(같은 getRecord라 최근 기록이 보임). 시험 `scripts/recordHistory.test.mts`(9건). 결재함(리뷰 2026-11-04 권장 A~C): `OneShotAllow.revoke`를 `onFinished`(기다리는 지시 없을 때)에서 불러 1회 허용을 그 일 안으로, 복원 안 함 로그 `log.notRestoredExpired`, `PendingApproval.isText` 제거. 화면: 대화방 대기 메시지 최대 높이 160px, 답장 말풍선 `max-w-full`로 인용 줄 넘침 방지. 후원 링크 @ai-office |
 | 50 | 1.1.5: 브라우저 자동 허용 | 대표 결정(2026-11-09): 게시·전송 포함·로그인·결제 칸은 계속 대기·끌 때까지 유지·장비 탭+결재 카드+말. 장비 `Equipment.browserAuto`(직원별, 규칙 `matchRule`과 따로 — 브라우저 조작은 여전히 규칙 불가). `shared/browserTools.ts` `browserAutoVerdict`: 조회는 원래 허용, 이동·클릭·입력·제출·파일 올리기·대화상자·탭·마우스 좌표(`AUTO_TOOLS`)는 허용하되 `isSecretBrowserInput`(칸 이름 4개 언어·카드번호 모양 값)이면 대기, 그 밖(evaluate·run_code_unsafe·쿠키·저장소·route·pdf·녹화·webmcp·모르는 새 도구)은 대기. `autoWaitReason`/`autoApprove`/`autonomyVerdict`에 `{ browserAuto }` 선택 인자 — office `autoDecide`가 자동결재·자율 진행 때만 넘김(평소 결재·다른 PC가 맡긴 일은 그대로). 켜는 길: 장비 탭 체크(세션 재시작 없이 저장), 브라우저 결재 카드 `Approval.browserAutoOffer` → 기존 `approveAlways`가 규칙 대신 켬(휴대폰은 1회 승인만), 사무실 도구 `browser_auto {on}` — on=true는 장비·규칙·자동결재·자율과 상관없이 늘 결재함(`hired.ts` canUseTool·`autoDecide`·`NEVER_RULE`), on=false는 바로 끔, 다른 PC 일에서는 켜지 않음. 원격 `setEquipment`는 `browserAuto`를 버리고 PC도 값을 지킴. 시험: autoApprove 3건·approvalRules·remote-hardening 보강 |
+| 52 | 1.3.0: 워크스페이스·매뉴얼실 개편·결재 효과 줄 2차 | 대표 결정(2026-11-12): ③ 워크스페이스 — 다른 PC 최대 3대(`WORKSPACE_MAX`)를 창 하나씩(`main/workspace`, 파티션 분리) 연결해 그 PC 사무실을 `remote.html`로 그대로 본다. 열쇠는 기기별 슬롯+`view` 권한(저쪽 PC 결재로 허락), 끊김은 마지막 화면 회색+보내기·결재만 막고 자동 재연결. 기본 작업 폴더(`defaultCwd`)는 원격 변경 차단. ④ 매뉴얼실 — frontmatter `title`(표시 이름)+자동 내부 이름(`shared/manualName`), 새 매뉴얼 3갈래·예시 7개(`shared/manualTemplates`), 기존 매뉴얼 내부 이름 서버 잠금(`saveManual`), 쓸 수 있게 하기. ⑤ 결재 효과 줄 2차 — `approvalEffect`·`approvalEffectUi`·`approvalGuess` 규칙 줄+`effectGuess`(AI 분류만, 위험은 못 낮춤, `main/approvalEffectAi.ts` 8초·LRU 200). 세부는 아래 「1.3.0 개발 상세」 |
 | 51 | 1.2.0: 색 테마 4종·결재 카드 결과 한 줄·폴드 좌우 분할·듀오톤 아이콘·Fable | 대표 결정(2026-11-11): 색 테마 `aurora`·`twilight`·`candy`·`meadow`(`UiThemeId`, `--sidebar-bg` 두 색 그라데이션, 라이트·다크 각 8세트, 설정은 '기본 색'/'두 색 그라데이션' 묶음). `Approval.effectI18n`(`shared/approvalEffect.ts effectOf`, 확실할 때만 — 규칙·일회 허용 매칭은 `summary` 그대로). 폴드 `decideLayout`/`isSplit`(폭 600 이상). `DuoIcon` 20종·`IconText`. 모델 `fable`(실제 호출 claude-fable-5-1)·`modelOptions.ts`. 도움 요청 `isLabLead`/`isTeamLead` 분리 | 구현 |
 | 44 | 1.0.3: 팀장 끼어들기 | **delegate `interrupt`** `continue`(끊고 먼저 전한 뒤 이어 감)·`replace`(`dropWork`로 카드 할 일로, `[지시 변경]`), delegate 출처 유지해 리더 보고, 결재 없이 양쪽 기록, 다른 PC 직원은 줄 세움 | 안드로이드 `versionCode` 44 |
 | 43 | 1.0.2: 직원 채팅 / 명령 확대 · 인터넷 끊김 자동 이어 하기 | **/ 명령** Claude 작업형 19·설정 5 열기(`/loop` 막음), `/model` → 직원 모델, Codex `/compact`·`/review`·`/goal`(pause·resume·clear, `autoTurn`, 20턴 한도) · **연결 대기** `netWait`(받은 일·카드 보관, 15초마다 연결 확인 후 같은 세션 이어 하기, 3번·6시간) | 안드로이드 `versionCode` 43 |
@@ -145,3 +146,37 @@
 - 권한은 저쪽 PC 앞에서만 준다: 짝짓기 종류 `view`로 만들거나, 기존 짝이 hello에 `requestView:true`를 보내 `onViewRequest`(결재 카드) → `setPeerView`. 자동 부여 없음. 바뀌면 그 열쇠의 연결을 `bye(permission_changed)`로 닫아 새 모양으로 다시 붙게 한다.
 - hello 결과: `protocol`(2), `permissions: { key: 'phone'|'peer', view: 'granted'|'pending'|'none' }`.
 - 동시 결재는 먼저 처리한 쪽만 성공, 늦은 쪽 409 `already_decided`. 같은 `Idempotency-Key` 재전송은 처음 응답을 돌려주고 다시 처리하지 않는다(열쇠별).
+
+## 1.3.0 개발 상세 (2026-11-12)
+
+### ③ 워크스페이스 (연결한 PC 오가기)
+- 저장·창·총괄: `main/workspace/`(`workspaceStore`·`workspaceWindows`·`workspaceService`·`index`). PC당 창 1개(필요할 때 만들고 숨김, 전환 시 위치·크기 이어받음), 창↔워크스페이스 짝은 main만 안다(webContents id). `main/peer`·`remote`·`office.ts`는 이 폴더를 import하지 않는다(`scripts/workspace.test.mts`가 확인).
+- 원격 창: `app/remote.html`+`vite.remote.config.mts`+`remotePreload.ts`, 같은 React 앱이 휴대폰 방식(`/v2/call`·`/v2/events`)으로 다른 PC를 그린다. 위쪽 색 띠·창 테두리·이름 칸이 그 PC 색(`WORKSPACE_COLOR_HEX`), 이 PC는 기존 모양.
+- 규칙: 연결 최대 3대(`canAddWorkspace`), 이름 30자, 해제하면 목록에서만 빠짐, 꺼진 PC는 회색, 끊기면 8초 유예 뒤 마지막 화면 회색·보내기 막기·1→2→4…30초 간격 재연결. UI: `features/workspace/`(`WorkspaceSwitcher`·`WorkspaceWizard` 4장·`ConnectedPcSection`), 문구 `dict/workspace.ts`.
+- 보안: 원격 `updateSettings`에서 `defaultCwd` 제외(`remote/v2.ts` `fieldsExcept`)로 "원격은 작업 폴더를 못 정한다" 원칙 우회를 막음.
+- 곁가지: 결재 띠(`shared/approvalBand.ts`, 세로 폰 직원 패널, 대기 1건·원문 120자 이하·`BAND_NEVER` 제외만 바로 승인), 도구 정책 줄(`shared/toolPolicyRows.ts`, 장비 탭 일마다 막기·결재 받기·결재 없이, 저장 형식은 기존 `allowedTools`·`disallowedTools`), 설정 단순화(기본/고급 접기, `settingsSections.ts`), 직원 장비 탭 개편(`EquipmentTab.tsx`).
+- 시험: `workspace`(474줄)·`remote-v2`·`approvalBand`·`toolPolicyRows`·`mobile`·`remote-hardening`.
+
+### ④ 매뉴얼실 개편 (1차 + 마무리)
+- 이름: 표시 이름 = frontmatter `title:`(`TITLE_KEY`), 내부 이름은 자동(영문 4자 이상이면 그대로, 아니면 `manual-`+무작위 6자, 겹치면 `-2`) — `shared/manualName.ts`. 화면·채팅 `/` 메뉴·랩·업무 보드·직원 팩(`PackManual.title?`)·원격 허용 필드(`V2_FIELDS.saveManual`)에 표시 이름.
+- 새 매뉴얼 3갈래(`NewManualDialog`: 말로 설명→`draftManual`·예시 7개 `shared/manualTemplates`·직접 쓰기), 편집 창 분리(`ManualEditor`), 고급 설정 접기(`MoreToggle`), 빈 화면(`EmptyGuide`), 저장할 수 없는 이유(`shared/manualForm.ts`), 저장 후 "쓸 수 있게 하기"(기본 비어 있음+모두 선택).
+- 마무리(1.3.0): 기존 매뉴얼 `saveManual`은 내부 이름을 서버에서 고정(`name: prev.name`, 직원·랩·팀 연결이 이름 기준이라 끊김 방지, 화면 잠금과 이중). `draftManual` 응답은 칸이 빠져도 문자열로 정리. `NewManualDialog`의 `isClosed` ref를 마운트 때 false로 되돌려 StrictMode 재마운트에서 편집 창이 안 열리던 문제 해결. 용어 "교육"→"쓸 수 있게 하기"(`dict` ko·en·ja·zh, 직원 채팅 알림 문구 포함).
+- 시험: `scripts/manuals.test.mts` 외 `manualTitle`.
+
+### ⑤ 결재 카드 효과 줄 2차
+- 규칙 줄 확대: `approvalEffect.ts`(파일·Bash 행) + `approvalEffectUi.ts`(브라우저·컴퓨터) — Read·Glob·Grep·WebSearch, mv·cp·mkdir·rmdir·touch, git commit·add·pull, git reset --hard·git clean(위험 행), 스크립트 실행(솔직 문장).
+- 규칙이 못 푸는 Bash: `approvalGuess.ts` `hintVerbs`가 위험 낱말을 찾아 동기 줄을 만들고, AI가 오면 `Approval.effectGuess { verbs, target?, unsure?, fromAi? }`로 보강(`main/approvalEffectAi.ts`, light, 8초 시간 초과, 동시 2·대기 5, 입력 800자, 숨은 글자는 안 보냄, 메모리 LRU 200·실패 60초, 한도 보류 중 호출 안 함). 최종 낱말 = 글자에서 찾은 낱말 ∪ AI 낱말 → AI는 위험을 더할 수만 있다.
+- 화면: `approvalSummaryView(a)`(순수 함수)가 `{ headline, guessLine, rawOpen }`을 정하고, AI 줄은 `ApprovalSummary`(결재함·직원 패널·원격 웹)에만, 문장에 "AI 추정" 포함. 결과 불명·추정 줄은 원문을 펼쳐 둔다. 복원된 결재는 AI를 다시 부르지 않는다. 스위치 없이 늘 켬(대표 결정), 사용량은 결재를 올린 직원 몫.
+- 안드로이드 옛 결재 화면(Kotlin)은 이번 범위 밖(후속 후보). 시험: `approvalEffectV2.test.mts`(275줄)·`approvalEffect.test.mts`.
+
+### 버그 수정
+- 링크 열기: `shared/externalLink.ts`·`main/externalLinks.ts`·`petWindow.ts`, 안드로이드 `WebShell.kt`(http·https만 기본 브라우저로, `V2ShellTest`). 매뉴얼·명령 버튼: `shared/mention.ts`·`chatRooms.ts`가 받는 사람을 늘 채워 SlashMenu를 바로 연다.
+
+### ⑥ 업데이트 소식 개편 (최종 설계 `docs/design-refresh/updates-news/final.md`)
+- 작성 형식: 버전마다 `### 한눈에 보기`(en At a glance · ja ひと目で · zh 一览) 3~5줄, 줄 앞 굵은 종류 말(`**새 기능**`·`**개선**`·`**수정**` 등, `KIND_BY_BADGE`). 기기 안내는 `###` 앞 한 줄. 1.3.0부터 필수(`changelog.test` `SUMMARY_FROM`, 한국어 줄 35자), 그 전 버전은 요약 없이 상세 그대로.
+- 파서: `changelogParse.ts` 종류 `summary`, `parseSections`(Release 설명과 공용)·`summaryItems`. 화면: `UpdatesPage` — 설치 전 새 버전 카드(여러 버전은 하나로 묶고 이전 것은 한 줄, 건너뛴 버전은 점선·회색 칩, [지금 업데이트]는 `InstallButton`·`InstallConfirm` 재사용) → 지금 버전 카드 → 지난 버전 한 줄 접기. `ReleaseNotes`는 요약만 펼치고 상세는 "바뀐 점 n가지 모두 보기"(`MoreToggle` `moreLabel`)로 접음(`WhatsNew` 공용). 개선 아이콘 `improve` 추가(듀오톤 21종).
+- 다음 버전 소식: `releases/latest` 확인은 그대로, `available`이 되면 그 버전 때 한 번 `releases?per_page=10`을 읽어(`loadNews`, 실패는 조용히·다음 확인 때 다시, 읽는 중 최신이 바뀌면 버리고 새 최신으로 다시 읽음) `UpdateStatus.news`로 보낸다. `parseNewsList`가 지금 초과~최신 이하 정식 버전만 높은 순, 앱 언어 섹션·이미지·주석 제거·버전당 6000자, 10개를 꽉 채우면 `isCut`(GitHub 링크). 언어별로 한 번만 푼다. 원격 글은 `Markdown isUntrusted`(링크·이미지·화면 이동은 글자만). 휴대폰 앱은 업데이트 통로가 없어 카드 없음(후속), 안내 창 요약화도 후속.
+
+### ⑦ 보고 말투 — 쉬운 말 기본 (규칙 `docs/design-refresh/plain-report/rules.md`, 구현 기록 `final.md`)
+- 설정 `reportStyle?: 'easy' | 'expert'`(없으면 쉬운 말, 휴대폰에서도 변경). `shared/reportStyle.ts` `reportStyleRule`이 `staff.reportStyle.easy/expert` 문안(4개 언어, 형식·결재·질문·위임 도구는 그대로, 문장 스타일만)을 고른다.
+- 직원: `hired.ts` 세션 시스템 프롬프트에 언어 규칙 바로 뒤 한 번(새 세션부터). 비서: `secretary.ts` 질문마다 만드는 시스템 프롬프트(앱 비서·바탕화면 비서 공용, 바로 적용). 회의·데모데이 발언 프롬프트에는 넣지 않음. 설정 화면 '보고 말투' 라디오 2개.

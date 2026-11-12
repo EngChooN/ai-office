@@ -262,7 +262,7 @@ export function SecretaryComposer({
             placeholder ??
             t("secretary.placeholder", { hint: String(NEWLINE_HINT) })
           }
-          className="field-sizing-content max-h-32 min-h-9 resize-none py-[7px]"
+          className="field-sizing-content placeholder:truncate placeholder-shown:field-sizing-fixed placeholder-shown:h-9 placeholder-shown:overflow-hidden placeholder-shown:whitespace-nowrap max-h-32 min-h-9 resize-none py-[7px]"
         />
         <Button
           size="icon"

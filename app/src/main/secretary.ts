@@ -4,6 +4,7 @@
 // - 대화는 DB에 30일, 사용량은 usage 표에 SECRETARY_ID로 따로 쌓는다 (급여 명세서·대시보드에 "비서")
 
 import { t } from '../shared/i18n/index.ts'
+import { reportStyleRule } from '../shared/reportStyle'
 import fs from 'node:fs'
 import path from 'node:path'
 import { app } from 'electron'
@@ -347,7 +348,7 @@ export class Secretary {
     const toolsHandle = this.tools()
     const q = aiBackend().secretary({
       prompt: [status, context, `대표의 새 질문: ${text}`].filter(Boolean).join('\n\n'),
-      system: `${SYSTEM_PROMPT}${engineGuide(lastProviderStatus())}\n\n${t('staff.language')}\n오늘은 ${now.getFullYear()}년 ${now.getMonth() + 1}월 ${now.getDate()}일 ${now.getHours()}시 ${now.getMinutes()}분입니다.`,
+      system: `${SYSTEM_PROMPT}${engineGuide(lastProviderStatus())}\n\n${t('staff.language')}\n${reportStyleRule(this.office.snapshot().settings.reportStyle)}\n오늘은 ${now.getFullYear()}년 ${now.getMonth() + 1}월 ${now.getDate()}일 ${now.getHours()}시 ${now.getMinutes()}분입니다.`,
       cwd,
       tier: 'standard',
       model: SECRETARY_MODEL,

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { cn } from '@/lib/utils'
 import { notifiableVersion, updateActions, useUpdateStore } from '@/lib/update'
 import { useOffice } from '@/store'
 import { fmtDate, t } from '@shared/i18n'
@@ -13,7 +14,7 @@ function ReleaseSummary({ notes }: { notes: string }) {
 }
 
 /** 앱 안 설치 확인 — 앱이 꺼진다는 것을 먼저 알린다 */
-function InstallConfirm({ version, open, onOpenChange }: { version: string; open: boolean; onOpenChange: (open: boolean) => void }) {
+export function InstallConfirm({ version, open, onOpenChange }: { version: string; open: boolean; onOpenChange: (open: boolean) => void }) {
   const isWinZip = useUpdateStore((s) => s.status?.isWinZip)
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -42,7 +43,7 @@ function InstallConfirm({ version, open, onOpenChange }: { version: string; open
 }
 
 /** 앱 안 설치 실패 이유 — 내려받는 중·확인 중 표시는 설치 버튼이 맡는다 */
-function InstallError() {
+export function InstallError() {
   const install = useUpdateStore((s) => s.status?.install)
   if (install?.phase !== 'failed') return null
   const message =
@@ -55,7 +56,7 @@ function InstallError() {
 }
 
 /** '지금 업데이트' 버튼 — 내려받는 동안 버튼 안에 진행률을 채우고 눌리지 않게 막는다 */
-function InstallButton({ size, onClick }: { size?: 'sm'; onClick: () => void }) {
+export function InstallButton({ size, variant, onClick }: { size?: 'sm'; variant?: 'outline'; onClick: () => void }) {
   const install = useUpdateStore((s) => s.status?.install)
   const phase = install?.phase
   const isBusy = phase === 'downloading' || phase === 'preparing'
@@ -69,8 +70,8 @@ function InstallButton({ size, onClick }: { size?: 'sm'; onClick: () => void }) 
           : t('update.install.downloading', { pct })
         : t('update.install')
   return (
-    <Button size={size} className="relative w-fit overflow-hidden" onClick={onClick} disabled={isBusy} aria-busy={isBusy}>
-      {pct !== null && <span aria-hidden className="bg-primary-foreground/25 absolute inset-y-0 left-0 transition-[width]" style={{ width: `${pct}%` }} />}
+    <Button size={size} variant={variant} className="relative w-fit overflow-hidden" onClick={onClick} disabled={isBusy} aria-busy={isBusy}>
+      {pct !== null && <span aria-hidden className={cn('absolute inset-y-0 left-0 transition-[width]', variant === 'outline' ? 'bg-primary/15' : 'bg-primary-foreground/25')} style={{ width: `${pct}%` }} />}
       <span className="relative">{label}</span>
     </Button>
   )

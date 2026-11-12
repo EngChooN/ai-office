@@ -1,7 +1,7 @@
 // 업데이트 알림: 버전 비교·알림 여부·설치 파일 고르기·Release 응답 해석 단위 테스트 — pnpm test
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { ASSET_NAMES, assetTargetFor, compareVersions, isNewerVersion, LEGACY_ASSET_NAMES, parseRelease, parseVersion, pickAsset, pickDownloadUrl, pickLanguageSection, shouldNotify, shouldRecheck, summarizeNotes, UPDATE_CHECK_INTERVAL_MS, UPDATE_RECHECK_GAP_MS } from '../src/shared/updateCheck.ts'
+import { ASSET_NAMES, assetTargetFor, compareVersions, isNewerVersion, LEGACY_ASSET_NAMES, NEWS_PAGE_SIZE, parseNewsList, parseRelease, parseVersion, pickAsset, pickDownloadUrl, pickLanguageSection, shouldNotify, shouldRecheck, summarizeNotes, UPDATE_CHECK_INTERVAL_MS, UPDATE_RECHECK_GAP_MS } from '../src/shared/updateCheck.ts'
 
 const sign = (n: number | null) => (n === null ? null : Math.sign(n))
 
@@ -164,4 +164,40 @@ test('summarizeNotes: 기본값으로는 보통 길이의 배포 안내(10줄 �
   const s = summarizeNotes(body, 'ko')
   assert.ok(s.endsWith('• 마지막 항목'))
   assert.ok(!s.includes('…'))
+})
+
+const rel = (tag: string, extra: Record<string, unknown> = {}) => ({
+  tag_name: tag,
+  body: `# AI Office ${tag.replace(/^v/, '')} (2026-11-12)\n\n## 한국어\n### 한눈에 보기\n- **새 기능** 가 ${tag}\n\n### 새 기능\n- 상세\n\n## English\n### At a glance\n- **New** a ${tag}\n`,
+  published_at: '2026-01-01T00:00:00Z',
+  ...extra,
+})
+
+test('parseNewsList: 지금보다 높고 최신 이하인 정식 버전만, 높은 순, 앱 언어 섹션으로', () => {
+  const list = [rel('v1.2.0'), rel('v1.3.0'), rel('v1.1.5'), rel('v1.1.4'), rel('v1.4.0', { draft: true }), rel('v1.3.1-beta.1', { prerelease: true }), rel('v9.0.0'), { tag_name: 'nightly' }, null, 'x']
+  const news = parseNewsList(list, '1.1.5', '1.3.0', 'ko')
+  assert.deepEqual(news.releases.map((r) => r.version), ['1.3.0', '1.2.0'], '초안·미리보기·지금 이하·최신 초과 제외, 순서는 버전으로')
+  assert.equal(news.isCut, false)
+  assert.deepEqual(news.releases[0].sections.map((s) => s.kind), ['summary', 'feature'])
+  assert.match(news.releases[0].sections[0].body, /\*\*새 기능\*\* 가 v1.3.0/)
+  assert.match(parseNewsList(list, '1.1.5', '1.3.0', 'en').releases[0].sections[0].body, /\*\*New\*\* a/)
+  assert.match(parseNewsList(list, '1.1.5', '1.3.0', 'ja').releases[0].sections[0].body, /\*\*New\*\*/, '없는 언어는 English')
+})
+
+test('parseNewsList: 날짜는 첫 줄, 없으면 게시일 · 이미지·주석은 걷는다', () => {
+  const [a] = parseNewsList([rel('v1.3.0')], '1.2.0', '1.3.0', 'ko').releases
+  assert.equal(a.date, '2026-11-12')
+  const [b] = parseNewsList([{ tag_name: 'v1.3.0', body: '### 새 기능\n- 가 ![x](https://evil/p.png) <!-- 비밀 -->', published_at: '2026-11-12T03:00:00Z' }], '1.2.0', '1.3.0', 'ko').releases
+  assert.equal(b.date, '2026-11-12')
+  assert.equal(b.sections[0].body.includes('evil'), false)
+  assert.equal(b.sections[0].body.includes('비밀'), false)
+})
+
+test('parseNewsList: 이상한 응답은 빈 목록, 한 쪽을 꽉 채우고 이전 버전이 안 보이면 잘렸다고 알린다', () => {
+  for (const bad of [null, {}, 'x', 42]) assert.deepEqual(parseNewsList(bad, '1.0.0', '2.0.0', 'ko'), { releases: [], isCut: false })
+  const full = Array.from({ length: NEWS_PAGE_SIZE }, (_, i) => rel(`v1.${20 - i}.0`))
+  assert.equal(parseNewsList(full, '1.0.0', '1.20.0', 'ko').isCut, true)
+  assert.equal(parseNewsList(full, '1.15.0', '1.20.0', 'ko').isCut, false, '지금 버전 이하가 목록에 보이면 다 받은 것')
+  const huge = parseNewsList([{ tag_name: 'v2.0.0', body: `### 새 기능\n- ${'가'.repeat(20000)}` }], '1.0.0', '2.0.0', 'ko')
+  assert.ok(huge.releases[0].sections[0].body.length < 7000, '본문 크기 제한')
 })

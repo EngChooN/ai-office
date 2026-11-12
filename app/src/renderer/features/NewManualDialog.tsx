@@ -31,7 +31,11 @@ export function NewManualDialog({ projectDir, onClose, onDone }: { projectDir: s
   const [error, setError] = useState('')
   // 초안을 만드는 중에 창을 닫으면, 결과가 와도 편집 창을 열지 않는다
   const isClosed = useRef(false)
-  useEffect(() => () => void (isClosed.current = true), [])
+  // StrictMode는 마운트→정리→재마운트를 돌므로 본문에서 다시 false로 되돌린다.
+  useEffect(() => {
+    isClosed.current = false
+    return () => void (isClosed.current = true)
+  }, [])
   const close = () => {
     isClosed.current = true
     onClose()

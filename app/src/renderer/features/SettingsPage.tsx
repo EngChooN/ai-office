@@ -350,6 +350,16 @@ export function SettingsPage() {
                 <input type="checkbox" checked={settings.tokenSaverMode === true} onChange={(e) => update({ tokenSaverMode: e.target.checked })} /> {t('settingsPage.tokenSaver.toggle')}
               </label>
             </Section>
+            <Section title={t('settingsPage.reportStyle.title')} description={t('settingsPage.reportStyle.desc')}>
+              <div className="space-y-1.5">
+                {(['easy', 'expert'] as const).map((style) => (
+                  <label key={style} className="flex items-center gap-2 text-sm">
+                    <input type="radio" name="reportStyle" checked={(settings.reportStyle ?? 'easy') === style} onChange={() => update({ reportStyle: style })} /> {t(`settingsPage.reportStyle.${style}`)}
+                  </label>
+                ))}
+                <p className="text-muted-foreground text-xs">{t('settingsPage.reportStyle.note')}</p>
+              </div>
+            </Section>
           </>
         )}
         {category === 'office' && (

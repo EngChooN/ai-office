@@ -842,7 +842,7 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
                   ? t('staffPanel.composer.busyPlaceholder', { keys: `${STOP_HINT}${NEWLINE_HINT}` })
                   : t('staffPanel.composer.placeholder', { name: staff.name, keys: `${SEND_HINT}${NEWLINE_HINT}` })
               }
-              className="field-sizing-content slim:placeholder-shown:field-sizing-fixed slim:placeholder-shown:h-8 slim:placeholder-shown:overflow-hidden slim:placeholder-shown:whitespace-nowrap max-h-40 min-h-8 min-w-0 flex-1 resize-none border-0 px-1 py-1.5 focus-visible:shadow-none"
+              className="field-sizing-content placeholder:truncate placeholder-shown:field-sizing-fixed placeholder-shown:h-8 placeholder-shown:overflow-hidden placeholder-shown:whitespace-nowrap max-h-40 min-h-8 min-w-0 flex-1 resize-none border-0 px-1 py-1.5 focus-visible:shadow-none"
               style={{ fontSize }}
             />
             {isBusy && !hasDraft ? (

@@ -840,7 +840,7 @@ function Composer({ room }: { room: RoomInfo | undefined }) {
           {...draftFiles.bind}
           rows={1}
           placeholder={t(!room ? 'chat.placeholder' : isLab ? 'chat.labRoom.placeholder' : 'chat.room.placeholder', { all: ALL_MENTION, newline: String(NEWLINE_HINT) })}
-          className="field-sizing-content slim:placeholder-shown:field-sizing-fixed slim:placeholder-shown:h-9 slim:placeholder-shown:overflow-hidden slim:placeholder-shown:whitespace-nowrap max-h-32 min-h-9 resize-none py-[7px]"
+          className="field-sizing-content placeholder:truncate placeholder-shown:field-sizing-fixed placeholder-shown:h-9 placeholder-shown:overflow-hidden placeholder-shown:whitespace-nowrap max-h-32 min-h-9 resize-none py-[7px]"
         />
         {isBusySend ? (
           <div className="flex shrink-0 gap-1">

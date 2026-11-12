@@ -6,6 +6,38 @@ Writing rules
 - For each version, write under `## [version] - date`, divided into `### New features` / `### Improvements` / `### Bug fixes`.
 - Write from the user's point of view, describing "what you can now do." Do not use technical names (file paths, program or library names, English abbreviations). If one is truly needed, put it once in parentheses after a plain-language explanation.
 - Development details (how it was built, where files are) go in `SPEC.md` and `docs/changelog-dev.md`.
+- From 1.3.0, each version starts with `### At a glance`: 3–5 lines, each beginning with `**New**`, `**Better**` or `**Fixed**`, one short sentence each. Mention device differences only when a feature can't be used, as one line before the first `###`.
+- Detail items are 1–2 sentences, at most 5 new features, 4 improvements and 4 bug fixes per version. Merge items from the same screen if there are more.
+- Leave out: internal or development matters, re-fixes of features added in the same version, how a security hole worked (if needed, one line on the result), minor wording or spacing tweaks.
+- Couldn't do it before → new feature; easier than before → improvement; was working wrongly → bug fix.
+
+## [1.3.0] - 2026-11-12
+PC app only: connecting PCs and the new Manuals screens are in the PC app.
+
+### At a glance
+- **New** Connect several of your PCs and switch between them
+- **New** Create manuals by describing, from examples, or by hand
+- **New** Approval cards say in one line what will happen
+- **Better** Settings and manual wording is easier
+- **Fixed** Links in messages open again
+
+### New features
+- Connect another PC to see its office, staff, chats and approvals from this PC and give instructions. Switch with "Switch PC" at the top left; you can connect up to 3 PCs.
+- Create a new manual by describing it (AI draft), picking one of 7 examples, or writing it yourself. After saving, choose who can use it under "Make available."
+- Approval cards show "what this does" in one line and warn first about risky actions like deleting or overwriting. Lines judged by AI are marked "AI guess."
+- On a phone in portrait, when there is just one simple, safe-looking approval waiting, you can approve it right from a one-line strip.
+- The staff Equipment tab is now cards by kind of work, and for each you choose "Block · Ask for approval · No approval."
+- Staff and secretary reports are in plain words — result first and short, hard terms explained. You can switch to an expert tone under Settings › Report style.
+
+### Improvements
+- Settings use plainer words, and only the common settings stay open. The rest are under "More."
+- Manual wording is easier. "Training" is now "Make available," and step manuals are called "work several people do in turn."
+- Manuals can have a display name, and when there are no manuals yet, the screen tells you where to start.
+- When the placeholder in the message box is long, it is shortened with “…” to fit on one line.
+
+### Bug fixes
+- Fixed links in messages from staff not opening. They now open in your default browser.
+- Fixed the staff picker popping up first when pressing the "Manuals" or "/ Commands" button in a chat room.
 
 ## [1.2.0] - 2026-11-11
 - Device differences: the phone app carries the new screens under the same version number (fold split view, icons, approval one-liner, Fable model). Color themes can only be changed in the PC app.

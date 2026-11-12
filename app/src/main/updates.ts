@@ -5,19 +5,23 @@
 import { app, ipcMain, powerMonitor, shell, type BrowserWindow } from 'electron'
 import { loadSkippedUpdate, saveSkippedUpdate } from './db'
 import { getLang, onLangChange } from '../shared/i18n/index.ts'
-import { assetTargetFor, parseRelease, RELEASE_API_URL, shouldNotify, shouldRecheck, summarizeNotes, UPDATE_CHECK_INTERVAL_MS, type InstallStatus, type ReleaseInfo, type UpdateStatus } from '../shared/updateCheck.ts'
+import { assetTargetFor, parseNewsList, parseRelease, RELEASE_API_URL, RELEASES_API_URL, shouldNotify, shouldRecheck, summarizeNotes, UPDATE_CHECK_INTERVAL_MS, type InstallStatus, type ReleaseInfo, type UpdateNews, type UpdateStatus } from '../shared/updateCheck.ts'
 import { canInstallHere, InstallFailure, isWinZipInstall, launchReplacer, prepareInstall } from './appInstall'
 
 const FETCH_TIMEOUT_MS = 15_000
 
-/** 최신 Release를 읽는다. 실패하면 throw */
-async function fetchLatestRelease(): Promise<ReleaseInfo> {
-  const res = await fetch(RELEASE_API_URL, {
+async function fetchGithubJson(url: string): Promise<unknown> {
+  const res = await fetch(url, {
     headers: { Accept: 'application/vnd.github+json', 'User-Agent': `ClaudeOffice/${app.getVersion()}` },
     signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   })
   if (!res.ok) throw new Error(`release check ${res.status}`)
-  const release = parseRelease(await res.json(), assetTargetFor(process.platform, process.arch))
+  return res.json()
+}
+
+/** 최신 Release를 읽는다. 실패하면 throw */
+async function fetchLatestRelease(): Promise<ReleaseInfo> {
+  const release = parseRelease(await fetchGithubJson(RELEASE_API_URL), assetTargetFor(process.platform, process.arch))
   if (!release) throw new Error('release check: unexpected response')
   return release
 }
@@ -34,6 +38,11 @@ export class UpdateChecker {
   private isInstalling = false
   private timer: NodeJS.Timeout | null = null
   private offLang: (() => void) | null = null
+  /** 새 버전 소식용 Release 목록 원문 — 어느 최신 버전 때 읽었는지와 함께. 읽기 성공한 것만 둔다 */
+  private newsList: { latest: string; json: unknown } | null = null
+  private isNewsLoading = false
+  /** 언어별로 한 번만 풀어 둔다 (상태는 설치 진행률마다 다시 보낸다) */
+  private newsCache: { key: string; news: UpdateNews } | null = null
 
   constructor(private readonly onChange: (status: UpdateStatus) => void) {}
 
@@ -65,6 +74,35 @@ export class UpdateChecker {
       canInstall: this.state === 'available' && !!this.release && canInstallHere(this.release.asset),
       isWinZip: isWinZipInstall(),
       install: this.install,
+      news: this.state === 'available' ? this.news() : null,
+    }
+  }
+
+  private news(): UpdateNews | null {
+    const list = this.newsList
+    if (!list || list.latest !== this.release?.version) return null
+    const lang = getLang()
+    const key = `${list.latest}:${lang}`
+    if (this.newsCache?.key !== key) this.newsCache = { key, news: parseNewsList(list.json, app.getVersion(), list.latest, lang) }
+    return this.newsCache.news
+  }
+
+  /** 새 버전이 보이면 그 버전까지의 소식을 한 번 읽는다. 실패는 조용히 — 다음 확인 때 다시 */
+  private async loadNews(latest: string) {
+    if (this.newsList?.latest === latest || this.isNewsLoading) return
+    this.isNewsLoading = true
+    try {
+      const json = await fetchGithubJson(RELEASES_API_URL)
+      // 읽는 동안 더 새 버전이 나왔으면 버린다 (finally가 새 버전으로 다시 읽는다)
+      if (this.release?.version !== latest) return
+      this.newsList = { latest, json }
+      this.emit()
+    } catch {
+      // 소식이 없어도 업데이트 안내·설치는 그대로
+    } finally {
+      this.isNewsLoading = false
+      const now = this.release?.version
+      if (now && now !== latest && this.state === 'available') void this.loadNews(now)
     }
   }
 
@@ -89,6 +127,7 @@ export class UpdateChecker {
       this.checkedAt = Date.now()
       // 건너뛴 버전이어도 설정 화면에는 새 버전으로 보여 준다 (알림·배지만 renderer가 shouldNotify로 거른다)
       this.setState(shouldNotify(release.version, app.getVersion(), null) ? 'available' : 'upToDate')
+      if (this.state === 'available') void this.loadNews(release.version)
     } catch {
       this.setState(isManual ? 'failed' : before === 'checking' ? 'idle' : before)
     }

@@ -416,6 +416,7 @@ export class Office extends EventEmitter<{
         return { prompt: refDocsPrompt({ ...merged, docs: listed }), paths: merged.docs.map((d) => d.path) }
       },
       isScreenCaptureOn: () => this.settings.isStaffCaptureOn,
+      reportStyle: () => this.settings.reportStyle,
       browserBlocked: (id) => this.browserBlocked.has(id),
       // 일이 끝나도 공용 브라우저는 다른 직원이 기다릴 때만 놓는다 (안 그러면 끝날 때마다 창이 닫힌다)
       releaseBrowser: (id) => (this.browserLock.holder() === id && ![...this.browserBlocked].some((b) => b !== id) ? false : this.releaseBrowserFor(id)),
@@ -3177,7 +3178,8 @@ export class Office extends EventEmitter<{
       }
     }
     // 고치기에서 표시 이름을 안 보내면(비서 등) 기존 제목을 지키고, ''면 지운다
-    if (prev) input = { ...input, title: resolveTitle(prev.title, input.title) }
+    // 이미 있는 매뉴얼은 내부 이름을 바꾸지 않는다 — 직원·랩·팀 연결이 이름 기준이라 끊긴다(화면도 잠금)
+    if (prev) input = { ...input, name: prev.name, autoName: false, title: resolveTitle(prev.title, input.title) }
     const m = saveManual(input, previousPath)
     this.scheduleEmit()
     return m
@@ -3218,9 +3220,12 @@ export class Office extends EventEmitter<{
     })
     this.recordUsage(s ? staffId : SECRETARY_ID, r)
     const json = r.text.slice(r.text.indexOf('{'), r.text.lastIndexOf('}') + 1)
-    const d = JSON.parse(json) as { name: string; title?: string; description: string; body: string; steps?: ProcessStep[] }
-    const title = typeof d.title === 'string' ? d.title.trim() : ''
-    return { name: d.name, ...(title ? { title } : {}), description: d.description, body: d.body, steps: kind === 'process' ? (d.steps ?? []) : [] }
+    const d = JSON.parse(json) as Record<string, unknown>
+    // AI 응답에 칸이 빠지거나 문자열이 아니어도 양식이 터지지 않게 문자열로 정리한다
+    const str = (v: unknown) => (typeof v === 'string' ? v : '')
+    const title = str(d.title).trim()
+    const steps = Array.isArray(d.steps) ? (d.steps as ProcessStep[]) : []
+    return { name: str(d.name), ...(title ? { title } : {}), description: str(d.description), body: str(d.body), steps: kind === 'process' ? steps : [] }
   }
 
   /** 화면·채팅에 보일 매뉴얼 이름: 표시 이름이 있으면 그것, 없으면 내부 이름 */
@@ -3243,7 +3248,7 @@ export class Office extends EventEmitter<{
       if (want === has) continue
       const next = want ? [...new Set([...list, manualName])] : list.filter((n) => n !== manualName)
       this.setEquipment(s.id, { ...s.equipment, skills: next })
-      if (want) this.postChat(s.id, `📘 "${this.manualLabel(manualName)}" 매뉴얼 교육을 받았어요!`)
+      if (want) this.postChat(s.id, `📘 "${this.manualLabel(manualName)}" 매뉴얼을 쓸 수 있게 됐어요!`)
     }
   }
 

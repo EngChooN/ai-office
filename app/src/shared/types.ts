@@ -776,6 +776,9 @@ export type BudgetPeriod = 'day' | 'week' | 'month'
 /** 기간별 토큰 상한 (0 = 제한 없음) */
 export type TokenBudget = Record<BudgetPeriod, number>
 
+/** 보고 말투: 쉬운 말(기본, 비개발자용) · 전문가(용어·경로 그대로) */
+export type ReportStyle = 'easy' | 'expert'
+
 export interface Settings {
   /** 월 비용 예산 — 토큰 예산과 함께 보조 지표로 남긴다 */
   monthlyBudgetUsd: number
@@ -828,6 +831,8 @@ export interface Settings {
   sharedBrowserLogin?: boolean
   /** 토큰 절약 모드: 새로 고용하는 직원의 기본값만 Haiku + 기억 짧게 (Codex는 기억만). 기존 직원은 바꾸지 않는다. 없으면 끔 */
   tokenSaverMode?: boolean
+  /** 직원·비서의 답변·보고 말투. 없으면 쉬운 말 — shared/reportStyle.ts */
+  reportStyle?: ReportStyle
 }
 
 /** Codex 사용률을 못 읽은 이유 — 실행 파일 없음·응답 없음·응답 해석 실패·5시간/주간 창 없음 */

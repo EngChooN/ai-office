@@ -43,6 +43,9 @@ const COMPONENTS: Components = {
 
 const REMARK_PLUGINS = [remarkGfm, remarkCjkFriendly]
 
+// 인터넷에서 받은 글(새 버전 소식)은 글자만 — 링크·이미지·화면 이동 링크는 글자만 남긴다
+const UNTRUSTED_ELEMENTS = ['p', 'ul', 'ol', 'li', 'strong', 'em', 'del', 'code', 'blockquote', 'br']
+
 const VIEW_LINK = '#view='
 const VIEWS = new Set<View>(['secretary', 'map', 'dashboard', 'org', 'board', 'inbox', 'chat', 'meeting', 'manuals', 'knowledge', 'gallery', 'schedule', 'report', 'payroll', 'settings', 'updates', 'shop'])
 function openView(view: string) {
@@ -54,11 +57,19 @@ function openView(view: string) {
   s.setView(view as View)
 }
 
-/** 마크다운 본문 (GFM: 표·체크리스트·취소선). 파싱이 무거워 글이 같으면 다시 그리지 않는다. plugins: 화면별로 덧붙일 remark 플러그인 (단체방 @이름 강조) */
-export const Markdown = memo(function Markdown({ children, className, plugins }: { children: string; className?: string; plugins?: Options['remarkPlugins'] }) {
+/**
+ * 마크다운 본문 (GFM: 표·체크리스트·취소선). 파싱이 무거워 글이 같으면 다시 그리지 않는다. plugins: 화면별로 덧붙일 remark 플러그인 (단체방 @이름 강조).
+ * isUntrusted: 앱 밖에서 받은 글 — 목록·굵게 같은 글자 서식만 그린다
+ */
+export const Markdown = memo(function Markdown({ children, className, plugins, isUntrusted = false }: { children: string; className?: string; plugins?: Options['remarkPlugins']; isUntrusted?: boolean }) {
   return (
     <div className={cn('selectable min-w-0 break-words [overflow-wrap:anywhere]', className)}>
-      <ReactMarkdown remarkPlugins={plugins ? [...REMARK_PLUGINS, ...plugins] : REMARK_PLUGINS} components={COMPONENTS}>
+      <ReactMarkdown
+        remarkPlugins={plugins ? [...REMARK_PLUGINS, ...plugins] : REMARK_PLUGINS}
+        components={COMPONENTS}
+        allowedElements={isUntrusted ? UNTRUSTED_ELEMENTS : undefined}
+        unwrapDisallowed={isUntrusted}
+      >
         {children}
       </ReactMarkdown>
     </div>

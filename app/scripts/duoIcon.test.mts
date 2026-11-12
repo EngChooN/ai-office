@@ -1,4 +1,4 @@
-// 듀오톤 아이콘 20종: 데이터 무결성·이모지 → 아이콘 바꾸기·화면 코드에 이모지가 다시 생기지 않게 — npm test
+// 듀오톤 아이콘 21종: 데이터 무결성·이모지 → 아이콘 바꾸기·화면 코드에 이모지가 다시 생기지 않게 — npm test
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -9,8 +9,8 @@ import { DUO_NAMES, EMOJI_TO_ICON, splitEdgeIcon, splitLeadingIcon, stripIconEmo
 const root = new URL('../', import.meta.url).pathname
 const src = (p: string) => fs.readFileSync(path.join(root, p), 'utf8')
 
-test('20종이 모두 그림을 가지고, 이모지 대응표는 20종 이름만 가리킨다', () => {
-  assert.equal(DUO_NAMES.length, 20)
+test('21종이 모두 그림을 가지고, 이모지 대응표는 21종 이름만 가리킨다', () => {
+  assert.equal(DUO_NAMES.length, 21)
   assert.deepEqual(Object.keys(DUO_ICON_DATA).sort(), [...DUO_NAMES].sort())
   for (const name of DUO_NAMES) {
     const parts = DUO_ICON_DATA[name]

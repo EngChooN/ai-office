@@ -20,3 +20,10 @@ android/local.properties
 
 # Codex app-server 번들 (scripts/fetch-codex.mts 가 받음)
 app/vendor/
+
+# 저장소 루트의 임시 캡처·초안 (빌드와 무관)
+/fold-*.png
+/hn-draft.png
+/reddit-*.png
+/reddit-snap.yml
+/sideproject-draft.png

@@ -28,4 +28,5 @@ export const DUO_ICON_DATA: Record<DuoName, readonly DuoPart[]> = {
   like: [{ t: 'path', d: 'M7 10.2v10.6H4.6A1.6 1.6 0 0 1 3 19.2v-7.4a1.6 1.6 0 0 1 1.6-1.6Z', fill: true }, { t: 'path', d: 'M7 10.2l3.8-7a2 2 0 0 1 2.9 2.1L13 9.2h5.6a2 2 0 0 1 2 2.4l-1.5 7.4a2.3 2.3 0 0 1-2.3 1.8H7' }],
   new: [{ t: 'path', d: 'M11 3.5l1.9 5.1 5.1 1.9-5.1 1.9L11 17.5l-1.9-5.1L4 10.5l5.1-1.9Z', fill: true }, { t: 'path', d: 'M18.5 15v5M16 17.5h5' }],
   bug: [{ t: 'path', d: 'M8 10.5a4 4 0 0 1 8 0v4.8a4 4 0 0 1-8 0Z', fill: true }, { t: 'path', d: 'M12 10.5V19' }, { t: 'path', d: 'M4 13.5h4M16 13.5h4M5 8.8l3 1.8M19 8.8l-3 1.8M5 19.5l3-1.8M19 19.5l-3-1.8' }, { t: 'path', d: 'M10.2 6.8 9 4.8M13.8 6.8 15 4.8' }],
+  improve: [{ t: 'rect', x: 3.5, y: 3.5, w: 17, h: 17, rx: 4.5, fill: true }, { t: 'path', d: 'M12 16.5V8M8.3 11.5 12 7.8l3.7 3.7' }],
 }

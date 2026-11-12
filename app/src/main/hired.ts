@@ -1,5 +1,5 @@
 import path from 'node:path'
-import type { AiProvider, Approval, ApprovalWaitReason, Attachment, Staff, StaffQuestion } from '../shared/types'
+import type { AiProvider, Approval, ApprovalWaitReason, Attachment, ReportStyle, Staff, StaffQuestion } from '../shared/types'
 import { findRiskyCommand, isBashPolicyMark, isReadOnlyCommand, READ_ONLY_BASH, RISKY_BASH } from '../shared/bashPolicy'
 import { autoWaitReason, isEditTool } from '../shared/autoApprove'
 import { toQuestions } from './external'
@@ -7,6 +7,7 @@ import { isRefDocRead } from '../shared/refDocs'
 import { ruleDraftFor } from '../shared/approvalRules'
 import { effectOf } from '../shared/approvalEffect'
 import { t, tk, type I18nArg } from '../shared/i18n/index.ts'
+import { reportStyleRule } from '../shared/reportStyle'
 import os from 'node:os'
 import { insertUsage, saveSessionId } from './db'
 import { findCodexRollout, readCodexTail } from './ai/codexSession'
@@ -88,6 +89,8 @@ export interface HiredHooks {
   /** 지급된 MCP 서버 설정 (장비) */
   /** 설정의 '직원 화면 캡처 허용' (꺼지면 장비로 지급받은 직원만 캡처) */
   isScreenCaptureOn(): boolean
+  /** 설정의 '보고 말투' (없으면 쉬운 말) */
+  reportStyle?(): ReportStyle | undefined
   equippedMcp(staffId: string): Record<string, RuntimeMcpServer>
   /** 세션이 알려 준 /명령어 목록 (세션을 열 때·목록이 바뀔 때·미리 불러올 때). terminalOnly = 터미널 화면 전용 명령 이름 */
   commands(staffId: string, raw: RawCommand[], terminalOnly: string[]): void
@@ -360,7 +363,7 @@ class Worker {
       modelId: this.modelId(this.modelNow),
       resumeId: s.sessionId,
       approvalMode: s.approvalMode === 'acceptEdits' ? 'acceptEdits' : 'ask',
-      systemPromptAppend: capPrompt([t('staff.identity', { name: s.name, role: s.role }), t('staff.language'), this.hooks.context(s.id), refDocs.prompt, browserGuide, computerGuide, t('staff.captureGuide'), capPrompt(s.systemPrompt, PERSONA_MAX)].filter(Boolean).join('\n'), PROMPT_MAX),
+      systemPromptAppend: capPrompt([t('staff.identity', { name: s.name, role: s.role }), t('staff.language'), reportStyleRule(this.hooks.reportStyle?.()), this.hooks.context(s.id), refDocs.prompt, browserGuide, computerGuide, t('staff.captureGuide'), capPrompt(s.systemPrompt, PERSONA_MAX)].filter(Boolean).join('\n'), PROMPT_MAX),
       mcpServers: { ...mcpServers, office: this.hooks.officeTools(s.id) },
       selectedMcp: s.equipment.mcpServers,
       shellNetwork: s.provider === 'codex' && s.equipment.shellNetwork === true,
