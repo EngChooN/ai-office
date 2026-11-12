@@ -2,6 +2,7 @@ import { READ_ONLY_BASH, RISKY_BASH } from './bashPolicy.ts'
 import { AVATAR_LIMIT, canonicalAvatar } from './look.ts'
 import { ROLE_PRESETS, type AiProvider, type ApprovalMode, type Equipment, type ModelChoice } from './types.ts'
 import { t } from './i18n/index.ts'
+import { MANUAL_NAME_RE, TITLE_MAX, cleanTitle } from './manualName.ts'
 import type { TKey } from './i18n/dict/index.ts'
 
 // 직원·랩 묶음 파일 (내보내기/가져오기, 기본 직원 마켓). 순수 함수만 둔다 — 파일 입출력·채용은 main/staffPack*.ts
@@ -28,14 +29,14 @@ export const PACK_LIMITS = {
 
 const MODELS: readonly ModelChoice[] = ['default', 'fable', 'opus', 'sonnet', 'haiku']
 const GPT_MODEL_RE = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/
-// 매뉴얼 이름 규칙은 main/manuals.ts의 NAME_RE와 같다 (main 쪽은 파일을 쓰므로 여기서 따로 둔다)
-const MANUAL_NAME_RE = /^[a-z0-9][a-z0-9-]{1,62}$/
 const COLOR_RE = /^#[0-9a-fA-F]{6}$/
 // 경로를 뜻하는 키 — 하나라도 있으면 파일 전체를 거절한다
 const PATH_KEYS: ReadonlySet<string> = new Set(['cwd', 'owncwd', 'refdocs', 'path', 'projectdir', 'dir', 'folder', 'workdir', 'filepath'])
 
 export interface PackManual {
   name: string
+  /** 표시 이름 (옛 팩에는 없다 — 옛 앱은 이 칸을 무시한다) */
+  title?: string
   description: string
   body: string
 }
@@ -166,8 +167,10 @@ function assertNoPaths(v: unknown, depth = 0): void {
 function readManual(raw: unknown): PackManual {
   if (!isObj(raw)) return fail('pack.err.shape')
   if (typeof raw.name !== 'string' || !MANUAL_NAME_RE.test(raw.name)) return fail('pack.err.manualName')
+  const title = raw.title === undefined ? '' : cleanTitle(text(raw.title, 'pack.err.shape', TITLE_MAX))
   return {
     name: raw.name,
+    ...(title ? { title } : {}),
     description: raw.description === undefined ? '' : text(raw.description, 'pack.err.shape', PACK_LIMITS.descMax),
     body: text(raw.body, 'pack.err.manualBody', PACK_LIMITS.manualBodyMax, 1),
   }
@@ -344,7 +347,7 @@ export function buildPackText(staff: PackExportStaff[], lab?: PackLab): { ok: tr
         monthlyBudgetUsd: s.equipment.monthlyBudgetUsd,
         ...(s.equipment.lightModelOff ? { lightModelOff: true } : {}),
       },
-      manuals: s.manuals.map((m) => ({ name: m.name, description: m.description, body: m.body })),
+      manuals: s.manuals.map((m) => ({ name: m.name, ...(m.title ? { title: m.title } : {}), description: m.description, body: m.body })),
     })),
     ...(lab ? { lab } : {}),
   }

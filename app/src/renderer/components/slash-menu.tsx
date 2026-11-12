@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils'
 import { useOffice } from '@/store'
 import { slashAction, type StaffCommand } from '@shared/slashCommands'
 import type { Manual } from '@shared/types'
+import { manualLabel } from '@shared/manualName'
 import { t } from '@shared/i18n'
 import { IconText } from '@/components/duo-icon'
 
@@ -34,14 +35,23 @@ export const commandItem = (c: StaffCommand): SlashItem => ({
   group: t('slashMenu.group.command'),
 })
 
-/** 개인 매뉴얼 이름 → 자동완성 한 줄 */
-export const manualItem = (name: string, description = ''): SlashItem => ({
+/** 개인 매뉴얼 이름 → 자동완성 한 줄 (표시 이름이 있으면 그걸 보여 준다) */
+export const manualItem = (name: string, description = '', title = ''): SlashItem => ({
   key: `manual:${name}`,
-  label: `📘 ${name}`,
+  label: `📘 ${title || name}`,
   description,
   tag: t('slashMenu.tag.manual'),
   group: t('slashMenu.group.manual'),
 })
+
+/** 매뉴얼 내부 이름 → 화면에 보일 이름 (아직 목록을 못 불러왔으면 내부 이름 그대로) */
+export function useManualLabelOf(): (name: string) => string {
+  const manuals = useOffice((s) => s.manuals)
+  return (name) => {
+    const m = manuals.find((x) => x.name === name)
+    return m ? manualLabel(m) : name
+  }
+}
 
 /** 매뉴얼실의 개인 매뉴얼 — 메뉴를 열 때 새로 불러온다. 스킬 목록에서 매뉴얼을 가려내는 기준(이름 대조)이 된다 */
 export function usePersonalManuals(isOpen: boolean): Manual[] {

@@ -125,6 +125,7 @@ import { COMPUTER_EQUIPMENT, computerSummaryI18n } from '../shared/computerTools
 import { BROWSER_AUTO_TOOL, BROWSER_EQUIPMENT } from '../shared/browserTools.ts'
 import { CLAUDE_MODEL_CHOICES, parseModelArg, parseSlash, parseTranslations, pendingDescriptions, slashAction, toStaffCommands, translationPrompt, type RawCommand, type StaffCommand } from '../shared/slashCommands.ts'
 import { listManuals, removeManual, saveManual } from './manuals'
+import { cleanTitle, manualLabel, resolveTitle } from '../shared/manualName'
 import {
   ACHIEVEMENTS,
   dailyMissions,
@@ -3151,6 +3152,8 @@ export class Office extends EventEmitter<{
         if (!isRemoteManualDirAllowed(input.projectDir, labDirs, prev?.projectDir ?? null)) throw new InvalidArgsError('매뉴얼은 등록된 랩 폴더에만 만들 수 있어요')
       }
     }
+    // 고치기에서 표시 이름을 안 보내면(비서 등) 기존 제목을 지키고, ''면 지운다
+    if (prev) input = { ...input, title: resolveTitle(prev.title, input.title) }
     const m = saveManual(input, previousPath)
     this.scheduleEmit()
     return m
@@ -3198,7 +3201,8 @@ export class Office extends EventEmitter<{
 
   /** 화면·채팅에 보일 매뉴얼 이름: 표시 이름이 있으면 그것, 없으면 내부 이름 */
   private manualLabel(name: string) {
-    return this.listManuals().find((m) => m.name === name)?.title || name
+    const m = this.listManuals().find((x) => x.name === name)
+    return m ? manualLabel(m) : name
   }
 
   /** 개인 매뉴얼 교육: 이 매뉴얼을 쓸 수 있는 직원을 정한다 (기존 "전부 사용" 직원은 빼면 나머지 매뉴얼만 남긴다) */
@@ -3259,7 +3263,7 @@ export class Office extends EventEmitter<{
     const run: ProcessRun = {
       id: crypto.randomUUID(),
       manualName: manual.name,
-      manualTitle: manual.title || manual.description.split(/[.。]/)[0] || manual.name,
+      manualTitle: cleanTitle(manual.title) || manual.description.split(/[.。]/)[0] || manual.name,
       steps: manual.steps,
       scope: { ...input.scope, name: scopeName },
       input: input.input,

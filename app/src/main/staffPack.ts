@@ -46,7 +46,7 @@ function applyPack(office: Office, pack: PackFile, excluded: string[]): PackResu
   for (const s of pack.staff) {
     for (const m of s.manuals) {
       if (existing.has(m.name)) continue
-      office.saveManual({ name: m.name, description: m.description, kind: 'personal', scope: 'user', projectDir: null, body: m.body, steps: [] })
+      office.saveManual({ name: m.name, ...(m.title ? { title: m.title } : {}), description: m.description, kind: 'personal', scope: 'user', projectDir: null, body: m.body, steps: [] })
       existing.add(m.name)
     }
   }
@@ -95,7 +95,7 @@ function toExportStaff(office: Office, s: Staff): PackExportStaff {
   const manuals = office
     .listManuals()
     .filter((m) => m.kind === 'personal' && (s.equipment.skills === 'all' || s.equipment.skills.includes(m.name)))
-    .map((m) => ({ name: m.name, description: m.description, body: m.body }))
+    .map((m) => ({ name: m.name, ...(m.title ? { title: m.title } : {}), description: m.description, body: m.body }))
   return { name: s.name, role: s.role, avatar: s.avatar, provider: s.provider, model: s.model, approvalMode: s.approvalMode, systemPrompt: s.systemPrompt, equipment: s.equipment, manuals }
 }
 

@@ -180,7 +180,7 @@ export function guideLines(body: string, query?: string): string {
 export const MANUAL_BODY_MAX = 20_000
 export function compactManual(m: Manual): string {
   const body = m.body.length > MANUAL_BODY_MAX ? `${m.body.slice(0, MANUAL_BODY_MAX)}\n…(본문이 길어 ${MANUAL_BODY_MAX}자까지만 보여 드렸어요)` : m.body
-  const lines = [`## ${m.name} (${m.kind === 'process' ? '프로세스' : '개인'}, ${m.scope === 'user' ? '내 매뉴얼' : `프로젝트 ${m.projectDir ?? ''}`})`, `- 경로(previousPath·deleteManual에 쓰는 값): ${m.path}`, `- 설명: ${m.description}`, '### 본문 (원문 그대로)', body || '(비어 있음)']
+  const lines = [`## ${m.name}${m.title ? ` "${m.title}"` : ''} (${m.kind === 'process' ? '프로세스' : '개인'}, ${m.scope === 'user' ? '내 매뉴얼' : `프로젝트 ${m.projectDir ?? ''}`})`, `- 경로(previousPath·deleteManual에 쓰는 값): ${m.path}`, `- 설명: ${m.description}`, '### 본문 (원문 그대로)', body || '(비어 있음)']
   if (m.steps.length) {
     lines.push('### 프로세스 단계')
     for (const [i, st] of m.steps.entries()) lines.push(`${i + 1}. [${st.id}] ${st.title} · 담당 ${st.role}${st.needsMyCheck ? ' · 내 확인' : ''}${st.onRevise ? ` · 되돌림→${st.onRevise}(최대 ${st.maxLoops}번)` : ''}\n   ${st.instruction}`)

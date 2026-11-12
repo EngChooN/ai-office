@@ -1,5 +1,6 @@
 import { CheckCheckIcon, CheckIcon, UserPlusIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { EmptyGuide } from '@/components/empty-guide'
 import { Page } from '@/components/ui/page'
 import { useOffice } from '@/store'
 import { pendingMeetingDecisions } from '@shared/meetingDecisions'
@@ -86,9 +87,7 @@ export function InboxPage() {
       )}
       {approvals.length === 0 && externalWaiting.length === 0 && decisions.length === 0 && checkingRuns.length === 0 && waitingPlans.length === 0 && (
         // 비었을 때: 결재가 언제 생기는지 알려 주고, 직원이 없으면 고용으로 보낸다
-        <div className="text-muted-foreground flex max-w-3xl flex-col items-start gap-2 text-sm">
-          <p><IconText text={t('inbox.empty')} size={16} /></p>
-          <p className="text-xs">{t('guideHint.inbox.emptyDesc')}</p>
+        <EmptyGuide title={t('inbox.empty')} when={t('guideHint.inbox.emptyDesc')}>
           {!staff.some((x) => x.kind === 'hired') && (
             <>
               <p className="text-xs">{t('guideHint.inbox.noStaff')}</p>
@@ -97,7 +96,7 @@ export function InboxPage() {
               </Button>
             </>
           )}
-        </div>
+        </EmptyGuide>
       )}
       <div className="flex max-w-3xl flex-col gap-3">
         {approvals.map((a) => (

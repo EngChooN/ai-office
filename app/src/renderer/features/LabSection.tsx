@@ -10,6 +10,7 @@ import { TEAM_COLORS, type Lab, type Staff, type Team } from '@shared/types'
 import { AttachButton, DraftAttachments, useDraftAttachments } from '@/components/attachments'
 import { Textarea } from '@/components/ui/textarea'
 import { t } from '@shared/i18n'
+import { useManualLabelOf } from '@/components/slash-menu'
 import { RefDocsEditor } from './RefDocsEditor'
 import { RunCard } from './RunCard'
 import { Avatar, LeadMark } from './StaffCard'
@@ -250,6 +251,7 @@ function LabWork({ lab }: { lab: Lab }) {
   const [manual, setManual] = useState('')
   const [input, setInput] = useState('')
   const files = useDraftAttachments()
+  const labelOf = useManualLabelOf()
   const manuals = lab.manuals ?? []
   if (!lead && manuals.length === 0) return <p className="text-muted-foreground border-t pt-2 text-xs">{t('lab.work.unavailable')}</p>
   const isManual = manual !== '' || !lead
@@ -276,7 +278,7 @@ function LabWork({ lab }: { lab: Lab }) {
         {lead && <option value="">{t('lab.work.noManual', { name: lead.name })}</option>}
         {manuals.map((m) => (
           <option key={m} value={m}>
-            <DuoIcon name="manual" size={12} className="mr-1" />{m}
+            <DuoIcon name="manual" size={12} className="mr-1" />{labelOf(m)}
           </option>
         ))}
       </NativeSelect>

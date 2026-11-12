@@ -1,11 +1,12 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { ChevronDownIcon, ChevronRightIcon, FileUpIcon, FolderOpenIcon, StoreIcon } from 'lucide-react'
+import { FileUpIcon, FolderOpenIcon, StoreIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
+import { MoreToggle } from '@/components/more-toggle'
 import { encodeLook, randomLook, roleLook, type Look } from '@shared/look'
 import { AvatarEditor } from './AvatarEditor'
 import { useShallow } from 'zustand/react/shallow'
@@ -233,18 +234,7 @@ export function HireDialog() {
             </div>
           )}
 
-          <div className="flex flex-col gap-1">
-            <button
-              type="button"
-              onClick={() => setIsMoreOpen((v) => !v)}
-              aria-expanded={isMoreOpen}
-              className="text-primary flex w-fit items-center gap-1 text-sm font-medium"
-            >
-              {isMoreOpen ? <ChevronDownIcon className="size-4" /> : <ChevronRightIcon className="size-4" />}
-              {isMoreOpen ? t('guideHint.hire.less') : t('guideHint.hire.more')}
-            </button>
-            {!isMoreOpen && <span className="text-muted-foreground text-xs">{t('guideHint.hire.moreDesc')}</span>}
-          </div>
+          <MoreToggle open={isMoreOpen} onToggle={() => setIsMoreOpen((v) => !v)} hint={t('guideHint.hire.moreDesc')} />
 
           {isMoreOpen && (
             <>

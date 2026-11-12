@@ -1,46 +1,32 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
-import { ArrowDownIcon, ArrowUpIcon, BookOpenIcon, GraduationCapIcon, PencilIcon, PlusIcon, SparklesIcon, Trash2Icon } from 'lucide-react'
+import { BookOpenIcon, PencilIcon, PlusIcon, SparklesIcon, Trash2Icon, UsersIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Page } from '@/components/ui/page'
-import { NativeSelect } from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
+import { EmptyGuide } from '@/components/empty-guide'
 import { cn } from '@/lib/utils'
 import { useOffice } from '@/store'
-import type { Manual, ManualInput, ManualKind, ProcessStep } from '@shared/types'
-import { t, type TKey } from '@shared/i18n'
+import { manualLabel } from '@shared/manualName'
+import type { Manual, ManualInput } from '@shared/types'
+import { t } from '@shared/i18n'
 import { Avatar } from './StaffCard'
 import { shortPath } from './status'
 import { IS_REMOTE_SCREEN } from '@/shell'
 import { DuoIcon, IconText } from '@/components/duo-icon'
+import { ManualEditor } from './ManualEditor'
+import { NewManualDialog } from './NewManualDialog'
 
-const NAME_RE = /^[a-z0-9][a-z0-9-]{1,62}$/
-const KIND_LABEL: Record<ManualKind, TKey> = { personal: 'manuals.kind.personal', process: 'manuals.kind.process' }
-const DEFAULT_MAX_LOOPS = 2
-
-const newStep = (i: number): ProcessStep => ({ id: `s${Date.now().toString(36)}${i}`, title: '', role: '', instruction: '', needsMyCheck: false, onRevise: null, maxLoops: DEFAULT_MAX_LOOPS })
-const emptyInput = (kind: ManualKind, projectDir: string | null): ManualInput => ({
-  name: '',
-  description: '',
-  kind,
-  scope: projectDir ? 'project' : 'user',
-  projectDir,
-  body: '',
-  steps: kind === 'process' ? [newStep(0)] : [],
-})
-
-/** 매뉴얼실: 업무 매뉴얼(스킬)을 만들고·고치고·교육한다 */
+/** 매뉴얼실: 업무 매뉴얼(스킬)을 만들고·고치고·쓸 수 있게 한다 */
 export function ManualsPage() {
   const manuals = useOffice((s) => s.manuals)
   const refresh = useOffice((s) => s.refreshManuals)
   const staff = useOffice(useShallow((s) => s.staff.filter((x) => x.kind === 'hired')))
   const labs = useOffice((s) => s.labs)
   const teams = useOffice(useShallow((s) => s.teams.filter((tm) => tm.kind === 'hired')))
+  const [isStarting, setIsStarting] = useState(false)
   const [editing, setEditing] = useState<{ input: ManualInput; previousPath?: string } | null>(null)
-  const [training, setTraining] = useState<Manual | null>(null)
+  const [training, setTraining] = useState<{ manual: Manual; isJustSaved?: boolean } | null>(null)
 
   useEffect(() => {
     void refresh()
@@ -54,258 +40,89 @@ export function ManualsPage() {
       : labs.filter((l) => l.manuals?.includes(m.name)).length + teams.filter((tm) => tm.manuals?.includes(m.name)).length
 
   const handleDelete = async (m: Manual) => {
-    if (!window.confirm(t('manuals.confirmDelete', { name: m.name, path: shortPath(m.path) }))) return
+    if (!window.confirm(t('manuals.confirmDelete', { name: manualLabel(m), path: shortPath(m.path) }))) return
     await window.office.deleteManual(m.path)
     void refresh()
   }
+  // 새로 만든 매뉴얼은 저장하자마자 누가 쓸지 고르게 한다 (고치기는 닫기만)
+  const handleSaved = (saved: Manual) => {
+    const isNew = !editing?.previousPath
+    setEditing(null)
+    void refresh()
+    if (isNew) setTraining({ manual: saved, isJustSaved: true })
+  }
+  const startButton = (
+    <Button size="sm" onClick={() => setIsStarting(true)}>
+      <PlusIcon /> {t('manualStart.button')}
+    </Button>
+  )
 
   return (
-    <Page
-      title={t('manuals.title')}
-      description={t('manuals.description')}
-      actions={
-        <div className="flex gap-2">
-          <Button size="sm" variant="outline" onClick={() => setEditing({ input: emptyInput('personal', projectDirs[0] ?? null) })}>
-            <PlusIcon /> {t('manuals.kind.personal')}
+    <Page title={t('manuals.title')} description={t('manuals.description')} actions={startButton}>
+      {manuals.length === 0 ? (
+        <EmptyGuide title={t('manuals.emptyGuide.title')} what={t('manuals.emptyGuide.what')} when={t('manuals.emptyGuide.when')}>
+          <Button size="sm" onClick={() => setIsStarting(true)}>
+            <SparklesIcon /> {t('manualStart.button')}
           </Button>
-          <Button size="sm" onClick={() => setEditing({ input: emptyInput('process', projectDirs[0] ?? null) })}>
-            <PlusIcon /> {t('manuals.kind.process')}
-          </Button>
-        </div>
-      }
-    >
-      {(['process', 'personal'] as const).map((kind) => (
-        <section key={kind} className="mb-8">
-          <h2 className="mb-3 text-sm font-semibold"><IconText text={kind === 'process' ? t('manuals.section.process') : t('manuals.section.personal')} size={16} /></h2>
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-3">
-            {manuals.filter((m) => m.kind === kind).length === 0 && <p className="text-muted-foreground text-sm">{t('manuals.empty')}</p>}
-            {manuals
-              .filter((m) => m.kind === kind)
-              .map((m) => (
-                <div key={m.path} className="bg-card flex flex-col gap-2 rounded-xl border p-4">
-                  <div className="flex items-center gap-2">
-                    <BookOpenIcon className="text-primary size-4" />
-                    <span className="flex-1 truncate font-mono text-sm font-semibold">{m.name}</span>
-                    <span className="text-muted-foreground rounded border px-1.5 text-[10px]">{m.scope === 'user' ? t('manuals.scopeUser') : shortPath(m.projectDir ?? '')}</span>
-                  </div>
-                  <p className="text-muted-foreground line-clamp-3 text-xs">{m.description || t('manuals.noDescription')}</p>
-                  {kind === 'process' && <p className="text-muted-foreground text-xs">{m.steps.map((s) => s.title).join(' → ') || t('manuals.noSteps')}</p>}
-                  <div className="mt-auto flex items-center gap-1">
-                    <Button size="sm" variant="outline" onClick={() => setTraining(m)}>
-                      <GraduationCapIcon /> {t('manuals.trainCount', { count: trainedCount(m) })}
-                    </Button>
-                    {/* 전역 매뉴얼은 모든 프로젝트에 영향 — 고치기·지우기는 PC에서만 */}
-                    {IS_REMOTE_SCREEN && m.scope === 'user' ? (
-                      <span className="text-muted-foreground ml-auto text-[10px]">{t('manuals.userPcOnly')}</span>
-                    ) : (
-                      <>
-                        <Button size="icon" variant="ghost" className="ml-auto size-8" onClick={() => setEditing({ input: { ...m }, previousPath: m.path })} aria-label={t('manuals.edit')}>
-                          <PencilIcon className="size-4" />
+        </EmptyGuide>
+      ) : (
+        (['process', 'personal'] as const).map((kind) => (
+          <section key={kind} className="mb-8">
+            <h2 className="mb-3 text-sm font-semibold"><IconText text={kind === 'process' ? t('manuals.section.process') : t('manuals.section.personal')} size={16} /></h2>
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-3">
+              {manuals.filter((m) => m.kind === kind).length === 0 && <p className="text-muted-foreground text-sm">{t('manuals.empty')}</p>}
+              {manuals
+                .filter((m) => m.kind === kind)
+                .map((m) => {
+                  const count = trainedCount(m)
+                  return (
+                    <div key={m.path} className="bg-card flex flex-col gap-2 rounded-xl border p-4">
+                      <div className="flex items-center gap-2">
+                        <BookOpenIcon className="text-primary size-4 shrink-0" />
+                        <span className="flex min-w-0 flex-1 flex-col">
+                          <span className={cn('truncate text-sm font-semibold', !m.title && 'font-mono')}>{manualLabel(m)}</span>
+                          {/* 표시 이름이 있으면 파일 이름은 작게 */}
+                          {m.title && <span className="text-muted-foreground truncate font-mono text-[10px]">{m.name}</span>}
+                        </span>
+                        <span className="text-muted-foreground shrink-0 rounded border px-1.5 text-[10px]">{m.scope === 'user' ? t('manuals.scopeUser') : shortPath(m.projectDir ?? '')}</span>
+                      </div>
+                      <p className="text-muted-foreground line-clamp-3 text-xs">{m.description || t('manuals.noDescription')}</p>
+                      {kind === 'process' && <p className="text-muted-foreground text-xs">{m.steps.map((s) => s.title).join(' → ') || t('manuals.noSteps')}</p>}
+                      <div className="mt-auto flex items-center gap-1">
+                        {/* 아무도 안 쓰면 눈에 띄게 */}
+                        <Button size="sm" variant={count === 0 ? 'default' : 'outline'} onClick={() => setTraining({ manual: m })}>
+                          <UsersIcon /> {count === 0 ? t('manuals.train.submit') : t('manuals.trainCount', { count })}
                         </Button>
-                        <Button size="icon" variant="ghost" className="size-8" onClick={() => void handleDelete(m)} aria-label={t('manuals.delete')}>
-                          <Trash2Icon className="size-4" />
-                        </Button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              ))}
-          </div>
-        </section>
-      ))}
-      {editing && <ManualEditor initial={editing.input} previousPath={editing.previousPath} projectDirs={projectDirs} onClose={() => (setEditing(null), void refresh())} />}
-      {training && <TrainDialog manual={training} onClose={() => setTraining(null)} />}
+                        {/* 전역 매뉴얼은 모든 프로젝트에 영향 — 고치기·지우기는 PC에서만 */}
+                        {IS_REMOTE_SCREEN && m.scope === 'user' ? (
+                          <span className="text-muted-foreground ml-auto text-[10px]">{t('manuals.userPcOnly')}</span>
+                        ) : (
+                          <>
+                            <Button size="icon" variant="ghost" className="ml-auto size-8" onClick={() => setEditing({ input: { ...m, title: manualLabel(m) }, previousPath: m.path })} aria-label={t('manuals.edit')}>
+                              <PencilIcon className="size-4" />
+                            </Button>
+                            <Button size="icon" variant="ghost" className="size-8" onClick={() => void handleDelete(m)} aria-label={t('manuals.delete')}>
+                              <Trash2Icon className="size-4" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+            </div>
+          </section>
+        ))
+      )}
+      {isStarting && <NewManualDialog projectDir={projectDirs[0] ?? null} onClose={() => setIsStarting(false)} onDone={(input) => (setIsStarting(false), setEditing({ input }))} />}
+      {editing && <ManualEditor initial={editing.input} previousPath={editing.previousPath} projectDirs={projectDirs} onClose={() => setEditing(null)} onSaved={handleSaved} />}
+      {training && <TrainDialog manual={training.manual} isJustSaved={training.isJustSaved} onClose={() => (setTraining(null), void refresh())} />}
     </Page>
   )
 }
 
-function ManualEditor({ initial, previousPath, projectDirs, onClose }: { initial: ManualInput; previousPath?: string; projectDirs: string[]; onClose: () => void }) {
-  const staff = useOffice(useShallow((s) => s.staff.filter((x) => x.kind === 'hired')))
-  const [form, setForm] = useState<ManualInput>(initial)
-  const [error, setError] = useState('')
-  const [drafter, setDrafter] = useState(staff[0]?.id ?? '')
-  const [request, setRequest] = useState('')
-  const [isDrafting, setIsDrafting] = useState(false)
-  const roles = useMemo(() => [...new Set(staff.map((s) => s.role))], [staff])
-  const update = (patch: Partial<ManualInput>) => setForm((f) => ({ ...f, ...patch }))
-  const updateStep = (i: number, patch: Partial<ProcessStep>) => update({ steps: form.steps.map((s, idx) => (idx === i ? { ...s, ...patch } : s)) })
-  const moveStep = (i: number, d: -1 | 1) => {
-    const steps = [...form.steps]
-    const j = i + d
-    if (j < 0 || j >= steps.length) return
-    ;[steps[i], steps[j]] = [steps[j], steps[i]]
-    update({ steps })
-  }
-  const isValid = NAME_RE.test(form.name) && form.description.trim() && (form.kind === 'personal' ? form.body.trim() : form.steps.length > 0 && form.steps.every((s) => s.title && s.role && s.instruction))
-
-  const handleDraft = async () => {
-    if (!drafter || !request.trim()) return
-    setIsDrafting(true)
-    setError('')
-    try {
-      const d = await window.office.draftManual(drafter, request.trim(), form.kind)
-      update({ ...d, steps: d.steps.map((s, i) => ({ ...newStep(i), ...s })) })
-    } catch (e) {
-      setError(t('manuals.editor.draftFailed', { error: String(e) }))
-    }
-    setIsDrafting(false)
-  }
-  const handleSave = async () => {
-    setError('')
-    try {
-      await window.office.saveManual(form, previousPath)
-      onClose()
-    } catch (e) {
-      setError(String(e).replace(/^Error: (Error invoking remote method '[^']+': )?(Error: )?/, ''))
-    }
-  }
-  const handlePickFolder = async () => {
-    const dir = await window.office.pickFolder()
-    if (dir) update({ projectDir: dir, scope: 'project' })
-  }
-
-  return (
-    <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-3xl">
-        <DialogHeader>
-          <DialogTitle>
-            {previousPath ? t('manuals.editor.editTitle') : t('manuals.editor.newTitle')} · {t(KIND_LABEL[form.kind])}
-          </DialogTitle>
-          <DialogDescription>{form.kind === 'process' ? t('manuals.editor.descProcess') : t('manuals.editor.descPersonal')}</DialogDescription>
-        </DialogHeader>
-
-        {staff.length > 0 && (
-          <div className="bg-muted/40 flex flex-col gap-2 rounded-lg border p-3">
-            <Label className="text-xs"><IconText text={t('manuals.editor.draftLabel')} size={13} /></Label>
-            <div className="flex gap-2">
-              <NativeSelect value={drafter} onChange={(e) => setDrafter(e.target.value)} className="h-8 w-36 text-xs">
-                {staff.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-              </NativeSelect>
-              <Input value={request} onChange={(e) => setRequest(e.target.value)} placeholder={form.kind === 'process' ? t('manuals.editor.draftPlaceholderProcess') : t('manuals.editor.draftPlaceholderPersonal')} className="h-8 text-xs" />
-              <Button size="sm" onClick={() => void handleDraft()} disabled={isDrafting || !request.trim()}>
-                <SparklesIcon /> {isDrafting ? t('manuals.editor.drafting') : t('manuals.editor.draft')}
-              </Button>
-            </div>
-          </div>
-        )}
-
-        <div className="grid grid-cols-2 gap-3">
-          <div className="flex flex-col gap-1">
-            <Label>{t('manuals.editor.nameLabel')}</Label>
-            <Input value={form.name} onChange={(e) => update({ name: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-') })} placeholder="bug-report" className="font-mono" />
-          </div>
-          <div className="flex flex-col gap-1">
-            <Label>{t('manuals.editor.location')}</Label>
-            <div className="flex gap-2">
-              <NativeSelect
-                value={form.scope === 'user' ? '__user__' : (form.projectDir ?? '')}
-                onChange={(e) => (e.target.value === '__user__' ? update({ scope: 'user', projectDir: null }) : update({ scope: 'project', projectDir: e.target.value }))}
-                className="min-w-0 flex-1"
-              >
-                <option value="__user__" disabled={IS_REMOTE_SCREEN}>
-                  {t('manuals.editor.locationUser')}
-                </option>
-                {[...new Set([...projectDirs, ...(form.projectDir ? [form.projectDir] : [])])].map((d) => (
-                  <option key={d} value={d}>
-                    {t('manuals.editor.locationProject', { path: shortPath(d) })}
-                  </option>
-                ))}
-              </NativeSelect>
-              {!IS_REMOTE_SCREEN && (
-                <Button type="button" size="sm" variant="outline" onClick={() => void handlePickFolder()}>
-                  {t('manuals.editor.pickFolder')}
-                </Button>
-              )}
-            </div>
-            {/* 휴대폰에서는 랩 폴더 매뉴얼만 (전역은 PC에서만) */}
-            {IS_REMOTE_SCREEN && form.scope === 'user' && <p className="text-muted-foreground text-xs">{t('manuals.userPcOnly')}</p>}
-          </div>
-        </div>
-        <div className="flex flex-col gap-1">
-          <Label>{t('manuals.editor.descriptionLabel')}</Label>
-          <Input value={form.description} onChange={(e) => update({ description: e.target.value })} placeholder={t('manuals.editor.descriptionPlaceholder')} />
-        </div>
-        <div className="flex flex-col gap-1">
-          <Label>{form.kind === 'process' ? t('manuals.editor.bodyProcess') : t('manuals.editor.bodyPersonal')}</Label>
-          <Textarea value={form.body} onChange={(e) => update({ body: e.target.value })} className="min-h-28 font-mono text-xs" placeholder={'1. …\n2. …'} />
-        </div>
-
-        {form.kind === 'process' && (
-          <div className="flex flex-col gap-2">
-            <Label>{t('manuals.editor.steps')}</Label>
-            <datalist id="manual-roles">
-              {roles.map((r) => (
-                <option key={r} value={r} />
-              ))}
-            </datalist>
-            {form.steps.map((step, i) => (
-              <div key={step.id} className="bg-card flex flex-col gap-2 rounded-lg border p-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-muted-foreground w-5 text-xs font-semibold">{i + 1}</span>
-                  <Input value={step.title} onChange={(e) => updateStep(i, { title: e.target.value })} placeholder={t('manuals.editor.stepTitlePlaceholder')} className="h-8 flex-1 text-xs" />
-                  <Input value={step.role} onChange={(e) => updateStep(i, { role: e.target.value })} list="manual-roles" placeholder={t('manuals.editor.stepRolePlaceholder')} className="h-8 w-40 text-xs" />
-                  <Button size="icon" variant="ghost" className="size-7" onClick={() => moveStep(i, -1)} aria-label={t('manuals.editor.moveUp')}>
-                    <ArrowUpIcon className="size-3.5" />
-                  </Button>
-                  <Button size="icon" variant="ghost" className="size-7" onClick={() => moveStep(i, 1)} aria-label={t('manuals.editor.moveDown')}>
-                    <ArrowDownIcon className="size-3.5" />
-                  </Button>
-                  <Button size="icon" variant="ghost" className="size-7" onClick={() => update({ steps: form.steps.filter((_, idx) => idx !== i) })} aria-label={t('manuals.editor.removeStep')}>
-                    <Trash2Icon className="size-3.5" />
-                  </Button>
-                </div>
-                <Textarea value={step.instruction} onChange={(e) => updateStep(i, { instruction: e.target.value })} placeholder={t('manuals.editor.instructionPlaceholder')} className="min-h-14 text-xs" />
-                <div className="flex flex-wrap items-center gap-3 text-xs">
-                  <label className="flex items-center gap-1">
-                    <input type="checkbox" checked={step.needsMyCheck} onChange={(e) => updateStep(i, { needsMyCheck: e.target.checked })} /> <IconText text={t('manuals.editor.needsMyCheck')} size={13} />
-                  </label>
-                  <label className="flex items-center gap-1">
-                    {t('manuals.editor.onRevise')}
-                    <NativeSelect value={step.onRevise ?? ''} onChange={(e) => updateStep(i, { onRevise: e.target.value || null })} className="h-7 text-xs">
-                      <option value="">{t('manuals.editor.noRevise')}</option>
-                      {form.steps.slice(0, i).map((s, j) => (
-                        <option key={s.id} value={s.id}>
-                          {t('manuals.editor.reviseTo', { n: j + 1, title: s.title || t('manuals.editor.untitled') })}
-                        </option>
-                      ))}
-                    </NativeSelect>
-                  </label>
-                  {step.onRevise && (
-                    <label className="flex items-center gap-1">
-                      {t('manuals.editor.maxLoopsBefore')}
-                      <Input type="number" min={1} max={5} value={step.maxLoops} onChange={(e) => updateStep(i, { maxLoops: Number(e.target.value) || 1 })} className="h-7 w-14 text-xs" />
-                      {t('manuals.editor.maxLoopsAfter')}
-                    </label>
-                  )}
-                </div>
-              </div>
-            ))}
-            <Button size="sm" variant="outline" className="w-fit" onClick={() => update({ steps: [...form.steps, newStep(form.steps.length)] })}>
-              <PlusIcon /> {t('manuals.editor.addStep')}
-            </Button>
-          </div>
-        )}
-
-        {error && <p className="text-status-error text-xs">{error}</p>}
-        <DialogFooter>
-          <Button variant="ghost" onClick={onClose}>
-            {t('common.cancel')}
-          </Button>
-          <Button onClick={() => void handleSave()} disabled={!isValid}>
-            {t('common.save')}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-/** 교육: 개인 매뉴얼은 직원에게, 프로세스 매뉴얼은 랩·팀에 */
-function TrainDialog({ manual, onClose }: { manual: Manual; onClose: () => void }) {
+/** 쓸 수 있게 하기: 한 명이 하는 업무는 직원에게, 여러 명이 이어서 하는 업무는 랩·팀에. 기본 선택은 지금 쓰는 곳만(새 매뉴얼은 비어 있음) — 전원 기본 선택은 뜻하지 않게 권한을 넓힌다 */
+function TrainDialog({ manual, isJustSaved, onClose }: { manual: Manual; isJustSaved?: boolean; onClose: () => void }) {
   const staff = useOffice(useShallow((s) => s.staff.filter((x) => x.kind === 'hired')))
   const labs = useOffice((s) => s.labs)
   const teams = useOffice(useShallow((s) => s.teams.filter((tm) => tm.kind === 'hired')))
@@ -318,16 +135,21 @@ function TrainDialog({ manual, onClose }: { manual: Manual; onClose: () => void 
     else await window.office.trainGroups(manual.name, labIds, teamIds)
     onClose()
   }
+  const selectAll = () => (manual.kind === 'personal' ? setStaffIds(staff.map((s) => s.id)) : (setLabIds(labs.map((l) => l.id)), setTeamIds(teams.map((tm) => tm.id))))
+  const isEmpty = manual.kind === 'personal' ? staff.length === 0 : labs.length + teams.length === 0
   const chip = (isOn: boolean) => cn('flex items-center gap-1.5 rounded-full border py-0.5 pr-2.5 pl-1 text-xs', isOn && 'border-primary bg-accent')
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle><IconText text={t('manuals.train.title', { name: manual.name })} size={18} /></DialogTitle>
+          <DialogTitle><IconText text={t('manuals.train.title', { name: manualLabel(manual) })} size={18} /></DialogTitle>
           <DialogDescription>{manual.kind === 'personal' ? t('manuals.train.descPersonal') : t('manuals.train.descProcess')}</DialogDescription>
         </DialogHeader>
-        {manual.kind === 'personal' ? (
+        {isJustSaved && <p className="text-sm font-medium">{t('manuals.train.justSaved')}</p>}
+        {isEmpty ? (
+          <p className="text-muted-foreground text-sm">{manual.kind === 'personal' ? t('manuals.train.noStaff') : t('manuals.train.noGroups')}</p>
+        ) : manual.kind === 'personal' ? (
           <div className="flex flex-wrap gap-2">
             {staff.map((s) => (
               <button key={s.id} type="button" onClick={() => toggle(staffIds, setStaffIds, s.id)} className={chip(staffIds.includes(s.id))}>
@@ -354,10 +176,17 @@ function TrainDialog({ manual, onClose }: { manual: Manual; onClose: () => void 
           </div>
         )}
         <DialogFooter>
+          {!isEmpty && (
+            <Button variant="outline" className="sm:mr-auto" onClick={selectAll}>
+              {t('manuals.train.selectAll')}
+            </Button>
+          )}
           <Button variant="ghost" onClick={onClose}>
             {t('common.cancel')}
           </Button>
-          <Button onClick={() => void handleSave()}>{t('manuals.train.submit')}</Button>
+          <Button onClick={() => void handleSave()} disabled={isEmpty}>
+            {t('manuals.train.submit')}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

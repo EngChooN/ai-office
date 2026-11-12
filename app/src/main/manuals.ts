@@ -2,16 +2,16 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import type { Manual, ManualInput, ProcessStep } from '../shared/types'
+import { TITLE_KEY, cleanTitle, isValidManualName, slugFromTitle, uniqueManualName } from '../shared/manualName.ts'
 
 // 업무 매뉴얼 = Claude Code 스킬(SKILL.md). 개인 매뉴얼은 표준 스킬 그대로,
 // 프로세스 매뉴얼은 frontmatter에 kind: process를 두고 본문 끝의 office-process 블록에 단계를 JSON으로 적는다.
 
 const USER_DIR = path.join(os.homedir(), '.claude', 'skills')
 const STEPS_FENCE = 'office-process'
-const NAME_RE = /^[a-z0-9][a-z0-9-]{1,62}$/
 
 export const projectSkillsDir = (projectDir: string) => path.join(projectDir, '.claude', 'skills')
-export const isValidManualName = (name: string) => NAME_RE.test(name)
+export { isValidManualName, slugFromTitle }
 
 /** YAML 값의 따옴표를 벗긴다 ("..."는 JSON 문자열로 읽는다) */
 function unquote(v: string) {
@@ -74,7 +74,7 @@ function parse(file: string, scope: Manual['scope'], projectDir: string | null):
     }
     body = body.replace(fence[0], '')
   }
-  const title = meta.title?.trim()
+  const title = cleanTitle(meta[TITLE_KEY])
   return { name, ...(title ? { title } : {}), description: meta.description ?? '', kind: meta.kind === 'process' ? 'process' : 'personal', scope, projectDir, path: file, body: body.trim(), steps, ...(error ? { error } : {}) }
 }
 
@@ -105,31 +105,10 @@ export function listManuals(projectDirs: string[]): Manual[] {
 }
 
 function render(input: ManualInput) {
-  const title = input.title?.trim()
-  const front = ['---', `name: ${input.name}`, ...(title ? [`title: ${JSON.stringify(title.replace(/\n/g, ' '))}`] : []), `description: ${JSON.stringify(input.description.replace(/\n/g, ' '))}`, ...(input.kind === 'process' ? ['kind: process'] : []), '---', '']
+  const title = cleanTitle(input.title)
+  const front = ['---', `name: ${input.name}`, ...(title ? [`${TITLE_KEY}: ${JSON.stringify(title)}`] : []), `description: ${JSON.stringify(input.description.replace(/\n/g, ' '))}`, ...(input.kind === 'process' ? ['kind: process'] : []), '---', '']
   const steps = input.kind === 'process' ? ['', '```' + STEPS_FENCE, JSON.stringify(input.steps, null, 2), '```', ''] : []
   return [...front, input.body.trim(), ...steps].join('\n')
-}
-
-/** 표시 이름에서 영문 내부 이름 후보를 만든다 — 영문·숫자가 있으면 그걸 쓰고, 한글뿐이면 manual-무작위 6자 */
-export function slugFromTitle(title: string): string {
-  const base = title
-    .toLowerCase()
-    .normalize('NFKD')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 55)
-    .replace(/-+$/, '')
-  if (base.length >= 2) return base
-  return `manual-${Math.random().toString(36).slice(2, 8).padEnd(6, '0')}`
-}
-
-/** 같은 폴더가 이미 있으면 -2, -3… 을 붙여 비어 있는 내부 이름을 돌려준다 */
-export function uniqueManualName(root: string, base: string): string {
-  const b = isValidManualName(base) ? base : slugFromTitle(base)
-  let name = b
-  for (let n = 2; fs.existsSync(path.join(root, name)); n++) name = `${b.slice(0, 63 - String(n).length - 1)}-${n}`
-  return name
 }
 
 export function saveManual(input: ManualInput, previousPath?: string): Manual {
@@ -137,7 +116,7 @@ export function saveManual(input: ManualInput, previousPath?: string): Manual {
   if (!previousPath && (!input.name.trim() || input.autoName)) {
     const autoRoot = input.scope === 'user' ? USER_DIR : projectSkillsDir(input.projectDir ?? '')
     if (input.scope === 'project' && !input.projectDir) throw new Error('프로젝트 폴더를 골라 주세요.')
-    input = { ...input, name: uniqueManualName(autoRoot, input.name.trim() || slugFromTitle(input.title ?? '')) }
+    input = { ...input, name: uniqueManualName(input.name.trim() || slugFromTitle(input.title ?? ''), (n) => fs.existsSync(path.join(autoRoot, n))) }
   }
   if (!isValidManualName(input.name)) throw new Error('매뉴얼 이름은 영문 소문자·숫자·하이픈(-)으로 2~63자여야 해요.')
   const root = input.scope === 'user' ? USER_DIR : projectSkillsDir(input.projectDir ?? '')

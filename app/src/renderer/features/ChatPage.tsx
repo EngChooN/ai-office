@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils'
 import { handleComposerKey, NEWLINE_HINT } from '@/lib/composerKeys'
 import { commandDescription, commandItem, manualItem, SlashMenu, usePersonalManuals, useSlashKeys, useStaffCommands, type SlashMode } from '@/components/slash-menu'
 import { matchCommands, runsOnEnter } from '@shared/slashCommands'
+import { manualLabel } from '@shared/manualName'
 import { useOffice } from '@/store'
 import type { Approval, ChatApproval, ChatApprovalResult, ChatMessage, ChatSendMode, Lab, Staff, Team } from '@shared/types'
 import { chatApprovalView } from '@shared/chatApproval'
@@ -587,7 +588,9 @@ function Composer({ room }: { room: RoomInfo | undefined }) {
   const recipientIds = parsed?.recipientIds ?? []
   const slashQuery = slashToken !== undefined && recipientIds.length > 0 && parsed?.body === `/${slashToken}` ? slashToken : null
   const commands = useStaffCommands(recipientIds, slashQuery !== null)
-  const manualNames = new Set(usePersonalManuals(slashQuery !== null).map((m) => m.name))
+  const personalManuals = usePersonalManuals(slashQuery !== null)
+  const manualNames = new Set(personalManuals.map((m) => m.name))
+  const manualTitles = new Map(personalManuals.map((m) => [m.name, manualLabel(m)]))
   const matched = slashQuery === null || !commands ? [] : matchCommands(commands, slashQuery)
   // 📘 매뉴얼·/ 명령 버튼으로 열면 그쪽만 보인다
   const [slashMode, setSlashMode] = useState<SlashMode>('all')
@@ -598,7 +601,7 @@ function Composer({ room }: { room: RoomInfo | undefined }) {
     ...(slashMode === 'command' ? [] : matched.filter((c) => manualNames.has(c.name))),
     ...(slashMode === 'manual' ? [] : matched.filter((c) => !manualNames.has(c.name))),
   ]
-  const slashItems = commands && slashCommands.map((c) => (manualNames.has(c.name) ? manualItem(c.name, commandDescription(c)) : commandItem(c)))
+  const slashItems = commands && slashCommands.map((c) => (manualNames.has(c.name) ? manualItem(c.name, commandDescription(c), manualTitles.get(c.name)) : commandItem(c)))
   // 꼭 넣을 인자가 없는 명령은 Enter면 바로 보낸다 (매뉴얼·Tab·클릭은 채우기만)
   const handleSlashPick = (i: number, isEnter = false) => {
     const command = slashCommands[i]

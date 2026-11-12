@@ -15,6 +15,7 @@ import { useShallow } from 'zustand/react/shallow'
 import { useOffice } from '@/store'
 import { isAbsorbedOpen } from '@shared/planTasks'
 import { t, type TKey } from '@shared/i18n'
+import { useManualLabelOf } from '@/components/slash-menu'
 import type { Task, TaskStatus } from '@shared/types'
 import { PlanCard } from './PlanCard'
 import { RunCard } from './RunCard'
@@ -222,6 +223,7 @@ function TaskCard({ task }: { task: Task }) {
   const run = useOffice((s) => s.runs.find((r) => r.taskId === task.id && r.status !== 'stopped'))
   const allLabs = useOffice((s) => s.labs)
   const allTeams = useOffice((s) => s.teams)
+  const labelOf = useManualLabelOf()
   // 이 카드의 랩·팀에 교육된 프로세스 매뉴얼 (없으면 매뉴얼이 있는 아무 랩·팀)
   const processScopes = [
     ...allLabs
@@ -334,7 +336,7 @@ function TaskCard({ task }: { task: Task }) {
             {processScopes.flatMap((sc) =>
               sc.manuals.map((m) => (
                 <option key={`${sc.id}-${m}`} value={`${sc.kind}|${sc.id}|${m}`}>
-                  {m} · {sc.name}
+                  {labelOf(m)} · {sc.name}
                 </option>
               )),
             )}

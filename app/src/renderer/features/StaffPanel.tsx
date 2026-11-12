@@ -28,7 +28,8 @@ import { claudeModelName, CLAUDE_MODEL_ROWS, usageDotsText } from './modelOption
 import { folderName, formatCost, formatTokens, shortPath, STATUS_META, workDirLabel } from './status'
 import { Markdown } from '@/components/markdown'
 import { JumpToBottom, useStickToBottom } from '@/components/stick-to-bottom'
-import { commandItem, manualItem, SlashMenu, usePersonalManuals, useSlashKeys, useStaffCommands, type SlashMode } from '@/components/slash-menu'
+import { manualLabel } from '@shared/manualName'
+import { commandItem, manualItem, SlashMenu, useManualLabelOf, usePersonalManuals, useSlashKeys, useStaffCommands, type SlashMode } from '@/components/slash-menu'
 import { matchCommands, runsOnEnter } from '@shared/slashCommands'
 import { mergeRefDocs, REF_DOCS_TOTAL } from '@shared/refDocs'
 import { fmtDate, t, trOr, type TKey } from '@shared/i18n'
@@ -437,9 +438,9 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
       : [
           ...personalManuals
             .filter((m) => staff.equipment.skills === 'all' || staff.equipment.skills.includes(m.name))
-            .map((m) => ({ name: m.name, label: m.name, description: m.description })),
+            .map((m) => ({ name: m.name, label: manualLabel(m), description: m.description })),
           ...processes,
-        ].filter((m) => m.name.toLowerCase().includes(q))
+        ].filter((m) => m.name.toLowerCase().includes(q) || m.label.toLowerCase().includes(q))
   // 스킬 목록 중 매뉴얼실에 있는 개인 매뉴얼(이름 대조)은 '내 매뉴얼' 쪽에만 둔다
   const manualNames = new Set(personalManuals.map((m) => m.name))
   const slashCommands =
@@ -450,7 +451,7 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
       ? null
       : [
           ...manualChoices.map((m) =>
-            m.scope ? { ...manualItem(m.name), key: `run:${m.label}`, label: `🔁 ${m.label}`, tag: t('staffPanel.manual.startProcess') } : manualItem(m.name, m.description),
+            m.scope ? { ...manualItem(m.name), key: `run:${m.label}`, label: `🔁 ${m.label}`, tag: t('staffPanel.manual.startProcess') } : manualItem(m.name, m.description, m.label),
           ),
           ...slashCommands.map(commandItem),
         ]
@@ -1266,13 +1267,14 @@ interface ManualChoice {
 function useProcessChoices(staff: Staff): ManualChoice[] {
   const labs = useOffice((s) => s.labs)
   const teams = useOffice((s) => s.teams)
+  const labelOf = useManualLabelOf()
   return [
     ...labs
       .filter((l) => l.memberIds.includes(staff.id))
-      .flatMap((l) => (l.manuals ?? []).map((m): ManualChoice => ({ name: m, label: `${m} · ${l.name}`, scope: { kind: 'lab', id: l.id } }))),
+      .flatMap((l) => (l.manuals ?? []).map((m): ManualChoice => ({ name: m, label: `${labelOf(m)} · ${l.name}`, scope: { kind: 'lab', id: l.id } }))),
     ...teams
       .filter((tm) => tm.id === staff.teamId)
-      .flatMap((tm) => (tm.manuals ?? []).map((m): ManualChoice => ({ name: m, label: `${m} · ${tm.name}`, scope: { kind: 'team', id: tm.id } }))),
+      .flatMap((tm) => (tm.manuals ?? []).map((m): ManualChoice => ({ name: m, label: `${labelOf(m)} · ${tm.name}`, scope: { kind: 'team', id: tm.id } }))),
   ]
 }
 
