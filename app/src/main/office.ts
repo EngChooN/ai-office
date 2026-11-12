@@ -152,6 +152,8 @@ import {
 } from '../shared/economy'
 import { HiredStaffManager } from './hired'
 import { askAsProvider, askOnce, type createRuntime, type RateLimitInfo } from './ai'
+import { createApprovalEffectAi } from './approvalEffectAi'
+import { aiGuessInput, mergeGuess } from '../shared/approvalAiGuess'
 import { probeMcpStatus, sdk } from './ai/claude'
 import { splitFinished } from './ai/pendingSends'
 import { buildStaffProgress, summarizeInstruction } from '../shared/staffProgress'
@@ -290,6 +292,12 @@ export class Office extends EventEmitter<{
   /** /명령 설명 번역 (키: 원문 해시 + 언어 → 번역, null = DB에도 없음). 번역 중인 키는 원문 그대로 둔다 */
   private commandText = new Map<string, string | null>()
   private commandTextBusy = new Set<string>()
+  /** 규칙으로 못 푼 셸 결재의 AI 추정 (가벼운 모델, 메모리 캐시) */
+  private effectAi = createApprovalEffectAi({
+    ask: (opts) => askOnce({ ...opts, tier: 'light', cwd: os.homedir(), onRateLimit: (info) => this.onRateLimit(info) }),
+    // 플랜 한도로 보류 중이면 부르지 않는다 (규칙 줄·위험 동작 줄만 보인다)
+    isPaused: () => this.currentHold('claude').isHeld,
+  })
   private planUsage: PlanUsage[] = []
   /** Codex 사용률 (보류·알림 판정에는 쓰지 않는다 — Claude 직원 흐름과 분리) */
   private codexUsage: PlanUsage[] = []
@@ -2113,6 +2121,22 @@ export class Office extends EventEmitter<{
     this.patch(s.id, { status: 'waiting', activity: `결재 대기: ${a.toolName}` })
     this.postChat(s.id, `결재 부탁드려요 🙏 ${a.toolName} ${a.summary}`.slice(0, CHAT_TEXT_MAX), undefined, { id: a.id })
     this.emit('notify', { title: t('notify.approval', { name: s.name }), body: `${a.toolName} ${a.summary}`.slice(0, 120), staffId: s.id })
+    this.requestEffectGuess(a)
+  }
+
+  /** 규칙으로 못 푼 셸 결재에 AI 추정 줄을 채운다 — 카드는 이미 떠 있고, 실패하면 아무것도 안 한다. 사용량은 결재를 올린 직원 몫 */
+  private requestEffectGuess(a: Approval) {
+    const command = aiGuessInput(a)
+    if (!command) return
+    void this.effectAi.request(command, getLang(), (u) => this.recordUsage(a.staffId, u)).then((ai) => {
+      const s = this.hired.get(a.staffId)
+      const cur = s?.approvals.find((x) => x.id === a.id)
+      if (!ai || !s || !cur) return
+      const next = { ...cur, effectGuess: mergeGuess(command, ai) }
+      s.approvals = s.approvals.map((x) => (x.id === a.id ? next : x))
+      this.persistApproval(next)
+      this.scheduleEmit()
+    })
   }
 
   // ── 자동결재 (대표 부재 중) ───────────────────────────

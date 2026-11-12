@@ -57,6 +57,16 @@ export type ApprovalWaitReason =
   | 'written-file' // 방금 고친 파일을 실행하는 명령
   | 'build-script' // 방금 바꾼 package.json 스크립트·Makefile 타깃을 실행하는 명령
 
+/** 결재 카드 추정 줄의 동작 낱말 (위험한 것부터: shared/approvalGuess.ts VERB_ORDER) */
+export type EffectVerb = 'read' | 'create' | 'modify' | 'delete' | 'send' | 'fetch' | 'install' | 'run' | 'system'
+
+/** AI 추정 = 글자에서 찾은 낱말 ∪ AI 낱말. unsure면 무엇을 바꾸는지 확인하지 못한 것 */
+export interface EffectGuess {
+  verbs: EffectVerb[]
+  target?: string
+  unsure?: true
+}
+
 export interface Approval {
   id: string
   staffId: string
@@ -66,6 +76,8 @@ export interface Approval {
   summaryI18n?: I18nArg
   /** 카드 제목에 보일 효과 한 문장 (shared/approvalEffect.ts). 없으면(풀 수 없는 명령·질문·예전 결재) 원문만 보인다. 허용 규칙 매칭에는 쓰지 않는다 */
   effectI18n?: I18nText
+  /** 규칙으로 못 푼 셸 명령의 AI 추정 (shared/approvalAiGuess.ts) — 도착하면 채운다. 결재함·직원 패널 카드에만 보이고 허용 판정에는 쓰지 않는다 */
+  effectGuess?: EffectGuess
   createdAt: number
   /** 직원의 질문(AskUserQuestion)이면 질문 목록 — 승인·반려 대신 답을 고른다 */
   questions?: StaffQuestion[]

