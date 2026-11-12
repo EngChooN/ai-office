@@ -124,7 +124,8 @@ export interface PeerAttachmentBrief {
 }
 
 /** 짝짓기 종류 */
-export type PairKind = 'peer' | 'phone'
+/** view: 다른 PC가 이 PC의 사무실 화면을 보는 열쇠 ('화면 보기' 권한을 처음부터 가진 슬롯) */
+export type PairKind = 'peer' | 'phone' | 'view'
 
 /** 짝짓기 창 상태 (B컴 화면에 보이는 값 — 코드는 화면에만) */
 export interface PairWindowView {
@@ -162,6 +163,10 @@ export interface PeerSlotView {
   label: string
   createdAt: number
   lastSeenAt: number | null
+  /** '화면 보기' 권한 허락 여부 */
+  view: boolean
+  /** 허락을 기다리는 중 (저쪽이 hello로 요청했고 이 PC 앞에서 아직 정하지 않음) */
+  viewPending: boolean
 }
 
 /** 랩에 넣을 수 있는 B컴 직원 (목록 가져오기 결과) */

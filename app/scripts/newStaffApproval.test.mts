@@ -12,8 +12,8 @@ test('새 직원 기본 결재: PC는 acceptEdits, 휴대폰은 ask', () => {
 })
 
 test('고용 폼·외부 직원 정식 채용 폼은 이 기본값으로 시작한다', () => {
-  assert.match(src('src/renderer/features/HireDialog.tsx'), /approvalMode: newStaffApprovalMode\(IS_MOBILE_SHELL\)/)
-  assert.match(src('src/renderer/features/StaffPanel.tsx'), /useState<ApprovalMode>\(newStaffApprovalMode\(IS_MOBILE_SHELL\)\)/)
+  assert.match(src('src/renderer/features/HireDialog.tsx'), /approvalMode: newStaffApprovalMode\(IS_REMOTE_SCREEN\)/)
+  assert.match(src('src/renderer/features/StaffPanel.tsx'), /useState<ApprovalMode>\(newStaffApprovalMode\(IS_REMOTE_SCREEN\)\)/)
 })
 
 test('외부 연동 직원·팩으로 들인 직원은 그대로 모두 결재', () => {

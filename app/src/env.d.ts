@@ -6,6 +6,7 @@ import type { OfficePackApi } from './shared/staffPack'
 import type { OfficeSceneApi } from './shared/sceneExport'
 import type { OfficePetApi } from './shared/deskPet'
 import type { OfficeErrorsApi } from './shared/errorReport'
+import type { OfficeWorkspacesApi } from './shared/workspace'
 
 declare global {
   interface Window {
@@ -26,7 +27,16 @@ declare global {
     officePet?: OfficePetApi
     /** 안드로이드 셸이 넣는 메시지 통로 (모바일 빌드만, docs/specs/android-bridge.md) */
     OfficeBridge?: { postMessage(text: string): void; onmessage: ((e: { data: string }) => void) | null }
+    /** 워크스페이스 목록·전환 (이 PC 창은 추가·수정·삭제까지, 원격 창은 보기·전환만 — 모바일 빌드에는 없다) */
+    officeWorkspaces?: OfficeWorkspacesApi
+    /** 원격 창(다른 PC 화면) 메시지 통로 (remotePreload — 원격 창에만 있다) */
+    officeRemoteBridge?: { postMessage(text: string): void; setOnMessage(cb: ((e: { data: string }) => void) | null): void }
+    /** 원격 창의 이 PC OS (remotePreload) */
+    officeRemoteShell?: { platform: string }
   }
+  // 원격 창 화면 묶음 (forge renderer 'remote_window')
+  const REMOTE_WINDOW_VITE_DEV_SERVER_URL: string
+  const REMOTE_WINDOW_VITE_NAME: string
   // 모바일 빌드(vite.mobile.config.mts)만 정의한다 — 데스크톱·main 빌드에는 없으니 typeof로 확인하고 읽는다
   const __OFFICE_SHELL__: string | undefined
   const __OFFICE_FILE_BASE__: string | undefined

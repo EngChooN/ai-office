@@ -87,7 +87,7 @@ useOffice.subscribe((s, prev) => {
 })
 
 // 폰·태블릿 배치와 키보드: 판정은 layoutState.ts (키보드를 뺀 높이로 — 입력 중에 배치가 바뀌어 입력칸이 다시 만들어지지 않게)
-// 결과는 <html data-layout="phone" data-short data-split>(CSS phone:·short:·split:·side:)와 useLayout(틀 고르기)이 같이 본다
+// 결과는 <html data-layout="phone" data-short data-split data-slim>(CSS phone:·short:·split:·side:·slim:)와 useLayout(틀 고르기)이 같이 본다
 const tracker = createLayoutTracker({ width: window.innerWidth, height: window.innerHeight })
 let ime = 0
 const isTyping = () => {
@@ -103,6 +103,8 @@ const applyLayout = () => {
   else delete root.dataset.short
   if (next.isSplit) root.dataset.split = ''
   else delete root.dataset.split
+  if (next.isSlim) root.dataset.slim = ''
+  else delete root.dataset.slim
   if (next.isKeyboardOpen) root.dataset.keyboard = ''
   else delete root.dataset.keyboard
   setLayoutState(next)

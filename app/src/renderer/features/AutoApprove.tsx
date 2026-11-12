@@ -11,7 +11,7 @@ import type { Approval, AutoHandled, Staff } from '@shared/types'
 import { useNow } from './status'
 import { fmtDate, t, trOr } from '@shared/i18n'
 import { toolDisplayName } from '@shared/computerTools'
-import { IS_MOBILE_SHELL } from '@/shell'
+import { IS_REMOTE_SCREEN } from '@/shell'
 import { DuoIcon } from '@/components/duo-icon'
 
 // 자동결재(대표 부재 중) 화면 3곳: 설정 칸 · 상단 바 표시 · 결재함 "자동 처리됨" 목록
@@ -96,13 +96,13 @@ export function AutoApproveSection() {
         )}
       </p>
       <div className="flex flex-col gap-1">
-        <label className={cn('flex w-fit items-center gap-1.5 text-xs', IS_MOBILE_SHELL && !isFull ? 'opacity-60' : 'cursor-pointer')}>
-          <input type="checkbox" checked={isFull} disabled={IS_MOBILE_SHELL && !isFull} onChange={(e) => void handleFull(e.target.checked)} />
+        <label className={cn('flex w-fit items-center gap-1.5 text-xs', IS_REMOTE_SCREEN && !isFull ? 'opacity-60' : 'cursor-pointer')}>
+          <input type="checkbox" checked={isFull} disabled={IS_REMOTE_SCREEN && !isFull} onChange={(e) => void handleFull(e.target.checked)} />
           <BotIcon className={cn('size-3.5', isFull && 'text-status-working')} />
           <span className={cn('font-medium', isFull && 'text-status-working')}>{t('autonomy.full')}</span>
           <span className="text-muted-foreground">· {t('autonomy.hint')}</span>
         </label>
-        <p className="text-muted-foreground pl-5 text-xs">{IS_MOBILE_SHELL && !isFull ? t('autonomy.pcOnly') : t('autonomy.fullHint')}</p>
+        <p className="text-muted-foreground pl-5 text-xs">{IS_REMOTE_SCREEN && !isFull ? t('autonomy.pcOnly') : t('autonomy.fullHint')}</p>
         {fullError && (
           <p role="alert" className="text-status-error pl-5 text-xs">
             {fullError}
@@ -118,7 +118,7 @@ export function AutoApproveSection() {
         ))}
       </div>
       {/* 매일 시간대는 PC에서만 — 휴대폰은 '지금부터 N시간'만 (저절로 꺼진다) */}
-      {IS_MOBILE_SHELL ? (
+      {IS_REMOTE_SCREEN ? (
         <p className="text-muted-foreground text-xs">{t('autoApprove.dailyPcOnly')}</p>
       ) : (
         <div className="flex flex-wrap items-center gap-1.5">
@@ -284,7 +284,7 @@ export function AlwaysApproveButton({ approval, staffName }: { approval: Approva
   const [isBusy, setIsBusy] = useState(false)
   // 브라우저 결재 카드는 규칙 대신 "브라우저 자동 허용"을 켠다 — PC에서만 (휴대폰에서 한 번 누른 승인이 앞으로의 허가가 되지 않게)
   if (approval.browserAutoOffer) {
-    if (IS_MOBILE_SHELL) return null
+    if (IS_REMOTE_SCREEN) return null
     const handleBrowserAuto = async () => {
       if (!window.confirm(t('browserAuto.confirm', { name: staffName }))) return
       setIsBusy(true)
@@ -299,7 +299,7 @@ export function AlwaysApproveButton({ approval, staffName }: { approval: Approva
   }
   if (!approval.alwaysRule) return null
   // 명령(Bash) 규칙은 PC에서만 만든다 — 휴대폰에서는 PC가 이번 한 번만 승인하므로 버튼을 두지 않는다
-  if (IS_MOBILE_SHELL && /^bash$/i.test(approval.alwaysRule.toolName.trim())) return null
+  if (IS_REMOTE_SCREEN && /^bash$/i.test(approval.alwaysRule.toolName.trim())) return null
   const rule = ruleLabel(approval.alwaysRule)
   const handleClick = async () => {
     if (!window.confirm(t('rule.confirm', { name: staffName, rule }))) return

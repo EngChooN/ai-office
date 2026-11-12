@@ -1,5 +1,5 @@
 import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
-import { ArrowUpIcon, CheckIcon, ChevronDownIcon, ChevronUpIcon, CircleStopIcon, DownloadIcon, EllipsisIcon, PaperclipIcon, PlusIcon, SendIcon, SquareTerminalIcon, UserMinusIcon, XIcon, ZapIcon } from 'lucide-react'
+import { ArrowUpIcon, BookOpenIcon, BriefcaseIcon, CalendarClockIcon, CheckIcon, ChevronDownIcon, ChevronUpIcon, CircleStopIcon, DownloadIcon, EllipsisIcon, FolderIcon, InfoIcon, PaperclipIcon, PlusIcon, SendIcon, SquareTerminalIcon, TrophyIcon, UserMinusIcon, XIcon, ZapIcon } from 'lucide-react'
 import { NativeSelect } from '@/components/ui/select'
 import { AttachButton, AttachmentView, DraftAttachments, useDraftAttachments } from '@/components/attachments'
 import { Button } from '@/components/ui/button'
@@ -13,7 +13,7 @@ import { newStaffApprovalMode, ROLE_PRESETS, type AiProvider, type ApprovalMode,
 import { ENGINE_NAME } from '@shared/engineModel'
 import { ApprovalSplitHandle, useApprovalSplit } from './ApprovalSplit'
 import { AvatarEditor } from './AvatarEditor'
-import { EquipmentTab } from './EquipmentTab'
+import { EquipCard, EquipmentTab } from './EquipmentTab'
 import { QuestionBox, StopWorkButton } from './QuestionBox'
 import { RefDocsEditor } from './RefDocsEditor'
 import { ReviewTab } from './ReviewTab'
@@ -25,7 +25,7 @@ import { AutonomyCheck } from './Autonomy'
 import { MemoryLengthSelect } from './MemoryLength'
 import { useProviders } from './ProviderCards'
 import { claudeModelName, CLAUDE_MODEL_ROWS, usageDotsText } from './modelOptions'
-import { formatCost, formatTokens, shortPath, workDirLabel } from './status'
+import { folderName, formatCost, formatTokens, shortPath, STATUS_META, workDirLabel } from './status'
 import { Markdown } from '@/components/markdown'
 import { JumpToBottom, useStickToBottom } from '@/components/stick-to-bottom'
 import { commandItem, manualItem, SlashMenu, usePersonalManuals, useSlashKeys, useStaffCommands, type SlashMode } from '@/components/slash-menu'
@@ -33,12 +33,13 @@ import { matchCommands, runsOnEnter } from '@shared/slashCommands'
 import { mergeRefDocs, REF_DOCS_TOTAL } from '@shared/refDocs'
 import { fmtDate, t, trOr, type TKey } from '@shared/i18n'
 import { roleLabel } from '@shared/roleLabel'
-import { IS_MOBILE_SHELL } from '@/shell'
+import { IS_REMOTE_SCREEN } from '@/shell'
 import { PcOnlyState } from '@/components/pc-only-state'
 import { ChangesetCard } from './ChangesetCard'
 import { ApprovalStatusChips } from './AutoApprove'
 import { WaitReasonLine } from './WaitReasonLine'
 import { ApprovalSummary } from './ApprovalSummary'
+import { ApprovalBand } from './ApprovalBand'
 import { useStaffRecord, type OlderState } from './useStaffRecord'
 import { dayKey, dayStarts } from '@shared/recordLogs'
 import { DuoIcon, IconText } from '@/components/duo-icon'
@@ -491,6 +492,12 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
   }
   const [isExportOpen, setExportOpen] = useState(false)
   const split = useApprovalSplit(staff.approvals.length)
+  // 세로 폰 결재 띠의 '보기' — 다른 배치에선 쓰지 않는다 (결재 칸이 늘 보인다)
+  const [isBandOpen, setIsBandOpen] = useState(false)
+  // 결재가 다 끝나면 접어 둔다 — 새 결재가 와도 띠(승인 버튼)부터 보이게
+  useEffect(() => {
+    if (staff.approvals.length === 0) setIsBandOpen(false)
+  }, [staff.approvals.length])
 
   return (
     <aside
@@ -501,8 +508,12 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
       {/* 좌우 분할(폴드 와이드 커버 등): 왼쪽 칸 200px에 머리·진행·결재·세로 탭·토큰, 오른쪽 칸에 탭 내용·입력.
           분할이 아니면 두 칸 모두 display: contents라 지금과 같은 한 줄 쌓기. 키보드가 열리면(split만, side 아님) 왼쪽 칸을 숨긴다 */}
       <div className="split:hidden side:flex side:w-[200px] side:shrink-0 side:flex-col side:gap-2.5 side:overflow-y-auto side:border-r side:px-3 side:py-2.5 contents">
-      <header className="side:flex-col side:items-stretch side:gap-1.5 side:border-b-0 side:p-0 flex items-start gap-3 border-b p-4">
-        <HeaderPortrait staff={staff} />
+      {/* 세로 폰(slim:): 머리 56px 한 줄 — 미니 뷰 대신 얼굴, 폴더·터미널 이어 하기는 ⋯ 안으로, 오늘 비용은 둘째 줄에 */}
+      <header className="side:flex-col side:items-stretch side:gap-1.5 side:border-b-0 side:p-0 slim:min-h-14 slim:items-center slim:gap-2.5 slim:px-3 slim:py-1.5 flex items-start gap-3 border-b p-4">
+        <div className="slim:hidden contents">
+          <HeaderPortrait staff={staff} />
+        </div>
+        <Avatar avatar={staff.avatar} name={staff.name} teamId={staff.teamId} className="slim:block hidden size-10 shrink-0" />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span className="truncate font-semibold">{staff.name}</span>
@@ -511,8 +522,9 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
           <div className="text-muted-foreground truncate text-xs">
             {roleLabel(staff.role)}
             {isHired && ` · ${modelLabel(staff.model)}`}
+            {isHired && <span className="slim:inline hidden">{` · ${t('staffPanel.usage.today')} ${formatCost(record?.costUsd ?? 0)}`}</span>}
           </div>
-          <div className="text-muted-foreground selectable truncate text-xs" title={staff.cwd}>
+          <div className="text-muted-foreground selectable slim:hidden truncate text-xs" title={staff.cwd}>
             {workDirLabel(staff)}
           </div>
           {/* 사무실에서 나눈 대화를 터미널의 Claude Code에서 그대로 이어 쓴다 (쉬는 중일 때만) */}
@@ -526,7 +538,7 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
                   ? t('staffPanel.resume.busyTitle')
                   : t('staffPanel.resume.title', { engine: staff.provider === 'codex' ? 'Codex' : 'Claude Code' })
               }
-              className="text-primary side:hidden mt-1 flex items-center gap-1 text-xs hover:underline disabled:text-muted-foreground disabled:no-underline"
+              className="text-primary side:hidden slim:hidden mt-1 flex items-center gap-1 text-xs hover:underline disabled:text-muted-foreground disabled:no-underline"
             >
               <SquareTerminalIcon className="size-3.5" /> {t('staffPanel.resume.button')}
               {isBusy && <span className="text-muted-foreground">{t('staffPanel.resume.afterWork')}</span>}
@@ -535,7 +547,7 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
         </div>
         <div className="side:order-first side:self-end flex shrink-0 items-center">
           {/* 분할 왼쪽 칸: 터미널에서 이어 하기·대화만 보기·글자 크기를 ⋯ 하나에 (분할이 아니면 원래 자리에 있다) */}
-          <PopMenu icon={<EllipsisIcon />} label={t('staffPanel.more')} opens="down" className="side:block hidden">
+          <PopMenu icon={<EllipsisIcon />} label={t('staffPanel.more')} opens="down" className="side:block slim:block hidden">
             {(close) => (
               <>
                 {isHired && staff.sessionId && (
@@ -582,13 +594,14 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
           <ProgressLine staff={staff} progress={staff.progress} variant="panel" />
         </div>
       )}
+      <ApprovalBand staff={staff} isOpen={isBandOpen} onToggle={() => setIsBandOpen((v) => !v)} />
       {staff.approvals.length > 0 && (
         <section
           ref={split.ref}
           style={split.isFolded ? undefined : split.shownHeight ? { height: split.shownHeight } : split.maxHeight !== null ? { maxHeight: `min(50%, ${split.maxHeight}px)` } : undefined}
           // 펼친 칸은 패널이 모자랄 때(작은 창에서 매뉴얼 메뉴가 열리는 등) 하한 아래로도 줄어 하단 입력칸이 잘리지 않게 한다. 가로 폰은 패널을 스크롤하므로 그대로
           // 폰은 패널이 늘 전체 화면이고 손잡이가 없다 — 저장한 높이를 쓰지 않고 내용만큼(최대 절반)
-          className={cn('phone:h-auto! phone:max-h-[50%] phone:border-b side:max-h-none side:shrink-0 side:overflow-visible side:border-b-0 side:px-0 side:py-0 flex flex-col gap-2 overflow-y-auto px-4', split.isFolded ? 'shrink-0 border-b py-2' : 'short:shrink-0 min-h-0 py-4', !split.height && 'max-h-[50%]')}
+          className={cn('phone:h-auto! phone:max-h-[50%] phone:border-b side:max-h-none side:shrink-0 side:overflow-visible side:border-b-0 side:px-0 side:py-0 flex flex-col gap-2 overflow-y-auto px-4', split.isFolded ? 'shrink-0 border-b py-2' : 'short:shrink-0 min-h-0 py-4', !split.height && 'max-h-[50%]', !isBandOpen && 'slim:hidden')}
         >
           <div className="flex items-center gap-2">
             <h3 className="text-status-waiting text-xs font-semibold">{t('staffPanel.approvals.title', { n: staff.approvals.length })}</h3>
@@ -605,7 +618,7 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
           {!split.isFolded && staff.approvals.map((a) => (
             <div key={a.id} className="bg-muted side:border side:border-status-waiting side:bg-card side:rounded-xl flex flex-col gap-2 rounded-lg p-3">
               {a.requestedBy && <div className="text-muted-foreground text-xs">{t('approval.requestedBy', { name: a.requestedBy })}</div>}
-              {(a.questions || (a.peerChanges && !IS_MOBILE_SHELL)) && (
+              {(a.questions || (a.peerChanges && !IS_REMOTE_SCREEN)) && (
                 <>
                   <WaitReasonLine reason={a.waitReason} />
                   {a.isRestored && <div className="text-muted-foreground text-xs">↻ {t('approval.restored')}</div>}
@@ -613,7 +626,7 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
               )}
               {a.questions ? (
                 <QuestionBox approval={a} />
-              ) : a.peerChanges && !IS_MOBILE_SHELL ? (
+              ) : a.peerChanges && !IS_REMOTE_SCREEN ? (
                 <ChangesetCard approval={a} staffName={staff.name} />
               ) : (
                 <>
@@ -653,6 +666,11 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
               {t(TAB_LABEL[key])}
             </button>
           ))}
+          {/* 세로 폰: 진행 상태는 탭 줄 오른쪽 한 마디 (진행 줄·사용량 칸은 숨긴다) */}
+          <span className={cn('slim:flex hidden ml-auto items-center gap-1.5 self-center text-[11px]', STATUS_META[staff.status].text)}>
+            <span className={cn('size-1.5 rounded-full', STATUS_META[staff.status].dot, staff.status === 'working' && 'animate-pulse')} />
+            {STATUS_META[staff.status].label}
+          </span>
         </div>
       }
 
@@ -675,11 +693,11 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
       ) : (
         <>
           {staff.progress && (
-            <div className="split:hidden contents">
+            <div className="split:hidden slim:hidden contents">
               <ProgressLine staff={staff} progress={staff.progress} variant="panel" />
             </div>
           )}
-          <section className="split:hidden flex items-center gap-4 border-b px-4 py-3 text-xs">
+          <section className="split:hidden slim:hidden flex items-center gap-4 border-b px-4 py-3 text-xs">
             <span className="text-muted-foreground">{t('staffPanel.usage.today')}</span>
             <span>{t('staffPanel.usage.tokens', { n: formatTokens(isHired ? (record?.tokensIn ?? 0) + (record?.tokensOut ?? 0) : (todayTokens ?? 0)) })}</span>
             {isHired && <span>{formatCost(record?.costUsd ?? 0)}</span>}
@@ -687,7 +705,7 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
           </section>
 
           {/* 제목·보기 토글은 기록을 스크롤해도 보이도록 스크롤 영역 밖에 둔다 */}
-          <div className="split:hidden flex items-center gap-2 px-4 pt-4 pb-2">
+          <div className="split:hidden slim:hidden flex items-center gap-2 px-4 pt-4 pb-2">
             <h3 className="text-muted-foreground text-xs font-semibold">{t('staffPanel.log.title')}</h3>
             <div className="ml-auto flex items-center rounded-md border" role="group" aria-label={t('staffPanel.font.label')}>
               <button
@@ -721,7 +739,7 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
           </div>
           {/* 가로 폰: 패널 전체를 밀어 올려 보도록 기록 칸 높이를 지킨다 */}
           <div data-split-rest="200" className="short:min-h-[70dvh] relative flex min-h-0 flex-1 flex-col">
-            <section ref={setLogScrollEl} onScroll={handleLogScroll} className="split:pt-3 min-h-0 flex-1 overflow-y-auto px-4 pb-4" style={{ fontSize }}>
+            <section ref={setLogScrollEl} onScroll={handleLogScroll} className="split:pt-3 slim:pt-3 min-h-0 flex-1 overflow-y-auto px-4 pb-4" style={{ fontSize }}>
               <div ref={logScroll.contentRef} className="flex flex-col gap-2">
                 {/* 고용 직후(기록이 하나도 없음): 다음에 할 일을 알려 주고 예시 지시를 칩으로 — 누르면 아래 칸에 채운다 */}
                 {logs.length === 0 && isHired ? (
@@ -764,7 +782,7 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
 
       {tab === 'review' || tab === 'equip' ? null : isHired ? (
         // 작은 창(폰 키보드가 올라온 때 등)에서 매뉴얼·명령 메뉴가 길어지면 메뉴가 먼저 줄어 스크롤되고, 그래도 모자라면 입력 영역이 스크롤된다 — 패널 밖으로 밀리지 않게 (가로 폰은 패널을 스크롤하므로 그대로)
-        <footer className="short:shrink-0 split:px-3 split:py-2 flex min-h-0 flex-col gap-2 overflow-y-auto border-t p-4">
+        <footer className="short:shrink-0 split:px-3 split:py-2 slim:px-3 slim:py-2 flex min-h-0 flex-col gap-2 overflow-y-auto border-t p-4">
           <DraftAttachments files={draftFiles.files} onRemove={draftFiles.remove} />
           {pickedManual && <PickedManual manual={pickedManual} onRemove={() => setPickedManual(null)} />}
           {slashQuery !== null && (
@@ -780,9 +798,9 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
               logs.length === 0 && !hasDraft && 'border-primary ring-primary/30 ring-2',
             )}
           >
-            <AttachButton onPick={draftFiles.add} className="split:hidden shrink-0" />
+            <AttachButton onPick={draftFiles.add} className="split:hidden slim:hidden shrink-0" />
             {/* 분할 화면: 첨부·자율 진행·기억 길이·매뉴얼·명령·내보내기·해고를 ＋ 하나에 (자율 진행이 켜져 있으면 점) */}
-            <PopMenu icon={<PlusIcon />} label={t('staffPanel.plusMenu')} hasDot={isAutonomous} className="split:block hidden [&>button]:size-8">
+            <PopMenu icon={<PlusIcon />} label={t('staffPanel.plusMenu')} hasDot={isAutonomous} className="split:block slim:block hidden [&>button]:size-8">
               {(close) => (
                 <>
                   <AttachButton onPick={(files) => (draftFiles.add(files), close())} className="hover:bg-accent flex min-h-9 items-center gap-2 rounded-lg px-2.5 text-left text-sm">
@@ -823,7 +841,7 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
                   ? t('staffPanel.composer.busyPlaceholder', { keys: `${STOP_HINT}${NEWLINE_HINT}` })
                   : t('staffPanel.composer.placeholder', { name: staff.name, keys: `${SEND_HINT}${NEWLINE_HINT}` })
               }
-              className="field-sizing-content max-h-40 min-h-8 min-w-0 flex-1 resize-none border-0 px-1 py-1.5 focus-visible:shadow-none"
+              className="field-sizing-content slim:placeholder-shown:field-sizing-fixed slim:placeholder-shown:h-8 slim:placeholder-shown:overflow-hidden slim:placeholder-shown:whitespace-nowrap max-h-40 min-h-8 min-w-0 flex-1 resize-none border-0 px-1 py-1.5 focus-visible:shadow-none"
               style={{ fontSize }}
             />
             {isBusy && !hasDraft ? (
@@ -858,11 +876,11 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
               </Button>
             )}
           </div>
-          <div className="split:hidden flex items-center gap-2 px-1">
+          <div className="split:hidden slim:hidden flex items-center gap-2 px-1">
             <AutonomyCheck checked={isAutonomous} onChange={setIsAutonomous} className="min-w-0 flex-1" />
             {!staff.remote && <MemoryLengthSelect staff={staff} />}
           </div>
-          <div className="split:hidden flex items-center gap-2">
+          <div className="split:hidden slim:hidden flex items-center gap-2">
             <Button size="sm" variant="ghost" className="h-8 px-2 text-xs" onClick={() => openSlash('manual')} title={t('slashMenu.manualButtonTitle')}>
               <IconText text={t('slashMenu.manualButton')} size={13} />
             </Button>
@@ -910,92 +928,111 @@ function Profile({ staff }: { staff: Staff }) {
     { label: t('staffPanel.profile.totalPay'), value: formatCost(staff.costUsd) },
   ]
   return (
-    <section data-split-rest className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
+    <section data-split-rest className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
       {!isWorkMode && <AvatarEditor value={staff.avatar} onChange={(avatar) => void window.office.updateStaff(staff.id, { avatar })} />}
       <NameRole key={`${staff.name}\n${staff.role}`} staff={staff} />
-      {!isWorkMode && (
-        <div className="flex flex-col gap-2">
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-bold">Lv.{st.level}</span>
-            <span className="text-muted-foreground text-xs">{t('staffPanel.profile.xp', { n: st.xp })}</span>
+      <EquipCard icon={<TrophyIcon />} title={t('staffPanel.profile.card.record')}>
+        {!isWorkMode && (
+          <div className="flex flex-col gap-1.5">
+            {/* 경험치 규칙은 늘 보일 필요가 없어 ⓘ(마우스를 올리면) 안으로 */}
+            <div className="flex items-baseline gap-2">
+              <span className="text-xl font-bold">Lv.{st.level}</span>
+              <span className="text-muted-foreground inline-flex items-center gap-1 text-xs" title={t('staffPanel.profile.xpRule')}>
+                {t('staffPanel.profile.xp', { n: st.xp })}
+                <InfoIcon className="size-3" aria-label={t('staffPanel.profile.xpRule')} />
+              </span>
+            </div>
+            <div className="bg-muted h-2 overflow-hidden rounded-full">
+              <div className="bg-primary h-full rounded-full" style={{ width: `${Math.round(st.progress * 100)}%` }} />
+            </div>
           </div>
-          <div className="bg-muted h-2 overflow-hidden rounded-full">
-            <div className="bg-primary h-full rounded-full" style={{ width: `${Math.round(st.progress * 100)}%` }} />
-          </div>
-          <p className="text-muted-foreground text-[11px]">{t('staffPanel.profile.xpRule')}</p>
+        )}
+        <div className="slim:grid-cols-2 grid grid-cols-4 gap-2">
+          {items.map((it) => (
+            <div key={it.label} className="text-center">
+              <div className="text-base font-semibold tabular-nums">{it.value}</div>
+              <div className="text-muted-foreground text-[11px]">{it.label}</div>
+            </div>
+          ))}
         </div>
-      )}
-      <div className="grid grid-cols-2 gap-2">
-        {items.map((it) => (
-          <div key={it.label} className="bg-muted rounded-lg p-3">
-            <div className="text-muted-foreground text-[11px]">{it.label}</div>
-            <div className="text-lg font-semibold">{it.value}</div>
+      </EquipCard>
+      <EquipCard icon={<BriefcaseIcon />} title={t('staffPanel.profile.card.way')}>
+        <label className="flex flex-col gap-1 text-xs">
+          <span className="text-muted-foreground">{t('staffPanel.profile.engine')}</span>
+          <EngineSelect staff={staff} />
+        </label>
+        <label className="flex flex-col gap-1 text-xs">
+          <span className="text-muted-foreground">{t('staffPanel.profile.model')}</span>
+          <ModelSelect staff={staff} />
+          {staff.provider !== 'codex' && <span className="text-muted-foreground text-[11px]">{t('staffPanel.profile.dots')}</span>}
+        </label>
+        <label className="flex flex-col gap-1 text-xs">
+          <span className="text-muted-foreground">{t('staffPanel.profile.team')} {team?.leadId === staff.id && (isWorkMode ? t('staffPanel.profile.lead') : t('staffPanel.profile.leader'))}</span>
+          <NativeSelect
+            value={staff.teamId ?? ''}
+            onChange={(e) =>
+              void window.office.updateStaff(staff.id, {
+                teamId: e.target.value || null,
+              })
+            }
+          >
+            <option value="">{t('staffPanel.noTeam')}</option>
+            {teams.map((tm) => (
+              <option key={tm.id} value={tm.id}>
+                {tm.name}
+              </option>
+            ))}
+          </NativeSelect>
+        </label>
+        {/* 결재 방식은 고용 때 정해져 표시만 — 이 직원 설정과 회사 전체 자동결재를 다른 줄로 나눠 무엇이 무엇인지 보이게 */}
+        {staff.kind === 'hired' && (
+          <div className="flex flex-col gap-1 text-xs">
+            <span className="text-muted-foreground">{t('hire.approval')}</span>
+            <span className="font-medium">{t(staff.approvalMode === 'acceptEdits' ? 'hire.approval.acceptEdits' : 'hire.approval.ask')}</span>
+            <span className="text-muted-foreground text-[11px]">{t('staffPanel.profile.approvalNote')}</span>
+            <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+              <span className="text-muted-foreground">{t('approvalStatus.company')}</span>
+              <ApprovalStatusChips />
+            </div>
           </div>
-        ))}
-      </div>
-      <div className="flex flex-col gap-1 text-xs">
-        <span className="text-muted-foreground"><DuoIcon name="manual" size={13} className="mr-1" />{t('staffPanel.profile.skills')}</span>
-        <div className="flex flex-wrap gap-1">
+        )}
+      </EquipCard>
+      <EquipCard icon={<FolderIcon />} title={t('staffPanel.profile.card.place')}>
+        <WorkDir staff={staff} />
+        {staff.kind === 'hired' && <StaffRefDocs staff={staff} />}
+      </EquipCard>
+      <EquipCard icon={<CalendarClockIcon />} title={t('staffPanel.profile.schedules')}>
+        <div className="flex flex-col gap-1 text-xs">
+          {schedules.length === 0 && <span className="text-muted-foreground">{t('staffPanel.profile.none')}</span>}
+          {schedules.map((sc) => (
+            <span key={sc.id}>
+              {sc.time} · {sc.label}
+              {!sc.enabled && t('staffPanel.profile.scheduleOff')}
+            </span>
+          ))}
+          <Button size="sm" variant="outline" className="mt-1 w-fit" onClick={() => setView('schedule')}>
+            {t('staffPanel.profile.manageSchedules')}
+          </Button>
+        </div>
+      </EquipCard>
+      <EquipCard icon={<BookOpenIcon />} title={t('staffPanel.profile.skills')}>
+        <div className="flex flex-wrap gap-1 text-xs">
           {staff.equipment.skills === 'all' ? (
             <span className="bg-muted rounded-full px-2 py-0.5">{t('staffPanel.profile.skillsAll')}</span>
           ) : staff.equipment.skills.length === 0 ? (
-            <span className="text-muted-foreground">{t('staffPanel.profile.skillsNone')}</span>
+            <button type="button" className="text-primary hover:underline" onClick={() => setView('manuals')}>
+              {t('staffPanel.profile.skillsNone')}
+            </button>
           ) : (
             staff.equipment.skills.map((n) => (
               <span key={n} className="bg-primary/15 text-primary rounded-full px-2 py-0.5 font-medium">
-                <DuoIcon name="manual" size={12} className="mr-1" />{n}
+                <DuoIcon name="manual" size={12} className="mr-1" />
+                {n}
               </span>
             ))
           )}
         </div>
-      </div>
-      <label className="flex flex-col gap-1 text-xs">
-        <span className="text-muted-foreground">{t('staffPanel.profile.engine')}</span>
-        <EngineSelect staff={staff} />
-      </label>
-      <label className="flex flex-col gap-1 text-xs">
-        <span className="text-muted-foreground">{t('staffPanel.profile.model')}</span>
-        <ModelSelect staff={staff} />
-      </label>
-      <label className="flex flex-col gap-1 text-xs">
-        <span className="text-muted-foreground">{t('staffPanel.profile.team')} {team?.leadId === staff.id && (isWorkMode ? t('staffPanel.profile.lead') : t('staffPanel.profile.leader'))}</span>
-        <NativeSelect
-          value={staff.teamId ?? ''}
-          onChange={(e) =>
-            void window.office.updateStaff(staff.id, {
-              teamId: e.target.value || null,
-            })
-          }
-        >
-          <option value="">{t('staffPanel.noTeam')}</option>
-          {teams.map((tm) => (
-            <option key={tm.id} value={tm.id}>
-              {tm.name}
-            </option>
-          ))}
-        </NativeSelect>
-      </label>
-      {staff.kind === 'hired' && (
-        <div className="flex flex-col gap-1 text-xs">
-          <span className="text-muted-foreground">{t('hire.approval')}</span>
-          <ApprovalStatusChips staff={staff} />
-        </div>
-      )}
-      <WorkDir staff={staff} />
-      {staff.kind === 'hired' && <StaffRefDocs staff={staff} />}
-      <div className="flex flex-col gap-1 text-xs">
-        <span className="text-muted-foreground">{t('staffPanel.profile.schedules')}</span>
-        {schedules.length === 0 && <span className="text-muted-foreground">{t('staffPanel.profile.none')}</span>}
-        {schedules.map((sc) => (
-          <span key={sc.id}>
-            {sc.time} · {sc.label}
-            {!sc.enabled && t('staffPanel.profile.scheduleOff')}
-          </span>
-        ))}
-        <Button size="sm" variant="outline" className="mt-1 w-fit" onClick={() => setView('schedule')}>
-          {t('staffPanel.profile.manageSchedules')}
-        </Button>
-      </div>
+      </EquipCard>
       <p className="text-muted-foreground text-xs">{t('staffPanel.profile.hiredAt', { date: fmtDate(staff.hiredAt, PROFILE_DATE) })}</p>
     </section>
   )
@@ -1075,14 +1112,15 @@ function WorkDir({ staff }: { staff: Staff }) {
     <div className="flex flex-col gap-1 text-xs">
       <span className="text-muted-foreground">{t('staffPanel.workDir.title')}</span>
       {staff.ownCwd ? (
-        <span className="selectable truncate font-mono text-[11px]" title={staff.ownCwd}>
-          {shortPath(staff.ownCwd)}
+        <span className="flex min-w-0 flex-col" title={staff.ownCwd}>
+          <span className="truncate text-sm font-medium">{folderName(staff.ownCwd)}</span>
+          <span className="selectable text-muted-foreground truncate font-mono text-[11px]">{shortPath(staff.ownCwd)}</span>
         </span>
       ) : (
         <span>{t('staffPanel.workDir.none')}</span>
       )}
       {/* 작업 폴더는 직원이 읽고 쓰는 범위라 PC에서만 바꾼다 (PC가 휴대폰에서 온 값을 버린다) */}
-      {IS_MOBILE_SHELL ? (
+      {IS_REMOTE_SCREEN ? (
         <PcOnlyState />
       ) : (
         <div className="flex gap-1.5">
@@ -1109,7 +1147,7 @@ function ExternalActions({ staff }: { staff: Staff }) {
   const [role, setRole] = useState<string>(ROLE_PRESETS[1])
   const [model, setModel] = useState<ModelChoice>('default')
   const [teamId, setTeamId] = useState('')
-  const [approvalMode, setApprovalMode] = useState<ApprovalMode>(newStaffApprovalMode(IS_MOBILE_SHELL))
+  const [approvalMode, setApprovalMode] = useState<ApprovalMode>(newStaffApprovalMode(IS_REMOTE_SCREEN))
   const [order, setOrder] = useState('')
   const [isSending, setIsSending] = useState(false)
 
@@ -1187,12 +1225,12 @@ function ExternalActions({ staff }: { staff: Staff }) {
             {/* 휴대폰에서 정식 채용하면 늘 '매번 묻기' (파일 수정 자동 승인은 PC에서만) */}
             <NativeSelect value={approvalMode} onChange={(e) => setApprovalMode(e.target.value as ApprovalMode)} className="h-8 w-28 text-xs">
               <option value="ask">{t('staffPanel.external.approveAll')}</option>
-              <option value="acceptEdits" disabled={IS_MOBILE_SHELL}>
+              <option value="acceptEdits" disabled={IS_REMOTE_SCREEN}>
                 {t('staffPanel.external.acceptEdits')}
               </option>
             </NativeSelect>
           </div>
-          {IS_MOBILE_SHELL && <PcOnlyState />}
+          {IS_REMOTE_SCREEN && <PcOnlyState />}
           <div className="flex gap-2">
             <Button size="sm" onClick={handleRecruit}>
               {t('staffPanel.external.recruit')}

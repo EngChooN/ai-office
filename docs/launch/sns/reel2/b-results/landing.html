@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>달빛 커피 · 동네의 작은 쉼표</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --cream: #fff8ee;
+    --peach: #ffd9b8;
+    --apricot: #ffb27a;
+    --coffee: #6b3e26;
+    --cocoa: #3d2418;
+    --honey: #f6c453;
+    --rose: #ff8f7a;
+  }
+  html, body { overflow-x: hidden; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", "Noto Sans KR", sans-serif;
+    background: var(--cream);
+    color: var(--cocoa);
+    line-height: 1.6;
+    word-break: keep-all;
+    overflow-wrap: break-word;
+  }
+  .wrap { width: 100%; max-width: 1040px; margin: 0 auto; padding: 0 20px; }
+
+  /* 히어로 */
+  .hero {
+    position: relative;
+    overflow: hidden;
+    padding: 72px 0 96px;
+    text-align: center;
+    background:
+      radial-gradient(circle at 15% 20%, #fff3c4 0, transparent 40%),
+      radial-gradient(circle at 85% 10%, #ffe0d1 0, transparent 45%),
+      linear-gradient(180deg, #ffe7cf 0%, var(--cream) 100%);
+  }
+  .moon {
+    width: 96px; height: 96px; margin: 0 auto 24px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #fff9dc, var(--honey) 70%);
+    box-shadow: 0 0 0 12px rgba(246,196,83,.18), 0 0 60px 20px rgba(246,196,83,.35);
+    position: relative;
+    animation: float 4s ease-in-out infinite;
+  }
+  .moon::after {
+    content: "☕"; position: absolute; inset: 0;
+    display: grid; place-items: center; font-size: 40px;
+  }
+  @keyframes float { 50% { transform: translateY(-8px); } }
+  .star { position: absolute; color: var(--honey); font-size: 18px; opacity: .8; animation: twinkle 2.6s ease-in-out infinite; }
+  .star:nth-of-type(1) { top: 18%; left: 12%; }
+  .star:nth-of-type(2) { top: 30%; right: 14%; animation-delay: .8s; }
+  .star:nth-of-type(3) { top: 62%; left: 8%; animation-delay: 1.4s; font-size: 14px; }
+  @keyframes twinkle { 50% { opacity: .25; transform: scale(.8); } }
+  .badge {
+    display: inline-block; padding: 6px 14px; margin-bottom: 16px;
+    border-radius: 999px; background: #fff; color: var(--coffee);
+    font-size: 13px; font-weight: 700; box-shadow: 0 4px 14px rgba(107,62,38,.12);
+  }
+  .hero h1 {
+    font-size: clamp(40px, 11vw, 72px);
+    line-height: 1.1; letter-spacing: -0.02em;
+    color: var(--coffee);
+  }
+  .hero h1 span { color: var(--rose); }
+  .hero p {
+    max-width: 480px; margin: 18px auto 0;
+    font-size: clamp(16px, 4.2vw, 19px); color: #7a5240;
+  }
+
+  /* 섹션 공통 */
+  section { padding: 56px 0; }
+  .title { text-align: center; margin-bottom: 28px; }
+  .title small { display: block; color: var(--apricot); font-weight: 800; letter-spacing: .12em; font-size: 12px; }
+  .title h2 { font-size: clamp(26px, 7vw, 34px); color: var(--coffee); }
+
+  /* 메뉴 카드 */
+  .menu {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 20px;
+  }
+  .card {
+    background: #fff;
+    border-radius: 24px;
+    padding: 28px 24px;
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(107,62,38,.10);
+    transition: transform .25s, box-shadow .25s;
+  }
+  .card:hover { transform: translateY(-6px); box-shadow: 0 16px 36px rgba(107,62,38,.16); }
+  .icon {
+    width: 88px; height: 88px; margin: 0 auto 16px;
+    display: grid; place-items: center;
+    border-radius: 50%; font-size: 44px;
+  }
+  .c1 .icon { background: #ffe6d3; }
+  .c2 .icon { background: #fff1c7; }
+  .c3 .icon { background: #ffe0e6; }
+  .card h3 { font-size: 20px; color: var(--coffee); }
+  .card p { font-size: 14px; color: #8a6352; margin: 6px 0 14px; }
+  .price {
+    display: inline-block; padding: 4px 14px; border-radius: 999px;
+    background: var(--cream); color: var(--coffee); font-weight: 800;
+  }
+
+  /* 영업시간·위치 */
+  .info { background: linear-gradient(180deg, var(--cream), #ffeedd); }
+  .info-box {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px;
+  }
+  .info-item {
+    background: #fff; border-radius: 24px; padding: 24px;
+    border: 2px dashed var(--peach);
+  }
+  .info-item h3 { font-size: 18px; color: var(--coffee); margin-bottom: 10px; }
+  .row { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px solid #f6e6d6; font-size: 15px; }
+  .row:last-child { border-bottom: 0; }
+  .row b { color: var(--coffee); }
+  .off { color: var(--rose); font-weight: 700; }
+  .addr { font-size: 15px; color: #7a5240; }
+  .addr div { padding: 4px 0; }
+
+  /* 버튼 */
+  .cta { text-align: center; padding: 56px 0 40px; }
+  .cta h2 { font-size: clamp(24px, 6.5vw, 32px); color: var(--coffee); margin-bottom: 20px; }
+  .buttons { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+  .btn {
+    display: inline-block; padding: 16px 28px; border-radius: 999px;
+    font-weight: 800; font-size: 16px; text-decoration: none;
+    transition: transform .2s;
+  }
+  .btn:active { transform: scale(.96); }
+  .btn.main { background: linear-gradient(135deg, var(--rose), var(--apricot)); color: #fff; box-shadow: 0 10px 24px rgba(255,143,122,.4); }
+  .btn.sub { background: #fff; color: var(--coffee); border: 2px solid var(--peach); }
+
+  footer { text-align: center; padding: 24px 20px 36px; font-size: 12px; color: #b08a76; }
+
+  @media (max-width: 420px) {
+    .hero { padding: 56px 0 72px; }
+    section { padding: 44px 0; }
+    .btn { width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <span class="star">✦</span><span class="star">✦</span><span class="star">✦</span>
+  <div class="wrap">
+    <div class="moon" aria-hidden="true"></div>
+    <span class="badge">🌙 동네 골목 끝, 작은 카페</span>
+    <h1>달빛 <span>커피</span></h1>
+    <p>하루의 끝에 들르고 싶은 곳.<br>직접 볶은 원두와 갓 구운 빵으로 따뜻한 쉼표를 내려 드려요.</p>
+  </div>
+</header>
+
+<section>
+  <div class="wrap">
+    <div class="title"><small>SIGNATURE</small><h2>대표 메뉴</h2></div>
+    <div class="menu">
+      <div class="card c1">
+        <div class="icon">☕</div>
+        <h3>달빛 라떼</h3>
+        <p>꿀과 시나몬을 살짝 더한 부드러운 시그니처 라떼</p>
+        <span class="price">5,500원</span>
+      </div>
+      <div class="card c2">
+        <div class="icon">🥐</div>
+        <h3>버터 크루아상</h3>
+        <p>매일 아침 구워 내는 겹겹이 바삭한 크루아상</p>
+        <span class="price">4,000원</span>
+      </div>
+      <div class="card c3">
+        <div class="icon">🍓</div>
+        <h3>딸기 크림 케이크</h3>
+        <p>제철 딸기를 듬뿍 올린 폭신한 생크림 케이크</p>
+        <span class="price">6,800원</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="info">
+  <div class="wrap">
+    <div class="title"><small>VISIT US</small><h2>영업시간 · 위치</h2></div>
+    <div class="info-box">
+      <div class="info-item">
+        <h3>🕰️ 영업시간</h3>
+        <div class="row"><span>평일</span><b>08:00 – 22:00</b></div>
+        <div class="row"><span>주말</span><b>10:00 – 23:00</b></div>
+        <div class="row"><span>정기 휴무</span><span class="off">매주 월요일</span></div>
+      </div>
+      <div class="info-item">
+        <h3>📍 오시는 길</h3>
+        <div class="addr">
+          <div>서울시 달빛구 별빛로 12, 1층</div>
+          <div>달빛역 2번 출구에서 걸어서 3분</div>
+          <div>☎ 02-000-0000</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="cta">
+  <div class="wrap">
+    <h2>오늘 저녁, 달빛 아래서 만나요 🌙</h2>
+    <div class="buttons">
+      <a class="btn main" href="#">자리 예약하기</a>
+      <a class="btn sub" href="#">메뉴 전체 보기</a>
+    </div>
+  </div>
+</div>
+
+<footer>※ 예시로 만든 가상의 가게입니다. 주소와 전화번호는 실제가 아닙니다.</footer>
+
+</body>
+</html>

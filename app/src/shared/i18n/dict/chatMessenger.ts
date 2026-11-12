@@ -14,7 +14,7 @@ export default {
   'chat.delivery.stopped': { ko: '{name} 멈춤', en: '{name} stopped', ja: '{name} 停止', zh: '{name} 已停止' },
   'chat.delivery.canceled': { ko: '{name} 보내기 취소', en: 'Canceled for {name}', ja: '{name} 送信取り消し', zh: '已取消发给 {name}' },
   'chat.delivery.summaryDone': { ko: '{total}명 중 {count}명 완료', en: '{count} of {total} done', ja: '{total}人中 {count}人 完了', zh: '{total} 人中 {count} 人完成' },
-  'chat.delivery.summaryWorking': { ko: '{count}명 작업 중', en: '{count} working', ja: '{count}人 作業中', zh: '{count} 人工作中' },
+  'chat.delivery.summaryWorking': { ko: '{count}명 작업 중', en: '{count} working', ja: '{count}人 作業中', zh: '{count} 人在忙' },
   'chat.delivery.summaryWaiting': { ko: '{count}명 대기', en: '{count} waiting', ja: '{count}人 待機', zh: '{count} 人等待' },
   'chat.delivery.summaryAttention': { ko: '{count}명 확인 필요', en: '{count} need you', ja: '{count}人 確認が必要', zh: '{count} 人需要确认' },
   'chat.delivery.viewReport': { ko: '보고 보기', en: 'View report', ja: '報告を見る', zh: '查看报告' },
@@ -111,6 +111,9 @@ export default {
 
   // 8. 대화 찾기
   'chat.search.open': { ko: '대화 찾기 (⌘F)', en: 'Search chat (⌘F)', ja: '会話を検索 (⌘F)', zh: '搜索聊天 (⌘F)' },
+  'chat.slim.switch': { ko: '방·회의실 바꾸기', en: 'Switch room or meeting room', ja: '部屋・会議室を切り替え', zh: '切换聊天室或会议室' },
+  'chat.slim.working': { ko: '{count} 작업', en: '{count} working', ja: '{count} 作業中', zh: '{count} 人工作中' },
+  'chat.slim.about': { ko: '방 설명', en: 'About this room', ja: '部屋の説明', zh: '聊天室说明' },
   'chat.search.placeholder': { ko: '찾을 말', en: 'Search', ja: '検索する言葉', zh: '要搜索的内容' },
   'chat.search.count': { ko: '{total}개 중 {index}번째', en: '{index} of {total}', ja: '{total}件中 {index}件目', zh: '第 {index} / {total} 条' },
   'chat.search.none': { ko: '찾은 말이 없어요', en: 'No matches', ja: '見つかりませんでした', zh: '没有找到' },

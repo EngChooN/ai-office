@@ -252,6 +252,8 @@ export interface ProcessStep {
 
 export interface Manual {
   name: string
+  /** 화면에 보이는 이름(한글 등). 없으면 name을 보여 준다 */
+  title?: string
   description: string
   kind: ManualKind
   scope: ManualScope
@@ -265,7 +267,10 @@ export interface Manual {
 }
 
 export interface ManualInput {
+  /** 영문 내부 이름. 비우거나 autoName이면 새로 만들 때 자동으로 정하고 겹치면 -2를 붙인다 */
   name: string
+  autoName?: boolean
+  title?: string
   description: string
   kind: ManualKind
   scope: ManualScope
@@ -1197,7 +1202,7 @@ export interface OfficeApi {
   saveManual(input: ManualInput, previousPath?: string): Promise<Manual>
   deleteManual(path: string): Promise<void>
   /** 직원에게 매뉴얼 초안을 맡긴다 (저장하지 않고 양식에 채울 내용을 돌려줌) */
-  draftManual(staffId: string, request: string, kind: ManualKind): Promise<Pick<ManualInput, 'name' | 'description' | 'body' | 'steps'>>
+  draftManual(staffId: string, request: string, kind: ManualKind): Promise<Pick<ManualInput, 'name' | 'title' | 'description' | 'body' | 'steps'>>
   /** 개인 매뉴얼 교육: 직원 목록을 통째로 정한다 */
   trainStaff(manualName: string, staffIds: string[]): Promise<void>
   /** 프로세스 매뉴얼 교육: 랩·팀 목록을 통째로 정한다 */

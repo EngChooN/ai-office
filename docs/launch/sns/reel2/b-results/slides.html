@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>달빛 커피 · 2027 신메뉴 출시 계획</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #1b1612; font-family: -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif; color: #3b2a1e; padding: 24px 0; }
+  .slide { width: min(1280px, 96vw); aspect-ratio: 16 / 9; margin: 0 auto 28px; background: #fbf6ee; border-radius: 16px; position: relative; overflow: hidden; padding: 5.5% 6%; display: flex; flex-direction: column; box-shadow: 0 10px 40px rgba(0,0,0,.4); container-type: inline-size; }
+  .slide::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 1.2%; background: #c8873a; }
+  .num { position: absolute; right: 3%; bottom: 3%; font-size: 1.6cqw; color: #a8927c; }
+  .tag { font-size: 1.7cqw; letter-spacing: .2em; color: #c8873a; font-weight: 700; margin-bottom: 1.2cqw; }
+  h1 { font-size: 6.4cqw; line-height: 1.2; }
+  h2 { font-size: 4cqw; margin-bottom: 3cqw; }
+  p, li { font-size: 2.3cqw; line-height: 1.5; }
+  .cover { background: linear-gradient(135deg, #2a1d14, #4a3322); color: #fbf0de; justify-content: center; }
+  .cover .tag { color: #e8b36a; }
+  .cover p { color: #d9c3a5; margin-top: 2.5cqw; font-size: 2.4cqw; }
+  .cover .moon { position: absolute; right: 8%; top: 14%; width: 16cqw; height: 16cqw; border-radius: 50%; background: #f3d79a; box-shadow: inset -3cqw -1cqw 0 0 #e1b667; opacity: .95; }
+  .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2.4cqw; }
+  .card { background: #fff; border: 1px solid #ecdcc4; border-radius: 1.2cqw; padding: 2.4cqw; }
+  .card .big { font-size: 5cqw; font-weight: 800; color: #c8873a; }
+  .card .lbl { font-size: 2cqw; color: #7a6450; margin-top: .6cqw; }
+  .menu .emoji { width: 7cqw; height: 7cqw; border-radius: 50%; background: #f4e3c6; display: grid; place-items: center; font-size: 3.6cqw; margin-bottom: 1.4cqw; }
+  .menu h3 { font-size: 2.8cqw; margin-bottom: .6cqw; }
+  .menu p { font-size: 1.9cqw; color: #6b563f; }
+  .menu .price { margin-top: 1.4cqw; font-weight: 700; color: #c8873a; font-size: 2.2cqw; }
+  .timeline { list-style: none; position: relative; padding-left: 4cqw; }
+  .timeline::before { content: ""; position: absolute; left: 1cqw; top: .8cqw; bottom: .8cqw; width: .4cqw; background: #e2cba6; }
+  .timeline li { position: relative; margin-bottom: 2.2cqw; }
+  .timeline li::before { content: ""; position: absolute; left: -3.8cqw; top: .9cqw; width: 1.6cqw; height: 1.6cqw; border-radius: 50%; background: #c8873a; }
+  .timeline b { display: inline-block; min-width: 14cqw; color: #c8873a; }
+  .chart { display: flex; align-items: flex-end; gap: 4cqw; height: 24cqw; border-bottom: .3cqw solid #cdb590; padding: 0 3cqw; }
+  .bar { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; }
+  .bar i { display: block; width: 100%; border-radius: .8cqw .8cqw 0 0; background: #d9c3a5; }
+  .bar.hi i { background: #c8873a; }
+  .bar span { font-size: 2.2cqw; font-weight: 700; margin-bottom: .6cqw; }
+  .labels { display: flex; gap: 4cqw; padding: 1cqw 3cqw 0; }
+  .labels div { flex: 1; text-align: center; font-size: 2cqw; color: #6b563f; }
+  .note { font-size: 1.6cqw; color: #a8927c; margin-top: auto; }
+</style>
+</head>
+<body>
+
+<section class="slide cover" id="s1">
+  <div class="moon"></div>
+  <div class="tag">DALBIT COFFEE</div>
+  <h1>2027 신메뉴<br>출시 계획</h1>
+  <p>달빛 커피 · 메뉴 기획 회의 · 2026년 12월</p>
+  <div class="num">1 / 5</div>
+</section>
+
+<section class="slide" id="s2">
+  <div class="tag">CURRENT</div>
+  <h2>현황: 단골은 탄탄, 메뉴는 정체</h2>
+  <div class="cards">
+    <div class="card"><div class="big">1,240명</div><div class="lbl">월 평균 방문 고객</div></div>
+    <div class="card"><div class="big">62%</div><div class="lbl">재방문 단골 비중</div></div>
+    <div class="card"><div class="big">3년째</div><div class="lbl">시그니처 메뉴 변동 없음</div></div>
+  </div>
+  <p style="margin-top:3cqw;color:#6b563f">고객 설문 1위 요청: “계절에 맞는 새로운 음료와 디저트”</p>
+  <div class="note">※ 모든 수치는 가상의 값입니다.</div>
+  <div class="num">2 / 5</div>
+</section>
+
+<section class="slide" id="s3">
+  <div class="tag">NEW MENU</div>
+  <h2>신메뉴 3종</h2>
+  <div class="cards">
+    <div class="card menu"><div class="emoji">🌙</div><h3>달빛 라떼</h3><p>흑임자 크림과 바닐라 시럽을 올린 시그니처 라떼</p><div class="price">5,800원</div></div>
+    <div class="card menu"><div class="emoji">🍊</div><h3>유자 크러시 에이드</h3><p>제주 유자청과 탄산, 얼음을 갈아 넣은 상큼한 에이드</p><div class="price">5,500원</div></div>
+    <div class="card menu"><div class="emoji">🥐</div><h3>밤 크루아상</h3><p>구운 밤 크림을 채운 매장 직접 구운 크루아상</p><div class="price">4,800원</div></div>
+  </div>
+  <div class="num">3 / 5</div>
+</section>
+
+<section class="slide" id="s4">
+  <div class="tag">SCHEDULE</div>
+  <h2>출시 일정</h2>
+  <ul class="timeline">
+    <li><b>2027. 1월</b>레시피 확정 및 원재료 거래처 계약</li>
+    <li><b>2027. 2월</b>단골 대상 시음회 (50명) · 피드백 반영</li>
+    <li><b>2027. 3월</b>직원 교육 및 메뉴판·포스터 제작</li>
+    <li><b>2027. 4월</b>신메뉴 3종 정식 출시 · SNS 이벤트</li>
+  </ul>
+  <div class="num">4 / 5</div>
+</section>
+
+<section class="slide" id="s5">
+  <div class="tag">EXPECTED IMPACT</div>
+  <h2>예상 효과: 출시 후 월 매출 +28%</h2>
+  <div class="chart">
+    <div class="bar"><span>1,800</span><i style="height:60%"></i></div>
+    <div class="bar"><span>2,100</span><i style="height:70%"></i></div>
+    <div class="bar hi"><span>2,300</span><i style="height:77%"></i></div>
+    <div class="bar hi"><span>2,600</span><i style="height:87%"></i></div>
+  </div>
+  <div class="labels"><div>현재</div><div>출시 1개월</div><div>출시 3개월</div><div>출시 6개월</div></div>
+  <div class="note">월 매출 예상(단위: 만원) · 가상의 값입니다.</div>
+  <div class="num">5 / 5</div>
+</section>
+
+</body>
+</html>

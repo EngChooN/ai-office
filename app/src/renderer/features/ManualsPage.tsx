@@ -14,7 +14,7 @@ import type { Manual, ManualInput, ManualKind, ProcessStep } from '@shared/types
 import { t, type TKey } from '@shared/i18n'
 import { Avatar } from './StaffCard'
 import { shortPath } from './status'
-import { IS_MOBILE_SHELL } from '@/shell'
+import { IS_REMOTE_SCREEN } from '@/shell'
 import { DuoIcon, IconText } from '@/components/duo-icon'
 
 const NAME_RE = /^[a-z0-9][a-z0-9-]{1,62}$/
@@ -47,7 +47,7 @@ export function ManualsPage() {
   }, [refresh])
 
   // 휴대폰에서는 랩 폴더에만 만들 수 있다 (PC가 다른 폴더를 막는다)
-  const projectDirs = useMemo(() => [...new Set([...(IS_MOBILE_SHELL ? [] : staff.map((s) => s.cwd)), ...labs.flatMap((l) => (l.cwd ? [l.cwd] : []))])], [staff, labs])
+  const projectDirs = useMemo(() => [...new Set([...(IS_REMOTE_SCREEN ? [] : staff.map((s) => s.cwd)), ...labs.flatMap((l) => (l.cwd ? [l.cwd] : []))])], [staff, labs])
   const trainedCount = (m: Manual) =>
     m.kind === 'personal'
       ? staff.filter((s) => s.equipment.skills === 'all' || s.equipment.skills.includes(m.name)).length
@@ -95,7 +95,7 @@ export function ManualsPage() {
                       <GraduationCapIcon /> {t('manuals.trainCount', { count: trainedCount(m) })}
                     </Button>
                     {/* 전역 매뉴얼은 모든 프로젝트에 영향 — 고치기·지우기는 PC에서만 */}
-                    {IS_MOBILE_SHELL && m.scope === 'user' ? (
+                    {IS_REMOTE_SCREEN && m.scope === 'user' ? (
                       <span className="text-muted-foreground ml-auto text-[10px]">{t('manuals.userPcOnly')}</span>
                     ) : (
                       <>
@@ -206,7 +206,7 @@ function ManualEditor({ initial, previousPath, projectDirs, onClose }: { initial
                 onChange={(e) => (e.target.value === '__user__' ? update({ scope: 'user', projectDir: null }) : update({ scope: 'project', projectDir: e.target.value }))}
                 className="min-w-0 flex-1"
               >
-                <option value="__user__" disabled={IS_MOBILE_SHELL}>
+                <option value="__user__" disabled={IS_REMOTE_SCREEN}>
                   {t('manuals.editor.locationUser')}
                 </option>
                 {[...new Set([...projectDirs, ...(form.projectDir ? [form.projectDir] : [])])].map((d) => (
@@ -215,14 +215,14 @@ function ManualEditor({ initial, previousPath, projectDirs, onClose }: { initial
                   </option>
                 ))}
               </NativeSelect>
-              {!IS_MOBILE_SHELL && (
+              {!IS_REMOTE_SCREEN && (
                 <Button type="button" size="sm" variant="outline" onClick={() => void handlePickFolder()}>
                   {t('manuals.editor.pickFolder')}
                 </Button>
               )}
             </div>
             {/* 휴대폰에서는 랩 폴더 매뉴얼만 (전역은 PC에서만) */}
-            {IS_MOBILE_SHELL && form.scope === 'user' && <p className="text-muted-foreground text-xs">{t('manuals.userPcOnly')}</p>}
+            {IS_REMOTE_SCREEN && form.scope === 'user' && <p className="text-muted-foreground text-xs">{t('manuals.userPcOnly')}</p>}
           </div>
         </div>
         <div className="flex flex-col gap-1">

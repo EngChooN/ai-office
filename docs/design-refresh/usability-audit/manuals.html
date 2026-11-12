@@ -1,0 +1,552 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<title>매뉴얼 추가 화면 개편 — 시안</title>
+<!-- 디자인 시안 전용(앱 코드 아님). ?sheet=both|start|editor|adv|tpl|saved|map &mode=light|dark &cap=1 로 열어 캡처한다.
+     근거: usability-audit/audit.md 1부·우선순위 1~4. 용어: settings-simplify/glossary.md. 화면 문구 중 바뀔 수 있는 말은 아래 TERMS 한곳에 모았다.
+     예시 템플릿 목록·직원 이름은 예시다 -->
+<style>
+  [data-mode='light'] {
+    --background:#F6F5FB; --foreground:#221F33; --card:#FFFFFF; --primary:#6C5CE7; --on-primary:#FFFFFF;
+    --muted:#ECEAF6; --muted-foreground:#66627F; --accent:#E9E6FA; --border:#DEDAF0; --input:#CFCAE6;
+    --chrome:#FBFAFF; --working:#1C7C46; --waiting:#9A5B00; --idle:#8A8A80; --error:#C42B2B;
+    --ask-soft:#FFF3DC; --auto-soft:#E2F5EA; --err-soft:#FDECEC;
+    --sheet-bg:#E4E1F2; --side1:#7B6CF0; --side2:#B58CF5; --dim:rgba(30,25,60,.38); --frame:#c9c4e0;
+  }
+  [data-mode='dark'] {
+    --background:#14131C; --foreground:#EDEBF8; --card:#201F2D; --primary:#9B8CFF; --on-primary:#1A1240;
+    --muted:#292739; --muted-foreground:#A7A3C4; --accent:#302D47; --border:#34314A; --input:#413E5C;
+    --chrome:#181723; --working:#4ADE80; --waiting:#F2C94C; --idle:#9C9AA8; --error:#FF6B6B;
+    --ask-soft:#3A2E12; --auto-soft:#14301F; --err-soft:#3A1C20;
+    --sheet-bg:#0C0B12; --side1:#4B3FB0; --side2:#7A55B8; --dim:rgba(0,0,0,.55); --frame:#2a2838;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--sheet-bg); }
+  body { font-family: "Pretendard", "Apple SD Gothic Neo", system-ui, sans-serif; color: var(--foreground); padding: 32px 36px 40px; width: max-content; min-width: 100vw; font-size: 13px; }
+  .tabs-top { display: flex; gap: 6px; margin-bottom: 18px; align-items: center; }
+  .tabs-top a { padding: 7px 14px; border-radius: 999px; background: var(--card); color: var(--foreground); text-decoration: none; font-weight: 600; border: 1px solid var(--border); cursor: pointer; }
+  .tabs-top a.on { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
+  .tabs-top .mode { margin-left: 14px; }
+  .capture .tabs-top { display: none; }
+  .sheet { display: none; } .sheet.on { display: block; }
+  h1.st { font-size: 25px; font-weight: 700; }
+  p.ss { color: var(--muted-foreground); font-size: 14px; margin: 6px 0 20px; max-width: 1500px; line-height: 1.55; }
+  .row { display: flex; gap: 26px; align-items: flex-start; }
+  .col { display: flex; flex-direction: column; gap: 9px; }
+  .col h2 { font-size: 15px; font-weight: 700; }
+  .notes { font-size: 12.8px; line-height: 1.65; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; width: 370px; }
+  .notes li { margin-left: 18px; } .notes h3 { font-size: 14px; margin: 6px 0 2px; }
+
+  /* 공용 */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 5px; height: 32px; padding: 0 13px; border-radius: 8px; font-size: 12.5px; font-weight: 600; border: 1px solid var(--input); background: var(--card); color: var(--foreground); white-space: nowrap; }
+  .btn.sm { height: 26px; padding: 0 9px; font-size: 11.5px; }
+  .btn.pri { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
+  .btn.off { opacity: .45; }
+  .btn.ghost { border-color: transparent; background: transparent; color: var(--muted-foreground); }
+  .small { font-size: 11.5px; color: var(--muted-foreground); line-height: 1.5; }
+  .xs { font-size: 10.5px; color: var(--muted-foreground); }
+  .mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 11px; }
+  .ic { width: 30px; height: 30px; border-radius: 9px; background: var(--accent); color: var(--primary); display: grid; place-items: center; flex-shrink: 0; }
+  svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+  .ic svg { width: 17px; height: 17px; }
+  .pill { font-size: 10.5px; font-weight: 700; border-radius: 999px; padding: 2px 8px; background: var(--muted); color: var(--muted-foreground); white-space: nowrap; }
+  .pill.pri { background: var(--accent); color: var(--primary); }
+  .pill.warn { background: var(--ask-soft); color: var(--waiting); }
+  .pill.ok { background: var(--auto-soft); color: var(--working); }
+  .chip { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border); background: var(--card); white-space: nowrap; }
+  .chip.on { border-color: var(--primary); background: var(--accent); font-weight: 700; color: var(--foreground); }
+  .chip.on::before { content: "✓"; color: var(--primary); font-weight: 800; }
+  .chip.add { border-style: dashed; color: var(--muted-foreground); }
+  .chips { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+  .seg { display: inline-flex; background: var(--muted); border-radius: 999px; padding: 3px; gap: 2px; }
+  .seg span { padding: 4px 11px; border-radius: 999px; font-size: 11.5px; color: var(--muted-foreground); white-space: nowrap; }
+  .seg span.on { background: var(--card); color: var(--foreground); font-weight: 700; box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+  .sel { height: 30px; padding: 0 10px; border: 1px solid var(--input); border-radius: 8px; background: var(--card); font-size: 12px; display: inline-flex; align-items: center; gap: 14px; white-space: nowrap; }
+  .sel::after { content: "⌄"; color: var(--muted-foreground); margin-top: -5px; margin-left: auto; }
+  .num { width: 46px; height: 30px; border: 1px solid var(--input); border-radius: 8px; background: var(--card); display: inline-grid; place-items: center; font-weight: 700; }
+  .tg { width: 34px; height: 20px; border-radius: 999px; background: var(--input); position: relative; flex-shrink: 0; display: inline-block; }
+  .tg::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.25); }
+  .tg.on { background: var(--primary); } .tg.on::after { left: 16px; }
+
+  /* 입력 칸 */
+  .fld { display: flex; flex-direction: column; gap: 5px; }
+  .fld > label { font-size: 12.5px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+  .fld > label .req { font-size: 10px; color: var(--muted-foreground); font-weight: 600; }
+  .inp { min-height: 34px; border: 1px solid var(--input); border-radius: 9px; background: var(--card); padding: 8px 11px; font-size: 13px; line-height: 1.45; display: flex; align-items: center; gap: 8px; }
+  .inp.ph { color: var(--muted-foreground); }
+  .inp.ta { align-items: flex-start; min-height: 52px; }
+  .inp.focus { border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 20%, transparent); }
+  .inp.err { border-color: var(--error); background: var(--err-soft); }
+  .hint { font-size: 11px; color: var(--muted-foreground); line-height: 1.45; display: flex; gap: 5px; align-items: center; flex-wrap: wrap; }
+  .hint.err { color: var(--error); font-weight: 600; }
+  .slug { display: inline-flex; align-items: center; gap: 4px; background: var(--muted); border-radius: 6px; padding: 1px 7px; }
+  .link { color: var(--primary); font-weight: 600; }
+
+  /* 창 */
+  .win { width: 1120px; height: 900px; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; background: var(--background); border: 1px solid var(--frame); box-shadow: 0 18px 36px -18px rgba(40,30,90,.45); position: relative; }
+  .win .bar { height: 28px; flex-shrink: 0; background: var(--chrome); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 6px; padding: 0 10px; font-size: 11px; color: var(--muted-foreground); }
+  .win .bar i { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+  .appbar { height: 44px; flex-shrink: 0; display: flex; align-items: center; gap: 10px; padding: 0 14px; background: var(--card); border-bottom: 1px solid var(--border); font-size: 12.5px; }
+  .appbar .sp { flex: 1; }
+  .appbar .ib { height: 28px; padding: 0 9px; border-radius: 8px; background: var(--muted); display: inline-flex; gap: 5px; align-items: center; font-weight: 600; font-size: 12px; }
+  .win .body { flex: 1; display: flex; min-height: 0; position: relative; }
+  .win .side { width: 52px; flex-shrink: 0; background: linear-gradient(180deg, var(--side1), var(--side2)); display: flex; flex-direction: column; align-items: center; gap: 14px; padding-top: 14px; }
+  .win .side i { width: 22px; height: 22px; border-radius: 7px; background: rgba(255,255,255,.35); display: block; }
+  .win .side i.on { background: #fff; }
+  .dim { position: absolute; inset: 0; background: var(--dim); display: flex; align-items: center; justify-content: center; z-index: 6; }
+
+  /* 매뉴얼실 목록 */
+  .page { flex: 1; min-width: 0; display: flex; flex-direction: column; padding: 18px 24px; gap: 14px; overflow: hidden; }
+  .phead { display: flex; align-items: center; gap: 12px; }
+  .phead h1 { font-size: 20px; font-weight: 700; }
+  .mgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .mc { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 12px 13px; display: flex; flex-direction: column; gap: 7px; }
+  .mc .t { display: flex; align-items: center; gap: 7px; font-weight: 700; font-size: 13.5px; }
+  .mc .f { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+
+  /* 모달 */
+  .modal { background: var(--card); border-radius: 16px; padding: 20px 22px; display: flex; flex-direction: column; gap: 14px; box-shadow: 0 24px 50px -20px rgba(0,0,0,.5); border: 1px solid var(--border); }
+  .modal .mh { font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 10px; } .modal .md { font-size: 12.5px; color: var(--muted-foreground); line-height: 1.5; margin-top: -8px; }
+  .x { margin-left: auto; color: var(--muted-foreground); font-weight: 400; font-size: 18px; }
+
+  /* 진입 3갈래 */
+  .way { border: 1px solid var(--border); border-radius: 14px; padding: 14px 15px; display: flex; flex-direction: column; gap: 9px; background: var(--card); }
+  .way .wh { display: flex; align-items: center; gap: 10px; }
+  .way .wh b { font-size: 14.5px; } .way .wh .small { display: block; font-size: 11.5px; }
+  .way.hero { border: 1.5px solid var(--primary); background: linear-gradient(180deg, color-mix(in srgb, var(--primary) 9%, var(--card)), var(--card) 70%); box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 12%, transparent); }
+  .way.hero .ic { width: 38px; height: 38px; border-radius: 11px; background: var(--primary); color: var(--on-primary); }
+  .way.hero .ic svg { width: 20px; height: 20px; }
+  .ways2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .tq { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .tq .o { border: 1px solid var(--input); border-radius: 10px; padding: 8px 10px; display: flex; flex-direction: column; gap: 2px; }
+  .tq .o b { font-size: 12.5px; } .tq .o .xs { line-height: 1.35; }
+  .tmini { display: flex; flex-direction: column; gap: 5px; }
+  .tmini span { display: flex; align-items: center; gap: 7px; font-size: 12px; padding: 6px 9px; border-radius: 9px; background: var(--muted); }
+  .tmini span i { font-style: normal; margin-left: auto; font-size: 10px; color: var(--muted-foreground); }
+
+  /* 편집 창 */
+  .ed { width: 840px; max-height: 820px; padding: 0; gap: 0; overflow: hidden; }
+  .edh { padding: 16px 22px 12px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; }
+  .edb { padding: 14px 22px; display: flex; flex-direction: column; gap: 13px; overflow: hidden; flex: 1; }
+  .edf { padding: 11px 22px; border-top: 1px solid var(--border); display: flex; align-items: center; gap: 10px; background: var(--card); }
+  .why { flex: 1; display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--error); font-weight: 600; flex-wrap: wrap; }
+  .why .jump { background: var(--err-soft); border-radius: 6px; padding: 2px 8px; text-decoration: underline; text-underline-offset: 2px; }
+  .why.ok { color: var(--working); }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .stp { border: 1px solid var(--border); border-radius: 13px; background: var(--background); display: flex; flex-direction: column; }
+  .stp .sh { display: flex; align-items: center; gap: 9px; padding: 9px 12px 0; }
+  .stp .no { width: 22px; height: 22px; border-radius: 50%; background: var(--primary); color: var(--on-primary); display: grid; place-items: center; font-size: 11.5px; font-weight: 800; flex-shrink: 0; }
+  .stp .sb { padding: 8px 12px 9px 43px; display: flex; flex-direction: column; gap: 7px; }
+  .stp .rowi { display: flex; gap: 8px; align-items: center; }
+  .stp .rowi > .lbl { font-size: 11.5px; font-weight: 700; color: var(--muted-foreground); width: 64px; flex-shrink: 0; }
+  .stp .tools { margin-left: auto; display: flex; gap: 2px; color: var(--muted-foreground); }
+  .stp .tools span { width: 24px; height: 24px; display: grid; place-items: center; border-radius: 6px; }
+  .sset { border-top: 1px dashed var(--border); padding: 7px 12px 7px 43px; display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--muted-foreground); }
+  .sset b { color: var(--foreground); font-weight: 600; }
+  .sset .car { margin-left: auto; }
+  .sopen { border-top: 1px dashed var(--border); padding: 10px 12px 11px 43px; display: flex; flex-direction: column; gap: 10px; background: color-mix(in srgb, var(--accent) 45%, var(--background)); border-radius: 0 0 13px 13px; }
+  .opt { display: flex; flex-direction: column; gap: 4px; }
+  .opt .oh { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 700; flex-wrap: wrap; }
+  .opt .xs { line-height: 1.45; font-size: 11px; }
+  .flow { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--muted-foreground); flex-wrap: wrap; }
+  .flow span.n { background: var(--card); border: 1px solid var(--border); border-radius: 999px; padding: 2px 9px; color: var(--foreground); font-weight: 600; }
+  .flow .back { color: var(--waiting); font-weight: 700; }
+  .adv { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 11px; background: var(--muted); color: var(--muted-foreground); font-size: 12px; font-weight: 600; }
+  .adv .car { margin-left: auto; }
+  .advbox { border: 1px solid var(--border); border-radius: 11px; overflow: hidden; }
+  .advbox .adv { border-radius: 0; background: transparent; border-bottom: 1px solid var(--border); color: var(--foreground); }
+  .advbox .in { padding: 11px 14px; display: flex; flex-direction: column; gap: 12px; }
+  .radio { display: flex; flex-direction: column; gap: 5px; }
+  .radio .r { display: flex; gap: 8px; align-items: flex-start; border: 1px solid var(--border); border-radius: 9px; padding: 7px 10px; font-size: 12px; }
+  .radio .r.on { border-color: var(--primary); background: var(--accent); }
+  .radio .r i { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid var(--input); flex-shrink: 0; margin-top: 2px; }
+  .radio .r.on i { border: 4.5px solid var(--primary); }
+  .chk { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; font-weight: 700; }
+  .chk i { width: 15px; height: 15px; border-radius: 4px; border: 1.5px solid var(--input); display: grid; place-items: center; font-size: 10px; font-style: normal; color: var(--on-primary); }
+  .chk i.on { background: var(--primary); border-color: var(--primary); } .chk i.on::after { content: "✓"; }
+  .banner { display: flex; gap: 9px; align-items: center; padding: 9px 12px; border-radius: 10px; background: var(--auto-soft); color: var(--working); font-size: 12px; font-weight: 600; }
+  .banner .small { color: inherit; opacity: .85; font-weight: 500; }
+
+  /* 예시 고르기 */
+  .tgrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .tc { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+  .tc.on { border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 16%, transparent); }
+  .tc .top { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 13px; }
+  .tc .top .pill { margin-left: auto; }
+
+  /* 저장 직후 */
+  .done { width: 600px; }
+  .donei { width: 44px; height: 44px; border-radius: 50%; background: var(--auto-soft); color: var(--working); display: grid; place-items: center; }
+  .donei svg { width: 24px; height: 24px; stroke-width: 2.4; }
+  .tgt { display: flex; flex-direction: column; gap: 6px; }
+  .tgt .r { display: flex; align-items: center; gap: 9px; border: 1px solid var(--border); border-radius: 10px; padding: 8px 11px; font-size: 12.5px; }
+  .tgt .r.on { border-color: var(--primary); background: var(--accent); }
+  .tgt .r .chk { margin-left: 0; }
+  .av { width: 24px; height: 24px; border-radius: 50%; background: #E9DCC8; display: grid; place-items: center; font-weight: 700; color: #6b4f2a; font-size: 11px; flex-shrink: 0; }
+
+  /* 구성표 */
+  table.map { border-collapse: collapse; background: var(--card); border-radius: 12px; overflow: hidden; font-size: 12.5px; }
+  table.map th, table.map td { border: 1px solid var(--border); padding: 7px 11px; text-align: left; vertical-align: top; line-height: 1.45; }
+  table.map th { background: var(--muted); font-size: 12px; }
+  table.map td.b { font-weight: 700; } .k { font-weight: 700; } .k.adv { color: var(--muted-foreground); } .k.new { color: var(--primary); }
+</style>
+</head>
+<body class="" data-mode="light">
+<div class="tabs-top">
+  <a data-s="both">한눈에</a><a data-s="start">① 만드는 방법 고르기</a><a data-s="editor">② 직접 만들기·저장 막힘</a><a data-s="adv">③ 단계 설정·고급 펼침</a><a data-s="tpl">④ 예시에서 고르기</a><a data-s="saved">⑤ 저장 직후 {{teach}}</a><a data-s="map">구성표</a>
+  <a class="mode" id="modeBtn">다크로 보기</a>
+</div>
+
+<!-- ───────── 한눈에 (캡처용) ───────── -->
+<section class="sheet" id="sh-both">
+  <h1 class="st">매뉴얼 추가 화면 개편 시안</h1>
+  <p class="ss">왼쪽: '+ 새 매뉴얼'을 누르면 만드는 방법 3갈래가 먼저 나옵니다. '말로 설명해서 만들기'가 맨 앞의 큰 칸이고 직원이 0명이어도 보입니다. 오른쪽: 직접 만들기 창은 한글 '매뉴얼 이름'만 받고 내부 이름은 앱이 만듭니다. 저장이 막히면 아래에 이유와 빈 칸 바로가기를 한 줄로 보여 줍니다. 단계마다 '다시 보내기·최대 횟수'는 '이 단계 설정'으로 접었습니다. 근거는 김기획 사용성 분석(audit.md) 1부·우선순위 1~4번이고, 용어는 glossary.md를 따랐습니다.</p>
+  <div class="row"><div data-slot="start"></div><div data-slot="editor"></div></div>
+</section>
+
+<section class="sheet" id="sh-start">
+  <h1 class="st">① 만드는 방법 고르기 (진입 3갈래)</h1>
+  <p class="ss">목록 위 버튼을 '+ 새 매뉴얼' 하나로 합칩니다. 누르면 이 창이 뜨고, 종류(한 명/여러 명)는 방법을 고른 다음에 묻거나 AI가 정합니다.</p>
+  <div class="row"><div data-slot="start"></div>
+  <div class="notes"><h3>바뀌는 점</h3><ul>
+    <li><b>말로 설명해서 만들기</b>(맨 앞·추천): 한 칸에 적고 '초안 만들기'를 누르면 AI가 종류·이름·설명·단계를 채운 ② 편집 창이 열립니다. 쓰는 AI는 기본값이 '앱 기본 AI'입니다. 직원이 0명이어도 이 칸은 그대로 보입니다. 직원에게 맡기려면 '쓰는 AI 바꾸기'에서 고릅니다.</li>
+    <li><b>예시에서 고르기</b>: 자주 쓰는 업무 4개를 바로 보여 주고, '예시 8개 모두 보기'로 ④를 엽니다.</li>
+    <li><b>직접 만들기</b>: 종류를 버튼 이름 대신 질문으로 고릅니다. 예시를 한 줄씩 달았습니다.</li>
+    <li>목록 카드 제목은 한글 이름이고, 내부 이름은 작은 글씨로 둡니다. 아직 아무에게도 {{teach}}하지 않은 매뉴얼은 노란 표시로 알립니다.</li>
+    <li>목록이 비어 있을 때도 이 3갈래를 페이지 안에 그대로 펼쳐 보여 줍니다(빈 화면 안내 겸용).</li>
+  </ul><h3>정리드 확인</h3><ul>
+    <li>직원 없이 '앱 기본 AI'로 초안을 만들 수 있는지 확인이 필요합니다. 지금 초안 기능은 직원을 골라야 합니다.</li>
+  </ul></div></div>
+</section>
+
+<section class="sheet" id="sh-editor">
+  <h1 class="st">② 직접 만들기 창 — 한글 이름 · 저장 막힘 이유</h1>
+  <p class="ss">기본으로 펼쳐 두는 칸은 매뉴얼 이름, 언제 쓰나요, 단계(무엇을·누가·지시)뿐입니다. 나머지는 단계 카드 안 '이 단계 설정'과 맨 아래 '더 자세히 설정'으로 접습니다. 이 그림은 '여러 명이 이어서 하는 업무'에서 칸 2개가 빈 상태입니다.</p>
+  <div class="row"><div data-slot="editor"></div>
+  <div class="notes"><h3>이름</h3><ul>
+    <li>사용자는 <b>매뉴얼 이름</b>만 한글로 자유롭게 씁니다.</li>
+    <li>칸 아래에 앱이 만든 <b>내부 이름</b>(영문 소문자·숫자·하이픈)을 작게 보여 줍니다. 직접 고치려면 '더 자세히 설정'에서 바꿉니다.</li>
+    <li>내부 이름이 다른 매뉴얼과 겹치면 앱이 뒤에 <span class="mono">-2</span>를 붙입니다. 이 때문에 저장이 막히지는 않습니다.</li>
+  </ul><h3>저장이 막힐 때</h3><ul>
+    <li>저장 버튼은 흐리게 두고, 바로 왼쪽에 이유를 한 줄로 씁니다. "저장하려면 N곳을 채워 주세요: [언제 쓰나요] [2단계 지시]"</li>
+    <li>[ ] 부분을 누르면 해당 칸으로 이동하고 칸이 빨갛게 표시됩니다. 빈 칸 아래에도 한 줄 안내를 붙입니다.</li>
+    <li>다 채우면 같은 자리에 "저장할 수 있어요"가 초록색으로 뜹니다.</li>
+    <li>'언제 쓰나요' 설명은 입력하면 사라지는 회색 예시 글자에 두지 않고, 칸 아래에 늘 보이게 둡니다.</li>
+  </ul><h3>단계</h3><ul>
+    <li>'맡을 역할'은 '누가 하나요(직무)'로 바꾸고 직무 칩으로 고릅니다. 직원이 없어도 기본 직무 칩(개발자·디자이너·기획자·검토자)이 보입니다.</li>
+    <li>칸 아래에 흐름 미리보기를 한 줄 둡니다. 다시 보내기가 있으면 ↩로 표시합니다.</li>
+  </ul></div></div>
+</section>
+
+<section class="sheet" id="sh-adv">
+  <h1 class="st">③ '이 단계 설정'과 '더 자세히 설정'을 펼친 모습</h1>
+  <p class="ss">'수정 필요하면 [되돌리지 않음]'과 '최대 N번'은 단계 카드 안 '이 단계 설정'에 접고, 문장으로 풀어 설명을 붙였습니다. 저장 위치·내부 이름·공통 안내는 '더 자세히 설정'으로 내렸습니다.</p>
+  <div class="row"><div data-slot="adv"></div>
+  <div class="notes"><h3>단계 설정 문구 (현재 → 시안)</h3><ul>
+    <li>끝나면 내 확인 🙋 → <b>끝나면 내가 확인하기</b> + "결재함에 올라와요. 내가 승인해야 다음 단계로 넘어가요."</li>
+    <li>수정 필요하면 [되돌리지 않음 ▾] → <b>고칠 게 있으면 [○단계로 다시 보내기 ▾]</b> + "이 단계 담당이 '고쳐야 해요'라고 판단하면 고른 단계부터 다시 해요."</li>
+    <li>최대 [2] 번 → <b>다시 보내기는 최대 [2]번까지</b> + "넘으면 멈추고 나에게 확인을 물어봐요." (현재 앱 동작 그대로, office.ts 확인)</li>
+    <li>첫 단계에는 되돌아갈 앞 단계가 없으므로 '다시 보내기'를 아예 숨깁니다.</li>
+    <li>접혀 있을 때도 요약 한 줄로 지금 값을 보여 줍니다. 예: "내 확인 켬 · 1단계로 다시 보내기(최대 2번)"</li>
+  </ul><h3>더 자세히 설정</h3><ul>
+    <li>어디서 쓰나요: <b>모든 일에서 (추천)</b> / 특정 폴더 일에서만. 기본값을 '모든 일에서'로 바꾸자는 audit 5번은 이번 범위 밖이라 표시만 했습니다.</li>
+    <li>내부 이름: 앱이 만든 값이 미리 들어 있고, 고치면 그 자리에서 규칙을 검사합니다.</li>
+    <li>공통 안내: 모든 단계 담당에게 같이 전할 말입니다(선택).</li>
+    <li>열고 닫는 방식은 채용 창의 '자세히 설정 / 간단히 보기'와 같습니다.</li>
+  </ul></div></div>
+</section>
+
+<section class="sheet" id="sh-tpl">
+  <h1 class="st">④ 예시에서 고르기</h1>
+  <p class="ss">예시를 고르면 이름·설명·단계가 채워진 ② 창이 열립니다. 예시마다 몇 단계인지, 누가 하는지를 미리 보여 줍니다. 목록은 audit 1-4의 후보를 바탕으로 만든 예시이고, 문구는 기획 확정이 필요합니다.</p>
+  <div class="row"><div data-slot="tpl"></div>
+  <div class="notes"><h3>규칙</h3><ul>
+    <li>위쪽 칩으로 '한 명이 / 여러 명이'를 나눠 볼 수 있습니다.</li>
+    <li>카드를 누르면 오른쪽에 단계 미리보기가 나오고, '이걸로 시작'을 누르면 ② 창이 열립니다.</li>
+    <li>예시의 직무 칩은 내 회사에 없는 직무여도 그대로 둡니다. 이 경우 ② 창에서 "이 직무의 직원이 아직 없어요 · 채용하기"를 보여 줍니다(실제 동작은 확인 필요).</li>
+  </ul><h3>정해야 할 것</h3><ul>
+    <li>예시 8개의 이름과 단계 문구는 김기획이 확정해야 합니다.</li>
+    <li>예시를 앱에 넣어 둘지, 직원 마켓처럼 받아 올지 정해야 합니다.</li>
+  </ul></div></div>
+</section>
+
+<section class="sheet" id="sh-saved">
+  <h1 class="st">⑤ 저장 직후 — '{{teach}}'로 바로 이어 가기</h1>
+  <p class="ss">'교육'이라는 말을 '{{teach}}'로 바꿨습니다. 저장하면 창을 닫지 않고, 같은 창에서 누가 이 매뉴얼을 쓸지 고르게 합니다. 여러 명이 이어서 하는 업무는 랩·팀을, 한 명이 하는 업무는 직원을 고릅니다.</p>
+  <div class="row"><div data-slot="saved"></div>
+  <div class="notes"><h3>용어 (현재 → 시안)</h3><ul>
+    <li>교육 / 교육하기 → <b>{{teach}}</b> / <b>N곳에 {{teach}}</b></li>
+    <li>🎓 교육 0 (목록 카드) → <b>{{taught}} 곳 0</b>. 0이면 노란색 "아직 아무도 안 써요"를 표시합니다.</li>
+    <li>교육받은 직원만 이 매뉴얼을 꺼내 써요 → <b>{{taught}} 직원만 이 순서대로 일해요.</b></li>
+    <li>칩만 쓰던 것을 체크 상자가 있는 줄로 바꿔, 골랐는지 아닌지 테두리 색 말고도 알 수 있게 했습니다.</li>
+  </ul><h3>흐름</h3><ul>
+    <li>저장 → 완료 표시 → 고르기 → '{{teach}}' → 목록으로 돌아갑니다.</li>
+    <li>'나중에'를 누르면 목록 카드에 "아직 아무도 안 써요 · {{teach}}" 버튼이 남습니다.</li>
+    <li>'모두에게 {{teach}}'는 맨 위 한 줄로 둡니다. 추천 표시 여부는 정해야 합니다.</li>
+  </ul><h3>용어 메모</h3><ul>
+    <li>지시대로 '{{teach}}'를 썼습니다. audit 1-2의 '쓸 수 있게 하기'를 쓰려면 TERMS 한 곳만 바꾸면 됩니다.</li>
+  </ul></div></div>
+</section>
+
+<section class="sheet" id="sh-map">
+  <h1 class="st">구성표 — 지금 매뉴얼 창 항목이 어디로 가나</h1>
+  <p class="ss">없애는 항목은 없고 자리와 이름만 바뀝니다. <span class="k">굵게</span>=늘 보임, <span class="k adv">회색</span>=접힘, <span class="k new">보라</span>=새로 생김.</p>
+  <table class="map">
+    <tr><th>지금 (화면 문구)</th><th>시안 이름</th><th>자리</th><th>근거</th></tr>
+    <tr><td>+ 개인 매뉴얼 / + 단계 진행 매뉴얼 (버튼 2개)</td><td class="k">+ 새 매뉴얼 → 만드는 방법 3갈래</td><td>목록 위 버튼 1개</td><td>audit 우선 3</td></tr>
+    <tr><td>✨ 직원에게 초안 맡기기 (직원 있을 때만)</td><td class="k">말로 설명해서 만들기 (추천)</td><td>3갈래 맨 앞, 늘 보임</td><td>우선 1</td></tr>
+    <tr><td>—</td><td class="k new">예시에서 고르기</td><td>3갈래 두 번째</td><td>우선 3</td></tr>
+    <tr><td>개인 매뉴얼 / 단계 진행 매뉴얼</td><td class="k">{{one}} / {{multi}}</td><td>직접 만들기 질문, 창 머리</td><td>audit 1-2</td></tr>
+    <tr><td>이름 (영문 소문자·숫자·-)</td><td class="k">매뉴얼 이름 (한글 가능)</td><td>늘 보임</td><td>우선 2</td></tr>
+    <tr><td>—</td><td class="k adv">내부 이름 (자동, 고칠 수 있음)</td><td>더 자세히 설정</td><td>우선 2</td></tr>
+    <tr><td>저장 위치 · 내 계정 / 프로젝트 · 경로</td><td class="k adv">어디서 쓰나요 — 모든 일에서 / 특정 폴더 일에서만</td><td>더 자세히 설정</td><td>audit 1-2</td></tr>
+    <tr><td>언제 쓰는지 (설명)</td><td class="k">언제 쓰나요 + 늘 보이는 안내</td><td>늘 보임</td><td>audit 7</td></tr>
+    <tr><td>공통 안내 (선택)</td><td class="k adv">공통 안내</td><td>더 자세히 설정</td><td>audit 1-4</td></tr>
+    <tr><td>절차·주의점 (한 명)</td><td class="k">하는 순서</td><td>늘 보임</td><td>—</td></tr>
+    <tr><td>단계 이름 · 맡을 역할 · 지시</td><td class="k">무엇을 하나요 · 누가 하나요(직무 칩) · 지시</td><td>단계 카드, 늘 보임</td><td>audit 1-2</td></tr>
+    <tr><td>끝나면 내 확인 🙋</td><td class="k adv">끝나면 내가 확인하기</td><td>이 단계 설정 (요약은 늘 보임)</td><td>우선 4</td></tr>
+    <tr><td>수정 필요하면 [되돌리지 않음] · 최대 N번</td><td class="k adv">고칠 게 있으면 ○단계로 다시 보내기 · 최대 N번까지</td><td>이 단계 설정</td><td>우선 4</td></tr>
+    <tr><td>저장 (비활성 이유 없음)</td><td class="k new">저장 + 막힌 이유 한 줄과 빈 칸 바로가기</td><td>창 아래</td><td>우선 1</td></tr>
+    <tr><td>📘 교육 창 · 교육하기 · 🎓 교육 N</td><td class="k">{{teach}} · N곳에 {{teach}} · {{taught}} 곳 N</td><td>저장 직후 같은 창</td><td>우선 4</td></tr>
+  </table>
+</section>
+
+<!-- ───────── 화면 조각 템플릿 ───────── -->
+<template id="t-listbg">
+     <div class="page">
+      <div class="phead"><h1>매뉴얼실</h1><span class="btn pri" style="margin-left:auto">+ 새 매뉴얼</span></div>
+      <div class="small" style="font-size:12.5px">업무 매뉴얼은 직원이 일하는 순서를 적은 문서예요. 직원에게 알려 주면 그 순서대로 일해요.</div>
+      <div class="mgrid">
+       <div class="mc"><div class="t">버그 신고 처리<span class="pill pri" style="margin-left:auto">여러 명 · 3단계</span></div><div class="small">사용자가 버그를 알려 왔을 때</div><div class="f"><span class="slug mono">bug-report-flow</span><span class="pill ok" style="margin-left:auto">{{taught}} 곳 2</span></div></div>
+       <div class="mc"><div class="t">주간 보고 쓰기<span class="pill" style="margin-left:auto">한 명</span></div><div class="small">금요일마다 한 주 일을 정리할 때</div><div class="f"><span class="slug mono">weekly-report</span><span class="pill warn" style="margin-left:auto">아직 아무도 안 써요</span></div></div>
+       <div class="mc"><div class="t">자료 조사 요약<span class="pill" style="margin-left:auto">한 명</span></div><div class="small">새 주제를 빨리 파악해야 할 때</div><div class="f"><span class="slug mono">research-summary</span><span class="pill ok" style="margin-left:auto">{{taught}} 곳 4</span></div></div>
+      </div>
+     </div>
+</template>
+
+<template id="t-start">
+  <div class="col"><h2>'+ 새 매뉴얼'을 눌렀을 때 (직원 0명이어도 같음)</h2>
+  <div class="win"><div class="bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i>&nbsp; AI Office</div>
+   <div class="appbar"><b>AI Office</b><span class="sp"></span><span class="ib">결재 2</span><span class="ib">플랜 34%</span></div>
+   <div class="body"><div class="side"><i></i><i></i><i></i><i class="on"></i><i></i></div>
+    [[listbg]]
+    <div class="dim">
+     <div class="modal" style="width:760px">
+      <div class="mh">새 매뉴얼 만들기<span class="x">×</span></div>
+      <div class="md">어떻게 만들까요? 어느 방법이든 다 만든 뒤 고칠 수 있어요.</div>
+      <div class="way hero">
+       <div class="wh"><span class="ic">@spark</span><div><b>말로 설명해서 만들기</b><span class="small">어떤 일을 어떤 순서로 하는지 편하게 적으면 AI가 이름·설명·단계까지 써 줘요</span></div><span class="pill pri" style="margin-left:auto">추천</span></div>
+       <div class="inp ta focus" style="min-height:72px">버그 신고가 들어오면 개발자가 고치고, 디자이너가 화면을 확인한 다음, 마지막에 내가 한 번 봐요. 고칠 게 있으면 개발자에게 다시 보내 줘요.</div>
+       <div style="display:flex;align-items:center;gap:8px"><span class="xs">쓰는 AI: <b style="color:var(--foreground)">앱 기본 AI</b> · 직원이 없어도 돼요</span><span class="xs link">바꾸기 ⌄</span><span class="btn pri" style="margin-left:auto">@spark 초안 만들기</span></div>
+      </div>
+      <div class="ways2">
+       <div class="way"><div class="wh"><span class="ic">@clip</span><div><b>예시에서 고르기</b><span class="small">비슷한 업무를 고르면 채워진 채로 열려요</span></div></div>
+        <div class="tmini"><span>글 쓰고 검토받기<i>여러 명</i></span><span>버그 접수 → 수정 → 확인<i>여러 명</i></span><span>보고서 작성 → 결재<i>여러 명</i></span><span>자료 조사 → 요약<i>한 명</i></span></div>
+        <span class="xs link">예시 8개 모두 보기 →</span></div>
+       <div class="way"><div class="wh"><span class="ic">@pen</span><div><b>직접 만들기</b><span class="small">빈 칸부터 내가 채워요</span></div></div>
+        <div class="small" style="font-weight:700;color:var(--foreground)">이 일은 몇 명이 하나요?</div>
+        <div class="tq"><div class="o"><b>{{one}}</b><span class="xs">예: 주간 보고 쓰기, 회의록 정리</span></div><div class="o"><b>{{multi}}</b><span class="xs">예: 개발 → 디자인 확인 → 내 검토</span></div></div>
+       </div>
+      </div>
+     </div>
+    </div>
+   </div>
+  </div></div>
+</template>
+
+<template id="t-editor">
+  <div class="col"><h2>직접 만들기 · {{multi}} · 저장이 막힌 상태</h2>
+  <div class="win"><div class="bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i>&nbsp; AI Office</div>
+   <div class="appbar"><b>AI Office</b><span class="sp"></span><span class="ib">결재 2</span><span class="ib">플랜 34%</span></div>
+   <div class="body"><div class="side"><i></i><i></i><i></i><i class="on"></i><i></i></div>
+    [[listbg]]
+    <div class="dim">
+     <div class="modal ed">
+      <div class="edh"><div class="mh">새 매뉴얼<span class="seg" style="margin-left:6px"><span>{{one}}</span><span class="on">{{multi}}</span></span><span class="x">×</span></div></div>
+      <div class="edb">
+       <div class="two">
+        <div class="fld"><label>매뉴얼 이름</label><div class="inp">버그 신고 처리</div>
+         <div class="hint">내부 이름 <span class="slug mono">bug-report-flow</span> 앱이 자동으로 만들어요 · <span class="link">고치기</span></div></div>
+        <div class="fld"><label>언제 쓰나요</label><div class="inp err ph">예: 사용자가 버그를 알려 왔을 때</div>
+         <div class="hint err">@warn 비어 있어요. 직원은 이 설명을 보고 이 매뉴얼을 꺼낼지 정해요</div></div>
+       </div>
+       <div class="fld"><label>단계 <span class="req">3개 · 위에서 아래로 차례대로 넘겨요</span></label>
+        <div class="stp">
+         <div class="sh"><span class="no">1</span><b style="font-size:13px">버그 고치기</b><span class="tools"><span>↑</span><span>↓</span><span>@trash</span></span></div>
+         <div class="sb">
+          <div class="rowi"><span class="lbl">누가 하나요</span><div class="chips"><span class="chip on">개발자</span><span class="chip">디자이너</span><span class="chip">기획자</span><span class="chip">검토자</span><span class="chip add">+ 직접 입력</span></div></div>
+          <div class="inp ta" style="min-height:38px;font-size:12.5px">신고 내용을 보고 재현한 뒤 고쳐 주세요. 무엇을 바꿨는지 짧게 적어 주세요.</div>
+         </div>
+         <div class="sset">이 단계 설정 · <b>내 확인 끔</b><span class="car">⌄</span></div>
+        </div>
+        <div class="stp">
+         <div class="sh"><span class="no">2</span><b style="font-size:13px">화면 확인</b><span class="tools"><span>↑</span><span>↓</span><span>@trash</span></span></div>
+         <div class="sb">
+          <div class="rowi"><span class="lbl">누가 하나요</span><div class="chips"><span class="chip">개발자</span><span class="chip on">디자이너</span><span class="chip">기획자</span><span class="chip">검토자</span><span class="chip add">+ 직접 입력</span></div></div>
+          <div class="inp ta err ph" style="min-height:38px;font-size:12.5px">이 단계 담당에게 줄 지시 — 앞 단계 결과는 자동으로 같이 넘어가요</div>
+          <div class="hint err">@warn 지시가 비어 있어요</div>
+         </div>
+         <div class="sset">이 단계 설정 · <b>내 확인 끔 · 다시 보내기 없음</b><span class="car">⌄</span></div>
+        </div>
+        <div class="stp">
+         <div class="sh"><span class="no">3</span><b style="font-size:13px">마지막 검토</b><span class="tools"><span>↑</span><span>↓</span><span>@trash</span></span></div>
+         <div class="sb">
+          <div class="rowi"><span class="lbl">누가 하나요</span><div class="chips"><span class="chip">개발자</span><span class="chip">디자이너</span><span class="chip on">기획자</span><span class="chip">검토자</span><span class="chip add">+ 직접 입력</span></div></div>
+          <div class="inp ta" style="min-height:38px;font-size:12.5px">신고 내용대로 고쳐졌는지 확인하고, 아니면 '고쳐야 해요'로 답해 주세요.</div>
+         </div>
+         <div class="sset">이 단계 설정 · <b>내 확인 켬 · 1단계로 다시 보내기 (최대 2번)</b><span class="car">⌄</span></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px"><span class="btn sm">+ 단계 추가</span>
+         <div class="flow" style="margin-left:auto">흐름 <span class="n">1 버그 고치기</span>→<span class="n">2 화면 확인</span>→<span class="n">3 마지막 검토 🙋</span><span class="back">↩ 1</span></div></div>
+       </div>
+       <div class="adv">@gear 더 자세히 설정 <span class="xs" style="font-weight:500">어디서 쓰나요 · 내부 이름 · 공통 안내</span><span class="car">⌄</span></div>
+      </div>
+      <div class="edf"><div class="why">@warn 저장하려면 2곳을 채워 주세요: <span class="jump">언제 쓰나요</span><span class="jump">2단계 지시</span></div><span class="btn ghost">취소</span><span class="btn pri off">저장</span></div>
+     </div>
+    </div>
+   </div>
+  </div></div>
+</template>
+
+<template id="t-adv">
+  <div class="col"><h2>3단계 '이 단계 설정'과 '더 자세히 설정'을 펼침 · 다 채운 상태</h2>
+  <div class="win"><div class="bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i>&nbsp; AI Office</div>
+   <div class="appbar"><b>AI Office</b><span class="sp"></span><span class="ib">결재 2</span><span class="ib">플랜 34%</span></div>
+   <div class="body"><div class="side"><i></i><i></i><i></i><i class="on"></i><i></i></div>
+    [[listbg]]
+    <div class="dim">
+     <div class="modal ed">
+      <div class="edh"><div class="mh">새 매뉴얼<span class="seg" style="margin-left:6px"><span>{{one}}</span><span class="on">{{multi}}</span></span><span class="x">×</span></div></div>
+      <div class="edb">
+       <div class="flow" style="font-size:12px">1 · 2단계 접힘 <span class="n">1 버그 고치기</span>→<span class="n">2 화면 확인</span>→ 아래 3단계 펼침</div>
+       <div class="stp">
+        <div class="sh"><span class="no">3</span><b style="font-size:13px">마지막 검토</b><span class="tools"><span>↑</span><span>↓</span><span>@trash</span></span></div>
+        <div class="sb">
+         <div class="rowi"><span class="lbl">누가 하나요</span><div class="chips"><span class="chip">개발자</span><span class="chip">디자이너</span><span class="chip on">기획자</span><span class="chip">검토자</span><span class="chip add">+ 직접 입력</span></div></div>
+         <div class="inp ta" style="min-height:38px;font-size:12.5px">신고 내용대로 고쳐졌는지 확인하고, 아니면 '고쳐야 해요'로 답해 주세요.</div>
+        </div>
+        <div class="sopen">
+         <div style="display:flex;font-size:11.5px;color:var(--muted-foreground)">이 단계 설정<span style="margin-left:auto">접기 ⌃</span></div>
+         <div class="opt"><div class="oh"><span class="chk"><i class="on"></i>끝나면 내가 확인하기</span></div>
+          <div class="xs">이 단계가 끝나면 결재함에 올라와요. 내가 승인해야 다음 단계로 넘어가요.</div></div>
+         <div class="opt"><div class="oh">고칠 게 있으면 <span class="sel" style="min-width:210px">1단계 '버그 고치기'로 다시 보내기</span></div>
+          <div class="xs">이 단계 담당이 '고쳐야 해요'라고 판단하면 고른 단계부터 다시 해요.</div></div>
+         <div class="opt"><div class="oh">다시 보내기는 최대 <span class="num">2</span> 번까지 <span class="xs" style="font-weight:500">(1~5)</span></div>
+          <div class="xs">계속 오가지 않게 막는 횟수예요. 넘으면 멈추고 나에게 확인을 물어봐요.</div></div>
+        </div>
+       </div>
+       <div class="advbox">
+        <div class="adv">@gear 더 자세히 설정<span class="car">간단히 보기 ⌃</span></div>
+        <div class="in">
+         <div class="fld"><label>어디서 쓰나요</label>
+          <div class="radio"><div class="r on"><i></i><div><b>모든 일에서</b> <span class="pill pri">추천</span><div class="xs">어느 폴더 일이든 이 매뉴얼을 쓸 수 있어요</div></div></div>
+           <div class="r"><i></i><div><b>특정 폴더 일에서만</b><div class="xs">고른 폴더에서 일할 때만 보여요 · <span class="link">폴더 고르기</span></div></div></div></div></div>
+         <div class="two">
+          <div class="fld"><label>내부 이름 <span class="req">앱이 만든 이름 · 영문 소문자·숫자·하이픈</span></label><div class="inp mono" style="font-size:12.5px">bug-report-flow</div>
+           <div class="hint">직원이 이 매뉴얼을 부를 때 쓰는 이름이에요. 보통은 안 바꿔도 돼요</div></div>
+          <div class="fld"><label>공통 안내 <span class="req">선택</span></label><div class="inp ta ph" style="font-size:12.5px">모든 단계 담당에게 같이 전할 말 — 예: 고객 이름은 보고에 쓰지 마세요</div></div>
+         </div>
+        </div>
+       </div>
+      </div>
+      <div class="edf"><div class="why ok">@check 저장할 수 있어요</div><span class="btn ghost">취소</span><span class="btn pri">저장</span></div>
+     </div>
+    </div>
+   </div>
+  </div></div>
+</template>
+
+<template id="t-tpl">
+  <div class="col"><h2>'예시에서 고르기'를 눌렀을 때</h2>
+  <div class="win"><div class="bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i>&nbsp; AI Office</div>
+   <div class="appbar"><b>AI Office</b><span class="sp"></span><span class="ib">결재 2</span><span class="ib">플랜 34%</span></div>
+   <div class="body"><div class="side"><i></i><i></i><i></i><i class="on"></i><i></i></div>
+    [[listbg]]
+    <div class="dim">
+     <div class="modal" style="width:860px">
+      <div class="mh"><span class="xs link" style="font-size:13px">← 방법 고르기</span>예시에서 고르기<span class="x">×</span></div>
+      <div class="chips"><span class="chip on">전체 8</span><span class="chip">{{one}} 4</span><span class="chip">{{multi}} 4</span></div>
+      <div style="display:flex;gap:14px">
+       <div class="tgrid" style="flex:1">
+        <div class="tc"><div class="top">글 쓰고 검토받기<span class="pill pri">여러 명 · 2단계</span></div><div class="small">기획자 작성 → 검토자 확인</div></div>
+        <div class="tc on"><div class="top">버그 접수 → 수정 → 확인<span class="pill pri">여러 명 · 3단계</span></div><div class="small">개발자 수정 → 디자이너 확인 → 내 검토</div></div>
+        <div class="tc"><div class="top">보고서 작성 → 결재<span class="pill pri">여러 명 · 2단계</span></div><div class="small">기획자 작성 → 내 결재</div></div>
+        <div class="tc"><div class="top">디자인 시안 → 의견 반영<span class="pill pri">여러 명 · 3단계</span></div><div class="small">디자이너 시안 → 기획자 의견 → 디자이너 반영</div></div>
+        <div class="tc"><div class="top">자료 조사 → 요약<span class="pill">한 명</span></div><div class="small">찾아보고 출처와 함께 한 쪽으로 요약</div></div>
+        <div class="tc"><div class="top">회의록 정리<span class="pill">한 명</span></div><div class="small">결정 사항·할 일·담당자 순서로 정리</div></div>
+        <div class="tc"><div class="top">고객 문의 답변 초안<span class="pill">한 명</span></div><div class="small">문의 요약 → 답변 초안 → 확인할 점</div></div>
+        <div class="tc"><div class="top">주간 보고 쓰기<span class="pill">한 명</span></div><div class="small">한 주 업무를 했던 일·막힌 일·다음 할 일로</div></div>
+       </div>
+       <div style="width:270px;flex-shrink:0;background:var(--background);border:1px solid var(--border);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:9px">
+        <b style="font-size:13.5px">버그 접수 → 수정 → 확인</b>
+        <div class="small">사용자가 버그를 알려 왔을 때 고치고, 화면을 확인한 뒤 내가 마지막으로 봐요.</div>
+        <div class="tmini"><span><b>1</b> 버그 고치기<i>개발자</i></span><span><b>2</b> 화면 확인<i>디자이너</i></span><span><b>3</b> 마지막 검토 🙋<i>나 · ↩ 1</i></span></div>
+        <div class="xs">고르면 이 내용이 채워진 채 편집 창이 열려요. 저장하기 전까지 마음대로 고칠 수 있어요.</div>
+        <span class="btn pri" style="margin-top:auto">이걸로 시작 →</span>
+       </div>
+      </div>
+     </div>
+    </div>
+   </div>
+  </div></div>
+</template>
+
+<template id="t-saved">
+  <div class="col"><h2>저장을 누른 직후 (같은 창에서 이어짐)</h2>
+  <div class="win"><div class="bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i>&nbsp; AI Office</div>
+   <div class="appbar"><b>AI Office</b><span class="sp"></span><span class="ib">결재 2</span><span class="ib">플랜 34%</span></div>
+   <div class="body"><div class="side"><i></i><i></i><i></i><i class="on"></i><i></i></div>
+    [[listbg]]
+    <div class="dim">
+     <div class="modal done">
+      <div style="display:flex;gap:12px;align-items:center"><span class="donei">@check</span><div><div style="font-size:17px;font-weight:700">'버그 신고 처리'를 저장했어요</div><div class="small">이제 누가 이 순서대로 일할지 알려 주세요. {{taught}} 랩·팀만 이 매뉴얼을 써요.</div></div><span class="x" style="align-self:flex-start">×</span></div>
+      <div class="banner">@users 여러 명이 이어서 하는 업무라 <b>랩·팀</b>을 골라요<span class="small">한 명이 하는 업무면 직원을 골라요</span></div>
+      <div class="tgt">
+       <div class="r"><span class="chk"><i></i></span><b>모든 랩·팀에 {{teach}}</b><span class="xs" style="margin-left:auto">새로 만드는 랩·팀은 빼고요</span></div>
+       <div class="r on"><span class="chk"><i class="on"></i></span><span class="av" style="background:#DCD3FA;color:#4b3fb0">랩</span><div><b>클로드 오피스 전담 랩</b><div class="xs">5명 · 개발자 2 · 디자이너 1 · 기획자 1</div></div><span class="pill ok" style="margin-left:auto">필요한 직무 다 있어요</span></div>
+       <div class="r on"><span class="chk"><i class="on"></i></span><span class="av" style="background:#D6EEDC;color:#1C7C46">팀</span><div><b>개발 팀</b><div class="xs">3명 · 개발자 3</div></div><span class="pill warn" style="margin-left:auto">디자이너·기획자 없음</span></div>
+       <div class="r"><span class="chk"><i></i></span><span class="av" style="background:#FBE3D0;color:#9A5B00">팀</span><div><b>디자인 팀</b><div class="xs">2명 · 디자이너 2</div></div></div>
+      </div>
+      <div class="xs" style="line-height:1.5">빈 직무가 있는 곳은 그 단계에서 멈추고 결재함으로 물어봐요(실제 동작 확인 필요). 나중에 목록 카드에서 언제든 바꿀 수 있어요.</div>
+      <div style="display:flex;gap:8px;align-items:center"><span class="btn ghost" style="margin-left:auto">나중에</span><span class="btn pri">2곳에 {{teach}}</span></div>
+     </div>
+    </div>
+   </div>
+  </div></div>
+</template>
+
+<script>
+  // 바뀔 수 있는 화면 문구 — 여기만 바꾸면 시안 전체가 바뀐다
+  const TERMS = { teach: '알려 주기', taught: '알려 준', one: '한 명이 하는 업무', multi: '여러 명이 이어서 하는 업무' }
+  const ICON = {
+    spark: '<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18"/>',
+    clip: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 10h6M9 14h6M9 18h3"/>',
+    pen: '<path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4"/>',
+    warn: '<path d="M12 4 2.5 20h19zM12 10v4M12 17h.01"/>',
+    check: '<path d="m5 12 4.5 4.5L19 7"/>',
+    trash: '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>',
+    gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9 7 7M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/>',
+    users: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6.5 6.5 0 0 1 3.5 6"/>',
+  }
+  const listbg = document.getElementById('t-listbg').innerHTML
+  const fill = (html) => html
+    .replace(/\[\[listbg\]\]/g, listbg)
+    .replace(/\{\{(\w+)\}\}/g, (_, k) => TERMS[k] ?? k)
+    .replace(/@(\w+)/g, (m, k) => ICON[k] ? `<svg viewBox="0 0 24 24">${ICON[k]}</svg>` : m)
+  document.querySelectorAll('[data-slot]').forEach((el) => { el.innerHTML = fill(document.getElementById('t-' + el.dataset.slot).innerHTML) })
+  document.querySelectorAll('.ss, .notes, .tabs-top, table.map, h1.st').forEach((el) => { el.innerHTML = fill(el.innerHTML) })
+
+  const q = new URLSearchParams(location.search)
+  const show = (s) => {
+    document.querySelectorAll('.sheet').forEach((x) => x.classList.toggle('on', x.id === 'sh-' + s))
+    document.querySelectorAll('.tabs-top a[data-s]').forEach((a) => a.classList.toggle('on', a.dataset.s === s))
+  }
+  const setMode = (m) => { document.body.dataset.mode = m; document.getElementById('modeBtn').textContent = m === 'dark' ? '라이트로 보기' : '다크로 보기' }
+  document.querySelectorAll('.tabs-top a[data-s]').forEach((a) => a.onclick = () => show(a.dataset.s))
+  document.getElementById('modeBtn').onclick = () => setMode(document.body.dataset.mode === 'dark' ? 'light' : 'dark')
+  if (q.get('cap')) document.body.classList.add('capture')
+  setMode(q.get('mode') || 'light'); show(q.get('sheet') || 'both')
+</script>
+</body>
+</html>

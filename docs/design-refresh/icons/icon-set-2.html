@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<title>듀오톤 아이콘 2차 묶음 시안 (22종)</title>
+<!-- 디자인 시안 전용(앱 코드 아님). 아이콘은 모두 이 파일에서 직접 그린 SVG. ?mode=light|dark  ·  규격은 1차(icon-sets.html 세트 B·앱 duo-icon.tsx)와 같음 -->
+<style>
+  [data-mode='light'] {
+    --background:#F6F5FB; --foreground:#221F33; --card:#FFFFFF; --primary:#6C5CE7; --primary-foreground:#FFFFFF;
+    --muted:#ECEAF6; --muted-foreground:#66627F; --accent:#E9E6FA; --border:#DEDAF0; --ring:#8776FF;
+    --working:#1C7C46; --waiting:#9A5B00; --error:#C42B2B; --sheet-bg:#E4E1F2; --surface-chrome:#FBFAFF; --duo:#8776FF; --duo-op:.42;
+  }
+  [data-mode='dark'] {
+    --background:#14131C; --foreground:#EDEBF8; --card:#201F2D; --primary:#9B8CFF; --primary-foreground:#1A1240;
+    --muted:#292739; --muted-foreground:#A7A3C4; --accent:#302D47; --border:#34314A; --ring:#9B8CFF;
+    --working:#4ADE80; --waiting:#F2C94C; --error:#FF6B6B; --sheet-bg:#0C0B12; --surface-chrome:#181723; --duo:#9B8CFF; --duo-op:.6;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html, body { background:var(--sheet-bg); }
+  body { font-family:"Pretendard","Apple SD Gothic Neo",system-ui,sans-serif; color:var(--foreground); padding:36px 40px 40px; width:max-content; }
+  h1 { font-size:26px; font-weight:700; }
+  p.sub { color:var(--muted-foreground); font-size:14px; margin:6px 0 22px; }
+  h2 { font-size:17px; font-weight:700; margin:24px 0 12px; }
+  .panel { background:var(--card); border:1px solid var(--border); border-radius:18px; padding:16px 18px; }
+  .old { display:flex; gap:14px; align-items:center; color:var(--muted-foreground); font-size:12px; }
+  .old .row { display:flex; gap:12px; color:var(--foreground); }
+  .grid { display:grid; grid-template-columns:repeat(11, 124px); gap:10px 8px; }
+  .ic { display:flex; flex-direction:column; align-items:center; gap:6px; padding:10px 4px 8px; border-radius:12px; }
+  .ic .sz { display:flex; align-items:center; gap:12px; height:44px; }
+  .ic .nm { font-size:13px; font-weight:700; } .ic .nm code { font-family:ui-monospace,Menlo,monospace; font-size:11.5px; color:var(--primary); font-weight:600; }
+  .ic .lb { font-size:13px; color:var(--muted-foreground); text-align:center; line-height:1.3; }
+  .ic.qa { background:color-mix(in oklab, var(--primary) 8%, transparent); }
+  .em, .emj { font-family:"Apple Color Emoji","Pretendard",sans-serif; }
+  .legend { font-size:12px; color:var(--muted-foreground); margin-top:10px; display:flex; gap:14px; }
+  .legend i { display:inline-block; width:12px; height:12px; border-radius:3px; background:color-mix(in oklab, var(--primary) 18%, transparent); vertical-align:-2px; margin-right:4px; }
+
+  .shots { display:flex; gap:20px; align-items:flex-start; }
+  .shot { width:520px; display:flex; flex-direction:column; gap:8px; }
+  .shot h3 { font-size:15px; font-weight:700; display:flex; gap:8px; align-items:center; }
+  .tag { font-size:11px; font-weight:700; border-radius:999px; padding:2px 8px; background:var(--primary); color:var(--primary-foreground); }
+  .tag.now { background:var(--muted-foreground); color:var(--card); }
+  .scr { background:var(--background); border:1px solid var(--border); border-radius:18px; overflow:hidden; font-size:13px; display:flex; flex-direction:column; }
+  .sec { padding:12px; display:flex; flex-direction:column; gap:9px; border-bottom:1px solid var(--border); }
+  .sec:last-child { border-bottom:0; }
+  .cap { font-size:11px; color:var(--muted-foreground); font-weight:600; }
+  .tabs { display:flex; gap:6px; flex-wrap:wrap; }
+  .tab { display:inline-flex; align-items:center; gap:5px; border-radius:999px; padding:4px 11px; font-size:12px; font-weight:600; background:var(--card); border:1px solid var(--border); white-space:nowrap; }
+  .tab.on { background:var(--accent); border-color:transparent; }
+  .h3 { display:flex; align-items:center; gap:6px; font-size:12px; font-weight:600; }
+  .row2 { display:flex; gap:8px; }
+  .wcard { flex:1; background:var(--card); border:1px solid var(--border); border-radius:14px; padding:10px; display:flex; flex-direction:column; gap:4px; }
+  .wcard b { font-size:13px; } .wcard span { font-size:11.5px; color:var(--muted-foreground); }
+  .hint { display:flex; align-items:center; gap:6px; font-size:13px; font-weight:500; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:8px 10px; }
+  .note { display:flex; gap:6px; align-items:flex-start; font-size:12px; color:var(--muted-foreground); line-height:1.45; background:var(--muted); border-radius:10px; padding:8px 10px; }
+  .ttl { display:flex; align-items:center; gap:6px; font-size:15px; font-weight:700; }
+  .sysm { align-self:center; display:inline-flex; align-items:center; gap:6px; font-size:12px; color:var(--muted-foreground); background:var(--muted); border-radius:999px; padding:4px 12px; }
+  .chips { display:flex; gap:6px; flex-wrap:wrap; }
+  .chip { display:inline-flex; align-items:center; gap:5px; border:1px solid var(--border); border-radius:999px; padding:3px 10px; font-size:12px; background:var(--card); white-space:nowrap; }
+  .chip.p { background:var(--primary); color:var(--primary-foreground); border-color:var(--primary); }
+  .lab { display:flex; flex-direction:column; gap:3px; font-size:12px; color:var(--muted-foreground); }
+  .lab > span { display:flex; align-items:center; gap:5px; }
+  .lead { color:var(--waiting); }
+  .banner { display:flex; align-items:center; gap:8px; background:color-mix(in oklab, var(--primary) 14%, var(--card)); border-radius:12px; padding:8px 12px; font-weight:600; }
+
+  table { border-collapse:collapse; font-size:12.5px; background:var(--card); border-radius:14px; overflow:hidden; width:1480px; }
+  th, td { border-bottom:1px solid var(--border); padding:7px 10px; text-align:left; vertical-align:top; line-height:1.45; }
+  th { font-size:12px; color:var(--muted-foreground); background:var(--muted); }
+  td code { font-family:ui-monospace,Menlo,monospace; font-size:11.5px; }
+  td.i { width:48px; text-align:center; }
+  .out { font-size:12.5px; line-height:1.6; color:var(--muted-foreground); max-width:1480px; }
+  .out b { color:var(--foreground); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+const q = new URLSearchParams(location.search)
+document.documentElement.dataset.mode = document.body.dataset.mode = q.get('mode') || 'light'
+const dark = document.body.dataset.mode === 'dark'
+
+// 24 격자. 'F:' 채움 닫힌 모양, 'C:cx,cy,r' 원, 'CF:' 채움 원, 'RF:x,y,w,h,rx' 채움 사각형, 'D:x,y' 점 — 1차 시안과 같은 표기
+const ICONS = [
+  { id:'decorate', ko:'꾸미기', em:'🪑', qa:1, d:['RF:7,3,10,8.5,2.4', 'RF:5,11.5,14,3,1.5', 'M7 14.5V21M17 14.5V21', 'M7 18h10'] },
+  { id:'stage', ko:'데모데이·발표', em:'🎤 🎙', qa:1, d:['RF:9,2.5,6,11,3', 'M5.5 10.5a6.5 6.5 0 0 0 13 0', 'M12 17v4', 'M8.5 21h7'] },
+  { id:'deal', ko:'특가', em:'🔥', qa:1, d:['F:M12 2.8c.6 3 3.4 4.4 4.6 6 1.4 1.8 2.4 3.6 2.4 5.8a7 7 0 0 1-14 0c0-2.8 1.5-4.8 3-6.2.3 1.6 1 2.8 2.2 3.3C9.8 8.6 10.4 5.2 12 2.8Z', 'M12 21.3a2.9 2.9 0 0 1-2.9-2.9c0-1.7 1.3-2.7 2.1-3.9.6 1.3 3.7 2.2 3.7 3.9a2.9 2.9 0 0 1-2.9 2.9Z'] },
+  { id:'collection', ko:'도감·지난 기록', em:'📒 📚', qa:1, d:['RF:5,3,14,18,2.4', 'M8.5 3v18', 'M11.5 7.5h4.5v4h-4.5Z', 'M11.5 15h4.5'] },
+  { id:'target', ko:'목표·미션', em:'🎯', qa:1, d:['CF:12,12,9', 'C:12,12,5', 'D:12,12'] },
+  { id:'staff', ko:'직원·고용', em:'🧑‍💼 🧑‍💻 👥', qa:1, d:['CF:12,7.8,3.8', 'F:M4.5 20.5a7.5 7.5 0 0 1 15 0Z', 'M12 13v3.2'] },
+  { id:'chat', ko:'말·지시·댓글', em:'💬', qa:1, d:['F:M12 3.5c5 0 9 3.3 9 7.4s-4 7.4-9 7.4c-1 0-2-.1-2.9-.4L4.5 20l1.1-3.6C4 15 3 13 3 10.9 3 6.8 7 3.5 12 3.5Z', 'D:8.4,11', 'D:12,11', 'D:15.6,11'] },
+  { id:'hint', ko:'이렇게 해 보세요', em:'👉', qa:1, d:['F:M4 9h8V5.2l8 6.8-8 6.8V15H4Z'] },
+  { id:'tip', ko:'팁·참고', em:'💡', qa:1, d:['F:M12 2.8a6.2 6.2 0 0 0-3.7 11.2c.7.5 1.2 1.3 1.2 2.2v.6h5v-.6c0-.9.5-1.7 1.2-2.2A6.2 6.2 0 0 0 12 2.8Z', 'M9.8 19.6h4.4M10.6 22h2.8'] },
+  { id:'plug', ko:'연결·MCP', em:'🔌', qa:1, d:['F:M7 8h10v4a5 5 0 0 1-10 0Z', 'M9.5 3.5V8M14.5 3.5V8', 'M12 17v4.5'] },
+  { id:'toolbox', ko:'장비·매뉴얼 묶음', em:'🧰', qa:1, d:['RF:3,8,18,12,2.4', 'M9 8V5.8a1.3 1.3 0 0 1 1.3-1.3h3.4A1.3 1.3 0 0 1 15 5.8V8', 'M3 13h18', 'M10.5 13v2.2h3V13'] },
+  { id:'shield', ko:'권한·잠금', em:'🛡 🔒', qa:1, d:['F:M12 2.8l7.5 3v5.6c0 4.6-3.2 8.4-7.5 9.8-4.3-1.4-7.5-5.2-7.5-9.8V5.8Z', 'M9 12l2.2 2.2 3.8-4'] },
+  { id:'office', ko:'사무실·회사', em:'🏢 🏙 🏬', d:['RF:5,3,10,18,1.6', 'M15 9h3.4A1.6 1.6 0 0 1 20 10.6V21', 'M3 21h18', 'D:8.5,7', 'D:11.5,7', 'D:8.5,10.5', 'D:11.5,10.5', 'D:8.5,14', 'D:11.5,14'] },
+  { id:'launch', ko:'출시·PR', em:'🚀', d:['F:M12 2.5c2.8 2 4.2 5 4.2 8.5V16H7.8v-5c0-3.5 1.4-6.5 4.2-8.5Z', 'C:12,9.5,1.6', 'M7.8 12.5 5 15v3h2.8M16.2 12.5 19 15v3h-2.8', 'M10.5 19.3 12 22l1.5-2.7'] },
+  { id:'shop', ko:'상점·구입', em:'🛍', d:['F:M5 8h14l-1 12.2a1.6 1.6 0 0 1-1.6 1.3H7.6A1.6 1.6 0 0 1 6 20.2Z', 'M9 10.5V6.5a3 3 0 0 1 6 0v4'] },
+  { id:'project', ko:'프로젝트 폴더', em:'📁', d:['F:M3 7.2a2 2 0 0 1 2-2h4.2l2 2.2H19a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z', 'M10 11.5l-2 2 2 2M14 11.5l2 2-2 2'] },
+  { id:'star', ko:'팀장·즐겨찾기', em:'★ ⭐', d:['F:M12 3.2l2.7 5.5 6 .9-4.35 4.25 1 6L12 17l-5.35 2.85 1-6L3.3 9.6l6-.9Z'] },
+  { id:'calendar', ko:'시즌·날짜', em:'🗓', d:['RF:3.5,5,17,15.5,2.4', 'M3.5 10h17', 'M8 3v4M16 3v4', 'D:8,14', 'D:12,14', 'D:16,14', 'D:8,17.2'] },
+  { id:'search', ko:'찾기·자세히', em:'🔍', d:['CF:10.5,10.5,6.5', 'M15.3 15.3 20.5 20.5'] },
+  { id:'demo', ko:'데모 기록', em:'🎬', d:['RF:3.5,9.5,17,11,2', 'M3.8 9.5 19.4 6.3l-.6-3L3.2 6.5Z', 'M8.4 5.6l1.8 2.6M13.4 4.6l1.8 2.6'] },
+  { id:'chart', ko:'사용량·통계', em:'📊 📈', d:['RF:3.5,3.5,17,17,2.4', 'M8 16.5v-4M12 16.5V7.5M16 16.5v-6'] },
+  { id:'box', ko:'서랍·보관', em:'📦', d:['F:M12 2.8l8 4.2v10L12 21.2 4 17V7Z', 'M4 7l8 4.2L20 7', 'M12 11.2v10', 'M8 4.9l8 4.2'] },
+]
+// 1차 20종(앱에 적용됨) — 나란히 놓고 굵기·채움 비교용
+const OLD = [
+  ['CF:12,12,9','M8 12.4l2.8 2.8L16.2 9.6'], ['F:M10.3 4.2a2 2 0 0 1 3.4 0l7.6 13.2a2 2 0 0 1-1.7 3H4.4a2 2 0 0 1-1.7-3Z','M12 9.5v4.2','D:12,17'],
+  ['CF:12,12,9','M9 9l6 6M15 9l-6 6'], ['F:M5 4.5h14a2 2 0 0 1 2 2V15a2 2 0 0 1-2 2h-8l-4.5 3.5V17H5a2 2 0 0 1-2-2V6.5a2 2 0 0 1 2-2Z','M9.8 8.8a2.3 2.3 0 1 1 3.1 2.2c-.6.2-.9.7-.9 1.3','D:12,14.6'],
+  ['RF:4.5,8,15,12,3.5','M12 8V5.2','C:12,4,1.2','D:9.4,13.2','D:14.6,13.2','M10 16.6h4','M2.5 12.5v3M21.5 12.5v3'], ['M17 2.8l3 3-3 3','M4 11.2v-.7a4.7 4.7 0 0 1 4.7-4.7H20','M7 21.2l-3-3 3-3','M20 12.8v.7a4.7 4.7 0 0 1-4.7 4.7H4'],
+  ['CF:12,13,8.2','M12 9v4.2l2.8 1.8','M4.5 4.5l2.5-2M19.5 4.5l-2.5-2'], ['F:M5 4.8A2 2 0 0 1 7 2.8h12v14.4H7a2 2 0 0 0-2 2Z','M5 19.2a2 2 0 0 0 2 2h12v-4','M9 7.5h6M9 11h4'],
+  ['F:M10.2 3v6.2L5 18.4A1.8 1.8 0 0 0 6.6 21h10.8a1.8 1.8 0 0 0 1.6-2.6L13.8 9.2V3Z','M8.6 3h6.8','M7.4 15h9.2'], ['RF:4.8,4.2,14.4,17,2.4','M9 2.8h6v3H9z','M8.6 11h6.8M8.6 14.8h4.6'],
+  ['F:M3 7.2a2 2 0 0 1 2-2h4.2l2 2.2H19a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z','M7.5 12.5h9M7.5 16h5.5'], ['CF:12,12,9','M7.8 8.2l1.9 7.6 2.3-5.6 2.3 5.6 1.9-7.6','M7 12h10'],
+  ['RF:6.8,2.5,10.4,19,2.6','M10.8 18.4h2.4'], ['CF:12,12,9','M3 12h18','M12 3c2.6 2.5 3.8 5.5 3.8 9s-1.2 6.5-3.8 9c-2.6-2.5-3.8-5.5-3.8-9S9.4 5.5 12 3Z'],
+  ['CF:12,12,9','M10 9v6M14 9v6'], ['F:M3.5 20.5 8.4 8.6l7 7Z','M13.5 3.2v2M20.8 10.5h-2M18.3 5.7l-1.4 1.4','D:10.5,4.5','D:19.5,15','M13 8.5c1-1.6 2.6-2.2 4-1.6'],
+  ['F:M7 3.5h10v5.3a5 5 0 0 1-10 0Z','M7 5.5H4.6v1.3a3 3 0 0 0 3 3','M17 5.5h2.4v1.3a3 3 0 0 1-3 3','M12 13.8v3.6','M8.5 21h7M9.8 17.4h4.4'], ['F:M7 10.2v10.6H4.6A1.6 1.6 0 0 1 3 19.2v-7.4a1.6 1.6 0 0 1 1.6-1.6Z','M7 10.2l3.8-7a2 2 0 0 1 2.9 2.1L13 9.2h5.6a2 2 0 0 1 2 2.4l-1.5 7.4a2.3 2.3 0 0 1-2.3 1.8H7'],
+  ['F:M11 3.5l1.9 5.1 5.1 1.9-5.1 1.9L11 17.5l-1.9-5.1L4 10.5l5.1-1.9Z','M18.5 15v5M16 17.5h5'], ['F:M8 10.5a4 4 0 0 1 8 0v4.8a4 4 0 0 1-8 0Z','M12 10.5V19','M4 13.5h4M16 13.5h4M5 8.8l3 1.8M19 8.8l-3 1.8M5 19.5l3-1.8M19 19.5l-3-1.8','M10.2 6.8 9 4.8M13.8 6.8 15 4.8'],
+]
+const byId = Object.fromEntries(ICONS.map((i) => [i.id, i]))
+
+function parts(d, mode) {
+  return d.map((s) => {
+    const fill = s.startsWith('F:') || s.startsWith('CF:') || s.startsWith('RF:')
+    if (mode === 'fill' && !fill) return ''
+    const fa = mode === 'fill' ? '' : 'fill="none"'
+    if (s.startsWith('F:')) return `<path d="${s.slice(2)}" ${fa}/>`
+    if (s.startsWith('CF:') || s.startsWith('C:')) { const [cx, cy, r] = s.split(':')[1].split(','); return `<circle cx="${cx}" cy="${cy}" r="${r}" ${fa}/>` }
+    if (s.startsWith('RF:')) { const [x, y, w, h, rx] = s.slice(3).split(','); return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${rx}" ${fa}/>` }
+    if (s.startsWith('D:')) { const [x, y] = s.slice(2).split(','); return `<path d="M${x} ${y}h.01" fill="none"/>` }
+    return `<path d="${s}" fill="none"/>`
+  }).join('')
+}
+// 앱 DuoIcon과 같은 규칙: 16px 미만은 선만, 채움은 (1.6, 1.8) 어긋남, 선 2.15
+const duo = (d, size = 16) => `<svg width="${size}" height="${size}" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;overflow:visible;vertical-align:-.15em">
+  ${size >= 16 ? `<g style="fill:var(--duo);stroke:var(--duo);opacity:var(--duo-op)" stroke-width="1.6" transform="translate(1.6 1.8)">${parts(d, 'fill')}</g>` : ''}
+  <g stroke="currentColor" stroke-width="2.15">${parts(d, 'line')}</g></svg>`
+const I = (id, size) => duo(byId[id].d, size)
+const E = (id, size = 15) => `<span class="emj" style="font-size:${size - 1}px;line-height:1">${byId[id].em.split(' ')[0]}</span>`
+
+// 같은 화면 묶음을 이모지/아이콘으로 그린다
+function screen(i) {
+  return `<div class="scr">
+    <div class="sec"><span class="cap">상점 탭 · 섹션 제목</span>
+      <div class="tabs"><span class="tab on">${i('deal')} 오늘의 특가</span><span class="tab">${i('collection')} 도감</span><span class="tab">${i('target')} 미션·업적</span><span class="tab">${i('shop')} 구입 기록</span></div>
+      <span class="h3">${i('calendar')} 시즌 한정 <span style="color:var(--muted-foreground);font-weight:400">· 12월까지</span></span></div>
+    <div class="sec"><span class="cap">직원 패널 · 장비 탭</span>
+      <span class="h3">${i('plug')} 연결된 도구(MCP)</span><span class="h3">${i('toolbox')} 매뉴얼</span><span class="h3">${i('shield')} 쓸 수 있는 도구</span>
+      <div class="lab"><span>${i('staff', 14)} 정리드 <span class="lead">${i('star', 14)} 팀장</span></span></div></div>
+    <div class="sec"><span class="cap">환영 창 · 튜토리얼 · 레벨업 팝업</span>
+      <div class="row2"><div class="wcard">${i('staff', 22)}<b>직원 고용</b><span>폴더와 역할을 정해요</span></div><div class="wcard">${i('chat', 22)}<b>말로 지시</b><span>채팅으로 일을 맡겨요</span></div></div>
+      <div class="hint">${i('hint')} 책상을 눌러 직원 자리를 정해 보세요</div>
+      <div class="ttl">${i('office', 18)} 사무실이 새로 바뀌었어요</div>
+      <div class="note">${i('tip')}<span>바닥 밖으로 나간 가구는 꾸미기 서랍에 들어가요.</span></div></div>
+    <div class="sec"><span class="cap">지도 버튼 · 데모데이 · 랩 · 채팅 알림</span>
+      <div class="chips"><span class="chip">${i('decorate')} 꾸미기</span><span class="chip">${i('search', 14)} 더 자세히</span></div>
+      <div class="banner">${i('stage', 18)} 데모데이가 열렸어요 <span class="chip p" style="margin-left:auto">${i('stage', 14)} 지금 열기</span></div>
+      <div class="lab"><span>${i('target', 14)} 클로드 오피스를 계속 발전시키기</span><span>${i('project', 14)} ~/flitto/poc/claude-office</span></div>
+      <span class="sysm">${i('launch')} PR을 올렸어요: 결재 카드 결과 한 줄</span>
+      <span class="sysm">${i('demo')} 데모데이 발표를 시작해요</span>
+      <span class="sysm">${i('chart')} AI 요금제 사용량 62%</span>
+      <span class="sysm">${i('box')} 가구를 서랍에 넣었어요</span></div>
+  </div>`
+}
+
+const LOC = {
+  decorate: '사무실 지도 꾸미기 버튼 <code>shell.ts:108 map.decorStart</code>',
+  stage: '데모데이 배너·지금 열기 <code>DemoStage.tsx:461·487</code>, 제목 <code>gallery.ts:72 stage.title</code>, 업적 <code>economy.ts:510·517</code>',
+  deal: '상점 특가 제목 <code>ShopPage.tsx:160</code>, 탭 <code>featuresB.ts:956 shop.tab.deals</code>',
+  collection: '상점 도감 탭 <code>featuresB.ts:963</code>, 지난 결정 자동 답 <code>featuresA.ts:81 chat.pastDecision</code>·<code>logs.ts:61</code>',
+  target: '상점 미션 탭·제목 <code>featuresB.ts:964</code>·<code>ShopPage.tsx:365</code>, 랩 목표 <code>LabSection.tsx:194</code>',
+  staff: '환영 창 고용 카드 <code>Onboarding.tsx:326</code>, 둘러보기 <code>CoachTour.tsx:54·63</code>, 업적 <code>economy.ts:491</code>',
+  chat: '환영 창 지시 카드 <code>Onboarding.tsx:327</code>, 데모데이 말·댓글 <code>DemoStage.tsx:369·429</code>, 답함 <code>featuresA.ts:75</code>, 보드 출처 <code>chatMessenger.ts:59</code>, 회의 한마디 <code>office.ts:4326</code>',
+  hint: '튜토리얼 안내 <code>Tutorial.tsx:156</code>',
+  tip: '레벨업 팝업 서랍 안내 <code>featuresA.ts:841 levelUp.drawerNote</code>',
+  plug: '장비 탭 MCP 제목 <code>McpSection.tsx:109</code>, 인터넷 끊김·재연결 <code>main.ts:103·104</code>',
+  toolbox: '장비 탭 매뉴얼 제목 <code>EquipmentTab.tsx:65</code>',
+  shield: '장비 탭 도구 제목 <code>EquipmentTab.tsx:117</code>, 원격 잠금 알림 <code>remote/service.ts:242</code>(OS 알림은 이모지 유지)',
+  office: '레벨업 사무실 개편 제목 <code>featuresA.ts:799</code>, 환영 창 큰 그림 <code>Onboarding.tsx:575</code>, 둘러보기 <code>CoachTour.tsx:53</code>',
+  launch: 'PR 올림 알림 <code>office.ts:3590</code>, 업적 <code>economy.ts:495</code>',
+  shop: '구입 기록 <code>ShopPage.tsx:481</code>, 둘러보기 <code>CoachTour.tsx:72</code>, 업적 <code>economy.ts:484</code>',
+  project: '대시보드 프로젝트 묶음 <code>Dashboard.tsx:21</code>, 랩 폴더 <code>LabSection.tsx:195</code>, 조직도 <code>OrgPage.tsx:63</code>',
+  star: '팀장 표시 <code>StaffCard.tsx:88</code>·<code>featuresB.ts:90</code> (색은 지금처럼 <code>--status-waiting</code>), 레벨업 색종이 <code>LevelUp.tsx:15</code>',
+  calendar: '상점 시즌 한정 제목 <code>ShopPage.tsx:169</code>',
+  search: '채팅 빠른 답 \'더 자세히\' <code>chatMessenger.ts:49</code>',
+  demo: '데모데이 시작·기록 알림 <code>office.ts:4234·4253·4329</code>',
+  chart: '사용량 알림 <code>main.ts:120 notify.planUsage</code>·<code>office.ts:5143</code>, 둘러보기 <code>CoachTour.tsx:61</code>',
+  box: '가구 서랍 알림 <code>main.ts:93 notify.stowedTitle</code>, <code>office.ts:873</code>',
+}
+
+document.getElementById('root').innerHTML = `
+<h1>듀오톤 아이콘 2차 묶음 · 22종</h1>
+<p class="sub">1차 20종과 같은 규격: 24 격자 · 선 2.15 · 연보라 채움(--ring, 라이트 42%·다크 60%)을 (1.6, 1.8) 어긋나게 · 16px 미만은 선만 · ${dark ? '다크' : '라이트'} 모드 · 2026-11-11 이디자</p>
+<div class="panel old"><span>1차 20종<br>(적용됨)</span><div class="row">${OLD.map((d) => duo(d, 22)).join('')}</div></div>
+<h2>2차 22종 (왼쪽 26px · 가운데 16px · 오른쪽 14px 선만)</h2>
+<div class="panel"><div class="grid">
+  ${ICONS.map((ic) => `<div class="ic${ic.qa ? ' qa' : ''}"><div class="sz">${duo(ic.d, 26)}${duo(ic.d, 16)}${duo(ic.d, 14)}</div>
+    <div class="nm"><code>${ic.id}</code></div><div class="lb"><span class="emj">${ic.em}</span><br>${ic.ko}</div></div>`).join('')}
+</div><div class="legend"><span><i></i>QA에서 짚은 곳(필수 12종)</span><span>나머지 10종: 사용 횟수·눈에 띄는 정도로 고름</span></div></div>
+<h2>실제 화면 속 배치</h2>
+<div class="shots">
+  <div class="shot"><h3><span class="tag now">현재</span>이모지</h3>${screen(E)}</div>
+  <div class="shot"><h3><span class="tag">2차</span>듀오톤 아이콘</h3>${screen(I)}</div>
+</div>
+<h2>아이콘 이름 · 교체 위치</h2>
+<table><tr><th>아이콘</th><th>이름</th><th>대체할 이모지</th><th>뜻</th><th>교체 위치 (app/src 기준, 파일:줄 — emoji-inventory.md §3)</th></tr>
+${ICONS.map((ic) => `<tr><td class="i">${duo(ic.d, 18)}</td><td><code>${ic.id}</code></td><td><span class="emj">${ic.em}</span></td><td>${ic.ko}</td><td>${LOC[ic.id]}</td></tr>`).join('')}
+</table>
+<h2>이번 묶음에서 뺀 것</h2>
+<div class="out">
+  <b>사무실 지도 말풍선·가구 반응</b>(☕ 👀 🐶 🎵 🕹 등 40여 종): 이미 <code>emoteArt.ts</code>가 그림으로 바꿔 그려서 대상이 아님 ·
+  <b>트레이 글자·OS 알림 제목</b>(⬆ 🟢🟡🔴 🔒 📊 등): 시스템이 글자만 받아 SVG를 못 넣으니 이모지 유지 ·
+  <b>상점 세트·업적 데이터의 장식 이모지</b>(💎 👑 🗼 🥇 등 1~2회): 수집 요소의 재미라 이모지 유지 권함, 위 표의 업적 줄도 대표 확인 후 결정 ·
+  <b>✕ ➤ 기호</b>: 지금 쓰는 lucide 아이콘(X·Send)으로 바꾸면 되므로 새로 그리지 않음 ·
+  <b>⚙ 🧭 💳 📑 ⏰ 등 둘러보기 1회</b>: 메뉴 아이콘(lucide)과 같은 그림을 쓰는 편이 맞음.
+</div>`
+</script>
+</body>
+</html>

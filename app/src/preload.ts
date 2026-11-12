@@ -5,6 +5,7 @@ import type { OfficeUpdateApi, UpdateStatus } from './shared/updateCheck'
 import type { OfficePackApi } from './shared/staffPack'
 import type { OfficeSceneApi } from './shared/sceneExport'
 import type { OfficeErrorsApi } from './shared/errorReport'
+import type { OfficeWorkspacesApi, WorkspacesState } from './shared/workspace'
 
 // 메서드는 office:<이름> invoke, on* 은 같은 이름 채널 구독으로 연결한다 (목록은 shared/officeApiShape — 원격 v2와 같은 목록)
 const METHODS = OFFICE_METHODS
@@ -85,3 +86,20 @@ const errors: OfficeErrorsApi = {
   report: (text) => ipcRenderer.send('errors:report', String(text).slice(0, 20_000)),
 }
 contextBridge.exposeInMainWorld('officeErrors', errors)
+
+// 워크스페이스(다른 PC 화면 보기) 목록·전환·추가 (PC 전용 workspace:* 채널 — OfficeApi 밖이라 휴대폰·원격 v2로 번지지 않는다)
+const workspaces: OfficeWorkspacesApi = {
+  state: () => ipcRenderer.invoke('workspace:state'),
+  switchTo: (target) => ipcRenderer.invoke('workspace:switchTo', target),
+  onChange: (cb) => {
+    const listener = (_e: IpcRendererEvent, state: WorkspacesState) => cb(state)
+    ipcRenderer.on('workspace:onChange', listener)
+    return () => {
+      ipcRenderer.off('workspace:onChange', listener)
+    }
+  },
+  add: (input) => ipcRenderer.invoke('workspace:add', input),
+  update: (id, patch) => ipcRenderer.invoke('workspace:update', id, patch),
+  remove: (id) => ipcRenderer.invoke('workspace:remove', id),
+}
+contextBridge.exposeInMainWorld('officeWorkspaces', workspaces)

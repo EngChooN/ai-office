@@ -64,7 +64,7 @@ export function createOfficeHandlers(office: Office, remoteApi: () => RemoteServ
     refreshRemoteTailscale: () => remoteApi().refreshTailscale(),
     dismissRemoteTsNotice: () => remoteApi().dismissTsNotice(),
     peerPairStart: async (kind?: PairKind) => {
-      const v = await remoteApi().openPairing(kind === 'phone' ? 'phone' : 'peer')
+      const v = await remoteApi().openPairing(kind === 'phone' ? 'phone' : kind === 'view' ? 'view' : 'peer')
       if (!v) throw new InvalidArgsError(t('peer.error.pair_off'))
       return v
     },

@@ -1,0 +1,26 @@
+{
+  "method": "내장 image_gen (imagegen 스킬)",
+  "common_prompt": "Use case: logo-brand. Create one polished raster macOS application icon concept for AI Office, a tiny friendly office where AI employees work and the owner gives instructions and approves requests. Exactly square 1024x1024 PNG. Full bleed OPAQUE square artwork with a plain solid background; export will place this square within the macOS rounded-square tile with margins. Keep all foreground artwork in central 80% of image, corners only background. No outer border or external shadow, no words, no letters, no logo of any AI provider, no watermark. Warm pastel palette taken from office art: cream #faf5ec, paper #fffcf5, lavender #8f80e6, oak #d6ae7a, mint #8fd6c2, sky #9fe3ff, amber #edb417, warm plum outline #3a2a32. Strong broad silhouettes, very few details, readable at 16px. Crisp charming illustration with subtly dimensional forms, not photorealistic. ",
+  "concepts": [
+    {
+      "name": "a-office-building",
+      "prompt": "Direction A — ISOMETRIC OFFICE BUILDING. A single chunky little two-storey cream office building shown in three-quarter isometric view. A lavender flat roof, four large warm lit windows; two windows have extremely simple tiny employee silhouettes inside. One large mint checkmark in a cream speech bubble floats above the right corner of the building, indicating owner approval. No trees, no street, no tiny props. Background solid pale lavender #e7e0fa. The building dominates the icon. Chunky warm plum outlines and clean broad flat shaded geometric planes."
+    },
+    {
+      "name": "b-ai-colleague",
+      "prompt": "Direction B — EMPLOYEE AT DESK. Close-up front-facing cute AI employee, a friendly rounded cream robot head with two dark plum square eyes (no antenna), wearing lavender shoulders, behind a broad oak desk and a very simple sky-blue laptop. One raised hand asks for approval; a single large amber speech bubble above that hand contains a dark plum checkmark. Background solid deep warm plum #41363f. Iconic bold shapes, shallow dimensional illustration, friendly and professional."
+    },
+    {
+      "name": "c-approval-chat",
+      "prompt": "Direction C — APPROVAL SYMBOL. Extremely simple powerful flat emblem: a single enormous cream rounded speech bubble with its tail at bottom left; inside the bubble two small lavender square eyes suggest an AI colleague. A substantial mint-green circular approval seal with a thick warm-plum checkmark overlaps the bottom-right quarter. Small oak-colored base under bubble subtly evokes a desk. Background solid lavender #8f80e6. Minimal thick geometries and broad color blocks, nearly flat, high contrast. This is an abstract communication-and-approval mark, no character body, no building."
+    },
+    {
+      "name": "d-office-diorama",
+      "prompt": "Direction D — MINI OFFICE DIORAMA. Isometric cutaway miniature cozy office, one diamond-shaped oak floor platform, just two cream walls forming an open corner, one broad lavender desk with a sky monitor and a tiny cream robot AI employee seated at it. A second small employee standing beside desk holds up a large mint approval card with one dark checkmark. One single green plant in a terracotta pot at far corner. Background solid cream #faf5ec. Warm plum contour, charming tactile miniature illustration, simplified big volumes, no clutter. Scene occupies central 80%."
+    },
+    {
+      "name": "e-team-windows",
+      "prompt": "Direction E — TEAM IN ONE OFFICE. Bold front-facing geometric emblem of a single cream office window frame containing a 2x2 grid, three panes occupied by three very simple friendly rounded robot faces, one lavender, one sky-blue, one pale oak; bottom-right pane is a large mint tile with a thick plum checkmark for the owner approval. Thick warm-plum window dividers and a broad oak windowsill, no building roof, no desk. Background solid pale mint #ccebe2. Very simple nearly flat illustration, strong recognizable four-pane silhouette and collective AI team identity."
+    }
+  ]
+}

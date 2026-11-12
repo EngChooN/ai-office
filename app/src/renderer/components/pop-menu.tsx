@@ -12,7 +12,7 @@ const keepFocus = (e: MouseEvent) => (e.target as HTMLElement).closest('button')
  * 스크롤 상자·좁은 칸 안에서 잘리지 않게 body에 고정 위치로 띄운다. 창 크기가 바뀌면(키보드 등) 자리를 다시 잡는다.
  * 바깥을 누르거나 Esc(안드로이드 뒤로 가기도 Esc로 온다)로 닫는다. 안에는 기존 버튼·부품을 그대로 넣는다
  */
-export function PopMenu({ icon, label, hasDot, opens = 'up', className, children }: { icon: ReactNode; label: string; hasDot?: boolean; opens?: 'up' | 'down'; className?: string; children: (close: () => void) => ReactNode }) {
+export function PopMenu({ icon, label, hasDot, opens = 'up', className, buttonClassName, children }: { icon: ReactNode; label: string; hasDot?: boolean; opens?: 'up' | 'down'; className?: string; /** 아이콘 대신 글자·얼굴을 담는 버튼(세로 폰 방 이름 ▾ 등) */ buttonClassName?: string; children: (close: () => void) => ReactNode }) {
   const [isOpen, setIsOpen] = useState(false)
   const [style, setStyle] = useState<CSSProperties | null>(null)
   const ref = useRef<HTMLDivElement>(null)
@@ -44,7 +44,7 @@ export function PopMenu({ icon, label, hasDot, opens = 'up', className, children
   const close = () => setIsOpen(false)
   return (
     <div ref={ref} className={cn('relative shrink-0', className)}>
-      <Button type="button" size="icon" variant="ghost" className="relative size-9" onMouseDown={keepFocus} onClick={() => setIsOpen((v) => !v)} aria-label={label} title={label} aria-expanded={isOpen}>
+      <Button type="button" size="icon" variant="ghost" className={cn('relative size-9', buttonClassName)} onMouseDown={keepFocus} onClick={() => setIsOpen((v) => !v)} aria-label={label} title={label} aria-expanded={isOpen}>
         {icon}
         {hasDot && <span className="bg-primary absolute top-1.5 right-1.5 size-1.5 rounded-full" />}
       </Button>

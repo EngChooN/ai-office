@@ -2,7 +2,7 @@
 // 인증·잠금·속도는 V2Routes의 앞단(preflight)이 이미 거쳤다. 여기서는 경로·본문·슬롯 소속만 본다 (파일 복사본 경로는 4번의 syncRoutes)
 
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { PEER_LIMITS, PEER_PATHS } from '../../shared/peerProtocol.ts'
+import { PEER_LIMITS, PEER_PATHS, type PairKind } from '../../shared/peerProtocol.ts'
 import type { PairingHost } from '../peer/pairing'
 import type { PeerHost, HostResult } from '../peer/peerHost'
 import { V2_PROTOCOL_VERSION, v2Fail } from './v2.ts'
@@ -19,7 +19,7 @@ export interface PeerRoutesContext {
   pairing: PairingHost
   host: PeerHost
   /** 짝짓기 성공 처리 — 슬롯을 만들거나 휴대폰 토큰을 꺼내 돌려준다. null이면 만들 수 없음(슬롯이 가득 참 등) */
-  onPaired(result: { kind: 'peer' | 'phone'; label: string }): { token: string; slotId?: string } | null
+  onPaired(result: { kind: PairKind; label: string }): { token: string; slotId?: string } | null
   /** 슬롯 해제 (A컴이 unpair를 불렀다) */
   onUnpair(slotId: string): void
   ownName(): string

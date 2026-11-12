@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <!-- 원격 창(다른 PC 화면) 입구 — main/workspace가 PC마다 따로 연 창(파티션 분리)에서 불러온다 -->
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' blob:; connect-src 'self' ws://localhost:* http://localhost:*; worker-src 'self' blob:; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'"
+    />
+    <title>AI Office</title>
+    <!-- 첫 페인트 전에 바깥 UI 화면 모드·색 테마를 칠한다 (캐시: lib/uiTheme.ts, 규칙: shared/uiTheme.ts resolveMode) -->
+    <script id="ui-theme-boot">
+      (function () {
+        var c = {}
+        try { c = JSON.parse(localStorage.getItem('office.uiTheme') || '{}') || {} } catch (e) {}
+        var mode = c.mode === 'light' || c.mode === 'dark' ? c.mode : window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+        var theme = /^(lavender|blue|terracotta|sage|rose|mono|aurora|twilight|candy|meadow)$/.test(c.theme) ? c.theme : 'lavender'
+        var r = document.documentElement
+        r.dataset.mode = mode
+        r.dataset.theme = theme
+        r.style.colorScheme = mode
+      })()
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/renderer/remote/main.tsx"></script>
+  </body>
+</html>

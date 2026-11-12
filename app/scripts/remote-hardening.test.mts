@@ -83,6 +83,12 @@ test('원격 매뉴얼 범위: 프로젝트만, 전역 매뉴얼 생성·수정�
 
 // ── 3) S 분류: hire·updateStaff·recruitExternal ─────────
 
+test('기본 작업 폴더는 원격에서 바꾸지 못한다 (다른 설정은 그대로 통과)', () => {
+  const [patch] = pickFields('updateSettings', [{ defaultCwd: '/etc', language: 'ko' }]) as [Record<string, unknown>]
+  assert.equal('defaultCwd' in patch, false)
+  assert.equal(patch.language, 'ko')
+})
+
 test('랩 작업 폴더는 원격에서 정하지 못한다', () => {
   const [lab] = pickFields('createLab', [{ name: 'a', goal: '', cwd: '/etc', leadId: null, memberIds: [], color: 'x' }]) as [Record<string, unknown>]
   assert.equal('cwd' in lab, false)

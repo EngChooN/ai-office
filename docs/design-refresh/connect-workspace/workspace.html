@@ -1,0 +1,595 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<title>워크스페이스 — 내 PC 여러 대를 오가며 쓰기 · 시안 3안</title>
+<!-- 디자인 시안 전용(앱 코드 아님). ?sheet=sum|a|b|c|add|manage|ask &mode=light|dark &cap=1 로 열어 캡처한다. QR·사무실 그림은 모양만 흉내 낸 가짜다 -->
+<style>
+  [data-mode='light'] {
+    --background:#F6F5FB; --foreground:#221F33; --card:#FFFFFF; --primary:#6C5CE7; --on-primary:#FFFFFF;
+    --muted:#ECEAF6; --muted-foreground:#66627F; --accent:#E9E6FA; --border:#DEDAF0; --input:#CFCAE6;
+    --chrome:#FBFAFF; --working:#1C7C46; --waiting:#9A5B00; --idle:#8A8A80; --error:#C42B2B;
+    --sheet-bg:#E4E1F2; --side1:#7B6CF0; --side2:#B58CF5; --tile-on:#F4F2FF; --dim:rgba(30,25,60,.38);
+    --floor:#EFE6D6; --floor2:#E6DAC5; --desk:#C9A27A; --wall:#D9CFF0; --frame:#c9c4e0;
+  }
+  [data-mode='dark'] {
+    --background:#14131C; --foreground:#EDEBF8; --card:#201F2D; --primary:#9B8CFF; --on-primary:#1A1240;
+    --muted:#292739; --muted-foreground:#A7A3C4; --accent:#302D47; --border:#34314A; --input:#413E5C;
+    --chrome:#181723; --working:#4ADE80; --waiting:#F2C94C; --idle:#9C9AA8; --error:#FF6B6B;
+    --sheet-bg:#0C0B12; --side1:#4B3FB0; --side2:#7A55B8; --tile-on:#2A2650; --dim:rgba(0,0,0,.55);
+    --floor:#2B2A35; --floor2:#25242E; --desk:#5A4A3A; --wall:#2F2B45; --frame:#2a2838;
+  }
+  /* 워크스페이스(PC)마다 고유색 — 기존 보라 계열 옆에 구분되는 3색 */
+  [data-mode='light'] .ws-home { --ws:#6C5CE7; --ws-soft:#EEEBFD; --ws-on:#fff; }
+  [data-mode='light'] .ws-work { --ws:#0E8C7E; --ws-soft:#E0F4F1; --ws-on:#fff; }
+  [data-mode='light'] .ws-lab  { --ws:#C8571F; --ws-soft:#FBEADF; --ws-on:#fff; }
+  [data-mode='light'] .ws-note { --ws:#2F6FD0; --ws-soft:#E3EDFB; --ws-on:#fff; }
+  [data-mode='dark'] .ws-home { --ws:#9B8CFF; --ws-soft:#2A2650; --ws-on:#1A1240; }
+  [data-mode='dark'] .ws-work { --ws:#3DD6C0; --ws-soft:#16302D; --ws-on:#0B2420; }
+  [data-mode='dark'] .ws-lab  { --ws:#FF9A62; --ws-soft:#38251A; --ws-on:#2B1608; }
+  [data-mode='dark'] .ws-note { --ws:#6FA8FF; --ws-soft:#1A2740; --ws-on:#0B1A33; }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--sheet-bg); }
+  body { font-family: "Pretendard", "Apple SD Gothic Neo", system-ui, sans-serif; color: var(--foreground); padding: 32px 36px 40px; width: max-content; min-width: 100vw; font-size: 13px; }
+  .tabs-top { display: flex; gap: 6px; margin-bottom: 18px; align-items: center; }
+  .tabs-top a { padding: 7px 14px; border-radius: 999px; background: var(--card); color: var(--foreground); text-decoration: none; font-weight: 600; border: 1px solid var(--border); cursor: pointer; }
+  .tabs-top a.on { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
+  .tabs-top .mode { margin-left: 14px; }
+  .capture .tabs-top { display: none; }
+  .sheet { display: none; } .sheet.on { display: block; }
+  h1.st { font-size: 25px; font-weight: 700; }
+  p.ss { color: var(--muted-foreground); font-size: 14px; margin: 6px 0 20px; max-width: 1560px; line-height: 1.55; }
+  .row { display: flex; gap: 26px; align-items: flex-start; }
+  .row + .row { margin-top: 26px; }
+  .col { display: flex; flex-direction: column; gap: 9px; }
+  .col h2 { font-size: 15px; font-weight: 700; display: flex; gap: 6px; align-items: center; }
+  .col .cap { font-size: 12px; color: var(--muted-foreground); line-height: 1.5; max-width: 760px; }
+  .tag { font-size: 11px; font-weight: 700; border-radius: 999px; padding: 2px 8px; background: var(--primary); color: var(--on-primary); }
+  .tag.g { background: var(--muted-foreground); color: var(--card); }
+  .notes { font-size: 12.8px; line-height: 1.65; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; }
+  .notes li { margin-left: 18px; }
+  .notes h3 { font-size: 14px; margin-bottom: 4px; }
+
+  /* ── 공용 요소 ── */
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 5px; height: 30px; padding: 0 12px; border-radius: 8px; font-size: 12.5px; font-weight: 600; border: 1px solid var(--input); background: var(--card); color: var(--foreground); white-space: nowrap; }
+  .btn.sm { height: 26px; padding: 0 9px; font-size: 11.5px; }
+  .btn.lg { height: 40px; padding: 0 18px; font-size: 14px; border-radius: 10px; }
+  .btn.pri { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
+  .btn.wsb { background: var(--ws); color: var(--ws-on); border-color: var(--ws); }
+  .btn.ghost { border-color: transparent; background: transparent; color: var(--muted-foreground); }
+  .btn.red { border-color: color-mix(in srgb, var(--error) 55%, transparent); color: var(--error); }
+  .btn.redf { background: var(--error); border-color: var(--error); color: #fff; }
+  .btn.off { opacity: .45; }
+  .link { color: var(--primary); font-weight: 600; font-size: 12px; }
+  .small { font-size: 11.5px; color: var(--muted-foreground); line-height: 1.5; }
+  .xs { font-size: 11px; color: var(--muted-foreground); }
+  .mono { font-family: "SF Mono", Menlo, monospace; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--working); margin-right: 5px; vertical-align: 1px; flex-shrink: 0; }
+  .dot.w { background: var(--waiting); } .dot.g { background: var(--idle); }
+  .banner { border-radius: 10px; padding: 9px 11px; font-size: 12px; line-height: 1.5; display: flex; gap: 8px; align-items: flex-start; }
+  .banner.warn { background: color-mix(in srgb, var(--waiting) 10%, transparent); border: 1px solid color-mix(in srgb, var(--waiting) 40%, transparent); }
+  .banner.ok { background: color-mix(in srgb, var(--working) 10%, transparent); border: 1px solid color-mix(in srgb, var(--working) 40%, transparent); }
+  .banner.info { background: var(--accent); border: 1px solid var(--border); }
+  .banner.err { background: color-mix(in srgb, var(--error) 9%, transparent); border: 1px solid color-mix(in srgb, var(--error) 40%, transparent); }
+  .chk { display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; line-height: 1.45; }
+  .chk .ic { width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0; display: grid; place-items: center; font-size: 11px; font-weight: 800; color: #fff; background: var(--working); margin-top: 1px; }
+  .chk .ic.g { background: transparent; border: 1.5px solid var(--input); color: var(--muted-foreground); }
+  .chk .ic.spin { background: transparent; border: 2px solid var(--accent); border-top-color: var(--primary); }
+  .chk b { font-weight: 600; }
+  .code { font-family: "SF Mono", Menlo, monospace; font-size: 22px; font-weight: 700; letter-spacing: 2px; }
+  .input { height: 32px; border: 1px solid var(--input); border-radius: 8px; padding: 0 10px; display: flex; align-items: center; font-size: 12.5px; background: var(--card); }
+  .input.focus { border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 20%, transparent); }
+  .qr { background: #fff; padding: 8px; border-radius: 10px; border: 1px solid var(--border); display: inline-block; line-height: 0; }
+  .qr canvas { image-rendering: pixelated; }
+  .tile { flex: 1; border: 1.5px solid var(--border); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 5px; background: var(--card); }
+  .tile .em { font-size: 26px; line-height: 1; }
+  .tile b { font-size: 14px; }
+  .tile.on { border-color: var(--primary); background: var(--tile-on); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent); }
+  .tile.h { flex-direction: row; gap: 12px; align-items: center; flex: 0 0 auto; }
+  .prog { display: flex; gap: 6px; align-items: center; font-size: 11px; color: var(--muted-foreground); }
+  .prog i { width: 26px; height: 5px; border-radius: 3px; background: var(--muted); display: block; }
+  .prog i.on { background: var(--primary); }
+  .badge { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: #E5484D; color: #fff; font-size: 10.5px; font-weight: 800; display: inline-grid; place-items: center; }
+  .badge.g { background: var(--muted); color: var(--muted-foreground); }
+  .swatch { width: 22px; height: 22px; border-radius: 50%; background: var(--ws); display: inline-block; }
+  .swatch.on { box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--ws); }
+
+  /* 워크스페이스 표시 */
+  .av { display: inline-grid; place-items: center; flex-shrink: 0; width: 26px; height: 26px; border-radius: 8px; background: var(--ws); color: var(--ws-on); font-weight: 800; font-size: 12px; position: relative; }
+  .av.off { background: var(--muted); color: var(--muted-foreground); box-shadow: inset 0 0 0 1.5px var(--ws); }
+  .av .st { position: absolute; right: -3px; bottom: -3px; width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--card); background: var(--working); }
+  .av .st.g { background: var(--idle); } .av .st.w { background: var(--waiting); }
+  .wsname { font-weight: 700; color: var(--ws); }
+  .me { font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 999px; background: var(--muted); color: var(--muted-foreground); }
+  .ribbon { display: flex; align-items: center; gap: 8px; padding: 0 12px; height: 28px; flex-shrink: 0; background: var(--ws); color: var(--ws-on); font-size: 12px; font-weight: 600; }
+  .ribbon .av { background: var(--ws-on); color: var(--ws); }
+  .ribbon .btn { height: 20px; font-size: 11px; padding: 0 8px; background: transparent; color: var(--ws-on); border-color: color-mix(in srgb, var(--ws-on) 50%, transparent); margin-left: auto; }
+
+  /* ── 데스크톱 창 ── */
+  .win { border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; background: var(--background); border: 1px solid var(--frame); box-shadow: 0 18px 36px -18px rgba(40,30,90,.45); position: relative; }
+  .win.edge { box-shadow: 0 0 0 3px var(--ws), 0 18px 36px -18px rgba(40,30,90,.45); }
+  .win .bar { height: 28px; flex-shrink: 0; background: var(--chrome); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 6px; padding: 0 10px; font-size: 11px; color: var(--muted-foreground); }
+  .win .bar i { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+  .appbar { height: 44px; flex-shrink: 0; display: flex; align-items: center; gap: 10px; padding: 0 12px; background: var(--card); border-bottom: 1px solid var(--border); font-size: 12.5px; }
+  .appbar .sp { flex: 1; }
+  .appbar .ib { height: 28px; padding: 0 9px; border-radius: 8px; background: var(--muted); display: inline-flex; gap: 5px; align-items: center; font-weight: 600; font-size: 12px; }
+  .sw { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px 0 4px; border-radius: 10px; border: 1px solid var(--border); background: var(--background); font-weight: 700; font-size: 13px; }
+  .sw.open { border-color: var(--ws); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ws) 22%, transparent); }
+  .sw .car { color: var(--muted-foreground); font-size: 11px; }
+  .win .body { flex: 1; display: flex; min-height: 0; position: relative; }
+  .win .side { width: 52px; flex-shrink: 0; background: linear-gradient(180deg, var(--side1), var(--side2)); display: flex; flex-direction: column; align-items: center; gap: 14px; padding-top: 14px; }
+  .win .side i { width: 22px; height: 22px; border-radius: 7px; background: rgba(255,255,255,.35); display: block; }
+  .win .side i.on { background: #fff; }
+  .rail { width: 58px; flex-shrink: 0; background: var(--chrome); border-right: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; gap: 12px; padding-top: 12px; position: relative; }
+  .rail .ri { position: relative; display: grid; place-items: center; }
+  .rail .ri .av { width: 38px; height: 38px; border-radius: 13px; font-size: 15px; }
+  .rail .ri.cur::before { content: ""; position: absolute; left: -10px; width: 4px; height: 26px; border-radius: 0 3px 3px 0; background: var(--ws); }
+  .rail .ri.cur .av { border-radius: 11px; box-shadow: 0 0 0 2px var(--chrome), 0 0 0 4px var(--ws); }
+  .rail .ri .badge { position: absolute; right: -6px; top: -5px; border: 2px solid var(--chrome); height: 20px; }
+  .rail .add { width: 38px; height: 38px; border-radius: 13px; border: 1.5px dashed var(--input); color: var(--muted-foreground); display: grid; place-items: center; font-size: 18px; }
+  .rail .sep { width: 26px; height: 1px; background: var(--border); }
+  .tip { position: absolute; left: 56px; background: var(--foreground); color: var(--background); font-size: 11.5px; padding: 6px 9px; border-radius: 8px; white-space: nowrap; z-index: 5; line-height: 1.45; box-shadow: 0 8px 20px -8px rgba(0,0,0,.5); }
+  .tip::before { content: ""; position: absolute; left: -5px; top: 10px; border: 5px solid transparent; border-left: 0; border-right-color: var(--foreground); }
+  .win .content { flex: 1; min-width: 0; padding: 14px 16px; overflow: hidden; display: flex; flex-direction: column; gap: 10px; position: relative; }
+  .dim { position: absolute; inset: 0; background: var(--dim); display: flex; align-items: center; justify-content: center; z-index: 6; }
+  .modal { width: 460px; background: var(--card); border-radius: 16px; padding: 18px 20px; display: flex; flex-direction: column; gap: 11px; box-shadow: 0 24px 50px -20px rgba(0,0,0,.5); border: 1px solid var(--border); }
+  .modal .mh { font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+  .modal .md { font-size: 12px; color: var(--muted-foreground); line-height: 1.5; margin-top: -5px; }
+  .foot { display: flex; justify-content: flex-end; gap: 8px; align-items: center; margin-top: 2px; }
+  .foot .l { margin-right: auto; font-size: 11.5px; color: var(--muted-foreground); }
+  .menu { position: absolute; z-index: 7; width: 300px; background: var(--card); border: 1px solid var(--border); border-radius: 14px; box-shadow: 0 22px 44px -16px rgba(0,0,0,.45); padding: 6px; display: flex; flex-direction: column; }
+  .menu .mt { font-size: 11px; color: var(--muted-foreground); padding: 6px 10px 4px; font-weight: 600; }
+  .mi { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; font-size: 12.5px; }
+  .mi.cur { background: var(--ws-soft); }
+  .mi .t { flex: 1; min-width: 0; } .mi .t b { display: block; font-weight: 700; }
+  .mi .chkm { color: var(--ws); font-weight: 800; }
+  .mi.dis { opacity: .6; }
+  .menu hr { border: 0; border-top: 1px solid var(--border); margin: 4px 6px; }
+  .kbd { font-family: "SF Mono", Menlo, monospace; font-size: 10px; color: var(--muted-foreground); border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; }
+
+  /* 사무실 미니 그림(모양만) */
+  .office { position: relative; border-radius: 12px; overflow: hidden; background: repeating-linear-gradient(90deg, var(--floor) 0 28px, var(--floor2) 28px 29px); border: 1px solid var(--border); flex-shrink: 0; }
+  .office .wall { position: absolute; left: 0; right: 0; top: 0; height: 26%; background: var(--wall); border-bottom: 3px solid color-mix(in srgb, var(--ws) 55%, var(--wall)); }
+  .office .dk { position: absolute; width: 13%; height: 11%; background: var(--desk); border-radius: 4px; }
+  .office .pp { position: absolute; width: 4.2%; aspect-ratio: 1; border-radius: 50%; border: 2px solid rgba(255,255,255,.75); }
+  .office .bub { position: absolute; font-size: 10px; background: var(--card); border-radius: 8px; padding: 1px 5px; border: 1px solid var(--border); white-space: nowrap; }
+  .office.gray { filter: grayscale(.85) brightness(.92); opacity: .75; }
+
+  .list-row { display: flex; gap: 10px; align-items: center; padding: 10px 0; border-top: 1px solid var(--border); font-size: 12.5px; }
+  .list-row:first-child { border-top: 0; }
+  .list-row .t { flex: 1; min-width: 0; } .list-row .t b { font-weight: 700; }
+  .slot { border: 1.5px dashed var(--input); border-radius: 12px; padding: 10px; text-align: center; color: var(--muted-foreground); font-size: 12px; }
+
+  /* 3안 선택 화면 카드 */
+  .pick { display: flex; gap: 16px; justify-content: center; }
+  .pc { width: 168px; border-radius: 16px; background: var(--card); border: 1.5px solid var(--border); overflow: hidden; display: flex; flex-direction: column; }
+  .pc.hover { border-color: var(--ws); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ws) 22%, transparent), 0 16px 30px -16px rgba(0,0,0,.4); transform: translateY(-3px); }
+  .pc .top { height: 6px; background: var(--ws); }
+  .pc .in { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 4px; }
+  .pc.add { border-style: dashed; align-items: center; justify-content: center; color: var(--muted-foreground); gap: 6px; background: transparent; }
+
+  /* ── 휴대폰 ── */
+  .phone { width: 390px; height: 800px; border-radius: 30px; overflow: hidden; position: relative; background: var(--background); border: 6px solid #0d0c12; box-shadow: 0 20px 40px -20px rgba(0,0,0,.5); display: flex; flex-direction: column; flex-shrink: 0; }
+  .sys { height: 26px; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; padding: 0 18px; font-size: 11px; font-weight: 600; background: var(--chrome); }
+  .sys .cam { width: 9px; height: 9px; border-radius: 50%; background: #000; }
+  .phead { height: 52px; flex-shrink: 0; display: flex; align-items: center; gap: 10px; padding: 0 14px; background: var(--card); border-bottom: 1px solid var(--border); }
+  .phead .ttl { font-size: 17px; font-weight: 800; }
+  .pbody { flex: 1; display: flex; flex-direction: column; gap: 12px; padding: 14px 16px; min-height: 0; position: relative; overflow: hidden; }
+  .pbody .big { font-size: 21px; font-weight: 800; line-height: 1.35; }
+  .tabbar { height: 56px; flex-shrink: 0; display: flex; background: var(--card); border-top: 1px solid var(--border); }
+  .tabbar span { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 10.5px; color: var(--muted-foreground); position: relative; }
+  .tabbar span i { width: 20px; height: 20px; border-radius: 6px; background: var(--muted); display: block; }
+  .tabbar span.on { color: var(--primary); font-weight: 700; } .tabbar span.on i { background: var(--primary); }
+  .tabbar .badge { position: absolute; top: 5px; left: 54%; }
+  .gest { height: 16px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: var(--card); }
+  .gest i { width: 96px; height: 4px; border-radius: 2px; background: var(--muted-foreground); opacity: .5; }
+  .pdim { position: absolute; inset: 0; background: var(--dim); z-index: 6; display: flex; flex-direction: column; justify-content: flex-end; }
+  .bsheet { background: var(--card); border-radius: 20px 20px 0 0; padding: 8px 16px 18px; display: flex; flex-direction: column; gap: 4px; }
+  .bsheet .grab { width: 40px; height: 4px; border-radius: 2px; background: var(--input); margin: 2px auto 8px; }
+  .bsheet .h { font-size: 16px; font-weight: 800; padding: 0 2px 6px; }
+  .prow { display: flex; gap: 12px; align-items: center; padding: 11px 10px; border-radius: 12px; font-size: 13px; }
+  .prow .av { width: 36px; height: 36px; border-radius: 12px; font-size: 14px; }
+  .prow.cur { background: var(--ws-soft); }
+  .prow .t { flex: 1; min-width: 0; } .prow .t b { display: block; font-size: 14px; }
+  .staff { display: flex; gap: 10px; align-items: center; padding: 9px 12px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; font-size: 12.5px; }
+  .staff .pf { width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0; }
+  .staff .t { flex: 1; } .staff .t b { display: block; }
+  .drawer { position: absolute; left: 0; top: 0; bottom: 0; width: 300px; background: var(--card); z-index: 7; display: flex; box-shadow: 10px 0 30px -10px rgba(0,0,0,.45); }
+  .drawer .rail { background: var(--chrome); }
+  .drawer .dmain { flex: 1; padding: 16px 14px; display: flex; flex-direction: column; gap: 10px; }
+
+  table.cmp { border-collapse: collapse; background: var(--card); border-radius: 12px; overflow: hidden; font-size: 13px; }
+  table.cmp th { background: var(--accent); text-align: left; padding: 9px 12px; font-size: 13px; }
+  table.cmp td { padding: 9px 12px; border-top: 1px solid var(--border); vertical-align: top; line-height: 1.55; }
+  table.cmp td:first-child { font-weight: 700; color: var(--muted-foreground); white-space: nowrap; }
+  table.cmp .rec { background: color-mix(in srgb, var(--primary) 8%, transparent); }
+  ol.ask { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px 18px 14px 36px; font-size: 13px; line-height: 1.6; display: flex; flex-direction: column; gap: 8px; width: 760px; }
+  ol.ask li::marker { color: var(--primary); font-weight: 800; }
+  ol.ask .s { color: var(--muted-foreground); font-size: 12px; display: block; }
+  ol.ask .p { font-size: 11px; font-weight: 800; color: #E5484D; margin-right: 4px; }
+  ol.ask .p.m { color: var(--waiting); }
+</style>
+</head>
+<body data-mode="light">
+<nav class="tabs-top">
+  <a data-s="sum">한눈에 비교</a>
+  <a data-s="a">1안 상단 드롭다운형</a>
+  <a data-s="b">2안 왼쪽 레일형</a>
+  <a data-s="c">3안 사무실 고르기 화면형</a>
+  <a data-s="add">추가 마법사 4장 (공통)</a>
+  <a data-s="manage">관리·꽉 참·끊김 (공통)</a>
+  <a data-s="ask">정리드 확인 목록</a>
+  <a class="mode" id="modeBtn">🌙 다크로 보기</a>
+</nav>
+
+<section class="sheet" id="sum"></section>
+<section class="sheet" id="a"></section>
+<section class="sheet" id="b"></section>
+<section class="sheet" id="c"></section>
+<section class="sheet" id="add"></section>
+<section class="sheet" id="manage"></section>
+<section class="sheet" id="ask"></section>
+
+<script>
+// ───────────────── 데이터 ─────────────────
+const WS = {
+  home: { name: '집 PC', ch: '집', me: true, st: 'on', last: '지금 보는 중', staff: 6, wait: 2, mac: 'MacBook Pro' },
+  work: { name: '회사 PC', ch: '회', st: 'on', last: '연결됨', staff: 9, wait: 3, mac: 'Windows 데스크톱' },
+  lab:  { name: '작업실 맥미니', ch: '작', st: 'off', last: '2시간 전', staff: 4, wait: 0, mac: 'Mac mini' },
+  note: { name: '노트북', ch: '노', st: 'on', last: '어제', staff: 3, wait: 0, mac: 'MacBook Air' },
+}
+const DESKS = {
+  home: [[10,40],[30,40],[55,40],[75,40],[20,68],[60,68]],
+  work: [[8,38],[24,38],[40,38],[60,38],[78,38],[14,66],[32,66],[56,66],[76,66]],
+  lab:  [[18,44],[48,44],[72,44],[34,70]],
+  note: [[20,46],[50,46],[34,70]],
+}
+const PCOL = ['#FF7AC6','#7BC8F6','#F6C177','#9BE38A','#C3A6FF','#FF9A7B','#7BE0D0','#E8E07B','#A0B4FF']
+const QS = new URLSearchParams(location.search)
+
+// ───────────────── 부품 ─────────────────
+const av = (id, o = {}) => `<span class="av ws-${id} ${o.off ? 'off' : ''}" style="${o.s ? `width:${o.s}px;height:${o.s}px;border-radius:${Math.round(o.s / 3)}px;font-size:${Math.round(o.s * .42)}px` : ''}">${WS[id].ch}${o.st ? `<span class="st ${o.st === 'off' ? 'g' : o.st === 'cut' ? 'w' : ''}"></span>` : ''}</span>`
+const stTxt = (id, cur) => {
+  const w = WS[id]
+  if (cur) return `<span class="dot"></span>지금 보는 중`
+  if (w.st === 'off') return `<span class="dot g"></span>꺼져 있음 · 마지막 접속 ${w.last}`
+  if (w.st === 'cut') return `<span class="dot w"></span>다시 연결하는 중…`
+  return `<span class="dot"></span>켜져 있음`
+}
+function office(id, w, h, o = {}) {
+  const ds = DESKS[id].map(([x, y], i) => `<span class="dk" style="left:${x}%;top:${y}%"></span><span class="pp" style="left:${x + 4.5}%;top:${y - 8}%;background:${PCOL[i % PCOL.length]}"></span>`).join('')
+  const bub = o.bub === false ? '' : `<span class="bub" style="left:${DESKS[id][1][0] + 6}%;top:${DESKS[id][1][1] - 20}%">💬 보고</span>`
+  return `<div class="office ws-${id} ${o.gray ? 'gray' : ''}" style="width:${w}px;height:${h}px"><div class="wall"></div>${ds}${bub}</div>`
+}
+const staffRows = (n) => [['리드', '정리드', '디자인 시안 검토 중', 'dot'], ['디자', '이디자', '결재 기다리는 중', 'dot w'], ['코드', '박코드', '쉬는 중', 'dot g']].slice(0, n)
+  .map(([, nm, s, d], i) => `<div class="staff"><span class="pf" style="background:${PCOL[i + 2]}"></span><div class="t"><b>${nm}</b><span class="xs"><span class="${d}"></span>${s}</span></div><span class="xs">›</span></div>`).join('')
+
+function bar(t) { return `<div class="bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i>&nbsp; ${t}</div>` }
+function sideIcons() { return `<div class="side"><i class="on"></i><i></i><i></i><i></i><i></i></div>` }
+
+// 데스크톱 창: view=지금 보는 PC, left=왼쪽 영역 추가(레일), sw=상단바 왼쪽 칸, ribbon=다른 PC 띠
+function win({ view = 'home', w = 760, h = 540, sw = '', left = '', content, overlay = '', ribbon = true, edge = true, title }) {
+  const other = view !== 'home'
+  const rb = other && ribbon ? `<div class="ribbon ws-${view}">${av(view, { s: 18 })}<span><b>${WS[view].name}</b>의 사무실을 보는 중 · 지시·결재는 ${WS[view].name}에서 처리돼요</span><span class="btn">집 PC로 돌아가기</span></div>` : ''
+  const wait = WS[view].wait
+  return `<div class="win ws-${view} ${other && edge ? 'edge' : ''}" style="width:${w}px;height:${h}px">${bar(title || `AI Office${other ? ' — ' + WS[view].name : ''}`)}
+    ${rb}
+    <div class="appbar">${sw}<span class="sp"></span><span class="ib">결재 <span class="badge ${wait ? '' : 'g'}">${wait}</span></span><span class="ib">사용량 42%</span></div>
+    <div class="body">${left}${sideIcons()}<div class="content">${content || defaultOffice(view, w - 52 - (left ? 58 : 0) - 32)}</div>${overlay}</div></div>`
+}
+function defaultOffice(id, cw) {
+  return `<div style="display:flex;align-items:center;gap:8px"><b style="font-size:15px">사무실</b><span class="xs">· 직원 ${WS[id].staff}명 · 일하는 중 ${Math.ceil(WS[id].staff / 2)}명</span></div>${office(id, cw, 230)}
+  <div style="display:flex;gap:10px">${['정리드 · 보고 2건', '이디자 · 결재 기다림', '박코드 · 쉬는 중'].map((t, i) => `<div class="card" style="flex:1;padding:9px 11px;font-size:12px"><span class="${['dot', 'dot w', 'dot g'][i]}"></span>${t}</div>`).join('')}</div>`
+}
+
+// 휴대폰: view=지금 보는 PC
+function phone({ view = 'home', head, body, overlay = '', tab = true, ribbon = false }) {
+  const rb = ribbon ? `<div class="ribbon ws-${view}" style="height:26px">${av(view, { s: 16 })}<span><b>${WS[view].name}</b> 사무실</span></div>` : ''
+  return `<div class="phone ws-${view}"><div class="sys"><span>9:41</span><span class="cam"></span><span>▮▮ 100%</span></div>${rb}
+    ${head === null ? '' : `<div class="phead">${head || ''}</div>`}
+    <div class="pbody">${body}</div>
+    ${tab ? `<div class="tabbar"><span class="on"><i></i>사무실</span><span><i></i>대화</span><span><i></i>결재${WS[view].wait ? `<b class="badge">${WS[view].wait}</b>` : ''}</span><span><i></i>더보기</span></div>` : ''}
+    <div class="gest"><i></i></div>${overlay}</div>`
+}
+function phoneOffice(id, o = {}) {
+  return `${office(id, 346, 200, o)}
+  <div class="card" style="display:flex;align-items:center;gap:10px;padding:10px 12px"><span style="font-size:20px">📥</span><div style="flex:1"><b>결재 ${WS[id].wait}건 기다려요</b><div class="xs">${WS[id].name}의 직원이 올렸어요</div></div><span class="btn sm pri">보기</span></div>
+  ${staffRows(3)}`
+}
+
+function col(tag, title, cap, html, g) { return `<div class="col"><h2><span class="tag ${g ? 'g' : ''}">${tag}</span>${title}</h2>${cap ? `<div class="cap">${cap}</div>` : ''}${html}</div>` }
+const sheet = (id, h1, sub, html) => { document.getElementById(id).innerHTML = `<h1 class="st">${h1}</h1><p class="ss">${sub}</p>${html}` }
+
+// ───────────────── 1안 상단 드롭다운형 ─────────────────
+const swBtn = (id, open) => `<span class="sw ws-${id} ${open ? 'open' : ''}">${av(id)}<span>${WS[id].name}</span><span class="car">⌄</span></span>`
+const ddMenu = (cur) => `<div class="menu" style="left:12px;top:76px">
+  <div class="mt">내 사무실 · PC 3대 중 2대 연결</div>
+  ${['home', 'work', 'lab'].map((id, i) => `<div class="mi ws-${id} ${id === cur ? 'cur' : ''} ${WS[id].st === 'off' ? 'dis' : ''}">${av(id, { off: WS[id].st === 'off', st: WS[id].st })}<div class="t"><b>${WS[id].name} ${WS[id].me ? '<span class="me">이 PC</span>' : ''}</b><span class="xs">${id === cur ? '지금 보는 중' : WS[id].st === 'off' ? '꺼져 있음 · 마지막 접속 ' + WS[id].last : '켜져 있음 · 직원 ' + WS[id].staff + '명'}</span></div>${WS[id].wait ? `<span class="badge">${WS[id].wait}</span>` : ''}${id === cur ? '<span class="chkm">✓</span>' : `<span class="kbd">⌘${i + 1}</span>`}</div>`).join('')}
+  <hr /><div class="mi"><span class="av" style="background:var(--muted);color:var(--primary)">＋</span><div class="t"><b>PC 추가</b><span class="xs">1대 더 연결할 수 있어요</span></div></div>
+  <div class="mi"><span class="av" style="background:transparent;color:var(--muted-foreground)">⚙</span><div class="t"><b>PC 관리</b><span class="xs">이름 바꾸기 · 색 · 연결 해제</span></div></div></div>`
+const phoneSw = (id) => `<span class="sw ws-${id}" style="height:36px;font-size:15px">${av(id, { s: 26 })}${WS[id].name}<span class="car">⌄</span></span><span style="flex:1"></span><span class="xs">⚙</span>`
+const phoneSheet = (cur) => `<div class="pdim"><div class="bsheet"><div class="grab"></div><div class="h">어느 PC를 볼까요?</div>
+  ${['home', 'work', 'lab'].map((id) => `<div class="prow ws-${id} ${id === cur ? 'cur' : ''}">${av(id, { off: WS[id].st === 'off', st: WS[id].st })}<div class="t"><b>${WS[id].name}</b><span class="xs">${id === cur ? '<span class="dot"></span>지금 보는 중' : WS[id].st === 'off' ? '<span class="dot g"></span>꺼져 있음 · ' + WS[id].last : '<span class="dot"></span>켜져 있음'}</span></div>${WS[id].wait ? `<span class="badge">${WS[id].wait}</span>` : ''}${id === cur ? '<b style="color:var(--ws)">✓</b>' : ''}</div>`).join('')}
+  <div class="small" style="padding:4px 10px 8px">3대 모두 연결했어요. 더 연결하려면 하나를 해제하세요.</div>
+  <div style="display:flex;gap:8px"><span class="btn lg" style="flex:1">PC 관리</span><span class="btn lg off" style="flex:1">＋ PC 추가</span></div></div></div>`
+
+sheet('a', '1안 · 상단 드롭다운형 — 왼쪽 위 이름 칸을 눌러 PC를 바꿔요',
+  '앱 위쪽 왼쪽에 <b>지금 보는 PC 이름</b>이 늘 보이고, 누르면 목록이 내려옵니다. 다른 PC를 볼 때는 <b>창 맨 위에 그 PC 색 띠</b>가 생기고 창 테두리도 같은 색으로 바뀝니다. 이 PC로 돌아오면 띠가 사라져 평소 화면 그대로입니다. 단축키 ⌘1·⌘2·⌘3(윈도우는 Ctrl).',
+  `<div class="row">
+    ${col('A-1', '목록 열기 (이 PC 보는 중)', '꺼진 PC는 흐리게, 결재 대기 수는 빨간 숫자. ‘PC 추가’ 아래 남은 자리를 알려 줘요.', win({ view: 'home', sw: swBtn('home', true), overlay: ddMenu('home') }))}
+    ${col('A-2', '회사 PC를 보는 중', '띠 · 창 테두리 · 이름 칸이 모두 청록. 사무실·직원·대화·결재가 회사 PC 그대로예요.', win({ view: 'work', sw: swBtn('work') }))}
+  </div>
+  <div class="row">
+    ${col('A-폰1', '휴대폰 · 이름을 눌러 바꾸기', '위쪽 이름 칸 → 아래에서 목록이 올라와요. 3대가 꽉 차면 ‘PC 추가’가 흐려지고 이유를 한 줄로.', phone({ view: 'home', head: phoneSw('home'), body: phoneOffice('home'), overlay: phoneSheet('home') }))}
+    ${col('A-폰2', '휴대폰 · 회사 PC를 보는 중', '이름 칸 아래 얇은 색 띠가 늘 붙어 있어요. 왼쪽·오른쪽으로 밀어도 PC가 바뀌게 할 수 있어요(선택).', phone({ view: 'work', ribbon: true, head: phoneSw('work'), body: phoneOffice('work') }))}
+    <div class="notes" style="width:420px"><h3>1안 장단점</h3>
+      <b class="ok" style="color:var(--working)">장점</b><ul><li>지금 화면 구조를 거의 안 바꿔요. 위쪽에 칸 하나만 생겨요.</li><li>PC와 휴대폰이 같은 모양이라 한 번 익히면 둘 다 써요.</li><li>목록 안에서 꺼진 PC·결재 수를 한 번에 봐요.</li></ul>
+      <b style="color:var(--error)">단점</b><ul><li>목록을 열기 전에는 <b>다른 PC에 결재가 쌓였는지</b> 안 보여요(이름 칸 옆 합계 점으로 보완 가능).</li><li>바꾸려면 두 번 눌러야 해요(열기 → 고르기).</li></ul>
+      <h3 style="margin-top:8px">새로 필요한 것</h3><ul><li>이름 칸(스위처)·드롭다운·색 띠</li><li>휴대폰 아래 목록 창</li></ul></div>
+  </div>`)
+
+// ───────────────── 2안 왼쪽 레일형 ─────────────────
+const rail = (cur, o = {}) => `<div class="rail">
+  ${['home', 'work', 'lab'].map((id) => `<div class="ri ws-${id} ${id === cur ? 'cur' : ''}">${av(id, { off: WS[id].st === 'off', st: WS[id].st === 'off' ? 'off' : WS[id].st === 'cut' ? 'cut' : '' })}${WS[id].wait && id !== cur ? `<span class="badge">${WS[id].wait}</span>` : ''}</div>${id === 'home' ? '<div class="sep"></div>' : ''}`).join('')}
+  <div class="add">＋</div>${o.tip || ''}</div>`
+const railTip = `<div class="tip" style="top:116px"><b>작업실 맥미니</b><br />꺼져 있음 · 마지막 접속 2시간 전<br /><span style="opacity:.7">PC를 켜면 다시 볼 수 있어요</span></div>`
+const pRail = (cur) => `<div class="rail" style="width:64px;padding-top:16px">${['home', 'work', 'lab'].map((id) => `<div class="ri ws-${id} ${id === cur ? 'cur' : ''}">${av(id, { off: WS[id].st === 'off', st: WS[id].st === 'off' ? 'off' : '' })}${WS[id].wait && id !== cur ? `<span class="badge">${WS[id].wait}</span>` : ''}</div>`).join('')}<div class="add">＋</div></div>`
+const pDrawer = (cur) => `<div class="pdim" style="justify-content:flex-start"></div><div class="drawer">${pRail(cur)}<div class="dmain ws-${cur}">
+  <div class="xs">지금 보는 PC</div><div style="display:flex;gap:8px;align-items:center">${av(cur, { s: 30 })}<b style="font-size:17px">${WS[cur].name}</b></div>
+  <div class="small"><span class="dot"></span>켜져 있음 · 직원 ${WS[cur].staff}명 · 결재 ${WS[cur].wait}건</div>
+  <div style="border-top:1px solid var(--border);margin:4px 0"></div>
+  ${['사무실', '대화방', '결재함', '업무 보드', '결과물'].map((t, i) => `<div style="display:flex;gap:10px;align-items:center;font-size:14px;padding:6px 2px;${i === 0 ? 'font-weight:700;color:var(--primary)' : ''}"><i style="width:18px;height:18px;border-radius:6px;background:${i === 0 ? 'var(--primary)' : 'var(--muted)'};display:block"></i>${t}</div>`).join('')}
+  <div style="margin-top:auto" class="small">PC 3대 연결 · <span class="link">관리</span></div></div></div>`
+const pHeadRail = (id) => `<span class="ws-${id}" style="display:flex;gap:10px;align-items:center">${av(id, { s: 30 })}<span class="ttl">${WS[id].name}</span></span><span style="flex:1"></span><span class="badge">5</span><span class="xs" style="margin-left:4px">다른 PC 결재</span>`
+
+sheet('b', '2안 · 왼쪽 세로 레일형 — PC 아이콘이 늘 세로로 줄지어 있어요',
+  '메신저 앱처럼 <b>맨 왼쪽에 PC 아이콘 줄</b>을 둡니다. 맨 위가 이 PC, 그 아래 연결한 PC, 맨 아래 ＋. 누르면 바로 바뀌고, <b>다른 PC의 결재 대기 수가 아이콘에 빨간 숫자</b>로 늘 보입니다. 지금 보는 PC는 아이콘 테두리와 왼쪽 막대로 표시하고, 다른 PC일 때는 1안과 같은 색 띠도 붙습니다.',
+  `<div class="row">
+    ${col('B-1', '이 PC 보는 중 · 꺼진 PC에 마우스 올림', '꺼진 PC는 회색 아이콘. 마우스를 올리면 이름·상태·마지막 접속을 말풍선으로.', win({ view: 'home', left: rail('home', { tip: railTip }), sw: `<b style="font-size:14px">사무실</b>` }))}
+    ${col('B-2', '회사 PC를 보는 중', '레일의 회사 PC에 테두리와 막대, 위쪽 색 띠. 집 PC 아이콘에도 결재 수가 보여요.', win({ view: 'work', left: rail('work'), sw: `<b style="font-size:14px">사무실</b>` }))}
+  </div>
+  <div class="row">
+    ${col('B-폰1', '휴대폰 · 왼쪽 위 아이콘을 누르거나 왼쪽 끝에서 밀기', '폭이 좁아 레일을 늘 둘 수 없어요. 서랍 안에 레일 + 메뉴를 같이 둡니다.', phone({ view: 'home', head: pHeadRail('home'), body: phoneOffice('home'), overlay: pDrawer('home') }))}
+    ${col('B-폰2', '휴대폰 · 회사 PC를 보는 중', '위쪽 이름 옆에 다른 PC 결재 합계(빨간 숫자)를 늘 보여 줘요.', phone({ view: 'work', ribbon: true, head: pHeadRail('work').replace('5', '2'), body: phoneOffice('work') }))}
+    <div class="notes" style="width:420px"><h3>2안 장단점</h3>
+      <b style="color:var(--working)">장점</b><ul><li>한 번 눌러 바로 바뀌어요. 가장 빠름.</li><li><b>다른 PC의 결재·상태가 늘 보여서</b> 놓치지 않아요.</li><li>여러 PC를 자주 오가는 사람에게 좋아요.</li></ul>
+      <b style="color:var(--error)">단점</b><ul><li>PC 화면 폭을 58px 더 써요. 지금 사이드바(색 띠) 옆에 줄이 하나 더 생겨 복잡해 보일 수 있어요.</li><li>PC를 1대만 쓰는 사람에게도 줄이 보여요(1대일 땐 숨기는 규칙 필요).</li><li>휴대폰은 서랍이라 1안보다 한 번 더 눌러요.</li></ul>
+      <h3 style="margin-top:8px">새로 필요한 것</h3><ul><li>왼쪽 레일·말풍선·휴대폰 서랍</li></ul></div>
+  </div>`)
+
+// ───────────────── 3안 사무실 고르기 화면형 ─────────────────
+const pickCard = (id, hover) => `<div class="pc ws-${id} ${hover ? 'hover' : ''}"><div class="top"></div>${office(id, 164, 96, { gray: WS[id].st === 'off', bub: false })}<div class="in">
+  <div style="display:flex;gap:6px;align-items:center"><b style="font-size:14.5px">${WS[id].name}</b>${WS[id].me ? '<span class="me">이 PC</span>' : ''}</div>
+  <div class="xs">${WS[id].st === 'off' ? `<span class="dot g"></span>꺼져 있음 · ${WS[id].last}` : `<span class="dot"></span>켜져 있음 · 직원 ${WS[id].staff}명`}</div>
+  <div class="xs" style="color:${WS[id].wait ? 'var(--error)' : ''};font-weight:${WS[id].wait ? 700 : 400}">${WS[id].st === 'off' ? 'PC를 켜면 들어갈 수 있어요' : WS[id].wait ? `결재 ${WS[id].wait}건 기다려요` : '기다리는 결재 없음'}</div></div></div>`
+const pickScreen = `<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:20px">
+  <div style="text-align:center"><div style="font-size:22px;font-weight:800">어느 사무실로 갈까요?</div><div class="small" style="margin-top:4px">PC마다 사무실·직원·대화·결재가 따로 있어요.</div></div>
+  <div class="pick">${pickCard('home')}${pickCard('work', true)}${pickCard('lab')}<div class="pc add" style="width:110px"><span style="font-size:24px">＋</span><b style="font-size:12.5px">PC 추가</b><span class="xs">1자리 남음</span></div></div>
+  <div class="small"><span class="link">PC 관리</span> · 다음부터 마지막에 본 사무실로 바로 열기 <span style="display:inline-block;width:26px;height:15px;border-radius:8px;background:var(--primary);vertical-align:-3px;position:relative"><span style="position:absolute;right:2px;top:2px;width:11px;height:11px;border-radius:50%;background:#fff"></span></span></div></div>`
+const backBtn = (id) => `<span class="sw ws-${id}" style="padding:0 10px">‹ 사무실 고르기</span><span class="ws-${id}" style="display:flex;gap:6px;align-items:center">${av(id, { s: 22 })}<b class="wsname">${WS[id].name}</b></span>`
+const pPick = `<div class="pbody" style="padding:0"></div>`
+const pPickBody = `<div class="big" style="margin-top:6px">어느 사무실로<br />갈까요?</div><div class="small" style="margin-top:-6px">길게 누르면 이름 바꾸기·해제</div>
+  ${['home', 'work', 'lab'].map((id) => `<div class="card ws-${id}" style="display:flex;gap:12px;align-items:center;padding:10px;border-left:5px solid var(--ws);${WS[id].st === 'off' ? 'opacity:.75' : ''}">${office(id, 110, 74, { gray: WS[id].st === 'off', bub: false })}<div style="flex:1;display:flex;flex-direction:column;gap:3px"><b style="font-size:15px">${WS[id].name}</b><span class="xs">${WS[id].st === 'off' ? '<span class="dot g"></span>꺼져 있음 · ' + WS[id].last : '<span class="dot"></span>켜져 있음 · 직원 ' + WS[id].staff + '명'}</span><span class="xs" style="font-weight:700;color:${WS[id].wait ? 'var(--error)' : ''}">${WS[id].st === 'off' ? 'PC를 켜면 들어갈 수 있어요' : WS[id].wait ? '결재 ' + WS[id].wait + '건' : '결재 없음'}</span></div><span class="xs">›</span></div>`).join('')}
+  <div class="slot">3대 모두 연결했어요 · <span class="link">PC 관리</span></div>`
+
+sheet('c', '3안 · 사무실 고르기 화면형 — 들어가기 전에 큰 카드에서 PC를 골라요',
+  '앱을 열면(또는 ‘‹ 사무실 고르기’를 누르면) <b>PC마다 사무실 미리보기 카드</b>가 펼쳐집니다. 넷플릭스 프로필 고르기처럼 하나를 눌러 들어갑니다. 들어간 뒤에는 위쪽에 ‘‹ 사무실 고르기’와 PC 이름, 다른 PC면 색 띠가 붙습니다. PC가 1대뿐이면 이 화면은 건너뜁니다.',
+  `<div class="row">
+    ${col('C-1', '사무실 고르기 (전체 화면)', '카드마다 사무실 모습·상태·결재 수. 꺼진 PC는 회색으로, 눌러도 들어가지 않고 이유를 알려 줘요.', win({ view: 'home', title: 'AI Office', content: '', sw: `<b style="font-size:14px">AI Office</b>`, overlay: `<div style="position:absolute;inset:0;background:var(--background);display:flex;z-index:4">${pickScreen}</div>` }))}
+    ${col('C-2', '회사 PC에 들어간 뒤', '‘‹ 사무실 고르기’로 언제든 돌아가요. 단축키 ⌘0.', win({ view: 'work', sw: backBtn('work') }))}
+  </div>
+  <div class="row">
+    ${col('C-폰1', '휴대폰 · 첫 화면에서 고르기', '카드 왼쪽 색 막대로 PC를 구분해요.', phone({ view: 'home', tab: false, head: `<span class="ttl">AI Office</span><span style="flex:1"></span><span class="xs">⚙</span>`, body: pPickBody }))}
+    ${col('C-폰2', '휴대폰 · 회사 PC에 들어간 뒤', '왼쪽 위 ‹ 로 고르기 화면에 돌아가요. 휴대폰 뒤로 가기도 같아요.', phone({ view: 'work', ribbon: true, head: `<span class="ws-work" style="display:flex;gap:8px;align-items:center"><span style="font-size:20px;color:var(--muted-foreground)">‹</span>${av('work', { s: 28 })}<span class="ttl">회사 PC</span></span>`, body: phoneOffice('work') }))}
+    <div class="notes" style="width:420px"><h3>3안 장단점</h3>
+      <b style="color:var(--working)">장점</b><ul><li><b>“PC마다 사무실이 따로 있다”는 개념이 가장 잘 전해져요.</b> 처음 쓰는 사람이 덜 헷갈려요.</li><li>사무실 모습을 미리 보니 어느 PC인지 이름 없이도 알아봐요.</li><li>들어간 뒤에는 화면을 거의 차지하지 않아요.</li></ul>
+      <b style="color:var(--error)">단점</b><ul><li>바꿀 때마다 고르기 화면을 거쳐요(두 번 누름 + 화면 전환).</li><li>안에 있는 동안 다른 PC 결재가 쌓여도 안 보여요(알림으로 보완).</li><li>미리보기 그림을 PC마다 받아 와야 해서 개발이 가장 많아요.</li></ul>
+      <h3 style="margin-top:8px">새로 필요한 것</h3><ul><li>고르기 화면·미리보기 그림·‘마지막 사무실로 바로 열기’ 설정</li></ul></div>
+  </div>`)
+
+// ───────────────── 추가 마법사 (공통) ─────────────────
+const wzWin = (modal, view = 'home') => win({ view, sw: swBtn(view), overlay: `<div class="dim" style="align-items:flex-start;padding-top:40px">${modal}</div>` })
+const prog = (n, t) => `<div class="prog">${[1, 2, 3, 4].map((i) => `<i class="${i <= n ? 'on' : ''}"></i>`).join('')}<span>${n} / 4${t ? ' · ' + t : ''}</span></div>`
+const W1 = `<div class="modal">${prog(1)}<div class="mh">무엇을 연결할까요?</div>
+  <div style="display:flex;flex-direction:column;gap:8px">
+    <div class="tile h on"><span class="em">🖥️</span><div><b>내 다른 PC의 사무실 보기</b><div class="small">회사 PC 등 다른 PC의 AI Office를 여기서 그대로 써요.</div></div></div>
+    <div class="tile h"><span class="em">📱</span><div><b>휴대폰에서 이 PC 보기</b><div class="small">밖에서 결재하고 지시를 보내요.</div></div></div>
+    <div class="tile h"><span class="em">🔑</span><div><b>다른 PC가 이 PC를 보게 하기</b><div class="small">저쪽 PC에서 이 PC를 연결할 때 코드를 만들어 줘요.</div></div></div>
+  </div><div class="small">PC는 3대까지 연결할 수 있어요 · 지금 2대 (1자리 남음)</div>
+  <div class="foot"><span class="btn ghost">닫기</span><span class="btn pri">다음</span></div></div>`
+const W2 = `<div class="modal">${prog(2, '다른 PC 보기')}<div class="mh">두 PC는 어디에 있나요?</div>
+  <div style="display:flex;flex-direction:column;gap:8px">
+    <div class="tile h"><span class="em">🏠</span><div><b>같은 와이파이에 있어요</b><div class="small">집 안·사무실 안. 따로 설치할 것이 없어요.</div></div></div>
+    <div class="tile h on"><span class="em">🌏</span><div><b>서로 다른 곳에 있어요 <span class="tag" style="font-size:10px">추천</span></b><div class="small">두 PC에 내 기기끼리 잇는 무료 앱 ‘Tailscale’을 깔고 같은 계정으로 로그인해요.</div></div></div>
+  </div><div class="link" style="font-size:11.5px">고급: 공유기를 직접 설정할게요 ›</div>
+  <div class="foot"><span class="btn">이전</span><span class="btn pri">다음</span></div></div>`
+const W3 = `<div class="modal">${prog(3, '다른 곳에 있는 PC')}<div class="mh">준비물을 확인할게요</div><div class="md">이 PC 쪽은 저절로 확인해요. 저쪽 PC는 아래대로 해 주세요.</div>
+  <div class="card" style="display:flex;flex-direction:column;gap:10px">
+    <div class="chk"><span class="ic">✓</span><div><b>이 PC: Tailscale 켜짐</b> <span class="xs">· 계정 me@example.com</span></div></div>
+    <div class="chk"><span class="ic g">2</span><div><b>저쪽 PC: Tailscale을 켜고 같은 계정으로 로그인</b></div></div>
+    <div class="chk"><span class="ic g">3</span><div><b>저쪽 PC: AI Office 열기 → 설정 › 휴대폰·PC 연결 → ‘다른 PC가 이 PC를 보게 하기’</b><div class="small">8자리 코드가 나와요.</div></div></div>
+  </div><div class="foot"><span class="btn">이전</span><span class="btn pri">코드 받았어요</span></div></div>`
+const W4 = `<div class="modal">${prog(4)}<div class="mh">저쪽 PC의 코드를 넣어 주세요</div>
+  <div class="input focus code" style="height:46px;font-size:20px;justify-content:center">K7QP-2M9X</div>
+  <div style="display:flex;gap:10px;align-items:flex-end"><div style="flex:1"><div class="xs" style="margin-bottom:4px">여기서 부를 이름</div><div class="input">회사 PC</div></div>
+    <div><div class="xs" style="margin-bottom:6px">색</div><div style="display:flex;gap:8px"><span class="swatch ws-work on"></span><span class="swatch ws-lab"></span><span class="swatch ws-note"></span></div></div></div>
+  <div class="banner ok">✓ <div><b>‘DESKTOP-7Q2’ PC를 찾았어요.</b> 저쪽 화면에도 같은 확인 글자 <b class="mono">🐳 고래 · 47</b>가 보이는지 확인하세요.</div></div>
+  <div class="foot"><span class="btn">이전</span><span class="btn pri">연결하고 들어가기</span></div></div>`
+const WGive = `<div class="modal" style="width:420px">${prog(4, '저쪽 PC 화면')}<div class="mh">이 PC를 보게 해 줄게요</div><div class="md">연결할 PC에 이 코드를 넣어 주세요. 10분 동안, 한 번만 쓸 수 있어요.</div>
+  <div class="code" style="text-align:center;font-size:30px;padding:8px 0">K7QP-2M9X</div>
+  <div class="banner info">🔒 <div>연결한 PC는 이 PC의 사무실을 <b>모두</b> 쓸 수 있어요(고용·설정·결재 포함). 내 PC에만 주세요.</div></div>
+  <div class="xs"><span style="display:inline-block;width:12px;height:12px;border-radius:50%;border:2px solid var(--accent);border-top-color:var(--primary);vertical-align:-2px"></span> 연결을 기다리는 중… · 확인 글자 <b class="mono" style="color:var(--foreground)">🐳 고래 · 47</b></div>
+  <div class="foot"><span class="btn ghost">취소</span></div></div>`
+const WDone = `<div class="modal" style="width:420px;align-items:center;text-align:center"><div class="ws-work">${av('work', { s: 52 })}</div><div class="mh">회사 PC가 연결됐어요</div>
+  <div class="small">이제 왼쪽 위 이름 칸에서 회사 PC를 고를 수 있어요.<br />회사 PC가 꺼지거나 잠자면 여기서도 볼 수 없어요.</div>
+  <div class="foot" style="justify-content:center"><span class="btn">나중에</span><span class="btn wsb ws-work">회사 PC로 들어가기</span></div></div>`
+
+// 휴대폰 마법사
+const pw = (n, title, body, foot) => phone({ view: 'home', tab: false, head: `<span style="font-size:20px;color:var(--muted-foreground)">✕</span><span class="ttl" style="font-size:15px">PC 추가</span><span style="flex:1"></span><span class="xs">2대 연결 · 1자리 남음</span>`,
+  body: `${prog(n)}<div class="big">${title}</div>${body}<div style="margin-top:auto;display:flex;flex-direction:column;gap:8px">${foot}</div>` })
+const P1 = pw(1, '어느 PC를<br />연결할까요?', `<div class="small" style="margin-top:-4px">연결할 PC 앞에서 해 주세요.</div>
+  <div class="card" style="display:flex;flex-direction:column;gap:10px">
+    <div class="chk"><span class="ic g">1</span><div>PC에서 <b>AI Office</b> 열기</div></div>
+    <div class="chk"><span class="ic g">2</span><div><b>설정 › 휴대폰·PC 연결 › 휴대폰에서 이 PC 보기</b></div></div>
+    <div class="chk"><span class="ic g">3</span><div>PC 화면에 QR이 나오면 <b>다음</b></div></div></div>
+  <div class="small">PC마다 사무실·직원·결재가 따로 있어요. 3대까지 연결해 바꿔 가며 쓸 수 있어요.</div>`, `<span class="btn lg pri">QR이 나왔어요</span>`)
+const P2 = pw(2, '어디서 쓰실 건가요?', `
+  <div class="tile h"><span class="em">🏠</span><div><b>그 PC와 같은 와이파이에서만</b><div class="small">설치할 것 없음</div></div></div>
+  <div class="tile h on"><span class="em">🌏</span><div><b>밖에서도 쓸래요 <span class="tag" style="font-size:10px">추천</span></b><div class="small">휴대폰에도 내 기기끼리 잇는 무료 앱 ‘Tailscale’이 필요해요</div></div></div>
+  <div class="small">PC 화면에서 고른 것과 같게 골라 주세요.</div>`, `<span class="btn lg pri">다음</span><span class="btn lg ghost">이전</span>`)
+const P3 = pw(3, '이 휴대폰 준비물', `
+  <div class="card" style="display:flex;flex-direction:column;gap:12px">
+    <div class="chk"><span class="ic">✓</span><div><b>Tailscale 앱 설치됨</b></div></div>
+    <div class="chk"><span class="ic spin"></span><div style="flex:1"><b>Tailscale 켜는 중…</b><div class="small">PC와 <b>같은 계정</b>으로 로그인해 주세요.</div></div><span class="btn sm">앱 열기</span></div></div>
+  <div class="small">켜지면 저절로 다음으로 넘어가요.</div>`, `<span class="btn lg pri off">다음</span><span class="btn lg ghost">이전</span>`)
+const P4 = phone({ view: 'home', tab: false, head: null, body: `<div style="position:absolute;inset:0;background:radial-gradient(circle at 50% 40%, #3a3550, #121019);display:flex;flex-direction:column;align-items:center;padding:18px 16px;gap:16px;color:#fff">
+  <div style="align-self:stretch;display:flex;justify-content:space-between;align-items:center"><span style="font-size:20px">✕</span><div class="prog" style="color:#ddd">${[1, 2, 3, 4].map(() => '<i class="on"></i>').join('')}<span>4 / 4</span></div></div>
+  <div style="font-size:19px;font-weight:800;margin-top:20px">PC 화면의 QR을 비춰 주세요</div>
+  <div style="width:230px;height:230px;margin-top:20px;background:linear-gradient(#fff,#fff) 0 0/48px 5px no-repeat,linear-gradient(#fff,#fff) 0 0/5px 48px no-repeat,linear-gradient(#fff,#fff) 100% 0/48px 5px no-repeat,linear-gradient(#fff,#fff) 100% 0/5px 48px no-repeat,linear-gradient(#fff,#fff) 0 100%/48px 5px no-repeat,linear-gradient(#fff,#fff) 0 100%/5px 48px no-repeat,linear-gradient(#fff,#fff) 100% 100%/48px 5px no-repeat,linear-gradient(#fff,#fff) 100% 100%/5px 48px no-repeat"></div>
+  <div style="font-size:13px;opacity:.85">카메라가 안 되면 <b style="text-decoration:underline">코드로 연결</b></div>
+  <div style="margin-top:auto;align-self:stretch;background:var(--card);color:var(--foreground);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:10px" class="ws-work">
+    <div style="display:flex;gap:10px;align-items:center">${av('work', { s: 34 })}<div style="flex:1"><b>‘DESKTOP-7Q2’를 찾았어요</b><div class="xs">여기서 부를 이름과 색을 정해 주세요</div></div></div>
+    <div class="input">회사 PC</div><div style="display:flex;gap:10px;align-items:center"><span class="swatch ws-work on"></span><span class="swatch ws-lab"></span><span class="swatch ws-note"></span><span style="flex:1"></span><span class="btn wsb">연결하고 들어가기</span></div></div></div>` })
+
+sheet('add', '추가 마법사 4장 (세 안 공통) — 무엇을 → 어디서 → 준비물 → 코드·QR',
+  '대표가 고른 마법사형 흐름을 워크스페이스에 맞췄습니다. <b>1장 ‘무엇을’</b>에 세 갈래(다른 PC 보기 / 휴대폰에서 이 PC 보기 / 다른 PC가 이 PC를 보게 하기)를 두고, PC끼리는 카메라가 없으니 <b>코드 8자리</b>로, 휴대폰은 <b>QR</b>로 잇습니다. 마지막 장에서 <b>여기서 부를 이름과 색</b>을 정합니다. 휴대폰 쪽 질문 순서는 PC와 같습니다.',
+  `<div class="row">
+    ${col('M-1', '무엇을 연결할까요?', '', wzWin(W1))}
+    ${col('M-2', '두 PC는 어디에 있나요?', '', wzWin(W2))}
+    ${col('M-3', '준비물 확인', '', wzWin(W3))}
+  </div>
+  <div class="row">
+    ${col('M-4', '코드 넣기 · 이름과 색 정하기', '확인 글자(그림+숫자)를 양쪽에 같이 보여 엉뚱한 PC에 붙지 않게 해요.', wzWin(W4))}
+    ${col('M-4′', '저쪽(회사) PC에 뜨는 화면', '‘다른 PC가 이 PC를 보게 하기’를 고르면 나와요.', win({ view: 'home', title: 'AI Office — 회사 PC 화면', sw: `<span class="sw ws-work">${av('work')}<span>회사 PC</span></span>`, content: defaultOffice('work', 676), overlay: `<div class="dim" style="align-items:flex-start;padding-top:40px">${WGive}</div>` }))}
+    ${col('M-완료', '연결됐어요', '', wzWin(WDone))}
+  </div>
+  <div class="row">
+    ${col('M-폰1', '휴대폰 · 어느 PC를?', '', P1)}
+    ${col('M-폰2', '어디서 쓰실 건가요?', '', P2)}
+    ${col('M-폰3', '준비물', '', P3)}
+    ${col('M-폰4', 'QR 찍기 → 이름·색', '', P4)}
+  </div>`)
+
+// ───────────────── 관리·꽉 참·끊김 (공통) ─────────────────
+const mgRow = (id, o = {}) => `<div class="list-row ws-${id}">${av(id, { s: 34, off: WS[id].st === 'off', st: WS[id].st })}<div class="t">${o.edit ? `<div class="input focus" style="width:200px;height:28px">${o.edit}</div>` : `<b>${WS[id].name}</b> ${WS[id].me ? '<span class="me">이 PC</span>' : ''}`}<div class="xs">${WS[id].mac} · ${WS[id].me ? '지금 이 PC' : WS[id].st === 'off' ? '<span class="dot g"></span>꺼져 있음 · 마지막 접속 ' + WS[id].last : '<span class="dot"></span>켜져 있음 · 마지막 접속 ' + (o.last || '방금')}</div></div>
+  ${o.edit ? '<span class="btn sm pri">저장</span><span class="btn sm ghost">취소</span>' : WS[id].me ? '<span class="btn sm">이름 바꾸기</span>' : `<div style="display:flex;gap:6px;align-items:center">${['work', 'lab', 'note'].map((c) => `<span class="swatch ws-${c} ${c === id ? 'on' : ''}" style="width:14px;height:14px"></span>`).join('')}</div><span class="btn sm">이름 바꾸기</span><span class="btn sm red">연결 해제</span>`}</div>`
+const mgContent = `<div class="xs">설정 › 휴대폰·PC 연결</div><div style="font-size:17px;font-weight:700">내 PC</div><div class="small" style="margin-top:-6px">여기서 볼 수 있는 PC예요. 3대까지 연결할 수 있어요.</div>
+  <div class="card" style="padding:4px 14px">${mgRow('home')}${mgRow('work', { edit: '회사 PC (3층)' })}${mgRow('lab')}</div>
+  <div class="slot">＋ PC 추가 · 1자리 남음</div>
+  <div style="font-size:14px;font-weight:700;margin-top:4px">이 PC를 보고 있는 기기</div>
+  <div class="card" style="padding:4px 14px"><div class="list-row"><span class="av" style="background:var(--muted);color:var(--foreground)">📱</span><div class="t"><b>내 휴대폰</b><div class="xs"><span class="dot"></span>3분 전 접속</div></div><span class="btn sm red">끊기</span></div>
+  <div class="list-row ws-work">${av('work', { s: 26 })}<div class="t"><b>회사 PC</b><div class="xs"><span class="dot"></span>지금 이 PC를 보는 중</div></div><span class="btn sm red">끊기</span></div></div>`
+const unlinkModal = `<div class="dim"><div class="modal" style="width:400px"><div class="mh">작업실 맥미니 연결을 해제할까요?</div>
+  <div class="small">이 PC 목록에서만 빠져요. <b>작업실 맥미니의 사무실·직원·대화는 그대로</b> 남아요. 다시 보려면 코드로 새로 연결해야 해요.</div>
+  <div class="foot"><span class="btn ghost">취소</span><span class="btn redf">연결 해제</span></div></div></div>`
+const fullModal = `<div class="dim"><div class="modal" style="width:440px">${prog(1)}<div class="mh">PC 3대가 모두 찼어요</div>
+  <div class="small">새 PC를 연결하려면 하나를 해제해 주세요. 해제해도 그 PC의 사무실은 지워지지 않아요.</div>
+  <div class="card" style="padding:2px 12px">${['work', 'lab', 'note'].map((id) => `<div class="list-row ws-${id}">${av(id, { off: WS[id].st === 'off', st: WS[id].st })}<div class="t"><b>${WS[id].name}</b><div class="xs">${WS[id].st === 'off' ? '꺼져 있음 · 마지막 접속 ' + WS[id].last : (id === 'work' ? '켜져 있음 · 방금 접속' : '마지막 접속 ' + WS[id].last)}</div></div><span class="btn sm red">해제</span></div>`).join('')}</div>
+  <div class="xs">가장 오래 안 쓴 PC: <b>노트북</b>(어제)</div>
+  <div class="foot"><span class="btn ghost">닫기</span></div></div></div>`
+const cutContent = `<div style="display:flex;align-items:center;gap:8px"><b style="font-size:15px">사무실</b><span class="xs">· 마지막으로 받은 모습</span></div>
+  <div style="position:relative">${office('work', 676, 230, { gray: true })}<div style="position:absolute;inset:0;display:grid;place-items:center"><div class="card" style="display:flex;gap:10px;align-items:center;box-shadow:0 10px 30px -10px rgba(0,0,0,.4)"><span style="display:inline-block;width:18px;height:18px;border-radius:50%;border:2.5px solid var(--accent);border-top-color:var(--waiting)"></span><div><b>회사 PC와 연결이 끊겼어요</b><div class="xs">다시 연결하는 중… (3번째) · 보던 화면은 그대로 둬요</div></div></div></div></div>
+  <div class="banner warn">⚠ <div><b>지금은 지시·결재를 보낼 수 없어요.</b> 입력해 둔 글은 지워지지 않아요. 1분이 지나도 안 되면 회사 PC가 켜져 있는지, 인터넷이 되는지 확인해 주세요.</div></div>
+  <div style="display:flex;gap:8px"><span class="btn">지금 다시 연결</span><span class="btn ghost">집 PC로 돌아가기</span></div>`
+const pMgBody = `<div class="small">이 휴대폰에서 볼 수 있는 PC · <b>3 / 3대</b></div>
+  <div class="card" style="padding:4px 12px">${['home', 'work', 'lab'].map((id) => `<div class="list-row ws-${id}">${av(id, { s: 34, off: WS[id].st === 'off', st: WS[id].st })}<div class="t"><b>${WS[id].name}</b><div class="xs">${WS[id].st === 'off' ? '<span class="dot g"></span>꺼져 있음 · ' + WS[id].last : '<span class="dot"></span>켜져 있음 · 방금'}</div></div><span class="xs" style="font-size:18px">⋯</span></div>`).join('')}</div>
+  <div class="slot" style="opacity:.8">＋ PC 추가 — 3대가 모두 찼어요.<br />하나를 해제하면 추가할 수 있어요.</div>
+  <div class="small">해제해도 그 PC의 사무실은 지워지지 않아요.</div>`
+const pMgSheet = `<div class="pdim"><div class="bsheet ws-lab"><div class="grab"></div><div style="display:flex;gap:10px;align-items:center;padding:0 4px 8px">${av('lab', { s: 34, off: true })}<b style="font-size:16px">작업실 맥미니</b></div>
+  <div class="prow">✏️<div class="t"><b>이름 바꾸기</b></div></div><div class="prow">🎨<div class="t"><b>색 바꾸기</b></div><span class="swatch ws-lab on" style="width:16px;height:16px"></span></div><div class="prow">🔔<div class="t"><b>이 PC 결재 알림 받기</b></div><span style="display:inline-block;width:34px;height:20px;border-radius:10px;background:var(--primary);position:relative"><span style="position:absolute;right:3px;top:3px;width:14px;height:14px;border-radius:50%;background:#fff"></span></span></div>
+  <div class="prow" style="color:var(--error)">⛓️‍💥<div class="t"><b>연결 해제</b></div></div></div></div>`
+const pOffBody = `<div style="position:relative">${office('lab', 346, 200, { gray: true, bub: false })}</div>
+  <div class="card" style="text-align:center;display:flex;flex-direction:column;gap:6px;align-items:center;padding:18px"><span style="font-size:30px">💤</span><b style="font-size:16px">작업실 맥미니가 꺼져 있어요</b>
+  <div class="small">마지막 접속 2시간 전. PC가 켜져 있고 AI Office가 열려 있어야 볼 수 있어요. 잠자기 모드여도 볼 수 없어요.</div>
+  <div style="display:flex;gap:8px;margin-top:6px"><span class="btn">다시 확인</span><span class="btn pri">다른 PC 보기</span></div></div>
+  <div class="small" style="text-align:center">PC가 켜지면 알려 드릴게요 <span style="display:inline-block;width:30px;height:18px;border-radius:9px;background:var(--primary);vertical-align:-4px;position:relative"><span style="position:absolute;right:2px;top:2px;width:14px;height:14px;border-radius:50%;background:#fff"></span></span></div>`
+const pCutBody = `${office('work', 346, 200, { gray: true, bub: false })}
+  <div class="banner warn">⚠ <div><b>회사 PC와 연결이 끊겼어요</b><br />다시 연결하는 중… 보던 화면은 그대로예요. 지금은 결재·지시를 보낼 수 없어요.</div></div>
+  <div class="staff" style="opacity:.6"><span class="pf" style="background:${PCOL[2]}"></span><div class="t"><b>정리드</b><span class="xs">마지막으로 받은 상태 · 1분 전</span></div></div>
+  <div style="display:flex;gap:8px"><span class="btn lg" style="flex:1">지금 다시 연결</span><span class="btn lg" style="flex:1">다른 PC 보기</span></div>`
+
+sheet('manage', '관리 · 3대 꽉 참 · 끊김·꺼진 PC (세 안 공통)',
+  '전환 방식과 상관없이 같은 화면입니다. <b>내가 볼 수 있는 PC</b>와 <b>이 PC를 보고 있는 기기</b>를 나눠 보여 줍니다. ‘연결 해제’는 목록에서만 빠지고 그 PC의 사무실은 지워지지 않는다는 점을 매번 알려 줍니다. 끊겼을 때는 보던 화면을 회색으로 남기고 보내기만 막습니다.',
+  `<div class="row">
+    ${col('G-1', 'PC 관리 · 이름 바꾸는 중', '이름은 이 PC에서 부르는 이름이에요. 색 3가지 중 고르기.', win({ view: 'home', h: 600, sw: swBtn('home'), content: mgContent }))}
+    ${col('G-2', '연결 해제 확인', '', win({ view: 'home', h: 600, sw: swBtn('home'), content: mgContent, overlay: unlinkModal }))}
+  </div>
+  <div class="row">
+    ${col('G-3', '3대 꽉 찼을 때 ‘PC 추가’', '마법사 첫 장 대신 이 창이 떠요. 오래 안 쓴 PC를 알려 줘요.', win({ view: 'home', sw: swBtn('home'), overlay: fullModal }))}
+    ${col('G-4', '보는 중에 끊겼을 때', '화면은 회색으로 남기고 보내기만 막아요. 저절로 다시 연결해요.', win({ view: 'work', sw: swBtn('work'), content: cutContent }).replace('의 사무실을 보는 중 · 지시·결재는 회사 PC에서 처리돼요', ' · 연결 끊김'))}
+  </div>
+  <div class="row">
+    ${col('G-폰1', '휴대폰 · PC 관리 (3/3 꽉 참)', '', phone({ view: 'home', tab: false, head: `<span style="font-size:20px;color:var(--muted-foreground)">‹</span><span class="ttl">내 PC</span>`, body: pMgBody }))}
+    ${col('G-폰2', '⋯ 눌렀을 때', 'PC마다 결재 알림을 켜고 끌 수 있어요.', phone({ view: 'home', tab: false, head: `<span style="font-size:20px;color:var(--muted-foreground)">‹</span><span class="ttl">내 PC</span>`, body: pMgBody, overlay: pMgSheet }))}
+    ${col('G-폰3', '꺼진 PC를 골랐을 때', '', phone({ view: 'lab', ribbon: true, head: phoneSw('lab'), body: pOffBody }))}
+    ${col('G-폰4', '보는 중에 끊겼을 때', '', phone({ view: 'work', ribbon: true, head: phoneSw('work'), body: pCutBody }))}
+  </div>`)
+
+// ───────────────── 한눈에 비교 ─────────────────
+const thumb = (html, sc = .42, w = 760, h = 540) => `<div style="width:${w * sc}px;height:${h * sc}px;overflow:hidden;border-radius:8px"><div style="transform:scale(${sc});transform-origin:0 0">${html}</div></div>`
+sheet('sum', '워크스페이스 — 내 PC 여러 대를 오가며 쓰기 · 시안 3안 한눈에',
+  '지금의 ‘직원 빌려주기·데려오기’를 없애고, <b>다른 PC를 연결하면 그 PC의 AI Office가 통째로(사무실·직원·대화·결재) 보이게</b> 바꿉니다. PC는 다른 PC를 3대까지, 휴대폰은 PC를 3대까지 연결해 바꿔 가며 씁니다. 세 안은 <b>바꾸는 방법</b>만 다르고, 추가 마법사·관리·끊김 화면과 ‘다른 PC를 볼 땐 그 PC 색 띠’ 규칙은 같습니다.',
+  `<div class="row">
+    ${col('1안', '상단 드롭다운형', '', thumb(win({ view: 'home', sw: swBtn('home', true), overlay: ddMenu('home') })))}
+    ${col('2안', '왼쪽 레일형', '', thumb(win({ view: 'work', left: rail('work'), sw: '<b style="font-size:14px">사무실</b>' })))}
+    ${col('3안', '사무실 고르기 화면형', '', thumb(win({ view: 'home', title: 'AI Office', content: '', sw: '<b style="font-size:14px">AI Office</b>', overlay: `<div style="position:absolute;inset:0;background:var(--background);display:flex;z-index:4">${pickScreen}</div>` })))}
+  </div>
+  <div class="row"><table class="cmp" style="width:1000px">
+    <tr><th style="width:120px"></th><th>1안 상단 드롭다운 <span class="tag">추천</span></th><th>2안 왼쪽 레일</th><th>3안 사무실 고르기 화면</th></tr>
+    <tr><td>바꾸는 법</td><td class="rec">왼쪽 위 이름 칸 → 목록에서 고르기 (2번)</td><td>왼쪽 아이콘 한 번 (1번)</td><td>‹ 사무실 고르기 → 카드 (2번 + 화면 전환)</td></tr>
+    <tr><td>다른 PC 결재</td><td class="rec">목록을 열면 보임 (이름 칸에 합계 점 보완)</td><td><b>늘 보임</b></td><td>고르기 화면에서만 보임</td></tr>
+    <tr><td>화면 차지</td><td class="rec">위쪽 칸 하나</td><td>왼쪽 58px 줄 추가</td><td>들어간 뒤엔 거의 없음</td></tr>
+    <tr><td>개념 전달</td><td class="rec">보통</td><td>보통</td><td><b>가장 잘 전해짐</b></td></tr>
+    <tr><td>휴대폰</td><td class="rec">이름 칸 → 아래 목록 (PC와 같은 모양)</td><td>서랍 안 레일 (한 번 더 누름)</td><td>첫 화면 카드 목록</td></tr>
+    <tr><td>개발 양</td><td class="rec"><b>가장 적음</b></td><td>중간</td><td>가장 많음 (미리보기 그림)</td></tr>
+    <tr><td>어울리는 사람</td><td class="rec">대부분 — PC 2대, 가끔 오감</td><td>PC 3~4대를 하루에도 자주 오감</td><td>처음 쓰는 사람, PC를 한 번 고르면 오래 머묾</td></tr>
+  </table>
+  <div class="notes" style="width:460px"><h3>추천: 1안 상단 드롭다운형</h3>
+    지금 화면을 거의 그대로 두고 칸 하나만 더해서 가장 덜 낯설고, PC·휴대폰이 같은 모양입니다. 약점인 ‘다른 PC 결재가 안 보임’은 이름 칸 옆 빨간 점(합계)과 휴대폰 알림으로 메웁니다.<br /><br />
+    <b>공통 규칙</b><ul><li>이 PC = 평소 화면 그대로. 다른 PC = 위쪽 색 띠 + 창 테두리 + 이름 칸 색.</li><li>PC마다 색 하나(보라는 이 PC, 청록·주황·파랑 중 고름).</li><li>추가는 마법사 4장, 해제해도 그 PC 사무실은 그대로.</li><li>꺼진 PC는 회색 + 마지막 접속, 끊기면 화면은 두고 보내기만 막기.</li></ul></div></div>`)
+
+// ───────────────── 정리드 확인 목록 ─────────────────
+const ASK = [
+  ['h', '결재는 어느 PC에서 뜨나요?', '회사 PC 직원이 올린 결재를 집 PC에서 보고 있을 때 승인하면 실행은 회사 PC에서 됩니다(시안 전제). 회사 PC 결재가 집 PC의 결재함·바탕화면 비서·알림에도 뜨게 할지, 회사 PC를 보고 있을 때만 뜨게 할지 정해야 합니다. 시안은 ‘보고 있는 PC 것만 + 다른 PC는 숫자만’.'],
+  ['h', '두 기기가 같은 PC를 동시에 볼 때', '집 PC와 휴대폰이 동시에 회사 PC를 보고 같은 결재를 누르면? 먼저 누른 쪽만 처리하고 다른 쪽엔 ‘이미 처리됐어요’를 띄우는 처리가 필요합니다. 회사 PC 앞에 앉은 사람과 원격 사용자가 동시에 지시하는 경우도 같습니다.'],
+  ['h', '‘PC 3대’는 무엇을 세나요?', '시안은 <b>이 PC가 볼 수 있는 다른 PC 3대</b>(이 PC 제외) + <b>휴대폰이 볼 수 있는 PC 3대</b>로 그렸습니다. 반대로 ‘한 PC를 볼 수 있는 기기 수’ 제한도 둘지 확인이 필요합니다(관리 화면 ‘이 PC를 보고 있는 기기’).'],
+  ['h', '끊김 처리', '보는 중 끊기면 마지막 화면을 회색으로 두고 보내기를 막은 채 저절로 다시 연결(시안). 몇 번·몇 초 간격으로 다시 시도할지, 입력 중이던 지시를 남길지, 연결이 돌아오면 그사이 바뀐 대화·결재를 한 번에 받아 올 수 있는지 확인이 필요합니다.'],
+  ['h', '휴대폰이 PC 3대의 열쇠를 함께 보관', '지금 휴대폰은 PC 1대의 연결 열쇠만 갖습니다. 3대분을 따로 보관하고, 보지 않는 PC에서도 결재 알림을 받으려면 3대와 연결을 함께 유지해야 하는지(배터리) 확인이 필요합니다. 시안은 PC별 ‘결재 알림 받기’ 스위치.'],
+  ['h', '기존 ‘직원 빌려주기·데려오기’ 정리', '0.19.0의 PC 짝·데려온 원격 직원을 업데이트 때 어떻게 옮길지(짝 PC를 워크스페이스로 자동 등록? 데려온 직원은 원래 PC로 돌려보내기?) 정해야 합니다.'],
+  ['m', '다른 PC를 볼 때 막을 것', '앱 업데이트·로그인 시 자동 실행·화면 모드·브라우저 로그인·화면 캡처 허용처럼 그 PC 앞에서만 의미 있는 설정은 원격에서 바꾸지 못하게 할지. 시안에는 아직 표시 안 함.'],
+  ['m', '파일·결과물 열기', '회사 PC를 보며 결과물(HTML·이미지)이나 바뀐 파일을 열면 그 파일을 가져와 보여 줄 수 있는지. 안 되면 ‘회사 PC에서 열 수 있어요’ 안내가 필요합니다.'],
+  ['m', '저쪽 PC에 ‘누가 보고 있다’ 표시', '회사 PC 앞에 다른 사람이 있을 수 있어 회사 PC 화면에도 ‘집 PC가 보고 있어요’ 같은 표시를 띄울지. 관리 화면 ‘이 PC를 보고 있는 기기’까지만 그렸습니다.'],
+  ['m', '꺼진 PC·잠자기 구분', '‘꺼짐 / 잠자기 / AI Office 닫힘 / 인터넷 끊김’을 구분해 알 수 있는지. 시안은 모두 ‘꺼져 있음 · 마지막 접속’ 한 가지로 묶었습니다.'],
+  ['m', '이름·색은 어디에 저장', '시안은 보는 쪽 기기에 저장(집 PC가 부르는 이름 ‘회사 PC’). 저쪽 PC의 기기 이름(DESKTOP-7Q2)은 기본값으로만 씁니다.'],
+  ['m', '확인 글자·코드', 'PC끼리 8자리 코드 + 양쪽 확인 글자(그림+숫자)는 새 요소입니다. 지금의 12자리 코드·지문으로 대신할 수 있는지.'],
+  ['m', '2안·3안 추가 작업', '2안: PC 1대일 땐 레일 숨김 규칙. 3안: PC마다 사무실 미리보기 그림을 받아 오는 방법, ‘마지막 사무실로 바로 열기’ 설정.'],
+]
+sheet('ask', '정리드 확인 목록 — 디자인이 정하지 못한 것',
+  '시안에서 가정한 동작입니다. 개발 쪽에서 되는지·어떻게 할지 정해 주시면 시안을 맞추겠습니다. <b style="color:#E5484D">상</b>은 어느 안을 고르든 먼저 정해야 하는 것.',
+  `<ol class="ask">${ASK.map(([p, t, s]) => `<li><span class="p ${p === 'm' ? 'm' : ''}">${p === 'h' ? '상' : '중'}</span><b>${t}</b><span class="s">${s}</span></li>`).join('')}</ol>`)
+
+// ───────────────── 가짜 QR · 탭 · 모드 ─────────────────
+function fakeQr(el) {
+  const N = 29, size = +el.dataset.size || 150; let s = [...el.dataset.qr].reduce((a, c) => a * 31 + c.charCodeAt(0), 7) >>> 0
+  const rnd = () => ((s = (s * 1103515245 + 12345) >>> 0) / 4294967296)
+  const cv = document.createElement('canvas'); cv.width = N; cv.height = N; cv.style.width = cv.style.height = size + 'px'
+  const g = cv.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, N, N); g.fillStyle = '#111'
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (rnd() < 0.48) g.fillRect(x, y, 1, 1)
+  el.appendChild(cv)
+}
+document.querySelectorAll('.qr').forEach(fakeQr)
+if (QS.has('cap')) document.body.classList.add('capture')
+const setMode = (m) => { document.body.dataset.mode = m; document.getElementById('modeBtn').textContent = m === 'dark' ? '☀️ 라이트로 보기' : '🌙 다크로 보기' }
+setMode(QS.get('mode') === 'dark' ? 'dark' : 'light')
+document.getElementById('modeBtn').addEventListener('click', () => setMode(document.body.dataset.mode === 'dark' ? 'light' : 'dark'))
+const show = (id) => {
+  document.querySelectorAll('.sheet').forEach((s) => s.classList.toggle('on', s.id === id))
+  document.querySelectorAll('.tabs-top a[data-s]').forEach((a) => a.classList.toggle('on', a.dataset.s === id))
+}
+document.querySelectorAll('.tabs-top a[data-s]').forEach((a) => a.addEventListener('click', () => show(a.dataset.s)))
+show(QS.get('sheet') || 'sum')
+</script>
+</body>
+</html>

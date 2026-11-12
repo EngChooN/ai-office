@@ -474,21 +474,21 @@ test('빌드 결과(dist-mobile): 상대 경로·인라인 스크립트 없음·
 // ── 배치 판정과 키보드 (폴드 펼친 화면에서 입력칸 포커스가 풀리던 버그) ──
 
 test('배치: 폭 840 미만 = 폰, 키보드를 뺀 높이 500 미만 = 가로 폰, 그 밖 = 태블릿(PC 배치)', () => {
-  assert.deepEqual(createLayoutTracker({ width: 390, height: 844 }).get(), { isPhone: true, isShort: false, isSplit: false, isKeyboardOpen: false })
-  assert.deepEqual(createLayoutTracker({ width: 844, height: 390 }).get(), { isPhone: true, isShort: true, isSplit: false, isKeyboardOpen: false })
-  assert.deepEqual(createLayoutTracker({ width: 1600, height: 1000 }).get(), { isPhone: false, isShort: false, isSplit: false, isKeyboardOpen: false })
+  assert.deepEqual(createLayoutTracker({ width: 390, height: 844 }).get(), { isPhone: true, isShort: false, isSplit: false, isSlim: true, isKeyboardOpen: false })
+  assert.deepEqual(createLayoutTracker({ width: 844, height: 390 }).get(), { isPhone: true, isShort: true, isSplit: false, isSlim: false, isKeyboardOpen: false })
+  assert.deepEqual(createLayoutTracker({ width: 1600, height: 1000 }).get(), { isPhone: false, isShort: false, isSplit: false, isSlim: false, isKeyboardOpen: false })
 })
 
 test('배치: 태블릿(1600×1000)에서 입력칸을 눌러 키보드가 WebView를 450으로 줄여도 PC 배치 그대로, 키보드는 열림', () => {
   const t = createLayoutTracker({ width: 1600, height: 1000 })
   // 포커스 → 셸이 WebView를 줄임(adjustResize) → resize
   assert.equal(t.update({ width: 1600, height: 1000, ime: 0, isTyping: true }).isPhone, false)
-  assert.deepEqual(t.update({ width: 1600, height: 450, ime: 0, isTyping: true }), { isPhone: false, isShort: false, isSplit: false, isKeyboardOpen: true })
+  assert.deepEqual(t.update({ width: 1600, height: 450, ime: 0, isTyping: true }), { isPhone: false, isShort: false, isSplit: false, isSlim: false, isKeyboardOpen: true })
   // 셸이 WebView를 줄이지 않고 ime로 알려 줘도 같다
   const u = createLayoutTracker({ width: 1600, height: 1000 })
-  assert.deepEqual(u.update({ width: 1600, height: 1000, ime: 550, isTyping: true }), { isPhone: false, isShort: false, isSplit: false, isKeyboardOpen: true })
+  assert.deepEqual(u.update({ width: 1600, height: 1000, ime: 550, isTyping: true }), { isPhone: false, isShort: false, isSplit: false, isSlim: false, isKeyboardOpen: true })
   // 입력이 끝나 키보드가 내려가면 다시 원래 판정
-  assert.deepEqual(t.update({ width: 1600, height: 1000, ime: 0, isTyping: false }), { isPhone: false, isShort: false, isSplit: false, isKeyboardOpen: false })
+  assert.deepEqual(t.update({ width: 1600, height: 1000, ime: 0, isTyping: false }), { isPhone: false, isShort: false, isSplit: false, isSlim: false, isKeyboardOpen: false })
 })
 
 test('배치: 입력 중이 아니면 높이 변화를 따르고(창 크기 바꾸기), 입력 중이라도 폭이 바뀌면(회전·폴드 접기) 새로 판정', () => {
@@ -496,10 +496,10 @@ test('배치: 입력 중이 아니면 높이 변화를 따르고(창 크기 바�
   assert.equal(t.update({ width: 1600, height: 450, ime: 0, isTyping: false }).isShort, true)
   const f = createLayoutTracker({ width: 1600, height: 1000 })
   f.update({ width: 1600, height: 1000, ime: 0, isTyping: true })
-  assert.deepEqual(f.update({ width: 700, height: 1500, ime: 0, isTyping: true }), { isPhone: true, isShort: false, isSplit: true, isKeyboardOpen: false })
+  assert.deepEqual(f.update({ width: 700, height: 1500, ime: 0, isTyping: true }), { isPhone: true, isShort: false, isSplit: true, isSlim: false, isKeyboardOpen: false })
   // 세로 폰에서도 키보드로 높이가 줄면 가로 폰(헤더 접기)으로 바뀌지 않는다
   const p = createLayoutTracker({ width: 390, height: 844 })
-  assert.deepEqual(p.update({ width: 390, height: 420, ime: 0, isTyping: true }), { isPhone: true, isShort: false, isSplit: false, isKeyboardOpen: true })
+  assert.deepEqual(p.update({ width: 390, height: 420, ime: 0, isTyping: true }), { isPhone: true, isShort: false, isSplit: false, isSlim: true, isKeyboardOpen: true })
 })
 
 test('통로: insets는 ime(0 이상 숫자)만 있으면 받는다 — 셸 1.1.0 형식 {type, ime}', () => {
@@ -513,15 +513,63 @@ test('통로: insets는 ime(0 이상 숫자)만 있으면 받는다 — 셸 1.1.
 test('키보드 ime 방식: ready에 features:["ime"]를 보내고, WebView 높이가 그대로여도 ime > 0이면 키보드 열림 · 배치는 그대로', () => {
   assert.match(read('src/renderer/mobile/install.ts'), /bridge\.notify\(\{ type: 'ready', features: \['ime'(, [^\]]*)?\] \}\)/)
   const tablet = createLayoutTracker({ width: 1600, height: 1000 })
-  assert.deepEqual(tablet.update({ width: 1600, height: 1000, ime: 259, isTyping: true }), { isPhone: false, isShort: false, isSplit: false, isKeyboardOpen: true })
-  assert.deepEqual(tablet.update({ width: 1600, height: 1000, ime: 0, isTyping: true }), { isPhone: false, isShort: false, isSplit: false, isKeyboardOpen: false })
+  assert.deepEqual(tablet.update({ width: 1600, height: 1000, ime: 259, isTyping: true }), { isPhone: false, isShort: false, isSplit: false, isSlim: false, isKeyboardOpen: true })
+  assert.deepEqual(tablet.update({ width: 1600, height: 1000, ime: 0, isTyping: true }), { isPhone: false, isShort: false, isSplit: false, isSlim: false, isKeyboardOpen: false })
   // 가로 폰도 키보드 높이를 더해 "가로 폰 아님"으로 바뀌지 않는다
   const land = createLayoutTracker({ width: 844, height: 390 })
-  assert.deepEqual(land.update({ width: 844, height: 390, ime: 259, isTyping: false }), { isPhone: true, isShort: true, isSplit: false, isKeyboardOpen: true })
+  assert.deepEqual(land.update({ width: 844, height: 390, ime: 259, isTyping: false }), { isPhone: true, isShort: true, isSplit: false, isSlim: false, isKeyboardOpen: true })
   // 화면은 --ime만큼 비킨다 (본문 아래 여백·시트·직원 패널)
   assert.match(read('src/renderer/index.css'), /\[data-shell='mobile'\] #root \{[^}]*padding-bottom: var\(--ime, 0px\)/)
   assert.match(read('src/renderer/components/ui/dialog.tsx'), /phone:bottom-\[var\(--ime,0px\)\]/)
   assert.match(read('src/renderer/features/StaffPanel.tsx'), /phone:bottom-\[var\(--ime,0px\)\]/)
+})
+
+// ── 세로 폰 축소형 (폭 600 미만 세로 폰: 머리·입력창 한 줄) ──
+
+test('축소형(slim): 폭 600 미만 세로 폰만 — 폴드 분할·태블릿·가로 폰·데스크톱은 아님', () => {
+  const slim = (w: number, h: number) => decideLayout(w, h).isSlim
+  assert.equal(slim(360, 780), true)
+  assert.equal(slim(390, 844), true)
+  assert.equal(slim(599, 900), true)
+  assert.equal(slim(600, 900), false)
+  assert.equal(slim(624, 986), false)
+  assert.equal(slim(839, 900), false)
+  assert.equal(slim(840, 900), false)
+  assert.equal(slim(844, 390), false)
+  assert.equal(slim(1600, 1000), false)
+  // 키보드가 열려도(입력 중 높이가 줄어도) 축소형은 그대로
+  const t = createLayoutTracker({ width: 390, height: 844 })
+  assert.equal(t.update({ width: 390, height: 844, ime: 0, isTyping: true }).isSlim, true)
+  assert.equal(t.update({ width: 390, height: 420, ime: 0, isTyping: true }).isSlim, true)
+})
+
+test('축소형: isSlim만 바뀌어도 구독한 화면이 다시 그려진다', () => {
+  let calls = 0
+  const off = subscribeLayout(() => calls++)
+  const base = getLayoutState()
+  setLayoutState({ ...base, isPhone: true, isSlim: false })
+  const before = calls
+  setLayoutState({ ...getLayoutState(), isSlim: true })
+  assert.equal(calls, before + 1)
+  setLayoutState(base)
+  off()
+})
+
+test('축소형: slim: 변형은 data-slim(install.ts)일 때만 — 폴드(data-split)·데스크톱에선 걸리지 않는다', () => {
+  const css = read('src/renderer/index.css')
+  assert.match(css, /@custom-variant slim \(&:where\(\[data-layout=phone\]\[data-slim\] \*\)\);/)
+  assert.match(read('src/renderer/mobile/install.ts'), /if \(next\.isSlim\) root\.dataset\.slim = ''/)
+})
+
+test('축소형: 대화방·직원 패널은 한 벌 마크업에 slim: 클래스만 — 입력칸은 두 벌 만들지 않는다', () => {
+  const chat = read('src/renderer/features/ChatPage.tsx')
+  assert.match(chat, /<ChatSlimBar /)
+  assert.equal((chat.match(/<MentionTextarea/g) ?? []).length, 1)
+  assert.match(read('src/renderer/features/ChatSlimBar.tsx'), /slim:flex hidden/)
+  const panel = read('src/renderer/features/StaffPanel.tsx')
+  assert.match(panel, /<ApprovalBand /)
+  assert.equal((panel.match(/<Textarea\n\s+ref=\{composerRef\}/g) ?? []).length, 1)
+  assert.match(read('src/renderer/layout/PhoneShell.tsx'), /slim:h-\[52px\]/)
 })
 
 // ── 좌우 분할 (폴드 와이드 커버 624×986 등: 폰 배치 중 폭 600 이상, 가로 폰 아님) ──
@@ -541,14 +589,14 @@ test('분할: 폭 600~839의 세로 폰 배치만 — 599·840(태블릿)·가�
 
 test('분할: 키보드가 열려도 분할은 그대로(왼쪽 칸만 숨김), 폴드를 펼치면(폭 바뀜) 새로 판정', () => {
   const t = createLayoutTracker({ width: 624, height: 986 })
-  assert.deepEqual(t.get(), { isPhone: true, isShort: false, isSplit: true, isKeyboardOpen: false })
-  assert.deepEqual(t.update({ width: 624, height: 986, ime: 300, isTyping: true }), { isPhone: true, isShort: false, isSplit: true, isKeyboardOpen: true })
+  assert.deepEqual(t.get(), { isPhone: true, isShort: false, isSplit: true, isSlim: false, isKeyboardOpen: false })
+  assert.deepEqual(t.update({ width: 624, height: 986, ime: 300, isTyping: true }), { isPhone: true, isShort: false, isSplit: true, isSlim: false, isKeyboardOpen: true })
   // 예전 셸: 키보드가 WebView를 줄여 높이 450이 되어도 가로 폰으로 바뀌지 않는다
   const old = createLayoutTracker({ width: 624, height: 986 })
   old.update({ width: 624, height: 986, ime: 0, isTyping: true })
-  assert.deepEqual(old.update({ width: 624, height: 450, ime: 0, isTyping: true }), { isPhone: true, isShort: false, isSplit: true, isKeyboardOpen: true })
+  assert.deepEqual(old.update({ width: 624, height: 450, ime: 0, isTyping: true }), { isPhone: true, isShort: false, isSplit: true, isSlim: false, isKeyboardOpen: true })
   // 펼침 (태블릿 배치)
-  assert.deepEqual(t.update({ width: 1100, height: 986, ime: 0, isTyping: true }), { isPhone: false, isShort: false, isSplit: false, isKeyboardOpen: false })
+  assert.deepEqual(t.update({ width: 1100, height: 986, ime: 0, isTyping: true }), { isPhone: false, isShort: false, isSplit: false, isSlim: false, isKeyboardOpen: false })
 })
 
 test('분할: isSplit만 바뀌어도 구독한 화면이 다시 그려진다', () => {

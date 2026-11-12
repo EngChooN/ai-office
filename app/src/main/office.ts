@@ -3169,28 +3169,36 @@ export class Office extends EventEmitter<{
 
   /** 직원에게 매뉴얼 초안을 맡긴다 — 파일은 쓰지 않고 양식에 채울 내용만 돌려준다 */
   async draftManual(staffId: string, request: string, kind: ManualKind) {
-    const s = this.hired.get(staffId)
-    if (!s) throw new Error('직원을 찾을 수 없어요.')
-    const roles = [...new Set([...this.hired.values()].map((x) => x.role))].join(', ')
+    // 직원이 없거나 staffId가 비면(직원 0명 포함) 앱이 직접 쓴다 — 사용량은 비서 몫
+    const s = staffId ? this.hired.get(staffId) : undefined
+    if (staffId && !s) throw new Error('직원을 찾을 수 없어요.')
+    const hiredRoles = [...new Set([...this.hired.values()].map((x) => x.role))]
+    const roles = (hiredRoles.length ? hiredRoles : ['기획자', '디자이너', '개발자', '리뷰어', 'QA']).join(', ')
     const r = await askOnce({
-      cwd: s.cwd,
+      cwd: s ? s.cwd : os.homedir(),
       tier: 'standard',
-      model: s.model,
-      system: `당신은 ${s.name}(${s.role})입니다. ${s.systemPrompt}\n회사 업무 매뉴얼(Claude Code 스킬)을 작성합니다. 바로 따라 할 수 있게 구체적으로 씁니다.\n${t('staff.language')}`,
+      ...(s ? { model: s.model } : {}),
+      system: `${s ? `당신은 ${s.name}(${s.role})입니다. ${s.systemPrompt}` : '당신은 회사 매뉴얼 작성 도우미입니다.'}\n회사 업무 매뉴얼(Claude Code 스킬)을 작성합니다. 바로 따라 할 수 있게 구체적으로 씁니다.\n${t('staff.language')}`,
       prompt: [
         `요청: ${request}`,
         kind === 'process'
           ? `여러 사람이 차례로 넘겨받는 "프로세스 매뉴얼"을 만드세요. 사무실 직무 목록: ${roles}. 각 단계 role은 위 직무에 들어 있는 짧은 키워드(예: "기획자", "리뷰어", "QA", "팀장")로 쓰세요. 리뷰·QA처럼 되돌려 보낼 수 있는 단계는 onRevise에 되돌아갈 단계 id를 쓰세요.`
           : '한 사람이 이 일을 어떤 순서로 하는지 적은 "개인 매뉴얼"을 만드세요.',
-        '아래 JSON 하나만 출력하세요 (코드 블록 없이):',
-        '{"name":"영문-소문자-하이픈","description":"언제 쓰는지 한두 문장","body":"마크다운 본문(절차·주의점)","steps":[{"id":"s1","title":"단계 이름","role":"직무 키워드","instruction":"이 단계 담당에게 줄 지시","needsMyCheck":false,"onRevise":null,"maxLoops":2}]}',
+        '아래 JSON 하나만 출력하세요 (코드 블록 없이). title은 사람이 읽는 짧은 이름(요청과 같은 언어)입니다:',
+        '{"name":"영문-소문자-하이픈","title":"표시 이름","description":"언제 쓰는지 한두 문장","body":"마크다운 본문(절차·주의점)","steps":[{"id":"s1","title":"단계 이름","role":"직무 키워드","instruction":"이 단계 담당에게 줄 지시","needsMyCheck":false,"onRevise":null,"maxLoops":2}]}',
         kind === 'personal' ? 'steps는 빈 배열로 두세요.' : '',
       ].join('\n'),
     })
-    this.recordUsage(staffId, r)
+    this.recordUsage(s ? staffId : SECRETARY_ID, r)
     const json = r.text.slice(r.text.indexOf('{'), r.text.lastIndexOf('}') + 1)
-    const d = JSON.parse(json) as { name: string; description: string; body: string; steps?: ProcessStep[] }
-    return { name: d.name, description: d.description, body: d.body, steps: kind === 'process' ? (d.steps ?? []) : [] }
+    const d = JSON.parse(json) as { name: string; title?: string; description: string; body: string; steps?: ProcessStep[] }
+    const title = typeof d.title === 'string' ? d.title.trim() : ''
+    return { name: d.name, ...(title ? { title } : {}), description: d.description, body: d.body, steps: kind === 'process' ? (d.steps ?? []) : [] }
+  }
+
+  /** 화면·채팅에 보일 매뉴얼 이름: 표시 이름이 있으면 그것, 없으면 내부 이름 */
+  private manualLabel(name: string) {
+    return this.listManuals().find((m) => m.name === name)?.title || name
   }
 
   /** 개인 매뉴얼 교육: 이 매뉴얼을 쓸 수 있는 직원을 정한다 (기존 "전부 사용" 직원은 빼면 나머지 매뉴얼만 남긴다) */
@@ -3207,7 +3215,7 @@ export class Office extends EventEmitter<{
       if (want === has) continue
       const next = want ? [...new Set([...list, manualName])] : list.filter((n) => n !== manualName)
       this.setEquipment(s.id, { ...s.equipment, skills: next })
-      if (want) this.postChat(s.id, `📘 "${manualName}" 매뉴얼 교육을 받았어요!`)
+      if (want) this.postChat(s.id, `📘 "${this.manualLabel(manualName)}" 매뉴얼 교육을 받았어요!`)
     }
   }
 
@@ -3251,7 +3259,7 @@ export class Office extends EventEmitter<{
     const run: ProcessRun = {
       id: crypto.randomUUID(),
       manualName: manual.name,
-      manualTitle: manual.description.split(/[.。]/)[0] || manual.name,
+      manualTitle: manual.title || manual.description.split(/[.。]/)[0] || manual.name,
       steps: manual.steps,
       scope: { ...input.scope, name: scopeName },
       input: input.input,
@@ -3296,7 +3304,7 @@ export class Office extends EventEmitter<{
     const projectDir = run.scope.kind === 'lab' ? this.labs.get(run.scope.id)?.cwd : null
     const recent = run.history.slice(-3).map((h) => `### ${h.staffName} (${run.steps.find((x) => x.id === h.stepId)?.title ?? h.stepId})\n${h.output.slice(0, STEP_CONTEXT_MAX)}`)
     const text = [
-      `[프로세스 "${run.manualName}" · ${run.stepIndex + 1}/${run.steps.length}단계: ${step.title}]`,
+      `[프로세스 "${run.manualTitle || run.manualName}" · ${run.stepIndex + 1}/${run.steps.length}단계: ${step.title}]`,
       step.instruction,
       '',
       `## 일감\n${run.input || '(따로 적은 내용 없음 — 단계 지시대로 진행)'}`,
@@ -3337,7 +3345,7 @@ export class Office extends EventEmitter<{
     run.pendingOutput = output
     const step = run.steps[run.stepIndex]
     this.saveRunObj(run)
-    this.postChat(run.currentStaffId ?? 'me', `🙋 "${run.manualName}" ${step.title} 단계를 확인해 주세요 (업무 보드·결재함)`)
+    this.postChat(run.currentStaffId ?? 'me', `🙋 "${run.manualTitle || run.manualName}" ${step.title} 단계를 확인해 주세요 (업무 보드·결재함)`)
     this.emit('notify', { title: t('notify.processConfirm', { title: step.title }), body: output.slice(0, 120), staffId: run.currentStaffId ?? '' })
   }
 
@@ -3352,8 +3360,8 @@ export class Office extends EventEmitter<{
       if (t) this.saveTask({ ...t, status: 'review', result: last.slice(0, CHAT_TEXT_MAX), updatedAt: Date.now() })
     }
     this.saveRunObj(run)
-    this.postChat('me', tr('chat.runFinished', { manual: run.manualName, scope: run.scope.name }))
-    this.emit('notify', { title: t('notify.processDone'), body: `${run.manualName} · ${run.scope.name}`, staffId: '' })
+    this.postChat('me', tr('chat.runFinished', { manual: run.manualTitle || run.manualName, scope: run.scope.name }))
+    this.emit('notify', { title: t('notify.processDone'), body: `${run.manualTitle || run.manualName} · ${run.scope.name}`, staffId: '' })
   }
 
   reviewRun(runId: string, approve: boolean, feedback: string) {

@@ -17,7 +17,8 @@ import { ProviderBanner } from '@/features/ProviderBanner'
 import { QuickSecretary } from '@/features/secretary/QuickSecretary'
 import { AutoApproveBadge } from '@/features/AutoApprove'
 import { MOD_KEY } from '@/lib/platform'
-import { IS_MOBILE_SHELL } from '@/shell'
+import { IS_MOBILE_SHELL, IS_REMOTE_SCREEN } from '@/shell'
+import { WorkspaceBand, WorkspaceSwitcher } from '@/features/workspace/WorkspaceSwitcher'
 import { PlanUsageChip } from '@/features/PlanUsageCard'
 import { chipEngines } from '@shared/planUsageChip'
 import { formatWon } from '@shared/economy'
@@ -95,8 +96,8 @@ function AppBody() {
       <LevelUp isBusy={isTourOpen || isPickerOpen} />
       {!isPhone && <QuickSecretary />}
       {/* PC 주인에게만 (휴대폰에서 QR을 다시 만들면 그 휴대폰이 끊긴다) */}
-      {!IS_MOBILE_SHELL && <RemoteUpgradeNotice />}
-      {!IS_MOBILE_SHELL && <RemoteLanNotice />}
+      {!IS_REMOTE_SCREEN && <RemoteUpgradeNotice />}
+      {!IS_REMOTE_SCREEN && <RemoteLanNotice />}
       <DemoStage />
     </>
   )
@@ -131,7 +132,8 @@ function DesktopShell({ children }: { children?: React.ReactNode }) {
     <div className="flex h-full flex-col">
       {/* 상단 바를 창 드래그 영역으로 쓴다. 맥은 왼쪽 신호등 자리, 윈도우는 오른쪽 위 창 버튼(최소화·최대화·닫기) 자리를 비운다 */}
       <header className="flex h-11 shrink-0 items-center gap-3 border-b pr-3 pl-20 [-webkit-app-region:drag] win:pr-[144px] win:pl-3 android:pl-3">
-        <span className="shrink-0 font-semibold">AI Office</span>
+        {/* 연결 PC가 없으면 지금과 같은 'AI Office' 글자, 있으면 PC 전환 드롭다운 */}
+        <WorkspaceSwitcher />
         {!isWorkMode && (
           <button
             type="button"
@@ -159,9 +161,11 @@ function DesktopShell({ children }: { children?: React.ReactNode }) {
           </Button>
         </div>
       </header>
+      {/* 다른 PC 화면(원격 창)일 때만: 'OO의 사무실을 보는 중' 띠와 끊김 안내 */}
+      <WorkspaceBand />
       {isLoaded && staff.length === 0 && <EmptyOfficeHint />}
       {/* 공급자 연결은 PC에서 (휴대폰에서 누르면 휴대폰 설정 화면으로 가 버린다) */}
-      {!IS_MOBILE_SHELL && <ProviderBanner />}
+      {!IS_REMOTE_SCREEN && <ProviderBanner />}
       <div className="relative flex min-h-0 flex-1 overflow-hidden">
         <Sidebar />
         <main className="flex min-h-0 min-w-0 flex-1 flex-col">

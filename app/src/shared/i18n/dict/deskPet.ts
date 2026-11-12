@@ -184,10 +184,10 @@ export default {
     zh: "隐藏角色",
   },
   "deskPet.hideHint": {
-    ko: "메뉴바 아이콘이나 설정 › 연결에서 다시 불러올 수 있어요",
-    en: "Bring it back from the menu bar icon or Settings › Connections",
-    ja: "メニューバーのアイコンか 設定 › 接続 から呼び戻せます",
-    zh: "可从菜单栏图标或 设置 › 连接 召回",
+    ko: "메뉴바 아이콘이나 설정 › 사무실에서 다시 불러올 수 있어요",
+    en: "Bring it back from the menu bar icon or Settings › Office",
+    ja: "メニューバーのアイコンか 設定 › オフィス から呼び戻せます",
+    zh: "可从菜单栏图标或 设置 › 办公室 召回",
   },
   "deskPet.size": {
     ko: "캐릭터 크기",

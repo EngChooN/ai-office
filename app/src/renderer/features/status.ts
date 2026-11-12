@@ -36,6 +36,11 @@ export function shortPath(p: string) {
   return p.replace(/^(\/Users\/[^/]+|[A-Za-z]:\\Users\\[^\\]+)/, '~')
 }
 
+/** 경로의 마지막 폴더 이름 (맥·윈도우 구분자 모두) */
+export function folderName(p: string) {
+  return p.replace(/[\\/]+$/, '').split(/[\\/]/).pop() || p
+}
+
 /** 지금 시각을 주기적으로 다시 읽는다 (경과 시간·상대 시각 표시용). 창이 가려져 있는 동안은 쉬고, 다시 보이면 바로 맞춘다 */
 export function useNow(intervalMs: number) {
   const [now, setNow] = useState(() => Date.now())

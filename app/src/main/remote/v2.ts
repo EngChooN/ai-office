@@ -252,7 +252,7 @@ export const V2_FIELDS: Partial<Record<OfficeMethod, Record<number, string[]>>> 
   recruitExternal: { 1: fieldsExcept('recruitExternal', 1, ['approvalMode'], { role: true, model: true, teamId: true }) },
   // 원격은 MCP·스킬·예산만 — Bash 같은 허용·금지 도구와 셸 네트워크 허용은 PC에서만
   setEquipment: { 1: fieldsExcept('setEquipment', 1, ['allowedTools', 'disallowedTools', 'shellNetwork', 'browserAuto'], { mcpServers: true, skills: true, monthlyBudgetUsd: true, lightModelOff: true }) },
-  saveManual: { 0: fieldsOf('saveManual', 0, { name: true, description: true, kind: true, scope: true, projectDir: true, body: true, steps: true }) },
+  saveManual: { 0: fieldsOf('saveManual', 0, { name: true, autoName: true, title: true, description: true, kind: true, scope: true, projectDir: true, body: true, steps: true }) },
   startRun: { 0: fieldsOf('startRun', 0, { manualName: true, scope: true, input: true, attachments: true, taskId: true }) },
   instruct: { 3: fieldsOf('instruct', 3, { isAutonomous: true }) },
   // 자율 진행 켜기도 휴대폰에서 (위험 작업은 자율 진행이어도 건너뛰고, 켜면 PC에 알린다)
@@ -273,7 +273,8 @@ export const V2_FIELDS: Partial<Record<OfficeMethod, Record<number, string[]>>> 
   secretaryRun: { 1: fieldsOf('secretaryRun', 1, { fromStep: true, edits: true, revised: true, excluded: true }) },
   updateSettings: {
     // 화면 캡처 허용·공용 브라우저 로그인은 PC에서만 (폰에서 대표 화면 캡처 권한을 켜지 못하게). PC 화면 모드·색 테마·바탕화면 비서도 PC에서만
-    0: fieldsExcept('updateSettings', 0, ['isStaffCaptureOn', 'sharedBrowserLogin', 'uiMode', 'uiTheme', 'isDeskPetOn', 'deskPetSize', 'deskPetOpacity'], { monthlyBudgetUsd: true, tokenBudget: true, theme: true, dayNight: true, plants: true, isChatterOn: true, workHours: true, layout: true, isTrayOn: true, launchAtLogin: true, isOnboarded: true, defaultCwd: true, isWorkMode: true, isFullAccessNoticeSeen: true, isProviderBannerSeen: true, internalAi: true, language: true, demoDay: true, isSecretaryWebOn: true, tokenSaverMode: true }),
+    // 기본 작업 폴더도 PC에서만 (원격에서 바꾸면 새 고용·지시의 작업 폴더 제한이 우회된다)
+    0: fieldsExcept('updateSettings', 0, ['isStaffCaptureOn', 'sharedBrowserLogin', 'uiMode', 'uiTheme', 'isDeskPetOn', 'deskPetSize', 'deskPetOpacity', 'defaultCwd'], { monthlyBudgetUsd: true, tokenBudget: true, theme: true, dayNight: true, plants: true, isChatterOn: true, workHours: true, layout: true, isTrayOn: true, launchAtLogin: true, isOnboarded: true, isWorkMode: true, isFullAccessNoticeSeen: true, isProviderBannerSeen: true, internalAi: true, language: true, demoDay: true, isSecretaryWebOn: true, tokenSaverMode: true }),
   },
 }
 

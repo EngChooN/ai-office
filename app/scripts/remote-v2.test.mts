@@ -137,6 +137,9 @@ test('사무실 파일 폴더 밖: 매뉴얼은 지금 있는 매뉴얼 경로�
   assert.equal((await call({ method: 'deleteManual', args: ['/Users/me/manuals/a.md'] })).response.status, 200)
   // 새 매뉴얼(경로 없음)은 그대로 만든다
   assert.equal((await call({ method: 'saveManual', args: [{ title: 'x' }] })).response.status, 200)
+  // 표시 이름·자동 이름 필드는 허용 목록을 통과해 office까지 전달된다
+  const titled = await call({ method: 'saveManual', args: [{ name: '', title: '주간 보고', autoName: true, extra: 1 }] })
+  assert.deepEqual(titled.calls[0].args[0], { name: '', title: '주간 보고', autoName: true })
 })
 
 test('연결이 끊기는 설정은 confirm이 있어야 하고, 응답을 보낸 뒤에 바꾼다', async () => {
@@ -839,4 +842,240 @@ test('capabilities: 이벤트 스트림은 연결마다 모양을 따로 — 같
   hub.publish('log', { id: 1 })
   assert.ok(a.out.at(-1)!.includes('"id":1') && b.out.at(-1)!.includes('"id":1'))
   hub.closeAll('shutdown')
+})
+
+// ── 워크스페이스 0단계: 기기별 열쇠 · 화면 보기 권한 ─────────────────
+
+import { restrictRemoteArgs } from '../src/main/remoteGuard.ts'
+
+const peerSlot = (id: string, over: Record<string, unknown> = {}) => {
+  const token = newToken()
+  return { token, slot: { id, label: id, tokenHash: hashToken(token), createdAt: NOW, lastSeenAt: null, ...over } }
+}
+const withKeys = () => ({ pcOnly: peerSlot('pc-a'), viewA: peerSlot('view-a', { view: true }), viewB: peerSlot('view-b', { view: true }) })
+const ks = withKeys
+const snapEvents = (s: ReturnType<typeof openSse>, name: string) => s.events.filter((e) => e.event === name)
+
+test('0단계 1·2: 열쇠를 기기마다 따로 끊는다 — 끊으면 그 열쇠의 연결 2줄이 바로 bye(token_revoked), 다른 열쇠·휴대폰은 그대로', async () => {
+  const port = await freePort()
+  const k = ks()
+  const t = makeV2Service(port, { peers: [k.viewA.slot, k.viewB.slot] })
+  try {
+    await t.svc.enable(port)
+    // 한 열쇠로 연결 2줄 (휴대폰과 같은 한도), 세 번째는 가장 오래된 줄을 밀어낸다
+    const a1 = openSse(port, k.viewA.token)
+    const a2 = openSse(port, k.viewA.token)
+    const b1 = openSse(port, k.viewB.token)
+    const phone = openSse(port, t.token)
+    for (const s of [a1, a2, b1, phone]) await s.until(() => snapEvents(s, 'snapshot').length >= 1)
+    assert.deepEqual([a1.status(), a2.status(), b1.status()], [200, 200, 200])
+    const a3 = openSse(port, k.viewA.token)
+    await a3.until(() => snapEvents(a3, 'snapshot').length >= 1)
+    await a1.until(() => a1.isClosed())
+    assert.equal(a1.events.at(-1)!.data.reason, 'replaced')
+    assert.equal(a2.isClosed(), false)
+
+    // 화면 보기 열쇠 A만 끊는다 → A의 두 줄은 즉시 닫히고 B·휴대폰은 계속 이벤트를 받는다
+    assert.equal(t.svc.revokePeerSlot('view-a'), true)
+    await a2.until(() => a2.isClosed())
+    await a3.until(() => a3.isClosed())
+    assert.equal(a2.events.at(-1)!.event, 'bye')
+    assert.equal(a2.events.at(-1)!.data.reason, 'token_revoked')
+    assert.equal(a3.events.at(-1)!.data.reason, 'token_revoked')
+    assert.equal(b1.isClosed(), false)
+    assert.equal(phone.isClosed(), false)
+    t.svc.publish('log', { id: 7 })
+    await b1.until(() => snapEvents(b1, 'log').length >= 1)
+    await phone.until(() => snapEvents(phone, 'log').length >= 1)
+    // 끊긴 열쇠로 다시 붙거나 부르면 token_revoked
+    assert.equal((await v2call(port, k.viewA.token, { method: 'snapshot' })).body.error, 'token_revoked')
+    assert.equal((await v2call(port, k.viewB.token, { method: 'snapshot' })).status, 200)
+    for (const s of [b1, phone]) s.close()
+  } finally {
+    await t.cleanup()
+  }
+})
+
+test('0단계 1: 휴대폰 열쇠를 새로 받으면(QR 다시 만들기) 기기 열쇠에는 token_revoked bye가 가지 않는다 (서버가 다시 열리며 연결이 끊기는 것은 예전 그대로)', async () => {
+  const port = await freePort()
+  const k = ks()
+  const t = makeV2Service(port, { peers: [k.viewA.slot] })
+  try {
+    await t.svc.enable(port)
+    const a = openSse(port, k.viewA.token)
+    const phone = openSse(port, t.token)
+    await a.until(() => snapEvents(a, 'snapshot').length >= 1)
+    await phone.until(() => snapEvents(phone, 'snapshot').length >= 1)
+    await t.svc.regenerate()
+    await phone.until(() => phone.isClosed())
+    assert.equal(snapEvents(a, 'bye').some((e) => e.data.reason === 'token_revoked'), false)
+    assert.equal(snapEvents(phone, 'bye')[0].data.reason, 'token_revoked')
+    a.close()
+  } finally {
+    await t.cleanup()
+  }
+})
+
+test('0단계 2: 화면 보기 열쇠가 받는 이벤트는 휴대폰과 같은 모양 (snapshot·log·remoteStatus 그대로), 일반 PC 열쇠는 사영만', async () => {
+  const port = await freePort()
+  const k = ks()
+  const t = makeV2Service(port, { peers: [k.viewA.slot, k.pcOnly.slot] })
+  try {
+    await t.svc.enable(port)
+    const phone = openSse(port, t.token)
+    const view = openSse(port, k.viewA.token)
+    const plain = openSse(port, k.pcOnly.token)
+    for (const s of [phone, view, plain]) await s.until(() => snapEvents(s, 'hello').length >= 1)
+    for (const s of [phone, view]) await s.until(() => snapEvents(s, 'snapshot').length >= 1 && snapEvents(s, 'remoteStatus').length >= 1)
+    t.svc.publish('chat', { id: 'c1', text: 'hi' })
+    t.svc.publish('log', { id: 'l1' })
+    for (const s of [phone, view]) await s.until(() => snapEvents(s, 'chat').length >= 1 && snapEvents(s, 'log').length >= 1)
+    const names = (s: ReturnType<typeof openSse>) => s.events.map((e) => e.event).filter((e) => e !== 'hello')
+    assert.deepEqual(names(view), names(phone))
+    assert.deepEqual(snapEvents(view, 'snapshot')[0].data, snapEvents(phone, 'snapshot')[0].data)
+    assert.deepEqual(snapEvents(view, 'chat')[0].data, snapEvents(phone, 'chat')[0].data)
+    assert.equal(snapEvents(view, 'hello')[0].data.protocolVersion, 2)
+    // 일반 PC 열쇠에는 사영 함수가 없어 이 이벤트들이 가지 않는다 (예전 그대로)
+    assert.equal(snapEvents(plain, 'chat').length, 0)
+    assert.equal(snapEvents(plain, 'remoteStatus').length, 0)
+    for (const s of [phone, view, plain]) s.close()
+  } finally {
+    await t.cleanup()
+  }
+})
+
+test('0단계 3: hello가 프로토콜 버전·허락 상태를 준다 — 기존 짝은 저쪽이 허락하기 전까지 view를 얻지 못한다', async () => {
+  const port = await freePort()
+  const k = ks()
+  const asked: { id: string; label: string }[] = []
+  const t = makeV2Service(port, { peers: [k.pcOnly.slot, k.viewA.slot] })
+  // 짝짓기 때 허락된 열쇠가 아닌 기존 짝: hello만으로는 none, 요청하면 pending(결재 카드 1번), 자동 허락 없음
+  ;(t.svc as any).deps.peer = { host: {}, ownName: () => 'A', shapePeer: () => null, onViewRequest: (s: { id: string; label: string }) => asked.push(s) }
+  try {
+    await t.svc.enable(port)
+    const perms = async (token: string, arg: object = {}) => (await v2call(port, token, { method: 'hello', args: [{ capabilities: [], ...arg }] })).body.result
+    assert.deepEqual([(await perms(t.token)).protocol, (await perms(t.token)).permissions], [2, { key: 'phone', view: 'granted' }])
+    assert.deepEqual((await perms(k.viewA.token)).permissions, { key: 'peer', view: 'granted' })
+    assert.deepEqual((await perms(k.pcOnly.token)).permissions, { key: 'peer', view: 'none' })
+    assert.deepEqual(asked, [])
+    assert.deepEqual((await perms(k.pcOnly.token, { requestView: true })).permissions, { key: 'peer', view: 'pending' })
+    await perms(k.pcOnly.token, { requestView: true })
+    assert.deepEqual(asked, [{ id: 'pc-a', label: 'pc-a' }]) // 되풀이해도 카드는 한 번
+    // 허락 대기 중에도 OfficeApi는 못 부른다 (scope_denied), 파일·첨부도 못 건드린다
+    assert.equal((await v2call(port, k.pcOnly.token, { method: 'snapshot' })).body.error, 'scope_denied')
+    assert.equal((await req(port, { path: '/v2/files/11111111-2222-4333-8444-555555555555', token: k.pcOnly.token })).body.error, 'scope_denied')
+    assert.equal((await req(port, { method: 'POST', path: '/v2/attachments', token: k.pcOnly.token, headers: { 'Content-Length': 1 }, body: 'x' }).catch(() => ({ body: { error: 'scope_denied' } }))).body.error, 'scope_denied')
+    // 허락(저쪽 PC 앞) → 그 열쇠가 휴대폰 길로 부른다. 거절·회수하면 다시 막힌다
+    assert.equal(t.svc.setPeerView('pc-a', true), true)
+    assert.deepEqual((await perms(k.pcOnly.token)).permissions, { key: 'peer', view: 'granted' })
+    assert.equal((await v2call(port, k.pcOnly.token, { method: 'snapshot' })).status, 200)
+    assert.equal(t.config().peers!.find((p) => p.id === 'pc-a')!.view, true)
+    assert.equal(t.svc.setPeerView('pc-a', false), true)
+    assert.equal((await v2call(port, k.pcOnly.token, { method: 'snapshot' })).body.error, 'scope_denied')
+    // 화면 보기 열쇠로 짝지으면 처음부터 view
+    assert.equal(t.svc.setPeerView('nope', true), false)
+  } finally {
+    await t.cleanup()
+  }
+})
+
+test('0단계 3: 허락·회수하면 그 열쇠의 열린 연결이 닫혀 새 모양으로 다시 붙는다 (다른 열쇠는 그대로)', async () => {
+  const port = await freePort()
+  const k = ks()
+  const t = makeV2Service(port, { peers: [k.pcOnly.slot, k.viewA.slot] })
+  try {
+    await t.svc.enable(port)
+    const plain = openSse(port, k.pcOnly.token)
+    const other = openSse(port, k.viewA.token)
+    await plain.until(() => snapEvents(plain, 'hello').length >= 1)
+    await other.until(() => snapEvents(other, 'snapshot').length >= 1)
+    t.svc.setPeerView('pc-a', true)
+    await plain.until(() => plain.isClosed())
+    assert.equal(plain.events.at(-1)!.data.reason, 'permission_changed')
+    assert.equal(other.isClosed(), false)
+    const again = openSse(port, k.pcOnly.token)
+    await again.until(() => snapEvents(again, 'snapshot').length >= 1 && snapEvents(again, 'remoteStatus').length >= 1)
+    again.close()
+    other.close()
+  } finally {
+    await t.cleanup()
+  }
+})
+
+test('0단계 4: 화면 보기 열쇠에도 휴대폰과 같은 서버 허용 목록 — defaultCwd·승인 방식·자율 진행(isFull)·PC 전용은 똑같이 막힌다', async () => {
+  const port = await freePort()
+  const k = ks()
+  const t = makeV2Service(port, { peers: [k.viewA.slot] }, { restrict: (m, a) => restrictRemoteArgs(m, a, { defaultCwd: '/safe/default' }) })
+  try {
+    await t.svc.enable(port)
+    const run = async (token: string) => {
+      const before = t.calls.length
+      const bodies = [
+        { method: 'updateSettings', args: [{ defaultCwd: '/etc', isStaffCaptureOn: true, uiMode: 'x', language: 'ko' }] },
+        { method: 'hire', args: [{ name: 'k', cwd: '/etc', approvalMode: 'auto-edit' }] },
+        { method: 'setAutoApprove', args: [{ mode: 'hours', hours: 2, isFull: true }] },
+      ]
+      const out: unknown[] = []
+      for (const b of bodies) out.push((await v2call(port, token, b)).status)
+      const pc = (await v2call(port, token, { method: 'pickFolder' })).body.error
+      return { status: out, pc, forwarded: t.calls.slice(before).map((c) => ({ method: c.method, args: c.args, isRemote: c.isRemote })) }
+    }
+    const phone = await run(t.token)
+    const view = await run(k.viewA.token)
+    assert.deepEqual(view, phone) // 휴대폰과 한 글자도 다르지 않다
+    assert.equal(view.pc, 'pc_only')
+    const [upd, hire, auto] = view.forwarded
+    assert.deepEqual(upd.args, [{ isStaffCaptureOn: undefined, language: 'ko' }].map(() => ({ language: 'ko' })))
+    assert.deepEqual(hire.args, [{ name: 'k', cwd: '/safe/default', approvalMode: 'ask' }])
+    assert.deepEqual(auto.args, [{ mode: 'hours', hours: 2 }])
+    assert.ok(view.forwarded.every((c) => c.isRemote))
+  } finally {
+    await t.cleanup()
+  }
+})
+
+test('0단계 5: 동시 결재는 먼저 누른 쪽만 처리하고 늦은 쪽은 409 already_decided', async () => {
+  const port = await freePort()
+  const k = ks()
+  let decided = false
+  const t = makeV2Service(port, { peers: [k.viewA.slot] }, {
+    call: (method) => {
+      if (method === 'decide') {
+        const first = !decided
+        decided = true
+        return first
+      }
+      return { called: method }
+    },
+  })
+  try {
+    await t.svc.enable(port)
+    const [a, b] = await Promise.all([v2call(port, t.token, { method: 'decide', args: ['ap1', true] }), v2call(port, k.viewA.token, { method: 'decide', args: ['ap1', false] })])
+    assert.deepEqual([a.status, b.status].sort(), [200, 409])
+    const loser = a.status === 409 ? a : b
+    assert.equal(loser.body.error, 'already_decided')
+  } finally {
+    await t.cleanup()
+  }
+})
+
+test('0단계 5: 재연결 때 같은 요청 id(Idempotency-Key)로 다시 보낸 지시는 한 번만 처리 — 화면 보기 열쇠 포함', async () => {
+  const port = await freePort()
+  const k = ks()
+  const t = makeV2Service(port, { peers: [k.viewA.slot] })
+  try {
+    await t.svc.enable(port)
+    const send = (token: string, key: string, text = 'hi') => v2call(port, token, { method: 'instruct', args: ['kim', text] }, { 'Idempotency-Key': key })
+    const first = await send(k.viewA.token, 'req-1')
+    assert.equal(first.status, 200)
+    const again = await send(k.viewA.token, 'req-1') // 연결이 끊겼다 붙어 같은 요청을 다시 보냈다
+    assert.deepEqual([again.status, again.body], [first.status, first.body]) // 처음 응답을 그대로 돌려준다
+    assert.equal(t.calls.filter((c) => c.method === 'instruct').length, 1)
+    assert.equal((await send(k.viewA.token, 'req-1', '다른 글')).body.error, 'invalid_request') // 같은 id에 다른 내용은 거절
+    // 다른 열쇠는 같은 id를 써도 서로 영향이 없다
+    assert.equal((await send(t.token, 'req-1')).status, 200)
+    assert.equal(t.calls.filter((c) => c.method === 'instruct').length, 2)
+  } finally {
+    await t.cleanup()
+  }
 })

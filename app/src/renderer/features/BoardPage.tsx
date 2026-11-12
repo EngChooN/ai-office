@@ -22,7 +22,7 @@ import { useTutorialStep, useTutorialTaskId } from './Tutorial'
 import { Avatar, PracticeBadge } from './StaffCard'
 import { formatCost, formatTokens } from './status'
 import { roleLabel } from '@shared/roleLabel'
-import { IS_MOBILE_SHELL } from '@/shell'
+import { IS_REMOTE_SCREEN } from '@/shell'
 import { AutonomyCheck, TaskAutonomy } from './Autonomy'
 import { DuoIcon, IconText } from '@/components/duo-icon'
 import { stripIconEmoji } from '@shared/iconText'
@@ -382,7 +382,7 @@ function TaskCard({ task }: { task: Task }) {
           <span className="bg-status-waiting/15 text-status-waiting w-fit rounded px-1.5 py-0.5 text-[11px] font-medium" title={t('peer.queuedHint')}>
             {t('peer.queued', { n: assignee.remote.queued })}
           </span>
-          {!IS_MOBILE_SHELL && !!assignee.remote.queuedJobIds?.length && (
+          {!IS_REMOTE_SCREEN && !!assignee.remote.queuedJobIds?.length && (
             <Button
               size="sm"
               variant="outline"

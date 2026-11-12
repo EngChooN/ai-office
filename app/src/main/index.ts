@@ -40,6 +40,7 @@ import { refreshCodexAssets } from './ai/codexAssets'
 import { lastProviderStatus, providerStatus } from './setup'
 import { WINDOW_BG, type UiMode } from '../shared/uiTheme'
 import { errorLog } from './errorLog'
+import { createWorkspaces, type Workspaces } from './workspace/index.ts'
 
 registerAttachmentScheme()
 // 최근 오류 기록 (피드백에 붙인다): 지켜보기만 하고 원래 처리(오류 창·경고)는 바꾸지 않는다
@@ -65,6 +66,8 @@ let peerHost: PeerHost | null = null
 let peerManager: PeerManager | null = null
 // 파일 복사본·변경 묶음 (A컴: 보내고 받아 반영 · B컴: 받은 복사본으로 일하고 바뀐 파일을 모은다)
 let peerSync: PeerSync | null = null
+// 워크스페이스(다른 PC 화면 보기): PC마다 원격 창 1개 — 이 PC 창·통로와 분리 (main/workspace)
+let workspaces: Workspaces | null = null
 function createPeer() {
   const store = peerStore()
   const sync = new PeerSync({ baseDir: app.getPath('userData'), store: syncStore(), registeredRoots: () => office.labRoots() })
@@ -173,6 +176,8 @@ function showWindow(focus?: string) {
   if (isNew) createWindow()
   win?.show()
   win?.focus()
+  // 보던 원격 창이 있으면 숨기고 이 PC로 돌아온 것으로 친다 (트레이·알림·바탕화면 비서로 열 때 두 창이 겹치지 않게)
+  workspaces?.localShown()
   if (!focus) return
   if (isNew) win?.webContents.once('did-finish-load', () => win?.webContents.send('office:onFocus', focus))
   else win?.webContents.send('office:onFocus', focus)
@@ -315,6 +320,8 @@ function createWindow(isHidden = false) {
   openLinksInBrowser(win.webContents)
   win.on('closed', () => {
     win = null
+    // 원격 창만 남아 앱이 안 꺼지거나 Dock으로 다시 열 창이 꼬이지 않게 함께 닫는다
+    workspaces?.closeAll()
     // 끝낼 때는 다음에 켤 때 settleStaleMeeting이 닫는다
     if (!isQuitting) office.endLiveDemos()
   })
@@ -328,12 +335,19 @@ function createWindow(isHidden = false) {
   win.on('show', sendShown(true))
 }
 
-/** renderer가 부르는 사무실 API — 채널 이름 = office:<메서드> */
+/** 이 PC의 창(앱 창·바탕화면 비서 창)이 보낸 IPC인지 — 원격 창(다른 PC 화면)이 이 PC 사무실을 움직이지 못하게 한다 */
+const isLocalSender = (sender: Electron.WebContents) => sender === win?.webContents || pet.windows().some((w) => w.webContents === sender)
+
+/** renderer가 부르는 사무실 API — 채널 이름 = office:<메서드>. 이 PC 창이 보낸 것만 처리한다 */
 function registerIpc() {
   handlers = createOfficeHandlers(office, remoteApi, () => secretary!, peerApi)
-  for (const [name, fn] of Object.entries(handlers)) ipcMain.handle(`office:${name}`, (_e, ...args) => (fn as (...a: unknown[]) => unknown)(...args))
+  for (const [name, fn] of Object.entries(handlers))
+    ipcMain.handle(`office:${name}`, (e, ...args) => {
+      if (!isLocalSender(e.sender)) throw new Error('not_local_window')
+      return (fn as (...a: unknown[]) => unknown)(...args)
+    })
   // 화면을 다시 불러오면 지난 window:shown을 모른다 — 시작할 때 지금 값을 묻는다
-  ipcMain.handle('window:isShown', () => Boolean(win?.isVisible() && !win.isMinimized()))
+  ipcMain.handle('window:isShown', (e) => isLocalSender(e.sender) && Boolean(win?.isVisible() && !win.isMinimized()))
   // 설정 › 바탕화면 비서 "다시 불러오기" (앱 창에서만 — 원격 v2와 상관없어 OfficeApi 밖에 둔다)
   ipcMain.handle('pet:summon', (e) => {
     if (e.sender === win?.webContents) pet.summon()
@@ -375,8 +389,7 @@ function registerIpc() {
   office.on('notify', ({ title, body, staffId }) => {
     const n = new Notification({ title, body })
     n.on('click', () => {
-      win?.show()
-      if (staffId) win?.webContents.send('office:onFocus', staffId)
+      showWindow(staffId)
       if (staffId) remote?.publish('focus', staffId)
     })
     n.show()
@@ -407,6 +420,22 @@ app.whenReady().then(async () => {
   createPeer()
   remote = createRemote()
   registerIpc()
+  workspaces = createWorkspaces({
+    userDataDir: app.getPath('userData'),
+    local: () => win,
+    // 끝내는 중에 원격 창이 먼저 닫혀도 이 PC 창을 새로 만들지 않는다
+    showLocal: () => {
+      if (!isQuitting) showWindow()
+    },
+    peerName: (peerId) => peerStore().peers.get(peerId)?.name ?? null,
+    load: (w) => {
+      if (REMOTE_WINDOW_VITE_DEV_SERVER_URL) void w.loadURL(`${REMOTE_WINDOW_VITE_DEV_SERVER_URL}/remote.html`)
+      else void w.loadFile(path.join(__dirname, `../renderer/${REMOTE_WINDOW_VITE_NAME}/remote.html`))
+    },
+    preloadPath: path.join(__dirname, 'remotePreload.cjs'),
+    background: () => windowColors().background,
+    isWindows: IS_WINDOWS,
+  })
   office.start()
   void remote.init()
   peerManager?.start()
@@ -425,7 +454,9 @@ app.whenReady().then(async () => {
   syncLoginItem(office.snapshot().settings.launchAtLogin)
   updates.start()
   // Dock 아이콘을 누르면 앱 창을 띄운다 — 앱 창을 닫고 바탕화면 비서 창만 남아 있어도 다시 만든다 (창 수가 아니라 win 기준)
-  app.on('activate', () => showWindow())
+  app.on('activate', () => {
+    if (!workspaces?.showCurrent()) showWindow()
+  })
 })
 
 let isQuitting = false
@@ -436,6 +467,7 @@ app.on('before-quit', (e) => {
   cancelClaudeLogin()
   tray.destroy()
   pet.close()
+  workspaces?.closeAll()
   secretary?.stop()
   updates?.stop()
   office.stop()

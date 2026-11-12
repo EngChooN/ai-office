@@ -124,7 +124,7 @@ function CheckFooter({
         <Button variant="ghost" onClick={() => onMove(STEPS[i - 1])}>
           {t('onboarding.prev')}
         </Button>
-        {/* 공급자가 하나도 준비되지 않으면 첫 업무를 할 수 없어 "나중에" 대신 둘러보기로 보낸다 (계정은 나중에 설정 › 연결에서) */}
+        {/* 공급자가 하나도 준비되지 않으면 첫 업무를 할 수 없어 "나중에" 대신 둘러보기로 보낸다 (계정은 나중에 설정 › AI·업무에서) */}
         {isBlocked && onSkipToTour && (
           <Button variant="outline" onClick={onSkipToTour} disabled={isChecking}>
             {t('onboarding.provider.laterTour')}

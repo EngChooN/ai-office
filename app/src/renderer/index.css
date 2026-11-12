@@ -20,6 +20,8 @@
 @custom-variant split (&:where([data-layout=phone][data-split] *));
 /* 분할의 왼쪽 칸이 보일 때 (키보드가 닫혀 있음). 키보드가 열리면 split:만 남아 오른쪽 칸이 전폭 */
 @custom-variant side (&:where([data-layout=phone][data-split]:not([data-keyboard]) *));
+/* 세로 폰(폭 600 미만): 대화방·직원 패널 머리와 입력창을 한 줄로 (layoutState isSlim) — 폴드 분할·데스크톱엔 붙지 않는다 */
+@custom-variant slim (&:where([data-layout=phone][data-slim] *));
 /* 좁은 본문: 화면 틀(ui/page)의 폭이 640px 미만일 때 — 창이 좁거나 직원 패널이 본문을 줄였을 때. 폰 배치와 같은 결과가 되게 phone:과 함께 쓴다 */
 @custom-variant narrow {
   @container page (width < 40rem) {
@@ -1056,3 +1058,15 @@
   --status-error: #FF6B6B;
   --sidebar-bg: linear-gradient(170deg, #1B3C2B, #322C15);
 }
+
+/* ── 워크스페이스(다른 PC 화면) 색 ─────────────────────────
+   연결 PC 색 3가지 (이 PC는 primary). 값은 shared/workspace.ts WORKSPACE_COLOR_HEX와 같다.
+   원격 창은 <html data-ws-color="teal|orange|blue">를 달고, 띠·테두리·이름 칸이 --ws-current로 칠해진다 (컴포넌트에 "원격이면" 분기를 두지 않는다) */
+:root { --ws-teal: #0E8C7E; --ws-orange: #C8571F; --ws-blue: #2F6FD0; }
+[data-mode='dark'] { --ws-teal: #3DD6C0; --ws-orange: #FF9A62; --ws-blue: #6FA8FF; }
+[data-ws-color='teal'] { --ws-current: var(--ws-teal); }
+[data-ws-color='orange'] { --ws-current: var(--ws-orange); }
+[data-ws-color='blue'] { --ws-current: var(--ws-blue); }
+[data-ws-color] body { box-shadow: inset 0 0 0 2px var(--ws-current); }
+/* 끊긴 동안 마지막 화면을 회색으로 (보내기는 메인이 막는다) */
+[data-ws-offline] #root main { filter: grayscale(1); opacity: .75; }

@@ -17,7 +17,7 @@ import { shortPath } from './status'
 import { PACK_LIMITS } from '@shared/staffPack'
 import { labRoomId } from '@shared/chatRooms'
 import { PcOnlyState } from '@/components/pc-only-state'
-import { IS_MOBILE_SHELL } from '@/shell'
+import { IS_REMOTE_SCREEN } from '@/shell'
 import { DuoIcon } from '@/components/duo-icon'
 
 const LAB_COLORS = [...TEAM_COLORS].reverse()
@@ -99,14 +99,14 @@ export function LabSection() {
           </div>
           <div className="flex items-center gap-2 text-xs">
             {/* 랩 작업 폴더는 직원 작업 폴더처럼 PC에서만 — 휴대폰에서는 폴더 없이 만들고 안내만 */}
-            {!IS_MOBILE_SHELL && (
+            {!IS_REMOTE_SCREEN && (
               <Button type="button" size="sm" variant="outline" onClick={handlePickFolder}>
                 <FolderOpenIcon /> {t('lab.projectFolder')}
               </Button>
             )}
             <span className="text-muted-foreground">{cwd ? shortPath(cwd) : t('lab.noFolder')}</span>
           </div>
-          {IS_MOBILE_SHELL && <PcOnlyState />}
+          {IS_REMOTE_SCREEN && <PcOnlyState />}
           <MemberPicker staff={staff} teams={teams} picked={picked} onToggle={toggle} />
           <label className="flex items-center gap-2 text-xs">
             <CrownIcon className="size-3.5 text-status-waiting" /> {t('lab.labLead')}

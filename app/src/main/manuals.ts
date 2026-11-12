@@ -74,7 +74,8 @@ function parse(file: string, scope: Manual['scope'], projectDir: string | null):
     }
     body = body.replace(fence[0], '')
   }
-  return { name, description: meta.description ?? '', kind: meta.kind === 'process' ? 'process' : 'personal', scope, projectDir, path: file, body: body.trim(), steps, ...(error ? { error } : {}) }
+  const title = meta.title?.trim()
+  return { name, ...(title ? { title } : {}), description: meta.description ?? '', kind: meta.kind === 'process' ? 'process' : 'personal', scope, projectDir, path: file, body: body.trim(), steps, ...(error ? { error } : {}) }
 }
 
 function listIn(dir: string, scope: Manual['scope'], projectDir: string | null): Manual[] {
@@ -104,12 +105,40 @@ export function listManuals(projectDirs: string[]): Manual[] {
 }
 
 function render(input: ManualInput) {
-  const front = ['---', `name: ${input.name}`, `description: ${JSON.stringify(input.description.replace(/\n/g, ' '))}`, ...(input.kind === 'process' ? ['kind: process'] : []), '---', '']
+  const title = input.title?.trim()
+  const front = ['---', `name: ${input.name}`, ...(title ? [`title: ${JSON.stringify(title.replace(/\n/g, ' '))}`] : []), `description: ${JSON.stringify(input.description.replace(/\n/g, ' '))}`, ...(input.kind === 'process' ? ['kind: process'] : []), '---', '']
   const steps = input.kind === 'process' ? ['', '```' + STEPS_FENCE, JSON.stringify(input.steps, null, 2), '```', ''] : []
   return [...front, input.body.trim(), ...steps].join('\n')
 }
 
+/** 표시 이름에서 영문 내부 이름 후보를 만든다 — 영문·숫자가 있으면 그걸 쓰고, 한글뿐이면 manual-무작위 6자 */
+export function slugFromTitle(title: string): string {
+  const base = title
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 55)
+    .replace(/-+$/, '')
+  if (base.length >= 2) return base
+  return `manual-${Math.random().toString(36).slice(2, 8).padEnd(6, '0')}`
+}
+
+/** 같은 폴더가 이미 있으면 -2, -3… 을 붙여 비어 있는 내부 이름을 돌려준다 */
+export function uniqueManualName(root: string, base: string): string {
+  const b = isValidManualName(base) ? base : slugFromTitle(base)
+  let name = b
+  for (let n = 2; fs.existsSync(path.join(root, name)); n++) name = `${b.slice(0, 63 - String(n).length - 1)}-${n}`
+  return name
+}
+
 export function saveManual(input: ManualInput, previousPath?: string): Manual {
+  // 이름을 비워 두거나 autoName이면 내부 이름을 자동으로 정한다(새로 만들 때만 — 고칠 때는 폴더를 그대로 둔다)
+  if (!previousPath && (!input.name.trim() || input.autoName)) {
+    const autoRoot = input.scope === 'user' ? USER_DIR : projectSkillsDir(input.projectDir ?? '')
+    if (input.scope === 'project' && !input.projectDir) throw new Error('프로젝트 폴더를 골라 주세요.')
+    input = { ...input, name: uniqueManualName(autoRoot, input.name.trim() || slugFromTitle(input.title ?? '')) }
+  }
   if (!isValidManualName(input.name)) throw new Error('매뉴얼 이름은 영문 소문자·숫자·하이픈(-)으로 2~63자여야 해요.')
   const root = input.scope === 'user' ? USER_DIR : projectSkillsDir(input.projectDir ?? '')
   if (input.scope === 'project' && !input.projectDir) throw new Error('프로젝트 폴더를 골라 주세요.')

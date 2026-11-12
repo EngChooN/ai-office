@@ -1,0 +1,443 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<title>설정·장비 탭 정리 — 시안</title>
+<!-- 디자인 시안 전용(앱 코드 아님). ?sheet=both|set|search|equip|add|map &mode=light|dark &cap=1 로 열어 캡처한다.
+     화면 문구는 아래 TERMS 한곳에 모아 두었다 — 김기획 용어집(glossary.md)이 나오면 여기만 바꾼다. 서비스 이름·로고는 예시다 -->
+<style>
+  [data-mode='light'] {
+    --background:#F6F5FB; --foreground:#221F33; --card:#FFFFFF; --primary:#6C5CE7; --on-primary:#FFFFFF;
+    --muted:#ECEAF6; --muted-foreground:#66627F; --accent:#E9E6FA; --border:#DEDAF0; --input:#CFCAE6;
+    --chrome:#FBFAFF; --working:#1C7C46; --waiting:#9A5B00; --idle:#8A8A80; --error:#C42B2B;
+    --ask-soft:#FFF3DC; --auto-soft:#E2F5EA; --block-soft:#F0EFF4;
+    --sheet-bg:#E4E1F2; --side1:#7B6CF0; --side2:#B58CF5; --dim:rgba(30,25,60,.38); --frame:#c9c4e0; --hl:#FFE98A;
+  }
+  [data-mode='dark'] {
+    --background:#14131C; --foreground:#EDEBF8; --card:#201F2D; --primary:#9B8CFF; --on-primary:#1A1240;
+    --muted:#292739; --muted-foreground:#A7A3C4; --accent:#302D47; --border:#34314A; --input:#413E5C;
+    --chrome:#181723; --working:#4ADE80; --waiting:#F2C94C; --idle:#9C9AA8; --error:#FF6B6B;
+    --ask-soft:#3A2E12; --auto-soft:#14301F; --block-soft:#2A2935;
+    --sheet-bg:#0C0B12; --side1:#4B3FB0; --side2:#7A55B8; --dim:rgba(0,0,0,.55); --frame:#2a2838; --hl:#5B4A10;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--sheet-bg); }
+  body { font-family: "Pretendard", "Apple SD Gothic Neo", system-ui, sans-serif; color: var(--foreground); padding: 32px 36px 40px; width: max-content; min-width: 100vw; font-size: 13px; }
+  .tabs-top { display: flex; gap: 6px; margin-bottom: 18px; align-items: center; }
+  .tabs-top a { padding: 7px 14px; border-radius: 999px; background: var(--card); color: var(--foreground); text-decoration: none; font-weight: 600; border: 1px solid var(--border); cursor: pointer; }
+  .tabs-top a.on { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
+  .tabs-top .mode { margin-left: 14px; }
+  .capture .tabs-top { display: none; }
+  .sheet { display: none; } .sheet.on { display: block; }
+  h1.st { font-size: 25px; font-weight: 700; }
+  p.ss { color: var(--muted-foreground); font-size: 14px; margin: 6px 0 20px; max-width: 1500px; line-height: 1.55; }
+  .row { display: flex; gap: 26px; align-items: flex-start; }
+  .col { display: flex; flex-direction: column; gap: 9px; }
+  .col h2 { font-size: 15px; font-weight: 700; }
+  .col .cap { font-size: 12px; color: var(--muted-foreground); line-height: 1.5; max-width: 760px; }
+  .notes { font-size: 12.8px; line-height: 1.65; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; width: 360px; }
+  .notes li { margin-left: 18px; } .notes h3 { font-size: 14px; margin: 6px 0 2px; }
+
+  /* 공용 */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 5px; height: 30px; padding: 0 12px; border-radius: 8px; font-size: 12.5px; font-weight: 600; border: 1px solid var(--input); background: var(--card); color: var(--foreground); white-space: nowrap; }
+  .btn.sm { height: 26px; padding: 0 9px; font-size: 11.5px; }
+  .btn.pri { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
+  .btn.ghost { border-color: transparent; background: transparent; color: var(--muted-foreground); }
+  .small { font-size: 11.5px; color: var(--muted-foreground); line-height: 1.5; }
+  .xs { font-size: 10.5px; color: var(--muted-foreground); }
+  .ic { width: 30px; height: 30px; border-radius: 9px; background: var(--accent); color: var(--primary); display: grid; place-items: center; flex-shrink: 0; }
+  .ic svg { width: 17px; height: 17px; stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+  .tg { width: 34px; height: 20px; border-radius: 999px; background: var(--input); position: relative; flex-shrink: 0; }
+  .tg::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.25); }
+  .tg.on { background: var(--primary); } .tg.on::after { left: 16px; }
+  .seg { display: inline-flex; background: var(--muted); border-radius: 999px; padding: 3px; gap: 2px; }
+  .seg span { padding: 4px 11px; border-radius: 999px; font-size: 11.5px; color: var(--muted-foreground); white-space: nowrap; }
+  .seg span.on { background: var(--card); color: var(--foreground); font-weight: 700; box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+  .sel { height: 28px; padding: 0 10px; border: 1px solid var(--input); border-radius: 8px; background: var(--card); font-size: 12px; display: inline-flex; align-items: center; gap: 18px; }
+  .sel::after { content: "⌄"; color: var(--muted-foreground); margin-top: -5px; }
+  .pill { font-size: 10.5px; font-weight: 700; border-radius: 999px; padding: 2px 7px; background: var(--muted); color: var(--muted-foreground); white-space: nowrap; }
+  svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+  mark { background: var(--hl); color: inherit; border-radius: 3px; padding: 0 1px; }
+
+  /* 창 */
+  .win { width: 1120px; height: 880px; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; background: var(--background); border: 1px solid var(--frame); box-shadow: 0 18px 36px -18px rgba(40,30,90,.45); position: relative; }
+  .win .bar { height: 28px; flex-shrink: 0; background: var(--chrome); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 6px; padding: 0 10px; font-size: 11px; color: var(--muted-foreground); }
+  .win .bar i { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+  .appbar { height: 44px; flex-shrink: 0; display: flex; align-items: center; gap: 10px; padding: 0 14px; background: var(--card); border-bottom: 1px solid var(--border); font-size: 12.5px; }
+  .appbar .sp { flex: 1; }
+  .appbar .ib { height: 28px; padding: 0 9px; border-radius: 8px; background: var(--muted); display: inline-flex; gap: 5px; align-items: center; font-weight: 600; font-size: 12px; }
+  .win .body { flex: 1; display: flex; min-height: 0; position: relative; }
+  .win .side { width: 52px; flex-shrink: 0; background: linear-gradient(180deg, var(--side1), var(--side2)); display: flex; flex-direction: column; align-items: center; gap: 14px; padding-top: 14px; }
+  .win .side i { width: 22px; height: 22px; border-radius: 7px; background: rgba(255,255,255,.35); display: block; }
+  .win .side i.on { background: #fff; }
+  .dim { position: absolute; inset: 0; background: var(--dim); display: flex; align-items: center; justify-content: center; z-index: 6; }
+
+  /* 설정 페이지 */
+  .page { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
+  .phead { display: flex; align-items: center; gap: 14px; padding: 16px 22px 12px; }
+  .phead h1 { font-size: 20px; font-weight: 700; }
+  .search { flex: 1; max-width: 520px; height: 36px; border-radius: 10px; border: 1px solid var(--input); background: var(--card); display: flex; align-items: center; gap: 8px; padding: 0 12px; color: var(--muted-foreground); font-size: 13px; }
+  .search.focus { border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 22%, transparent); color: var(--foreground); }
+  .search svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; }
+  .search kbd { margin-left: auto; font: inherit; font-size: 10.5px; border: 1px solid var(--border); border-radius: 5px; padding: 1px 5px; color: var(--muted-foreground); }
+  .pbody { flex: 1; display: flex; gap: 22px; padding: 4px 22px 18px; min-height: 0; overflow: hidden; }
+  .nav { width: 168px; flex-shrink: 0; display: flex; flex-direction: column; gap: 3px; }
+  .nav a { display: flex; align-items: center; gap: 8px; padding: 7px 12px; border-radius: 999px; color: var(--muted-foreground); font-size: 13px; }
+  .nav a.on { background: var(--accent); color: var(--foreground); font-weight: 700; }
+  .nav a .n { margin-left: auto; font-size: 10.5px; }
+  .nav .sep { height: 1px; background: var(--border); margin: 8px 6px; }
+  .nav .hid { margin-top: auto; font-size: 11px; color: var(--muted-foreground); padding: 8px 12px; line-height: 1.5; border: 1px dashed var(--border); border-radius: 10px; }
+  .main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 14px; max-width: 760px; }
+  .gh { font-size: 12px; font-weight: 700; color: var(--muted-foreground); display: flex; align-items: center; gap: 6px; }
+  .quick { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .qt { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 11px 12px; display: flex; flex-direction: column; gap: 9px; min-height: 92px; }
+  .qt .t { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 12.5px; }
+  .qt .t .ic { width: 26px; height: 26px; border-radius: 8px; } .qt .t .ic svg { width: 15px; height: 15px; }
+  .qt .t .tg { margin-left: auto; }
+  .qt .s { font-size: 11px; color: var(--muted-foreground); line-height: 1.45; }
+  .group { background: var(--card); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+  .ghd { padding: 11px 16px 9px; display: flex; align-items: baseline; gap: 8px; border-bottom: 1px solid var(--border); }
+  .ghd h2 { font-size: 15px; font-weight: 700; } .ghd .small { font-size: 11px; }
+  .srow { display: flex; align-items: center; gap: 14px; padding: 11px 16px; border-bottom: 1px solid var(--border); }
+  .srow:last-child { border-bottom: 0; }
+  .srow .tx { flex: 1; min-width: 0; } .srow .tx b { font-size: 13px; display: block; } .srow .tx .small { font-size: 11.5px; }
+  .srow .where { font-size: 10.5px; color: var(--muted-foreground); margin-top: 2px; }
+  .adv { display: flex; align-items: center; gap: 8px; padding: 10px 16px; background: var(--muted); color: var(--muted-foreground); font-size: 12px; font-weight: 600; }
+  .adv .car { margin-left: auto; }
+  .adv.open { background: transparent; border-bottom: 1px solid var(--border); }
+  .advtag { font-size: 10px; font-weight: 700; border-radius: 999px; padding: 1px 6px; border: 1px solid var(--input); color: var(--muted-foreground); }
+  .themes { display: flex; gap: 6px; } .themes i { width: 20px; height: 20px; border-radius: 50%; display: block; border: 1px solid rgba(0,0,0,.1); }
+  .themes i.on { box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--primary); }
+
+  /* 검색 결과 */
+  .res { background: var(--card); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+  .resh { padding: 9px 16px; font-size: 11.5px; color: var(--muted-foreground); background: var(--muted); }
+  .empty { text-align: center; padding: 18px; color: var(--muted-foreground); font-size: 12px; line-height: 1.6; }
+
+  /* 직원 패널 · 장비 탭 */
+  .staffp { width: 560px; flex-shrink: 0; margin-left: auto; background: var(--card); border-left: 1px solid var(--border); display: flex; flex-direction: column; min-height: 0; }
+  .sph { display: flex; align-items: center; gap: 10px; padding: 12px 16px 8px; }
+  .av { width: 34px; height: 34px; border-radius: 50%; background: #E9DCC8; display: grid; place-items: center; font-weight: 700; color: #6b4f2a; font-size: 13px; flex-shrink: 0; }
+  .sptabs { display: flex; gap: 2px; padding: 0 12px; border-bottom: 1px solid var(--border); }
+  .sptabs span { padding: 8px 10px; font-size: 12.5px; color: var(--muted-foreground); border-bottom: 2px solid transparent; }
+  .sptabs span.on { color: var(--foreground); font-weight: 700; border-bottom-color: var(--primary); }
+  .spbody { flex: 1; overflow: hidden; padding: 10px 16px; display: flex; flex-direction: column; gap: 8px; background: var(--background); }
+  .sum { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: 11.5px; }
+  .lv { display: inline-flex; align-items: center; gap: 4px; font-weight: 700; font-size: 11px; padding: 2px 8px; border-radius: 999px; }
+  .lv.ask { background: var(--ask-soft); color: var(--waiting); }
+  .lv.auto { background: var(--auto-soft); color: var(--working); }
+  .lv.block { background: var(--block-soft); color: var(--muted-foreground); }
+  .lv::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .cando { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .cd { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 8px 11px; display: flex; flex-direction: column; gap: 6px; }
+  .cd.wide { grid-column: 1 / -1; }
+  .cd .h { display: flex; align-items: center; gap: 8px; }
+  .cd .h .ic { width: 26px; height: 26px; border-radius: 8px; } .cd .h .ic svg { width: 15px; height: 15px; }
+  .cd .h b { font-size: 12.5px; } .cd .h .small { font-size: 10.5px; display: block; line-height: 1.35; }
+  .lvp { display: grid; grid-template-columns: repeat(3, 1fr); background: var(--muted); border-radius: 9px; padding: 2px; gap: 2px; }
+  .lvp span { text-align: center; font-size: 11.5px; padding: 5px 0; border-radius: 7px; color: var(--muted-foreground); }
+  .lvp span.on.ask { background: var(--ask-soft); color: var(--waiting); font-weight: 700; box-shadow: inset 0 0 0 1.5px var(--waiting); }
+  .lvp span.on.auto { background: var(--auto-soft); color: var(--working); font-weight: 700; box-shadow: inset 0 0 0 1.5px var(--working); }
+  .lvp span.on.block { background: var(--card); color: var(--foreground); font-weight: 700; box-shadow: inset 0 0 0 1.5px var(--idle); }
+  .cd .res1 { font-size: 10.5px; color: var(--muted-foreground); line-height: 1.4; }
+  .cd .more { font-size: 11px; color: var(--primary); font-weight: 600; }
+  .chk { display: flex; align-items: flex-start; gap: 7px; font-size: 11.5px; line-height: 1.4; }
+  .chk i { width: 14px; height: 14px; border-radius: 4px; border: 1.5px solid var(--input); flex-shrink: 0; margin-top: 1px; display: grid; place-items: center; font-size: 10px; font-style: normal; color: var(--on-primary); }
+  .chk i.on { background: var(--primary); border-color: var(--primary); } .chk i.on::after { content: "✓"; }
+  .blk { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 8px 12px; display: flex; flex-direction: column; gap: 6px; }
+  .blk .bh { display: flex; align-items: center; gap: 8px; } .blk .bh b { font-size: 13px; }
+  .svc { display: flex; align-items: center; gap: 9px; padding: 6px 0; border-top: 1px solid var(--border); font-size: 12px; }
+  .svc:first-of-type { border-top: 0; }
+  .logo { width: 24px; height: 24px; border-radius: 7px; display: grid; place-items: center; font-size: 11px; font-weight: 800; color: #fff; flex-shrink: 0; }
+  .st { font-size: 10.5px; font-weight: 700; } .st.ok { color: var(--working); } .st.need { color: var(--waiting); }
+  .reco { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .rc { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px 0 4px; border-radius: 999px; border: 1px dashed var(--input); font-size: 11.5px; font-weight: 600; }
+  .rc .logo { width: 20px; height: 20px; border-radius: 6px; font-size: 9.5px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 5px; }
+  .chip { font-size: 11px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--border); background: var(--card); }
+  .chip.on { border-color: var(--primary); background: var(--accent); font-weight: 600; }
+  .spfoot { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-top: 1px solid var(--border); background: var(--card); }
+  .officebg { flex: 1; background: repeating-linear-gradient(45deg, color-mix(in srgb, var(--muted) 70%, var(--background)) 0 18px, var(--background) 18px 36px); display: grid; place-items: center; color: var(--muted-foreground); font-size: 12px; }
+
+  /* 서비스 연결 창 */
+  .modal { width: 620px; background: var(--card); border-radius: 16px; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 24px 50px -20px rgba(0,0,0,.5); border: 1px solid var(--border); }
+  .modal .mh { font-size: 18px; font-weight: 700; } .modal .md { font-size: 12px; color: var(--muted-foreground); line-height: 1.5; margin-top: -7px; }
+  .rgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .rcard { border: 1px solid var(--border); border-radius: 12px; padding: 10px; display: flex; flex-direction: column; gap: 6px; }
+  .rcard.on { border-color: var(--primary); box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 18%, transparent); }
+  .rcard .top { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 12.5px; }
+  .rcard .small { font-size: 10.8px; flex: 1; }
+  .rcard .btn { height: 24px; font-size: 11px; }
+  .cats { display: flex; gap: 5px; }
+  .foot { display: flex; justify-content: flex-end; gap: 8px; align-items: center; }
+
+  /* 구성표 */
+  table.map { border-collapse: collapse; background: var(--card); border-radius: 12px; overflow: hidden; font-size: 12.5px; }
+  table.map th, table.map td { border: 1px solid var(--border); padding: 7px 11px; text-align: left; vertical-align: top; line-height: 1.45; }
+  table.map th { background: var(--muted); font-size: 12px; }
+  table.map td.b { font-weight: 700; } .k { font-weight: 700; } .k.adv { color: var(--muted-foreground); } .k.dev { color: var(--error); }
+</style>
+</head>
+<body class="" data-mode="light">
+<div class="tabs-top">
+  <a data-s="both">한눈에</a><a data-s="set">설정 기본</a><a data-s="search">설정 검색</a><a data-s="equip">장비 탭</a><a data-s="add">서비스 연결 창</a><a data-s="map">구성표</a>
+  <a class="mode" id="modeBtn">다크로 보기</a>
+</div>
+
+<!-- ───────── 한눈에 (캡처용) ───────── -->
+<section class="sheet" id="sh-both">
+  <h1 class="st">설정·장비 탭 정리 시안</h1>
+  <p class="ss">왼쪽: 설정은 찾기 칸과 '자주 쓰는 설정'을 맨 위에 두고, 분류마다 기본만 보이게 하고 나머지는 '더 보기'로 접었습니다. 개발자용은 맨 아래 '개발자용 자세히'로 숨겼습니다. 오른쪽: 직원 장비 탭은 'AI가 할 수 있는 일'을 카드마다 {{ask}}·{{auto}}·{{block}} 3단계로 고르고, 서비스 연결에는 추천 버튼을 붙였습니다. 문구와 기본·더 보기·개발자용 분류는 김기획 용어집(glossary.md)을 따랐습니다.</p>
+  <div class="row"><div data-slot="set"></div><div data-slot="equip"></div></div>
+</section>
+
+<section class="sheet" id="sh-set">
+  <h1 class="st">① 설정 기본 화면</h1>
+  <p class="ss">찾기 칸 → 자주 쓰는 설정 5칸 → 고른 분류의 기본 항목 → 접힌 '더 보기' → 맨 아래 '개발자용 자세히'. 칸마다 한 장씩 있던 카드를 한 묶음 안 줄 목록으로 바꿔 세로 길이를 절반 가까이 줄였습니다.</p>
+  <div class="row"><div data-slot="set"></div>
+  <div class="notes"><h3>바뀌는 점</h3><ul>
+    <li>찾기 칸: 설정 이름·설명·같은 뜻 말(예: '어둡게' → 화면 모드)로 찾습니다. ⌘K / Ctrl+K로 바로 들어갑니다.</li>
+    <li>자주 쓰는 설정(용어집 3절): 자동결재와 남은 시간 · AI 계정 상태 · 사용량 아끼기 모드 · 업무 모드 · 언어와 화면 모드. 그 자리에서 바로 바뀌고, 분류 안 같은 항목과 값이 같습니다.</li>
+    <li>분류마다 기본은 늘 보이고, '더 보기 N'은 접혀 있습니다. 한 번 펼치면 다음에도 펼친 채 둡니다.</li>
+    <li>개발자용(터미널의 Claude 알림·질문 받기, 개발 빌드의 미리보기 2개)은 각 분류 맨 아래 '개발자용 자세히'에 접어 둡니다. 영어 이름(hooks 등)은 여기서만 보입니다.</li>
+    <li>사무실 분류는 모두 꾸미기라 6개 전부 '더 보기'에 들어갑니다. 업무 모드를 켜면 '사무실 그림이 숨겨져 있어요' 안내만 보입니다.</li>
+    <li>켜기/끄기 한 칸은 체크 상자 대신 오른쪽 스위치로 통일합니다.</li>
+  </ul><h3>정해야 할 것</h3><ul>
+    <li>업무 모드를 일반으로 옮길지(용어집은 settings-tab-audit 참고라고 적음). 시안은 일반에 둠.</li>
+    <li>자주 쓰는 설정 고정 5칸으로 둘지(시안은 고정, 사용 빈도 자료 없음).</li>
+  </ul></div></div>
+</section>
+
+<section class="sheet" id="sh-search">
+  <h1 class="st">② 설정 찾기</h1>
+  <p class="ss">글자를 치면 분류를 넘어 결과만 모아 보여 줍니다. 결과 줄에서 바로 바꿀 수 있고, '어디에 있나'를 작게 적어 둡니다. '더 보기'에 접힌 항목도 찾아집니다. 개발자용은 따로 한 줄로 알려 줍니다.</p>
+  <div class="row"><div data-slot="search"></div>
+  <div class="notes"><h3>규칙</h3><ul>
+    <li>제목·설명·같은 뜻 말에서 찾고, 맞은 글자를 칠합니다.</li>
+    <li>결과를 누르면 그 분류로 가서 해당 줄을 잠깐 칠해 줍니다('더 보기'면 펼쳐서).</li>
+    <li>결과가 없으면 '비슷한 말' 몇 개와 피드백 보내기를 보여 줍니다.</li>
+    <li>개발자용 항목은 숨겨 둔 동안 찾아지지 않습니다.</li>
+  </ul><h3>같은 뜻 말 예시</h3><ul>
+    <li>어둡게·밤·다크 → 화면 모드</li><li>휴대폰·폰·QR → 휴대폰 연결</li><li>알림·외부 → 외부 직원 실시간 알림</li><li>결재·승인·자리 비움 → 자동결재, 자동 승인 규칙</li>
+  </ul></div></div>
+</section>
+
+<section class="sheet" id="sh-equip">
+  <h1 class="st">③ 직원 장비 탭 — AI가 할 수 있는 일</h1>
+  <p class="ss">직원 패널의 장비 탭입니다. 맨 위 한 줄로 지금 상태를 세어 보여 주고, 할 수 있는 일마다 {{ask}}·{{auto}}·{{block}}을 색으로 구분합니다. 고른 칸 아래에 '그러면 어떻게 되는지' 한 줄을 적어 줍니다. MCP·스킬·셸 같은 말은 화면에서 쓰지 않습니다.</p>
+  <div class="row"><div data-slot="equip"></div>
+  <div class="notes"><h3>바뀌는 점</h3><ul>
+    <li>3단계 이름은 용어집대로 {{ask}} · {{auto}} · {{block}}입니다. 지시서의 묻기/자동/막기는 앱 안 다른 화면(결재함·프로필)과 맞추려고 쓰지 않았습니다.</li>
+    <li>3단계 색: {{ask}}=노랑(결재함과 같음), {{auto}}=초록, {{block}}=회색.</li>
+    <li>고른 칸 아래에 '그러면 어떻게 되는지' 한 줄을 적습니다.</li>
+    <li>'프로그램 실행'의 세부 2개(보기만 하는 실행, 위험한 것 항상 막기)는 '세부 조정'으로 접습니다.</li>
+    <li>연결된 서비스는 켜기와 상태만 보여 줍니다. 아래 추천 연결 버튼을 누르면 ④ 창이 그 서비스를 고른 채 열립니다.</li>
+    <li>'더 보기 4': 자동결재 중 브라우저, 프로그램 인터넷 쓰기, 가벼운 AI, 켠 서비스는 결재 없이.</li>
+    <li>MCP·스킬·셸·Bash 같은 말은 '개발자용 자세히' 안에만 둡니다.</li>
+  </ul><h3>정해야 할 것</h3><ul>
+    <li>'화면 찍기'처럼 {{auto}}가 위험한 칸은 2단계로 둘지 정해야 합니다.</li>
+    <li>'프로그램이 인터넷 쓰기'를 개발자용으로 옮길지 정해야 합니다(용어집에서도 확인 필요로 남김).</li>
+  </ul></div></div>
+</section>
+
+<section class="sheet" id="sh-add">
+  <h1 class="st">④ 서비스 연결 창 (추천 연결)</h1>
+  <p class="ss">'+ 서비스 연결' 또는 추천 버튼을 누르면 뜨는 창입니다. 자주 쓰는 서비스를 카드로 골라 로그인만 하면 연결되게 하고, 주소를 넣는 기존 방식은 맨 아래 '주소로 직접 연결'로 내립니다. 서비스 목록과 로고는 예시입니다.</p>
+  <div class="row"><div data-slot="add"></div>
+  <div class="notes"><h3>흐름</h3><ul>
+    <li>카드 고르기 → '연결' → 브라우저 로그인 → 돌아오면 장비 목록에 '사용 가능'으로 추가.</li>
+    <li>카드마다 'AI가 할 수 있는 일'을 한 줄로 씁니다(읽기만 / 읽고 쓰기).</li>
+    <li>이미 연결한 서비스는 '연결됨'으로 보입니다.</li>
+    <li>'직접 연결'을 누르면 추가 창이 <b>주소</b> 탭 하나만 보여 줍니다. 프로그램 실행·설정 붙여넣기 탭은 개발자용으로 숨깁니다(용어집).</li>
+  </ul><h3>정리드 확인</h3><ul>
+    <li>추천 목록을 앱에 넣어 둘 수 있는지, 로그인만으로 연결되는 서비스가 어떤 것인지(서비스마다 다름).</li>
+    <li>GPT 직원에게도 같은 목록을 보여 줄 수 있는지.</li>
+  </ul></div></div>
+</section>
+
+<section class="sheet" id="sh-map">
+  <h1 class="st">⑤ 구성표 — 지금 항목이 어디로 가나 (용어집 기준)</h1>
+  <p class="ss">김기획 용어집 1절 분류표를 따랐습니다. 없애는 항목은 없고 자리만 옮깁니다. <span class="k">굵게</span>=기본, <span class="k adv">회색</span>=더 보기(접힘), <span class="k dev">빨강</span>=개발자용 자세히(접힘). ★=자주 쓰는 설정에도 나옴.</p>
+  <table class="map">
+    <tr><th>분류</th><th>기본 (늘 보임)</th><th>더 보기 (접힘)</th><th>개발자용 자세히</th></tr>
+    <tr><td class="b">일반</td><td>언어★ · 화면 모드★ · 업무 모드★ · 업데이트 · 안내</td><td class="k adv">색 테마 · 로그인할 때 자동 실행 · 메뉴 막대 아이콘</td><td></td></tr>
+    <tr><td class="b">AI·업무</td><td>AI 계정★ · 자동결재(자리 비울 때)★ · 사용량 아끼기 모드★</td><td class="k adv">자동 승인 규칙 · 근무시간 · 직원 화면 캡처 · 비서 웹 검색</td><td class="k dev">터미널에서 쓰는 Claude 알림 받기 · 터미널의 Claude 질문을 사무실에서 받기</td></tr>
+    <tr><td class="b">사무실</td><td>—</td><td class="k adv">사무실 테마 · 낮과 밤 · 소품 · 직원 수다 · 사무실 배치 · 바탕화면 비서</td><td class="k dev">레벨 미리보기 · 직원 상호작용 미리보기 (개발 빌드만)</td></tr>
+    <tr><td class="b">연결</td><td>휴대폰 연결 · 연결한 PC · 다른 PC 연결</td><td></td><td>워크스페이스 개편 때 다시 정리</td></tr>
+    <tr><td class="b">장비 탭</td><td>AI가 할 수 있는 일 5칸 · 연결된 서비스 · 업무 매뉴얼 · 이대로 지급</td><td class="k adv">프로그램 실행 세부 2개 · 자동결재 중 브라우저 · 프로그램 인터넷 쓰기 · 가벼운 AI · 켠 서비스는 결재 없이 · 서비스 출처 · 직접 연결(주소)</td><td class="k dev">도구 이름 목록(Bash 등) · 추가 창의 프로그램 실행·설정 붙여넣기 탭</td></tr>
+  </table>
+</section>
+
+<!-- ───────── 화면 조각 템플릿 ───────── -->
+<template id="t-set">
+  <div class="col"><h2>설정 기본 · 일반 분류</h2>
+  <div class="win"><div class="bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i>&nbsp; AI Office</div>
+   <div class="appbar"><b>AI Office</b><span class="sp"></span><span class="ib">결재 2</span><span class="ib">플랜 34%</span></div>
+   <div class="body"><div class="side"><i></i><i></i><i></i><i></i><i></i><i class="on" style="margin-top:auto;margin-bottom:14px"></i></div>
+    <div class="page">
+     <div class="phead"><h1>설정</h1><div class="search">@search 설정 찾기 — 예: 어둡게, 휴대폰, 알림<kbd>⌘K</kbd></div></div>
+     <div class="pbody">
+      <nav class="nav">
+       <a class="on">@star 자주 쓰는 설정</a><div class="sep"></div>
+       <a>일반 <span class="n">5+2</span></a><a>AI·업무 <span class="n">3+3</span></a><a>사무실 <span class="n">0+6</span></a><a>연결 <span class="n">3</span></a>
+       <div class="hid">터미널의 Claude 알림처럼 개발자용 설정은 각 분류 맨 아래 '개발자용 자세히'에 접혀 있어요.</div>
+      </nav>
+      <div class="main">
+       <div class="gh">@star 자주 쓰는 설정</div>
+       <div class="quick">
+        <div class="qt"><div class="t"><span class="ic">@stamp</span>자동결재<span class="tg on"></span></div><div class="s"><b style="color:var(--working)">켜짐 · 1시간 40분 남음</b><br>자리 비운 동안 결재를 대신 승인해요</div></div>
+        <div class="qt"><div class="t"><span class="ic">@user</span>AI 계정<span class="pill" style="margin-left:auto;background:var(--auto-soft);color:var(--working)">연결됨</span></div><div class="s">Claude 연결됨 · GPT <span style="color:var(--waiting);font-weight:700">로그인 필요</span></div></div>
+        <div class="qt"><div class="t"><span class="ic">@leaf</span>사용량 아끼기 모드<span class="tg"></span></div><div class="s">새 직원을 가벼운 AI로 시작해 사용량을 아껴요</div></div>
+        <div class="qt"><div class="t"><span class="ic">@brief</span>업무 모드<span class="tg"></span></div><div class="s">회사 화면에 띄울 때 사무실 그림·레벨을 숨겨요</div></div>
+        <div class="qt" style="grid-column:span 2"><div class="t"><span class="ic">@globe</span>언어 · 화면 모드</div><div style="display:flex;gap:10px;align-items:center"><span class="sel">기기 언어 따르기</span><div class="seg"><span>기기 따라</span><span class="on">밝게</span><span>어둡게</span></div></div></div>
+       </div>
+       <div class="group">
+        <div class="ghd"><h2>일반</h2><span class="small">앱 전체에 적용돼요</span></div>
+        <div class="srow"><div class="tx"><b>언어</b><span class="small">앱 글자를 어떤 말로 볼지 골라요</span></div><span class="sel">기기 언어 따르기</span></div>
+        <div class="srow"><div class="tx"><b>화면 모드</b><span class="small">밝게 또는 어둡게. 사무실 그림은 그대로예요</span></div><div class="seg"><span>기기 따라</span><span class="on">밝게</span><span>어둡게</span></div></div>
+        <div class="srow"><div class="tx"><b>업무 모드</b><span class="small">회사 화면에 띄울 때 사무실 그림·레벨·상점을 숨겨요</span></div><span class="tg"></span></div>
+        <div class="srow"><div class="tx"><b>업데이트</b><span class="small">현재 버전 1.2.0 · 최신 버전이에요 · 마지막 확인 10분 전</span></div><span class="btn sm">지금 확인</span></div>
+        <div class="srow"><div class="tx"><b>안내</b><span class="small">길을 잃었을 때 처음부터 다시 볼 수 있어요</span></div><span class="btn sm">처음 안내</span><span class="btn sm">메뉴 둘러보기</span><span class="btn sm">연습해 보기</span></div>
+        <div class="adv">더 보기 <span class="advtag">2</span> 색 테마 · 로그인할 때 자동 실행<span class="car">펼치기 ⌄</span></div>
+        <div class="adv" style="background:transparent;border-top:1px solid var(--border);font-weight:500">@code 개발자용 자세히<span class="car">⌄</span></div>
+       </div>
+      </div>
+     </div>
+    </div>
+   </div>
+  </div></div>
+</template>
+
+<template id="t-search">
+  <div class="col"><h2>'알림' 을 쳤을 때</h2>
+  <div class="win"><div class="bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i>&nbsp; AI Office</div>
+   <div class="appbar"><b>AI Office</b><span class="sp"></span><span class="ib">결재 2</span><span class="ib">플랜 34%</span></div>
+   <div class="body"><div class="side"><i></i><i></i><i></i><i></i><i></i><i class="on" style="margin-top:auto;margin-bottom:14px"></i></div>
+    <div class="page">
+     <div class="phead"><h1>설정</h1><div class="search focus">@search 알림<span style="margin-left:auto" class="xs">결과 4개</span><kbd>Esc</kbd></div></div>
+     <div class="pbody">
+      <nav class="nav" style="opacity:.45">
+       <a>@star 자주 쓰는 설정</a><div class="sep"></div><a>일반</a><a>AI·업무</a><a>사무실</a><a>연결</a>
+      </nav>
+      <div class="main">
+       <div class="res">
+        <div class="resh">찾은 설정 3개 · 누르면 그 자리로 가요</div>
+        <div class="srow"><div class="tx"><b>메뉴 막대 아이콘</b><span class="small">맨 위 막대에서 결재 수와 <mark>알림</mark>을 봐요</span><div class="where">일반 › 더 보기</div></div><span class="tg on"></span></div>
+        <div class="srow"><div class="tx"><b>바탕화면 비서</b><span class="small">결재·질문 <mark>알림</mark>을 바탕화면 캐릭터로 받아요 · 맥 전용</span><div class="where">사무실 › 더 보기</div></div><span class="tg on"></span></div>
+        <div class="srow"><div class="tx"><b>자동결재</b><span class="small">자리를 비운 동안 결재를 대신 승인해요. 위험한 일은 계속 <mark>알림</mark>으로 물어봐요</span><div class="where">AI·업무</div></div><span class="tg"></span></div>
+        <div class="srow" style="background:var(--muted)"><div class="tx"><span class="small">개발자용 설정 1개도 맞아요 — 터미널에서 쓰는 Claude <mark>알림</mark> 받기</span></div><span class="btn sm ghost">개발자용 자세히에서 보기</span></div>
+       </div>
+       <div class="gh">결과가 없을 때</div>
+       <div class="res"><div class="empty"><b style="color:var(--foreground)">'푸시'와 맞는 설정이 없어요</b><br>이런 말로 찾아보세요: <span class="chip">알림</span> <span class="chip">휴대폰</span> <span class="chip">결재</span><br><span class="btn sm ghost" style="margin-top:6px">찾는 설정이 없다고 알려 주기</span></div></div>
+      </div>
+     </div>
+    </div>
+   </div>
+  </div></div>
+</template>
+
+<template id="t-equip">
+  <div class="col"><h2>직원 패널 › 장비 탭</h2>
+  <div class="win"><div class="bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i>&nbsp; AI Office</div>
+   <div class="appbar"><b>AI Office</b><span class="sp"></span><span class="ib">결재 2</span><span class="ib">플랜 34%</span></div>
+   <div class="body"><div class="side"><i></i><i class="on"></i><i></i><i></i><i></i></div>
+    <div class="officebg">사무실 화면</div>
+    <div class="staffp">
+     <div class="sph"><span class="av">정</span><div><b style="font-size:14px">정리드</b><div class="xs">개발 팀장 · Claude</div></div><span class="pill" style="margin-left:auto;background:var(--auto-soft);color:var(--working)">일하는 중</span></div>
+     <div class="sptabs"><span>업무</span><span>대화</span><span class="on">장비</span><span>기억</span><span>정보</span></div>
+     <div class="spbody">
+      <div class="sum"><b style="font-size:13px">AI가 할 수 있는 일</b><span style="margin-left:auto" class="lv ask">{{ask}} 3</span><span class="lv auto">{{auto}} 2</span><span class="lv block">{{block}} 1</span></div>
+      <div class="cando">
+       <div class="cd"><div class="h"><span class="ic">@file</span><div><b>파일 만들기·고치기</b><span class="small">문서·그림·코드 파일</span></div></div>
+        <div class="lvp"><span class="ask">{{ask}}</span><span class="on auto">{{auto}}</span><span class="block">{{block}}</span></div><div class="res1">작업 폴더 안은 바로 고쳐요. 폴더 밖은 계속 물어요.</div></div>
+       <div class="cd"><div class="h"><span class="ic">@search</span><div><b>인터넷 검색</b><span class="small">검색하고 웹 페이지 읽기</span></div></div>
+        <div class="lvp"><span class="ask">{{ask}}</span><span class="on auto">{{auto}}</span><span class="block">{{block}}</span></div><div class="res1">찾아보고 읽기만 해요. 글을 올리진 않아요.</div></div>
+       <div class="cd wide"><div class="h"><span class="ic">@term</span><div><b>프로그램 실행</b><span class="small">설치·변환·시험, 파일 지우기·올리기 같은 명령</span></div><span class="more" style="margin-left:auto">세부 조정 2 ⌄</span></div>
+        <div class="lvp"><span class="on ask">{{ask}}</span><span class="auto">{{auto}}</span><span class="block">{{block}}</span></div><div class="res1">실행하기 전에 결재함에 물어봐요.</div></div>
+       <div class="cd"><div class="h"><span class="ic">@compass</span><div><b>브라우저 다루기</b><span class="small">직원 전용 창으로 사이트 사용</span></div></div>
+        <div class="lvp"><span class="on ask">{{ask}}</span><span class="auto">{{auto}}</span><span class="block">{{block}}</span></div><div class="res1">로그인·결제 칸은 어떤 단계든 늘 물어요.</div></div>
+       <div class="cd"><div class="h"><span class="ic">@camera</span><div><b>화면 찍기</b><span class="small">부탁하면 내 화면을 찍어 보고</span></div></div>
+        <div class="lvp"><span class="ask">{{ask}}</span><span class="auto">{{auto}}</span><span class="on block">{{block}}</span></div><div class="res1">내 화면을 찍지 않아요.</div></div>
+      </div>
+      <div class="blk"><div class="bh"><span class="ic" style="width:26px;height:26px">@plug</span><b>연결된 서비스</b><span class="xs">2개 쓰는 중</span><span class="btn sm" style="margin-left:auto">+ 서비스 연결</span></div>
+       <div class="svc"><span class="logo" style="background:#1F8E5A">시</span>구글 시트<span class="st ok">사용 가능</span><span class="tg on" style="margin-left:auto"></span></div>
+       <div class="svc"><span class="logo" style="background:#2E2E2E">N</span>노션<span class="st need">로그인 필요</span><span class="btn sm" style="margin-left:auto">로그인</span><span class="tg on"></span></div>
+       <div class="reco"><span class="xs">추천 연결</span><span class="rc"><span class="logo" style="background:#4A154B">S</span>슬랙</span><span class="rc"><span class="logo" style="background:#1A73E8">D</span>구글 드라이브</span><span class="rc"><span class="logo" style="background:#A259FF">F</span>피그마</span><span class="rc"><span class="logo" style="background:#24292F">G</span>깃허브</span></div>
+      </div>
+      <div class="blk"><div class="bh"><span class="ic" style="width:26px;height:26px">@book</span><b>업무 매뉴얼</b><span class="chip on" style="margin-left:auto">모든 매뉴얼 쓰기</span></div></div>
+      <div class="adv" style="border-radius:12px;border:1px solid var(--border);padding:8px 12px">더 보기 <span class="advtag">4</span> 브라우저 · 프로그램 인터넷 · 가벼운 AI · 서비스 결재<span class="car">⌄</span></div>
+      <div class="adv" style="border-radius:12px;background:transparent;border:1px dashed var(--border);font-weight:500;padding:7px 12px">@code 개발자용 자세히 (도구 이름 목록)<span class="car">⌄</span></div>
+     </div>
+     <div class="spfoot"><div><b style="font-size:12px">바꾼 것 1개</b><div class="xs">지금 일이 끝나면 다음 일부터 바뀌어요</div></div><span class="btn ghost" style="margin-left:auto">되돌리기</span><span class="btn pri">이대로 지급</span></div>
+    </div>
+   </div>
+  </div></div>
+</template>
+
+<template id="t-add">
+  <div class="col"><h2>'+ 서비스 연결' 또는 추천 버튼을 눌렀을 때</h2>
+  <div class="win"><div class="bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i>&nbsp; AI Office</div>
+   <div class="appbar"><b>AI Office</b><span class="sp"></span><span class="ib">결재 2</span><span class="ib">플랜 34%</span></div>
+   <div class="body"><div class="side"><i></i><i class="on"></i><i></i><i></i><i></i></div><div class="officebg"></div>
+    <div class="dim">
+     <div class="modal">
+      <div class="mh">정리드에게 서비스 연결</div>
+      <div class="md">연결하면 정리드가 그 서비스의 내용을 읽거나 고칠 수 있어요. 많이 켤수록 답이 느려지니 필요한 것만 연결해 주세요.</div>
+      <div class="search" style="max-width:none;height:32px;flex-shrink:0">@search 서비스 찾기</div>
+      <div class="cats"><span class="chip on">추천</span><span class="chip">문서·자료</span><span class="chip">대화·메일</span><span class="chip">디자인</span><span class="chip">개발</span><span class="chip">일정</span></div>
+      <div class="rgrid">
+       <div class="rcard on"><div class="top"><span class="logo" style="background:#4A154B">S</span>슬랙</div><div class="small">채널 글 읽기·메시지 보내기</div><span class="btn pri">연결 →</span></div>
+       <div class="rcard"><div class="top"><span class="logo" style="background:#1A73E8">D</span>구글 드라이브</div><div class="small">파일 찾기·읽기</div><span class="btn">연결</span></div>
+       <div class="rcard"><div class="top"><span class="logo" style="background:#1F8E5A">시</span>구글 시트</div><div class="small">표 읽고 쓰기</div><span class="btn off" style="opacity:.6">연결됨 ✓</span></div>
+       <div class="rcard"><div class="top"><span class="logo" style="background:#A259FF">F</span>피그마</div><div class="small">디자인 파일 보기 (읽기만)</div><span class="btn">연결</span></div>
+       <div class="rcard"><div class="top"><span class="logo" style="background:#D93025">M</span>지메일</div><div class="small">메일 읽기·초안 쓰기</div><span class="btn">연결</span></div>
+       <div class="rcard"><div class="top"><span class="logo" style="background:#24292F">G</span>깃허브</div><div class="small">저장소·이슈 보기와 올리기</div><span class="btn">연결</span></div>
+      </div>
+      <div class="small" style="display:flex;align-items:center;gap:6px;padding-top:4px;border-top:1px solid var(--border)">목록에 없나요? <span style="color:var(--primary);font-weight:600">주소로 직접 연결 →</span></div>
+      <div class="foot"><span class="xs" style="margin-right:auto">'연결'을 누르면 브라우저에서 로그인해요</span><span class="btn ghost">닫기</span></div>
+     </div>
+    </div>
+   </div>
+  </div></div>
+</template>
+
+<script>
+  // 화면 문구 — 김기획 용어집(docs/design-refresh/settings-simplify/glossary.md)이 나오면 여기만 맞춘다
+  const TERMS = { ask: '결재 받기', auto: '결재 없이', block: '막기' }
+  const ICON = {
+    user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+    code: '<path d="m8 8-4 4 4 4M16 8l4 4-4 4"/>',
+    book: '<path d="M4 5a2 2 0 0 1 2-2h14v16H6a2 2 0 0 0-2 2zM8 7h8"/>',
+    search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+    star: '<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>',
+    moon: '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>',
+    globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
+    brief: '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5h6v2M3 12h18"/>',
+    stamp: '<path d="M9 3h6v6l3 3H6l3-3zM5 16h14v4H5z"/>',
+    leaf: '<path d="M5 19c0-9 6-14 15-14 0 9-5 15-14 15M5 19l8-8"/>',
+    phone: '<rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18h2"/>',
+    file: '<path d="M14 3H6v18h12V7zM14 3v4h4M9 13l5-5 2 2-5 5H9z"/>',
+    term: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 9 3 3-3 3M12 15h5"/>',
+    compass: '<circle cx="12" cy="12" r="9"/><path d="m15.5 8.5-2 5-5 2 2-5z"/>',
+    camera: '<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
+    plug: '<path d="M9 3v5M15 3v5M6 8h12v3a6 6 0 0 1-12 0zM12 17v4"/>',
+  }
+  const fill = (html) => html
+    .replace(/\{\{(\w+)\}\}/g, (_, k) => TERMS[k] ?? k)
+    .replace(/@(\w+)/g, (m, k) => ICON[k] ? `<svg viewBox="0 0 24 24">${ICON[k]}</svg>` : m)
+  document.querySelectorAll('[data-slot]').forEach((el) => { el.innerHTML = fill(document.getElementById('t-' + el.dataset.slot).innerHTML) })
+  document.querySelectorAll('.ss, .notes').forEach((el) => { el.innerHTML = fill(el.innerHTML) })
+
+  const q = new URLSearchParams(location.search)
+  const show = (s) => {
+    document.querySelectorAll('.sheet').forEach((x) => x.classList.toggle('on', x.id === 'sh-' + s))
+    document.querySelectorAll('.tabs-top a[data-s]').forEach((a) => a.classList.toggle('on', a.dataset.s === s))
+  }
+  const setMode = (m) => { document.body.dataset.mode = m; document.getElementById('modeBtn').textContent = m === 'dark' ? '라이트로 보기' : '다크로 보기' }
+  document.querySelectorAll('.tabs-top a[data-s]').forEach((a) => a.onclick = () => show(a.dataset.s))
+  document.getElementById('modeBtn').onclick = () => setMode(document.body.dataset.mode === 'dark' ? 'light' : 'dark')
+  if (q.get('cap')) document.body.classList.add('capture')
+  setMode(q.get('mode') || 'light'); show(q.get('sheet') || 'both')
+</script>
+</body>
+</html>

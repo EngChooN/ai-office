@@ -14,7 +14,7 @@ import { ApprovalSummary } from './ApprovalSummary'
 import { shortPath, workDirLabel } from './status'
 import { fmtDate, t } from '@shared/i18n'
 import { roleLabel } from '@shared/roleLabel'
-import { IS_MOBILE_SHELL } from '@/shell'
+import { IS_REMOTE_SCREEN } from '@/shell'
 import { ChangesetCard } from './ChangesetCard'
 import { DuoIcon, IconText } from '@/components/duo-icon'
 
@@ -118,7 +118,7 @@ export function InboxPage() {
                 </span>
               </div>
               {a.requestedBy && <div className="text-muted-foreground mt-0.5 text-xs">{t('approval.requestedBy', { name: a.requestedBy })}</div>}
-              {a.questions || (a.peerChanges && !IS_MOBILE_SHELL) ? (
+              {a.questions || (a.peerChanges && !IS_REMOTE_SCREEN) ? (
                 <>
                   <WaitReasonLine reason={a.waitReason} className="mt-0.5" />
                   {a.isRestored && <div className="text-muted-foreground mt-0.5 text-xs">↻ {t('approval.restored')}</div>}
@@ -130,7 +130,7 @@ export function InboxPage() {
                 </div>
               )}
             </div>
-            {!a.questions && !(a.peerChanges && !IS_MOBILE_SHELL) && (
+            {!a.questions && !(a.peerChanges && !IS_REMOTE_SCREEN) && (
               <div className="flex flex-col gap-2">
                 <Button size="sm" onClick={() => void window.office.decide(a.id, true)}>
                   <CheckIcon /> {t('inbox.approve')}

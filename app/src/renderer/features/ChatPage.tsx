@@ -31,6 +31,7 @@ import { DuoIcon, IconText } from '@/components/duo-icon'
 import { splitLeadingIcon } from '@shared/iconText'
 import { doingOf, stripHead, useRoomList, useRoomPeople } from './chatRoomHooks'
 import { ChatSide } from './ChatSide'
+import { ChatSlimBar } from './ChatSlimBar'
 import { PopMenu, PopMenuItem } from '@/components/pop-menu'
 
 const MENTION_MAX = 6
@@ -96,20 +97,22 @@ export function ChatPage() {
   // 좌우 분할(split:): 머리는 찾기 칸만 남기고, 방 목록·지금 하는 일은 왼쪽 칸(ChatSide, 키보드가 열리면 숨김)으로
   return (
     <div className="flex h-full flex-col">
-      <div className={cn('phone:px-4 phone:py-3 short:py-1.5 typing:hidden split:py-2 border-b px-6 py-4', !isSearchOpen && 'split:hidden')}>
-        <div className="split:hidden flex items-start gap-2">
+      {/* 세로 폰(slim:): 머리 4줄 대신 46px 한 줄 — 방 이름 ▾(방·회의실)·일하는 직원·결재 대기·찾기·방 설명 ⓘ */}
+      <ChatSlimBar room={room} title={room ? room.name : t('nav.chat')} description={description} onSearch={() => setIsSearchOpen((v) => !v)} />
+      <div className={cn('phone:px-4 phone:py-3 short:py-1.5 typing:hidden split:py-2 slim:py-2 border-b px-6 py-4', !isSearchOpen && 'split:hidden slim:hidden')}>
+        <div className="split:hidden slim:hidden flex items-start gap-2">
           <h1 className="short:text-base flex-1 text-lg font-semibold">{title}</h1>
           <Button size="sm" variant="ghost" className="size-8 p-0" onClick={() => setIsSearchOpen((v) => !v)} title={t('chat.search.open')} aria-label={t('chat.search.open')}>
             <SearchIcon />
           </Button>
         </div>
-        <div className="split:hidden">
+        <div className="split:hidden slim:hidden">
           <p className="text-muted-foreground short:hidden text-xs">{description}</p>
           <RemoteLine />
           <RoomTabs current={room?.room} />
         </div>
         {isSearchOpen && <ChatSearch room={room?.room} onClose={() => setIsSearchOpen(false)} onQuery={setSearchQuery} />}
-        <div className="split:hidden">
+        <div className="split:hidden slim:hidden">
           <RoomStatusStrip room={room} />
         </div>
       </div>
@@ -726,8 +729,10 @@ function Composer({ room }: { room: RoomInfo | undefined }) {
       ? t(isLab ? 'chat.labRoom.recipientsLead' : 'chat.room.recipientsLead', { name: roomLead.name })
       : t(isLab ? 'chat.labRoom.recipientsNoLead' : 'chat.room.recipientsNoLead')
 
+  // 세로 폰: 멘션 없이 보내면 받을 사람(답장 상대·팀장·랩 리드)을 입력칸 옆 칩으로
+  const chipName = replyStaff?.name ?? roomLead?.name
   return (
-    <div className="typing:py-2 split:px-3 split:py-2 relative border-t p-4">
+    <div className="typing:py-2 split:px-3 split:py-2 slim:px-3 slim:py-2 relative border-t p-4">
       {slashQuery !== null && (
         <SlashMenu
           query={slashQuery}
@@ -776,11 +781,11 @@ function Composer({ room }: { room: RoomInfo | undefined }) {
       )}
       <ReservationCards room={room?.room} />
       <RoomWaiting room={room?.room} />
-      <div className="mx-auto mb-2 max-w-3xl">
+      <div className="slim:mb-1 mx-auto mb-2 max-w-3xl">
         {reply && <ReplyBar reply={reply} onCancel={() => setReply(null)} />}
         <DraftAttachments files={draftFiles.files} onRemove={draftFiles.remove} />
-        {/* 분할 화면은 받는 사람 줄을 @를 쓸 때만 */}
-        {parsed && <div className={cn(parsed.matched.length === 0 && 'split:hidden')}><Recipients parsed={parsed} staffOf={(id) => staffById.get(id)} hasStaff={hired.length > 0} noneLabel={noneLabel} /></div>}
+        {/* 분할·세로 폰은 받는 사람 줄을 @를 쓸 때만 (세로 폰은 기본 받는 사람을 입력칸 옆 칩으로) */}
+        {parsed && <div className={cn(parsed.matched.length === 0 && 'split:hidden', parsed.matched.length === 0 && chipName && 'slim:hidden')}><Recipients parsed={parsed} staffOf={(id) => staffById.get(id)} hasStaff={hired.length > 0} noneLabel={noneLabel} /></div>}
         {isBusySend && (
           <p className="text-status-working mt-1 flex items-center gap-1.5 text-xs">
             <span className="bg-status-working size-1.5 shrink-0 animate-pulse rounded-full" />
@@ -789,9 +794,9 @@ function Composer({ room }: { room: RoomInfo | undefined }) {
         )}
       </div>
       <div className="mx-auto flex max-w-3xl items-end gap-2">
-        <AttachButton onPick={draftFiles.add} className="split:hidden size-9" />
-        {/* 분할 화면: 첨부·예약·매뉴얼·명령을 ＋ 하나에 (기존 버튼·흐름 그대로) */}
-        <PopMenu icon={<PlusIcon />} label={t('chat.plusMenu')} className="split:block hidden">
+        <AttachButton onPick={draftFiles.add} className="split:hidden slim:hidden size-9" />
+        {/* 분할·세로 폰: 첨부·예약·매뉴얼·명령을 ＋ 하나에 (기존 버튼·흐름 그대로) */}
+        <PopMenu icon={<PlusIcon />} label={t('chat.plusMenu')} className="split:block slim:block hidden">
           {(close) => (
             <>
               <AttachButton onPick={(files) => (draftFiles.add(files), close())} className="hover:bg-accent flex min-h-9 items-center gap-2 rounded-lg px-2.5 text-left text-sm">
@@ -812,6 +817,11 @@ function Composer({ room }: { room: RoomInfo | undefined }) {
             </>
           )}
         </PopMenu>
+        {chipName && (!parsed || parsed.matched.length === 0) && (
+          <span className="bg-primary/10 text-primary slim:inline-flex hidden h-9 max-w-[35%] shrink-0 items-center rounded-full px-2.5 text-xs font-medium" title={noneLabel}>
+            <span className="truncate">@{chipName}</span>
+          </span>
+        )}
         <MentionTextarea
           id={inputId}
           aria-expanded={isMentionOpen}
@@ -827,7 +837,7 @@ function Composer({ room }: { room: RoomInfo | undefined }) {
           {...draftFiles.bind}
           rows={1}
           placeholder={t(!room ? 'chat.placeholder' : isLab ? 'chat.labRoom.placeholder' : 'chat.room.placeholder', { all: ALL_MENTION, newline: String(NEWLINE_HINT) })}
-          className="field-sizing-content max-h-32 min-h-9 resize-none py-[7px]"
+          className="field-sizing-content slim:placeholder-shown:field-sizing-fixed slim:placeholder-shown:h-9 slim:placeholder-shown:overflow-hidden slim:placeholder-shown:whitespace-nowrap max-h-32 min-h-9 resize-none py-[7px]"
         />
         {isBusySend ? (
           <div className="flex shrink-0 gap-1">
@@ -844,7 +854,7 @@ function Composer({ room }: { room: RoomInfo | undefined }) {
             <SendIcon />
           </Button>
         )}
-        <Button variant="ghost" className="split:hidden w-6 shrink-0 px-0" onClick={() => setIsReserveOpen((v) => !v)} title={t('chat.reserve.menu')} aria-label={t('chat.reserve.menu')} aria-expanded={isReserveOpen}>
+        <Button variant="ghost" className="split:hidden slim:hidden w-6 shrink-0 px-0" onClick={() => setIsReserveOpen((v) => !v)} title={t('chat.reserve.menu')} aria-label={t('chat.reserve.menu')} aria-expanded={isReserveOpen}>
           <ChevronDownIcon />
         </Button>
       </div>
@@ -863,7 +873,7 @@ function Composer({ room }: { room: RoomInfo | undefined }) {
       )}
       {reserveNote && <p className="text-status-waiting mx-auto mt-1 max-w-3xl text-xs">{reserveNote}</p>}
       {hired.length > 0 && (
-        <div className="typing:hidden split:hidden mx-auto mt-1 flex max-w-3xl items-center gap-1">
+        <div className="typing:hidden split:hidden slim:hidden mx-auto mt-1 flex max-w-3xl items-center gap-1">
           <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => openSlash('manual')} title={t('chat.manualButtonTitle')}>
             <IconText text={t('slashMenu.manualButton')} size={13} />
           </Button>

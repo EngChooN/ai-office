@@ -61,6 +61,8 @@ export interface PeerSlot {
   tokenHash: string
   createdAt: number
   lastSeenAt: number | null
+  /** '화면 보기' 권한 — 이 열쇠로 휴대폰과 같은 화면 연결(/v2/call 전체·/v2/events 휴대폰 모양)을 쓴다. 저쪽 PC 앞에서 허락해야만 true (기존 짝은 없음 = 허락 전) */
+  view?: boolean
 }
 
 /** 피어 슬롯 최대 수 */
@@ -95,6 +97,8 @@ export class AuthGuard {
   /** 지금 토큰으로 인증에 성공한 적이 있는지 (휴대폰이 이 토큰으로 붙어 있는지 — 재발급하면 false) */
   private isUsed = false
   private rates = new Map<string, number[]>()
+  /** '화면 보기' 허락을 기다리는 슬롯 (메모리 값 — 앱을 껐다 켜면 상대가 hello로 다시 요청한다) */
+  private viewPending = new Set<string>()
   private state: AuthState
   private onLock: LockListener
   /** 종류별 마지막 알림 시각과 그 뒤로 쌓인 횟수 */
@@ -229,12 +233,38 @@ export class AuthGuard {
     return (this.state.peers ?? []).find((p) => sameHash(hash, p.tokenHash)) ?? null
   }
 
-  /** 새 피어 슬롯을 만들고 토큰 원문을 돌려준다 (가득 차면 null) */
-  addPeerSlot(label: string, now: number): { token: string; slot: PeerSlot } | null {
+  /** 이 슬롯이 '화면 보기' 권한을 가졌는지 */
+  isViewSlot(id: string) {
+    return Boolean((this.state.peers ?? []).find((p) => p.id === id)?.view)
+  }
+
+  /** hello가 알려 주는 허락 상태: granted(권한 있음) · pending(저쪽 허락 대기) · none(요청 전) */
+  viewState(id: string): 'granted' | 'pending' | 'none' {
+    return this.isViewSlot(id) ? 'granted' : this.viewPending.has(id) ? 'pending' : 'none'
+  }
+
+  /** '화면 보기' 허락을 요청한다. 새로 대기에 들어갔을 때만 true (같은 요청을 거듭해도 결재 카드가 한 번만 뜨게). 이미 가졌거나 없는 슬롯은 false */
+  requestView(id: string) {
+    if (!(this.state.peers ?? []).some((p) => p.id === id) || this.isViewSlot(id) || this.viewPending.has(id)) return false
+    this.viewPending.add(id)
+    return true
+  }
+
+  /** 저쪽 PC 앞에서 허락(true)·거절(false)·회수(false)한 결과를 슬롯에 적는다. 슬롯이 없으면 false */
+  setPeerView(id: string, isGranted: boolean) {
+    const peers = this.state.peers ?? []
+    if (!peers.some((p) => p.id === id)) return false
+    this.viewPending.delete(id)
+    this.state = { ...this.state, peers: peers.map((p) => (p.id === id ? { ...p, view: isGranted } : p)) }
+    return true
+  }
+
+  /** 새 피어 슬롯을 만들고 토큰 원문을 돌려준다 (가득 차면 null). view: 처음부터 '화면 보기' 열쇠로 (저쪽 PC 앞에서 짝지을 때 이미 허락한 것) */
+  addPeerSlot(label: string, now: number, opts: { view?: boolean } = {}): { token: string; slot: PeerSlot } | null {
     const peers = this.state.peers ?? []
     if (peers.length >= PEER_SLOTS_MAX) return null
     const token = newToken()
-    const slot: PeerSlot = { id: crypto.randomBytes(6).toString('base64url'), label: label.slice(0, 60), tokenHash: hashToken(token), createdAt: now, lastSeenAt: null }
+    const slot: PeerSlot = { id: crypto.randomBytes(6).toString('base64url'), label: label.slice(0, 60), tokenHash: hashToken(token), createdAt: now, lastSeenAt: null, ...(opts.view ? { view: true } : {}) }
     this.state = { ...this.state, peers: [...peers, slot] }
     return { token, slot }
   }
@@ -244,6 +274,7 @@ export class AuthGuard {
     const peers = this.state.peers ?? []
     const slot = peers.find((p) => p.id === id)
     if (!slot) return null
+    this.viewPending.delete(id)
     this.state = { ...this.state, peers: peers.filter((p) => p.id !== id), revoked: [slot.tokenHash, ...this.state.revoked].slice(0, REVOKED_KEEP) }
     return slot
   }

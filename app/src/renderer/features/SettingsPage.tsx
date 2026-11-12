@@ -8,9 +8,11 @@ import { useOffice } from '@/store'
 import { IS_WINDOWS, osText, trayPlace } from '@/lib/platform'
 import { NotOnWindows } from '@/components/not-on-windows'
 import { PcOnlyState } from '@/components/pc-only-state'
-import { IS_MOBILE_SHELL } from '@/shell'
+import { IS_REMOTE_SCREEN } from '@/shell'
 import { RemoteSection } from './RemoteSection'
 import { PeerSection } from './PeerSection'
+import { ConnectedPcSection } from './workspace/ConnectedPcSection'
+import { SECTION_ID } from './settingsSections'
 import { PROVIDER_SECTION_ID, ProviderSection } from './ProviderCards'
 import { COMPANY_LEVELS, type DayNight, type HooksStatus, type Settings, type ThemeId } from '@shared/types'
 import { UI_THEME_GROUPS, type UiMode } from '@shared/uiTheme'
@@ -46,8 +48,17 @@ const CATEGORIES: { id: Category; labelKey: TKey }[] = [
   { id: 'office', labelKey: 'settingsPage.cat.office' },
   { id: 'connect', labelKey: 'settingsPage.cat.connect' },
 ]
-/** 바로가기로 여는 섹션 → 그 섹션이 있는 분류 */
-const SECTION_CATEGORY: Record<string, Category> = { [PROVIDER_SECTION_ID]: 'ai' }
+/** 바로가기로 여는 섹션 → 그 섹션이 있는 분류 (섹션을 다른 분류로 옮기면 여기도 같이) */
+const SECTION_CATEGORY: Record<string, Category> = {
+  [PROVIDER_SECTION_ID]: 'ai',
+  [SECTION_ID.workMode]: 'general',
+  [SECTION_ID.tray]: 'general',
+  [SECTION_ID.workHours]: 'ai',
+  [SECTION_ID.deskPet]: 'office',
+  [SECTION_ID.remote]: 'connect',
+  [SECTION_ID.workspaces]: 'connect',
+  [SECTION_ID.hooks]: 'connect',
+}
 
 /** 다른 화면에서 설정의 특정 섹션을 열 때 — 분류를 바꾼 뒤 그 섹션으로 스크롤한다 (설정 화면이 열려 있지 않으면 다음에 열릴 때) */
 let pendingSection: string | null = null
@@ -221,7 +232,7 @@ export function SettingsPage() {
                     type="button"
                     role="radio"
                     aria-checked={settings.uiMode === m.value}
-                    disabled={IS_MOBILE_SHELL}
+                    disabled={IS_REMOTE_SCREEN}
                     onClick={() => update({ uiMode: m.value })}
                     className={cn('text-muted-foreground focus-ring rounded-full px-4 py-1.5 text-xs whitespace-nowrap disabled:opacity-60', settings.uiMode === m.value && 'bg-card text-foreground font-semibold shadow-sm')}
                   >
@@ -230,7 +241,7 @@ export function SettingsPage() {
                 ))}
               </div>
               {/* 원격은 uiMode·uiTheme를 받지 않는다(main/remote/v2.ts) → 휴대폰에선 지금 값만 보여 준다 */}
-              {IS_MOBILE_SHELL && <PcOnlyState />}
+              {IS_REMOTE_SCREEN && <PcOnlyState />}
             </Section>
             <Section title={t('settingsPage.uiTheme.title')} description={t('settingsPage.uiTheme.desc')}>
               {UI_THEME_GROUPS.map((g) => (
@@ -244,7 +255,7 @@ export function SettingsPage() {
                         type="button"
                         role="radio"
                         aria-checked={settings.uiTheme === theme.id}
-                        disabled={IS_MOBILE_SHELL}
+                        disabled={IS_REMOTE_SCREEN}
                         onClick={() => update({ uiTheme: theme.id })}
                         className={cn('enabled:hover:bg-accent/50 focus-ring flex min-w-0 items-center gap-3 rounded-2xl border p-3 text-left disabled:opacity-60', settings.uiTheme === theme.id && 'border-ring ring-ring ring-2')}
                       >
@@ -255,12 +266,22 @@ export function SettingsPage() {
                   </div>
                 </div>
               ))}
-              {IS_MOBILE_SHELL && <PcOnlyState />}
+              {IS_REMOTE_SCREEN && <PcOnlyState />}
+            </Section>
+            <Section id={SECTION_ID.workMode} title={t('settingsPage.workMode.title')} description={t('settingsPage.workMode.desc')}>
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={settings.isWorkMode} onChange={(e) => update({ isWorkMode: e.target.checked })} /> {t('settingsPage.workMode.toggle')}
+              </label>
             </Section>
             {/* 개발 실행에서는 등록되지 않는다 (설치본만 로그인 항목에 들어간다) */}
             <Section title={t('settingsPage.login.title')} description={t('settingsPage.login.desc')}>
               <label className="flex items-center gap-2 text-sm">
                 <input type="checkbox" checked={settings.launchAtLogin} onChange={(e) => update({ launchAtLogin: e.target.checked })} /> {t('settingsPage.login.toggle')}
+              </label>
+            </Section>
+            <Section id={SECTION_ID.tray} title={trayPlace()} description={osText(t('settingsPage.tray.desc.mac'), t('settingsPage.tray.desc.win'))}>
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={settings.isTrayOn} onChange={(e) => update({ isTrayOn: e.target.checked })} /> {t('settingsPage.tray.toggle', { place: trayPlace() })}
               </label>
             </Section>
             {updateActions.isAvailable && (
@@ -293,20 +314,25 @@ export function SettingsPage() {
             <Section id={PROVIDER_SECTION_ID} title={t('provider.section.title')} description={t('provider.section.desc')}>
               <ProviderSection />
             </Section>
-            <Section title={t('settingsPage.workMode.title')} description={t('settingsPage.workMode.desc')}>
-              <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" checked={settings.isWorkMode} onChange={(e) => update({ isWorkMode: e.target.checked })} /> {t('settingsPage.workMode.toggle')}
-              </label>
-            </Section>
             <Section title={t('settingsPage.autoApprove.title')} description={t('settingsPage.autoApprove.desc')}>
               <AutoApproveSection />
             </Section>
             <Section title={t('rule.title')} description={t('rule.desc')}>
               <ApprovalRulesList />
             </Section>
+            <Section id={SECTION_ID.workHours} title={t('settingsPage.workHours.title')} description={t('settingsPage.workHours.desc')}>
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={settings.workHours.isEnabled} onChange={(e) => update({ workHours: { ...settings.workHours, isEnabled: e.target.checked } })} /> {t('settingsPage.workHours.toggle')}
+              </label>
+              <div className="flex flex-wrap items-center gap-2 text-sm">
+                <Input type="time" value={settings.workHours.start} onChange={(e) => update({ workHours: { ...settings.workHours, start: e.target.value } })} className="w-28" disabled={!settings.workHours.isEnabled} />
+                ~
+                <Input type="time" value={settings.workHours.end} onChange={(e) => update({ workHours: { ...settings.workHours, end: e.target.value } })} className="w-28" disabled={!settings.workHours.isEnabled} />
+              </div>
+            </Section>
             <Section title={t('settingsPage.staffCapture.title')} description={t('settingsPage.staffCapture.desc')}>
               {/* 화면 캡처 허용은 PC에서만 (PC가 휴대폰에서 온 값을 버린다) */}
-              {IS_MOBILE_SHELL ? (
+              {IS_REMOTE_SCREEN ? (
                 <PcOnlyState isOn={settings.isStaffCaptureOn} />
               ) : (
                 <label className="flex items-center gap-2 text-sm">
@@ -323,26 +349,6 @@ export function SettingsPage() {
               <label className="flex items-center gap-2 text-sm">
                 <input type="checkbox" checked={settings.tokenSaverMode === true} onChange={(e) => update({ tokenSaverMode: e.target.checked })} /> {t('settingsPage.tokenSaver.toggle')}
               </label>
-            </Section>
-            <Section title={t('settingsPage.hooks.title')} description={t('settingsPage.hooks.desc')} detail={t('settingsPage.hooks.detail')}>
-              <NotOnWindows reason={t('settingsPage.notOnWindows')} />
-              {IS_MOBILE_SHELL ? (
-                <PcOnlyState isOn={hooks?.installed} />
-              ) : (
-                <Button onClick={handleHooks} disabled={!hooks || isBusy || IS_WINDOWS} variant={hooks?.installed ? 'outline' : 'default'} className="w-fit">
-                  {hooks?.installed ? t('settingsPage.hooks.off') : t('settingsPage.hooks.on')}
-                </Button>
-              )}
-            </Section>
-            <Section title={t('settingsPage.askHook.title')} description={t('settingsPage.askHook.desc')} detail={t('settingsPage.askHook.detail')}>
-              <NotOnWindows reason={t('settingsPage.notOnWindows')} />
-              {IS_MOBILE_SHELL ? (
-                <PcOnlyState isOn={hooks?.isAskInstalled} />
-              ) : (
-                <Button onClick={handleAskHook} disabled={!hooks || isBusy || IS_WINDOWS} variant={hooks?.isAskInstalled ? 'outline' : 'default'} className="w-fit">
-                  {hooks?.isAskInstalled ? t('settingsPage.askHook.off') : t('settingsPage.askHook.on')}
-                </Button>
-              )}
             </Section>
           </>
         )}
@@ -381,46 +387,19 @@ export function SettingsPage() {
                 {t('settingsPage.props.plants', { n: settings.plants })}
                 <input type="range" min={0} max={MAX_PLANTS} value={settings.plants} onChange={(e) => update({ plants: Number(e.target.value) })} className="w-full max-w-48" />
               </label>
+            </Section>
+            <Section title={t('settingsPage.chatter.title')}>
               <label className="flex items-center gap-2 text-sm">
                 <input type="checkbox" checked={settings.isChatterOn} onChange={(e) => update({ isChatterOn: e.target.checked })} /> {t('settingsPage.props.chatter')}
               </label>
             </Section>
-            {IS_DEV_BUILD && <LevelPreview />}
-            {IS_DEV_BUILD && <InteractionPreview />}
             <Section title={t('settingsPage.layout.title')} description={t('settingsPage.layout.desc')}>
               <Button variant="outline" size="sm" className="w-fit" onClick={() => update({ layout: {} })} disabled={Object.keys(settings.layout).length === 0}>
                 {t('settingsPage.layout.reset')}
               </Button>
             </Section>
-            <Section title={t('settingsPage.workHours.title')} description={t('settingsPage.workHours.desc')}>
-              <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" checked={settings.workHours.isEnabled} onChange={(e) => update({ workHours: { ...settings.workHours, isEnabled: e.target.checked } })} /> {t('settingsPage.workHours.toggle')}
-              </label>
-              <div className="flex flex-wrap items-center gap-2 text-sm">
-                <Input type="time" value={settings.workHours.start} onChange={(e) => update({ workHours: { ...settings.workHours, start: e.target.value } })} className="w-28" disabled={!settings.workHours.isEnabled} />
-                ~
-                <Input type="time" value={settings.workHours.end} onChange={(e) => update({ workHours: { ...settings.workHours, end: e.target.value } })} className="w-28" disabled={!settings.workHours.isEnabled} />
-              </div>
-            </Section>
-          </>
-        )}
-        {category === 'connect' && (
-          <>
-            <Section id="settings-remote" title={t('settingsPage.remote.title')} description={t('settingsPage.remote.desc')}>
-              <RemoteSection />
-            </Section>
-            {!IS_MOBILE_SHELL && (
-              <Section title={t('peer.section.title')} description={t('peer.section.desc')}>
-                <PeerSection />
-              </Section>
-            )}
-            <Section title={trayPlace()} description={osText(t('settingsPage.tray.desc.mac'), t('settingsPage.tray.desc.win'))}>
-              <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" checked={settings.isTrayOn} onChange={(e) => update({ isTrayOn: e.target.checked })} /> {t('settingsPage.tray.toggle', { place: trayPlace() })}
-              </label>
-            </Section>
-            {!IS_MOBILE_SHELL && (
-              <Section title={t('deskPet.setting')} description={t('deskPet.settingHint')}>
+            {!IS_REMOTE_SCREEN && (
+              <Section id={SECTION_ID.deskPet} title={t('deskPet.setting')} description={t('deskPet.settingHint')}>
                 <label className="flex items-center gap-2 text-sm">
                   <input type="checkbox" checked={settings.isDeskPetOn} onChange={(e) => update({ isDeskPetOn: e.target.checked })} /> {t('deskPet.setting')}
                 </label>
@@ -444,6 +423,45 @@ export function SettingsPage() {
                 )}
               </Section>
             )}
+            {IS_DEV_BUILD && <LevelPreview />}
+            {IS_DEV_BUILD && <InteractionPreview />}
+          </>
+        )}
+        {category === 'connect' && (
+          <>
+            <Section id={SECTION_ID.remote} title={t('settingsPage.remote.title')} description={t('settingsPage.remote.desc')}>
+              <RemoteSection />
+            </Section>
+            {!IS_REMOTE_SCREEN && (
+              <Section id={SECTION_ID.workspaces} title={t('workspace.section.title')} description={t('workspace.section.desc')}>
+                <ConnectedPcSection />
+              </Section>
+            )}
+            {!IS_REMOTE_SCREEN && (
+              <Section title={t('peer.section.title')} description={t('peer.section.desc')}>
+                <PeerSection />
+              </Section>
+            )}
+            <Section id={SECTION_ID.hooks} title={t('settingsPage.hooks.title')} description={t('settingsPage.hooks.desc')} detail={t('settingsPage.hooks.detail')}>
+              <NotOnWindows reason={t('settingsPage.notOnWindows')} />
+              {IS_REMOTE_SCREEN ? (
+                <PcOnlyState isOn={hooks?.installed} />
+              ) : (
+                <Button onClick={handleHooks} disabled={!hooks || isBusy || IS_WINDOWS} variant={hooks?.installed ? 'outline' : 'default'} className="w-fit">
+                  {hooks?.installed ? t('settingsPage.hooks.off') : t('settingsPage.hooks.on')}
+                </Button>
+              )}
+            </Section>
+            <Section title={t('settingsPage.askHook.title')} description={t('settingsPage.askHook.desc')} detail={t('settingsPage.askHook.detail')}>
+              <NotOnWindows reason={t('settingsPage.notOnWindows')} />
+              {IS_REMOTE_SCREEN ? (
+                <PcOnlyState isOn={hooks?.isAskInstalled} />
+              ) : (
+                <Button onClick={handleAskHook} disabled={!hooks || isBusy || IS_WINDOWS} variant={hooks?.isAskInstalled ? 'outline' : 'default'} className="w-fit">
+                  {hooks?.isAskInstalled ? t('settingsPage.askHook.off') : t('settingsPage.askHook.on')}
+                </Button>
+              )}
+            </Section>
           </>
         )}
       </div>

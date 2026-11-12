@@ -40,6 +40,9 @@ export function acceptHello(args: unknown[]): string[] | null {
   return KNOWN_CAPABILITIES.filter((c) => list.includes(c))
 }
 
+/** hello에서 '화면 보기' 허락을 요청했는지 (args[0].requestView === true) */
+export const helloRequestsView = (args: unknown[]) => isPlainObjectValue(args[0]) && args[0].requestView === true
+
 const isPlainObject = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
 
 /**
@@ -54,6 +57,8 @@ export function clampCompanyLevel<T>(value: T): T {
   const row = COMPANY_LEVELS[LEGACY_MAX_COMPANY_LEVEL - 1]
   return { ...value, company: { ...value.company, level: LEGACY_MAX_COMPANY_LEVEL, title: row.title, nextXp: row.xp, progress: 1 } }
 }
+
+const isPlainObjectValue = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
 
 /** 이 요청·연결에 보낼 모양 — iso-office를 알리지 않았으면 회사 레벨을 줄인다 */
 export function shapeFor<T>(capabilities: Capabilities, value: T): T {

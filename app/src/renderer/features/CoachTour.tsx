@@ -5,7 +5,7 @@ import { MOD_KEY, osText } from '@/lib/platform'
 import { cn } from '@/lib/utils'
 import { showToast } from '@/lib/toast'
 import { menuTitle, navTourTarget } from './nav'
-import { IS_MOBILE_SHELL } from '@/shell'
+import { IS_REMOTE_SCREEN } from '@/shell'
 import { isVisibleBox, placeTip, TIP_MARGIN } from './coachTip'
 import { t } from '@shared/i18n'
 import type { TKey } from '@shared/i18n'
@@ -81,7 +81,7 @@ const GAME_TARGETS = new Set(['nav-map', 'hud', 'nav-shop'])
 function tourSteps(isMore: boolean, isWorkMode: boolean): TourStep[] {
   const chapterOrder = (s: TourStep) => CHAPTERS.findIndex((c) => c.id === s.chapter)
   const body = isMore ? [...CORE_STEPS, ...MORE_STEPS].sort((a, b) => chapterOrder(a) - chapterOrder(b)) : CORE_STEPS
-  return [...body, LAST_STEP].filter((s) => !(isWorkMode && GAME_TARGETS.has(s.target)) && !(IS_MOBILE_SHELL && s.isDesktopOnly))
+  return [...body, LAST_STEP].filter((s) => !(isWorkMode && GAME_TARGETS.has(s.target)) && !(IS_REMOTE_SCREEN && s.isDesktopOnly))
 }
 const PAD = 6
 /** 높이를 재기 전 첫 자리 계산에 쓰는 설명 상자 높이 */

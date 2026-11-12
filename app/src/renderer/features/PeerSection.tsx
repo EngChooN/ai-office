@@ -6,10 +6,11 @@ import { Input } from '@/components/ui/input'
 import { NativeSelect } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import { useOffice } from '@/store'
-import { IS_MOBILE_SHELL } from '@/shell'
+import { IS_REMOTE_SCREEN } from '@/shell'
 import { fmtDate, t } from '@shared/i18n'
 import { ipcErrorText } from '@shared/ipcError'
 import type { RemoteStatus } from '@shared/types'
+import { SECTION_ID } from './settingsSections'
 import { formatPairCode, normalizePairCode, parsePeerInvite, type PairWindowView, type PeerSlotView, type PeerView, type RemoteStaffChoice } from '@shared/peerProtocol'
 
 // 설정 › 다른 PC 연결: 준비 확인(원격 켜짐·네트워크) → 역할 고르기 → 보내는 PC(연결 정보 만들기·복사) / 불러오는 PC(붙여넣기 한 번으로 연결 → 직원 고르기 자동 열림)
@@ -25,7 +26,7 @@ const timeText = (ms: number) => fmtDate(ms, { hour: '2-digit', minute: '2-digit
 type Role = 'host' | 'client'
 
 export function PeerSection() {
-  if (IS_MOBILE_SHELL) return null
+  if (IS_REMOTE_SCREEN) return null
   return <PeerBody />
 }
 
@@ -99,7 +100,7 @@ function notOpenText(r: RemoteStatus) {
 /** 준비 확인: ① 원격 기능(꺼짐·켰는데 안 열림·켜짐) ② 두 PC의 네트워크(자동 판별은 안 하고 안내만) */
 function Readiness({ remote }: { remote: RemoteStatus }) {
   const goRemote = (isGuide: boolean) => {
-    document.getElementById('settings-remote')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    document.getElementById(SECTION_ID.remote)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     if (isGuide) window.dispatchEvent(new Event(OPEN_REMOTE_GUIDE_EVENT))
   }
   const state = !remote.isEnabled ? 'off' : remote.isListening ? 'on' : 'notOpen'
@@ -174,7 +175,7 @@ function RolePicker({ isDisabled, hint, onPick }: { isDisabled: boolean; hint: s
 }
 
 /** 보내는 PC: 들어오면 바로 연결 정보를 만들고, 코드·복사 버튼을 보여 준다(시간 제한 없음). 연결이 생기면 알린다 */
-function HostPart({ onSlotsChanged }: { onSlotsChanged: () => void }) {
+export function HostPart({ onSlotsChanged }: { onSlotsChanged: () => void }) {
   const [win, setWin] = useState<PairWindowView | null>(null)
   const [isClosed, setIsClosed] = useState(false)
   const [error, setError] = useState('')
@@ -292,7 +293,7 @@ function HostPart({ onSlotsChanged }: { onSlotsChanged: () => void }) {
 }
 
 /** 불러오는 PC: 받은 연결 정보를 한 칸에 붙여 넣어 연결. 따로 입력하는 칸은 접어 둔다 */
-function ClientPart({ onConnected }: { onConnected: (peerId: string) => void }) {
+export function ClientPart({ onConnected }: { onConnected: (peerId: string) => void }) {
   const [pasted, setPasted] = useState('')
   const [host, setHost] = useState('')
   const [code, setCode] = useState('')

@@ -7,7 +7,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { OfficeMethod } from '../../shared/officeApiShape'
 import type { Attachment } from '../../shared/types'
 import { bearerToken, hashToken, type AuthGuard } from './auth.ts'
-import { acceptHello, CAPABILITIES_HEADER, HELLO_METHOD, NO_CAPABILITIES, parseCapabilities, shapeFor } from './capabilities.ts'
+import { acceptHello, CAPABILITIES_HEADER, helloRequestsView, HELLO_METHOD, NO_CAPABILITIES, parseCapabilities, shapeFor } from './capabilities.ts'
 import type { EventHub } from './events.ts'
 import { PEER_PATHS } from '../../shared/peerProtocol.ts'
 import { PeerRoutes } from './peerRoutes.ts'
@@ -50,6 +50,8 @@ export interface V2RouteContext {
   currentPort(): number
   /** 전용 모드 여부와 지금 이 PC의 내부 주소 (hello 답에 실어 앱이 주소를 자동으로 고치게 한다) */
   lanInfo?(): { lo: boolean; lan: string | null; ts?: boolean; tsHost?: string | null }
+  /** 슬롯이 hello로 '화면 보기' 허락을 새로 요청했다 — 이 PC 앞의 결재 카드로 이어 준다 */
+  onViewRequest?(slot: { id: string; label: string }): void
   /** 다른 PC 연결(짝짓기·피어 경로) — 없으면 /v2/pair·/v2/peer는 404 */
   peer?: PeerRoutes
   /** 파일 복사본·변경 묶음 경로(/v2/peer/workspaces·blobs·changesets) — 없으면 404 */
@@ -129,6 +131,13 @@ export class V2Routes {
         }
         void this.ctx.peer.peer(req, res, path, new URL(req.url ?? '/', 'http://x').searchParams, slot, access)
       }
+      return true
+    }
+    // 첨부 올리기·파일 받기는 휴대폰 열쇠와 '화면 보기' 열쇠만 — 일 주고받기만 하는 PC 열쇠는 안 된다
+    const slotKey = this.ctx.guard.peerSlotOf(tokenHashOf(req.headers.authorization))
+    if (slotKey && !slotKey.view && !isEvents) {
+      reply(v2Fail('scope_denied'), isByteUpload ? { Connection: 'close' } : {})
+      if (isByteUpload) res.on('finish', () => req.socket.destroy())
       return true
     }
     const allow = isUpload ? 'POST' : 'GET'
@@ -256,9 +265,10 @@ export class V2Routes {
     }
     const method = typeof (body as { method?: unknown })?.method === 'string' ? (body as { method: string }).method : undefined
     const tokenHash = tokenHashOf(req.authorization)
-    // 피어 토큰: hello와 (자기 일의) 결재 처리 말고는 OfficeApi 어느 것도 부르지 못한다 (설계서 8-1 허용 목록)
+    // 피어 토큰: hello와 (자기 일의) 결재 처리 말고는 OfficeApi 어느 것도 부르지 못한다 (설계서 8-1 허용 목록).
+    // 단 '화면 보기' 열쇠는 저쪽이 허락한 뒤부터 휴대폰과 같은 길(분류표·인자 제한·원격 표시)로 부른다
     const peerSlot = this.ctx.guard.peerSlotOf(tokenHash)
-    if (peerSlot && method !== HELLO_METHOD) return this.ctx.peer ? (this.ctx.peer.callAsPeer(peerSlot.id, method, (body as { args?: unknown }).args ?? []) as HandledResponse) : v2Fail('scope_denied')
+    if (peerSlot && !peerSlot.view && method !== HELLO_METHOD) return this.ctx.peer ? (this.ctx.peer.callAsPeer(peerSlot.id, method, (body as { args?: unknown }).args ?? []) as HandledResponse) : v2Fail('scope_denied')
 
     // 연결 메시지 hello: 화면이 쓸 능력을 서버가 아는지 확인한다 (OfficeApi 메서드가 아님, 아무것도 저장하지 않음 — 능력은 요청 헤더로 판정).
     // 같은 내용을 몇 번 보내도 결과가 같아 요청 키를 보지 않는다
@@ -266,7 +276,10 @@ export class V2Routes {
       const rawArgs = (body as { args?: unknown }).args ?? []
       const accepted = Array.isArray(rawArgs) ? acceptHello(rawArgs) : null
       if (!accepted) return v2Fail('invalid_args', { method, message: 'args[0]은 { capabilities: 문자열 배열 }이어야 해요' })
-      return { status: 200, headers: {}, body: { protocolVersion: V2_PROTOCOL_VERSION, serverTime: this.ctx.now(), ok: true, result: { capabilities: accepted, ...(this.ctx.lanInfo ? lanFields(this.ctx.lanInfo()) : {}) } } }
+      // 허락 상태: 휴대폰 열쇠는 늘 granted, 다른 PC 열쇠는 granted·pending·none. 요청하면 저쪽 PC 앞에 결재 카드가 한 번 뜬다 (자동으로 주지 않는다)
+      if (peerSlot && helloRequestsView(rawArgs as unknown[]) && this.ctx.guard.requestView(peerSlot.id)) this.ctx.onViewRequest?.({ id: peerSlot.id, label: peerSlot.label })
+      const view = peerSlot ? this.ctx.guard.viewState(peerSlot.id) : 'granted'
+      return { status: 200, headers: {}, body: { protocolVersion: V2_PROTOCOL_VERSION, serverTime: this.ctx.now(), ok: true, result: { protocol: V2_PROTOCOL_VERSION, permissions: { key: peerSlot ? 'peer' : 'phone', view }, capabilities: accepted, ...(this.ctx.lanInfo ? lanFields(this.ctx.lanInfo()) : {}) } } }
     }
 
     // 같은 요청 다시 보내기: (토큰, 키)마다 한 번만 처리

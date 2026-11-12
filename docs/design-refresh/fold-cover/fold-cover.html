@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<title>폴드 커버 화면 레이아웃 시안</title>
+<!-- 디자인 시안 전용(앱 코드 아님). ?mode=light|dark&sheet=chat|panel 로 열어 캡처한다 -->
+<style>
+  :root { --phone-w: 344px; --phone-h: 882px; }
+  [data-mode='light'] {
+    --background:#F6F5FB; --foreground:#221F33; --card:#FFFFFF; --primary:#6C5CE7; --primary-foreground:#FFFFFF;
+    --secondary:#ECEAF6; --muted:#ECEAF6; --muted-foreground:#66627F; --accent:#E9E6FA; --border:#DEDAF0; --input:#CFCAE6;
+    --ring:#8776FF; --surface-chrome:#FBFAFF; --working:#1C7C46; --waiting:#9A5B00; --idle:#6B6B62; --error:#C42B2B;
+    --sheet-bg:#E4E1F2; --hl:#FF7AC6; --shadow: 0 10px 28px -10px rgba(108,92,231,.28);
+  }
+  [data-mode='dark'] {
+    --background:#14131C; --foreground:#EDEBF8; --card:#201F2D; --primary:#9B8CFF; --primary-foreground:#1A1240;
+    --secondary:#292739; --muted:#292739; --muted-foreground:#A7A3C4; --accent:#302D47; --border:#34314A; --input:#413E5C;
+    --ring:#9B8CFF; --surface-chrome:#181723; --working:#4ADE80; --waiting:#F2C94C; --idle:#9C9AA8; --error:#FF6B6B;
+    --sheet-bg:#0C0B12; --hl:#FF7AC6; --shadow: 0 10px 28px -10px rgba(0,0,0,.6);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { background: var(--sheet-bg); }
+  [data-mode] { background: var(--sheet-bg); }
+  body { font-family: "Pretendard", "Apple SD Gothic Neo", system-ui, sans-serif; background: var(--sheet-bg); color: var(--foreground); padding: 36px 40px 40px; width: max-content; }
+  h1.stitle { font-size: 26px; font-weight: 700; }
+  p.sheet-sub { color: var(--muted-foreground); font-size: 14px; margin: 6px 0 24px; }
+  .row { display: flex; gap: 36px; align-items: flex-start; }
+  .col { width: var(--phone-w); display: flex; flex-direction: column; gap: 10px; }
+  .col h2 { font-size: 17px; font-weight: 700; display: flex; gap: 8px; align-items: center; }
+  .tag { font-size: 11px; font-weight: 700; border-radius: 999px; padding: 2px 8px; background: var(--primary); color: var(--primary-foreground); }
+  .tag.now { background: var(--muted-foreground); color: var(--card); }
+  .meter { font-size: 13px; color: var(--muted-foreground); }
+  .meter b { color: var(--foreground); font-size: 15px; }
+  .bar { height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--primary); }
+  .pc { font-size: 12.5px; line-height: 1.5; background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 10px 12px; }
+  .pc div + div { margin-top: 4px; }
+  .pc .plus { color: var(--working); font-weight: 700; } .pc .minus { color: var(--error); font-weight: 700; }
+
+  /* ── 폰 틀 ── */
+  .phone { width: var(--phone-w); height: var(--phone-h); border-radius: 28px; overflow: hidden; position: relative; background: var(--background); border: 6px solid #0d0c12; box-shadow: 0 20px 40px -20px rgba(0,0,0,.5); display: flex; flex-direction: column; font-size: 14px; }
+  .sys { height: 26px; flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; font-size: 11px; font-weight: 600; color: var(--foreground); background: var(--surface-chrome); }
+  .sys .cam { width: 9px; height: 9px; border-radius: 50%; background: #000; }
+  .gest { height: 18px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: var(--surface-chrome); }
+  .gest i { width: 90px; height: 4px; border-radius: 2px; background: var(--muted-foreground); opacity: .6; }
+  .topbar { height: 48px; flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 0 12px; border-bottom: 1px solid var(--border); background: var(--surface-chrome); }
+  .topbar .t { flex: 1; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pill { border-radius: 999px; padding: 4px 10px; font-size: 12px; font-weight: 600; background: var(--accent); white-space: nowrap; }
+  .pill.wait { background: transparent; border: 1px solid var(--waiting); color: var(--waiting); }
+  .ib { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; color: var(--muted-foreground); flex-shrink: 0; }
+  .ib svg, .tabi svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .navtabs { display: flex; gap: 4px; padding: 0 8px; border-bottom: 1px solid var(--border); flex-shrink: 0; font-size: 13px; }
+  .navtabs span { padding: 9px 12px; color: var(--muted-foreground); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .navtabs span.on { color: var(--foreground); font-weight: 600; border-color: var(--primary); }
+  .roomhead { padding: 12px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .roomhead h3 { font-size: 18px; font-weight: 600; display: flex; align-items: center; }
+  .roomhead h3 .sp { flex: 1; }
+  .roomhead p { font-size: 12px; color: var(--muted-foreground); line-height: 1.4; margin-top: 2px; }
+  .chips { display: flex; gap: 6px; margin-top: 8px; overflow: hidden; }
+  .chip { flex-shrink: 0; display: flex; align-items: center; gap: 5px; border: 1px solid var(--border); border-radius: 999px; padding: 2px 10px; font-size: 12px; color: var(--muted-foreground); white-space: nowrap; background: var(--card); }
+  .chip.on { background: var(--primary); color: var(--primary-foreground); border-color: var(--primary); }
+  .chip .dot { width: 7px; height: 7px; border-radius: 50%; }
+  .chip .n { background: var(--error); color: #fff; border-radius: 999px; padding: 0 5px; font-size: 10px; font-weight: 700; line-height: 15px; }
+  .who { flex-shrink: 0; display: flex; align-items: center; gap: 5px; border: 1px solid var(--border); border-radius: 999px; padding: 2px 10px 2px 2px; font-size: 12px; background: var(--card); white-space: nowrap; max-width: 210px; overflow: hidden; }
+  .who.w { border-color: color-mix(in oklab, var(--working) 50%, transparent); }
+  .who.q { border-color: color-mix(in oklab, var(--waiting) 50%, transparent); }
+  .who em { font-style: normal; color: var(--muted-foreground); overflow: hidden; text-overflow: ellipsis; }
+  .av { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 10px; font-weight: 700; color: #fff; flex-shrink: 0; }
+  .av.lg { width: 30px; height: 30px; font-size: 12px; }
+  .stack { display: flex; } .stack .av { border: 2px solid var(--surface-chrome); margin-left: -7px; } .stack .av:first-child { margin-left: 0; }
+
+  .msgs { flex: 1; min-height: 0; overflow: hidden; padding: 12px 14px; display: flex; flex-direction: column; justify-content: flex-end; gap: 12px; position: relative; }
+  .msgs.hl, .log.hl { outline: 3px dashed color-mix(in oklab, var(--hl) 75%, transparent); outline-offset: -5px; }
+  .day { align-self: center; font-size: 11px; color: var(--muted-foreground); background: var(--muted); border-radius: 999px; padding: 2px 10px; }
+  .m { display: flex; gap: 8px; align-items: flex-start; }
+  .m .b { background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 8px 12px; font-size: 13.5px; line-height: 1.45; }
+  .m .nm { font-size: 11.5px; color: var(--muted-foreground); margin-bottom: 3px; }
+  .m.me { justify-content: flex-end; } .m.me .b { background: var(--primary); color: var(--primary-foreground); border-color: var(--primary); }
+  .m .acts { display: flex; gap: 5px; margin-top: 5px; } .m .acts span { font-size: 11px; border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; color: var(--muted-foreground); }
+  .state { font-size: 11px; color: var(--working); margin-top: 3px; display: flex; gap: 4px; align-items: center; }
+  .state::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--working); }
+  .composer { border-top: 1px solid var(--border); padding: 12px 14px; flex-shrink: 0; background: var(--background); }
+  .composer .rcp { font-size: 11.5px; color: var(--muted-foreground); margin-bottom: 8px; }
+  .composer .rcp b { color: var(--primary); font-weight: 600; }
+  .inrow { display: flex; gap: 8px; align-items: center; }
+  .field { flex: 1; height: 38px; border: 1px solid var(--input); border-radius: 18px; background: var(--card); padding: 0 14px; display: flex; align-items: center; font-size: 13px; color: var(--muted-foreground); white-space: nowrap; overflow: hidden; }
+  .send { width: 38px; height: 38px; border-radius: 50%; background: var(--primary); color: var(--primary-foreground); display: grid; place-items: center; flex-shrink: 0; }
+  .send svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2.2; }
+  .tools { display: flex; gap: 4px; margin-top: 8px; font-size: 12px; color: var(--muted-foreground); align-items: center; }
+  .tools span { padding: 4px 8px; border-radius: 999px; }
+  .tools .r { margin-left: auto; }
+  .tabbar { height: 64px; flex-shrink: 0; display: flex; border-top: 1px solid var(--border); background: var(--surface-chrome); }
+  .tabbar.slim { height: 50px; }
+  .tabi { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 10.5px; color: var(--muted-foreground); position: relative; }
+  .tabi.on { color: var(--primary); font-weight: 600; }
+  .tabi .bd { position: absolute; top: 8px; left: 54%; background: var(--error); color: #fff; font-size: 9px; font-weight: 700; border-radius: 999px; padding: 0 4px; line-height: 14px; }
+  .tabbar.slim .tabi { font-size: 0; gap: 0; }
+
+  /* 직원 패널 */
+  .phead { display: flex; gap: 12px; align-items: flex-start; padding: 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; background: var(--card); }
+  .mini { width: 112px; height: 84px; border-radius: 12px; flex-shrink: 0; background: linear-gradient(#cfe8d6 0 58%, #d9c3a3 58%); position: relative; overflow: hidden; border: 1px solid var(--border); }
+  [data-mode='dark'] .mini { background: linear-gradient(#2e4a3a 0 58%, #4a3b2c 58%); }
+  .mini::before { content: ''; position: absolute; left: 30%; top: 42%; width: 48px; height: 22px; background: #8a6a48; border-radius: 3px; }
+  .mini::after { content: ''; position: absolute; left: 42%; top: 18%; width: 20px; height: 26px; border-radius: 10px 10px 4px 4px; background: #e89a7a; box-shadow: 0 -9px 0 -2px #3b2b24; }
+  .mini.s { width: 40px; height: 40px; border-radius: 10px; }
+  .mini.s::before { left: 18%; top: 54%; width: 26px; height: 10px; } .mini.s::after { left: 34%; top: 24%; width: 12px; height: 15px; box-shadow: 0 -5px 0 -1px #3b2b24; }
+  .phead .nm { font-weight: 600; display: flex; gap: 6px; align-items: center; }
+  .sdot { width: 8px; height: 8px; border-radius: 50%; background: var(--working); }
+  .phead .sub { font-size: 12px; color: var(--muted-foreground); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .phead .lk { font-size: 12px; color: var(--primary); margin-top: 4px; }
+  .appr { padding: 14px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .appr h4 { font-size: 12px; color: var(--waiting); font-weight: 600; display: flex; } .appr h4 span { margin-left: auto; color: var(--muted-foreground); font-weight: 400; font-size: 11px; }
+  .acard { background: var(--muted); border-radius: 12px; padding: 12px; margin-top: 8px; font-size: 13px; }
+  .acard .code { font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; color: var(--muted-foreground); margin: 4px 0 10px; line-height: 1.4; }
+  .btns { display: flex; gap: 8px; } .btn { border-radius: 999px; padding: 5px 14px; font-size: 12.5px; font-weight: 500; border: 1px solid var(--border); background: var(--card); }
+  .btn.p { background: var(--primary); color: var(--primary-foreground); border-color: var(--primary); }
+  .banner { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: color-mix(in oklab, var(--waiting) 14%, var(--card)); border-bottom: 1px solid var(--border); font-size: 12.5px; flex-shrink: 0; }
+  .banner b { color: var(--waiting); } .banner .sp { flex: 1; color: var(--muted-foreground); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ptabs { display: flex; padding: 0 12px; border-bottom: 1px solid var(--border); font-size: 12.5px; flex-shrink: 0; align-items: center; }
+  .ptabs span { padding: 8px 10px; color: var(--muted-foreground); border-bottom: 2px solid transparent; margin-bottom: -1px; position: relative; }
+  .ptabs span.on { color: var(--foreground); font-weight: 600; border-color: var(--primary); }
+  .ptabs .r { margin-left: auto; border: 0; font-size: 11.5px; padding: 0; }
+  .ptabs .cnt { background: var(--waiting); color: #fff; border-radius: 999px; font-size: 9.5px; padding: 0 5px; margin-left: 3px; font-weight: 700; }
+  .prog { display: flex; gap: 8px; align-items: center; padding: 9px 16px; border-bottom: 1px solid var(--border); font-size: 12.5px; flex-shrink: 0; white-space: nowrap; overflow: hidden; }
+  .prog .sdot { flex-shrink: 0; } .prog em { font-style: normal; color: var(--muted-foreground); overflow: hidden; text-overflow: ellipsis; }
+  .usage { display: flex; gap: 14px; padding: 11px 16px; border-bottom: 1px solid var(--border); font-size: 12px; flex-shrink: 0; }
+  .usage .m2 { color: var(--muted-foreground); } .usage .r { margin-left: auto; color: var(--muted-foreground); }
+  .logt { display: flex; align-items: center; gap: 8px; padding: 14px 16px 8px; font-size: 12px; flex-shrink: 0; }
+  .logt h4 { color: var(--muted-foreground); font-weight: 600; flex: 1; }
+  .fs { border: 1px solid var(--border); border-radius: 6px; font-size: 10.5px; padding: 1px 6px; color: var(--muted-foreground); }
+  .log { flex: 1; min-height: 0; overflow: hidden; padding: 6px 16px 12px; display: flex; flex-direction: column; justify-content: flex-end; gap: 8px; font-size: 13px; line-height: 1.5; }
+  .lg { border-radius: 12px; padding: 8px 11px; background: var(--muted); }
+  .lg.me { background: color-mix(in oklab, var(--primary) 16%, var(--card)); align-self: flex-end; max-width: 88%; }
+  .lg.tool { background: transparent; border: 1px dashed var(--border); color: var(--muted-foreground); font-size: 12px; padding: 5px 10px; font-family: ui-monospace, Menlo, monospace; }
+  .lg .tm { font-size: 10.5px; color: var(--muted-foreground); display: block; margin-bottom: 2px; }
+  .pcomp { border-top: 1px solid var(--border); padding: 12px 14px 10px; flex-shrink: 0; }
+  .opt { display: flex; gap: 8px; align-items: center; margin-top: 8px; font-size: 12px; color: var(--muted-foreground); white-space: nowrap; }
+  .opt .box { width: 13px; height: 13px; border: 1.5px solid var(--input); border-radius: 3px; }
+  .opt .r { margin-left: auto; }
+  .sel { border: 1px solid var(--input); border-radius: 8px; padding: 2px 8px; }
+
+  /* 바텀시트·플로팅 */
+  .sheet { position: absolute; left: 0; right: 0; background: var(--card); border-top-left-radius: 20px; border-top-right-radius: 20px; box-shadow: 0 -10px 30px -12px rgba(0,0,0,.35); border: 1px solid var(--border); border-bottom: 0; z-index: 3; }
+  .grab { width: 36px; height: 4px; border-radius: 2px; background: var(--input); margin: 8px auto 6px; }
+  .note { position: absolute; z-index: 5; background: var(--hl); color: #2a0f20; font-size: 11px; font-weight: 700; border-radius: 8px; padding: 3px 8px; box-shadow: 0 4px 10px -4px rgba(0,0,0,.4); white-space: nowrap; }
+  .fab { position: absolute; right: 14px; z-index: 4; border-radius: 999px; background: var(--card); border: 1px solid var(--border); box-shadow: var(--shadow); font-size: 12px; padding: 6px 12px; display: flex; gap: 6px; align-items: center; }
+  .scrim { position: absolute; inset: 0; background: rgba(20,16,30,.35); z-index: 2; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+const q = new URLSearchParams(location.search)
+document.documentElement.dataset.mode = document.body.dataset.mode = q.get('mode') || 'light'
+const SHEET = q.get('sheet') || 'chat'
+
+const I = {
+  search: '<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
+  bell: '<svg viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>',
+  plus: '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
+  up: '<svg viewBox="0 0 24 24"><path d="m5 12 7-7 7 7M12 19V5"/></svg>',
+  send: '<svg viewBox="0 0 24 24"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>',
+  x: '<svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+  back: '<svg viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg>',
+  down: '<svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>',
+  more: '<svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>',
+  clip: '<svg viewBox="0 0 24 24"><path d="m21.4 11-8.8 8.8a6 6 0 0 1-8.5-8.5l8.8-8.8a4 4 0 0 1 5.7 5.7l-8.9 8.8a2 2 0 0 1-2.8-2.8l8.2-8.1"/></svg>',
+  map: '<svg viewBox="0 0 24 24"><path d="M3 21h18M5 21V7l7-4 7 4v14"/><path d="M9 21v-6h6v6"/></svg>',
+  chat: '<svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
+  board: '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="11" rx="1"/></svg>',
+  inbox: '<svg viewBox="0 0 24 24"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>',
+  expand: '<svg viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>',
+}
+const C = { 정: '#5C4CE3', 이: '#D9548B', 박: '#0B8A6A', 김: '#C77A12', 최: '#2F7BD9', 한: '#7A5AC8' }
+const av = (n, cls = '') => `<span class="av ${cls}" style="background:${C[n] || '#888'}">${n}</span>`
+const sys = () => `<div class="sys"><span>9:41</span><span class="cam"></span><span>5G ▮▮▮ 82%</span></div>`
+const gest = () => `<div class="gest"><i></i></div>`
+const tabbar = (slim) => `<div class="tabbar ${slim ? 'slim' : ''}">
+  <div class="tabi">${I.map}사무실</div><div class="tabi on">${I.chat}대화<span class="bd">3</span></div>
+  <div class="tabi">${I.board}업무 보드</div><div class="tabi">${I.inbox}결재함<span class="bd">2</span></div><div class="tabi">${I.more}더보기</div></div>`
+const topbar = (t) => `<div class="topbar"><span class="t">${t}</span><span class="pill">💰 1,284만</span><span class="pill wait">${I.bell.replace('<svg', '<svg style="width:12px;height:12px;vertical-align:-1px"')} 2</span><span class="ib">${I.plus}</span></div>`
+const roomChips = () => `<div class="chips"><span class="chip on">전체</span><span class="chip"><span class="dot" style="background:#D9548B"></span>디자인 팀<span class="n">2</span></span><span class="chip"><span class="dot" style="background:#0B8A6A"></span>개발 팀</span><span class="chip"><span class="dot" style="background:#C77A12"></span>오피스 랩<span class="n">1</span></span></div>`
+const strip = () => `<div class="chips"><span class="who w">${av('정')}정리드 <em>폴드 화면 구조 검토</em></span><span class="who q">${av('박')}박패턴 <em>확인 필요</em></span><span class="who w">${av('이')}이디자</span></div>`
+
+// 대화 내용: 위에서 잘리도록 넉넉히 넣는다 (아래 정렬)
+const MSGS = `
+  <div class="m">${av('김','lg')}<div><div class="nm">김QA · 오후 1:58</div><div class="b">어제 배포본 회귀 테스트 끝났습니다. 막힌 건 없어요.</div></div></div>
+  <div class="m me"><div><div class="b">@정리드 폴드 커버 화면에서 대화가 너무 적게 보여요. 구조 바꿀 방법 같이 봐 주세요.</div><div class="state" style="justify-content:flex-end">받음 → 작업 중</div></div></div>
+  <div class="day">오늘</div>
+  <div class="m">${av('정','lg')}<div><div class="nm">정리드 · 오후 2:10</div><div class="b">현재 폰 틀 높이를 재 봤습니다. 상단 바·탭 줄·방 머리·하단 탭이 화면의 절반 가까이를 씁니다.</div></div></div>
+  <div class="m">${av('박','lg')}<div><div class="nm">박패턴 · 오후 2:12</div><div class="b">이모티콘 목록은 오늘 안에 정리해 올리겠습니다.</div><div class="acts"><span>👍 좋아요</span><span>다시 해 줘</span><span>답장</span></div></div></div>
+  <div class="m">${av('이','lg')}<div><div class="nm">이디자 · 오후 2:15</div><div class="b">구조 시안 4가지를 지금 나란히 비교할 수 있게 만들고 있어요. 끝나면 사진으로 올릴게요.</div></div></div>
+  <div class="m me"><div><div class="b">좋아요. 라이트·다크 둘 다 보여 주세요.</div><div class="state" style="justify-content:flex-end">완료</div></div></div>`
+const MSGS_MORE = `
+  <div class="m">${av('최','lg')}<div><div class="nm">최백엔 · 오후 1:40</div><div class="b">원격 연결 재시도 간격을 줄였습니다. 끊김 표시가 덜 깜빡일 거예요.</div></div></div>
+  <div class="m">${av('한','lg')}<div><div class="nm">한기획 · 오후 1:45</div><div class="b">다음 주 데모데이 발표 순서 초안 업무 보드에 올렸습니다.</div></div></div>` + MSGS
+
+const composerFull = () => `<div class="composer"><div class="rcp">받는 사람: <b>@정리드</b> · 멘션 없으면 직무가 맞는 직원이 받아요</div>
+  <div class="inrow"><span class="ib">${I.clip}</span><div class="field">메시지 · @이름으로 지시</div><span class="send">${I.send}</span><span class="ib" style="width:18px">${I.down}</span></div></div>`
+const composerSlim = () => `<div class="composer" style="padding:8px 12px"><div class="inrow"><span class="ib">${I.plus}</span><div class="field">메시지 · @이름으로 지시</div><span class="send">${I.send}</span></div></div>`
+
+const note = (txt, style) => `<span class="note" style="${style}">${txt}</span>`
+
+// ───────── 대화방 시안 ─────────
+const CHAT = [
+  { key: 'now', tag: '현재', name: '현재 구조', body: () => `${sys()}${topbar('대화방')}
+      <div class="navtabs"><span class="on">대화방</span><span>회의실</span></div>
+      <div class="roomhead"><h3>단체방<span class="sp"></span><span class="ib">${I.search}</span></h3>
+        <p>모든 직원이 함께 보는 방이에요. @이름·@팀·@전체로 지시하고, 멘션이 없으면 직무가 맞는 직원이 받아요.</p>${roomChips()}${strip()}</div>
+      <div class="msgs hl">${MSGS}</div>${composerFull()}${tabbar()}${gest()}`,
+    pros: ['모든 정보가 늘 보여 찾기 쉬움'], cons: ['위 4줄·아래 2줄이 화면 절반을 차지 — 대화가 4~5개만 보임'] },
+  { key: 'A', tag: '시안 A', name: '스크롤하면 접히는 머리', body: () => `${sys()}
+      <div class="topbar" style="height:46px"><span class="ib">${I.chat}</span><span class="t">단체방 <span style="color:var(--muted-foreground);font-weight:400;font-size:12px">· 2명 작업 중</span></span><span class="stack">${av('정')}${av('박')}${av('이')}</span><span class="ib">${I.search}</span></div>
+      <div class="msgs hl">${note('대화를 올려 보면 위·아래 줄이 사라짐', 'top:8px;left:50%;transform:translateX(-50%)')}${MSGS_MORE}
+        <span class="fab" style="bottom:10px">${I.down.replace('<svg', '<svg style="width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2"')} 새 메시지 2</span></div>
+      ${composerSlim()}${gest()}`,
+    pros: ['지금 구조 그대로, 스크롤 동작만 추가 — 구현 부담 가장 적음'], cons: ['아래로 내리면 다시 펼쳐져 화면이 자주 출렁임'] },
+  { key: 'B', tag: '시안 B', name: '한 줄 미니 바 (항상 압축)', body: () => `${sys()}
+      <div class="topbar"><span class="t" style="flex:0 0 auto">단체방</span><span class="ib" style="width:16px;margin-left:-6px">${I.down}</span><span style="flex:1"></span><span class="stack">${av('정')}${av('박')}${av('이')}</span><span style="font-size:11px;color:var(--working);font-weight:600">2 작업</span><span class="pill wait" style="padding:3px 8px">2</span><span class="ib">${I.search}</span></div>
+      <div style="padding:6px 12px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--surface-chrome)">${roomChips().replace('class="chips"', 'class="chips" style="margin:0"')}</div>
+      <div class="msgs hl">${note('방 설명·상태 줄 → 제목 줄에 접어 둠', 'top:8px;left:50%;transform:translateX(-50%)')}${MSGS_MORE}</div>
+      ${composerSlim()}${tabbar(true)}${gest()}`,
+    pros: ['늘 같은 모양이라 예측 쉬움, 방 전환·상태도 한 번에'], cons: ['방 설명·상태 줄 글자가 사라져 처음 쓰는 사람은 뜻을 놓칠 수 있음'] },
+  { key: 'C', tag: '시안 C', name: '바텀시트형', body: () => `${sys()}
+      <div class="topbar" style="height:46px"><span class="t">단체방</span><span class="ib">${I.search}</span><span class="ib">${I.more}</span></div>
+      <div class="msgs hl" style="padding-bottom:68px">${MSGS_MORE}</div>
+      <div class="sheet" style="bottom:${18 + 50 + 54}px;height:62px">
+        <div class="grab"></div>
+        <div style="display:flex;gap:8px;align-items:center;padding:0 14px;font-size:12.5px"><span class="stack">${av('정')}${av('박')}${av('이')}</span><b style="color:var(--working)">2명 작업 중</b><span style="color:var(--waiting)">· 1명 확인 필요</span><span style="margin-left:auto;color:var(--muted-foreground)">방 바꾸기 ▴</span></div>
+      </div>
+      ${note('끌어 올리면 방 목록·구성원·설명', `bottom:${18 + 50 + 54 + 68}px;right:12px`)}
+      <div style="position:relative;z-index:4">${composerSlim()}</div>${tabbar(true)}${gest()}`,
+    pros: ['대화가 가장 넓고, 방·구성원 정보는 엄지 닿는 아래에서 꺼냄'], cons: ['시트가 대화 아래쪽 일부를 덮음, 끌기 동작을 익혀야 함'] },
+  { key: 'D', tag: '시안 D', name: '방 들어가기 (전체 화면)', body: () => `${sys()}
+      <div class="topbar" style="height:46px"><span class="ib">${I.back}</span><span class="t">단체방 <span style="color:var(--muted-foreground);font-weight:400;font-size:12px">· 8명</span></span><span class="stack">${av('정')}${av('박')}</span><span class="ib">${I.search}</span></div>
+      <div class="msgs hl">${note('하단 탭 숨김 — ← 로 방 목록·탭으로', 'top:8px;left:50%;transform:translateX(-50%)')}${MSGS_MORE}</div>
+      ${composerSlim()}${gest()}`,
+    pros: ['메신저 앱과 같은 익숙한 흐름, 대화 높이 최대'], cons: ['다른 탭으로 가려면 ← 한 번 더 — 방 목록 화면이 새로 필요'] },
+]
+
+// ───────── 직원 패널 시안 ─────────
+const LOG = `
+  <div class="lg"><span class="tm">오후 1:52</span>대화방 메시지 구조를 확인했습니다. 상단 머리 높이가 약 150px입니다.</div>
+  <div class="lg tool">Read  app/src/renderer/features/ChatPage.tsx</div>
+  <div class="lg tool">Read  app/src/renderer/layout/PhoneShell.tsx</div>
+  <div class="lg me"><span class="tm">오후 2:05</span>폴드 커버 기준으로 다시 재 줘요.</div>
+  <div class="lg"><span class="tm">오후 2:06</span>904×2316 화면(가로 344 기준)에서 업무 메시지 칸은 약 275px로, 화면의 3분의 1 정도입니다.</div>
+  <div class="lg tool">Bash  측정 스크립트 실행 — 결재 대기</div>
+  <div class="lg"><span class="tm">오후 2:08</span>결재를 기다리는 동안 시안 A~D의 높이도 함께 계산해 두겠습니다.</div>`
+const LOG_MORE = `
+  <div class="lg"><span class="tm">오후 1:30</span>지시 받았습니다. 폴드 화면 업무 메시지 영역을 넓히는 방법을 찾겠습니다.</div>
+  <div class="lg tool">Grep  "phone:" app/src/renderer</div>
+  <div class="lg"><span class="tm">오후 1:41</span>직원 패널은 폰에서 전체 화면으로 열리고, 결재 칸이 최대 절반까지 커집니다.</div>` + LOG
+const apprFull = () => `<div class="appr"><h4>결재 대기 1건<span>▴ 접기</span></h4><div class="acard"><b>명령 실행</b><div class="code">node scripts/measure-fold.mjs --w 904 --h 2316</div><div class="btns"><span class="btn p">✓ 승인</span><span class="btn">반려</span><span style="margin-left:auto" class="btn">일 멈추기</span></div></div></div>`
+const banner = () => `<div class="banner"><b>결재 1건</b><span class="sp">명령 실행 · node scripts/measure-fold…</span><span class="btn p" style="padding:3px 10px">승인</span><span class="btn" style="padding:3px 10px">보기</span></div>`
+const prog = () => `<div class="prog"><span class="sdot"></span><b>작업 중</b><em>폴드 화면 높이 측정 · 대기 1건</em></div>`
+const pcompFull = () => `<div class="pcomp"><div class="inrow"><span class="ib">${I.clip}</span><div class="field" style="height:56px;border-radius:14px;align-items:flex-start;padding-top:9px">정리드에게 지시 (Enter 보내기)</div><span class="send" style="width:32px;height:32px">${I.up}</span></div>
+  <div class="opt"><span class="box"></span>자율 진행<span class="r">기억 <span class="sel">보통 ▾</span></span></div>
+  <div class="opt"><span>매뉴얼</span><span>/ 명령</span><span>⤓ 내보내기</span><span class="r">해고</span></div></div>`
+const pcompSlim = () => `<div class="pcomp" style="padding:8px 12px"><div class="inrow"><span class="ib">${I.plus}</span><div class="field">정리드에게 지시</div><span class="send" style="width:34px;height:34px">${I.up}</span></div></div>`
+const pheadSlim = (extra = '') => `<div class="phead" style="padding:8px 12px;align-items:center;gap:10px"><div class="mini s"></div><div style="flex:1;min-width:0"><div class="nm">정리드 <span class="sdot"></span></div><div class="sub">개발 리드 · Opus${extra}</div></div><span class="ib">${I.more}</span><span class="ib">${I.x}</span></div>`
+
+const PANEL = [
+  { key: 'now', tag: '현재', name: '현재 구조', body: () => `${sys()}
+      <div class="phead"><div class="mini"></div><div style="flex:1;min-width:0"><div class="nm">정리드 <span class="sdot"></span></div><div class="sub">개발 리드 · Claude Opus</div><div class="sub">~/flitto/poc/claude-office</div><div class="lk">▸ 터미널에서 이어 하기</div></div><span class="ib">${I.x}</span></div>
+      ${apprFull()}
+      <div class="ptabs"><span class="on">업무</span><span>검토</span><span>장비</span><span>프로필</span></div>
+      ${prog()}
+      <div class="usage"><span class="m2">오늘</span><span>토큰 182K</span><span>$1.42</span><span class="r">누적 $38.10</span></div>
+      <div class="logt"><h4>업무 메시지</h4><span class="fs">가 13 가</span><span style="color:var(--muted-foreground);font-size:11px">☐ 대화만</span></div>
+      <div class="log hl">${LOG}</div>${pcompFull()}${gest()}`,
+    pros: ['결재·사용량·도구가 한 화면에 다 있음'], cons: ['머리·결재·사용량·입력 도구가 쌓여 업무 메시지가 화면의 약 3분의 1'] },
+  { key: 'A', tag: '시안 A', name: '스크롤하면 접히는 머리', body: () => `${sys()}
+      ${pheadSlim()}
+      ${banner()}
+      <div class="ptabs"><span class="on">업무</span><span>검토</span><span>장비</span><span>프로필</span><span class="r" style="color:var(--working)">● 작업 중</span></div>
+      <div class="log hl" style="position:relative">${note('올려 보면 사무실 그림·사용량·제목 줄이 접힘', 'top:6px;left:50%;transform:translateX(-50%)')}${LOG_MORE}</div>
+      ${pcompSlim()}${gest()}`,
+    pros: ['지금 구성 유지, 스크롤할 때만 사무실 그림이 작은 썸네일로 줄어듦'], cons: ['결재 내용은 한 줄 요약 — 자세히 보려면 펼쳐야 함'] },
+  { key: 'B', tag: '시안 B', name: '미니 바 + 한 줄 정보', body: () => `${sys()}
+      ${pheadSlim(' · 오늘 182K · $1.42')}
+      ${banner()}
+      <div class="ptabs"><span class="on">업무</span><span>검토</span><span>장비</span><span>프로필</span><span class="r"><span class="fs">가 13 가</span></span></div>
+      ${prog()}
+      <div class="log hl" style="position:relative">${note('사용량은 머리 줄, 글자 크기는 탭 줄 오른쪽', 'top:6px;left:50%;transform:translateX(-50%)')}${LOG_MORE}</div>
+      ${pcompSlim()}${note('자율 진행·매뉴얼·명령·해고 → ＋ 메뉴', 'bottom:76px;left:12px')}${gest()}`,
+    pros: ['늘 같은 모양, 작업 상태·사용량을 잃지 않고 메시지 약 2배'], cons: ['입력 옵션(자율 진행·기억 길이)이 ＋ 안으로 들어가 한 번 더 눌러야 함'] },
+  { key: 'C', tag: '시안 C', name: '바텀시트형', body: () => `${sys()}
+      ${pheadSlim()}
+      <div class="log hl" style="padding-bottom:84px">${LOG_MORE}</div>
+      <div class="sheet" style="bottom:${18 + 52}px;height:76px">
+        <div class="grab"></div>
+        <div style="display:flex;gap:8px;align-items:center;padding:0 14px;font-size:12.5px"><b style="color:var(--waiting)">결재 1건</b><span style="color:var(--muted-foreground);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">명령 실행 · node scripts/…</span><span class="btn p" style="padding:3px 10px">승인</span></div>
+        <div style="display:flex;gap:6px;align-items:center;padding:6px 14px 0;font-size:11.5px;color:var(--muted-foreground)"><span class="sdot"></span>작업 중 · 오늘 182K · <span style="margin-left:auto">검토 · 장비 · 프로필 ▴</span></div>
+      </div>
+      ${note('끌어 올리면 결재 상세·탭·사용량', `bottom:${18 + 52 + 82}px;right:12px`)}
+      <div style="position:relative;z-index:4;background:var(--background)">${pcompSlim()}</div>${gest()}`,
+    pros: ['업무 메시지가 가장 넓음, 결재 승인은 엄지 닿는 곳에서 바로'], cons: ['검토·장비·프로필 탭이 시트 안으로 숨어 존재를 모를 수 있음'] },
+  { key: 'D', tag: '시안 D', name: '탭 전환형 (결재를 탭으로)', body: () => `${sys()}
+      ${pheadSlim()}
+      <div class="ptabs"><span class="on">업무 메시지</span><span>결재<span class="cnt">1</span></span><span>검토</span><span>장비</span><span>프로필</span></div>
+      ${prog()}
+      <div class="log hl" style="position:relative">${note('결재가 오면 탭 배지 + 아래 알림 칩', 'top:6px;left:50%;transform:translateX(-50%)')}${LOG_MORE}
+        <span class="fab" style="bottom:10px;border-color:var(--waiting);color:var(--waiting)"><b>결재 1건 대기</b> · 보기</span></div>
+      ${pcompSlim()}${gest()}`,
+    pros: ['메시지와 결재가 서로 높이를 뺏지 않음, 구조가 단순'], cons: ['결재 내용을 보려면 탭을 옮겨야 해 메시지와 동시에 못 봄'] },
+]
+
+const list = SHEET === 'chat' ? CHAT : PANEL
+const title = SHEET === 'chat' ? '갤럭시 폴드 커버 화면 · 대화방 레이아웃 시안' : '갤럭시 폴드 커버 화면 · 직원 패널(업무 메시지) 레이아웃 시안'
+const sub = `904×2316 커버 화면(가로 344 기준) · ${document.body.dataset.mode === 'dark' ? '다크' : '라이트'} 모드 · 분홍 점선 = ${SHEET === 'chat' ? '대화' : '업무 메시지'}가 보이는 칸 · 퍼센트는 화면 높이 대비 실측`
+document.getElementById('root').innerHTML = `<h1 class="stitle">${title}</h1><p class="sheet-sub">${sub}</p><div class="row">${list.map((v) => `
+  <div class="col"><h2><span class="tag ${v.key === 'now' ? 'now' : ''}">${v.tag}</span>${v.name}</h2>
+    <div class="meter" data-k="${v.key}"></div>
+    <div class="phone" id="p-${v.key}">${v.body()}</div>
+    <div class="pc"><div><span class="plus">장점</span> ${v.pros[0]}</div><div><span class="minus">단점</span> ${v.cons[0]}</div></div>
+  </div>`).join('')}</div>`
+
+// 실측: 내용 칸(분홍 점선) 높이 / 화면 높이(시스템 바 제외)
+for (const v of list) {
+  const ph = document.getElementById('p-' + v.key)
+  const area = ph.querySelector('.hl')
+  const screen = ph.clientHeight - 26 - 18
+  const pct = Math.round(area.getBoundingClientRect().height / screen * 100)
+  document.querySelector(`.meter[data-k="${v.key}"]`).innerHTML = `${SHEET === 'chat' ? '대화' : '업무 메시지'} 칸 <b>${pct}%</b> · ${Math.round(area.getBoundingClientRect().height)}px<div class="bar"><i style="width:${pct}%"></i></div>`
+}
+</script>
+</body>
+</html>

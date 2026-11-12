@@ -3,7 +3,7 @@ import { ChevronRightIcon, Loader2Icon, PlusIcon, RefreshCwIcon } from 'lucide-r
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
-import { IS_MOBILE_SHELL } from '@/shell'
+import { IS_REMOTE_SCREEN } from '@/shell'
 import { t } from '@shared/i18n'
 import { BROWSER_EQUIPMENT } from '@shared/browserTools'
 import { COMPUTER_EQUIPMENT } from '@shared/computerTools'
@@ -96,8 +96,8 @@ export function McpSection({
         isReasonShown={isReasonShown}
         isOn={eq.mcpServers.includes(m.name)}
         onToggle={() => toggle(m.name)}
-        onEdit={kind === 'custom' && !IS_MOBILE_SHELL ? () => void handleEdit(m.name) : undefined}
-        onDelete={kind === 'custom' && !IS_MOBILE_SHELL ? () => void handleDelete(m.name) : undefined}
+        onEdit={kind === 'custom' && !IS_REMOTE_SCREEN ? () => void handleEdit(m.name) : undefined}
+        onDelete={kind === 'custom' && !IS_REMOTE_SCREEN ? () => void handleDelete(m.name) : undefined}
       />
     )
   }
@@ -108,10 +108,10 @@ export function McpSection({
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center gap-2">
-        <h3 className="text-xs font-semibold">🔌 {t('equipment.mcp.title')}</h3>
+        {/* 제목은 장비 탭의 '연결된 서비스' 카드가 보여 준다 */}
         <span className="text-muted-foreground mr-auto text-[11px]">{t('equipment.mcp.count', { n: eq.mcpServers.length })}</span>
         {refresh === 'done' && <span className="text-status-working text-[11px]">{t('equipment.mcp.refreshed')}</span>}
-        {!IS_MOBILE_SHELL && (
+        {!IS_REMOTE_SCREEN && (
           <>
             <Button
               size="sm"
@@ -137,13 +137,13 @@ export function McpSection({
         <div className="text-muted-foreground flex flex-col gap-1.5 rounded-md border px-2 py-2 text-[11px]">
           <span><DuoIcon name="remote" size={13} className="mr-1" />{t('equip.browser.sepWhy')}</span>
           <span>{t('equip.browser.loginKept')}</span>
-          {!IS_MOBILE_SHELL && (
+          {!IS_REMOTE_SCREEN && (
             <label className="text-foreground flex items-center gap-2 pt-1 font-medium">
               <Switch checked={isSharedLogin} onCheckedChange={(v) => void window.office.updateSettings({ sharedBrowserLogin: v })} aria-label={t('equip.browser.shared.label')} />
               {t('equip.browser.shared.label')}
             </label>
           )}
-          {!IS_MOBILE_SHELL && <span>{t('equip.browser.shared.desc')}</span>}
+          {!IS_REMOTE_SCREEN && <span>{t('equip.browser.shared.desc')}</span>}
         </div>
       )}
       {catalog && listed.length > 0 && <div className="divide-y rounded-md border">{listed.map((m) => rowOf(m))}</div>}
@@ -157,7 +157,7 @@ export function McpSection({
             <div className="divide-y rounded-md border">{claudeai.map((m) => rowOf(m, false))}</div>
             <p>
               {claudeai[0].reasonText}
-              {!IS_MOBILE_SHELL && (
+              {!IS_REMOTE_SCREEN && (
                 <button type="button" className="text-primary ml-1 hover:underline" onClick={() => setDialog({ tab: 'url', editing: null })}>
                   {t('equipment.mcp.toCustom')}
                 </button>
@@ -184,7 +184,7 @@ export function McpSection({
         {t('equipment.mcp.costMore')}
       </details>
 
-      {!IS_MOBILE_SHELL && (
+      {!IS_REMOTE_SCREEN && (
         <McpAddDialog
           isOpen={Boolean(dialog)}
           onOpenChange={(open) => !open && setDialog(null)}

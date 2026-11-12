@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>커피콩 받기</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #fff4e0; overflow: hidden; }
+  body { display: flex; align-items: center; justify-content: center; position: relative; }
+  #stage { position: relative; }
+  canvas { display: block; touch-action: none; border-radius: 20px; box-shadow: 0 6px 24px rgba(120, 80, 40, .25); }
+  #over {
+    position: absolute; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center;
+    background: rgba(255, 244, 224, .88); border-radius: 20px; font-family: -apple-system, "Apple SD Gothic Neo", sans-serif; color: #6b4226; text-align: center;
+  }
+  #over h1 { margin: 0 0 8px; font-size: 34px; }
+  #over p { margin: 0 0 20px; font-size: 20px; }
+  #over button {
+    font: inherit; font-size: 20px; font-weight: 700; color: #fff; background: #ff8a5c; border: 0; border-radius: 999px;
+    padding: 12px 32px; cursor: pointer; box-shadow: 0 4px 0 #d9623a;
+  }
+  #over button:active { transform: translateY(2px); box-shadow: 0 2px 0 #d9623a; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="c" width="390" height="844"></canvas>
+  <div id="over">
+    <h1>게임 끝! ☕</h1>
+    <p>점수 <b id="final">0</b></p>
+    <button id="retry">다시 하기</button>
+  </div>
+</div>
+<script>
+(() => {
+  const W = 390, H = 844;
+  const cv = document.getElementById('c');
+  const ctx = cv.getContext('2d');
+  const over = document.getElementById('over');
+  const finalEl = document.getElementById('final');
+  const DEMO = new URLSearchParams(location.search).get('demo') === '1';
+
+  // 화면 크기에 맞춰 캔버스를 키운다(선명도는 dpr로 유지)
+  function fit() {
+    const s = Math.min(innerWidth / W, innerHeight / H);
+    const dpr = window.devicePixelRatio || 1;
+    cv.style.width = W * s + 'px';
+    cv.style.height = H * s + 'px';
+    cv.width = Math.round(W * s * dpr);
+    cv.height = Math.round(H * s * dpr);
+    ctx.setTransform(cv.width / W, 0, 0, cv.height / H, 0, 0);
+    over.style.width = cv.style.width;
+    over.style.height = cv.style.height;
+  }
+  addEventListener('resize', fit);
+  fit();
+
+  const CUP_W = 84, CUP_H = 64, CUP_Y = H - 130;
+  let cup, beans, score, lives, spawnT, dead, targetX, best = 0;
+  const keys = {};
+
+  function reset() {
+    cup = { x: W / 2 };
+    beans = [];
+    score = 0;
+    lives = 3;
+    spawnT = 0;
+    dead = false;
+    targetX = W / 2;
+    over.style.display = 'none';
+    if (DEMO) { spawn(120); spawn(260); } // 데모는 시작부터 콩이 보이게
+  }
+
+  function spawn(y) {
+    const r = 15;
+    beans.push({
+      x: r + 10 + Math.random() * (W - 2 * r - 20),
+      y: y ?? -r,
+      r,
+      vy: 150 + Math.min(score, 60) * 4 + Math.random() * 60,
+      rot: Math.random() * 6,
+      spin: (Math.random() - 0.5) * 4,
+    });
+  }
+
+  function setTarget(e) {
+    const rect = cv.getBoundingClientRect();
+    targetX = (e.clientX - rect.left) / rect.width * W;
+  }
+  cv.addEventListener('pointerdown', setTarget);
+  cv.addEventListener('pointermove', setTarget);
+  addEventListener('keydown', e => {
+    keys[e.key] = true;
+    if (dead && (e.key === 'Enter' || e.key === ' ')) reset();
+  });
+  addEventListener('keyup', e => { keys[e.key] = false; });
+  document.getElementById('retry').addEventListener('click', reset);
+
+  function update(dt) {
+    if (dead) return;
+
+    if (DEMO) {
+      // 가장 아래에 있는 콩을 따라간다
+      let t = null;
+      for (const b of beans) if (!t || b.y > t.y) t = b;
+      if (t) targetX = t.x;
+    }
+
+    if (keys.ArrowLeft || keys.a) targetX = cup.x - 400 * dt;
+    if (keys.ArrowRight || keys.d) targetX = cup.x + 400 * dt;
+    targetX = Math.max(CUP_W / 2, Math.min(W - CUP_W / 2, targetX));
+    cup.x += (targetX - cup.x) * Math.min(1, dt * (DEMO ? 9 : 18));
+
+    spawnT -= dt;
+    if (spawnT <= 0) {
+      spawn();
+      spawnT = Math.max(0.35, 0.9 - score * 0.012) * (DEMO ? 0.8 : 1) + Math.random() * 0.3;
+    }
+
+    for (let i = beans.length - 1; i >= 0; i--) {
+      const b = beans[i];
+      b.y += b.vy * dt;
+      b.rot += b.spin * dt;
+      const inCup = b.y + b.r >= CUP_Y && b.y <= CUP_Y + 24 && Math.abs(b.x - cup.x) <= CUP_W / 2;
+      if (inCup) {
+        beans.splice(i, 1);
+        score++;
+        pop.push({ x: cup.x, y: CUP_Y, t: 0 });
+      } else if (b.y - b.r > H) {
+        beans.splice(i, 1);
+        if (!DEMO && --lives <= 0) gameOver();
+      }
+    }
+    for (let i = pop.length - 1; i >= 0; i--) {
+      pop[i].t += dt;
+      if (pop[i].t > 0.4) pop.splice(i, 1);
+    }
+  }
+  const pop = [];
+
+  function gameOver() {
+    dead = true;
+    best = Math.max(best, score);
+    finalEl.textContent = score;
+    over.style.display = 'flex';
+  }
+
+  function drawBean(b) {
+    ctx.save();
+    ctx.translate(b.x, b.y);
+    ctx.rotate(b.rot);
+    ctx.fillStyle = '#8b5a3c';
+    ctx.beginPath(); ctx.ellipse(0, 0, b.r * 0.75, b.r, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#4b2c18'; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(0, -b.r * 0.85);
+    ctx.bezierCurveTo(b.r * 0.4, -b.r * 0.3, -b.r * 0.4, b.r * 0.3, 0, b.r * 0.85); ctx.stroke();
+    ctx.restore();
+  }
+
+  function drawCup() {
+    const x = cup.x, y = CUP_Y;
+    // 손잡이
+    ctx.strokeStyle = '#ffd6a5'; ctx.lineWidth = 9;
+    ctx.beginPath(); ctx.arc(x + CUP_W / 2 - 2, y + CUP_H * 0.42, 17, -Math.PI / 2, Math.PI / 2); ctx.stroke();
+    // 컵 몸통
+    ctx.fillStyle = '#fff'; ctx.strokeStyle = '#ff8a5c'; ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(x - CUP_W / 2, y);
+    ctx.lineTo(x + CUP_W / 2, y);
+    ctx.lineTo(x + CUP_W / 2 - 10, y + CUP_H - 10);
+    ctx.quadraticCurveTo(x + CUP_W / 2 - 12, y + CUP_H, x + CUP_W / 2 - 24, y + CUP_H);
+    ctx.lineTo(x - CUP_W / 2 + 24, y + CUP_H);
+    ctx.quadraticCurveTo(x - CUP_W / 2 + 12, y + CUP_H, x - CUP_W / 2 + 10, y + CUP_H - 10);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    // 커피
+    ctx.fillStyle = '#a0643c';
+    ctx.beginPath(); ctx.ellipse(x, y + 2, CUP_W / 2 - 4, 7, 0, 0, Math.PI * 2); ctx.fill();
+    // 얼굴
+    ctx.fillStyle = '#4b2c18';
+    ctx.beginPath(); ctx.arc(x - 14, y + 30, 3.5, 0, Math.PI * 2); ctx.arc(x + 14, y + 30, 3.5, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#4b2c18'; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.arc(x, y + 34, 7, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,138,92,.45)';
+    ctx.beginPath(); ctx.arc(x - 24, y + 38, 5, 0, Math.PI * 2); ctx.arc(x + 24, y + 38, 5, 0, Math.PI * 2); ctx.fill();
+  }
+
+  function cloud(x, y, s) {
+    ctx.fillStyle = 'rgba(255,255,255,.8)';
+    ctx.beginPath();
+    ctx.arc(x, y, 22 * s, 0, Math.PI * 2);
+    ctx.arc(x + 24 * s, y - 8 * s, 28 * s, 0, Math.PI * 2);
+    ctx.arc(x + 52 * s, y, 22 * s, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  let clock = 0;
+  function draw() {
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, '#bfe9ff'); g.addColorStop(1, '#fff1d6');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    cloud(40 + Math.sin(clock * 0.3) * 20, 150, 1);
+    cloud(240 - Math.sin(clock * 0.25) * 20, 260, 0.8);
+    // 바닥
+    ctx.fillStyle = '#ffd9a8'; ctx.fillRect(0, H - 56, W, 56);
+    ctx.fillStyle = '#ffc888'; ctx.fillRect(0, H - 56, W, 6);
+
+    beans.forEach(drawBean);
+    drawCup();
+    for (const p of pop) {
+      ctx.fillStyle = `rgba(255,138,92,${1 - p.t / 0.4})`;
+      ctx.font = '700 22px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText('+1', p.x, p.y - 12 - p.t * 60);
+    }
+
+    // HUD
+    ctx.textAlign = 'left'; ctx.fillStyle = '#6b4226';
+    ctx.font = '800 36px -apple-system, "Apple SD Gothic Neo", sans-serif';
+    ctx.fillText('☕ ' + score, 20, 58);
+    ctx.textAlign = 'right'; ctx.font = '28px sans-serif';
+    ctx.fillText(DEMO ? '❤️❤️❤️' : '❤️'.repeat(Math.max(0, lives)) + '🤍'.repeat(3 - Math.max(0, lives)), W - 18, 56);
+    if (!DEMO && score === 0 && !dead) {
+      ctx.textAlign = 'center'; ctx.font = '600 18px sans-serif'; ctx.fillStyle = 'rgba(107,66,38,.7)';
+      ctx.fillText('← → 키, 터치, 마우스로 컵을 움직여요', W / 2, H - 20);
+    }
+  }
+
+  let last = performance.now();
+  function loop(now) {
+    const dt = Math.min(0.05, (now - last) / 1000);
+    last = now; clock += dt;
+    update(dt); draw();
+    requestAnimationFrame(loop);
+  }
+  reset();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

@@ -158,8 +158,14 @@ const config: ForgeConfig = {
         { entry: 'src/preload.ts', config: 'vite.preload.config.mts', target: 'preload' },
         // 바탕화면 비서 창 전용 (좁은 통로 — main/petWindow.ts)
         { entry: 'src/petPreload.ts', config: 'vite.preload.config.mts', target: 'preload' },
+        // 원격 창(다른 PC 화면) 전용 (ws:* 통로만 — main/workspace)
+        { entry: 'src/remotePreload.ts', config: 'vite.preload.config.mts', target: 'preload' },
       ],
-      renderer: [{ name: 'main_window', config: 'vite.renderer.config.mts' }],
+      renderer: [
+        { name: 'main_window', config: 'vite.renderer.config.mts' },
+        // 원격 창 화면 묶음: 같은 화면 코드에 window.office만 원격 어댑터로 (remote.html → renderer/remote/main.tsx)
+        { name: 'remote_window', config: 'vite.remote.config.mts' },
+      ],
     }),
     new FusesPlugin({
       version: FuseVersion.V1,

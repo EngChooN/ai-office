@@ -26,6 +26,8 @@ export interface LayoutState {
   isShort: boolean
   /** 좌우 분할 (폰 배치 · 폭 600 이상 · 가로 폰 아님) — 키보드가 열려도 유지하고 왼쪽 칸만 숨긴다 */
   isSplit: boolean
+  /** 세로 폰 (폰 배치 · 폭 600 미만 · 가로 폰 아님) — 머리·입력창을 한 줄로 줄인다. 폴드 분할·데스크톱에는 붙지 않는다 */
+  isSlim: boolean
   isKeyboardOpen: boolean
 }
 
@@ -33,7 +35,8 @@ export interface LayoutState {
 export function decideLayout(width: number, stableHeight: number): Omit<LayoutState, 'isKeyboardOpen'> {
   const isShort = stableHeight < SHORT_MAX_HEIGHT
   const isPhone = width < PHONE_MAX_WIDTH || isShort
-  return { isPhone, isShort, isSplit: isPhone && !isShort && width >= SPLIT_MIN_WIDTH }
+  const isSplit = isPhone && !isShort && width >= SPLIT_MIN_WIDTH
+  return { isPhone, isShort, isSplit, isSlim: isPhone && !isShort && !isSplit }
 }
 
 export function createLayoutTracker(initial: { width: number; height: number }) {
@@ -59,13 +62,13 @@ export function createLayoutTracker(initial: { width: number; height: number }) 
 
 // ── 화면이 구독하는 값 (install.ts가 채운다. 데스크톱 빌드는 늘 PC 배치) ──
 
-let current: LayoutState = { isPhone: false, isShort: false, isSplit: false, isKeyboardOpen: false }
+let current: LayoutState = { isPhone: false, isShort: false, isSplit: false, isSlim: false, isKeyboardOpen: false }
 const listeners = new Set<() => void>()
 
 export const getLayoutState = () => current
 
 export function setLayoutState(next: LayoutState) {
-  if (next.isPhone === current.isPhone && next.isShort === current.isShort && next.isSplit === current.isSplit && next.isKeyboardOpen === current.isKeyboardOpen) return
+  if (next.isPhone === current.isPhone && next.isShort === current.isShort && next.isSplit === current.isSplit && next.isSlim === current.isSlim && next.isKeyboardOpen === current.isKeyboardOpen) return
   current = next
   listeners.forEach((cb) => cb())
 }

@@ -19,6 +19,13 @@ export function useIsSplit(): boolean {
   return useSyncExternalStore(IS_MOBILE_SHELL ? subscribeLayout : noop, isSplitLayout)
 }
 
+const isSlimLayout = () => IS_MOBILE_SHELL && getLayoutState().isSlim
+
+/** 세로 폰(폭 600 미만) 축소형인지 — 틀(PhoneShell)용. 화면(feature)은 CSS slim: 변형을 쓴다 */
+export function useIsSlim(): boolean {
+  return useSyncExternalStore(IS_MOBILE_SHELL ? subscribeLayout : noop, isSlimLayout)
+}
+
 export function useLayout(): Layout {
   const isPhone = useSyncExternalStore(IS_MOBILE_SHELL ? subscribeLayout : noop, isPhoneLayout)
   return isPhone ? 'phone' : 'desktop'

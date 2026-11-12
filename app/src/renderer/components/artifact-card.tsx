@@ -3,7 +3,7 @@ import { FileCode2Icon, FileTextIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ArtifactViewer } from '@/components/artifact-viewer'
 import { cn } from '@/lib/utils'
-import { IS_MOBILE_SHELL } from '@/shell'
+import { IS_REMOTE_SCREEN } from '@/shell'
 import type { ArtifactRef } from '@shared/types'
 import { t } from '@shared/i18n'
 
@@ -19,10 +19,10 @@ export function ArtifactCard({ artifact: a, onOpen }: { artifact: ArtifactRef; o
         </p>
         <p className="text-muted-foreground truncate text-[11px]">
           {t(`artifact.kind.${a.kind}`)} · v{a.version}
-          {IS_MOBILE_SHELL && ` · ${t('artifact.pcOnlyHint')}`}
+          {IS_REMOTE_SCREEN && ` · ${t('artifact.pcOnlyHint')}`}
         </p>
       </div>
-      {IS_MOBILE_SHELL ? (
+      {IS_REMOTE_SCREEN ? (
         <span className="text-muted-foreground shrink-0">{t('artifact.pcOnly')}</span>
       ) : (
         <Button size="sm" variant="outline" className="h-7 shrink-0 px-2.5 text-xs" onClick={(e) => onOpen(e.currentTarget)}>
@@ -52,7 +52,7 @@ export function ArtifactCards({ artifacts, className }: { artifacts?: ArtifactRe
           }}
         />
       ))}
-      {!IS_MOBILE_SHELL && <ArtifactViewer artifact={opened} returnFocusRef={openerRef} onClose={() => setOpened(null)} />}
+      {!IS_REMOTE_SCREEN && <ArtifactViewer artifact={opened} returnFocusRef={openerRef} onClose={() => setOpened(null)} />}
     </div>
   )
 }

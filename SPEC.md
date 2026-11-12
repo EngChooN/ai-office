@@ -138,3 +138,10 @@
 - 이미지 생성 에셋으로 교체할 시점·스타일
 - 패키징(배포용 빌드) 방식
 - ~~Agent SDK 인증·과금~~ → 로컬 Claude Code 로그인으로 동작 확인 (docs/spike-integration.md)
+
+## 워크스페이스 0단계: 기기별 열쇠·화면 보기 권한 (원격 v2)
+- 다른 PC 열쇠(피어 슬롯, 최대 8개)는 기기마다 따로이며 `revokePeerSlot`으로 그 열쇠의 연결(SSE)만 즉시 `bye(token_revoked)`로 끊는다. 휴대폰·다른 열쇠는 그대로.
+- 슬롯의 `view` 권한(‘화면 보기’): 있으면 휴대폰과 같은 길(/v2/call 분류표·인자 제한·원격 표시, /v2/events 휴대폰 모양, 첨부·파일)로 쓰고 연결은 열쇠당 2줄. 없으면 예전처럼 일 주고받기·결재만 하고 첨부·파일은 403 `scope_denied`.
+- 권한은 저쪽 PC 앞에서만 준다: 짝짓기 종류 `view`로 만들거나, 기존 짝이 hello에 `requestView:true`를 보내 `onViewRequest`(결재 카드) → `setPeerView`. 자동 부여 없음. 바뀌면 그 열쇠의 연결을 `bye(permission_changed)`로 닫아 새 모양으로 다시 붙게 한다.
+- hello 결과: `protocol`(2), `permissions: { key: 'phone'|'peer', view: 'granted'|'pending'|'none' }`.
+- 동시 결재는 먼저 처리한 쪽만 성공, 늦은 쪽 409 `already_decided`. 같은 `Idempotency-Key` 재전송은 처음 응답을 돌려주고 다시 처리하지 않는다(열쇠별).

@@ -78,7 +78,7 @@ export interface RemoteDeps {
   /** 원격 v2: PC 화면과 같은 처리 함수 표·첨부 저장소 (없으면 v2는 404) */
   v2?: V2Office | null
   /** 다른 PC 연결(B컴 쪽): 일 받기·결재 처리 (없으면 /v2/pair·/v2/peer는 404) */
-  peer?: { host: PeerHost; sync?: PeerSync; ownName(): string; shapePeer(slotId: string, event: HubEvent, data: unknown): unknown | null; onSlotRemoved?(slotId: string): void } | null
+  peer?: { host: PeerHost; sync?: PeerSync; ownName(): string; shapePeer(slotId: string, event: HubEvent, data: unknown): unknown | null; onSlotRemoved?(slotId: string): void; onViewRequest?(slot: { id: string; label: string }): void } | null
 }
 
 function isUsableCert(certPem: string) {
@@ -138,6 +138,7 @@ export class RemoteService {
       remoteStatus: () => this.status(),
       // 휴대폰 토큰이든 피어 슬롯 토큰이든 살아 있어야 한다
       isTokenValid: (tokenHash) => this.guard.isValidHash(tokenHash),
+      isViewSlot: (slotId) => this.guard.isViewSlot(slotId),
       shapePeer: deps.peer ? (slot, event, data) => deps.peer!.shapePeer(slot, event, data) : undefined,
       // 예전 폰 화면(연결할 때 iso-office를 알리지 않음)에는 회사 레벨을 10까지만 (A4: 11 이상이면 화면이 멈춘다)
       shape: (event, data, capabilities) => (event === 'snapshot' ? shapeFor(capabilities, data) : data),
@@ -151,6 +152,7 @@ export class RemoteService {
           now: () => this.now(),
           isReady: () => this.isReady,
           currentPort: () => this.config.port,
+          onViewRequest: (slot) => this.deps.peer?.onViewRequest?.(slot),
           lanInfo: () => ({ lo: this.config.lanOnly, lan: this.lanHost(), ...(this.isTailscale ? { ts: true, tsHost: this.ts.address } : {}) }),
           peer: deps.peer
             ? new PeerRoutes({
@@ -199,14 +201,14 @@ export class RemoteService {
       const shown = this.shownToken
       return shown ? { token: shown.token } : null
     }
-    const made = this.guard.addPeerSlot(r.label, this.now())
+    const made = this.guard.addPeerSlot(r.label, this.now(), { view: r.kind === 'view' })
     if (!made) return null
     this.save()
     return { token: made.token, slotId: made.slot.id }
   }
 
   peerSlots(): PeerSlotView[] {
-    return (this.guard.current.peers ?? []).map((p) => ({ id: p.id, label: p.label, createdAt: p.createdAt, lastSeenAt: p.lastSeenAt }))
+    return (this.guard.current.peers ?? []).map((p) => ({ id: p.id, label: p.label, createdAt: p.createdAt, lastSeenAt: p.lastSeenAt, view: Boolean(p.view), viewPending: this.guard.viewState(p.id) === 'pending' }))
   }
 
   /** B컴에서 슬롯을 지운다 (이 PC 앞에서 해제 / A컴이 unpair를 부름). 그 토큰의 연결은 곧 끊기고 진행 중이던 일은 취소된다 */
@@ -216,6 +218,17 @@ export class RemoteService {
     this.save()
     this.hub.closeSlot(slotId, 'token_revoked')
     this.deps.peer?.onSlotRemoved?.(slotId)
+    return true
+  }
+
+  /**
+   * 이 PC 앞에서 '화면 보기'를 허락(true)·거절·회수(false)한다. 연결이 이미 열려 있으면 모양이 달라지므로 닫고 새 연결로 다시 붙게 한다
+   * (허락 → 휴대폰 모양으로 새로 시작, 회수 → 그 슬롯의 화면 연결 즉시 끊김). 다른 열쇠의 연결은 건드리지 않는다
+   */
+  setPeerView(slotId: string, isGranted: boolean) {
+    if (!this.guard.setPeerView(slotId, isGranted)) return false
+    this.save()
+    this.hub.closeSlot(slotId, 'permission_changed')
     return true
   }
 

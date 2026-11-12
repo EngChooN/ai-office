@@ -9,7 +9,7 @@ import { stripAttachmentPaths, V2_PROTOCOL_VERSION } from './v2.ts'
 export type HubEvent = 'snapshot' | 'log' | 'chat' | 'focus' | 'remoteStatus'
 /** 피어(다른 PC) 슬롯 연결에만 가는 이벤트 — 휴대폰에는 나가지 않는다 (설계서 4-2) */
 export type PeerEventName = 'job' | 'approval' | 'changes'
-export type ByeReason = 'token_revoked' | 'remote_disabled' | 'shutdown' | 'replaced' | 'slow_consumer'
+export type ByeReason = 'token_revoked' | 'remote_disabled' | 'shutdown' | 'replaced' | 'slow_consumer' | 'permission_changed'
 
 /** 다시 붙을 때 보내 줄 이벤트 (snapshot·remoteStatus는 마지막 값만 의미가 있어 쌓지 않는다) */
 const REPLAYED: ReadonlySet<HubEvent> = new Set(['log', 'chat', 'focus'])
@@ -23,8 +23,8 @@ export const SSE_LIMITS = {
   /** snapshot·remoteStatus는 이 간격으로 묶어 마지막 값만 보낸다 */
   coalesceMs: 500,
   perToken: 2,
-  /** 휴대폰 1~2 + 피어(슬롯당 1개)를 합쳐 (설계서 4-4) */
-  total: 8,
+  /** 휴대폰 1~2 + 피어 슬롯(8개까지: 일반 짝은 슬롯당 1개, '화면 보기' 열쇠는 휴대폰처럼 2개)을 합쳐. 열쇠 하나가 다른 열쇠 자리를 밀어내지 않게 모두 열 수 있는 수 */
+  total: 18,
   /** 쓰기 대기가 이만큼 쌓인 채로 slowMs가 지나면 끊는다 */
   slowBytes: 1024 * 1024,
   slowMs: 10_000,
@@ -36,6 +36,8 @@ interface Client {
   tokenHash: string
   /** 피어 슬롯 연결이면 슬롯 id (휴대폰 연결은 null) — 피어에는 고른 직원의 줄인 정보만 보낸다 */
   slot: string | null
+  /** '화면 보기' 열쇠의 연결 — 휴대폰과 같은 모양(snapshot·log·chat·focus·remoteStatus 그대로)으로 보낸다 */
+  view: boolean
   /** 연결할 때 헤더로 알린 능력 — 같은 토큰이라도 연결마다 다르다 (예전 폰과 새 폰이 함께 붙을 수 있다) */
   capabilities: Capabilities
   openedAt: number
@@ -57,6 +59,8 @@ export interface HubSource {
   isTokenValid(tokenHash: string): boolean
   /** 연결마다 보낼 모양으로 바꾼다 — 예전 폰 화면(능력을 알리지 않은 연결)에 회사 레벨을 줄여 보내기 (remote/capabilities.ts). 없으면 그대로 */
   shape?(event: HubEvent, data: unknown, capabilities: Capabilities): unknown
+  /** 이 슬롯이 '화면 보기' 권한을 가졌는지 (연결할 때 한 번 본다 — 바뀌면 service가 연결을 닫아 다시 붙게 한다) */
+  isViewSlot?(slotId: string): boolean
   /** 피어 슬롯 연결에 보낼 모양 (허용 목록 사영). null이면 그 연결에는 보내지 않는다. 없으면 피어에는 snapshot·log도 보내지 않는다 */
   shapePeer?(slotId: string, event: HubEvent, data: unknown): unknown | null
   now?(): number
@@ -87,19 +91,24 @@ export class EventHub {
 
   /** 연결을 더 받을 수 있는지 (전체 4개). 같은 토큰의 세 번째는 가장 오래된 것을 밀어내므로 받을 수 있다 */
   canAccept(tokenHash: string, slot: string | null = null) {
-    // 피어 슬롯은 슬롯당 1개 — 새 연결이 오면 옛 연결을 밀어낸다
-    if (slot) return this.clients.length < SSE_LIMITS.total || this.clients.some((c) => c.slot === slot)
+    // 피어 슬롯은 슬롯당 1개('화면 보기' 열쇠는 2개) — 넘는 새 연결은 옛 연결을 밀어낸다
+    if (slot) return this.clients.length < SSE_LIMITS.total || this.clients.filter((c) => c.slot === slot).length >= this.slotLines(slot)
     const mine = this.clients.filter((c) => c.tokenHash === tokenHash).length
     return this.clients.length < SSE_LIMITS.total || mine >= SSE_LIMITS.perToken
   }
 
+  private slotLines(slot: string) {
+    return this.source.isViewSlot?.(slot) ? SSE_LIMITS.perToken : 1
+  }
+
   /** 새 연결: 헤더 → hello → (따라잡기) → snapshot → remoteStatus */
   open(res: ServerResponse, tokenHash: string, lastEventId: string | undefined, capabilities: Capabilities = NO_CAPABILITIES, slot: string | null = null) {
+    const view = slot ? this.slotLines(slot) > 1 : false
     const mine = this.clients.filter((c) => (slot ? c.slot === slot : c.tokenHash === tokenHash && !c.slot))
-    // 같은 토큰은 2개까지(피어 슬롯은 1개) — 넘으면 가장 오래된 연결을 닫는다 (재연결이 겹칠 때)
-    if (mine.length >= (slot ? 1 : SSE_LIMITS.perToken)) this.close(mine[0], 'replaced')
+    // 같은 토큰은 2개까지(일반 피어 슬롯은 1개) — 넘으면 가장 오래된 연결을 닫는다 (재연결이 겹칠 때)
+    if (mine.length >= (slot ? this.slotLines(slot) : SSE_LIMITS.perToken)) this.close(mine[0], 'replaced')
     res.writeHead(200, { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-store', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' })
-    const client: Client = { res, tokenHash, slot, capabilities, openedAt: this.now(), slowSince: null }
+    const client: Client = { res, tokenHash, slot, view, capabilities, openedAt: this.now(), slowSince: null }
     this.clients.push(client)
     res.on('close', () => (this.clients = this.clients.filter((c) => c !== client)))
 
@@ -107,16 +116,16 @@ export class EventHub {
     res.write(`retry: ${SSE_LIMITS.retryMs}\n\n`)
     this.writeRaw(client, 'hello', JSON.stringify({ protocolVersion: V2_PROTOCOL_VERSION, epoch: this.epoch, lastEventId: this.seq, heartbeatSec: SSE_LIMITS.heartbeatMs / 1000, resync: missed === null, serverTime: this.now() }))
     // 피어에게는 놓친 log를 다시 보내지 않는다 (사영을 거치지 않은 원문이라서 — 일 결과는 일괄 조회로 따라잡는다)
-    if (!slot) for (const b of missed ?? []) this.writeRaw(client, b.event, b.data, b.n)
+    if (!slot || view) for (const b of missed ?? []) this.writeRaw(client, b.event, b.data, b.n)
     const snap = this.shaped('snapshot', this.source.snapshot(), client)
     if (snap !== null) this.writeRaw(client, 'snapshot', JSON.stringify(stripAttachmentPaths(snap)), this.nextId())
     // 접속 기록이 든 remoteStatus는 휴대폰에만
-    if (!slot) this.writeRaw(client, 'remoteStatus', JSON.stringify(this.source.remoteStatus()), this.nextId())
+    if (!slot || view) this.writeRaw(client, 'remoteStatus', JSON.stringify(this.source.remoteStatus()), this.nextId())
     this.startTimer()
   }
 
   private shaped(event: HubEvent, data: unknown, c: Client): unknown | null {
-    if (c.slot) return this.source.shapePeer ? this.source.shapePeer(c.slot, event, data) : null
+    if (c.slot && !c.view) return this.source.shapePeer ? this.source.shapePeer(c.slot, event, data) : null
     return this.source.shape ? this.source.shape(event, data, c.capabilities) : data
   }
 
