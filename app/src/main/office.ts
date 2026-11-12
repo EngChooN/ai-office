@@ -88,8 +88,8 @@ import { shouldNudgeBackground, shouldNudgeLead } from '../shared/leadNudge'
 import { NO_HOLD, planHold, type HeldItem, type PlanHoldState } from '../shared/planHold'
 import { isScheduleDue } from '../shared/schedule'
 import { detectTextQuestion, toTextQuestions } from '../shared/textQuestion'
-import { mentionTargets, OFFICE_SENDER, parseMentions, pickResponder } from '../shared/mention'
-import { cardRoom, chatRoomMembers, chatRoomMentionTargets, findRoom, GLOBAL_ROOM, homeRoom, labRoomId, originRoom, parseRoom, roomExists, roomForOrigins as roomForOriginsOf, roomsForOrigins as roomsForOriginsOf, resolveOriginRoom, pickRoomResponder, roomHead } from '../shared/chatRooms'
+import { mentionTargets, OFFICE_SENDER, parseMentions } from '../shared/mention'
+import { cardRoom, chatResponder, chatRoomMembers, chatRoomMentionTargets, findRoom, GLOBAL_ROOM, homeRoom, labRoomId, originRoom, parseRoom, roomExists, roomForOrigins as roomForOriginsOf, roomsForOrigins as roomsForOriginsOf, resolveOriginRoom, roomHead } from '../shared/chatRooms'
 import { mergeRefDocs, normalizeRefDocPath, refDocKey, refDocsPrompt, sanitizeRefDocs } from '../shared/refDocs'
 import { draftCovered, isSameRule, matchRule, ruleLabel, type ApprovalRule } from '../shared/approvalRules'
 import { askDecisionInput, matchPastDecisions, sameAskDecisions } from '../shared/askDecision'
@@ -4827,7 +4827,7 @@ export class Office extends EventEmitter<{
     if (matched.length === 0) {
       const leadIds = new Set([...teams, ...labs].map((g) => g.leadId))
       const candidates = hired.map((s) => ({ id: s.id, role: s.role, status: s.status, isOverBudget: false, isLead: leadIds.has(s.id) }))
-      const id = info ? pickRoomResponder(body, info.leadId, candidates) : pickResponder(body, candidates)
+      const id = chatResponder(body, info, candidates)
       if (!id) return say('모든 직원이 이번 달 예산을 다 써서 전달하지 못했어요.')
       say(`${this.hired.get(id)?.name} 님이 받았어요.`)
       return deliver(id)

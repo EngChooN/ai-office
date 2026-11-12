@@ -29,6 +29,11 @@ export function pickRoomResponder(text: string, leadId: string | null, candidate
   return lead ? lead.id : pickResponder(text, candidates)
 }
 
+/** 멘션 없이 보낸 글을 받을 직원 (sendChat과 같은 규칙): 팀·랩 방은 리드 → 방 안에서 한 명, 전체 방은 알맞은 한 명 */
+export function chatResponder(text: string, info: Pick<ChatRoomInfo, 'leadId'> | undefined, candidates: ResponderCandidate[]): string | null {
+  return info ? pickRoomResponder(text, info.leadId, candidates) : pickResponder(text, candidates)
+}
+
 // ── 랩 방 ──────────────────────────────────────────────
 
 /** 랩 방 room 값 머리 — 팀 id(무작위 UUID)와 겹치지 않는다 */

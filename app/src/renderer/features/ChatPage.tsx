@@ -11,8 +11,8 @@ import { matchCommands, runsOnEnter } from '@shared/slashCommands'
 import { useOffice } from '@/store'
 import type { Approval, ChatApproval, ChatApprovalResult, ChatMessage, ChatSendMode, Lab, Staff, Team } from '@shared/types'
 import { chatApprovalView } from '@shared/chatApproval'
-import { chatLines, chatRoomMentionTargets, findRoom, labRoomId, parseRoom, type ChatLine, type ChatRoomInfo } from '@shared/chatRooms'
-import { ALL_MENTION, mentionTargets, mentionToken, OFFICE_SENDER, parseMentions, type MentionKind, type MentionTarget } from '@shared/mention'
+import { chatLines, chatResponder, chatRoomMembers, chatRoomMentionTargets, findRoom, labRoomId, parseRoom, type ChatLine, type ChatRoomInfo } from '@shared/chatRooms'
+import { ALL_MENTION, mentionTargets, mentionToken, OFFICE_SENDER, parseMentions, slashButtonDraft, type MentionKind, type MentionTarget } from '@shared/mention'
 import { fmtDate, t, tr, type TKey } from '@shared/i18n'
 import { roleLabel } from '@shared/roleLabel'
 import { Avatar } from './StaffCard'
@@ -661,11 +661,7 @@ function Composer({ room }: { room: RoomInfo | undefined }) {
   // 고른 뒤에는 입력창에 포커스를 주고 커서를 끝(넣은 "@이름 " 뒤)으로 — 글이 바뀐 다음 프레임에 옮긴다
   const inputId = useId()
   const handleMention = (tg: MentionTarget) => {
-    // 매뉴얼·명령 버튼으로 받는 사람부터 고르던 중이면 "@이름 /"까지 넣어 바로 메뉴를 띄운다
-    const slash = pendingSlash.current
-    pendingSlash.current = null
-    if (slash) setSlashMode(slash)
-    setDraft((d) => d.replace(/@(\S*)$/, `${mentionToken(tg, targets)} ${slash ? '/' : ''}`))
+    setDraft((d) => d.replace(/@(\S*)$/, `${mentionToken(tg, targets)} `))
     focusEnd()
   }
   const focusEnd = () => {
@@ -698,23 +694,18 @@ function Composer({ room }: { room: RoomInfo | undefined }) {
   // 멘션 없이 보내면 누가 받는지: 전체 방은 알맞은 한 명, 팀·랩 방은 팀장·랩 리드(없으면 방 안에서 한 명)
   const roomLead = room?.leadId ? staffById.get(room.leadId) : undefined
 
-  // 📘 매뉴얼·/ 명령 버튼: 받는 사람(멘션 → 없으면 팀장·랩장)의 "@이름 /"를 넣어 메뉴를 띄운다.
-  // 받을 사람을 정할 수 없으면(전체 방) "@"로 사람부터 고르게 한다. 쓰던 글은 고른 명령 뒤에 다시 붙인다
+  // 📘 매뉴얼·/ 명령 버튼: 받는 사람(멘션 → 없으면 멘션 없이 보낼 때 받을 직원: 팀장·랩장, 전체 방은 알맞은 한 명)의
+  // "@이름 /"를 넣어 바로 메뉴를 띄운다. 쓰던 글은 고른 명령 뒤에 다시 붙인다
   const slashRest = useRef('')
-  const pendingSlash = useRef<'manual' | 'command' | null>(null)
   const openSlash = (mode: 'manual' | 'command') => {
-    const body = parsed?.body ?? ''
-    const rest = body.startsWith('/') ? '' : body
-    const prefix = parsed && parsed.recipientIds.length > 0 ? (draft.trimEnd().endsWith(body) ? draft.trimEnd().slice(0, draft.trimEnd().length - body.length).trimEnd() : '') : ''
-    const leadTarget = roomLead && targets.find((tg) => tg.kind === 'staff' && tg.memberIds[0] === roomLead.id)
-    slashRest.current = prefix ? rest : draft.trim()
-    if (prefix || leadTarget) {
-      setSlashMode(mode)
-      setDraft(`${prefix || mentionToken(leadTarget!, targets)} /`)
-    } else {
-      pendingSlash.current = mode
-      setDraft('@')
-    }
+    const members = (room ? chatRoomMembers(room, hired) : hired).filter((s) => !s.isPractice)
+    const leadIds = new Set([...teams, ...labs].map((g) => g.leadId))
+    const fallbackId = chatResponder('', room, members.map((s) => ({ id: s.id, role: s.role, status: s.status, isOverBudget: false, isLead: leadIds.has(s.id) })))
+    const next = slashButtonDraft(draft, targets, fallbackId)
+    if (!next) return
+    slashRest.current = next.rest
+    setSlashMode(mode)
+    setDraft(next.draft)
     focusEnd()
   }
 

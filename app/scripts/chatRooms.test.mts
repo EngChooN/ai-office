@@ -5,6 +5,7 @@ import {
   appendChat,
   cardRoom,
   chatLines,
+  chatResponder,
   chatRoomMembers,
   chatRoomMentionTargets,
   findRoom,
@@ -78,6 +79,16 @@ test('팀장이 없거나 예산을 다 썼으면 방 안에서 pickResponder', 
   // 팀장 id가 방에 없는 사람(해고 등)이어도 방 안에서 고른다
   assert.equal(pickRoomResponder('프론트엔드', 'ghost', cs), 'kim')
   assert.equal(pickRoomResponder('아무거나', null, []), null)
+})
+
+test('chatResponder: 매뉴얼·명령 버튼의 기본 받는 사람 = 멘션 없이 보낼 때 받는 직원 (전체 방에도 정해진다)', () => {
+  const cs = [cand('kim', '프론트엔드 개발자'), cand('boss', '팀장', { isLead: true, status: 'working' })]
+  // 팀·랩 방: 리드
+  assert.equal(chatResponder('', { leadId: 'boss' }, cs), 'boss')
+  // 전체 방(info 없음): 글이 비어도 리드 우선으로 한 명
+  assert.equal(chatResponder('', undefined, cs), 'boss')
+  assert.equal(chatResponder('', undefined, [cand('kim', '프론트엔드 개발자')]), 'kim')
+  assert.equal(chatResponder('', undefined, []), null)
 })
 
 test('결과 방: 출처 중 팀 방이 있으면 그 방, 없으면 전체 방', () => {

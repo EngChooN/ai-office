@@ -1,7 +1,7 @@
 // 단체방 멘션 해석·응답자 선정 단위 테스트 — pnpm test
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { mentionSpans, mentionTargets, mentionToken, parseMentions, pickResponder, type ResponderCandidate } from '../src/shared/mention.ts'
+import { mentionSpans, mentionTargets, mentionToken, parseMentions, pickResponder, slashButtonDraft, type ResponderCandidate } from '../src/shared/mention.ts'
 
 const hired = [
   { id: 'kim', name: '김철수', teamId: 'dev' },
@@ -139,4 +139,22 @@ test('강조 자리(mentionSpans)는 받는 사람 규칙과 같다: 긴 이름 
   assert.deepEqual(spans.map((s) => s.target.key), ['team:dev', 'staff:kim', 'staff:gae'])
   assert.deepEqual(new Set(spans.map((s) => s.target.key)), new Set(parseMentions(text, targets).matched.map((t) => t.key)))
   assert.deepEqual(mentionSpans('@김철수 @김철수', targets).map((s) => s.start), [0, 5])
+})
+
+// 버그: 📘 매뉴얼·/ 명령 버튼을 누르면 입력칸이 "@"로 바뀌어 @ 후보 창이 떴다 (전체 방·리드 없는 방·멘션이 글 중간)
+test('매뉴얼·명령 버튼: 받는 사람을 늘 채워 "@이름 /"로 시작하고 "@"만 넣지 않는다', () => {
+  // 빈 입력칸 + 전체 방: 멘션 없이 보낼 때 받을 직원으로 채운다
+  assert.deepEqual(slashButtonDraft('', targets, 'kim'), { draft: '@김철수 /', rest: '' })
+  // 쓰던 글은 명령 뒤에 다시 붙일 몫으로
+  assert.deepEqual(slashButtonDraft('  보고서 정리  ', targets, 'kim'), { draft: '@김철수 /', rest: '보고서 정리' })
+  // 멘션이 글 중간에 있어도 그 사람이 받는다 (기본 받는 사람으로 바꾸지 않는다)
+  assert.deepEqual(slashButtonDraft('보고서 @이영희 정리', targets, 'kim'), { draft: '@이영희 /', rest: '보고서 정리' })
+  assert.deepEqual(slashButtonDraft('@개발팀 @박디자 확인', targets, 'kim'), { draft: '@박디자 @개발팀 /', rest: '확인' })
+  // 이미 "/명령"을 치던 중이면 그 낱말은 다시 붙이지 않는다
+  assert.deepEqual(slashButtonDraft('@이영희 /re', targets, 'kim'), { draft: '@이영희 /', rest: '' })
+  // 구성원 없는 팀만 불렀으면 기본 받는 사람으로
+  assert.deepEqual(slashButtonDraft('@빈팀 확인', targets, 'kim')?.draft, '@김철수 /')
+  // 받을 직원이 없으면 아무것도 바꾸지 않는다
+  assert.equal(slashButtonDraft('글', targets, null), null)
+  for (const d of ['', '글', '@', '@없는사람 글']) assert.notEqual(slashButtonDraft(d, targets, 'kim')?.draft, '@')
 })

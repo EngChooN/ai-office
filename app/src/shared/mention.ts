@@ -97,6 +97,21 @@ export function parseMentions(text: string, targets: MentionTarget[]): ParsedMen
   return { matched, recipientIds, duplicates: all.length - recipientIds.length, body: body.replace(/[ \t]{2,}/g, ' ').trim() }
 }
 
+/**
+ * 📘 매뉴얼·/ 명령 버튼: 입력칸에 넣을 "@받는사람 /"와 고른 명령 뒤에 다시 붙일 쓰던 글.
+ * 받는 사람은 쓰던 글의 멘션(글 중간에 있어도) → 없으면 fallbackId(멘션 없이 보낼 때 받을 직원). 정할 수 없으면 null.
+ * 받는 사람을 늘 채워 넣어 바로 메뉴가 뜨게 한다 — 예전엔 전체 방에서 "@"만 넣어 @ 후보 창이 떴다
+ */
+export function slashButtonDraft(draft: string, targets: MentionTarget[], fallbackId: string | null): { draft: string; rest: string } | null {
+  const parsed = draft.trim() ? parseMentions(draft, targets) : null
+  const called = parsed?.matched.filter((tg) => tg.memberIds.length > 0) ?? []
+  const fallback = targets.find((tg) => tg.kind === 'staff' && tg.memberIds[0] === fallbackId)
+  const heads = called.length > 0 ? called : fallback ? [fallback] : []
+  if (heads.length === 0) return null
+  const body = called.length > 0 ? parsed!.body : draft.trim()
+  return { draft: `${heads.map((tg) => mentionToken(tg, targets)).join(' ')} /`, rest: body.startsWith('/') ? '' : body }
+}
+
 export interface ResponderCandidate {
   id: string
   role: string
