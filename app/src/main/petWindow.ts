@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { app, BrowserWindow, ipcMain, powerMonitor, screen, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron'
 import type { OfficeSnapshot } from '../shared/types'
+import { openLinksInBrowser } from './externalLinks'
 import { isPetPlatform, needsBoundsRetry, petAllWorkspaces, petPanelType, petTopLevel } from './petPlatform'
 import {
   clampToArea,
@@ -258,6 +259,8 @@ export class PetWindows {
       webPreferences: { preload: this.deps.preloadPath, backgroundThrottling: false },
     })
     this.floatAbove(panel)
+    // 펼침 창의 직원 메시지 속 링크도 기본 브라우저로 (없으면 앱 안에 새 창이 뜬다)
+    openLinksInBrowser(panel.webContents)
     // 불러오는 동안 여러 번 열고 닫아도 콜백은 이것 하나 — 다 불러온 때의 의도(isPanelWanted)대로만 보인다
     panel.webContents.on('did-finish-load', () => {
       if (this.panel === panel && this.isPanelWanted) this.revealPanel()

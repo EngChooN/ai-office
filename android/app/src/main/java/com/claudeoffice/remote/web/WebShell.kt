@@ -11,8 +11,10 @@ import com.claudeoffice.remote.S
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.AlertDialog
+import android.content.ActivityNotFoundException
 import android.content.ContentValues
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
@@ -129,6 +131,10 @@ internal fun officeFileId(url: Uri): String? {
     } ?: return null
     return raw.takeIf { Regex("^[0-9a-fA-F-]{36}$").matches(it) }
 }
+
+/** 화면 속 링크(직원 메시지의 주소 등)를 기기 브라우저로 넘겨도 되는지 — http·https 바깥 주소만 (자산 출처·다른 스킴은 아님) */
+internal fun isExternalLink(scheme: String?, host: String?): Boolean =
+    (scheme == "http" || scheme == "https") && !host.isNullOrEmpty() && host != ASSET_HOST
 
 private fun blocked() = WebResourceResponse("text/plain", "utf-8", 403, "Forbidden", mapOf("Cache-Control" to "no-store"), ByteArrayInputStream(ByteArray(0)))
 
@@ -264,9 +270,18 @@ private fun createWebView(
                 return blocked()
             }
 
-            // 화면 밖으로 나가는 탐색은 막는다 (자산 안 이동만 허용)
-            override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean =
-                !(request.url.scheme == "https" && request.url.host == ASSET_HOST && request.url.path?.startsWith("/app/") == true)
+            // 화면 밖으로 나가는 탐색은 막는다 (자산 안 이동만 허용). 사람이 누른 http·https 링크는 기기 브라우저로 넘긴다
+            override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
+                val url = request.url
+                if (request.isForMainFrame && request.hasGesture() && isExternalLink(url.scheme, url.host)) {
+                    try {
+                        activity.startActivity(Intent(Intent.ACTION_VIEW, url).addCategory(Intent.CATEGORY_BROWSABLE))
+                    } catch (_: ActivityNotFoundException) {
+                    }
+                    return true
+                }
+                return !(url.scheme == "https" && url.host == ASSET_HOST && url.path?.startsWith("/app/") == true)
+            }
         }
         webChromeClient = object : WebChromeClient() {
             override fun onShowFileChooser(view: WebView, callback: ValueCallback<Array<Uri>>, params: FileChooserParams): Boolean {

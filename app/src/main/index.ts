@@ -3,7 +3,7 @@ import os from 'node:os'
 import { acquireDataLock, quitForDataLock } from './dataLock'
 import { cancelClaudeLogin } from './ai/claudeLogin'
 import { cancelCodexLogin } from './ai/codexLogin'
-import { app, BrowserWindow, clipboard, dialog, ipcMain, nativeTheme, Notification, safeStorage, shell } from 'electron'
+import { app, BrowserWindow, clipboard, dialog, ipcMain, nativeTheme, Notification, safeStorage } from 'electron'
 import path from 'node:path'
 import { loadRemoteConfig, openDb, peerStore, saveRemoteConfig, syncStore } from './db'
 import { serveArtifacts } from './artifacts'
@@ -11,6 +11,7 @@ import { attachmentById, registerAttachmentScheme, removeAttachment, saveUpload,
 import { Office } from './office'
 import { OfficeTray } from './tray'
 import { PetWindows } from './petWindow'
+import { openLinksInBrowser } from './externalLinks'
 import { isPetPlatform } from './petPlatform'
 import { createOfficeHandlers, type OfficeHandlers } from './officeHandlers'
 import { runAsRemote } from './remoteContext'
@@ -310,11 +311,8 @@ function createWindow(isHidden = false) {
   })
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) win.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL)
   else win.loadFile(path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`))
-  // 화면 안 외부 링크(설치 안내 등)는 기본 브라우저로 연다
-  win.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.startsWith('https://')) void shell.openExternal(url)
-    return { action: 'deny' }
-  })
+  // 화면 안 외부 링크(설치 안내·직원 메시지 속 주소 등)는 기본 브라우저로 연다
+  openLinksInBrowser(win.webContents)
   win.on('closed', () => {
     win = null
     // 끝낼 때는 다음에 켤 때 settleStaleMeeting이 닫는다

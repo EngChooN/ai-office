@@ -16,6 +16,7 @@ import com.claudeoffice.remote.web.EventSink
 import com.claudeoffice.remote.web.EventStream
 import com.claudeoffice.remote.web.SseParser
 import com.claudeoffice.remote.web.capabilitiesOf
+import com.claudeoffice.remote.web.isExternalLink
 import com.claudeoffice.remote.web.mimeOf
 import com.claudeoffice.remote.web.parseBridge
 import com.claudeoffice.remote.web.reconnectDelayMs
@@ -121,6 +122,17 @@ class V2ShellTest {
         assertTrue(CSP.contains("frame-src 'none'"))
         assertEquals("text/javascript", mimeOf("assets/index-abc.js"))
         assertEquals("text/html", mimeOf("mobile.html"))
+    }
+
+    @Test fun onlyHttpLinksOutsideTheAppOpenInTheBrowser() {
+        assertTrue(isExternalLink("https", "example.com"))
+        assertTrue(isExternalLink("http", "localhost"))
+        assertFalse(isExternalLink("https", "appassets.androidplatform.net"))
+        assertFalse(isExternalLink("javascript", null))
+        assertFalse(isExternalLink("file", ""))
+        assertFalse(isExternalLink("intent", "x"))
+        assertFalse(isExternalLink("content", "media"))
+        assertFalse(isExternalLink("https", ""))
     }
 
     // ── v2 모드 판단 (규격 2-1) ──────────────────────────
