@@ -35,6 +35,7 @@ const TOOL_RESULT_MAX = 60_000
 const AWAY_TIMEOUT_MS = 60_000
 /** 비용 상한 (한리뷰 M1): 모델 고정 · 질문 하나에 도구 턴·비용 · 질문 빈도 · 밀린 질문 · 세션을 이어 쓰는 기간·횟수 · 대신 답하기 빈도 */
 import { lastProviderStatus } from './setup'
+import { isRemoteCall } from './remoteContext'
 import { engineGuide } from '../shared/engineModel'
 const SECRETARY_MODEL = 'sonnet'
 const MAX_TURNS = 12
@@ -140,6 +141,9 @@ export class Secretary {
   private q: SecretaryRun | null = null
   /** 답을 기다리는 질문 (최대 QUEUE_MAX) */
   private queue: string[] = []
+  /** queue와 같은 순서 — 그 질문이 원격(휴대폰)에서 온 것인지 */
+  private queueRemote: boolean[] = []
+  private turnRemote = false
   private generation = 0
   /** 마지막 질문 한 건에 쓴 토큰 (측정용) */
   lastTurnTokens = 0
@@ -183,6 +187,7 @@ export class Secretary {
       nameOf: (id) => this.nameOf(id),
       allowedRoots: () => this.allowedRoots(),
       isLimited: () => this.isLimited(),
+      isRemote: () => this.turnRemote,
       cardChanged: (card) => this.onCardChanged(card),
     })
     const loaded = db.loadSecretaryMessages(Date.now() - KEEP_DAYS * 86_400_000, MESSAGES_KEEP)
@@ -265,6 +270,7 @@ export class Secretary {
     }
     this.add({ role: 'me', text: body })
     this.queue.push(body)
+    this.queueRemote.push(isRemoteCall())
     if (!this.isBusy) void this.next()
     else this.changed()
   }
@@ -294,6 +300,7 @@ export class Secretary {
   private closeSession() {
     this.generation++
     this.queue = []
+    this.queueRemote = []
     this.q?.close()
     this.q = null
     this.isBusy = false
@@ -303,6 +310,7 @@ export class Secretary {
   /** 밀린 질문을 하나씩 */
   private async next() {
     const text = this.queue.shift()
+    this.turnRemote = this.queueRemote.shift() ?? false
     if (!text) {
       this.isBusy = false
       this.activity = ''

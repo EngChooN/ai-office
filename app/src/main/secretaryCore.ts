@@ -7,7 +7,11 @@ import type { SecretaryBatchItem, SecretaryCard, SecretaryCompare, SecretaryRunO
 import type { I18nText } from '../shared/i18n/index.ts'
 import path from 'node:path'
 import { checkArgs, V2_METHODS } from './remote/v2.ts'
+import { remoteBlockedSettingKeys } from './remoteGuard.ts'
+import { isRemoteCall } from './remoteContext.ts'
 import { describeLines, linesText, maxRisk, stepRisk, type NameOf } from './secretaryDescribe.ts'
+
+const REMOTE_SETTING_BLOCKED = '이 설정은 다른 기기(휴대폰)에서는 바꿀 수 없어요. 카드를 만들지 말고, 이 PC 앞에서 설정 화면을 열어 바꾸라고 안내하세요.'
 
 /** 첨삭 대상: 어떤 값을 다듬는지 (적용 직전 원문이 그대로인지 확인한다) */
 export type EditTarget = { kind: 'staffPrompt'; staffId: string } | { kind: 'taskDetail'; taskId: string } | { kind: 'manualBody'; name: string; scope: string } | { kind: 'labGoal'; labId: string }
@@ -31,6 +35,8 @@ export interface DeskDeps {
   precheck?(steps: { method: OfficeMethod; args: unknown[] }[]): string[]
   /** 카드를 만들 때 앱이 붙이는 글 비교 (예: 매뉴얼 저장 → 지금 본문 ↔ 새 본문). 묶음 항목도 펼쳐서 준다. 그림처럼 오래 걸리는 것은 attachCompares로 */
   compareOf?(steps: { method: OfficeMethod; args: unknown[] }[]): SecretaryCompare[]
+  /** 지금 질문이 원격(휴대폰)에서 온 것인지 — 그렇다면 원격에서 막은 설정은 카드로 만들지 않는다 */
+  isRemote?(): boolean
   /** 카드가 바뀌면 (저장·화면 갱신) */
   cardChanged(card: SecretaryCard): void
 }
@@ -205,6 +211,16 @@ export class SecretaryDesk {
     return await this.deps.call(method, args)
   }
 
+  private isRemoteBlocked(method: OfficeMethod, args: unknown[]) {
+    return method === 'updateSettings' && remoteBlockedSettingKeys(args).length > 0
+  }
+
+  /** 카드 단계 실행 — 원격(휴대폰)에서 누른 [실행]이면 원격에서 막은 설정은 PC 앞에서만 */
+  private async callStep(method: OfficeMethod, args: unknown[]) {
+    if (isRemoteCall() && this.isRemoteBlocked(method, args)) throw new Error('이 설정은 다른 기기에서는 바꿀 수 없어요. 이 PC 앞에서 설정 화면을 열어 바꿔 주세요.')
+    return await this.deps.call(method, args)
+  }
+
   /** 단계의 본문·위험도·고칠 값 — 실제 인자로 (고친 뒤에도 다시 만든다) */
   private stepView(method: OfficeMethod, args: unknown[]) {
     const { risk, reason } = stepRisk(method, args)
@@ -236,6 +252,7 @@ export class SecretaryDesk {
     }
     // 주의할 점은 앱이 확인한 것만 (모델이 적은 말은 notes로 따로). 묶음은 항목으로 펼쳐서 본다
     const calls = built.flatMap((s) => s.items ?? [s]).map((s) => ({ method: s.method as OfficeMethod, args: s.args }))
+    if (this.deps.isRemote?.() && calls.some((c) => this.isRemoteBlocked(c.method, c.args))) return { error: REMOTE_SETTING_BLOCKED }
     const warnings = [...new Set([...built.flatMap((s) => (s.items ?? [s]).flatMap((x) => (x.riskReason ? [x.riskReason] : []))), ...(this.deps.precheck?.(calls) ?? [])])].map((w) => clip(w))
     const notes = (input.warnings ?? []).map((w) => clip(w))
     const compares = cleanCompares(this.deps.compareOf?.(calls) ?? [])
@@ -429,7 +446,7 @@ export class SecretaryDesk {
       }
       try {
         const args = resolveRefs(step.args, current.steps.map((s) => s.result)) as unknown[]
-        const result = await this.deps.call(step.method as OfficeMethod, args)
+        const result = await this.callStep(step.method as OfficeMethod, args)
         if (result === false) throw new Error('이미 처리됐거나 대상을 찾지 못했어요')
         set({ status: 'done', result: pickResult(result) })
       } catch (e) {
@@ -455,7 +472,7 @@ export class SecretaryDesk {
       }
       set(j, { status: 'running' })
       try {
-        const result = await this.deps.call(it.method as OfficeMethod, it.args)
+        const result = await this.callStep(it.method as OfficeMethod, it.args)
         if (result === false) throw new Error('이미 처리됐거나 대상을 찾지 못했어요')
         set(j, { status: 'done' })
       } catch (e) {

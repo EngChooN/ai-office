@@ -1,6 +1,7 @@
 // 원격 프로토콜 v2 (docs/specs/remote-protocol-v2.md) — POST /v2/call: OfficeApi 전체를 PC 화면과 같은 처리 함수(officeHandlers)로 보낸다
 // 메서드마다 분류(R·S·P·C·U)와 인자 모양을 한 표에 둔다. OfficeApi에 메서드가 생기면 이 표에도 넣어야 tsc가 통과한다
 
+import { REMOTE_BLOCKED_SETTINGS } from '../remoteGuard.ts'
 import type { OfficeMethod } from '../../shared/officeApiShape'
 import type { Attachment, OfficeApi } from '../../shared/types'
 import { BODY_MAX_BYTES } from './protocol.ts'
@@ -267,9 +268,10 @@ export const V2_FIELDS: Partial<Record<OfficeMethod, Record<number, string[]>>> 
   saveChatReservation: { 0: fieldsExcept('saveChatReservation', 0, ['attachments'], { id: true, kind: true, text: true, room: true, at: true, time: true, weekdays: true, enabled: true }) },
   secretaryRun: { 1: fieldsOf('secretaryRun', 1, { fromStep: true, edits: true, revised: true, excluded: true }) },
   updateSettings: {
+    // 막는 목록은 REMOTE_BLOCKED_SETTINGS 한 곳 — 비서 카드 실행도 같은 목록으로 막는다 (secretaryCore)
     // 화면 캡처 허용·공용 브라우저 로그인은 PC에서만 (폰에서 대표 화면 캡처 권한을 켜지 못하게). PC 화면 모드·색 테마·바탕화면 비서도 PC에서만
     // 기본 작업 폴더도 PC에서만 (원격에서 바꾸면 새 고용·지시의 작업 폴더 제한이 우회된다)
-    0: fieldsExcept('updateSettings', 0, ['isStaffCaptureOn', 'sharedBrowserLogin', 'uiMode', 'uiTheme', 'isDeskPetOn', 'deskPetSize', 'deskPetOpacity', 'defaultCwd'], { monthlyBudgetUsd: true, tokenBudget: true, theme: true, dayNight: true, plants: true, isChatterOn: true, workHours: true, layout: true, isTrayOn: true, launchAtLogin: true, isOnboarded: true, isWorkMode: true, isFullAccessNoticeSeen: true, isProviderBannerSeen: true, internalAi: true, language: true, demoDay: true, isSecretaryWebOn: true, tokenSaverMode: true, reportStyle: true }),
+    0: fieldsExcept('updateSettings', 0, REMOTE_BLOCKED_SETTINGS, { monthlyBudgetUsd: true, tokenBudget: true, theme: true, dayNight: true, plants: true, isChatterOn: true, workHours: true, layout: true, isTrayOn: true, launchAtLogin: true, isOnboarded: true, isWorkMode: true, isFullAccessNoticeSeen: true, isProviderBannerSeen: true, internalAi: true, language: true, demoDay: true, isSecretaryWebOn: true, tokenSaverMode: true, reportStyle: true }),
   },
 }
 

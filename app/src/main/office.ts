@@ -109,7 +109,7 @@ import { importFile, mimeOf } from './attachments'
 import { saveArtifactFile } from './artifacts'
 import { replaceArtifactRef } from '../shared/artifact'
 import type { RemoteOfficePort } from './remote/handler.ts'
-import { isRemoteAutoAllowed, isRemoteManualDeleteAllowed, isRemoteManualDirAllowed, isRemoteManualScopeAllowed, isRemoteRuleBlocked } from './remoteGuard'
+import { isRemoteAutoAllowed, REMOTE_BLOCKED_SETTINGS, isRemoteManualDeleteAllowed, isRemoteManualDirAllowed, isRemoteManualScopeAllowed, isRemoteRuleBlocked } from './remoteGuard'
 import { pickStaffPatch, type StaffPatch } from './staffPatch'
 import { isRemoteCall, REMOTE_MARK, remoteMarked, remoteMarkedI18n } from './remoteContext'
 import * as db from './db'
@@ -4899,6 +4899,8 @@ export class Office extends EventEmitter<{
   }
 
   updateSettings(patch: Partial<Settings>) {
+    // 원격(휴대폰)에서 막은 설정은 어느 경로로 와도(비서 카드 포함) 여기서 한 번 더 뺀다
+    if (isRemoteCall()) patch = Object.fromEntries(Object.entries(patch).filter(([k]) => !(REMOTE_BLOCKED_SETTINGS as readonly string[]).includes(k))) as Partial<Settings>
     this.settings = { ...this.settings, ...patch }
     db.saveSettings(this.settings)
     if (patch.language !== undefined) this.applyLanguage()

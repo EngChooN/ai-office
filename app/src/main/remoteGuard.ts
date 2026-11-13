@@ -48,3 +48,12 @@ export const isRemoteManualScopeAllowed = (scope: string, previousScope?: string
 
 /** 원격에서 지울 수 있는 매뉴얼: 프로젝트·랩 폴더 매뉴얼만 (전역 매뉴얼 삭제는 PC에서만) */
 export const isRemoteManualDeleteAllowed = (scope: string) => scope === 'project'
+
+/** 원격(휴대폰)에서 바꿀 수 없는 설정 필드 — v2 허용 필드와 비서 카드 실행이 같이 쓴다 */
+export const REMOTE_BLOCKED_SETTINGS = ['isStaffCaptureOn', 'sharedBrowserLogin', 'uiMode', 'uiTheme', 'isDeskPetOn', 'deskPetSize', 'deskPetOpacity', 'defaultCwd'] as const
+
+/** 설정 바꾸기 인자에서 원격이 막은 필드 이름들 */
+export function remoteBlockedSettingKeys(args: unknown[]): string[] {
+  const patch = args[0]
+  return typeof patch === 'object' && patch !== null ? REMOTE_BLOCKED_SETTINGS.filter((k) => Object.hasOwn(patch, k)) : []
+}
