@@ -12,6 +12,8 @@ import { Avatar } from './StaffCard'
 import { AlwaysApproveButton, ApprovalStatusChips, AutoHandledList } from './AutoApprove'
 import { WaitReasonLine } from './WaitReasonLine'
 import { ApprovalSummary } from './ApprovalSummary'
+import { useDecide } from './useDecide'
+import type { Approval, Staff } from '@shared/types'
 import { shortPath, workDirLabel } from './status'
 import { fmtDate, t } from '@shared/i18n'
 import { roleLabel } from '@shared/roleLabel'
@@ -99,50 +101,7 @@ export function InboxPage() {
       )}
       <div className="flex max-w-3xl flex-col gap-3">
         {approvals.map((a) => (
-          <div key={a.id} className="bg-card flex items-start gap-3 rounded-xl border p-4">
-            <button type="button" onClick={() => openStaffApprovals(a.staff.id)}>
-              <Avatar avatar={a.staff.avatar} name={a.staff.name} teamId={a.staff.teamId} />
-            </button>
-            <div className="min-w-0 flex-1">
-              <div className="text-sm">
-                <span className="font-semibold">{a.staff.name}</span>
-                <span className="text-muted-foreground">
-                  {' '}
-                  · {roleLabel(a.staff.role)} ·{' '}
-                  {fmtDate(a.createdAt, {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </span>
-              </div>
-              {a.requestedBy && <div className="text-muted-foreground mt-0.5 text-xs">{t('approval.requestedBy', { name: a.requestedBy })}</div>}
-              {a.questions ? (
-                <>
-                  <WaitReasonLine reason={a.waitReason} className="mt-0.5" />
-                  {a.isRestored && <div className="text-muted-foreground mt-0.5 text-xs">↻ {t('approval.restored')}</div>}
-                  <div className="mt-2">
-                    <QuestionBox approval={a} />
-                  </div>
-                </>
-              ) : (
-                <div className="mt-1">
-                  <ApprovalSummary approval={a} />
-                </div>
-              )}
-            </div>
-            {!a.questions && (
-              <div className="flex flex-col gap-2">
-                <Button size="sm" onClick={() => void window.office.decide(a.id, true)}>
-                  <CheckIcon /> {t('inbox.approve')}
-                </Button>
-                <AlwaysApproveButton approval={a} staffName={a.staff.name} />
-                <Button size="sm" variant="outline" onClick={() => void window.office.decide(a.id, false)}>
-                  {t('inbox.reject')}
-                </Button>
-                {a.staff.kind === 'hired' && <StopWorkButton staffId={a.staff.id} />}
-              </div>
-            )}
-          </div>
+          <InboxApprovalCard key={a.id} approval={a} onOpenStaff={openStaffApprovals} />
         ))}
         {externalWaiting.length > 0 && (
           <>
@@ -166,5 +125,59 @@ export function InboxPage() {
         <AutoHandledList />
       </div>
     </Page>
+  )
+}
+
+/** 결재함 카드 하나 — 승인·반려는 누르자마자 '처리 중', 결과를 확인한 뒤에 카드를 치운다 */
+function InboxApprovalCard({ approval: a, onOpenStaff }: { approval: Approval & { staff: Staff }; onOpenStaff: (staffId: string) => void }) {
+  const { isBusy, isDone, isFailed, decide } = useDecide(a.id)
+  if (isDone) return null
+  return (
+    <div className="bg-card flex items-start gap-3 rounded-xl border p-4">
+      <button type="button" onClick={() => onOpenStaff(a.staff.id)}>
+        <Avatar avatar={a.staff.avatar} name={a.staff.name} teamId={a.staff.teamId} />
+      </button>
+      <div className="min-w-0 flex-1">
+        <div className="text-sm">
+          <span className="font-semibold">{a.staff.name}</span>
+          <span className="text-muted-foreground">
+            {' '}
+            · {roleLabel(a.staff.role)} ·{' '}
+            {fmtDate(a.createdAt, {
+              hour: '2-digit',
+              minute: '2-digit',
+            })}
+          </span>
+        </div>
+        {a.requestedBy && <div className="text-muted-foreground mt-0.5 text-xs">{t('approval.requestedBy', { name: a.requestedBy })}</div>}
+        {a.questions ? (
+          <>
+            <WaitReasonLine reason={a.waitReason} className="mt-0.5" />
+            {a.isRestored && <div className="text-muted-foreground mt-0.5 text-xs">↻ {t('approval.restored')}</div>}
+            <div className="mt-2">
+              <QuestionBox approval={a} />
+            </div>
+          </>
+        ) : (
+          <div className="mt-1">
+            <ApprovalSummary approval={a} />
+          </div>
+        )}
+      </div>
+      {!a.questions && (
+        <div className="flex flex-col gap-2">
+          <Button size="sm" disabled={isBusy} onClick={() => void decide(true)}>
+            <CheckIcon /> {t('inbox.approve')}
+          </Button>
+          <AlwaysApproveButton approval={a} staffName={a.staff.name} />
+          <Button size="sm" variant="outline" disabled={isBusy} onClick={() => void decide(false)}>
+            {t('inbox.reject')}
+          </Button>
+          {isBusy && <span className="text-muted-foreground text-xs">{t('approval.processing')}</span>}
+          {isFailed && <span className="text-destructive text-xs">{t('secretary.approvals.failed')}</span>}
+          {a.staff.kind === 'hired' && <StopWorkButton staffId={a.staff.id} />}
+        </div>
+      )}
+    </div>
   )
 }

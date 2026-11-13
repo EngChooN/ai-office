@@ -148,4 +148,8 @@ export default {
   'chat.plan.open': { ko: '결재함에서 보기 →', en: 'Open in Inbox →', ja: '承認箱で見る →', zh: '在审批箱查看 →' },
   'chat.plan.board': { ko: '업무 보드에서 보기 →', en: 'Open the board →', ja: '業務ボードで見る →', zh: '在任务板查看 →' },
   'chat.plan.feedback': { ko: '의견: {text}', en: 'Feedback: {text}', ja: '意見: {text}', zh: '意见: {text}' },
+  'approval.processing': { ko: '처리 중…', en: 'Processing…', ja: '処理中…', zh: '处理中…' },
+  'chat.pending.sending': { ko: '보내는 중…', en: 'Sending…', ja: '送信中…', zh: '发送中…' },
+  'chat.pending.failed': { ko: '보내지 못했어요', en: 'Could not send', ja: '送信できませんでした', zh: '发送失败' },
+  'chat.pending.retry': { ko: '다시 보내기', en: 'Send again', ja: '再送信', zh: '重新发送' },
 } satisfies Record<string, Entry>

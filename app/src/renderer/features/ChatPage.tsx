@@ -21,6 +21,9 @@ import { Markdown } from '@/components/markdown'
 import { MentionText, MentionTextarea, remarkMentions } from '@/components/mention-text'
 import { JumpToBottom, useStickToBottom } from '@/components/stick-to-bottom'
 import { QuestionBox } from './QuestionBox'
+import { useDecide } from './useDecide'
+import { usePendingSends, type SendInput } from './usePendingSends'
+import type { PendingSend } from '@shared/pendingSend'
 import { ProgressLine, WaitingCards } from './ProgressLine'
 import { statusMetaOf } from './status'
 import { progressesForRoom } from '@shared/progressView'
@@ -77,6 +80,8 @@ function MeText({ text, targets }: { text: string; targets: MentionTarget[] }) {
 /** 사무실 단체방: 직원 보고·결재 요청·위임이 채팅으로 흐르고, @직원·@팀·@랩·@전체 로 바로 지시한다. 전체 방 + 팀별 방 + 랩별 방 */
 export function ChatPage() {
   const room = useChatRoom()
+  // 휴대폰·원격 화면: 보낸 글이 PC에서 돌아올 때까지 보여 줄 '보내는 중' 말풍선
+  const pendingSends = usePendingSends()
   const title = !room ? t('chat.title') : room.kind === 'lab' ? t('chat.labRoom.title', { lab: room.name }) : t('chat.room.title', { team: room.name })
   const description = t(!room ? 'chat.description' : room.kind === 'lab' ? 'chat.labRoom.description' : 'chat.room.description', { all: ALL_MENTION })
   // 대화 찾기: 제목 옆 🔍 또는 ⌘F·Ctrl+F (분할 화면은 상단 바 🔍가 store 신호로 연다)
@@ -151,8 +156,8 @@ export function ChatPage() {
         <RoomListColumn room={room} layout={listLayout} />
         <ChatSide room={room} className="side:flex hidden" />
         <div className="flex min-w-0 flex-1 flex-col">
-          <MessageList room={room?.room} searchQuery={isSearchOpen ? searchQuery : ''} />
-          <Composer room={room} />
+          <MessageList room={room?.room} searchQuery={isSearchOpen ? searchQuery : ''} pending={pendingSends.items} onRetry={pendingSends.retry} />
+          <Composer room={room} onSend={pendingSends.send} />
         </div>
       </div>
     </div>
@@ -336,7 +341,7 @@ function RoomTabs({ current }: { current: string | undefined }) {
 const lineKey = (l: ChatLine) => (l.kind === 'message' ? String(l.message.id) : `room:${l.room}:${l.lastId}`)
 
 // 입력 중엔 메시지 목록이 다시 그려지지 않도록 목록과 입력창을 나눠 각자 구독한다
-function MessageList({ room, searchQuery }: { room: string | undefined; searchQuery: string }) {
+function MessageList({ room, searchQuery, pending, onRetry }: { room: string | undefined; searchQuery: string; pending: PendingSend[]; onRetry: (tempId: string) => void }) {
   const chat = useOffice((s) => s.chat)
   const staff = useOffice((s) => s.staff)
   const teams = useOffice((s) => s.teams)
@@ -353,6 +358,12 @@ function MessageList({ room, searchQuery }: { room: string | undefined; searchQu
   const pendingById = useMemo(() => new Map(staff.flatMap((s) => s.approvals.map((a) => [a.id, a]))), [staff])
   const scroll = useStickToBottom(lines, lineKey, `chat:${room ?? ''}`)
   // 내가 보낸 말은 위를 읽던 중이어도 바로 보이게
+  const roomPending = useMemo(() => pending.filter((p) => roomKey(p.room) === roomKey(room)), [pending, room])
+  useEffect(() => {
+    if (roomPending.length) scroll.scrollToBottom()
+    // 새로 보내는 글이 생길 때(개수가 늘 때)만
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roomPending.length])
   const lastLine = lines.at(-1)
   const last = lastLine?.kind === 'message' ? lastLine.message : undefined
   useEffect(() => {
@@ -426,10 +437,43 @@ function MessageList({ room, searchQuery }: { room: string | undefined; searchQu
               </div>
             )
           })}
+          {roomPending.map((p) => (
+            <PendingBubble key={p.tempId} pending={p} onRetry={onRetry} />
+          ))}
           <ProgressLines room={room} />
         </div>
       </div>
       <JumpToBottom isNear={scroll.isNear} unread={scroll.unread} onClick={() => scroll.scrollToBottom(true)} />
+    </div>
+  )
+}
+
+/** 휴대폰·원격 화면에서 막 보낸 내 글 — PC가 돌려주기 전까지 '보내는 중', 실패하면 '보내지 못했어요 · 다시 보내기' */
+function PendingBubble({ pending: p, onRetry }: { pending: PendingSend; onRetry: (tempId: string) => void }) {
+  const isFailed = p.status === 'failed'
+  return (
+    <div className="flex flex-row-reverse gap-2" data-pending={p.tempId}>
+      <div className="split:max-w-[82%] flex max-w-[75%] flex-col items-end gap-0.5">
+        <div className={cn('bg-primary text-primary-foreground max-w-full min-w-0 rounded-2xl px-3 py-2 text-sm break-words whitespace-pre-wrap', !isFailed && 'opacity-60')}>
+          {p.text}
+          {p.attachments.length > 0 && (
+            <div className="mt-2">
+              <AttachmentView attachments={p.attachments} />
+            </div>
+          )}
+        </div>
+        <span className={cn('text-[10px]', isFailed ? 'text-destructive' : 'text-muted-foreground')} role={isFailed ? 'alert' : 'status'}>
+          {isFailed ? t('chat.pending.failed') : t('chat.pending.sending')}
+          {isFailed && (
+            <>
+              {' · '}
+              <button type="button" className="focus-ring phone:min-h-8 font-semibold underline" onClick={() => onRetry(p.tempId)}>
+                {t('chat.pending.retry')}
+              </button>
+            </>
+          )}
+        </span>
+      </div>
     </div>
   )
 }
@@ -583,24 +627,33 @@ function ApprovalActions({ link, pending, staffName }: { link: ChatApproval; pen
         <QuestionBox approval={a} />
       </div>
     )
-  // 말풍선 글(저장된 원문)은 그대로 두고, 효과 문장이 있으면 버튼 위에 제목처럼 한 줄 (화면 언어를 바꾸면 다시 번역된다)
+  return <PendingApprovalButtons approval={a} staffName={staffName} />
+}
+
+/** 말풍선 글(저장된 원문)은 그대로 두고, 효과 문장이 있으면 버튼 위에 제목처럼 한 줄 (화면 언어를 바꾸면 다시 번역된다).
+ * 승인·반려는 누르자마자 '처리 중', 결과를 확인한 뒤에 치운다 (처리된 뒤 결과 글은 위 'done'이 보여 준다) */
+function PendingApprovalButtons({ approval: a, staffName }: { approval: Approval; staffName: string }) {
+  const { isBusy, isDone, isFailed, decide } = useDecide(a.id)
+  if (isDone) return null
   return (
     <div className="mt-2 flex flex-col gap-2 border-t pt-2">
       {a.effectI18n && <p className="text-sm font-medium break-keep [overflow-wrap:anywhere]">{tr(a.effectI18n)}</p>}
-      <div className="flex flex-wrap gap-2">
-        <Button size="sm" onClick={() => void window.office.decide(a.id, true)}>
+      {isFailed && <p className="text-destructive text-xs">{t('secretary.approvals.failed')}</p>}
+      <div className="flex flex-wrap items-center gap-2">
+        <Button size="sm" disabled={isBusy} onClick={() => void decide(true)}>
           <CheckIcon /> {t('inbox.approve')}
         </Button>
         <AlwaysApproveButton approval={a} staffName={staffName} />
-        <Button size="sm" variant="outline" onClick={() => void window.office.decide(a.id, false)}>
+        <Button size="sm" variant="outline" disabled={isBusy} onClick={() => void decide(false)}>
           {t('inbox.reject')}
         </Button>
+        {isBusy && <span className="text-muted-foreground text-xs">{t('approval.processing')}</span>}
       </div>
     </div>
   )
 }
 
-function Composer({ room }: { room: RoomInfo | undefined }) {
+function Composer({ room, onSend }: { room: RoomInfo | undefined; onSend: (input: SendInput) => void }) {
   const [draft, setDraft] = useState('')
   const hired = useOffice(useShallow((s) => s.staff.filter((x) => x.kind === 'hired')))
   const teams = useOffice((s) => s.teams)
@@ -683,7 +736,7 @@ function Composer({ room }: { room: RoomInfo | undefined }) {
     setReply(null)
     const attachments = await draftFiles.upload()
     draftFiles.clear()
-    void window.office.sendChat(text, attachments, room?.room, mode, replyTo)
+    onSend({ text, attachments, room: room?.room, mode, replyTo })
   }
   // 보내기 옆 ▾: 예약 보내기·반복 지시
   const [isReserveOpen, setIsReserveOpen] = useState(false)

@@ -14,6 +14,7 @@ Writing rules
 ## [미정] (설치본 미빌드)
 
 ### Improvements
+- On the phone (and remote PC windows), Approve/Reject now switches to 'Processing' right away and your message shows as 'Sending' first, with 'Send again' if it fails. The PC also sends status updates immediately and keeps connections open longer, so everything responds faster.
 - You can ask the assistant to post or reply in a team or project room. The confirm card shows the room, how it is sent and the post being replied to. Messages sent to a room from the desktop secretary reach working staff after their current work, and reply quotes and delivery status are shown there too.
 - Approval cards on the desktop secretary now show the same title, content view and requester as the app. Use the ⋯ menu to auto-approve from now on, stop the work (only while working) or open it in the app.
 - The Retro office game theme now applies to the desktop secretary window too, and its background changes right away when you switch themes.

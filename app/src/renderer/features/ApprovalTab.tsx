@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { CheckIcon, ChevronRightIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import type { ApprovalHistoryFilter, ApprovalRecord, Staff } from '@shared/types'
+import type { Approval, ApprovalHistoryFilter, ApprovalRecord, Staff } from '@shared/types'
 import { approvalHeadline } from '@shared/approvalEffect'
 import { APPROVAL_HISTORY_PAGE_SIZE, groupByDay, mergeNewer, prependRecord, shownResult } from '@shared/approvalHistory'
 import { dayKey } from '@shared/recordLogs'
@@ -10,6 +10,7 @@ import { fmtDate, t, trOr, type TKey } from '@shared/i18n'
 import { QuestionBox, StopWorkButton } from './QuestionBox'
 import { WaitReasonLine } from './WaitReasonLine'
 import { ApprovalSummary } from './ApprovalSummary'
+import { useDecide } from './useDecide'
 
 const DAY_LABEL: Intl.DateTimeFormatOptions = { month: 'long', day: 'numeric', weekday: 'short' }
 
@@ -42,34 +43,45 @@ export function ApprovalTab({ staff }: { staff: Staff }) {
         {staff.approvals.length ? t('approvalTab.waiting', { n: staff.approvals.length }) : t('approvalTab.waitingNone')}
       </h3>
       {staff.approvals.map((a) => (
-        <div key={a.id} className="bg-muted flex flex-col gap-2 rounded-lg p-3">
-          {a.requestedBy && <div className="text-muted-foreground text-xs">{t('approval.requestedBy', { name: a.requestedBy })}</div>}
-          {a.questions && (
-            <>
-              <WaitReasonLine reason={a.waitReason} />
-              {a.isRestored && <div className="text-muted-foreground text-xs">↻ {t('approval.restored')}</div>}
-            </>
-          )}
-          {a.questions ? (
-            <QuestionBox approval={a} />
-          ) : (
-            <>
-              <ApprovalSummary approval={a} boxClassName="bg-card" />
-              <div className="flex flex-wrap gap-2">
-                <Button size="sm" onClick={() => void window.office.decide(a.id, true)}>
-                  <CheckIcon /> {t('staffPanel.approvals.approve')}
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => void window.office.decide(a.id, false)}>
-                  {t('staffPanel.approvals.reject')}
-                </Button>
-                {isHired && <StopWorkButton staffId={staff.id} className="ml-auto" />}
-              </div>
-            </>
-          )}
-        </div>
+        <ApprovalCard key={a.id} approval={a} staffId={staff.id} isHired={isHired} />
       ))}
       <ApprovalHistory staffId={staff.id} pendingKey={staff.approvals.map((a) => a.id).join(',')} />
     </section>
+  )
+}
+
+/** 기다리는 결재·질문 카드 하나 — 승인·반려는 누르자마자 '처리 중', 결과를 확인한 뒤에 카드를 치운다 */
+function ApprovalCard({ approval: a, staffId, isHired }: { approval: Approval; staffId: string; isHired: boolean }) {
+  const { isBusy, isDone, isFailed, decide } = useDecide(a.id)
+  if (isDone) return null
+  return (
+    <div className="bg-muted flex flex-col gap-2 rounded-lg p-3">
+      {a.requestedBy && <div className="text-muted-foreground text-xs">{t('approval.requestedBy', { name: a.requestedBy })}</div>}
+      {a.questions && (
+        <>
+          <WaitReasonLine reason={a.waitReason} />
+          {a.isRestored && <div className="text-muted-foreground text-xs">↻ {t('approval.restored')}</div>}
+        </>
+      )}
+      {a.questions ? (
+        <QuestionBox approval={a} />
+      ) : (
+        <>
+          <ApprovalSummary approval={a} boxClassName="bg-card" />
+          {isFailed && <div className="text-destructive text-xs">{t('secretary.approvals.failed')}</div>}
+          <div className="flex flex-wrap items-center gap-2">
+            <Button size="sm" disabled={isBusy} onClick={() => void decide(true)}>
+              <CheckIcon /> {t('staffPanel.approvals.approve')}
+            </Button>
+            <Button size="sm" variant="outline" disabled={isBusy} onClick={() => void decide(false)}>
+              {t('staffPanel.approvals.reject')}
+            </Button>
+            {isBusy && <span className="text-muted-foreground text-xs">{t('approval.processing')}</span>}
+            {isHired && <StopWorkButton staffId={staffId} className="ml-auto" />}
+          </div>
+        </>
+      )}
+    </div>
   )
 }
 
