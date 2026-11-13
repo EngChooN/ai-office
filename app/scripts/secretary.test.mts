@@ -440,7 +440,7 @@ test('토큰: 비서 질문은 매번 새로 부르고(세션 이어 쓰기 없�
   const sec = readApp('src/main/secretary.ts')
   assert.match(readApp('src/main/ai/claude.ts'), /persistSession: false,/)
   assert.doesNotMatch(sec, /resume:/)
-  assert.match(sec, /CONTEXT_MESSAGES = 8/)
+  assert.match(readApp('src/main/secretaryMemory.ts'), /CONTEXT_MESSAGES = 8/)
   assert.match(sec, /wrapDocument\('앞 대화 \(참고만\)'/)
   // 인자 모양 표는 지침이 아니라 propose 도구 설명에만 (두 번 넣지 않는다)
   assert.doesNotMatch(sec, /signatureGuide\(\)/)
