@@ -79,6 +79,9 @@ export function describeLines(method: OfficeMethod, args: unknown[], nameOf: Nam
     case 'forkExternal':
       lines.push(L('secretary.d.recipient', { who: id(a0) }), L('secretary.d.order', { text: a1 === undefined || a1 === null ? L('secretary.v.stopOnly') : quote(a1) }))
       break
+    case 'openFoundFile':
+      lines.push(L(a1 === 'reveal' ? 'secretary.d.revealFile' : 'secretary.d.openFile', { target: id(a0) }))
+      break
     case 'sendChat':
       lines.push(L('secretary.d.chat', { text: quote(a0) }))
       break
@@ -213,6 +216,7 @@ export function stepRisk(method: OfficeMethod, args: unknown[]): { risk: Secreta
   }
   if (method === 'setAutoApprove' && o0.mode !== 'off') up('자동결재를 켜면 그동안 결재를 대표 대신 승인해요')
   if (method === 'updateSettings' && Object.keys(o0).some((k) => !COSMETIC_SETTINGS.has(k))) up('예산·업무 모드 같은 설정이 바뀌어요')
+  if (method === 'openFoundFile') up(a1 === 'reveal' ? 'PC에서 파인더(탐색기)가 열려요' : 'PC에서 그 파일이 열려요')
   if (method === 'changeEngine') up('이전 대화 맥락이 이어지지 않고 새로 시작돼요')
   if (method === 'setEquipment') up('직원이 쓸 수 있는 도구·결재 없이 쓰는 도구가 바뀌어요')
   // 자동결재가 기다리게 한 명령도 이 카드 한 번으로 승인되므로 (Round 2 B3)

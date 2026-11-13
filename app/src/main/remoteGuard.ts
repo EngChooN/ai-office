@@ -52,6 +52,9 @@ export const isRemoteManualDeleteAllowed = (scope: string) => scope === 'project
 /** 원격(휴대폰)에서 바꿀 수 없는 설정 필드 — v2 허용 필드와 비서 카드 실행이 같이 쓴다 */
 export const REMOTE_BLOCKED_SETTINGS = ['isStaffCaptureOn', 'sharedBrowserLogin', 'uiMode', 'uiTheme', 'isDeskPetOn', 'deskPetSize', 'deskPetOpacity', 'defaultCwd'] as const
 
+/** 원격(휴대폰)에서는 카드를 만들 때도, PC에서 만든 카드를 [실행]할 때도 막는 동작 — PC 앞에서만 (v2에서도 PC 전용 P) */
+export const REMOTE_BLOCKED_METHODS = ['openFoundFile'] as const
+
 /** 설정 바꾸기 인자에서 원격이 막은 필드 이름들 */
 export function remoteBlockedSettingKeys(args: unknown[]): string[] {
   const patch = args[0]

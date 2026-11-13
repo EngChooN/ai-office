@@ -86,6 +86,7 @@ export const V2_METHODS: Record<OfficeMethod, MethodSpec> = {
   loadStaffCommands: R('s'),
   saveAttachments: { cls: 'U', args: 'a' },
   openAttachment: P('download_file', 's'),
+  openFoundFile: P('open_on_pc', 's s'),
   artifactList: R(),
   artifactVersions: R('s'),
   artifactOpen: P('open_on_pc', 's n?'),

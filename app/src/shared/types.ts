@@ -1152,6 +1152,8 @@ export interface OfficeApi {
   loadStaffCommands(staffId: string): Promise<void>
   saveAttachments(files: UploadFile[]): Promise<Attachment[]>
   openAttachment(id: string): Promise<void>
+  /** 비서가 찾은 파일 열기(open)·폴더에서 보기(reveal) — 찾기 결과 id로만, PC 앞에서만 */
+  openFoundFile(id: string, how: 'open' | 'reveal'): Promise<void>
   /** 아티팩트 전체 (최신 순) */
   artifactList(): Promise<ArtifactInfo[]>
   artifactVersions(id: string): Promise<ArtifactVersionInfo[]>

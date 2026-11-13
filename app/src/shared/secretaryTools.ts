@@ -141,6 +141,8 @@ export const SECRETARY_TOOLS: Record<OfficeMethod, ToolSpec> = {
   deleteCustomMcp: exclude,
   pickFiles: exclude,
   openAttachment: exclude,
+  // 비서가 찾은 파일 열기·폴더에서 보기 — 찾기 결과의 id로만, 확인 카드를 거쳐서 (기존 첨부 열기를 푸는 것이 아니다)
+  openFoundFile: change('파일 열기', 'caution'),
   artifactList: read,
   artifactVersions: read,
   artifactOpen: exclude,
@@ -297,6 +299,7 @@ export const SECRETARY_SIGNATURES: Partial<Record<OfficeMethod, string>> = {
   boardCleanupPlan: '() → { steps, omitted } — steps를 그대로 propose 단계로',
   hire: '({ name, role, avatar: number, provider?: "claude"|"codex", model: "default"|"fable"|"opus"|"sonnet"|"haiku"|(GPT 모델 id), cwd, systemPrompt, approvalMode: "ask"|"acceptEdits", teamId: string|null, labIds?: string[] })',
   updateStaff: '(staffId, { teamId?, name?, role?, model?, avatar?, systemPrompt?, cwd? })',
+  openFoundFile: '(foundId — find_files가 준 id, how: "open"|"reveal")',
   instruct: '(staffId, text)',
   interrupt: '(staffId, text?)',
   setRefDocs: '({ kind: "staff"|"team"|"lab", id }, docs: string[])',

@@ -28,6 +28,9 @@ const dir = () => {
   return d
 }
 
+/** 첨부 저장소 폴더 (비서 파일 찾기가 찾는 곳 중 하나) */
+export const attachmentsRoot = dir
+
 const safeName = (name: string) => name.replace(/[/\\:*?"<>|]/g, '_').slice(-NAME_MAX) || 'file'
 export const mimeOf = (file: string) => MIME_BY_EXT[path.extname(file).toLowerCase()] ?? 'application/octet-stream'
 

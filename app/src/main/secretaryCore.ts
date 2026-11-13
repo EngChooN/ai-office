@@ -7,10 +7,11 @@ import type { SecretaryBatchItem, SecretaryCard, SecretaryCompare, SecretaryRunO
 import type { I18nText } from '../shared/i18n/index.ts'
 import path from 'node:path'
 import { checkArgs, V2_METHODS } from './remote/v2.ts'
-import { remoteBlockedSettingKeys } from './remoteGuard.ts'
+import { REMOTE_BLOCKED_METHODS, remoteBlockedSettingKeys } from './remoteGuard.ts'
 import { isRemoteCall } from './remoteContext.ts'
 import { describeLines, linesText, maxRisk, stepRisk, type NameOf } from './secretaryDescribe.ts'
 
+const REMOTE_FILE_BLOCKED = '파일 열기는 이 PC 앞에서만 할 수 있어요. 카드를 만들지 말고, 이 PC 앞에서 다시 말해 달라고 안내하세요.'
 const REMOTE_SETTING_BLOCKED = '이 설정은 다른 기기(휴대폰)에서는 바꿀 수 없어요. 카드를 만들지 말고, 이 PC 앞에서 설정 화면을 열어 바꾸라고 안내하세요.'
 
 /** 첨삭 대상: 어떤 값을 다듬는지 (적용 직전 원문이 그대로인지 확인한다) */
@@ -212,12 +213,12 @@ export class SecretaryDesk {
   }
 
   private isRemoteBlocked(method: OfficeMethod, args: unknown[]) {
-    return method === 'updateSettings' && remoteBlockedSettingKeys(args).length > 0
+    return (REMOTE_BLOCKED_METHODS as readonly string[]).includes(method) || (method === 'updateSettings' && remoteBlockedSettingKeys(args).length > 0)
   }
 
   /** 카드 단계 실행 — 원격(휴대폰)에서 누른 [실행]이면 원격에서 막은 설정은 PC 앞에서만 */
   private async callStep(method: OfficeMethod, args: unknown[]) {
-    if (isRemoteCall() && this.isRemoteBlocked(method, args)) throw new Error('이 설정은 다른 기기에서는 바꿀 수 없어요. 이 PC 앞에서 설정 화면을 열어 바꿔 주세요.')
+    if (isRemoteCall() && this.isRemoteBlocked(method, args)) throw new Error((REMOTE_BLOCKED_METHODS as readonly string[]).includes(method) ? '파일 열기는 이 PC 앞에서만 할 수 있어요.' : '이 설정은 다른 기기에서는 바꿀 수 없어요. 이 PC 앞에서 설정 화면을 열어 바꿔 주세요.')
     return await this.deps.call(method, args)
   }
 
@@ -252,7 +253,7 @@ export class SecretaryDesk {
     }
     // 주의할 점은 앱이 확인한 것만 (모델이 적은 말은 notes로 따로). 묶음은 항목으로 펼쳐서 본다
     const calls = built.flatMap((s) => s.items ?? [s]).map((s) => ({ method: s.method as OfficeMethod, args: s.args }))
-    if (this.deps.isRemote?.() && calls.some((c) => this.isRemoteBlocked(c.method, c.args))) return { error: REMOTE_SETTING_BLOCKED }
+    if (this.deps.isRemote?.() && calls.some((c) => this.isRemoteBlocked(c.method, c.args))) return { error: calls.some((c) => (REMOTE_BLOCKED_METHODS as readonly string[]).includes(c.method)) ? REMOTE_FILE_BLOCKED : REMOTE_SETTING_BLOCKED }
     const warnings = [...new Set([...built.flatMap((s) => (s.items ?? [s]).flatMap((x) => (x.riskReason ? [x.riskReason] : []))), ...(this.deps.precheck?.(calls) ?? [])])].map((w) => clip(w))
     const notes = (input.warnings ?? []).map((w) => clip(w))
     const compares = cleanCompares(this.deps.compareOf?.(calls) ?? [])

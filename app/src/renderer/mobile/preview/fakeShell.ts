@@ -467,7 +467,7 @@ const impl: Record<string, (...args: never[]) => unknown> = {
 }
 
 // PC 서버(v2 분류표)와 같은 응답
-const PC_ONLY: Record<string, string> = { pickFolder: 'enter_path', pickFiles: 'enter_path', openAttachment: 'download_file', resumeInTerminal: 'open_on_pc', openClaudeLogin: 'open_on_pc', openCodexLogin: 'open_on_pc', remoteQr: 'open_on_pc', setRemoteFullAccess: 'open_on_pc', setHooksInstalled: 'open_on_pc', setAskHookInstalled: 'open_on_pc', revertWork: 'open_on_pc', setRemoteMode: 'open_on_pc', refreshRemoteTailscale: 'open_on_pc', dismissRemoteTsNotice: 'open_on_pc' }
+const PC_ONLY: Record<string, string> = { pickFolder: 'enter_path', pickFiles: 'enter_path', openAttachment: 'download_file', openFoundFile: 'open_on_pc', resumeInTerminal: 'open_on_pc', openClaudeLogin: 'open_on_pc', openCodexLogin: 'open_on_pc', remoteQr: 'open_on_pc', setRemoteFullAccess: 'open_on_pc', setHooksInstalled: 'open_on_pc', setAskHookInstalled: 'open_on_pc', revertWork: 'open_on_pc', setRemoteMode: 'open_on_pc', refreshRemoteTailscale: 'open_on_pc', dismissRemoteTsNotice: 'open_on_pc' }
 
 function setGrid(grid: OfficeSnapshot['shop']['grid']) {
   snapshot.shop = { ...snapshot.shop, grid }

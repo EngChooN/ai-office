@@ -216,6 +216,7 @@ export const METHOD_ACCESS: Record<OfficeMethod, MethodAccess> = {
   startTasks: 'write',
   saveAttachments: 'write',
   openAttachment: 'write',
+  openFoundFile: 'write',
   artifactList: 'read',
   artifactVersions: 'read',
   artifactOpen: 'read',

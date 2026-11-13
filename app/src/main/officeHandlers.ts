@@ -9,6 +9,7 @@ import type { TutorialInput, TutorialScenario } from '../shared/tutorial'
 import { HOOK_PORT, type Attachment, type RemoteMode } from '../shared/types'
 import { listAgentTemplates } from './agents'
 import { findById, saveUploads } from './attachments'
+import { openFound } from './fileScope'
 import { artifactList, artifactOpen, artifactOpenExternal, artifactReveal, artifactVersionList } from './artifacts'
 import { askHookInstalled, hooksInstalled, setAskHookInstalled, setHooksInstalled } from './external'
 import type { Office } from './office'
@@ -78,6 +79,7 @@ export function createOfficeHandlers(office: Office, remoteApi: () => RemoteServ
       const file = findById(id)
       if (file) await shell.openPath(file)
     },
+    openFoundFile: (id: string, how: 'open' | 'reveal') => openFound(office.snapshot(), String(id), how === 'reveal' ? 'reveal' : 'open'),
     artifactList: () => artifactList(),
     artifactVersions: (id: string) => artifactVersionList(String(id)),
     artifactOpen: (id: string, version?: number) => artifactOpen(String(id), typeof version === 'number' ? version : undefined),

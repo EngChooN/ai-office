@@ -125,6 +125,7 @@ export const OFFICE_METHODS = [
   'startTasks',
   'saveAttachments',
   'openAttachment',
+  'openFoundFile',
   'artifactList',
   'artifactVersions',
   'artifactOpen',
