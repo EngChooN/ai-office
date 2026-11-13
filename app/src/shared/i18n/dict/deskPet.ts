@@ -304,6 +304,12 @@ export default {
     ja: "作業中 {n}人",
     zh: "工作中 {n} 人",
   },
+  "deskPet.cardMenu": {
+    ko: "이 결재 더 보기",
+    en: "More for this approval",
+    ja: "この承認のその他の操作",
+    zh: "此审批的更多操作",
+  },
   "deskPet.awaitingChip": {
     ko: "대기 {n}명",
     en: "{n} waiting",

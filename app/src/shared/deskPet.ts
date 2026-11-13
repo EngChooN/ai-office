@@ -13,6 +13,7 @@ import type {
 } from "./types";
 import { isCompleteAnswer } from "./questionAnswer.ts";
 import { isAwaitingTeam } from "./delegation.ts";
+import { alwaysApproveOffer, type AlwaysApproveOffer } from "./approvalRules.ts";
 import {
   labRoomId,
   labRoomMembers,
@@ -318,6 +319,55 @@ export async function petDecide(
   }
 }
 
+export type PetAlwaysResult = PetDecideResult | "none" | "cancelled";
+
+/**
+ * ⋯ 메뉴 "앞으로 자동 승인"(브라우저 결재는 '브라우저 자동 허용'): 판단은 본 창과 같은 alwaysApproveOffer(펼침 창은 이 PC 화면이라 원격 아님),
+ * 확인은 main 확인 창(confirm) — 펼침 창의 window.confirm 대신. 확인하는 사이 다른 곳에서 처리됐으면 'already'
+ */
+export async function petApproveAlways(
+  deps: {
+    staff: () => Staff[];
+    approveAlways: (approvalId: string) => boolean | Promise<boolean>;
+    confirm: (offer: AlwaysApproveOffer, staffName: string) => Promise<boolean>;
+    inFlight: InFlight;
+  },
+  approvalId: string,
+): Promise<PetAlwaysResult> {
+  const check = checkPetDecide(deps.staff(), approvalId);
+  if (check !== "ok") return check;
+  const a = petApprovals(deps.staff()).find((x) => x.id === approvalId)!;
+  const offer = alwaysApproveOffer(a, false);
+  if (!offer) return "none";
+  if (!deps.inFlight.begin(approvalId)) return "busy";
+  try {
+    if (!(await deps.confirm(offer, a.staffName))) return "cancelled";
+    if (checkPetDecide(deps.staff(), approvalId) !== "ok") return "already";
+    return (await deps.approveAlways(approvalId)) ? "done" : "already";
+  } finally {
+    deps.inFlight.end(approvalId);
+  }
+}
+
+export type PetStopResult = "done" | "already" | "cancelled";
+
+/** ⋯ 메뉴 "일 멈추기": 고용 직원만, main 확인 창을 거쳐 앱과 같은 interrupt로 (업무 카드는 할 일로 돌아간다) */
+export async function petStopWork(
+  deps: {
+    staff: () => Staff[];
+    interrupt: (staffId: string) => void | Promise<void>;
+    confirm: () => Promise<boolean>;
+  },
+  staffId: string,
+): Promise<PetStopResult> {
+  const isHired = (id: string) => deps.staff().some((s) => s.id === id && s.kind === "hired");
+  if (!isHired(staffId)) return "already";
+  if (!(await deps.confirm())) return "cancelled";
+  if (!isHired(staffId)) return "already";
+  await deps.interrupt(staffId);
+  return "done";
+}
+
 /** 펼침 창(폭 340px)에서 바로 답하기에 알맞은 질문인지. 하나라도 넘으면 '앱에서 열기'로 넘긴다.
  * 결재 칸은 펼침 창 높이의 45%(약 230px)라 질문 3개부터는 스크롤 안에서 길을 잃고, 글 폭(약 284px)에 한글 한 줄 약 22자라 질문은 5줄·이름 2줄·설명 4줄까지 */
 export const PET_QUESTION_LIMIT = {
@@ -544,6 +594,9 @@ export interface OfficePetApi {
     answers: Record<string, string>,
   ): Promise<PetAnswerResult>;
   skip(approvalId: string): Promise<PetAnswerResult>;
+  /** ⋯ 메뉴: 앞으로 자동 승인(확인 창은 main) · 그 직원 일 멈추기 */
+  approveAlways(approvalId: string): Promise<PetAlwaysResult>;
+  stopWork(staffId: string): Promise<PetStopResult>;
   /** 캐릭터 숨기기 (설정의 "바탕화면 비서 캐릭터 보이기"를 끈다 — 트레이·설정에서 다시 불러온다) */
   hide(): void;
   /** 펼침 창이 보일 때마다 (입력창에 포커스를 준다) */

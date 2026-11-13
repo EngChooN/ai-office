@@ -93,3 +93,21 @@ export function ruleLabel(draft: ApprovalRuleDraft): string {
   if (draft.toolName === 'Bash') return t('rule.label.command', { patterns: draft.patterns.join(' · ') })
   return t('rule.label.tool', { tool: draft.toolName.replace(/^mcp__/, '').replace(/__/g, ' › ') })
 }
+
+/** 결재 카드의 "앞으로 자동 승인" 제안 — 본 창 버튼·바탕화면 비서 ⋯ 메뉴·main 확인 창이 같은 판단을 쓴다 */
+export type AlwaysApproveOffer = { kind: 'browser' } | { kind: 'rule'; rule: string }
+
+/**
+ * 브라우저 결재는 규칙 대신 '브라우저 자동 허용'(PC에서만 — 휴대폰에서 한 번 누른 승인이 앞으로의 허가가 되지 않게),
+ * 규칙 초안이 있으면 그 규칙(명령 규칙은 PC에서만). 위험 명령·질문처럼 초안이 없으면 null
+ */
+export function alwaysApproveOffer(a: { browserAutoOffer?: boolean; alwaysRule?: ApprovalRuleDraft }, isRemote: boolean): AlwaysApproveOffer | null {
+  if (a.browserAutoOffer) return isRemote ? null : { kind: 'browser' }
+  if (!a.alwaysRule) return null
+  if (isRemote && /^bash$/i.test(a.alwaysRule.toolName.trim())) return null
+  return { kind: 'rule', rule: ruleLabel(a.alwaysRule) }
+}
+
+/** 자동 승인 확인 문구 (본 창 window.confirm·바탕화면 비서는 main 확인 창) */
+export const alwaysApproveConfirm = (offer: AlwaysApproveOffer, staffName: string) =>
+  offer.kind === 'browser' ? t('browserAuto.confirm', { name: staffName }) : t('rule.confirm', { name: staffName, rule: offer.rule })

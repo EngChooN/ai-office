@@ -3,7 +3,8 @@
 
 import type { OfficeMethod } from '../shared/officeApiShape.ts'
 import { t } from '../shared/i18n/index.ts'
-import type { AutoApproveState, AutoHandled, DailyRecord, LogEntry, Manual, OfficeSnapshot, SecretaryCompare, Task } from '../shared/types.ts'
+import type { Approval, AutoApproveState, AutoHandled, DailyRecord, LogEntry, Manual, OfficeSnapshot, SecretaryCompare, Task } from '../shared/types.ts'
+import { approvalHeadline } from '../shared/approvalEffect.ts'
 
 /** 도구 결과 한 번의 상한 (글자) */
 export const COMPACT_MAX = 6000
@@ -22,6 +23,9 @@ const STATUS: Record<string, string> = { working: '일하는 중', waiting: '확
 const TASK_STATUS: Record<string, string> = { todo: '할 일', doing: '진행 중', review: '검토', done: '완료' }
 
 export const capText = (t: string, max = COMPACT_MAX) => (t.length > max ? `${t.slice(0, max)}\n…(더 있음 — 범위를 좁혀 다시 조회하세요)` : t)
+
+/** 결재 한 줄: 효과 문장이 있으면 결재 카드 제목과 같은 그 문장(+도구), 없으면 도구: 원문 — 비서가 대표에게 카드와 같은 말로 전한다 */
+const approvalLine = (a: Approval) => (a.effectI18n ? `${clip(approvalHeadline(a), 200)} (${a.toolName})` : `${a.toolName}: ${clip(a.summary, 200)}`)
 
 export type OverviewSection = 'all' | 'people' | 'approvals' | 'tasks' | 'org' | 'settings' | 'schedules'
 
@@ -44,7 +48,7 @@ export function compactOverview(snap: OfficeSnapshot, section: OverviewSection =
     const approvals = snap.staff.flatMap((s) => s.approvals.map((a) => ({ a, s })))
     const plans = snap.tasks.filter((t) => t.plan?.status === 'waiting')
     out.push(`## 결재 대기 ${approvals.length}건 · 기획 확인 ${plans.length}건`)
-    for (const { a, s } of approvals) out.push(`- [${a.id}] ${s.name} · ${a.questions ? `질문: ${clip(a.questions.map((q) => `${q.question} (${q.options.map((o) => o.label).join('/')})`).join(' / '), 200)}` : `${a.toolName}: ${clip(a.summary, 200)}`} · ${ago(a.createdAt, now)}`)
+    for (const { a, s } of approvals) out.push(`- [${a.id}] ${s.name} · ${a.questions ? `질문: ${clip(a.questions.map((q) => `${q.question} (${q.options.map((o) => o.label).join('/')})`).join(' / '), 200)}` : approvalLine(a)} · ${ago(a.createdAt, now)}`)
     for (const t of plans) out.push(`- 기획 [${t.id}] ${clip(t.title, 60)} · ${name(t.assigneeId)} · 하위 ${t.plan!.subtasks.length}건`)
   }
   if (section === 'tasks') {
@@ -98,7 +102,7 @@ export function compactStaffDetail(snap: OfficeSnapshot, staffId: string, record
     '### 업무 지침 (원문 그대로)',
     s.systemPrompt || '(비어 있음)',
   ]
-  if (s.approvals.length) lines.push('### 결재 대기', ...s.approvals.map((a) => `- [${a.id}] ${a.toolName}: ${clip(a.summary, 200)}`))
+  if (s.approvals.length) lines.push('### 결재 대기', ...s.approvals.map((a) => `- [${a.id}] ${approvalLine(a)}`))
   if (record) lines.push('### 최근 기록', ...compactLogs(record.logs, 15, now))
   return capText(lines.join('\n'), COMPACT_MAX + 4000)
 }

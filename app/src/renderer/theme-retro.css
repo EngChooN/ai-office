@@ -410,3 +410,25 @@
     transform: none;
   }
 }
+
+/* ── 바탕화면 비서 펼침 창 (2차, ⑤): 본 창과 같은 외곽선·그림자·칩. 캐릭터 창은 투명이라 손대지 않는다 ── */
+[data-theme='retro'] .pet-panel > header {
+  background: var(--surface-chrome);
+  border-bottom-color: var(--retro-out);
+}
+[data-theme='retro'] .pet-panel .pet-card {
+  border-color: transparent;
+  box-shadow: var(--retro-edge), 4px 4px 0 0 var(--retro-drop);
+}
+[data-theme='retro'] .pet-panel .pet-bubble {
+  box-shadow: var(--retro-edge), 3px 3px 0 0 var(--retro-drop);
+}
+[data-theme='retro'] .pet-panel .pet-chip {
+  background: var(--retro-wait);
+  color: var(--retro-wait-fg);
+  border-color: var(--retro-out);
+}
+[data-theme='retro'] .pet-composer {
+  background: var(--surface-chrome);
+  border-top-color: var(--retro-out);
+}

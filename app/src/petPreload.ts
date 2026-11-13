@@ -70,6 +70,10 @@ const pet: OfficePetApi = {
   answer: (approvalId, answers) =>
     ipcRenderer.invoke("pet:answer", approvalId, answers),
   skip: (approvalId) => ipcRenderer.invoke("pet:skip", approvalId),
+  // ⋯ 메뉴: 자동 승인·일 멈추기 — 확인 창은 main이 띄운다 (office.* 전체를 열지 않는 좁은 통로)
+  approveAlways: (approvalId) =>
+    ipcRenderer.invoke("pet:approveAlways", approvalId),
+  stopWork: (staffId) => ipcRenderer.invoke("pet:stopWork", staffId),
   hide: () => ipcRenderer.send("pet:hide"),
   onPanelVisible: (cb) => {
     const listener = (_e: IpcRendererEvent, isVisible: boolean) =>

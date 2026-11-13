@@ -205,6 +205,8 @@ const pet = new PetWindows({
   snapshot: () => office.snapshot(),
   decide: (approvalId, allow) => (handlers!.decide as (id: string, allow: boolean) => boolean)(approvalId, allow),
   answerQuestion: (approvalId, answers) => (handlers!.answerQuestion as (id: string, answers: Record<string, string>) => boolean)(approvalId, answers),
+  approveAlways: (approvalId) => (handlers!.approveAlways as (id: string) => Promise<boolean>)(approvalId),
+  interrupt: (staffId) => (handlers!.interrupt as (id: string) => Promise<void>)(staffId),
   openApp: (target) => showWindow(target.kind === 'secretary' ? SECRETARY_PAGE_FOCUS : target.kind === 'staff' ? target.staffId : undefined),
   setOn: (isOn) => office.updateSettings({ isDeskPetOn: isOn }),
   load: (w, view) => {
@@ -238,6 +240,7 @@ function syncWindowTheme(theme: UiThemeId) {
 const windowColors = () => windowBg(windowTheme, nativeTheme.shouldUseDarkColors ? 'dark' : 'light')
 
 function paintWindowChrome() {
+  pet.repaint()
   if (!win) return
   const c = windowColors()
   win.setBackgroundColor(c.background)

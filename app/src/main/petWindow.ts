@@ -1,6 +1,8 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { app, BrowserWindow, ipcMain, powerMonitor, screen, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, powerMonitor, screen, type IpcMainEvent, type IpcMainInvokeEvent } from 'electron'
+import { alwaysApproveConfirm } from '../shared/approvalRules'
+import { t } from '../shared/i18n/index.ts'
 import type { OfficeSnapshot } from '../shared/types'
 import { openLinksInBrowser } from './externalLinks'
 import { isPetPlatform, needsBoundsRetry, petAllWorkspaces, petPanelType, petTopLevel } from './petPlatform'
@@ -9,7 +11,9 @@ import {
   defaultPetBounds,
   InFlight,
   petAnswer,
+  petApproveAlways,
   petSkipQuestion,
+  petStopWork,
   listenAll,
   petAlignFor,
   petCharRect,
@@ -43,6 +47,9 @@ export interface PetDeps {
   decide(approvalId: string, allow: boolean): boolean
   /** 앱 화면·휴대폰과 같은 질문 답 처리 함수 */
   answerQuestion(approvalId: string, answers: Record<string, string>): boolean
+  /** 앱 화면과 같은 "앞으로 자동 승인"·일 멈추기 처리 함수 */
+  approveAlways(approvalId: string): Promise<boolean>
+  interrupt(staffId: string): Promise<void>
   openApp(target: PetOpenTarget): void
   /** 설정의 "바탕화면 비서 캐릭터 보이기"를 바꾼다 (숨기기·다시 불러오기) */
   setOn(isOn: boolean): void
@@ -81,7 +88,7 @@ const areaOf = (b: Rect): Rect => screen.getDisplayMatching(b).workArea
 const REFIT_AGAIN_MS = 800
 const PET_CHANNELS = ['pet:interactive', 'pet:dragStart', 'pet:dragMove', 'pet:dragEnd', 'pet:togglePanel', 'pet:closePanel', 'pet:openApp', 'pet:hide']
 
-const PET_HANDLERS = ['pet:decide', 'pet:answer', 'pet:skip']
+const PET_HANDLERS = ['pet:decide', 'pet:answer', 'pet:skip', 'pet:approveAlways', 'pet:stopWork']
 
 export class PetWindows {
   private pet: BrowserWindow | null = null
@@ -320,6 +327,19 @@ export class PetWindows {
     this.placeSettled(b)
   }
 
+  /** 펼침 창 위에 띄우는 확인 창 (앱 창을 앞으로 부르지 않는다) */
+  private async confirm(message: string, okLabel: string) {
+    const opts = { type: 'question' as const, buttons: [okLabel, t('dialog.cancel')], defaultId: 0, cancelId: 1, message }
+    const parent = this.panel && !this.panel.isDestroyed() ? this.panel : null
+    const { response } = parent ? await dialog.showMessageBox(parent, opts) : await dialog.showMessageBox(opts)
+    return response === 0
+  }
+
+  /** 테마를 바꾸면 펼침 창 바탕(첫 페인트·크기 바꿀 때 보이는 색)을 다시 칠한다 — 캐릭터 창은 투명이라 대상 아님 */
+  repaint() {
+    if (this.panel && !this.panel.isDestroyed()) this.panel.setBackgroundColor(this.deps.background())
+  }
+
   /** 보낸 창이 캐릭터·펼침 창일 때만 받는다 (앱 창·다른 창이 pet:* 를 부르지 못하게) */
   private isMine(e: IpcMainEvent | IpcMainInvokeEvent) {
     return this.windows().some((w) => w.webContents === e.sender)
@@ -383,6 +403,15 @@ export class PetWindows {
     ipcMain.handle('pet:skip', (e, approvalId: unknown) => {
       if (!this.isMine(e) || typeof approvalId !== 'string') return 'already'
       return this.withFace(petSkipQuestion({ staff: () => this.deps.snapshot().staff, decide: this.deps.decide, inFlight: this.inFlight }, approvalId))
+    })
+    // ⋯ 메뉴 좁은 통로 두 개: 형식 검사 → 펫 창이 보낸 것만 → 확인은 main 확인 창(펼침 창 위) → 앱과 같은 처리 함수
+    ipcMain.handle('pet:approveAlways', (e, approvalId: unknown) => {
+      if (!this.isMine(e) || typeof approvalId !== 'string') return 'already'
+      return petApproveAlways({ staff: () => this.deps.snapshot().staff, approveAlways: this.deps.approveAlways, confirm: (offer, name) => this.confirm(alwaysApproveConfirm(offer, name), t(offer.kind === 'browser' ? 'browserAuto.button' : 'rule.button')), inFlight: this.inFlight }, approvalId)
+    })
+    ipcMain.handle('pet:stopWork', (e, staffId: unknown) => {
+      if (!this.isMine(e) || typeof staffId !== 'string') return 'already'
+      return petStopWork({ staff: () => this.deps.snapshot().staff, interrupt: this.deps.interrupt, confirm: () => this.confirm(t('question.interruptConfirm'), t('question.interrupt')) }, staffId)
     })
     const off = listenAll(
       [

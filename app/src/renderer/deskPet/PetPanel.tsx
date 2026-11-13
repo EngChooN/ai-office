@@ -5,6 +5,7 @@ import {
   ChevronDownIcon,
   ChevronRightIcon,
   CircleCheckIcon,
+  EllipsisIcon,
   EyeOffIcon,
   MessagesSquareIcon,
   UserIcon,
@@ -24,6 +25,8 @@ import {
 } from "@/features/secretary/QueuedBadge";
 import { QuestionBox } from "@/features/QuestionBox";
 import { WaitReasonLine } from "@/features/WaitReasonLine";
+import { ApprovalSummary } from "@/features/ApprovalSummary";
+import { alwaysApproveOffer } from "@shared/approvalRules";
 import {
   EMPTY_SECRETARY,
   type AutoHandled,
@@ -286,7 +289,7 @@ export function PetPanel() {
         </button>
         {workingCount > 0 && (
           <span
-            className="shrink-0 rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap"
+            className="pet-chip shrink-0 rounded-full border px-2 py-0.5 text-xs font-medium whitespace-nowrap"
             title={workingNames.join(", ")}
           >
             {t("deskPet.workingChip", { n: workingCount })}
@@ -570,7 +573,7 @@ function FeedRow({
           )}
           <div
             className={cn(
-              "rounded-xl px-3 py-2",
+              "pet-bubble rounded-xl px-3 py-2",
               item.isMine ? "bg-primary text-primary-foreground" : "bg-muted",
               item.isError && "text-destructive",
               isQueued && "opacity-60",
@@ -631,7 +634,7 @@ function DoneCard({
 }) {
   const title = t("deskPet.doneTitle", { name: staffName });
   return (
-    <div className="bg-card flex flex-col gap-1.5 rounded-xl border px-3 py-2.5">
+    <div className="pet-card bg-card flex flex-col gap-1.5 rounded-xl border px-3 py-2.5">
       <p className="flex items-center gap-1.5 text-[14px] font-semibold">
         <CircleCheckIcon
           className="size-4 shrink-0 text-emerald-600 dark:text-emerald-400"
@@ -685,36 +688,32 @@ function ApprovalCard({
   const done = actions.settledOf.get(a.id);
   const state: ItemState | undefined = actions.states[a.id];
   const title = titleOf(a);
-  const summary = approvalHeadline(a);
-  // 효과 문장이 제목이면 원문은 그 아래 작은 고정폭 두 줄로 (펫 창은 좁아 접기 대신 줄임 + 마우스를 올리면 전체)
-  const raw = a.effectI18n ? trOr(a.summaryI18n, a.summary) : null;
   const isInline = !done && !!a.questions?.length && fitsPetPanel(a.questions);
   return (
     <div
       data-approval={a.id}
       tabIndex={-1}
-      className="bg-card focus-visible:ring-ring flex flex-col gap-2 rounded-xl border px-3 py-2.5 outline-none focus-visible:ring-2"
+      className="pet-card bg-card focus-visible:ring-ring flex flex-col gap-2 rounded-xl border px-3 py-2.5 outline-none focus-visible:ring-2"
     >
-      <p className="text-muted-foreground truncate text-xs">
-        {[a.staffName, a.staffRole].filter(Boolean).join(" · ")}
-      </p>
-      <WaitReasonLine reason={a.waitReason} />
-      {/* 여기서 답할 질문은 질문 글이 곧 제목 (QuestionBox가 보여 준다) */}
-      {!isInline && (
-        <p
-          className="line-clamp-2 text-[14px] font-semibold break-words"
-          title={summary}
-        >
-          {summary}
-        </p>
-      )}
-      {!isInline && raw && (
-        <p
-          className="text-muted-foreground line-clamp-2 font-mono text-[11px] break-all"
-          title={raw}
-        >
-          {raw}
-        </p>
+      <div className="flex items-start gap-1">
+        <div className="min-w-0 flex-1">
+          <p className="text-muted-foreground truncate text-xs">
+            {[a.staffName, a.staffRole].filter(Boolean).join(" · ")}
+          </p>
+          {/* 요청자 줄: 결재 탭·결재함과 같은 문구 */}
+          {a.requestedBy && (
+            <p className="text-muted-foreground truncate text-xs">
+              {t("approval.requestedBy", { name: a.requestedBy })}
+            </p>
+          )}
+        </div>
+        {!done && <ApprovalMenu approval={a} actions={actions} />}
+      </div>
+      {/* 여기서 답할 질문은 질문 글이 곧 제목 (QuestionBox가 보여 준다). 나머지는 본 창 결재 카드와 같은 본문(제목·AI 추정·기다리는 이유·원문 접기) */}
+      {isInline ? (
+        <WaitReasonLine reason={a.waitReason} />
+      ) : (
+        <ApprovalSummary approval={a} />
       )}
       {done ? (
         <span className="text-muted-foreground text-xs font-medium">
@@ -790,6 +789,82 @@ function ApprovalCard({
             </p>
           )}
         </div>
+      )}
+    </div>
+  );
+}
+
+/** 결재 카드 ⋯ 메뉴: 앞으로 자동 승인(본 창과 같은 판단 — 없으면 뺀다) · 일 멈추기 · 앱에서 열기. 확인 창은 main이 띄운다 */
+function ApprovalMenu({
+  approval: a,
+  actions,
+}: {
+  approval: PetApproval;
+  actions: ApprovalActions;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const offer = alwaysApproveOffer(a, false);
+  const isBusy = actions.states[a.id]?.kind === "busy";
+  const pick = (fn: () => void) => () => {
+    setIsOpen(false);
+    fn();
+  };
+  const items = [
+    ...(offer && !a.questions?.length
+      ? [
+          {
+            key: "always",
+            label: t(offer.kind === "browser" ? "browserAuto.button" : "rule.button"),
+            onClick: () =>
+              void actions.run(a, () => pet().approveAlways(a.id), "approved"),
+          },
+        ]
+      : []),
+    {
+      key: "stop",
+      label: t("question.interrupt"),
+      onClick: () => void pet().stopWork(a.staffId),
+    },
+    {
+      key: "open",
+      label: t("deskPet.openApp"),
+      onClick: () => open({ kind: "staff", staffId: a.staffId }),
+    },
+  ];
+  return (
+    <div className="relative shrink-0">
+      <Button
+        size="icon"
+        variant="ghost"
+        className="size-7"
+        disabled={isBusy}
+        aria-haspopup="menu"
+        aria-expanded={isOpen}
+        aria-label={t("deskPet.cardMenu")}
+        onClick={() => setIsOpen((v) => !v)}
+      >
+        <EllipsisIcon />
+      </Button>
+      {isOpen && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
+          <div
+            role="menu"
+            className="bg-popover text-popover-foreground absolute top-full right-0 z-20 mt-1 flex min-w-40 flex-col rounded-md border p-1 shadow-md"
+          >
+            {items.map((x) => (
+              <button
+                key={x.key}
+                type="button"
+                role="menuitem"
+                onClick={pick(x.onClick)}
+                className="hover:bg-accent rounded px-2 py-1.5 text-left text-xs"
+              >
+                {x.label}
+              </button>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );
@@ -978,6 +1053,8 @@ function useApprovalActions(approvals: PetApproval[]) {
       } else if (result === "already") {
         settle("elsewhere");
         setAnnounce(t("deskPet.already"));
+      } else if (result === "cancelled" || result === "none") {
+        // 확인 창에서 취소 (또는 자동 승인할 수 없는 결재) — 카드는 그대로
       } else {
         // 질문이 바뀌어 여기서 답할 수 없게 됨 (tooComplex·invalid 등) — 앱에서 답하도록 실패로 남긴다
         setStates((s) => ({ ...s, [a.id]: { kind: "error" } }));
