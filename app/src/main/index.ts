@@ -188,8 +188,9 @@ const tray = new OfficeTray(
     },
     // 메뉴바 "비서에게 말하기": 창을 띄우고 빠른 창(⌘K)을 연다
     talkToSecretary: () => showWindow(SECRETARY_FOCUS),
-    // 숨겼거나 엉뚱한 곳에 있는 바탕화면 비서를 다시 불러온다 (맥)
+    // 숨겼거나 엉뚱한 곳에 있는 바탕화면 비서를 다시 불러온다 (맥·윈도우)
     summonDeskPet: isPetPlatform(process.platform) ? () => pet.summon() : undefined,
+    setDeskPetOn: isPetPlatform(process.platform) ? (isOn) => office.updateSettings({ isDeskPetOn: isOn }) : undefined,
   },
   () => {
     const r = remote?.status()

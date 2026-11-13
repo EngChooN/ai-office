@@ -875,32 +875,6 @@ export function clearSecretaryMessages() {
   run('DELETE FROM secretary_message')
 }
 
-/** 비서 세션: 이어 쓰는 세션 id와 시작 시각·질문 수(길어지면 새로), 마지막으로 본 누적 비용·토큰(차이만 쌓는다) */
-export interface StoredSecretarySession {
-  id: string
-  startedAt: number
-  turns: number
-  cost: number
-  tokensIn: number
-  tokensOut: number
-}
-
-export function loadSecretarySession(): StoredSecretarySession | null {
-  const raw = get<{ value: string }>("SELECT value FROM setting WHERE key = 'secretarySession'")?.value
-  if (!raw) return null
-  try {
-    const v = JSON.parse(raw) as StoredSecretarySession
-    return typeof v?.id === 'string' ? v : null
-  } catch {
-    // 예전에는 id 글자만 저장했다 — 새 세션으로
-    return null
-  }
-}
-
-export function saveSecretarySession(s: StoredSecretarySession | null) {
-  run("INSERT INTO setting (key, value) VALUES ('secretarySession', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", s ? JSON.stringify(s) : '')
-}
-
 // ── 설정 ────────────────────────────────────────────────
 
 export function loadSettings(): Settings {

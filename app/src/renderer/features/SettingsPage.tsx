@@ -5,7 +5,7 @@ import { NativeSelect } from '@/components/ui/select'
 import { Page } from '@/components/ui/page'
 import { cn } from '@/lib/utils'
 import { useOffice } from '@/store'
-import { IS_WINDOWS, osText, trayPlace } from '@/lib/platform'
+import { HAS_DESK_PET, IS_WINDOWS, osText, trayPlace } from '@/lib/platform'
 import { NotOnWindows } from '@/components/not-on-windows'
 import { PcOnlyState } from '@/components/pc-only-state'
 import { IS_REMOTE_SCREEN } from '@/shell'
@@ -450,7 +450,7 @@ export function SettingsPage() {
                 {t('settingsPage.layout.reset')}
               </Button>
             </Section>
-            {!IS_REMOTE_SCREEN && (
+            {!IS_REMOTE_SCREEN && HAS_DESK_PET && (
               <Section id={SECTION_ID.deskPet} title={t('deskPet.setting')} description={t('deskPet.settingHint')}>
                 <label className="flex items-center gap-2 text-sm">
                   <input type="checkbox" checked={settings.isDeskPetOn} onChange={(e) => update({ isDeskPetOn: e.target.checked })} /> {t('deskPet.setting')}

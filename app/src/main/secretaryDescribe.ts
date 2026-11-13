@@ -3,6 +3,7 @@
 // 줄마다 사전 키+인자(I18nText)로 만들어 카드에 같이 저장한다 — 화면은 그때 언어로, detail 글자는 한국어로
 
 import type { OfficeMethod } from '../shared/officeApiShape.ts'
+import type { Settings } from '../shared/types.ts'
 import { SECRETARY_TOOLS, type SecretaryRisk } from '../shared/secretaryTools.ts'
 import { shopItem } from '../shared/economy.ts'
 import { tr, type I18nArg, type I18nText } from '../shared/i18n/index.ts'
@@ -15,7 +16,14 @@ const ROT = ['↙', '↖', '↗', '↘']
 export type NameOf = (id: string) => string | null
 
 /** 사전 키 이름: secretary.setting.<키> */
-const SETTING_KEYS = new Set(['monthlyBudgetUsd', 'tokenBudget', 'theme', 'dayNight', 'plants', 'isChatterOn', 'workHours', 'layout', 'isTrayOn', 'isOnboarded', 'isWorkMode', 'isFullAccessNoticeSeen', 'isProviderBannerSeen', 'isSecretaryWebOn'])
+/** 설정 이름표 (사전 키 secretary.setting.<키>). Settings의 모든 키를 적어야 타입 검사를 통과한다 — 새 설정이 카드에 영어 키로 보이지 않게 */
+const SETTING_KEY_MAP: Record<keyof Settings, true> = {
+  monthlyBudgetUsd: true, tokenBudget: true, theme: true, dayNight: true, uiMode: true, uiTheme: true, plants: true, isChatterOn: true, isSecretaryBriefOn: true,
+  workHours: true, layout: true, isTrayOn: true, isDeskPetOn: true, deskPetSize: true, deskPetOpacity: true, launchAtLogin: true, isOnboarded: true, defaultCwd: true,
+  isWorkMode: true, isFullAccessNoticeSeen: true, isProviderBannerSeen: true, internalAi: true, language: true, demoDay: true, isStaffCaptureOn: true,
+  isSecretaryWebOn: true, sharedBrowserLogin: true, tokenSaverMode: true, reportStyle: true,
+}
+export const SETTING_KEYS = new Set<string>(Object.keys(SETTING_KEY_MAP))
 /** 이 설정은 바꿔도 꾸미기라 보통 */
 const COSMETIC_SETTINGS = new Set(['theme', 'dayNight', 'plants', 'isChatterOn', 'layout'])
 

@@ -33,8 +33,10 @@ export interface TrayMenuActions {
   quickTask(): void
   /** 비서에게 말하기 */
   talkToSecretary(): void
-  /** 바탕화면 비서 캐릭터 다시 불러오기 (맥만 — 없으면 메뉴에 없다) */
+  /** 바탕화면 비서 캐릭터 다시 불러오기 (맥·윈도우만 — 없으면 메뉴에 없다) */
   summonDeskPet?: () => void
+  /** 바탕화면 비서 켜기·끄기 (summonDeskPet과 같이 맥·윈도우만) */
+  setDeskPetOn?: (isOn: boolean) => void
   setRemoteEnabled(isOn: boolean): void
 }
 
@@ -205,6 +207,9 @@ export function buildTrayMenu(snap: OfficeSnapshot, extra: TrayExtra, actions: T
   const r = extra.remote
   items.push(
     { label: t('tray.talkSecretary'), click: () => actions.talkToSecretary() },
+    ...(actions.setDeskPetOn
+      ? [{ label: t('deskPet.setting'), type: 'checkbox' as const, checked: snap.settings.isDeskPetOn, click: () => actions.setDeskPetOn!(!snap.settings.isDeskPetOn) }]
+      : []),
     ...(actions.summonDeskPet ? [{ label: t('deskPet.summon'), click: () => actions.summonDeskPet!() }] : []),
     { label: t('tray.quickTask'), click: () => actions.quickTask() },
     {

@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Markdown } from "@/components/markdown";
 import { JumpToBottom, useStickToBottom } from "@/components/stick-to-bottom";
 import { cn } from "@/lib/utils";
+import { trayPlace } from "@/lib/platform";
 import { useOffice } from "@/store";
 import { SecretaryComposer } from "@/features/secretary/SecretaryChat";
 import { SecretaryFace } from "@/features/secretary/SecretaryFace";
@@ -35,7 +36,9 @@ import {
   petApprovals,
   petTargetKey,
   petTargets,
+  petAwaitingCount,
   petWorkingCount,
+  petWorkingNames,
   pruneSettled,
   recentAuto,
   roomFeed,
@@ -96,6 +99,7 @@ export function PetPanel() {
       ? staff.find((s) => s.id === current.staffId)
       : undefined;
   const workingCount = petWorkingCount(staff);
+  const awaitingCount = petAwaitingCount(staff);
   // 창을 열 때마다 올라가는 번호 — 대화 끝(최근 메시지)으로 다시 내려간다
   const [shownCount, setShownCount] = useState(0);
   const [isPickerOpen, setPickerOpen] = useState(false);
@@ -257,9 +261,7 @@ export function PetPanel() {
       : current.kind === "staff"
         ? { kind: "staff", staffId: current.staffId }
         : { kind: "app" };
-  const workingNames = staff
-    .filter((s) => s.kind === "hired" && s.status === "working")
-    .map((s) => s.name);
+  const workingNames = petWorkingNames(staff);
 
   return (
     <div className="pet-panel bg-background text-foreground relative flex h-screen flex-col text-[13px]">
@@ -283,6 +285,14 @@ export function PetPanel() {
             title={workingNames.join(", ")}
           >
             {t("deskPet.workingChip", { n: workingCount })}
+          </span>
+        )}
+        {awaitingCount > 0 && (
+          <span
+            className="text-muted-foreground shrink-0 rounded-full border border-dashed px-2 py-0.5 text-xs whitespace-nowrap"
+            title={t("deskPet.awaitingHint")}
+          >
+            {t("deskPet.awaitingChip", { n: awaitingCount })}
           </span>
         )}
         {approvals.length > 0 && (
@@ -311,7 +321,7 @@ export function PetPanel() {
           variant="ghost"
           className="size-8 shrink-0 [-webkit-app-region:no-drag]"
           aria-label={t("deskPet.hide")}
-          title={`${t("deskPet.hide")} — ${t("deskPet.hideHint")}`}
+          title={`${t("deskPet.hide")} — ${t("deskPet.hideHint", { place: trayPlace() })}`}
           onClick={() => pet().hide()}
         >
           <EyeOffIcon />

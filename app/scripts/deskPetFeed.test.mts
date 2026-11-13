@@ -10,7 +10,9 @@ import {
   PET_SECRETARY,
   petTargetKey,
   petTargets,
+  petAwaitingCount,
   petWorkingCount,
+  petWorkingNames,
   pickBubble,
   roomFeed,
   staffFeed,
@@ -248,6 +250,18 @@ test("작업 중 인원: 고용 직원 가운데 working만", () => {
     ]),
     1,
   );
+});
+
+test("작업 중 숫자와 이름 목록은 같은 기준, 팀원 결과를 기다리는 리더는 '대기'로 따로", () => {
+  const staff = [
+    person("a", { name: "가", status: "working" }),
+    person("b", { name: "나", status: "idle", awaitingTeam: true }),
+    person("c", { name: "다", status: "idle" }),
+    person("x", { kind: "external", status: "idle", awaitingTeam: true }),
+  ];
+  assert.equal(petWorkingCount(staff), petWorkingNames(staff).length);
+  assert.deepEqual(petWorkingNames(staff), ["가"]);
+  assert.equal(petAwaitingCount(staff), 1);
 });
 
 test("완료 감지: 안 읽은 보고 수가 늘어난 직원만, 첫 스냅샷은 기준만", () => {

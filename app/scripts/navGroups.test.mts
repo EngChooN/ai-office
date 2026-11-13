@@ -60,3 +60,16 @@ test('투어 대상: 묶음 안 화면은 탭 → 묶음 순, 탭 하나짜리�
   assert.equal(tourTarget(NAV_GROUP_DEFS, 'inbox'), 'nav-inbox')
   assert.equal(tourTarget(NAV_GROUP_DEFS, 'map'), 'nav-map')
 })
+
+test('비서 지침용 메뉴 안내: 정의의 묶음·탭 이름으로 만들고, 덧붙임은 그 묶음 괄호에', async () => {
+  const { navOutline, viewLinkList, STAFF_PANEL_TAB_LABEL } = await import('../src/renderer/features/navGroups.ts')
+  const { t } = await import('../src/shared/i18n/index.ts')
+  const ko = (k: Parameters<typeof t>[0]) => t(k, undefined, 'ko')
+  const outline = navOutline(ko, { map: '직원 패널' })
+  assert.match(outline, /^비서·사무실\(직원 패널\)·직원\(직원 목록·팀 구성\)·업무\(보드·예약 업무·결과물\)·결재함·/)
+  assert.match(outline, /설정\(설정·업데이트 소식\)$/)
+  const links = viewLinkList(ko)
+  for (const g of NAV_GROUP_DEFS) for (const x of g.tabs) if (x.view !== 'secretary') assert.ok(links.includes(`${x.view}(`), x.view)
+  assert.ok(!links.includes('secretary('))
+  assert.deepEqual(Object.values(STAFF_PANEL_TAB_LABEL).map(ko), ['대화', '결재', '바뀐 파일', '도구', '소개'])
+})

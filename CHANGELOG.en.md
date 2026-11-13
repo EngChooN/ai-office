@@ -11,6 +11,13 @@ Writing rules
 - Leave out: internal or development matters, re-fixes of features added in the same version, how a security hole worked (if needed, one line on the result), minor wording or spacing tweaks.
 - Couldn't do it before → new feature; easier than before → improvement; was working wrongly → bug fix.
 
+## [미정] (설치본 미빌드)
+
+### Improvements
+- The assistant now points you to screens by their current names (Settings › Connect other devices, the staff panel 'Tools' tab and so on).
+- The 'N working' chip on the desktop secretary counts only staff who are working; staff waiting for their teammates' results show separately as 'n waiting'.
+- Turn the desktop secretary on or off right from the menu bar (the notification area on Windows). On Linux the desktop secretary setting is hidden.
+
 ## [1.4.0] - 2026-11-13
 PC app only: the Connect-devices card and the team creation window are in the PC app. In the phone app, first-time connection now has a 3-step guide.
 

@@ -760,8 +760,13 @@ export function findPetTarget(
 }
 
 /** 지금 일하는 고용 직원 수 (머리줄 "작업 중 N명" · 캐릭터 업무 말풍선) */
-export const petWorkingCount = (staff: Staff[]) =>
-  staff.filter((s) => s.kind === "hired" && (s.status === "working" || isAwaitingTeam(s))).length;
+const hiredWorking = (staff: Staff[]) => staff.filter((s) => s.kind === "hired" && s.status === "working");
+/** '작업 중 N명' — 지금 일하는 고용 직원만 (칩에 마우스를 올리면 보이는 이름 목록과 같은 기준) */
+export const petWorkingCount = (staff: Staff[]) => hiredWorking(staff).length;
+export const petWorkingNames = (staff: Staff[]) => hiredWorking(staff).map((s) => s.name);
+/** '대기 n명' — 맡긴 팀원의 결과를 기다리는 리더 (일하는 중이 아니라 따로 센다) */
+export const petAwaitingCount = (staff: Staff[]) =>
+  staff.filter((s) => s.kind === "hired" && isAwaitingTeam(s)).length;
 
 /** 대화 흐름 한 줄. at(발생 시각)으로 줄 세운다 */
 export type PetFeedItem =

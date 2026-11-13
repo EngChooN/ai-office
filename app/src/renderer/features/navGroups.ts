@@ -86,3 +86,33 @@ export function tourTarget(groups: NavGroupDef[], view: View): string {
 export function showsTabRow(groupId: NavGroupId | undefined, shell: 'desktop' | 'phone'): boolean {
   return !(shell === 'desktop' && groupId === 'talk')
 }
+
+/** 직원 패널 탭 (사무실·직원 목록에서 직원을 누르면 열리는 패널). 순서 = 화면 순서. 비서 지침도 이 이름을 쓴다 */
+export type StaffPanelTab = 'work' | 'approvals' | 'review' | 'equip' | 'profile'
+export const STAFF_PANEL_TAB_LABEL: Record<StaffPanelTab, TKey> = {
+  work: 'staffPanel.tab.work',
+  approvals: 'approvalTab.tab',
+  review: 'staffPanel.tab.review',
+  equip: 'staffPanel.tab.equip',
+  profile: 'staffPanel.tab.profile',
+}
+
+type Label = (key: TKey) => string
+
+/**
+ * 메뉴 안내 한 줄: "비서·사무실·직원(직원 목록·팀 구성)·…". 묶음 이름 뒤 괄호에 탭 이름(탭이 하나면 생략).
+ * note[묶음 id]가 있으면 그 묶음 뒤 괄호에 덧붙인다 (정의에 없는 설명 — 직원 패널, 설정 분류 등). 비서 지침이 메뉴 정의를 따라가게 쓴다
+ */
+export function navOutline(label: Label, note: Partial<Record<NavGroupId, string>> = {}): string {
+  return NAV_GROUP_DEFS.map((g) => {
+    const inner = [g.tabs.length > 1 ? g.tabs.map((x) => label(x.labelKey)).join('·') : '', note[g.id] ?? ''].filter(Boolean).join(', ')
+    return inner ? `${label(g.labelKey)}(${inner})` : label(g.labelKey)
+  }).join('·')
+}
+
+/** 화면 이동 링크 목록: "map(사무실) dashboard(직원 › 직원 목록) …" (비서 화면 자신은 뺀다) */
+export function viewLinkList(label: Label): string {
+  return NAV_GROUP_DEFS.flatMap((g) =>
+    g.tabs.filter((x) => x.view !== 'secretary').map((x) => (g.tabs.length > 1 ? `${x.view}(${label(g.labelKey)} › ${label(x.labelKey)})` : `${x.view}(${label(x.labelKey)})`)),
+  ).join(' ')
+}

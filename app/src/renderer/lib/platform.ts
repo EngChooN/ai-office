@@ -2,6 +2,8 @@
 import { t } from '@shared/i18n'
 
 export const IS_WINDOWS = window.office.platform === 'win32'
+/** 바탕화면 비서가 뜨는 OS — 맥·윈도우 (리눅스는 범위 밖, main의 isPetPlatform과 같은 기준) */
+export const HAS_DESK_PET = window.office.platform === 'darwin' || window.office.platform === 'win32'
 
 /** OS에 맞는 말 고르기 */
 export const osText = (mac: string, win: string) => (IS_WINDOWS ? win : mac)

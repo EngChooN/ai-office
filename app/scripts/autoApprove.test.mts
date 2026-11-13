@@ -368,6 +368,19 @@ test('메뉴바: 최종 순서 (버전·요약·자동결재·결재 대기·열
   assert.ok(idx(/^전체 멈추기…$/) > idx(/^📱/), '멈추기는 휴대폰 연결 아래')
 })
 
+test('메뉴바: 바탕화면 비서 켜기·끄기 체크 (맥·윈도우에서만 — 동작 함수가 없으면 메뉴에 없다)', () => {
+  const on = buildTrayMenu(snap({ settings: { isDeskPetOn: true } } as Partial<OfficeSnapshot>), extra, { ...actions, setDeskPetOn: (v) => calls.push(`pet:${v}`) })
+  const item = find(on, /^바탕화면 비서 캐릭터 보이기$/)
+  assert.equal(item.type, 'checkbox')
+  assert.equal(item.checked, true)
+  calls.length = 0
+  item.click()
+  assert.deepEqual(calls, ['pet:false'])
+  const off = buildTrayMenu(snap({ settings: { isDeskPetOn: false } } as Partial<OfficeSnapshot>), extra, { ...actions, setDeskPetOn: () => {} })
+  assert.equal(find(off, /^바탕화면 비서 캐릭터 보이기$/).checked, false)
+  assert.equal(find(buildTrayMenu(snap(), extra, actions), /^바탕화면 비서 캐릭터 보이기$/), null)
+})
+
 test('메뉴바: 버전 줄은 비활성, 새 버전이 있으면 눌러서 업데이트(확인은 호출 쪽), 설치 중엔 비활성', () => {
   const plain = buildTrayMenu(snap(), extra, actions)
   assert.deepEqual([plain[0].label, plain[0].enabled], ['AI Office 0.19.0', false])

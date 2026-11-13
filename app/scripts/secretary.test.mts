@@ -702,3 +702,25 @@ test('확인 카드 단계 이름: 변경 메서드마다 사전 키(secretary.t
   const missing = methodsOfKind('change').filter((m) => !Object.hasOwn(DICT, `secretary.tool.${m}`))
   assert.deepEqual(missing, [])
 })
+
+test('비서 지침: 화면 이름은 메뉴 정의에서 만들고 옛 이름(휴대폰 연결·설정·꾸미기·장비 탭)은 손글씨로 남기지 않는다', () => {
+  const sec = readApp('src/main/secretary.ts')
+  const prompt = sec.slice(sec.indexOf('const VIEWS'), sec.indexOf('const AWAY_SYSTEM'))
+  for (const old of ['휴대폰 연결', '설정·꾸미기', '장비 탭']) assert.ok(!prompt.includes(old), old)
+  assert.match(prompt, /navOutline\(ko,/)
+  assert.match(prompt, /viewLinkList\(ko\)/)
+  assert.match(prompt, /STAFF_PANEL_TAB_LABEL/)
+  assert.match(prompt, /settingsPage\.remote\.title/)
+})
+
+test('설정 이름표: Settings의 키마다 4개 언어 이름이 있다 (새 설정이 카드에 영어 키로 보이지 않게)', async () => {
+  const { SETTING_KEYS } = await import('../src/main/secretaryDescribe.ts')
+  const { DEFAULT_SETTINGS } = await import('../src/shared/types.ts')
+  const { DICT } = await import('../src/shared/i18n/dict/index.ts')
+  for (const k of Object.keys(DEFAULT_SETTINGS)) assert.ok(SETTING_KEYS.has(k), `이름표 없음: ${k}`)
+  for (const k of SETTING_KEYS) {
+    const e = (DICT as Record<string, Record<string, string>>)[`secretary.setting.${k}`]
+    assert.ok(e, `사전 없음: ${k}`)
+    for (const lang of ['ko', 'en', 'ja', 'zh']) assert.ok(e[lang], `${k} ${lang}`)
+  }
+})

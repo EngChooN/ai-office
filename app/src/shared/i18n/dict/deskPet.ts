@@ -160,10 +160,10 @@ export default {
     zh: "显示桌面秘书角色",
   },
   "deskPet.settingHint": {
-    ko: "앱 창을 닫아도 바탕화면에 비서가 떠 있어요. 눌러서 묻고 결재하고, 끌어서 옮겨요 (맥 전용)",
-    en: "The secretary stays on your desktop even when the app window is closed. Click to ask and approve, drag to move (Mac only)",
-    ja: "アプリのウィンドウを閉じてもデスクトップに秘書が表示されます。クリックで質問・承認、ドラッグで移動（Mac のみ）",
-    zh: "即使关闭应用窗口，秘书也会留在桌面上。点击提问和审批，拖动移动（仅 Mac）",
+    ko: "앱 창을 닫아도 바탕화면에 비서가 떠 있어요. 눌러서 묻고 결재하고, 끌어서 옮겨요 (맥·윈도우)",
+    en: "The secretary stays on your desktop even when the app window is closed. Click to ask and approve, drag to move (Mac and Windows)",
+    ja: "アプリのウィンドウを閉じてもデスクトップに秘書が表示されます。クリックで質問・承認、ドラッグで移動（Mac・Windows）",
+    zh: "即使关闭应用窗口，秘书也会留在桌面上。点击提问和审批，拖动移动（Mac 和 Windows）",
   },
   "deskPet.summon": {
     ko: "바탕화면 비서 불러오기",
@@ -184,10 +184,10 @@ export default {
     zh: "隐藏角色",
   },
   "deskPet.hideHint": {
-    ko: "메뉴바 아이콘이나 설정 › 사무실에서 다시 불러올 수 있어요",
-    en: "Bring it back from the menu bar icon or Settings › Office",
-    ja: "メニューバーのアイコンか 設定 › オフィス から呼び戻せます",
-    zh: "可从菜单栏图标或 设置 › 办公室 召回",
+    ko: "{place} 아이콘이나 설정 › 사무실에서 다시 불러올 수 있어요",
+    en: "Bring it back from the {place} icon or Settings › Office",
+    ja: "{place}のアイコンか 設定 › オフィス から呼び戻せます",
+    zh: "可从{place}图标或 设置 › 办公室 召回",
   },
   "deskPet.size": {
     ko: "캐릭터 크기",
@@ -303,6 +303,18 @@ export default {
     en: "{n} working",
     ja: "作業中 {n}人",
     zh: "工作中 {n} 人",
+  },
+  "deskPet.awaitingChip": {
+    ko: "대기 {n}명",
+    en: "{n} waiting",
+    ja: "待機 {n}人",
+    zh: "等待 {n} 人",
+  },
+  "deskPet.awaitingHint": {
+    ko: "맡긴 팀원의 결과를 기다리는 직원",
+    en: "Staff waiting for results from teammates they delegated to",
+    ja: "任せたメンバーの結果を待っているスタッフ",
+    zh: "正在等待所委派成员结果的员工",
   },
   "deskPet.approvalChip": {
     ko: "결재 {n}",

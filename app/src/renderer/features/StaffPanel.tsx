@@ -38,6 +38,7 @@ import { PcOnlyState } from '@/components/pc-only-state'
 import { ApprovalStatusChips } from './AutoApprove'
 import { ApprovalBand } from './ApprovalBand'
 import { ApprovalTab, dayLabel } from './ApprovalTab'
+import { STAFF_PANEL_TAB_LABEL, type StaffPanelTab } from './navGroups'
 import { useStaffRecord, type OlderState } from './useStaffRecord'
 import { dayStarts } from '@shared/recordLogs'
 import { DuoIcon, IconText } from '@/components/duo-icon'
@@ -133,14 +134,6 @@ const LOG_COLOR: Partial<Record<LogType, string>> = {
   error: 'text-status-error',
   delegate: 'text-accent-a',
   commit: 'text-accent-b',
-}
-type PanelTab = 'work' | 'approvals' | 'review' | 'equip' | 'profile'
-const TAB_LABEL: Record<PanelTab, TKey> = {
-  work: 'staffPanel.tab.work',
-  approvals: 'approvalTab.tab',
-  review: 'staffPanel.tab.review',
-  equip: 'staffPanel.tab.equip',
-  profile: 'staffPanel.tab.profile',
 }
 /** 기본 모델만 번역하고 모델 이름은 그대로 */
 const modelLabel = (model: Staff['model']) => (model === 'default' ? t('staffPanel.model.default') : claudeModelName(model))
@@ -313,7 +306,7 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
   const liveLogs = useOffice((s) => s.liveLogs)
   const [draft, setDraft] = useState('')
   const composerRef = useRef<HTMLTextAreaElement>(null)
-  const [tab, setTab] = useState<PanelTab>('work')
+  const [tab, setTab] = useState<StaffPanelTab>('work')
   const isHired = staff.kind === 'hired'
 
   // 직원 카드의 예시·버튼: 지시창을 채우고(빈 글이면 그대로, 쓰던 글이 있으면 뒤에 붙임) 대화 탭으로 — 보내기는 대표가
@@ -601,7 +594,7 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
                 tab === key ? 'border-primary text-foreground side:bg-accent font-medium' : 'text-muted-foreground border-transparent',
               )}
             >
-              {t(TAB_LABEL[key])}
+              {t(STAFF_PANEL_TAB_LABEL[key])}
               {key === 'approvals' && staff.approvals.length > 0 && (
                 <span
                   className="bg-status-waiting ml-1 inline-flex min-w-4 items-center justify-center rounded-full px-1 text-[10px] leading-4 font-semibold text-white"
