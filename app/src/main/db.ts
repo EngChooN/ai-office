@@ -163,6 +163,9 @@ export function openDb() {
   if (!chatCols.includes('is_report')) db.exec('ALTER TABLE chat ADD COLUMN is_report INTEGER')
   // 답장·처리 상태·반응·이어진 카드·예약 표시 (JSON) — 새 칸을 늘리지 않고 한 칸에 모은다
   if (!chatCols.includes('meta')) db.exec('ALTER TABLE chat ADD COLUMN meta TEXT')
+  // 비서 답 안에 띄운 결재 카드의 결재 id들 (JSON 배열)
+  const secretaryCols = (db.prepare('PRAGMA table_info(secretary_message)').all() as { name: string }[]).map((c) => c.name)
+  if (!secretaryCols.includes('approval_ids')) db.exec('ALTER TABLE secretary_message ADD COLUMN approval_ids TEXT')
   db.exec('CREATE TABLE IF NOT EXISTS chat_reservation (id TEXT PRIMARY KEY, data TEXT NOT NULL, created_at INTEGER NOT NULL)')
 }
 
@@ -806,6 +809,7 @@ interface SecretaryRow {
   target: string | null
   tokens: number | null
   is_error: number | null
+  approval_ids: string | null
 }
 
 const toSecretaryMessage = (r: SecretaryRow): SecretaryMessage & { target?: unknown } => ({
@@ -817,12 +821,13 @@ const toSecretaryMessage = (r: SecretaryRow): SecretaryMessage & { target?: unkn
   ...(r.target ? { target: JSON.parse(r.target) as unknown } : {}),
   ...(r.tokens ? { tokens: r.tokens } : {}),
   ...(r.is_error ? { isError: true } : {}),
+  ...(r.approval_ids ? { approvalIds: JSON.parse(r.approval_ids) as string[] } : {}),
 })
 
 export function insertSecretaryMessage(m: Omit<SecretaryMessage, 'id'>, target?: unknown): SecretaryMessage {
   const { lastInsertRowid } = run(
-    'INSERT INTO secretary_message (ts, role, text, card, target, tokens, is_error) VALUES (?, ?, ?, ?, ?, ?, ?)',
-    m.ts, m.role, m.text, m.card ? JSON.stringify(m.card) : null, target ? JSON.stringify(target) : null, m.tokens ?? null, m.isError ? 1 : null,
+    'INSERT INTO secretary_message (ts, role, text, card, target, tokens, is_error, approval_ids) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    m.ts, m.role, m.text, m.card ? JSON.stringify(m.card) : null, target ? JSON.stringify(target) : null, m.tokens ?? null, m.isError ? 1 : null, m.approvalIds?.length ? JSON.stringify(m.approvalIds) : null,
   )
   return { ...m, id: Number(lastInsertRowid) }
 }

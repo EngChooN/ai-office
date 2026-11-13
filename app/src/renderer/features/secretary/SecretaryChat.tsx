@@ -18,6 +18,7 @@ import {
   formatTokens,
   type SecretaryMessage,
 } from "@shared/types";
+import { ApprovalCards } from "./ApprovalCards";
 import { ConfirmCard } from "./ConfirmCard";
 import { EditCompareCard } from "./EditCompareCard";
 import { useSecretaryDraft } from "./draft";
@@ -118,13 +119,15 @@ export const SecretaryBubble = memo(function SecretaryBubble({
       <div
         className={cn(
           "flex min-w-0 flex-col gap-0.5",
-          m.card ? "flex-1" : "max-w-[75%]",
+          m.card || m.approvalIds ? "flex-1" : "max-w-[75%]",
         )}
       >
         <span className="text-muted-foreground text-xs">
           {t("secretary.name")}
         </span>
-        {m.card ? (
+        {m.approvalIds ? (
+          <ApprovalCards ids={m.approvalIds} />
+        ) : m.card ? (
           m.card.kind === "edit" ? (
             <EditCompareCard card={m.card} />
           ) : (

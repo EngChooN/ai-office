@@ -168,7 +168,7 @@ export function PetPanel() {
         text: m.text,
         isMarkdown: m.role !== "me",
         isError: m.isError,
-        hasCard: !!m.card,
+        hasCard: !!m.card || !!m.approvalIds,
       }));
     const autos: PetFeedItem[] = recentAuto(autoLog, now).map((h) => ({
       kind: "auto",

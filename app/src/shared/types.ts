@@ -1535,6 +1535,8 @@ export interface SecretaryMessage {
   /** 이번 답에 쓴 토큰 (도구를 여러 번 쓴 답만) */
   tokens?: number
   isError?: boolean
+  /** 답 안에 띄울 결재 카드의 결재 id들 — 화면이 지금 결재 목록에서 찾아 그리고, 없으면 "이미 처리됐어요" */
+  approvalIds?: string[]
 }
 
 export interface SecretaryState {
