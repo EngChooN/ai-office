@@ -23,7 +23,9 @@ import { ConfirmCard } from "./ConfirmCard";
 import { EditCompareCard } from "./EditCompareCard";
 import { useSecretaryDraft } from "./draft";
 import { SecretaryFace } from "./SecretaryFace";
+import { QueuedBadge, useQueuePosition } from "./QueuedBadge";
 import { fmtDate, t } from "@shared/i18n";
+import { QUEUE_MAX } from "@shared/secretaryQueue";
 
 // 비서 대화: 단체방 말풍선·입력창과 같은 모양 (secretary-ui.md 2·3절). 비서 화면과 ⌘K 빠른 창이 함께 쓴다
 
@@ -122,17 +124,7 @@ export const SecretaryBubble = memo(function SecretaryBubble({
         </span>
       </div>
     );
-  if (m.role === "me")
-    return (
-      <div className="flex flex-col items-end gap-0.5">
-        <div className="bg-primary text-primary-foreground selectable max-w-[75%] rounded-2xl px-3 py-2 text-sm whitespace-pre-wrap">
-          {m.text}
-        </div>
-        <span className="text-muted-foreground text-[10px]">
-          {timeText(m.ts)}
-        </span>
-      </div>
-    );
+  if (m.role === "me") return <MyBubble message={m} />;
   return (
     <div className="flex gap-2">
       <SecretaryFace />
@@ -180,6 +172,30 @@ export const SecretaryBubble = memo(function SecretaryBubble({
     </div>
   );
 });
+
+/** 내 말풍선: 차례를 기다리는 동안은 흐리게 + '차례 기다림 · n번째' 줄 */
+function MyBubble({ message: m }: { message: SecretaryMessage }) {
+  const isQueued = useQueuePosition(m.id) > 0;
+  return (
+    <div className="flex flex-col items-end gap-0.5">
+      <div
+        className={cn(
+          "bg-primary text-primary-foreground selectable max-w-[75%] rounded-2xl px-3 py-2 text-sm whitespace-pre-wrap",
+          isQueued && "opacity-60",
+        )}
+      >
+        {m.text}
+      </div>
+      {isQueued ? (
+        <QueuedBadge msgId={m.id} />
+      ) : (
+        <span className="text-muted-foreground text-[10px]">
+          {timeText(m.ts)}
+        </span>
+      )}
+    </div>
+  );
+}
 
 /** 대화 목록 (아래로 스크롤 고정). since를 주면 그 뒤 대화만 (빠른 창) */
 export function SecretaryMessages({
@@ -233,6 +249,13 @@ export function SecretaryMessages({
   );
 }
 
+const askFailText = (reason: "full" | "rate" | "empty") =>
+  reason === "full"
+    ? t("secretary.queue.full", { n: QUEUE_MAX })
+    : reason === "rate"
+      ? t("secretary.queue.rate")
+      : "";
+
 /** placeholder: 좁은 창(바탕화면 비서 펼침 창)은 짧은 안내로 바꿔 끼운다 */
 /** onSubmit을 주면 비서 대신 그쪽으로 보낸다 (바탕화면 비서 펼침 창에서 직원·대화방에 보낼 때).
  * 보내기가 실패하면 쓴 내용을 입력창에 되돌리고 sendFailedText를 보여 준다 — 그 사이 새로 쓴 글은 덮어쓰지 않는다 */
@@ -250,7 +273,8 @@ export function SecretaryComposer({
   sendFailedText?: string;
 }) {
   const [draft, setDraft] = useState("");
-  const [isFailed, setIsFailed] = useState(false);
+  // 보내지 못한 까닭 (빈 글이면 안내 없음). 쓴 글은 입력창에 되돌린다
+  const [failText, setFailText] = useState("");
   const ref = useRef<HTMLTextAreaElement>(null);
   const prefill = useSecretaryDraft((s) => s.prefill);
   useEffect(() => {
@@ -262,21 +286,32 @@ export function SecretaryComposer({
     const text = draft.trim();
     if (!text) return;
     setDraft("");
-    setIsFailed(false);
-    const sent = onSubmit ? onSubmit(text) : window.office.secretaryAsk(text);
-    void Promise.resolve(sent).catch(() => {
+    setFailText("");
+    // 그 사이 새로 쓴 글은 덮어쓰지 않는다
+    const restore = (why: string) => {
       setDraft((now) => (now.trim() ? now : text));
-      setIsFailed(true);
-    });
+      setFailText(why);
+    };
+    if (onSubmit) {
+      void Promise.resolve(onSubmit(text)).catch(() => restore(sendFailedText));
+    } else {
+      // 비서: 기다리는 줄이 꽉 찼거나 너무 잦으면 main이 받지 않는다 — 대화에 남지 않으니 입력창에 그대로 둔다
+      void window.office
+        .secretaryAsk(text)
+        .then((r) => {
+          if (r && !r.ok) restore(askFailText(r.reason));
+        })
+        .catch(() => restore(sendFailedText));
+    }
     onSent?.();
   };
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) =>
     handleComposerKey(e, send, setDraft);
   return (
     <div>
-      {isFailed && (
+      {failText && (
         <p role="alert" className="text-destructive mb-1.5 text-xs">
-          {sendFailedText}
+          {failText}
         </p>
       )}
       <div className="flex items-end gap-2">
@@ -286,7 +321,7 @@ export function SecretaryComposer({
           value={draft}
           onChange={(e) => {
             setDraft(e.target.value);
-            setIsFailed(false);
+            setFailText("");
           }}
           onKeyDown={handleKeyDown}
           rows={1}

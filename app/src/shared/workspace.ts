@@ -251,6 +251,8 @@ export const METHOD_ACCESS: Record<OfficeMethod, MethodAccess> = {
   peerUnpair: 'write',
   peerReconnect: 'write',
   secretaryAsk: 'write',
+  secretaryCancelQueued: 'write',
+  secretaryMergeQueued: 'write',
   secretaryRun: 'write',
   secretaryCancel: 'write',
   secretaryClear: 'write',

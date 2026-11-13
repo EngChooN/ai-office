@@ -18,6 +18,10 @@ import { trayPlace } from "@/lib/platform";
 import { useOffice } from "@/store";
 import { SecretaryComposer } from "@/features/secretary/SecretaryChat";
 import { SecretaryFace } from "@/features/secretary/SecretaryFace";
+import {
+  QueuedBadge,
+  useQueuePosition,
+} from "@/features/secretary/QueuedBadge";
 import { QuestionBox } from "@/features/QuestionBox";
 import { WaitReasonLine } from "@/features/WaitReasonLine";
 import {
@@ -173,6 +177,7 @@ export function PetPanel() {
         isMarkdown: m.role !== "me",
         isError: m.isError,
         hasCard: !!m.card || !!m.approvalIds,
+        secretaryMsgId: m.role === "me" ? m.id : undefined,
       }));
     const autos: PetFeedItem[] = recentAuto(autoLog, now).map((h) => ({
       kind: "auto",
@@ -545,6 +550,10 @@ function FeedRow({
   actions: ApprovalActions;
   hasStaff: (id: string) => boolean;
 }) {
+  const isQueued =
+    useQueuePosition(
+      item.kind === "message" ? (item.secretaryMsgId ?? -1) : -1,
+    ) > 0;
   switch (item.kind) {
     case "message":
       return (
@@ -564,6 +573,7 @@ function FeedRow({
               "rounded-xl px-3 py-2",
               item.isMine ? "bg-primary text-primary-foreground" : "bg-muted",
               item.isError && "text-destructive",
+              isQueued && "opacity-60",
             )}
           >
             {item.isMarkdown ? (
@@ -586,6 +596,9 @@ function FeedRow({
               </div>
             )}
           </div>
+          {isQueued && item.secretaryMsgId !== undefined && (
+            <QueuedBadge msgId={item.secretaryMsgId} />
+          )}
         </div>
       );
     case "approval":

@@ -213,6 +213,14 @@ export default {
   'secretary.field.leaveLabIds': { ko: '뺄 프로젝트', en: 'Projects to leave', ja: '外すプロジェクト', zh: '退出的项目' },
 
   // 설정 이름 (설정 바꾸기 카드)
+  'secretary.queue.position': { ko: '차례 기다림 · {n}번째', en: 'Waiting · #{n} in line', ja: '順番待ち · {n}番目', zh: '排队中 · 第 {n} 个' },
+  'secretary.queue.cancel': { ko: '빼기', en: 'Remove', ja: '取り消す', zh: '移除' },
+  'secretary.queue.cancelLabel': { ko: '이 질문을 기다리는 줄에서 빼기', en: 'Remove this question from the line', ja: 'この質問を順番待ちから外す', zh: '将此问题移出队列' },
+  'secretary.queue.merge': { ko: '하나로 합쳐 묻기', en: 'Ask them together', ja: 'まとめて聞く', zh: '合并成一个问题' },
+  'secretary.queue.mergeHint': { ko: '기다리는 질문 {n}개를 한 번에 물어요', en: 'Ask the {n} waiting questions in one go', ja: '待っている質問 {n}件を一度に聞きます', zh: '一次性提问排队中的 {n} 个问题' },
+  'secretary.queue.mergedIntro': { ko: '아래 질문에 한꺼번에 답해 주세요.', en: 'Please answer these questions together.', ja: '次の質問にまとめて答えてください。', zh: '请一并回答以下问题。' },
+  'secretary.queue.full': { ko: '기다리는 질문이 {n}개라 지금은 못 보내요. 앞 질문의 답을 받은 뒤 보내 주세요.', en: '{n} questions are already waiting, so this one can’t be sent yet. Send it after the earlier answers arrive.', ja: '待っている質問が {n}件あるため、今は送れません。前の質問の回答が来てから送ってください。', zh: '已有 {n} 个问题在排队，暂时无法发送。请在前面的问题得到回答后再发送。' },
+  'secretary.queue.rate': { ko: '질문이 너무 잦아요. 잠시 뒤에 다시 보내 주세요.', en: 'Too many questions at once. Please send it again in a moment.', ja: '質問が多すぎます。少ししてからもう一度送ってください。', zh: '提问太频繁了，请稍后再发送。' },
   'secretary.setting.monthlyBudgetUsd': { ko: '월 AI 사용 비용 예산($)', en: 'Monthly AI usage cost budget ($)', ja: '月のAI利用コスト予算($)', zh: '每月 AI 使用费用预算($)' },
   'secretary.setting.tokenBudget': { ko: '토큰 한도(일·주·월)', en: 'Token limit (day·week·month)', ja: 'トークン上限（日・週・月）', zh: 'Token 上限（日·周·月）' },
   'secretary.setting.theme': { ko: '테마', en: 'Theme', ja: 'テーマ', zh: '主题' },

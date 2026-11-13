@@ -24,6 +24,7 @@ import { contextParts, nextSummary, priorMessages, shouldSummarize, splitPrior, 
 import { briefCounts, briefDue, briefText, isBriefEmpty } from './secretaryBrief'
 import { awayAnswers, decideAway, mustHoldQuestion, RateWindow, SecretaryDesk, wrapDocument, type EditTarget } from './secretaryCore'
 import { maskSecrets } from '../shared/redact'
+import { AskQueue, type SecretaryAskResult } from '../shared/secretaryQueue'
 import { autoArrange } from '../shared/iso/autoArrange'
 import type { GridItem } from '../shared/iso/furniture'
 import { isoLevelOf } from '../shared/iso/levels'
@@ -50,7 +51,6 @@ const ASK_LIMITS = [
   { ms: 60_000, max: 6 },
   { ms: 3_600_000, max: 60 },
 ]
-const QUEUE_MAX = 3
 /** propose 설명에 인자 모양을 싣는 자주 쓰는 변경 */
 const COMMON_CHANGES = new Set<string>(['hire', 'updateStaff', 'instruct', 'decide', 'answerQuestion', 'createTeam', 'createLab', 'createTask', 'assignTask', 'updateTask', 'startMeeting', 'setAutoApprove', 'saveSchedule', 'deleteSchedule', 'setRefDocs', 'setEquipment', 'saveManual', 'deleteManual', 'placeGridItem', 'moveGridItem', 'storeItem', 'stowAllGrid'])
 const AWAY_LIMITS = [{ ms: 3_600_000, max: 30 }]
@@ -152,10 +152,8 @@ export class Secretary {
   private activity = ''
   /** 지금 답하는 질문의 query (질문 하나 = query 하나, 같은 세션을 이어서) */
   private q: SecretaryRun | null = null
-  /** 답을 기다리는 질문 (최대 QUEUE_MAX) */
-  private queue: string[] = []
-  /** queue와 같은 순서 — 그 질문이 원격(휴대폰)에서 온 것인지 */
-  private queueRemote: boolean[] = []
+  /** 답을 기다리는 질문 (최대 QUEUE_MAX) — 화면 'me' 메시지 id·원격 여부와 한 칸에 */
+  private queue = new AskQueue()
   private turnRemote = false
   private generation = 0
   /** 마지막 질문 한 건에 쓴 토큰 (측정용) */
@@ -224,7 +222,7 @@ export class Secretary {
     const since = new Date()
     since.setHours(0, 0, 0, 0)
     const u = db.usageSince(SECRETARY_ID, since.getTime())
-    return { ...EMPTY_SECRETARY, messages: this.messages.slice(-MESSAGES_SHOWN), isBusy: this.isBusy, activity: this.activity, usageTodayTokens: u.tokensIn + u.tokensOut, isLimited: this.isLimited(), summary: this.summary?.text ?? '' }
+    return { ...EMPTY_SECRETARY, messages: this.messages.slice(-MESSAGES_SHOWN), isBusy: this.isBusy, activity: this.activity, usageTodayTokens: u.tokensIn + u.tokensOut, isLimited: this.isLimited(), summary: this.summary?.text ?? '', queued: this.queue.ids() }
   }
 
   /** 토큰 한도(일·주·월) 중 하나라도 100%에 닿았는지 — 닿으면 조회·사용법 답만 (제안·AI 조회·대신 답하기는 쉰다) */
@@ -280,19 +278,45 @@ export class Secretary {
 
   // ── 대표가 부르는 기능 (OfficeApi) ─────────────────────
 
-  ask(text: string) {
+  ask(text: string): SecretaryAskResult {
     const body = text.trim().slice(0, ASK_TEXT_MAX)
-    if (!body) return
-    // 너무 잦거나 밀린 질문이 많으면 받지 않는다 (휴대폰에서도 부를 수 있다 — 한리뷰 M1)
-    if (this.queue.length >= QUEUE_MAX || !this.askRate.take(Date.now())) {
-      this.add({ role: 'notice', text: '질문이 너무 잦아요. 앞 질문의 답을 받은 뒤 잠시 뒤에 다시 보내 주세요.' })
-      return
-    }
-    this.add({ role: 'me', text: body })
-    this.queue.push(body)
-    this.queueRemote.push(isRemoteCall())
+    if (!body) return { ok: false, reason: 'empty' }
+    // 밀린 질문이 많거나 너무 잦으면 받지 않는다 — 대화에 남기지 않고 입력창이 글을 그대로 둔다 (휴대폰에서도 부를 수 있다 — 한리뷰 M1)
+    if (this.queue.isFull) return { ok: false, reason: 'full' }
+    if (!this.askRate.take(Date.now())) return { ok: false, reason: 'rate' }
+    const mine = this.add({ role: 'me', text: body })
+    this.queue.push({ msgId: mine.id, text: body, remote: isRemoteCall() })
     if (!this.isBusy) void this.next()
     else this.changed()
+    return { ok: true }
+  }
+
+  /** 차례를 기다리는 질문 하나 빼기 (그 말풍선도 지운다). 이미 답을 시작했으면 false */
+  cancelQueued(msgId: number): boolean {
+    if (!this.queue.cancel(msgId)) return false
+    this.dropMessages([msgId])
+    return true
+  }
+
+  /** 차례를 기다리는 질문을 첫 질문 자리의 말풍선 하나로 합친다 (한 번에 답한다). 합칠 게 2개 미만이면 false */
+  mergeQueued(): boolean {
+    const r = this.queue.merge(t('secretary.queue.mergedIntro'))
+    if (!r) return false
+    const i = this.messages.findIndex((m) => m.id === r.kept.msgId)
+    if (i >= 0) {
+      const next = { ...this.messages[i], text: r.kept.text }
+      this.messages = this.messages.map((m, j) => (j === i ? next : m))
+      db.updateSecretaryMessage(next)
+    }
+    this.dropMessages(r.removed)
+    return true
+  }
+
+  private dropMessages(ids: number[]) {
+    const gone = new Set(ids)
+    this.messages = this.messages.filter((m) => !gone.has(m.id))
+    for (const id of ids) db.deleteSecretaryMessage(id)
+    this.changed()
   }
 
   run(cardId: string, options?: SecretaryRunOptions) {
@@ -337,8 +361,7 @@ export class Secretary {
 
   private closeSession() {
     this.generation++
-    this.queue = []
-    this.queueRemote = []
+    this.queue.clear()
     this.q?.close()
     this.q = null
     this.isBusy = false
@@ -347,8 +370,9 @@ export class Secretary {
 
   /** 밀린 질문을 하나씩 */
   private async next() {
-    const text = this.queue.shift()
-    this.turnRemote = this.queueRemote.shift() ?? false
+    const item = this.queue.shift()
+    const text = item?.text
+    this.turnRemote = item?.remote ?? false
     if (!text) {
       this.isBusy = false
       this.activity = ''

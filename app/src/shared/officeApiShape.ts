@@ -159,6 +159,8 @@ export const OFFICE_METHODS = [
   'peerUnpair',
   'peerReconnect',
   'secretaryAsk',
+  'secretaryCancelQueued',
+  'secretaryMergeQueued',
   'secretaryRun',
   'secretaryCancel',
   'secretaryClear',

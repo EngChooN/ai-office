@@ -218,6 +218,8 @@ export const V2_METHODS: Record<OfficeMethod, MethodSpec> = {
   updateSettings: S('o'),
   // 비서: 말 보내기·카드 실행(대표가 [실행]을 누른 것)·취소·지우기 — 휴대폰에서도 같은 화면
   secretaryAsk: R('s'),
+  secretaryCancelQueued: R('n'),
+  secretaryMergeQueued: R(),
   secretaryRun: R('s o?'),
   secretaryCancel: R('s'),
   secretaryClear: R(),

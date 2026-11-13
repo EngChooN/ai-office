@@ -5,6 +5,7 @@ import type { GridItem, SeatSetPart } from './iso/furniture'
 import type { RefDocReject } from './refDocs'
 import type { AutoApproveConfig, AutoApprovePlan, AutoKind } from './autoApprove'
 import type { StaffCommand } from './slashCommands'
+import type { SecretaryAskResult } from './secretaryQueue'
 import type { PlanHoldState } from './planHold'
 import type { ApprovalRule, ApprovalRuleDraft } from './approvalRules'
 import type { KnowledgeEntry, KnowledgeInput } from './knowledge'
@@ -1128,7 +1129,11 @@ export interface OfficeApi {
   peerReconnect(peerId: string): Promise<void>
 
   /** 비서 (docs/specs/secretary.md): 말 보내기 · 확인 카드 실행(첨삭은 고른 수정본·고친 값과 함께) · 카드 취소 · 대화 지우기. 대화는 스냅샷 secretary로 받는다 */
-  secretaryAsk(text: string): Promise<void>
+  /** 줄이 꽉 찼거나 너무 잦으면 받지 않고 ok:false — 화면은 입력창에 글을 남긴다 */
+  secretaryAsk(text: string): Promise<SecretaryAskResult>
+  /** 차례를 기다리는 질문 빼기 · 대기 질문을 하나로 합쳐 묻기 (이미 답을 시작했으면 false) */
+  secretaryCancelQueued(msgId: number): Promise<boolean>
+  secretaryMergeQueued(): Promise<boolean>
   secretaryRun(cardId: string, options?: SecretaryRunOptions): Promise<SecretaryCard | null>
   secretaryCancel(cardId: string): Promise<void>
   secretaryClear(): Promise<void>
@@ -1558,9 +1563,11 @@ export interface SecretaryState {
   isLimited: boolean
   /** 8개 밖으로 밀려난 오래된 대화의 요약 (없으면 빈 글) */
   summary: string
+  /** 차례를 기다리는 질문('me' 메시지 id, 먼저 답할 순서) */
+  queued: number[]
 }
 
-export const EMPTY_SECRETARY: SecretaryState = { messages: [], isBusy: false, activity: '', usageTodayTokens: 0, isLimited: false, summary: '' }
+export const EMPTY_SECRETARY: SecretaryState = { messages: [], isBusy: false, activity: '', usageTodayTokens: 0, isLimited: false, summary: '', queued: [] }
 
 /** 사용량(usage) 표에서 비서 몫을 가리키는 id — 직원 id와 겹치지 않는다 */
 export const SECRETARY_ID = 'secretary'

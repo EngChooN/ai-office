@@ -14,6 +14,7 @@ Writing rules
 ## [미정] (설치본 미빌드)
 
 ### Improvements
+- When you ask the assistant several things in a row, waiting questions show 'Waiting · #n in line'. You can remove one or ask them together, and if the line is full your text stays in the input box.
 - The assistant now points you to screens by their current names (Settings › Connect other devices, the staff panel 'Tools' tab and so on).
 - The 'N working' chip on the desktop secretary counts only staff who are working; staff waiting for their teammates' results show separately as 'n waiting'.
 - Turn the desktop secretary on or off right from the menu bar (the notification area on Windows). On Linux the desktop secretary setting is hidden.

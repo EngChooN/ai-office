@@ -299,8 +299,10 @@ test('H2: 모델 입력의 믿을 수 없는 글은 문서 구역에 — 구역�
 
 test('M1: 비용 상한 — 모델 고정·질문마다 턴·비용 상한, 질문 빈도·밀린 질문 상한, AI 조회는 10분에 한 번·한도에 닿으면 쉼', async () => {
   const src = readApp('src/main/secretary.ts')
+  assert.match(readApp('src/shared/secretaryQueue.ts'), /QUEUE_MAX = 3/)
+  assert.match(src, /this\.queue\.isFull/)
   assert.match(readApp('src/main/ai/claude.ts'), /persistSession: false/)
-  for (const re of [/model: SECRETARY_MODEL/, /maxTurns: MAX_TURNS/, /maxBudgetUsd: TURN_BUDGET_USD/, /QUEUE_MAX = 3/, /askRate\.take/, /awayRate\.take/, /if \(this\.isLimited\(\)\) return wait/]) assert.match(src, re)
+  for (const re of [/model: SECRETARY_MODEL/, /maxTurns: MAX_TURNS/, /maxBudgetUsd: TURN_BUDGET_USD/, /askRate\.take/, /awayRate\.take/, /if \(this\.isLimited\(\)\) return wait/]) assert.match(src, re)
   const w = new RateWindow([{ ms: 60_000, max: 2 }])
   assert.deepEqual([w.take(0), w.take(1), w.take(2), w.take(60_001)], [true, true, false, true])
   let isLimited = false

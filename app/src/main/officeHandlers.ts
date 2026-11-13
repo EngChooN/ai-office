@@ -226,6 +226,8 @@ export function createOfficeHandlers(office: Office, remoteApi: () => RemoteServ
     pushAndCreatePr: (id: string, title: string, body: string) => office.pushAndCreatePr(id, title, body),
     // 비서: 실행(secretaryRun)은 대표가 카드에서 누른 것 — 카드 안의 단계는 이 표의 다른 처리 함수로 돈다
     secretaryAsk: (text: string) => secretary().ask(text),
+    secretaryCancelQueued: (msgId: number) => secretary().cancelQueued(msgId),
+    secretaryMergeQueued: () => secretary().mergeQueued(),
     secretaryRun: (cardId: string, options?: Parameters<Secretary['run']>[1]) => secretary().run(cardId, options ?? {}),
     secretaryCancel: (cardId: string) => secretary().cancel(cardId),
     secretaryClear: () => secretary().clear(),

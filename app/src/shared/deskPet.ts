@@ -780,6 +780,8 @@ export type PetFeedItem =
       isMarkdown: boolean;
       isError?: boolean;
       hasCard?: boolean;
+      /** 비서에게 보낸 내 질문의 메시지 id — 차례를 기다리는 동안 '차례 기다림 · n번째'를 붙인다 */
+      secretaryMsgId?: number;
     }
   | { kind: "approval"; key: string; at: number; approval: PetApproval }
   | {

@@ -839,6 +839,11 @@ export function updateSecretaryMessage(m: SecretaryMessage) {
   run('UPDATE secretary_message SET text = ?, card = ?, tokens = ?, is_error = ? WHERE id = ?', m.text, m.card ? JSON.stringify(m.card) : null, m.tokens ?? null, m.isError ? 1 : null, m.id)
 }
 
+/** 차례를 기다리던 질문을 빼거나 합쳐 사라진 말풍선 */
+export function deleteSecretaryMessage(id: number) {
+  run('DELETE FROM secretary_message WHERE id = ?', id)
+}
+
 /** 보관 기간 안의 대화 (오래된 것은 지운다) */
 export function loadSecretaryMessages(keepSince: number, limit: number) {
   run('DELETE FROM secretary_message WHERE ts < ?', keepSince)
