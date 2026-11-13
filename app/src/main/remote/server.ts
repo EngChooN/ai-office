@@ -2,6 +2,7 @@
 // TLS가 아닌 평문 요청은 핸드셰이크에서 끊겨 HTTP 응답을 받지 못한다
 
 import https from 'node:https'
+import zlib from 'node:zlib'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { Socket } from 'node:net'
 import { BODY_MAX_BYTES, fail } from './protocol.ts'
@@ -37,6 +38,10 @@ export type AccessLogger = (status: number, error?: string) => void
 
 const REQUEST_TIMEOUT_MS = 15_000
 const HEADERS_TIMEOUT_MS = 10_000
+/** 놀고 있는 연결을 이만큼 붙들어 둔다 — 휴대폰이 버튼마다 연결을 새로 맺지 않게 (기본 5초). 헤더 제한은 이보다 길어야 한다 */
+const KEEP_ALIVE_TIMEOUT_MS = 60_000
+/** 이 크기(바이트) 이상인 JSON 응답은 gzip을 받는 쪽에만 압축한다 — 작은 응답은 압축이 오히려 손해. SSE는 조각마다 압축을 비워야 해서 건드리지 않는다 */
+const GZIP_MIN_BYTES = 1024
 /** TLS 핸드셰이크를 끝내지 않고 붙들고 있는 연결은 5초 뒤 끊는다 */
 const HANDSHAKE_TIMEOUT_MS = 5000
 /** 한꺼번에 받을 연결 수 (휴대폰 몇 대면 충분하다 — 연결을 잔뜩 열어 묶어 두지 못하게) */
@@ -72,6 +77,7 @@ export class RemoteServer {
     if (this.server) return Promise.reject(new Error('already started'))
     const server = https.createServer({ key: opts.keyPem, cert: opts.certPem, minVersion: 'TLSv1.2', handshakeTimeout: HANDSHAKE_TIMEOUT_MS }, (req, res) => this.serve(req, res, opts))
     server.requestTimeout = REQUEST_TIMEOUT_MS
+    server.keepAliveTimeout = KEEP_ALIVE_TIMEOUT_MS
     server.headersTimeout = HEADERS_TIMEOUT_MS
     server.maxConnections = MAX_CONNECTIONS + AUTHED_RESERVED
     server.on('connection', (socket: Socket) => {
@@ -148,8 +154,21 @@ export class RemoteServer {
     if (opts.stream?.(req, res, { ip: clientIp(req), access, markAuthed: () => this.markAuthed(req.socket) })) return
     const send = (status: number, body: Record<string, unknown>, headers: Record<string, string>, after?: () => unknown) => {
       const text = JSON.stringify(body)
-      res.writeHead(status, { ...headers, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Content-Length': Buffer.byteLength(text) })
-      res.end(text, () => void after?.())
+      const base = { ...headers, 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', Vary: 'Accept-Encoding' }
+      if (Buffer.byteLength(text) >= GZIP_MIN_BYTES && /\bgzip\b/i.test(String(req.headers['accept-encoding'] ?? ''))) {
+        zlib.gzip(text, (err, zipped) => {
+          if (res.destroyed) return void after?.()
+          if (err) {
+            res.writeHead(status, { ...base, 'Content-Length': Buffer.byteLength(text) })
+            return void res.end(text, () => void after?.())
+          }
+          res.writeHead(status, { ...base, 'Content-Encoding': 'gzip', 'Content-Length': zipped.length })
+          res.end(zipped, () => void after?.())
+        })
+      } else {
+        res.writeHead(status, { ...base, 'Content-Length': Buffer.byteLength(text) })
+        res.end(text, () => void after?.())
+      }
       access(status, typeof body.error === 'string' ? body.error : undefined)
     }
     // 본문보다 인증이 먼저 — 막힌 요청은 본문을 읽지 않고 바로 답하고 연결을 닫는다 (인증 없이 1MB를 받아 주지 않게)

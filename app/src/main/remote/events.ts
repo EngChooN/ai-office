@@ -18,7 +18,7 @@ export const SSE_LIMITS = {
   bufferMax: 500,
   bufferMs: 5 * 60_000,
   heartbeatMs: 15_000,
-  /** snapshot·remoteStatus는 이 간격으로 묶어 마지막 값만 보낸다 */
+  /** snapshot·remoteStatus는 첫 값을 바로 보낸 뒤 이 간격으로 묶어 마지막 값만 보낸다 */
   coalesceMs: 500,
   perToken: 2,
   /** 휴대폰 1~2 + 피어 슬롯(8개까지: 일반 짝은 슬롯당 1개, '화면 보기' 열쇠는 휴대폰처럼 2개)을 합쳐. 열쇠 하나가 다른 열쇠 자리를 밀어내지 않게 모두 열 수 있는 수 */
@@ -69,8 +69,8 @@ export class EventHub {
   private buffer: Buffered[] = []
   private clients: Client[] = []
   private timer: ReturnType<typeof setInterval> | null = null
-  /** 묶는 중인 이벤트의 마지막 값과 타이머 */
-  private pending = new Map<HubEvent, { data: unknown; timer: ReturnType<typeof setTimeout> }>()
+  /** 묶는 중인 이벤트의 마지막 값(dirty = 아직 못 보낸 값)과 타이머 */
+  private pending = new Map<HubEvent, { data: unknown; dirty: boolean; timer: ReturnType<typeof setTimeout> }>()
   private source: HubSource
 
   constructor(source: HubSource) {
@@ -154,18 +154,28 @@ export class EventHub {
     while (this.buffer.length > SSE_LIMITS.bufferMax || (this.buffer[0] && now - this.buffer[0].at > SSE_LIMITS.bufferMs)) this.lastDropped = this.buffer.shift()!.n
   }
 
-  /** PC에서 일어난 이벤트를 모든 연결에 보낸다. snapshot·remoteStatus는 500ms에 한 번, 마지막 값으로 묶는다 */
+  /** PC에서 일어난 이벤트를 모든 연결에 보낸다. snapshot·remoteStatus는 조용하던 뒤 첫 값은 바로, 뒤따르는 값은 500ms에 한 번 마지막 값으로 묶는다 */
   publish(event: HubEvent, data: unknown) {
     if (!COALESCED.has(event)) return this.broadcast(event, data)
     const waiting = this.pending.get(event)
-    if (waiting) return void (waiting.data = data)
+    if (waiting) {
+      waiting.data = data
+      waiting.dirty = true
+      return
+    }
+    this.broadcast(event, data)
+    this.armCoalesce(event)
+  }
+
+  /** 바로 보낸 뒤 500ms 동안 쌓인 값이 있으면 그 끝에 마지막 값을 보낸다 (마지막 값은 반드시 나간다). 뒤따르는 값을 보낸 뒤에는 창을 다시 열지 않아, 그 직후의 새 변화는 또 바로 나간다 */
+  private armCoalesce(event: HubEvent) {
     const timer = setTimeout(() => {
       const latest = this.pending.get(event)
       this.pending.delete(event)
-      if (latest) this.broadcast(event, latest.data)
+      if (latest?.dirty) this.broadcast(event, latest.data)
     }, SSE_LIMITS.coalesceMs)
     timer.unref?.()
-    this.pending.set(event, { data, timer })
+    this.pending.set(event, { data: undefined, dirty: false, timer })
   }
 
   private broadcast(event: HubEvent, data: unknown) {

@@ -9,6 +9,7 @@ import net from 'node:net'
 import os from 'node:os'
 import path from 'node:path'
 import tls from 'node:tls'
+import zlib from 'node:zlib'
 import { test } from 'node:test'
 import { OFFICE_METHODS } from '../src/shared/officeApiShape.ts'
 import type { Attachment } from '../src/shared/types.ts'
@@ -401,7 +402,7 @@ test('/v2/events: hello → snapshot → remoteStatus, PC 이벤트를 그대로
     // snapshot은 묶어서 마지막 값만
     t.svc.publish('snapshot', { n: 1 })
     t.svc.publish('snapshot', { n: 2 })
-    await s.until(() => s.events.filter((e) => e.event === 'snapshot').length >= 2)
+    await s.until(() => s.events.some((e) => e.event === 'snapshot' && e.data.n === 2))
     assert.deepEqual(s.events.filter((e) => e.event === 'snapshot').at(-1)!.data, { n: 2 })
     s.close()
 
@@ -647,7 +648,7 @@ test('L2: 객체 인자는 메서드별 허용 필드만 — updateTask에 id·�
   assert.ok(!V2_FIELDS.setAutoApprove![0].includes('isFull'), '완전 자율은 PC에서만')
 })
 
-test('L3: remoteStatus도 snapshot처럼 500ms로 묶어 마지막 값만 보낸다', async () => {
+test('L3: remoteStatus도 snapshot처럼 첫 값은 바로, 뒤따르는 값은 500ms로 묶어 마지막 값만 보낸다', async () => {
   const hub = new EventHub({ snapshot: () => ({}), remoteStatus: () => ({ n: 0 }), isTokenValid: () => true })
   const writes: string[] = []
   const res = { destroyed: false, writableLength: 0, writeHead: () => {}, write: (t: string) => (writes.push(t), true), on: () => {}, end: () => {} }
@@ -655,13 +656,97 @@ test('L3: remoteStatus도 snapshot처럼 500ms로 묶어 마지막 값만 보낸
   writes.length = 0
   for (let n = 1; n <= 20; n++) hub.publish('remoteStatus', { n })
   hub.publish('log', { id: 1 })
-  // log는 바로, remoteStatus는 아직
-  assert.deepEqual(writes.map((w) => w.match(/event: (\w+)/)?.[1]), ['log'])
+  // 첫 remoteStatus(n=1)·log는 바로, 나머지는 아직
+  assert.deepEqual(writes.map((w) => w.match(/event: (\w+)/)?.[1]), ['remoteStatus', 'log'])
+  assert.match(writes[0], /data: \{"n":1\}/)
   await new Promise((r) => setTimeout(r, 650))
   const status = writes.filter((w) => w.includes('event: remoteStatus'))
-  assert.equal(status.length, 1)
-  assert.match(status[0], /data: \{"n":20\}/)
+  assert.equal(status.length, 2)
+  assert.match(status[1], /data: \{"n":20\}/)
   hub.closeAll('shutdown')
+})
+
+test('snapshot: 조용하던 뒤 첫 값은 바로 나가고, 묶인 마지막 값은 반드시 나가며, 그 뒤 새 변화는 또 바로 나간다', async () => {
+  const hub = new EventHub({ snapshot: () => ({}), remoteStatus: () => ({}), isTokenValid: () => true })
+  const got: number[] = []
+  const res = { destroyed: false, writableLength: 0, writeHead: () => {}, write: (t: string) => (t.includes('event: snapshot') && got.push(JSON.parse(t.split('data: ')[1]).n), true), on: () => {}, end: () => {} }
+  hub.open(res as never, 'h', undefined)
+  got.length = 0
+  hub.publish('snapshot', { n: 1 })
+  assert.deepEqual(got, [1], '첫 값은 기다리지 않는다')
+  hub.publish('snapshot', { n: 2 })
+  hub.publish('snapshot', { n: 3 })
+  assert.deepEqual(got, [1])
+  await new Promise((r) => setTimeout(r, 650))
+  assert.deepEqual(got, [1, 3], '중간 값은 건너뛰고 마지막 값은 나간다')
+  hub.publish('snapshot', { n: 4 })
+  assert.deepEqual(got, [1, 3, 4], '창이 닫힌 뒤 새 변화는 바로')
+  hub.closeAll('shutdown')
+})
+
+test('/v2/call: 1KB 이상 응답은 gzip을 받는 쪽에만 압축하고, 작은 응답·gzip 미지원은 그대로 보낸다', async () => {
+  const port = await freePort()
+  const big = { rows: Array.from({ length: 60 }, (_, i) => ({ id: i, text: '안녕하세요 반복되는 글 '.repeat(4) })) }
+  const t = makeV2Service(port, {}, { call: (m) => (m === 'listManuals' ? big.rows : { called: m }) })
+  try {
+    await t.svc.enable(port)
+    const raw = await v2call(port, t.token, { method: 'listManuals' })
+    assert.equal(raw.headers['content-encoding'], undefined, 'gzip을 안 받는 쪽은 그대로')
+    assert.ok(raw.text.length >= 1024 && raw.body.ok)
+    const zipped = await new Promise<{ enc: unknown; vary: unknown; len: number; text: string }>((resolve, reject) => {
+      const body = JSON.stringify({ method: 'listManuals' })
+      const r = https.request({ host: '127.0.0.1', port, path: '/v2/call', method: 'POST', rejectUnauthorized: false, agent: false, headers: { Authorization: `Bearer ${t.token}`, 'Content-Type': 'application/json', 'Accept-Encoding': 'gzip, deflate' } }, (res) => {
+        const chunks: Buffer[] = []
+        res.on('data', (c) => chunks.push(c))
+        res.on('end', () => {
+          const b = Buffer.concat(chunks)
+          resolve({ enc: res.headers['content-encoding'], vary: res.headers.vary, len: b.length, text: zlib.gunzipSync(b).toString() })
+        })
+      })
+      r.on('error', reject)
+      r.end(body)
+    })
+    assert.equal(zipped.enc, 'gzip')
+    assert.match(String(zipped.vary), /Accept-Encoding/)
+    assert.ok(zipped.len < raw.text.length / 2, '크게 줄어든다')
+    assert.deepEqual(JSON.parse(zipped.text).result, raw.body.result, '풀면 같은 내용')
+    // 작은 응답은 gzip을 받아도 압축하지 않는다
+    const small = await new Promise<unknown>((resolve, reject) => {
+      const r = https.request({ host: '127.0.0.1', port, path: '/v2/call', method: 'POST', rejectUnauthorized: false, agent: false, headers: { Authorization: `Bearer ${t.token}`, 'Content-Type': 'application/json', 'Accept-Encoding': 'gzip' } }, (res) => {
+        res.resume()
+        res.on('end', () => resolve(res.headers['content-encoding']))
+      })
+      r.on('error', reject)
+      r.end(JSON.stringify({ method: 'instruct' }))
+    })
+    assert.equal(small, undefined)
+  } finally {
+    await t.cleanup()
+  }
+})
+
+test('연결 유지: 서버는 놀고 있는 연결을 60초 붙든다 (기본 5초가 아니다)', async () => {
+  const port = await freePort()
+  const t = makeV2Service(port)
+  try {
+    await t.svc.enable(port)
+    const agent = new https.Agent({ keepAlive: true, rejectUnauthorized: false })
+    const once = () => new Promise<number>((resolve, reject) => {
+      const r = https.request({ host: '127.0.0.1', port, path: '/v2/call', method: 'POST', agent, headers: { Authorization: `Bearer ${t.token}`, 'Content-Type': 'application/json' } }, (res) => {
+        const port = res.socket.localPort ?? 0
+        res.resume()
+        res.on('end', () => resolve(port))
+      })
+      r.on('error', reject)
+      r.end(JSON.stringify({ method: 'listManuals' }))
+    })
+    const first = await once()
+    await new Promise((r) => setTimeout(r, 6000))
+    assert.equal(await once(), first, '5초 넘게 쉬어도 같은 연결을 쓴다')
+    agent.destroy()
+  } finally {
+    await t.cleanup()
+  }
 })
 
 test('전체 기능 스위치 없음: 원격이 켜져 있으면 v2를 바로 쓰고(저장된 옛 isFullAccess:false도 무시), 끄면 v1·v2 모두 포트가 닫힌다', async () => {
