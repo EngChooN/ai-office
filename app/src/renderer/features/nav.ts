@@ -86,15 +86,19 @@ export function menuTitle(view: View): string {
   return g.tabs.length > 1 ? `${t(g.labelKey)} › ${t(tab.labelKey)}` : t(g.labelKey)
 }
 
+/** 회의 결정 중 대표 답을 기다리는 수 — 폰 탭 배지·결재함·PC 방 목록 회의실 줄이 같이 쓴다 */
+export function usePendingMeetingDecisions(): number {
+  return useOffice((s) => pendingMeetingDecisions(s.meetings).length)
+}
+
 /** 메뉴 옆 숫자 (결재함·회의실·업무 보드·상점) */
 export function useNavBadges(): Partial<Record<View, number>> {
   const staff = useOffice((s) => s.staff)
   const tasks = useOffice((s) => s.tasks)
   const claimable = useOffice((s) => s.claimable)
-  const meetings = useOffice((s) => s.meetings)
   const checkingRuns = useOffice((s) => s.runs.filter((r) => r.status === 'checking').length)
   const waitingPlans = useOffice((s) => s.tasks.filter((t) => t.plan?.status === 'waiting').length)
-  const pendingDecisions = pendingMeetingDecisions(meetings).length
+  const pendingDecisions = usePendingMeetingDecisions()
   const chatUnread = useOffice((s) => (s.chatSeen ? Object.values(unreadByRoom(s.chat, s.chatSeen)).reduce((n, c) => n + c, 0) : 0))
   return {
     chat: chatUnread,

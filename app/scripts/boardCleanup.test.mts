@@ -55,7 +55,7 @@ test('팀·랩: 비어 있으면 담당 직원의 팀, 팀이 없으면 하나�
     task('t3', { teamId: null }),
     task('t4', { teamId: null, assigneeId: 'p1' }),
   ])
-  assert.deepEqual(stepOf(r, '팀·랩 정하기')?.items.map((it) => it.args), [['t1', { teamId: 'team-a' }], ['t2', { labId: 'lab-1' }]])
+  assert.deepEqual(stepOf(r, '팀·프로젝트 정하기')?.items.map((it) => it.args), [['t1', { teamId: 'team-a' }], ['t2', { labId: 'lab-1' }]])
 })
 
 test('상태: 진행 중인데 담당이 없거나 하루 넘게 아무도 안 하면 할 일로', () => {

@@ -27,6 +27,7 @@ import { MotionPlayer } from './iso/motionPlayer'
 import { workersOf } from '@shared/iso/propMotion'
 import { endVisit, headcountOf, startVisit, takeCameBack, useFloorVisits, type Visit } from './iso/floorVisits'
 import { roleLabel } from '@shared/roleLabel'
+import { isAwaitingTeam } from '@shared/delegation'
 import { behindCell, besideCell, cancel as cancelIx, chatLine, CUP_SHARE_RATE, detectEvents, dropHelpFor, emptyDirector, fallbackOf, finish as finishIx, meetPair, offer, PARTNER_KINDS, pickHelper, startNext, stepsOf, type DelegateMemo, type Director, type Interaction, type InteractionKind, type IxAnim, type IxPlace, type IxSnap, type IxStep } from '@shared/iso/interactions'
 import { FIGURE_ANIMS } from './iso/personArt'
 
@@ -219,7 +220,9 @@ interface IxRun {
 }
 
 /** 상호작용 이벤트를 뽑을 스냅샷 부분 */
-const ixSnapOf = (st: ReturnType<typeof useOffice.getState>): IxSnap => ({ staff: st.staff, teams: st.teams, tasks: st.tasks, logs: st.liveLogs, companyLevel: st.company.level, selectedId: st.selectedId })
+/** 장면이 보는 직원: 팀원 일을 기다리는 리더는 자리에 앉아 일하는 모습으로 둔다 (돌아다니거나 놀러 가지 않게). 실제 상태는 awaitingTeam으로 남는다 */
+const sceneStaffOf = (staff: Staff[]) => staff.map((s) => (isAwaitingTeam(s) ? { ...s, status: 'working' as const } : s))
+const ixSnapOf = (st: ReturnType<typeof useOffice.getState>): IxSnap => ({ staff: sceneStaffOf(st.staff), teams: st.teams, tasks: st.tasks, logs: st.liveLogs, companyLevel: st.company.level, selectedId: st.selectedId })
 
 interface FurnPart {
   img: Phaser.GameObjects.Image
@@ -418,7 +421,8 @@ export class IsoOfficeScene extends Phaser.Scene {
 
   private sync() {
     const state = useOffice.getState()
-    const { staff: allStaff, teams, company, meetings, settings } = state
+    const { teams, company, meetings, settings } = state
+    const allStaff = sceneStaffOf(state.staff)
     const isLevelUp = !this.isFirstSync && company.level > this.companyLevel
     this.companyLevel = company.level
     const prev = { level: this.level, room: this.room, finish: this.finish }
@@ -465,12 +469,8 @@ export class IsoOfficeScene extends Phaser.Scene {
         actor.prevStatus = s.status
       }
       const shortName = s.name.length > NAME_MAX ? `${s.name.slice(0, NAME_MAX)}…` : s.name
-      // 다른 PC 직원은 이름 앞에 🌐, 연결이 끊겼으면(offline·unpaired) 몸통과 이름표를 흐리게
       const mark = teams.some((t) => t.leadId === s.id) ? '★ ' : ''
-      actor.name.setText(`${s.remote ? '🌐 ' : ''}${mark}${shortName}`)
-      const isRemoteDim = s.remote?.state === 'offline' || s.remote?.state === 'unpaired'
-      actor.container.setAlpha(isRemoteDim ? 0.4 : 1)
-      actor.label.setAlpha(isRemoteDim ? 0.6 : 1)
+      actor.name.setText(`${mark}${shortName}`)
       actor.name.setBackgroundColor(s.kind === 'hired' ? '#2a2230d0' : '#3a4a70d0')
       this.react(actor, prev)
     }
@@ -1376,7 +1376,7 @@ export class IsoOfficeScene extends Phaser.Scene {
     const state = useOffice.getState()
     const isOffHours = this.isOffHours(state.settings)
     const { visits } = useFloorVisits.getState()
-    if (this.fixedFloor === null) this.settleVisits(state.staff, visits)
+    if (this.fixedFloor === null) this.settleVisits(sceneStaffOf(state.staff), visits)
     for (const a of this.actors.values()) {
       const s = a.staff
       // 상호작용 연출 중이면 연출이 끝날 때까지 행동을 정하지 않는다
@@ -1463,7 +1463,7 @@ export class IsoOfficeScene extends Phaser.Scene {
     if (!a) return
     const s = a.staff
     const activity = s.activity.length > 42 ? `${s.activity.slice(0, 42)}…` : s.activity
-    const lines = [`${s.name} · ${roleLabel(s.role)}`, `상태  ${STATUS_LABEL[s.status]}`, `활동  ${activity || '—'}`]
+    const lines = [`${s.name} · ${roleLabel(s.role)}`, `상태  ${s.awaitingTeam ? '팀원 기다리는 중' : STATUS_LABEL[s.status]}`, `활동  ${activity || '—'}`]
     if (s.kind === 'hired') lines.push(`Lv.${s.stats.level}  ·  완료 ${s.stats.tasksDone}`)
     this.tooltipText.setText(lines.join('\n'))
     const b = this.tooltipText.getBounds()

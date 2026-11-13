@@ -31,7 +31,7 @@ export default {
   'manuals.editor.titleLabel': { ko: '이름', en: 'Name', ja: '名前', zh: '名称' },
   'manuals.editor.titlePlaceholder': { ko: '예: 주간 보고 정리하기', en: 'e.g. Tidy up the weekly report', ja: '例: 週報をまとめる', zh: '例:整理周报' },
   'manuals.editor.fileNameAuto': { ko: '비워 두면 저장할 때 자동으로 정해요', en: 'Leave it blank to set it automatically when saving', ja: '空のままなら保存時に自動で決めます', zh: '留空则保存时自动生成' },
-  'manuals.editor.fileNameLocked': { ko: '이미 만든 매뉴얼의 파일 이름은 바꿀 수 없어요 (쓰는 직원·랩 연결이 끊어져요)', en: "An existing manual's file name can't be changed (it would disconnect the staff and labs using it)", ja: '作成済みマニュアルのファイル名は変えられません (使っているスタッフ・ラボとのつながりが切れます)', zh: '已创建手册的文件名不能修改(否则会与正在使用的员工·实验室断开)' },
+  'manuals.editor.fileNameLocked': { ko: '이미 만든 매뉴얼의 파일 이름은 바꿀 수 없어요 (쓰는 직원·프로젝트 연결이 끊어져요)', en: "An existing manual's file name can't be changed (it would disconnect the staff and projects using it)", ja: '作成済みマニュアルのファイル名は変えられません (使っているスタッフ・プロジェクトとのつながりが切れます)', zh: '已创建手册的文件名不能修改(否则会与正在使用的员工·项目断开)' },
   'manuals.editor.moreDesc': { ko: '어디서 쓰는지 · 파일 이름 · 공통 안내', en: 'Where it is used · File name · General notes', ja: '使う場所 · ファイル名 · 共通の案内', zh: '使用范围 · 文件名 · 通用说明' },
   'manuals.editor.moreDescPersonal': { ko: '어디서 쓰는지 · 파일 이름', en: 'Where it is used · File name', ja: '使う場所 · ファイル名', zh: '使用范围 · 文件名' },
   'manuals.editor.stepMoreDesc': { ko: '내 확인 · 앞 단계로 다시 보내기', en: 'My check · Send back to an earlier step', ja: '私の確認 · 前のステップに戻す', zh: '由我确认 · 退回前面的步骤' },
@@ -52,8 +52,8 @@ export default {
   // 저장 후 쓸 수 있게 하기
   'manuals.train.justSaved': { ko: '저장했어요. 누가 쓰게 할까요?', en: 'Saved. Who should use it?', ja: '保存しました。誰が使いますか?', zh: '已保存。要让谁使用?' },
   'manuals.train.selectAll': { ko: '모두 선택', en: 'Select all', ja: 'すべて選択', zh: '全选' },
-  'manuals.train.noStaff': { ko: '아직 고용한 직원이 없어요. 직원을 고용한 뒤 여기서 고르면 돼요.', en: "You haven't hired any staff yet. Hire someone, then pick them here.", ja: 'まだスタッフを雇っていません。雇ってからここで選んでください。', zh: '还没有雇用员工。雇用后再在这里选择即可。' },
-  'manuals.train.noGroups': { ko: '아직 팀이나 랩이 없어요. 만든 뒤 여기서 고르면 돼요.', en: 'There are no teams or labs yet. Create one, then pick it here.', ja: 'まだチームやラボがありません。作ってからここで選んでください。', zh: '还没有团队或实验室。创建后再在这里选择即可。' },
+  'manuals.train.noStaff': { ko: '아직 직원이 없어요. 직원을 추가한 뒤 여기서 고르면 돼요.', en: 'No staff yet. Add someone, then pick them here.', ja: 'まだスタッフがいません。追加してからここで選んでください。', zh: '还没有员工。添加后再在这里选择即可。' },
+  'manuals.train.noGroups': { ko: '아직 팀이나 프로젝트가 없어요. 만든 뒤 여기서 고르면 돼요.', en: 'There are no teams or projects yet. Create one, then pick it here.', ja: 'まだチームやプロジェクトがありません。作ってからここで選んでください。', zh: '还没有团队或项目。创建后再在这里选择即可。' },
 
   // 매뉴얼이 하나도 없을 때
   'manuals.emptyGuide.title': { ko: '아직 매뉴얼이 없어요', en: 'No manuals yet', ja: 'まだマニュアルがありません', zh: '还没有手册' },

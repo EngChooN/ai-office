@@ -1,5 +1,5 @@
 import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
-import { ArrowUpIcon, BookOpenIcon, BriefcaseIcon, CalendarClockIcon, CheckIcon, ChevronDownIcon, ChevronUpIcon, CircleStopIcon, DownloadIcon, EllipsisIcon, FolderIcon, InfoIcon, PaperclipIcon, PlusIcon, SendIcon, SquareTerminalIcon, TrophyIcon, UserMinusIcon, XIcon, ZapIcon } from 'lucide-react'
+import { ArrowUpIcon, BookOpenIcon, BriefcaseIcon, CalendarClockIcon, CircleStopIcon, DownloadIcon, EllipsisIcon, FolderIcon, InfoIcon, PaperclipIcon, PlusIcon, SendIcon, SquareTerminalIcon, TrophyIcon, UserMinusIcon, XIcon, ZapIcon } from 'lucide-react'
 import { NativeSelect } from '@/components/ui/select'
 import { AttachButton, AttachmentView, DraftAttachments, useDraftAttachments } from '@/components/attachments'
 import { Button } from '@/components/ui/button'
@@ -9,12 +9,11 @@ import { cn } from '@/lib/utils'
 import { useShallow } from 'zustand/react/shallow'
 import { handleComposerKey, NEWLINE_HINT, SEND_HINT, STOP_HINT } from '@/lib/composerKeys'
 import { useOffice, useWorkMode } from '@/store'
+import { DEFAULT_LOG_FONT_SIZE, logFontSizes, logFontStep, sanitizeLogFont } from '@/lib/logFont'
 import { newStaffApprovalMode, ROLE_PRESETS, type AiProvider, type ApprovalMode, type LogEntry, type LogType, type ModelChoice, type Staff } from '@shared/types'
 import { ENGINE_NAME } from '@shared/engineModel'
-import { ApprovalSplitHandle, useApprovalSplit } from './ApprovalSplit'
 import { AvatarEditor } from './AvatarEditor'
 import { EquipCard, EquipmentTab } from './EquipmentTab'
-import { QuestionBox, StopWorkButton } from './QuestionBox'
 import { RefDocsEditor } from './RefDocsEditor'
 import { ReviewTab } from './ReviewTab'
 import { StaffExportDialog } from './StaffExportDialog'
@@ -25,7 +24,7 @@ import { AutonomyCheck } from './Autonomy'
 import { MemoryLengthSelect } from './MemoryLength'
 import { useProviders } from './ProviderCards'
 import { claudeModelName, CLAUDE_MODEL_ROWS, usageDotsText } from './modelOptions'
-import { folderName, formatCost, formatTokens, shortPath, STATUS_META, workDirLabel } from './status'
+import { folderName, formatCost, formatTokens, shortPath, statusMetaOf } from './status'
 import { Markdown } from '@/components/markdown'
 import { JumpToBottom, useStickToBottom } from '@/components/stick-to-bottom'
 import { manualLabel } from '@shared/manualName'
@@ -36,13 +35,11 @@ import { fmtDate, t, trOr, type TKey } from '@shared/i18n'
 import { roleLabel } from '@shared/roleLabel'
 import { IS_REMOTE_SCREEN } from '@/shell'
 import { PcOnlyState } from '@/components/pc-only-state'
-import { ChangesetCard } from './ChangesetCard'
 import { ApprovalStatusChips } from './AutoApprove'
-import { WaitReasonLine } from './WaitReasonLine'
-import { ApprovalSummary } from './ApprovalSummary'
 import { ApprovalBand } from './ApprovalBand'
+import { ApprovalTab, dayLabel } from './ApprovalTab'
 import { useStaffRecord, type OlderState } from './useStaffRecord'
-import { dayKey, dayStarts } from '@shared/recordLogs'
+import { dayStarts } from '@shared/recordLogs'
 import { DuoIcon, IconText } from '@/components/duo-icon'
 import { PopMenu, PopMenuItem } from '@/components/pop-menu'
 
@@ -110,24 +107,20 @@ function writePanelWidth(width: number) {
   }
 }
 
-/** 업무 기록·지시 입력 글자 크기 (px) — 기본은 예전 text-xs와 같은 12 */
-const LOG_FONT_SIZES = [12, 13, 14, 16, 18]
-const DEFAULT_LOG_FONT = 0
 const LOG_FONT_KEY = 'office:logFontSize'
 
 // 글자 크기도 이 기기에서만 기억한다 (못 읽으면 기본 크기)
 function readLogFont() {
   try {
-    const i = LOG_FONT_SIZES.indexOf(Number(localStorage.getItem(LOG_FONT_KEY)))
-    return i >= 0 ? i : DEFAULT_LOG_FONT
+    return sanitizeLogFont(Number(localStorage.getItem(LOG_FONT_KEY)))
   } catch {
-    return DEFAULT_LOG_FONT
+    return DEFAULT_LOG_FONT_SIZE
   }
 }
 
-function writeLogFont(i: number) {
+function writeLogFont(size: number) {
   try {
-    localStorage.setItem(LOG_FONT_KEY, String(LOG_FONT_SIZES[i]))
+    localStorage.setItem(LOG_FONT_KEY, String(size))
   } catch {
     // 저장 못 해도 이번 화면에서는 적용된다
   }
@@ -141,9 +134,10 @@ const LOG_COLOR: Partial<Record<LogType, string>> = {
   delegate: 'text-accent-a',
   commit: 'text-accent-b',
 }
-type PanelTab = 'work' | 'review' | 'equip' | 'profile'
+type PanelTab = 'work' | 'approvals' | 'review' | 'equip' | 'profile'
 const TAB_LABEL: Record<PanelTab, TKey> = {
   work: 'staffPanel.tab.work',
+  approvals: 'approvalTab.tab',
   review: 'staffPanel.tab.review',
   equip: 'staffPanel.tab.equip',
   profile: 'staffPanel.tab.profile',
@@ -251,19 +245,9 @@ const LogRow = memo(function LogRow({ entry: l }: { entry: LogEntry }) {
   )
 })
 
-const DAY_LABEL: Intl.DateTimeFormatOptions = { month: 'long', day: 'numeric', weekday: 'short' }
-
 /** 날짜가 바뀌는 자리의 구분선 (예: 11월 6일 (금), 올해가 아니면 연도도) */
 const DayDivider = memo(function DayDivider({ ts }: { ts: number }) {
-  const now = new Date()
-  const date = fmtDate(ts, new Date(ts).getFullYear() === now.getFullYear() ? DAY_LABEL : { ...DAY_LABEL, year: 'numeric' })
-  const key = dayKey(ts)
-  const label =
-    key === dayKey(now.getTime())
-      ? t('staffPanel.log.today', { date })
-      : key === dayKey(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1).getTime())
-        ? t('staffPanel.log.yesterday', { date })
-        : date
+  const label = dayLabel(ts)
   return (
     <div role="separator" className="text-muted-foreground flex items-center gap-2 py-1 text-[11px] font-medium">
       <span className="bg-border h-px flex-1" />
@@ -332,6 +316,31 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
   const [tab, setTab] = useState<PanelTab>('work')
   const isHired = staff.kind === 'hired'
 
+  // 직원 카드의 예시·버튼: 지시창을 채우고(빈 글이면 그대로, 쓰던 글이 있으면 뒤에 붙임) 대화 탭으로 — 보내기는 대표가
+  const staffDraft = useOffice((s) => s.staffDraft)
+  const setStaffDraft = useOffice((s) => s.setStaffDraft)
+  useEffect(() => {
+    if (!staffDraft || staffDraft.staffId !== staff.id) return
+    const text = staffDraft.text
+    if (text) setDraft((prev) => (!prev.trim() ? text : prev.includes(text) ? prev : `${prev.trimEnd()}\n${text}`))
+    setTab('work')
+    setStaffDraft(null)
+    requestAnimationFrame(() => {
+      const el = composerRef.current
+      el?.focus()
+      el?.setSelectionRange(el.value.length, el.value.length)
+    })
+  }, [staffDraft, staff.id, setStaffDraft])
+
+  // 카드 '확인하기'·결재함·단체방 '이 직원 보기'로 열면 결재 탭부터
+  const staffTab = useOffice((s) => s.staffTab)
+  const clearStaffTab = useOffice((s) => s.clearStaffTab)
+  useEffect(() => {
+    if (staffTab?.staffId !== staff.id) return
+    setTab(staffTab.tab)
+    clearStaffTab()
+  }, [staffTab, staff.id, clearStaffTab])
+
   // 기록은 날짜와 상관없이 최근부터, 위로 올리면 이전 기록을 이어 붙인다 (사용량은 오늘 것만)
   const logScrollRef = useRef<HTMLDivElement>(null)
   const history = useStaffRecord(staff.id, isHired, staff.costUsd, logScrollRef)
@@ -351,11 +360,14 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
     return live.length ? [...base, ...live] : base
   }, [history.logs, liveLogs, staff.id, isHired])
   const [isConversationOnly, setIsConversationOnly] = useState(readConversationOnly)
-  const [logFont, setLogFont] = useState(readLogFont)
-  const fontSize = LOG_FONT_SIZES[logFont]
+  // 저장값은 px 그대로 두고, 지금 테마의 단계(레트로는 3단계) 중 가장 가까운 칸으로 읽는다
+  const [savedLogFont, setSavedLogFont] = useState(readLogFont)
+  const logFontSteps = logFontSizes(useOffice((s) => s.settings.uiTheme))
+  const logFont = logFontStep(savedLogFont, logFontSteps)
+  const fontSize = logFontSteps[logFont]
   const handleLogFont = (step: number) => {
-    const next = Math.min(LOG_FONT_SIZES.length - 1, Math.max(0, logFont + step))
-    setLogFont(next)
+    const next = logFontSteps[Math.min(logFontSteps.length - 1, Math.max(0, logFont + step))]
+    setSavedLogFont(next)
     writeLogFont(next)
   }
   const shownLogs = useMemo(() => (isConversationOnly ? logs.filter((l) => CONVERSATION_TYPES.has(l.type)) : logs), [logs, isConversationOnly])
@@ -492,13 +504,6 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
     if (window.confirm(t('staffPanel.fire.confirm', { name: staff.name }))) void window.office.fire(staff.id)
   }
   const [isExportOpen, setExportOpen] = useState(false)
-  const split = useApprovalSplit(staff.approvals.length)
-  // 세로 폰 결재 띠의 '보기' — 다른 배치에선 쓰지 않는다 (결재 칸이 늘 보인다)
-  const [isBandOpen, setIsBandOpen] = useState(false)
-  // 결재가 다 끝나면 접어 둔다 — 새 결재가 와도 띠(승인 버튼)부터 보이게
-  useEffect(() => {
-    if (staff.approvals.length === 0) setIsBandOpen(false)
-  }, [staff.approvals.length])
 
   return (
     <aside
@@ -522,40 +527,28 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
           </div>
           <div className="text-muted-foreground truncate text-xs">
             {roleLabel(staff.role)}
-            {isHired && ` · ${modelLabel(staff.model)}`}
             {isHired && <span className="slim:inline hidden">{` · ${t('staffPanel.usage.today')} ${formatCost(record?.costUsd ?? 0)}`}</span>}
           </div>
-          <div className="text-muted-foreground selectable slim:hidden truncate text-xs" title={staff.cwd}>
-            {workDirLabel(staff)}
-          </div>
-          {/* 사무실에서 나눈 대화를 터미널의 Claude Code에서 그대로 이어 쓴다 (쉬는 중일 때만) */}
-          {isHired && staff.sessionId && (
-            <button
-              type="button"
-              onClick={() => void handleResume()}
-              disabled={isBusy}
-              title={
-                isBusy
-                  ? t('staffPanel.resume.busyTitle')
-                  : t('staffPanel.resume.title', { engine: staff.provider === 'codex' ? 'Codex' : 'Claude Code' })
-              }
-              className="text-primary side:hidden slim:hidden mt-1 flex items-center gap-1 text-xs hover:underline disabled:text-muted-foreground disabled:no-underline"
-            >
-              <SquareTerminalIcon className="size-3.5" /> {t('staffPanel.resume.button')}
-              {isBusy && <span className="text-muted-foreground">{t('staffPanel.resume.afterWork')}</span>}
-            </button>
-          )}
+          <WorkDirChip staff={staff} />
         </div>
         <div className="side:order-first side:self-end flex shrink-0 items-center">
-          {/* 분할 왼쪽 칸: 터미널에서 이어 하기·대화만 보기·글자 크기를 ⋯ 하나에 (분할이 아니면 원래 자리에 있다) */}
-          <PopMenu icon={<EllipsisIcon />} label={t('staffPanel.more')} opens="down" className="side:block slim:block hidden">
+          {/* 터미널에서 이어 하기는 모든 크기에서 ⋯ 안에. 대화만 보기·글자 크기는 분할·세로 폰에서만 여기 (아니면 원래 자리에 있다) */}
+          <PopMenu icon={<EllipsisIcon />} label={t('staffPanel.more')} opens="down" className={isHired && staff.sessionId ? undefined : 'side:block slim:block hidden'}>
             {(close) => (
               <>
+                {/* 사무실에서 나눈 대화를 터미널의 Claude Code에서 그대로 이어 쓴다 (쉬는 중일 때만) */}
                 {isHired && staff.sessionId && (
-                  <PopMenuItem icon={<SquareTerminalIcon />} onClick={() => (close(), void handleResume())} className={isBusy ? 'pointer-events-none opacity-50' : undefined}>
+                  <PopMenuItem
+                    icon={<SquareTerminalIcon />}
+                    onClick={() => (close(), void handleResume())}
+                    title={isBusy ? t('staffPanel.resume.busyTitle') : t('staffPanel.resume.title', { engine: staff.provider === 'codex' ? 'Codex' : 'Claude Code' })}
+                    className={isBusy ? 'pointer-events-none opacity-50' : undefined}
+                  >
                     {t('staffPanel.resume.button')}
+                    {isBusy && <span className="text-muted-foreground ml-1 text-xs">{t('staffPanel.resume.afterWork')}</span>}
                   </PopMenuItem>
                 )}
+                <div className="side:contents slim:contents hidden">
                 <label className="hover:bg-accent flex min-h-9 cursor-pointer items-center gap-2 rounded-lg px-2.5 text-sm">
                   <input type="checkbox" checked={isConversationOnly} onChange={(e) => handleConversationOnly(e.target.checked)} />
                   {t('staffPanel.log.conversationOnly')}
@@ -566,9 +559,10 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
                     {t('staffPanel.font.smallerIcon')}
                   </Button>
                   <span className="w-6 text-center text-xs tabular-nums">{fontSize}</span>
-                  <Button size="icon" variant="outline" className="size-7" onClick={() => handleLogFont(1)} disabled={logFont === LOG_FONT_SIZES.length - 1} aria-label={t('staffPanel.font.larger')}>
+                  <Button size="icon" variant="outline" className="size-7" onClick={() => handleLogFont(1)} disabled={logFont === logFontSteps.length - 1} aria-label={t('staffPanel.font.larger')}>
                     {t('staffPanel.font.largerIcon')}
                   </Button>
+                </div>
                 </div>
               </>
             )}
@@ -595,66 +589,9 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
           <ProgressLine staff={staff} progress={staff.progress} variant="panel" />
         </div>
       )}
-      <ApprovalBand staff={staff} isOpen={isBandOpen} onToggle={() => setIsBandOpen((v) => !v)} />
-      {staff.approvals.length > 0 && (
-        <section
-          ref={split.ref}
-          style={split.isFolded ? undefined : split.shownHeight ? { height: split.shownHeight } : split.maxHeight !== null ? { maxHeight: `min(50%, ${split.maxHeight}px)` } : undefined}
-          // 펼친 칸은 패널이 모자랄 때(작은 창에서 매뉴얼 메뉴가 열리는 등) 하한 아래로도 줄어 하단 입력칸이 잘리지 않게 한다. 가로 폰은 패널을 스크롤하므로 그대로
-          // 폰은 패널이 늘 전체 화면이고 손잡이가 없다 — 저장한 높이를 쓰지 않고 내용만큼(최대 절반)
-          className={cn('phone:h-auto! phone:max-h-[50%] phone:border-b side:max-h-none side:shrink-0 side:overflow-visible side:border-b-0 side:px-0 side:py-0 flex flex-col gap-2 overflow-y-auto px-4', split.isFolded ? 'shrink-0 border-b py-2' : 'short:shrink-0 min-h-0 py-4', !split.height && 'max-h-[50%]', !isBandOpen && 'slim:hidden')}
-        >
-          <div className="flex items-center gap-2">
-            <h3 className="text-status-waiting text-xs font-semibold">{t('staffPanel.approvals.title', { n: staff.approvals.length })}</h3>
-            <button
-              type="button"
-              onClick={() => split.setIsFolded(!split.isFolded)}
-              aria-expanded={!split.isFolded}
-              className="text-muted-foreground hover:text-foreground ml-auto flex items-center gap-0.5 text-[11px]"
-            >
-              {split.isFolded ? <ChevronDownIcon className="size-3.5" /> : <ChevronUpIcon className="size-3.5" />}
-              {t(split.isFolded ? 'staffPanel.approvals.unfold' : 'staffPanel.approvals.fold')}
-            </button>
-          </div>
-          {!split.isFolded && staff.approvals.map((a) => (
-            <div key={a.id} className="bg-muted side:border side:border-status-waiting side:bg-card side:rounded-xl flex flex-col gap-2 rounded-lg p-3">
-              {a.requestedBy && <div className="text-muted-foreground text-xs">{t('approval.requestedBy', { name: a.requestedBy })}</div>}
-              {(a.questions || (a.peerChanges && !IS_REMOTE_SCREEN)) && (
-                <>
-                  <WaitReasonLine reason={a.waitReason} />
-                  {a.isRestored && <div className="text-muted-foreground text-xs">↻ {t('approval.restored')}</div>}
-                </>
-              )}
-              {a.questions ? (
-                <QuestionBox approval={a} />
-              ) : a.peerChanges && !IS_REMOTE_SCREEN ? (
-                <ChangesetCard approval={a} staffName={staff.name} />
-              ) : (
-                <>
-                  {/* 카드 바탕이 bg-muted라 원문 박스만 bg-card로 (분할 왼쪽 칸 카드는 bg-card라 그대로 bg-muted) */}
-                  <ApprovalSummary approval={a} boxClassName="bg-card side:bg-muted" />
-                  <div className="flex flex-wrap gap-2">
-                    <Button size="sm" onClick={() => void window.office.decide(a.id, true)}>
-                      <CheckIcon /> {t('staffPanel.approvals.approve')}
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => void window.office.decide(a.id, false)}>
-                      {t('staffPanel.approvals.reject')}
-                    </Button>
-                    {isHired && <StopWorkButton staffId={staff.id} className="ml-auto" />}
-                  </div>
-                </>
-              )}
-            </div>
-          ))}
-        </section>
-      )}
-      {staff.approvals.length > 0 && !split.isFolded && (
-        <ApprovalSplitHandle targetRef={split.ref} clamp={split.clamp} now={split.nowHeight} max={split.maxHeight} onChange={split.setHeight} onCommit={split.save} />
-      )}
-
       {
         <div className="side:flex-col side:gap-0.5 side:border-b-0 side:px-0 side:text-sm flex border-b px-4 text-xs">
-          {(isHired ? (['work', 'review', 'equip', 'profile'] as const) : (['work', 'review'] as const)).map((key) => (
+          {(isHired ? (['work', 'approvals', 'review', 'equip', 'profile'] as const) : (['work', 'approvals', 'review'] as const)).map((key) => (
             <button
               key={key}
               type="button"
@@ -665,12 +602,20 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
               )}
             >
               {t(TAB_LABEL[key])}
+              {key === 'approvals' && staff.approvals.length > 0 && (
+                <span
+                  className="bg-status-waiting ml-1 inline-flex min-w-4 items-center justify-center rounded-full px-1 text-[10px] leading-4 font-semibold text-white"
+                  aria-label={t('approvalTab.tabCount', { n: staff.approvals.length })}
+                >
+                  {staff.approvals.length}
+                </span>
+              )}
             </button>
           ))}
           {/* 세로 폰: 진행 상태는 탭 줄 오른쪽 한 마디 (진행 줄·사용량 칸은 숨긴다) */}
-          <span className={cn('slim:flex hidden ml-auto items-center gap-1.5 self-center text-[11px]', STATUS_META[staff.status].text)}>
-            <span className={cn('size-1.5 rounded-full', STATUS_META[staff.status].dot, staff.status === 'working' && 'animate-pulse')} />
-            {STATUS_META[staff.status].label}
+          <span className={cn('slim:flex hidden ml-auto items-center gap-1.5 self-center text-[11px]', statusMetaOf(staff).text)}>
+            <span className={cn('size-1.5 rounded-full', statusMetaOf(staff).dot, staff.status === 'working' && 'animate-pulse')} />
+            {statusMetaOf(staff).label}
           </span>
         </div>
       }
@@ -685,7 +630,9 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
       </div>
 
       <div className="split:flex split:min-w-0 split:flex-1 split:flex-col contents">
-      {tab === 'review' ? (
+      {tab === 'approvals' ? (
+        <ApprovalTab staff={staff} />
+      ) : tab === 'review' ? (
         <ReviewTab staff={staff} />
       ) : tab === 'equip' && isHired ? (
         <EquipmentTab staff={staff} />
@@ -693,6 +640,7 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
         <Profile staff={staff} />
       ) : (
         <>
+          <ApprovalBand staff={staff} onView={() => setTab('approvals')} />
           {staff.progress && (
             <div className="split:hidden slim:hidden contents">
               <ProgressLine staff={staff} progress={staff.progress} variant="panel" />
@@ -725,7 +673,7 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
               <button
                 type="button"
                 onClick={() => handleLogFont(1)}
-                disabled={logFont === LOG_FONT_SIZES.length - 1}
+                disabled={logFont === logFontSteps.length - 1}
                 aria-label={t('staffPanel.font.larger')}
                 title={t('staffPanel.font.larger')}
                 className="text-muted-foreground hover:text-foreground px-1.5 text-[13px] disabled:opacity-40"
@@ -781,7 +729,7 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
         </>
       )}
 
-      {tab === 'review' || tab === 'equip' ? null : isHired ? (
+      {tab === 'review' || tab === 'equip' || tab === 'approvals' ? null : isHired ? (
         // 작은 창(폰 키보드가 올라온 때 등)에서 매뉴얼·명령 메뉴가 길어지면 메뉴가 먼저 줄어 스크롤되고, 그래도 모자라면 입력 영역이 스크롤된다 — 패널 밖으로 밀리지 않게 (가로 폰은 패널을 스크롤하므로 그대로)
         <footer className="short:shrink-0 split:px-3 split:py-2 slim:px-3 slim:py-2 flex min-h-0 flex-col gap-2 overflow-y-auto border-t p-4">
           <DraftAttachments files={draftFiles.files} onRemove={draftFiles.remove} />
@@ -811,11 +759,9 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
                   <div className="px-2.5 py-1.5">
                     <AutonomyCheck checked={isAutonomous} onChange={setIsAutonomous} />
                   </div>
-                  {!staff.remote && (
-                    <div className="px-2.5 py-1">
-                      <MemoryLengthSelect staff={staff} />
-                    </div>
-                  )}
+                  <div className="px-2.5 py-1">
+                    <MemoryLengthSelect staff={staff} />
+                  </div>
                   <PopMenuItem onClick={() => (close(), openSlash('manual'))}>
                     <IconText text={t('slashMenu.manualButton')} size={16} />
                   </PopMenuItem>
@@ -879,7 +825,7 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
           </div>
           <div className="split:hidden slim:hidden flex items-center gap-2 px-1">
             <AutonomyCheck checked={isAutonomous} onChange={setIsAutonomous} className="min-w-0 flex-1" />
-            {!staff.remote && <MemoryLengthSelect staff={staff} />}
+            <MemoryLengthSelect staff={staff} />
           </div>
           <div className="split:hidden slim:hidden flex items-center gap-2">
             <Button size="sm" variant="ghost" className="h-8 px-2 text-xs" onClick={() => openSlash('manual')} title={t('slashMenu.manualButtonTitle')}>
@@ -914,6 +860,45 @@ const PROFILE_DATE: Intl.DateTimeFormatOptions = {
 }
 
 /** 직원 프로필·성장: 레벨·경험치·누적 실적·소속 팀·예약 업무 */
+/** 소개 탭 '업무 지침' — 보이기·고치기. 저장하면 다음 지시 때 같은 대화를 새 지침으로 다시 연다(restart). 일하는 중에는 고칠 수 없다 */
+function InstructionsCard({ staff }: { staff: Staff }) {
+  const [isEditing, setIsEditing] = useState(false)
+  const [text, setText] = useState(staff.systemPrompt)
+  const isBusy = staff.status === 'working' || staff.status === 'waiting'
+  const save = async () => {
+    await window.office.updateStaff(staff.id, { systemPrompt: text.trim() })
+    setIsEditing(false)
+  }
+  return (
+    <EquipCard icon={<BookOpenIcon />} title={t('staffPanel.profile.card.instructions')}>
+      {isEditing ? (
+        <div className="flex flex-col gap-2 text-xs">
+          <Textarea value={text} onChange={(e) => setText(e.target.value)} rows={6} className="text-xs" aria-label={t('staffPanel.profile.card.instructions')} />
+          <span className="text-muted-foreground text-[11px]">{t('staffPanel.instructions.restartNote')}</span>
+          <div className="flex justify-end gap-1.5">
+            <Button size="sm" variant="outline" onClick={() => (setText(staff.systemPrompt), setIsEditing(false))}>
+              {t('staffPanel.instructions.cancel')}
+            </Button>
+            <Button size="sm" disabled={isBusy || text.trim() === staff.systemPrompt.trim()} onClick={() => void save()}>
+              {t('staffPanel.instructions.save')}
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2 text-xs">
+          <p className={cn('selectable line-clamp-6 whitespace-pre-wrap', !staff.systemPrompt.trim() && 'text-muted-foreground')}>{staff.systemPrompt.trim() || t('staffPanel.instructions.empty')}</p>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" disabled={isBusy} onClick={() => setIsEditing(true)}>
+              {t('staffPanel.instructions.edit')}
+            </Button>
+            {isBusy && <span className="text-muted-foreground text-[11px]">{t('staffPanel.instructions.busy')}</span>}
+          </div>
+        </div>
+      )}
+    </EquipCard>
+  )
+}
+
 function Profile({ staff }: { staff: Staff }) {
   // 업무 모드에선 레벨·경험치를 숨기고 업무 지표 칸만 남긴다
   const isWorkMode = useWorkMode()
@@ -932,6 +917,7 @@ function Profile({ staff }: { staff: Staff }) {
     <section data-split-rest className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
       {!isWorkMode && <AvatarEditor value={staff.avatar} onChange={(avatar) => void window.office.updateStaff(staff.id, { avatar })} />}
       <NameRole key={`${staff.name}\n${staff.role}`} staff={staff} />
+      <InstructionsCard key={staff.systemPrompt} staff={staff} />
       <EquipCard icon={<TrophyIcon />} title={t('staffPanel.profile.card.record')}>
         {!isWorkMode && (
           <div className="flex flex-col gap-1.5">
@@ -1289,6 +1275,25 @@ function PickedManual({ manual, onRemove }: { manual: ManualChoice; onRemove: ()
         {t('staffPanel.manual.remove')}
       </button>
     </div>
+  )
+}
+
+/** 머리말 '일하는 곳: 폴더 이름' — 누르면 전체 경로를 펼친다(다시 누르면 접음). 경로는 고를 수 있게 둔다 */
+function WorkDirChip({ staff }: { staff: Staff }) {
+  const [isFull, setIsFull] = useState(false)
+  const hasFolder = staff.kind !== 'hired' || staff.ownCwd
+  if (!hasFolder) return <div className="text-muted-foreground slim:hidden truncate text-xs">{t('staffPanel.workPlace.any')}</div>
+  return (
+    <button
+      type="button"
+      onClick={() => setIsFull((v) => !v)}
+      aria-expanded={isFull}
+      title={isFull ? undefined : staff.cwd}
+      className="text-muted-foreground hover:text-foreground slim:hidden block max-w-full truncate text-left text-xs"
+    >
+      {t('staffPanel.workPlace')}{' '}
+      {isFull ? <span className="selectable">{shortPath(staff.cwd)}</span> : <b className="text-foreground font-medium">{folderName(staff.cwd)}</b>}
+    </button>
   )
 }
 

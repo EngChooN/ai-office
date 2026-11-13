@@ -21,18 +21,36 @@ import { shortPath } from './status'
 import { StaffMarketDialog } from './StaffMarketDialog'
 import { ModelCards } from './ModelCards'
 import { showToast } from '@/lib/toast'
-import { t } from '@shared/i18n'
+import { t, type TKey } from '@shared/i18n'
 import { roleLabel } from '@shared/roleLabel'
+import { HIRE_LAST_STEP, hireStepValid, roleInfo, type HireStep } from '@shared/staffCard'
 import { PcOnlyState } from '@/components/pc-only-state'
 import { IS_REMOTE_SCREEN } from '@/shell'
 import { DuoIcon } from '@/components/duo-icon'
 
 // 화면 문구가 들어 있어 렌더할 때 만든다 (언어 바뀜 반영)
-const approvalModes = (): { value: ApprovalMode; label: string; hint: string }[] => [
-  { value: 'ask', label: t('hire.approval.ask'), hint: t('hire.approval.ask.hint') },
-  { value: 'acceptEdits', label: t('hire.approval.acceptEdits'), hint: t('hire.approval.acceptEdits.hint') },
+const approvalModes = (): {
+  value: ApprovalMode
+  label: string
+  hint: string
+}[] => [
+  {
+    value: 'ask',
+    label: t('hire.approval.ask'),
+    hint: t('hire.approval.ask.hint'),
+  },
+  {
+    value: 'acceptEdits',
+    label: t('hire.approval.acceptEdits'),
+    hint: t('hire.approval.acceptEdits.hint'),
+  },
 ]
 
+const STEP_TITLE: Record<HireStep, TKey> = {
+  0: 'hire.step.role',
+  1: 'hire.step.who',
+  2: 'hire.step.where',
+}
 
 const emptyForm = (): HireInput => ({
   name: '',
@@ -75,7 +93,8 @@ export function HireDialog() {
   const [form, setForm] = useState<HireInput>(emptyForm)
   const [templates, setTemplates] = useState<AgentTemplate[]>([])
   const [isCustomRole, setIsCustomRole] = useState(false)
-  // 처음에는 이름·직무만 보이고 나머지(생김새·팀·폴더·AI·성능 등급·결재 방식·지침)는 '자세히 설정'에 접는다
+  // 직무 고르기 → 이름·얼굴 → 일할 곳. 나머지(팀·랩·AI·성능 등급·결재 방식·지침)는 3단계의 '자세히 설정'에 접는다
+  const [step, setStep] = useState<HireStep>(0)
   const [isMoreOpen, setIsMoreOpen] = useState(false)
   // 생김새를 직접 고치거나 🎲를 누르기 전까지는 무작위 바탕에 고른 직무의 기본 옷·소품을 입힌다
   const [baseLook, setBaseLook] = useState<Look>(() => randomLook())
@@ -99,8 +118,14 @@ export function HireDialog() {
       const { settings } = useOffice.getState()
       const provider = defaultProvider(providers.status)
       // 토큰 절약 모드면 Haiku + 기억 짧게로 시작한다 (Codex는 기억만)
-      setForm({ ...emptyForm(), provider, ...hireDefaults(settings.tokenSaverMode, provider), cwd: settings.defaultCwd })
+      setForm({
+        ...emptyForm(),
+        provider,
+        ...hireDefaults(settings.tokenSaverMode, provider),
+        cwd: settings.defaultCwd,
+      })
       setIsCustomRole(false)
+      setStep(0)
       setIsMoreOpen(false)
       setTemplates([])
       setBaseLook(randomLook())
@@ -114,7 +139,13 @@ export function HireDialog() {
     const s = providers.status
     if (!isOpen || !s || s[form.provider ?? 'claude'].state === 'ready') return
     const next = defaultProvider(s)
-    if (s[next].state === 'ready') setForm((f) => ({ ...f, provider: next, model: 'default', ...hireDefaults(useOffice.getState().settings.tokenSaverMode, next) }))
+    if (s[next].state === 'ready')
+      setForm((f) => ({
+        ...f,
+        provider: next,
+        model: 'default',
+        ...hireDefaults(useOffice.getState().settings.tokenSaverMode, next),
+      }))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, providers.status])
 
@@ -123,7 +154,8 @@ export function HireDialog() {
   }, [form.cwd])
 
   const update = (patch: Partial<HireInput>) => setForm((f) => ({ ...f, ...patch }))
-  const isValid = form.name.trim() && form.role.trim() && isProviderReady
+  const isStepValid = hireStepValid(step, form, isProviderReady)
+  const isLastStep = step === HIRE_LAST_STEP
 
   const handlePickFolder = async () => {
     const dir = await window.office.pickFolder()
@@ -148,12 +180,26 @@ export function HireDialog() {
   const handleTemplate = (tpl: AgentTemplate) => {
     setIsCustomRole(true)
     // 에이전트 정의의 모델은 Claude 별칭이라 Codex 직원에게는 옮기지 않는다
-    update({ role: tpl.name, systemPrompt: tpl.prompt, ...(isCodex ? {} : { model: tpl.model }) })
+    update({
+      role: tpl.name,
+      systemPrompt: tpl.prompt,
+      ...(isCodex ? {} : { model: tpl.model }),
+    })
   }
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
-    if (!isValid) return
-    const staff = await window.office.hire({ ...form, avatar, name: form.name.trim(), role: form.role.trim() })
+    if (!isStepValid) return
+    // 앞 단계에서 Enter·'다음'은 다음 단계로
+    if (!isLastStep) {
+      setStep((step + 1) as HireStep)
+      return
+    }
+    const staff = await window.office.hire({
+      ...form,
+      avatar,
+      name: form.name.trim(),
+      role: form.role.trim(),
+    })
     setHireOpen(false)
     select(staff.id)
   }
@@ -161,229 +207,325 @@ export function HireDialog() {
   return (
     <Dialog open={isOpen} onOpenChange={setHireOpen}>
       <DialogContent className="max-w-xl">
-        <StaffMarketDialog open={isMarketOpen} onOpenChange={setMarketOpen} onHired={(id) => {
-          setHireOpen(false)
-          select(id)
-        }} />
+        <StaffMarketDialog
+          open={isMarketOpen}
+          onOpenChange={setMarketOpen}
+          onHired={(id) => {
+            setHireOpen(false)
+            select(id)
+          }}
+        />
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
           <DialogHeader>
-            <DialogTitle>{t('hire.title')}</DialogTitle>
+            <DialogTitle className="flex items-baseline gap-2">
+              {t('hire.title')}
+              <span className="text-muted-foreground text-xs font-normal tabular-nums">{t('hire.stepCount', { n: step + 1 })}</span>
+            </DialogTitle>
             <DialogDescription>{t('hire.desc')}</DialogDescription>
           </DialogHeader>
 
-          <div className="flex flex-col gap-2 rounded-lg border p-3">
-            <div className="flex flex-wrap gap-2">
-              <Button type="button" variant="outline" size="sm" onClick={() => setMarketOpen(true)}>
-                <StoreIcon /> {t('pack.hire.market')}
-              </Button>
-              {canImportFile && (
-                <Button type="button" variant="outline" size="sm" onClick={() => void handleImport()}>
-                  <FileUpIcon /> {t('pack.hire.import')}
-                </Button>
-              )}
-            </div>
-            {canImportFile && <span className="text-muted-foreground text-xs">{t('pack.hire.hint')}</span>}
-          </div>
+          <h3 className="-mb-2 text-sm font-semibold">{t(STEP_TITLE[step])}</h3>
 
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="hire-name">{t('hire.name')}</Label>
-            <Input id="hire-name" value={form.name} onChange={(e) => update({ name: e.target.value })} placeholder={t('hire.name.placeholder')} autoFocus />
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <Label>{t('hire.role')}</Label>
-            <div className="flex flex-wrap gap-2">
-              {ROLE_PRESETS.map((r) => (
+          {/* ① 직무 고르기 — 카드마다 무슨 일을 하는 사람인지 한 줄 */}
+          {step === 0 && (
+            <>
+              <div className="grid max-h-[46vh] gap-2 overflow-y-auto sm:grid-cols-2">
+                {ROLE_PRESETS.map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    aria-pressed={!isCustomRole && form.role === r}
+                    onClick={() => {
+                      setIsCustomRole(false)
+                      update({ role: r })
+                    }}
+                    className={cn('focus-ring hover:bg-accent/50 flex flex-col gap-0.5 rounded-lg border px-3 py-2 text-left', !isCustomRole && form.role === r && 'border-primary bg-accent')}
+                  >
+                    <span className="text-sm font-semibold">{roleLabel(r)}</span>
+                    <span className="text-muted-foreground text-xs leading-snug">{t(roleInfo(r).descKey)}</span>
+                  </button>
+                ))}
                 <button
-                  key={r}
                   type="button"
+                  aria-pressed={isCustomRole}
                   onClick={() => {
-                    setIsCustomRole(false)
-                    update({ role: r })
+                    setIsCustomRole(true)
+                    update({ role: '' })
                   }}
-                  className={cn('rounded-md border px-2 py-1 text-xs', !isCustomRole && form.role === r && 'border-primary bg-accent')}
+                  className={cn('focus-ring hover:bg-accent/50 rounded-lg border border-dashed px-3 py-2 text-left text-sm font-semibold', isCustomRole && 'border-primary bg-accent')}
                 >
-                  {roleLabel(r)}
+                  {t('hire.role.custom')}
                 </button>
-              ))}
-              <button
-                type="button"
-                onClick={() => {
-                  setIsCustomRole(true)
-                  update({ role: '' })
-                }}
-                className={cn('rounded-md border px-2 py-1 text-xs', isCustomRole && 'border-primary bg-accent')}
-              >
-                {t('hire.role.custom')}
-              </button>
-            </div>
-            {isCustomRole && <Input value={form.role} maxLength={40} onChange={(e) => update({ role: e.target.value })} placeholder={t('hire.role.placeholder')} />}
-          </div>
+              </div>
+              {isCustomRole && <Input value={form.role} maxLength={40} onChange={(e) => update({ role: e.target.value })} placeholder={t('hire.role.placeholder')} autoFocus />}
 
-          {/* 직원 상태를 아직 모르거나 고른 AI가 준비 안 됐으면 이유가 보이게 접지 않는다 */}
-          {!isProviderReady && (
-            <div className="flex flex-col gap-2">
-              <Label>{t('hire.provider')}</Label>
-              <ProviderPicker status={providers.status} value={provider} onChange={(p) => p !== provider && update({ provider: p, model: 'default', ...hireDefaults(isSaverOn, p) })} role={isBothReady(providers.status) ? form.role : undefined} />
-              {isBothReady(providers.status) && engineReason(form.role) && <span className="text-muted-foreground text-xs">{engineReason(form.role)}</span>}
-              <span className="text-muted-foreground text-xs">
-                {providers.isChecking && !providers.status
-                  ? t('hire.provider.checking')
-                  : [t('hire.provider.locked'), ...notReady.map((p) => t('hire.provider.notReady', { name: PROVIDER_NAME[p] }))].join(' ')}
-              </span>
-            </div>
+              <div className="flex flex-col gap-2 rounded-lg border p-3">
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" variant="outline" size="sm" onClick={() => setMarketOpen(true)}>
+                    <StoreIcon /> {t('pack.hire.market')}
+                  </Button>
+                  {canImportFile && (
+                    <Button type="button" variant="outline" size="sm" onClick={() => void handleImport()}>
+                      <FileUpIcon /> {t('pack.hire.import')}
+                    </Button>
+                  )}
+                </div>
+                {canImportFile && <span className="text-muted-foreground text-xs">{t('pack.hire.hint')}</span>}
+              </div>
+            </>
           )}
 
-          <MoreToggle open={isMoreOpen} onToggle={() => setIsMoreOpen((v) => !v)} hint={t('guideHint.hire.moreDesc')} />
-
-          {isMoreOpen && (
+          {/* ② 이름·얼굴 */}
+          {step === 1 && (
             <>
-            {/* 업무 모드에선 아바타가 이니셜 원이라 고르지 않는다 (직무 소품을 얹은 무작위 모습으로 고용) */}
-            {!isWorkMode && (
               <div className="flex flex-col gap-2">
-                <Label>{t('hire.look')}</Label>
-                <AvatarEditor
-                  value={avatar}
-                  onChange={(next) => {
-                    update({ avatar: next })
-                    setIsLookEdited(true)
-                  }}
-                />
+                <Label htmlFor="hire-name">{t('hire.name')}</Label>
+                <Input id="hire-name" value={form.name} onChange={(e) => update({ name: e.target.value })} placeholder={t('hire.name.placeholder')} autoFocus />
               </div>
-            )}
-
-            <div className="flex flex-col gap-2">
-              <Label>{t('hire.team')}</Label>
-              <NativeSelect value={form.teamId ?? ''} onChange={(e) => update({ teamId: e.target.value || null })} className="w-48">
-                <option value="">{t('hire.team.none')}</option>
-                {teams.map((team) => (
-                  <option key={team.id} value={team.id}>
-                    {team.name}
-                  </option>
-                ))}
-              </NativeSelect>
-              <span className="text-muted-foreground text-xs">{t('hire.team.leadHint')}</span>
-            </div>
-
-            {labs.length > 0 && (
-              <div className="flex flex-col gap-2">
-                <Label>{t('hire.labs')}</Label>
-                <div className="flex flex-wrap gap-2">
-                  {labs.map((l) => {
-                    const isOn = form.labIds?.includes(l.id) ?? false
-                    return (
-                      <button
-                        key={l.id}
-                        type="button"
-                        onClick={() => update({ labIds: isOn ? form.labIds?.filter((x) => x !== l.id) : [...(form.labIds ?? []), l.id] })}
-                        className={cn('rounded-md border px-2 py-1 text-xs', isOn && 'border-primary bg-accent')}
-                      >
-                        <DuoIcon name="lab" size={13} className="mr-1" />{l.name}
-                      </button>
-                    )
-                  })}
+              {/* 업무 모드에선 아바타가 이니셜 원이라 고르지 않는다 (직무 소품을 얹은 무작위 모습으로 추가) */}
+              {!isWorkMode && (
+                <div className="flex flex-col gap-2">
+                  <Label>{t('hire.look')}</Label>
+                  <AvatarEditor
+                    value={avatar}
+                    onChange={(next) => {
+                      update({ avatar: next })
+                      setIsLookEdited(true)
+                    }}
+                  />
                 </div>
-              </div>
-            )}
-
-            <div className="flex flex-col gap-2">
-              <Label>{t('hire.folder')}</Label>
-              <div className="flex items-center gap-2">
-                {/* 휴대폰에서 채용하면 작업 폴더는 기본 폴더로 정해진다 (PC가 다시 채운다) — 고르는 버튼 대신 안내 */}
-                {!IS_REMOTE_SCREEN && (
-                  <Button type="button" variant="outline" size="sm" onClick={handlePickFolder}>
-                    <FolderOpenIcon /> {t('hire.folder.pick')}
-                  </Button>
-                )}
-                <span className="text-muted-foreground truncate text-xs">{form.cwd ? shortPath(form.cwd) : t('hire.folder.none')}</span>
-              </div>
-              {IS_REMOTE_SCREEN && <PcOnlyState />}
-            </div>
-
-            {templates.length > 0 && (
-              <div className="flex flex-col gap-2">
-                <Label>{t('hire.templates')}</Label>
-                <div className="flex flex-wrap gap-2">
-                  {templates.map((tpl) => (
-                    <button
-                      key={`${tpl.source}-${tpl.name}`}
-                      type="button"
-                      onClick={() => handleTemplate(tpl)}
-                      title={tpl.description}
-                      className={cn('rounded-md border px-2 py-1 text-xs', form.role === tpl.name && 'border-primary bg-accent')}
-                    >
-                      {tpl.name} <span className="text-muted-foreground">· {tpl.source}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-              {isProviderReady && (
-              <div className="flex flex-col gap-2">
-                <Label>{t('hire.provider')}</Label>
-                <ProviderPicker status={providers.status} value={provider} onChange={(p) => p !== provider && update({ provider: p, model: 'default', ...hireDefaults(isSaverOn, p) })} role={isBothReady(providers.status) ? form.role : undefined} />
-                {isBothReady(providers.status) && engineReason(form.role) && <span className="text-muted-foreground text-xs">{engineReason(form.role)}</span>}
-                <span className="text-muted-foreground text-xs">
-                  {providers.isChecking && !providers.status
-                    ? t('hire.provider.checking')
-                    : [t('hire.provider.locked'), ...notReady.map((p) => t('hire.provider.notReady', { name: PROVIDER_NAME[p] }))].join(' ')}
-                </span>
-              </div>
               )}
+            </>
+          )}
 
-            <div className="flex flex-col gap-4">
+          {/* ③ 일할 곳 + 자세히 설정 */}
+          {step === 2 && (
+            <>
               <div className="flex flex-col gap-2">
-                <Label>{t('hire.model')}</Label>
-                {isCodex ? (
-                  <NativeSelect value={form.model} onChange={(e) => update({ model: e.target.value as ModelChoice })} className="w-48">
-                    <option value="default">{codex?.defaultModel ? t('hire.model.codexDefault', { model: codex.defaultModel }) : t('hire.model.default')}</option>
-                    {(codex?.models ?? []).map((m) => (
-                      <option key={m} value={m}>
-                        {m}
-                      </option>
-                    ))}
-                  </NativeSelect>
-                ) : (
-                  <ModelCards value={form.model} onChange={(model) => update({ model })} />
-                )}
-              </div>
-              <div className="flex flex-col gap-2">
-                <Label>{t('hire.approval')}</Label>
-                {/* 휴대폰에서 채용하면 늘 '매번 묻기' (파일 수정 자동 승인은 PC에서만) */}
+                {/* 휴대폰에서 추가하면 작업 폴더는 기본 폴더로 정해진다 (PC가 다시 채운다) — 고르는 버튼 대신 안내 */}
                 {IS_REMOTE_SCREEN ? (
                   <>
-                    <span className="text-xs">{t('hire.approval.ask')}</span>
+                    <span className="text-muted-foreground truncate text-xs">{form.cwd ? shortPath(form.cwd) : t('hire.where.any')}</span>
                     <PcOnlyState />
                   </>
                 ) : (
                   <>
-                    <Segmented options={approvalModes()} value={form.approvalMode} onChange={(approvalMode) => update({ approvalMode })} />
-                    <span className="text-muted-foreground text-xs">{approvalModes().find((m) => m.value === form.approvalMode)?.hint}</span>
+                    <Segmented
+                      options={[
+                        { value: 'any', label: t('hire.where.any') },
+                        { value: 'folder', label: t('hire.where.folder') },
+                      ]}
+                      value={form.cwd ? 'folder' : 'any'}
+                      onChange={(v) => (v === 'any' ? update({ cwd: '' }) : void handlePickFolder())}
+                    />
+                    {form.cwd ? (
+                      <div className="flex items-center gap-2">
+                        <span className="truncate text-xs" title={form.cwd}>
+                          {shortPath(form.cwd)}
+                        </span>
+                        <Button type="button" variant="outline" size="sm" onClick={handlePickFolder}>
+                          <FolderOpenIcon /> {t('hire.folder.pick')}
+                        </Button>
+                      </div>
+                    ) : null}
+                    <span className="text-muted-foreground text-xs">{form.cwd ? t('hire.where.folderHint') : t('hire.where.anyHint')}</span>
                   </>
                 )}
               </div>
-            </div>
 
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="hire-prompt">{t('hire.prompt')}</Label>
-              <Textarea
-                id="hire-prompt"
-                value={form.systemPrompt}
-                onChange={(e) => update({ systemPrompt: e.target.value })}
-                placeholder={t('hire.prompt.placeholder')}
-                className="max-h-48 min-h-20"
-              />
-            </div>
+              {/* 직원 상태를 아직 모르거나 고른 AI가 준비 안 됐으면 이유가 보이게 접지 않는다 */}
+              {!isProviderReady && (
+                <div className="flex flex-col gap-2">
+                  <Label>{t('hire.provider')}</Label>
+                  <ProviderPicker
+                    status={providers.status}
+                    value={provider}
+                    onChange={(p) =>
+                      p !== provider &&
+                      update({
+                        provider: p,
+                        model: 'default',
+                        ...hireDefaults(isSaverOn, p),
+                      })
+                    }
+                    role={isBothReady(providers.status) ? form.role : undefined}
+                  />
+                  {isBothReady(providers.status) && engineReason(form.role) && <span className="text-muted-foreground text-xs">{engineReason(form.role)}</span>}
+                  <span className="text-muted-foreground text-xs">
+                    {providers.isChecking && !providers.status
+                      ? t('hire.provider.checking')
+                      : [
+                          t('hire.provider.locked'),
+                          ...notReady.map((p) =>
+                            t('hire.provider.notReady', {
+                              name: PROVIDER_NAME[p],
+                            }),
+                          ),
+                        ].join(' ')}
+                  </span>
+                </div>
+              )}
+
+              <MoreToggle open={isMoreOpen} onToggle={() => setIsMoreOpen((v) => !v)} hint={t('guideHint.hire.moreDesc')} />
+
+              {isMoreOpen && (
+                <>
+                  <div className="flex flex-col gap-2">
+                    <Label>{t('hire.team')}</Label>
+                    <NativeSelect value={form.teamId ?? ''} onChange={(e) => update({ teamId: e.target.value || null })} className="w-48">
+                      <option value="">{t('hire.team.none')}</option>
+                      {teams.map((team) => (
+                        <option key={team.id} value={team.id}>
+                          {team.name}
+                        </option>
+                      ))}
+                    </NativeSelect>
+                    <span className="text-muted-foreground text-xs">{t('hire.team.leadHint')}</span>
+                  </div>
+
+                  {labs.length > 0 && (
+                    <div className="flex flex-col gap-2">
+                      <Label>{t('hire.labs')}</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {labs.map((l) => {
+                          const isOn = form.labIds?.includes(l.id) ?? false
+                          return (
+                            <button
+                              key={l.id}
+                              type="button"
+                              onClick={() =>
+                                update({
+                                  labIds: isOn ? form.labIds?.filter((x) => x !== l.id) : [...(form.labIds ?? []), l.id],
+                                })
+                              }
+                              className={cn('rounded-md border px-2 py-1 text-xs', isOn && 'border-primary bg-accent')}
+                            >
+                              <DuoIcon name="lab" size={13} className="mr-1" />
+                              {l.name}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {templates.length > 0 && (
+                    <div className="flex flex-col gap-2">
+                      <Label>{t('hire.templates')}</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {templates.map((tpl) => (
+                          <button
+                            key={`${tpl.source}-${tpl.name}`}
+                            type="button"
+                            onClick={() => handleTemplate(tpl)}
+                            title={tpl.description}
+                            className={cn('rounded-md border px-2 py-1 text-xs', form.role === tpl.name && 'border-primary bg-accent')}
+                          >
+                            {tpl.name} <span className="text-muted-foreground">· {tpl.source}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {isProviderReady && (
+                    <div className="flex flex-col gap-2">
+                      <Label>{t('hire.provider')}</Label>
+                      <ProviderPicker
+                        status={providers.status}
+                        value={provider}
+                        onChange={(p) =>
+                          p !== provider &&
+                          update({
+                            provider: p,
+                            model: 'default',
+                            ...hireDefaults(isSaverOn, p),
+                          })
+                        }
+                        role={isBothReady(providers.status) ? form.role : undefined}
+                      />
+                      {isBothReady(providers.status) && engineReason(form.role) && <span className="text-muted-foreground text-xs">{engineReason(form.role)}</span>}
+                      <span className="text-muted-foreground text-xs">
+                        {providers.isChecking && !providers.status
+                          ? t('hire.provider.checking')
+                          : [
+                              t('hire.provider.locked'),
+                              ...notReady.map((p) =>
+                                t('hire.provider.notReady', {
+                                  name: PROVIDER_NAME[p],
+                                }),
+                              ),
+                            ].join(' ')}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="flex flex-col gap-4">
+                    <div className="flex flex-col gap-2">
+                      <Label>{t('hire.model')}</Label>
+                      {isCodex ? (
+                        <NativeSelect value={form.model} onChange={(e) => update({ model: e.target.value as ModelChoice })} className="w-48">
+                          <option value="default">
+                            {codex?.defaultModel
+                              ? t('hire.model.codexDefault', {
+                                  model: codex.defaultModel,
+                                })
+                              : t('hire.model.default')}
+                          </option>
+                          {(codex?.models ?? []).map((m) => (
+                            <option key={m} value={m}>
+                              {m}
+                            </option>
+                          ))}
+                        </NativeSelect>
+                      ) : (
+                        <ModelCards value={form.model} onChange={(model) => update({ model })} />
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <Label>{t('hire.approval')}</Label>
+                      {/* 휴대폰에서 채용하면 늘 '매번 묻기' (파일 수정 자동 승인은 PC에서만) */}
+                      {IS_REMOTE_SCREEN ? (
+                        <>
+                          <span className="text-xs">{t('hire.approval.ask')}</span>
+                          <PcOnlyState />
+                        </>
+                      ) : (
+                        <>
+                          <Segmented options={approvalModes()} value={form.approvalMode} onChange={(approvalMode) => update({ approvalMode })} />
+                          <span className="text-muted-foreground text-xs">{approvalModes().find((m) => m.value === form.approvalMode)?.hint}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="hire-prompt">{t('hire.prompt')}</Label>
+                    <Textarea
+                      id="hire-prompt"
+                      value={form.systemPrompt}
+                      onChange={(e) => update({ systemPrompt: e.target.value })}
+                      placeholder={t('hire.prompt.placeholder')}
+                      className="max-h-48 min-h-20"
+                    />
+                  </div>
+                </>
+              )}
             </>
           )}
 
           <DialogFooter>
-            <Button type="button" variant="ghost" onClick={() => setHireOpen(false)}>
-              {t('common.cancel')}
-            </Button>
-            <Button type="submit" disabled={!isValid}>
-              {t('hire.submit')}
+            {step === 0 ? (
+              <Button type="button" variant="ghost" onClick={() => setHireOpen(false)}>
+                {t('common.cancel')}
+              </Button>
+            ) : (
+              <Button type="button" variant="ghost" onClick={() => setStep((step - 1) as HireStep)}>
+                {t('hire.back')}
+              </Button>
+            )}
+            <Button type="submit" disabled={!isStepValid}>
+              {isLastStep ? t('hire.submit') : t('hire.next')}
             </Button>
           </DialogFooter>
         </form>

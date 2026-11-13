@@ -5,7 +5,7 @@ import { cancelClaudeLogin } from './ai/claudeLogin'
 import { cancelCodexLogin } from './ai/codexLogin'
 import { app, BrowserWindow, clipboard, dialog, ipcMain, nativeTheme, Notification, safeStorage } from 'electron'
 import path from 'node:path'
-import { loadRemoteConfig, openDb, peerStore, saveRemoteConfig, syncStore } from './db'
+import { cleanupLegacyPeer, loadRemoteConfig, openDb, peerStore, saveRemoteConfig } from './db'
 import { serveArtifacts } from './artifacts'
 import { attachmentById, registerAttachmentScheme, removeAttachment, saveUpload, serveAttachments } from './attachments'
 import { Office } from './office'
@@ -20,10 +20,7 @@ import { IS_WINDOWS } from './platform'
 import { RemoteService } from './remote/service.ts'
 import { loadRemoteKeys, saveRemoteKeys } from './remote/keystore.ts'
 import * as upnp from './remote/upnp.ts'
-import { PeerHost, peerSnapshotShape } from './peer/peerHost'
 import { PeerManager } from './peer/peerManager'
-import { PeerSync } from './peer/sync/peerSyncService'
-import { SyncError } from '../shared/peerSync'
 import { fileTokenVault } from './peer/peerRegistry'
 import { createOpenStream, createPairTransport, createPeerHttp } from './peer/peerTransport'
 import { Secretary } from './secretary'
@@ -38,7 +35,7 @@ import { configureAi } from './ai'
 import { codexBinaryPath } from './ai/codex'
 import { refreshCodexAssets } from './ai/codexAssets'
 import { lastProviderStatus, providerStatus } from './setup'
-import { WINDOW_BG, type UiMode } from '../shared/uiTheme'
+import { DEFAULT_UI_THEME, themeMode, windowBg, type UiMode, type UiThemeId } from '../shared/uiTheme'
 import { errorLog } from './errorLog'
 import { createWorkspaces, type Workspaces } from './workspace/index.ts'
 
@@ -61,71 +58,19 @@ let handlers: OfficeHandlers | null = null
 let secretary: Secretary | null = null
 // 업데이트 확인: 켤 때 한 번 + 6시간마다 (DB를 연 뒤에 만든다 — 건너뛴 버전을 읽는다)
 let updates: UpdateChecker | null = null
-// 다른 PC 연결 (docs/specs/multi-pc-protocol.md): B컴 쪽 일 받기(peerHost)와 A컴 쪽 연결 총괄(peerManager) — DB를 연 뒤에 만든다
-let peerHost: PeerHost | null = null
+// 다른 PC 연결 (docs/specs/multi-pc-protocol.md): A컴 쪽 짝짓기·연결 유지(peerManager) — DB를 연 뒤에 만든다
 let peerManager: PeerManager | null = null
-// 파일 복사본·변경 묶음 (A컴: 보내고 받아 반영 · B컴: 받은 복사본으로 일하고 바뀐 파일을 모은다)
-let peerSync: PeerSync | null = null
 // 워크스페이스(다른 PC 화면 보기): PC마다 원격 창 1개 — 이 PC 창·통로와 분리 (main/workspace)
 let workspaces: Workspaces | null = null
 function createPeer() {
-  const store = peerStore()
-  const sync = new PeerSync({ baseDir: app.getPath('userData'), store: syncStore(), registeredRoots: () => office.labRoots() })
-  peerSync = sync
-  office.setPeerSync(sync)
-  const host = new PeerHost({
-    store,
-    office: office.peerHostOffice(),
-    publish: (slot, event, data) => remote?.publishToSlot(slot, event, data),
-    // 이 슬롯이 올리고 commit까지 마친 복사본만 일의 작업 폴더가 된다
-    workspaceReady: (id, slot) => {
-      const r = sync.workspaces.record(id)
-      return Boolean(r && r.slotId === slot && r.state === 'ready')
-    },
-    // A컴이 확인했거나 일이 취소됐다: 복사본·변경 묶음을 지운다
-    onAcked: (job) => {
-      if (job.workspaceId) void sync.discardWorkspace(job.workspaceId).catch(() => {})
-    },
-    // 피어가 올린 첨부는 휴대폰 올리기와 같은 첨부 저장소에
-    saveUpload,
-    removeUpload: removeAttachment,
-  })
-  // 앱이 꺼지며 끊긴 일은 실패로 닫는다 (같은 일을 다시 실행하지는 않는다)
-  host.recover()
-  host.prune()
-  peerHost = host
-  office.setPeerHost(host)
   const crypt = safeStorage.isEncryptionAvailable() ? { encrypt: (s: string) => safeStorage.encryptString(s), decrypt: (b: Buffer) => safeStorage.decryptString(b) } : undefined
-  const manager = new PeerManager({
-    store,
+  peerManager = new PeerManager({
+    store: peerStore(),
     vault: fileTokenVault(path.join(app.getPath('userData'), 'peers'), crypt),
     office: office.peerPort(),
-    sync: {
-      prepare: async (root, peerId) => ({ workspaceId: (await sync.prepareWorkspace(root, { peerId })).workspaceId }),
-      push: (http, workspaceId) => sync.pushWorkspace(asSyncHttp(http), workspaceId),
-      discard: (workspaceId) => sync.discardWorkspace(workspaceId),
-      fetchChanges: (http, changesetId, workspaceId) => sync.fetchChangeSet(asSyncHttp(http), changesetId, workspaceId),
-      card: (view) => sync.approvalCard(view),
-      detail: (changesetId) => sync.changesetDetail(changesetId),
-      apply: (changesetId, choice) => sync.applyChangeSet(changesetId, choice),
-      pending: () =>
-        syncStore()
-          .changesets.list()
-          .filter((c) => c.side === 'a' && c.state === 'pending')
-          .map((c) => ({ changesetId: c.id, workspaceId: c.workspaceId, jobId: c.jobId, peerId: syncStore().workspaces.get(c.workspaceId)?.peerId })),
-    },
     net: { pair: createPairTransport, http: (p, token) => createPeerHttp(p, token), stream: (p, token) => createOpenStream(p, token) },
-    text: (key, params) => t(key === 'tag' ? 'peer.tag' : `peer.report.${key}`, params),
   })
-  peerManager = manager
-  office.setPeer(manager)
 }
-/** 파일 바이트를 못 나르는 통로(가짜)면 전송 오류로 본다 */
-const asSyncHttp = (http: import('./peer/peerTransport').PeerHttp): import('../shared/peerSync').SyncHttp => ({
-  call: (method, path, body) => http.call(method, path, body),
-  putBytes: (path, data) => (http.putBytes ? http.putBytes(path, data) : Promise.reject(new SyncError('transfer_failed', 'no_bytes'))),
-  getBytes: (path, limit) => (http.getBytes ? http.getBytes(path, limit) : Promise.reject(new SyncError('transfer_failed', 'no_bytes'))),
-})
 const peerApi = () => {
   if (!peerManager) throw new Error('peer not ready')
   return peerManager
@@ -133,17 +78,7 @@ const peerApi = () => {
 function createRemote() {
   return new RemoteService({
     office: office.remotePort(),
-    peer: peerHost && {
-      host: peerHost,
-      sync: peerSync ?? undefined,
-      ownName: () => os.hostname().replace(/\.local$/, '') || 'Mac',
-      // 피어에는 고른 직원의 줄인 정보만 — snapshot 말고는 보내지 않는다
-      shapePeer: (slot, event, data) => (event === 'snapshot' && peerHost ? peerSnapshotShape(data, peerHost.watchedBy(slot)) : null),
-      onSlotRemoved: (slot) => {
-        peerHost?.dropSlot(slot)
-        void peerSync?.discardSlot(slot).catch(() => {})
-      },
-    },
+    peer: { ownName: () => os.hostname().replace(/\.local$/, '') || 'Mac' },
     serverVersion: app.getVersion(),
     loadConfig: loadRemoteConfig,
     saveConfig: saveRemoteConfig,
@@ -289,8 +224,17 @@ function syncNativeTheme(mode: UiMode) {
   if (nativeTheme.themeSource !== mode) nativeTheme.themeSource = mode
 }
 
-/** 지금 모드의 창 배경색 (첫 페인트 전·크기 바꿀 때 보이는 색) */
-const windowColors = () => WINDOW_BG[nativeTheme.shouldUseDarkColors ? 'dark' : 'light']
+/** 지금 색 테마 — 창 배경색이 테마마다 다를 수 있다 (레트로) */
+let windowTheme: UiThemeId = DEFAULT_UI_THEME
+
+function syncWindowTheme(theme: UiThemeId) {
+  if (windowTheme === theme) return
+  windowTheme = theme
+  paintWindowChrome()
+}
+
+/** 지금 모드·테마의 창 배경색 (첫 페인트 전·크기 바꿀 때 보이는 색) */
+const windowColors = () => windowBg(windowTheme, nativeTheme.shouldUseDarkColors ? 'dark' : 'light')
 
 function paintWindowChrome() {
   if (!win) return
@@ -308,7 +252,7 @@ function createWindow(isHidden = false) {
     minHeight: 680,
     title: 'AI Office',
     show: !isHidden,
-    // 맥은 신호등만 남기고, 윈도우는 오른쪽 위 창 버튼을 상단 바(h-11 = 44px) 위에 겹쳐 그린다 (색은 지금 모드의 --background, shared/uiTheme.ts WINDOW_BG)
+    // 맥은 신호등만 남기고, 윈도우는 오른쪽 위 창 버튼을 상단 바(App.tsx header h-[44px], 테마 간격과 무관한 고정값) 위에 겹쳐 그린다 (색은 지금 모드·테마의 --background, shared/uiTheme.ts windowBg)
     ...(IS_WINDOWS ? { titleBarStyle: 'hidden', titleBarOverlay: { color: windowColors().background, symbolColor: windowColors().symbol, height: 44 } } : { titleBarStyle: 'hiddenInset' }),
     backgroundColor: windowColors().background,
     // 다른 창에 가려져도 사무실 애니메이션·상태 갱신이 멈추지 않게 한다
@@ -359,7 +303,9 @@ function registerIpc() {
   })
 
   office.on('snapshot', (s) => {
-    syncNativeTheme(s.settings.uiMode)
+    // 다크 전용 테마(레트로)면 창·기본 부품도 다크로
+    syncNativeTheme(themeMode(s.settings.uiTheme, s.settings.uiMode))
+    syncWindowTheme(s.settings.uiTheme)
     syncLoginItem(s.settings.launchAtLogin)
     broadcast('office:onSnapshot', s)
     tray.update(s)
@@ -371,6 +317,8 @@ function registerIpc() {
     win?.webContents.send('office:onLog', entry)
     remote?.publish('log', entry)
   })
+  // 결재 기록은 PC 화면만 받는다 (원본 명령이 들어 있어 휴대폰 스트림에는 보내지 않는다)
+  office.on('approvalRecord', (r) => win?.webContents.send('office:onApprovalRecord', r))
   // 바탕화면 비서 창도 단체방 글을 받는다 (앱에서 보낸 글·직원의 중간 글을 펼침 창이 곧바로 다시 읽게)
   const sendChatToPet = (m: unknown) => {
     for (const w of pet.windows()) w.webContents.send('office:onChat', m)
@@ -406,6 +354,9 @@ app.whenReady().then(async () => {
   // 개발 실행 때도 Dock에 앱 아이콘을 보여 준다 (설치본은 번들 아이콘을 쓴다)
   if (!app.isPackaged) app.dock?.setIcon(path.join(app.getAppPath(), 'build', 'icon.png'))
   openDb()
+  // 다른 PC 직원 빌려주기·데려오기(1.3.1까지)의 옛 데이터 — 사무실이 직원·랩을 읽기 전에, 연결을 시작하기 전에
+  const retired = cleanupLegacyPeer(app.getPath('userData'))
+  for (const e of retired.errors) errorLog.record('main', `legacy peer cleanup ${e}`)
   await startLocalMcp() // office·secretary 도구 서버 (직원 세션이 열리기 전에)
   // 앱 내부 AI(비서·요약)는 설정과 마지막 감지 결과로 공급자를 고른다. 감지는 백그라운드로 한 번 돌려 둔다
   configureAi({ setting: () => office.snapshot().settings.internalAi, status: lastProviderStatus })
@@ -439,15 +390,15 @@ app.whenReady().then(async () => {
   office.start()
   void remote.init()
   peerManager?.start()
-  // 보관 기간이 지난 복사본·변경 묶음 정리 (7일·14일)
-  void peerSync?.prune().catch(() => {})
+  if (retired.closedJobs || retired.closedChanges) office.noticeRetiredPeerWork(retired)
   // 업데이트 상태가 바뀌면 메뉴바 줄·아이콘 표시도 다시 그린다
   updates = registerUpdates(() => win, () => tray.refresh())
   registerPack(() => office, () => win)
   registerSceneExport(() => win)
   // 로그인으로 켜졌으면 창을 띄우지 않는다 — 윈도우는 트레이를 끈 경우 보일 곳이 없어 띄운다
   const isHidden = startedHidden() && (process.platform === 'darwin' || office.snapshot().settings.isTrayOn)
-  syncNativeTheme(office.snapshot().settings.uiMode)
+  windowTheme = office.snapshot().settings.uiTheme
+  syncNativeTheme(themeMode(windowTheme, office.snapshot().settings.uiMode))
   // 기기 모드가 바뀌거나 themeSource를 바꾸면 창 배경·제목 표시줄 색도 바꾼다
   nativeTheme.on('updated', paintWindowChrome)
   createWindow(isHidden)

@@ -1,5 +1,7 @@
 # 여러 PC 한 랩 (PC 간 협업) — 결정 기록·기획서
 
+> **2026-11-13 (1.3.0 다음 버전): 다른 PC 직원 빌려주기·데려오기(일·결재 중계·파일 복사본)는 없앴다.** 남은 것은 짝짓기·연결 유지·기기별 열쇠·해제뿐이고, 다른 PC는 워크스페이스(그 PC 사무실을 창으로 보기)로 쓴다. 일 경로(`/v2/peer/staff·watch·jobs·attachments·approvals·workspaces·blobs·changesets`)는 410 `peer_feature_removed`. 결정: `docs/design-refresh/peer-removal/design-final.md`. 아래 일·결재·파일 부분은 기록용이다.
+
 > 작성: ai-office(리드) · 2026-11-01 · 대표와 논의해 확정한 내용
 > 상세 기술 규격은 1단계 설계 문서(`docs/specs/multi-pc-protocol.md`)에서 정한다. 그 문서와 이 문서가 다르면 대표 결정인 이 문서가 우선이다.
 

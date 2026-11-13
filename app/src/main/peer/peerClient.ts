@@ -3,12 +3,12 @@
 
 import { PEER_LIMITS, type PeerLinkState } from '../../shared/peerProtocol.ts'
 
-/** SSE 본문 해석기: 조각을 먹이면 완성된 이벤트를 하나씩 내보낸다 (주석 줄·retry는 무시, 이벤트 이름이 없으면 message) */
+/** SSE 본문 해석기: 조각을 먹이면 완성된 이벤트를 하나씩 내보낸다 (retry는 무시, 이벤트 이름이 없으면 message). 주석 줄(: keep-alive)은 onComment로만 알린다 */
 export class SseParser {
   private buf = ''
   private ev = { event: '', data: [] as string[], id: undefined as string | undefined }
 
-  feed(chunk: string, emit: (e: { event: string; data: string; id?: string }) => void) {
+  feed(chunk: string, emit: (e: { event: string; data: string; id?: string }) => void, onComment?: () => void) {
     this.buf += chunk
     let i: number
     while ((i = this.buf.indexOf('\n')) >= 0) {
@@ -17,7 +17,9 @@ export class SseParser {
       if (line === '') {
         if (this.ev.data.length) emit({ event: this.ev.event || 'message', data: this.ev.data.join('\n'), ...(this.ev.id !== undefined ? { id: this.ev.id } : {}) })
         this.ev = { event: '', data: [], id: undefined }
-      } else if (!line.startsWith(':')) {
+      } else if (line.startsWith(':')) {
+        onComment?.()
+      } else {
         const c = line.indexOf(':')
         const field = c < 0 ? line : line.slice(0, c)
         const value = c < 0 ? '' : line.slice(c + 1).replace(/^ /, '')
@@ -35,6 +37,8 @@ export interface StreamHandlers {
   /** 응답 헤더를 받았다 (status가 200이 아니면 곧 onClose가 온다) */
   onOpen(status: number): void
   onEvent(name: string, data: string, id?: string): void
+  /** 서버 하트비트(주석 줄) — 이벤트가 없어도 연결이 살아 있다는 신호 (화면 보기 권한 없는 열쇠는 hello 뒤로 이것만 온다) */
+  onAlive?(): void
   /** 끝났다 — code: 네트워크 오류 코드, status: 200이 아닌 응답 상태 */
   onClose(info: { status?: number; code?: string }): void
 }
@@ -143,6 +147,9 @@ export class PeerClient {
       onOpen: (status) => {
         if (gen !== this.generation) return
         if (status === 200) this.touchIdle(gen)
+      },
+      onAlive: () => {
+        if (gen === this.generation) this.touchIdle(gen)
       },
       onEvent: (name, data, id) => {
         if (gen !== this.generation) return

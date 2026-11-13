@@ -1,11 +1,10 @@
-// A컴의 피어·원격 직원 기록과 토큰 보관 (설계서 1-5 · 2절)
+// A컴의 피어 기록과 토큰 보관 (설계서 1-5 · 2절)
 // 토큰은 DB에 평문으로 두지 않는다 — TokenVault가 키체인으로 암호화한 파일에 둔다 (읽지 못하면 'unreadable' = 다시 짝짓기)
 
 import crypto from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
-import { peerStaffId, type PeerStaffBrief } from '../../shared/peerProtocol.ts'
-import type { PeerRecord, PeerStaffRecord, PeerStore } from './peerStore'
+import type { PeerRecord, PeerStore } from './peerStore'
 
 export interface TokenVault {
   load(peerId: string): string | 'unreadable' | null
@@ -79,63 +78,9 @@ export class PeerRegistry {
     if (p) this.store.peers.put({ ...p, lastSeenAt: this.now(), ...(lastHost ? { lastHost } : {}) })
   }
 
-  /** 피어와 그 원격 직원·토큰을 지운다. 랩에서 빼야 할 원격 직원 id를 돌려준다 */
-  removePeer(peerId: string): string[] {
-    const staff = this.listStaff(peerId)
-    for (const s of staff) this.store.staff.delete(s.id)
+  /** 피어와 그 토큰을 지운다 */
+  removePeer(peerId: string) {
     this.store.peers.delete(peerId)
     this.vault.remove(peerId)
-    return staff.map((s) => s.id)
-  }
-
-  // ── 원격 직원 ──
-
-  listStaff(peerId?: string) {
-    return this.store.staff.list().filter((s) => !peerId || s.peerId === peerId)
-  }
-
-  /** p:<peerId>:<remoteId> → 기록 (없으면 undefined) */
-  staffOf(id: string) {
-    return this.store.staff.get(id)
-  }
-
-  /** 랩에 넣을 직원으로 저장 (이미 있으면 그 기록) */
-  addStaff(peerId: string, brief: PeerStaffBrief): PeerStaffRecord {
-    const id = peerStaffId(peerId, brief.id)
-    const old = this.store.staff.get(id)
-    if (old) return old
-    const rec: PeerStaffRecord = { id, peerId, remoteId: brief.id, name: brief.name, role: brief.role, avatar: brief.avatar, provider: brief.provider, model: brief.model, lastKnownStatus: brief.status, lastSeenAt: this.now(), addedAt: this.now() }
-    this.store.staff.put(rec)
-    return rec
-  }
-
-  removeStaff(id: string) {
-    this.store.staff.delete(id)
-  }
-
-  /** B컴이 준 얇은 목록으로 캐시를 고친다: 있으면 갱신, 없어졌으면 isGone. 달라진 게 있으면 true */
-  syncStaff(peerId: string, briefs: PeerStaffBrief[]) {
-    let isChanged = false
-    for (const s of this.listStaff(peerId)) {
-      const b = briefs.find((x) => x.id === s.remoteId)
-      const next: PeerStaffRecord = b
-        ? { ...s, name: b.name, role: b.role, avatar: b.avatar, provider: b.provider, model: b.model, lastKnownStatus: b.status, lastSeenAt: this.now(), isGone: false }
-        : { ...s, isGone: true }
-      if (JSON.stringify(next) !== JSON.stringify({ ...s, lastSeenAt: next.lastSeenAt })) isChanged = true
-      this.store.staff.put(next)
-    }
-    return isChanged
-  }
-
-  /** B컴 snapshot의 직원 상태 반영 (빠르게 자주 오므로 달라졌을 때만 쓴다) */
-  patchStatus(peerId: string, briefs: PeerStaffBrief[]) {
-    let isChanged = false
-    for (const b of briefs) {
-      const s = this.store.staff.get(peerStaffId(peerId, b.id))
-      if (!s || s.lastKnownStatus === b.status) continue
-      this.store.staff.put({ ...s, lastKnownStatus: b.status, lastSeenAt: this.now() })
-      isChanged = true
-    }
-    return isChanged
   }
 }

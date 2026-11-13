@@ -1,62 +1,112 @@
 import type { ReactNode } from 'react'
-import { PresentationIcon } from 'lucide-react'
+import { PinIcon, PresentationIcon } from 'lucide-react'
 import { useOffice } from '@/store'
 import { cn } from '@/lib/utils'
 import type { Lab, Team } from '@shared/types'
-import { labRoomId, type ChatRoomInfo } from '@shared/chatRooms'
-import { roomKey } from '@shared/chatUnread'
+import type { ChatRoomInfo } from '@shared/chatRooms'
 import { t } from '@shared/i18n'
 import { Avatar } from './StaffCard'
-import { STATUS_META } from './status'
-import { doingOf, useRoomList, useRoomPeople } from './chatRoomHooks'
+import { statusMetaOf } from './status'
+import { doingOf, roomArrowKeys, unreadText, useMeetingEntry, useRoomEntries, useRoomPeople, type RoomEntry } from './chatRoomHooks'
+
+const GROUP_LABEL = { all: 'chat.room.all', team: 'chat.room.groupTeams', lab: 'chat.room.groupLabs' } as const
 
 /**
- * 좌우 분할(폴드 와이드 커버 등) 대화방의 왼쪽 칸: 방 목록 → 회의실 → 지금 하는 일.
- * 가로 방 탭·구성원 상태 줄과 같은 계산(chatRoomHooks)을 세로 목록으로 그린다. 칸 안에서만 세로로 스크롤
+ * 대화방 왼쪽 방 목록: 전체 / 팀 / 랩 묶음 → 회의실 → (지금 하는 일).
+ * 데스크톱 단체방(펼친 목록·띠의 겹쳐 펼침)과 좌우 분할(폴드 와이드 커버 등)이 같이 쓴다. 칸 안에서만 세로로 스크롤
  */
-export function ChatSide({ room, footer, className }: { room: ChatRoomInfo<Team, Lab> | undefined; footer?: ReactNode; className?: string }) {
-  const setChatRoom = useOffice((s) => s.setChatRoom)
-  const setView = useOffice((s) => s.setView)
+export function ChatSide({
+  room,
+  className,
+  isDoingShown = true,
+  headAction,
+  isPinned,
+  onPicked,
+}: {
+  room: ChatRoomInfo<Team, Lab> | undefined
+  className?: string
+  /** '지금 하는 일' 목록 — 데스크톱은 상단 직원 줄이 같은 정보를 보여 주므로 끈다 */
+  isDoingShown?: boolean
+  /** 칸 머리 오른쪽 버튼(접기·📌 고정) */
+  headAction?: ReactNode
+  /** 펼친 채 고정 중이면 '대화방' 옆에 작은 핀 */
+  isPinned?: boolean
+  /** 방·회의실을 고른 뒤 (겹쳐 펼친 목록을 닫는다) */
+  onPicked?: () => void
+}) {
   const select = useOffice((s) => s.select)
-  const { teamRooms, labRooms, unread, approvalRooms } = useRoomList()
-  const people = useRoomPeople(room)
-  const current = room?.room
-  const row = (key: string, label: string, isActive: boolean, onClick: () => void, color?: string) => {
-    const count = isActive ? 0 : (unread[roomKey(key === 'all' ? null : key)] ?? 0)
-    return (
-      <button
-        key={key}
-        type="button"
-        aria-current={isActive ? 'true' : undefined}
-        onClick={onClick}
-        className={cn('flex min-h-8 items-center gap-2 rounded-[10px] px-2 text-left text-sm', isActive ? 'bg-accent text-foreground font-medium' : 'text-muted-foreground hover:bg-accent/60')}
-      >
-        <span className="size-2 shrink-0 rounded-full" style={{ background: color ?? 'var(--primary)' }} />
-        <span className="min-w-0 flex-1 truncate">{label}</span>
-        {approvalRooms.has(roomKey(key === 'all' ? null : key)) && <span className="bg-status-waiting size-1.5 shrink-0 rounded-full" title={t('chat.unread.approval')} />}
-        {count > 0 && (
-          <span className="bg-status-error shrink-0 rounded-full px-1.5 text-[10px] leading-4 font-semibold text-white" aria-label={t('chat.unread.count', { count })}>
-            {count}
-          </span>
-        )}
-      </button>
-    )
-  }
+  const meeting = useMeetingEntry()
+  const entries = useRoomEntries(room?.room, t('chat.room.allName'))
+  const roomPeople = useRoomPeople(room)
+  const people = isDoingShown ? roomPeople : []
+  const row = (e: RoomEntry) => (
+    <button
+      key={e.key}
+      type="button"
+      data-room-item
+      aria-current={e.isActive ? 'true' : undefined}
+      onClick={() => {
+        e.select()
+        onPicked?.()
+      }}
+      className={cn('flex min-h-8 items-center gap-2 rounded-[10px] px-2 text-left text-sm', e.isActive ? 'bg-accent text-foreground font-medium' : 'text-muted-foreground hover:bg-accent/60')}
+    >
+      <span className="size-2 shrink-0 rounded-full" style={{ background: e.color ?? 'var(--primary)' }} />
+      <span className="min-w-0 flex-1 truncate">{e.label}</span>
+      {e.hasApproval && <span className="bg-status-waiting size-1.5 shrink-0 rounded-full" title={t('chat.unread.approval')} />}
+      {e.unread > 0 && (
+        <span className="bg-status-error dark:text-background min-w-4 shrink-0 rounded-full px-1.5 text-center text-[10px] leading-4 font-semibold text-white" aria-label={t('chat.unread.count', { count: e.unread })}>
+          {unreadText(e.unread)}
+        </span>
+      )}
+    </button>
+  )
+  // 묶음마다 제목 — 방이 없는 묶음은 제목도 그리지 않는다
+  const groups = (['all', 'team', 'lab'] as const).flatMap((g) => {
+    const list = entries.filter((e) => e.group === g)
+    if (list.length === 0) return []
+    return [
+      <span key={`group:${g}`} className={cn('text-muted-foreground/70 px-2 pb-0.5 text-[11px] font-medium', g === 'all' ? 'pt-0.5' : 'pt-2')}>
+        {t(GROUP_LABEL[g])}
+      </span>,
+      ...list.map(row),
+    ]
+  })
   return (
-    <aside className={cn('bg-(--surface-chrome) w-[200px] shrink-0 flex-col gap-0.5 overflow-y-auto border-r p-2', className)} aria-label={t('chat.rooms')}>
-      <span className="text-muted-foreground px-2 pt-1 pb-0.5 text-[11px] font-semibold">{t('chat.rooms')}</span>
-      {row('all', t('chat.room.all'), !current, () => setChatRoom(null))}
-      {teamRooms.map((tm) => row(tm.id, tm.name, current === tm.id, () => setChatRoom(tm.id), tm.color))}
-      {labRooms.map((lb) => row(labRoomId(lb.id), lb.name, current === labRoomId(lb.id), () => setChatRoom(labRoomId(lb.id)), lb.color))}
-      <button type="button" onClick={() => setView('meeting')} className="text-muted-foreground hover:bg-accent/60 flex min-h-8 items-center gap-2 rounded-[10px] px-2 text-left text-sm">
-        <PresentationIcon className="size-3.5 shrink-0" />
-        {t('nav.meeting')}
-      </button>
+    <aside className={cn('bg-(--surface-chrome) w-[200px] shrink-0 flex-col gap-0.5 overflow-y-auto border-r p-2', className)} aria-label={t('chat.rooms')} onKeyDown={roomArrowKeys}>
+      <div className="flex min-h-7 items-center gap-1 px-2">
+        <span className="text-muted-foreground flex-1 text-[11px] font-semibold">{t('chat.rooms')}</span>
+        {isPinned && <PinIcon className="text-primary size-3 shrink-0" aria-hidden />}
+        {headAction}
+      </div>
+      {groups}
+      <div className="mt-2 border-t pt-2">
+        {/* 회의실 줄: 회의실 화면이면 선택됨, 답 기다리는 회의 결정 수는 방 안 읽은 수(빨강)와 구분되게 노랑 */}
+        <button
+          type="button"
+          data-room-item
+          data-tour="nav-meeting"
+          aria-current={meeting.isActive ? 'true' : undefined}
+          onClick={() => {
+            meeting.select()
+            onPicked?.()
+          }}
+          className={cn('flex min-h-8 w-full items-center gap-2 rounded-[10px] px-2 text-left text-sm', meeting.isActive ? 'bg-accent text-foreground font-medium' : 'text-muted-foreground hover:bg-accent/60')}
+        >
+          <PresentationIcon className="size-3.5 shrink-0" />
+          <span className="min-w-0 flex-1 truncate">{t('nav.meeting')}</span>
+          {meeting.pending > 0 && (
+            <span className="bg-status-waiting text-background min-w-4 shrink-0 rounded-full px-1.5 text-center text-[10px] leading-4 font-semibold" aria-label={t('chat.side.meetingPending', { count: meeting.pending })}>
+              {unreadText(meeting.pending)}
+            </span>
+          )}
+        </button>
+      </div>
       {people.length > 0 && (
         <>
           <span className="text-muted-foreground mt-3 px-2 pb-0.5 text-[11px] font-semibold">{t('chat.side.doing')}</span>
           {people.map((s) => {
-            const meta = STATUS_META[s.status]
+            const meta = statusMetaOf(s)
             const doing = doingOf(s)
             return (
               <button key={s.id} type="button" onClick={() => select(s.id)} className="hover:bg-accent/60 flex items-center gap-2 rounded-[10px] px-2 py-1 text-left">
@@ -72,7 +122,6 @@ export function ChatSide({ room, footer, className }: { room: ChatRoomInfo<Team,
           })}
         </>
       )}
-      {footer && <div className="mt-auto px-2 pt-3">{footer}</div>}
     </aside>
   )
 }

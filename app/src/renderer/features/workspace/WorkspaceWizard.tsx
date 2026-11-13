@@ -1,26 +1,26 @@
-import { useEffect, useReducer, useState } from 'react'
-import { MonitorIcon, MonitorSmartphoneIcon, ShareIcon } from 'lucide-react'
+import { useEffect, useReducer, useRef, useState } from 'react'
+import { MonitorIcon, ShareIcon, SmartphoneIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
-import { useOffice } from '@/store'
 import { fmtDate, t } from '@shared/i18n'
 import type { PeerView } from '@shared/peerProtocol'
 import { canAddWorkspace, leastRecentlyUsed, nextFreeColor, WORKSPACE_COLORS, WORKSPACE_MAX, type WorkspaceColor, type WorkspaceView } from '@shared/workspace'
-import { ClientPart, HostPart } from '../PeerSection'
-import { requestSettingsSection } from '../SettingsPage'
-import { SECTION_ID } from '../settingsSections'
-import { canFinish, canNext, initialWizard, WIZARD_STEPS, wizardReducer } from './wizard'
+import { ClientPart } from './PairParts'
+import { canFinish, canNext, initialWizard, WIZARD_STEPS, wizardReducer, type WizardState, type WizardWhat } from './wizard'
+import { useConnectData } from '../connect/useConnectData'
+import { HostConnect, isThisPcReady, ModePicker, PhoneConnect, TailscaleGuide, useConnectActions } from '../connect/ConnectParts'
 
-// PC 추가 마법사 4장: 무엇을 → 어디서 → 준비물 → 연결 + 이름·색. 꽉 찼으면(3대) 먼저 해제할 PC를 고른다
-// 짝짓기는 기존 것(PeerSection의 코드 입력·보여 주기)을 그대로 쓰고, 끝에서 목록에 이름·색만 더한다
+// 기기 추가 창 4장: 무엇을 → 어디서 → 준비물 → 연결. 세 갈래(휴대폰 · 다른 PC 보기 · 이 PC 보여 주기)가 같은 장을 쓴다.
+// 다른 PC 보기는 짝짓기(PairParts) 뒤 PC 목록에 이름·색을 더하고, 꽉 찼으면(3대) 먼저 해제할 PC를 고른다.
+// 휴대폰·이 PC 보여 주기는 이 PC의 연결 방식·Tailscale·켜기를 거친다 (이미 켜져 준비됐으면 바로 연결 장)
 
-export function WorkspaceWizard({ list, onClose }: { list: WorkspaceView[]; onClose: () => void }) {
-  const [isFull, setIsFull] = useState(!canAddWorkspace(list))
+export function WorkspaceWizard({ list, onClose, initialWhat }: { list: WorkspaceView[]; onClose: () => void; initialWhat?: WizardWhat }) {
+  const [isFullPick, setIsFullPick] = useState(false)
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-xl">{isFull ? <FullPick list={list} onFreed={() => setIsFull(false)} onClose={onClose} /> : <WizardBody list={list} onClose={onClose} />}</DialogContent>
+      <DialogContent className="max-w-xl">{isFullPick ? <FullPick list={list} onFreed={() => setIsFullPick(false)} onClose={onClose} /> : <WizardBody list={list} onClose={onClose} initialWhat={initialWhat} onFull={() => setIsFullPick(true)} />}</DialogContent>
     </Dialog>
   )
 }
@@ -65,10 +65,27 @@ function FullPick({ list, onFreed, onClose }: { list: WorkspaceView[]; onFreed: 
   )
 }
 
-function WizardBody({ list, onClose }: { list: WorkspaceView[]; onClose: () => void }) {
-  const [s, dispatch] = useReducer(wizardReducer, nextFreeColor(list), initialWizard)
+/** 장 제목: 갈래마다 묻는 말이 다르다 */
+function stepTitle(s: WizardState) {
+  if (s.step === 'what') return t('workspace.wizard.what.title')
+  if (s.step === 'where') return s.what === 'pc' ? t('workspace.wizard.where.title') : t('connect.step1')
+  if (s.step === 'prep') return t('connect.step2')
+  return t(s.what === 'phone' ? 'workspace.wizard.connect.phoneTitle' : s.what === 'host' ? 'workspace.wizard.connect.hostTitle' : 'workspace.wizard.connect.title')
+}
+
+function WizardBody({ list, onClose, initialWhat, onFull }: { list: WorkspaceView[]; onClose: () => void; initialWhat?: WizardWhat; onFull: () => void }) {
+  const [s, dispatch] = useReducer(wizardReducer, nextFreeColor(list), (c) => (initialWhat ? wizardReducer(initialWizard(c), { type: 'pickWhat', what: initialWhat }) : initialWizard(c)))
   const [isBusy, setIsBusy] = useState(false)
+  const { status, setStatus } = useConnectData({ isTsPolling: true })
+  const actions = useConnectActions(status, setStatus)
   const stepNo = WIZARD_STEPS.indexOf(s.step) + 1
+  const isReady = isThisPcReady(status)
+  // 준비물 장: 보는 동안 Tailscale이 준비되면 저절로 다음 장으로 (휴대폰·이 PC 보여 주기). 처음부터 준비돼 있었으면 그대로 둔다(뒤로 오기 가능)
+  const wasReady = useRef(isReady)
+  useEffect(() => {
+    if (s.step === 'prep' && s.what !== 'pc' && status?.mode === 'tailscale' && isReady && !wasReady.current) dispatch({ type: 'next', isThisPcReady: true })
+    wasReady.current = isReady
+  }, [s.step, s.what, status?.mode, isReady])
 
   const finish = async () => {
     if (!s.peerId) return
@@ -78,31 +95,44 @@ function WizardBody({ list, onClose }: { list: WorkspaceView[]; onClose: () => v
     if (r?.ok) return onClose()
     dispatch({ type: 'fail', error: t(`workspace.error.${r?.code ?? 'unknown_peer'}`) })
   }
+  const next = () => {
+    if (s.step === 'what' && s.what === 'pc' && !canAddWorkspace(list)) return onFull()
+    // 이미 켜져 준비가 끝난 PC는 휴대폰·이 PC 보여 주기에서 방식·준비물을 건너뛴다
+    if (s.step === 'what' && s.what !== 'pc' && status?.isEnabled && status.isListening && isReady) return dispatch({ type: 'skipToConnect' })
+    dispatch({ type: 'next', isThisPcReady: isReady })
+  }
 
   return (
     <>
       <DialogHeader>
         <DialogTitle>{t('workspace.wizard.title')}</DialogTitle>
-        <DialogDescription>{t('workspace.wizard.step', { n: stepNo, total: WIZARD_STEPS.length })} · {t(`workspace.wizard.${s.step}.title`)}</DialogDescription>
+        <DialogDescription>
+          {t('workspace.wizard.step', { n: stepNo, total: WIZARD_STEPS.length })} · {stepTitle(s)}
+        </DialogDescription>
       </DialogHeader>
       <div className="flex min-h-48 flex-col gap-3 text-sm">
-        {s.step === 'what' && <WhatStep what={s.what} onPick={(what) => dispatch({ type: 'pickWhat', what })} onClose={onClose} />}
-        {s.step === 'where' && (
-          <div className="grid gap-2 sm:grid-cols-2">
-            {(['same', 'away'] as const).map((where) => (
-              <ChoiceCard key={where} isOn={s.where === where} title={t(`workspace.wizard.where.${where}`)} desc={t(`workspace.wizard.where.${where}Desc`)} onClick={() => dispatch({ type: 'pickWhere', where })} />
-            ))}
-          </div>
-        )}
-        {s.step === 'prep' && (
-          <ol className="text-muted-foreground flex list-decimal flex-col gap-1.5 pl-5">
-            <li>{t('workspace.wizard.prep.version')}</li>
-            <li>{t('workspace.wizard.prep.remoteOn')}</li>
-            {s.where === 'away' && <li>{t('workspace.wizard.prep.away')}</li>}
-            <li>{t('workspace.wizard.prep.code')}</li>
-          </ol>
-        )}
-        {s.step === 'connect' && <ConnectStep peerId={s.peerId} name={s.name} color={s.color} list={list} dispatch={dispatch} />}
+        {s.step === 'what' && <WhatStep what={s.what} onPick={(what) => dispatch({ type: 'pickWhat', what })} />}
+        {s.step === 'where' &&
+          (s.what === 'pc' ? (
+            <div className="grid gap-2">
+              {(['away', 'same'] as const).map((where) => (
+                <ChoiceCard key={where} isOn={s.where === where} title={t(`workspace.wizard.where.${where}`)} desc={t(`workspace.wizard.where.${where}Desc`)} onClick={() => dispatch({ type: 'pickWhere', where })} />
+              ))}
+              <p className="text-muted-foreground text-xs">{t('workspace.wizard.where.unsure')}</p>
+            </div>
+          ) : (
+            status && <ModePicker status={status} onPick={(m) => void actions.changeMode(m)} />
+          ))}
+        {s.step === 'prep' &&
+          status &&
+          (s.what !== 'pc' && status.mode === 'router' ? (
+            <p className="text-muted-foreground">{t('connect.ready.routerDone', { port: status.port })}</p>
+          ) : (
+            <TailscaleGuide status={status} setStatus={setStatus} other={s.what === 'phone' ? 'phone' : s.what === 'host' ? 'viewer' : 'pc'} isTailscale={s.what === 'pc' ? s.where !== 'same' : status.mode === 'tailscale'} />
+          ))}
+        {s.step === 'connect' && s.what === 'pc' && <ConnectStep peerId={s.peerId} name={s.name} color={s.color} list={list} dispatch={dispatch} />}
+        {s.step === 'connect' && s.what === 'phone' && status && <PhoneConnect status={status} setStatus={setStatus} isBusy={actions.isBusy} onTurnOn={() => void actions.turnOn()} />}
+        {s.step === 'connect' && s.what === 'host' && status && <HostConnect status={status} setStatus={setStatus} isBusy={actions.isBusy} onTurnOn={() => void actions.turnOn()} />}
         {s.error && <p className="text-status-error text-xs">{s.error}</p>}
       </div>
       <DialogFooter>
@@ -111,16 +141,16 @@ function WizardBody({ list, onClose }: { list: WorkspaceView[]; onClose: () => v
             {t('workspace.wizard.back')}
           </Button>
         )}
-        {s.step === 'connect' ? (
+        {s.step !== 'connect' ? (
+          <Button disabled={!canNext(s, isReady)} onClick={next}>
+            {t('workspace.wizard.next')}
+          </Button>
+        ) : s.what === 'pc' ? (
           <Button disabled={!canFinish(s) || isBusy} onClick={() => void finish()}>
             {t('workspace.wizard.finish')}
           </Button>
         ) : (
-          (s.step !== 'what' || s.what === 'pc' || s.what === null) && (
-            <Button disabled={!canNext(s)} onClick={() => dispatch({ type: 'next' })}>
-              {t('workspace.wizard.next')}
-            </Button>
-          )
+          <Button onClick={onClose}>{t('workspace.wizard.done')}</Button>
         )}
       </DialogFooter>
     </>
@@ -139,34 +169,15 @@ function ChoiceCard({ isOn, icon, title, desc, onClick }: { isOn: boolean; icon?
   )
 }
 
-/** 1장: 무엇을. 휴대폰·이 PC 보여 주기는 이 장에서 기존 화면으로 이어 준다 */
-function WhatStep({ what, onPick, onClose }: { what: 'pc' | 'phone' | 'host' | null; onPick: (w: 'pc' | 'phone' | 'host') => void; onClose: () => void }) {
+/** 1장: 무엇을 연결할까요 */
+function WhatStep({ what, onPick }: { what: WizardWhat | null; onPick: (w: WizardWhat) => void }) {
   return (
-    <>
-      <div className="grid gap-2">
-        <ChoiceCard isOn={what === 'pc'} icon={<MonitorIcon />} title={t('workspace.wizard.what.pc')} desc={t('workspace.wizard.what.pcDesc')} onClick={() => onPick('pc')} />
-        <ChoiceCard isOn={what === 'phone'} icon={<MonitorSmartphoneIcon />} title={t('workspace.wizard.what.phone')} desc={t('workspace.wizard.what.phoneDesc')} onClick={() => onPick('phone')} />
-        <ChoiceCard isOn={what === 'host'} icon={<ShareIcon />} title={t('workspace.wizard.what.host')} desc={t('workspace.wizard.what.hostDesc')} onClick={() => onPick('host')} />
-      </div>
-      {what === 'phone' && (
-        <Button
-          variant="outline"
-          className="w-fit"
-          onClick={() => {
-            onClose()
-            useOffice.getState().setView('settings')
-            requestSettingsSection(SECTION_ID.remote)
-          }}
-        >
-          {t('workspace.wizard.what.phoneGo')}
-        </Button>
-      )}
-      {what === 'host' && (
-        <div className="rounded-lg border p-3">
-          <HostPart onSlotsChanged={() => {}} />
-        </div>
-      )}
-    </>
+    <div className="grid gap-2">
+      <ChoiceCard isOn={what === 'phone'} icon={<SmartphoneIcon />} title={t('workspace.wizard.what.phone')} desc={t('workspace.wizard.what.phoneDesc')} onClick={() => onPick('phone')} />
+      <ChoiceCard isOn={what === 'pc'} icon={<MonitorIcon />} title={t('workspace.wizard.what.pc')} desc={t('workspace.wizard.what.pcDesc')} onClick={() => onPick('pc')} />
+      <ChoiceCard isOn={what === 'host'} icon={<ShareIcon />} title={t('workspace.wizard.what.host')} desc={t('workspace.wizard.what.hostDesc')} onClick={() => onPick('host')} />
+      <p className="text-muted-foreground text-xs">{t('workspace.wizard.what.note')}</p>
+    </div>
   )
 }
 

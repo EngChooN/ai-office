@@ -2,7 +2,7 @@ import { ROLE_PRESETS } from './types.ts'
 import { t, type TKey } from './i18n/index.ts'
 
 /** 프리셋 직무(한국어 저장값) → 표시용 사전 키. 팀장 판정·외형·팩 검증이 한국어 값을 쓰므로 저장값은 바꾸지 않는다 */
-const ROLE_KEY: Record<(typeof ROLE_PRESETS)[number], TKey> = {
+export const ROLE_KEY: Record<(typeof ROLE_PRESETS)[number], TKey> = {
   팀장: 'role.lead',
   '프론트엔드 개발자': 'role.frontend',
   '백엔드 개발자': 'role.backend',

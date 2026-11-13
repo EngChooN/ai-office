@@ -176,8 +176,8 @@ export function StageOverlay({ meetingId, onClose }: { meetingId: string; onClos
   }
 
   return (
-    // 위 h-11은 앱 상단 바(창 드래그·신호등·윈도우 창 버튼) 자리라 비워 둔다 — 그 아래만 덮는다
-    <div className={cn('fixed inset-x-0 top-11 bottom-0 z-40 overflow-hidden transition-opacity duration-500', !isShown && 'opacity-0')} style={{ backgroundColor: STAGE_COLORS.dim }}>
+    // 위 44px은 앱 상단 바(창 드래그·신호등·윈도우 창 버튼, App.tsx header) 자리라 비워 둔다 — 그 아래만 덮는다
+    <div className={cn('fixed inset-x-0 top-[44px] bottom-0 z-40 overflow-hidden transition-opacity duration-500', !isShown && 'opacity-0')} style={{ backgroundColor: STAGE_COLORS.dim }}>
       {/* 무대 상자: 16:9로 가운데 맞춤. 캔버스·슬라이드·대화창이 같은 상자 좌표를 쓴다 */}
       <div className="absolute inset-0 flex items-center justify-center [container-type:size]">
         <div className="relative [container-type:size]" style={{ width: `min(100cqw, 100cqh * ${STAGE_ASPECT})`, aspectRatio: STAGE_ASPECT }}>

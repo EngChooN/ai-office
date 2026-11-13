@@ -8,8 +8,9 @@
       (function () {
         var c = {}
         try { c = JSON.parse(localStorage.getItem('office.uiTheme') || '{}') || {} } catch (e) {}
-        var mode = c.mode === 'light' || c.mode === 'dark' ? c.mode : window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-        var theme = /^(lavender|blue|terracotta|sage|rose|mono|aurora|twilight|candy|meadow)$/.test(c.theme) ? c.theme : 'lavender'
+        var theme = /^(lavender|blue|terracotta|sage|rose|mono|aurora|twilight|candy|meadow|retro)$/.test(c.theme) ? c.theme : 'lavender'
+        // 다크 전용 테마(shared/uiTheme.ts DARK_ONLY_THEMES)는 모드 설정과 상관없이 다크
+        var mode = theme === 'retro' ? 'dark' : c.mode === 'light' || c.mode === 'dark' ? c.mode : window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
         var r = document.documentElement
         r.dataset.mode = mode
         r.dataset.theme = theme

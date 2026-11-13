@@ -1,0 +1,412 @@
+/* 특별 테마 A안 "레트로" — 도트 글꼴·각진 외곽선·딱 떨어지는 그림자·눌리는 버튼 (설계: docs/design-refresh/special-theme/impl-plan.md)
+   규칙은 모두 [data-theme='retro'] 아래에만 둔다 → 다른 테마 화면은 그대로 (scripts/themeRetro.test.mts가 지킨다).
+   이 파일은 Tailwind 레이어 밖이라 같은 요소의 유틸리티 클래스를 !important 없이 이긴다.
+   색 토큰 이름은 index.css 라벤더 세트와 같고, 창 배경은 shared/uiTheme.ts windowBg와 맞춘다. 다크 전용이라 라이트 세트는 없다 */
+
+/* ── 글꼴: 갈무리(Galmuri) © Lee Minseo, SIL OFL 1.1 (fonts/galmuri/OFL.md). 레트로를 고를 때만 내려받는다 ── */
+@font-face { font-family: 'Galmuri14'; src: url('./fonts/galmuri/Galmuri14.woff2') format('woff2'); font-display: block; }
+@font-face { font-family: 'Galmuri11'; src: url('./fonts/galmuri/Galmuri11.woff2') format('woff2'); font-display: block; }
+@font-face { font-family: 'Galmuri11 Bold'; src: url('./fonts/galmuri/Galmuri11-Bold.woff2') format('woff2'); font-display: block; }
+/* 중국어 화면: 간체 글자가 3분의 1쯤 없어 섞이면 들쭉날쭉 → 영문·숫자만 도트로 */
+@font-face { font-family: 'Galmuri11 Latin'; src: url('./fonts/galmuri/Galmuri11.woff2') format('woff2'); font-display: block; unicode-range: U+0020-007E, U+00A0-00FF; }
+
+/* ── 모양·글꼴·간격 ── */
+[data-theme='retro'] {
+  --retro-sys: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Pretendard', 'Segoe UI', 'Malgun Gothic', 'Hiragino Sans', 'Yu Gothic UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --retro-body: 'Galmuri14', var(--retro-sys);
+  --retro-small: 'Galmuri11', var(--retro-sys);
+  --retro-bold: 'Galmuri11 Bold', 'Galmuri11', var(--retro-sys);
+  --retro-mono: 'Galmuri11', ui-monospace, Menlo, Consolas, monospace;
+  /* 모서리 0 */
+  --radius: 0px;
+  --radius-pill: 0px;
+  --radius-card: 0px;
+  --radius-hud: 0px;
+  --radius-dialog: 0px;
+  --radius-xs: 0px;
+  --radius-2xl: 0px;
+  --radius-3xl: 0px;
+  --radius-4xl: 0px;
+  /* 귀퉁이가 한 칸 빠지는 2px 외곽선 + 오른쪽 아래로 딱 떨어지는 그림자 */
+  --retro-edge: 2px 0 0 0 var(--retro-out), -2px 0 0 0 var(--retro-out), 0 2px 0 0 var(--retro-out), 0 -2px 0 0 var(--retro-out);
+  --shadow-soft: 4px 4px 0 0 var(--retro-drop);
+  --shadow-primary: none;
+  --shadow-dialog: var(--retro-edge), 8px 8px 0 0 var(--retro-drop);
+  /* 포커스는 그림자 대신 점선 outline (외곽선 그림자와 겹치지 않게) */
+  --focus-ring: 0 0 #0000;
+  --focus-border: var(--input);
+  /* 번쩍이는 그라데이션 대신 단색 */
+  --grad-nav-active: none;
+  --grad-dialog-glow: none;
+  --grad-border: none;
+  --backdrop-blur: none;
+  --button-font-weight: 400;
+  --button-border-width: 2px;
+  --nav-active-font-weight: 400;
+  --transition-fast: 0s;
+  /* 간격: 도트 글꼴이 크고 테두리가 두꺼워 답답하지 않게 여백·간격(p-·gap-·m-)을 1할 넓힌다 */
+  --spacing: 0.275rem;
+  /* 글자 크기: 갈무리11 = 12px, 갈무리14 = 15px에서 또렷하다 */
+  --text-xs: 12px;
+  --text-xs--line-height: 1.6;
+  --text-sm: 15px;
+  --text-sm--line-height: 1.7;
+  --text-base: 15px;
+  --text-base--line-height: 1.7;
+  --text-lg: 18px;
+  --text-lg--line-height: 1.5;
+  --text-xl: 24px;
+  --text-xl--line-height: 1.4;
+  --text-2xl: 24px;
+  --text-2xl--line-height: 1.4;
+  font-synthesis: none;
+}
+/* 일본어: 굵은 갈무리에 가나가 없다 → 굵은 자리도 보통 갈무리 */
+[data-theme='retro'][data-lang='ja'] {
+  --retro-bold: 'Galmuri11', var(--retro-sys);
+}
+/* 중국어: 글자는 기기 글꼴, 영문·숫자만 도트 */
+[data-theme='retro'][data-lang='zh'] {
+  --retro-body: 'Galmuri11 Latin', var(--retro-sys);
+  --retro-small: 'Galmuri11 Latin', var(--retro-sys);
+  --retro-bold: 'Galmuri11 Latin', var(--retro-sys);
+}
+
+/* ── 색: 다크 전용 (시안 A 다크) — 레트로를 고르면 화면 모드 설정과 상관없이 다크다 (shared/uiTheme.ts DARK_ONLY_THEMES) ── */
+[data-theme='retro'][data-mode='dark'] {
+  color-scheme: dark;
+  --background: #1D1A2A;
+  --foreground: #FAF5EC;
+  --card: #343A52;
+  --card-foreground: #FAF5EC;
+  --popover: #343A52;
+  --popover-foreground: #FAF5EC;
+  --primary: #9B86D8;
+  --primary-foreground: #160F30;
+  --secondary: #2B2F42;
+  --secondary-foreground: #FAF5EC;
+  --muted: #2B2F42;
+  --muted-foreground: #C4C1D6;
+  --accent: #4A4060;
+  --accent-foreground: #FAF5EC;
+  --destructive: #FF8A7A;
+  --destructive-foreground: #2A0A0A;
+  --border: #0E0C16;
+  --input: #8A90B0;
+  --ring: #EDB417;
+  --accent-a: #7FD3FF;
+  --accent-b: #C9BBF2;
+  --surface-chrome: #2B2F42;
+  --surface-sidebar: #24283A;
+  --hud: rgba(52,58,82,.97);
+  --hud-foreground: #FAF5EC;
+  --hud-border: #0E0C16;
+  --spark-from: #9B86D8;
+  --spark-to: #9B86D8;
+  --grad-primary-end: #9B86D8;
+  --primary-hover-mix: #FFFFFF;
+  --shadow-color: rgba(0,0,0,.6);
+  --status-working: #4ADE80;
+  --status-waiting: #EDB417;
+  --status-idle: #A9A7BC;
+  --status-error: #FF8A7A;
+  --retro-out: #0E0C16;
+  --retro-hi: #4F5778;
+  --retro-lo: #262A3C;
+  --retro-drop: rgba(0,0,0,.6);
+  --retro-pri-hi: #C9BBF2;
+  --retro-pri-lo: #6A58A8;
+  --retro-line-soft: #4A5068;
+  --retro-tile-a: #1D1A2A;
+  --retro-tile-b: #221F31;
+  --retro-sel: #4A4060;
+  --retro-code-bg: #12101C;
+  --retro-code-fg: #9FE3FF;
+  --retro-wait: #EDB417;
+  --retro-wait-fg: #2A1E10;
+  --retro-track: #12101C;
+  --retro-track-fg: #C4C1D6;
+  --retro-groove: #000000;
+  --retro-knob: #B9B6CC;
+  --retro-on: #3FC168;
+  --retro-on-fg: #0E2A16;
+  --retro-check: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 6 6' shape-rendering='crispEdges' fill='%230E2A16'%3E%3Cpath d='M0 3h1v1H0zM1 4h1v1H1zM2 3h1v1H2zM3 2h1v1H3zM4 1h1v1H4zM5 0h1v1H5z'/%3E%3C/svg%3E");
+  --retro-dot: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 6 6' shape-rendering='crispEdges' fill='%230E2A16'%3E%3Cpath d='M2 2h2v2H2z'/%3E%3C/svg%3E");
+}
+
+/* ── 바탕: 바닥 타일 체크 무늬 + 본문 글꼴 ── */
+[data-theme='retro'] body {
+  font-family: var(--retro-body);
+  font-size: 15px;
+  background: repeating-conic-gradient(var(--retro-tile-a) 0 25%, var(--retro-tile-b) 0 50%) 0 0 / 32px 32px;
+}
+[data-theme='retro'] :is(input, textarea, select, button) {
+  font-family: inherit;
+}
+/* 작은 글자 → 12px 갈무리11, 14·15px → 15px 갈무리14 (renderer의 text-[Npx]는 모두 여기 있어야 한다 — 시험이 확인) */
+[data-theme='retro'] :is(.text-xs, .text-\[9\.5px\], .text-\[10px\], .text-\[10\.5px\], .text-\[11px\], .text-\[11\.5px\], .text-\[12px\], .text-\[13px\]) {
+  font-size: 12px;
+  font-family: var(--retro-small);
+}
+[data-theme='retro'] :is(.text-\[14px\], .text-\[15px\]) {
+  font-size: 15px;
+}
+/* 굵은 글자는 굵은 도트 글꼴로 (가짜 굵게 만들기 없이) */
+[data-theme='retro'] :is(.font-semibold, .font-bold, h1, h2, h3, h4, th, [data-slot='button'], [role='tab'][aria-selected='true'], [aria-current='page']) {
+  font-family: var(--retro-bold);
+  font-weight: 400;
+}
+[data-theme='retro'] :is(.font-mono, code, pre, kbd) {
+  font-family: var(--retro-mono);
+}
+
+/* ── 모서리: 전부 각지게 (둥근 게 꼭 필요한 곳만 data-keep-round) ── */
+[data-theme='retro'] *:not([data-keep-round]) {
+  border-radius: 0;
+}
+
+/* ── 테두리: 1px 선을 2px 도트 선으로 ── */
+[data-theme='retro'] .border { border-width: 2px; }
+[data-theme='retro'] .border-t { border-top-width: 2px; }
+[data-theme='retro'] .border-b { border-bottom-width: 2px; }
+[data-theme='retro'] .border-l { border-left-width: 2px; }
+[data-theme='retro'] .border-r { border-right-width: 2px; }
+[data-theme='retro'] .border-x { border-left-width: 2px; border-right-width: 2px; }
+[data-theme='retro'] .border-y { border-top-width: 2px; border-bottom-width: 2px; }
+/* 위 규칙은 레이어 밖이라 Tailwind의 "테두리 없애기"(border-b-0 등)를 이긴다 → 쓰이는 없애기를 같은 변형 조건으로 다시 0으로.
+   renderer에 새 border-*-0을 쓰면 여기에도 넣어야 한다 (시험이 확인). phone·side 조건은 index.css @custom-variant와 같다 */
+[data-theme='retro'] .border-0 { border-width: 0; }
+[data-theme='retro'] .border-t-0 { border-top-width: 0; }
+[data-theme='retro'] .border-b-0 { border-bottom-width: 0; }
+[data-theme='retro'] .border-l-0 { border-left-width: 0; }
+[data-theme='retro'] .border-r-0 { border-right-width: 0; }
+[data-theme='retro'] .border-x-0 { border-left-width: 0; border-right-width: 0; }
+[data-theme='retro'] .border-y-0 { border-top-width: 0; border-bottom-width: 0; }
+[data-theme='retro'] .last\:border-b-0:last-child { border-bottom-width: 0; }
+[data-theme='retro'][data-layout='phone'] .phone\:border-b-0 { border-bottom-width: 0; }
+[data-theme='retro'][data-layout='phone'] .phone\:border-l-0 { border-left-width: 0; }
+[data-theme='retro'][data-layout='phone'] .phone\:border-x-0 { border-left-width: 0; border-right-width: 0; }
+[data-theme='retro'][data-layout='phone'][data-split]:not([data-keyboard]) .side\:border-b-0 { border-bottom-width: 0; }
+/* 흐림 효과 대신 또렷한 판 */
+[data-theme='retro'] [class*='backdrop-blur'] {
+  backdrop-filter: none;
+}
+
+/* ── 그림자: 번지는 그림자 → 딱 떨어지는 4px ── */
+[data-theme='retro'] :is(.shadow-sm, .shadow, .shadow-md, .shadow-lg, .shadow-xl, .shadow-2xl) {
+  box-shadow: 4px 4px 0 0 var(--retro-drop);
+}
+
+/* ── 창(카드·대화상자·떠 있는 판): 진한 외곽선 + 안쪽 밝은 줄(왼쪽 위)·어두운 줄(오른쪽 아래) + 그림자 ── */
+[data-theme='retro'] [data-slot='card'] {
+  border-color: var(--retro-out);
+  box-shadow: inset 2px 2px 0 0 var(--retro-hi), inset -2px -2px 0 0 var(--retro-lo), 4px 4px 0 0 var(--retro-drop);
+}
+[data-theme='retro'] [data-slot='dialog'] {
+  background-color: var(--card);
+  border-color: var(--retro-out);
+  box-shadow: inset 2px 2px 0 0 var(--retro-hi), inset -2px -2px 0 0 var(--retro-lo), 8px 8px 0 0 var(--retro-drop);
+}
+
+/* ── 버튼: 위는 밝고 아래 받침은 진하게 — 누르면 받침이 사라지며 2px 내려간다 ── */
+[data-theme='retro'] [data-slot='button'] {
+  border: 2px solid var(--retro-out);
+  background-image: none;
+  box-shadow: inset 2px 2px 0 0 var(--retro-hi), inset -2px -3px 0 0 var(--retro-lo);
+  transition: none;
+}
+[data-theme='retro'] [data-slot='button'][data-variant='default'] {
+  background-color: var(--primary);
+  box-shadow: inset 2px 2px 0 0 var(--retro-pri-hi), inset -2px -3px 0 0 var(--retro-pri-lo);
+}
+[data-theme='retro'] [data-slot='button'][data-variant='default']:hover:not(:disabled) {
+  background-color: var(--retro-pri-hi);
+}
+[data-theme='retro'] [data-slot='button'][data-variant='destructive'] {
+  box-shadow: inset 2px 2px 0 0 rgba(255,255,255,.35), inset -2px -3px 0 0 rgba(0,0,0,.25);
+}
+[data-theme='retro'] [data-slot='button']:is([data-variant='outline'], [data-variant='secondary']) {
+  background-color: var(--card);
+  border-color: var(--input);
+}
+[data-theme='retro'] [data-slot='button']:is([data-variant='outline'], [data-variant='secondary']):hover:not(:disabled) {
+  background-color: var(--accent);
+}
+[data-theme='retro'] [data-slot='button'][data-variant='ghost'] {
+  border-color: transparent;
+  box-shadow: none;
+}
+/* 글자 링크 모양 버튼은 입체 판 없이 글자만 */
+[data-theme='retro'] [data-slot='button'][data-variant='link'] {
+  border-width: 0;
+  box-shadow: none;
+}
+[data-theme='retro'] [data-slot='button'][data-variant='link']:active:not(:disabled) {
+  transform: none;
+  box-shadow: none;
+}
+[data-theme='retro'] [data-slot='button']:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: inset 2px 2px 0 0 var(--retro-lo);
+}
+[data-theme='retro'] [data-slot='button'][data-variant='default']:active:not(:disabled) {
+  box-shadow: inset 2px 2px 0 0 var(--retro-pri-lo);
+}
+
+/* ── 입력칸: 진한 테두리 + 안쪽 위 그늘 (경계 대비 3:1 이상 — 시험) ── */
+[data-theme='retro'] :is([data-slot='input'], [data-slot='select'], textarea) {
+  border-color: var(--input);
+  border-width: 2px;
+  box-shadow: inset 2px 2px 0 0 var(--retro-lo);
+}
+
+/* ── 켜기/끄기 스위치: 홈이 파인 긴 트랙 + 좌우로 확실히 옮겨 가는 네모 손잡이 + ON/OFF 도트 글자 ──
+   꺼짐 = 어두운 트랙·손잡이 왼쪽·OFF, 켜짐 = 밝은 초록 트랙·손잡이 오른쪽·ON. 손잡이 그림자는 없앤다(상태를 가려서) */
+[data-theme='retro'] [data-slot='switch'] {
+  position: relative;
+  width: 52px;
+  height: 20px;
+  padding: 0;
+  border: 2px solid var(--input);
+  background-color: var(--retro-track);
+  box-shadow: inset 2px 2px 0 0 var(--retro-groove);
+  transition: none;
+}
+[data-theme='retro'] [data-slot='switch'][aria-checked='true'] {
+  background-color: var(--retro-on);
+  box-shadow: inset 2px 2px 0 0 rgba(255,255,255,.35), inset -2px -2px 0 0 rgba(0,0,0,.18);
+}
+[data-theme='retro'] [data-slot='switch'] > span {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 16px;
+  height: 16px;
+  translate: 0 0;
+  background-color: var(--retro-knob);
+  box-shadow: inset 0 0 0 2px var(--retro-out), inset 4px 4px 0 0 var(--retro-hi);
+  transition: none;
+}
+[data-theme='retro'] [data-slot='switch'][aria-checked='true'] > span {
+  translate: 32px 0;
+}
+[data-theme='retro'] [data-slot='switch']::before {
+  content: 'OFF';
+  position: absolute;
+  top: 0;
+  right: 5px;
+  font: 12px/16px var(--retro-small);
+  color: var(--retro-track-fg);
+  pointer-events: none;
+}
+[data-theme='retro'] [data-slot='switch'][aria-checked='true']::before {
+  content: 'ON';
+  right: auto;
+  left: 6px;
+  color: var(--retro-on-fg);
+}
+[data-theme='retro'] [data-slot='switch']:disabled {
+  opacity: .45;
+  filter: grayscale(1);
+}
+
+/* ── 체크박스·라디오: 네모 칸 + 도트 체크(체크박스)·가운데 네모 점(라디오) ── */
+[data-theme='retro'] :is(input[type='checkbox'], input[type='radio']) {
+  appearance: none;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  border: 2px solid var(--input);
+  background: var(--card) no-repeat center / 12px 12px;
+  box-shadow: inset 2px 2px 0 0 var(--retro-lo);
+  vertical-align: -3px;
+}
+[data-theme='retro'] :is(input[type='checkbox'], input[type='radio']):checked {
+  border-color: var(--retro-out);
+  background-color: var(--retro-on);
+  box-shadow: none;
+}
+[data-theme='retro'] input[type='checkbox']:checked {
+  background-image: var(--retro-check);
+}
+[data-theme='retro'] input[type='radio']:checked {
+  background-image: var(--retro-dot);
+}
+[data-theme='retro'] :is(input[type='checkbox'], input[type='radio']):disabled {
+  opacity: .45;
+  filter: grayscale(1);
+}
+
+/* ── 대기 숫자 배지: 노란 칸 + 진한 글자 (시안 A) ── */
+[data-theme='retro'] .bg-status-waiting {
+  background-color: var(--retro-wait);
+  color: var(--retro-wait-fg);
+}
+
+/* ── 포커스: Tab으로 올 때만 점선 테두리 ── */
+[data-theme='retro'] :focus-visible {
+  outline: 2px dashed var(--foreground);
+  outline-offset: 2px;
+}
+[data-theme='retro'] :is([data-slot='input'], [data-slot='select'], textarea):focus-visible {
+  outline-offset: 0;
+}
+
+/* ── 선택된 메뉴·탭: 노란 선택 칸 + ▶ (RPG 메뉴처럼) ── */
+[data-theme='retro'] nav button[aria-current='page'] {
+  background-color: var(--retro-sel);
+  color: var(--foreground);
+  box-shadow: inset 0 0 0 2px var(--retro-out);
+}
+[data-theme='retro'] nav button[aria-current='page']::before {
+  content: '▶';
+  font-family: var(--retro-small);
+  font-size: 10px;
+  margin-right: 4px;
+}
+[data-theme='retro'] [role='tab'][aria-selected='true'] {
+  background-color: var(--card);
+  box-shadow: inset 2px 0 0 0 var(--retro-out), inset -2px 0 0 0 var(--retro-out), inset 0 2px 0 0 var(--retro-out);
+}
+[data-theme='retro'] [role='tab'][aria-selected='true']::before {
+  content: '▶';
+  font-family: var(--retro-small);
+  font-size: 10px;
+}
+
+/* ── 아이콘: 선 끝·꺾임을 각지게, 계단 모양으로 ── */
+[data-theme='retro'] svg:is(.lucide, [data-duo]) {
+  stroke-linecap: square;
+  stroke-linejoin: miter;
+  shape-rendering: crispEdges;
+}
+
+/* ── 코드·마크다운 표: 어두운 화면 + 하늘색 글자 ── */
+[data-theme='retro'] pre {
+  background-color: var(--retro-code-bg);
+  color: var(--retro-code-fg);
+  box-shadow: 0 0 0 2px var(--retro-out);
+}
+[data-theme='retro'] pre code {
+  background: transparent;
+  color: inherit;
+}
+[data-theme='retro'] :is(table, th, td) {
+  border-color: var(--retro-out);
+}
+
+/* ── 스크롤 막대: 네모 손잡이 ── */
+[data-theme='retro'] ::-webkit-scrollbar { width: 12px; height: 12px; }
+[data-theme='retro'] ::-webkit-scrollbar-track { background: transparent; }
+[data-theme='retro'] ::-webkit-scrollbar-thumb {
+  background-color: var(--retro-line-soft);
+  border: 2px solid var(--retro-out);
+}
+
+/* ── 움직임 줄이기: 누를 때 내려가는 것도 끈다 ── */
+@media (prefers-reduced-motion: reduce) {
+  [data-theme='retro'] [data-slot='button']:active:not(:disabled) {
+    transform: none;
+  }
+}

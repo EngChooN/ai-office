@@ -20,10 +20,12 @@ type StaffLike = Pick<Staff, 'id' | 'name' | 'teamId'>
 
 /** 이름이 같을 때 먼저 잡는 순서: 직원 → 팀 → 랩 → 전체 */
 const KIND_ORDER: Record<MentionKind, number> = { staff: 0, team: 1, lab: 2, all: 3 }
-export const MENTION_KIND_LABEL: Record<MentionKind, string> = { all: '전체', team: '팀', lab: '랩', staff: '직원' }
+export const MENTION_KIND_LABEL: Record<MentionKind, string> = { all: '전체', team: '팀', lab: '프로젝트', staff: '직원' }
+/** 예전 이름(랩)으로 붙인 종류도 계속 알아듣는다 — v1.3.2에서 '랩'을 '프로젝트'로 바꿨다 */
+const LEGACY_KIND_LABEL: Partial<Record<MentionKind, string>> = { lab: '랩' }
 
-/** 종류를 붙인 멘션 — 이름이 같은 직원·팀·랩을 구분한다 (예: "@디자인(팀)") */
-const qualifiedToken = (t: MentionTarget) => `@${t.name}(${MENTION_KIND_LABEL[t.kind]})`
+/** 종류를 붙인 멘션 — 이름이 같은 직원·팀·프로젝트를 구분한다 (예: "@디자인(팀)") */
+const qualifiedToken = (t: MentionTarget, label = MENTION_KIND_LABEL[t.kind]) => `@${t.name}(${label})`
 
 /** 자동완성에서 넣을 멘션: 같은 이름의 다른 대상이 있으면 종류를 붙인다 */
 export function mentionToken(target: MentionTarget, targets: MentionTarget[]) {
@@ -61,7 +63,10 @@ export interface MentionSpan {
 function scanMentions(text: string, targets: MentionTarget[]): MentionSpan[] {
   const tokens = targets
     .filter((t) => t.name)
-    .flatMap((t) => [{ t, token: qualifiedToken(t) }, { t, token: `@${t.name}` }])
+    .flatMap((t) => {
+      const legacy = LEGACY_KIND_LABEL[t.kind]
+      return [{ t, token: qualifiedToken(t) }, ...(legacy ? [{ t, token: qualifiedToken(t, legacy) }] : []), { t, token: `@${t.name}` }]
+    })
     .sort((a, b) => b.token.length - a.token.length || KIND_ORDER[a.t.kind] - KIND_ORDER[b.t.kind])
   const spans: MentionSpan[] = []
   let rest = text

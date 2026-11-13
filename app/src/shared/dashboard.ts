@@ -1,6 +1,7 @@
 // 대시보드 상황판 계산 (요약 줄·확인 필요·맡은 업무·시간 표기). 화면과 떼어 단위 테스트한다
 import { t } from './i18n/index.ts'
 import type { Approval, LogType, Staff, Task } from './types'
+import { isAwaitingTeam } from './delegation.ts'
 
 const MINUTE_MS = 60_000
 const HOUR_MS = 60 * MINUTE_MS
@@ -44,17 +45,24 @@ export function initials(name: string) {
 export type SummaryKey = 'working' | 'waiting' | 'error' | 'idle'
 
 /** 직원 목록 거르기: 이름에 검색어가 들어 있고(대소문자·앞뒤 공백 무시) 고른 상태와 같으면 남긴다 */
-export function matchesStaffFilter(s: Pick<Staff, 'name' | 'status'>, query: string, status: SummaryKey | null): boolean {
-  if (status && (s.status === 'netWait' ? 'working' : s.status) !== status) return false
+export function matchesStaffFilter(s: Pick<Staff, 'name' | 'status' | 'awaitingTeam'>, query: string, status: SummaryKey | null): boolean {
+  if (status && summaryKeyOf(s) !== status) return false
   const q = query.trim().toLowerCase()
   return !q || s.name.toLowerCase().includes(q)
 }
 
+/** 요약·필터에서 이 직원이 들어가는 칸. 인터넷 연결 대기는 하던 일을 쥐고 있고, 팀원 일을 기다리는 리더는 맡긴 일이 진행 중이니 작업 중으로 센다 */
+function summaryKeyOf(s: Pick<Staff, 'status' | 'awaitingTeam'>): SummaryKey | 'offline' {
+  return s.status === 'netWait' || isAwaitingTeam(s) ? 'working' : s.status
+}
+
 /** 요약 줄 상태별 인원. 퇴근(offline)은 세지 않는다 */
-export function countByStatus(staff: Pick<Staff, 'status'>[]): Record<SummaryKey, number> {
+export function countByStatus(staff: Pick<Staff, 'status' | 'awaitingTeam'>[]): Record<SummaryKey, number> {
   const counts: Record<SummaryKey, number> = { working: 0, waiting: 0, error: 0, idle: 0 }
-  // 인터넷 연결 대기는 하던 일을 쥐고 있으니 작업 중으로 센다
-  for (const s of staff) if (s.status !== 'offline') counts[s.status === 'netWait' ? 'working' : s.status]++
+  for (const s of staff) {
+    const key = summaryKeyOf(s)
+    if (key !== 'offline') counts[key]++
+  }
   return counts
 }
 

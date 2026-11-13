@@ -69,13 +69,6 @@ export const V2_METHODS: Record<OfficeMethod, MethodSpec> = {
   peerList: P('open_on_pc'),
   peerUnpair: P('open_on_pc', 's'),
   peerReconnect: P('open_on_pc', 's'),
-  peerRemoteStaff: P('open_on_pc', 's'),
-  peerAddStaff: P('open_on_pc', 's s s?'),
-  peerRemoveStaff: P('open_on_pc', 's'),
-  peerCancelJob: P('open_on_pc', 's'),
-  peerChangesetDetail: P('open_on_pc', 's'),
-  peerChangeFileDiff: P('open_on_pc', 's s'),
-  peerApplyChanges: P('open_on_pc', 's o'),
   dismissRemoteTsNotice: P('open_on_pc'),
   snapshot: R(),
   // 첫 업무 튜토리얼: 모의 진행(AI 호출 없음)이라 휴대폰에서도 그대로
@@ -215,7 +208,8 @@ export const V2_METHODS: Record<OfficeMethod, MethodSpec> = {
   chatAround: R('n'),
   saveChatReservation: R('o'),
   chatReservationAction: R('s s'),
-  timeline: R('n'),
+  timeline: R('n n?'),
+  approvalHistory: R('s o?'),
   staffActivity: R('s'),
   dailyReport: R('n'),
   payslip: R('s'),
@@ -244,7 +238,8 @@ export const V2_FIELDS: Partial<Record<OfficeMethod, Record<number, string[]>>> 
   // 원격은 작업 폴더·승인 방식을 정하지 못한다 (restrict가 기본 폴더와 'ask'로 채운다)
   hire: { 0: fieldsExcept('hire', 0, ['cwd', 'approvalMode'], { name: true, role: true, avatar: true, model: true, provider: true, systemPrompt: true, teamId: true, labIds: true, memory: true }) },
   updateStaff: { 1: fieldsExcept('updateStaff', 1, ['cwd'], { teamId: true, name: true, role: true, model: true, avatar: true, systemPrompt: true, memory: true }) },
-  updateTeam: { 1: fieldsOf('updateTeam', 1, { name: true, color: true, leadId: true, floor: true }) },
+  updateTeam: { 1: fieldsOf('updateTeam', 1, { name: true, color: true, leadId: true, floor: true, description: true }) },
+  approvalHistory: { 1: fieldsOf('approvalHistory', 1, { beforeId: true, limit: true, filter: true }) },
   // 랩 작업 폴더는 직원 작업 폴더처럼 PC에서만 (restrict가 새 랩은 폴더 없음으로 채운다)
   createLab: { 0: fieldsExcept('createLab', 0, ['cwd'], { name: true, color: true, goal: true, leadId: true, memberIds: true, manuals: true }) },
   updateLab: { 1: fieldsExcept('updateLab', 1, ['cwd'], { name: true, color: true, goal: true, leadId: true, memberIds: true, manuals: true }) },
@@ -445,6 +440,7 @@ const V2_MESSAGE: Record<string, string> = {
   pair_closed: '짝짓기 창이 닫혀 있어요. PC에서 코드를 새로 만들어 주세요',
   scope_denied: '이 연결로는 할 수 없는 일이에요',
   job_not_found: '그 일을 찾을 수 없어요',
+  peer_feature_removed: '다른 PC 직원에게 일 맡기기는 없어진 기능이에요. 두 PC 모두 AI Office를 업데이트해 주세요',
 }
 
 const V2_STATUS: Record<string, number> = {
@@ -461,6 +457,7 @@ const V2_STATUS: Record<string, number> = {
   pair_closed: 410,
   scope_denied: 403,
   job_not_found: 404,
+  peer_feature_removed: 410,
   already_decided: 409,
   in_progress: 409,
   duplicate_call: 409,

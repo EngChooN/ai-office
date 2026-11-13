@@ -12,6 +12,7 @@ import type {
   Team,
 } from "./types";
 import { isCompleteAnswer } from "./questionAnswer.ts";
+import { isAwaitingTeam } from "./delegation.ts";
 import {
   labRoomId,
   labRoomMembers,
@@ -760,7 +761,7 @@ export function findPetTarget(
 
 /** 지금 일하는 고용 직원 수 (머리줄 "작업 중 N명" · 캐릭터 업무 말풍선) */
 export const petWorkingCount = (staff: Staff[]) =>
-  staff.filter((s) => s.kind === "hired" && s.status === "working").length;
+  staff.filter((s) => s.kind === "hired" && (s.status === "working" || isAwaitingTeam(s))).length;
 
 /** 대화 흐름 한 줄. at(발생 시각)으로 줄 세운다 */
 export type PetFeedItem =

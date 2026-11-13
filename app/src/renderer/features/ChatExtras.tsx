@@ -103,7 +103,7 @@ function DeliveryRow({ row, m }: { row: { d: ChatDelivery; s: Staff | undefined;
       {t(STATE_KEY[state], { name })}
       {minutes > 0 && <span>· {t('chat.delivery.minutes', { count: minutes })}</span>}
       {state === 'done' && d.reportId && link(t('chat.delivery.viewReport'), () => void goToMessage(d.reportId!))}
-      {state === 'approval' && s && link(t('chat.delivery.approve'), () => useOffice.getState().select(s.id))}
+      {state === 'approval' && s && link(t('chat.delivery.approve'), () => useOffice.getState().openStaffApprovals(s.id))}
       {(state === 'error' || state === 'stopped') && link(t('chat.delivery.retry'), () => useOffice.getState().setChatDraft(m.text))}
     </span>
   )

@@ -6,7 +6,7 @@
 // PC가 아는지는 연결될 때마다 hello로 확인한다 — 예전 PC(404·능력 없음)면 칸 배치를 보내지 않는다 (docs/specs/office-iso-tech.md 4-3절)
 
 import { OFFICE_EVENTS, OFFICE_METHODS, type OfficeEvent, type OfficeMethod } from '../../shared/officeApiShape.ts'
-import type { AiProvider, Attachment, OfficeApi, UploadFile } from '../../shared/types.ts'
+import type { AiProvider, Attachment, LogEntry, OfficeApi, UploadFile } from '../../shared/types.ts'
 import type { PackResult } from '../../shared/staffPack.ts'
 import type { Bridge, BridgeError } from './bridge.ts'
 import { t, type TKey } from '../../shared/i18n/index.ts'
@@ -74,7 +74,7 @@ const confirmText = (method: OfficeMethod, fallback: string) => {
   return key ? t(key) : fallback
 }
 
-const EVENT_NAME: Record<OfficeEvent, string> = { onSnapshot: 'snapshot', onLog: 'log', onChat: 'chat', onFocus: 'focus', onRemoteStatus: 'remoteStatus', onGalleryChanged: 'galleryChanged' }
+const EVENT_NAME: Record<OfficeEvent, string> = { onSnapshot: 'snapshot', onLog: 'log', onApprovalRecord: 'approvalRecord', onChat: 'chat', onFocus: 'focus', onRemoteStatus: 'remoteStatus', onGalleryChanged: 'galleryChanged' }
 
 /** JSON으로 보낼 인자: 끝에 붙은 undefined는 빼고(PC가 남는 인자를 거절), 중간 undefined는 null */
 export function normalizeArgs(args: unknown[]): unknown[] {
@@ -217,6 +217,15 @@ export function createRemoteOffice(bridge: Bridge, h: RemoteHandlers): RemoteSes
       } catch (e) {
         if ((e as RemoteCallError).code !== 'unknown_method') throw e
         return { ok: false, message: pcUpdateFeatureText(), staffIds: [] }
+      }
+    },
+    // 예전 PC는 끝 시각을 모른다(400 invalid_args) — 시작 시각만 보내고 끝 시각 뒤는 여기서 뺀다 (보고서의 지난 날짜)
+    timeline: async (since: number, until?: number): Promise<LogEntry[]> => {
+      try {
+        return (await call('timeline', [since, until])) as LogEntry[]
+      } catch (e) {
+        if ((e as RemoteCallError).code !== 'invalid_args' || until === undefined) throw e
+        return ((await call('timeline', [since])) as LogEntry[]).filter((l) => l.ts < until)
       }
     },
     snapshot: async (...args: unknown[]) => fillOldSnapshot(await call('snapshot', args)),

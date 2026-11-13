@@ -13,8 +13,7 @@ import type { TutorialInput, TutorialScenario, TutorialSnapshot } from './tutori
 import type { BoardCleanupPlan } from './boardCleanup'
 import type { CustomMcp, CustomMcpInput } from './customMcp'
 import type { PackResult } from './staffPack'
-import type { ApplyChoice, ApplyResult, CardFile, PeerChangesCard } from './peerSync'
-import type { PairKind, PairWindowView, PeerSlotView, PeerView, RemoteStaffChoice } from './peerProtocol'
+import type { PairKind, PairWindowView, PeerSlotView, PeerView } from './peerProtocol'
 import { COMPANY_LEVELS, companyLevelOf } from './officeLevel.ts'
 import { DEFAULT_UI_MODE, DEFAULT_UI_THEME, sanitizeUi, type UiMode, type UiThemeId } from './uiTheme.ts'
 import type { I18nArg, I18nText, LangSetting } from './i18n/index.ts'
@@ -83,8 +82,6 @@ export interface Approval {
   questions?: StaffQuestion[]
   /** "앞으로 항상 승인"으로 만들 수 있는 규칙 (위험 명령·질문이면 없음) */
   alwaysRule?: ApprovalRuleDraft
-  /** 다른 PC 직원이 바꾼 파일 묶음 결재(toolName 'PeerChanges') — 줄 단위 비교(diff)는 빼고 목록만 든다. 자세히는 peerChangesetDetail */
-  peerChanges?: PeerChangesCard
   /** 도움 요청으로 받은 일에서 나온 결재면 부탁한 직원의 이름 ("OO 님의 요청" 표시용) */
   requestedBy?: string
   /** 앱을 껐다 켜며 되살린 결재 — 살아 있는 세션 요청이 아니라, 처리하면 새 지시로 이어 간다 */
@@ -94,6 +91,32 @@ export interface Approval {
   /** 브라우저 결재 카드의 "이 직원 브라우저 자동 허용" 버튼을 보일지 (자동 허용으로 넘길 수 있는 조작이고 아직 꺼져 있을 때) */
   browserAutoOffer?: boolean
 }
+
+/** 결재 기록의 결과: 승인·반려·질문 답·넘기기(질문 반려)·취소(이미 끝남·되돌림) */
+export type ApprovalResult = 'approved' | 'rejected' | 'answered' | 'skipped' | 'canceled'
+/** 결재한 쪽: PC 화면·휴대폰·자동결재·"항상 승인" 규칙 ('' = 모름 — 예전 기록에서 옮긴 줄) */
+export type ApprovalActor = 'pc' | 'phone' | 'auto' | 'rule' | ''
+
+/** 대표가(또는 자동결재가) 내린 결재 한 건의 기록 — 결재를 처리하는 곳마다 한 줄씩 남는다 (90일 보관) */
+export interface ApprovalRecord {
+  id: number
+  staffId: string
+  approvalId: string
+  /** 결재 요청이 올라온 시각 (모르면 없음 — 예전 기록·요청 시각을 못 찾은 경우) */
+  requestedAt?: number
+  decidedAt: number
+  result: ApprovalResult
+  actor: ApprovalActor
+  toolName: string
+  /** 원래 명령 원문 */
+  summary: string
+  summaryI18n?: I18nArg
+  /** 쉬운 요약 한 문장 (규칙으로 풀 수 있던 명령만) */
+  effectI18n?: I18nText
+  answer?: string
+}
+
+export type ApprovalHistoryFilter = 'all' | 'approved' | 'rejected' | 'answered' | 'auto'
 
 export interface StaffQuestion {
   question: string
@@ -184,24 +207,10 @@ export interface Staff {
   progress?: StaffProgress | null
   /** 지금 자율 진행(묻지 않고 끝까지) 중인지 — 자율 업무를 하는 중이거나 '완전 자율'이 켜져 있으면 true (화면 표시용, main이 채운다) */
   isAutonomous?: boolean
+  /** 리더가 쉬는 중(idle)이지만 맡긴 팀원 일이 남아 기다리는 중 — 화면 표시용, main이 채운다 (shared/delegation.ts isAwaitingTeam) */
+  awaitingTeam?: boolean
   /** 튜토리얼 연습 회사 데이터 — '연습 회사 정리'와 첫 실제 고용 때 지운다 */
   isPractice?: boolean
-  /** 다른 PC(B컴)에 있는 원격 직원이면 연결 정보 — 없으면 이 PC의 직원 (옛 화면·휴대폰은 무시하면 된다) */
-  remote?: StaffRemote
-}
-
-/** 원격 직원의 연결 정보 (id는 p:<피어>:<원격id>) */
-export interface StaffRemote {
-  peerId: string
-  peerName: string
-  /** online 연결됨 · connecting 연결 중 · offline 끊김(회색) · unpaired 다시 짝짓기 필요 */
-  state: 'online' | 'connecting' | 'offline' | 'unpaired'
-  /** B컴 직원 목록에서 사라졌다 */
-  isGone?: boolean
-  /** 이 PC가 이 피어에 보내려고 기다리는 일 수 (연결 대기) */
-  queued?: number
-  /** 연결 대기 중인 일 id (이 직원 몫) — 대기 취소에 쓴다 */
-  queuedJobIds?: string[]
 }
 
 /** 부서. 고용 직원 팀은 사용자가 만들고, 외부 직원은 프로젝트 폴더별 가상 팀(proj:)으로 묶는다 */
@@ -215,6 +224,8 @@ export interface Team {
   manuals?: string[]
   /** 팀원 모두가 작업 전에 읽는 참고 문서 */
   refDocs?: string[]
+  /** 팀이 하는 일 한 줄 설명 (0~80자, 선택) */
+  description?: string
   /** 팀 자리가 있는 층 (없으면 1층). 이 레벨에 없는 층이면 그릴 때 1층으로 보정한다 */
   floor?: number
   /** 튜토리얼 연습 회사 데이터 — '연습 회사 정리'와 첫 실제 고용 때 지운다 */
@@ -1059,6 +1070,8 @@ export interface RemoteStatus {
   recentAccess: AccessEntry[]
   /** 지금 토큰으로 휴대폰이 붙은 적이 있는지 (있으면 새 휴대폰은 QR 다시 만들기로) */
   isTokenUsed: boolean
+  /** 휴대폰이 마지막으로 접속한 시각 (메모리만 — PC 앱을 다시 켜거나 새 QR을 만들면 null). 요청마다 화면에 알리지는 않는다 */
+  phoneSeenAt: number | null
   /** 저장된 연결 키를 읽지 못해 새로 만들었는지 — 휴대폰은 새 QR로 다시 연결해야 한다 */
   isKeyRegenerated: boolean
   /** 항상 true — 전체 기능 스위치는 없앴다(원격이 켜져 있으면 v2를 바로 쓴다). 모바일 미리보기 셸이 이 모양으로 상태를 만들고, 이미 나간 화면 묶음이 읽어도 깨지지 않게 남긴다 */
@@ -1111,18 +1124,6 @@ export interface OfficeApi {
   peerList(): Promise<PeerView[]>
   peerUnpair(peerId: string): Promise<void>
   peerReconnect(peerId: string): Promise<void>
-  /** 그 PC의 직원 목록(랩에 넣을 직원 고르기) · 랩에 넣기(labId가 있으면 그 랩 멤버로) · 랩에서 빼기 */
-  peerRemoteStaff(peerId: string): Promise<RemoteStaffChoice[]>
-  peerAddStaff(peerId: string, remoteId: string, labId?: string): Promise<void>
-  peerRemoveStaff(staffId: string): Promise<void>
-  /** 다른 PC로 보낸 일 취소 */
-  peerCancelJob(jobId: string): Promise<void>
-  /** 다른 PC 직원이 바꾼 파일 묶음(결재함의 PeerChanges 카드) — 자세히 보기(파일별 줄 단위 비교 포함, A컴의 지금 파일로 충돌을 다시 판정) */
-  peerChangesetDetail(changesetId: string): Promise<PeerChangesCard>
-  /** 한 파일의 비교만 (카드의 files[].diff와 같은 모양) */
-  peerChangeFileDiff(changesetId: string, path: string): Promise<CardFile['diff'] | null>
-  /** 반영: choice.mode 'all'(충돌 있으면 막힘) · 'safe'(충돌 없는 것만) · 'files'(고른 파일) · 'reject'(거절). 민감 경로는 sensitiveOk에 따로 */
-  peerApplyChanges(changesetId: string, choice: ApplyChoice): Promise<ApplyResult>
 
   /** 비서 (docs/specs/secretary.md): 말 보내기 · 확인 카드 실행(첨삭은 고른 수정본·고친 값과 함께) · 카드 취소 · 대화 지우기. 대화는 스냅샷 secretary로 받는다 */
   secretaryAsk(text: string): Promise<void>
@@ -1175,7 +1176,7 @@ export interface OfficeApi {
   setAskHookInstalled(installed: boolean): Promise<HooksStatus>
 
   createTeam(name: string, color: string): Promise<Team>
-  updateTeam(teamId: string, patch: { name?: string; color?: string; leadId?: string | null; floor?: number }): Promise<void>
+  updateTeam(teamId: string, patch: { name?: string; color?: string; leadId?: string | null; floor?: number; description?: string }): Promise<void>
   deleteTeam(teamId: string): Promise<void>
   /** from 팀의 직원·카드를 into 팀으로 옮기고 from 팀을 없앤다 (한 번에) */
   mergeTeams(fromTeamId: string, intoTeamId: string): Promise<{ movedStaff: number; movedTasks: number }>
@@ -1336,7 +1337,10 @@ export interface OfficeApi {
   /** send = 지금 보내기 · cancel = 지우기 · skip = 놓친 반복을 이번만 건너뛰기 · pause/resume = 반복 멈추기·다시 */
   chatReservationAction(id: string, action: ChatReservationAction): Promise<void>
 
-  timeline(sinceMs: number): Promise<LogEntry[]>
+  /** since부터 기록. untilMs가 있으면 그 시각 전까지만 (없으면 지금까지) */
+  timeline(sinceMs: number, untilMs?: number): Promise<LogEntry[]>
+  /** 직원이 내린 결재 기록 — 최신순. beforeId보다 앞선 것만, 기본 limit 20. filter 'auto' = 자동결재·규칙 */
+  approvalHistory(staffId: string, opts?: { beforeId?: number; limit?: number; filter?: ApprovalHistoryFilter }): Promise<{ records: ApprovalRecord[]; hasMore: boolean }>
   /** 직원 한 명의 세션 활동 (마지막 활동·상태·대기 결재·최근 도구·오류·대기열) — 읽기 전용 */
   staffActivity(staffId: string): Promise<StaffActivity>
   dailyReport(dateMs: number): Promise<string>
@@ -1345,6 +1349,8 @@ export interface OfficeApi {
 
   onSnapshot(cb: (snapshot: OfficeSnapshot) => void): () => void
   onLog(cb: (entry: LogEntry) => void): () => void
+  /** 결재 기록이 새로 남음 (PC 화면만 받는다 — 휴대폰 스트림에는 보내지 않는다) */
+  onApprovalRecord(cb: (record: ApprovalRecord) => void): () => void
   onChat(cb: (message: ChatMessage) => void): () => void
   onFocus(cb: (staffId: string) => void): () => void
   /** 갤러리 저장이 끝남 — 갤러리 화면이 목록을 다시 받는 신호 */

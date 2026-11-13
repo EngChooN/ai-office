@@ -7,8 +7,6 @@ import { NO_CAPABILITIES, type Capabilities } from './capabilities.ts'
 import { stripAttachmentPaths, V2_PROTOCOL_VERSION } from './v2.ts'
 
 export type HubEvent = 'snapshot' | 'log' | 'chat' | 'focus' | 'remoteStatus'
-/** 피어(다른 PC) 슬롯 연결에만 가는 이벤트 — 휴대폰에는 나가지 않는다 (설계서 4-2) */
-export type PeerEventName = 'job' | 'approval' | 'changes'
 export type ByeReason = 'token_revoked' | 'remote_disabled' | 'shutdown' | 'replaced' | 'slow_consumer' | 'permission_changed'
 
 /** 다시 붙을 때 보내 줄 이벤트 (snapshot·remoteStatus는 마지막 값만 의미가 있어 쌓지 않는다) */
@@ -61,8 +59,6 @@ export interface HubSource {
   shape?(event: HubEvent, data: unknown, capabilities: Capabilities): unknown
   /** 이 슬롯이 '화면 보기' 권한을 가졌는지 (연결할 때 한 번 본다 — 바뀌면 service가 연결을 닫아 다시 붙게 한다) */
   isViewSlot?(slotId: string): boolean
-  /** 피어 슬롯 연결에 보낼 모양 (허용 목록 사영). null이면 그 연결에는 보내지 않는다. 없으면 피어에는 snapshot·log도 보내지 않는다 */
-  shapePeer?(slotId: string, event: HubEvent, data: unknown): unknown | null
   now?(): number
 }
 
@@ -115,7 +111,7 @@ export class EventHub {
     const missed = this.missedSince(lastEventId)
     res.write(`retry: ${SSE_LIMITS.retryMs}\n\n`)
     this.writeRaw(client, 'hello', JSON.stringify({ protocolVersion: V2_PROTOCOL_VERSION, epoch: this.epoch, lastEventId: this.seq, heartbeatSec: SSE_LIMITS.heartbeatMs / 1000, resync: missed === null, serverTime: this.now() }))
-    // 피어에게는 놓친 log를 다시 보내지 않는다 (사영을 거치지 않은 원문이라서 — 일 결과는 일괄 조회로 따라잡는다)
+    // 짝만 지은 PC 열쇠에는 놓친 log를 다시 보내지 않는다 (화면 보기 권한이 없다)
     if (!slot || view) for (const b of missed ?? []) this.writeRaw(client, b.event, b.data, b.n)
     const snap = this.shaped('snapshot', this.source.snapshot(), client)
     if (snap !== null) this.writeRaw(client, 'snapshot', JSON.stringify(stripAttachmentPaths(snap)), this.nextId())
@@ -125,14 +121,9 @@ export class EventHub {
   }
 
   private shaped(event: HubEvent, data: unknown, c: Client): unknown | null {
-    if (c.slot && !c.view) return this.source.shapePeer ? this.source.shapePeer(c.slot, event, data) : null
+    // 짝만 지은 PC 열쇠(화면 보기 권한 없음)에는 hello·keep-alive만 — 연결 상태만 알 수 있다
+    if (c.slot && !c.view) return null
     return this.source.shape ? this.source.shape(event, data, c.capabilities) : data
-  }
-
-  /** 피어 슬롯 한 곳에만 보낸다 (job·approval·changes). 쌓아 두지 않는다 — 놓친 것은 재연결 때 일괄 조회로 */
-  publishToSlot(slotId: string, event: PeerEventName, data: unknown) {
-    const text = JSON.stringify(data)
-    for (const c of [...this.clients]) if (c.slot === slotId) this.writeRaw(c, event, text, this.nextId())
   }
 
   /** 이 슬롯의 연결을 닫는다 (해제) */

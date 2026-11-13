@@ -4,7 +4,7 @@ import { test } from 'node:test'
 import { AuthGuard, hashToken, PEER_SLOTS_MAX } from '../src/main/remote/auth.ts'
 import { isPeerPathAllowed, preflight } from '../src/main/remote/handler.ts'
 import { checkPairInput, clientProofOf, deriveKey, pairSalt, serverProofOf, fingerprintShort, PairFailure, PairingWindow, pairWithHost, type PairTransport } from '../src/main/peer/pairing.ts'
-import { formatPairCode, isPairCode, normalizePairCode, isPeerHostAllowed, isPeerStaffId, parsePeerStaffId, peerStaffId, PEER_LIMITS } from '../src/shared/peerProtocol.ts'
+import { formatPairCode, isPairCode, normalizePairCode, isPeerHostAllowed, PEER_LIMITS } from '../src/shared/peerProtocol.ts'
 
 const NOW = 1_800_000_000_000
 const SPKI = 'sha256/' + 'A'.repeat(43) + '='
@@ -14,17 +14,12 @@ test('주소 규칙: Tailscale·사설 IPv4·*.ts.net만, 공인 IP와 그 밖�
   for (const bad of ['8.8.8.8', '100.63.0.1', '100.128.0.1', '172.32.0.1', '192.169.0.1', '256.1.1.1', 'example.com', 'evil.ts.net.example.com', '', ' ', 'localhost', '1.2.3', 'a_b.ts.net', '-x.ts.net']) assert.equal(isPeerHostAllowed(bad), false, bad)
 })
 
-test('코드는 12자 Crockford base32(하이픈·소문자·O/I/L 보정), 원격 직원 id는 p:<피어>:<원격id>', () => {
+test('코드는 12자 Crockford base32(하이픈·소문자·O/I/L 보정)', () => {
   assert.equal(isPairCode('7M3Q-H9XK-2VTB'), true)
   assert.equal(normalizePairCode(' 7m3q-h9xk-2vtb '), '7M3QH9XK2VTB')
   assert.equal(normalizePairCode('OIL0-0000-0000'), '0110' + '00000000')
   assert.equal(formatPairCode('7M3QH9XK2VTB'), '7M3Q-H9XK-2VTB')
   for (const bad of ['123456', '7M3QH9XK2VT', '7M3QH9XK2VTBB', '7M3QH9XK2VTU', '7M3Q H9XK 2VT!', 482913, null]) assert.equal(isPairCode(bad), false, String(bad))
-  const id = peerStaffId('ab12', 'uuid-1')
-  assert.equal(id, 'p:ab12:uuid-1')
-  assert.deepEqual(parsePeerStaffId(id), { peerId: 'ab12', remoteId: 'uuid-1' })
-  assert.equal(isPeerStaffId('11111111-2222-4333-8444-555555555555'), false)
-  assert.equal(parsePeerStaffId('p::x'), null)
 })
 
 test('테스트 벡터(설계서 1-4): salt·K·clientProof·serverProof가 문서와 같다', async () => {

@@ -1,186 +1,378 @@
-import { useState, type FormEvent } from 'react'
-import { BuildingIcon, CrownIcon, MessagesSquareIcon, PlusIcon, Trash2Icon } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useShallow } from 'zustand/react/shallow'
+import { BuildingIcon, CheckIcon, CrownIcon, DownloadIcon, FileTextIcon, FolderOpenIcon, MoreHorizontalIcon, PaletteIcon, PlusIcon, PresentationIcon, Trash2Icon, UsersIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Page } from '@/components/ui/page'
-import { NativeSelect } from '@/components/ui/select'
+import { PopMenu, PopMenuItem } from '@/components/pop-menu'
 import { cn } from '@/lib/utils'
 import { useOffice, useViewLevel, useWorkMode } from '@/store'
 import { officeOf, teamFloor } from '@shared/officeLevel'
-import { roomTeams } from '@shared/chatRooms'
-import { TEAM_COLORS, type Staff, type Team } from '@shared/types'
-import { LabSection } from './LabSection'
-import { Avatar, StatusDot } from './StaffCard'
-import { RefDocsEditor } from './RefDocsEditor'
+import { labRoomId, roomTeams } from '@shared/chatRooms'
 import { t } from '@shared/i18n'
+import type { Staff, Team } from '@shared/types'
+import { Avatar, StatusDot } from './StaffCard'
+import { statusMetaOf } from './status'
 import { roleLabel } from '@shared/roleLabel'
+import { OrgCreateDialog } from './OrgCreateDialog'
+import { OrgGroupDialog, type OrgDialogKind } from './OrgDialogs'
+import { groupColor, groupId, groupLeadId, groupMembers, groupName, groupRefDocs, groupText, setGroupLead, type OrgGroup } from './orgGroup'
 
-/** 조직도: 팀(부서)을 만들고 직원을 배치하고 팀장을 임명한다 */
+/** 팀 구성: 팀(늘 함께 일하는 부서)과 프로젝트(목표 하나로 여러 팀에서 모인 사람)를 카드로 보고, 3단계로 새로 만든다 */
 export function OrgPage() {
-  const teams = useOffice((s) => s.teams)
+  const teams = useOffice(useShallow((s) => s.teams.filter((tm) => tm.kind === 'hired')))
+  const externalTeams = useOffice(useShallow((s) => s.teams.filter((tm) => tm.kind === 'project')))
+  const labs = useOffice((s) => s.labs)
   const staff = useOffice((s) => s.staff)
-  const [name, setName] = useState('')
-  const [color, setColor] = useState<string>(TEAM_COLORS[0])
+  const [creating, setCreating] = useState<{ kind?: OrgGroup['kind'] } | null>(null)
+  const [newId, setNewId] = useState<string | null>(null)
+  // 새로 만든 카드의 강조·'첫 일 시키기'는 잠시만
+  useEffect(() => {
+    if (!newId) return
+    const timer = setTimeout(() => setNewId(null), 8000)
+    return () => clearTimeout(timer)
+  }, [newId])
 
-  const hiredTeams = teams.filter((tm) => tm.kind === 'hired')
-  const projectTeams = teams.filter((tm) => tm.kind === 'project')
   const hired = staff.filter((s) => s.kind === 'hired')
-  const unassigned = hired.filter((s) => !s.teamId || !hiredTeams.some((tm) => tm.id === s.teamId))
-
-  const handleCreate = async (e: FormEvent) => {
-    e.preventDefault()
-    if (!name.trim()) return
-    await window.office.createTeam(name.trim(), color)
-    setName('')
-    setColor(TEAM_COLORS[(hiredTeams.length + 1) % TEAM_COLORS.length])
-  }
+  const unassigned = hired.filter((s) => !s.teamId || !teams.some((tm) => tm.id === s.teamId))
+  const groups: OrgGroup[] = [...teams.map((team) => ({ kind: 'team' as const, team })), ...labs.map((lab) => ({ kind: 'project' as const, lab }))]
 
   return (
-    <Page title={t('org.title')} description={t('org.desc')}>
-      <form onSubmit={handleCreate} className="phone:flex-wrap narrow:flex-wrap mb-6 flex items-center gap-2">
-        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('org.newTeam.placeholder')} className="narrow:max-w-none narrow:basis-full max-w-xs min-w-40" />
-        <div className="flex gap-1">
-          {TEAM_COLORS.map((c) => (
-            <button key={c} type="button" onClick={() => setColor(c)} className={cn('phone:size-8 size-6 rounded-full border-2', color === c ? 'border-foreground' : 'border-transparent')} style={{ background: c }} />
-          ))}
-        </div>
-        <Button type="submit" size="sm" disabled={!name.trim()}>
-          <PlusIcon /> {t('org.newTeam.create')}
+    <Page
+      title={t('org.title')}
+      description={t('orgCard.desc')}
+      actions={
+        <Button size="sm" onClick={() => setCreating({})}>
+          <PlusIcon /> {t('orgCard.new')}
         </Button>
-      </form>
-
+      }
+    >
+      <SectionTitle>{t('orgCard.section.teams', { n: teams.length })}</SectionTitle>
       <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-4">
-        {hiredTeams.map((tm) => (
-          <TeamCard key={tm.id} team={tm} members={hired.filter((s) => s.teamId === tm.id)} teams={hiredTeams} />
-        ))}
-        {unassigned.length > 0 && <TeamCard team={null} members={unassigned} teams={hiredTeams} />}
+        {groups
+          .filter((g) => g.kind === 'team')
+          .map((g) => (
+            <GroupCard key={groupId(g)} group={g} hired={hired} teams={teams} isNew={newId === groupId(g)} />
+          ))}
+        {unassigned.length > 0 && <UnassignedCard members={unassigned} teams={teams} />}
+        <NewCard onClick={() => setCreating({ kind: 'team' })} />
       </div>
 
-      <LabSection />
+      <SectionTitle>{t('orgCard.section.projects', { n: labs.length })}</SectionTitle>
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-4">
+        {groups
+          .filter((g) => g.kind === 'project')
+          .map((g) => (
+            <GroupCard key={groupId(g)} group={g} hired={hired} teams={teams} isNew={newId === groupId(g)} />
+          ))}
+        <NewCard onClick={() => setCreating({ kind: 'project' })} />
+      </div>
 
-      {projectTeams.length > 0 && (
-        <>
-          <h2 className="text-muted-foreground mt-8 mb-3 text-sm font-semibold">📁 {t('org.projects')}</h2>
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-4">
-            {projectTeams.map((tm) => (
-              <div key={tm.id} className="bg-card rounded-xl border p-4">
-                <div className="mb-2 flex items-center gap-2 font-semibold">
-                  <span className="size-3 rounded-full" style={{ background: tm.color }} />
-                  {tm.name}
-                </div>
-                {staff
-                  .filter((s) => s.teamId === tm.id)
-                  .map((s) => (
-                    <MemberRow key={s.id} staff={s} />
-                  ))}
-              </div>
-            ))}
-          </div>
-        </>
-      )}
+      {externalTeams.length > 0 && <ExternalStaff teams={externalTeams} staff={staff} />}
+
+      {creating && <OrgCreateDialog initialKind={creating.kind} onClose={() => setCreating(null)} onCreated={setNewId} />}
     </Page>
   )
 }
 
-function MemberRow({ staff, children }: { staff: Staff; children?: React.ReactNode }) {
-  const select = useOffice((s) => s.select)
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return <h2 className="text-muted-foreground mt-6 mb-3 text-xs font-bold first:mt-0">{children}</h2>
+}
+
+function NewCard({ onClick }: { onClick: () => void }) {
   return (
-    <div className="flex items-center gap-2 py-1">
-      <button type="button" onClick={() => select(staff.id)} className="flex min-w-0 flex-1 items-center gap-2 text-left">
-        <Avatar avatar={staff.avatar} name={staff.name} teamId={staff.teamId} className="size-8" />
-        <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-medium">{staff.name}</div>
-          <div className="text-muted-foreground truncate text-xs">{roleLabel(staff.role)}</div>
+    <button type="button" onClick={onClick} className="text-muted-foreground hover:border-primary hover:text-foreground flex min-h-40 flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed p-4 text-sm">
+      <PlusIcon className="size-6" />
+      <b className="text-foreground">{t('orgCard.new')}</b>
+      {t('orgCard.newHint')}
+    </button>
+  )
+}
+
+/** 머리 오른쪽 한 마디: 문제 → 확인 기다림 → 일하는 중 → 모두 쉬는 중 */
+function busyText(members: Staff[]): { text: string; className: string } {
+  const count = (pred: (s: Staff) => boolean) => members.filter(pred).length
+  const problem = count((s) => s.status === 'error')
+  if (problem) return { text: t('orgCard.problem', { n: problem }), className: 'text-status-error' }
+  const waiting = count((s) => s.status === 'waiting' && s.approvals.length > 0)
+  if (waiting) return { text: t('orgCard.waiting', { n: waiting }), className: 'text-status-waiting' }
+  const working = count((s) => s.status === 'working' || Boolean(s.awaitingTeam))
+  if (working) return { text: t('orgCard.busy', { n: working }), className: 'text-status-working' }
+  return { text: members.length ? t('orgCard.resting') : t('orgCard.nobody'), className: 'text-muted-foreground' }
+}
+
+function GroupCard({ group, hired, teams, isNew }: { group: OrgGroup; hired: Staff[]; teams: Team[]; isNew: boolean }) {
+  const openChatRoom = useOffice((s) => s.openChatRoom)
+  const setView = useOffice((s) => s.setView)
+  const setMeetingPreset = useOffice((s) => s.setMeetingPreset)
+  const [dialog, setDialog] = useState<OrgDialogKind | null>(null)
+  const members = groupMembers(group, hired)
+  const leadId = groupLeadId(group)
+  const lead = members.find((m) => m.id === leadId)
+  const color = groupColor(group)
+  const text = groupText(group)
+  const busy = busyText(members)
+  const room = group.kind === 'team' ? (roomTeams([group.team]).length > 0 ? group.team.id : null) : group.lab.isPractice ? null : labRoomId(group.lab.id)
+  const canWork = Boolean(lead) || (group.kind === 'team' ? group.team.manuals : group.lab.manuals)?.length
+
+  return (
+    <div className={cn('bg-card flex flex-col gap-3 overflow-hidden rounded-xl border pb-3', isNew && 'ring-primary ring-2 transition-shadow')} style={{ borderTop: `4px solid ${color}` }}>
+      <div className="flex items-center gap-2 px-4 pt-3">
+        <b className="min-w-0 truncate">{groupName(group)}</b>
+        <span className="text-muted-foreground shrink-0 rounded border px-1.5 text-[11px]">{t(group.kind === 'team' ? 'orgCard.kind.team' : 'orgCard.kind.project')}</span>
+        <span className={cn('ml-auto shrink-0 text-xs', busy.className)}>{busy.text}</span>
+      </div>
+
+      <div className="px-4 text-sm">
+        {text ? (
+          group.kind === 'project' ? (
+            <p>
+              <span className="text-muted-foreground mr-1.5 text-xs font-semibold">{t('orgCard.goal')}</span>
+              {text}
+            </p>
+          ) : (
+            <p>{text}</p>
+          )
+        ) : (
+          <p className="text-muted-foreground text-xs">
+            {t(group.kind === 'team' ? 'orgCard.whatEmpty' : 'orgCard.goalEmpty')}{' '}
+            <button type="button" className="text-primary font-semibold" onClick={() => setDialog('info')}>
+              {t('orgCard.write')}
+            </button>
+          </p>
+        )}
+      </div>
+
+      <div className="flex flex-wrap gap-1 px-3">
+        {members.map((m) => (
+          <Face key={m.id} staff={m} group={group} isLead={m.id === leadId} teams={teams} />
+        ))}
+        {members.length === 0 && <p className="text-muted-foreground px-1 text-xs">{t('orgCard.nobody')}</p>}
+      </div>
+
+      {isNew && lead && (
+        <div className="px-4">
+          <Button size="sm" variant="outline" className="border-primary text-primary w-full" onClick={() => setDialog('work')}>
+            {t('orgCard.firstWork')}
+          </Button>
         </div>
-      </button>
-      <StatusDot staff={staff} />
-      {children}
+      )}
+
+      <div className="mt-auto flex items-center gap-1.5 px-4">
+        <Button size="sm" onClick={() => setDialog('work')} disabled={!canWork} title={canWork ? undefined : t('orgCard.workNoLead')}>
+          {t('orgCard.work')}
+        </Button>
+        {room && (
+          <Button size="sm" variant="outline" onClick={() => openChatRoom(room)}>
+            {t('orgCard.chat')}
+          </Button>
+        )}
+        <PopMenu icon={<MoreHorizontalIcon />} label={t('orgCard.moreMenu')} opens="down" className="ml-auto" buttonClassName="size-8">
+          {(close) => {
+            const act = (fn: () => void) => () => (close(), fn())
+            return (
+              <>
+                <PopMenuItem icon={<PaletteIcon />} onClick={act(() => setDialog('info'))}>
+                  {t('orgCard.menu.info')}
+                </PopMenuItem>
+                <PopMenuItem icon={<UsersIcon />} onClick={act(() => setDialog('people'))}>
+                  {t('orgCard.menu.members')}
+                </PopMenuItem>
+                <PopMenuItem icon={<FileTextIcon />} onClick={act(() => setDialog('refDocs'))}>
+                  {groupRefDocs(group).length ? t('orgCard.menu.refDocsN', { n: groupRefDocs(group).length }) : t('orgCard.menu.refDocs')}
+                </PopMenuItem>
+                {group.kind === 'project' && (
+                  <PopMenuItem icon={<FolderOpenIcon />} onClick={act(() => setDialog('workplace'))}>
+                    {t('orgCard.menu.workplace')}
+                  </PopMenuItem>
+                )}
+                {group.kind === 'team' && <FloorItems team={group.team} teams={teams} close={close} />}
+                <PopMenuItem
+                  icon={<PresentationIcon />}
+                  onClick={act(() => {
+                    setMeetingPreset({ topic: t(group.kind === 'team' ? 'orgCard.meetingTopic' : 'lab.meetingTopic', { name: groupName(group) }), participantIds: members.map((m) => m.id) })
+                    setView('meeting')
+                  })}
+                >
+                  {t('orgCard.menu.meeting')}
+                </PopMenuItem>
+                {group.kind === 'project' && window.officePack && (
+                  <PopMenuItem icon={<DownloadIcon />} onClick={act(() => void exportLab(group.lab.id))}>
+                    {t('orgCard.menu.export')}
+                  </PopMenuItem>
+                )}
+                <PopMenuItem icon={<Trash2Icon />} className="text-destructive" onClick={act(() => removeGroup(group))}>
+                  {t(group.kind === 'team' ? 'orgCard.menu.deleteTeam' : 'orgCard.menu.endProject')}
+                </PopMenuItem>
+              </>
+            )
+          }}
+        </PopMenu>
+      </div>
+
+      {dialog && <OrgGroupDialog kind={dialog} group={group} onClose={() => setDialog(null)} />}
     </div>
   )
 }
 
-/** 사무실이 2층 이상이면 팀 자리가 있을 층을 고른다 (업무 모드에선 사무실이 없으니 숨긴다) */
-function TeamFloor({ team, teams }: { team: Team; teams: Team[] }) {
+async function exportLab(labId: string) {
+  try {
+    const r = await window.officePack?.exportLab(labId)
+    if (r) window.alert(r.message)
+  } catch {
+    window.alert(t('pack.err.write'))
+  }
+}
+
+function removeGroup(group: OrgGroup) {
+  if (group.kind === 'team') {
+    if (window.confirm(t('org.deleteTeam.confirm', { name: group.team.name }))) void window.office.deleteTeam(group.team.id)
+  } else if (window.confirm(t('orgCard.endProject.confirm', { name: group.lab.name }))) void window.office.deleteLab(group.lab.id)
+}
+
+/** 사무실이 2층 이상이면 ⋯ 메뉴에 층 고르기 (업무 모드에선 사무실이 없으니 숨긴다) */
+function FloorItems({ team, teams, close }: { team: Team; teams: Team[]; close: () => void }) {
   const level = useViewLevel()
   const isWorkMode = useWorkMode()
-  // 사무실 장면과 같은 층을 보이려면 인원으로 나눈다 (teamFloors)
   const staff = useOffice((s) => s.staff)
   const { floors } = officeOf(level)
   if (floors < 2 || isWorkMode) return null
+  const current = teamFloor(team, level, teams, staff)
   return (
-    <label className="text-muted-foreground flex items-center gap-2 text-xs">
-      <BuildingIcon className="size-3.5" /> {t('org.floor')}
-      <NativeSelect value={teamFloor(team, level, teams, staff)} onChange={(e) => void window.office.updateTeam(team.id, { floor: Number(e.target.value) })} className="h-7 flex-1 text-xs">
-        {Array.from({ length: floors }, (_, i) => i + 1).map((f) => (
-          <option key={f} value={f}>
-            {t('org.floorN', { n: f })}
-          </option>
-        ))}
-      </NativeSelect>
-    </label>
+    <>
+      {Array.from({ length: floors }, (_, i) => i + 1).map((f) => (
+        <PopMenuItem
+          key={f}
+          icon={f === current ? <CheckIcon /> : <BuildingIcon />}
+          className={cn(f === current && 'font-semibold')}
+          onClick={() => {
+            close()
+            if (f !== current) void window.office.updateTeam(team.id, { floor: f })
+          }}
+        >
+          {t('orgCard.menu.floor', { n: f })}
+        </PopMenuItem>
+      ))}
+    </>
   )
 }
 
-function TeamCard({ team, members, teams }: { team: Team | null; members: Staff[]; teams: Team[] }) {
-  const lead = team ? members.find((m) => m.id === team.leadId) : undefined
-  const handleLead = (id: string) => team && void window.office.updateTeam(team.id, { leadId: id || null })
-  const handleMove = (staffId: string, teamId: string) => void window.office.updateStaff(staffId, { teamId: teamId || null })
-  const openChatRoom = useOffice((s) => s.openChatRoom)
-  const handleDelete = () => {
-    if (team && window.confirm(t('org.deleteTeam.confirm', { name: team.name }))) void window.office.deleteTeam(team.id)
-  }
-
+/** 얼굴 하나: 리더 왕관·상태 점, 프로젝트는 아래에 출신 팀. 누르면 작은 메뉴 */
+function Face({ staff, group, isLead, teams }: { staff: Staff; group: OrgGroup | null; isLead: boolean; teams: Team[] }) {
+  const select = useOffice((s) => s.select)
+  const meta = statusMetaOf(staff)
+  const home = teams.find((tm) => tm.id === staff.teamId)
   return (
-    <div className="bg-card flex flex-col gap-2 rounded-xl border p-4" style={team ? { borderColor: `${team.color}66` } : undefined}>
-      <div className="flex items-center gap-2">
-        <span className="size-3 rounded-full" style={{ background: team?.color ?? '#8a8a9c' }} />
-        <span className="flex-1 font-semibold">{team?.name ?? t('org.unassigned')}</span>
-        <span className="text-muted-foreground text-xs">{t('org.memberCount', { n: members.length })}</span>
-        {team && roomTeams([team]).length > 0 && (
-          <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs" onClick={() => openChatRoom(team.id)}>
-            <MessagesSquareIcon className="size-3.5" /> {t('org.team.openChat')}
-          </Button>
-        )}
-        {team && (
-          <Button variant="ghost" size="icon" className="size-7" onClick={handleDelete} aria-label={t('org.deleteTeam')}>
-            <Trash2Icon className="size-3.5" />
-          </Button>
-        )}
-      </div>
-      {team && (
-        <label className="text-muted-foreground flex items-center gap-2 text-xs">
-          <CrownIcon className="size-3.5 text-status-waiting" /> {t('org.lead')}
-          <NativeSelect value={lead?.id ?? ''} onChange={(e) => handleLead(e.target.value)} className="h-7 flex-1 text-xs">
-            <option value="">{t('org.lead.none')}</option>
-            {members.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name}
-              </option>
-            ))}
-          </NativeSelect>
-        </label>
-      )}
-      {team && <TeamFloor team={team} teams={teams} />}
-      <div className="flex flex-col">
-        {members.length === 0 && <p className="text-muted-foreground py-2 text-xs">{t('org.noMembers')}</p>}
-        {members.map((m) => (
-          <MemberRow key={m.id} staff={m}>
-            <NativeSelect value={team?.id ?? ''} onChange={(e) => handleMove(m.id, e.target.value)} className="h-7 w-24 text-xs" aria-label={t('org.moveTeam')}>
-              <option value="">{t('org.unassigned')}</option>
-              {teams.map((tm) => (
-                <option key={tm.id} value={tm.id}>
-                  {tm.name}
-                </option>
+    <PopMenu
+      opens="down"
+      label={staff.name}
+      buttonClassName="h-auto w-16 flex-col gap-0.5 rounded-lg px-1 py-1.5 font-normal"
+      icon={
+        <>
+          <span className="relative">
+            <Avatar avatar={staff.avatar} name={staff.name} teamId={staff.teamId} className="size-10" />
+            {isLead && <CrownIcon className="text-status-waiting fill-status-waiting absolute -top-1.5 -left-1 size-3.5! drop-shadow" aria-label={t('orgCard.face.lead')} />}
+            <span className={cn('ring-card absolute right-0 bottom-0 size-2.5 rounded-full ring-2', meta.dot, staff.status === 'working' && 'animate-pulse')} title={meta.label} />
+          </span>
+          <span className="w-full truncate text-center text-xs">{staff.name}</span>
+          {group?.kind === 'project' && home && (
+            <span className="w-full truncate text-center text-[10px]" style={{ color: home.color }}>
+              {home.name}
+            </span>
+          )}
+        </>
+      }
+    >
+      {(close) => {
+        const act = (fn: () => void) => () => (close(), fn())
+        return (
+          <>
+            <div className="flex items-center gap-2 px-2.5 py-1.5">
+              <span className="min-w-0 flex-1 truncate text-xs">
+                <b>{staff.name}</b> · {roleLabel(staff.role)}
+              </span>
+              <StatusDot staff={staff} />
+            </div>
+            <PopMenuItem onClick={act(() => select(staff.id))}>{t('orgCard.face.view')}</PopMenuItem>
+            {group && (
+              <PopMenuItem icon={<CrownIcon />} onClick={act(() => void setGroupLead(group, isLead ? null : staff.id))}>
+                {t(isLead ? 'orgCard.face.unsetLead' : 'orgCard.face.makeLead')}
+              </PopMenuItem>
+            )}
+            <div className="text-muted-foreground px-2.5 pt-1.5 text-[11px] font-semibold">{t('orgCard.face.moveHeader')}</div>
+            {teams
+              .filter((tm) => tm.id !== staff.teamId)
+              .map((tm) => (
+                <PopMenuItem key={tm.id} icon={<span className="size-2.5! rounded-full" style={{ background: tm.color }} />} onClick={act(() => void window.office.updateStaff(staff.id, { teamId: tm.id }))}>
+                  {t('orgCard.face.moveTo', { team: tm.name })}
+                </PopMenuItem>
               ))}
-            </NativeSelect>
-          </MemberRow>
+            {staff.teamId && teams.some((tm) => tm.id === staff.teamId) && (
+              <PopMenuItem onClick={act(() => void window.office.updateStaff(staff.id, { teamId: null }))}>{t('orgCard.face.noTeam')}</PopMenuItem>
+            )}
+            {group?.kind === 'project' && (
+              <PopMenuItem
+                className="text-destructive"
+                onClick={act(() => {
+                  const memberIds = group.lab.memberIds.filter((id) => id !== staff.id)
+                  void window.office.updateLab(group.lab.id, { memberIds, leadId: group.lab.leadId === staff.id ? null : group.lab.leadId })
+                })}
+              >
+                {t('orgCard.face.removeFromProject')}
+              </PopMenuItem>
+            )}
+          </>
+        )
+      }}
+    </PopMenu>
+  )
+}
+
+/** 팀이 없는 고용 직원 — 얼굴을 눌러 팀으로 옮긴다 */
+function UnassignedCard({ members, teams }: { members: Staff[]; teams: Team[] }) {
+  return (
+    <div className="bg-card flex flex-col gap-3 rounded-xl border border-dashed p-4 pt-3">
+      <div className="flex items-center gap-2">
+        <b>{t('org.unassigned')}</b>
+        <span className="text-muted-foreground ml-auto text-xs">{t('org.memberCount', { n: members.length })}</span>
+      </div>
+      <p className="text-muted-foreground text-xs">{t('orgCard.unassignedHint')}</p>
+      <div className="-mx-1 flex flex-wrap gap-1">
+        {members.map((m) => (
+          <Face key={m.id} staff={m} group={null} isLead={false} teams={teams} />
         ))}
       </div>
-      {team && (
-        <div className="border-t pt-2">
-          <RefDocsEditor target={{ kind: 'team', id: team.id }} docs={team.refDocs ?? []} audience={t('org.refDocsAudience')} isCollapsible />
+    </div>
+  )
+}
+
+/** 다른 창(외부 세션)에서 일하는 직원 — 보기만, 눌러서 펼친다 */
+function ExternalStaff({ teams, staff }: { teams: Team[]; staff: Staff[] }) {
+  const select = useOffice((s) => s.select)
+  const [isOpen, setIsOpen] = useState(false)
+  const summary = teams.map((tm) => t('orgCard.externalGroup', { name: tm.name, n: staff.filter((s) => s.teamId === tm.id).length })).join(' · ')
+  return (
+    <section className="mt-6">
+      <button type="button" onClick={() => setIsOpen((v) => !v)} aria-expanded={isOpen} className="text-muted-foreground hover:text-foreground text-xs">
+        {t('orgCard.external')} — {summary} {isOpen ? '⌃' : '›'}
+      </button>
+      {isOpen && (
+        <div className="mt-2 grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-4">
+          {teams.map((tm) => (
+            <div key={tm.id} className="bg-card rounded-xl border p-4" style={{ borderTop: `4px solid ${tm.color}` }}>
+              <b className="mb-2 block text-sm">{tm.name}</b>
+              {staff
+                .filter((s) => s.teamId === tm.id)
+                .map((s) => (
+                  <button key={s.id} type="button" onClick={() => select(s.id)} className="flex w-full items-center gap-2 py-1 text-left">
+                    <Avatar avatar={s.avatar} name={s.name} teamId={s.teamId} className="size-8" />
+                    <span className="min-w-0 flex-1 truncate text-sm">{s.name}</span>
+                    <StatusDot staff={s} />
+                  </button>
+                ))}
+            </div>
+          ))}
         </div>
       )}
-    </div>
+    </section>
   )
 }

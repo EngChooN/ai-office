@@ -96,6 +96,8 @@ export class AuthGuard {
   private checks = 0
   /** 지금 토큰으로 인증에 성공한 적이 있는지 (휴대폰이 이 토큰으로 붙어 있는지 — 재발급하면 false) */
   private isUsed = false
+  /** 휴대폰 열쇠로 마지막에 인증에 성공한 시각 (메모리만 — 앱을 다시 켜면 null, 재발급하면 null) */
+  private phoneSeen: number | null = null
   private rates = new Map<string, number[]>()
   /** '화면 보기' 허락을 기다리는 슬롯 (메모리 값 — 앱을 껐다 켜면 상대가 hello로 다시 요청한다) */
   private viewPending = new Set<string>()
@@ -130,6 +132,10 @@ export class AuthGuard {
     return this.isUsed
   }
 
+  get phoneSeenAt() {
+    return this.phoneSeen
+  }
+
   /** 실패·잠금을 기억하고 있는 IP 수 (테스트·점검용) */
   get trackedIps() {
     return new Set([...this.ipFailures.keys(), ...this.ipLocks.keys()]).size
@@ -153,6 +159,7 @@ export class AuthGuard {
     const hash = hashToken(token)
     if (this.state.tokenHash && sameHash(hash, this.state.tokenHash)) {
       this.isUsed = true
+      this.phoneSeen = now
       return { ok: true, slot: 'phone' }
     }
     const peer = (this.state.peers ?? []).find((p) => sameHash(hash, p.tokenHash))
@@ -299,6 +306,7 @@ export class AuthGuard {
     this.ipLocks.clear()
     this.rates.clear()
     this.isUsed = false
+    this.phoneSeen = null
     return { token, state: this.state }
   }
 }

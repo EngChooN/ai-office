@@ -51,8 +51,8 @@
     <string name="updated_just_now">방금 갱신</string>
     <string name="pick_staff">직원을 골라 주세요</string>
     <string name="title_staff">직원</string>
-    <string name="empty_staff">아직 고용한 직원이 없어요</string>
-    <string name="empty_staff_hint">직원 고용은 PC에서 할 수 있어요.</string>
+    <string name="empty_staff">아직 추가한 직원이 없어요</string>
+    <string name="empty_staff_hint">직원 추가는 PC에서 할 수 있어요.</string>
     <string name="staff_not_found">직원을 찾을 수 없어요</string>
     <string name="staff_not_found_refreshed">직원을 찾을 수 없어요. 목록을 새로 불러왔어요.</string>
     <string name="current_work">지금 하는 일</string>
@@ -128,8 +128,11 @@
     <string name="settings_language">언어</string>
     <string name="lang_auto">기기 설정 따르기</string>
     <string name="onb_title">내 PC 사무실에 연결해요</string>
-    <string name="onb_step1">1. PC의 AI Office에서 설정 › 휴대폰 연결을 켜요.</string>
-    <string name="onb_step2">2. PC 화면에 나온 QR 코드를 찍어요.</string>
+    <string name="onb_step1">① Tailscale 켜기 — 내 기기끼리 잇는 무료 앱이에요.</string>
+    <string name="onb_step2">② PC 화면의 QR 찍기</string>
+    <string name="onb_step3">③ 연결 확인</string>
+    <string name="onb_wifi_note">같은 와이파이에서만 쓸 거라면 Tailscale 없이 바로 QR을 찍으면 돼요.</string>
+    <string name="btn_open_camera">카메라 열기</string>
     <string name="btn_scan_qr">QR 코드 찍기</string>
     <string name="onb_camera_note">카메라는 QR을 읽을 때만 써요.</string>
     <string name="cam_perm_title">카메라 권한이 필요해요</string>
@@ -231,8 +234,8 @@
     <string name="state_connfail_unreach_ts">휴대폰 Tailscale이 켜져 있는지 확인하세요. PC와 같은 계정으로 로그인되어 있어야 해요.</string>
     <string name="state_unreach_body_ts">이런 경우일 수 있어요.\n· 휴대폰 Tailscale이 꺼져 있거나 PC와 다른 계정이에요\n· PC가 잠자기 중이거나 꺼져 있어요\n· AI Office가 꺼져 있어요</string>
     <string name="qr_unreach_default_ts">PC에 닿지 않았어요. 휴대폰 Tailscale이 켜져 있는지, PC와 같은 계정인지 확인하세요.</string>
-    <string name="manual_btn">주소로 연결하기</string>
-    <string name="manual_title">주소로 연결</string>
+    <string name="manual_btn">코드로 연결하기</string>
+    <string name="manual_title">코드로 연결</string>
     <string name="manual_intro">PC의 AI Office 설정 › 휴대폰 연결에 나온 주소와 연결 코드 12자(XXXX-XXXX-XXXX)를 입력해요. 휴대폰에서 Tailscale 앱이 켜져 있어야 해요.</string>
     <string name="manual_host_label">PC 주소 (Tailscale IP)</string>
     <string name="manual_host_hint">예: 100.64.0.1</string>

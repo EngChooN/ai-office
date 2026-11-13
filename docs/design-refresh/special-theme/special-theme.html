@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>AI Office 특별 테마(도트) 시안</title>
+<!--
+  특별 테마 시안 — 이디자 2026-11-13. 앱 코드와 무관한 그림용 HTML.
+  보기: ?c=a|b|c&m=light|dark (컨셉별 4화면) · ?view=compare&m=light|dark (세 컨셉 나란히) · ?view=contrast (대비 표)
+  A 레트로 오피스 게임 · B 따뜻한 도트 사무실 · C 가벼운 도트(색·모양 변수만)
+  색은 사무실 그림 팔레트(app/src/renderer/map/iso/isoArt.ts의 S·K)에서 가져왔다. 도트 1칸 = 화면 2px(사무실 그림과 같은 배율).
+  글꼴: 갈무리(Galmuri, SIL OFL 1.1) — fonts/ 폴더
+-->
+<style>
+@font-face { font-family: G11; src: url(fonts/Galmuri11.woff2) format('woff2'), url(https://cdn.jsdelivr.net/npm/galmuri@2.40.3/dist/Galmuri11.woff2) format('woff2'); }
+@font-face { font-family: G11B; src: url(fonts/Galmuri11-Bold.woff2) format('woff2'), url(https://cdn.jsdelivr.net/npm/galmuri@2.40.3/dist/Galmuri11-Bold.woff2) format('woff2'); }
+@font-face { font-family: G14; src: url(fonts/Galmuri14.woff2) format('woff2'), url(https://cdn.jsdelivr.net/npm/galmuri@2.40.3/dist/Galmuri14.woff2) format('woff2'); }
+@font-face { font-family: G9; src: url(fonts/Galmuri9.woff2) format('woff2'), url(https://cdn.jsdelivr.net/npm/galmuri@2.40.3/dist/Galmuri9.woff2) format('woff2'); }
+
+:root { --sans: -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Pretendard', sans-serif; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--sans); background: #e9e4dc; color: #2a2228; }
+body.dark-page { background: #141015; color: #eee; }
+.sheet { padding: 28px 32px 36px; width: max-content; }
+.sheet-h { display: flex; align-items: baseline; gap: 14px; margin-bottom: 18px; }
+.sheet-h h1 { font: 700 22px var(--sans); }
+.sheet-h p { font-size: 13px; opacity: .72; }
+.row { display: flex; gap: 22px; align-items: flex-start; }
+.cap { font: 600 12px var(--sans); opacity: .65; margin: 0 0 8px 2px; }
+
+/* ───────────── 공통 화면 틀 (모든 컨셉이 같은 구조, 색·모양만 다름) ───────────── */
+.frame { width: 360px; height: 600px; overflow: hidden; position: relative;
+  background: var(--bg); color: var(--fg); font-family: var(--body-font); font-size: var(--body-size);
+  display: flex; flex-direction: column; border-radius: var(--frame-r, 10px); }
+.frame.wide { width: 420px; }
+.top { display: flex; align-items: center; gap: 8px; padding: 12px 14px; background: var(--chrome); border-bottom: var(--bw) solid var(--line); }
+.top .t { font-family: var(--head-font); font-size: var(--head-size); flex: 1; }
+.top .sub { font-family: var(--meta-font); font-size: var(--meta-size); color: var(--muted); }
+.body { flex: 1; padding: 12px; display: flex; flex-direction: column; gap: 10px; overflow: hidden; }
+.meta { font-family: var(--meta-font); font-size: var(--meta-size); color: var(--muted); }
+.label { font-family: var(--label-font); font-size: var(--label-size); color: var(--muted); letter-spacing: var(--label-ls, 0); }
+.box { background: var(--card); border: var(--bw) solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); }
+.btn { font-family: var(--btn-font); font-size: var(--btn-size); padding: 8px 12px; border-radius: var(--r-btn);
+  border: var(--bw) solid var(--line); background: var(--card); color: var(--fg); display: inline-flex; align-items: center; gap: 6px; justify-content: center; white-space: nowrap; }
+.btn.pri { background: var(--pri); color: var(--pri-fg); border-color: var(--pri-line); }
+.btn.bad { background: var(--card); color: var(--bad); }
+.chip { font-family: var(--meta-font); font-size: var(--meta-size); padding: 3px 8px; border-radius: var(--r-btn); background: var(--chip); color: var(--fg); border: var(--bw) solid var(--line); white-space: nowrap; }
+.ico { width: 20px; height: 20px; flex: none; image-rendering: pixelated; }
+.ico.s { width: 16px; height: 16px; }
+.face { width: 40px; height: 40px; flex: none; background: var(--face-bg); border: var(--bw) solid var(--line); border-radius: var(--r-face); overflow: hidden; display: grid; place-items: center; }
+.face svg { width: 28px; height: 28px; image-rendering: pixelated; margin-top: 6px; }
+.dot { width: 8px; height: 8px; border-radius: var(--r-dot); flex: none; }
+
+/* 직원 목록 */
+.alert { display: flex; gap: 8px; align-items: center; padding: 8px 10px; background: var(--warn-bg); color: var(--warn-fg); border: var(--bw) solid var(--warn-line); border-radius: var(--r); font-size: var(--meta-size); font-family: var(--meta-font); }
+.staff { display: flex; gap: 10px; align-items: center; padding: 9px 10px; }
+.staff.sel { background: var(--sel); outline: var(--bw) solid var(--sel-line); outline-offset: calc(-1 * var(--bw)); }
+.staff .n { font-family: var(--name-font); font-size: var(--name-size); }
+.staff .st { display: flex; align-items: center; gap: 5px; margin-top: 3px; white-space: nowrap; overflow: hidden; }
+.staff .st .meta { flex: none; }
+.staff .st .meta.job { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.staff .grow { flex: 1; min-width: 0; }
+.staff .job { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.badge { font-family: var(--btn-font); font-size: var(--meta-size); padding: 2px 6px; border-radius: var(--r-btn); background: var(--wait); color: var(--wait-fg); }
+.group-h { display: flex; align-items: center; gap: 6px; padding: 4px 2px 0; }
+.bar { height: 10px; background: var(--track); border: var(--bw) solid var(--line); border-radius: var(--r-btn); overflow: hidden; display: flex; }
+.bar i { background: var(--ok); }
+
+/* 대화 */
+.tabs { display: flex; gap: 4px; padding: 0 12px; background: var(--chrome); border-bottom: var(--bw) solid var(--line); }
+.tab { font-family: var(--btn-font); font-size: var(--btn-size); padding: 9px 10px; color: var(--muted); display: flex; gap: 5px; align-items: center; border-bottom: 3px solid transparent; }
+.tab.on { color: var(--fg); border-bottom-color: var(--pri); }
+.msg { max-width: 86%; padding: 9px 11px; border-radius: var(--r); line-height: 1.5; border: var(--bw) solid var(--line); background: var(--card); }
+.msg.me { align-self: flex-end; background: var(--me); color: var(--me-fg); border-color: var(--me-line); }
+.tool { display: flex; align-items: center; gap: 7px; padding: 6px 9px; font-family: var(--meta-font); font-size: var(--meta-size); color: var(--muted); background: var(--chip); border-radius: var(--r); border: var(--bw) dashed var(--line); }
+.band { display: flex; align-items: center; gap: 8px; padding: 7px 12px; background: var(--wait-soft); border-bottom: var(--bw) solid var(--line); font-family: var(--meta-font); font-size: var(--meta-size); }
+.composer { padding: 10px 12px; background: var(--chrome); border-top: var(--bw) solid var(--line); display: flex; gap: 8px; }
+.input { flex: 1; padding: 9px 11px; background: var(--input-bg); border: var(--bw) solid var(--input-line); border-radius: var(--r); color: var(--muted); font-family: var(--body-font); font-size: var(--body-size); }
+
+/* 설정 */
+.sec { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.swatches { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.sw { padding: 6px; border-radius: var(--r); border: var(--bw) solid var(--line); background: var(--card); display: flex; flex-direction: column; gap: 5px; align-items: center; font-family: var(--meta-font); font-size: var(--meta-size); }
+.sw .c { width: 100%; height: 26px; border-radius: calc(var(--r) - 4px); display: flex; }
+.sw .c i { flex: 1; }
+.sw.on { outline: 3px solid var(--pri); outline-offset: 1px; }
+.sw.wide { grid-column: span 2; white-space: nowrap; }
+.seg { display: flex; border: var(--bw) solid var(--line); border-radius: var(--r-btn); overflow: hidden; background: var(--chip); }
+.seg span { flex: 1; text-align: center; padding: 7px 0; font-family: var(--btn-font); font-size: var(--btn-size); display: flex; gap: 5px; align-items: center; justify-content: center; }
+.seg span.on { background: var(--card); color: var(--fg); box-shadow: var(--seg-on); }
+.set-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px; }
+.set-row + .set-row { border-top: var(--bw) solid var(--line-soft); }
+.set-row .grow { flex: 1; }
+.switch { width: 40px; height: 22px; border-radius: var(--r-btn); background: var(--track); border: var(--bw) solid var(--line); position: relative; flex: none; }
+.switch.on { background: var(--ok); }
+.switch b { position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: var(--r-dot); background: var(--card); border: var(--bw) solid var(--line); }
+.switch.on b { left: auto; right: 2px; }
+.select { padding: 7px 10px; border: var(--bw) solid var(--input-line); border-radius: var(--r-btn); background: var(--input-bg); font-family: var(--btn-font); font-size: var(--btn-size); display: flex; gap: 8px; align-items: center; }
+
+/* 결재 카드 */
+.appr { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.appr-h { display: flex; gap: 10px; align-items: center; }
+.appr .what { font-family: var(--name-font); font-size: var(--name-size); line-height: 1.45; }
+.code { font-family: var(--code-font); font-size: var(--code-size); padding: 8px 10px; background: var(--code-bg); border-radius: calc(var(--r) - 2px); border: var(--bw) solid var(--line-soft); color: var(--fg); line-height: 1.5; }
+.btns { display: flex; gap: 8px; }
+.btns .btn { flex: 1; }
+.chk { display: flex; align-items: center; gap: 7px; font-family: var(--meta-font); font-size: var(--meta-size); color: var(--muted); }
+.chk i { width: 14px; height: 14px; border: var(--bw) solid var(--line); border-radius: 3px; background: var(--input-bg); }
+
+/* ═════════════ C. 가벼운 도트 — 지금 있는 변수(색·모서리·그림자·테두리 두께)만 바꾼 것 ═════════════ */
+[data-c=c] { --body-font: var(--sans); --head-font: var(--sans); --meta-font: var(--sans); --label-font: var(--sans); --btn-font: var(--sans); --name-font: var(--sans); --code-font: ui-monospace, Menlo, monospace;
+  --body-size: 14px; --head-size: 15px; --meta-size: 12px; --label-size: 11px; --btn-size: 13px; --name-size: 14px; --code-size: 12px;
+  --bw: 2px; --r: 4px; --r-btn: 4px; --r-face: 4px; --r-dot: 2px; --frame-r: 4px; --label-ls: .04em; }
+[data-c=c] .top .t, [data-c=c] .staff .n, [data-c=c] .appr .what { font-weight: 700; }
+[data-c=c] .btn { font-weight: 600; }
+[data-c=c][data-m=light] { --bg: #f6efe2; --chrome: #fffcf5; --card: #fffcf5; --fg: #3a2a32; --muted: #7a6670; --line: #d9c6ac; --line-soft: #eadcc6;
+  --pri: #6c5ce7; --pri-fg: #ffffff; --pri-line: #4c3fc0; --bad: #c03a2b; --chip: #f1e6d3; --sel: #ece8fb; --sel-line: #8f80e6; --face-bg: #e6f7ff;
+  --wait: #edb417; --wait-fg: #3a2a32; --wait-soft: #fbefc8; --warn-bg: #fde2dc; --warn-fg: #8a2a1e; --warn-line: #e85a4a; --ok: #3fc168; --track: #eadcc6;
+  --me: #6c5ce7; --me-fg: #ffffff; --me-line: #4c3fc0; --input-bg: #ffffff; --input-line: #cdb898; --code-bg: #f6efe2; --seg-on: none;
+  --shadow: 3px 3px 0 0 rgba(92,66,82,.25); }
+[data-c=c][data-m=dark] { --bg: #221b21; --chrome: #2b2229; --card: #2e252c; --fg: #f6eee4; --muted: #b9a8b0; --line: #4e3f49; --line-soft: #3c3039;
+  --pri: #a596ff; --pri-fg: #1d1440; --pri-line: #c9bfff; --bad: #ff8a7a; --chip: #382d35; --sel: #3a3256; --sel-line: #a596ff; --face-bg: #2e3246;
+  --wait: #edb417; --wait-fg: #2a1e10; --wait-soft: #3d3220; --warn-bg: #44221f; --warn-fg: #ffb4a8; --warn-line: #e85a4a; --ok: #3fc168; --track: #3c3039;
+  --me: #4b3f8a; --me-fg: #f6eee4; --me-line: #7a6bd6; --input-bg: #251e24; --input-line: #574752; --code-bg: #251e24; --seg-on: none;
+  --shadow: 3px 3px 0 0 rgba(0,0,0,.45); }
+
+/* ═════════════ B. 따뜻한 도트 사무실 — 본문은 보통 글꼴, 제목·라벨·숫자·버튼만 도트 글꼴. 계단 모서리 + 바닥판 두께 ═════════════ */
+[data-c=b] { --body-font: var(--sans); --head-font: G11B, G11; --meta-font: G11; --label-font: G11; --btn-font: G11B, G11; --name-font: var(--sans); --code-font: G11;
+  --body-size: 14px; --head-size: 12px; --meta-size: 12px; --label-size: 12px; --btn-size: 12px; --name-size: 14px; --code-size: 12px;
+  --bw: 0px; --r: 0; --r-btn: 0; --r-face: 0; --r-dot: 0; --frame-r: 0; }
+[data-c=b] .staff .n, [data-c=b] .appr .what { font-weight: 700; }
+[data-c=b][data-m=light] { --bg: #f6ecd6; --chrome: #fffcf5; --card: #fffcf5; --fg: #3a2a32; --muted: #7a5e52; --line: #a77d52; --line-soft: #e2cbaa; --out: #8a5a3c; --side: #e2cbaa;
+  --pri: #f0834e; --pri-fg: #3a2a32; --pri-line: #a8502a; --pri-side: #c8653a; --bad: #b8382a; --chip: #f3e3ca; --sel: #e6f7ff; --sel-line: #5aa8d8; --face-bg: #a8dcf2;
+  --wait: #edb417; --wait-fg: #3a2a32; --wait-soft: #fbefc8; --warn-bg: #fde2dc; --warn-fg: #8a2a1e; --warn-line: #e85a4a; --ok: #3fc168; --track: #e2cbaa;
+  --me: #8fd6c2; --me-fg: #233a33; --me-line: #4f9a86; --input-bg: #ffffff; --input-line: #a77d52; --code-bg: #f6ecd6; --seg-on: none; --shadow: none;
+  --floor-a: #f6ecd6; --floor-b: #efe0c4; --plank: #ecc999; --plank-line: #d6ae7a; }
+[data-c=b][data-m=dark] { --bg: #2a2024; --chrome: #33282d; --card: #3a2e33; --fg: #faf5ec; --muted: #c9b2a6; --line: #6e5248; --line-soft: #4a3a3e; --out: #1c1418; --side: #2a2024;
+  --pri: #f0834e; --pri-fg: #2a1810; --pri-line: #ffb08a; --pri-side: #a8502a; --bad: #ff8a7a; --chip: #43353a; --sel: #2e3a52; --sel-line: #5aa8d8; --face-bg: #2e3246;
+  --wait: #edb417; --wait-fg: #2a1e10; --wait-soft: #4a3a1e; --warn-bg: #4a2420; --warn-fg: #ffb4a8; --warn-line: #e85a4a; --ok: #3fc168; --track: #4a3a3e;
+  --me: #2f5a50; --me-fg: #e8fff8; --me-line: #8fd6c2; --input-bg: #2a2024; --input-line: #6e5248; --code-bg: #2a2024; --seg-on: none; --shadow: none;
+  --floor-a: #2a2024; --floor-b: #2f2428; --plank: #4a3530; --plank-line: #3a2a26; }
+/* B 전용: 계단 모서리 테두리(네 방향 그림자 겹치기 — 귀퉁이 한 칸이 빠진다) + 아래쪽 바닥판 두께 4px */
+[data-c=b] .box, [data-c=b] .btn, [data-c=b] .msg, [data-c=b] .sw, [data-c=b] .alert, [data-c=b] .input, [data-c=b] .select, [data-c=b] .chip, [data-c=b] .face, [data-c=b] .seg, [data-c=b] .code, [data-c=b] .badge, [data-c=b] .bar, [data-c=b] .switch {
+  --o: var(--line); box-shadow: 2px 0 0 0 var(--o), -2px 0 0 0 var(--o), 0 2px 0 0 var(--o), 0 -2px 0 0 var(--o), inset 0 -4px 0 0 var(--side); margin: 2px; }
+[data-c=b] .chip, [data-c=b] .badge, [data-c=b] .code, [data-c=b] .face, [data-c=b] .bar, [data-c=b] .switch, [data-c=b] .seg, [data-c=b] .input, [data-c=b] .select { box-shadow: 2px 0 0 0 var(--o), -2px 0 0 0 var(--o), 0 2px 0 0 var(--o), 0 -2px 0 0 var(--o); }
+[data-c=b] .btn.pri { --o: var(--pri-line); box-shadow: 2px 0 0 0 var(--o), -2px 0 0 0 var(--o), 0 2px 0 0 var(--o), 0 -2px 0 0 var(--o), inset 0 -4px 0 0 var(--pri-side), inset 2px 2px 0 0 rgba(255,255,255,.35); padding-bottom: 10px; }
+[data-c=b] .btn { padding-bottom: 10px; }
+[data-c=b] .msg.me { --o: var(--me-line); --side: transparent; }
+[data-c=b] .alert { --o: var(--warn-line); --side: transparent; }
+[data-c=b] .badge { --o: #a87a00; }
+[data-c=b] .sw.on { outline: none; --o: var(--pri); box-shadow: 2px 0 0 0 var(--o), -2px 0 0 0 var(--o), 0 2px 0 0 var(--o), 0 -2px 0 0 var(--o), 0 0 0 4px var(--o), inset 0 -4px 0 0 var(--side); }
+[data-c=b] .sw .c { border-radius: 0; }
+[data-c=b] .staff.sel { outline: none; box-shadow: inset 4px 0 0 0 var(--sel-line); }
+[data-c=b] .tab.on { border-bottom: 4px solid var(--pri); }
+[data-c=b] .top { box-shadow: inset 0 -2px 0 0 var(--line); border: 0; }
+[data-c=b] .tabs, [data-c=b] .composer, [data-c=b] .band { border: 0; box-shadow: inset 0 -2px 0 0 var(--line-soft); }
+[data-c=b] .composer { box-shadow: inset 0 2px 0 0 var(--line-soft); }
+[data-c=b] .set-row + .set-row { border-top: 2px dashed var(--line-soft); }
+[data-c=b] .tool { border: 0; box-shadow: none; background: repeating-linear-gradient(90deg, var(--line-soft) 0 4px, transparent 4px 8px) left bottom / 100% 2px no-repeat, var(--chip); }
+[data-c=b] .chk i { border: 0; box-shadow: 0 0 0 2px var(--line); border-radius: 0; }
+/* 바탕: 마루(목록 왼쪽 띠) · 바닥 타일(바탕) — 사무실 그림 색 그대로, 아주 옅게 */
+[data-c=b] .frame { background: repeating-conic-gradient(var(--floor-a) 0 25%, var(--floor-b) 0 50%) 0 0 / 32px 32px; box-shadow: 0 0 0 2px var(--out); }
+[data-c=b] .wood { background: repeating-linear-gradient(180deg, var(--plank) 0 14px, var(--plank-line) 14px 16px); }
+
+/* ═════════════ A. 레트로 오피스 게임 — 모든 글자 도트 글꼴, 진한 외곽선 + 딱 떨어지는 그림자 + 눌리는 버튼 + RPG 대화창 ═════════════ */
+[data-c=a] { --body-font: G14; --head-font: G11B, G11; --meta-font: G11; --label-font: G11; --btn-font: G11B, G11; --name-font: G14; --code-font: G11;
+  --body-size: 15px; --head-size: 12px; --meta-size: 12px; --label-size: 12px; --btn-size: 12px; --name-size: 15px; --code-size: 12px;
+  --bw: 0px; --r: 0; --r-btn: 0; --r-face: 0; --r-dot: 0; --frame-r: 0; }
+[data-c=a][data-m=light] { --bg: #e8c79a; --chrome: #faf5ec; --card: #fffcf5; --fg: #3a2a32; --muted: #5a4250; --line: #3a2a32; --line-soft: #c9b6a4; --out: #3a2a32; --hi: #ffffff; --lo: #e2cbaa; --drop: rgba(92,66,82,.55);
+  --pri: #8f80e6; --pri-fg: #1e1640; --pri-hi: #c4bbff; --pri-lo: #6c5cc7; --bad: #b8382a; --chip: #f3e3ca; --sel: #fff1bf; --sel-line: #3a2a32; --face-bg: #a8dcf2;
+  --wait: #edb417; --wait-fg: #3a2a32; --wait-soft: #ffe58f; --warn-bg: #b8382a; --warn-fg: #fffcf5; --warn-line: #3a2a32; --ok: #3fc168; --track: #e2cbaa;
+  --me: #8fd6c2; --me-fg: #1e3a32; --me-line: #3a2a32; --input-bg: #fffcf5; --input-line: #3a2a32; --code-bg: #2b2f42; --code-fg: #9fe3ff; --seg-on: none; --shadow: none;
+  --tile-a: #ecc999; --tile-b: #e2bb88; }
+[data-c=a][data-m=dark] { --bg: #1d1a2a; --chrome: #2b2f42; --card: #343a52; --fg: #faf5ec; --muted: #b9b6cc; --line: #0e0c16; --line-soft: #4a5068; --out: #0e0c16; --hi: #4f5778; --lo: #262a3c; --drop: rgba(0,0,0,.6);
+  --pri: #9b86d8; --pri-fg: #160f30; --pri-hi: #c9bbf2; --pri-lo: #6a58a8; --bad: #ff8a7a; --chip: #2b2f42; --sel: #4a4060; --sel-line: #edb417; --face-bg: #4a5068;
+  --wait: #edb417; --wait-fg: #2a1e10; --wait-soft: #4a4026; --warn-bg: #a83a2e; --warn-fg: #fffcf5; --warn-line: #0e0c16; --ok: #3fc168; --track: #262a3c;
+  --me: #2f6a5c; --me-fg: #e8fff8; --me-line: #0e0c16; --input-bg: #1d1a2a; --input-line: #0e0c16; --code-bg: #12101c; --code-fg: #9fe3ff; --seg-on: none; --shadow: none;
+  --tile-a: #1d1a2a; --tile-b: #211e30; }
+[data-c=a] .frame { background: repeating-conic-gradient(var(--tile-a) 0 25%, var(--tile-b) 0 50%) 0 0 / 32px 32px; box-shadow: 0 0 0 4px var(--out); }
+/* 창(패널): 외곽선 2px(귀퉁이 빠짐) + 안쪽 밝은 줄(왼쪽 위)·어두운 줄(오른쪽 아래) + 오른쪽 아래 딱 떨어지는 그림자 4px */
+[data-c=a] .box, [data-c=a] .msg, [data-c=a] .sw, [data-c=a] .alert {
+  --o: var(--out); margin: 2px 6px 6px 2px;
+  box-shadow: 2px 0 0 0 var(--o), -2px 0 0 0 var(--o), 0 2px 0 0 var(--o), 0 -2px 0 0 var(--o), inset 2px 2px 0 0 var(--hi), inset -2px -2px 0 0 var(--lo), 6px 6px 0 0 var(--drop); }
+[data-c=a] .input, [data-c=a] .select, [data-c=a] .chip, [data-c=a] .face, [data-c=a] .seg, [data-c=a] .badge, [data-c=a] .bar, [data-c=a] .switch {
+  --o: var(--out); margin: 2px; box-shadow: 2px 0 0 0 var(--o), -2px 0 0 0 var(--o), 0 2px 0 0 var(--o), 0 -2px 0 0 var(--o), inset 2px 2px 0 0 var(--lo); }
+[data-c=a] .code { margin: 2px; box-shadow: 0 0 0 2px var(--out); color: var(--code-fg); border: 0; }
+/* 버튼: 위는 밝고 아래 4px는 진한 '받침' — 누르면 받침이 사라지며 2px 내려간다 */
+[data-c=a] .btn { --o: var(--out); margin: 2px 2px 4px; padding: 7px 12px 9px;
+  box-shadow: 2px 0 0 0 var(--o), -2px 0 0 0 var(--o), 0 2px 0 0 var(--o), 0 -2px 0 0 var(--o), inset 2px 2px 0 0 var(--hi), inset -2px -4px 0 0 var(--lo), 0 4px 0 0 var(--o); }
+[data-c=a] .btn.pri { box-shadow: 2px 0 0 0 var(--o), -2px 0 0 0 var(--o), 0 2px 0 0 var(--o), 0 -2px 0 0 var(--o), inset 2px 2px 0 0 var(--pri-hi), inset -2px -4px 0 0 var(--pri-lo), 0 4px 0 0 var(--o); }
+[data-c=a] .btn.pressed { transform: translateY(4px); box-shadow: 2px 0 0 0 var(--o), -2px 0 0 0 var(--o), 0 2px 0 0 var(--o), 0 -2px 0 0 var(--o), inset 2px 2px 0 0 var(--pri-lo); }
+[data-c=a] .msg.me { --hi: rgba(255,255,255,.35); --lo: rgba(0,0,0,.12); }
+[data-c=a] .alert { --hi: rgba(255,255,255,.3); --lo: rgba(0,0,0,.2); }
+[data-c=a] .sw.on { outline: none; background: var(--sel); }
+[data-c=a] .sw.on::before { content: '▶'; font: 12px G11; position: absolute; left: -14px; top: 34px; color: var(--fg); }
+[data-c=a] .sw { position: relative; }
+[data-c=a] .sw .c { border-radius: 0; box-shadow: 0 0 0 2px var(--out); }
+[data-c=a] .top { background: var(--chrome); border: 0; box-shadow: inset 0 -2px 0 0 var(--out), inset 0 -4px 0 0 var(--lo); }
+[data-c=a] .tabs { border: 0; box-shadow: inset 0 -2px 0 0 var(--out); background: var(--chrome); }
+[data-c=a] .tab.on { background: var(--card); border: 0; box-shadow: inset 2px 0 0 0 var(--out), inset -2px 0 0 0 var(--out), inset 0 2px 0 0 var(--out), inset 0 -3px 0 0 var(--pri); }
+[data-c=a] .tab.on::before { content: '▶'; font-size: 10px; }
+[data-c=a] .composer { border: 0; box-shadow: inset 0 2px 0 0 var(--out); }
+[data-c=a] .band { border: 0; background: var(--wait); color: var(--wait-fg); box-shadow: inset 0 -2px 0 0 var(--out); }
+[data-c=a] .staff.sel { outline: none; background: var(--sel); box-shadow: inset 0 0 0 2px var(--sel-line); }
+[data-c=a] .staff.sel::before { content: '▶'; font: 12px G11; margin-right: -4px; }
+[data-c=a] .set-row + .set-row { border-top: 2px solid var(--line-soft); }
+[data-c=a] .tool { border: 0; background: var(--code-bg); color: var(--code-fg); box-shadow: 0 0 0 2px var(--out); margin: 2px; }
+[data-c=a] .chk i { border: 0; border-radius: 0; box-shadow: 0 0 0 2px var(--out), inset 2px 2px 0 0 var(--lo); }
+[data-c=a] .label { text-transform: none; }
+/* RPG 대화창: 직원 말은 이름표가 붙은 창, 끝에 ▼ 깜빡임 */
+[data-c=a] .msg.npc { max-width: 100%; position: relative; margin-top: 12px; }
+[data-c=a] .msg.npc .nm { position: absolute; top: -12px; left: 8px; font: 12px G11B, G11; padding: 2px 6px; background: var(--pri); color: var(--pri-fg); box-shadow: 0 0 0 2px var(--out); }
+[data-c=a] .msg.npc .cur { float: right; animation: blink 1s steps(1) infinite; font-size: 10px; margin-top: 4px; }
+@keyframes blink { 50% { opacity: 0; } }
+/* HP 바처럼 칸이 끊긴 막대 */
+[data-c=a] .bar i, [data-c=b] .bar i { background: repeating-linear-gradient(90deg, var(--ok) 0 6px, transparent 6px 8px); }
+.wood { display: none; }
+[data-c=b] .wood { display: block; }
+
+/* 비교 시트 */
+.compare { display: grid; grid-template-columns: 140px repeat(3, 1fr); gap: 18px; align-items: start; }
+.compare .h { font: 700 15px var(--sans); }
+.compare .h small { display: block; font-weight: 500; font-size: 12px; opacity: .7; margin-top: 4px; line-height: 1.4; }
+.mini { width: 380px; }
+.mini .frame { width: 380px; height: auto; }
+
+/* 시안 바꿔 보기 버튼 줄 (시안 전용) */
+#nav { position: sticky; top: 0; z-index: 9; display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; padding: 12px 32px; background: #fffcf5; border-bottom: 2px solid #3a2a32; font-family: var(--sans); }
+#nav .nt { font-weight: 700; font-size: 14px; color: #3a2a32; }
+#nav .grp { display: flex; gap: 4px; }
+#nav button { font: 600 13px var(--sans); padding: 7px 12px; border: 2px solid #3a2a32; background: #fff; color: #3a2a32; cursor: pointer; }
+#nav button.on { background: #3a2a32; color: #fffcf5; }
+/* 대비 표 */
+table { border-collapse: collapse; font-size: 13px; background: #fff; color: #222; }
+td, th { border: 1px solid #ccc; padding: 6px 10px; text-align: left; }
+.sample { padding: 4px 8px; display: inline-block; }
+</style>
+</head>
+<body>
+<div id="nav">
+  <span class="nt">특별 테마 시안</span>
+  <span class="grp"><button data-v="a">A 레트로 게임</button><button data-v="b">B 따뜻한 도트 (추천)</button><button data-v="c">C 변수만</button><button data-v="compare">세 안 비교</button><button data-v="contrast">글자 대비 표</button></span>
+  <span class="grp modes"><button data-m="light">라이트</button><button data-m="dark">다크</button></span>
+</div>
+<div id="app"></div>
+<script>
+// ── 도트 아이콘: 10×10 칸, 칸 하나 = 2px (사무실 그림과 같은 배율). # 외곽선색 · o 포인트색 · w 밝은색 · y 노랑 ──
+const ICONS = {
+  chat: ['.########.','#wwwwwwww#','#wwwwwwww#','#w##w##ww#','#wwwwwwww#','#wwwwwwww#','.###ww###.','...#w#....','...##.....','..........'],
+  stamp: ['...####...','...#oo#...','...#oo#...','....##....','..######..','.#oooooo#.','##########','#wwwwwwww#','##########','..........'],
+  gear: ['....##....','.##.##.##.','.#oooooo#.','..#o##o#..','###o##o###','###o##o###','..#o##o#..','.#oooooo#.','.##.##.##.','....##....'],
+  people: ['..##..##..','.#ww##oo#.','.#ww##oo#.','..##..##..','.####.###.','#wwww#ooo#','#wwww#ooo#','#wwww#ooo#','##########','..........'],
+  sun: ['....##....','.#..##..#.','...####...','..#yyyy#..','###yyyy###','###yyyy###','..#yyyy#..','...####...','.#..##..#.','....##....'],
+  moon: ['...####...','..#ww##...','.#ww#.....','#ww#......','#ww#......','#ww#......','#www#...#.','.#www###..','..#####...','..........'],
+  send: ['#.........','##........','#o##......','#ooo##....','#ooooo##..','#ooooo##..','#ooo##....','#o##......','##........','#.........'],
+  check: ['..........','........##','.......##.','......##..','##...##...','.##.##....','..###.....','...#......','..........','..........'],
+  x: ['..........','.##....##.','..##..##..','...####...','....##....','...####...','..##..##..','.##....##.','..........','..........'],
+  file: ['#######...','#wwwww##..','#wwwww#w#.','#wwwww####','#w####www#','#wwwwwwww#','#w#####ww#','#wwwwwwww#','##########','..........'],
+  bell: ['....##....','...#yy#...','..#yyyy#..','..#yyyy#..','..#yyyy#..','.#yyyyyy#.','##########','....##....','..........','..........'],
+  warn: ['....##....','...#yy#...','...#yy#...','..#y##y#..','..#y##y#..','.#yy##yy#.','.#yyyyyy#.','#yyy##yyy#','##########','..........'],
+  list: ['..........','##.######.','##.######.','..........','##.######.','##.######.','..........','##.######.','##.######.','..........'],
+}
+function ico(name, cls = 'ico', ink = 'currentColor', o = 'var(--pri)', w = 'var(--card)') {
+  const rows = ICONS[name]; let r = ''
+  rows.forEach((row, y) => [...row].forEach((ch, x) => {
+    const f = ch === '#' ? ink : ch === 'o' ? o : ch === 'w' ? w : ch === 'y' ? '#edb417' : null
+    if (f) r += `<rect x="${x}" y="${y}" width="1" height="1" fill="${f}"/>`
+  }))
+  return `<svg class="${cls}" viewBox="0 0 10 10" shape-rendering="crispEdges">${r}</svg>`
+}
+// C(변수만)는 아이콘을 바꾸지 못한다 → 지금 앱의 부드러운 선 아이콘 그대로
+const LINE = {
+  chat: '<path d="M5 5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-8l-4 3v-3H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z"/>',
+  stamp: '<path d="M9 3h6v6H9zM5 13h14v4H5zM4 20h16"/>', gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/>',
+  people: '<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-3 3-5 6-5s6 2 6 5M15 15c3 0 6 1.5 6 4"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M5 19l1.5-1.5M17.5 6.5 19 5"/>', moon: '<path d="M20 14A8 8 0 1 1 10 4a6 6 0 0 0 10 10Z"/>',
+  send: '<path d="M4 4l17 8-17 8 3-8z"/>', check: '<path d="M5 12l4 4 10-10"/>', x: '<path d="M6 6l12 12M18 6 6 18"/>', file: '<path d="M6 3h8l4 4v14H6zM14 3v4h4"/>',
+  bell: '<path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4zM10 21h4"/>', warn: '<path d="M12 3 2 20h20zM12 10v4M12 17v.5"/>', list: '<path d="M8 6h12M8 12h12M8 18h12M4 6h.5M4 12h.5M4 18h.5"/>',
+}
+const lineIco = (n, cls = 'ico') => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${LINE[n]}</svg>`
+
+// ── 직원 얼굴: 10×10 칸 머리·어깨 (사무실 직원 그림의 머리 큰 비율·자두색 외곽선) ──
+const FACE = ['..######..','.#hhhhhh#.','#hhhhhhhh#','#hssssssh#','#s#ss#ss##','#ssssssss#','.#ssssss#.','..######..','.#tttttt#.','#tttttttt#']
+function face(hair, skin, top, glasses) {
+  let r = ''
+  FACE.forEach((row, y) => [...row].forEach((ch, x) => {
+    let f = ch === '#' ? '#3a2a32' : ch === 'h' ? hair : ch === 's' ? skin : ch === 't' ? top : null
+    if (y === 4 && x === 8) f = skin
+    if (y === 4 && (x === 2 || x === 5)) f = '#3a2a32'
+    if (f) r += `<rect x="${x}" y="${y}" width="1" height="1" fill="${f}"/>`
+  }))
+  if (glasses) r += '<rect x="1" y="4" width="3" height="1" fill="none" stroke="#3a2a32" stroke-width=".3"/>'
+  return `<span class="face"><svg viewBox="0 0 10 10" shape-rendering="crispEdges">${r}</svg></span>`
+}
+const STAFF = [
+  { n: '정리드', job: '리더 · 개발 총괄', hair: '#4a3426', skin: '#f6d2b0', top: '#5aa8d8', st: 'work', tok: 7 },
+  { n: '이디자', job: '디자이너 · 특별 테마 시안', hair: '#8a4b2a', skin: '#f8dcc0', top: '#f2a7b8', st: 'wait', tok: 4, sel: true, badge: 2 },
+  { n: '김기획', job: '기획 · 다음 버전 정리', hair: '#1e1e26', skin: '#f0c49c', top: '#8fd6c2', st: 'work', tok: 5 },
+  { n: '박프론', job: '프론트엔드 · 화면 개편', hair: '#d8b45a', skin: '#f6cbb0', top: '#f0834e', st: 'err', tok: 9 },
+  { n: '최검수', job: '검수 · 쉬는 중', hair: '#665a66', skin: '#d8a880', top: '#9b86d8', st: 'idle', tok: 1 },
+]
+const ST = { work: ['일하는 중', '#3fc168'], wait: ['결재 기다림', '#edb417'], idle: ['쉬는 중', '#9a8f96'], err: ['문제 생김', '#e85a4a'] }
+
+let C = 'a'
+const I = (n, cls) => C === 'c' ? lineIco(n, cls) : ico(n, cls)
+const dot = (color) => C === 'c' ? `<span class="dot" style="background:${color}"></span>`
+  : `<svg class="ico s" viewBox="0 0 4 4" shape-rendering="crispEdges" style="width:8px;height:8px"><rect width="4" height="4" fill="${color}"/><rect width="4" height="1" y="3" fill="rgba(0,0,0,.25)"/></svg>`
+
+function screenList() {
+  const rows = STAFF.map(s => `
+    <div class="staff ${s.sel ? 'sel' : ''}">
+      ${face(s.hair, s.skin, s.top)}
+      <div class="grow">
+        <div class="n">${s.n}</div>
+        <div class="st">${dot(ST[s.st][1])}<span class="meta">${ST[s.st][0]}</span><span class="meta job">· ${s.job.split(' · ')[1]}</span></div>
+      </div>
+      ${s.badge ? `<span class="badge">결재 ${s.badge}</span>` : ''}
+    </div>`).join('')
+  return `<div class="frame">
+    <div class="top">${I('people')}<span class="t">직원</span><span class="sub">5명 · 일하는 중 2</span></div>
+    <div class="wood" style="height:8px"></div>
+    <div class="body">
+      <div class="alert">${I('warn', 'ico s')}<span style="flex:1">박프론에게 문제가 생겼어요</span><span>보기 ›</span></div>
+      <div class="group-h"><span class="label">디자인 팀</span></div>
+      <div class="box" style="padding:2px 0">${rows}</div>
+      <div class="box" style="padding:10px 12px;display:flex;flex-direction:column;gap:7px">
+        <div style="display:flex;justify-content:space-between"><span class="label">이번 주 요금제 사용</span><span class="meta">62%</span></div>
+        <div class="bar"><i style="width:62%"></i></div>
+      </div>
+    </div></div>`
+}
+
+function screenChat() {
+  const npc = (t, last) => C === 'a'
+    ? `<div class="msg npc"><span class="nm">이디자</span>${t}${last ? '<span class="cur">▼</span>' : ''}</div>`
+    : `<div class="msg">${t}</div>`
+  return `<div class="frame">
+    <div class="top">${face('#8a4b2a', '#f8dcc0', '#f2a7b8')}<div style="flex:1"><div class="t">이디자</div><div class="sub">디자이너 · 결재 기다림</div></div>${I('x')}</div>
+    <div class="tabs"><span class="tab on">${I('chat', 'ico s')}대화</span><span class="tab">${I('stamp', 'ico s')}결재 <span class="badge">2</span></span><span class="tab">${I('list', 'ico s')}기록</span></div>
+    <div class="band">${I('bell', 'ico s')}<span style="flex:1">결재 2건이 기다리고 있어요</span><span>결재 탭 ›</span></div>
+    <div class="body">
+      <div class="msg me">특별 테마 시안 3가지 만들어 줘. 라이트·다크 둘 다.</div>
+      ${npc('네, 사무실 그림 색부터 확인할게요.')}
+      <div class="tool">${I('file', 'ico s')}<span>파일을 읽어요 · isoArt.ts</span></div>
+      <div class="tool">${I('file', 'ico s')}<span>그림을 봐요 · A-scene.png</span></div>
+      ${npc('외곽선은 자두색, 그림자는 따뜻한 밤색이에요. 이 두 색을 화면 테두리에 쓸게요.', true)}
+    </div>
+    <div class="composer"><div class="input">이디자에게 일 시키기…</div><span class="btn pri">${I('send', 'ico s')}</span></div>
+  </div>`
+}
+
+function screenSettings() {
+  const sw = (name, cols, on) => `<div class="sw ${on ? 'on wide' : ''}"><span class="c">${cols.map(c => `<i style="background:${c}"></i>`).join('')}</span>${name}</div>`
+  return `<div class="frame">
+    <div class="top">${I('gear')}<span class="t">설정 · 화면</span></div>
+    <div class="body">
+      <div class="label">색 테마</div>
+      <div class="box sec">
+        <div class="swatches">
+          ${sw('라벤더', ['#6C5CE7', '#ECEAF6'])}${sw('파랑', ['#2A67FF', '#EAEEF6'])}${sw('테라코타', ['#C8643B', '#F3E9E1'])}${sw('세이지', ['#4F7F5F', '#E7EEE6'])}
+        </div>
+        <div class="label">특별 테마</div>
+        <div class="swatches">
+          ${sw('도트 사무실', ['#f0834e', '#fffcf5', '#3a2a32'], true)}
+        </div>
+      </div>
+      <div class="label">화면 밝기</div>
+      <div class="seg"><span>${I('sun', 'ico s')}밝게</span><span class="on">${I('moon', 'ico s')}어둡게</span><span>기기 따라</span></div>
+      <div class="box">
+        <div class="set-row"><div class="grow"><div>업무 모드</div><div class="meta">사무실 그림·레벨을 숨겨요</div></div><span class="switch"><b></b></span></div>
+        <div class="set-row"><div class="grow"><div>움직임 줄이기</div><div class="meta">깜빡임·흔들림을 멈춰요</div></div><span class="switch on"><b></b></span></div>
+        <div class="set-row"><div class="grow"><div>글자 크기</div></div><span class="select">보통 ▾</span></div>
+      </div>
+    </div></div>`
+}
+
+function screenApproval() {
+  return `<div class="frame">
+    <div class="top">${I('stamp')}<span class="t">결재</span><span class="sub">기다리는 것 2</span></div>
+    <div class="body">
+      <div class="box appr">
+        <div class="appr-h">${face('#d8b45a', '#f6cbb0', '#f0834e')}<div style="flex:1"><div class="label">박프론 · 2분 전</div><div class="what">파일을 고쳐도 될까요?</div></div></div>
+        <div class="code">Dashboard.tsx<br>+ 12줄 · − 4줄</div>
+        <div class="meta">직원 목록 맨 위에 알림 한 줄을 넣어요.</div>
+        <div class="chk"><i></i>이 폴더는 앞으로 묻지 않기</div>
+        <div class="btns"><span class="btn pri">${I('check', 'ico s')}승인</span><span class="btn bad">${I('x', 'ico s')}반려</span></div>
+      </div>
+      <div class="box appr">
+        <div class="appr-h">${face('#1e1e26', '#f0c49c', '#8fd6c2')}<div style="flex:1"><div class="label">김기획 · 질문</div><div class="what">다음 버전 이름을 정해 주세요</div></div></div>
+        <div class="btns"><span class="btn">v1.3.3</span><span class="btn">v1.4.0</span></div>
+        <div class="btns"><span class="btn">${I('chat', 'ico s')}직접 답하기</span></div>
+      </div>
+    </div></div>`
+}
+
+const NAMES = { a: ['A. 레트로 오피스 게임', '글자·테두리·버튼까지 모두 도트. 게임 메뉴창처럼 진한 외곽선과 딱 떨어지는 그림자'],
+  b: ['B. 따뜻한 도트 사무실', '본문은 보통 글꼴로 읽기 편하게. 제목·숫자·버튼·아이콘만 도트, 계단 모서리와 바닥판 두께'],
+  c: ['C. 가벼운 도트 (변수만)', '지금 있는 색·모서리·그림자 값만 바꾼 것. 글꼴·아이콘·모서리 모양은 그대로'] }
+const q = new URLSearchParams(location.search)
+const app = document.getElementById('app')
+const nav = document.getElementById('nav')
+let M = q.get('m') || 'light'
+let VIEW = q.get('view') || (q.get('c') || 'a')
+function render() {
+  document.body.classList.toggle('dark-page', M === 'dark')
+  nav.querySelectorAll('[data-v]').forEach(b => b.classList.toggle('on', b.dataset.v === VIEW))
+  nav.querySelectorAll('[data-m]').forEach(b => b.classList.toggle('on', b.dataset.m === M))
+  nav.querySelector('.modes').style.visibility = VIEW === 'contrast' ? 'hidden' : 'visible'
+
+if (VIEW === 'compare') {
+  let h = `<div class="sheet"><div class="sheet-h"><h1>특별 테마 — 세 안 비교</h1><p>${M === 'dark' ? '다크' : '라이트'} · 같은 화면, 다른 방식</p></div><div class="row">`
+  for (const c of ['a', 'b', 'c']) {
+    C = c
+    h += `<div><div class="cap" style="font-size:14px;opacity:.9">${NAMES[c][0]}</div><div class="cap" style="max-width:360px;line-height:1.45">${NAMES[c][1]}</div>
+      <div data-c="${c}" data-m="${M}" style="display:flex;flex-direction:column;gap:18px">${screenApproval()}</div></div>`
+  }
+  app.innerHTML = h + '</div></div>'
+} else if (VIEW === 'contrast') {
+  const lum = (h) => { const v = [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255).map(c => c <= .03928 ? c / 12.92 : ((c + .055) / 1.055) ** 2.4); return .2126 * v[0] + .7152 * v[1] + .0722 * v[2] }
+  const cr = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return ((x + .05) / (y + .05)).toFixed(1) }
+  const probe = document.createElement('div'); document.body.appendChild(probe)
+  const pairs = [['본문 글자 / 카드', '--fg', '--card'], ['흐린 글자 / 카드', '--muted', '--card'], ['흐린 글자 / 바탕', '--muted', '--bg'], ['주 버튼 글자 / 주 버튼', '--pri-fg', '--pri'], ['반려 글자 / 카드', '--bad', '--card'], ['배지 글자 / 노랑', '--wait-fg', '--wait'], ['알림 글자 / 알림 바탕', '--warn-fg', '--warn-bg'], ['내 말풍선', '--me-fg', '--me'], ['외곽선 / 카드 (테두리 보임)', '--line', '--card']]
+  let h = '<div class="sheet"><h1 style="font:700 20px var(--sans);margin-bottom:12px">글자 대비 (WCAG, 4.5 이상이면 본문 OK · 3 이상이면 큰 글자·테두리 OK)</h1><table><tr><th>짝</th>'
+  const combos = []; for (const c of ['a', 'b', 'c']) for (const m of ['light', 'dark']) combos.push([c, m])
+  combos.forEach(([c, m]) => h += `<th>${c.toUpperCase()} ${m === 'light' ? '라이트' : '다크'}</th>`); h += '</tr>'
+  for (const [nm, f, b] of pairs) {
+    h += `<tr><td>${nm}</td>`
+    for (const [c, m] of combos) {
+      probe.dataset.c = c; probe.dataset.m = m
+      const cs = getComputedStyle(probe); const fv = cs.getPropertyValue(f).trim(), bv = cs.getPropertyValue(b).trim()
+      const r = cr(fv, bv)
+      h += `<td style="color:${+r < (f === '--line' ? 3 : 4.5) ? '#c00' : 'inherit'}"><span class="sample" style="background:${bv};color:${fv}">가나 Aa</span> ${r}</td>`
+    }
+    h += '</tr>'
+  }
+  app.innerHTML = h + '</table></div>'
+} else {
+  C = VIEW
+  app.innerHTML = `<div class="sheet"><div class="sheet-h"><h1>${NAMES[C][0]} · ${M === 'dark' ? '다크' : '라이트'}</h1><p>${NAMES[C][1]}</p></div>
+    <div class="row" data-c="${C}" data-m="${M}">
+      <div><div class="cap">① 직원 목록</div>${screenList()}</div>
+      <div><div class="cap">② 직원 패널 · 대화</div>${screenChat()}</div>
+      <div><div class="cap">③ 설정 · 화면</div>${screenSettings()}</div>
+      <div><div class="cap">④ 결재 카드</div>${screenApproval()}</div>
+    </div></div>`
+}
+}
+nav.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return
+  if (b.dataset.v) VIEW = b.dataset.v
+  if (b.dataset.m) M = b.dataset.m
+  render()
+})
+render()
+
+</script>
+</body>
+</html>

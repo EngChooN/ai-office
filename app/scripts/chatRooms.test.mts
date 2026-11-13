@@ -217,8 +217,8 @@ test('랩 방 받는 사람: 멘션 없으면 랩 리드, 리드가 없거나 �
   assert.equal(pickRoomResponder('프론트엔드 화면', noLead.leadId, cs), 'kim')
 })
 
-test('머리말: 팀 방 [팀이름 방], 랩 방 [랩이름 랩]', () => {
-  assert.equal(roomHead(findRoom('lab:L1', [dev], [lab])!), '[검색개선 랩]')
+test('머리말: 팀 방 [팀이름 방], 프로젝트 방 [이름 프로젝트]', () => {
+  assert.equal(roomHead(findRoom('lab:L1', [dev], [lab])!), '[검색개선 프로젝트]')
   assert.equal(roomHead(findRoom('dev', [dev], [lab])!), '[개발팀 방]')
 })
 

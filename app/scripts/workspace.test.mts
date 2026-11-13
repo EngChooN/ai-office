@@ -394,12 +394,26 @@ test('parseRemotePost: 모양이 틀리면 버린다', () => {
 
 // ── 마법사 ────────────────────────────────────────────
 
-test('마법사: 4장 이동·뒤로·이름·색, 휴대폰·이 PC 보여 주기는 첫 장에서 끝', () => {
+test('기기 추가 창: 휴대폰·이 PC 보여 주기도 같은 4장 — 준비물 장은 이 PC 준비가 끝나야 넘어가고, 켜져 있으면 바로 연결 장', () => {
+  let s = wizardReducer(initialWizard('orange'), { type: 'pickWhat', what: 'phone' })
+  assert.equal(canNext(s), true)
+  s = wizardReducer(s, { type: 'next' })
+  assert.equal(s.step, 'where')
+  assert.equal(canNext(s), true, '휴대폰은 연결 방식(이미 하나가 골라져 있음)')
+  s = wizardReducer(s, { type: 'next' })
+  assert.equal(s.step, 'prep')
+  assert.equal(wizardReducer(s, { type: 'next', isThisPcReady: false }).step, 'prep', 'Tailscale이 안 되면 못 넘어감')
+  s = wizardReducer(s, { type: 'next', isThisPcReady: true })
+  assert.equal(s.step, 'connect')
+  assert.equal(canFinish(s), false, '휴대폰은 추가 단추가 아니라 완료로 닫는다')
+  const host = wizardReducer(wizardReducer(initialWizard('teal'), { type: 'pickWhat', what: 'host' }), { type: 'skipToConnect' })
+  assert.equal(host.step, 'connect')
+  assert.equal(wizardReducer(wizardReducer(initialWizard('teal'), { type: 'pickWhat', what: 'pc' }), { type: 'skipToConnect' }).step, 'what', '다른 PC 보기는 건너뛰지 않는다')
+})
+
+test('마법사: 다른 PC 보기 4장 이동·뒤로·이름·색', () => {
   let s = initialWizard('orange')
   assert.equal(canNext(s), false)
-  s = wizardReducer(s, { type: 'pickWhat', what: 'phone' })
-  assert.equal(canNext(s), false)
-  assert.equal(wizardReducer(s, { type: 'next' }).step, 'what')
   s = wizardReducer(s, { type: 'pickWhat', what: 'pc' })
   s = wizardReducer(s, { type: 'next' })
   assert.equal(s.step, 'where')

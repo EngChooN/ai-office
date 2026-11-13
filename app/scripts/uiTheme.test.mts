@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import { test } from 'node:test'
-import { DEFAULT_UI_MODE, DEFAULT_UI_THEME, resolveMode, sanitizeUi, UI_MODES, UI_THEME_CACHE_KEY, UI_THEME_GROUPS, UI_THEME_IDS, type UiMode } from '../src/shared/uiTheme.ts'
+import { DARK_ONLY_THEMES, DEFAULT_UI_MODE, DEFAULT_UI_THEME, resolveMode, themeMode, sanitizeUi, UI_MODES, UI_THEME_CACHE_KEY, UI_THEME_GROUPS, UI_THEME_IDS, type UiMode } from '../src/shared/uiTheme.ts'
 import { DEFAULT_SETTINGS, withSettingsDefaults } from '../src/shared/types.ts'
 import { DICT } from '../src/shared/i18n/dict/index.ts'
 import { LANGS } from '../src/shared/i18n/index.ts'
@@ -63,7 +63,7 @@ test('index.html 첫 페인트 스크립트가 resolveMode·sanitizeUi와 같은
       for (const dark of [true, false]) {
         const got = run(JSON.stringify({ mode, theme }), dark)
         const want = sanitizeUi({ uiMode: mode, uiTheme: theme })
-        assert.deepEqual([got.mode, got.theme], [resolveMode(want.uiMode, dark), want.uiTheme], `${mode}/${theme}/${dark}`)
+        assert.deepEqual([got.mode, got.theme], [resolveMode(themeMode(want.uiTheme, want.uiMode), dark), want.uiTheme], `${mode}/${theme}/${dark}`)
       }
     }
   }
@@ -73,7 +73,8 @@ test('index.html 첫 페인트 스크립트가 resolveMode·sanitizeUi와 같은
 
 // ── index.css 토큰 세트 검사 (gen.mjs와 같은 WCAG 공식) ──
 // :root는 라벤더 다크 폴백과 같은 블록이라 세트가 값을 빼먹으면 다크 값이 라이트로 새어 든다 → 세트마다 직접 정의해야 한다
-const CSS = fs.readFileSync(new URL('../src/renderer/index.css', import.meta.url), 'utf8')
+// 특별 테마(레트로) 세트는 theme-retro.css에 따로 있다
+const CSS = ['index.css', 'theme-retro.css'].map((f) => fs.readFileSync(new URL(`../src/renderer/${f}`, import.meta.url), 'utf8')).join('\n')
 const SETS = [...CSS.matchAll(/\[data-theme='(\w+)'\]\[data-mode='(light|dark)'\]\s*\{([^}]*)\}/g)].map(([, theme, mode, body]) => ({
   theme,
   mode,
@@ -94,7 +95,8 @@ const mix = (a: string, b: string, p: number) => '#' + rgb(a).map((v, i) => Math
 const HOVER_P = Number(/--destructive-hover:\s*color-mix\(in srgb, var\(--destructive\) (\d+)%/.exec(CSS)?.[1]) / 100
 
 test('index.css: 모든 테마 × 라이트·다크 세트가 있고 필수 토큰을 직접 정의한다', () => {
-  for (const id of UI_THEME_IDS) for (const mode of ['light', 'dark']) assert.ok(SETS.some((s) => s.theme === id && s.mode === mode), `${id}-${mode} 세트 없음`)
+  // 다크 전용 테마(레트로)는 라이트 세트가 없다
+  for (const id of UI_THEME_IDS) for (const mode of DARK_ONLY_THEMES.includes(id) ? ['dark'] : ['light', 'dark']) assert.ok(SETS.some((s) => s.theme === id && s.mode === mode), `${id}-${mode} 세트 없음`)
   for (const s of SETS) for (const k of REQUIRED) assert.ok(s.token(k), `${s.theme}-${s.mode}: --${k} 없음`)
   // hover 토큰: 모드별 섞는 색이 정의돼 있어야 한다
   assert.match(CSS, /\[data-mode='light'\]\s*\{[^}]*--hover-mix:\s*#000000/)

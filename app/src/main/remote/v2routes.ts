@@ -9,9 +9,7 @@ import type { Attachment } from '../../shared/types'
 import { bearerToken, hashToken, type AuthGuard } from './auth.ts'
 import { acceptHello, CAPABILITIES_HEADER, helloRequestsView, HELLO_METHOD, NO_CAPABILITIES, parseCapabilities, shapeFor } from './capabilities.ts'
 import type { EventHub } from './events.ts'
-import { PEER_PATHS } from '../../shared/peerProtocol.ts'
 import { PeerRoutes } from './peerRoutes.ts'
-import { SyncRoutes } from './syncRoutes.ts'
 import { preflight, type RemoteRequest } from './handler.ts'
 import type { RemoteResponse } from './protocol.ts'
 import type { AccessLogger, HandledResponse } from './server.ts'
@@ -54,8 +52,6 @@ export interface V2RouteContext {
   onViewRequest?(slot: { id: string; label: string }): void
   /** 다른 PC 연결(짝짓기·피어 경로) — 없으면 /v2/pair·/v2/peer는 404 */
   peer?: PeerRoutes
-  /** 파일 복사본·변경 묶음 경로(/v2/peer/workspaces·blobs·changesets) — 없으면 404 */
-  sync?: SyncRoutes
 }
 
 const json = (res: ServerResponse, r: RemoteResponse, extraHeaders: Record<string, string> = {}) => {
@@ -96,8 +92,7 @@ export class V2Routes {
     const isEvents = path === '/v2/events'
     const file = path.match(FILE_PATH)
     const isUpload = path === '/v2/attachments'
-    // 피어 첨부 올리기도 바이트 본문이라 거절할 때 연결을 닫는다
-    const isByteUpload = isUpload || path === PEER_PATHS.attachments
+    const isByteUpload = isUpload
     const isPair = PeerRoutes.isPairPath(path)
     const isPeer = PeerRoutes.isPeerPath(path)
     if (!isEvents && !file && !isUpload && !isPair && !isPeer) return false
@@ -124,16 +119,11 @@ export class V2Routes {
       if (!this.ctx.peer) reply(v2Fail('not_found'))
       else {
         const slot = this.ctx.guard.peerSlotOf(tokenHashOf(req.headers.authorization))?.id ?? null
-        if (SyncRoutes.isSyncPath(path)) {
-          if (this.ctx.sync) void this.ctx.sync.handle(req, res, path, slot, access)
-          else reply(v2Fail('not_found'))
-          return true
-        }
-        void this.ctx.peer.peer(req, res, path, new URL(req.url ?? '/', 'http://x').searchParams, slot, access)
+        this.ctx.peer.peer(req, res, path, slot, access)
       }
       return true
     }
-    // 첨부 올리기·파일 받기는 휴대폰 열쇠와 '화면 보기' 열쇠만 — 일 주고받기만 하는 PC 열쇠는 안 된다
+    // 첨부 올리기·파일 받기는 휴대폰 열쇠와 '화면 보기' 열쇠만 — 짝만 지은 PC 열쇠는 안 된다
     const slotKey = this.ctx.guard.peerSlotOf(tokenHashOf(req.headers.authorization))
     if (slotKey && !slotKey.view && !isEvents) {
       reply(v2Fail('scope_denied'), isByteUpload ? { Connection: 'close' } : {})
@@ -265,10 +255,10 @@ export class V2Routes {
     }
     const method = typeof (body as { method?: unknown })?.method === 'string' ? (body as { method: string }).method : undefined
     const tokenHash = tokenHashOf(req.authorization)
-    // 피어 토큰: hello와 (자기 일의) 결재 처리 말고는 OfficeApi 어느 것도 부르지 못한다 (설계서 8-1 허용 목록).
+    // 피어 토큰: hello 말고는 OfficeApi 어느 것도 부르지 못한다 (설계서 8-1 허용 목록).
     // 단 '화면 보기' 열쇠는 저쪽이 허락한 뒤부터 휴대폰과 같은 길(분류표·인자 제한·원격 표시)로 부른다
     const peerSlot = this.ctx.guard.peerSlotOf(tokenHash)
-    if (peerSlot && !peerSlot.view && method !== HELLO_METHOD) return this.ctx.peer ? (this.ctx.peer.callAsPeer(peerSlot.id, method, (body as { args?: unknown }).args ?? []) as HandledResponse) : v2Fail('scope_denied')
+    if (peerSlot && !peerSlot.view && method !== HELLO_METHOD) return v2Fail('scope_denied', method ? { method } : {})
 
     // 연결 메시지 hello: 화면이 쓸 능력을 서버가 아는지 확인한다 (OfficeApi 메서드가 아님, 아무것도 저장하지 않음 — 능력은 요청 헤더로 판정).
     // 같은 내용을 몇 번 보내도 결과가 같아 요청 키를 보지 않는다

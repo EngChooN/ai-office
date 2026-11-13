@@ -5,10 +5,10 @@ export default {
   // HireDialog.tsx — 처음에는 이름·직무만, 나머지는 '자세히'
   'guideHint.hire.more': { ko: '자세히 설정', en: 'More settings', ja: '詳細設定', zh: '更多设置' },
   'guideHint.hire.moreDesc': {
-    ko: '생김새·팀·작업 폴더·AI 엔진·성능 등급·결재 방식·업무 지침 — 안 바꿔도 기본값으로 바로 일할 수 있어요.',
-    en: 'Appearance, team, work folder, AI engine, performance level, approval mode, guidelines — the defaults work fine if you skip this.',
-    ja: '見た目・チーム・作業フォルダ・AIエンジン・性能レベル・承認方式・業務指針 — 変えなくても既定値ですぐ働けます。',
-    zh: '外观、团队、工作文件夹、AI 引擎、性能等级、审批方式、工作准则 — 不改也能用默认设置直接开始工作。',
+    ko: '팀·프로젝트·AI 엔진·성능 등급·결재 방식·업무 지침 — 안 바꿔도 기본값으로 바로 일할 수 있어요.',
+    en: 'Team, projects, AI engine, performance level, approval mode, guidelines — the defaults work fine if you skip this.',
+    ja: 'チーム・プロジェクト・AIエンジン・性能レベル・承認方式・業務指針 — 変えなくても既定値ですぐ働けます。',
+    zh: '团队、项目、AI 引擎、性能等级、审批方式、工作准则 — 不改也能用默认设置直接开始工作。',
   },
   'guideHint.hire.less': { ko: '간단히 보기', en: 'Show less', ja: '簡単に表示', zh: '收起' },
   'guideHint.model.default': {
@@ -77,10 +77,10 @@ export default {
     zh: '员工修改文件或运行程序之前，或请你做选择时，审批会出现在这里。',
   },
   'guideHint.inbox.noStaff': {
-    ko: '아직 직원이 없어요. 직원을 고용해 일을 맡기면 결재가 생겨요.',
-    en: 'No staff yet. Hire someone and give them work to see approvals.',
-    ja: 'まだスタッフがいません。スタッフを雇って仕事を任せると承認が届きます。',
-    zh: '还没有员工。雇用员工并分配工作后就会出现审批。',
+    ko: '아직 직원이 없어요. 직원을 추가해 일을 맡기면 결재가 생겨요.',
+    en: 'No staff yet. Add someone and give them work to see approvals.',
+    ja: 'まだスタッフがいません。スタッフを追加して仕事を任せると承認が届きます。',
+    zh: '还没有员工。添加员工并分配工作后就会出现审批。',
   },
 
   // App.tsx · CoachTour.tsx — 안내를 다시 보는 곳
@@ -92,9 +92,9 @@ export default {
     zh: '随时可以在 设置 › 指南 中重新查看。',
   },
   'guideHint.empty.hint': {
-    ko: '아직 직원이 없어요. 직원을 고용하거나 마켓에서 데려와 일을 맡겨 보세요.',
-    en: 'No staff yet. Hire someone or bring one from the market and give them work.',
-    ja: 'まだスタッフがいません。雇用するかマーケットから連れてきて仕事を任せましょう。',
-    zh: '还没有员工。雇用一位或从市场带来一位，然后分配工作吧。',
+    ko: '아직 직원이 없어요. 직원을 추가하거나 마켓에서 데려와 일을 맡겨 보세요.',
+    en: 'No staff yet. Add someone or bring one from the market and give them work.',
+    ja: 'まだスタッフがいません。追加するかマーケットから連れてきて仕事を任せましょう。',
+    zh: '还没有员工。添加一位或从市场带来一位，然后分配工作吧。',
   },
 } satisfies Record<string, Entry>

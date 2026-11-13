@@ -12,7 +12,7 @@ export default {
   'tray.workingCount': { ko: ' · 작업 중 {n}', en: ' · {n} working', ja: ' · 作業中 {n}', zh: ' · 工作中 {n}' },
   'tray.team': { ko: '팀 · {name}', en: 'Team · {name}', ja: 'チーム · {name}', zh: '团队 · {name}' },
   'tray.noTeam': { ko: '팀 없음', en: 'No team', ja: 'チームなし', zh: '无团队' },
-  'tray.lab': { ko: '랩 · {name}', en: 'Lab · {name}', ja: 'ラボ · {name}', zh: '实验室 · {name}' },
+  'tray.lab': { ko: '프로젝트 · {name}', en: 'Project · {name}', ja: 'プロジェクト · {name}', zh: '项目 · {name}' },
   'tray.external': { ko: '앱 밖 직원 (터미널 등)', en: 'Staff outside the app (e.g. terminal)', ja: 'アプリ外の社員（ターミナルなど）', zh: '应用外的员工（如终端）' },
   'tray.autoDone': { ko: '대신 승인 {done}건 · 대신 답한 질문 {answered}건', en: '{done} approved for you · {answered} questions answered for you', ja: '代理承認 {done}件 · 代理回答 {answered}件', zh: '代为批准 {done} 件 · 代为回答 {answered} 个问题' },
   'tray.autoStop': { ko: '자동결재 끄기', en: 'Turn off auto-approve', ja: '自動承認をオフにする', zh: '关闭自动审批' },
@@ -82,7 +82,7 @@ export default {
   'dialog.remoteOn': { ko: '휴대폰 연결 켜기', en: 'Turn on phone link', ja: 'スマホ接続をオンにする', zh: '开启手机连接' },
   'dialog.remoteAsk': { ko: '휴대폰 연결을 켤까요?', en: 'Turn on the phone link?', ja: 'スマホ接続をオンにしますか？', zh: '要开启手机连接吗？' },
   'dialog.remoteWarn': {
-    ko: 'QR을 찍은 휴대폰은 이 PC의 AI Office를 모두 조작할 수 있어요(고용·설정·결재 포함). QR을 남에게 보이지 말고, 휴대폰을 잃어버리면 QR을 다시 만드세요.',
+    ko: 'QR을 찍은 휴대폰은 이 PC의 AI Office를 모두 조작할 수 있어요(직원 추가·설정·결재 포함). QR을 남에게 보이지 말고, 휴대폰을 잃어버리면 QR을 다시 만드세요.',
     en: "A phone that scans the QR can control everything in AI Office on this PC (including hiring, settings and approvals). Don't show the QR to others, and regenerate it if you lose the phone.",
     ja: 'QRを読み取ったスマートフォンは、このPCのAI Officeをすべて操作できます（採用・設定・承認を含む）。QRを他人に見せず、スマートフォンをなくしたらQRを作り直してください。',
     zh: '扫描二维码的手机可以操作这台电脑上 AI Office 的全部功能（包括聘用、设置和审批）。请勿让他人看到二维码，丢失手机后请重新生成二维码。',

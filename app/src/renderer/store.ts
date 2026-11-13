@@ -27,6 +27,15 @@ interface OfficeState extends OfficeSnapshot {
   openChatRoom(room: string | null): void
   /** 랩 회의 열기 등에서 회의실 화면에 미리 채울 참석자 */
   meetingPreset: { topic: string; participantIds: string[] } | null
+  /** 직원 카드의 예시·버튼이 그 직원 패널 지시창에 채울 글 (nonce가 바뀔 때마다 한 번 채움, 보내기는 대표가) */
+  staffDraft: { staffId: string; text: string; nonce: number } | null
+  setStaffDraft(draft: { staffId: string; text: string } | null): void
+  /** 직원 패널을 열며 바로 보여 줄 탭 (카드 '확인하기'·결재함·단체방 '이 직원 보기' → 결재 탭). nonce가 바뀔 때마다 한 번 */
+  staffTab: { staffId: string; tab: 'approvals'; nonce: number } | null
+  /** 직원 패널을 결재 탭으로 연다 */
+  openStaffApprovals(staffId: string): void
+  /** 적용한 탭 요청을 비운다 (다시 열 때 저절로 결재 탭이 되지 않게) */
+  clearStaffTab(): void
   /** 첫 스냅샷을 받았는지 (설정을 읽기 전 안내창이 깜빡이지 않게) */
   isLoaded: boolean
   /** 업무 매뉴얼 목록 (파일에서 읽으므로 필요할 때 새로 고친다) */
@@ -121,6 +130,11 @@ export const useOffice = create<OfficeState>((set) => ({
   setChatRoom: (chatRoom) => set({ chatRoom }),
   openChatRoom: (chatRoom) => set((s) => ({ chatRoom, view: shownView('chat', s.settings.isWorkMode) })),
   meetingPreset: null,
+  staffDraft: null,
+  setStaffDraft: (draft) => set((s) => ({ staffDraft: draft && { ...draft, nonce: (s.staffDraft?.nonce ?? 0) + 1 } })),
+  staffTab: null,
+  openStaffApprovals: (staffId) => set((s) => ({ selectedId: staffId, staffTab: { staffId, tab: 'approvals', nonce: (s.staffTab?.nonce ?? 0) + 1 } })),
+  clearStaffTab: () => set({ staffTab: null }),
   isLoaded: false,
   manuals: [],
   refreshManuals: async () => set({ manuals: await window.office.listManuals() }),

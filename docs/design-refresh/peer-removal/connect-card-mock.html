@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<title>다른 기기 연결 — 시안</title>
+<style>
+  :root { --bg:#f6f5fb; --card:#fff; --fg:#1f1d2b; --muted:#6e6a85; --border:#e4e1ef; --primary:#7c4ddb; --primary-soft:#efe8fd; --ok:#1f9d6b; --warn:#b7791f; --warn-soft:#fdf5e6; --err:#d14343; --err-soft:#fdecec; --teal:#0E8C7E; --orange:#C8571F; }
+  html.dark { --bg:#15131c; --card:#1d1a27; --fg:#ece9f6; --muted:#9b96b3; --border:#2f2b3d; --primary:#b089ff; --primary-soft:#2c2442; --ok:#4fd39a; --warn:#f0b450; --warn-soft:#3a2f1c; --err:#ff7b7b; --err-soft:#3d2224; --teal:#3DD6C0; --orange:#FF9A62; }
+  * { box-sizing:border-box }
+  body { margin:0; font:14px/1.5 -apple-system, "Apple SD Gothic Neo", "Pretendard", sans-serif; background:var(--bg); color:var(--fg) }
+  header { display:flex; gap:12px; align-items:center; padding:14px 24px; border-bottom:1px solid var(--border); background:var(--card); position:sticky; top:0; z-index:5 }
+  header h1 { font-size:15px; margin:0 }
+  header .sp { flex:1 }
+  .seg { display:flex; border:1px solid var(--border); border-radius:999px; overflow:hidden }
+  .seg button { border:0; background:transparent; color:var(--fg); padding:6px 12px; cursor:pointer; font:inherit; font-size:12px }
+  .seg button.on { background:var(--primary); color:#fff }
+  main { display:grid; grid-template-columns: 1fr 1fr; gap:28px; padding:28px; max-width:1300px; margin:0 auto }
+  @media (max-width: 1000px) { main { grid-template-columns:1fr } }
+  .label { font-size:12px; color:var(--muted); margin:0 0 8px; font-weight:600 }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:18px 18px 16px; display:flex; flex-direction:column; gap:12px }
+  .card h2 { margin:0; font-size:16px }
+  .desc { color:var(--muted); font-size:12.5px; margin:-8px 0 0 }
+  .band { border-radius:10px; padding:9px 12px; font-size:12.5px; background:var(--warn-soft); color:var(--warn); border:1px solid color-mix(in oklab, var(--warn) 30%, transparent) }
+  .band.err { background:var(--err-soft); color:var(--err); border-color:color-mix(in oklab, var(--err) 30%, transparent) }
+  .row { display:flex; align-items:center; gap:8px; flex-wrap:wrap }
+  .status b { color:var(--ok) } .status.off b { color:var(--muted) }
+  .sp { flex:1 }
+  .btn { border:1px solid var(--border); background:var(--card); color:var(--fg); border-radius:999px; padding:5px 12px; font:inherit; font-size:12.5px; cursor:pointer }
+  .btn.primary { background:var(--primary); border-color:var(--primary); color:#fff }
+  .btn.ghost { border-color:transparent; background:transparent }
+  .btn.sm { padding:2px 9px; font-size:11.5px }
+  .btn.danger { background:var(--err); border-color:var(--err); color:#fff }
+  h3 { font-size:12.5px; margin:0 }
+  .dev { border:1px solid var(--border); border-radius:12px; padding:8px 12px; display:flex; align-items:center; gap:10px; font-size:12.5px }
+  .dev .ic { width:20px; text-align:center }
+  .dev .name { font-weight:600 } .dev .tag { color:var(--muted); font-weight:400 }
+  .dev .sub { color:var(--muted); font-size:12px } .dev .sub.on { color:var(--ok) }
+  .dev .acts { margin-left:auto; display:flex; gap:4px; flex-wrap:wrap }
+  details { border:1px solid var(--border); border-radius:12px; padding:9px 12px; font-size:12.5px }
+  details summary { cursor:pointer; font-weight:600 } details summary span { color:var(--muted); font-weight:400 }
+  details.danger summary { color:var(--err) }
+  details .in { margin-top:8px; display:flex; flex-direction:column; gap:8px; color:var(--muted) }
+  .empty { border:1px dashed var(--border); border-radius:12px; padding:18px; text-align:center; color:var(--muted); display:flex; flex-direction:column; gap:10px; align-items:center }
+  .dialog { background:var(--card); border:1px solid var(--border); border-radius:18px; padding:20px; box-shadow:0 20px 50px rgba(0,0,0,.15); display:flex; flex-direction:column; gap:12px }
+  .dialog h2 { margin:0; font-size:16px } .dialog .step { color:var(--muted); font-size:12px; margin-top:-8px }
+  .choice { border:1px solid var(--border); border-radius:12px; padding:11px 13px; cursor:pointer; text-align:left; background:transparent; color:var(--fg); font:inherit }
+  .choice.on { border-color:var(--primary); background:var(--primary-soft) }
+  .choice b { display:block; font-size:13.5px } .choice span { color:var(--muted); font-size:12px }
+  .foot { display:flex; justify-content:flex-end; gap:8px; margin-top:6px }
+  .qr { width:132px; height:132px; border-radius:10px; background: repeating-conic-gradient(var(--fg) 0 25%, var(--card) 0 50%) 0 0/16px 16px; border:6px solid var(--card); outline:1px solid var(--border) }
+  .steps { display:flex; gap:6px; font-size:11.5px; color:var(--muted) } .steps i { font-style:normal; padding:2px 8px; border-radius:999px; border:1px solid var(--border) } .steps i.on { background:var(--primary-soft); color:var(--primary); border-color:var(--primary) }
+  .note { font-size:11.5px; color:var(--muted) }
+  .col { display:flex; flex-direction:column; gap:22px }
+  .tabs { display:flex; gap:6px; flex-wrap:wrap }
+  .legend { grid-column:1/-1; font-size:12.5px; color:var(--muted); background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px 14px }
+</style>
+</head>
+<body>
+<header>
+  <h1>설정 › 연결 — '다른 기기 연결' 카드 하나 (시안)</h1>
+  <span class="sp"></span>
+  <div class="seg" id="cardState">
+    <button data-s="normal" class="on">평소(기기 있음)</button>
+    <button data-s="empty">처음(기기 없음)</button>
+    <button data-s="error">문제 생김</button>
+  </div>
+  <div class="seg" id="mode"><button data-m="light" class="on">라이트</button><button data-m="dark">다크</button></div>
+</header>
+<main>
+  <div class="legend">왼쪽 = 설정 카드(위에서 아래 순서), 오른쪽 = <b>＋ 기기 추가</b>를 누르면 뜨는 창. 위쪽 버튼으로 카드 상태·라이트/다크, 창 안 갈래를 바꿔 볼 수 있어요. 지금 있는 기능은 모두 카드나 창 안에 그대로 있어요.</div>
+
+  <div class="col">
+    <div>
+      <p class="label">설정 › 연결 · 카드</p>
+      <section class="card" id="card"></section>
+    </div>
+  </div>
+
+  <div class="col">
+    <div>
+      <p class="label">＋ 기기 추가 창 · 갈래 고르기</p>
+      <div class="tabs" id="branch" style="margin-bottom:10px">
+        <button class="btn sm primary" data-b="what">1장 무엇을</button>
+        <button class="btn sm" data-b="phone1">휴대폰 ① 방식</button>
+        <button class="btn sm" data-b="phone2">휴대폰 ② 준비물</button>
+        <button class="btn sm" data-b="phone">휴대폰 ③ QR</button>
+        <button class="btn sm" data-b="pc1">PC 보기 ① 어디</button>
+        <button class="btn sm" data-b="pc2">PC 보기 ② 준비물</button>
+        <button class="btn sm" data-b="pc">PC 보기 ③ 연결</button>
+        <button class="btn sm" data-b="host">이 PC 보여 주기 갈래</button>
+      </div>
+      <section class="dialog" id="dialog"></section>
+    </div>
+  </div>
+</main>
+<script>
+const card = document.getElementById('card'), dialog = document.getElementById('dialog')
+const devices = `
+  <h3>연결된 기기 3대</h3>
+  <div class="dev"><span class="ic">📱</span><div><div class="name">휴대폰</div><div class="sub on">지금 연결됨</div></div></div>
+  <div class="dev"><span class="ic" style="color:var(--teal)">🖥</span><div><div class="name">회사 PC <span class="tag">· 이 PC에서 보는 PC</span></div><div class="sub on">연결됨</div></div>
+    <div class="acts"><button class="btn sm">열기</button><button class="btn sm ghost">이름·색 바꾸기</button><button class="btn sm ghost">끊기</button></div></div>
+  <div class="dev"><span class="ic">🖥</span><div><div class="name">집 노트북 <span class="tag">· 이 PC를 보는 PC</span></div><div class="sub">5분 전 접속</div></div>
+    <div class="acts"><button class="btn sm ghost">끊기</button></div></div>`
+const tail = `
+  <div class="row"><button class="btn primary" onclick="setB('what')">＋ 기기 추가</button></div>
+  <details><summary>고급 설정 <span>· 연결 방식 밖에서도(Tailscale) · 연결 번호 47900</span></summary>
+    <div class="in">
+      <div class="row">연결 방식 · 밖에서도 쓰기 (Tailscale) <button class="btn sm">바꾸기</button></div>
+      <div>연결 번호 47900 · Tailscale 주소 100.88.1.2:47900</div>
+      <div class="row"><button class="btn sm">공유기 직접 설정 안내</button></div>
+      <div class="note">보안 확인 글자 sha256/AbC…  ·  최근 접속 기록</div>
+    </div></details>
+  <details class="danger"><summary>휴대폰 모두 끊기 <span>· 잃어버렸을 때</span></summary>
+    <div class="in"><div>새 QR을 만들어 지금 휴대폰의 연결을 끊어요. 다시 쓰려면 새 QR을 찍어야 해요.</div><div><button class="btn sm danger">모두 끊고 새 QR 만들기</button></div></div></details>`
+const head = `<h2>다른 기기 연결</h2><p class="desc">휴대폰이나 내 다른 PC에서 이 사무실을 쓰고, 다른 PC의 사무실도 여기서 열어요.</p>`
+const states = {
+  normal: head + `<div class="row status"><span><b>●</b> <b>연결 켜짐</b> <span class="note">· 밖에서도 쓸 수 있어요</span></span><span class="sp"></span><button class="btn">끄기</button></div>` + devices + tail,
+  empty: head + `<div class="row status off"><span><b>●</b> 연결 꺼짐 <span class="note">· 휴대폰·다른 PC에서 이 PC를 쓰려면 켜요</span></span><span class="sp"></span><button class="btn">켜기</button></div>
+    <div class="empty">아직 연결된 기기가 없어요. ‘기기 추가’로 휴대폰이나 다른 PC를 연결해 보세요.<button class="btn primary" onclick="setB('what')">＋ 기기 추가</button></div>` + tail.replace(/<div class="row"><button class="btn primary"[^]*?<\/div>/, ''),
+  error: head + `<div class="band err">연결 번호 47900을 다른 프로그램이 쓰고 있어 켜지 못했어요. <button class="btn sm">번호 바꾸기</button></div>
+    <div class="band">연결 방식을 바꿔서 휴대폰은 QR을 다시 찍어야 할 수 있어요.</div>
+    <div class="row status off"><span><b style="color:var(--err)">●</b> 켰지만 열리지 않음</span><span class="sp"></span><button class="btn">끄기</button></div>` + devices + tail,
+}
+const choice = (on, icon, t, d, b) => `<button class="choice ${on ? 'on' : ''}" onclick="setB('${b}')"><b>${icon} ${t}</b><span>${d}</span></button>`
+const dialogs = {
+  what: `<h2>기기 추가</h2><div class="step">1단계 · 무엇을 연결할까요</div>
+    ${choice(false, '📱', '휴대폰으로 이 사무실 쓰기', '휴대폰 앱으로 QR을 찍거나 코드를 넣어요', 'phone1')}
+    ${choice(false, '🖥', '다른 PC 사무실을 여기서 보기', '회사 PC·집 PC의 직원·대화·결재를 여기서 그대로 다뤄요', 'pc1')}
+    ${choice(false, '↗', '다른 PC가 이 PC를 보게 하기', '이 PC에서 연결 코드를 만들어 그 PC에 알려 줘요', 'host')}
+    <div class="note">내 기기끼리만 연결하세요. 연결한 기기는 이 PC의 AI Office를 모두 쓸 수 있어요.</div>
+    <div class="foot"><button class="btn ghost">닫기</button></div>`,
+  phone1: `<h2>기기 추가 · 휴대폰</h2><div class="steps"><i class="on">① 어디서 쓰실 건가요</i><i>② 준비물</i><i>③ QR 찍기</i></div>
+    ${choice(false, '🏠', '집·사무실 안에서만 (같은 와이파이)', '휴대폰과 PC가 같은 와이파이에 있을 때만 써요. 따로 설치할 것이 없어요.', 'phone2')}
+    ${choice(true, '🌍', '밖에서도 쓰기 (추천)', '지하철·카페 등 어디서든 써요. 무료 앱 Tailscale을 PC와 휴대폰에 한 번 설치해요.', 'phone2')}
+    <div class="note">모르겠으면 ‘밖에서도 쓰기’를 고르세요. 나중에 고급 설정에서 바꿀 수 있어요. <a href="#" onclick="return false" style="color:var(--primary)">공유기 직접 설정(고급)</a></div>
+    <div class="foot"><button class="btn" onclick="setB('what')">뒤로</button><button class="btn primary" onclick="setB('phone2')">다음</button></div>`,
+  phone2: `<h2>기기 추가 · 휴대폰</h2><div class="steps"><i>① 어디서</i><i class="on">② 준비물</i><i>③ QR 찍기</i></div>
+    <div style="font-size:12.5px;background:var(--primary-soft);border-radius:10px;padding:10px 12px"><b>Tailscale이 뭔가요?</b><br/>내 기기끼리만 안전하게 이어 주는 무료 앱이에요(다른 회사 서비스). 밖에서도 휴대폰이 집·회사 PC를 찾아갈 수 있게 해 줘요. 같은 와이파이에서만 쓰면 필요 없어요.</div>
+    <div class="dev"><span class="ic">🖥</span><div><div class="name">1. 이 PC에 설치하고 로그인</div><div class="sub" style="color:var(--warn)">! 아직 설치되지 않았어요</div></div><div class="acts"><button class="btn sm primary">PC용 내려받기 ↗</button><button class="btn sm ghost">다시 확인</button></div></div>
+    <div class="dev" style="align-items:flex-start"><span class="ic">📱</span><div style="flex:1"><div class="name">2. 휴대폰에도 설치하고 <u>같은 계정</u>으로 로그인</div><div class="sub">휴대폰 카메라로 오른쪽 QR을 찍으면 설치 화면이 열려요</div>
+      <div class="row" style="margin-top:6px"><button class="btn sm">iPhone (App Store) ↗</button><button class="btn sm">Android (Google Play) ↗</button></div></div>
+      <div class="qr" style="width:84px;height:84px;background-size:12px 12px"></div></div>
+    <div class="note">↻ 이 PC에서 Tailscale이 켜지면 이 화면이 저절로 다음으로 넘어가요. 회사 PC는 회사 보안 정책 때문에 설치가 막혀 있을 수 있어요.</div>
+    <div class="note">링크는 Tailscale 공식 다운로드 페이지(tailscale.com/download)로만 연결해요.</div>
+    <div class="foot"><button class="btn" onclick="setB('phone1')">뒤로</button><button class="btn primary" onclick="setB('phone')">다음</button></div>`,
+  phone: `<h2>기기 추가 · 휴대폰</h2><div class="steps"><i>① 연결 방식</i><i>② 준비물</i><i class="on">③ QR 찍기</i></div>
+    <div class="note">① 밖에서도 쓰기 ✓ · ② Tailscale 준비됨 ✓ · 연결이 꺼져 있었다면 여기서 [연결 켜기]를 먼저 눌러요</div>
+    <div class="note">휴대폰에 AI Office 앱이 없다면: 앱 받는 곳 안내 링크</div>
+    <div class="row" style="gap:16px;align-items:flex-start"><div class="qr"></div>
+      <div style="display:flex;flex-direction:column;gap:6px;font-size:12.5px"><b>휴대폰 앱에서 QR을 찍어 주세요</b><span class="note">카메라가 안 되면 앱의 ‘코드로 연결’에 입력</span><span style="font:600 16px monospace;letter-spacing:2px">7M3Q-H9XK-2VTB</span><span class="note">이 QR은 한 번만 쓸 수 있어요</span></div></div>
+    <div class="band">이미 연결된 휴대폰이 있으면 먼저 “새 휴대폰을 연결하면 지금 휴대폰이 끊겨요” 확인을 받아요.</div>
+    <div class="foot"><button class="btn" onclick="setB('phone2')">뒤로</button><button class="btn primary">완료</button></div>`,
+  pc1: `<h2>기기 추가 · 다른 PC 보기</h2><div class="steps"><i class="on">① 그 PC는 어디 있나요</i><i>② 준비물</i><i>③ 연결·이름</i></div>
+    ${choice(false, '🏠', '같은 와이파이에 있어요', '같은 집·같은 사무실 안. 따로 설치할 것이 없어요.', 'pc2')}
+    ${choice(true, '🌍', '다른 곳에 있어요 (집 ↔ 회사 등)', '두 PC 모두에 무료 앱 Tailscale을 설치하고 같은 계정으로 로그인해요.', 'pc2')}
+    <div class="note">모르겠으면 ‘다른 곳에 있어요’를 고르세요. 같은 와이파이여도 그대로 연결돼요.</div>
+    <div class="foot"><button class="btn" onclick="setB('what')">뒤로</button><button class="btn primary" onclick="setB('pc2')">다음</button></div>`,
+  pc2: `<h2>기기 추가 · 다른 PC 보기</h2><div class="steps"><i>① 어디</i><i class="on">② 준비물</i><i>③ 연결·이름</i></div>
+    <div style="font-size:12.5px;background:var(--primary-soft);border-radius:10px;padding:10px 12px"><b>Tailscale이 뭔가요?</b><br/>내 기기끼리만 안전하게 이어 주는 무료 앱이에요(다른 회사 서비스). 서로 다른 곳에 있는 PC끼리 찾아갈 수 있게 해 줘요.</div>
+    <div class="dev"><span class="ic">🖥</span><div><div class="name">1. 이 PC에 Tailscale 설치·로그인</div><div class="sub on">✓ 준비됨</div></div><div class="acts"><button class="btn sm">PC용 내려받기 ↗</button></div></div>
+    <div class="dev"><span class="ic">🖥</span><div><div class="name">2. 그 PC에도 설치하고 <u>같은 계정</u>으로 로그인</div><div class="sub">그 PC에서 tailscale.com/download 를 열어 설치해요 (이 PC는 그 PC 상태를 알 수 없어 직접 확인)</div></div><div class="acts"><button class="btn sm">주소 복사</button></div></div>
+    <div class="dev"><span class="ic">⚙</span><div><div class="name">3. 그 PC의 AI Office를 최신으로 하고 설정 › 연결에서 ‘＋ 기기 추가 → 다른 PC가 이 PC를 보게 하기’</div><div class="sub">거기 나온 연결 정보를 복사해 이쪽으로 보내 주세요</div></div></div>
+    <div class="foot"><button class="btn" onclick="setB('pc1')">뒤로</button><button class="btn primary" onclick="setB('pc')">다음</button></div>`,
+  pc: `<h2>기기 추가 · 다른 PC 보기</h2><div class="steps"><i>① 어디 있나요</i><i>② 준비</i><i class="on">③ 연결·이름</i></div>
+        <div style="font-size:12.5px">그 PC 화면의 연결 정보를 붙여 넣어 주세요</div>
+    <div class="dev" style="color:var(--muted)">100.88.4.7:47900 7M3Q-H9XK-2VTB</div>
+    <div class="row" style="font-size:12.5px">이름 <span class="dev" style="padding:4px 10px">회사 PC</span> 색 <span style="width:16px;height:16px;border-radius:50%;background:var(--teal);display:inline-block"></span> <span style="width:16px;height:16px;border-radius:50%;background:var(--orange);display:inline-block;opacity:.5"></span></div>
+    <div class="foot"><button class="btn" onclick="setB('pc2')">뒤로</button><button class="btn primary">추가</button></div>`,
+  host: `<h2>기기 추가 · 이 PC 보여 주기</h2><div class="step">이 PC 연결이 꺼져 있으면 휴대폰과 같은 ① 어디서 → ② 준비물(Tailscale 안내·링크) → 켜기를 먼저 거쳐요</div>
+    <div style="font-size:12.5px"><b>연결 정보를 다른 PC에 보내 주세요</b></div>
+    <div class="dev">이 PC 주소 100.88.1.2:47900 · 연결 코드 <b style="font-family:monospace;letter-spacing:1px">K2V4-9QXM-3TBH</b></div>
+    <div class="row"><button class="btn primary sm">연결 정보 복사</button><span class="note">연결되거나 닫을 때까지 열려 있어요</span></div>
+    <div class="foot"><button class="btn" onclick="setB('what')">뒤로</button><button class="btn">닫기</button></div>`,
+}
+let cs = 'normal', b = 'what'
+function render() {
+  card.innerHTML = states[cs]; dialog.innerHTML = dialogs[b]
+  document.querySelectorAll('#cardState button').forEach((x) => x.classList.toggle('on', x.dataset.s === cs))
+  document.querySelectorAll('#branch button').forEach((x) => x.classList.toggle('primary', x.dataset.b === b))
+}
+function setB(v) { b = v; render() }
+document.querySelectorAll('#cardState button').forEach((x) => (x.onclick = () => { cs = x.dataset.s; render() }))
+document.querySelectorAll('#branch button').forEach((x) => (x.onclick = () => setB(x.dataset.b)))
+document.querySelectorAll('#mode button').forEach((x) => (x.onclick = () => { document.documentElement.classList.toggle('dark', x.dataset.m === 'dark'); document.querySelectorAll('#mode button').forEach((y) => y.classList.toggle('on', y === x)) }))
+render()
+</script>
+</body>
+</html>

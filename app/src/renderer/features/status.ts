@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { Staff, StaffStatus } from '@shared/types'
 import { t, type TKey } from '@shared/i18n'
+import { isAwaitingTeam } from '@shared/delegation'
 
 // 이름은 키로 두고 읽을 때 번역한다 (언어를 바꾸면 바로 바뀌게)
 const meta = (labelKey: TKey, dot: string, text: string) => ({
@@ -18,6 +19,13 @@ export const STATUS_META: Record<StaffStatus, { readonly label: string; dot: str
   offline: meta('status.offline', 'bg-status-idle', 'text-status-idle'),
   error: meta('status.error', 'bg-status-error', 'text-status-error'),
   netWait: meta('status.netWait', 'bg-status-waiting', 'text-status-waiting'),
+}
+
+const AWAITING_TEAM = meta('status.awaitingTeam', 'bg-status-working', 'text-status-working')
+
+/** 직원 한 명의 상태 점·글자. 팀원 일을 기다리는 리더는 쉬는 중이 아니라 '팀원 기다리는 중'(작업 중 색)으로 보인다 */
+export function statusMetaOf(s: Pick<Staff, 'status' | 'awaitingTeam'>) {
+  return isAwaitingTeam(s) ? AWAITING_TEAM : STATUS_META[s.status]
 }
 
 export function formatCost(usd: number) {

@@ -16,7 +16,8 @@ async function until(cond: () => boolean, ms = 1500) {
 test('SSE 해석: 조각난 입력·여러 줄 data·주석·id', () => {
   const p = new SseParser()
   const out: unknown[] = []
-  const feed = (s: string) => p.feed(s, (e) => out.push(e))
+  let comments = 0
+  const feed = (s: string) => p.feed(s, (e) => out.push(e), () => comments++)
   feed('retry: 3000\n\nid: ab:1\nevent: hel')
   feed('lo\ndata: {"a":1}\n\n: keep-alive\n\nevent: x\ndata: l1\ndata: l2\n\n')
   feed('data: 이름없음\r\n\r\n')
@@ -25,6 +26,28 @@ test('SSE 해석: 조각난 입력·여러 줄 data·주석·id', () => {
     { event: 'x', data: 'l1\nl2' },
     { event: 'message', data: '이름없음' },
   ])
+  assert.equal(comments, 1)
+})
+
+test('이벤트 없이 하트비트(주석 줄)만 와도 끊지 않는다 — 화면 보기 권한 없는 열쇠는 hello 뒤로 이것만 온다', async () => {
+  let closed = 0
+  let h0: StreamHandlers | null = null
+  const open: OpenStream = (_p, _hd, h) => {
+    h0 = h
+    queueMicrotask(() => hello(h))
+    return { close: () => void closed++ }
+  }
+  // 시간 여유를 넉넉히 — 전체 시험을 함께 돌려 타이머가 늦어도 흔들리지 않게
+  const t = makeClient(open, { idleMs: 250 })
+  t.c.start()
+  await until(() => t.states.at(-1) === 'online')
+  for (let i = 0; i < 6; i++) {
+    await wait(50)
+    h0!.onAlive?.()
+  }
+  assert.equal(closed, 0)
+  await until(() => closed >= 1) // 하트비트가 끊기면 그때는 다시 붙는다
+  t.c.stop()
 })
 
 /** 가짜 스트림: 열 때마다 시나리오를 돌려준다 */

@@ -89,11 +89,13 @@ fun StartScreen(onScan: () -> Unit, onManual: () -> Unit) {
         Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(Space.s2)) {
             Text(S.get(R.string.onb_step1), style = Type.bodyLarge, color = c.onSurfaceMuted)
             Text(S.get(R.string.onb_step2), style = Type.bodyLarge, color = c.onSurfaceMuted)
+            Text(S.get(R.string.onb_step3), style = Type.bodyLarge, color = c.onSurfaceMuted)
         }
         Spacer(Modifier.height(Space.s5))
-        PrimaryButton(S.get(R.string.btn_scan_qr), onScan, Modifier.fillMaxWidth())
+        PrimaryButton(S.get(R.string.btn_open_camera), onScan, Modifier.fillMaxWidth())
         PlainTextButton(S.get(R.string.manual_btn), onManual, Modifier.fillMaxWidth())
         Spacer(Modifier.height(Space.s3))
+        MutedText(S.get(R.string.onb_wifi_note))
         MutedText(S.get(R.string.onb_camera_note))
     }
 }

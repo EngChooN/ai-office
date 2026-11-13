@@ -1,0 +1,33 @@
+1400 light 사무실 true {"f":{"작업 중":["작업 중"],"휴식":["휴식"]},"ov":0,"docOver":false}
+1400 light 직원 true {"f":{"작업 중":["작업 중"]},"ov":0,"docOver":false}
+1400 light 팀 구성 true {"f":{"조직도":["조직도"]},"ov":0,"docOver":false}
+1400 light 직원 목록 true {"f":{"작업 중":["작업 중"]},"ov":0,"docOver":false}
+1400 light 업무 true {"f":{},"ov":0,"docOver":false}
+1400 light 결재함 true {"f":{},"ov":0,"docOver":false}
+1400 light 대화 true {"f":{},"ov":0,"docOver":false}
+1400 light 노하우 true {"f":{},"ov":0,"docOver":false}
+1400 light 기록 true {"f":{},"ov":0,"docOver":false}
+1400 light 상점 true {"f":{},"ov":1,"docOver":false}
+1400 light 설정 true {"f":{"대시보드":["회사에서 띄워 둘 때 켜세요. 사무실 지도·자금·상점·레벨 같은 게임 요소를 숨기고, 앱을"]},"ov":0,"docOver":false}
+1100 dark 사무실 true {"f":{"작업 중":["작업 중"],"휴식":["휴식"]},"ov":0,"docOver":false}
+1100 dark 직원 true {"f":{"작업 중":["작업 중"]},"ov":0,"docOver":false}
+1100 dark 팀 구성 true {"f":{"조직도":["조직도"]},"ov":0,"docOver":false}
+1100 dark 직원 목록 true {"f":{"작업 중":["작업 중"]},"ov":0,"docOver":false}
+1100 dark 업무 true {"f":{},"ov":0,"docOver":false}
+1100 dark 결재함 true {"f":{},"ov":0,"docOver":false}
+1100 dark 대화 true {"f":{},"ov":2,"docOver":false}
+1100 dark 노하우 true {"f":{},"ov":0,"docOver":false}
+1100 dark 기록 true {"f":{},"ov":0,"docOver":false}
+1100 dark 상점 true {"f":{},"ov":1,"docOver":false}
+1100 dark 설정 true {"f":{"대시보드":["회사에서 띄워 둘 때 켜세요. 사무실 지도·자금·상점·레벨 같은 게임 요소를 숨기고, 앱을"]},"ov":0,"docOver":false}
+900 light 사무실 true {"f":{"작업 중":["작업 중"],"휴식":["휴식"]},"ov":0,"docOver":false}
+900 light 직원 true {"f":{"작업 중":["작업 중"]},"ov":0,"docOver":false}
+900 light 팀 구성 true {"f":{"조직도":["조직도"]},"ov":0,"docOver":false}
+900 light 직원 목록 true {"f":{"작업 중":["작업 중"]},"ov":0,"docOver":false}
+900 light 업무 true {"f":{},"ov":0,"docOver":false}
+900 light 결재함 true {"f":{},"ov":0,"docOver":false}
+900 light 대화 true {"f":{},"ov":2,"docOver":false}
+900 light 노하우 true {"f":{},"ov":0,"docOver":false}
+900 light 기록 true {"f":{},"ov":0,"docOver":false}
+900 light 상점 true {"f":{},"ov":1,"docOver":false}
+900 light 설정 true {"f":{"대시보드":["회사에서 띄워 둘 때 켜세요. 사무실 지도·자금·상점·레벨 같은 게임 요소를 숨기고, 앱을"]},"ov":0,"docOver":false}

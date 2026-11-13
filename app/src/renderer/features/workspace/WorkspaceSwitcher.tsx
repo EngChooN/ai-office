@@ -62,7 +62,7 @@ export function WorkspaceSwitcher() {
                   onClick={() => {
                     close()
                     useOffice.getState().setView('settings')
-                    requestSettingsSection(SECTION_ID.workspaces)
+                    requestSettingsSection(SECTION_ID.remote)
                   }}
                 >
                   {t('workspace.manage')}
@@ -72,7 +72,7 @@ export function WorkspaceSwitcher() {
           </>
         )}
       </PopMenu>
-      {isWizardOpen && <WorkspaceWizard list={list} onClose={() => setIsWizardOpen(false)} />}
+      {isWizardOpen && <WorkspaceWizard list={list} initialWhat="pc" onClose={() => setIsWizardOpen(false)} />}
     </>
   )
 }

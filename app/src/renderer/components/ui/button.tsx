@@ -35,7 +35,8 @@ function Button({
   ...props
 }: React.ComponentProps<'button'> & VariantProps<typeof buttonVariants> & { asChild?: boolean }) {
   const Comp = asChild ? Slot : 'button'
-  return <Comp data-slot="button" className={cn(buttonVariants({ variant, size, className }))} {...props} />
+  // data-variant: 레트로 테마(theme-retro.css)가 종류마다 다른 받침·테두리를 그린다
+  return <Comp data-slot="button" data-variant={variant ?? 'default'} className={cn(buttonVariants({ variant, size, className }))} {...props} />
 }
 
 export { Button, buttonVariants }

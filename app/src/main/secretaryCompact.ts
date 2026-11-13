@@ -54,9 +54,9 @@ export function compactOverview(snap: OfficeSnapshot, section: OverviewSection =
   }
   if (section === 'org') {
     out.push('## 팀')
-    for (const t of snap.teams.filter((x) => x.kind === 'hired')) out.push(`- ${t.name} [${t.id}] · 팀장 ${name(t.leadId) || '없음'} · ${hired.filter((s) => s.teamId === t.id).map((s) => s.name).join(', ') || '팀원 없음'}`)
-    out.push('## 랩')
-    for (const l of snap.labs) out.push(`- ${l.name} [${l.id}] · 리드 ${name(l.leadId) || '없음'} · 멤버 ${l.memberIds.map(name).filter(Boolean).join(', ') || '없음'} · 목표: ${clip(l.goal, 80)}${l.cwd ? ` · 폴더 ${l.cwd}` : ''}`)
+    for (const t of snap.teams.filter((x) => x.kind === 'hired')) out.push(`- ${t.name} [${t.id}] · 리더 ${name(t.leadId) || '없음'} · ${hired.filter((s) => s.teamId === t.id).map((s) => s.name).join(', ') || '팀원 없음'}`)
+    out.push('## 프로젝트')
+    for (const l of snap.labs) out.push(`- ${l.name} [${l.id}] · 리더 ${name(l.leadId) || '없음'} · 멤버 ${l.memberIds.map(name).filter(Boolean).join(', ') || '없음'} · 목표: ${clip(l.goal, 80)}${l.cwd ? ` · 일하는 곳 ${l.cwd}` : ''}`)
   }
   if (section === 'schedules') {
     out.push(`## 예약 업무 (${snap.schedules.length}개)`)

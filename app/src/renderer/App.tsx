@@ -6,6 +6,7 @@ import { Onboarding } from '@/features/Onboarding'
 import { TutorialDone, TutorialGuide, TutorialPicker } from '@/features/Tutorial'
 import { HireDialog } from '@/features/HireDialog'
 import { NavTabs } from '@/features/NavTabs'
+import { NAV_GROUP_DEFS, groupOfView, showsTabRow } from '@/features/navGroups'
 import { Sidebar } from '@/features/Sidebar'
 import { StaffPanel } from '@/features/StaffPanel'
 import { LevelUp } from '@/features/LevelUp'
@@ -130,8 +131,9 @@ function DesktopShell({ children }: { children?: React.ReactNode }) {
 
   return (
     <div className="flex h-full flex-col">
-      {/* 상단 바를 창 드래그 영역으로 쓴다. 맥은 왼쪽 신호등 자리, 윈도우는 오른쪽 위 창 버튼(최소화·최대화·닫기) 자리를 비운다 */}
-      <header className="flex h-11 shrink-0 items-center gap-3 border-b pr-3 pl-20 [-webkit-app-region:drag] win:pr-[144px] win:pl-3 android:pl-3">
+      {/* 상단 바를 창 드래그 영역으로 쓴다. 맥은 왼쪽 신호등 자리, 윈도우는 오른쪽 위 창 버튼(최소화·최대화·닫기) 자리를 비운다.
+          높이는 창 버튼(main titleBarOverlay height 44)과 맞춘 고정 44px — 간격을 키우는 테마(레트로 --spacing)에서도 어긋나지 않게 h-11 대신 픽셀로 */}
+      <header className="flex h-[44px] shrink-0 items-center gap-3 border-b pr-3 pl-20 [-webkit-app-region:drag] win:pr-[144px] win:pl-3 android:pl-3">
         {/* 연결 PC가 없으면 지금과 같은 'AI Office' 글자, 있으면 PC 전환 드롭다운 */}
         <WorkspaceSwitcher />
         {!isWorkMode && (
@@ -169,7 +171,8 @@ function DesktopShell({ children }: { children?: React.ReactNode }) {
       <div className="relative flex min-h-0 flex-1 overflow-hidden">
         <Sidebar />
         <main className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <NavTabs />
+          {/* '대화' 묶음은 왼쪽 방 목록의 회의실 줄로 오가므로 PC에서는 탭 줄을 그리지 않는다 */}
+          {showsTabRow(groupOfView(NAV_GROUP_DEFS, view)?.id, 'desktop') && <NavTabs />}
           <div className="min-h-0 flex-1">
             {/* 처음 여는 화면은 불러오는 동안 빈 칸 (배경 그대로), 받지 못하면 그 자리만 "다시 시도" 안내 (메뉴를 바꾸면 새로 시작) */}
             <LoadErrorBoundary key={view} onRetry={() => retryPage(view)}>

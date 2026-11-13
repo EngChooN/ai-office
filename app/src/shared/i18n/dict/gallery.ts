@@ -11,7 +11,7 @@ export default {
     zh: '把已完成工作的截图、链接和改动文件汇集成卡片。看板任务进入“审核”时，或员工在没有看板任务的工作中上传成果、图片时自动生成。',
   },
   'gallery.filter.staff': { ko: '모든 직원', en: 'All staff', ja: '全社員', zh: '所有员工' },
-  'gallery.filter.lab': { ko: '모든 랩', en: 'All labs', ja: '全ラボ', zh: '所有实验室' },
+  'gallery.filter.lab': { ko: '모든 프로젝트', en: 'All projects', ja: '全プロジェクト', zh: '所有项目' },
   'gallery.period.week': { ko: '최근 7일', en: 'Last 7 days', ja: '直近7日', zh: '最近7天' },
   'gallery.period.month': { ko: '최근 30일', en: 'Last 30 days', ja: '直近30日', zh: '最近30天' },
   'gallery.period.all': { ko: '전체', en: 'All', ja: 'すべて', zh: '全部' },

@@ -5,6 +5,5 @@ export const SECTION_ID = {
   workHours: 'settings-work-hours',
   deskPet: 'settings-desk-pet',
   remote: 'settings-remote',
-  workspaces: 'settings-workspaces',
   hooks: 'settings-hooks',
 } as const

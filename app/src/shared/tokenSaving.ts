@@ -19,7 +19,7 @@ export interface Saver {
   action: SaverAction
 }
 
-type SaverStaff = Pick<Staff, 'id' | 'kind' | 'provider' | 'model' | 'memory' | 'remote'>
+type SaverStaff = Pick<Staff, 'id' | 'kind' | 'provider' | 'model' | 'memory'>
 
 /** 모델을 한 단계 내리는 표 — 새 모델이 생기면 여기 한 줄 */
 const MODEL_STEP_DOWN: Partial<Record<ClaudeModel, { reason: SaverReason; to: ClaudeModel }>> = {
@@ -35,14 +35,14 @@ export function saverFor(s: SaverStaff): Pick<Saver, 'reason' | 'action'> | null
   return null
 }
 
-/** 이번 주 사용량에서 아낄 수 있는 직원을 토큰 많이 쓴 순으로 3명 — 비서·퇴사자·외부·원격 직원은 뺀다 */
+/** 이번 주 사용량에서 아낄 수 있는 직원을 토큰 많이 쓴 순으로 3명 — 비서·퇴사자·외부 직원은 뺀다 */
 export function pickSavers(rows: readonly PayslipRow[], staff: readonly SaverStaff[]): Saver[] {
   const byId = new Map(staff.map((s) => [s.id, s]))
   const savers: Saver[] = []
   for (const r of rows) {
     const s = byId.get(r.staffId)
     const tokens = r.tokensIn + r.tokensOut
-    if (!s || s.kind !== 'hired' || s.remote || tokens <= 0) continue
+    if (!s || s.kind !== 'hired' || tokens <= 0) continue
     const saver = saverFor(s)
     if (saver) savers.push({ staffId: s.id, tokens, ...saver })
   }

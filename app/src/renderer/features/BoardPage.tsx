@@ -379,26 +379,6 @@ function TaskCard({ task }: { task: Task }) {
           </div>
         )
       )}
-      {task.status === 'doing' && !!assignee?.remote?.queued && (
-        <div className="flex items-center gap-1.5">
-          <span className="bg-status-waiting/15 text-status-waiting w-fit rounded px-1.5 py-0.5 text-[11px] font-medium" title={t('peer.queuedHint')}>
-            {t('peer.queued', { n: assignee.remote.queued })}
-          </span>
-          {!IS_REMOTE_SCREEN && !!assignee.remote.queuedJobIds?.length && (
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-6 px-1.5 text-[11px]"
-              onClick={() => {
-                const ids = assignee.remote?.queuedJobIds ?? []
-                if (window.confirm(t('peer.queuedCancelConfirm', { n: ids.length }))) for (const id of ids) void window.office.peerCancelJob(id)
-              }}
-            >
-              {t('peer.queuedCancel')}
-            </Button>
-          )}
-        </div>
-      )}
       {task.status === 'doing' && !run && task.plan?.status !== 'waiting' && (
         <div className="flex gap-1.5">
           {task.plan?.isPaused ? (

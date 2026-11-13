@@ -14,7 +14,6 @@ import { askHookInstalled, hooksInstalled, setAskHookInstalled, setHooksInstalle
 import type { Office } from './office'
 import type { RemoteService } from './remote/service.ts'
 import type { PairKind } from '../shared/peerProtocol'
-import type { ApplyChoice } from '../shared/peerSync'
 import { whenLocalMcpReady } from './mcp/localMcp'
 import { InvalidArgsError } from '../shared/errors'
 import { t } from '../shared/i18n/index.ts'
@@ -31,15 +30,6 @@ export type OfficeHandlers = { [K in OfficeMethod]: (...args: never[]) => unknow
 
 export function createOfficeHandlers(office: Office, remoteApi: () => RemoteService, secretary: () => Secretary, peerApi: () => PeerManager): OfficeHandlers {
   // 연결·짝짓기 실패는 화면 언어의 쉬운 문장으로 알린다 (원인 코드는 문구 키로 옮긴다)
-  /** 화면(또는 휴대폰)에서 온 반영 선택을 믿지 않고 모양을 다시 만든다 */
-  const parseApplyChoice = (c: unknown): ApplyChoice => {
-    const o = (c ?? {}) as Partial<ApplyChoice>
-    if (o.mode !== 'all' && o.mode !== 'safe' && o.mode !== 'files' && o.mode !== 'reject') throw new InvalidArgsError('반영 방식이 올바르지 않아요')
-    const list = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string').slice(0, 5000) : undefined)
-    const files = list(o.files)
-    const sensitiveOk = list(o.sensitiveOk)
-    return { mode: o.mode, ...(files ? { files } : {}), ...(sensitiveOk ? { sensitiveOk } : {}) }
-  }
   const peerCall = async <T>(run: () => T | Promise<T>): Promise<T> => {
     try {
       return await run()
@@ -75,13 +65,6 @@ export function createOfficeHandlers(office: Office, remoteApi: () => RemoteServ
     peerList: () => peerApi().list(),
     peerUnpair: (peerId: string) => peerCall(() => peerApi().unpair(peerId)),
     peerReconnect: (peerId: string) => peerApi().reconnect(peerId),
-    peerRemoteStaff: (peerId: string) => peerCall(() => peerApi().remoteStaff(peerId)),
-    peerAddStaff: (peerId: string, remoteId: string, labId?: string) => peerCall(async () => void (await peerApi().addStaff(peerId, remoteId, labId))),
-    peerRemoveStaff: (staffId: string) => void peerApi().removeStaff(staffId),
-    peerCancelJob: (jobId: string) => void peerApi().cancelJob(jobId),
-    peerChangesetDetail: (changesetId: string) => peerCall(() => peerApi().changesetDetail(changesetId)),
-    peerChangeFileDiff: (changesetId: string, path: string) => peerCall(() => peerApi().changeFileDiff(changesetId, path)),
-    peerApplyChanges: (changesetId: string, choice: ApplyChoice) => peerCall(() => peerApi().applyChanges(changesetId, parseApplyChoice(choice))),
     hire: (input: Parameters<Office['hire']>[0]) => office.hire(input),
     hireMarket: (id: string, provider?: unknown) => hireMarket(office, id, provider ?? undefined),
     fire: (id: string) => office.fire(id),
@@ -194,7 +177,15 @@ export function createOfficeHandlers(office: Office, remoteApi: () => RemoteServ
     saveChatReservation: (input: Parameters<Office['saveChatReservation']>[0]) => office.saveChatReservation(input),
     chatReservationAction: (id: string, action: string) =>
       office.chatReservationAction(id, action === 'send' || action === 'skip' || action === 'pause' || action === 'resume' ? action : 'cancel'),
-    timeline: (since: number) => office.timeline(since),
+    timeline: (since: number, until?: number) => office.timeline(since, typeof until === 'number' ? until : undefined),
+    approvalHistory: (staffId: string, opts?: { beforeId?: number; limit?: number; filter?: string }) => {
+      const f = opts?.filter
+      return office.approvalHistory(String(staffId ?? ''), {
+        beforeId: typeof opts?.beforeId === 'number' ? opts.beforeId : undefined,
+        limit: typeof opts?.limit === 'number' ? opts.limit : undefined,
+        filter: f === 'approved' || f === 'rejected' || f === 'answered' || f === 'auto' ? f : 'all',
+      })
+    },
     staffActivity: (id: string) => office.staffActivity(id),
     dailyReport: (date: number) => office.dailyReport(date),
     payslip: (month: string) => office.payslip(month),

@@ -52,7 +52,7 @@
     <string name="pick_staff">スタッフを選んでください</string>
     <string name="title_staff">スタッフ</string>
     <string name="empty_staff">まだスタッフがいません</string>
-    <string name="empty_staff_hint">スタッフの採用はPCでできます。</string>
+    <string name="empty_staff_hint">スタッフの追加はPCでできます。</string>
     <string name="staff_not_found">スタッフが見つかりません</string>
     <string name="staff_not_found_refreshed">スタッフが見つかりません。一覧を再読み込みしました。</string>
     <string name="current_work">今の作業</string>
@@ -128,8 +128,11 @@
     <string name="settings_language">言語</string>
     <string name="lang_auto">端末の設定に従う</string>
     <string name="onb_title">PCのオフィスに接続します</string>
-    <string name="onb_step1">1. PCのAI Officeで 設定 › スマホ連携 をオンにします。</string>
-    <string name="onb_step2">2. PC画面に表示されたQRコードを読み取ります。</string>
+    <string name="onb_step1">① Tailscaleをオンにする — 自分の端末同士をつなぐ無料アプリです。</string>
+    <string name="onb_step2">② PC画面のQRを読み取る</string>
+    <string name="onb_step3">③ 接続を確認</string>
+    <string name="onb_wifi_note">同じWi-Fiだけで使うなら、Tailscaleなしでそのまま QR を読み取れます。</string>
+    <string name="btn_open_camera">カメラを開く</string>
     <string name="btn_scan_qr">QRコードを読み取る</string>
     <string name="onb_camera_note">カメラはQRを読み取るときだけ使います。</string>
     <string name="cam_perm_title">カメラの権限が必要です</string>
@@ -230,9 +233,9 @@
     <string name="state_connfail_unreach_ts">スマホのTailscaleがオンになっているか確認してください。PCと同じアカウントでログインしている必要があります。</string>
     <string name="state_unreach_body_ts">次のような場合があります。\n· スマホのTailscaleがオフ、またはPCと別のアカウントです\n· PCがスリープ中または電源オフです\n· AI Officeが終了しています</string>
     <string name="qr_unreach_default_ts">PCに届きませんでした。スマホのTailscaleがオンか、PCと同じアカウントか確認してください。</string>
-    <string name="manual_btn">アドレスで接続</string>
-    <string name="manual_title">アドレスで接続</string>
-    <string name="manual_intro">PCのAI Office設定 › スマホ接続に表示されたアドレスと12文字の接続コード（XXXX-XXXX-XXXX）を入力します。Tailscaleアプリをオンにしてください。</string>
+    <string name="manual_btn">コードで接続</string>
+    <string name="manual_title">コードで接続</string>
+    <string name="manual_intro">PCのAI Office 設定 › スマホ連携に表示されたアドレスと12文字の接続コード（XXXX-XXXX-XXXX）を入力します。Tailscaleアプリをオンにしてください。</string>
     <string name="manual_host_label">PCアドレス（Tailscale IP）</string>
     <string name="manual_host_hint">例: 100.64.0.1</string>
     <string name="manual_code_label">接続コード（12文字）</string>

@@ -23,7 +23,7 @@ export interface DeskDeps {
   applyEdit(target: EditTarget, text: string): Promise<{ method: OfficeMethod; args: unknown[] }> | { method: OfficeMethod; args: unknown[] }
   /** id → 이름 (카드 본문은 앱이 실제 인자로 만든다 — describeStep) */
   nameOf?: NameOf
-  /** 조회 도구가 읽어도 되는 폴더 (직원·랩 작업 폴더). 이 밖의 경로를 주는 조회는 거절 */
+  /** 조회 도구가 읽어도 되는 폴더 (직원·프로젝트 작업 폴더). 이 밖의 경로를 주는 조회는 거절 */
   allowedRoots?(): string[]
   /** 토큰 한도에 닿았는지 — 닿으면 AI를 부르는 조회는 쉰다 */
   isLimited?(): boolean
@@ -188,12 +188,12 @@ export class SecretaryDesk {
     if (!isReadMethod(method)) throw new Error(isChangeMethod(method) ? `"${method}"는 바꾸는 일이라 바로 할 수 없어요. propose로 확인 카드를 만들어 주세요.` : excludeMessage(method))
     const bad = checkArgs(V2_METHODS[method].args, args)
     if (bad) throw new Error(`${bad}의 값이 맞지 않아요. 인자 모양: ${method}${SECRETARY_SIGNATURES[method] ?? ''}`)
-    // 폴더를 받는 조회는 직원·랩 작업 폴더 안만 (모델이 고른 아무 경로나 읽지 않게 — 한리뷰 M2)
+    // 폴더를 받는 조회는 직원·프로젝트 작업 폴더 안만 (모델이 고른 아무 경로나 읽지 않게 — 한리뷰 M2)
     const paths = method === 'listAgentTemplates' || method === 'equipmentCatalog' ? [args[0]] : method === 'missingFiles' ? (args[0] as unknown[]) : []
     if (paths.length) {
       const roots = (this.deps.allowedRoots?.() ?? []).filter(Boolean).map((r) => path.resolve(r))
       const outside = paths.find((p) => typeof p !== 'string' || !path.isAbsolute(p) || !roots.some((r) => path.resolve(p) === r || path.resolve(p).startsWith(r + path.sep)))
-      if (outside !== undefined) throw new Error('직원·랩 작업 폴더 안의 경로만 볼 수 있어요')
+      if (outside !== undefined) throw new Error('직원·프로젝트 작업 폴더 안의 경로만 볼 수 있어요')
     }
     // AI를 한 번 부르는 조회는 한도 안에서, 10분에 한 번만 (비용 — 한리뷰 M1)
     if (AI_READS.has(method)) {

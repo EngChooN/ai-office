@@ -1,0 +1,589 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<title>단체방 상단 정리 — 시안</title>
+<!-- 디자인 시안 전용(앱 코드 아님). ?sheet=all|now|a|b|c &mode=light|dark &cap=1 로 열어 캡처한다.
+     근거: 대표 피드백(2026-11-12 스크린샷), ChatPage.tsx(RoomTabs·RoomStatusStrip), ChatSlimBar.tsx(세로 폰 한 줄 머리), ChatSide.tsx(분할 왼쪽 칸).
+     색은 usability-audit/manuals.html과 같은 사무실 토큰. 직원·팀 이름, 숫자는 스크린샷 기준 예시다 -->
+<style>
+  [data-mode='light'] {
+    --background:#F6F5FB; --foreground:#221F33; --card:#FFFFFF; --primary:#6C5CE7; --on-primary:#FFFFFF;
+    --muted:#ECEAF6; --muted-foreground:#66627F; --accent:#E9E6FA; --border:#DEDAF0; --input:#CFCAE6;
+    --chrome:#FBFAFF; --working:#1C7C46; --waiting:#9A5B00; --idle:#8A8A80; --error:#C42B2B; --badge:#E5484D;
+    --ask-soft:#FFF3DC; --auto-soft:#E2F5EA; --bubble:#FFFFFF; --me:#6C5CE7;
+    --sheet-bg:#E4E1F2; --side1:#7B6CF0; --side2:#B58CF5; --frame:#c9c4e0;
+  }
+  [data-mode='dark'] {
+    --background:#14131C; --foreground:#EDEBF8; --card:#201F2D; --primary:#9B8CFF; --on-primary:#1A1240;
+    --muted:#292739; --muted-foreground:#A7A3C4; --accent:#302D47; --border:#34314A; --input:#413E5C;
+    --chrome:#181723; --working:#4ADE80; --waiting:#F2C94C; --idle:#9C9AA8; --error:#FF6B6B; --badge:#E5484D;
+    --ask-soft:#3A2E12; --auto-soft:#14301F; --bubble:#201F2D; --me:#7B6CF0;
+    --sheet-bg:#0C0B12; --side1:#4B3FB0; --side2:#7A55B8; --frame:#2a2838;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--sheet-bg); }
+  body { font-family: "Pretendard", "Apple SD Gothic Neo", system-ui, sans-serif; color: var(--foreground); padding: 28px 32px 36px; width: max-content; min-width: 100vw; font-size: 13px; }
+  .tabs-top { display: flex; gap: 6px; margin-bottom: 18px; align-items: center; }
+  .tabs-top a { padding: 7px 14px; border-radius: 999px; background: var(--card); color: var(--foreground); text-decoration: none; font-weight: 600; border: 1px solid var(--border); cursor: pointer; }
+  .tabs-top a.on { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
+  .tabs-top .mode { margin-left: 14px; }
+  .capture .tabs-top { display: none; }
+  .sheet { display: none; } .sheet.on { display: block; }
+  h1.st { font-size: 24px; font-weight: 700; }
+  p.ss { color: var(--muted-foreground); font-size: 13.5px; margin: 6px 0 18px; max-width: 1480px; line-height: 1.55; }
+  .grid { display: grid; grid-template-columns: repeat(2, max-content); gap: 22px 26px; }
+  .cell { display: flex; flex-direction: column; gap: 8px; }
+  .cell h2 { font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+  .cell .one { font-size: 12.5px; color: var(--muted-foreground); max-width: 720px; line-height: 1.5; }
+  .rec { font-size: 10.5px; font-weight: 800; background: var(--primary); color: var(--on-primary); border-radius: 999px; padding: 2px 8px; }
+  .row { display: flex; gap: 24px; align-items: flex-start; }
+  .notes { font-size: 12.8px; line-height: 1.65; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; width: 400px; }
+  .notes li { margin-left: 18px; } .notes h3 { font-size: 14px; margin: 8px 0 2px; } .notes h3:first-child { margin-top: 0; }
+  .notes .tbd { color: var(--waiting); font-weight: 700; }
+
+  svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+
+  /* 창 */
+  .win { width: 720px; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; background: var(--background); border: 1px solid var(--frame); box-shadow: 0 18px 36px -18px rgba(40,30,90,.45); position: relative; }
+  .win.big { width: 940px; }
+  .grid .win.big { width: 720px; } .grid .side { width: 168px; }
+  .win .bar { height: 24px; flex-shrink: 0; background: var(--chrome); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 6px; padding: 0 10px; }
+  .win .bar i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .appbar { height: 40px; flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 0 12px; background: var(--card); border-bottom: 1px solid var(--border); font-size: 12px; }
+  .appbar .sp { flex: 1; }
+  .appbar .ib { height: 26px; padding: 0 9px; border-radius: 8px; background: var(--muted); display: inline-flex; gap: 5px; align-items: center; font-weight: 600; font-size: 11.5px; }
+  .appbar .ib.wait { background: var(--ask-soft); color: var(--waiting); }
+  .body { display: flex; min-height: 0; height: 360px; position: relative; }
+  .win.tall .body { height: 430px; }
+  .nav { width: 44px; flex-shrink: 0; background: linear-gradient(180deg, var(--side1), var(--side2)); display: flex; flex-direction: column; align-items: center; gap: 12px; padding-top: 12px; }
+  .nav i { width: 20px; height: 20px; border-radius: 6px; background: rgba(255,255,255,.35); display: block; } .nav i.on { background: #fff; }
+  .chat { flex: 1; min-width: 0; display: flex; flex-direction: column; position: relative; }
+  .msgs { flex: 1; padding: 12px 18px; display: flex; flex-direction: column; gap: 10px; overflow: hidden; }
+  .msg { display: flex; gap: 8px; align-items: flex-start; }
+  .msg .b { background: var(--bubble); border: 1px solid var(--border); border-radius: 4px 12px 12px 12px; padding: 7px 10px; font-size: 12px; line-height: 1.45; max-width: 420px; }
+  .msg .n { font-size: 11px; font-weight: 700; margin-bottom: 3px; }
+  .msg.me { justify-content: flex-end; } .msg.me .b { background: var(--me); color: #fff; border-color: transparent; border-radius: 12px 4px 12px 12px; }
+  .mention { color: var(--primary); font-weight: 700; } .me .mention { color: #fff; text-decoration: underline; }
+  .composer { margin: 0 14px 12px; border: 1px solid var(--input); border-radius: 12px; background: var(--card); padding: 9px 12px; font-size: 12px; color: var(--muted-foreground); display: flex; align-items: center; gap: 8px; }
+  .composer .to { font-size: 11px; background: var(--accent); color: var(--primary); border-radius: 999px; padding: 2px 8px; font-weight: 700; }
+  .composer .send { margin-left: auto; width: 26px; height: 26px; border-radius: 8px; background: var(--primary); color: var(--on-primary); display: grid; place-items: center; }
+
+  /* 공용 조각 */
+  .av { width: 22px; height: 22px; border-radius: 50%; display: inline-grid; place-items: center; font-size: 9px; font-weight: 800; color: #fff; flex-shrink: 0; }
+  .av.s { width: 20px; height: 20px; font-size: 8.5px; }
+  .faces { display: inline-flex; } .faces .av { box-shadow: 0 0 0 2px var(--card); } .faces .av + .av { margin-left: -6px; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
+  .dot.w { background: var(--working); box-shadow: 0 0 0 3px color-mix(in srgb, var(--working) 22%, transparent); }
+  .dot.i { background: var(--idle); } .dot.q { background: var(--waiting); }
+  .cnt { background: var(--badge); color: #fff; border-radius: 999px; padding: 0 6px; font-size: 10px; line-height: 16px; font-weight: 700; }
+  .ap { width: 6px; height: 6px; border-radius: 50%; background: var(--waiting); flex-shrink: 0; }
+  .ibtn { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; color: var(--muted-foreground); flex-shrink: 0; }
+  .ibtn.on { background: var(--accent); color: var(--primary); }
+  .tag { font-size: 10.5px; font-weight: 700; border-radius: 6px; padding: 1px 6px; background: var(--muted); color: var(--muted-foreground); white-space: nowrap; }
+  .wk { color: var(--working); font-weight: 700; font-size: 12px; white-space: nowrap; }
+  .mut { color: var(--muted-foreground); }
+  .chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border); background: var(--card); border-radius: 999px; padding: 2px 10px 2px 2px; font-size: 11.5px; white-space: nowrap; max-width: 300px; }
+  .chip.w { border-color: color-mix(in srgb, var(--working) 50%, transparent); }
+  .chip .tx { overflow: hidden; text-overflow: ellipsis; color: var(--muted-foreground); }
+  .chip.more { padding: 3px 10px; color: var(--muted-foreground); }
+  .pop { position: absolute; z-index: 5; background: var(--card); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 16px 34px -12px rgba(0,0,0,.4); padding: 6px; }
+  .pop .gh { font-size: 10.5px; font-weight: 700; color: var(--muted-foreground); padding: 7px 8px 3px; }
+  .pop .it { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 8px; font-size: 12px; }
+  .pop .it.on { background: var(--accent); font-weight: 700; }
+  .pop .it .sp { flex: 1; }
+  .pop .sub { font-size: 10.5px; color: var(--muted-foreground); }
+  .callout { position: absolute; z-index: 7; background: #FFE36E; color: #2a2300; font-size: 10.5px; font-weight: 700; border-radius: 7px; padding: 3px 7px; white-space: nowrap; box-shadow: 0 2px 6px rgba(0,0,0,.2); }
+  [data-mode='dark'] .callout { background: #F2C94C; }
+
+  /* 현재 */
+  .now-h { padding: 12px 18px 10px; border-bottom: 1px solid var(--border); }
+  .now-h .t { display: flex; align-items: center; } .now-h .t b { flex: 1; font-size: 16px; }
+  .now-h p { font-size: 11px; color: var(--muted-foreground); margin-top: 3px; line-height: 1.4; }
+  .strip { display: flex; gap: 5px; margin-top: 7px; overflow: hidden; align-items: center; }
+  .rt { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--border); border-radius: 999px; padding: 2px 9px; font-size: 11px; color: var(--muted-foreground); white-space: nowrap; flex-shrink: 0; }
+  .rt.on { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
+  .gl { font-size: 10.5px; color: var(--muted-foreground); opacity: .75; flex-shrink: 0; }
+
+  /* A: 한 줄 머리 */
+  .h1line { height: 50px; flex-shrink: 0; display: flex; align-items: center; gap: 6px; padding: 0 10px 0 12px; border-bottom: 1px solid var(--border); background: var(--card); }
+  .roomsel { display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 10px; border-radius: 10px; border: 1px solid transparent; min-width: 0; }
+  .roomsel.open, .roomsel:hover { background: var(--muted); }
+  .roomsel b { font-size: 15px; white-space: nowrap; }
+  .people { display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 9px 0 6px; border-radius: 999px; border: 1px solid var(--border); }
+  .people.open { background: var(--accent); border-color: var(--primary); }
+  .vline { width: 1px; height: 18px; background: var(--border); }
+
+  /* B: 왼쪽 목록 */
+  .side { width: 190px; flex-shrink: 0; background: var(--chrome); border-right: 1px solid var(--border); padding: 8px; display: flex; flex-direction: column; gap: 1px; overflow: hidden; }
+  .side .gh { font-size: 10.5px; font-weight: 700; color: var(--muted-foreground); padding: 6px 8px 2px; }
+  .side .it { display: flex; align-items: center; gap: 7px; padding: 5px 8px; border-radius: 9px; font-size: 12px; color: var(--muted-foreground); }
+  .side .it.on { background: var(--accent); color: var(--foreground); font-weight: 700; }
+  .side .it .sp { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bh { flex-shrink: 0; padding: 10px 14px 9px; border-bottom: 1px solid var(--border); background: var(--card); }
+  .bh .t { display: flex; align-items: center; gap: 7px; } .bh .t b { font-size: 15px; }
+  .bh .s { display: flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 11.5px; }
+
+  /* C: 두 줄 */
+  .ch { flex-shrink: 0; padding: 9px 14px 9px; border-bottom: 1px solid var(--border); background: var(--card); display: flex; flex-direction: column; gap: 8px; }
+  .ch .t { display: flex; align-items: center; gap: 7px; } .ch .t b { font-size: 15px; }
+  .seg { display: inline-flex; background: var(--muted); border-radius: 999px; padding: 3px; gap: 2px; flex-shrink: 0; }
+  .seg span { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 999px; font-size: 11.5px; color: var(--muted-foreground); white-space: nowrap; }
+  .seg span.on { background: var(--card); color: var(--foreground); font-weight: 700; box-shadow: 0 1px 2px rgba(0,0,0,.14); }
+
+  /* B 보완: 창 폭 비교 (실제 px로 그리고 축소해 보여 줌) */
+  h2.sec { font-size: 18px; font-weight: 700; margin: 34px 0 4px; }
+  .wgrid { display: grid; grid-template-columns: 110px repeat(2, max-content); gap: 18px 22px; align-items: start; }
+  .wgrid .hd { font-size: 14px; font-weight: 700; }
+  .wgrid .wl { font-size: 15px; font-weight: 800; padding-top: 4px; line-height: 1.4; } .wgrid .wl small { display: block; font-size: 11.5px; font-weight: 500; color: var(--muted-foreground); }
+  .fw { position: relative; flex-shrink: 0; }
+  .fr { position: absolute; top: 0; left: 0; transform-origin: 0 0; border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; background: var(--background); border: 1px solid var(--frame); box-shadow: 0 18px 36px -18px rgba(40,30,90,.45); }
+  .fr .body { flex: 1; height: auto; }
+  .fr .sb { width: 176px; flex-shrink: 0; background: linear-gradient(180deg, var(--side1), var(--side2)); padding: 10px 8px; display: flex; flex-direction: column; gap: 4px; }
+  .fr .sb i { display: block; height: 26px; border-radius: 8px; background: rgba(255,255,255,.18); } .fr .sb i.on { background: rgba(255,255,255,.9); }
+  .fr .side { width: 200px; }
+  .fr .msg .b { max-width: 75%; }
+  .fr .msg { min-width: 0; } .fr .msg > .b { min-width: 0; }
+  .fr .bh .s { overflow: hidden; }
+  .rail { width: 56px; flex-shrink: 0; background: var(--chrome); border-right: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px 0; position: relative; }
+  .rail .ri { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; font-size: 11.5px; font-weight: 800; position: relative; flex-shrink: 0; }
+  .rail .ri.tg { color: var(--muted-foreground); }
+  .rail .ri.on::before { content: ''; position: absolute; left: -10px; top: 8px; bottom: 8px; width: 4px; border-radius: 0 3px 3px 0; background: var(--primary); }
+  .rail .ri.on { outline: 2px solid var(--primary); outline-offset: 1px; }
+  .rail .ri .cnt { position: absolute; top: -5px; right: -7px; font-size: 9px; line-height: 14px; padding: 0 4px; box-shadow: 0 0 0 2px var(--chrome); }
+  .rail .ri .ap { position: absolute; bottom: -1px; right: -1px; width: 8px; height: 8px; box-shadow: 0 0 0 2px var(--chrome); }
+  .rail hr { width: 26px; border: 0; border-top: 1px solid var(--border); margin: 2px 0; }
+  .tip { position: absolute; z-index: 8; background: var(--foreground); color: var(--background); font-size: 11.5px; font-weight: 600; border-radius: 7px; padding: 4px 8px; white-space: nowrap; }
+  .staff { width: 380px; flex-shrink: 0; background: var(--card); border-left: 1px solid var(--border); display: flex; flex-direction: column; }
+  .staff.over { position: absolute; right: 0; top: 0; bottom: 0; z-index: 6; box-shadow: -18px 0 36px -12px rgba(0,0,0,.35); }
+  .staff .sh { display: flex; gap: 9px; align-items: center; padding: 12px 14px; border-bottom: 1px solid var(--border); }
+  .staff .tabs { display: flex; gap: 14px; padding: 8px 14px 0; font-size: 12px; color: var(--muted-foreground); border-bottom: 1px solid var(--border); }
+  .staff .tabs span { padding-bottom: 7px; } .staff .tabs span.on { color: var(--foreground); font-weight: 700; border-bottom: 2px solid var(--primary); }
+  .staff .lg { flex: 1; padding: 10px 14px; display: flex; flex-direction: column; gap: 8px; font-size: 11.5px; line-height: 1.45; overflow: hidden; }
+  .staff .lg div { display: flex; gap: 8px; } .staff .lg .tm { color: var(--muted-foreground); width: 36px; flex-shrink: 0; }
+  .staff .in { margin: 0 12px 12px; border: 1px solid var(--input); border-radius: 10px; padding: 9px 11px; font-size: 11.5px; color: var(--muted-foreground); }
+  .meas { position: absolute; left: 10px; right: 10px; bottom: 64px; z-index: 4; display: flex; align-items: center; gap: 6px; pointer-events: none; }
+  .meas::before, .meas::after { content: ''; flex: 1; height: 2px; background: currentColor; }
+  .meas span { font-size: 24px; font-weight: 800; padding: 3px 10px; border-radius: 999px; background: currentColor; white-space: nowrap; }
+  .meas span b { color: #fff; font-weight: 800; } [data-mode='dark'] .meas span b { color: #111; }
+  .meas.ok { color: var(--working); } .meas.mid { color: var(--waiting); } .meas.bad { color: var(--error); }
+  .badge-k { display: inline-block; font-size: 11px; font-weight: 800; border-radius: 999px; padding: 1px 8px; color: #fff; }
+  .badge-k.ok { background: var(--working); } .badge-k.mid { background: var(--waiting); } .badge-k.bad { background: var(--error); }
+  [data-mode='dark'] .badge-k { color: #111; }
+  .final { margin-top: 18px; font-size: 16px; font-weight: 700; background: var(--accent); border: 2px solid var(--primary); border-radius: 12px; padding: 12px 16px; width: 1490px; }
+  table.map.thr td:first-child { white-space: nowrap; }
+
+  table.map { border-collapse: collapse; font-size: 12.5px; background: var(--card); border-radius: 12px; overflow: hidden; width: 1490px; }
+  table.map th, table.map td { border-bottom: 1px solid var(--border); padding: 8px 12px; text-align: left; vertical-align: top; line-height: 1.5; }
+  table.map th { background: var(--muted); font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="tabs-top">
+  <a data-s="all">한눈에 비교</a><a data-s="now">지금</a><a data-s="a">A안 한 줄 머리 (추천)</a><a data-s="b">B안 왼쪽 방 목록</a><a data-s="c">C안 두 줄 정리</a><a data-s="map">기능 대응표</a>
+  <a class="mode" id="modeBtn"></a>
+</div>
+
+<!-- ============ 한눈에 비교 ============ -->
+<section class="sheet" id="sh-all">
+  <h1 class="st">단체방 상단 정리 — 3안 비교</h1>
+  <p class="ss">목표: 처음 본 사람도 <b>지금 어느 방인지 · 누구와 얘기하는지 · 누가 일하는지</b>를 바로 알게. 네 화면 모두 같은 상황(클로드 오피스 전담 랩 방, 13명 중 정리드 1명이 일하는 중, 다른 방 안 읽은 글 74개, 앱 팀에 결재 대기)이다. 방 바꾸기·팀/랩 고르기·멘션·결재 대기 표시는 세 안 모두 그대로 남는다.</p>
+  <div class="grid">
+    <div class="cell"><h2>지금 — 4줄</h2><div class="one">제목 · 설명 문장 · 방 칩 9개 · 직원 칩 6개+7명. 방 칩과 직원 칩이 둘 다 동그란 알약 모양이라 무엇이 방이고 무엇이 사람인지 헷갈린다.</div><div data-slot="now"></div></div>
+    <div class="cell"><h2>A안 — 한 줄 머리 <span class="rec">추천</span></h2><div class="one">세로 폰 한 줄 머리(ChatSlimBar)를 데스크톱에도 맞춘다. [방 이름 ▾] [일하는 사람 얼굴 · 1명 일하는 중] ⓘ 🔍 한 줄.</div><div data-slot="a"></div></div>
+    <div class="cell"><h2>B안 — 왼쪽 방 목록</h2><div class="one">메신저처럼 방 목록을 왼쪽에 항상 둔다(분할 화면용 ChatSide 재사용). 상단은 제목 + 인원 요약 + 일하는 사람만.</div><div data-slot="b"></div></div>
+    <div class="cell"><h2>C안 — 두 줄 정리</h2><div class="one">지금 구조를 크게 안 바꾼다. 1줄 제목·요약, 2줄 [전체 | 팀 ▾ | 랩 ▾] 묶음 + 일하는 사람 칩만.</div><div data-slot="c"></div></div>
+  </div>
+</section>
+
+<!-- ============ 지금 ============ -->
+<section class="sheet" id="sh-now">
+  <h1 class="st">지금 화면 (대표 스크린샷 기준 재구성)</h1>
+  <p class="ss">어려워 보이는 이유 4가지를 노란 표시로 붙였다.</p>
+  <div class="row"><div data-slot="now"></div>
+    <div class="notes">
+      <h3>문제</h3>
+      <ol>
+        <li><b>제목 중복</b> — "클로드 오피스 전담 랩 <u>랩 방</u>". 랩 이름이 이미 '랩'으로 끝나 '랩 랩'이 된다.</li>
+        <li><b>설명이 늘 펼쳐져 있다</b> — 두 문장(약 70자)이 매번 보인다. 처음 한 번만 읽으면 되는 내용이다.</li>
+        <li><b>방과 사람이 같은 모양</b> — 방 칩 9개와 직원 칩 6개가 모두 알약 모양이라 줄이 4줄로 보인다. '팀'·'랩' 회색 글씨 구분은 눈에 잘 안 띈다.</li>
+        <li><b>쉬는 사람까지 다 보인다</b> — 일하는 사람은 정리드 1명인데 '대기' 칩 5개가 같은 크기로 늘어서 있다.</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!-- ============ A ============ -->
+<section class="sheet" id="sh-a">
+  <h1 class="st">A안 — 한 줄 머리 <span class="rec" style="font-size:12px;vertical-align:middle">추천</span></h1>
+  <p class="ss">세로 폰에 이미 있는 한 줄 머리와 같은 순서·같은 말로 맞춘다. 데스크톱·폴드·폰이 같은 모양이 되어 한 번 익히면 어디서나 같다.</p>
+  <div class="row">
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div data-slot="a"></div>
+      <div class="row" style="gap:16px">
+        <div class="cell"><h2 style="font-size:13px">방 이름 ▾ 를 누르면</h2><div data-slot="a-rooms"></div></div>
+        <div class="cell"><h2 style="font-size:13px">얼굴 묶음을 누르면</h2><div data-slot="a-people"></div></div>
+      </div>
+    </div>
+    <div class="notes">
+      <h3>한 줄 구성 (왼쪽부터)</h3>
+      <ol>
+        <li><b>방 이름 ▾</b> — 색 점 + 방 이름 + 작은 꼬리표(<span class="tag">랩</span>/<span class="tag">팀</span>). 제목의 '랩 방' 반복을 없앤다. 다른 방의 안 읽은 글 합계(빨강)와 결재 대기 점(노랑)을 ▾ 옆에 붙여 방을 바꿀 이유를 알려 준다.</li>
+        <li><b>얼굴 묶음</b> — 일하는 사람 얼굴 최대 3개 + "1명 일하는 중"(초록) + "· 13명". 누르면 이 방 사람 전체가 '일하는 중 → 확인 필요 → 쉬는 중' 순으로 나온다. 일하는 사람이 없으면 "13명 · 모두 쉬는 중".</li>
+        <li><b>ⓘ</b> — 방 설명. 문장 대신 3줄 요약(누가 받나 · @부르는 법 · 결과가 오는 곳).</li>
+        <li><b>🔍</b> 대화 찾기 — 지금 자리 그대로.</li>
+      </ol>
+      <h3>ChatSlimBar와 같은 점 / 다른 점</h3>
+      <ul>
+        <li>같음: 방 ▾ 안 = ChatSide 목록, 얼굴 3개, "N명 일하는 중", ⓘ, 🔍.</li>
+        <li>다름: 데스크톱은 상단 앱 바가 있으므로 결재 대기 🔔·비서 ✨는 앱 바에 둔다(머리에 중복으로 넣지 않음).</li>
+        <li>제안: 슬림에도 안 읽은 합계 배지와 <span class="tag">팀</span>/<span class="tag">랩</span> 꼬리표를 같이 넣으면 완전히 같아진다.</li>
+      </ul>
+      <h3>줄어드는 것</h3>
+      <ul><li>머리 높이 약 150px → 50px. 대화가 세 줄쯤 더 보인다.</li></ul>
+      <h3>대가</h3>
+      <ul><li>다른 방으로 가려면 한 번 더 누른다. 대신 안 읽은 합계·노란 점이 ▾ 옆에 남아 놓치지 않는다.</li></ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ B ============ -->
+<section class="sheet" id="sh-b">
+  <h1 class="st">B안 — 왼쪽 방 목록</h1>
+  <p class="ss">방 고르기를 상단에서 빼서 왼쪽에 세로로 둔다. 분할 화면(폴드 와이드)에서 이미 쓰는 왼쪽 칸(ChatSide)을 넓은 창에도 쓰는 안이다.</p>
+  <div class="row"><div data-slot="b"></div>
+    <div class="notes">
+      <h3>구성</h3>
+      <ul>
+        <li><b>왼쪽 칸</b> — '전체' / '팀' / '랩' 묶음 제목 아래 방 목록. 안 읽은 글(빨강)·결재 대기(노랑 점)는 줄 끝. 회의실 들어가기도 여기.</li>
+        <li><b>상단 1줄</b> — 방 이름 + <span class="tag">랩</span> 꼬리표 + ⓘ + 🔍.</li>
+        <li><b>상단 2줄</b> — "13명 · 1명 일하는 중" 요약 + 일하는 사람 칩만(지금 하는 일 한 줄). 나머지는 '+12명'으로 접고, 누르면 A안과 같은 사람 목록.</li>
+      </ul>
+      <h3>좋은 점</h3>
+      <ul><li>방이 몇 개든 한눈에 보이고, 다른 방 새 글을 바로 본다. 익숙한 메신저 모양.</li></ul>
+      <h3>대가</h3>
+      <ul>
+        <li>대화 칸이 200px 좁아진다. 직원 패널(기본 380px)까지 열면 창 1100px에서 대화가 342px밖에 안 남는다 → 아래 '보완'에서 해결.</li>
+        <li>세로 폰에는 들어갈 자리가 없어 결국 A안처럼 ▾ 메뉴가 된다 → 배치마다 모양이 다르다.</li>
+        <li>왼쪽 칸 아래의 '지금 하는 일' 목록과 상단 칩이 겹친다(둘 중 하나만 두어야 함).</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ---- B 보완 ---- -->
+  <h2 class="sec">B안 보완 — 방 목록 + 대화 + 직원 패널을 모두 열었을 때</h2>
+  <p class="ss">앱의 실제 폭으로 그린 뒤 절반쯤(47%)으로 줄였다: 앱 왼쪽 메뉴 176px(Sidebar w-44) · 방 목록 200px(ChatSide) · 직원 패널 기본 380px(StaffPanel, 최소 320). 창이 1000px보다 좁으면 지금도 직원 패널이 대화 위에 겹쳐 뜬다(compact 규칙). 데스크톱 앱 창의 최소 폭은 1024px이라 900px은 데스크톱에서는 나오지 않지만, 비교를 위해 함께 그렸다. 가운데 화살표가 <b>대화 영역의 실제 너비</b>이고, 그림을 그린 뒤 브라우저에서 잰 값이다(테두리 1px씩 빠짐). 900px에서는 대화 칸이 B안 그대로 522px · 접힘 666px이지만 직원 패널이 덮어 화살표에는 <b>보이는 폭</b>만 적었다.</p>
+  <div class="wgrid">
+    <div></div><div class="hd">B안 그대로 (방 목록 200px 고정)</div><div class="hd">B안 + 자동 접힘 (방 목록 → 56px 띠) <span class="rec">추천</span></div>
+    <div class="wl">넓음<br>1400px<small>176 + 200 + 대화 + 380</small></div>
+    <div data-frame='{"W":1400,"rooms":"list"}'></div>
+    <div data-frame='{"W":1400,"rooms":"list","note":"대화가 640px 이상이라 접지 않는다"}'></div>
+    <div class="wl">보통<br>1100px<small>대화가 640px 아래로 내려가면 방 목록을 접는다</small></div>
+    <div data-frame='{"W":1100,"rooms":"list"}'></div>
+    <div data-frame='{"W":1100,"rooms":"rail","head":"slim"}'></div>
+    <div class="wl">좁음<br>900px<small>1000px 미만은 직원 패널이 겹쳐 뜬다(지금 규칙)</small></div>
+    <div data-frame='{"W":900,"rooms":"list","staff":"over"}'></div>
+    <div data-frame='{"W":900,"rooms":"rail","staff":"over","head":"slim"}'></div>
+  </div>
+
+  <h2 class="sec">접힌 상태 — 실제 크기</h2>
+  <p class="ss">왼쪽은 마우스를 올린 모습, 오른쪽은 띠 맨 위 ☰을 눌러 목록을 잠깐 펼친 모습이다. 펼친 목록은 대화를 밀지 않고 위에 겹쳐 뜨며, 방을 고르거나 바깥을 누르면 다시 접힌다.</p>
+  <div class="row">
+    <div data-frame='{"W":520,"H":470,"s":1,"rooms":"rail","staff":"none","head":"slim","sb":false,"tip":true,"meas":false}'></div>
+    <div data-frame='{"W":520,"H":470,"s":1,"rooms":"rail","staff":"none","head":"slim","sb":false,"peek":true,"meas":false}'></div>
+    <div class="notes" style="width:380px">
+      <h3>56px 띠 구성</h3>
+      <ul>
+        <li><b>☰</b> 맨 위 — 누르면 목록을 겹쳐 펼친다. 길게 고정하려면 목록 안의 📌.</li>
+        <li><b>방 아이콘 36px</b> — 팀 색 바탕 + 첫 글자(전·프·PO·디…). 랩은 <b>랩 색</b>으로, 지금 방은 보라 테두리 + 왼쪽 막대.</li>
+        <li><b>안 읽은 글</b> 빨간 숫자는 오른쪽 위(99+까지), <b>결재 대기</b> 노란 점은 오른쪽 아래. 펼친 목록과 같은 정보.</li>
+        <li><b>묶음</b>은 제목 대신 얇은 선(전체 | 팀 | 랩). 회의실은 맨 아래.</li>
+        <li><b>마우스 올림</b> — 방 이름 + 안 읽은 수 말풍선.</li>
+      </ul>
+      <h3>대화 머리도 함께 줄인다</h3>
+      <ul><li>대화가 560px보다 좁으면 2줄의 사람 칩을 A안처럼 <b>얼굴 + "1명 일하는 중 · 13명"</b>으로 줄인다. 누르면 같은 사람 목록.</li></ul>
+    </div>
+  </div>
+
+  <h2 class="sec">대화 영역 폭 기준 (제안)</h2>
+  <table class="map thr" style="margin-top:10px">
+    <tr><th style="width:170px">대화 폭</th><th style="width:420px">어떻게 보이나</th><th>B안 + 자동 접힘의 대응</th></tr>
+    <tr><td><span class="badge-k ok">640px 이상</span> 편함</td><td>말풍선(폭의 75%) 480px 이상 → 한 줄에 한글 약 32자. 앱의 '좁은 본문' 규칙(narrow, 640px 미만)도 켜지지 않는다.</td><td>방 목록 200px 그대로 둔다.</td></tr>
+    <tr><td><span class="badge-k mid">480~639px</span> 견딜 만함</td><td>말풍선 360~480px(약 24~32자). 표·코드 블록은 가로 스크롤이 생기기 시작한다. 머리 2줄의 사람 칩이 잘린다.</td><td><b>방 목록을 56px 띠로 자동 접기</b> → +144px. 사람 칩은 얼굴 묶음으로.</td></tr>
+    <tr><td><span class="badge-k bad">480px 미만</span> 불편 (하한)</td><td>말풍선 360px 미만, 결과 카드·결재 카드의 버튼이 줄바꿈된다. 입력칸 받는 사람 꼬리표가 문구를 가린다.</td><td>띠로 접어도 모자라면 직원 패널을 옆이 아니라 <b>겹쳐 띄운다</b>(지금 1000px 미만 규칙과 같음).</td></tr>
+  </table>
+  <div class="notes" style="width:1490px;margin-top:14px">
+    <h3>자동 접힘 규칙</h3>
+    <ul>
+      <li><b>접는 때</b> — 직원 패널 열기, 패널 폭 넓히기, 창 줄이기로 대화 폭이 640px 아래가 될 때. 직원 패널을 열면 바로 접히는 셈이고(1100px 기준), 넓은 창(1400px)에서는 접히지 않는다.</li>
+      <li><b>펴는 때</b> — 대화 폭이 다시 640 + 144 = 784px 이상 확보될 때(직원 패널 닫기 등). 경계에서 깜빡이지 않게 펴는 기준을 접는 기준보다 크게 둔다.</li>
+      <li><b>사람이 정한 것 우선</b> — 직접 ☰으로 접거나 📌으로 고정했으면 자동으로 바꾸지 않는다.</li>
+      <li><b>먼저 줄이는 순서</b> — ① 방 목록(띠) → ② 머리 사람 칩(얼굴 묶음) → ③ 직원 패널 겹치기. 대화와 직원 패널은 마지막까지 지킨다.</li>
+      <li><span class="tbd">확인 필요</span> 앱 왼쪽 메뉴(176px)도 아이콘 띠로 접으면 +120px을 더 얻지만, 단체방만의 일이 아니라 앱 전체 배치라 이번 범위에서 뺐다.</li>
+    </ul>
+  </div>
+  <div class="final">최종 추천: <b>B안 + 자동 접힘</b> — 1400px에선 B안 그대로, 직원 패널로 대화가 640px 아래가 되면 방 목록을 56px 띠로 접어 1100px에서도 대화 486px(342px → 486px)를 지킨다.</div>
+</section>
+
+<!-- ============ C ============ -->
+<section class="sheet" id="sh-c">
+  <h1 class="st">C안 — 두 줄 정리</h1>
+  <p class="ss">지금 구조(위 제목, 아래 방 고르기)를 살리고 덜어 내기만 한다. 바뀜이 가장 적다.</p>
+  <div class="row"><div data-slot="c"></div>
+    <div class="notes">
+      <h3>구성</h3>
+      <ul>
+        <li><b>1줄</b> — 방 이름 + <span class="tag">랩</span> 꼬리표 + "13명 · 1명 일하는 중" + ⓘ 🔍.</li>
+        <li><b>2줄 왼쪽</b> — [전체 | 팀 ▾ | 랩 ▾] 세 칸 하나. 팀 7개·랩 1개는 ▾ 안으로. 칸마다 그 묶음의 안 읽은 합계와 결재 점.</li>
+        <li><b>2줄 오른쪽</b> — 일하는 사람 칩만 + '+12명'.</li>
+      </ul>
+      <h3>좋은 점</h3>
+      <ul><li>지금 쓰던 사람에게 가장 익숙하다. '전체'로 바로 돌아가기 쉽다.</li></ul>
+      <h3>대가</h3>
+      <ul>
+        <li>여전히 두 줄. 방 고르기와 사람 칩이 같은 줄이라 폭이 좁으면 사람 칩이 밀려난다.</li>
+        <li>'팀 ▾'를 눌러야 어느 팀 방인지 고르므로, 지금 어느 방인지는 1줄 제목을 봐야 안다(두 군데를 본다).</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 기능 대응표 ============ -->
+<section class="sheet" id="sh-map">
+  <h1 class="st">기능 대응표 — 지금 있는 것이 어디로 가는지</h1>
+  <p class="ss">없어지는 기능은 없다. 말이 바뀌는 곳만 굵게 적었다.</p>
+  <table class="map">
+    <tr><th style="width:190px">지금</th><th>A안 한 줄 머리</th><th>B안 왼쪽 방 목록</th><th>C안 두 줄 정리</th></tr>
+    <tr><td>제목 "○○ 랩 방" / "○○ 팀 방"</td><td colspan="3">방 이름 + 꼬리표 <span class="tag">팀</span>/<span class="tag">랩</span>/<span class="tag">전체</span>. <b>'랩 랩 방' 반복 없앰</b> (꼬리표가 종류를 알려 줌)</td></tr>
+    <tr><td>설명 문장 (늘 펼침)</td><td colspan="3">ⓘ 안으로. 3줄 요약: <b>"부르지 않으면 → 랩장 정리드가 받아요" · "@이름 = 그 사람, @전체 = 이 방 전원" · "결과도 이 방에 올라와요"</b></td></tr>
+    <tr><td>방 칩 9개 (전체·팀·랩)</td><td>방 이름 ▾ 메뉴 (ChatSide 목록 그대로)</td><td>왼쪽 칸에 항상</td><td>[전체 | 팀 ▾ | 랩 ▾]</td></tr>
+    <tr><td>안 읽은 글 숫자 (방별)</td><td>메뉴 안 방별 + ▾ 옆에 다른 방 합계</td><td>왼쪽 칸 줄 끝 방별</td><td>묶음별 합계 + ▾ 안 방별</td></tr>
+    <tr><td>결재 대기 노란 점 (방별)</td><td>메뉴 안 방별 + ▾ 옆 노란 점 (어느 방이든 있으면)</td><td>왼쪽 칸 줄 끝</td><td>묶음 칸 + ▾ 안</td></tr>
+    <tr><td>직원 칩 6개 + "+7명"</td><td>일하는 사람 얼굴 3 + "N명 일하는 중 · 13명" → 누르면 전체 목록</td><td colspan="2">일하는 사람 칩만 + "+N명" → 누르면 전체 목록</td></tr>
+    <tr><td>직원 칩 마우스 올리기(맡은 일·지금 하는 것) / 누르면 직원 패널</td><td colspan="3">그대로 — 사람 목록의 각 줄과 칩에 같은 설명·같은 동작</td></tr>
+    <tr><td>원격 PC 줄 (RemoteLine)</td><td>사람 목록 맨 아래</td><td>왼쪽 칸 맨 아래 (지금 분할 화면과 같음)</td><td>사람 목록 맨 아래</td></tr>
+    <tr><td>🔍 대화 찾기 · ⌘F</td><td colspan="3">그대로. 열면 머리 아래에 찾기 칸이 한 줄 생긴다</td></tr>
+    <tr><td>멘션(@)</td><td colspan="3">입력칸 그대로 (머리와 관계없음)</td></tr>
+    <tr><td>회의실 들어가기</td><td>방 ▾ 메뉴 아래</td><td>왼쪽 칸</td><td>사람 목록 옆 버튼</td></tr>
+  </table>
+  <div class="notes" style="width:1490px;margin-top:14px">
+    <h3>정해야 할 것</h3>
+    <ul>
+      <li><span class="tbd">확인 필요</span> 꼬리표의 '랩' — 앱 전체에서 '랩'을 쓰므로 그대로 두었다. '프로젝트'처럼 바꾸려면 앱 전체 용어 결정이라 기획 확인이 필요하다.</li>
+      <li><span class="tbd">확인 필요</span> ⓘ 요약의 "랩장 정리드가 받아요" — 랩장·팀장이 없는 방은 지금 문구처럼 "알맞은 한 명이 받아요"로 바꿔야 한다(입력칸 받는 사람 문구와 같은 규칙).</li>
+      <li>'전체' 방에서 얼굴 묶음은 지금처럼 일하는 중·확인 필요·오류인 사람만 센다("13명" 대신 "고용 직원 N명").</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ====== 템플릿 ====== -->
+<template id="t-chrome-top"><div class="bar"><i style="background:#FF5F57"></i><i style="background:#FEBC2E"></i><i style="background:#28C840"></i></div>
+<div class="appbar"><b>AI Office</b><span class="mut">· 단체방</span><span class="sp"></span><span class="ib wait">@bell 결재 2</span><span class="ib">@spark 비서</span></div></template>
+
+<template id="t-tail"><div class="msgs">
+  <div class="msg"><span class="av" style="background:#E8833A">리드</span><div class="b"><div class="n">정리드 <span class="mut" style="font-weight:400">· 16:52</span></div>매뉴얼 예시 템플릿 7개 코드에 넣는 중이에요. 끝나면 이 방에 올릴게요.</div></div>
+  <div class="msg me"><div class="b"><span class="mention">@이디자</span> 단체방 상단 정리 시안 2~3안 부탁해요</div></div>
+  <div class="msg"><span class="av" style="background:#3B9C7A">디자</span><div class="b"><div class="n">이디자</div>네, 오늘 안에 올릴게요.</div></div>
+</div>
+<div class="composer"><span class="to">@정리드 (랩장)</span>랩에게 메시지 — @이름·@전체 로 지시<span class="send">@send</span></div></template>
+
+<template id="t-now"><div class="win"><div data-inc="chrome-top"></div>
+<div class="body"><div class="nav"><i></i><i class="on"></i><i></i><i></i></div><div class="chat">
+  <div class="now-h">
+    <div class="t"><b>클로드 오피스 전담 랩 랩 방</b><span class="ibtn">@search</span></div>
+    <p>랩장과 랩 멤버만 있는 방이에요. 아무도 부르지 않으면 랩장이 받아 나눠 맡기고, @이름은 그 멤버, @전체은 랩 전원이에요. 결과도 이 방에 올라와요.</p>
+    <div class="strip">
+      <span class="rt">전체</span><span class="gl">팀</span>
+      <span class="rt"><i class="dot" style="background:#E8833A"></i>프론트엔드 팀 <span class="cnt">68</span></span>
+      <span class="rt"><i class="dot" style="background:#3E7BEA"></i>PO 팀 <span class="cnt">4</span></span>
+      <span class="rt"><i class="dot" style="background:#3B9C7A"></i>디자인 팀</span>
+      <span class="rt"><i class="dot" style="background:#8C5BD9"></i>백엔드 팀 <span class="cnt">1</span></span>
+      <span class="rt"><i class="dot" style="background:#D8B32E"></i>QA 팀</span>
+      <span class="rt"><i class="dot" style="background:#D9466A"></i>앱 팀 <span class="cnt">1</span><i class="ap"></i></span>
+      <span class="rt">…</span>
+    </div>
+    <div class="strip">
+      <span class="chip w"><span class="av s" style="background:#E8833A">리드</span><b>정리드</b><i class="dot w"></i><span class="tx">매뉴얼 예시 템플릿 7개 코드…</span></span>
+      <span class="chip"><span class="av s" style="background:#7a6a5a">패턴</span><b>박패턴</b><i class="dot i"></i><span class="tx">대기</span></span>
+      <span class="chip"><span class="av s" style="background:#9a5a4a">가독</span><b>최가독</b><i class="dot i"></i><span class="tx">대기</span></span>
+      <span class="chip"><span class="av s" style="background:#5a6a8a">리뷰</span><b>한리뷰</b><i class="dot i"></i><span class="tx">대기</span></span>
+      <span class="chip more">+7명</span>
+    </div>
+  </div>
+  <div data-inc="tail"></div>
+  <span class="callout" style="top:12px;left:190px">① 랩 랩</span>
+  <span class="callout" style="top:34px;right:22px">② 늘 펼친 설명</span>
+  <span class="callout" style="top:78px;right:22px">③ 방 칩 9개</span>
+  <span class="callout" style="top:108px;right:22px">④ 쉬는 사람도 같은 크기</span>
+</div></div></div></template>
+
+<template id="t-a"><div class="win"><div data-inc="chrome-top"></div>
+<div class="body"><div class="nav"><i></i><i class="on"></i><i></i><i></i></div><div class="chat">
+  <div class="h1line">
+    <span class="roomsel"><i class="dot" style="background:#6C5CE7;width:9px;height:9px"></i><b>클로드 오피스 전담 랩</b><span class="tag">랩</span>@chev<span class="cnt" title="다른 방 안 읽은 글">74</span><i class="ap"></i></span>
+    <span class="vline"></span>
+    <span class="people"><span class="faces"><span class="av s" style="background:#E8833A">리드</span></span><span class="wk">1명 일하는 중</span><span class="mut" style="font-size:12px">· 13명</span></span>
+    <span style="flex:1"></span>
+    <span class="ibtn">@info</span><span class="ibtn">@search</span>
+  </div>
+  <div data-inc="tail"></div>
+</div></div></div></template>
+
+<template id="t-a-rooms"><div class="win" style="width:400px"><div class="body" style="height:390px"><div class="chat">
+  <div class="h1line"><span class="roomsel open"><i class="dot" style="background:#6C5CE7;width:9px;height:9px"></i><b>클로드 오피스 전담 랩</b><span class="tag">랩</span>@chev</span></div>
+  <div class="pop" style="top:46px;left:10px;width:260px">
+    <div class="gh">전체</div>
+    <div class="it"><i class="dot" style="background:#6C5CE7"></i><span class="sp">전체 방</span><span class="sub">모두</span></div>
+    <div class="gh">팀</div>
+    <div class="it"><i class="dot" style="background:#E8833A"></i><span class="sp">프론트엔드 팀</span><span class="cnt">68</span></div>
+    <div class="it"><i class="dot" style="background:#3E7BEA"></i><span class="sp">PO 팀</span><span class="cnt">4</span></div>
+    <div class="it"><i class="dot" style="background:#3B9C7A"></i><span class="sp">디자인 팀</span></div>
+    <div class="it"><i class="dot" style="background:#8C5BD9"></i><span class="sp">백엔드 팀</span><span class="cnt">1</span></div>
+    <div class="it"><i class="dot" style="background:#D9466A"></i><span class="sp">앱 팀</span><i class="ap" title="결재 대기"></i><span class="cnt">1</span></div>
+    <div class="it mut" style="font-size:11px">QA 팀 · 마케팅 팀 …</div>
+    <div class="gh">랩</div>
+    <div class="it on"><i class="dot" style="background:#6C5CE7"></i><span class="sp">클로드 오피스 전담 랩</span>@check</div>
+    <div class="it mut" style="border-top:1px solid var(--border);margin-top:4px;border-radius:0">@meet 회의실</div>
+  </div>
+</div></div></div></template>
+
+<template id="t-a-people"><div class="win" style="width:400px"><div class="body" style="height:390px"><div class="chat">
+  <div class="h1line"><span class="people open"><span class="faces"><span class="av s" style="background:#E8833A">리드</span></span><span class="wk">1명 일하는 중</span><span class="mut" style="font-size:12px">· 13명</span></span></div>
+  <div class="pop" style="top:46px;left:10px;width:330px">
+    <div class="gh">일하는 중 1</div>
+    <div class="it"><span class="av" style="background:#E8833A">리드</span><span class="sp"><b>정리드</b> <span class="tag">랩장</span><br><span class="sub">매뉴얼 예시 템플릿 7개 코드에 넣는 중</span></span><i class="dot w"></i></div>
+    <div class="gh">확인 필요 0 · 쉬는 중 12</div>
+    <div class="it"><span class="av s" style="background:#7a6a5a">패턴</span><span class="sp">박패턴</span><span class="sub">대기</span></div>
+    <div class="it"><span class="av s" style="background:#9a5a4a">가독</span><span class="sp">최가독</span><span class="sub">대기</span></div>
+    <div class="it"><span class="av s" style="background:#5a6a8a">리뷰</span><span class="sp">한리뷰</span><span class="sub">대기</span></div>
+    <div class="it"><span class="av s" style="background:#4a5a9a">기획</span><span class="sp">김기획</span><span class="sub">대기</span></div>
+    <div class="it mut" style="font-size:11px">… 8명 더 · 이름을 누르면 직원 패널</div>
+  </div>
+</div></div></div></template>
+
+<template id="t-b"><div class="win big"><div data-inc="chrome-top"></div>
+<div class="body"><div class="nav"><i></i><i class="on"></i><i></i><i></i></div>
+  <div class="side">
+    <div class="gh">전체</div>
+    <div class="it"><i class="dot" style="background:#6C5CE7"></i><span class="sp">전체 방</span></div>
+    <div class="gh">팀</div>
+    <div class="it"><i class="dot" style="background:#E8833A"></i><span class="sp">프론트엔드 팀</span><span class="cnt">68</span></div>
+    <div class="it"><i class="dot" style="background:#3E7BEA"></i><span class="sp">PO 팀</span><span class="cnt">4</span></div>
+    <div class="it"><i class="dot" style="background:#3B9C7A"></i><span class="sp">디자인 팀</span></div>
+    <div class="it"><i class="dot" style="background:#8C5BD9"></i><span class="sp">백엔드 팀</span><span class="cnt">1</span></div>
+    <div class="it"><i class="dot" style="background:#D8B32E"></i><span class="sp">QA 팀</span></div>
+    <div class="it"><i class="dot" style="background:#D9466A"></i><span class="sp">앱 팀</span><i class="ap"></i><span class="cnt">1</span></div>
+    <div class="it"><i class="dot" style="background:#F06A2A"></i><span class="sp">마케팅 팀</span></div>
+    <div class="gh">랩</div>
+    <div class="it on"><i class="dot" style="background:#6C5CE7"></i><span class="sp">클로드 오피스 전담 랩</span></div>
+    <div class="it" style="margin-top:6px">@meet<span class="sp">회의실</span></div>
+  </div>
+  <div class="chat">
+    <div class="bh">
+      <div class="t"><b>클로드 오피스 전담 랩</b><span class="tag">랩</span><span style="flex:1"></span><span class="ibtn">@info</span><span class="ibtn">@search</span></div>
+      <div class="s"><span class="mut">13명 ·</span><span class="wk">1명 일하는 중</span>
+        <span class="chip w" style="margin-left:4px"><span class="av s" style="background:#E8833A">리드</span><b>정리드</b><i class="dot w"></i><span class="tx">매뉴얼 예시 템플릿 7개 코드…</span></span>
+        <span class="chip more">+12명</span></div>
+    </div>
+    <div data-inc="tail"></div>
+  </div>
+</div></div></template>
+
+<template id="t-c"><div class="win"><div data-inc="chrome-top"></div>
+<div class="body"><div class="nav"><i></i><i class="on"></i><i></i><i></i></div><div class="chat">
+  <div class="ch">
+    <div class="t"><i class="dot" style="background:#6C5CE7;width:9px;height:9px"></i><b>클로드 오피스 전담 랩</b><span class="tag">랩</span><span class="mut" style="font-size:12px;margin-left:4px">13명 ·</span><span class="wk">1명 일하는 중</span><span style="flex:1"></span><span class="ibtn">@info</span><span class="ibtn">@search</span></div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span class="seg"><span>전체</span><span>팀 @chev <span class="cnt">74</span><i class="ap"></i></span><span class="on">랩 @chev</span></span>
+      <span class="vline"></span>
+      <span class="chip w"><span class="av s" style="background:#E8833A">리드</span><b>정리드</b><i class="dot w"></i><span class="tx">매뉴얼 예시 템플릿 7개…</span></span>
+      <span class="chip more">+12명</span>
+    </div>
+  </div>
+  <div data-inc="tail"></div>
+</div></div></div></template>
+
+<script>
+  const ICON = {
+    search: '<circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/>',
+    info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',
+    chev: '<path d="m6 9 6 6 6-6"/>',
+    check: '<path d="m5 12 4.5 4.5L19 7"/>',
+    bell: '<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15zM10 20a2 2 0 0 0 4 0"/>',
+    spark: '<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18"/>',
+    send: '<path d="M4 12 20 4l-6 16-3-7z"/>',
+    meet: '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M12 16v4M8 20h8"/>',
+  }
+  const tpl = (id) => document.getElementById('t-' + id).innerHTML
+  const fill = (html) => html
+    .replace(/<div data-inc="([\w-]+)"><\/div>/g, (_, k) => tpl(k))
+    .replace(/@(\w+)/g, (m, k) => ICON[k] ? `<svg viewBox="0 0 24 24">${ICON[k]}</svg>` : m)
+  document.querySelectorAll('[data-slot]').forEach((el) => { el.innerHTML = fill(tpl(el.dataset.slot)) })
+
+  // B 보완: 실제 px로 그린 창 (data-frame)
+  const ROOMS = [
+    ['전', '#6C5CE7', '전체 방', 0, 0, 'all'],
+    ['프', '#E8833A', '프론트엔드 팀', 68, 0], ['PO', '#3E7BEA', 'PO 팀', 4, 0], ['디', '#3B9C7A', '디자인 팀', 0, 0],
+    ['백', '#8C5BD9', '백엔드 팀', 1, 0], ['QA', '#D8B32E', 'QA 팀', 0, 0], ['앱', '#D9466A', '앱 팀', 1, 1], ['마', '#F06A2A', '마케팅 팀', 0, 0],
+    ['클', '#6C5CE7', '클로드 오피스 전담 랩', 0, 0, 'lab'],
+  ]
+  const sideInner = () => tpl('b').match(/<div class="side">([\s\S]*?)<\/div>\s*<div class="chat">/)[1]
+  const sideHtml = () => `<div class="side">${sideInner()}</div>`
+  const railHtml = (o) => `<div class="rail"><span class="ri tg" title="방 목록 펼치기"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></span><hr>${ROOMS.map((r, i) => {
+    const on = r[5] === 'lab'
+    const tint = `background:color-mix(in srgb, ${r[1]} 20%, var(--card));color:${r[1]}`
+    return `${i === 1 || on ? '<hr>' : ''}<span class="ri${on ? ' on' : ''}" style="${tint}">${r[0]}${r[3] ? `<span class="cnt">${r[3]}</span>` : ''}${r[4] ? '<i class="ap"></i>' : ''}</span>`
+  }).join('')}<span style="flex:1"></span><span class="ri tg">@meet</span>${o.tip ? '<span class="tip" style="left:52px;top:96px">프론트엔드 팀 · 안 읽은 글 68</span>' : ''}</div>`
+  const peekHtml = () => `<div class="pop" style="top:6px;left:6px;width:220px;bottom:6px;z-index:9;padding:8px"><div style="display:flex;align-items:center;padding:2px 6px 4px"><b style="flex:1;font-size:12.5px">방</b><span class="mut" title="펼쳐 두기">📌</span></div><div class="side" style="width:auto;background:none;border:0;padding:0">${sideInner()}</div></div>`
+  const headHtml = (slim) => slim
+    ? `<div class="bh"><div class="t"><b>클로드 오피스 전담 랩</b><span class="tag">랩</span><span style="flex:1"></span><span class="ibtn">@info</span><span class="ibtn">@search</span></div>
+       <div class="s"><span class="people"><span class="faces"><span class="av s" style="background:#E8833A">리드</span></span><span class="wk">1명 일하는 중</span><span class="mut" style="font-size:12px">· 13명</span></span></div></div>`
+    : tpl('b').match(/<div class="bh">[\s\S]*?\+12명<\/span><\/div>\s*<\/div>/)[0]
+  const staffHtml = (over) => `<div class="staff${over ? ' over' : ''}">
+    <div class="sh"><span class="av" style="background:#E8833A;width:34px;height:34px;font-size:11px">리드</span><div style="flex:1"><b>정리드</b> <span class="tag">랩장</span><div class="wk" style="font-size:11.5px;margin-top:2px"><i class="dot w"></i> 일하는 중</div></div><span class="ibtn">✕</span></div>
+    <div class="tabs"><span class="on">활동</span><span>맡은 일</span><span>설정</span></div>
+    <div class="lg"><div><span class="tm">16:52</span><span>매뉴얼 예시 템플릿 7개 코드에 넣는 중</span></div><div><span class="tm">16:48</span><span>usability-audit/manuals.html 읽기</span></div><div><span class="tm">16:41</span><span>디자인 팀 시안 확인 · 결재 1건 올림</span></div><div><span class="tm">16:30</span><span>CHANGELOG 정리</span></div></div>
+    <div class="in">정리드에게 지시…</div></div>`
+  document.querySelectorAll('[data-frame]').forEach((el) => {
+    const o = { H: 640, s: 0.47, staff: 'side', sb: true, meas: true, ...JSON.parse(el.dataset.frame) }
+    const fr = document.createElement('div')
+    fr.className = 'fr'
+    fr.style.cssText = `width:${o.W}px;height:${o.H}px;transform:scale(${o.s})`
+    fr.innerHTML = fill(`${o.sb ? '<div data-inc="chrome-top"></div>' : ''}<div class="body">${o.sb ? '<div class="sb"><i></i><i class="on"></i><i></i><i></i><i></i></div>' : ''}${o.rooms === 'rail' ? railHtml(o) : sideHtml()}<div class="chat">${headHtml(o.head === 'slim')}<div data-inc="tail"></div></div>${o.staff !== 'none' ? staffHtml(o.staff === 'over') : ''}</div>`)
+    if (o.peek) fr.querySelector('.body').insertAdjacentHTML('beforeend', fill(peekHtml()))
+    el.classList.add('fw')
+    el.style.width = o.W * o.s + 'px'; el.style.height = o.H * o.s + 'px'
+    el.appendChild(fr)
+    if (o.note) el.insertAdjacentHTML('beforeend', `<span class="callout" style="top:${o.H * o.s - 22}px;left:8px">${o.note}</span>`)
+    el._o = o
+  })
+  const measure = () => document.querySelectorAll('.sheet.on [data-frame]').forEach((el) => {
+    const o = el._o, fr = el.querySelector('.fr')
+    if (!o.meas) return
+    const chat = fr.querySelector('.chat')
+    chat.querySelector('.meas')?.remove()
+    const w = chat.offsetWidth
+    const vis = o.staff === 'over' ? Math.max(0, w - fr.querySelector('.staff').offsetWidth) : w
+    const k = vis >= 640 ? 'ok' : vis >= 480 ? 'mid' : 'bad'
+    const word = { ok: '편함', mid: '좁음', bad: '불편' }[k]
+    const m = document.createElement('div')
+    m.className = 'meas ' + k
+    if (o.staff === 'over') { m.style.right = (fr.querySelector('.staff').offsetWidth + 2) + 'px'; m.style.left = '2px'; }
+    m.innerHTML = `<span${vis < 200 ? ' style="font-size:17px;padding:3px 6px"' : ''}><b>${o.staff === 'over' ? `${vis}px만 보임` : `대화 ${w}px`}${vis < 200 ? '' : ' · ' + word}</b></span>`
+    chat.appendChild(m)
+  })
+
+  const q = new URLSearchParams(location.search)
+  const show = (s) => {
+    document.querySelectorAll('.sheet').forEach((x) => x.classList.toggle('on', x.id === 'sh-' + s))
+    document.querySelectorAll('.tabs-top a[data-s]').forEach((a) => a.classList.toggle('on', a.dataset.s === s))
+    measure()
+  }
+  const setMode = (m) => { document.body.dataset.mode = m; document.getElementById('modeBtn').textContent = m === 'dark' ? '라이트로 보기' : '다크로 보기' }
+  document.querySelectorAll('.tabs-top a[data-s]').forEach((a) => a.onclick = () => show(a.dataset.s))
+  document.getElementById('modeBtn').onclick = () => setMode(document.body.dataset.mode === 'dark' ? 'light' : 'dark')
+  if (q.get('cap')) document.body.classList.add('capture')
+  setMode(q.get('mode') || 'light'); show(q.get('sheet') || 'all')
+</script>
+</body>
+</html>

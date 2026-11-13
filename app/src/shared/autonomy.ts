@@ -51,6 +51,14 @@ export function autonomyVerdict(tool: string, input: Record<string, unknown>, ex
 }
 
 /** 질문 도구에 비서가 답하지 못했을 때의 대체 답: 질문마다 첫 번째(추천) 선택지, 선택지가 없으면 "알아서 판단" */
+/**
+ * 대표가 아닌 쪽(비서·추천 선택지)이 대신 고른 답에 표시를 붙인다.
+ * 표시가 없으면 직원은 대표가 직접 고른 답과 구분하지 못해 보고에 "대표님이 정하셨다"고 쓴다
+ */
+export function markProxyAnswers(answers: Record<string, string>, mark: (answer: string) => string): Record<string, string> {
+  return Object.fromEntries(Object.entries(answers).map(([q, a]) => [q, mark(a)]))
+}
+
 export function fallbackAnswers(questions: readonly StaffQuestion[]): Record<string, string> {
   return Object.fromEntries(questions.map((q) => [q.question, q.options.find((o) => o.label.trim())?.label.trim() || AWAY_ANSWER]))
 }

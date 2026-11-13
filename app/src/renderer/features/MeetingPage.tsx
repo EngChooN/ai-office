@@ -17,6 +17,7 @@ import { buildGroups, groupState, toggleGroup, type PickGroup } from './meetingP
 import { meetingRoomOf, nextMeetingRoomLevel } from '@shared/officeLevel'
 import { CEO_NAME, decisionView, type DecisionState, type DecisionView } from '@shared/meetingDecisions'
 import { DuoIcon } from '@/components/duo-icon'
+import { RoomListColumn, useRoomListLayout } from './RoomListColumn'
 
 /** 이 인원을 넘으면 회의가 오래 걸린다고 알려 준다 (모두가 바퀴마다 한 번씩 발언) */
 const LONG_MEETING = 10
@@ -33,6 +34,7 @@ const STATUS_LABEL: Record<Meeting['status'], TKey> = {
 export function MeetingPage() {
   const staff = useOffice(useShallow((s) => s.staff.filter((x) => x.kind === 'hired')))
   const meetings = useOffice((s) => s.meetings)
+  const listLayout = useRoomListLayout()
   const [topic, setTopic] = useState('')
   const [picked, setPicked] = useState<string[]>([])
   const [rounds, setRounds] = useState(2)
@@ -88,68 +90,74 @@ export function MeetingPage() {
   }
 
   return (
-    <Page title={t('meeting.title')} description={t('meeting.description')}>
-      <form onSubmit={handleStart} className="bg-card mb-6 flex max-w-3xl flex-col gap-3 rounded-xl border p-4">
-        <Input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder={t('meeting.topicPlaceholder')} disabled={Boolean(running)} />
-        {groups.length > 0 && (
-          <div className="flex items-start gap-3">
-            <span className="text-muted-foreground w-8 shrink-0 pt-1.5 text-xs">{t('meeting.groups')}</span>
-            <div className="flex flex-wrap items-center gap-2">
-              {groups.map((g, i) => (
-                <GroupChip key={g.key} group={g} picked={picked} max={capacity} isFull={isFull} divider={i > 0 && g.kind !== groups[i - 1].kind} onClick={() => handleGroup(g)} />
-              ))}
+    // PC는 왼쪽에 단체방과 같은 방 목록(회의실 줄이 선택됨, 방을 누르면 단체방으로). 폰 배치에서는 RoomListColumn이 숨는다
+    <div ref={listLayout.rowRef} className="flex h-full">
+      <RoomListColumn room={undefined} layout={listLayout} />
+      <div className="min-w-0 flex-1">
+        <Page title={t('meeting.title')} description={t('meeting.description')}>
+          <form onSubmit={handleStart} className="bg-card mb-6 flex max-w-3xl flex-col gap-3 rounded-xl border p-4">
+            <Input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder={t('meeting.topicPlaceholder')} disabled={Boolean(running)} />
+            {groups.length > 0 && (
+              <div className="flex items-start gap-3">
+                <span className="text-muted-foreground w-8 shrink-0 pt-1.5 text-xs">{t('meeting.groups')}</span>
+                <div className="flex flex-wrap items-center gap-2">
+                  {groups.map((g, i) => (
+                    <GroupChip key={g.key} group={g} picked={picked} max={capacity} isFull={isFull} divider={i > 0 && g.kind !== groups[i - 1].kind} onClick={() => handleGroup(g)} />
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="flex items-start gap-3">
+              <span className="text-muted-foreground w-8 shrink-0 pt-1.5 text-xs">{t('meeting.staff')}</span>
+              <div className="flex flex-wrap gap-2">
+                {staff.length === 0 && <span className="text-muted-foreground text-xs">{t('meeting.noStaff')}</span>}
+                {staff.map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => toggle(s.id)}
+                    aria-pressed={picked.includes(s.id)}
+                    className={cn('phone:min-h-9 flex items-center gap-1.5 rounded-full border py-0.5 pr-2.5 pl-0.5 text-xs', picked.includes(s.id) && 'border-primary bg-accent')}
+                  >
+                    <Avatar avatar={s.avatar} name={s.name} teamId={s.teamId} className="size-6" /> {s.name}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-        )}
-        <div className="flex items-start gap-3">
-          <span className="text-muted-foreground w-8 shrink-0 pt-1.5 text-xs">{t('meeting.staff')}</span>
-          <div className="flex flex-wrap gap-2">
-            {staff.length === 0 && <span className="text-muted-foreground text-xs">{t('meeting.noStaff')}</span>}
-            {staff.map((s) => (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => toggle(s.id)}
-                aria-pressed={picked.includes(s.id)}
-                className={cn('phone:min-h-9 flex items-center gap-1.5 rounded-full border py-0.5 pr-2.5 pl-0.5 text-xs', picked.includes(s.id) && 'border-primary bg-accent')}
-              >
-                <Avatar avatar={s.avatar} name={s.name} teamId={s.teamId} className="size-6" /> {s.name}
-              </button>
+            <div className="text-xs">
+              <span className={cn('tabular-nums', isFull ? 'text-status-waiting' : 'text-muted-foreground')}>
+                {t('meeting.attendance', { count: picked.length, capacity })}
+                {picked.length < 2 && ` · ${t('meeting.minTwo')}`}
+              </span>
+              {isFull && nextLevel && (
+                <span className="text-muted-foreground ml-2">
+                  · {t('meeting.roomGrows', { level: nextLevel, capacity: meetingRoomOf(nextLevel).capacity })}
+                </span>
+              )}
+              {picked.length > LONG_MEETING && <span className="text-status-waiting ml-2">· {t('meeting.tooMany', { count: picked.length })}</span>}
+              {notice && <span className="text-status-waiting ml-2">{notice}</span>}
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-muted-foreground text-xs">{t('meeting.rounds')}</span>
+              {ROUND_OPTIONS.map((r) => (
+                <button key={r} type="button" onClick={() => setRounds(r)} className={cn('rounded-md border px-2 py-0.5 text-xs', rounds === r && 'border-primary bg-accent')}>
+                  {t('meeting.roundN', { n: r })}
+                </button>
+              ))}
+              <Button type="submit" size="sm" className="ml-auto" disabled={!topic.trim() || picked.length < 2 || Boolean(running)} data-tour="tut-meeting-start">
+                <PresentationIcon /> {running ? t('meeting.inProgress') : t('meeting.start')}
+              </Button>
+            </div>
+          </form>
+
+          <div className="flex max-w-3xl flex-col gap-3">
+            {meetings.map((m) => (
+              <MeetingCard key={m.id} meeting={m} isOpen={openId === m.id || isMeetingLive(m) || (isTodoStep && m.id === tutorialMeetingId)} onToggle={() => setOpenId(openId === m.id ? null : m.id)} />
             ))}
           </div>
-        </div>
-        <div className="text-xs">
-          <span className={cn('tabular-nums', isFull ? 'text-status-waiting' : 'text-muted-foreground')}>
-            {t('meeting.attendance', { count: picked.length, capacity })}
-            {picked.length < 2 && ` · ${t('meeting.minTwo')}`}
-          </span>
-          {isFull && nextLevel && (
-            <span className="text-muted-foreground ml-2">
-              · {t('meeting.roomGrows', { level: nextLevel, capacity: meetingRoomOf(nextLevel).capacity })}
-            </span>
-          )}
-          {picked.length > LONG_MEETING && <span className="text-status-waiting ml-2">· {t('meeting.tooMany', { count: picked.length })}</span>}
-          {notice && <span className="text-status-waiting ml-2">{notice}</span>}
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="text-muted-foreground text-xs">{t('meeting.rounds')}</span>
-          {ROUND_OPTIONS.map((r) => (
-            <button key={r} type="button" onClick={() => setRounds(r)} className={cn('rounded-md border px-2 py-0.5 text-xs', rounds === r && 'border-primary bg-accent')}>
-              {t('meeting.roundN', { n: r })}
-            </button>
-          ))}
-          <Button type="submit" size="sm" className="ml-auto" disabled={!topic.trim() || picked.length < 2 || Boolean(running)} data-tour="tut-meeting-start">
-            <PresentationIcon /> {running ? t('meeting.inProgress') : t('meeting.start')}
-          </Button>
-        </div>
-      </form>
-
-      <div className="flex max-w-3xl flex-col gap-3">
-        {meetings.map((m) => (
-          <MeetingCard key={m.id} meeting={m} isOpen={openId === m.id || isMeetingLive(m) || (isTodoStep && m.id === tutorialMeetingId)} onToggle={() => setOpenId(openId === m.id ? null : m.id)} />
-        ))}
+        </Page>
       </div>
-    </Page>
+    </div>
   )
 }
 

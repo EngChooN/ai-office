@@ -9,13 +9,13 @@ import { IS_WINDOWS, osText, trayPlace } from '@/lib/platform'
 import { NotOnWindows } from '@/components/not-on-windows'
 import { PcOnlyState } from '@/components/pc-only-state'
 import { IS_REMOTE_SCREEN } from '@/shell'
-import { RemoteSection } from './RemoteSection'
-import { PeerSection } from './PeerSection'
-import { ConnectedPcSection } from './workspace/ConnectedPcSection'
+import { ConnectSection } from './connect/ConnectSection'
 import { SECTION_ID } from './settingsSections'
 import { PROVIDER_SECTION_ID, ProviderSection } from './ProviderCards'
 import { COMPANY_LEVELS, type DayNight, type HooksStatus, type Settings, type ThemeId } from '@shared/types'
-import { UI_THEME_GROUPS, type UiMode } from '@shared/uiTheme'
+import { DARK_ONLY_THEMES, DEFAULT_UI_THEME, UI_THEME_GROUPS, type UiMode } from '@shared/uiTheme'
+import { CheckIcon } from 'lucide-react'
+import { RetroThemePreview } from './RetroThemePreview'
 import { PET_OPACITY_RANGE, PET_SIZE_RANGE, petOpacity, petSize } from '@shared/deskPet'
 import { officeOf } from '@shared/officeLevel'
 import { ApprovalRulesList, AutoApproveSection } from './AutoApprove'
@@ -56,7 +56,6 @@ const SECTION_CATEGORY: Record<string, Category> = {
   [SECTION_ID.workHours]: 'ai',
   [SECTION_ID.deskPet]: 'office',
   [SECTION_ID.remote]: 'connect',
-  [SECTION_ID.workspaces]: 'connect',
   [SECTION_ID.hooks]: 'connect',
 }
 
@@ -248,22 +247,60 @@ export function SettingsPage() {
                 <div key={g.id} className="flex flex-col gap-2">
                   {/* 묶음이 하나면 제목 없이 */}
                   {UI_THEME_GROUPS.length > 1 && g.titleKey && <h3 className="text-sm font-semibold">{t(g.titleKey)}</h3>}
+                  {g.id === 'special' && <p className="text-muted-foreground text-xs">{t('uiTheme.special.desc')}</p>}
                   <div className="phone:grid-cols-2 narrow:grid-cols-2 @max-xs/page:grid-cols-1 grid grid-cols-3 gap-3" role="radiogroup" aria-label={t('settingsPage.uiTheme.title')}>
-                    {g.themes.map((theme) => (
-                      <button
-                        key={theme.id}
-                        type="button"
-                        role="radio"
-                        aria-checked={settings.uiTheme === theme.id}
-                        disabled={IS_REMOTE_SCREEN}
-                        onClick={() => update({ uiTheme: theme.id })}
-                        className={cn('enabled:hover:bg-accent/50 focus-ring flex min-w-0 items-center gap-3 rounded-2xl border p-3 text-left disabled:opacity-60', settings.uiTheme === theme.id && 'border-ring ring-ring ring-2')}
-                      >
-                        <span className="size-10 shrink-0 rounded-full border border-black/10" style={{ background: `linear-gradient(135deg, ${theme.swatchFrom}, ${theme.swatchTo})` }} />
-                        <span className="truncate text-sm font-medium">{t(theme.labelKey)}</span>
-                      </button>
-                    ))}
+                    {g.themes.map((theme) => {
+                      const isOn = settings.uiTheme === theme.id
+                      // 특별 테마는 이름만으로 알기 어려워 줄을 다 쓰고 미리보기 그림·한 줄 설명·사용 중 표시를 함께 둔다
+                      if (theme.descKey)
+                        return (
+                          <button
+                            key={theme.id}
+                            type="button"
+                            role="radio"
+                            aria-checked={isOn}
+                            disabled={IS_REMOTE_SCREEN}
+                            onClick={() => update({ uiTheme: theme.id })}
+                            className={cn('enabled:hover:bg-accent/50 focus-ring col-span-full flex min-w-0 items-center gap-3 rounded-2xl border p-3 text-left disabled:opacity-60', isOn && 'border-ring ring-ring ring-2')}
+                          >
+                            <RetroThemePreview />
+                            <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+                              <span className="text-sm font-semibold">{t(theme.labelKey)}</span>
+                              <span className="text-muted-foreground text-xs">{t(theme.descKey)}</span>
+                              {DARK_ONLY_THEMES.includes(theme.id) && <span className="text-muted-foreground text-xs">{t('uiTheme.darkOnly')}</span>}
+                            </span>
+                            {isOn && (
+                              <span className="bg-primary text-primary-foreground flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold">
+                                <CheckIcon className="size-3.5" />
+                                {t('uiTheme.inUse')}
+                              </span>
+                            )}
+                          </button>
+                        )
+                      return (
+                        <button
+                          key={theme.id}
+                          type="button"
+                          role="radio"
+                          aria-checked={isOn}
+                          disabled={IS_REMOTE_SCREEN}
+                          onClick={() => update({ uiTheme: theme.id })}
+                          className={cn('enabled:hover:bg-accent/50 focus-ring flex min-w-0 items-center gap-3 rounded-2xl border p-3 text-left disabled:opacity-60', isOn && 'border-ring ring-ring ring-2')}
+                        >
+                          <span className="size-10 shrink-0 rounded-full border border-black/10" style={{ background: `linear-gradient(135deg, ${theme.swatchFrom}, ${theme.swatchTo})` }} />
+                          <span className="truncate text-sm font-medium">{t(theme.labelKey)}</span>
+                        </button>
+                      )
+                    })}
                   </div>
+                  {/* 갈무리 글꼴 라이선스(SIL OFL 1.1) 표기 — 원문은 fonts/galmuri/OFL.md와 글꼴 파일 안에 함께 있다 */}
+                  {/* 특별 테마를 쓰는 중이면 기본 테마로 한 번에 돌아가는 버튼 */}
+                  {g.id === 'special' && g.themes.some((x) => x.id === settings.uiTheme) && !IS_REMOTE_SCREEN && (
+                    <Button variant="outline" size="sm" className="self-start" onClick={() => update({ uiTheme: DEFAULT_UI_THEME })}>
+                      {t('uiTheme.backToDefault')}
+                    </Button>
+                  )}
+                  {g.id === 'special' && <p className="text-muted-foreground text-[11px]">{t('uiTheme.retro.fontCredit')}</p>}
                 </div>
               ))}
               {IS_REMOTE_SCREEN && <PcOnlyState />}
@@ -440,18 +477,8 @@ export function SettingsPage() {
         {category === 'connect' && (
           <>
             <Section id={SECTION_ID.remote} title={t('settingsPage.remote.title')} description={t('settingsPage.remote.desc')}>
-              <RemoteSection />
+              <ConnectSection />
             </Section>
-            {!IS_REMOTE_SCREEN && (
-              <Section id={SECTION_ID.workspaces} title={t('workspace.section.title')} description={t('workspace.section.desc')}>
-                <ConnectedPcSection />
-              </Section>
-            )}
-            {!IS_REMOTE_SCREEN && (
-              <Section title={t('peer.section.title')} description={t('peer.section.desc')}>
-                <PeerSection />
-              </Section>
-            )}
             <Section id={SECTION_ID.hooks} title={t('settingsPage.hooks.title')} description={t('settingsPage.hooks.desc')} detail={t('settingsPage.hooks.detail')}>
               <NotOnWindows reason={t('settingsPage.notOnWindows')} />
               {IS_REMOTE_SCREEN ? (

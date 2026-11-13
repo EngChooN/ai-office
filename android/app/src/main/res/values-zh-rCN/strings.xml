@@ -51,8 +51,8 @@
     <string name="updated_just_now">刚刚更新</string>
     <string name="pick_staff">请选择员工</string>
     <string name="title_staff">员工</string>
-    <string name="empty_staff">还没有雇用员工</string>
-    <string name="empty_staff_hint">雇用员工请在电脑上操作。</string>
+    <string name="empty_staff">还没有添加员工</string>
+    <string name="empty_staff_hint">添加员工请在电脑上操作。</string>
     <string name="staff_not_found">找不到该员工</string>
     <string name="staff_not_found_refreshed">找不到该员工，已刷新列表。</string>
     <string name="current_work">当前工作</string>
@@ -128,8 +128,11 @@
     <string name="settings_language">语言</string>
     <string name="lang_auto">跟随设备</string>
     <string name="onb_title">连接到我的电脑办公室</string>
-    <string name="onb_step1">1. 在电脑的 AI Office 中开启 设置 › 手机连接。</string>
-    <string name="onb_step2">2. 扫描电脑屏幕上显示的二维码。</string>
+    <string name="onb_step1">① 开启 Tailscale — 连接你自己设备的免费应用。</string>
+    <string name="onb_step2">② 扫描电脑屏幕上的二维码</string>
+    <string name="onb_step3">③ 确认连接</string>
+    <string name="onb_wifi_note">如果只在同一 Wi-Fi 下使用，无需 Tailscale，直接扫描二维码即可。</string>
+    <string name="btn_open_camera">打开相机</string>
     <string name="btn_scan_qr">扫描二维码</string>
     <string name="onb_camera_note">相机仅用于读取二维码。</string>
     <string name="cam_perm_title">需要相机权限</string>
@@ -230,8 +233,8 @@
     <string name="state_connfail_unreach_ts">请确认手机上的 Tailscale 已开启，并与电脑使用同一账号登录。</string>
     <string name="state_unreach_body_ts">可能的原因：\n· 手机上的 Tailscale 已关闭，或与电脑账号不同\n· 电脑处于睡眠状态或已关机\n· AI Office 未运行</string>
     <string name="qr_unreach_default_ts">无法连接到电脑。请确认手机上的 Tailscale 已开启，并与电脑使用同一账号。</string>
-    <string name="manual_btn">通过地址连接</string>
-    <string name="manual_title">通过地址连接</string>
+    <string name="manual_btn">通过连接码连接</string>
+    <string name="manual_title">通过连接码连接</string>
     <string name="manual_intro">输入电脑上 AI Office 设置 › 手机连接中显示的地址和12位连接码（XXXX-XXXX-XXXX）。需要开启 Tailscale 应用。</string>
     <string name="manual_host_label">电脑地址（Tailscale IP）</string>
     <string name="manual_host_hint">例如：100.64.0.1</string>

@@ -337,7 +337,7 @@ test('메뉴바: 요약·자동결재·결재 대기·직원 전체(팀·랩 하
   const staffRoot = find(items, /^직원 전체/)
   assert.equal(staffRoot.label, '직원 전체 (15)')
   const groups = staffRoot.submenu.filter((g: any) => g.label).map((g: any) => g.label)
-  assert.deepEqual(groups, ['팀 · 백엔드 (6 · 작업 중 1)', '팀 · 프론트 (6)', '팀 없음 (2)', '랩 · 오피스 랩 (7)', '앱 밖 직원 (터미널 등) (1)'])
+  assert.deepEqual(groups, ['팀 · 백엔드 (6 · 작업 중 1)', '팀 · 프론트 (6)', '팀 없음 (2)', '프로젝트 · 오피스 랩 (7)', '앱 밖 직원 (터미널 등) (1)'])
   for (let i = 0; i < 14; i++) assert.ok(labels(staffRoot.submenu).some((l) => l.includes(`직원${i}`)), `직원${i}`)
   assert.ok(labels(staffRoot.submenu).includes('🟢 직원0 — Edit 실행 중'))
   assert.ok(all.includes('비서에게 말하기'))

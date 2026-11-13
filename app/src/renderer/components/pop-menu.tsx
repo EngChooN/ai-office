@@ -62,9 +62,9 @@ export function PopMenu({ icon, label, hasDot, opens = 'up', className, buttonCl
 }
 
 /** PopMenu 안의 한 줄 버튼 */
-export function PopMenuItem({ icon, onClick, children, className }: { icon?: ReactNode; onClick: () => void; children: ReactNode; className?: string }) {
+export function PopMenuItem({ icon, onClick, children, className, title }: { icon?: ReactNode; onClick: () => void; children: ReactNode; className?: string; title?: string }) {
   return (
-    <button type="button" onClick={onClick} className={cn('hover:bg-accent flex min-h-9 items-center gap-2 rounded-lg px-2.5 text-left text-sm [&_svg]:size-4 [&_svg]:shrink-0', className)}>
+    <button type="button" onClick={onClick} title={title} className={cn('hover:bg-accent flex min-h-9 items-center gap-2 rounded-lg px-2.5 text-left text-sm [&_svg]:size-4 [&_svg]:shrink-0', className)}>
       {icon}
       {children}
     </button>

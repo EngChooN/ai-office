@@ -16,13 +16,21 @@
 ### 버그 수정
 - 직원 메시지 링크 열기(본 창·펫 펼침·안드로이드 `WebShell.kt`), 대화방 매뉴얼·명령 버튼이 멘션 창을 띄우던 문제, 기본 작업 폴더 원격 변경 차단, 기존 매뉴얼 내부 이름 서버 잠금(`saveManual` `name: prev.name`), `draftManual` 응답 칸 누락 방어, `NewManualDialog` StrictMode `isClosed` 되돌림.
 
-## [미정] (설치본 미빌드)
+## [1.4.0] - 2026-11-13 (설치본 빌드)
 
 ### 새 기능
 - 대화방 구성원 상태 줄(`RoomStatusStrip`·`StatusTip`, ChatPage 머리): 팀·랩 방은 `chatRoomMembers` 전원, 전체 방은 idle·offline 제외. 직원 status·progress.text(머리말 `[..]` 뺌)·activity로 그려서 업무 카드(origin task, room 없음)·1:1 지시 일도 보인다(기존 `progressesForRoom`은 room이 맞는 지시만 — 랩 방에서 카드 작업이 안 보이던 원인). 6명 넘으면 +N명 접기, 마우스 올리면 포털 말풍선, 누르면 직원 패널.
 - 대화방 대기 메시지·끼어들기: `sendChat` 네 번째 인자 `mode?: ChatSendMode`('wait'·'now', 원격 v2 `s?` 추가). 앱 대화방은 늘 mode를 넘겨 받는 사람이 working이면 `instructFromPanel`(shown=머리말 없는 본문)로 대기 메시지, now면 `interruptWith`(chat origin을 남겨 결과가 그 방으로). mode가 없으면(비서·바탕화면 비서·예전 휴대폰) 예전처럼 바로. `StaffProgress.waiting[].room` 추가, `WaitingCards`는 `items`(staffId·name)로 바꿔 대화방은 이 방 대기 메시지만 입력칸 위에. 대기 메시지 '지금 보내기'도 chat origin이면 방을 이어 간다.
 - 대화방 '📘 매뉴얼'·'/ 명령' 버튼: 멘션 받는 사람 → 없으면 팀장·랩장의 `@이름 /`를 넣어 SlashMenu를 mode별로 연다. 받을 사람을 못 정하면(전체 방) `@`로 사람부터 고르게 하고 고르면 `/`까지. 쓰던 글은 고른 명령 뒤에 다시 붙인다. 문구 `dict/chatStatus.ts`.
 - 대화방 메신저 기능(`renderer/features/ChatExtras.tsx`, 문구 `dict/chatMessenger.ts`): chat 표 `meta`(JSON — replyTo·deliveries·reaction·taskId·scheduled·plan, `db.updateChatMeta`), Origin에 `chatId`·`cardId`. 처리 상태 `setDelivery`(sendChat deliver·대기 메시지 waiting/취소·releaseWaiting·onFinished done+reportId·settleFailed error·dropWork stopped, 끝난 상태는 늦은 신호로 되돌리지 않음) + 화면은 `StaffProgress.chatId/chatIds`로 작업 중·차례 기다림·결재 대기를 겹쳐 봄. 답장 `sendChat` 다섯째 `replyTo`(원격 `n?`) — 멘션 없으면 인용한 직원이 받고 지시 앞에 `chat.reply.context` 인용. 보고 빠른 버튼 `reactChat`(like면 이어진 카드 review→done). 안 읽은 수 `shared/chatUnread.ts`(localStorage `aiOffice.chatSeen`, 처음엔 baseline=마지막 id), nav 배지 `chat`. 대화 카드 `cardForChatWork`(office.log 'tool' 때 지금 턴의 chat origin에 카드가 없으면 doing 카드 생성, `Task.fromChat`·task.from_chat), `cardIdsOf`로 settleFailed·dropWork·isWorkingOn·onFinished·propose_plan이 같이 다룸(기획안은 대화 카드를 재사용하고 제목을 기획 제목으로). 예약 `chat_reservation` 표·`shared/chatReservations.ts`(30초 틱, 켤 때 지난 것은 isMissed→카드에서 보내기·건너뛰기, 반복 놓침은 다음 날 풀림), API `saveChatReservation`·`chatReservationAction`. 찾기 `searchChat`(LIKE, 최근 100)·`chatAround`(앞뒤 30개를 store.mergeChat), 방 안 표시는 CSS Custom Highlight. 기획안 카드: propose_plan 게시 글에 `meta.plan`, 방은 roomOf → 리드 랩 방 → 팀 방 → 전체, `PlanNotice`는 task.plan 상태로 확인 대기·승인됨·고쳐 달라고 함·새 기획안으로 바뀜, '결재함에서 보기'는 `openPlanInInbox`로 PlanCard 스크롤·강조. 시험 `scripts/chatMessenger.test.mts`(7건), 비서 분류 조회 30·변경 63·제외 60, 원격 R 99.
+- 다른 PC 직원 빌려주기·데려오기 삭제 + '다른 기기 연결' 카드 하나(`features/connect/ConnectSection.tsx`, 순수 판단 `shared/connectModel.ts`): `main/peer/`의 `peerHost`·`jobQueue`·`approvalRelay`·`remoteStaffView`·`peerIsolation`·`sync/`·`remote/syncRoutes` 삭제, 짝짓기·연결 유지·`PeerManager`는 남김. 옛 상대의 일 경로는 410 `peer_feature_removed`. 저장 데이터는 `main/peer/legacyPeerCleanup.ts`가 `openDb()` 직후 1회 정리(옛 표 7개 DROP, `peer-*` 폴더 삭제, `p:` id 제거). 상세는 SPEC.md 해당 절.
+- 특별 테마 '레트로 오피스 게임'(`renderer/theme-retro.css`·`features/RetroThemePreview.tsx`·`shared/uiTheme.ts`): 다크 전용, 갈무리(Galmuri, SIL OFL 1.1, `renderer/fonts/galmuri/`) 도트 글꼴을 이 테마를 고를 때만 내려받음, 설정 › 테마 '특별 테마' 묶음, 기록 글자 12·15·24px(`lib/logFont.ts`). 시험 `themeRetro.test.mts`.
+- 화면 쉬운 개선 2차: 직원 목록 알림 줄 `AlertBar.tsx`(상황판·`DashboardPanels.tsx` 삭제), 직원 패널 결재 탭 `ApprovalTab.tsx`+`shared/approvalHistory.ts`(결재 기록 저장은 `approvalLegacy.ts`가 옛 기록을 읽어 옮김), 기록 › 보고서 하루 보기 `shared/recordDay.ts`, 팀 만들기 3단계 `OrgCreateDialog.tsx`·`orgGroup.ts`·`staffCard.ts`, 이름 변경 랩→프로젝트·팀장/랩장→리더(`@랩` 멘션은 `mention.ts`의 `LEGACY_KIND_LABEL`로 계속 인식), 탭 이름 대시보드→직원 목록·조직도→팀 구성, 직원 추가 3단계(`hireStepValid`).
+- 대화방 방 목록·띠: `RoomListColumn.tsx`(회의실 합침)·`ChatRoomRail.tsx`(56px 띠, 폭 <840 접힘·≥856 펴짐, `shared/chatRoomLayout.ts`).
+- 안드로이드: 처음 연결 화면 3단계 안내(`Onboarding.kt`, 버튼 '카메라 열기')와 문구 4개 언어. `versionCode` 53.
+
+### 버그 수정
+- 랩 방에서 카드 작업이 대화방에 안 보이던 문제(구성원 상태 줄이 해결), 팀원 보고 600자 → `LEADER_REPORT_MAX` 8,000자(`shared/memberReport.ts`).
 
 ## [1.0.3] - 2026-11-06
 

@@ -13,6 +13,7 @@ function DialogContent({ className, children, ...props }: React.ComponentProps<t
     <DialogPrimitive.Portal>
       <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-overlay backdrop-blur-[10px]" />
       <DialogPrimitive.Content
+        data-slot="dialog"
         className={cn(
           'bg-background fixed top-1/2 left-1/2 z-50 grid max-h-[85vh] w-full max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto rounded-[var(--radius-dialog)] border bg-[image:var(--grad-dialog-glow)] p-6 shadow-(--shadow-dialog)',
           // 휴대폰 앱(태블릿 배치): 키보드가 덮지 않게 키보드 위 영역의 가운데에

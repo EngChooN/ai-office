@@ -78,3 +78,11 @@ export function tourTarget(groups: NavGroupDef[], view: View): string {
   if (!g || g.id === view) return `nav-${view}`
   return `nav-${view}|nav-${g.id}`
 }
+
+/**
+ * 묶음 화면 위쪽 탭 줄을 그릴지. PC에서는 '대화' 묶음(단체방·회의실)이 왼쪽 방 목록의 회의실 줄로 오가므로 탭 줄을 뺀다.
+ * 폰은 방 목록이 없어 그대로 탭 줄을 쓴다 (PhoneShell은 이 함수를 부르지 않는다)
+ */
+export function showsTabRow(groupId: NavGroupId | undefined, shell: 'desktop' | 'phone'): boolean {
+  return !(shell === 'desktop' && groupId === 'talk')
+}

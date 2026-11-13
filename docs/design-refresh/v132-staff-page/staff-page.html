@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<title>v1.3.2 '직원' 화면 — 비개발자용 개선 시안</title>
+<!-- 디자인 시안 전용(앱 코드 아님). ?mode=light|dark &sheet=now|a|b|ref 로 연다.
+     근거 코드: navGroups.ts('직원' 묶음 = 대시보드·조직도 탭), Dashboard.tsx·DashboardPanels.tsx(숫자 칸 6개·상황판 3카드·직원 목록), StaffCard.tsx(카드 하단 Lv·토큰·$),
+     status.ts(작업 중·확인 필요·대기·퇴근·오류·연결 대기), StaffPanel.tsx(머리: 직무·모델·작업 폴더·터미널에서 이어 하기 / 탭: 업무·변경·장비·프로필),
+     HireDialog.tsx(한 장 + 자세히 설정, 직무 칩 11개에 설명 없음). 이름·숫자는 예시. 색은 chat-header.html과 같은 사무실 토큰 -->
+<style>
+  [data-mode='light'] {
+    --background:#F6F5FB; --foreground:#221F33; --card:#FFFFFF; --primary:#6C5CE7; --on-primary:#FFFFFF;
+    --muted:#ECEAF6; --muted-foreground:#66627F; --accent:#E9E6FA; --border:#DEDAF0; --input:#CFCAE6;
+    --chrome:#FBFAFF; --working:#1C7C46; --waiting:#9A5B00; --idle:#77737F; --error:#C42B2B;
+    --working-soft:#E2F5EA; --waiting-soft:#FFF3DC; --error-soft:#FDE7E7; --idle-soft:#EFEEF3;
+    --sheet-bg:#E4E1F2; --frame:#c9c4e0; --hl:#E5484D; --yb:#F2C94C;
+  }
+  [data-mode='dark'] {
+    --background:#14131C; --foreground:#EDEBF8; --card:#201F2D; --primary:#9B8CFF; --on-primary:#1A1240;
+    --muted:#292739; --muted-foreground:#A7A3C4; --accent:#302D47; --border:#34314A; --input:#413E5C;
+    --chrome:#181723; --working:#4ADE80; --waiting:#F2C94C; --idle:#9C9AA8; --error:#FF6B6B;
+    --working-soft:#14301F; --waiting-soft:#3A2E12; --error-soft:#3A1A1E; --idle-soft:#26252F;
+    --sheet-bg:#0C0B12; --frame:#2a2838; --hl:#FF8A8F; --yb:#F2C94C;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--sheet-bg); }
+  body { font-family: "Pretendard", "Apple SD Gothic Neo", system-ui, sans-serif; color: var(--foreground); padding: 26px 32px 40px; width: max-content; min-width: 100vw; font-size: 13px; }
+  .top { display: flex; gap: 6px; margin-bottom: 18px; }
+  .top a { padding: 7px 14px; border-radius: 999px; background: var(--card); color: var(--foreground); text-decoration: none; font-weight: 600; border: 1px solid var(--border); }
+  .top a.on { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
+  .top .gap { width: 14px; }
+  .capture .top { display: none; }
+  .sheet { display: none; } .sheet.on { display: block; }
+  h1 { font-size: 23px; } h2 { font-size: 16px; display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .lead { color: var(--muted-foreground); font-size: 13.5px; margin: 6px 0 18px; max-width: 1400px; line-height: 1.6; }
+  .rec { font-size: 10.5px; font-weight: 800; background: var(--primary); color: var(--on-primary); border-radius: 999px; padding: 2px 8px; }
+  .row { display: flex; gap: 24px; align-items: flex-start; }
+  .note { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px 18px; font-size: 12.8px; line-height: 1.65; width: 420px; }
+  .note ol, .note ul { margin-left: 18px; } .note h3 { font-size: 13.5px; margin: 10px 0 2px; } .note h3:first-child { margin-top: 0; }
+  .note .n { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: var(--hl); color: #fff; font-size: 10.5px; font-weight: 800; margin-right: 4px; }
+  table.t { border-collapse: collapse; font-size: 12.3px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  table.t th, table.t td { border-bottom: 1px solid var(--border); padding: 6px 10px; text-align: left; vertical-align: top; line-height: 1.5; }
+  table.t th { color: var(--muted-foreground); font-size: 11.5px; background: var(--chrome); }
+  table.t s { color: var(--muted-foreground); }
+
+  svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+  /* 앱 창 */
+  .win { width: 980px; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; background: var(--background); border: 1px solid var(--frame); box-shadow: 0 18px 36px -18px rgba(40,30,90,.45); position: relative; }
+  .appbar { height: 36px; flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 0 12px; background: var(--card); border-bottom: 1px solid var(--border); font-size: 12px; font-weight: 700; }
+  .appbar .sp { flex: 1; } .appbar .ib { height: 23px; padding: 0 9px; border-radius: 999px; background: var(--muted); display: inline-flex; gap: 4px; align-items: center; font-size: 10.5px; }
+  .appbar .ib.p { background: var(--primary); color: var(--on-primary); }
+  .body { display: flex; min-height: 0; }
+  .nav { width: 104px; flex-shrink: 0; border-right: 1px solid var(--border); padding: 8px 6px; display: flex; flex-direction: column; gap: 2px; font-size: 11.5px; }
+  .nav span { padding: 5px 8px; border-radius: 8px; color: var(--muted-foreground); }
+  .nav span.on { background: var(--accent); color: var(--foreground); font-weight: 700; }
+  .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); padding: 0 14px; height: 32px; align-items: flex-end; flex-shrink: 0; }
+  .tabs span { padding: 0 8px 7px; font-size: 11.5px; color: var(--muted-foreground); border-bottom: 2px solid transparent; }
+  .tabs span.on { color: var(--foreground); font-weight: 700; border-color: var(--primary); }
+  .pg { padding: 12px 16px 16px; display: flex; flex-direction: column; gap: 10px; }
+  .muted { color: var(--muted-foreground); }
+  .av { width: 30px; height: 30px; border-radius: 9px; display: inline-grid; place-items: center; font-size: 10px; font-weight: 800; color: #fff; flex-shrink: 0; }
+  .av.l { width: 40px; height: 40px; border-radius: 11px; font-size: 12px; }
+  .pill { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 2px 8px; font-size: 10.5px; font-weight: 700; white-space: nowrap; }
+  .pill i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .s-working { color: var(--working); background: var(--working-soft); }
+  .s-waiting { color: var(--waiting); background: var(--waiting-soft); }
+  .s-error { color: var(--error); background: var(--error-soft); }
+  .s-idle { color: var(--idle); background: var(--idle-soft); }
+  .chip { border: 1px solid var(--border); background: var(--card); border-radius: 999px; padding: 2px 8px; font-size: 10.5px; white-space: nowrap; }
+  .chip.on { background: var(--primary); color: var(--on-primary); border-color: var(--primary); font-weight: 700; }
+  .ask { border: 1px solid color-mix(in srgb, var(--primary) 35%, var(--border)); color: var(--primary); background: color-mix(in srgb, var(--primary) 7%, var(--card)); border-radius: 8px; padding: 3px 8px; font-size: 10.5px; white-space: nowrap; }
+  .btn { border-radius: 8px; padding: 5px 10px; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+  .btn.p { background: var(--primary); color: var(--on-primary); }
+  .btn.o { border: 1px solid var(--border); background: var(--card); }
+  .btn.y { background: var(--yb); color: #241a00; }
+  .btn.r { background: var(--error); color: #fff; }
+  .mono { font-family: ui-monospace, Menlo, monospace; font-size: 10px; }
+  /* 지금 화면 */
+  .tiles { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+  .tile { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 7px 9px; font-size: 10px; color: var(--muted-foreground); }
+  .tile b { display: block; font-size: 16px; color: var(--foreground); }
+  .boards { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 6px; }
+  .board { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; font-size: 10.5px; height: 92px; overflow: hidden; display: flex; flex-direction: column; gap: 4px; }
+  .board b { font-size: 11.5px; }
+  .ocards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .ocard { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; font-size: 10.5px; display: flex; flex-direction: column; gap: 4px; }
+  .ocard .mini { height: 44px; border-radius: 7px; background: linear-gradient(135deg, #cfe3c2, #e8d9b8); }
+  [data-mode='dark'] .ocard .mini { background: linear-gradient(135deg, #2c3d2a, #3d3526); }
+  .ocard .hd { display: flex; align-items: center; gap: 6px; } .ocard .hd b { font-size: 11.5px; } .ocard .hd .st { margin-left: auto; font-size: 10px; }
+  /* A안 카드 */
+  .sum { display: flex; align-items: center; gap: 10px; }
+  .sum .sent { font-size: 13px; font-weight: 600; line-height: 1.5; }
+  .sum .sent em { font-style: normal; font-weight: 800; }
+  .sum .sp { flex: 1; }
+  .filters { display: flex; gap: 6px; align-items: center; }
+  .acards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .acard { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 11px 12px; display: flex; flex-direction: column; gap: 8px; position: relative; }
+  .acard.waiting { border-color: color-mix(in srgb, var(--waiting) 55%, var(--border)); box-shadow: inset 3px 0 0 var(--waiting); }
+  .acard.error { border-color: color-mix(in srgb, var(--error) 55%, var(--border)); box-shadow: inset 3px 0 0 var(--error); }
+  .acard.working { box-shadow: inset 3px 0 0 var(--working); }
+  .acard .hd { display: flex; gap: 9px; align-items: center; }
+  .acard .nm { font-size: 13px; font-weight: 800; display: flex; gap: 5px; align-items: center; }
+  .acard .role { font-size: 11px; color: var(--muted-foreground); margin-top: 1px; }
+  .acard .now { font-size: 11.5px; line-height: 1.45; background: var(--background); border-radius: 8px; padding: 6px 8px; }
+  .acard .now .lb { font-size: 10px; color: var(--muted-foreground); font-weight: 700; display: block; margin-bottom: 1px; }
+  .acard .can .lb { font-size: 10px; color: var(--muted-foreground); font-weight: 700; display: block; margin-bottom: 4px; }
+  .acard .can .cs { display: flex; flex-wrap: wrap; gap: 4px; }
+  .acard .ft { display: flex; gap: 6px; align-items: center; margin-top: auto; }
+  .acard .ft .sp { flex: 1; }
+  .tagt { font-size: 9.5px; font-weight: 800; border-radius: 5px; padding: 1px 5px; }
+  .addcard { border: 2px dashed var(--input); border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: var(--muted-foreground); font-size: 11.5px; text-align: center; padding: 14px; min-height: 196px; }
+  .addcard .plus { width: 38px; height: 38px; border-radius: 50%; background: var(--accent); color: var(--primary); display: grid; place-items: center; font-size: 22px; font-weight: 700; }
+  .addcard b { color: var(--foreground); font-size: 13px; }
+  /* B안 */
+  .bwrap { display: flex; min-height: 0; }
+  .blist { flex: 1; min-width: 0; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; }
+  .sec { font-size: 11px; font-weight: 800; padding: 8px 4px 3px; display: flex; gap: 6px; align-items: center; }
+  .brow { display: grid; grid-template-columns: 30px 128px 1fr 66px; gap: 9px; align-items: center; padding: 6px 8px; border-radius: 10px; background: var(--card); border: 1px solid var(--border); font-size: 11.5px; }
+  .brow.sel { border-color: var(--primary); box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 25%, transparent); }
+  .brow .who b { display: block; font-size: 12px; } .brow .who span { font-size: 10.5px; color: var(--muted-foreground); }
+  .brow .el { font-size: 10px; color: var(--muted-foreground); text-align: right; }
+  .bside { width: 330px; flex-shrink: 0; border-left: 1px solid var(--border); background: var(--chrome); padding: 14px; display: flex; flex-direction: column; gap: 11px; font-size: 11.5px; }
+  .bside .hd { display: flex; gap: 10px; align-items: center; }
+  .bside h4 { font-size: 10.5px; color: var(--muted-foreground); font-weight: 800; margin-bottom: 4px; }
+  .bside .box { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; line-height: 1.5; }
+  .bside .tasks { display: flex; flex-direction: column; gap: 4px; }
+  .bside .tasks span { display: flex; justify-content: space-between; align-items: center; background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 5px 8px; }
+  .bside .tasks span em { font-style: normal; color: var(--primary); font-weight: 700; font-size: 10.5px; }
+  .tools { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 10.5px; }
+  .tools span { display: flex; gap: 5px; align-items: center; }
+  .ok { color: var(--working); font-weight: 800; } .q { color: var(--waiting); font-weight: 800; } .x { color: var(--idle); }
+  .comp { border: 1px solid var(--input); border-radius: 10px; background: var(--card); padding: 7px 9px; color: var(--muted-foreground); font-size: 11px; }
+  /* 고용 단계 */
+  .hire { width: 470px; background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 18px 36px -18px rgba(40,30,90,.45); }
+  .steps { display: flex; gap: 6px; font-size: 11px; }
+  .steps span { flex: 1; border-top: 3px solid var(--border); padding-top: 4px; color: var(--muted-foreground); }
+  .steps span.on { border-color: var(--primary); color: var(--foreground); font-weight: 700; }
+  .rolegrid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .rolec { border: 1px solid var(--border); border-radius: 10px; padding: 7px 9px; font-size: 10.5px; line-height: 1.45; color: var(--muted-foreground); }
+  .rolec b { display: block; color: var(--foreground); font-size: 12px; }
+  .rolec.on { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 8%, var(--card)); box-shadow: 0 0 0 1px var(--primary); }
+  /* 패널 머리 전후 */
+  .ph { width: 470px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; font-size: 11.5px; }
+  .ph .hd { display: flex; gap: 10px; align-items: center; }
+  .ph .tb { display: flex; gap: 12px; border-bottom: 1px solid var(--border); font-size: 11.5px; }
+  .ph .tb span { padding-bottom: 5px; color: var(--muted-foreground); } .ph .tb span.on { color: var(--foreground); font-weight: 700; border-bottom: 2px solid var(--primary); }
+  .mark { position: absolute; border: 2px dashed var(--hl); border-radius: 8px; pointer-events: none; }
+  .pin { position: absolute; width: 20px; height: 20px; border-radius: 50%; background: var(--hl); color: #fff; font-size: 11px; font-weight: 800; display: grid; place-items: center; box-shadow: 0 0 0 2px var(--card); }
+</style>
+</head>
+<body>
+<div class="top">
+  <a data-s="all">전체</a><a data-s="now">① 지금 화면 문제</a><a data-s="a">A안 (추천)</a><a data-s="b">B안</a><a data-s="ref">고용·용어·직무표</a>
+  <span class="gap"></span><a data-m="light">라이트</a><a data-m="dark">다크</a>
+</div>
+
+<!-- ───────── 지금 화면 ───────── -->
+<section class="sheet" id="s-now">
+  <h1>2. '직원' 화면 — 지금 무엇이 어려운가</h1>
+  <p class="lead">사이드바 '직원'을 누르면 <b>대시보드</b> 탭이 열립니다(메뉴 이름과 화면 이름이 다름). 숫자 칸 6개 → 상황판 카드 3개 → 직원 카드 순서라, 정작 '직원'은 스크롤 아래에 있습니다. 카드에는 직무 이름 한 단어뿐이라 <b>무엇을 시킬 수 있는지</b> 알 수 없습니다. 아래는 코드 기준으로 다시 그린 지금 화면입니다.</p>
+  <div class="row">
+    <div class="win" id="w-now"></div>
+    <div class="note">
+      <h3>짚은 곳</h3>
+      <ol style="list-style:none;margin-left:0">
+        <li><span class="n">1</span>메뉴는 '직원', 탭은 '대시보드' — 어디 왔는지 헷갈림. 직원 목록은 맨 아래.</li>
+        <li><span class="n">2</span>숫자 칸 6개 + 카드 3개가 먼저 나옴. '확인 필요'가 칸(직원 수)과 카드(건수)에 <b>같은 이름 다른 뜻</b>으로 두 번.</li>
+        <li><span class="n">3</span>'대기'(일 없음)·'연결 대기'(인터넷)·'퇴근'이 비슷하게 읽힘.</li>
+        <li><span class="n">4</span>'오늘 토큰', 카드 아래 'Lv.3 · 12,480 토큰 · $0.42' — 토큰·달러는 개발 용어. 비용은 '기록 › 비용'에 이미 있음.</li>
+        <li><span class="n">5</span>직무 한 단어('프론트엔드 개발자')만 있고, 시킬 수 있는 일·지시 버튼이 카드에 없음(카드를 눌러 패널을 열어야 함).</li>
+        <li><span class="n">6</span>직원 추가 버튼이 이 화면에 없음 — 맨 위 앱 바 오른쪽 '직원 고용'뿐.</li>
+        <li><span class="n">7</span>마지막 활동이 'Edit · src/…'처럼 도구 이름으로 나올 때가 있음.</li>
+      </ol>
+      <h3>직원을 누르면 나오는 패널도</h3>
+      <ul>
+        <li>머리에 <span class="mono">Opus</span> 같은 모델 이름, <span class="mono">~/flitto/poc/…</span> 폴더 경로, '터미널에서 이어 하기'.</li>
+        <li>탭 '변경' 안은 커밋·PR·diff — 비개발자에게 가장 낯선 곳.</li>
+        <li>고용 때 적은 '업무 지침'은 패널 어디에도 안 보임.</li>
+        <li>고용 창 직무 칩 11개에 설명이 없음. '고용 뒤에는 AI를 바꿀 수 없어요' 문구는 실제 동작(프로필에서 바꿀 수 있음)과 다름.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ───────── A안 ───────── -->
+<section class="sheet" id="s-a">
+  <h1>A안 · 직원 명함 카드 <span class="rec">추천</span></h1>
+  <p class="lead">'직원'을 누르면 바로 <b>직원 카드</b>가 보입니다. 카드 한 장에 <b>지금 하는 일(문장)</b> · <b>이런 일을 시킬 수 있어요(직무별 예시 3개, 누르면 바로 지시창에 채워짐)</b> · <b>일 시키기 버튼</b>을 넣고, 마지막 칸은 늘 <b>'＋ 직원 추가'</b> 빈자리입니다. 숫자 칸 6개는 한 문장 요약으로, 상황판 카드는 '확인 기다림'만 카드 안 버튼으로 남기고 토큰·활동은 다른 화면으로 보냅니다.</p>
+  <div class="row">
+    <div class="win" id="w-a"></div>
+    <div class="note">
+      <h3>A안 규칙</h3>
+      <ul>
+        <li>탭 이름: 대시보드 → <b>직원 목록</b>, 조직도 → <b>팀 구성</b>.</li>
+        <li>맨 위 한 문장: '6명 중 <b>2명 일하는 중</b> · <b>2명이 대표님 확인을 기다려요</b> · 1명 문제 생김'. 굵은 부분을 누르면 그 상태만 걸러짐(지금 숫자 칸과 같은 동작).</li>
+        <li>정렬은 지금처럼 급한 순: 확인 기다림 → 문제 → 일하는 중 → 쉬는 중 → 퇴근.</li>
+        <li>카드 3줄 구조(높이 고정): 머리(얼굴·이름·직무·팀·상태) / 지금 하는 일 / 시킬 수 있는 일 / 버튼.</li>
+        <li>버튼은 상태에 맞게 1개만 강조: 확인 기다림 = <b>노란 '확인하기'</b>, 문제 = <b>빨간 '다시 시도'</b>, 나머지 = '일 시키기'. '자세히 ›'는 지금 패널을 엶.</li>
+        <li>토큰·달러·Lv는 카드에서 뺌(비용은 '기록 › 비용', 레벨은 사무실 화면과 프로필). 오늘 쓴 양이 예산을 넘을 때만 카드에 '오늘 많이 씀' 꼬리표.</li>
+        <li>'확인 필요'·'쓴 토큰'·'최근 활동' 상황판은 업무 모드 첫 화면에서 계속 필요 → <b>직원 목록 아래 접는 칸</b>으로 둠(기본 접힘, 2026-11-13 대표 확정).</li>
+        <li>사무실 미니 화면은 카드 머리 얼굴로 대신(업무 모드와 같은 모습).</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ───────── B안 ───────── -->
+<section class="sheet" id="s-b">
+  <h1>B안 · 상태별 목록 + 오른쪽 직원 소개</h1>
+  <p class="lead">직원이 많을 때(10명 이상) 한 화면에 더 많이 보이는 안입니다. 왼쪽은 <b>'대표님 확인을 기다려요 / 일하는 중 / 문제 생김 / 쉬는 중'</b> 묶음별 한 줄 목록, 오른쪽은 고른 직원의 <b>소개</b>(무슨 일을 하는 사람인지, 시킬 수 있는 일, 쓸 수 있는 도구를 쉬운 말로, 바로 지시하기)입니다. 직원 추가는 위쪽 버튼과 목록 맨 아래 빈 줄 두 곳.</p>
+  <div class="row">
+    <div class="win" id="w-b"></div>
+    <div class="note">
+      <h3>B안 규칙</h3>
+      <ul>
+        <li>목록 한 줄: 얼굴 · 이름/직무 · 지금 하는 일(문장) · 얼마나 됐는지.</li>
+        <li>묶음 제목이 곧 상태라, 줄마다 상태 글자를 반복하지 않음.</li>
+        <li>오른쪽 소개 = 지금 패널의 '프로필'을 앞으로 꺼낸 것. '도구'는 장비 탭 내용을 ✓/확인 받고/✕ 세 가지로만.</li>
+        <li>장점: 한눈에 많이, 소개를 읽으며 바로 지시. 단점: 화면이 좁으면(900px 아래) 소개가 위로 겹쳐 떠야 함, 사무실 느낌(카드·얼굴)이 A보다 약함.</li>
+      </ul>
+      <h3>A와 비교</h3>
+      <ul>
+        <li>A: 직원 3~9명, 처음 쓰는 사람에게 가장 쉬움. 카드만 보고 시킬 일을 고름.</li>
+        <li>B: 직원 10명 이상, 매일 쓰는 사람에게 빠름. 한 번 더 눌러야 시킬 일이 보임.</li>
+        <li>지금 사용자 다수가 직원 5~8명(대표 화면 기준, 추정) → <b>A 추천</b>. 나중에 A에 '목록으로 보기'(지금도 있음)를 B의 줄 모양으로 바꾸는 것도 가능.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ───────── 고용·용어·직무표 ───────── -->
+<section class="sheet" id="s-ref">
+  <h1>A·B 공통 · 직원 추가 3단계, 패널 머리, 쉬운 말 표</h1>
+  <p class="lead">어느 안이든 함께 바꾸는 부분입니다. 직원 추가는 '직무 고르기 → 이름·얼굴 → 일할 곳' 3단계로 나누고, 직무 카드에 <b>무슨 일을 하는 사람인지 한 줄</b>을 붙입니다. 지금 '자세히 설정'(AI·결재 방식·업무 지침)은 3단계 안에 접어 둡니다.</p>
+  <div class="row" style="margin-bottom:22px">
+    <div class="hire" id="hire"></div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="ph" id="ph-now"></div>
+      <div class="ph" id="ph-new"></div>
+    </div>
+    <div class="note" style="width:330px">
+      <h3>직원 추가 3단계</h3>
+      <ol>
+        <li><b>어떤 일을 맡길까요?</b> 직무 카드 11개(설명 한 줄). '직접 입력'도 여기.</li>
+        <li><b>이름과 얼굴</b> — 직무에 맞춰 자동 추천, 바꾸기만.</li>
+        <li><b>어디서 일할까요?</b> 폴더 고르기 또는 '아무 프로젝트나'(기본). '자세히 설정'은 여기 접어 둠.</li>
+      </ol>
+      <p class="muted" style="margin-top:6px">버튼 이름: '직원 고용' → <b>'직원 추가'</b>(사이드·카드·앱 바 모두). 마지막 버튼 '고용하기' → <b>'일 시작하기'</b>.</p>
+      <h3>패널 머리</h3>
+      <ul>
+        <li>모델 이름 → 프로필의 'AI 등급 ●●●●○'로만.</li>
+        <li>폴더 경로 → '일하는 곳: claude-office'(폴더 이름만, 누르면 전체 경로).</li>
+        <li>'터미널에서 이어 하기' → ⋯ 메뉴 안.</li>
+        <li>탭: 업무·변경·장비·프로필 → <b>대화·바뀐 파일·도구·소개</b>. '소개'에 업무 지침을 보여 주고 고칠 수 있게.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="row">
+    <table class="t" id="glossary"></table>
+    <table class="t" id="roles"></table>
+  </div>
+</section>
+
+<script>
+  const q = new URLSearchParams(location.search)
+  const mode = q.get('mode') === 'dark' ? 'dark' : 'light'
+  const sheet = q.get('sheet') || 'all'
+  document.documentElement.dataset.mode = mode
+  if (q.get('cap')) document.body.classList.add('capture')
+  document.querySelectorAll('.top a').forEach((a) => {
+    const p = new URLSearchParams(q); if (a.dataset.s) p.set('sheet', a.dataset.s); if (a.dataset.m) p.set('mode', a.dataset.m)
+    a.href = '?' + p.toString()
+    if (a.dataset.s === sheet || a.dataset.m === mode) a.classList.add('on')
+  })
+  document.querySelectorAll('.sheet').forEach((s) => { if (sheet === 'all' || s.id === 's-' + sheet) { s.classList.add('on'); s.style.marginBottom = '40px' } })
+
+  // 직무별 '이런 일을 시킬 수 있어요' (새 문구 — 직무 칩 11개와 1:1)
+  const ROLES = [
+    ['팀장', '큰 일을 받아 쪼개고, 팀원에게 나눠 맡긴 뒤 모아서 보고해요.', ['이번 주 할 일 나눠 줘', '진행 상황 모아 줘', '일정표 만들어 줘']],
+    ['프론트엔드 개발자', '사람이 보는 화면·버튼을 만들고 고쳐요.', ['이 화면 버튼 고쳐 줘', '시안대로 화면 만들어 줘', '화면 오류 찾아 줘']],
+    ['백엔드 개발자', '화면 뒤에서 도는 서버·데이터 기능을 만들어요.', ['느린 곳 찾아 줘', '저장 기능 만들어 줘', '외부 서비스 연결해 줘']],
+    ['코드 리뷰어', '다른 직원이 바꾼 코드를 읽고 문제를 찾아요.', ['오늘 바뀐 것 검토해 줘', '위험한 곳 알려 줘', '고칠 점 정리해 줘']],
+    ['QA', '기능을 직접 써 보며 오류를 찾고 기록해요.', ['이 기능 시험해 줘', '버그 목록 만들어 줘', '고친 것 다시 확인해 줘']],
+    ['기획자', '무엇을 왜 만들지 정리하고 문서로 써요.', ['기획서 초안 써 줘', '화면 흐름 정리해 줘', '회의 내용 정리해 줘']],
+    ['리서처', '자료를 찾아 읽고 출처와 함께 요약해요.', ['비슷한 서비스 조사해 줘', '자료 요약해 줘', '장단점 비교해 줘']],
+    ['디자이너', '화면 시안과 아이콘·그림을 만들고 결과를 검수해요.', ['화면 시안 만들어 줘', '아이콘 그려 줘', '구현된 화면 검수해 줘']],
+    ['고객 응대(CS)', '고객 문의에 답할 글을 쓰고 자주 묻는 질문을 정리해요.', ['답변 초안 써 줘', 'FAQ 정리해 줘', '문의 종류 나눠 줘']],
+    ['마케터', '홍보 글과 게시 일정을 만들고 반응을 정리해요.', ['홍보 글 3개 써 줘', '게시 일정 짜 줘', '반응 정리해 줘']],
+    ['자유 직무', '고용할 때 적은 업무 지침대로 일해요. 카드에는 지침 첫 줄이 보여요.', ['자기소개 해 줘', '네가 할 수 있는 일 알려 줘', '이번 주 할 일 표로 만들어 줘']],
+  ]
+  const R = Object.fromEntries(ROLES.map((r) => [r[0], r]))
+  const ST = { working: ['일하는 중', 's-working'], waiting: ['대표님 확인 기다림', 's-waiting'], error: ['문제 생김', 's-error'], idle: ['쉬는 중', 's-idle'] }
+  const STAFF = [
+    { n: '이디자', ini: '디자', c: '#3B9C7A', role: '디자이너', team: '디자인 팀', tc: '#3B9C7A', st: 'waiting', el: '3분째', now: '시안 파일을 저장해도 되는지 확인을 기다려요', raw: 'Write · docs/v132/…', lv: 3, tk: '12,480', usd: '0.42' },
+    { n: '한리뷰', ini: '리뷰', c: '#D8B32E', role: '코드 리뷰어', team: '개발팀', tc: '#3E7BEA', st: 'waiting', el: '8분째', now: '질문 1개 — "탭 순서를 대화→보드로 할까요?"', raw: '질문 1', lv: 2, tk: '4,210', usd: '0.11' },
+    { n: '임안드', ini: '안드', c: '#D9466A', role: '백엔드 개발자', team: '개발팀', tc: '#3E7BEA', st: 'error', el: '2분째', now: '인터넷 연결이 끊겨 멈췄어요', raw: 'API Error 529', lv: 4, tk: '30,112', usd: '1.08' },
+    { n: '정리드', ini: '리드', c: '#E8833A', role: '팀장', team: '개발팀', tc: '#3E7BEA', st: 'working', el: '12분째', now: '안드로이드 1.1 업무를 3개로 나눠 맡기는 중', raw: 'Edit · src/renderer/…', lead: true, lv: 6, tk: '58,930', usd: '2.31' },
+    { n: '최가독', ini: '가독', c: '#3E7BEA', role: '프론트엔드 개발자', team: '개발팀', tc: '#3E7BEA', st: 'working', el: '5분째', now: '방 목록 화면을 고치는 중 (파일 3개)', raw: 'Bash · pnpm test', lv: 5, tk: '41,005', usd: '1.62' },
+    { n: '김기획', ini: '기획', c: '#8C5BD9', role: '기획자', team: '기획팀', tc: '#E8833A', st: 'idle', el: '1시간', now: '마지막 일: 안드로이드 1.1 기획서 작성 (1시간 전)', raw: '대기', lv: 2, tk: '0', usd: '0.00' },
+  ]
+  const appbar = (hire) => `<div class="appbar">AI Office <span class="ib">₩1억 2,840만</span><span class="sp"></span><span class="ib">🔔 확인 필요 2</span><span class="ib">✨ 비서</span><span class="ib p">＋ ${hire}</span></div>`
+  const nav = `<div class="nav">${['비서', '사무실', '직원', '업무', '결재함', '대화', '노하우', '기록', '상점', '설정'].map((x) => `<span class="${x === '직원' ? 'on' : ''}">${x}</span>`).join('')}</div>`
+  const av = (s, l) => `<span class="av${l ? ' l' : ''}" style="background:${s.c}">${s.ini}</span>`
+  const pill = (s) => `<span class="pill ${ST[s.st][1]}"><i></i>${ST[s.st][0]} · ${s.el}</span>`
+  const teamTag = (s) => `<span class="tagt" style="background:color-mix(in srgb, ${s.tc} 18%, var(--card));color:var(--foreground)">${s.team}</span>`
+
+  // 지금 화면
+  const oldSt = { working: '작업 중', waiting: '확인 필요', error: '오류', idle: '대기' }
+  document.getElementById('w-now').innerHTML = `${appbar('직원 고용')}<div class="body">${nav}<div class="main">
+    <div class="tabs" data-k="tabs"><span class="on">대시보드</span><span>조직도</span></div>
+    <div class="pg">
+      <div class="tiles" data-k="tiles">${[['작업 중', 2], ['확인 필요', 2], ['오류', 1], ['대기', 1], ['오늘 완료 ↗', 7], ['오늘 토큰', '146,737<br><span style="font-size:9px">월 예산 42%</span>']].map(([a, b]) => `<div class="tile">${a}<b>${b}</b></div>`).join('')}</div>
+      <div class="boards">
+        <div class="board"><b>확인 필요 <span class="pill s-waiting">4</span></b><span class="muted">결재 2 · 질문 1 · 오류 1 · AI 요금제 사용량 0</span><span>이디자 · <span class="mono">Write · docs/v132/staff…</span></span><span>한리뷰 · 질문 · 탭 순서를…</span></div>
+        <div class="board" data-k="tok"><b>쓴 토큰</b><span class="muted">오늘 146,737 · 이번 주 1.2M · 이번 달 4.8M</span><span class="muted">요금제 5시간 42% · 7일 63%</span></div>
+        <div class="board"><b>최근 활동</b><span>정리드 · Edit · src/renderer/… · 1분 전</span><span>최가독 · Bash · pnpm test · 2분 전</span></div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;font-size:11px"><b style="font-size:12.5px">직원</b><span class="chip">이름 검색</span><span class="chip on">전체</span><span class="chip">확인 필요</span><span class="chip">작업 중</span><span class="chip">대기</span><span class="chip">오류</span><span style="flex:1"></span><span class="chip">팀별</span><span class="chip">랩별</span><span class="chip">▦</span><span class="chip">☰</span></div>
+      <div class="ocards">${STAFF.slice(0, 6).map((s, i) => `<div class="ocard"${i === 3 ? ' data-k="card"' : ''}><div class="mini"></div><div class="hd">${av(s)}<div><b>${s.n}</b>${s.lead ? ' ★' : ''}<div class="muted">${s.role}</div></div><span class="st" style="color:var(--${s.st === 'idle' ? 'idle' : s.st})">● ${oldSt[s.st]} ${s.el}</span></div><span class="muted">${s.st === 'idle' ? '맡은 업무 없음' : '안드로이드 1.1 — 화면 옮기기 +1'}</span><span class="mono muted">${s.raw}</span><span class="muted"${i === 3 ? ' data-k="lv"' : ''}>Lv.${s.lv} · ${s.tk} 토큰 · $${s.usd}</span></div>`).join('')}</div>
+    </div></div></div>`
+
+  // A안
+  const card = (s) => {
+    const r = R[s.role]
+    const main = s.st === 'waiting' ? `<span class="btn y">확인하기</span>` : s.st === 'error' ? `<span class="btn r">다시 시도</span>` : `<span class="btn p">일 시키기</span>`
+    return `<div class="acard ${s.st}"><div class="hd">${av(s, true)}<div style="min-width:0"><div class="nm">${s.n}${s.lead ? '<span class="tagt" style="background:var(--accent);color:var(--primary)">팀장</span>' : ''}</div><div class="role">${s.role} · ${teamTag(s)}</div></div></div>
+      <div>${pill(s)}</div>
+      <div class="now"><span class="lb">지금 하는 일</span>${s.now}</div>
+      <div class="can"><span class="lb">이런 일을 시킬 수 있어요</span><div class="cs">${r[2].map((x) => `<span class="ask">${x}</span>`).join('')}</div></div>
+      <div class="ft">${main}${s.st === 'waiting' || s.st === 'error' ? '<span class="btn o">일 시키기</span>' : ''}<span class="sp"></span><span class="muted" style="font-size:11px">자세히 ›</span></div></div>`
+  }
+  document.getElementById('w-a').innerHTML = `${appbar('직원 추가')}<div class="body">${nav}<div class="main">
+    <div class="tabs"><span class="on">직원 목록</span><span>팀 구성</span></div>
+    <div class="pg">
+      <div class="sum"><div class="sent">6명 중 <em style="color:var(--working)">2명 일하는 중</em> · <em style="color:var(--waiting)">2명이 대표님 확인을 기다려요</em> · <em style="color:var(--error)">1명 문제 생김</em> · 1명 쉬는 중</div><span class="sp"></span><span class="btn p">＋ 직원 추가</span></div>
+      <div class="filters"><span class="chip on">전체 6</span><span class="chip">확인 기다림 2</span><span class="chip">문제 1</span><span class="chip">일하는 중 2</span><span class="chip">쉬는 중 1</span><span style="flex:1"></span><span class="chip">이름 찾기</span><span class="chip">팀별 ▾</span></div>
+      <div class="acards">${STAFF.slice(0, 5).map(card).join('')}<div class="addcard"><span class="plus">＋</span><b>직원 추가</b>직무만 고르면 바로 일해요<br><span style="font-size:10.5px">디자이너 · 기획자 · 개발자 · QA …</span></div></div>
+    </div></div></div>`
+
+  // B안
+  const sel = STAFF[0]
+  const groups = [['waiting', '대표님 확인을 기다려요'], ['error', '문제 생김'], ['working', '일하는 중'], ['idle', '쉬는 중']]
+  const brow = (s) => `<div class="brow${s === sel ? ' sel' : ''}">${av(s)}<div class="who"><b>${s.n}${s.lead ? ' · 팀장' : ''}</b><span>${s.role}</span></div><div>${s.now}</div><div class="el">${s.el}</div></div>`
+  document.getElementById('w-b').innerHTML = `${appbar('직원 추가')}<div class="body">${nav}<div class="main">
+    <div class="tabs"><span class="on">직원 목록</span><span>팀 구성</span></div>
+    <div class="bwrap"><div class="blist">
+      <div class="sum" style="padding:0 2px 2px"><div class="sent" style="font-size:12px">6명 · 2명 일하는 중</div><span class="sp"></span><span class="chip">이름 찾기</span><span class="btn p">＋ 직원 추가</span></div>
+      ${groups.map(([k, label]) => { const list = STAFF.filter((s) => s.st === k); return `<div class="sec"><span class="pill ${ST[k][1]}"><i></i>${label}</span><span class="muted">${list.length}명</span></div>${list.map(brow).join('')}` }).join('')}
+      <div class="brow" style="border-style:dashed;background:none;color:var(--muted-foreground)"><span class="av" style="background:var(--accent);color:var(--primary)">＋</span><div class="who"><b style="color:var(--foreground)">직원 추가</b></div><div>직무만 고르면 바로 일해요</div><div></div></div>
+    </div>
+    <div class="bside">
+      <div class="hd">${av(sel, true)}<div><div style="font-size:14px;font-weight:800">${sel.n}</div><div class="muted">${sel.role} · ${teamTag(sel)}</div></div></div>
+      <div>${pill(sel)}</div>
+      <div><h4>지금 하는 일</h4><div class="box">${sel.now} <span class="btn y" style="margin-left:4px;padding:2px 8px">확인하기</span></div></div>
+      <div><h4>어떤 직원인가요</h4><div class="box">${R[sel.role][1]}<br><span class="muted">업무 지침: "기존 그림체와 색을 따르고, 코드는 고치지 않는다."</span></div></div>
+      <div><h4>이런 일을 시킬 수 있어요</h4><div class="tasks">${R[sel.role][2].map((x) => `<span>${x}<em>보내기 ›</em></span>`).join('')}</div></div>
+      <div><h4>쓸 수 있는 도구</h4><div class="tools"><span><b class="ok">✓</b>파일 만들기·고치기</span><span><b class="ok">✓</b>인터넷 검색</span><span><b class="q">!</b>프로그램 실행 (확인 받고)</span><span><b class="ok">✓</b>화면 찍기</span><span><b class="x">✕</b>연결된 서비스</span><span><b class="ok">✓</b>업무 매뉴얼</span></div></div>
+      <div class="comp">이디자에게 일 시키기…</div>
+    </div></div></div></div>`
+
+  // 고용 1단계
+  document.getElementById('hire').innerHTML = `<div style="display:flex;align-items:center"><b style="font-size:15px;flex:1">직원 추가</b><span class="muted">✕</span></div>
+    <div class="steps"><span class="on">① 어떤 일을 맡길까요?</span><span>② 이름과 얼굴</span><span>③ 어디서 일할까요?</span></div>
+    <div class="rolegrid">${ROLES.slice(0, 10).map((r, i) => `<div class="rolec${r[0] === '디자이너' ? ' on' : ''}"><b>${r[0]}</b>${r[1]}</div>`).join('')}</div>
+    <div class="muted" style="font-size:11px">원하는 직무가 없으면 <b style="color:var(--primary)">직접 입력</b> · 마켓·파일에서 데려오기</div>
+    <div style="display:flex;gap:6px;justify-content:flex-end"><span class="btn o">취소</span><span class="btn p">다음 ›</span></div>`
+  // 패널 머리 전후
+  const d = STAFF[0]
+  document.getElementById('ph-now').innerHTML = `<b class="muted" style="font-size:11px">지금 패널 머리</b><div class="hd">${av(d, true)}<div><b style="font-size:13px">${d.n}</b> <span style="color:var(--waiting)">● 확인 필요</span><div class="muted">디자이너 · Opus</div><div class="mono muted">~/flitto/poc/claude-office</div><div style="color:var(--primary);font-size:11px">터미널에서 이어 하기</div></div></div><div class="tb"><span class="on">업무</span><span>변경</span><span>장비</span><span>프로필</span></div>`
+  document.getElementById('ph-new').innerHTML = `<b class="muted" style="font-size:11px">바꾼 패널 머리</b><div class="hd">${av(d, true)}<div style="flex:1"><b style="font-size:13px">${d.n}</b> ${pill(d)}<div class="muted" style="margin-top:2px">디자이너 · ${teamTag(d)} · 일하는 곳 <b style="color:var(--foreground)">claude-office</b></div></div><span class="muted">⋯</span></div><div class="tb"><span class="on">대화</span><span>바뀐 파일</span><span>도구</span><span>소개</span></div>`
+
+  // 쉬운 말 표
+  const G = [
+    ['대시보드 (탭)', '직원 목록', '메뉴 이름과 맞춤'], ['조직도 (탭)', '팀 구성', ''], ['직원 고용', '직원 추가', '앱 바·빈 화면·결재함 모두'],
+    ['작업 중', '일하는 중', ''], ['확인 필요 (직원 상태)', '대표님 확인 기다림', '건수 \'확인 필요\'와 구분'], ['대기', '쉬는 중', ''], ['연결 대기', '인터넷 기다리는 중', ''], ['오류', '문제 생김', ''],
+    ['토큰 · $0.42', '(카드에서 뺌) → 기록 › 비용', '예산 넘을 때만 \'오늘 많이 씀\''], ['Opus · Sonnet', 'AI 등급 ●●●●○', '프로필에만'], ['~/flitto/poc/…', '일하는 곳: 폴더 이름', '누르면 전체 경로'],
+    ['Edit · Read · Bash', '파일 고치는 중 · 읽는 중 · 프로그램 실행 중', '마지막 활동 줄'], ['변경 (탭)', '바뀐 파일', '안의 커밋·PR은 \'저장 기록\'·\'검토 요청\''], ['장비 (탭)', '도구', ''], ['프로필 (탭)', '소개', '업무 지침 보이기·고치기'],
+    ['외부 · 외부 직원', '다른 창에서 일하는 직원 (보기만)', ''], ['터미널에서 이어 하기', '⋯ 메뉴 안으로', ''],
+  ]
+  document.getElementById('glossary').innerHTML = `<tr><th>지금</th><th>바꿀 말</th><th>메모</th></tr>${G.map(([a, b, c]) => `<tr><td><s>${a}</s></td><td><b>${b}</b></td><td class="muted">${c}</td></tr>`).join('')}`
+  document.getElementById('roles').innerHTML = `<tr><th>직무</th><th>한 줄 설명 (고용 카드·소개)</th><th>이런 일을 시킬 수 있어요 (카드 예시 3개)</th></tr>${ROLES.map((r) => `<tr><td><b>${r[0]}</b></td><td style="max-width:300px">${r[1]}</td><td>${r[2].join(' · ')}</td></tr>`).join('')}`
+
+  // 지금 화면 표시
+  function mark(id, k, n, dx = -10, dy = -10) {
+    const w = document.getElementById(id), el = w.querySelector(`[data-k="${k}"]`)
+    if (!el) return
+    const a = w.getBoundingClientRect(), b = el.getBoundingClientRect()
+    w.insertAdjacentHTML('beforeend', `<div class="mark" style="left:${b.left - a.left - 3}px;top:${b.top - a.top - 3}px;width:${b.width + 6}px;height:${b.height + 6}px"></div><div class="pin" style="left:${b.left - a.left + dx}px;top:${b.top - a.top + dy}px">${n}</div>`)
+  }
+  if (document.getElementById('s-now').classList.contains('on')) {
+    const w = document.getElementById('w-now')
+    w.querySelectorAll('.tile')[1].dataset.k = 'tile2'
+    w.querySelectorAll('.tile')[3].dataset.k = 'tile4'
+    w.querySelector('.ocard .mono').dataset.k = 'raw'
+    w.querySelector('.ocard .muted').dataset.k = 'role'
+    w.querySelector('.ocard .hd .muted').dataset.k = 'role'
+    w.querySelector('.appbar .ib.p').dataset.k = 'hire'
+    mark('w-now', 'tabs', 1); mark('w-now', 'tile2', 2); mark('w-now', 'tile4', 3); mark('w-now', 'lv', 4); mark('w-now', 'role', 5, 46, -4); mark('w-now', 'hire', 6, -6, 24); mark('w-now', 'raw', 7)
+  }
+</script>
+</body>
+</html>

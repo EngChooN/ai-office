@@ -51,8 +51,8 @@
     <string name="updated_just_now">Just updated</string>
     <string name="pick_staff">Pick a staff member</string>
     <string name="title_staff">Staff</string>
-    <string name="empty_staff">No staff hired yet</string>
-    <string name="empty_staff_hint">You can hire staff on your PC.</string>
+    <string name="empty_staff">No staff added yet</string>
+    <string name="empty_staff_hint">You can add staff on your PC.</string>
     <string name="staff_not_found">Staff member not found</string>
     <string name="staff_not_found_refreshed">Staff member not found. The list was refreshed.</string>
     <string name="current_work">Current work</string>
@@ -128,8 +128,11 @@
     <string name="settings_language">Language</string>
     <string name="lang_auto">Follow device</string>
     <string name="onb_title">Connect to my PC office</string>
-    <string name="onb_step1">1. In AI Office on your PC, turn on Settings › Phone connection.</string>
-    <string name="onb_step2">2. Scan the QR code shown on your PC.</string>
+    <string name="onb_step1">① Turn on Tailscale — a free app that links your own devices.</string>
+    <string name="onb_step2">② Scan the QR on your PC screen</string>
+    <string name="onb_step3">③ Check the connection</string>
+    <string name="onb_wifi_note">If you only use it on the same Wi-Fi, you can scan the QR right away without Tailscale.</string>
+    <string name="btn_open_camera">Open camera</string>
     <string name="btn_scan_qr">Scan QR code</string>
     <string name="onb_camera_note">The camera is only used to read the QR.</string>
     <string name="cam_perm_title">Camera permission needed</string>
@@ -230,8 +233,8 @@
     <string name="state_connfail_unreach_ts">Check that Tailscale is turned on on your phone and signed in with the same account as the PC.</string>
     <string name="state_unreach_body_ts">This may be because:\n· Tailscale is off on your phone, or signed in with a different account than the PC\n· Your PC is asleep or off\n· AI Office is not running</string>
     <string name="qr_unreach_default_ts">Couldn\'t reach your PC. Check that Tailscale is on on your phone and uses the same account as the PC.</string>
-    <string name="manual_btn">Connect with address</string>
-    <string name="manual_title">Connect with address</string>
+    <string name="manual_btn">Connect with code</string>
+    <string name="manual_title">Connect with code</string>
     <string name="manual_intro">Enter the address and the 12-character code (XXXX-XXXX-XXXX) shown in AI Office on your PC (Settings › Phone connection). The Tailscale app must be on.</string>
     <string name="manual_host_label">PC address (Tailscale IP)</string>
     <string name="manual_host_hint">e.g. 100.64.0.1</string>

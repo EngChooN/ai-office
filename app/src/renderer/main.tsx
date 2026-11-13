@@ -1,12 +1,19 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
+// 특별 테마(레트로) 규칙은 이 파일에만 — 모두 [data-theme='retro'] 아래라 다른 테마에는 닿지 않는다
+import './theme-retro.css'
+import { getLang, onLangChange } from '@shared/i18n'
 import { watchSystemMode } from '@/lib/uiTheme'
 import { loadPage } from '@/layout/pages'
 
 // OS별 여백·문구를 CSS(win: 변형)와 화면에서 나눠 쓰도록 <html>에 표시해 둔다
 document.documentElement.dataset.platform = window.office.platform
 watchSystemMode()
+// 레트로 테마가 언어별 글꼴 순서를 고를 수 있게 (lang 속성은 다른 테마 글자 모양까지 바꿔서 따로 둔다)
+const markLang = () => (document.documentElement.dataset.lang = getLang())
+markLang()
+onLangChange(markLang)
 
 // 화면에서 난 오류를 피드백용 최근 오류 기록에 남긴다 (PC 앱 창만 officeErrors가 있다 — 메인이 가려서 넣는다)
 if (window.officeErrors) {

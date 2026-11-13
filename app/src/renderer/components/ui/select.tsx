@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 function NativeSelect({ className, ...props }: React.ComponentProps<'select'>) {
   return (
     <select
+      data-slot="select"
       className={cn('border-input bg-background h-9 appearance-none rounded-[var(--radius)] border bg-[image:var(--select-chevron)] bg-[length:0.875rem] bg-[position:right_0.75rem_center] bg-no-repeat pr-8 pl-3 text-sm outline-none focus-visible:border-(--focus-border) focus-visible:shadow-(--focus-ring) phone:min-h-10 phone:text-base', className)}
       {...props}
     />

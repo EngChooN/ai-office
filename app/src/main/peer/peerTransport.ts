@@ -170,7 +170,7 @@ export function createOpenStream(e: PeerEndpoint & { spki: string }, token: stri
       }
       res.setEncoding('utf8')
       const parser = new SseParser()
-      res.on('data', (chunk: string) => parser.feed(chunk, (ev) => h.onEvent(ev.event, ev.data, ev.id)))
+      res.on('data', (chunk: string) => parser.feed(chunk, (ev) => h.onEvent(ev.event, ev.data, ev.id), () => h.onAlive?.()))
       res.on('end', () => h.onClose({}))
       res.on('error', (err) => h.onClose({ code: (err as NodeJS.ErrnoException).code ?? 'ERR' }))
     })

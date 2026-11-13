@@ -1,6 +1,6 @@
 import { memo, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { CheckIcon, ChevronDownIcon, ChevronRightIcon, FlaskConicalIcon, MegaphoneIcon, MessagesSquareIcon, PaperclipIcon, PlusIcon, SearchIcon, SendIcon, UsersIcon, ZapIcon } from 'lucide-react'
+import { CheckIcon, ChevronDownIcon, ChevronRightIcon, FlaskConicalIcon, InfoIcon, MegaphoneIcon, MessagesSquareIcon, PaperclipIcon, PlusIcon, SearchIcon, SendIcon, UsersIcon, ZapIcon } from 'lucide-react'
 import { useShallow } from 'zustand/react/shallow'
 import { Button } from '@/components/ui/button'
 import { AttachButton, AttachmentView, DraftAttachments, useDraftAttachments } from '@/components/attachments'
@@ -12,7 +12,7 @@ import { manualLabel } from '@shared/manualName'
 import { useOffice } from '@/store'
 import type { Approval, ChatApproval, ChatApprovalResult, ChatMessage, ChatSendMode, Lab, Staff, Team } from '@shared/types'
 import { chatApprovalView } from '@shared/chatApproval'
-import { chatLines, chatResponder, chatRoomMembers, chatRoomMentionTargets, findRoom, labRoomId, parseRoom, type ChatLine, type ChatRoomInfo } from '@shared/chatRooms'
+import { chatLines, chatResponder, chatRoomMembers, chatRoomMentionTargets, findRoom, parseRoom, type ChatLine, type ChatRoomInfo } from '@shared/chatRooms'
 import { ALL_MENTION, mentionTargets, mentionToken, OFFICE_SENDER, parseMentions, slashButtonDraft, type MentionKind, type MentionTarget } from '@shared/mention'
 import { fmtDate, t, tr, type TKey } from '@shared/i18n'
 import { roleLabel } from '@shared/roleLabel'
@@ -22,7 +22,7 @@ import { MentionText, MentionTextarea, remarkMentions } from '@/components/menti
 import { JumpToBottom, useStickToBottom } from '@/components/stick-to-bottom'
 import { QuestionBox } from './QuestionBox'
 import { ProgressLine, WaitingCards } from './ProgressLine'
-import { STATUS_META } from './status'
+import { statusMetaOf } from './status'
 import { progressesForRoom } from '@shared/progressView'
 import { AlwaysApproveButton } from './AutoApprove'
 import { BubbleMenu, ChatSearch, DeliveryLine, PlanNotice, ReplyBar, ReplyQuote, ReportActions, ReservationCards, ReserveMenu, reservationInput, useSearchHighlight } from './ChatExtras'
@@ -30,8 +30,10 @@ import { firstUnread, roomKey, seenOf } from '@shared/chatUnread'
 import { keyName } from '@/lib/keyName'
 import { DuoIcon, IconText } from '@/components/duo-icon'
 import { splitLeadingIcon } from '@shared/iconText'
-import { doingOf, stripHead, useRoomList, useRoomPeople } from './chatRoomHooks'
+import { doingOf, stripHead, unreadText, useRoomEntries, useRoomPeople } from './chatRoomHooks'
 import { ChatSide } from './ChatSide'
+import { RoomListColumn, useRoomListLayout } from './RoomListColumn'
+import { chatWidthOf, CHIP_MIN_WIDTH, summarizeRoomPeople } from '@shared/chatRoomLayout'
 import { ChatSlimBar } from './ChatSlimBar'
 import { PopMenu, PopMenuItem } from '@/components/pop-menu'
 
@@ -95,12 +97,36 @@ export function ChatPage() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [])
+  // 데스크톱 왼쪽 방 목록: 행 폭을 재서 좁으면 56px 띠로 (회의실 화면과 같은 판정)
+  const listLayout = useRoomListLayout()
+  const { rowRef, rowWidth, mode: listMode } = listLayout
   // 좌우 분할(split:): 머리는 찾기 칸만 남기고, 방 목록·지금 하는 일은 왼쪽 칸(ChatSide, 키보드가 열리면 숨김)으로
   return (
     <div className="flex h-full flex-col">
       {/* 세로 폰(slim:): 머리 4줄 대신 46px 한 줄 — 방 이름 ▾(방·회의실)·일하는 직원·결재 대기·찾기·방 설명 ⓘ */}
       <ChatSlimBar room={room} title={room ? room.name : t('nav.chat')} description={description} onSearch={() => setIsSearchOpen((v) => !v)} />
-      <div className={cn('phone:px-4 phone:py-3 short:py-1.5 typing:hidden split:py-2 slim:py-2 border-b px-6 py-4', !isSearchOpen && 'split:hidden slim:hidden')}>
+      {/* 데스크톱: 머리 2줄(방 이름·꼬리표·ⓘ·🔍 / 직원 줄) + 왼쪽 방 목록(좁으면 56px 띠) */}
+      <div className="phone:hidden border-b px-4 pt-3 pb-2">
+        <div className="flex h-8 items-center gap-1.5">
+          <h1 className="min-w-0 truncate text-base font-semibold">{room ? room.name : t('chat.room.allName')}</h1>
+          {room && <span className="text-muted-foreground shrink-0 rounded-full border px-1.5 text-[10px] leading-4">{t(room.kind === 'lab' ? 'chat.head.tagLab' : 'chat.head.tagTeam')}</span>}
+          <span className="flex-1" />
+          <PopMenu opens="down" icon={<InfoIcon />} label={t('chat.slim.about')} buttonClassName="size-8 p-0">
+            {() => (
+              <div className="max-w-72 p-1.5">
+                <p className="text-muted-foreground text-xs">{description}</p>
+                {/* 띠일 때는 방 목록 맨 아래 '다른 PC' 줄이 안 보이므로 여기서 */}
+              </div>
+            )}
+          </PopMenu>
+          <Button size="sm" variant="ghost" className="size-8 p-0" onClick={() => setIsSearchOpen((v) => !v)} title={t('chat.search.open')} aria-label={t('chat.search.open')}>
+            <SearchIcon />
+          </Button>
+        </div>
+        <RoomStatusStrip room={room} isSummary isFaces={chatWidthOf(rowWidth, listMode) < CHIP_MIN_WIDTH && rowWidth > 0} />
+      </div>
+      {/* 폰 배치(가로 짧은 폰·분할·세로 폰)는 예전 머리 그대로 */}
+      <div className="phone:block phone:px-4 phone:py-3 short:py-1.5 typing:hidden split:hidden slim:hidden hidden border-b px-6 py-4">
         <div className="split:hidden slim:hidden flex items-start gap-2">
           <h1 className="short:text-base flex-1 text-lg font-semibold">{title}</h1>
           <Button size="sm" variant="ghost" className="size-8 p-0" onClick={() => setIsSearchOpen((v) => !v)} title={t('chat.search.open')} aria-label={t('chat.search.open')}>
@@ -109,16 +135,21 @@ export function ChatPage() {
         </div>
         <div className="split:hidden slim:hidden">
           <p className="text-muted-foreground short:hidden text-xs">{description}</p>
-          <RemoteLine />
           <RoomTabs current={room?.room} />
         </div>
-        {isSearchOpen && <ChatSearch room={room?.room} onClose={() => setIsSearchOpen(false)} onQuery={setSearchQuery} />}
         <div className="split:hidden slim:hidden">
           <RoomStatusStrip room={room} />
         </div>
       </div>
-      <div className="flex min-h-0 flex-1">
-        <ChatSide room={room} footer={<RemoteLine />} className="side:flex hidden" />
+      {/* 찾기 줄은 한 곳에만 — 두 머리에 따로 두면 숨은 쪽이 방을 바꿀 때 onQuery('')로 보이는 쪽 검색어를 지운다 */}
+      {isSearchOpen && (
+        <div className="border-b px-4 pb-2">
+          <ChatSearch room={room?.room} onClose={() => setIsSearchOpen(false)} onQuery={setSearchQuery} />
+        </div>
+      )}
+      <div ref={rowRef} className="flex min-h-0 flex-1">
+        <RoomListColumn room={room} layout={listLayout} />
+        <ChatSide room={room} className="side:flex hidden" />
         <div className="flex min-w-0 flex-1 flex-col">
           <MessageList room={room?.room} searchQuery={isSearchOpen ? searchQuery : ''} />
           <Composer room={room} />
@@ -130,12 +161,14 @@ export function ChatPage() {
 
 /** 상태 줄에 펼쳐 두는 사람 수 — 넘으면 "+N명"으로 접는다 */
 const STRIP_MAX = 6
+/** 대화 칸이 좁을 때 겹쳐 보여 주는 얼굴 수 */
+const FACES_MAX = 3
 
 /**
  * 구성원 상태 줄 (방 제목 아래): 누가 무슨 일을 하는지 — 이 방에서 시킨 일뿐 아니라 업무 카드·1:1 지시로 하는 일도 보인다.
  * 팀·랩 방은 구성원 전원, 전체 방은 일하는 중·확인 필요·오류인 사람만. 마우스를 올리면 자세히, 누르면 직원 패널
  */
-function RoomStatusStrip({ room }: { room: RoomInfo | undefined }) {
+function RoomStatusStrip({ room, isSummary, isFaces }: { room: RoomInfo | undefined; /** 앞에 'N명 · M명 일하는 중' (데스크톱 머리 2줄) */ isSummary?: boolean; /** 대화 칸이 좁으면 칩 대신 얼굴 겹침 — 누르면 모두 펼침 */ isFaces?: boolean }) {
   const select = useOffice((s) => s.select)
   const [isOpen, setIsOpen] = useState(false)
   const [tip, setTip] = useState<{ staff: Staff; rect: DOMRect } | null>(null)
@@ -143,7 +176,7 @@ function RoomStatusStrip({ room }: { room: RoomInfo | undefined }) {
   if (people.length === 0) return null
   const shown = isOpen ? people : people.slice(0, STRIP_MAX)
   const tipStaff = tip && people.find((p) => p.id === tip.staff.id)
-  return (
+  const chips = (
     <div
       aria-label={t('chat.status.list')}
       // 접힌 줄은 가로로 넘긴다 — 마우스 휠(세로)도 가로 이동으로 바꿔 준다
@@ -153,10 +186,10 @@ function RoomStatusStrip({ room }: { room: RoomInfo | undefined }) {
         el.scrollLeft += e.deltaY
       }}
       onScroll={() => setTip(null)}
-      className={cn('short:hidden mt-2 flex gap-1.5', isOpen ? 'flex-wrap' : 'overflow-x-auto overflow-y-hidden [scrollbar-width:none]')}
+      className={cn('short:hidden flex gap-1.5', !isSummary && 'mt-2', isOpen ? 'flex-wrap' : 'overflow-x-auto overflow-y-hidden [scrollbar-width:none]')}
     >
       {shown.map((s) => {
-        const meta = STATUS_META[s.status]
+        const meta = statusMetaOf(s)
         const doing = doingOf(s)
         return (
           <button
@@ -189,11 +222,37 @@ function RoomStatusStrip({ room }: { room: RoomInfo | undefined }) {
       {tip && tipStaff && createPortal(<StatusTip staff={tipStaff} rect={tip.rect} />, document.body)}
     </div>
   )
+  if (isSummary) {
+    const { total, working } = summarizeRoomPeople(people)
+    const summary = (
+      <span className="text-muted-foreground shrink-0 text-xs">
+        {t('chat.head.total', { total })} · {working > 0 ? <span className="text-status-working font-medium">{t('chat.head.working', { working })}</span> : t('chat.head.idle')}
+      </span>
+    )
+    if (isFaces && !isOpen)
+      return (
+        <button type="button" onClick={() => setIsOpen(true)} className="hover:bg-accent mt-1.5 flex items-center gap-2 rounded-full pr-2" aria-label={t('chat.status.list')}>
+          <span className="flex shrink-0 -space-x-1.5">
+            {people.slice(0, FACES_MAX).map((s) => (
+              <Avatar key={s.id} avatar={s.avatar} name={s.name} teamId={s.teamId} className="ring-background size-5 ring-2" />
+            ))}
+          </span>
+          {summary}
+        </button>
+      )
+    return (
+      <div className={cn('mt-1.5 flex gap-2', isOpen ? 'items-start' : 'items-center')}>
+        <span className={cn('flex shrink-0', isOpen && 'py-1')}>{summary}</span>
+        <div className="min-w-0 flex-1">{chips}</div>
+      </div>
+    )
+  }
+  return chips
 }
 
 /** 상태 줄 칸에 마우스를 올리면 뜨는 설명: 맡은 일 · 지금 하는 것 · 뒤에 기다리는 일 */
 function StatusTip({ staff: s, rect }: { staff: Staff; rect: DOMRect }) {
-  const meta = STATUS_META[s.status]
+  const meta = statusMetaOf(s)
   const task = s.progress?.text ? stripHead(s.progress.text) : ''
   const queued = s.progress?.queued ?? 0
   return (
@@ -237,62 +296,39 @@ function RoomWaiting({ room }: { room: string | undefined }) {
   return <WaitingCards items={items} className="mx-auto max-h-40 w-full max-w-3xl border-t-0 px-0" />
 }
 
-/** 다른 PC 직원이 랩에 있으면 "원격 · 피어명" 한 줄 (연결이 끊긴 PC는 흐리게) */
-function RemoteLine() {
-  const peers = useOffice(useShallow((s) => [...new Map(s.staff.flatMap((x) => (x.remote ? [[x.remote.peerId, `${x.remote.peerName}\t${x.remote.state}`] as const] : []))).values()]))
-  if (peers.length === 0) return null
-  return (
-    <p className="mt-1 flex flex-wrap gap-x-2 text-xs">
-      {peers.map((p) => {
-        const [name, state] = p.split('\t')
-        const isDim = state === 'offline' || state === 'unpaired'
-        return (
-          <span key={p} className={isDim ? 'text-muted-foreground' : 'text-primary'} title={t(`peer.state.${state as 'online'}`)}>
-            <DuoIcon name="remote" size={13} className="mr-1" />{t('peer.chatLine', { name })}
-          </span>
-        )
-      })}
-    </p>
-  )
-}
-
-/** 방 목록: 전체 / 팀들 / 랩들 (project 종류·연습 팀, 연습 랩은 방이 없다) */
+/** 가로 방 탭(가로 짧은 폰 머리): 전체 / 팀들 / 랩들 (project 종류·연습 팀, 연습 랩은 방이 없다) — 계산은 왼쪽 방 목록과 같은 useRoomEntries */
 function RoomTabs({ current }: { current: string | undefined }) {
-  const setChatRoom = useOffice((s) => s.setChatRoom)
-  const { teamRooms, labRooms, unread, approvalRooms } = useRoomList()
-  if (teamRooms.length === 0 && labRooms.length === 0) return null
-  const tab = (key: string, label: string, isActive: boolean, onClick: () => void, color?: string) => (
-    <button
-      key={key}
-      type="button"
-      role="tab"
-      aria-selected={isActive}
-      onClick={onClick}
-      className={cn('flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs', isActive ? 'bg-primary text-primary-foreground border-primary' : 'hover:bg-accent text-muted-foreground')}
-    >
-      {color && <span className="size-2 rounded-full" style={{ background: color }} />}
-      {label}
-      {/* 지금 보고 있는 방은 숫자를 붙이지 않는다 (곧 읽음 처리) */}
-      {!isActive && (unread[roomKey(key === 'all' ? null : key)] ?? 0) > 0 && (
-        <span className="bg-status-error rounded-full px-1.5 text-[10px] leading-4 font-semibold text-white" aria-label={t('chat.unread.count', { count: unread[roomKey(key === 'all' ? null : key)] })}>
-          {unread[roomKey(key === 'all' ? null : key)]}
-        </span>
-      )}
-      {approvalRooms.has(roomKey(key === 'all' ? null : key)) && <span className="bg-status-waiting size-1.5 rounded-full" title={t('chat.unread.approval')} />}
-    </button>
-  )
-  const groupLabel = (key: string, label: string) => (
-    <span key={key} className="text-muted-foreground/70 ml-1 flex shrink-0 items-center text-[11px] font-medium">
-      {label}
-    </span>
-  )
+  const entries = useRoomEntries(current, t('chat.room.all'))
+  if (entries.length === 1) return null
   return (
     <div className="mt-2 flex gap-1.5 overflow-x-auto overflow-y-hidden [scrollbar-width:none]" role="tablist" aria-label={t('chat.rooms')}>
-      {tab('all', t('chat.room.all'), !current, () => setChatRoom(null))}
-      {teamRooms.length > 0 && groupLabel('group:teams', t('chat.room.groupTeams'))}
-      {teamRooms.map((tm) => tab(tm.id, tm.name, current === tm.id, () => setChatRoom(tm.id), tm.color))}
-      {labRooms.length > 0 && groupLabel('group:labs', t('chat.room.groupLabs'))}
-      {labRooms.map((lb) => tab(labRoomId(lb.id), lb.name, current === labRoomId(lb.id), () => setChatRoom(labRoomId(lb.id)), lb.color))}
+      {entries.flatMap((e, i) => [
+        // 묶음이 바뀌는 자리에 '팀'·'랩' 제목
+        ...(e.group !== 'all' && entries[i - 1]?.group !== e.group
+          ? [
+              <span key={`group:${e.group}`} className="text-muted-foreground/70 ml-1 flex shrink-0 items-center text-[11px] font-medium">
+                {t(e.group === 'team' ? 'chat.room.groupTeams' : 'chat.room.groupLabs')}
+              </span>,
+            ]
+          : []),
+        <button
+          key={e.key}
+          type="button"
+          role="tab"
+          aria-selected={e.isActive}
+          onClick={e.select}
+          className={cn('flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs', e.isActive ? 'bg-primary text-primary-foreground border-primary' : 'hover:bg-accent text-muted-foreground')}
+        >
+          {e.color && <span className="size-2 rounded-full" style={{ background: e.color }} />}
+          {e.label}
+          {e.unread > 0 && (
+            <span className="bg-status-error dark:text-background rounded-full px-1.5 text-[10px] leading-4 font-semibold text-white" aria-label={t('chat.unread.count', { count: e.unread })}>
+              {unreadText(e.unread)}
+            </span>
+          )}
+          {e.hasApproval && <span className="bg-status-waiting size-1.5 rounded-full" title={t('chat.unread.approval')} />}
+        </button>,
+      ])}
     </div>
   )
 }
@@ -719,7 +755,7 @@ function Composer({ room }: { room: RoomInfo | undefined }) {
   const targetIds = parsed && parsed.matched.length > 0 ? parsed.recipientIds : replyStaff ? [replyStaff.id] : roomLead ? [roomLead.id] : []
   const busy = targetIds.flatMap((id) => {
     const s = staffById.get(id)
-    return s && s.status === 'working' && s.approvals.length === 0 && !s.remote ? [s] : []
+    return s && s.status === 'working' && s.approvals.length === 0 ? [s] : []
   })
   const hasDraft = Boolean(draft.trim()) || draftFiles.files.length > 0
   const isBusySend = busy.length > 0 && hasDraft && !parsed?.body.startsWith('/')

@@ -28,6 +28,7 @@ export function DuoIcon({ name, size = 16, label, className, ...rest }: { name: 
       viewBox="0 0 24 24"
       strokeLinecap="round"
       strokeLinejoin="round"
+      data-duo=""
       className={cn('inline-block shrink-0 overflow-visible align-[-0.15em]', className)}
       role={label ? 'img' : undefined}
       aria-label={label}

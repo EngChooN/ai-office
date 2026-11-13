@@ -62,6 +62,18 @@ export default {
 
   // 6. 예약·반복
   'chat.side.doing': { ko: '지금 하는 일', en: 'Working on now', ja: 'いまの仕事', zh: '正在做' },
+  // 데스크톱 왼쪽 방 목록·56px 띠, 머리 2줄
+  'chat.side.collapse': { ko: '방 목록 접기', en: 'Collapse room list', ja: 'ルーム一覧をたたむ', zh: '收起聊天室列表' },
+  'chat.side.expand': { ko: '방 목록 펼치기', en: 'Expand room list', ja: 'ルーム一覧を開く', zh: '展开聊天室列表' },
+  'chat.side.pin': { ko: '펼친 채로 고정', en: 'Keep expanded', ja: '開いたまま固定', zh: '保持展开' },
+  'chat.side.unpin': { ko: '고정 풀기', en: 'Unpin', ja: '固定を解除', zh: '取消固定' },
+  'chat.side.meetingPending': { ko: '답 기다리는 회의 결정 {count}건', en: '{count} meeting decisions awaiting your answer', ja: '回答待ちの会議の決定 {count}件', zh: '{count} 项会议决定待答复' },
+  'chat.side.tipUnread': { ko: '안 읽은 글 {count}', en: '{count} unread', ja: '未読 {count}', zh: '{count} 条未读' },
+  'chat.head.total': { ko: '{total}명', en: '{total} people', ja: '{total}人', zh: '{total} 人' },
+  'chat.head.working': { ko: '{working}명 일하는 중', en: '{working} working', ja: '{working}人が作業中', zh: '{working} 人工作中' },
+  'chat.head.idle': { ko: '지금 일하는 사람 없음', en: 'No one working now', ja: 'いま作業中の人はいません', zh: '目前没有人在工作' },
+  'chat.head.tagTeam': { ko: '팀', en: 'Team', ja: 'チーム', zh: '团队' },
+  'chat.head.tagLab': { ko: '프로젝트', en: 'Project', ja: 'プロジェクト', zh: '项目' },
   'chat.plusMenu': { ko: '첨부·예약·매뉴얼·명령', en: 'Attach, schedule, manuals, commands', ja: '添付・予約・マニュアル・コマンド', zh: '附件、定时、手册、命令' },
   'chat.reserve.menu': { ko: '예약·반복 보내기', en: 'Schedule or repeat', ja: '予約・繰り返し送信', zh: '定时或重复发送' },
   'chat.reserve.sendNow': { ko: '지금 보내기', en: 'Send now', ja: '今すぐ送る', zh: '立即发送' },

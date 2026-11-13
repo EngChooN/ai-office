@@ -98,12 +98,14 @@ const pick = (key: string) => clash.find((t) => t.key === key)!
 test('이름 충돌: 자동완성은 겹치는 대상에 종류를 붙이고, 안 겹치면 이름만 넣는다', () => {
   assert.equal(mentionToken(pick('staff:d'), clash), '@디자인(직원)')
   assert.equal(mentionToken(pick('team:dt'), clash), '@디자인(팀)')
-  assert.equal(mentionToken(pick('lab:dl'), clash), '@디자인(랩)')
+  assert.equal(mentionToken(pick('lab:dl'), clash), '@디자인(프로젝트)')
   assert.equal(mentionToken(pick('staff:p'), clash), '@박디자')
 })
 
 test('이름 충돌: 종류를 붙인 멘션은 고른 대상에게 간다', () => {
   assert.deepEqual(parseMentions('@디자인(팀) 시안 봐 주세요', clash).recipientIds, ['p'])
+  assert.deepEqual(parseMentions('@디자인(프로젝트) 회고', clash).recipientIds, ['q'])
+  // 예전 이름 '랩'으로 붙인 멘션도 같은 대상에게 간다
   assert.deepEqual(parseMentions('@디자인(랩) 회고', clash).recipientIds, ['q'])
   const both = parseMentions('@디자인(팀) @디자인(직원) 같이', clash)
   assert.deepEqual(both.matched.map((t) => t.key).sort(), ['staff:d', 'team:dt'])

@@ -1,4 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks'
+import type { I18nArg } from '../shared/i18n/index.ts'
 import type { LogType } from '../shared/types'
 
 // 원격(휴대폰)에서 부른 동작인지: v2 /v2/call은 이 안에서 처리 함수를 부르고, Office.log가 기록 앞에 표시를 붙인다
@@ -23,3 +24,6 @@ const MARKED: ReadonlySet<LogType> = new Set(['instruction', 'approval'])
 export function remoteMarked(type: LogType, text: string) {
   return store.getStore() && MARKED.has(type) && !text.startsWith(REMOTE_MARK) ? `${REMOTE_MARK} ${text}` : text
 }
+
+/** remoteMarked가 text에 표시를 붙였을 때 text_i18n(번역 키)에도 같은 표시를 앞에 붙인다 — 안 붙이면 화면이 키로 다시 풀면서 표시가 빠진다 */
+export const remoteMarkedI18n = (i18n: Exclude<I18nArg, number>): Exclude<I18nArg, number> => ({ list: [`${REMOTE_MARK} `, i18n], sep: '' })

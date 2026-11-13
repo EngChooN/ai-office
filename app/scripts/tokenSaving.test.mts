@@ -60,12 +60,11 @@ test('이미 Haiku·Sonnet이고 기억이 보통·짧게면 숨김', () => {
   assert.equal(saverFor(staff('a', { memory: undefined })), null)
 })
 
-test('빈 데이터·비서·퇴사자·외부·원격·0토큰은 빠진다', () => {
+test('빈 데이터·비서·퇴사자·외부·0토큰은 빠진다', () => {
   assert.deepEqual(pickSavers([], []), [])
   assert.deepEqual(pickSavers([row('a', 10)], []), [])
-  const remote = { peerId: 'p', remoteId: 'r' } as unknown as Staff['remote']
-  const list = [staff('x', { kind: 'external', model: 'opus' }), staff('r', { remote, model: 'opus' }), staff('z', { model: 'opus' })]
-  assert.deepEqual(pickSavers([row(SECRETARY_ID, 99), row('x', 50), row('r', 40), row('z', 0), row('gone', 30)], list), [])
+  const list = [staff('x', { kind: 'external', model: 'opus' }), staff('z', { model: 'opus' })]
+  assert.deepEqual(pickSavers([row(SECRETARY_ID, 99), row('x', 50), row('z', 0), row('gone', 30)], list), [])
 })
 
 test('토큰 절약 모드 기본값: 켜면 Haiku + 짧게, Codex는 기억만, 끄면 없음', () => {

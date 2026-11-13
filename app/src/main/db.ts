@@ -5,11 +5,15 @@ import type { PendingApproval } from './pendingApprovals.ts'
 import type { KnowledgeEntry } from '../shared/knowledge'
 import type { GalleryEntry, Praise } from '../shared/gallery'
 import type { UnreadReports } from '../shared/unreadReports'
-import type { I18nArg } from '../shared/i18n/index.ts'
+import type { I18nArg, I18nText } from '../shared/i18n/index.ts'
 import { app } from 'electron'
 import path from 'node:path'
 import {
   DEFAULT_EQUIPMENT,
+  type ApprovalActor,
+  type ApprovalHistoryFilter,
+  type ApprovalRecord,
+  type ApprovalResult,
   type Attachment,
   type SecretaryCard,
   type SecretaryMessage,
@@ -39,7 +43,7 @@ import type { RemoteConfig } from './remote/service.ts'
 import { settleGrid } from './shopGrid.ts'
 import { createWorkBaseStore } from './workBaseStore.ts'
 import { ensurePeerTables, sqlitePeerStore, type PeerStore } from './peer/peerStore.ts'
-import { ensureSyncTables, sqliteSyncStore, type SyncStore } from './peer/sync/syncDb.ts'
+import { cleanupLegacyPeerData, type LegacyPeerCleanupResult } from './peer/legacyPeerCleanup.ts'
 import { grantedLevels, grantedZones, runIsoMigration, runLevelGrants } from './isoMigrate.ts'
 
 // 사무실의 모든 영속 데이터는 사용자 데이터 폴더의 office.db 한 파일에 둔다
@@ -103,12 +107,15 @@ export function openDb() {
     CREATE TABLE IF NOT EXISTS ledger (
       id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER NOT NULL, amount INTEGER NOT NULL, kind TEXT NOT NULL, label TEXT NOT NULL, key TEXT UNIQUE
     );
+    CREATE TABLE IF NOT EXISTS approval_record (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, staff_id TEXT NOT NULL, approval_id TEXT NOT NULL, requested_at INTEGER, decided_at INTEGER NOT NULL,
+      result TEXT NOT NULL, actor TEXT NOT NULL, tool_name TEXT NOT NULL, summary TEXT NOT NULL, summary_i18n TEXT, effect_i18n TEXT, answer TEXT
+    );
+    CREATE INDEX IF NOT EXISTS approval_record_staff ON approval_record (staff_id, decided_at);
   `)
   workBaseStore = createWorkBaseStore(db)
-  // 다른 PC 연결(peer·peer_staff·peer_job·peer_outbox·peer_inbox) — 표 모양은 peer/peerStore.ts가 안다
+  // 다른 PC 연결(짝 기록 peer) — 표 모양은 peer/peerStore.ts가 안다
   ensurePeerTables(db)
-  // 파일 복사본·변경 묶음(peer_workspace·peer_changeset) — 4번 표
-  ensureSyncTables(db)
   const staffCols = (db.prepare('PRAGMA table_info(staff)').all() as { name: string }[]).map((c) => c.name)
   const logCols = (db.prepare('PRAGMA table_info(log)').all() as { name: string }[]).map((c) => c.name)
   if (!logCols.includes('text_i18n')) db.exec('ALTER TABLE log ADD COLUMN text_i18n TEXT')
@@ -141,6 +148,8 @@ export function openDb() {
   // 팀 자리가 있는 층 (NULL = 1층)
   if (!teamCols.includes('floor')) db.exec('ALTER TABLE team ADD COLUMN floor INTEGER')
   if (!teamCols.includes('is_practice')) db.exec('ALTER TABLE team ADD COLUMN is_practice INTEGER')
+  // 팀이 하는 일 한 줄 설명 (0~80자)
+  if (!teamCols.includes('description')) db.exec('ALTER TABLE team ADD COLUMN description TEXT')
   for (const table of ['log', 'chat', 'task']) {
     const cols = (db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).map((c) => c.name)
     if (!cols.includes('attachments')) db.exec(`ALTER TABLE ${table} ADD COLUMN attachments TEXT`)
@@ -254,8 +263,8 @@ export function saveEquipment(id: string, equipment: Equipment) {
 
 /** 다른 PC 연결의 저장소 (office.db) */
 export const peerStore = (): PeerStore => sqlitePeerStore(db)
-/** 파일 복사본·변경 묶음의 저장소 (office.db) */
-export const syncStore = (): SyncStore => sqliteSyncStore(db)
+/** 빌려주기·데려오기(1.3.1까지)의 옛 표·폴더·id를 정리한다 — openDb 뒤, 사무실이 직원·랩을 읽기 전에 (몇 번 불러도 같다) */
+export const cleanupLegacyPeer = (userDataDir: string): LegacyPeerCleanupResult => cleanupLegacyPeerData(db, userDataDir)
 export const saveWorkBase = (...a: Parameters<typeof workBaseStore.save>) => workBaseStore.save(...a)
 export const removeWorkBase = (id: string) => workBaseStore.remove(id)
 export const loadWorkBases = () => workBaseStore.load()
@@ -316,6 +325,106 @@ export function logsPage(staffId: string, limit: number, beforeId?: number): { l
   return { logs: rows.slice(0, limit).reverse().map(toLog), hasMore }
 }
 
+// ── 결재 기록 ─────────────────────────────────────────
+
+type ApprovalRecordRow = {
+  id: number
+  staff_id: string
+  approval_id: string
+  requested_at: number | null
+  decided_at: number
+  result: ApprovalResult
+  actor: ApprovalActor
+  tool_name: string
+  summary: string
+  summary_i18n: string | null
+  effect_i18n: string | null
+  answer: string | null
+}
+const parseJson = <T>(raw: string | null): T | undefined => {
+  if (!raw) return undefined
+  try {
+    return JSON.parse(raw) as T
+  } catch {
+    return undefined
+  }
+}
+const toApprovalRecord = (r: ApprovalRecordRow): ApprovalRecord => ({
+  id: r.id,
+  staffId: r.staff_id,
+  approvalId: r.approval_id,
+  ...(r.requested_at !== null ? { requestedAt: r.requested_at } : {}),
+  decidedAt: r.decided_at,
+  result: r.result,
+  actor: r.actor,
+  toolName: r.tool_name,
+  summary: r.summary,
+  ...(r.summary_i18n ? { summaryI18n: parseJson<I18nArg>(r.summary_i18n) } : {}),
+  ...(r.effect_i18n ? { effectI18n: parseJson<I18nText>(r.effect_i18n) } : {}),
+  ...(r.answer ? { answer: r.answer } : {}),
+})
+
+export type NewApprovalRecord = Omit<ApprovalRecord, 'id'>
+
+export function insertApprovalRecord(r: NewApprovalRecord): ApprovalRecord {
+  const { lastInsertRowid } = run(
+    'INSERT INTO approval_record (staff_id, approval_id, requested_at, decided_at, result, actor, tool_name, summary, summary_i18n, effect_i18n, answer) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    r.staffId, r.approvalId, r.requestedAt ?? null, r.decidedAt, r.result, r.actor, r.toolName, r.summary,
+    r.summaryI18n === undefined ? null : JSON.stringify(r.summaryI18n), r.effectI18n ? JSON.stringify(r.effectI18n) : null, r.answer || null,
+  )
+  return { ...r, id: Number(lastInsertRowid) }
+}
+
+/** 직원의 결재 기록을 최신순으로 limit개 (beforeId가 있으면 그보다 앞선 것만) */
+export function approvalRecordsPage(staffId: string, opts: { beforeId?: number; limit: number; filter?: ApprovalHistoryFilter }): { records: ApprovalRecord[]; hasMore: boolean } {
+  const where = ['staff_id = ?']
+  const params: (string | number)[] = [staffId]
+  if (opts.beforeId !== undefined) {
+    where.push('id < ?')
+    params.push(opts.beforeId)
+  }
+  const f = opts.filter ?? 'all'
+  if (f === 'approved' || f === 'rejected' || f === 'answered') {
+    where.push('result = ?')
+    params.push(f)
+    // '자동' 딱지로 보이는 자동결재·규칙 승인은 '승인'에 섞지 않는다 (shownResult와 같은 규칙)
+    if (f === 'approved') where.push("actor NOT IN ('auto', 'rule')")
+  } else if (f === 'auto') where.push("actor IN ('auto', 'rule')")
+  const rows = all<ApprovalRecordRow>(`SELECT * FROM approval_record WHERE ${where.join(' AND ')} ORDER BY id DESC LIMIT ?`, ...params, opts.limit + 1)
+  return { records: rows.slice(0, opts.limit).map(toApprovalRecord), hasMore: rows.length > opts.limit }
+}
+
+/** cutoff(ms)보다 오래된 결재 기록을 지운다. 지운 줄 수를 돌려준다 */
+export function pruneApprovalRecords(cutoff: number): number {
+  return Number(run('DELETE FROM approval_record WHERE decided_at < ?', cutoff).changes)
+}
+
+const APPROVAL_IMPORT_KEY = 'approvalRecordImported'
+
+/**
+ * 예전 log(type='approval') 줄을 결재 기록으로 한 번만 옮긴다 (setting 표에 완료 표시). since 이후 줄만.
+ * parse가 null을 주는(읽을 수 없는) 줄은 건너뛴다. 옮긴 줄 수를 돌려주고, 이미 했으면 null
+ */
+export function importLegacyApprovals(since: number, parse: (text: string, textI18n: I18nArg | undefined) => Omit<NewApprovalRecord, 'staffId' | 'decidedAt' | 'approvalId'> | null): number | null {
+  if (get<{ value: string }>('SELECT value FROM setting WHERE key = ?', APPROVAL_IMPORT_KEY)) return null
+  let n = 0
+  db.exec('BEGIN')
+  try {
+    for (const row of all<LogRow>("SELECT * FROM log WHERE type = 'approval' AND ts >= ? ORDER BY id", since)) {
+      const parsed = parse(row.text, parseI18n(row.text_i18n))
+      if (!parsed) continue
+      insertApprovalRecord({ ...parsed, staffId: row.staff_id, approvalId: '', decidedAt: row.ts })
+      n++
+    }
+    run('INSERT INTO setting (key, value) VALUES (?, ?)', APPROVAL_IMPORT_KEY, String(Date.now()))
+    db.exec('COMMIT')
+  } catch (e) {
+    db.exec('ROLLBACK')
+    throw e
+  }
+  return n
+}
+
 export function allLogsBetween(since: number, until: number): LogEntry[] {
   return all<LogRow>('SELECT * FROM log WHERE ts >= ? AND ts < ? ORDER BY ts', since, until).map(toLog)
 }
@@ -372,8 +481,12 @@ export function resultCountBetween(staffId: string, since: number, until: number
 
 // ── 팀 ──────────────────────────────────────────────────
 
+/** 팀 설명은 앞뒤 공백을 떼고 80자로 자른다 */
+export const TEAM_DESCRIPTION_MAX = 80
+export const teamDescription = (v: unknown) => (typeof v === 'string' ? v.trim().slice(0, TEAM_DESCRIPTION_MAX) : '')
+
 export function loadTeams(): Team[] {
-  return all<{ id: string; name: string; color: string; lead_id: string | null; manuals: string | null; ref_docs: string | null; floor: number | null; is_practice: number | null }>('SELECT * FROM team ORDER BY created_at').map((r) => ({
+  return all<{ id: string; name: string; color: string; lead_id: string | null; manuals: string | null; ref_docs: string | null; floor: number | null; is_practice: number | null; description: string | null }>('SELECT * FROM team ORDER BY created_at').map((r) => ({
     id: r.id,
     name: r.name,
     color: r.color,
@@ -382,18 +495,19 @@ export function loadTeams(): Team[] {
     manuals: parseList(r.manuals),
     refDocs: parseList(r.ref_docs),
     floor: r.floor ?? 1,
+    ...(r.description ? { description: r.description } : {}),
     ...(r.is_practice ? { isPractice: true } : {}),
   }))
 }
 
 export function insertTeam(t: Team) {
-  run('INSERT INTO team (id, name, color, lead_id, created_at, is_practice) VALUES (?, ?, ?, ?, ?, ?)', t.id, t.name, t.color, t.leadId, Date.now(), t.isPractice ? 1 : null)
+  run('INSERT INTO team (id, name, color, lead_id, created_at, is_practice, description) VALUES (?, ?, ?, ?, ?, ?, ?)', t.id, t.name, t.color, t.leadId, Date.now(), t.isPractice ? 1 : null, teamDescription(t.description) || null)
 }
 
 export function updateTeamRow(t: Team) {
   run(
-    'UPDATE team SET name = ?, color = ?, lead_id = ?, manuals = ?, ref_docs = ?, floor = ? WHERE id = ?',
-    t.name, t.color, t.leadId, JSON.stringify(t.manuals ?? []), JSON.stringify(t.refDocs ?? []), t.floor ?? 1, t.id,
+    'UPDATE team SET name = ?, color = ?, lead_id = ?, manuals = ?, ref_docs = ?, floor = ?, description = ? WHERE id = ?',
+    t.name, t.color, t.leadId, JSON.stringify(t.manuals ?? []), JSON.stringify(t.refDocs ?? []), t.floor ?? 1, teamDescription(t.description) || null, t.id,
   )
 }
 
@@ -520,6 +634,7 @@ export function saveTutorial(v: unknown) {
 export function deleteStaffTraces(ids: string[]) {
   for (const id of ids) {
     run('DELETE FROM log WHERE staff_id = ?', id)
+    run('DELETE FROM approval_record WHERE staff_id = ?', id)
     run('DELETE FROM chat WHERE sender = ?', id)
     run('DELETE FROM usage WHERE staff_id = ?', id)
   }

@@ -11,6 +11,33 @@ Writing rules
 - Leave out: internal or development matters, re-fixes of features added in the same version, how a security hole worked (if needed, one line on the result), minor wording or spacing tweaks.
 - Couldn't do it before → new feature; easier than before → improvement; was working wrongly → bug fix.
 
+## [1.4.0] - 2026-11-13
+PC app only: the Connect-devices card and the team creation window are in the PC app. In the phone app, first-time connection now has a 3-step guide.
+
+### At a glance
+- **New** A retro office game theme
+- **New** Reply, react, schedule and cut in, in chat
+- **New** An Approvals tab in the staff panel
+- **Better** Connecting devices is now one card
+- **Better** Staff list and team setup are easier
+
+### New features
+- Pick "Retro office game" under "Special themes" in Settings. Pixel fonts and square borders make the app look like a game screen (dark mode only).
+- In chat rooms you can reply, react, schedule a message and search the chat, and see how far a message got: Received → Working → Done. Unread counts are shown too.
+- A message sent while staff is working can wait ("Deliver when done") or cut in ("Send now"). The room header shows what each member is doing, and the "Manuals" and "/ Commands" buttons fill in who gets it.
+- The staff panel has a new Approvals tab: approvals waiting, plus a history of your decisions you can filter by approved, rejected or automatic.
+- In Records › Reports, flip through days and filter by finished work, instructions, approvals or problems, then copy the report.
+
+### Improvements
+- Phone and other-PC connections are now one "Connect other devices" card. Lending or bringing staff to or from another PC is gone, and old related data is cleaned up once on first launch.
+- The panel below the staff list is gone, replaced by alert lines on top (stopped with a problem, plan usage). "Dashboard" is now "Staff list", "Org chart" is "Team setup", and status names are plainer.
+- Teams and projects show as cards and are created in 3 steps. "Lab" is now "Project" and "team leader / lab head" is "Lead". Old @lab mentions still work.
+- Meeting rooms are merged into the chat room list. When the window is narrow the list folds into a slim strip by itself, and opens again when it is wide.
+
+### Bug fixes
+- Fixed work handed over by card in a project room not showing in the chat room.
+- Fixed long member reports being cut off so the lead missed the key point (the length limit was raised).
+
 ## [1.3.0] - 2026-11-12
 PC app only: connecting PCs and the new Manuals screens are in the PC app.
 

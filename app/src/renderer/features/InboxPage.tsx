@@ -15,14 +15,13 @@ import { ApprovalSummary } from './ApprovalSummary'
 import { shortPath, workDirLabel } from './status'
 import { fmtDate, t } from '@shared/i18n'
 import { roleLabel } from '@shared/roleLabel'
-import { IS_REMOTE_SCREEN } from '@/shell'
-import { ChangesetCard } from './ChangesetCard'
 import { DuoIcon, IconText } from '@/components/duo-icon'
 
 /** 결재함: 모든 직원의 권한 요청을 한곳에서 도장 찍는다 */
 export function InboxPage() {
   const staff = useOffice((s) => s.staff)
   const select = useOffice((s) => s.select)
+  const openStaffApprovals = useOffice((s) => s.openStaffApprovals)
   const approvals = staff.flatMap((s) => s.approvals.map((a) => ({ ...a, staff: s }))).sort((a, b) => a.createdAt - b.createdAt)
   // 질문을 사무실로 받은 외부 직원은 위 질문 카드로 보여 준다
   const externalWaiting = staff.filter((s) => s.kind === 'external' && s.status === 'waiting' && s.approvals.length === 0)
@@ -101,7 +100,7 @@ export function InboxPage() {
       <div className="flex max-w-3xl flex-col gap-3">
         {approvals.map((a) => (
           <div key={a.id} className="bg-card flex items-start gap-3 rounded-xl border p-4">
-            <button type="button" onClick={() => select(a.staff.id)}>
+            <button type="button" onClick={() => openStaffApprovals(a.staff.id)}>
               <Avatar avatar={a.staff.avatar} name={a.staff.name} teamId={a.staff.teamId} />
             </button>
             <div className="min-w-0 flex-1">
@@ -117,11 +116,13 @@ export function InboxPage() {
                 </span>
               </div>
               {a.requestedBy && <div className="text-muted-foreground mt-0.5 text-xs">{t('approval.requestedBy', { name: a.requestedBy })}</div>}
-              {a.questions || (a.peerChanges && !IS_REMOTE_SCREEN) ? (
+              {a.questions ? (
                 <>
                   <WaitReasonLine reason={a.waitReason} className="mt-0.5" />
                   {a.isRestored && <div className="text-muted-foreground mt-0.5 text-xs">↻ {t('approval.restored')}</div>}
-                  <div className="mt-2">{a.questions ? <QuestionBox approval={a} /> : <ChangesetCard approval={a} staffName={a.staff.name} />}</div>
+                  <div className="mt-2">
+                    <QuestionBox approval={a} />
+                  </div>
                 </>
               ) : (
                 <div className="mt-1">
@@ -129,7 +130,7 @@ export function InboxPage() {
                 </div>
               )}
             </div>
-            {!a.questions && !(a.peerChanges && !IS_REMOTE_SCREEN) && (
+            {!a.questions && (
               <div className="flex flex-col gap-2">
                 <Button size="sm" onClick={() => void window.office.decide(a.id, true)}>
                   <CheckIcon /> {t('inbox.approve')}

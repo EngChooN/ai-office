@@ -188,3 +188,19 @@ test('인증을 마친 연결은 인증 전 연결 한도(주소당 8개)에서 
     await server.stop()
   }
 })
+
+test('휴대폰 마지막 접속: 휴대폰 열쇠 성공만 기록, 다른 PC·틀린 열쇠·잠금은 기록 안 함, 새 QR이면 비움', () => {
+  const guard = new AuthGuard({ tokenHash: null, revoked: [] })
+  const { token } = guard.rotate()
+  assert.equal(guard.phoneSeenAt, null)
+  const peer = guard.addPeerSlot('작업 PC', 1000)
+  assert.ok(peer)
+  assert.equal(guard.check(peer.token, '10.0.0.2', 2000).ok, true)
+  assert.equal(guard.phoneSeenAt, null)
+  assert.equal(guard.check(newToken(), '10.0.0.3', 3000).ok, false)
+  assert.equal(guard.phoneSeenAt, null)
+  assert.equal(guard.check(token, '10.0.0.4', 4000).ok, true)
+  assert.equal(guard.phoneSeenAt, 4000)
+  guard.rotate()
+  assert.equal(guard.phoneSeenAt, null)
+})

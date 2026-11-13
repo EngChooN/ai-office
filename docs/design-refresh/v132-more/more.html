@@ -1,0 +1,640 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<title>v1.3.2 화면 쉬운 개선 2차 — 상황판·팀 구성·결재 탭·기록</title>
+<!-- 디자인 시안 전용(앱 코드 아님). ?mode=light|dark &sheet=sum|board|org|appr|rec|i18n 로 연다.
+     근거 코드: Dashboard.tsx·DashboardPanels.tsx(목록 아래 접는 '상황판' 3칸), shared/dashboard.ts(확인 필요 항목 종류),
+     OrgPage.tsx·LabSection.tsx·RefDocsEditor.tsx(팀·랩 인라인 만들기, 카드), shared/types.ts Team·Lab,
+     StaffPanel.tsx·ApprovalSplit.tsx·ApprovalSummary.tsx·QuestionBox.tsx(탭 줄 위 결재 칸), main/office.ts·db.ts(log type 'approval'),
+     ReportPage.tsx·main/office.ts 일일 보고서. 이름·숫자는 예시. 색 토큰은 v132-staff-page와 같음 -->
+<style>
+  [data-mode='light'] {
+    --background:#F6F5FB; --foreground:#221F33; --card:#FFFFFF; --primary:#6C5CE7; --on-primary:#FFFFFF;
+    --muted:#ECEAF6; --muted-foreground:#66627F; --accent:#E9E6FA; --border:#DEDAF0; --input:#CFCAE6;
+    --chrome:#FBFAFF; --working:#1C7C46; --waiting:#9A5B00; --idle:#77737F; --error:#C42B2B;
+    --working-soft:#E2F5EA; --waiting-soft:#FFF3DC; --error-soft:#FDE7E7; --idle-soft:#EFEEF3;
+    --sheet-bg:#E4E1F2; --frame:#c9c4e0; --hl:#E5484D; --yb:#F2C94C;
+  }
+  [data-mode='dark'] {
+    --background:#14131C; --foreground:#EDEBF8; --card:#201F2D; --primary:#9B8CFF; --on-primary:#1A1240;
+    --muted:#292739; --muted-foreground:#A7A3C4; --accent:#302D47; --border:#34314A; --input:#413E5C;
+    --chrome:#181723; --working:#4ADE80; --waiting:#F2C94C; --idle:#9C9AA8; --error:#FF6B6B;
+    --working-soft:#14301F; --waiting-soft:#3A2E12; --error-soft:#3A1A1E; --idle-soft:#26252F;
+    --sheet-bg:#0C0B12; --frame:#2a2838; --hl:#FF8A8F; --yb:#F2C94C;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--sheet-bg); }
+  body { font-family: "Pretendard", "Apple SD Gothic Neo", system-ui, sans-serif; color: var(--foreground); padding: 26px 32px 40px; width: max-content; min-width: 100vw; font-size: 13px; }
+  .top { display: flex; gap: 6px; margin-bottom: 18px; flex-wrap: wrap; }
+  .top a { padding: 7px 14px; border-radius: 999px; background: var(--card); color: var(--foreground); text-decoration: none; font-weight: 600; border: 1px solid var(--border); }
+  .top a.on { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
+  .top .gap { width: 14px; }
+  .capture .top { display: none; }
+  .sheet { display: none; } .sheet.on { display: block; }
+  h1 { font-size: 23px; } h2 { font-size: 14px; margin: 0 0 8px; color: var(--muted-foreground); }
+  .lead { color: var(--muted-foreground); font-size: 13.5px; margin: 6px 0 18px; max-width: 1420px; line-height: 1.6; }
+  .lead b { color: var(--foreground); }
+  .rec { font-size: 10.5px; font-weight: 800; background: var(--primary); color: var(--on-primary); border-radius: 999px; padding: 2px 8px; vertical-align: middle; }
+  .row { display: flex; gap: 24px; align-items: flex-start; }
+  .col { display: flex; flex-direction: column; gap: 14px; }
+  .note { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px 18px; font-size: 12.8px; line-height: 1.65; width: 420px; }
+  .note ol, .note ul { margin-left: 18px; } .note h3 { font-size: 13.5px; margin: 12px 0 2px; } .note h3:first-child { margin-top: 0; }
+  .note .n { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: var(--hl); color: #fff; font-size: 10.5px; font-weight: 800; margin-right: 4px; }
+  .note .warn { background: var(--waiting-soft); color: var(--foreground); border-radius: 8px; padding: 6px 9px; margin-top: 6px; }
+  table.t { border-collapse: collapse; font-size: 12.3px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  table.t th, table.t td { border-bottom: 1px solid var(--border); padding: 6px 10px; text-align: left; vertical-align: top; line-height: 1.5; }
+  table.t th { color: var(--muted-foreground); font-size: 11.5px; background: var(--chrome); }
+  table.t s { color: var(--muted-foreground); }
+  .lbl { font-size: 11px; font-weight: 800; color: var(--muted-foreground); margin-bottom: 6px; display: flex; gap: 6px; align-items: center; }
+  .lbl.bad::before { content: '지금'; background: var(--hl); color: #fff; border-radius: 5px; padding: 1px 6px; }
+  .lbl.good::before { content: '추천'; background: var(--primary); color: var(--on-primary); border-radius: 5px; padding: 1px 6px; }
+
+  /* 앱 창 */
+  .win { width: 900px; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; background: var(--background); border: 1px solid var(--frame); box-shadow: 0 18px 36px -18px rgba(40,30,90,.45); position: relative; }
+  .win.sm { width: 640px; }
+  .appbar { height: 34px; flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 0 12px; background: var(--card); border-bottom: 1px solid var(--border); font-size: 12px; font-weight: 700; }
+  .appbar .sp { flex: 1; } .appbar .ib { height: 22px; padding: 0 9px; border-radius: 999px; background: var(--muted); display: inline-flex; gap: 4px; align-items: center; font-size: 10.5px; }
+  .appbar .ib.p { background: var(--primary); color: var(--on-primary); }
+  .appbar .ib.w { background: var(--waiting-soft); color: var(--waiting); }
+  .body { display: flex; min-height: 0; }
+  .nav { width: 92px; flex-shrink: 0; border-right: 1px solid var(--border); padding: 8px 6px; display: flex; flex-direction: column; gap: 2px; font-size: 11.5px; }
+  .nav span { padding: 5px 8px; border-radius: 8px; color: var(--muted-foreground); }
+  .nav span.on { background: var(--accent); color: var(--foreground); font-weight: 700; }
+  .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); padding: 0 14px; height: 32px; align-items: flex-end; flex-shrink: 0; }
+  .tabs span { padding: 0 8px 7px; font-size: 11.5px; color: var(--muted-foreground); border-bottom: 2px solid transparent; display: inline-flex; gap: 4px; align-items: center; }
+  .tabs span.on { color: var(--foreground); font-weight: 700; border-color: var(--primary); }
+  .pg { padding: 12px 16px 16px; display: flex; flex-direction: column; gap: 10px; }
+  .muted { color: var(--muted-foreground); }
+  .av { width: 26px; height: 26px; border-radius: 8px; display: inline-grid; place-items: center; font-size: 9.5px; font-weight: 800; color: #fff; flex-shrink: 0; }
+  .av.s { width: 18px; height: 18px; border-radius: 6px; font-size: 7.5px; }
+  .av.l { width: 36px; height: 36px; border-radius: 10px; font-size: 11px; }
+  .pill { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 2px 8px; font-size: 10.5px; font-weight: 700; white-space: nowrap; }
+  .pill i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .s-working { color: var(--working); background: var(--working-soft); }
+  .s-waiting { color: var(--waiting); background: var(--waiting-soft); }
+  .s-error { color: var(--error); background: var(--error-soft); }
+  .s-idle { color: var(--idle); background: var(--idle-soft); }
+  .chip { border: 1px solid var(--border); background: var(--card); border-radius: 999px; padding: 2px 9px; font-size: 10.5px; white-space: nowrap; display: inline-flex; gap: 4px; align-items: center; }
+  .chip.on { background: var(--primary); color: var(--on-primary); border-color: var(--primary); font-weight: 700; }
+  .btn { border-radius: 8px; padding: 5px 10px; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+  .btn.p { background: var(--primary); color: var(--on-primary); }
+  .btn.o { border: 1px solid var(--border); background: var(--card); }
+  .btn.g { color: var(--muted-foreground); }
+  .btn.y { background: var(--yb); color: #241a00; }
+  .btn.r { background: var(--error); color: #fff; }
+  .btn.sm { padding: 3px 8px; font-size: 10.5px; }
+  .mono { font-family: ui-monospace, Menlo, monospace; font-size: 10px; }
+  .badge { display: inline-grid; place-items: center; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px; font-size: 9.5px; font-weight: 800; background: var(--yb); color: #241a00; }
+  .inp { border: 1px solid var(--input); border-radius: 8px; background: var(--card); padding: 6px 9px; font-size: 11.5px; color: var(--muted-foreground); }
+  .inp.f { color: var(--foreground); border-color: var(--primary); box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 20%, transparent); }
+  .mark { position: absolute; border: 2px dashed var(--hl); border-radius: 8px; pointer-events: none; }
+  .pin { position: absolute; width: 20px; height: 20px; border-radius: 50%; background: var(--hl); color: #fff; font-size: 11px; font-weight: 800; display: grid; place-items: center; box-shadow: 0 0 0 2px var(--card); }
+
+  /* 요약 시트 */
+  .sumgrid { display: grid; grid-template-columns: repeat(2, 640px); gap: 16px; }
+  .sumc { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px; font-size: 12.8px; line-height: 1.6; }
+  .sumc h3 { font-size: 15px; margin-bottom: 6px; display: flex; gap: 8px; align-items: center; }
+  .sumc .k { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 7px; background: var(--primary); color: var(--on-primary); font-size: 12px; }
+  .sumc .bad, .sumc .good { border-radius: 9px; padding: 8px 11px; margin-top: 8px; }
+  .sumc .bad { background: var(--error-soft); } .sumc .good { background: color-mix(in srgb, var(--primary) 10%, var(--card)); }
+  .sumc .bad b, .sumc .good b { display: block; font-size: 11.5px; margin-bottom: 2px; }
+  .sumc ul { margin-left: 16px; }
+
+  /* ① 상황판 */
+  .scards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .scard { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; font-size: 10.5px; display: flex; flex-direction: column; gap: 4px; height: 92px; }
+  .scard.waiting { box-shadow: inset 3px 0 0 var(--waiting); } .scard.error { box-shadow: inset 3px 0 0 var(--error); } .scard.working { box-shadow: inset 3px 0 0 var(--working); }
+  .scard .pill { align-self: flex-start; }
+  .scard .hd { display: flex; gap: 7px; align-items: center; } .scard .hd b { font-size: 11.5px; }
+  .fold { border: 1px solid var(--border); border-radius: 10px; background: var(--card); }
+  .fold .fh { display: flex; gap: 8px; align-items: center; padding: 7px 10px; font-size: 11.5px; font-weight: 700; }
+  .fold .fb { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 6px; padding: 0 8px 8px; }
+  .board { background: var(--background); border: 1px solid var(--border); border-radius: 9px; padding: 7px 9px; font-size: 10.3px; display: flex; flex-direction: column; gap: 3px; height: 98px; overflow: hidden; }
+  .board b { font-size: 11px; }
+  .alert { display: flex; gap: 8px; align-items: center; border-radius: 10px; padding: 7px 10px; font-size: 11.5px; }
+  .alert.e { background: var(--error-soft); } .alert.w { background: var(--waiting-soft); }
+  .alert .sp { flex: 1; } .alert .x { color: var(--muted-foreground); font-size: 11px; }
+  .sent { font-size: 13px; font-weight: 600; } .sent em { font-style: normal; font-weight: 800; }
+
+  /* ② 팀 구성 */
+  .ocards2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .oc { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; font-size: 11px; display: flex; flex-direction: column; gap: 6px; }
+  .oc .hd { display: flex; gap: 6px; align-items: center; } .oc .hd b { font-size: 12.5px; }
+  .oc .sel { border: 1px solid var(--input); border-radius: 6px; padding: 1px 6px; font-size: 10px; background: var(--card); }
+  .oc .mem { display: flex; gap: 6px; align-items: center; font-size: 10.5px; }
+  .labbadge { font-size: 9px; font-weight: 900; color: #fff; border-radius: 4px; padding: 1px 4px; letter-spacing: .5px; }
+  .tc { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px; display: flex; flex-direction: column; gap: 9px; position: relative; overflow: hidden; }
+  .tc::before { content: ''; position: absolute; left: 0; top: 0; right: 0; height: 4px; background: var(--c); }
+  .tc .hd { display: flex; gap: 8px; align-items: center; }
+  .tc .hd b { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tc .hd > span { white-space: nowrap; }
+  .tc.wide { grid-column: span 2; }
+  .tc .kind { font-size: 10px; font-weight: 800; border-radius: 999px; padding: 1px 7px; background: color-mix(in srgb, var(--c) 16%, var(--card)); color: var(--foreground); }
+  .tc .what { font-size: 12px; line-height: 1.45; }
+  .tc .goal { font-size: 11.5px; background: var(--background); border-radius: 8px; padding: 6px 8px; line-height: 1.45; }
+  .tc .goal .lb { font-size: 10px; font-weight: 800; color: var(--muted-foreground); display: block; }
+  .faces { display: flex; flex-wrap: wrap; gap: 6px; }
+  .face { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 50px; font-size: 10px; text-align: center; position: relative; }
+  .face .dot { position: absolute; top: 24px; left: 31px; width: 9px; height: 9px; border-radius: 50%; border: 2px solid var(--card); }
+  .face .crown { position: absolute; top: -6px; left: 28px; font-size: 11px; }
+  .face .ft { font-size: 9px; color: var(--muted-foreground); }
+  .tc .ft { display: flex; gap: 6px; align-items: center; margin-top: 2px; } .tc .ft .sp { flex: 1; }
+  .tcgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .newcard { border: 2px dashed var(--input); border-radius: 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; color: var(--muted-foreground); font-size: 11px; text-align: center; padding: 12px; }
+  .newcard .plus { width: 34px; height: 34px; border-radius: 50%; background: var(--accent); color: var(--primary); display: grid; place-items: center; font-size: 20px; font-weight: 700; }
+  .newcard b { color: var(--foreground); font-size: 12.5px; }
+  .dlg { width: 460px; background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 15px 17px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 18px 36px -18px rgba(40,30,90,.45); font-size: 12px; }
+  .dlg .t { display: flex; align-items: center; } .dlg .t b { font-size: 15px; flex: 1; }
+  .steps { display: flex; gap: 6px; font-size: 11px; }
+  .steps span { flex: 1; border-top: 3px solid var(--border); padding-top: 4px; color: var(--muted-foreground); }
+  .steps span.on { border-color: var(--primary); color: var(--foreground); font-weight: 700; }
+  .steps span.done { border-color: color-mix(in srgb, var(--primary) 45%, var(--border)); }
+  .kindc { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; line-height: 1.5; font-size: 11.5px; color: var(--muted-foreground); }
+  .kindc b { display: block; color: var(--foreground); font-size: 13px; margin-bottom: 2px; }
+  .kindc .ex { margin-top: 4px; font-size: 10.5px; }
+  .kindc.on { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 8%, var(--card)); box-shadow: 0 0 0 1px var(--primary); }
+  .exs { display: flex; flex-wrap: wrap; gap: 4px; }
+  .ex1 { border: 1px dashed color-mix(in srgb, var(--primary) 45%, var(--border)); color: var(--primary); border-radius: 8px; padding: 2px 8px; font-size: 10.5px; }
+  .pick { display: flex; flex-wrap: wrap; gap: 6px; }
+  .pk { display: flex; gap: 5px; align-items: center; border: 1px solid var(--border); border-radius: 999px; padding: 2px 9px 2px 3px; font-size: 11px; }
+  .pk.on { border-color: var(--primary); background: color-mix(in srgb, var(--primary) 10%, var(--card)); font-weight: 700; }
+  .pk .star { color: var(--waiting); }
+  .field { display: flex; flex-direction: column; gap: 4px; } .field > span { font-size: 11px; font-weight: 700; }
+  .hint { font-size: 10.5px; color: var(--muted-foreground); }
+
+  /* ③ 결재 탭 */
+  .panel { width: 430px; background: var(--card); border: 1px solid var(--frame); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 18px 36px -18px rgba(40,30,90,.45); position: relative; height: 720px; font-size: 11.5px; }
+  .panel .ph { padding: 10px 12px; display: flex; gap: 9px; align-items: center; border-bottom: 1px solid var(--border); }
+  .panel .ph b { font-size: 13px; }
+  .panel .tb { display: flex; gap: 2px; border-bottom: 1px solid var(--border); padding: 0 8px; }
+  .panel .tb span { padding: 7px 7px 6px; color: var(--muted-foreground); border-bottom: 2px solid transparent; display: inline-flex; gap: 4px; align-items: center; white-space: nowrap; }
+  .panel .tb span.on { color: var(--foreground); font-weight: 700; border-color: var(--primary); }
+  .panel .apsec { background: var(--chrome); border-bottom: 1px solid var(--border); padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; }
+  .panel .handle { height: 7px; background: var(--muted); display: grid; place-items: center; } .panel .handle i { width: 34px; height: 3px; border-radius: 3px; background: var(--input); }
+  .apc { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; }
+  .apc .tt { font-weight: 700; font-size: 12px; } .apc .why { font-size: 10.5px; color: var(--muted-foreground); }
+  .apc .bt { display: flex; gap: 5px; margin-top: 2px; } .apc .bt .sp { flex: 1; }
+  .apc.q { border-color: color-mix(in srgb, var(--primary) 40%, var(--border)); }
+  .chatlog { padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; color: var(--muted-foreground); font-size: 11px; overflow: hidden; flex: 1; }
+  .chatlog .me { align-self: flex-end; background: var(--primary); color: var(--on-primary); border-radius: 10px 10px 2px 10px; padding: 5px 9px; }
+  .chatlog .st { background: var(--background); border-radius: 10px 10px 10px 2px; padding: 5px 9px; color: var(--foreground); max-width: 85%; }
+  .comp { margin: 0 10px 10px; border: 1px solid var(--input); border-radius: 10px; padding: 7px 9px; color: var(--muted-foreground); font-size: 11px; }
+  .tabbody { padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; overflow: hidden; flex: 1; }
+  .secT { font-size: 11px; font-weight: 800; display: flex; gap: 6px; align-items: center; margin-top: 2px; }
+  .secT .sp { flex: 1; }
+  .hist { display: flex; flex-direction: column; }
+  .hday { font-size: 10px; color: var(--muted-foreground); font-weight: 700; padding: 6px 2px 3px; }
+  .hrow { display: grid; grid-template-columns: 54px 1fr auto; gap: 8px; align-items: start; padding: 6px 4px; border-bottom: 1px dashed var(--border); font-size: 11px; }
+  .hrow .res { font-size: 10px; font-weight: 800; border-radius: 6px; padding: 1px 0; text-align: center; }
+  .res.ok { background: var(--working-soft); color: var(--working); } .res.no { background: var(--error-soft); color: var(--error); }
+  .res.ans { background: var(--accent); color: var(--primary); } .res.auto { background: var(--idle-soft); color: var(--idle); }
+  .hrow .who { font-size: 10px; color: var(--muted-foreground); text-align: right; white-space: nowrap; }
+  .hrow .sub { display: block; font-size: 10px; color: var(--muted-foreground); }
+  .strip { display: flex; gap: 6px; align-items: center; background: var(--waiting-soft); padding: 6px 10px; font-size: 11px; }
+  .strip .sp { flex: 1; }
+
+  /* ④ 기록 */
+  .tl { padding: 8px 14px; font-size: 10px; display: flex; flex-direction: column; }
+  .tl .ln { display: grid; grid-template-columns: 30px 14px 46px 22px 1fr; gap: 5px; padding: 3px 0; border-bottom: 1px dashed var(--border); line-height: 1.35; }
+  .tl .ln .k { font-weight: 800; }
+  .rep { width: 260px; border-left: 1px solid var(--border); padding: 10px 12px; font-size: 10px; line-height: 1.45; background: var(--chrome); }
+  .rep h4 { font-size: 12px; margin-bottom: 4px; display: flex; } .rep h4 span { margin-left: auto; }
+  .rec-head { display: flex; gap: 8px; align-items: center; }
+  .rec-head .day { display: flex; gap: 6px; align-items: center; font-size: 15px; font-weight: 800; }
+  .rec-head .day .ar { width: 22px; height: 22px; border-radius: 7px; border: 1px solid var(--border); display: grid; place-items: center; font-size: 12px; color: var(--muted-foreground); background: var(--card); }
+  .rec-head .sp { flex: 1; }
+  .todays { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .today { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; font-size: 11px; color: var(--muted-foreground); display: flex; flex-direction: column; gap: 2px; }
+  .today b { font-size: 20px; color: var(--foreground); line-height: 1.1; }
+  .today.e b { color: var(--error); }
+  .sgrp { background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .sgrp .gh { display: flex; gap: 9px; align-items: center; padding: 10px 12px; }
+  .sgrp .gh b { font-size: 13px; } .sgrp .gh .cnt { font-size: 11px; color: var(--muted-foreground); }
+  .sgrp .gh .sp { flex: 1; }
+  .item { display: grid; grid-template-columns: 44px 58px 1fr 16px; gap: 10px; align-items: start; padding: 9px 12px; border-top: 1px solid var(--border); font-size: 12px; line-height: 1.5; }
+  .item .tm { color: var(--muted-foreground); font-size: 11px; padding-top: 1px; }
+  .item .ty { font-size: 10px; font-weight: 800; border-radius: 6px; padding: 2px 0; text-align: center; }
+  .ty.done { background: var(--working-soft); color: var(--working); } .ty.ask { background: var(--accent); color: var(--primary); }
+  .ty.ap { background: var(--waiting-soft); color: var(--waiting); } .ty.err { background: var(--error-soft); color: var(--error); }
+  .item .tx { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; }
+  .item .chev { color: var(--muted-foreground); font-size: 11px; }
+  .item.open { background: color-mix(in srgb, var(--primary) 5%, var(--card)); }
+  .item.open .tx { -webkit-line-clamp: unset; }
+  .item .att { margin-top: 6px; display: inline-flex; gap: 6px; align-items: center; border: 1px solid var(--border); border-radius: 8px; padding: 4px 8px; font-size: 11px; background: var(--card); }
+  .more { padding: 7px 12px; border-top: 1px solid var(--border); font-size: 11px; color: var(--primary); font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="top">
+  <a data-s="all">전체</a><a data-s="sum">요약</a><a data-s="board">① 상황판</a><a data-s="org">② 팀 구성</a><a data-s="appr">③ 결재 탭</a><a data-s="rec">④ 기록</a><a data-s="i18n">4개 언어 문구</a>
+  <span class="gap"></span><a data-m="light">라이트</a><a data-m="dark">다크</a>
+</div>
+
+<!-- ───────── 요약 ───────── -->
+<section class="sheet" id="s-sum">
+  <h1>v1.3.2 화면 쉬운 개선 2차 — 한눈에 보기</h1>
+  <p class="lead">4개 화면을 코드로 확인해 지금 화면을 다시 그리고, 화면마다 <b>추천안 1개</b>를 만들었습니다. 실제 앱을 띄워 찍은 화면은 아닙니다. 위 탭에서 화면별 시안을 볼 수 있고, 4개 언어 문구는 마지막 탭에 있습니다.</p>
+  <div class="sumgrid" id="sumgrid"></div>
+</section>
+
+<!-- ───────── ① 상황판 ───────── -->
+<section class="sheet" id="s-board">
+  <h1>① 직원 목록 맨 아래 '상황판' — 없애고, 꼭 필요한 두 가지만 위로 <span class="rec">추천</span></h1>
+  <p class="lead">지금 상황판은 직원 목록 아래 <b>접힌 칸</b>(기본 접힘)으로 이미 들어가 있습니다. 칸 3개 중 <b>'쓴 토큰'은 위쪽 사용량 칩·'기록 › 비용'과 같고</b>, <b>'최근 활동'은 '기록 › 보고서'의 오늘치를 줄인 것</b>입니다. 이 칸에만 있는 것은 <b>'문제 생김(오류)'과 'AI 요금제 80% 넘음' 경고</b> 두 가지입니다. 그래서 칸은 없애고, 이 두 가지만 맨 위 한 줄 알림으로 올립니다. 알림은 <b>일이 있을 때만</b> 나타납니다.</p>
+  <div class="row">
+    <div class="col"><div class="lbl bad">직원 목록 맨 아래 접힌 칸을 펼친 모습</div><div class="win" id="w-board-now"></div></div>
+    <div class="note">
+      <h3>칸마다 판단</h3>
+      <table class="t" style="width:100%"><tr><th>칸</th><th>다른 곳</th><th>결정</th></tr>
+        <tr><td>확인 필요 — 결재·질문</td><td>카드의 노란 '확인하기', 위쪽 '확인 필요', 결재함</td><td><b>뺌</b></td></tr>
+        <tr><td>확인 필요 — 오류</td><td>카드 빨간 테두리뿐</td><td><b>위 알림으로</b></td></tr>
+        <tr><td>확인 필요 — 요금제 80%</td><td>없음</td><td><b>위 알림으로</b></td></tr>
+        <tr><td>쓴 토큰 (일·주·월)</td><td>위쪽 사용량 칩, 기록 › 비용</td><td><b>뺌</b></td></tr>
+        <tr><td>최근 활동</td><td>기록 › 보고서 (④에서 '오늘 요약'으로)</td><td><b>뺌</b></td></tr>
+      </table>
+      <h3>추천안 규칙</h3>
+      <ul>
+        <li>알림 줄은 최대 2줄: 빨강 '문제 생김'(직원 이름·한 문장·[다시 시도]) → 노랑 '요금제 많이 씀'(몇 %·언제 풀리는지·[비용 보기]).</li>
+        <li>문제가 2명 이상이면 '2명이 문제로 멈췄어요 [보기]' 한 줄로 합침 → 누르면 '문제' 걸러보기.</li>
+        <li>요금제 알림은 [오늘은 그만 보기]로 닫을 수 있음. 오류 알림은 닫기 없음(고치면 사라짐).</li>
+        <li>'오늘 끝낸 일 7건 ›'은 한 문장 요약 끝에 링크로 → ④ 기록의 오늘 요약.</li>
+        <li>업무 모드 첫 화면에서도 같은 화면. 상황판이 없어도 놓치는 정보 없음.</li>
+      </ul>
+      <div class="warn">이 화면은 지금 진행 중인 v1.3.2 '직원 명함 카드'(A안) 구현과 같은 파일입니다. 그 구현이 끝나고 대표님 확인을 받은 뒤 이어서 고칩니다.</div>
+    </div>
+  </div>
+  <div class="row" style="margin-top:22px"><div class="col"><div class="lbl good">상황판 없음 + 위 한 줄 알림 (문제·요금제가 있을 때만)</div><div class="win" id="w-board-new"></div></div></div>
+</section>
+
+<!-- ───────── ② 팀 구성 ───────── -->
+<section class="sheet" id="s-org">
+  <h1>② 팀 구성 — '누가 있고 무엇을 하는지' 보이는 카드 + 3단계 만들기 <span class="rec">추천</span></h1>
+  <p class="lead">지금은 팀을 <b>이름과 색만</b> 넣어 만들고, 팀장·층·참고 문서는 카드 안 드롭다운에서 따로 고칩니다. 랩은 이름·목표·폴더·멤버·랩장을 한 칸에 몰아 받고, 카드에는 <b>'LAB' 글자·폴더 경로·참고 문서·'새 일감'</b>까지 다 펼쳐져 있습니다. 추천안은 <b>'팀'은 그대로, '랩'은 '프로젝트'</b>로 부르고, 만들기를 <b>무엇을 만들지 → 이름·하는 일 → 사람과 리더</b> 3단계로 나눕니다. 카드는 <b>하는 일 한 줄·얼굴·지금 몇 명 일하는지·[일 시키기]</b>만 보여 주고 나머지는 ⋯ 메뉴로 넣습니다.</p>
+  <div class="row">
+    <div class="col"><div class="lbl bad">지금 '팀 구성' 화면</div><div class="win" id="w-org-now"></div></div>
+    <div class="note">
+      <h3>짚은 곳</h3>
+      <ol style="list-style:none;margin-left:0">
+        <li><span class="n">1</span>설명이 한 문단에 '팀(부서)·직무별 소속·랩·프로젝트 팀·팀장·랩장·취합'까지 들어 있음.</li>
+        <li><span class="n">2</span>팀 만들기가 이름+색뿐 — 무엇을 하는 팀인지 적을 칸이 없음(팀 데이터에도 설명 칸 없음).</li>
+        <li><span class="n">3</span>팀원마다 '팀 이동' 드롭다운, 팀장 '없음', 층 드롭다운이 카드에 늘 보여 복잡.</li>
+        <li><span class="n">4</span>랩 카드의 'LAB' 영어 배지, <span class="mono">📁 ~/flitto/…</span> 경로, '참고 문서 2/5 · 추천 1개', '랩 해산'.</li>
+        <li><span class="n">5</span>'새 일감' 칸에 "랩장을 정하거나 … 여러 명이 이어서 하는 업무 매뉴얼을…" 긴 안내 + 'Jira·Figma 링크' 입력.</li>
+        <li><span class="n">6</span>'📁 프로젝트 (다른 창 직원)' — 같은 '프로젝트'란 말이 다른 뜻으로.</li>
+        <li><span class="n">7</span>영어 화면에서 Team lead / Team leader, Lab lead / Lab head가 섞임.</li>
+      </ol>
+    </div>
+  </div>
+  <div class="row" style="margin-top:22px">
+    <div class="col"><div class="lbl good">추천 — 카드 화면</div><div class="win" id="w-org-new"></div></div>
+    <div class="note">
+      <h3>쉬운 말</h3>
+      <ul>
+        <li>팀 → <b>팀</b> (설명: '늘 함께 일하는 부서예요. 한 사람은 한 팀에만')</li>
+        <li>랩 → <b>프로젝트</b> (설명: '목표 하나를 위해 여러 팀에서 모여요. 한 사람이 여러 곳에')</li>
+        <li>팀장·랩장 → <b>리더</b> 하나로 (영어 Lead, 일본어 リーダー, 중국어 负责人)</li>
+        <li>'📁 프로젝트 (다른 창 직원)' → <b>'다른 창에서 일하는 직원'</b></li>
+        <li>랩 해산 → <b>프로젝트 끝내기</b>, 팀 삭제 → <b>팀 없애기</b></li>
+        <li>참고 문서 → <b>먼저 읽을 문서</b>, 프로젝트 폴더 → <b>일하는 곳</b></li>
+      </ul>
+      <h3>카드</h3>
+      <ul>
+        <li>머리: 색 띠·이름·종류(팀/프로젝트)·지금 일하는 사람 수.</li>
+        <li>하는 일 한 줄(팀) 또는 목표(프로젝트). 비어 있으면 '하는 일을 적어 두면 직원이 일을 더 잘 나눠요 [적기]'.</li>
+        <li>얼굴 줄: 리더는 왕관, 상태 점, 프로젝트는 얼굴 아래 출신 팀.</li>
+        <li>버튼: <b>일 시키기</b>(리더에게 지시창) · 대화방 · ⋯(이름·색, 사람 바꾸기, 먼저 읽을 문서, 층, 내보내기, 없애기).</li>
+        <li>팀 이동은 사람 얼굴을 누르면 뜨는 작은 메뉴 '다른 팀으로 옮기기'.</li>
+        <li>맨 끝 칸은 늘 '＋ 새로 만들기'.</li>
+      </ul>
+      <div class="warn">'랩 → 프로젝트'는 단체방 <b>@랩</b>, 업무 매뉴얼, 휴대폰까지 바뀌는 큰 이름 변경입니다. 맨 끝 '정해 주실 것'에 따로 올렸습니다.</div>
+    </div>
+  </div>
+  <div class="row" style="margin-top:22px">
+    <div class="col"><div class="lbl good">추천 — 새로 만들기 3단계</div>
+      <div class="row" style="gap:14px"><div class="dlg" id="dlg1"></div><div class="dlg" id="dlg2"></div><div class="dlg" id="dlg3"></div></div>
+    </div>
+  </div>
+  <div class="row" style="margin-top:14px">
+    <div class="note" style="width:1410px">
+      <h3>만들기 규칙</h3>
+      <ul>
+        <li>① <b>무엇을 만들까요?</b> 팀 / 프로젝트 두 장 중 하나. 예시가 달린 카드라 차이를 읽고 고름.</li>
+        <li>② <b>이름과 하는 일</b> — 이름 예시 칩(누르면 채움), '하는 일' 한 줄(팀) 또는 '목표'(프로젝트). 색은 자동, 바꾸기만. 프로젝트는 '일하는 곳(폴더)'을 여기서 고르되 기본은 '각자 일하던 곳'.</li>
+        <li>③ <b>누가 함께하나요?</b> 얼굴 칩을 눌러 고르고, 고른 사람 중 ☆을 눌러 리더 1명. 리더를 안 정하면 '리더가 없으면 일을 나눠 맡기지 못해요' 안내만(막지는 않음). 팀은 이미 다른 팀에 있는 사람을 고르면 '디자인 팀에서 옮겨요' 표시.</li>
+        <li>[만들기] 뒤 바로 새 카드가 반짝이고 '리더에게 첫 일 시키기' 버튼을 보여 줌.</li>
+        <li>먼저 읽을 문서·층은 만들기에서 빼고 카드 ⋯ 메뉴에서만.</li>
+        <li>새로 필요한 데이터: 팀의 <b>'하는 일' 한 줄</b>(지금 팀 데이터에 없음 — 0~80자, 비어도 됨). 프로젝트는 지금 '목표' 칸을 그대로 씀.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ───────── ③ 결재 탭 ───────── -->
+<section class="sheet" id="s-appr">
+  <h1>③ 직원 패널 '결재' 탭 — 기다리는 결재와 내가 내린 결재를 한곳에 <span class="rec">추천</span></h1>
+  <p class="lead">지금은 결재·질문이 있으면 탭 줄 <b>위</b>에 '결재 대기' 칸이 생겨 패널의 최대 절반을 차지하고, 대화가 아래로 밀립니다. 추천안은 탭을 <b>대화 · 결재 ⓷ · 바뀐 파일 · 도구 · 소개</b>로 바꿔 결재를 탭 안으로 옮깁니다. 놓치지 않도록 대화 탭 위에는 <b>한 줄 띠</b>(높이 30px)만 남깁니다. 결재 탭 아래쪽에는 <b>그 직원에게 내가 내린 결재 기록</b>(승인·반려·답변, 누가·언제)을 날짜별로 보여 줍니다.</p>
+  <div class="row">
+    <div class="col"><div class="lbl bad">지금 — 탭 위 결재 칸</div><div class="panel" id="p-now"></div></div>
+    <div class="col"><div class="lbl good">추천 — 대화 탭 (한 줄 띠만)</div><div class="panel" id="p-chat"></div></div>
+    <div class="col"><div class="lbl good">추천 — 결재 탭</div><div class="panel" id="p-appr"></div></div>
+  </div>
+  <div class="row" style="margin-top:18px">
+    <div class="note" style="width:690px">
+      <h3>동작</h3>
+      <ul>
+        <li>탭 순서: <b>대화 · 결재 · 바뀐 파일 · 도구 · 소개</b>. 기다리는 결재가 있으면 '결재' 옆에 노란 숫자(결재+질문 합계).</li>
+        <li>직원 카드의 노란 '확인하기', 단체방·결재함의 '이 직원 보기'로 패널을 열면 <b>결재 탭이 바로 열림</b>.</li>
+        <li>대화 탭의 한 줄 띠: '결재 3건이 기다려요 · 파일 고치기 외 2건 [결재 보기]'. 간단하고 안전한 1건이면 띠에서 바로 [승인] (휴대폰 한 줄 띠와 같은 규칙).</li>
+        <li>카드 모양·순서는 지금 그대로(제목 → 기다리는 이유 → 명령 보기 → 승인·반려·이 일 멈추기). 높이 손잡이·접기는 필요 없어져 없앰.</li>
+        <li>다 처리하면 '기다리는 결재가 없어요' 한 줄 + 아래 기록만.</li>
+        <li>기록 걸러보기: 전체 · 승인 · 반려 · 답변 · 자동. 한 줄 = 결과 · 무엇을(쉬운 문장) · 시각 · 누가(PC / 휴대폰 / 자동결재 / 규칙). 누르면 원래 명령 펼침.</li>
+        <li>처음 20건, '이전 기록 더 보기'로 이어서.</li>
+      </ul>
+    </div>
+    <div class="note" style="width:690px">
+      <h3>결재 기록 데이터 확인 결과</h3>
+      <ul>
+        <li><b>지금 있는 것:</b> 직원 기록에 결재 줄이 남습니다('승인: …', '반려: …', '답변: …', '🤖 자동결재 승인: …', '규칙으로 자동 승인: …'). 보관 한도 없음.</li>
+        <li><b>모자란 것:</b> ① 카드 제목인 쉬운 문장('파일을 고쳐요')이 저장되지 않아 기록엔 원래 명령만 남음 ② 승인/반려·누가 했는지가 문장 속에만 있음 ③ 요청 시각이 없음 ④ 결재만 골라 읽는 방법이 없어 최근 300줄 안에 결재가 몇 건 없을 수 있음.</li>
+        <li><b>제안:</b> 결재를 처리할 때마다 한 줄씩 따로 저장하는 '결재 기록' 장부를 새로 둡니다(직원·요청 시각·처리 시각·결과·누가·쉬운 문장·원래 명령·답). 예전 기록은 지금 문장을 읽어 한 번 옮기고, 쉬운 문장이 없으면 원래 명령을 보여 줍니다.</li>
+        <li><b>함께 발견:</b> 휴대폰에서 승인·반려한 줄에 '원격' 표시가 화면에서 빠지는 문제가 있습니다(추정 아님, 코드 확인). 개발팀에 함께 넘깁니다.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ───────── ④ 기록 ───────── -->
+<section class="sheet" id="s-rec">
+  <h1>④ 기록 — 오늘 요약 먼저, 직원별로 묶고, 눌러서 펼치기 <span class="rec">추천</span></h1>
+  <p class="lead">지금 '기록 › 보고서'는 모든 직원의 모든 기록이 <b>12px 글자·16px 얼굴로 한 줄씩 시간순</b>으로 섞여 있고, 글은 3줄까지 펼칠 방법이 없습니다. 요약(일일 보고서)은 오른쪽에 <b>마크다운 글</b>로 따로 있습니다. 추천안은 <b>오늘 요약 숫자 4개</b>를 맨 위에 두고, 기록을 <b>직원별 묶음</b>으로 바꿉니다. 각 줄은 <b>한 줄 요약</b>만 보이고, 누르면 전체 글과 결과물이 펼쳐집니다. 기본으로는 <b>끝낸 일·문제·결재</b>만 보이고, '도구 사용'은 지금처럼 숨깁니다.</p>
+  <div class="row">
+    <div class="col"><div class="lbl bad">지금 '보고서' 화면</div><div class="win" id="w-rec-now"></div></div>
+    <div class="note">
+      <h3>짚은 곳</h3>
+      <ol style="list-style:none;margin-left:0">
+        <li><span class="n">1</span>날짜 고르기가 브라우저 기본 달력 칸 — 어제·오늘 넘기기가 불편.</li>
+        <li><span class="n">2</span>모든 직원·종류가 한 줄로 섞임. 걸러보기는 '도구 사용 보기' 하나뿐.</li>
+        <li><span class="n">3</span>종류가 두 글자 색 글씨('보고', '작업')뿐이고 글자가 작고 줄 간격이 좁음.</li>
+        <li><span class="n">4</span>글은 3줄에서 잘리고 펼칠 수 없음.</li>
+        <li><span class="n">5</span>요약이 오른쪽 끝(좁으면 맨 아래) 마크다운 글. 숫자는 글 속 '지시 4 · 완료 3 · 도구 21 · 결재 2 · $1.62'로만.</li>
+      </ol>
+    </div>
+  </div>
+  <div class="row" style="margin-top:22px">
+    <div class="col"><div class="lbl good">추천 — 요약 먼저 + 직원별 묶음 + 펼치기</div><div class="win" id="w-rec-new"></div></div>
+    <div class="note">
+      <h3>규칙</h3>
+      <ul>
+        <li>머리: <b>‹ 오늘 11월 13일 (금) ›</b> 화살표로 하루씩, 날짜를 누르면 달력.</li>
+        <li>오늘 요약 4칸: <b>끝낸 일 · 내린 지시 · 결재 · 문제</b>. 칸을 누르면 아래가 그 종류로 걸러짐. 결과물이 있으면 '결과물 2개' 줄.</li>
+        <li>걸러보기: 종류(전체·끝낸 일·지시·결재·문제) + 직원 고르기. '도구 사용도 보기'는 ⋯ 안.</li>
+        <li>묶음 보기 기본 = <b>직원별</b>(문제 있는 직원 → 많이 한 순). '시간순'으로 바꿀 수 있음(지금 화면과 같은 순서, 대신 글자 크게).</li>
+        <li>한 묶음은 3줄까지, '7건 더 보기'. 한 줄 = 시각 · 종류 꼬리표 · 한 줄 글 · ›.</li>
+        <li>펼치면 전체 글(마크다운) + 첨부·결과물 카드 + [대화로 가기].</li>
+        <li>일일 보고서는 오른쪽 위 <b>[보고서 복사]</b> 버튼으로만(지금 내용 그대로 복사). 오른쪽 칸 없앰.</li>
+        <li>글자 12→13px, 줄 높이 22→38px, 얼굴 16→28px(묶음 머리).</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ───────── 4개 언어 ───────── -->
+<section class="sheet" id="s-i18n">
+  <h1>4개 언어 문구 (새로 쓰거나 바꾸는 말)</h1>
+  <p class="lead">한국어가 기준이고, 영어·일본어·중국어는 같은 뜻으로 맞췄습니다. 구현할 때 사전 파일에 넣을 초안입니다. {이름}·{n}은 바뀌는 자리입니다.</p>
+  <table class="t" id="i18n"></table>
+</section>
+
+<script>
+  const q = new URLSearchParams(location.search)
+  const mode = q.get('mode') === 'dark' ? 'dark' : 'light'
+  const sheet = q.get('sheet') || 'all'
+  document.documentElement.dataset.mode = mode
+  if (q.get('cap')) document.body.classList.add('capture')
+  document.querySelectorAll('.top a').forEach((a) => {
+    const p = new URLSearchParams(q); if (a.dataset.s) p.set('sheet', a.dataset.s); if (a.dataset.m) p.set('mode', a.dataset.m)
+    a.href = '?' + p.toString()
+    if (a.dataset.s === sheet || a.dataset.m === mode) a.classList.add('on')
+  })
+  document.querySelectorAll('.sheet').forEach((s) => { if (sheet === 'all' || s.id === 's-' + sheet) { s.classList.add('on'); s.style.marginBottom = '44px' } })
+  const $ = (id) => document.getElementById(id)
+
+  const S = {
+    dj: { n: '이디자', ini: '디자', c: '#3B9C7A', role: '디자이너', team: '디자인 팀' },
+    rv: { n: '한리뷰', ini: '리뷰', c: '#D8B32E', role: '코드 리뷰어', team: '개발팀' },
+    ad: { n: '임안드', ini: '안드', c: '#D9466A', role: '백엔드 개발자', team: '개발팀' },
+    ld: { n: '정리드', ini: '리드', c: '#E8833A', role: '팀장', team: '개발팀' },
+    fe: { n: '최가독', ini: '가독', c: '#3E7BEA', role: '프론트엔드 개발자', team: '개발팀' },
+    pl: { n: '김기획', ini: '기획', c: '#8C5BD9', role: '기획자', team: '기획팀' },
+    qa: { n: '오큐에이', ini: 'QA', c: '#2BA3B5', role: 'QA', team: '개발팀' },
+  }
+  const av = (s, k = '') => `<span class="av ${k}" style="background:${s.c}">${s.ini}</span>`
+  const NAV = ['비서', '직원', '업무', '결재함', '대화', '노하우', '기록', '설정']
+  const appbar = () => `<div class="appbar">AI Office<span class="sp"></span><span class="ib">AI 사용량 42%</span><span class="ib w">확인 필요 2</span><span class="ib">비서</span><span class="ib p">＋ 직원 추가</span></div>`
+  const shell = (on, tabs, inner, extra = '') => `${appbar()}<div class="body"><div class="nav">${NAV.map((x) => `<span class="${x === on ? 'on' : ''}">${x}</span>`).join('')}</div><div class="main"><div class="tabs">${tabs}</div>${inner}</div>${extra}</div>`
+  const tabsOf = (list, on) => list.map((x) => `<span class="${x === on ? 'on' : ''}">${x}</span>`).join('')
+
+  // ── 요약
+  const SUM = [
+    ['1', '직원 목록 아래 상황판', ['칸 3개 중 2개(쓴 토큰·최근 활동)는 다른 화면과 같은 내용', '접혀 있어 정작 꼭 봐야 할 \'문제 생김\'·\'요금제 많이 씀\'을 놓침'], '상황판을 없애고, 문제·요금제 경고만 맨 위 한 줄 알림으로(있을 때만)'],
+    ['2', '팀 구성', ['팀은 이름+색만, 무엇을 하는 팀인지 적을 곳이 없음', '랩 카드에 LAB·폴더 경로·참고 문서·새 일감까지 다 펼쳐짐', '팀장/랩장, 영어 lead/leader/head 섞임'], '카드 = 하는 일·얼굴·일하는 사람 수·[일 시키기]. 만들기 3단계(무엇을 → 이름·하는 일 → 사람·리더). 랩은 \'프로젝트\', 리더로 통일'],
+    ['3', '직원 패널 결재', ['결재가 생기면 탭 위 칸이 패널 절반까지 차지해 대화가 밀림', '내가 이 직원에게 뭘 승인·반려했는지 볼 곳이 없음'], '\'결재 ⓷\' 탭으로 옮기고 대화 탭엔 한 줄 띠만. 같은 탭에 내가 내린 결재 기록(날짜별·걸러보기). 기록 장부는 새로 저장 필요'],
+    ['4', '기록', ['모든 직원·종류가 작은 글씨 한 줄로 섞임', '3줄에서 잘리고 펼칠 수 없음', '요약이 오른쪽 끝 글 덩어리'], '맨 위 오늘 요약 4칸 → 직원별 묶음 → 한 줄 요약, 눌러서 펼치기. 보고서는 [복사] 버튼으로'],
+  ]
+  $('sumgrid').innerHTML = SUM.map(([k, t, bad, good]) => `<div class="sumc"><h3><span class="k">${k}</span>${t}</h3><div class="bad"><b>지금 어려운 점</b><ul>${bad.map((x) => `<li>${x}</li>`).join('')}</ul></div><div class="good"><b>추천안</b>${good}</div></div>`).join('')
+
+  // ── ① 상황판
+  const scard = (s, st, txt) => `<div class="scard ${st}"><div class="hd">${av(s)}<div><b>${s.n}</b><div class="muted">${s.role}</div></div></div><span class="pill s-${st}"><i></i>${{ waiting: '대표님 확인 기다림', error: '문제 생김', working: '일하는 중', idle: '쉬는 중' }[st]}</span><span>${txt}</span></div>`
+  const cards6 = [scard(S.dj, 'waiting', '시안 저장 확인을 기다려요'), scard(S.ad, 'error', '인터넷이 끊겨 멈췄어요'), scard(S.ld, 'working', '업무 3개로 나눠 맡기는 중'), scard(S.fe, 'working', '방 목록 화면 고치는 중'), scard(S.rv, 'waiting', '질문 1개'), scard(S.pl, 'idle', '마지막 일: 기획서 (1시간 전)')].join('')
+  $('w-board-now').innerHTML = shell('직원', tabsOf(['직원 목록', '팀 구성'], '직원 목록'), `<div class="pg">
+    <div class="sent">6명 중 <em style="color:var(--working)">2명 일하는 중</em> · <em style="color:var(--waiting)">2명이 확인을 기다려요</em> · <em style="color:var(--error)">1명 문제 생김</em></div>
+    <div class="scards">${cards6}</div>
+    <div class="fold" data-k="fold"><div class="fh">▾ 상황판 <span class="badge">4</span><span class="muted" style="font-weight:500">확인 필요 · 쓴 토큰 · 최근 활동</span></div>
+      <div class="fb">
+        <div class="board"><b>확인 필요 <span class="badge">4</span> <span class="muted" style="font-weight:500">결재 2 · 질문 1 · 오류 1</span></b><span>이디자 · 파일을 저장해요 <span class="btn sm o">반려</span> <span class="btn sm p">승인</span></span><span style="color:var(--error)" data-k="err">임안드 · 오류 · API Error 529 <span class="btn sm o">확인</span></span><span class="muted">1건 더 보기</span></div>
+        <div class="board" data-k="tok"><b>쓴 토큰</b><span>오늘 146,737</span><span>이번 주 1,204,880</span><span>이번 달 4,812,003</span><span class="muted">5시간 84% · 7일 63%</span></div>
+        <div class="board" data-k="feed"><b>최근 활동 <span class="muted" style="font-weight:500">전체 보기 →</span></b><span>정리드 · 하위 업무 3개를 맡겼어요 · 1분 전</span><span>최가독 · 커밋: 방 목록 수정 · 2분 전</span><span>김기획 · 기획서 보고 · 1시간 전</span></div>
+      </div></div>
+  </div>`)
+  $('w-board-new').innerHTML = shell('직원', tabsOf(['직원 목록', '팀 구성'], '직원 목록'), `<div class="pg">
+    <div class="alert e">${av(S.ad, 's')}<b>임안드</b>가 문제로 멈췄어요 — 인터넷 연결이 끊겼어요<span class="sp"></span><span class="btn sm r">다시 시도</span><span class="btn sm o">자세히</span></div>
+    <div class="alert w"><b>AI 요금제를 많이 썼어요</b> — 5시간 사용량 84%, 오후 6시에 다시 채워져요<span class="sp"></span><span class="btn sm o">비용 보기</span><span class="x">오늘은 그만 보기</span></div>
+    <div style="display:flex;align-items:center;gap:10px"><div class="sent">6명 중 <em style="color:var(--working)">2명 일하는 중</em> · <em style="color:var(--waiting)">2명이 확인을 기다려요</em> · <em style="color:var(--error)">1명 문제 생김</em> · <span style="color:var(--primary)">오늘 끝낸 일 7건 ›</span></div><span style="flex:1"></span><span class="btn p">＋ 직원 추가</span></div>
+    <div class="scards">${cards6}</div>
+    <div class="muted" style="text-align:center;font-size:11px;padding:4px">— 직원 목록 끝 · 상황판 칸 없음 —</div>
+  </div>`)
+  function mark(id, k, n, dx = -10, dy = -10) {
+    const w = $(id), el = w.querySelector(`[data-k="${k}"]`); if (!el) return
+    const a = w.getBoundingClientRect(), b = el.getBoundingClientRect()
+    w.insertAdjacentHTML('beforeend', `<div class="mark" style="left:${b.left - a.left - 3}px;top:${b.top - a.top - 3}px;width:${b.width + 6}px;height:${b.height + 6}px"></div><div class="pin" style="left:${b.left - a.left + dx}px;top:${b.top - a.top + dy}px">${n}</div>`)
+  }
+
+  // ── ② 팀 구성 (지금)
+  const mrow = (s) => `<div class="mem">${av(s, 's')}<b>${s.n}</b><span class="muted">${s.role}</span><span style="flex:1"></span><span class="sel">팀 이동 ▾</span></div>`
+  $('w-org-now').innerHTML = shell('직원', tabsOf(['직원 목록', '팀 구성'], '팀 구성'), `<div class="pg" style="font-size:11px">
+    <div><b style="font-size:15px">팀 구성</b><div class="muted" data-k="desc" style="margin-top:2px">팀(부서)은 직무별 소속이고, 랩은 여러 팀에서 사람을 뽑아 꾸리는 프로젝트 팀이에요. 팀장·랩장은 일을 나눠 맡기고 보고를 취합해요.</div></div>
+    <div style="display:flex;gap:6px;align-items:center" data-k="mk"><span class="inp" style="width:220px">새 팀 이름 (예: 프론트엔드팀)</span>${['#e8925a', '#3E7BEA', '#3B9C7A', '#8C5BD9', '#D9466A', '#D8B32E', '#2BA3B5', '#77737F'].map((c) => `<i style="width:14px;height:14px;border-radius:50%;background:${c};display:inline-block"></i>`).join('')}<span class="btn p">＋ 팀 만들기</span></div>
+    <div class="ocards2">
+      <div class="oc" style="border-color:color-mix(in srgb,#3E7BEA 45%,var(--border))"><div class="hd"><i style="width:9px;height:9px;border-radius:50%;background:#3E7BEA"></i><b>개발팀</b><span class="muted">4명</span><span style="flex:1"></span><span class="chip">💬 팀 대화방</span><span class="muted">🗑</span></div>
+        <div class="mem" data-k="sel">👑 팀장 <span class="sel">정리드 ▾</span> 🏢 층 <span class="sel">1층 ▾</span></div>${[S.ld, S.fe, S.ad, S.rv].map(mrow).join('')}<div class="muted" style="border-top:1px solid var(--border);padding-top:4px">▸ 참고 문서 2/5</div></div>
+      <div class="oc"><div class="hd"><i style="width:9px;height:9px;border-radius:50%;background:#3B9C7A"></i><b>디자인 팀</b><span class="muted">1명</span><span style="flex:1"></span><span class="muted">🗑</span></div>
+        <div class="mem">👑 팀장 <span class="sel">이디자 ▾</span> 🏢 층 <span class="sel">1층 ▾</span></div>${mrow(S.dj)}<div class="muted" style="border-top:1px solid var(--border);padding-top:4px">▸ 참고 문서 없음 · 추가</div></div>
+    </div>
+    <div style="display:flex;gap:6px;align-items:center;margin-top:4px"><b>🧪 랩 (프로젝트 팀)</b><span class="muted">팀과 별개로, 여러 팀에서 사람을 뽑아 프로젝트를 꾸려요. 한 사람이 여러 랩에 들어갈 수 있어요.</span><span style="flex:1"></span><span class="btn o">🧪 랩 만들기</span></div>
+    <div class="oc" style="width:60%"><div class="hd"><span class="labbadge" style="background:#8C5BD9" data-k="lab">LAB</span><b>클로드 오피스 전담 랩</b><span style="flex:1"></span><span class="chip">💬 랩 대화방</span><span class="muted">⤓ 🎤 🗑</span></div>
+      <div>🎯 클로드 오피스를 계속해서 발전해 나가는 랩</div><div class="mono muted" data-k="path">📁 ~/flitto/poc/claude-office</div><div class="muted">▸ 참고 문서 5/5 · 추천 1개</div>
+      <div class="mem">👑 랩장 <span class="sel">정리드 ▾</span></div>
+      <div class="mem">${[S.ld, S.dj, S.fe, S.rv, S.qa].map((s) => av(s, 's')).join('')}<span class="muted">외 3명</span></div>
+      <div style="background:var(--background);border-radius:8px;padding:6px 8px" data-k="work"><b>새 일감</b> <span class="sel">매뉴얼 없이 · 랩장(정리드)이 기획·분배 ▾</span><div class="inp" style="margin-top:4px">Jira·Figma 링크나 할 일 설명 (스크린샷 붙여넣기 가능)</div></div>
+      <span class="btn o" style="align-self:flex-start">멤버 편집</span></div>
+    <div class="muted" data-k="ext">📁 프로젝트 (다른 창 직원) — flitto-web · 2명</div>
+  </div>`)
+
+  // ── ② 팀 구성 (추천)
+  const face = (s, st, lead, sub) => `<div class="face">${av(s, 'l')}${lead ? '<span class="crown">👑</span>' : ''}<i class="dot" style="background:var(--${st})"></i><span>${s.n}</span>${sub ? `<span class="ft">${sub}</span>` : ''}</div>`
+  const tcard = (o) => `<div class="tc${o.wide ? ' wide' : ''}" style="--c:${o.c}"><div class="hd"><b>${o.n}</b><span class="kind">${o.kind}</span><span style="flex:1"></span><span class="muted" style="font-size:11px">${o.busy}</span></div>
+    ${o.goal ? `<div class="goal"><span class="lb">목표</span>${o.goal}</div>` : `<div class="what">${o.what}</div>`}
+    <div class="faces">${o.faces}</div>
+    <div class="ft"><span class="btn p">일 시키기</span><span class="btn o">대화방</span><span class="sp"></span><span class="muted">⋯</span></div></div>`
+  $('w-org-new').innerHTML = shell('직원', tabsOf(['직원 목록', '팀 구성'], '팀 구성'), `<div class="pg">
+    <div style="display:flex;align-items:center;gap:10px"><div><b style="font-size:15px">팀 구성</b><div class="muted" style="font-size:11.5px;margin-top:2px"><b style="color:var(--foreground)">팀</b>은 늘 함께 일하는 부서, <b style="color:var(--foreground)">프로젝트</b>는 목표 하나를 위해 여러 팀에서 모인 사람들이에요. 리더에게 일을 주면 나눠 맡기고 모아서 보고해요.</div></div><span style="flex:1"></span><span class="btn p">＋ 새로 만들기</span></div>
+    <div class="muted" style="font-size:11px;font-weight:800;margin-top:4px">팀 2</div>
+    <div class="tcgrid">
+      ${tcard({ n: '개발팀', c: '#3E7BEA', kind: '팀', busy: '2명 일하는 중', what: '앱 화면과 기능을 만들고, 고친 것을 검토하고 시험해요.', faces: [face(S.ld, 'working', 1), face(S.fe, 'working'), face(S.ad, 'error'), face(S.rv, 'waiting'), face(S.qa, 'idle')].join('') })}
+      ${tcard({ n: '디자인 팀', c: '#3B9C7A', kind: '팀', busy: '확인 기다림 1', what: '<span class="muted">하는 일을 적어 두면 직원이 일을 더 잘 나눠요.</span> <b style="color:var(--primary)">적기</b>', faces: face(S.dj, 'waiting', 1) })}
+      <div class="newcard"><span class="plus">＋</span><b>새로 만들기</b>팀 또는 프로젝트를 3단계로 만들어요</div>
+    </div>
+    <div class="muted" style="font-size:11px;font-weight:800;margin-top:4px">프로젝트 1</div>
+    <div class="tcgrid">
+      ${tcard({ n: '클로드 오피스 전담', c: '#8C5BD9', kind: '프로젝트', wide: 1, busy: '3명 일하는 중', goal: '클로드 오피스를 계속해서 발전해 나가요', faces: [face(S.ld, 'working', 1, '개발팀'), face(S.dj, 'waiting', 0, '디자인'), face(S.fe, 'working', 0, '개발팀'), face(S.rv, 'waiting', 0, '개발팀'), face(S.pl, 'idle', 0, '기획팀')].join('') })}
+      <div class="tc" style="--c:var(--border);font-size:11.5px;display:none"><b style="font-size:12px">⋯ 메뉴 안</b><span class="muted">이름·색 바꾸기 · 사람 바꾸기 · 먼저 읽을 문서 (2) · 일하는 곳 · 층 · 회의 열기 · 내보내기 · <span style="color:var(--error)">프로젝트 끝내기</span></span><b style="font-size:12px;margin-top:6px">얼굴을 누르면</b><span class="muted">이 직원 보기 · 리더로 정하기 · 다른 팀으로 옮기기 · 이 프로젝트에서 빼기</span></div>
+    </div>
+    <div class="muted" style="font-size:11px;line-height:1.6"><b style="color:var(--foreground)">⋯ 메뉴</b> 이름·색 바꾸기 · 사람 바꾸기 · 먼저 읽을 문서 · 일하는 곳 · 층 · 회의 열기 · 내보내기 · 프로젝트 끝내기 &nbsp;|&nbsp; <b style="color:var(--foreground)">얼굴 누르면</b> 이 직원 보기 · 리더로 정하기 · 다른 팀으로 옮기기</div>
+    <div class="muted" style="font-size:11px">다른 창에서 일하는 직원 (보기만) — flitto-web 2명 ›</div>
+  </div>`)
+
+  // 만들기 3단계
+  $('dlg1').innerHTML = `<div class="t"><b>새로 만들기</b><span class="muted">✕</span></div>
+    <div class="steps"><span class="on">① 무엇을 만들까요?</span><span>② 이름과 하는 일</span><span>③ 누가 함께하나요?</span></div>
+    <div class="kindc"><b>팀</b>늘 함께 일하는 부서예요. 한 사람은 한 팀에만 들어가요.<div class="ex">예) 디자인 팀 · 개발팀 · 고객 응대 팀</div></div>
+    <div class="kindc on"><b>프로젝트</b>목표 하나를 위해 여러 팀에서 사람을 모아요. 한 사람이 여러 프로젝트에 들어갈 수 있어요.<div class="ex">예) 결제 화면 새로 만들기 · 11월 홍보 행사</div></div>
+    <div class="hint">어느 쪽이든 리더에게 일을 주면 나눠 맡기고 모아서 보고해요.</div>
+    <div style="display:flex;gap:6px;justify-content:flex-end"><span class="btn o">취소</span><span class="btn p">다음 ›</span></div>`
+  $('dlg2').innerHTML = `<div class="t"><b>새 프로젝트</b><span class="muted">✕</span></div>
+    <div class="steps"><span class="done">① 무엇을</span><span class="on">② 이름과 하는 일</span><span>③ 누가 함께하나요?</span></div>
+    <label class="field"><span>이름</span><div class="inp f">결제 화면 새로 만들기</div><div class="exs"><span class="ex1">결제 화면 새로 만들기</span><span class="ex1">11월 홍보 행사</span><span class="ex1">고객 문의 정리</span></div></label>
+    <label class="field"><span>목표 <span class="muted" style="font-weight:500">(한 문장, 나중에 적어도 돼요)</span></span><div class="inp">예) 11월 말까지 새 결제 화면을 내보내요</div></label>
+    <label class="field"><span>일하는 곳 <span class="muted" style="font-weight:500">(선택)</span></span><div style="display:flex;gap:6px;align-items:center"><span class="chip on">각자 일하던 곳</span><span class="chip">폴더 고르기…</span></div><span class="hint">한 폴더에서 같이 일해야 하면 골라 주세요.</span></label>
+    <div style="display:flex;gap:6px;align-items:center"><span class="muted" style="font-size:11px">색</span><i style="width:16px;height:16px;border-radius:50%;background:#8C5BD9;box-shadow:0 0 0 2px var(--card),0 0 0 3px #8C5BD9"></i><span class="muted" style="font-size:10.5px">자동 · 눌러서 바꾸기</span><span style="flex:1"></span><span class="btn o">‹ 이전</span><span class="btn p">다음 ›</span></div>`
+  const pk = (s, on, lead) => `<span class="pk${on ? ' on' : ''}">${av(s, 's')}${s.n}${on ? `<span class="star">${lead ? '★' : '☆'}</span>` : ''}</span>`
+  $('dlg3').innerHTML = `<div class="t"><b>새 프로젝트</b><span class="muted">✕</span></div>
+    <div class="steps"><span class="done">① 무엇을</span><span class="done">② 이름</span><span class="on">③ 누가 함께하나요?</span></div>
+    <div class="field"><span>함께할 직원 <span class="muted" style="font-weight:500">3명 골랐어요</span></span>
+      <div class="hint" style="margin-top:2px">개발팀</div><div class="pick">${pk(S.ld, 1, 1)}${pk(S.fe, 1)}${pk(S.ad)}${pk(S.rv)}${pk(S.qa)}</div>
+      <div class="hint" style="margin-top:4px">디자인 팀</div><div class="pick">${pk(S.dj, 1)}</div>
+      <div class="hint" style="margin-top:4px">기획팀</div><div class="pick">${pk(S.pl)}</div></div>
+    <div style="background:var(--background);border-radius:9px;padding:7px 9px;font-size:11px"><b>리더: 정리드</b> <span class="muted">— ☆을 눌러 바꿔요. 리더가 일을 나눠 맡기고 모아서 보고해요.</span></div>
+    <div style="display:flex;gap:6px;justify-content:flex-end"><span class="btn o">‹ 이전</span><span class="btn p">만들기</span></div>`
+
+  // ── ③ 결재 탭
+  const ph = `<div class="ph">${av(S.dj, 'l')}<div style="flex:1"><b>이디자</b> <span class="pill s-waiting"><i></i>대표님 확인 기다림</span><div class="muted" style="margin-top:2px">디자이너 · 디자인 팀 · 일하는 곳 claude-office</div></div><span class="muted">⋯</span></div>`
+  const apc = (t, why, cmd) => `<div class="apc"><span class="tt">${t}</span><span class="why">${why}</span>${cmd ? `<span class="muted" style="font-size:10.5px">명령 보기 ▸</span>` : ''}<div class="bt"><span class="btn sm p">승인</span><span class="btn sm o">반려</span><span class="sp"></span><span class="btn sm g">이 일 멈추기</span></div></div>`
+  const aq = `<div class="apc q"><span class="tt">질문 · 시안을 몇 장 만들까요?</span><div style="display:flex;gap:4px;flex-wrap:wrap"><span class="chip">1장</span><span class="chip">2장 (추천)</span><span class="chip">3장</span></div><div class="bt"><span class="btn sm p">답하기</span><span class="btn sm o">넘기기</span></div></div>`
+  const APS = [apc('docs/v132-more/more.html 파일을 만들어요', '처음 쓰는 폴더라 기다려요', 0), apc('Chrome으로 화면을 찍어요', '처음 보는 명령이라 기다려요', 1)]
+  const chat = `<div class="chatlog"><span class="me">팀 구성 화면 시안 만들어 줘</span><span class="st">네, 지금 화면을 먼저 확인할게요. 코드 4곳을 읽었어요…</span><span class="st">시안 파일을 저장하려고 해요. 결재를 기다려요.</span></div>`
+  $('p-now').innerHTML = `${ph}<div class="apsec" data-k="aps"><div style="display:flex;font-weight:800;color:var(--waiting)">결재 대기 3<span style="flex:1"></span><span class="muted" style="font-weight:500">접기</span></div>${APS.join('')}${aq}</div><div class="handle"><i></i></div><div class="tb">${tabsOf(['대화', '바뀐 파일', '도구', '소개'], '대화')}</div>${chat}<div class="comp">이디자에게 일 시키기…</div>`
+  $('p-chat').innerHTML = `${ph}<div class="tb"><span class="on">대화</span><span>결재 <span class="badge">3</span></span><span>바뀐 파일</span><span>도구</span><span>소개</span></div><div class="strip"><b>결재 3건이 기다려요</b><span class="muted">파일 만들기 외 2건</span><span class="sp"></span><span class="btn sm y">결재 보기</span></div>${chat}<span style="padding:0 12px 6px" class="muted">…</span><div class="comp">이디자에게 일 시키기…</div>`
+  const hrow = (res, rc, t, sub, tm, who) => `<div class="hrow"><span class="res ${rc}">${res}</span><span>${t}${sub ? `<span class="sub">${sub}</span>` : ''}</span><span class="who">${tm}<br>${who}</span></div>`
+  $('p-appr').innerHTML = `${ph}<div class="tb"><span>대화</span><span class="on">결재 <span class="badge">3</span></span><span>바뀐 파일</span><span>도구</span><span>소개</span></div><div class="tabbody">
+    <div class="secT" style="color:var(--waiting)">기다리는 결재 3</div>${APS[0]}${APS[1]}${aq}
+    <div class="secT" style="margin-top:6px">내가 내린 결재 <span class="sp"></span><span class="chip on">전체</span><span class="chip">승인</span><span class="chip">반려</span><span class="chip">답변</span><span class="chip">자동</span></div>
+    <div class="hist"><div class="hday">오늘</div>
+      ${hrow('승인', 'ok', 'chat-tabs.html 파일을 고쳐요', '', '14:02', 'PC')}
+      ${hrow('답변', 'ans', '탭 시안을 몇 안으로 할까요?', '→ 3안 (추천 포함)', '13:40', '휴대폰')}
+      ${hrow('반려', 'no', 'app/ 폴더의 파일을 고쳐요', '디자이너는 코드를 고치지 않아요', '13:12', 'PC')}
+      ${hrow('자동', 'auto', '웹 검색: 결재 이력 화면 사례', '', '11:05', '자동결재')}
+      <div class="hday">어제 · 11월 12일</div>
+      ${hrow('승인', 'ok', 'Chrome으로 화면을 찍어요', '', '18:31', 'PC')}
+      <span class="muted" style="font-size:10.5px;padding:6px 4px;color:var(--primary);font-weight:700">이전 기록 더 보기</span></div>
+  </div>`
+
+  // ── ④ 기록 (지금)
+  const L = [
+    ['14:02', S.dj, '결재', 'var(--waiting)', '승인: Write docs/design-refresh/v132-chat-tabs/chat-tabs.html'],
+    ['14:01', S.ld, '위임', 'var(--primary)', '최가독에게: 방 목록 화면을 C안대로 고쳐 주세요. 회의실 화면에도 같은 방 목록을 두고, 탭에 있던 숫자를 방 목록의 회의실 줄로 옮기고, 탭은 없애 주세요. 휴대폰은 이미 이 구조라…'],
+    ['13:58', S.fe, '보고', 'var(--working)', '방 목록 화면을 고쳤어요. 바뀐 파일 3개: ChatSide.tsx, ChatRoomRail.tsx, MeetingPage.tsx. 테스트 412개 통과. 확인할 것: 회의실에서 단체방으로 돌아가는 길이 방 목록뿐이라…'],
+    ['13:55', S.fe, '커밋', 'var(--idle)', 'fix: 회의실 화면에도 방 목록 — 탭 없애고 숫자 옮기기'],
+    ['13:40', S.ad, '오류', 'var(--error)', 'API Error 529 overloaded_error: Overloaded'],
+    ['13:31', S.rv, '보고', 'var(--working)', '검토 결과: 큰 문제 없음. 작은 것 2개 — 좁은 화면(900px)에서 방 이름이 두 줄로 넘치고, 다크 모드에서 숫자 배지 대비가 3.9:1로 기준보다 조금 낮아요. 고칠 곳은…'],
+    ['13:12', S.dj, '결재', 'var(--waiting)', '반려: Edit app/src/renderer/features/StaffCard.tsx'],
+    ['13:02', S.ld, '지시', 'var(--foreground)', '안드로이드 1.1 업무를 3개로 나눠 맡겨 주세요'],
+    ['12:48', S.pl, '보고', 'var(--working)', '안드로이드 1.1 기획서를 썼어요. 목적, 요구사항 6개, 범위, 완료 기준을 정리했고 대표님 확인이 필요한 것은 두 가지예요: 1) 알림 묶음 기준 2) …'],
+    ['12:30', S.qa, '완료', 'var(--working)', '1400·1100·900폭 라이트·다크 캡처 12장 확인, 차이 2건 보고'],
+  ]
+  $('w-rec-now').innerHTML = shell('기록', tabsOf(['보고서', '비용'], '보고서'), `<div style="display:flex"><div style="flex:1;min-width:0">
+      <div style="display:flex;gap:8px;align-items:center;padding:8px 14px;border-bottom:1px solid var(--border)"><b style="font-size:13px">타임라인</b><span class="inp" style="padding:2px 6px;font-size:10px" data-k="date">2026. 11. 13. 📅</span><span style="flex:1"></span><span class="muted" style="font-size:10px" data-k="flt">☐ 도구 사용 보기</span></div>
+      <div class="tl" data-k="tl">${L.map(([t, s, k, c, x]) => `<div class="ln"><span class="muted">${t}</span>${av(s, 's')}<span style="overflow:hidden;white-space:nowrap">${s.n}</span><span class="k" style="color:${c}">${k}</span><span style="display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">${x}</span></div>`).join('')}</div></div>
+    <div class="rep" data-k="rep"><h4>일일 보고서 <span class="btn sm o">복사</span></h4><b style="font-size:11px"># 2026-11-13 사무실 일일 보고</b><br><b>## 최가독 · 프론트엔드 개발자</b><br>지시 4 · 완료 3 · 도구 21 · 결재 2 · $1.62<br>- 지시: 방 목록 화면을 C안대로 고쳐 주세요. 회의실 화면에도…<br>- 지시: 다크 모드 배지 대비…<br>- 마지막 보고: 방 목록 화면을 고쳤어요. 바뀐 파일 3개…<br><b>## 정리드 · 팀장</b><br>지시 2 · 완료 2 · 도구 9 · 결재 0 · $2.31<br>- 지시: 안드로이드 1.1 업무를…<br><b>## 이디자 · 디자이너</b><br>지시 1 · 완료 1 · 도구 14 · 결재 2 · $0.42<br>…<br><b>## 업무 보드</b><br>- [완료] 대화 탭 합치기 시안<br>- [검토] 방 목록 수정<br>총 AI 사용 비용 $6.14</div></div>`)
+
+  // ── ④ 기록 (추천)
+  const item = (tm, ty, tc, tx, open) => `<div class="item${open ? ' open' : ''}"><span class="tm">${tm}</span><span class="ty ${tc}">${ty}</span><div><div class="tx">${tx}</div>${open ? `<div class="att">▤ 결과물 · 방 목록 수정 전후 화면.html</div> <span class="btn sm o" style="margin-top:6px">대화로 가기</span>` : ''}</div><span class="chev">${open ? '⌃' : '›'}</span></div>`
+  $('w-rec-new').innerHTML = shell('기록', tabsOf(['보고서', '비용'], '보고서'), `<div class="pg" style="gap:12px;padding:14px 18px">
+    <div class="rec-head"><div class="day"><span class="ar">‹</span>오늘 · 11월 13일 (금)<span class="ar">›</span></div><span class="sp"></span><span class="btn o">보고서 복사</span></div>
+    <div class="todays"><div class="today"><b>7</b>끝낸 일</div><div class="today"><b>9</b>내린 지시</div><div class="today"><b>5</b>결재 <span style="font-size:10px">(승인 3 · 반려 1 · 자동 1)</span></div><div class="today e"><b>1</b>문제 생김</div></div>
+    <div style="display:flex;gap:6px;align-items:center"><span class="chip on">전체</span><span class="chip">끝낸 일</span><span class="chip">지시</span><span class="chip">결재</span><span class="chip">문제</span><span class="chip">직원 모두 ▾</span><span style="flex:1"></span><span class="chip on">직원별</span><span class="chip">시간순</span><span class="muted">⋯</span></div>
+    <div class="sgrp"><div class="gh">${av(S.ad)}<b>임안드</b><span class="cnt">문제 1 · 끝낸 일 0</span><span class="sp"></span><span class="pill s-error"><i></i>문제 생김</span></div>
+      ${item('13:40', '문제', 'err', '인터넷 연결이 끊겨 멈췄어요 (서버가 바빠요)')}</div>
+    <div class="sgrp"><div class="gh">${av(S.fe)}<b>최가독</b><span class="cnt">끝낸 일 3 · 지시 받음 4 · 결재 2</span><span class="sp"></span><span class="muted" style="font-size:11px">${'프론트엔드 개발자'}</span></div>
+      ${item('13:58', '끝낸 일', 'done', '방 목록 화면을 고쳤어요. 바뀐 파일 3개: ChatSide.tsx, ChatRoomRail.tsx, MeetingPage.tsx. 테스트 412개 통과. 확인할 것: 회의실에서 단체방으로 돌아가는 길이 방 목록뿐이라, 처음 쓰는 사람은 방 목록을 못 찾을 수 있어요. 방 목록 맨 위에 \'단체방\'을 고정해 두었어요.', 1)}
+      ${item('13:31', '지시', 'ask', '정리드: 방 목록 화면을 C안대로 고쳐 주세요')}
+      ${item('11:20', '결재', 'ap', '승인 · ChatSide.tsx 파일을 고쳐요')}
+      <div class="more">4건 더 보기</div></div>
+    <div class="sgrp"><div class="gh">${av(S.ld)}<b>정리드</b><span class="cnt">끝낸 일 2 · 맡긴 일 3</span><span class="sp"></span><span class="muted">›</span></div></div>
+  </div>`)
+  if ($('s-rec').classList.contains('on')) { mark('w-rec-now', 'date', 1); mark('w-rec-now', 'flt', 2, -24); mark('w-rec-now', 'tl', 3, -6, 30); mark('w-rec-now', 'rep', 5) }
+  if ($('s-board').classList.contains('on')) { mark('w-board-now', 'err', 1); mark('w-board-now', 'tok', 2); mark('w-board-now', 'feed', 3) }
+  if ($('s-org').classList.contains('on')) { mark('w-org-now', 'desc', 1); mark('w-org-now', 'mk', 2); mark('w-org-now', 'sel', 3); mark('w-org-now', 'lab', 4); mark('w-org-now', 'work', 5); mark('w-org-now', 'ext', 6) }
+
+  // ── 4개 언어
+  const T = [
+    ['상황판 대신 위 알림', '{이름}가 문제로 멈췄어요', '{name} stopped because of a problem', '{name}が問題で止まりました', '{name} 因问题已停止'],
+    ['', '{n}명이 문제로 멈췄어요', '{n} people stopped because of a problem', '{n}人が問題で止まっています', '{n} 人因问题已停止'],
+    ['', 'AI 요금제를 많이 썼어요', "You've used a lot of your AI plan", 'AIプランをたくさん使いました', 'AI 套餐已用得较多'],
+    ['', '{n}% 사용 · {시각}에 다시 채워져요', '{n}% used · resets at {time}', '{n}%使用 · {time}に回復します', '已用 {n}% · {time} 恢复'],
+    ['', '오늘은 그만 보기', "Don't show again today", '今日は表示しない', '今天不再显示'],
+    ['', '오늘 끝낸 일 {n}건', '{n} tasks done today', '今日完了した仕事 {n}件', '今天完成 {n} 项'],
+    ['팀 구성', '팀', 'Team', 'チーム', '团队'],
+    ['', '프로젝트 (지금 랩)', 'Project', 'プロジェクト', '项目'],
+    ['', '리더 (팀장·랩장)', 'Lead', 'リーダー', '负责人'],
+    ['', '늘 함께 일하는 부서예요. 한 사람은 한 팀에만 들어가요.', 'A group that always works together. Each person is in one team.', 'いつも一緒に働く部署です。1人は1チームだけに入ります。', '长期一起工作的部门。每人只属于一个团队。'],
+    ['', '목표 하나를 위해 여러 팀에서 사람을 모아요. 한 사람이 여러 프로젝트에 들어갈 수 있어요.', 'People from different teams join for one goal. One person can be in several projects.', '1つの目標のために複数のチームから集まります。1人が複数のプロジェクトに入れます。', '为一个目标从多个团队召集成员。一人可加入多个项目。'],
+    ['', '새로 만들기', 'Create new', '新しく作る', '新建'],
+    ['', '무엇을 만들까요? / 이름과 하는 일 / 누가 함께하나요?', 'What to create? / Name and purpose / Who joins?', '何を作りますか? / 名前と仕事 / 誰が参加しますか?', '要创建什么? / 名称与职责 / 谁来参与?'],
+    ['', '하는 일', 'What this team does', '担当する仕事', '负责的工作'],
+    ['', '하는 일을 적어 두면 직원이 일을 더 잘 나눠요.', 'Describe the work so staff can split it better.', '仕事内容を書いておくと、社員が仕事をうまく分けられます。', '写下工作内容，员工能更好地分工。'],
+    ['', '일하는 곳 · 각자 일하던 곳', 'Workspace · Where each person already works', '作業場所 · それぞれの作業場所', '工作位置 · 各自原来的位置'],
+    ['', '먼저 읽을 문서', 'Read first', '先に読む資料', '先读文档'],
+    ['', '프로젝트 끝내기 / 팀 없애기', 'End project / Delete team', 'プロジェクトを終える / チームを削除', '结束项目 / 删除团队'],
+    ['', '다른 창에서 일하는 직원 (보기만)', 'Staff working in other windows (view only)', '別のウィンドウで働く社員(表示のみ)', '在其他窗口工作的员工（仅查看）'],
+    ['결재 탭', '결재', 'Approvals', '決裁', '审批'],
+    ['', '결재 {n}건이 기다려요', '{n} approvals waiting', '決裁{n}件が待っています', '有 {n} 项审批待处理'],
+    ['', '결재 보기', 'View approvals', '決裁を見る', '查看审批'],
+    ['', '기다리는 결재 {n} / 기다리는 결재가 없어요', '{n} waiting / Nothing waiting', '待ちの決裁 {n} / 待ちの決裁はありません', '待审批 {n} / 没有待审批'],
+    ['', '내가 내린 결재', 'My decisions', '私が出した決裁', '我做的审批'],
+    ['', '승인 · 반려 · 답변 · 자동', 'Approved · Rejected · Answered · Auto', '承認 · 却下 · 回答 · 自動', '批准 · 驳回 · 回答 · 自动'],
+    ['', 'PC · 휴대폰 · 자동결재 · 규칙', 'PC · Phone · Auto-approve · Rule', 'PC · スマホ · 自動決裁 · ルール', '电脑 · 手机 · 自动审批 · 规则'],
+    ['', '이전 기록 더 보기', 'Load earlier', '以前の記録をもっと見る', '加载更早记录'],
+    ['기록', '오늘 · {날짜}', 'Today · {date}', '今日 · {date}', '今天 · {date}'],
+    ['', '끝낸 일 · 내린 지시 · 결재 · 문제 생김', 'Done · Instructions · Approvals · Problems', '完了 · 指示 · 決裁 · 問題', '已完成 · 指示 · 审批 · 问题'],
+    ['', '직원별 / 시간순', 'By staff / By time', '社員別 / 時間順', '按员工 / 按时间'],
+    ['', '{n}건 더 보기', 'Show {n} more', 'さらに{n}件', '再显示 {n} 项'],
+    ['', '보고서 복사', 'Copy report', 'レポートをコピー', '复制报告'],
+    ['', '대화로 가기', 'Go to chat', '会話へ', '前往对话'],
+    ['', '도구 사용도 보기', 'Also show tool use', 'ツール使用も表示', '同时显示工具使用'],
+  ]
+  $('i18n').innerHTML = `<tr><th>화면</th><th>한국어</th><th>English</th><th>日本語</th><th>中文</th></tr>${T.map((r) => `<tr>${r.map((c, i) => `<td${i === 0 ? ' style="font-weight:800;color:var(--muted-foreground)"' : ''}>${c}</td>`).join('')}</tr>`).join('')}`
+</script>
+</body>
+</html>

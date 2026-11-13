@@ -39,11 +39,11 @@ function setup(over: Partial<DeskDeps> = {}) {
 
 const hireArgs = (name: string) => [{ name, role: '프론트엔드 개발', avatar: 3, model: 'default', cwd: '', systemPrompt: '', approvalMode: 'ask', teamId: '$1.id' }]
 
-test('분류표: OfficeApi 메서드 전부를 조회 30·변경 63·제외 61(+비서 자신 4)으로 빠짐없이', () => {
+test('분류표: OfficeApi 메서드 전부를 조회 30·변경 63·제외 55(+비서 자신 4)으로 빠짐없이', () => {
   assert.deepEqual(Object.keys(SECRETARY_TOOLS).sort(), [...OFFICE_METHODS].sort())
   assert.equal(methodsOfKind('read').length, 30)
   assert.equal(methodsOfKind('change').length, 63)
-  assert.equal(methodsOfKind('exclude').length, 61 + SECRETARY_SELF_METHODS.length)
+  assert.equal(methodsOfKind('exclude').length, 55 + SECRETARY_SELF_METHODS.length)
   // 연결·보안·상점 구매·바닥/벽·미션 보상·직원 장식·코드 저장은 비서 도구에 없다
   for (const m of ['regenerateRemoteQr', 'setRemoteEnabled', 'commitChanges', 'revertWork', 'pushAndCreatePr', 'buyItem', 'applySurface', 'claimMission', 'setGear', 'pickFolder', 'setHooksInstalled', 'fireExternal', 'secretaryRun']) assert.equal(SECRETARY_TOOLS[m as keyof typeof SECRETARY_TOOLS].kind, 'exclude', m)
   for (const m of ['fire', 'deleteTeam', 'mergeTeams', 'deleteLab', 'deleteManual']) assert.equal(SECRETARY_TOOLS[m as keyof typeof SECRETARY_TOOLS].risk, 'danger', m)
@@ -645,7 +645,7 @@ test('보드 정리·팀/랩 구성: 분류와 인자 모양 — 정리안은 �
   const nameOf = (id: string) => names[id] ?? null
   assert.match(describeStep('mergeTasks', ['t1', ['t2']], nameOf), /남길 카드: 로그인\n합칠 카드: 로그인 2/)
   assert.match(describeStep('mergeTeams', ['team-a', 'team-b'], nameOf), /없앨 팀: 디자인팀\n옮길 팀: 개발팀/)
-  assert.match(describeStep('moveStaff', ['s1', { teamId: 'team-b', joinLabIds: ['lab-1'] }], nameOf), /대상: 최코드\n팀: 개발팀\n넣을 랩: 오피스 랩/)
+  assert.match(describeStep('moveStaff', ['s1', { teamId: 'team-b', joinLabIds: ['lab-1'] }], nameOf), /대상: 최코드\n팀: 개발팀\n넣을 프로젝트: 오피스 랩/)
 })
 
 test('보드 정리안의 단계는 그대로 propose 할 수 있다 (묶음 형식·인자 모양이 카드 검사를 통과)', async () => {

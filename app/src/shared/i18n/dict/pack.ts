@@ -7,21 +7,21 @@ export default {
   'pack.hire.market': { ko: '직원 마켓', en: 'Staff market', ja: '社員マーケット', zh: '员工市场' },
   'pack.hire.import': { ko: '파일에서 가져오기', en: 'Import from file', ja: 'ファイルから読み込む', zh: '从文件导入' },
   'pack.hire.hint': {
-    ko: '내보낸 직원·랩 파일을 고르면 검사 후 바로 채용해요.',
-    en: 'Pick an exported staff or lab file. It is checked and the staff are hired right away.',
-    ja: '書き出した社員・ラボのファイルを選ぶと、確認後にすぐ採用します。',
-    zh: '选择导出的员工或实验室文件，检查后立即录用。',
+    ko: '내보낸 직원·프로젝트 파일을 고르면 검사 후 바로 추가해요.',
+    en: 'Pick an exported staff or project file. It is checked and the staff are added right away.',
+    ja: '書き出した社員・プロジェクトのファイルを選ぶと、確認後にすぐ追加します。',
+    zh: '选择导出的员工或项目文件，检查后立即添加。',
   },
 
   // ── 직원 마켓 창 ──
   'pack.market.title': { ko: '직원 마켓', en: 'Staff market', ja: '社員マーケット', zh: '员工市场' },
   'pack.market.hint': {
-    ko: '기본으로 준비된 직원 목록이에요. [채용]을 누르면 바로 고용돼요. 이름은 나중에 바꿀 수 있어요.',
-    en: 'Ready-made staff. Press Hire to hire right away. You can rename them later.',
-    ja: '用意された社員の一覧です。[採用]を押すとすぐ雇用されます。名前は後から変えられます。',
-    zh: '内置的员工列表。点击[录用]即可立即雇用，名字之后可以修改。',
+    ko: '기본으로 준비된 직원 목록이에요. [추가]를 누르면 바로 추가돼요. 이름은 나중에 바꿀 수 있어요.',
+    en: 'Ready-made staff. Press Add to add them right away. You can rename them later.',
+    ja: '用意された社員の一覧です。[追加]を押すとすぐ追加されます。名前は後から変えられます。',
+    zh: '内置的员工列表。点击[添加]即可立即添加，名字之后可以修改。',
   },
-  'pack.market.hire': { ko: '채용', en: 'Hire', ja: '採用', zh: '录用' },
+  'pack.market.hire': { ko: '추가', en: 'Add', ja: '追加', zh: '添加' },
   'pack.market.planner.name': { ko: '기획 담당', en: 'Planner', ja: '企画担当', zh: '策划负责人' },
   'pack.market.planner.desc': {
     ko: '목표·범위·완료 기준을 정리하고 빠진 정보를 묻습니다.',
@@ -90,14 +90,14 @@ export default {
   'pack.export.button': { ko: '내보내기', en: 'Export', ja: '書き出し', zh: '导出' },
   'pack.export.title': { ko: '직원 내보내기', en: 'Export staff', ja: '社員の書き出し', zh: '导出员工' },
   'pack.export.hint': {
-    ko: '고른 직원을 파일 하나로 저장해요. 작업 폴더와 이 컴퓨터의 파일 위치는 빠지고, 다른 컴퓨터에서 가져오면 그곳에서 채용돼요.',
-    en: 'Saves the selected staff as one file. Work folders and paths on this computer are left out. Importing on another computer hires them there.',
-    ja: '選んだ社員を1つのファイルに保存します。作業フォルダとこのコンピュータのパスは除かれ、別のコンピュータで読み込むとそこで採用されます。',
-    zh: '将所选员工保存为一个文件。工作文件夹和本机路径不会包含在内，在其他电脑上导入即可在那里录用。',
+    ko: '고른 직원을 파일 하나로 저장해요. 작업 폴더와 이 컴퓨터의 파일 위치는 빠지고, 다른 컴퓨터에서 가져오면 그곳에 추가돼요.',
+    en: 'Saves the selected staff as one file. Work folders and paths on this computer are left out. Importing on another computer adds them there.',
+    ja: '選んだ社員を1つのファイルに保存します。作業フォルダとこのコンピュータのパスは除かれ、別のコンピュータで読み込むとそこに追加されます。',
+    zh: '将所选员工保存为一个文件。工作文件夹和本机路径不会包含在内，在其他电脑上导入即可添加到那里。',
   },
   'pack.export.count': { ko: '{count}명 고름', en: '{count} selected', ja: '{count}人選択中', zh: '已选 {count} 人' },
   'pack.export.submit': { ko: '저장하기', en: 'Save', ja: '保存する', zh: '保存' },
-  'pack.lab.export': { ko: '랩 내보내기', en: 'Export lab', ja: 'ラボを書き出す', zh: '导出实验室' },
+  'pack.lab.export': { ko: '프로젝트 내보내기', en: 'Export project', ja: 'プロジェクトを書き出す', zh: '导出项目' },
 
   // ── 파일 대화상자 ──
   'pack.dialog.save': { ko: '직원 파일 저장', en: 'Save staff file', ja: '社員ファイルを保存', zh: '保存员工文件' },
@@ -105,20 +105,20 @@ export default {
   'pack.dialog.filter': { ko: '직원 파일', en: 'Staff file', ja: '社員ファイル', zh: '员工文件' },
 
   // ── 결과 문구 ──
-  'pack.done.hired': { ko: '{names} 채용했어요.', en: 'Hired {names}.', ja: '{names}を採用しました。', zh: '已录用 {names}。' },
-  'pack.done.lab': { ko: '랩 "{lab}"을 꾸리고 {names} 채용했어요.', en: 'Set up lab "{lab}" and hired {names}.', ja: 'ラボ「{lab}」を作り、{names}を採用しました。', zh: '已组建实验室“{lab}”并录用 {names}。' },
+  'pack.done.hired': { ko: '{names} 추가했어요.', en: 'Added {names}.', ja: '{names}を追加しました。', zh: '已添加 {names}。' },
+  'pack.done.lab': { ko: '프로젝트 "{lab}"을 꾸리고 {names} 추가했어요.', en: 'Set up project "{lab}" and added {names}.', ja: 'プロジェクト「{lab}」を作り、{names}を追加しました。', zh: '已组建项目“{lab}”并添加 {names}。' },
   'pack.done.excluded': {
-    ko: '이 컴퓨터에 없는 장비는 빼고 채용했어요: {list}',
-    en: 'Hired without equipment that is not on this computer: {list}',
-    ja: 'このコンピュータにない装備は外して採用しました: {list}',
-    zh: '已录用，但已去掉本机没有的装备：{list}',
+    ko: '이 컴퓨터에 없는 장비는 빼고 추가했어요: {list}',
+    en: 'Added without equipment that is not on this computer: {list}',
+    ja: 'このコンピュータにない装備は外して追加しました: {list}',
+    zh: '已添加，但已去掉本机没有的装备：{list}',
   },
   'pack.done.exported': { ko: '직원 {count}명을 저장했어요.', en: 'Saved {count} staff.', ja: '社員{count}人を保存しました。', zh: '已保存 {count} 名员工。' },
   'pack.done.exportedLab': {
-    ko: '랩 "{lab}"과 직원 {count}명을 저장했어요.',
-    en: 'Saved lab "{lab}" and {count} staff.',
-    ja: 'ラボ「{lab}」と社員{count}人を保存しました。',
-    zh: '已保存实验室“{lab}”和 {count} 名员工。',
+    ko: '프로젝트 "{lab}"과 직원 {count}명을 저장했어요.',
+    en: 'Saved project "{lab}" and {count} staff.',
+    ja: 'プロジェクト「{lab}」と社員{count}人を保存しました。',
+    zh: '已保存项目“{lab}”和 {count} 名员工。',
   },
 
   // ── 오류 문구 (검사·저장 실패 — 이유를 보여 주고 아무것도 만들지 않는다) ──
@@ -228,8 +228,8 @@ export default {
     ja: 'ファイルにフォルダの場所が含まれています。このコンピュータの場所はファイルに入れられません。',
     zh: '文件中包含文件夹位置。本机的位置不能保存在文件里。',
   },
-  'pack.err.lab': { ko: '랩 정보가 올바르지 않아요.', en: 'The lab information is not valid.', ja: 'ラボ情報が正しくありません。', zh: '实验室信息不正确。' },
-  'pack.err.leader': { ko: '랩장이 파일의 직원 중에 없어요.', en: 'The lab lead is not among the staff in the file.', ja: 'ラボリーダーがファイルの社員にいません。', zh: '实验室负责人不在文件的员工中。' },
+  'pack.err.lab': { ko: '프로젝트 정보가 올바르지 않아요.', en: 'The project information is not valid.', ja: 'プロジェクト情報が正しくありません。', zh: '项目信息不正确。' },
+  'pack.err.leader': { ko: '리더가 파일의 직원 중에 없어요.', en: 'The lead is not among the staff in the file.', ja: 'リーダーがファイルの社員にいません。', zh: '负责人不在文件的员工中。' },
   'pack.err.exportTooBig': {
     ko: '내보낼 내용이 1MB를 넘어요. 매뉴얼을 줄이거나 직원을 나눠서 내보내 주세요.',
     en: 'The export is larger than 1MB. Reduce the manuals or export fewer staff at a time.',
@@ -237,8 +237,8 @@ export default {
     zh: '导出内容超过 1MB。请减少手册或分批导出员工。',
   },
   'pack.err.noStaff': { ko: '내보낼 직원을 골라 주세요.', en: 'Choose the staff to export.', ja: '書き出す社員を選んでください。', zh: '请选择要导出的员工。' },
-  'pack.err.labMissing': { ko: '랩을 찾을 수 없어요.', en: 'The lab cannot be found.', ja: 'ラボが見つかりません。', zh: '找不到该实验室。' },
-  'pack.err.labNoMembers': { ko: '이 랩에는 직원이 없어 내보낼 수 없어요.', en: 'This lab has no staff, so it cannot be exported.', ja: 'このラボには社員がいないため書き出せません。', zh: '该实验室没有员工，无法导出。' },
+  'pack.err.labMissing': { ko: '프로젝트를 찾을 수 없어요.', en: 'The project cannot be found.', ja: 'プロジェクトが見つかりません。', zh: '找不到该项目。' },
+  'pack.err.labNoMembers': { ko: '이 프로젝트에는 직원이 없어 내보낼 수 없어요.', en: 'This project has no staff, so it cannot be exported.', ja: 'このプロジェクトには社員がいないため書き出せません。', zh: '该项目没有员工，无法导出。' },
   'pack.err.marketMissing': { ko: '마켓에서 그 직원을 찾을 수 없어요.', en: 'That staff member is not in the market.', ja: 'マーケットにその社員がいません。', zh: '员工市场中没有该员工。' },
   'pack.err.provider': { ko: 'AI 엔진은 Claude나 GPT 중에서 골라 주세요.', en: 'Choose Claude or GPT as the AI engine.', ja: 'AIエンジンは Claude か GPT から選んでください。', zh: '请从 Claude 或 GPT 中选择 AI 引擎。' },
   'engine.recommended': { ko: '추천', en: 'Recommended', ja: 'おすすめ', zh: '推荐' },
@@ -303,9 +303,9 @@ export default {
     zh: '擅长根据目标撰写文案和计划。',
   },
   'pack.err.hire': {
-    ko: '채용 중에 문제가 생겼어요. 다시 시도해 주세요.',
-    en: 'Something went wrong while hiring. Please try again.',
-    ja: '採用中に問題が起きました。もう一度お試しください。',
-    zh: '录用过程中出现问题，请重试。',
+    ko: '추가하는 중에 문제가 생겼어요. 다시 시도해 주세요.',
+    en: 'Something went wrong while adding staff. Please try again.',
+    ja: '追加中に問題が起きました。もう一度お試しください。',
+    zh: '添加过程中出现问题，请重试。',
   },
 } satisfies Record<string, Entry>

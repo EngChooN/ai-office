@@ -19,6 +19,7 @@ import { DemoDayBanner, DemoDayNowButton } from '@/features/DemoStage'
 import { isReducedMotion } from '@/lib/reducedMotion'
 import { t } from '@shared/i18n'
 import { levelTitle } from '@shared/i18n/names'
+import { isAwaitingTeam } from '@shared/delegation'
 
 const NIGHT_CHECK_MS = 60_000
 /** 문 불빛이 켜지고 꺼지는 속도 (초당) */
@@ -393,9 +394,9 @@ function Hud() {
   }
   const rows = [
     { label: t('map.stat.staff'), value: staff.length, color: 'text-hud-foreground' },
-    { label: t('map.stat.working'), value: staff.filter((s) => s.status === 'working').length, color: 'text-status-working' },
+    { label: t('map.stat.working'), value: staff.filter((s) => s.status === 'working' || isAwaitingTeam(s)).length, color: 'text-status-working' },
     { label: t('map.stat.waiting'), value: staff.filter((s) => s.status === 'waiting').length, color: 'text-status-waiting' },
-    { label: t('map.stat.idle'), value: staff.filter((s) => s.status === 'idle' && !s.meetingId).length, color: 'text-muted-foreground' },
+    { label: t('map.stat.idle'), value: staff.filter((s) => s.status === 'idle' && !isAwaitingTeam(s) && !s.meetingId).length, color: 'text-muted-foreground' },
   ]
   return (
     <div className="absolute top-3 right-3 flex flex-col items-end gap-2" data-tour="hud">

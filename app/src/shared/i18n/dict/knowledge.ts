@@ -66,7 +66,6 @@ export default {
     zh: '已开启浏览器自动允许。自动审批或自主进行期间，跳转、点击、输入和提交无需审批（登录和支付栏仍需审批）。',
   },
   'staff.tool.browserAuto.offDone': { ko: '브라우저 자동 허용을 껐어요. 브라우저 조작은 다시 결재를 받아요.', en: 'Browser auto-allow is off. Browser actions need approval again.', ja: 'ブラウザの自動許可をオフにしました。ブラウザ操作は再び決裁が必要です。', zh: '已关闭浏览器自动允许。浏览器操作重新需要审批。' },
-  'staff.tool.browserAuto.peer': { ko: '다른 PC가 맡긴 일에서는 브라우저 자동 허용을 켤 수 없어요.', en: 'Browser auto-allow cannot be turned on for work assigned from another PC.', ja: '他の PC から任された仕事ではブラウザの自動許可をオンにできません。', zh: '在其他电脑委派的工作中无法开启浏览器自动允许。' },
 
   // 회사 지식 창고
   'nav.knowledge': { ko: '지식 창고', en: 'Knowledge', ja: 'ナレッジ倉庫', zh: '知识库' },

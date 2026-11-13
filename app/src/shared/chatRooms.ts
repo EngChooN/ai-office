@@ -92,9 +92,9 @@ export function chatRoomMentionTargets(info: ChatRoomInfo, hired: StaffLike[]): 
   return mentionTargets(chatRoomMembers(info, hired), [], [])
 }
 
-/** 방에서 보낸 지시의 머리말: 팀 방 "[팀이름 방]", 랩 방 "[랩이름 랩]" */
+/** 방에서 보낸 지시의 머리말: 팀 방 "[팀이름 방]", 프로젝트 방 "[이름 프로젝트]" */
 export function roomHead(info: Pick<ChatRoomInfo, 'kind' | 'name'>): string {
-  return info.kind === 'lab' ? `[${info.name} 랩]` : `[${info.name} 방]`
+  return info.kind === 'lab' ? `[${info.name} 프로젝트]` : `[${info.name} 방]`
 }
 
 /** 전체 방에서 시작된 일임을 뜻하는 명시값 — room이 undefined면 "정해지지 않음"이라 소속 방으로 간다 */

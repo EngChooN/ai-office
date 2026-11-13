@@ -56,6 +56,7 @@ export const OFFICE_METHODS = [
   'saveChatReservation',
   'chatReservationAction',
   'timeline',
+  'approvalHistory',
   'staffActivity',
   'dailyReport',
   'payslip',
@@ -156,20 +157,13 @@ export const OFFICE_METHODS = [
   'peerList',
   'peerUnpair',
   'peerReconnect',
-  'peerRemoteStaff',
-  'peerAddStaff',
-  'peerRemoveStaff',
-  'peerCancelJob',
-  'peerChangesetDetail',
-  'peerChangeFileDiff',
-  'peerApplyChanges',
   'secretaryAsk',
   'secretaryRun',
   'secretaryCancel',
   'secretaryClear',
 ] as const satisfies readonly OfficeMethod[]
 
-export const OFFICE_EVENTS = ['onSnapshot', 'onLog', 'onChat', 'onFocus', 'onRemoteStatus', 'onGalleryChanged'] as const satisfies readonly OfficeEvent[]
+export const OFFICE_EVENTS = ['onSnapshot', 'onLog', 'onApprovalRecord', 'onChat', 'onFocus', 'onRemoteStatus', 'onGalleryChanged'] as const satisfies readonly OfficeEvent[]
 
 // 목록이 OfficeApi와 빠짐없이 같은지 컴파일 때 확인한다
 type MissingMethods = Exclude<OfficeMethod, (typeof OFFICE_METHODS)[number]>

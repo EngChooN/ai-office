@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<title>v1.3.2 대화 화면 '단체방 | 회의실' 탭 — 검토와 시안</title>
+<!-- 디자인 시안 전용(앱 코드 아님). ?mode=light|dark 로 연다.
+     근거 코드: navGroups.ts('대화' 묶음 = chat·meeting 탭), NavTabs.tsx(묶음 위쪽 탭 줄), ChatSide.tsx·ChatRoomRail.tsx(방 목록 아래 회의실 → setView('meeting')),
+     MeetingPage.tsx(방 목록 없는 일반 페이지), PhoneShell.tsx(폰 분할·세로 대화방은 이미 탭 줄 없음), nav.ts(회의실 배지 = 답 기다리는 회의 결정 수).
+     색은 chat-header.html과 같은 사무실 토큰. 이름·숫자는 예시 -->
+<style>
+  [data-mode='light'] {
+    --background:#F6F5FB; --foreground:#221F33; --card:#FFFFFF; --primary:#6C5CE7; --on-primary:#FFFFFF;
+    --muted:#ECEAF6; --muted-foreground:#66627F; --accent:#E9E6FA; --border:#DEDAF0; --input:#CFCAE6;
+    --chrome:#FBFAFF; --working:#1C7C46; --waiting:#9A5B00; --waiting-bg:#F2C94C; --error:#C42B2B; --badge:#E5484D;
+    --ask-soft:#FFF3DC; --good-soft:#E2F5EA; --bad-soft:#FDE7E7; --me:#6C5CE7; --sheet-bg:#E4E1F2; --frame:#c9c4e0; --hl:#E5484D;
+  }
+  [data-mode='dark'] {
+    --background:#14131C; --foreground:#EDEBF8; --card:#201F2D; --primary:#9B8CFF; --on-primary:#1A1240;
+    --muted:#292739; --muted-foreground:#A7A3C4; --accent:#302D47; --border:#34314A; --input:#413E5C;
+    --chrome:#181723; --working:#4ADE80; --waiting:#F2C94C; --waiting-bg:#F2C94C; --error:#FF6B6B; --badge:#E5484D;
+    --ask-soft:#3A2E12; --good-soft:#14301F; --bad-soft:#3A1A1E; --me:#7B6CF0; --sheet-bg:#0C0B12; --frame:#2a2838; --hl:#FF8A8F;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--sheet-bg); }
+  body { font-family: "Pretendard", "Apple SD Gothic Neo", system-ui, sans-serif; color: var(--foreground); padding: 28px 32px 40px; width: max-content; min-width: 100vw; font-size: 13px; }
+  .top { display: flex; gap: 6px; margin-bottom: 18px; }
+  .top a { padding: 7px 14px; border-radius: 999px; background: var(--card); color: var(--foreground); text-decoration: none; font-weight: 600; border: 1px solid var(--border); }
+  .top a.on { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
+  h1 { font-size: 24px; } h2 { font-size: 16px; display: flex; gap: 8px; align-items: center; }
+  .lead { color: var(--muted-foreground); font-size: 13.5px; margin: 6px 0 20px; max-width: 1420px; line-height: 1.6; }
+  .rec { font-size: 10.5px; font-weight: 800; background: var(--primary); color: var(--on-primary); border-radius: 999px; padding: 2px 8px; }
+  .row { display: flex; gap: 26px; align-items: flex-start; margin-bottom: 26px; }
+  .col { display: flex; flex-direction: column; gap: 8px; }
+  .cap { font-size: 12.5px; color: var(--muted-foreground); max-width: 700px; line-height: 1.5; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px 18px; font-size: 12.8px; line-height: 1.65; }
+  .card li { margin-left: 18px; }
+  table { border-collapse: collapse; font-size: 12.5px; }
+  th, td { border-bottom: 1px solid var(--border); padding: 7px 10px; text-align: left; vertical-align: top; line-height: 1.5; }
+  th { color: var(--muted-foreground); font-weight: 700; font-size: 11.5px; }
+  td.ok { color: var(--working); font-weight: 700; } td.no { color: var(--error); font-weight: 700; } td.mid { color: var(--waiting); font-weight: 700; }
+  tr.pick td { background: color-mix(in srgb, var(--primary) 8%, transparent); }
+
+  svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+  /* 창 (실제 앱 1400px 화면을 0.5배가 아닌 '구조 그대로' 축소해 그린다) */
+  .win { width: 700px; height: 440px; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; background: var(--background); border: 1px solid var(--frame); box-shadow: 0 18px 36px -18px rgba(40,30,90,.45); position: relative; }
+  .appbar { height: 34px; flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 0 12px; background: var(--card); border-bottom: 1px solid var(--border); font-size: 11.5px; font-weight: 700; }
+  .appbar .sp { flex: 1; } .appbar .ib { height: 22px; padding: 0 8px; border-radius: 999px; background: var(--muted); display: inline-flex; gap: 4px; align-items: center; font-size: 10.5px; }
+  .appbar .ib.p { background: var(--primary); color: var(--on-primary); }
+  .body { display: flex; flex: 1; min-height: 0; }
+  .nav { width: 112px; flex-shrink: 0; border-right: 1px solid var(--border); padding: 8px 6px; display: flex; flex-direction: column; gap: 2px; font-size: 11.5px; }
+  .nav span { display: flex; align-items: center; gap: 6px; padding: 5px 7px; border-radius: 8px; color: var(--muted-foreground); }
+  .nav span.on { background: var(--accent); color: var(--foreground); font-weight: 700; }
+  .nav b.n { margin-left: auto; background: var(--waiting-bg); color: #241a00; border-radius: 999px; padding: 0 5px; font-size: 9.5px; }
+  .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); padding: 0 12px; height: 32px; align-items: flex-end; flex-shrink: 0; position: relative; }
+  .tabs span { padding: 0 8px 7px; font-size: 11.5px; color: var(--muted-foreground); border-bottom: 2px solid transparent; display: flex; gap: 4px; align-items: center; }
+  .tabs span.on { color: var(--foreground); font-weight: 700; border-color: var(--primary); }
+  .tabs b.n, .side b.n { background: var(--waiting-bg); color: #241a00; border-radius: 999px; padding: 0 5px; font-size: 9.5px; }
+  .head { padding: 9px 12px 8px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .head .t { display: flex; align-items: center; gap: 6px; font-weight: 800; font-size: 13px; }
+  .head .t .sp { flex: 1; } .head .t .ic { color: var(--muted-foreground); }
+  .head .s { margin-top: 6px; display: flex; gap: 5px; align-items: center; font-size: 10.5px; color: var(--muted-foreground); }
+  .chip { border: 1px solid var(--border); border-radius: 999px; padding: 1px 7px; display: inline-flex; gap: 4px; align-items: center; font-size: 10px; color: var(--foreground); }
+  .wk { color: var(--working); font-weight: 700; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; flex-shrink: 0; } .dot.w { background: var(--working); } .dot.q { background: var(--waiting); }
+  .split { display: flex; flex: 1; min-height: 0; }
+  .side { width: 128px; flex-shrink: 0; border-right: 1px solid var(--border); background: var(--chrome); padding: 7px 6px; display: flex; flex-direction: column; gap: 1px; font-size: 11px; }
+  .side .g { font-size: 9.5px; color: var(--muted-foreground); padding: 5px 6px 2px; font-weight: 600; }
+  .side .r { display: flex; align-items: center; gap: 6px; padding: 4px 6px; border-radius: 8px; }
+  .side .r.on { background: var(--accent); font-weight: 700; }
+  .side .r .n { margin-left: auto; }
+  .side hr { border: 0; border-top: 1px solid var(--border); margin: 6px 2px; }
+  .side .r.meet { color: var(--muted-foreground); } .side .r.meet.on { color: var(--foreground); }
+  .msgs { flex: 1; padding: 10px 14px; display: flex; flex-direction: column; gap: 9px; overflow: hidden; }
+  .msg .nm { font-size: 9.5px; color: var(--muted-foreground); margin-bottom: 2px; }
+  .msg .b { display: inline-block; background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 5px 9px; font-size: 11px; max-width: 330px; line-height: 1.45; }
+  .msg.me { text-align: right; } .msg.me .b { background: var(--me); color: #fff; border-color: transparent; }
+  .composer { margin: 0 12px 10px; border: 1px solid var(--input); border-radius: 10px; background: var(--card); padding: 7px 10px; font-size: 10.5px; color: var(--muted-foreground); }
+  .page { flex: 1; padding: 12px 16px; display: flex; flex-direction: column; gap: 9px; overflow: hidden; }
+  .page h3 { font-size: 14px; } .page .d { font-size: 10.5px; color: var(--muted-foreground); line-height: 1.5; }
+  .pbox { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 9px 10px; font-size: 10.5px; display: flex; flex-direction: column; gap: 7px; }
+  .pbox .ln { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; }
+  .pbox .lb { width: 34px; color: var(--muted-foreground); }
+  .btn { align-self: flex-start; background: var(--primary); color: var(--on-primary); border-radius: 8px; padding: 5px 10px; font-weight: 700; font-size: 10.5px; }
+  .decide { background: var(--ask-soft); border: 1px solid color-mix(in srgb, var(--waiting) 40%, transparent); border-radius: 10px; padding: 8px 10px; font-size: 10.5px; }
+  /* 표시 */
+  .mark { position: absolute; border: 2px dashed var(--hl); border-radius: 8px; pointer-events: none; }
+  .pin { position: absolute; background: var(--hl); color: #fff; font-size: 10px; font-weight: 800; border-radius: 999px; padding: 2px 7px; white-space: nowrap; }
+  .gain { position: absolute; background: var(--working); color: #fff; font-size: 10px; font-weight: 800; border-radius: 999px; padding: 2px 7px; white-space: nowrap; }
+</style>
+</head>
+<body>
+<div class="top"><a id="m-light" href="?mode=light">라이트</a><a id="m-dark" href="?mode=dark">다크</a></div>
+
+<h1>1. 대화 화면 위 '단체방 | 회의실' 탭 — 없앨까?</h1>
+<p class="lead">
+  <b>확인한 사실(코드):</b> 위쪽 탭과 방 목록 맨 아래 '회의실'은 <b>같은 회의실 화면</b>으로 갑니다. 56px로 접은 띠의 맨 아래 회의실 아이콘도 같습니다.
+  탭 줄은 '대화' 메뉴 안에 화면이 2개(단체방·회의실)라서 자동으로 생기는 줄입니다. 휴대폰(세로·분할 화면)은 <b>이미 이 탭 줄을 없애고</b> 회의실을 방 목록 안에 두고 있습니다.<br>
+  <b>탭이 지금 하는 일 3가지:</b> ① 회의실에서 단체방으로 돌아오는 유일한 버튼(회의실 화면에는 방 목록이 없음) ② '답을 기다리는 회의 결정' 숫자 배지(방 목록의 회의실에는 숫자가 없음) ③ 왼쪽 메뉴 '대화'를 누르면 마지막에 본 탭이 열려서, 회의실에 있다가 '대화'를 눌러도 회의실에 머뭅니다.
+</p>
+
+<div class="row">
+  <div class="col">
+    <h2>지금 (1.3.1)</h2>
+    <div class="win" id="w-now"></div>
+    <div class="cap">탭 줄 32px + 방 이름 줄이 겹쳐 '어디에 있는지'를 두 번 말합니다. 회의실이 위(탭)·아래(목록) 두 군데에 있고, 숫자 배지는 위에만 있습니다.</div>
+  </div>
+  <div class="col">
+    <h2>추천 · 방 목록으로 합치기 — 단체방 <span class="rec">추천</span></h2>
+    <div class="win" id="w-after"></div>
+    <div class="cap">탭 줄을 없애 대화가 한 줄 더 보입니다. 회의실은 방 목록 맨 아래 한 곳에만 두고, 탭에 있던 숫자 배지를 그 줄로 옮깁니다(방 '안 읽은 수'와 구분되게 노란색).</div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col">
+    <h2>추천 · 방 목록으로 합치기 — 회의실을 연 모습</h2>
+    <div class="win" id="w-meet"></div>
+    <div class="cap">회의실도 왼쪽에 <b>같은 방 목록</b>을 그대로 둡니다. '전체 방'을 누르면 바로 단체방으로 돌아갑니다 → 탭이 하던 '빠른 전환'이 한 번 클릭 그대로 남습니다. 방 목록을 56px 띠로 접어도 맨 아래 회의실 아이콘이 같은 역할을 합니다.</div>
+  </div>
+  <div class="col" style="width:700px">
+    <h2>세 가지 안 비교</h2>
+    <table class="card" style="padding:0">
+      <tr><th style="width:118px">안</th><th>얻는 것</th><th>잃는 것 / 위험</th><th style="width:60px">판단</th></tr>
+      <tr><td><b>A. 탭만 제거</b></td><td>세로 32px, 회의실 진입점 1곳으로 단순</td><td>회의실에서 단체방으로 돌아올 버튼이 없어짐(메뉴 '대화'도 회의실을 다시 엶). 결정 대기 숫자가 대화 화면에서 사라짐</td><td class="no">비추천</td></tr>
+      <tr><td><b>B. 그대로 유지</b></td><td>작업 0. 데스크톱 사용자는 익숙함</td><td>같은 버튼 2개, 방 이름 줄과 겹침, 폰과 다른 구조(폰엔 탭 없음)</td><td class="mid">보통</td></tr>
+      <tr class="pick"><td><b>C. 방 목록으로 합치기</b> <span class="rec">추천</span></td><td>세로 32px, 진입점 1곳, 폰·PC 같은 구조. 전환은 목록에서 1클릭 그대로</td><td>회의실 화면이 방 목록 폭(200px)만큼 좁아짐 → 회의 기록 칸은 지금도 넓어 문제 적음(추정)</td><td class="ok">추천</td></tr>
+    </table>
+    <div class="card">
+      <b>C안에서 같이 바꿔야 하는 것 (구현 시 빠지면 A안이 됨)</b>
+      <ul>
+        <li>대화 묶음(단체방·회의실)일 때 위쪽 탭 줄을 그리지 않음. 다른 묶음(직원·업무 등)의 탭은 그대로.</li>
+        <li>회의실 화면 왼쪽에 단체방과 같은 방 목록(또는 접힌 56px 띠)을 두고, 회의실 줄을 '선택됨'으로 표시.</li>
+        <li>방 목록·56px 띠의 회의실에 '답 기다리는 결정' 숫자 배지(노란색, 지금 탭 배지와 같은 색).</li>
+        <li>왼쪽 메뉴 '대화'는 그대로 '마지막 본 곳'을 엶 — 목록에서 1클릭으로 돌아올 수 있어 문제 없음.</li>
+        <li>새 색·새 문구 없음. 키보드 이동: 방 목록 안에서 ↑↓로 회의실까지 이어짐.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+  const mode = new URLSearchParams(location.search).get('mode') === 'dark' ? 'dark' : 'light'
+  document.documentElement.dataset.mode = mode
+  document.getElementById('m-' + mode).classList.add('on')
+  const I = {
+    info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',
+    search: '<circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/>',
+    meet: '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M12 16v4M8 20h8"/>',
+  }
+  const ic = (k) => `<svg viewBox="0 0 24 24">${I[k]}</svg>`
+  const appbar = `<div class="appbar">AI Office <span class="ib">₩1억 2,840만</span><span class="sp"></span><span class="ib">🔔 확인 필요 2</span><span class="ib">✨ 비서</span><span class="ib p">＋ 직원 고용</span></div>`
+  const nav = `<div class="nav">${['비서','사무실','직원','업무 <b class="n">1</b>','결재함 <b class="n">4</b>','대화 <b class="n">1</b>','노하우','기록','상점','설정'].map((x) => `<span class="${x.startsWith('대화') ? 'on' : ''}">${x}</span>`).join('')}</div>`
+  const side = (meetOn, meetBadge) => `<div class="side">
+    <div class="g">전체</div><div class="r ${meetOn ? '' : 'on'}" data-k="all"><i class="dot" style="background:#9B8CFF"></i>전체 방</div>
+    <div class="g">팀</div><div class="r"><i class="dot" style="background:#3E7BEA"></i>개발팀</div><div class="r"><i class="dot" style="background:#E8833A"></i>기획팀</div><div class="r"><i class="dot" style="background:#8C5BD9"></i>디자인 팀</div>
+    <div class="g">랩</div><div class="r"><i class="dot" style="background:#3B9C7A"></i>오피스 전담 랩</div>
+    <hr><div class="r meet ${meetOn ? 'on' : ''}" data-k="meet">${ic('meet')}회의실${meetBadge ? '<b class="n">1</b>' : ''}</div></div>`
+  const head = `<div class="head" data-k="head"><div class="t">전체 방<span class="sp"></span><span class="ic">${ic('info')}</span><span class="ic">${ic('search')}</span></div>
+    <div class="s">7명 · <span class="wk">4명 일하는 중</span><span class="chip"><i class="dot w"></i>정리드</span><span class="chip"><i class="dot w"></i>최가독</span><span class="chip"><i class="dot q"></i>이디자 확인 필요</span><span class="chip">+3명</span></div></div>`
+  const msgs = (extra) => `<div class="msgs">
+    <div class="msg"><div class="nm">김기획</div><div class="b">안드로이드 1.1 기획서 올렸어요. PC 앱 그대로 옮기기가 목표예요.</div></div>
+    <div class="msg me"><div class="b">@개발팀 프로토콜 v2부터 시작해 주세요</div></div>
+    <div class="msg"><div class="nm">이디자</div><div class="b">폰 배치안 작업 시작했어요. 탭 순서 질문 하나 드렸어요.</div></div>
+    <div class="msg"><div class="nm">정리드</div><div class="b">@김기획 기획서 확인했어요. 시안은 @이디자 확인 뒤에 반영할게요.</div></div>
+    ${extra ? '<div class="msg me"><div class="b">@김버전 빌드 부탁해요.</div></div>' : ''}</div>
+    <div class="composer">메시지 (@이름·@팀·@랩·@전체 로 지시)</div>`
+  const tabs = `<div class="tabs" data-k="tabs"><span class="on">단체방</span><span>회의실 <b class="n">1</b></span></div>`
+
+  document.getElementById('w-now').innerHTML = `${appbar}<div class="body">${nav}<div class="main">${tabs}${head}<div class="split">${side(false, false)}<div class="main">${msgs(false)}</div></div></div></div>`
+  document.getElementById('w-after').innerHTML = `${appbar}<div class="body">${nav}<div class="main">${head}<div class="split">${side(false, true)}<div class="main">${msgs(true)}</div></div></div></div>`
+  const meetPage = `<div class="page"><h3>회의실</h3><div class="d">2명 이상을 불러 주제를 던지면 돌아가며 발언하고, 끝나면 회의록과 할 일 카드가 만들어져요.</div>
+    <div class="decide"><b>정리드</b>의 결정 요청 · 휴대폰 탭 순서를 대화 → 보드 순으로 할까요? <span style="float:right;font-weight:700">답하기</span></div>
+    <div class="pbox"><div class="ln"><span class="lb">팀·랩</span><span class="chip">개발팀</span><span class="chip">디자인 팀</span><span class="chip">오피스 전담 랩</span></div>
+    <div class="ln"><span class="lb">직원</span><span class="chip">정리드</span><span class="chip">이디자</span><span class="chip">김기획</span></div>
+    <div class="ln"><span class="lb">주제</span><span style="color:var(--muted-foreground)">회의 주제를 적어 주세요</span></div></div>
+    <span class="btn">${ic('meet')} 회의 시작</span></div>`
+  document.getElementById('w-meet').innerHTML = `${appbar}<div class="body">${nav}<div class="main"><div class="split">${side(true, true)}${meetPage}</div></div></div>`
+  // 표시: 요소 위치를 재서 점선·말풍선을 붙인다
+  function mark(id, k, text, kind = 'pin', dx = 8, dy = 0) {
+    const w = document.getElementById(id), el = w.querySelector(`[data-k="${k}"]`)
+    const a = w.getBoundingClientRect(), b = el.getBoundingClientRect()
+    const x = b.left - a.left, y = b.top - a.top
+    if (kind === 'pin') w.insertAdjacentHTML('beforeend', `<div class="mark" style="left:${x - 3}px;top:${y - 3}px;width:${b.width + 6}px;height:${b.height + 6}px"></div>`)
+    w.insertAdjacentHTML('beforeend', `<div class="${kind}" style="left:${x + b.width + dx}px;top:${y + b.height / 2 - 9 + dy}px">${text}</div>`)
+  }
+  mark('w-now', 'tabs', '① 탭 줄 — 회의실 진입점 (위)', 'pin', -300)
+  mark('w-now', 'meet', '② 같은 회의실 — 진입점 (아래, 숫자 없음)')
+  mark('w-after', 'head', '탭 줄 없음 → 대화가 한 줄 더', 'gain', -330, -12)
+  mark('w-after', 'meet', '회의실 1곳 + 결정 대기 숫자')
+  mark('w-meet', 'all', '1클릭으로 단체방 복귀', 'pin', -120, -26)
+</script>
+</body>
+</html>

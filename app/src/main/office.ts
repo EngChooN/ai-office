@@ -6,11 +6,6 @@ import os from 'node:os'
 import path from 'node:path'
 import { app, net } from 'electron'
 import { z } from 'zod'
-import type { PeerManager } from './peer/peerManager'
-import type { PeerHost, PeerHostOffice } from './peer/peerHost'
-import { isPeerJobActive, PEER_LIMITS, type PeerApprovalEvent } from '../shared/peerProtocol'
-import { remoteStaffBase } from './peer/remoteStaffView'
-import { blocksCopyRedelegate, canCreateCards, derivedPeerAction, hasLocalWork as hasLocalWorkOf, heldByOtherPeerJob, peerCwdRestored, peerJobOfOrigins, shouldHoldLocal } from './peer/peerIsolation'
 import { fmtDate, getLang, resolveLang, setLang, t, tk, tr as trI18n, tx, type I18nArg, type Lang } from '../shared/i18n/index.ts'
 import {
   companyFromXp,
@@ -74,6 +69,10 @@ import {
   ChangeFile,
   WorkRevertInfo,
   type ApprovalWaitReason,
+  type ApprovalActor,
+  type ApprovalHistoryFilter,
+  type ApprovalRecord,
+  type ApprovalResult,
 } from '../shared/types'
 import { recordBashWrite, recordWrite, WrittenStore, writtenWaitReason } from '../shared/writtenFiles'
 import { buildStaffActivity } from '../shared/staffActivity'
@@ -82,6 +81,7 @@ import { answersText } from '../shared/chatApproval'
 import { defaultProvider, ENGINE_NAME, engineUnsupportedMcp, fitEngineModel, isEngineMismatch } from '../shared/engineModel'
 import { hireDefaults } from '../shared/tokenSaving.ts'
 import { findCodexCli, lastProviderStatus, openResumeInTerminal, providerStatus } from './setup'
+import { hasOpenDelegation, type DelegationInput } from '../shared/delegation'
 import { decisionSections, decisionSectionsOf, decisionsContext, delegatedPrompt, parseDelegatedChoice, recordAnswer, recordDelegated, splitDecision, withDecisionSections } from '../shared/meetingDecisions'
 import { isAbsorbedOpen, matchAbsorbed, meetingCardItems, meetingResultCard, pickPlanCard } from '../shared/planTasks'
 import { shouldNudgeBackground, shouldNudgeLead } from '../shared/leadNudge'
@@ -111,7 +111,7 @@ import { replaceArtifactRef } from '../shared/artifact'
 import type { RemoteOfficePort } from './remote/handler.ts'
 import { isRemoteAutoAllowed, isRemoteManualDeleteAllowed, isRemoteManualDirAllowed, isRemoteManualScopeAllowed, isRemoteRuleBlocked } from './remoteGuard'
 import { pickStaffPatch, type StaffPatch } from './staffPatch'
-import { isRemoteCall, REMOTE_MARK, remoteMarked } from './remoteContext'
+import { isRemoteCall, REMOTE_MARK, remoteMarked, remoteMarkedI18n } from './remoteContext'
 import * as db from './db'
 import { legacyLevelOfXp } from './isoMigrate'
 import type { GridItem, SeatSetPart } from '../shared/iso/furniture'
@@ -153,6 +153,8 @@ import {
 import { HiredStaffManager } from './hired'
 import { askAsProvider, askOnce, type createRuntime, type RateLimitInfo } from './ai'
 import { createApprovalEffectAi } from './approvalEffectAi'
+import { parseLegacyApproval } from './approvalLegacy'
+import { effectOf } from '../shared/approvalEffect'
 import { aiGuessInput, mergeGuess } from '../shared/approvalAiGuess'
 import { probeMcpStatus, sdk } from './ai/claude'
 import { splitFinished } from './ai/pendingSends'
@@ -163,7 +165,8 @@ import { codexUsageAfterFailure, readCodexRateLimits, refreshCodexAssets, shareI
 import { defineTool, registerLocalMcp, type LocalMcpHandle } from './mcp/localMcp'
 import { autoWaitReason, autoActionKey, autoKindOf, autoStep, autoSummaryText, autoWindow, AWAY_ANSWER, formatRemaining, planToConfig, type AutoApprovePlan } from '../shared/autoApprove'
 import { HELP_MAX_PER_TASK, HELP_TEXT_MAX, HelpLedger, mustUseHelp, helpTargetIds, inHelpContext, type HelpCtx } from '../shared/helpRequest'
-import { AUTONOMY_TEXT_ASK_MAX, autonomyVerdict, fallbackAnswers, isFullAutonomy, isTaskAutonomous, nextTextAskRetry, resolveAutonomy } from '../shared/autonomy'
+import { AUTONOMY_TEXT_ASK_MAX, autonomyVerdict, fallbackAnswers, isFullAutonomy, isTaskAutonomous, markProxyAnswers, nextTextAskRetry, resolveAutonomy } from '../shared/autonomy'
+import { clipLeaderReport } from '../shared/memberReport'
 import { commitAll, folderState, pushAndPr, repoRoot, restoreFiles, snapshotTree, treeDiff, workBaseStillValid, workChanges } from './review'
 import { readCodexExternalDay, readExternalDay } from './transcript'
 import { Tutorial } from './tutorial'
@@ -172,6 +175,11 @@ import { NET_CHECK_INTERVAL_MS, NetParking } from '../shared/netResume.ts'
 import { shouldWait, WaitingMessages } from './waitingMessages'
 
 const SCHEDULE_TICK_MS = 30_000
+/** 결재 기록 보관 기간 (90일) — 앱을 켤 때와 하루에 한 번 지난 줄을 지운다 */
+export const APPROVAL_RECORD_KEEP_MS = 90 * 24 * 60 * 60 * 1000
+const APPROVAL_PRUNE_EVERY_MS = 24 * 60 * 60 * 1000
+const APPROVAL_HISTORY_PAGE = 20
+const APPROVAL_HISTORY_PAGE_MAX = 100
 const CHAT_HISTORY = 300
 const CHAT_TEXT_MAX = 600
 /** 결재함 "자동 처리됨" 목록에 남기는 수 */
@@ -208,12 +216,6 @@ const tr = t
  * room: 팀·랩 대화방(팀 id·'lab:<랩 id>')에서 시작된 지시 — 완료 보고·결재·질문·위임 글을 그 방에 올린다 (없으면 전체 방)
  */
 /** isAutonomous: 자율 진행으로 받은 일 (지시창에서 켠 지시·자율 직원이 위임한 일 등 — 카드는 카드의 표시를 본다) */
-/** B컴 Office가 4번(PeerSync)에서 쓰는 것 */
-export interface PeerWorkspacePort {
-  workspaceDir(workspaceId: string): string | null
-  collectChanges(jobId: string, workspaceId: string): Promise<{ changesetId: string; files: number; bytes: number } | { none: true }>
-}
-
 /** 받은 일들이 걸린 업무 카드 (보드 카드 + 대화 지시로 만든 카드) */
 /** 답장 말풍선에 남기는 인용 글 길이 · 직원에게 함께 전하는 인용 글 길이 */
 const REPLY_QUOTE_MAX = 140
@@ -221,7 +223,7 @@ const REPLY_CONTEXT_MAX = 1500
 
 const cardIdsOf = (origins: readonly Origin[]) => origins.flatMap((o) => (o.kind === 'task' ? [o.taskId] : o.cardId ? [o.cardId] : []))
 
-type Origin = ({ kind: 'user' | 'chat' | 'schedule' } | { kind: 'task'; taskId: string } | { kind: 'delegate'; leadId: string } | { kind: 'help'; fromId: string; reqId: string } | { kind: 'process'; runId: string; stepId: string } | { kind: 'peer'; jobId: string }) & { room?: string; isAutonomous?: boolean; text?: string; /** 대화방에서 내가 보낸 메시지 id (처리 상태를 그 말풍선에 남긴다) */ chatId?: number; /** 이 대화 지시로 일을 시작하며 만든 업무 카드 */ cardId?: string; /** 도움 요청 사슬(원업무·경로) — 받은 일과 결과로 재개된 일 모두에 붙어 깊이·횟수·순환 제한을 이어 간다 */ help?: HelpCtx; /** 다른 PC가 맡긴 일에서 파생된 지시 — 승인 주체(피어 jobId)를 이어받는다 */ peerJobId?: string }
+type Origin = ({ kind: 'user' | 'chat' | 'schedule' } | { kind: 'task'; taskId: string } | { kind: 'delegate'; leadId: string } | { kind: 'help'; fromId: string; reqId: string } | { kind: 'process'; runId: string; stepId: string }) & { room?: string; isAutonomous?: boolean; text?: string; /** 대화방에서 내가 보낸 메시지 id (처리 상태를 그 말풍선에 남긴다) */ chatId?: number; /** 이 대화 지시로 일을 시작하며 만든 업무 카드 */ cardId?: string; /** 도움 요청 사슬(원업무·경로) — 받은 일과 결과로 재개된 일 모두에 붙어 깊이·횟수·순환 제한을 이어 간다 */ help?: HelpCtx }
 
 type Counters = Partial<Record<LogType, number>>
 
@@ -229,6 +231,8 @@ type Counters = Partial<Record<LogType, number>>
 export class Office extends EventEmitter<{
   snapshot: [OfficeSnapshot]
   log: [LogEntry]
+  /** 결재 기록이 새로 남음 — PC 화면만 받는다 (원본 명령이 들어 있어 휴대폰 스트림에는 보내지 않는다) */
+  approvalRecord: [ApprovalRecord]
   chat: [ChatMessage]
   /** 이미 올린 메시지가 바뀜 (결재 처리 결과) — PC 화면만 받는다 */
   chatUpdate: [ChatMessage]
@@ -237,14 +241,6 @@ export class Office extends EventEmitter<{
   notify: [{ title: string; body: string; staffId: string }]
 }> {
   private hired = new Map<string, db.StoredStaff>()
-  /** 다른 PC 연결: A컴 쪽(원격 직원·일 큐)과 B컴 쪽(받은 일) — 연결을 안 쓰면 null (docs/specs/multi-pc-protocol.md) */
-  private peer: PeerManager | null = null
-  private peerHost: PeerHost | null = null
-  /** B컴: 피어 일의 결재 중 이미 알린 것 (결재 id → 일 id) */
-  private peerApprovalSeen = new Map<string, string>()
-  /** B컴: 파일 복사본으로 일하는 직원의 작업 폴더 (피어 일이 끝나 변경을 모을 때까지) */
-  private peerCwd = new Map<string, { dir: string; jobId: string; /** 일은 끝났고 실제 작업 폴더가 원래대로 돌아오기를 기다리는 중 — 그때까지 로컬 지시를 막는다 */ ending?: boolean }>()
-  private peerSync: PeerWorkspacePort | null = null
   private external: db.StoredStaff[] = []
   private teams = new Map<string, Team>()
   private labs = new Map<string, Lab>()
@@ -342,6 +338,7 @@ export class Office extends EventEmitter<{
   private watcher: ExternalWatcher
   private emitTimer: NodeJS.Timeout | null = null
   private scheduleTimer: NodeJS.Timeout | null = null
+  private approvalPrunedAt = 0
   /** 자동결재(대표 부재 중) 상태 */
   private auto: db.StoredAutoApprove = { config: { mode: 'off' }, counts: { edit: 0, command: 0, other: 0, answered: 0, waited: 0 }, wasActive: false, log: [] }
   /** 대표가 결재 옆에서 만든 "앞으로 항상 승인" 규칙 */
@@ -608,7 +605,15 @@ export class Office extends EventEmitter<{
     // 앱이 꺼져 있는 동안 기간이 끝났으면 켜자마자 요약한다
     this.syncAutoWindow()
     this.restorePendingApprovals()
+    // 결재 기록: 예전 기록을 한 번 옮기고(최근 90일), 지난 줄을 지운다 (이후 하루에 한 번)
+    this.importLegacyApprovals()
+    this.pruneApprovalRecords()
+    this.approvalPrunedAt = Date.now()
     this.scheduleTimer = setInterval(() => {
+      if (Date.now() - this.approvalPrunedAt >= APPROVAL_PRUNE_EVERY_MS) {
+        this.approvalPrunedAt = Date.now()
+        this.pruneApprovalRecords()
+      }
       this.releaseHeldIfRecovered()
       this.runDueSchedules()
       this.runDueChatReservations()
@@ -646,7 +651,7 @@ export class Office extends EventEmitter<{
       return { ...s, teamId: id }
     })
     return {
-      staff: [...[...this.hired.values()].map((s) => this.liveStaff(s)), ...external.map((s) => this.liveStaff(s)), ...this.remoteStaff()],
+      staff: [...[...this.hired.values()].map((s) => this.liveStaff(s)), ...external.map((s) => this.liveStaff(s))],
       teams: [...this.teams.values(), ...projectTeams.values()],
       labs: [...this.labs.values()],
       runs: this.runs,
@@ -673,19 +678,13 @@ export class Office extends EventEmitter<{
 
   /** 실제 작업 폴더: 직접 지정한 폴더, 지정 안 했으면 홈 폴더(범용 — 지시에 나온 어느 프로젝트든 오간다) */
   private workDirOf(s: db.StoredStaff): { cwd: string; source: 'own' | 'none' } {
-    // 다른 PC가 보낸 파일 복사본으로 일하는 동안은 그 복사본 폴더 (끝나면 원래 폴더로 돌아온다)
-    const pc = this.peerCwd.get(s.id)
-    if (pc && !pc.ending && fs.existsSync(pc.dir)) return { cwd: pc.dir, source: 'own' }
     if (s.ownCwd && fs.existsSync(s.ownCwd)) return { cwd: s.ownCwd, source: 'own' }
     return { cwd: os.homedir(), source: 'none' }
   }
 
   /** 작업 폴더가 바뀐 직원은 쉬는 중일 때 그 폴더에서 새 대화로 다시 연다 (일하는 중이면 끝난 뒤 다음 갱신 때) */
   private syncWorkDirs() {
-    for (const s of this.hired.values()) {
-      this.syncWorkDir(s)
-      if (this.peerCwd.get(s.id)?.ending) this.releaseHeld(s.id)
-    }
+    for (const s of this.hired.values()) this.syncWorkDir(s)
   }
 
   private syncWorkDir(s: db.StoredStaff) {
@@ -712,7 +711,7 @@ export class Office extends EventEmitter<{
     const statusSince = seen && seen.status === s.status ? seen.since : Date.now()
     if (seen?.since !== statusSince) this.statusSeen.set(s.id, { status: s.status, since: statusSince })
     const todayDone = db.resultCountBetween(s.id, startOfDay(new Date()), Date.now() + 1)
-    return Object.assign(s, { stats: this.statsOf(s.id), meetingId: meeting?.id ?? null, labIds, statusSince, todayDone, progress: this.progressOf(s), praise: this.praise[s.id], unreadReports: unreadOf(this.unreadReports, s.id), isAutonomous: this.isAutonomous(s.id) }) as Staff
+    return Object.assign(s, { stats: this.statsOf(s.id), meetingId: meeting?.id ?? null, labIds, statusSince, todayDone, progress: this.progressOf(s), praise: this.praise[s.id], unreadReports: unreadOf(this.unreadReports, s.id), isAutonomous: this.isAutonomous(s.id), awaitingTeam: this.isAwaitingTeamOf(s) }) as Staff
   }
 
   private progressOf(s: db.StoredStaff) {
@@ -749,10 +748,9 @@ export class Office extends EventEmitter<{
     this.settleFailed(staffId, error, origins, queued)
   }
 
-  /** 오류로 끝난 받은 일 정리: 대화방에 알리고, 부탁·피어 일을 닫고, 업무 카드를 되돌린다 (보관했다 포기한 일도 여기로) */
+  /** 오류로 끝난 받은 일 정리: 대화방에 알리고, 부탁을 닫고, 업무 카드를 되돌린다 (보관했다 포기한 일도 여기로) */
   private settleFailed(staffId: string, error: string, origins: Origin[], queued: readonly { taskId: string }[]) {
     for (const o of origins) if (o.kind === 'process') this.stopRun(o.runId)
-    for (const o of origins) if (o.kind === 'peer') this.failPeerJob(o.jobId, staffId, error)
     this.failHelpRequests(staffId, origins, 'error')
     const taskIds = [...cardIdsOf(origins), ...queued.map((q) => q.taskId)]
     for (const id of taskIds) this.returnToTodo(id)
@@ -971,7 +969,7 @@ export class Office extends EventEmitter<{
   /** 직원 대화를 Claude Code에서 이어서 연다. 일하는 중이면 막고, 열기 전에 사무실 쪽 세션을 닫아 다음 지시 때 터미널 대화까지 이어받게 한다 */
   async resumeInTerminal(staffId: string): Promise<string> {
     const s = this.hired.get(staffId)
-    if (!s) return '고용 직원만 열 수 있어요.'
+    if (!s) return '이 앱에서 추가한 직원만 열 수 있어요.'
     if (!s.sessionId) return '아직 대화가 없어요. 한 번 지시한 뒤에 열 수 있어요.'
     if (s.status === 'working' || s.status === 'waiting' || s.status === 'netWait') return '일하는 중에는 열 수 없어요. 일이 끝난 뒤에 열어 주세요.'
     // 열 수 없으면(Codex CLI 없음) 사무실 쪽 세션은 그대로 둔다
@@ -1081,8 +1079,6 @@ export class Office extends EventEmitter<{
       origin.kind === 'task' &&
       this.lastDoneTask.get(staffId) !== origin.taskId &&
       !(this.origins.get(staffId) ?? []).some((o) => o.kind === 'task' && o.taskId === origin.taskId)
-    // 다른 PC의 직원에게는 일 큐로 보낸다 (대표가 대화창에서 직접 시킨 경우 — 리더 없이 보고만 대표에게)
-    if (this.peer?.isRemoteStaff(staffId)) return this.instructRemote(staffId, text, origin, via, attachments)
     const s = this.hired.get(staffId)
     // 연습 직원은 AI를 부르지 않는다 (튜토리얼 진행은 대본이 맡는다)
     if (!s || s.isPractice) return
@@ -1091,15 +1087,6 @@ export class Office extends EventEmitter<{
       if (!isDirect) return void this.heldLocal.set(staffId, [...(this.heldLocal.get(staffId) ?? []), { text, origin, attachments, via, isDirect }])
       this.cancelNetPark(staffId)
     }
-    // 피어 일이 걸린 직원에게 온 로컬 지시는 대기 (/명령은 중단 같은 제어라 그대로 통과)
-    if (shouldHoldLocal(this.origins.get(staffId) ?? [], origin, Boolean(parseSlash(text))) || (this.peerCwd.has(staffId) && !(origin.kind === 'peer' || origin.peerJobId) && !parseSlash(text))) return this.holdLocal(staffId, text, origin, attachments, via, isDirect)
-    // 피어 일에서 파생된 지시: 그 일이 끝났으면 버리고, 다른 피어 일이 쓰는 중이면 대기
-    const derived = derivedPeerAction(origin, this.origins.get(staffId) ?? [], this.peerCwd.get(staffId)?.jobId, (id) => {
-      const j = this.peerHost?.getJob(id)
-      return Boolean(j && isPeerJobActive(j.state))
-    })
-    if (derived === 'drop') return this.log(staffId, 'status', t('peer.guard.lateDropped', { name: s.name }))
-    if (derived === 'hold') return this.holdLocal(staffId, text, origin, attachments, via, isDirect)
     this.log(staffId, 'instruction', via ? `${via} ${text}` : text, attachments)
     if (this.handleSlash(staffId, text, origin)) return
     const origins = this.origins.get(staffId) ?? []
@@ -1165,7 +1152,8 @@ export class Office extends EventEmitter<{
       this.textAsks.delete(a.id)
       this.restoredAsks.delete(a.id)
       this.unpersistApproval(a.id)
-      this.demoApprovalIds.delete(a.id)
+      // 새 지시·퇴사로 닫힌 카드도 기록에 '취소'로 남긴다 ("안 눌렀는데 카드가 사라졌다"를 찾을 수 있게) — 연습 카드는 빼고
+      if (!this.demoApprovalIds.delete(a.id)) this.recordApproval(s.id, { approvalId: a.id, requestedAt: a.createdAt, result: 'canceled', actor: '', toolName: a.toolName, summary: a.summary, summaryI18n: a.summaryI18n, effectI18n: a.effectI18n })
       this.log(s.id, 'approval', { list: [label, `: ${a.toolName} `, a.summaryI18n ?? a.summary], sep: '' })
       this.settleChat({ id: a.id, result })
     }
@@ -1269,7 +1257,7 @@ export class Office extends EventEmitter<{
   /** 일하는 중이면 대기 메시지로 들고 있다가 끝나면 보낸다. 들고 있으면 true */
   instructFromPanel(staffId: string, text: string, attachments: Attachment[] = [], origin: Origin = { kind: 'user' }, shown?: string) {
     const s = this.hired.get(staffId)
-    if (s && !s.isPractice && !this.peer?.isRemoteStaff(staffId) && shouldWait({ status: s.status, approvals: s.approvals.length, text, isSlash: Boolean(parseSlash(text)) })) {
+    if (s && !s.isPractice && shouldWait({ status: s.status, approvals: s.approvals.length, text, isSlash: Boolean(parseSlash(text)) })) {
       this.waitingMsgs.add(staffId, { text, origin, attachments, ...(shown ? { shown } : {}) })
       this.scheduleEmit()
       return true
@@ -1302,7 +1290,7 @@ export class Office extends EventEmitter<{
 
   /** 끼어들기: 대화방에서 온 지시는 출처(방)를 남겨 결과가 그 방에 올라가게 한다. 직원 패널 지시는 지금처럼 출처 없이 */
   private async interruptWith(staffId: string, text: string, attachments: Attachment[], origin: Origin) {
-    if (origin.kind !== 'chat' || this.peer?.isRemoteStaff(staffId)) return this.interrupt(staffId, text, attachments)
+    if (origin.kind !== 'chat') return this.interrupt(staffId, text, attachments)
     this.log(staffId, 'status', tk('log.interrupted'))
     await this.interrupt(staffId, text, attachments, origin)
   }
@@ -1312,13 +1300,6 @@ export class Office extends EventEmitter<{
    * origin: 리더가 delegate로 끼어든 지시의 출처 — 끝난 결과가 [팀원 보고]로 리더에게 돌아가게 받은 일에 남긴다
    */
   async interrupt(staffId: string, text?: string, attachments: Attachment[] = [], origin?: Origin) {
-    // 다른 PC 직원: 맡긴 일을 취소한다 (그 PC에 취소를 보낸다). 지시를 같이 주면 새 일로 보낸다
-    if (this.peer?.isRemoteStaff(staffId)) {
-      const stopped = this.peer.stopStaff(staffId)
-      if (stopped) this.log(staffId, 'status', tk(text?.trim() ? 'log.interrupted' : 'log.stopped'))
-      if (text?.trim()) this.instructRemote(staffId, text, { kind: 'user' }, '', attachments)
-      return
-    }
     const s = this.hired.get(staffId)
     if (!s) return
     // 인터넷 연결을 기다리던 일은 돌고 있는 턴이 없다 — 보관을 풀어 정리하고, 지시가 있으면 새로 보낸다
@@ -1377,7 +1358,6 @@ export class Office extends EventEmitter<{
     for (const id of taskIds) this.returnToTodo(id)
     for (const o of origins) this.setDelivery(o.chatId, staffId, { state: 'stopped' })
     for (const o of origins) if (o.kind === 'process') this.stopRun(o.runId)
-    for (const o of origins) if (o.kind === 'peer') this.failPeerJob(o.jobId, staffId, 'stopped')
     this.failHelpRequests(staffId, origins, 'stopped')
     return taskIds
   }
@@ -1424,16 +1404,56 @@ export class Office extends EventEmitter<{
       if (!a) continue
       s.approvals = s.approvals.filter((x) => x.id !== approvalId)
       this.unpersistApproval(approvalId)
+      this.recordApproval(s.id, { approvalId, requestedAt: a.createdAt, result: 'canceled', actor: '', toolName: a.toolName, summary: a.summary, summaryI18n: a.summaryI18n, effectI18n: a.effectI18n })
       this.log(s.id, 'approval', `${reason}: ${a.toolName} ${a.summary}`)
       this.patch(s.id, { status: s.approvals.length ? 'waiting' : 'working' })
       this.settleChat({ id: approvalId, result: 'canceled' })
     }
   }
 
+  /** 결재한 쪽: 휴대폰(원격 표시가 붙은 호출·원격 호출 안)이면 phone, 아니면 PC 화면 */
+  private actorOf(via: string): ApprovalActor {
+    return via || isRemoteCall() ? 'phone' : 'pc'
+  }
+
+  /** 결재 기록 한 줄을 남기고 PC 화면에 알린다. 저장에 실패해도 결재 처리는 막지 않는다. 비밀값은 가려서 저장한다 */
+  private recordApproval(staffId: string, r: Omit<db.NewApprovalRecord, 'staffId' | 'decidedAt'>) {
+    try {
+      const rec = db.insertApprovalRecord({ ...r, staffId, decidedAt: Date.now(), summary: maskSecrets(r.summary), ...(r.answer ? { answer: maskSecrets(r.answer) } : {}) })
+      this.emit('approvalRecord', rec)
+    } catch (e) {
+      console.error('[office] recordApproval', e)
+    }
+  }
+
+  /** 90일 지난 결재 기록 삭제 */
+  private pruneApprovalRecords() {
+    try {
+      db.pruneApprovalRecords(Date.now() - APPROVAL_RECORD_KEEP_MS)
+    } catch (e) {
+      console.error('[office] pruneApprovalRecords', e)
+    }
+  }
+
+  /** 예전 log의 결재 줄을 결재 기록으로 한 번만 옮긴다 (최근 90일) */
+  private importLegacyApprovals() {
+    try {
+      db.importLegacyApprovals(Date.now() - APPROVAL_RECORD_KEEP_MS, (text, i18n) => {
+        const l = parseLegacyApproval(text, i18n)
+        return l && { result: l.result, actor: l.actor, toolName: l.toolName, summary: maskSecrets(l.summary), ...(l.summaryI18n !== undefined ? { summaryI18n: l.summaryI18n } : {}), ...(l.answer ? { answer: maskSecrets(l.answer) } : {}) }
+      })
+    } catch (e) {
+      console.error('[office] importLegacyApprovals', e)
+    }
+  }
+
+  approvalHistory(staffId: string, opts: { beforeId?: number; limit?: number; filter?: ApprovalHistoryFilter } = {}) {
+    const limit = Math.min(Math.max(Math.floor(opts.limit ?? APPROVAL_HISTORY_PAGE), 1), APPROVAL_HISTORY_PAGE_MAX)
+    return db.approvalRecordsPage(staffId, { limit, beforeId: opts.beforeId, filter: opts.filter })
+  }
+
   /** 결재를 처리했으면 true (이미 끝난 결재면 false — 원격은 409로 알린다). via: 원격 표시 */
   decide(approvalId: string, allow: boolean, via = '') {
-    // 다른 PC 직원의 결재 중계: 결정은 그 PC로 보낸다 (끊겨 있으면 큐에 남아 연결되면 전달)
-    if (this.peer?.isRelayedApproval(approvalId)) return this.peer.decide(approvalId, allow)
     // 글 질문 카드의 "넘기기" = 답 없이 닫기 (이미 끝난 턴이라 이어갈 도구 호출이 없다)
     if (this.textAsks.has(approvalId)) return this.closeTextAsk(approvalId, null, via)
     if (this.restoredAsks.has(approvalId)) return this.closeRestored(approvalId, { allow }, via)
@@ -1451,6 +1471,8 @@ export class Office extends EventEmitter<{
       if (!a) continue
       s.approvals = s.approvals.filter((x) => x.id !== approvalId)
       this.unpersistApproval(approvalId)
+      // 질문을 반려 = 넘기기
+      this.recordApproval(s.id, { approvalId, requestedAt: a.createdAt, result: a.questions ? 'skipped' : allow ? 'approved' : 'rejected', actor: this.actorOf(via), toolName: a.toolName, summary: a.summary, summaryI18n: a.summaryI18n, effectI18n: a.effectI18n })
       this.log(s.id, 'approval', { list: [via ? `${via} ` : '', tk(allow ? 'log.approved' : 'log.rejected'), `: ${a.toolName} `, a.summaryI18n ?? a.summary], sep: '' })
       this.patch(s.id, { status: s.approvals.length ? 'waiting' : 'working' })
       // 질문을 반려 = 넘기기 (답 없이 알아서 판단)
@@ -1460,7 +1482,6 @@ export class Office extends EventEmitter<{
   }
 
   answerQuestion(approvalId: string, answers: Record<string, string>, via = '') {
-    if (this.peer?.isRelayedApproval(approvalId)) return this.peer.answerQuestion(approvalId, answers)
     if (this.textAsks.has(approvalId)) return this.closeTextAsk(approvalId, answers, via)
     if (this.restoredAsks.has(approvalId)) return this.closeRestored(approvalId, { answers }, via)
     if (!this.watcher.answer(approvalId, answers) && !this.manager.answer(approvalId, answers) && !this.demoApprovalIds.delete(approvalId)) return false
@@ -1471,6 +1492,7 @@ export class Office extends EventEmitter<{
       s.approvals = s.approvals.filter((x) => x.id !== approvalId)
       this.unpersistApproval(approvalId)
       this.rememberAnswers(s, a, answers)
+      this.recordApproval(s.id, { approvalId, requestedAt: a.createdAt, result: 'answered', actor: this.actorOf(via), toolName: a.toolName, summary: a.summary, summaryI18n: a.summaryI18n, answer: answersText(answers) })
       this.log(
         s.id,
         'approval',
@@ -1495,6 +1517,7 @@ export class Office extends EventEmitter<{
       const a = s.approvals.find((x) => x.id === approvalId)
       s.approvals = s.approvals.filter((x) => x.id !== approvalId)
       if (a && answers) this.rememberAnswers(s, a, answers)
+      this.recordApproval(s.id, { approvalId, requestedAt: a?.createdAt, result: answers ? 'answered' : 'skipped', actor: this.actorOf(via), toolName: a?.toolName ?? 'AskUserQuestion', summary: a?.summary ?? ask.question, summaryI18n: a?.summaryI18n, ...(answers ? { answer: answersText(answers) } : {}) })
       this.log(s.id, 'approval', { list: [via ? `${via} ` : '', answers ? { list: [tk('log.answered'), `: ${answersText(answers)}`], sep: '' } : tk('log.rejected'), ': ', a ? (a.summaryI18n ?? a.summary) : ask.question], sep: '' })
       this.patch(s.id, { status: s.approvals.length ? 'waiting' : 'idle', activity: '' })
     }
@@ -1549,302 +1572,56 @@ export class Office extends EventEmitter<{
 
   // ── 다른 PC 연결 (docs/specs/multi-pc-protocol.md) ─────────────────
 
-  setPeer(peer: PeerManager | null) {
-    this.peer = peer
-  }
-
-  setPeerHost(host: PeerHost | null) {
-    this.peerHost = host
-  }
-
-  setPeerSync(sync: PeerWorkspacePort | null) {
-    this.peerSync = sync
-  }
-
-  /** A컴 연결 총괄이 Office에 요청하는 것들 (결과 보고·랩 멤버 변경·화면 갱신) */
+  /** A컴 연결 총괄(짝짓기·연결 유지)이 Office에 요청하는 것들 */
   peerPort(): import('./peer/peerManager').PeerOfficePort {
     return {
-      report: (job, info) => {
-        // 원격 직원의 패널에도 답을 남긴다 — 대표가 그 직원에게 말을 걸었으면 거기서 답을 기다린다
-        this.log(`p:${job.peerId}:${job.remoteStaffId}`, job.state === 'done' ? 'reply' : 'error', info.text)
-        const lead = job.leadId ? this.hired.get(job.leadId) : null
-        if (lead) {
-          this.instruct(lead.id, t('staff.msg.memberReport', info), { kind: 'user', ...(job.room !== undefined ? { room: job.room } : {}), ...(job.isAutonomous ? { isAutonomous: true } : {}) })
-          return
-        }
-        // 대표가 직접 시킨 일: 직원의 보고처럼 단체방에 올리고 알린다
-        const id = `p:${job.peerId}:${job.remoteStaffId}`
-        this.postChat(id, info.text.slice(0, TASK_RESULT_MAX), undefined, undefined, job.room, true)
-        this.emit('notify', { title: t('notify.chatDone'), body: info.text.slice(0, 120), staffId: id })
-      },
       changed: () => this.scheduleEmit(),
-      context: (job) => {
-        const lead = job.leadId ? this.hired.get(job.leadId) : null
-        const lab = job.leadId ? this.labsOf(job.leadId).find((l) => l.memberIds.includes(`p:${job.peerId}:${job.remoteStaffId}`)) : undefined
-        return { lead: { name: lead?.name ?? t('peer.leadOwner'), role: lead?.role ?? '' }, ...(lab ? { lab: { name: lab.name, ...(lab.goal ? { goal: lab.goal } : {}) } } : {}) }
-      },
-      addToLab: (labId, staffId) => {
-        const lab = this.labs.get(labId)
-        if (lab && !lab.memberIds.includes(staffId)) this.saveLabObj({ ...lab, memberIds: [...lab.memberIds, staffId] })
-      },
-      removeFromLabs: (ids) => {
-        for (const l of this.labs.values()) {
-          if (l.memberIds.some((m) => ids.includes(m))) this.saveLabObj({ ...l, memberIds: l.memberIds.filter((m) => !ids.includes(m)) })
-        }
-      },
       ownName: () => os.hostname().replace(/\.local$/, '') || 'Mac',
-      // 원격 직원이 든 랩의 프로젝트 폴더를 파일 복사본의 뿌리로 (리더가 속한 랩을 먼저)
-      workspaceRoot: (leadId, targetStaffId) => {
-        const labs = [...this.labs.values()].filter((l) => l.cwd && l.memberIds.includes(targetStaffId))
-        const lab = (leadId ? labs.find((l) => l.leadId === leadId || l.memberIds.includes(leadId)) : undefined) ?? labs[0]
-        return lab?.cwd && fs.existsSync(lab.cwd) ? lab.cwd : null
-      },
     }
   }
 
-  /** 대표가 등록한 랩 프로젝트 폴더들 — 파일 복사본의 뿌리는 이 중 하나만 허용된다 */
-  labRoots(): string[] {
-    return [...this.labs.values()].flatMap((l) => (l.cwd ? [l.cwd] : []))
+  /** 업데이트로 빌려주기·데려오기가 없어지며 닫힌 일을 대화방에 한 번 알린다 (legacyPeerCleanup이 센 결과) */
+  noticeRetiredPeerWork(r: { closedJobs: number; staffNames: string[]; closedChanges: number }) {
+    const names = r.staffNames.join(', ')
+    if (r.closedJobs) this.postChat(OFFICE_SENDER, t(names ? 'peer.retired.jobsNamed' : 'peer.retired.jobs', { n: r.closedJobs, names }))
+    if (r.closedChanges) this.postChat(OFFICE_SENDER, t('peer.retired.changes', { n: r.closedChanges }))
   }
 
-  /** 지도·랩 화면에 합쳐 낼 원격 직원 */
-  private remoteStaff(): Staff[] {
-    if (!this.peer) return []
-    const maxDesk = Math.max(-1, ...[...this.hired.values()].map((s) => s.deskIndex))
-    let n = 0
-    return this.peer.staffViews((rec) =>
-      remoteStaffBase(
-        rec,
-        maxDesk + 1 + n++,
-        [...this.labs.values()].filter((l) => l.memberIds.includes(rec.id)).map((l) => l.id),
-      ),
-    )
-  }
-
-  /** 이 리더의 랩에 들어온 다른 PC 직원 */
-  private remoteMembersOf(staffId: string) {
-    if (!this.peer) return []
-    const out = new Map<string, { id: string; name: string }>()
-    for (const lab of this.labs.values()) {
-      if (lab.leadId !== staffId) continue
-      for (const id of lab.memberIds) {
-        const rec = this.peer.registry.staffOf(id)
-        if (rec) out.set(rec.id, { id: rec.id, name: rec.name })
-      }
+  /** 맡긴 일이 남았는지 볼 재료 (판정은 shared/delegation.ts) */
+  private delegationInputOf(staffId: string, delegates = this.delegatesOf(staffId)): DelegationInput {
+    return {
+      leadId: staffId,
+      members: delegates.map((m) => ({ id: m.id, origins: this.origins.get(m.id) ?? [] })),
+      tasks: [...this.tasks.values()],
+      assignedTaskIds: [...this.leadAssigned].flatMap(([taskId, leadId]) => (leadId === staffId ? [taskId] : [])),
     }
-    return [...out.values()]
+  }
+
+  /** 리더가 add_task로 팀원에게 배정한 카드 → 리더 (맡긴 일 판정용, 메모리 — 앱을 다시 켜면 하위 업무·지시 출처로만 본다) */
+  private leadAssigned = new Map<string, string>()
+
+  /** 쉬는 중인 리더가 맡긴 팀원 일을 기다리는 중인지 (책상·카드·team 도구가 같은 기준) */
+  private isAwaitingTeamOf(s: Pick<db.StoredStaff, 'id' | 'status'>) {
+    if (s.status !== 'idle' || !this.hired.has(s.id)) return false
+    const delegates = this.delegatesOf(s.id)
+    // 리더가 아니면(맡길 팀원이 없음) 업무 카드를 훑지 않는다
+    if (!delegates.length) return false
+    return hasOpenDelegation(this.delegationInputOf(s.id, delegates))
   }
 
   private hasDelegates(staffId: string) {
-    return this.delegatesOf(staffId).length > 0 || this.remoteMembersOf(staffId).length > 0
+    return this.delegatesOf(staffId).length > 0
   }
 
-  /** 리더의 delegate 도구가 다른 PC 직원에게 — 저장된 뒤에 "맡겼어요"로 답한다 */
-  private delegateRemote(leadId: string, targetId: string, targetName: string, instruction: string) {
-    try {
-      const isAuto = this.hasAutonomousOrigin(this.origins.get(leadId) ?? [])
-      this.peer!.delegate(targetId, instruction, { leadId, room: this.roomOf(leadId), isAutonomous: isAuto })
-      this.log(leadId, 'delegate', tk('log.delegate', { name: targetName, text: instruction }))
-      this.log(targetId, 'instruction', instruction)
-      this.postChat(leadId, `@${targetName} ${instruction}`.slice(0, CHAT_TEXT_MAX))
-      return t('peer.delegate.queued', { name: targetName })
-    } catch (e) {
-      return this.peerErrorText(e, targetName)
-    }
-  }
-
-  private peerErrorText(e: unknown, name: string) {
-    const code = (e as { code?: string })?.code
-    if (code === 'queue_full') return t('peer.delegate.queueFull', { name })
-    if (code === 'too_long') return t('peer.delegate.tooLong')
-    if (code === 'gone') return t('peer.delegate.gone', { name })
-    return t('peer.error.no_staff')
-  }
-
-  /** 대표가 원격 직원에게 직접 지시 (대화창·단체방) */
-  private instructRemote(staffId: string, text: string, origin: Origin, via = '', attachments: Attachment[] = []) {
-    const rec = this.peer!.registry.staffOf(staffId)!
-    // 직원 패널의 오늘 한 일에도 지시를 남긴다 (답은 peerPort().report가 같은 곳에 남긴다)
-    this.log(staffId, 'instruction', via ? `${via} ${text}` : text, attachments)
-    // 첨부도 함께 보낸다 — 개수·크기 한도를 넘는 것은 일 큐가 빼고 보내므로(보고·지시에 안내) 대표에게는 지금 바로 알린다
-    const skipped = attachments.filter((a, i) => i >= PEER_LIMITS.attachmentsPerJob || a.size > PEER_LIMITS.attachmentMax)
-    if (skipped.length) this.log(staffId, 'error', t('peer.attachSkipped', { name: rec.name, files: skipped.map((a) => a.name).join(', '), max: PEER_LIMITS.attachmentsPerJob, mb: PEER_LIMITS.attachmentMax / 1024 / 1024 }))
-    try {
-      this.peer!.delegate(staffId, text, { leadId: null, ...(origin.room !== undefined ? { room: origin.room } : {}), ...(origin.isAutonomous ? { isAutonomous: true } : {}), ...(attachments.length ? { attachments } : {}) })
-    } catch (e) {
-      const msg = this.peerErrorText(e, rec.name)
-      this.log(staffId, 'error', msg)
-      this.postChat(staffId, msg.slice(0, CHAT_TEXT_MAX))
-    }
-  }
-
-  /**
-   * B컴: 이 직원이 받은 일 중 다른 PC가 맡긴 일(또는 거기서 파생된 재위임)이 하나라도 있으면 그 일 id.
-   * 맨 앞만 보면 로컬 일이 앞에 서는 순간 자동결재 제한·A컴 중계가 빠지므로 전체를 본다 (로컬 일과는 아래 격리 규칙으로 섞이지 않게 한다)
-   */
-  private peerJobOf(staffId: string): string | null {
-    return peerJobOfOrigins(this.origins.get(staffId) ?? [])
-  }
-
-  /** 격리: 피어 일이 걸린 직원에게 온 로컬 지시는 그 일이 끝날 때까지 대기시킨다 (같은 세션에서 섞여 결재·보고가 엉키지 않게) */
+  /** 인터넷 연결을 기다리는 직원에게 온 지시 (이어 간 뒤에 순서대로 보낸다) */
   private heldLocal = new Map<string, { text: string; origin: Origin; attachments: Attachment[]; via: string; isDirect: boolean }[]>()
 
-  private holdLocal(staffId: string, text: string, origin: Origin, attachments: Attachment[], via: string, isDirect: boolean) {
-    const list = this.heldLocal.get(staffId) ?? []
-    // 같은 카드를 또 시작해도 대기는 하나
-    const isDup = origin.kind === 'task' && list.some((h) => h.origin.kind === 'task' && h.origin.taskId === origin.taskId)
-    if (!isDup) this.heldLocal.set(staffId, [...list, { text, origin, attachments, via, isDirect }])
-    const name = this.hired.get(staffId)?.name ?? ''
-    this.log(staffId, 'status', t('peer.guard.held', { name }))
-    if (origin.kind === 'user' || origin.kind === 'chat') this.postChat(OFFICE_SENDER, t('peer.guard.held', { name }), undefined, undefined, this.roomForOrigins(staffId, [origin]))
-  }
-
-  /** 피어 일(또는 그 복사본 작업·변경 모으기)이 아직 이 직원을 쓰고 있는가 */
-  private isPeerBusy(staffId: string) {
-    return this.peerJobOf(staffId) !== null || this.peerCwd.has(staffId)
-  }
-
-  /** B컴: 일이 끝났다 — 복사본으로 일했으면 바뀐 파일을 모아 변경 묶음과 함께 돌려준다 (모으는 동안 이 직원은 로컬 지시를 받지 않는다) */
-  private finishPeerJob(jobId: string, staffId: string, summary: string) {
-    const host = this.peerHost
-    if (!host) return
-    const workspaceId = host.getJob(jobId)?.workspaceId
-    if (!workspaceId || !this.peerSync) return host.finish(jobId, summary)
-    this.peerSync
-      .collectChanges(jobId, workspaceId)
-      .then((r) => host.finish(jobId, summary, 'changesetId' in r ? r.changesetId : undefined))
-      .catch((e: unknown) => {
-        // 변경을 못 모았어도 결과 글은 돌려준다 (이유를 덧붙인다)
-        const code = (e as { code?: string })?.code
-        host.finish(jobId, `${summary}\n\n(${t(`peerSync.error.${code === 'changes_too_large' || code === 'changes_rejected' ? code : 'transfer_failed'}`)})`)
-      })
-      .finally(() => this.endPeerCwd(staffId, jobId))
-  }
-
-  private failPeerJob(jobId: string, staffId: string, error: string) {
-    this.peerHost?.fail(jobId, error)
-    this.endPeerCwd(staffId, jobId)
-  }
-
-  /** 복사본 작업 폴더를 원래대로 돌리고 대기시킨 로컬 지시를 푼다 */
-  private endPeerCwd(staffId: string, jobId: string) {
-    const entry = this.peerCwd.get(staffId)
-    if (entry?.jobId === jobId) entry.ending = true
-    this.releaseHeld(staffId)
-  }
-
-  /** 끝난 복사본 기록은 직원의 실제 작업 폴더가 원래대로 돌아온 뒤에만 지운다 (일하는 중이라 못 돌렸으면 기록을 남겨 로컬 지시를 계속 막는다) */
-  private settlePeerCwd(staffId: string) {
-    if (!this.peerCwd.get(staffId)?.ending) return
-    const s = this.hired.get(staffId)
-    if (s) {
-      this.syncWorkDir(s)
-      if (!peerCwdRestored(s.cwd, this.workDirOf(s).cwd)) return
-    }
-    this.peerCwd.delete(staffId)
-  }
-
-  /** 피어 일이 모두 끝났으면 대기시킨 로컬 지시를 순서대로 보낸다 */
+  /** 보관해 둔 지시를 순서대로 보낸다 */
   private releaseHeld(staffId: string) {
-    this.settlePeerCwd(staffId)
     const list = this.heldLocal.get(staffId)
-    if (!list?.length || this.isPeerBusy(staffId)) return
+    if (!list?.length) return
     this.heldLocal.delete(staffId)
     for (const h of list) this.instruct(staffId, h.text, h.origin, h.attachments, h.via, h.isDirect)
-  }
-
-  /** 이 직원이 피어와 무관한 로컬 일(받은 일·대기열)을 하고 있는가 */
-  private hasLocalWork(staffId: string) {
-    return hasLocalWorkOf(this.origins.get(staffId) ?? [], this.manager.backlog(staffId), this.taskQueue.get(staffId)?.length ?? 0)
-  }
-
-  /** B컴: 피어 일의 결재가 새로 생기거나 사라진 것을 그 A컴에 알린다 (바뀔 때마다 부르는 곳에서 한꺼번에) */
-  private syncPeerApprovals() {
-    const host = this.peerHost
-    if (!host) return
-    const now = new Map<string, string>()
-    for (const s of this.hired.values()) {
-      const jobId = this.peerJobOf(s.id)
-      if (!jobId) continue
-      for (const a of s.approvals) {
-        now.set(a.id, jobId)
-        if (!this.peerApprovalSeen.has(a.id)) host.onApproval(this.peerApprovalEvent(s.id, a, jobId))
-      }
-    }
-    for (const [id, jobId] of this.peerApprovalSeen) if (!now.has(id)) host.onApprovalGone(id, jobId)
-    this.peerApprovalSeen = now
-  }
-
-  /** alwaysRule은 싣지 않는다 — 원격에서 "항상 승인" 규칙을 만들 수 없게 */
-  private peerApprovalEvent(staffId: string, a: Approval, jobId: string): PeerApprovalEvent {
-    return { jobId, approvalId: a.id, staffId, toolName: a.toolName, summary: a.summary, ...(a.summaryI18n ? { summaryI18n: a.summaryI18n } : {}), createdAt: a.createdAt, ...(a.questions ? { questions: a.questions } : {}) }
-  }
-
-  /** B컴이 PeerHost에 열어 주는 입구 */
-  peerHostOffice(): PeerHostOffice {
-    return {
-      staffBriefs: () =>
-        [...this.hired.values()]
-          .filter((s) => !s.isPractice)
-          .map((s) => ({ id: s.id, name: s.name, role: s.role, avatar: s.avatar, provider: s.provider ?? 'claude', model: s.model, status: s.status, ...(s.activity ? { thought: s.activity } : {}), isAutoEdit: s.approvalMode === 'acceptEdits' })),
-      startJob: (job) => {
-        const s = this.hired.get(job.staffId)
-        if (!s || s.isPractice) return 'no_staff'
-        // 파일 수정을 결재 없이 하는 직원은 받지 않는다: 그 자동 승인은 세션 안에서 일어나 A컴이 막을 수 없다
-        if (s.approvalMode === 'acceptEdits') return 'auto_edit'
-        // 로컬 일을 하는 중이면 받지 않는다 — A컴 큐가 잠시 뒤 다시 보낸다 (같은 세션에서 섞이지 않게)
-        if (this.hasLocalWork(s.id)) return 'busy'
-        // 다른 피어 일(또는 그 복사본 폴더)이 이 직원을 쓰고 있으면 받지 않는다 — 다른 일의 결재·결과가 섞이지 않게
-        if (heldByOtherPeerJob(this.origins.get(s.id) ?? [], this.peerCwd.get(s.id)?.jobId, job.id)) return 'busy'
-        // 파일 복사본으로 일하려면 이 직원이 다른 복사본·피어 일을 하고 있지 않아야 한다 (작업 폴더는 세션당 하나)
-        if (job.workspaceId) {
-          const dir = this.peerSync?.workspaceDir(job.workspaceId) ?? null
-          if (!dir) return 'no_workspace'
-          if (this.peerCwd.has(s.id) || this.peerJobOf(s.id)) return 'busy'
-          this.peerCwd.set(s.id, { dir, jobId: job.id })
-          this.syncWorkDir(s)
-          // 일하는 중이라 폴더를 못 바꿨으면 받지 않는다 (엉뚱한 폴더에서 일하지 않게)
-          if (s.cwd !== dir) {
-            this.peerCwd.delete(s.id)
-            return 'busy'
-          }
-        } else if (this.peerCwd.has(s.id)) return 'busy'
-        // A컴이 붙였지만 받지 못한 첨부가 있으면 지시 끝에 알린다 (직원이 없는 파일을 찾지 않게)
-        const instruction = job.droppedAttachments ? `${job.instruction}\n\n${t('peer.attachMissing', { n: job.droppedAttachments })}` : job.instruction
-        const text = t('staff.msg.delegated', { lead: job.lead.name || t('peer.leadOwner'), instruction })
-        this.instruct(s.id, text, { kind: 'peer', jobId: job.id, ...(job.isAutonomous ? { isAutonomous: true } : {}) }, job.attachments ?? [])
-        return 'ok'
-      },
-      cancelJob: (job) => {
-        const origins = this.origins.get(job.staffId) ?? []
-        const isHead = origins[0]?.kind === 'peer' && origins[0].jobId === job.id
-        this.origins.set(job.staffId, origins.filter((o) => !(o.kind === 'peer' && o.jobId === job.id)))
-        if (isHead) void this.manager.interrupt(job.staffId)
-        // 이 일에서 파생된 재위임도 함께 취소한다
-        for (const [id, list] of [...this.origins]) {
-          if (!list.some((o) => o.peerJobId === job.id)) continue
-          const head = list[0]?.peerJobId === job.id
-          this.origins.set(id, list.filter((o) => o.peerJobId !== job.id))
-          if (head) void this.manager.interrupt(id)
-          this.releaseHeld(id)
-        }
-        this.endPeerCwd(job.staffId, job.id)
-      },
-      decide: (id, allow) => this.decide(id, allow),
-      answerQuestion: (id, answers) => this.answerQuestion(id, answers),
-      pendingApprovals: () => {
-        const out: PeerApprovalEvent[] = []
-        for (const s of this.hired.values()) {
-          const jobId = this.peerJobOf(s.id)
-          if (jobId) for (const a of s.approvals) out.push(this.peerApprovalEvent(s.id, a, jobId))
-        }
-        return out
-      },
-      approvalJob: (id) => {
-        for (const s of this.hired.values()) if (s.approvals.some((a) => a.id === id)) return this.peerJobOf(s.id)
-        return null
-      },
-    }
   }
 
   remotePort(): RemoteOfficePort {
@@ -1860,7 +1637,7 @@ export class Office extends EventEmitter<{
   /** 멈춘 직원 진단: 읽기만 한다 (고용 직원만, 최근 24시간 기록 기준) */
   staffActivity(staffId: string): StaffActivity {
     const s = this.hired.get(staffId)
-    if (!s) throw new InvalidArgsError('고용 직원만 활동을 볼 수 있어요')
+    if (!s) throw new InvalidArgsError('이 앱에서 추가한 직원만 활동을 볼 수 있어요')
     const now = Date.now()
     const queue = (this.taskQueue.get(staffId) ?? []).map((q) => ({ taskId: q.taskId, title: this.tasks.get(q.taskId)?.title ?? q.taskId }))
     return buildStaffActivity(this.liveStaff(s), db.logsSince(staffId, now - 24 * 3_600_000), queue, now)
@@ -1871,8 +1648,6 @@ export class Office extends EventEmitter<{
     const since = startOfDay(new Date())
     const hired = this.hired.get(staffId)
     if (hired) return { staffId, ...db.logsPage(staffId, RECORD_RECENT), ...db.usageSince(staffId, since) }
-    // 다른 PC 직원: 이 PC에서 보낸 지시와 돌아온 보고만 기록에 있다 (사용량은 그 PC에서 센다)
-    if (this.peer?.isRemoteStaff(staffId)) return { staffId, ...db.logsPage(staffId, RECORD_RECENT), costUsd: 0, tokensIn: 0, tokensOut: 0 }
     const ext = this.readExternalRecord(staffId, since)
     if (!ext) return { staffId, logs: [], hasMore: false, costUsd: 0, tokensIn: 0, tokensOut: 0 }
     return { staffId, costUsd: 0, tokensIn: ext.tokensIn, tokensOut: ext.tokensOut, ...pageLogs(ext.logs, RECORD_RECENT) }
@@ -1881,7 +1656,7 @@ export class Office extends EventEmitter<{
   /** 업무 패널에서 위로 올릴 때: beforeId보다 앞선 기록 limit개 */
   getRecordBefore(staffId: string, beforeId: number, limit?: number): RecordPage {
     const n = clampRecordLimit(limit, RECORD_PAGE)
-    if (this.hired.has(staffId) || this.peer?.isRemoteStaff(staffId)) return db.logsPage(staffId, n, beforeId)
+    if (this.hired.has(staffId)) return db.logsPage(staffId, n, beforeId)
     const ext = this.readExternalRecord(staffId, startOfDay(new Date()))
     return ext ? pageLogs(ext.logs, n, beforeId) : { logs: [], hasMore: false }
   }
@@ -1911,6 +1686,8 @@ export class Office extends EventEmitter<{
     if (doneTask && doneTask.kind === 'task') this.lastDoneTask.set(staffId, doneTask.taskId)
     else this.lastDoneTask.delete(staffId)
     const short = summary.length > CHAT_TEXT_MAX ? `${summary.slice(0, CHAT_TEXT_MAX)}…` : summary
+    // 리더에게는 단체방용 600자가 아니라 넉넉한 상한으로 — 결론·결정이 뒤에 있어도 읽게 (넘으면 잘렸다고 알린다)
+    const leaderText = clipLeaderReport(summary, (n) => t('staff.msg.memberReportCut', { n }))
     for (const o of origins) {
       const cardId = o.kind === 'task' ? o.taskId : o.cardId
       if (cardId) {
@@ -1927,13 +1704,12 @@ export class Office extends EventEmitter<{
         }
       }
       if (o.kind === 'process') this.onStepDone(o.runId, o.stepId, s, summary)
-      if (o.kind === 'peer') this.finishPeerJob(o.jobId, staffId, summary)
       // 도움 요청으로 받은 일의 결과는 부탁한 사람에게 보고로 돌아간다 (위임과 같은 경로)
       const reportTo = o.kind === 'delegate' ? o.leadId : o.kind === 'help' ? o.fromId : null
       // 결과로 부탁한 사람이 다시 시작해도 사슬(원업무·경로)이 이어지도록 요청을 닫으며 정보를 받아 붙인다
       const resumeCtx = o.kind === 'help' ? this.helpLedger.close(o.reqId) : null
       if (reportTo && this.hired.has(reportTo)) {
-        this.instruct(reportTo, t('staff.msg.memberReport', { name: s.name, role: s.role, text: short }), { kind: 'user', room: o.room, ...(resumeCtx ? { help: resumeCtx } : {}), ...(o.peerJobId ? { peerJobId: o.peerJobId } : {}), ...(o.isAutonomous ? { isAutonomous: true } : {}) })
+        this.instruct(reportTo, t('staff.msg.memberReport', { name: s.name, role: s.role, text: leaderText }), { kind: 'user', room: o.room, ...(resumeCtx ? { help: resumeCtx } : {}), ...(o.isAutonomous ? { isAutonomous: true } : {}) })
       }
     }
     // 이 직원이 연 도움 요청 원업무가 모두 끝났으면(열린 요청·돌아올 결과 없음) 센 횟수를 비운다 — 받은 요청은 위에서 닫은 뒤에 본다
@@ -1951,8 +1727,7 @@ export class Office extends EventEmitter<{
     // 글 질문 카드는 직원당 하나(결재함 카드는 방이 없다)라 보고가 여러 방에 갔어도 하나만 올린다 — 알림 방 기준은 보고 방 중 첫 방
     this.finishingRoom.set(staffId, room)
     try {
-      // 피어 일의 결과는 그대로 A컴에 돌려준다 — 글 질문 카드를 올리면 답이 피어 문맥 밖에서 이어져 승인 주체·복사본 폴더가 끊긴다
-      if (!peerJobOfOrigins(origins)) this.registerTextQuestion(staffId, summary, origins, isAutoCheckTurn)
+      this.registerTextQuestion(staffId, summary, origins, isAutoCheckTurn)
     } finally {
       this.finishingRoom.delete(staffId)
     }
@@ -1965,8 +1740,7 @@ export class Office extends EventEmitter<{
       if (nextTask) this.assignTask(nextTask.taskId, staffId, nextTask.context)
       else if (!origins.some((o) => o.kind === 'task')) this.resumeStopped(staffId)
     }
-    // 피어 일을 받은 턴은 결과를 이미 A컴에 돌려줬다 — 다시 깨우면 변경 모으기와 겹치고 이어 한 일은 A컴에 닿지 않는다
-    if (!origins.some((o) => o.kind === 'peer')) this.checkStall(staffId, summary, isAutoCheckTurn, backgroundTasks, room, this.hasAutonomousOrigin(origins), peerJobOfOrigins(origins))
+    this.checkStall(staffId, summary, isAutoCheckTurn, backgroundTasks, room, this.hasAutonomousOrigin(origins))
     this.releaseHeld(staffId)
   }
 
@@ -1974,8 +1748,8 @@ export class Office extends EventEmitter<{
    * 멈춤 방지: 턴이 끝나면 앱이 다시 깨우지 않으니, 백그라운드 작업을 남겼거나
    * 리드가 "맡길게요"라고만 하고 실제로 맡긴 일·승인 대기 기획안이 없으면 한 번 다시 지시한다
    */
-  private checkStall(staffId: string, summary: string, isAutoCheckTurn: boolean, backgroundTasks: string[], room?: string, isAutonomous = false, peerJobId: string | null = null) {
-    const auto = { ...(isAutonomous ? { isAutonomous: true } : {}), ...(peerJobId ? { peerJobId } : {}) }
+  private checkStall(staffId: string, summary: string, isAutoCheckTurn: boolean, backgroundTasks: string[], room?: string, isAutonomous = false) {
+    const auto = isAutonomous ? { isAutonomous: true } : {}
     const isBusy = (this.origins.get(staffId)?.length ?? 0) > 0
     if (shouldNudgeBackground({ isAutoCheckTurn, isBusy, backgroundTasks })) {
       this.autoChecked.add(staffId)
@@ -1983,18 +1757,12 @@ export class Office extends EventEmitter<{
       return
     }
     const delegates = this.delegatesOf(staffId)
-    const memberIds = new Set(delegates.map((m) => m.id))
-    const tasks = [...this.tasks.values()]
-    const hasOpenDelegation =
-      Boolean(this.peer?.jobs().some((j) => j.leadId === staffId && (j.state === 'queued' || j.state === 'sending' || j.state === 'accepted' || j.state === 'running'))) ||
-      delegates.some((m) => (this.origins.get(m.id) ?? []).some((o) => o.kind === 'delegate' && o.leadId === staffId) || (this.taskQueue.get(m.id)?.length ?? 0) > 0) ||
-      tasks.some((task) => task.assigneeId && memberIds.has(task.assigneeId) && (task.status === 'todo' || task.status === 'doing'))
-    const hasWaitingPlan = tasks.some((task) => task.assigneeId === staffId && task.plan?.status === 'waiting')
+    const hasWaitingPlan = [...this.tasks.values()].some((task) => task.assigneeId === staffId && task.plan?.status === 'waiting')
     const isNudge = shouldNudgeLead({
       isLeader: delegates.length > 0 || this.hasDelegates(staffId),
       isAutoCheckTurn,
       isBusy,
-      hasOpenDelegation,
+      hasOpenDelegation: hasOpenDelegation(this.delegationInputOf(staffId, delegates)),
       hasWaitingPlan,
       summary,
     })
@@ -2055,8 +1823,10 @@ export class Office extends EventEmitter<{
     if (!stored.length) return
     const { restore, expired, gone } = splitRestorable(stored, Date.now(), (id) => this.hired.has(id))
     for (const p of [...expired, ...gone]) {
-      if (this.hired.has(p.staffId)) this.log(p.staffId, 'approval', tk('log.notRestoredExpired', { tool: p.toolName, summary: p.summary.slice(0, 280) }))
-      else console.error('[office] 직원이 없어 결재를 복원하지 않음', p.id)
+      if (this.hired.has(p.staffId)) {
+        this.log(p.staffId, 'approval', tk('log.notRestoredExpired', { tool: p.toolName, summary: p.summary.slice(0, 280) }))
+        this.recordApproval(p.staffId, { approvalId: p.id, requestedAt: p.createdAt, result: 'canceled', actor: '', toolName: p.toolName, summary: p.summary, summaryI18n: p.summaryI18n, effectI18n: p.effectI18n })
+      } else console.error('[office] 직원이 없어 결재를 복원하지 않음', p.id)
     }
     this.pending = restore
     this.savePending()
@@ -2085,6 +1855,8 @@ export class Office extends EventEmitter<{
       const a = s.approvals.find((x) => x.id === approvalId)
       s.approvals = s.approvals.filter((x) => x.id !== approvalId)
       if (a && decision && 'answers' in decision) this.rememberAnswers(s, a, decision.answers)
+      const decided: ApprovalResult = decision && 'answers' in decision ? 'answered' : p.questions ? 'skipped' : decision?.allow ? 'approved' : 'rejected'
+      this.recordApproval(s.id, { approvalId, requestedAt: p.createdAt, result: decided, actor: this.actorOf(via), toolName: p.toolName, summary: p.summary, summaryI18n: p.summaryI18n, effectI18n: p.effectI18n, ...(decision && 'answers' in decision ? { answer: answersText(decision.answers) } : {}) })
       const what = decision && 'answers' in decision ? { list: [tk('log.answered'), `: ${answersText(decision.answers)}`], sep: '' } : tk(decision?.allow ? 'log.approved' : 'log.rejected')
       this.log(s.id, 'approval', { list: [via ? `${via} ` : '', what, ': ', a ? (a.summaryI18n ?? a.summary) : p.summary], sep: '' })
       this.patch(s.id, s.approvals.length ? { status: 'waiting' } : { status: 'idle', activity: '' })
@@ -2311,8 +2083,6 @@ export class Office extends EventEmitter<{
    * 질문은 answerWhileAway로 답을 만들어 돌려준다
    */
   private autoDecide(staffId: string, toolName: string, input: Record<string, unknown>, summary: string, questions?: StaffQuestion[]): Promise<{ answers?: Record<string, string>; deny?: string }> | null {
-    // 다른 PC가 맡긴 일의 결재는 그 PC(A컴) 대표가 정한다 — 이 PC의 자동 승인·"항상 승인" 규칙·자동결재를 쓰지 않는다 (설계서 5-4)
-    if (this.peerJobOf(staffId)) return null
     if (questions?.length) this.askedInTurn.add(staffId)
     this.waitReasons.delete(staffId)
     // 대표가 전에 답한 같은 질문(최근 30일·엄격한 기준)이면 그 답을 따른다 — 애매하면 평소처럼 결재함
@@ -2325,6 +2095,7 @@ export class Office extends EventEmitter<{
     }
     // 대표가 만든 "앞으로 항상 승인" 규칙 — 자동결재 기간과 상관없이 (위험 명령은 matchRule이 늘 거른다)
     if (!questions?.length && matchRule(this.rules, staffId, toolName, input)) {
+      this.recordApproval(staffId, { approvalId: '', requestedAt: Date.now(), result: 'approved', actor: 'rule', toolName, summary, effectI18n: effectOf(toolName, input) ?? undefined })
       this.log(staffId, 'approval', tk('log.ruleApprove', { tool: toolName, summary }))
       return Promise.resolve({})
     }
@@ -2349,8 +2120,9 @@ export class Office extends EventEmitter<{
           const text = answersText(fallback)
           this.auto.counts = { ...this.auto.counts, answered: this.auto.counts.answered + 1 }
           record({ kind: 'answer', toolName, summary: `${text} (${took()})`, summaryI18n: tk('log.autonomousAnswer', { text: maskSecrets(text) }), category: 'other' })
+          this.recordApproval(staffId, { approvalId: '', requestedAt: askedAt, result: 'answered', actor: 'auto', toolName, summary: questions.map((q) => q.question).join(' / '), answer: text })
           this.log(staffId, 'approval', tk('log.autonomousAnswer', { text }))
-          return { answers: fallback }
+          return { answers: markProxyAnswers(fallback, (answer) => t('staff.msg.proxyAnswer', { answer })) }
         }
         // 비서가 답하지 못했으면(위험한 질문·근거 없음·실패) 결재함에 올려 대표를 기다린다 — hired.ts는 거절된 약속을 평소 결재로 받는다
         if (!answers) {
@@ -2366,8 +2138,9 @@ export class Office extends EventEmitter<{
         this.auto.counts = { ...this.auto.counts, answered: this.auto.counts.answered + 1 }
         const sec = Math.round((Date.now() - askedAt) / 1000)
         record({ kind: 'answer', toolName, summary: `${text} (${took()})`, summaryI18n: { key: 'autoApprove.answerTook', params: { text: maskSecrets(text), sec } }, category: 'other' })
+        this.recordApproval(staffId, { approvalId: '', requestedAt: askedAt, result: 'answered', actor: 'auto', toolName, summary: questions.map((q) => q.question).join(' / '), answer: text })
         this.log(staffId, 'approval', tk('log.autoAnswer', { took: tk('log.sec', { n: tookSec() }), text }))
-        return { answers }
+        return { answers: markProxyAnswers(answers, (answer) => t('staff.msg.proxyAnswer', { answer })) }
       })
     }
     // 자동결재 중에 직원이 쓴 파일을 실행하는 명령은 기다린다 (H2 — 승인된 쓰기 + 실행으로 대기 규칙을 우회하지 못하게)
@@ -2382,6 +2155,7 @@ export class Office extends EventEmitter<{
     if (isAuto && autonomyVerdict(toolName, input, runsWrittenFile, autoOpts) === 'deny') {
       this.auto.counts = { ...this.auto.counts, waited: this.auto.counts.waited + 1 }
       record({ kind: 'skipped', toolName, summary, category: autoKindOf(toolName) })
+      this.recordApproval(staffId, { approvalId: '', requestedAt: Date.now(), result: 'skipped', actor: 'auto', toolName, summary, effectI18n: effectOf(toolName, input) ?? undefined })
       this.log(staffId, 'approval', tk('log.autonomousSkip', { tool: tk(autoActionKey(toolName)), summary }))
       return Promise.resolve({ deny: t('staff.deny.autonomous', { action: `${toolName} ${maskSecrets(summary)}`.slice(0, 300) }) })
     }
@@ -2403,6 +2177,7 @@ export class Office extends EventEmitter<{
     const computer = computerSummaryI18n(toolName, input)
     const summaryI18n: I18nArg | undefined = computer ? { list: [computer, maskSecrets(logSummary.slice(summary.length))], sep: '' } : undefined
     record({ kind: 'approval', toolName, summary: logSummary, summaryI18n, category })
+    this.recordApproval(staffId, { approvalId: '', requestedAt: Date.now(), result: 'approved', actor: 'auto', toolName, summary: logSummary, summaryI18n, effectI18n: effectOf(toolName, input) ?? undefined })
     this.log(staffId, 'approval', tk('log.autoApprove', { tool: toolName, summary: summaryI18n ?? summary }))
     return Promise.resolve({})
   }
@@ -2423,6 +2198,7 @@ export class Office extends EventEmitter<{
     for (const { question, match } of found) {
       const name = match.staffName || t('knowledge.byMe')
       answers[question] = t('staff.msg.pastDecision', { answer: match.answer, name })
+      this.recordApproval(staffId, { approvalId: '', requestedAt: Date.now(), result: 'answered', actor: 'auto', toolName: 'AskUserQuestion', summary: question, answer: match.answer })
       this.log(staffId, 'approval', tk('log.pastDecision', { name, text: `${question} → ${match.answer}` }))
       this.postChat(staffId, t('chat.pastDecision', { question, answer: match.answer, name }).slice(0, CHAT_TEXT_MAX))
     }
@@ -2560,17 +2336,20 @@ export class Office extends EventEmitter<{
     return team
   }
 
-  updateTeam(teamId: string, patch: { name?: string; color?: string; leadId?: string | null; floor?: number }) {
+  updateTeam(teamId: string, patch: { name?: string; color?: string; leadId?: string | null; floor?: number; description?: string }) {
     const t = this.teams.get(teamId)
     if (!t) return
     // 층은 가장 큰 건물의 층수 안에서만 저장한다 (지금 레벨에 없는 층은 그릴 때 1층으로 보정 — 레벨 미리보기로도 미리 정해 둘 수 있게)
     if (patch.floor !== undefined && !(Number.isInteger(patch.floor) && patch.floor >= 1 && patch.floor <= MAX_FLOORS)) delete patch.floor
+    // 설명은 80자까지 (비우면 지운다)
+    if (patch.description !== undefined) patch = { ...patch, description: db.teamDescription(patch.description) }
     Object.assign(t, patch)
+    if (!t.description) delete t.description
     db.updateTeamRow(t)
     if (patch.leadId) {
       const lead = this.hired.get(patch.leadId)
       if (lead && lead.teamId !== teamId) this.updateStaff(lead.id, { teamId })
-      if (lead) this.postChat('me', `${lead.name} 님을 ${t.name} 팀장으로 임명했습니다.`)
+      if (lead) this.postChat('me', `${lead.name} 님을 ${t.name} 리더로 정했습니다.`)
     }
     this.scheduleEmit()
   }
@@ -2662,36 +2441,17 @@ export class Office extends EventEmitter<{
     // 도움 요청으로 받은 일에서는 위임으로 깊이·대상·횟수 제한을 우회하지 못한다
     if (inHelpContext(this.origins.get(staffId) ?? [])) return t('staff.tool.help.noBypass')
     const candidates = this.delegatesOf(staffId)
-    const remotes = this.remoteMembersOf(staffId)
-    if (candidates.length === 0 && remotes.length === 0) return this.helpTargetsOf(staffId).length ? t('staff.tool.delegate.useHelp') : t('staff.tool.delegate.notLeader')
+    if (candidates.length === 0) return this.helpTargetsOf(staffId).length ? t('staff.tool.delegate.useHelp') : t('staff.tool.delegate.notLeader')
     const target = candidates.find((m) => m.name === member)
-    if (!target) {
-      // 다른 PC의 직원이면 일 큐로 맡긴다 (연결이 끊겨 있어도 저장해 두었다가 연결되면 보낸다)
-      const remote = remotes.find((m) => m.name === member)
-      if (!remote) return t('staff.tool.notFound', { name: member })
-      // 다른 PC가 맡긴 일을 또 다른 PC로 넘기는 연쇄는 지원하지 않는다 (승인 주체가 끊긴다)
-      if (this.peerJobOf(staffId)) return t('peer.guard.noChain', { name: remote.name })
-      // 다른 PC 직원에게는 끼어들지 않는다 — 그 PC의 일을 이어 가며 끊을 방법이 없어 줄을 세우고 알린다
-      const queued = this.delegateRemote(staffId, remote.id, remote.name, instruction)
-      return interrupt ? `${queued}\n${t('staff.tool.delegate.remoteNoInterrupt', { name: remote.name })}` : queued
-    }
+    if (!target) return t('staff.tool.notFound', { name: member })
     const lead = this.hired.get(staffId)!
-    // 다른 PC가 맡긴 일에서 파생된 위임: 승인 주체(피어 jobId)를 이어받고, 파일 수정을 결재 없이 하는 직원·로컬 일을 하는 직원에게는 맡기지 않는다
-    const peerJobId = this.peerJobOf(staffId)
-    if (peerJobId && target.approvalMode === 'acceptEdits') return t('peer.guard.noAutoEdit', { name: target.name })
-    if (peerJobId && this.hasLocalWork(target.id)) return t('peer.guard.busy', { name: target.name })
-    // 복사본 폴더로 하는 일은 자식에게 폴더·수명을 이어 줄 수 없어 재위임을 막는다
-    if (blocksCopyRedelegate([...this.peerCwd.values()].map((c) => c.jobId), peerJobId)) return t('peer.guard.noCopyChain', { name: target.name })
-    // 다른 피어 일(로컬 지시 포함)이 점유한 직원에게는 맡기지 않는다
-    if (heldByOtherPeerJob(this.origins.get(target.id) ?? [], this.peerCwd.get(target.id)?.jobId, peerJobId ?? undefined)) return t('peer.guard.busyPeer', { name: target.name })
-    // 일하는 중일 때만 끼어든다 (쉬는 중이면 그냥 지시). 다른 PC가 맡긴 일은 끊지 않는다 — 그 PC가 결과를 기다린다
+    // 일하는 중일 때만 끼어든다 (쉬는 중이면 그냥 지시)
     const isBusy = Boolean(interrupt) && (this.netParked.has(target.id) || ['working', 'waiting', 'netWait'].includes(target.status))
-    if (isBusy && (this.peerJobOf(target.id) || this.peerCwd.has(target.id))) return t('peer.guard.busyPeer', { name: target.name })
     this.log(staffId, 'delegate', tk('log.delegate', { name: target.name, text: instruction }))
     this.postChat(staffId, `@${target.name} ${instruction}`.slice(0, CHAT_TEXT_MAX))
     // 자율 업무를 하던 리드가 맡긴 일은 자율로 이어 간다 ('완전 자율' 단계는 기간 동안 따로 적용된다)
     const isAuto = this.hasAutonomousOrigin(this.origins.get(staffId) ?? [])
-    const origin: Origin = { kind: 'delegate', leadId: staffId, room: this.roomOf(staffId), ...(peerJobId ? { peerJobId } : {}), ...(isAuto ? { isAutonomous: true } : {}) }
+    const origin: Origin = { kind: 'delegate', leadId: staffId, room: this.roomOf(staffId), ...(isAuto ? { isAutonomous: true } : {}) }
     const msg = t('staff.msg.delegated', { lead: lead.name, instruction })
     if (!isBusy) {
       this.instruct(target.id, msg, origin)
@@ -2763,7 +2523,7 @@ export class Office extends EventEmitter<{
   /** 직원 세션에 붙는 사무실 MCP 서버 (로컬 HTTP, 직원별 토큰) */
   private officeTools(staffId: string) {
     const text = (t: string) => ({ content: [{ type: 'text' as const, text: t }] })
-    const describe = (m: db.StoredStaff) => `- ${m.name} (${m.role}): ${m.status}${m.activity ? ` — ${m.activity}` : ''}`
+    const describe = (m: db.StoredStaff) => `- ${m.name} (${m.role}): ${m.status}${this.isAwaitingTeamOf(m) ? t('staff.tool.team.awaitingTeam') : ''}${m.activity ? ` — ${m.activity}` : ''}`
     const handle = registerLocalMcp(staffId, 'office', [
         defineTool('team', t('staff.tool.team.desc'), {}, async () => {
           const team = this.teamOf(staffId)
@@ -2776,9 +2536,7 @@ export class Office extends EventEmitter<{
             )
           for (const lab of this.labsOf(staffId)) {
             const members = lab.memberIds.map((id) => this.hired.get(id)).filter((m): m is db.StoredStaff => Boolean(m))
-            // 다른 PC의 직원은 이름 옆에 [원격] 표지와 연결 상태를 붙여 알려 준다
-            const remotes = lab.memberIds.flatMap((id) => this.peer?.staffViews((r) => remoteStaffBase(r, 0, [])).filter((x) => x.id === id) ?? [])
-            const lines = [...members.map((m) => `${describe(m)}${lab.leadId === m.id ? t('staff.tool.team.tagLabLead') : ''}`), ...remotes.map((m) => `- ${m.name} (${m.role}) [${t('peer.tag', { name: m.remote?.peerName ?? '' })} · ${t(`peer.state.${m.remote?.state ?? 'offline'}`)}]`)]
+            const lines = members.map((m) => `${describe(m)}${lab.leadId === m.id ? t('staff.tool.team.tagLabLead') : ''}`)
             parts.push(`${t('staff.tool.team.labHeader', { name: lab.name, goal: lab.goal || t('staff.ctx.goalNone') })}\n${lines.join('\n')}`)
           }
           return text(parts.join('\n\n') || t('staff.tool.team.none'))
@@ -2804,9 +2562,6 @@ export class Office extends EventEmitter<{
                   if (candidates.length === 0) return text(t('staff.tool.help.noTarget'))
                   const target = candidates.find((m) => m.name === member)
                   if (!target) return text(t('staff.tool.notFound', { name: member }))
-                  // 다른 PC가 맡긴 일에서 파생된 요청은 승인 주체가 끊기므로 막는다
-                  if (this.peerJobOf(staffId)) return text(t('peer.guard.noChain', { name: target.name }))
-                  if (heldByOtherPeerJob(this.origins.get(target.id) ?? [], this.peerCwd.get(target.id)?.jobId)) return text(t('peer.guard.busyPeer', { name: target.name }))
                   const myOrigins = this.origins.get(staffId) ?? []
                   const rejected = this.helpLedger.check({ staffId, targetId: target.id, text: request, requesterOrigins: myOrigins, targetOrigins: this.origins.get(target.id) ?? [] })
                   if (rejected) return text(t(`staff.tool.help.${rejected}`, { name: target.name, max: rejected === 'tooLong' ? HELP_TEXT_MAX : HELP_MAX_PER_TASK }))
@@ -2848,8 +2603,7 @@ export class Office extends EventEmitter<{
           t('staff.tool.browserAuto.desc'),
           { on: z.boolean().describe(t('staff.tool.browserAuto.on')) },
           async ({ on }) => {
-            // 켜기는 결재함에서 대표가 승인한 뒤에야 여기 온다 (hired.ts canUseTool · autoDecide). 다른 PC가 맡긴 일에서는 켜지 않는다
-            if (on && this.peerJobOf(staffId)) return text(t('staff.tool.browserAuto.peer'))
+            // 켜기는 결재함에서 대표가 승인한 뒤에야 여기 온다 (hired.ts canUseTool · autoDecide)
             this.setBrowserAuto(staffId, on)
             return text(t(on ? 'staff.tool.browserAuto.onDone' : 'staff.tool.browserAuto.offDone'))
           },
@@ -2921,7 +2675,6 @@ export class Office extends EventEmitter<{
             absorbs: z.array(z.string()).optional().describe(t('staff.tool.plan.absorbs')),
           },
           async ({ spec, subtasks, task: taskTitle, title, absorbs }) => {
-            if (!canCreateCards(this.origins.get(staffId) ?? [])) return text(t('peer.guard.noCard'))
             if (inHelpContext(this.origins.get(staffId) ?? [])) return text(t('staff.tool.help.noBypass'))
             const candidates = this.delegatesOf(staffId)
             if (candidates.length === 0) return text(this.helpTargetsOf(staffId).length ? t('staff.tool.plan.useHelp') : t('staff.tool.plan.notLeader'))
@@ -3000,7 +2753,6 @@ export class Office extends EventEmitter<{
           t('staff.tool.add.desc'),
           { title: z.string(), detail: z.string().optional(), assignee: z.string().optional().describe(t('staff.tool.add.assignee')) },
           async ({ title, detail, assignee }) => {
-            if (!canCreateCards(this.origins.get(staffId) ?? [])) return text(t('peer.guard.noCard'))
             // 도움 요청으로 받은 일에서는 업무 카드 생성·배정으로 요청 제한을 우회하지 못한다 (카드는 부탁한 사람·팀장 몫)
             if (inHelpContext(this.origins.get(staffId) ?? [])) return text(t('staff.tool.help.noBypass'))
             // 팀장·랩 리드가 아닌 팀원은 카드로 아무에게나 일을 배정하지 못한다 (동료 부탁은 request_help)
@@ -3012,9 +2764,8 @@ export class Office extends EventEmitter<{
             // 담당이 없으면 내 리드에게 (리드가 올린 카드는 보드에 남겨 두고 대표·리드가 배정)
             const toId = named?.id ?? this.leadOf(staffId)
             if (!toId) return text(t('staff.tool.add.posted', { title: card.title, note: assignee ? t('staff.tool.add.postedNoMatch', { name: assignee }) : '' }))
-            // 다른 피어 일이 쓰는 직원에게는 배정하지 않고 보드에 남긴다
-            if (heldByOtherPeerJob(this.origins.get(toId) ?? [], this.peerCwd.get(toId)?.jobId)) return text(t('peer.guard.busyPeer', { name: this.hired.get(toId)?.name ?? '' }))
             this.assignTask(card.id, toId)
+            if (toId !== staffId && this.delegatesOf(staffId).some((m) => m.id === toId)) this.leadAssigned.set(card.id, staffId)
             return text(t('staff.tool.add.assigned', { name: this.hired.get(toId)?.name ?? '', title: card.title, note: assignee && !named ? t('staff.tool.add.sentToLead', { name: assignee }) : '' }))
           },
         ),
@@ -3029,7 +2780,7 @@ export class Office extends EventEmitter<{
     const lab: Lab = { ...input, refDocs: [], id: crypto.randomUUID(), memberIds: [...new Set([...input.memberIds, ...(input.leadId ? [input.leadId] : [])])] }
     this.saveLabObj(lab)
     const names = lab.memberIds.map((id) => this.hired.get(id)?.name).filter(Boolean)
-    this.postChat('me', `🧪 ${lab.name} 랩을 꾸렸어요: ${names.join(', ')}${lab.goal ? ` — 목표: ${lab.goal}` : ''}`)
+    this.postChat('me', `🧪 ${lab.name} 프로젝트를 꾸렸어요: ${names.join(', ')}${lab.goal ? ` — 목표: ${lab.goal}` : ''}`)
     return lab
   }
 
@@ -3093,7 +2844,7 @@ export class Office extends EventEmitter<{
       [
         { label: '개인', docs: this.hired.get(staffId)?.refDocs ?? [] },
         ...(team ? [{ label: `팀 ${team.name}`, docs: team.refDocs ?? [] }] : []),
-        ...this.labsOf(staffId).map((l) => ({ label: `랩 ${l.name}`, docs: l.refDocs ?? [] })),
+        ...this.labsOf(staffId).map((l) => ({ label: `프로젝트 ${l.name}`, docs: l.refDocs ?? [] })),
       ],
       isFile,
     )
@@ -3171,10 +2922,10 @@ export class Office extends EventEmitter<{
     // 휴대폰에서 프로젝트 매뉴얼은 등록된 랩 폴더(또는 고치는 매뉴얼이 이미 있는 폴더)에만 — 아무 폴더에 파일을 만들지 못하게
     if (isRemoteCall()) {
       // 전역 매뉴얼(~/.claude/skills)은 모든 프로젝트에 영향 — 만들기·고치기·프로젝트로 옮기기 모두 PC에서만
-      if (!isRemoteManualScopeAllowed(input.scope, prev?.scope)) throw new InvalidArgsError('전역 매뉴얼은 PC에서 해 주세요 (프로젝트·랩 폴더 매뉴얼만 휴대폰에서 할 수 있어요)')
+      if (!isRemoteManualScopeAllowed(input.scope, prev?.scope)) throw new InvalidArgsError('전역 매뉴얼은 PC에서 해 주세요 (프로젝트 폴더 매뉴얼만 휴대폰에서 할 수 있어요)')
       if (input.scope === 'project') {
         const labDirs = [...this.labs.values()].flatMap((l) => (l.cwd ? [l.cwd] : []))
-        if (!isRemoteManualDirAllowed(input.projectDir, labDirs, prev?.projectDir ?? null)) throw new InvalidArgsError('매뉴얼은 등록된 랩 폴더에만 만들 수 있어요')
+        if (!isRemoteManualDirAllowed(input.projectDir, labDirs, prev?.projectDir ?? null)) throw new InvalidArgsError('매뉴얼은 등록된 프로젝트 폴더에만 만들 수 있어요')
       }
     }
     // 고치기에서 표시 이름을 안 보내면(비서 등) 기존 제목을 지키고, ''면 지운다
@@ -3189,7 +2940,7 @@ export class Office extends EventEmitter<{
     const m = this.listManuals().find((x) => x.path === file)
     if (!m) throw new InvalidArgsError('등록된 매뉴얼이 아니에요')
     // 전역 매뉴얼은 모든 프로젝트에 영향 — 휴대폰에서는 지우지 못한다
-    if (isRemoteCall() && !isRemoteManualDeleteAllowed(m.scope)) throw new InvalidArgsError('전역 매뉴얼은 PC에서 해 주세요 (프로젝트·랩 폴더 매뉴얼만 휴대폰에서 할 수 있어요)')
+    if (isRemoteCall() && !isRemoteManualDeleteAllowed(m.scope)) throw new InvalidArgsError('전역 매뉴얼은 PC에서 해 주세요 (프로젝트 폴더 매뉴얼만 휴대폰에서 할 수 있어요)')
     removeManual(file)
     for (const s of this.hired.values())
       if (Array.isArray(s.equipment.skills) && s.equipment.skills.includes(m.name)) this.setEquipment(s.id, { ...s.equipment, skills: s.equipment.skills.filter((n) => n !== m.name) })
@@ -4089,6 +3840,7 @@ export class Office extends EventEmitter<{
   deleteTask(taskId: string) {
     db.deleteTaskRow(taskId)
     this.tasks.delete(taskId)
+    this.leadAssigned.delete(taskId)
     this.scheduleEmit()
   }
 
@@ -4830,7 +4582,7 @@ export class Office extends EventEmitter<{
     const allHired = [...this.hired.values()].filter((s) => !s.isPractice)
     const hired = info ? chatRoomMembers(info, allHired) : allHired
     if (hired.length === 0) {
-      if (!info) return say('고용한 직원이 없어 아무에게도 전달하지 못했어요.')
+      if (!info) return say('직원이 없어 아무에게도 전달하지 못했어요.')
       return say(info.kind === 'lab' ? t('chat.labRoom.noMembers', { lab: info.name }) : t('chat.room.noMembers', { team: info.name }))
     }
     const teams = allTeams.filter((t) => !t.isPractice)
@@ -4874,7 +4626,7 @@ export class Office extends EventEmitter<{
       return deliver(id)
     }
     const empty = matched.filter((t) => t.memberIds.length === 0).map((t) => t.name)
-    if (empty.length) say(`${empty.join(', ')}에는 고용 직원 구성원이 없어요.`)
+    if (empty.length) say(`${empty.join(', ')}에는 직원이 없어요.`)
     // 직원 한 명만 부른 예전 방식은 안내 줄 없이 그대로
     const isSingleStaff = matched.length === 1 && matched[0].kind === 'staff'
     if (recipientIds.length > 0 && !isSingleStaff) {
@@ -5077,8 +4829,10 @@ export class Office extends EventEmitter<{
 
   // ── 기록·급여·보고서 ──────────────────────────────────
 
-  timeline(since: number) {
-    return db.allLogsBetween(since, Date.now() + 1)
+  /** since부터 기록. until(그 시각 전까지)이 없으면 지금까지 */
+  timeline(since: number, until?: number) {
+    const end = typeof until === 'number' && Number.isFinite(until) ? until : Date.now() + 1
+    return db.allLogsBetween(since, end)
   }
 
   /** month: "YYYY-MM" 또는 지금 기준 "day"(오늘)·"week"(이번 주) */
@@ -5200,7 +4954,9 @@ export class Office extends EventEmitter<{
     const c = this.counters.get(staffId) ?? {}
     c[type] = (c[type] ?? 0) + 1
     this.counters.set(staffId, c)
-    this.emit('log', db.insertLog(staffId, type, remoteMarked(type, text), attachments, i18n))
+    // 원격 표시는 번역 키가 있는 기록에도 붙인다 (화면은 키로 다시 풀기 때문에 text에만 붙이면 표시가 빠진다)
+    const marked = remoteMarked(type, text)
+    this.emit('log', db.insertLog(staffId, type, marked, attachments, i18n !== undefined && marked !== text ? remoteMarkedI18n(i18n) : i18n))
     if (type === 'tool') this.cardForChatWork(staffId)
     this.scheduleEmit()
   }
@@ -5218,9 +4974,7 @@ export class Office extends EventEmitter<{
     this.emitTimer = setTimeout(() => {
       this.emitTimer = null
       this.syncWorkDirs()
-      for (const id of [...this.heldLocal.keys()]) this.releaseHeld(id)
       this.checkCompanyLevel()
-      this.syncPeerApprovals()
       this.emit('snapshot', this.snapshot())
     }, 50)
   }

@@ -1,5 +1,7 @@
 # PC 간 연결 기술 설계서 (여러 PC 한 랩)
 
+> **2026-11-13 (1.3.0 다음 버전): 다른 PC 직원 빌려주기·데려오기(일·결재 중계·파일 복사본)는 없앴다.** 남은 것은 짝짓기·연결 유지·기기별 열쇠·해제뿐이고, 다른 PC는 워크스페이스(그 PC 사무실을 창으로 보기)로 쓴다. 일 경로(`/v2/peer/staff·watch·jobs·attachments·approvals·workspaces·blobs·changesets`)는 410 `peer_feature_removed`. 결정: `docs/design-refresh/peer-removal/design-final.md`. 아래 일·결재·파일 부분은 기록용이다.
+
 > 작성: 강백엔(백엔드) · 2026-11-01 · 상위 업무 "여러 PC 한 랩" 1/8단계
 > 기준: `docs/specs/multi-pc-lab.md`(대표 결정 — 이 문서와 다르면 그쪽이 우선), `docs/specs/remote-protocol-v2.md`, `app/src/main/remote/*`, `app/src/main/office.ts`의 `delegate`·`instruct`·`decide`
 > **코드는 고치지 않았다.** 이 문서가 3·4번 구현의 계약이다. 구현과 달라지면 이 문서를 먼저 고친다.

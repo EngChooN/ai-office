@@ -6,14 +6,13 @@ import { BAND_APPROVE_MAX, bandApproveId } from '../src/shared/approvalBand.ts'
 const a = (id: string, extra: Record<string, unknown> = {}) => ({ id, toolName: 'Read', summary: 'src/app.ts', ...extra })
 const bash = (command: string) => bandApproveId([a('x', { toolName: 'Bash', summary: command })])
 
-test('결재 1건이고 질문·다른 PC 변경·기다리는 이유가 없을 때만 띠에서 승인', () => {
+test('결재 1건이고 질문·기다리는 이유가 없을 때만 띠에서 승인', () => {
   assert.equal(bandApproveId([a('x')]), 'x')
   assert.equal(bandApproveId([]), null)
   // 여러 건이면 엉뚱한 건을 승인하지 않게 펼쳐서
   assert.equal(bandApproveId([a('x'), a('y')]), null)
   // 고를 게 있거나 위험 표시가 있으면 원문을 보고
   assert.equal(bandApproveId([a('x', { questions: [{ question: 'q', options: [] }] })]), null)
-  assert.equal(bandApproveId([a('x', { peerChanges: { files: [] } })]), null)
   assert.equal(bandApproveId([a('x', { waitReason: 'danger-path' })]), null)
   assert.equal(bandApproveId([a('x', { toolName: 'mcp__office__capture_screen' })]), null)
 })
