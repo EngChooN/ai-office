@@ -1171,7 +1171,7 @@ export interface OfficeApi {
   resumeInTerminal(staffId: string): Promise<string>
   /** 직원 엔진(Claude ↔ GPT)을 바꾼다. 쉬는 중·새 엔진 준비됐을 때만, 대화는 새로 시작 (PC 전용) */
   changeEngine(staffId: string, provider: AiProvider): Promise<EngineChangeResult>
-  decide(approvalId: string, allow: boolean): Promise<void>
+  decide(approvalId: string, allow: boolean): Promise<boolean>
   getRecord(staffId: string): Promise<DailyRecord>
   /** beforeId보다 앞선 기록 limit개 (기본 RECORD_PAGE) — 업무 패널에서 위로 올릴 때 */
   getRecordBefore(staffId: string, beforeId: number, limit?: number): Promise<RecordPage>

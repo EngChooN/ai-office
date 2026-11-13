@@ -9,7 +9,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 /** [열기]가 되는 형식 (소문자 확장자). 여기 없으면 폴더에서 보기만 — html·svg·스크립트·앱·바로가기·매크로 문서는 일부러 뺐다 */
-export const OPENABLE_EXT = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.heic', '.pdf', '.txt', '.md', '.csv', '.tsv', '.json', '.rtf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.pages', '.numbers', '.mp3', '.wav', '.m4a', '.aac', '.mp4', '.mov', '.webm'])
+export const OPENABLE_EXT = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.heic', '.pdf', '.txt', '.md', '.csv', '.tsv', '.json', '.rtf', '.docx', '.xlsx', '.pptx', '.pages', '.numbers', '.mp3', '.wav', '.m4a', '.aac', '.mp4', '.mov', '.webm'])
 
 const SECRET_EXT = new Set(['.pem', '.key', '.p12', '.pfx', '.crt', '.cer', '.keystore', '.jks'])
 const SECRET_BASE = /^(\.env.*|id_.*|credentials.*|\.npmrc|\.netrc|\.pgpass)$/i
@@ -52,6 +52,8 @@ export function usableRoot(root: string, danger: { home: string; userData: strin
   const r = real(root)
   if (!r || !fs.statSync(r).isDirectory()) return null
   if (path.dirname(r) === r) return null
+  // 숨김 폴더(.ssh 등)를 루트로 잡으면 안에서는 이름이 숨김으로 안 걸리므로 루트째 뺀다
+  if (isHiddenName(r)) return null
   const home = real(danger.home)
   const userData = real(danger.userData)
   // 홈은 자신이거나 홈을 품은 폴더만 뺀다 (홈 안의 프로젝트 폴더는 된다). 앱 데이터 폴더는 그 안쪽도 뺀다

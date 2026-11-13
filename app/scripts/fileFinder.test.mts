@@ -121,3 +121,18 @@ test('id: 찾기 결과에만 묶이고, 지어낸 id·만료된 id는 열리지
   for (let i = 0; i < ID_MAX; i++) reg.register(entryOf(path.join(proj, 'report.pdf')))
   assert.equal(reg.get(first), null)
 })
+
+test('열기 허용 형식: 옛 매크로 가능 형식 .doc·.xls·.ppt는 대문자도 열기 불가', () => {
+  for (const n of ['a.doc', 'a.DOC', 'b.XLS', 'c.Ppt']) assert.equal(canOpenName(n), false, n)
+})
+
+test('프로젝트 루트: 숨김 폴더(.ssh)는 찾기 범위에서 뺀다', () => {
+  const home = path.join(tmp, 'home2')
+  const userData = path.join(home, 'Library/AppData')
+  fs.mkdirSync(userData, { recursive: true })
+  fs.mkdirSync(path.join(home, '.ssh'), { recursive: true })
+  fs.mkdirSync(path.join(home, 'ok'), { recursive: true })
+  const danger = { home, userData }
+  assert.equal(usableRoot(path.join(home, '.ssh'), danger), null)
+  assert.equal(usableRoot(path.join(home, 'ok'), danger), path.join(home, 'ok'))
+})

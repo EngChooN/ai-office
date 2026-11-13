@@ -17,6 +17,7 @@ export default {
   'secretary.approvals.gone': { ko: '이미 처리됐어요.', en: 'Already handled.', ja: 'すでに処理されました。', zh: '已处理。' },
   'secretary.approvals.approved': { ko: '승인했어요.', en: 'Approved.', ja: '承認しました。', zh: '已批准。' },
   'secretary.approvals.rejected': { ko: '반려했어요.', en: 'Rejected.', ja: '却下しました。', zh: '已驳回。' },
+  'secretary.approvals.failed': { ko: '처리하지 못했어요. 결재함에서 다시 확인해 주세요.', en: 'Could not process. Please check in Approvals.', ja: '処理できませんでした。承認箱で確認してください。', zh: '处理失败,请在审批箱中确认。' },
   'secretary.approvals.openInbox': { ko: '결재함에서 모두 보기 →', en: 'See all in Approvals →', ja: '承認箱ですべて見る →', zh: '在审批箱查看全部 →' },
   // 단계 이름 (SECRETARY_TOOLS의 한국어 label과 짝)
   'secretary.tool.hire': { ko: '직원 추가', en: 'Add staff', ja: 'スタッフを追加', zh: '添加员工' },
