@@ -16,12 +16,12 @@ export interface PendingSend {
   status: 'sending' | 'failed'
 }
 
-/** 대화에 돌아온 글과 짝지어진 임시 id들. 같은 글을 연달아 보냈으면 순서대로 하나씩만 짝짓는다 */
+/** 대화에 돌아온 글과 짝지어진 임시 id들. 같은 글을 연달아 보냈으면 순서대로 하나씩만 짝짓는다.
+ * '보내지 못했어요'도 짝짓는다 — 응답만 끊기고 PC에는 저장된 글이 늦게 오면 실패 말풍선을 치워 '다시 보내기'로 두 번 보내지 않게 */
 export function matchedPending(pending: readonly PendingSend[], chat: readonly ChatMessage[]): string[] {
   const used = new Set<number>()
   const out: string[] = []
   for (const p of pending) {
-    if (p.status !== 'sending') continue
     const hit = chat.find((m) => m.id > p.afterId && !used.has(m.id) && m.from === 'me' && roomKey(m.room) === roomKey(p.room) && m.text.trim() === p.text)
     if (!hit) continue
     used.add(hit.id)

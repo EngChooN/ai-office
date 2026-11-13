@@ -15,7 +15,14 @@ export function usePendingSends() {
   const chat = useOffice((s) => s.chat)
   const seq = useRef(0)
   const timers = useRef(new Set<ReturnType<typeof setTimeout>>())
-  useEffect(() => () => timers.current.forEach(clearTimeout), [])
+  const isUnmounted = useRef(false)
+  useEffect(
+    () => () => {
+      isUnmounted.current = true
+      timers.current.forEach(clearTimeout)
+    },
+    [],
+  )
 
   useEffect(() => {
     const ids = matchedPending(items, chat)
@@ -29,6 +36,8 @@ export function usePendingSends() {
     } catch {
       isOk = false
     }
+    // 보내는 사이 대화 화면을 떠났으면 남길 타이머·상태가 없다
+    if (isUnmounted.current) return
     if (!isOk) return setItems((cur) => cur.map((x) => (x.tempId === p.tempId ? { ...x, status: 'failed' } : x)))
     const timer = setTimeout(() => {
       timers.current.delete(timer)

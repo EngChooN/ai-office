@@ -169,7 +169,7 @@ function InboxApprovalCard({ approval: a, onOpenStaff }: { approval: Approval & 
           <Button size="sm" disabled={isBusy} onClick={() => void decide(true)}>
             <CheckIcon /> {t('inbox.approve')}
           </Button>
-          <AlwaysApproveButton approval={a} staffName={a.staff.name} />
+          <AlwaysApproveButton approval={a} staffName={a.staff.name} isDisabled={isBusy} />
           <Button size="sm" variant="outline" disabled={isBusy} onClick={() => void decide(false)}>
             {t('inbox.reject')}
           </Button>

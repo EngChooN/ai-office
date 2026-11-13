@@ -357,15 +357,17 @@ function MessageList({ room, searchQuery, pending, onRetry }: { room: string | u
   // 아직 기다리는 결재·질문 — 말풍선에서 바로 처리한다
   const pendingById = useMemo(() => new Map(staff.flatMap((s) => s.approvals.map((a) => [a.id, a]))), [staff])
   const scroll = useStickToBottom(lines, lineKey, `chat:${room ?? ''}`)
-  // 내가 보낸 말은 위를 읽던 중이어도 바로 보이게
   const roomPending = useMemo(() => pending.filter((p) => roomKey(p.room) === roomKey(room)), [pending, room])
+  const prevPendingCount = useRef(0)
   useEffect(() => {
-    if (roomPending.length) scroll.scrollToBottom()
-    // 새로 보내는 글이 생길 때(개수가 늘 때)만
+    // 보내는 중 말풍선이 새로 생길 때(개수가 늘 때)만 맨 아래로
+    if (roomPending.length > prevPendingCount.current) scroll.scrollToBottom()
+    prevPendingCount.current = roomPending.length
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomPending.length])
   const lastLine = lines.at(-1)
   const last = lastLine?.kind === 'message' ? lastLine.message : undefined
+  // 내가 보낸 말은 위를 읽던 중이어도 바로 보이게
   useEffect(() => {
     if (last?.from === 'me') scroll.scrollToBottom()
     // 새 말이 붙을 때만 본다 (상한 500에 닿아도 개수 대신 마지막 id로)
@@ -643,7 +645,7 @@ function PendingApprovalButtons({ approval: a, staffName }: { approval: Approval
         <Button size="sm" disabled={isBusy} onClick={() => void decide(true)}>
           <CheckIcon /> {t('inbox.approve')}
         </Button>
-        <AlwaysApproveButton approval={a} staffName={staffName} />
+        <AlwaysApproveButton approval={a} staffName={staffName} isDisabled={isBusy} />
         <Button size="sm" variant="outline" disabled={isBusy} onClick={() => void decide(false)}>
           {t('inbox.reject')}
         </Button>

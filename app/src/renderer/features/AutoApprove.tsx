@@ -280,7 +280,7 @@ export function AutoHandledList() {
 }
 
 /** 결재 승인 옆 "앞으로 자동 승인" — 이 직원의 같은 종류 요청을 규칙으로 넘긴다. 위험 명령·질문이면 버튼이 없다 */
-export function AlwaysApproveButton({ approval, staffName }: { approval: Approval; staffName: string }) {
+export function AlwaysApproveButton({ approval, staffName, isDisabled = false }: { approval: Approval; staffName: string; isDisabled?: boolean }) {
   const [isBusy, setIsBusy] = useState(false)
   // 브라우저 결재는 '브라우저 자동 허용', 명령 규칙은 PC에서만 — 판단은 바탕화면 비서와 같은 alwaysApproveOffer
   const offer = alwaysApproveOffer(approval, IS_REMOTE_SCREEN)
@@ -296,7 +296,7 @@ export function AlwaysApproveButton({ approval, staffName }: { approval: Approva
       size="sm"
       variant="ghost"
       className="text-xs"
-      disabled={isBusy}
+      disabled={isBusy || isDisabled}
       title={offer.kind === 'browser' ? t('equipment.browserAuto.hint') : t('rule.buttonHint', { name: staffName, rule: offer.rule })}
       onClick={() => void handleClick()}
     >

@@ -61,6 +61,13 @@ test('어댑터: OfficeApi 메서드·이벤트가 빠짐없이 있고 platform�
   assert.equal(office.platform, 'android')
 })
 
+test('어댑터: 서버가 결과를 비워(null) 돌려준 결재 처리는 성공(true) — 화면이 실패로 되돌리지 않게', async () => {
+  const { office } = createRemoteOffice(fakeBridge(() => null).bridge, handlers().h)
+  assert.equal(await office.decide('ap1', true), true)
+  const old = createRemoteOffice(fakeBridge(() => false).bridge, handlers().h)
+  assert.equal(await old.office.decide('ap1', true), false)
+})
+
 test('어댑터: PC 전용·올리기를 뺀 모든 메서드는 그 이름 그대로 /v2/call로 간다 (자동 연결)', async () => {
   const f = fakeBridge()
   const { office } = createRemoteOffice(f.bridge, handlers().h)

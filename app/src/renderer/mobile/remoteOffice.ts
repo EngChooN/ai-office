@@ -229,6 +229,8 @@ export function createRemoteOffice(bridge: Bridge, h: RemoteHandlers): RemoteSes
       }
     },
     snapshot: async (...args: unknown[]) => fillOldSnapshot(await call('snapshot', args)),
+    // 서버는 처리된 결재의 결과를 비워(null) 돌려주고 이미 처리된 건 409로 막는다 — 화면이 PC처럼 true로 받게 한다
+    decide: async (...args: unknown[]) => (await call('decide', args)) !== false,
     instruct: autonomyCall('instruct', (a) => Boolean(flag(a[3], 'isAutonomous'))),
     createTask: autonomyCall('createTask', (a) => Boolean(flag(a[0], 'isAutonomous'))),
     updateTask: autonomyCall('updateTask', (a) => flag(a[1], 'isAutonomous') === true),

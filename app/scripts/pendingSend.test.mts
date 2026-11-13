@@ -33,8 +33,9 @@ test('같은 글을 연달아 보내면 순서대로 하나씩만 짝짓는다',
   assert.deepEqual(matchedPending(ps, [msg(11, '응'), msg(12, '응'), msg(13, '응')]), ['a', 'b', 'c'])
 })
 
-test('실패한 말풍선은 짝짓지 않는다 (다시 보내기 전까지 남는다)', () => {
-  assert.deepEqual(matchedPending([pend('a', '안녕', { status: 'failed' })], [msg(11, '안녕')]), [])
+test('실패한 말풍선도 PC에 저장된 글이 늦게 오면 치운다 (다시 보내기로 두 번 보내지 않게)', () => {
+  assert.deepEqual(matchedPending([pend('a', '안녕', { status: 'failed' })], [msg(11, '안녕')]), ['a'])
+  assert.deepEqual(matchedPending([pend('a', '안녕', { status: 'failed' })], [msg(10, '안녕')]), [])
 })
 
 test('lastChatId: 비어 있으면 0, 아니면 가장 큰 id', () => {
