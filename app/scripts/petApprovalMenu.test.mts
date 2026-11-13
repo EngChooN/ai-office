@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import { test } from 'node:test'
 import { alwaysApproveConfirm, alwaysApproveOffer } from '../src/shared/approvalRules.ts'
-import { InFlight, petApproveAlways, petStopWork } from '../src/shared/deskPet.ts'
+import { canPetStopWork, InFlight, petApproveAlways, petStopWork } from '../src/shared/deskPet.ts'
 import { compactOverview } from '../src/main/secretaryCompact.ts'
 import { tk } from '../src/shared/i18n/index.ts'
 import type { Approval, OfficeSnapshot, Staff } from '../src/shared/types.ts'
@@ -12,6 +12,7 @@ const read = (p: string) => fs.readFileSync(new URL(`../${p}`, import.meta.url),
 const approval = (id: string, extra: Partial<Approval> = {}): Approval => ({ id, staffId: 's1', toolName: 'Read', summary: 'a.txt', createdAt: 1, ...extra })
 const staffWith = (approvals: Approval[], kind: Staff['kind'] = 'hired') => [{ id: 's1', kind, name: '김직원', role: '개발', approvals } as unknown as Staff]
 const RULE = { toolName: 'Read', patterns: [] }
+const staffAt = (kind: Staff['kind'], status: Staff['status']) => [{ ...staffWith([], kind)[0], status }]
 
 test('alwaysApproveOffer: 브라우저는 PC에서만, 규칙은 있을 때만, 명령 규칙은 휴대폰에서 없음', () => {
   assert.deepEqual(alwaysApproveOffer({ browserAutoOffer: true }, false), { kind: 'browser' })
@@ -62,13 +63,27 @@ test('펫 자동 승인: 확인 → 처리, 취소면 처리 안 함, 규칙 없
 test('펫 일 멈추기: 고용 직원만, 확인을 거쳐서', async () => {
   const calls: string[] = []
   let ok = true
-  const deps = (kind: Staff['kind']) => ({ staff: () => staffWith([], kind), interrupt: (id: string) => void calls.push(id), confirm: async () => ok })
+  const deps = (kind: Staff['kind'], status: Staff['status'] = 'working') => ({ staff: () => staffAt(kind, status), interrupt: (id: string) => void calls.push(id), confirm: async () => ok })
   assert.equal(await petStopWork(deps('hired'), 's1'), 'done')
+  // 쉬는 직원은 확인 창도 띄우지 않는다
+  let asked = 0
+  assert.equal(await petStopWork({ ...deps('hired', 'idle'), confirm: async () => (asked++, true) }, 's1'), 'already')
+  assert.equal(asked, 0)
   assert.equal(await petStopWork(deps('external'), 's1'), 'already')
   assert.equal(await petStopWork(deps('hired'), 'nobody'), 'already')
   ok = false
   assert.equal(await petStopWork(deps('hired'), 's1'), 'cancelled')
   assert.deepEqual(calls, ['s1'])
+})
+
+test('일 멈추기는 일하는 중(결재·인터넷 대기 포함)인 고용 직원만 — ⋯ 메뉴도 같은 판단으로 숨긴다', () => {
+  for (const status of ['working', 'waiting', 'netWait'] as const) assert.equal(canPetStopWork(staffAt('hired', status), 's1'), true, status)
+  for (const status of ['idle', 'offline', 'error'] as const) assert.equal(canPetStopWork(staffAt('hired', status), 's1'), false, status)
+  assert.equal(canPetStopWork(staffAt('external', 'working'), 's1'), false)
+  assert.equal(canPetStopWork(staffAt('hired', 'working'), 'nobody'), false)
+  const src = read('src/renderer/deskPet/PetPanel.tsx')
+  assert.match(src, /canPetStopWork\(s\.staff, a\.staffId\)/)
+  assert.match(src, /\.\.\.\(canStop\s*\?\s*\[\s*\{\s*key: "stop"/)
 })
 
 test('펫 통로: 두 개만 열고, 펫 창이 보낸 것·글자 id만, 확인은 main 확인 창(dialog)', () => {

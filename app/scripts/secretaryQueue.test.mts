@@ -2,7 +2,8 @@
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import { test } from 'node:test'
-import { AskQueue, mergedText, QUEUE_MAX, queuePosition } from '../src/shared/secretaryQueue.ts'
+import { t } from '../src/shared/i18n/index.ts'
+import { ASK_TEXT_MAX, AskQueue, mergedText, QUEUE_MAX, queuePosition } from '../src/shared/secretaryQueue.ts'
 
 const ask = (msgId: number, remote = false) => ({ msgId, text: `질문${msgId}`, remote })
 const filled = (...items: ReturnType<typeof ask>[]) => {
@@ -64,6 +65,29 @@ test('합치는 사이 답이 먼저 시작돼 하나만 남았으면 합치지 
   assert.equal(q.cancel(2), false)
   assert.equal(q.merge('h'), null)
   assert.equal(q.size, 0)
+})
+
+test('합친 글이 질문 글자 상한을 넘으면 합치지 않고 줄을 그대로 둔다 (상한 딱 맞으면 합친다)', () => {
+  const long = (id: number, n: number) => ({ msgId: id, text: 'x'.repeat(n), remote: false })
+  const big = filled(long(1, ASK_TEXT_MAX), long(2, ASK_TEXT_MAX), long(3, ASK_TEXT_MAX))
+  assert.equal(big.merge('h'), 'tooLong')
+  assert.deepEqual(big.ids(), [1, 2, 3])
+  assert.equal(big.shift()?.text.length, ASK_TEXT_MAX)
+  // 머리말 'h' + 줄바꿈·번호('\n1. ', '\n2. ') = 9글자를 빼면 딱 상한
+  const fit = filled(long(1, 1000), long(2, ASK_TEXT_MAX - 1000 - 9))
+  const r = fit.merge('h')
+  assert.ok(r && r !== 'tooLong')
+  assert.equal(r.kept.text.length, ASK_TEXT_MAX)
+  assert.equal(filled(long(1, 1000), long(2, ASK_TEXT_MAX - 1000 - 8)).merge('h'), 'tooLong')
+})
+
+test('main: 너무 길어 못 합치면 안내를 남기고, 받을 때 쓰는 상한도 같은 값', () => {
+  const src = fs.readFileSync(new URL('../src/main/secretary.ts', import.meta.url), 'utf8')
+  assert.match(src, /r === 'tooLong'[\s\S]{0,120}secretary\.queue\.mergeTooLong/)
+  assert.match(src, /import \{[^}]*ASK_TEXT_MAX[^}]*\} from '\.\.\/shared\/secretaryQueue'/)
+  const texts = (['ko', 'en', 'ja', 'zh'] as const).map((lang) => t('secretary.queue.mergeTooLong', undefined, lang))
+  assert.equal(new Set(texts).size, 4)
+  assert.ok(texts.every((x) => x && x !== 'secretary.queue.mergeTooLong'))
 })
 
 test('대화 지우기·멈추기(clear)는 줄을 비운다', () => {

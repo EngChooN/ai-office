@@ -225,6 +225,7 @@ export default {
   'secretary.queue.cancelLabel': { ko: '이 질문을 기다리는 줄에서 빼기', en: 'Remove this question from the line', ja: 'この質問を順番待ちから外す', zh: '将此问题移出队列' },
   'secretary.queue.merge': { ko: '하나로 합쳐 묻기', en: 'Ask them together', ja: 'まとめて聞く', zh: '合并成一个问题' },
   'secretary.queue.mergeHint': { ko: '기다리는 질문 {n}개를 한 번에 물어요', en: 'Ask the {n} waiting questions in one go', ja: '待っている質問 {n}件を一度に聞きます', zh: '一次性提问排队中的 {n} 个问题' },
+  'secretary.queue.mergeTooLong': { ko: '합치면 질문이 너무 길어져 합치지 않았어요. 차례대로 하나씩 답할게요.', en: 'Not merged: the combined question would be too long. They will be answered one by one.', ja: 'まとめると質問が長すぎるため、まとめませんでした。順番に一つずつ答えます。', zh: '合并后问题太长，未合并。将按顺序逐个回答。' },
   'secretary.queue.mergedIntro': { ko: '아래 질문에 한꺼번에 답해 주세요.', en: 'Please answer these questions together.', ja: '次の質問にまとめて答えてください。', zh: '请一并回答以下问题。' },
   'secretary.queue.full': { ko: '기다리는 질문이 {n}개라 지금은 못 보내요. 앞 질문의 답을 받은 뒤 보내 주세요.', en: '{n} questions are already waiting, so this one can’t be sent yet. Send it after the earlier answers arrive.', ja: '待っている質問が {n}件あるため、今は送れません。前の質問の回答が来てから送ってください。', zh: '已有 {n} 个问题在排队，暂时无法发送。请在前面的问题得到回答后再发送。' },
   'secretary.queue.rate': { ko: '질문이 너무 잦아요. 잠시 뒤에 다시 보내 주세요.', en: 'Too many questions at once. Please send it again in a moment.', ja: '質問が多すぎます。少ししてからもう一度送ってください。', zh: '提问太频繁了，请稍后再发送。' },

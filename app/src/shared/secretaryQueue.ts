@@ -4,6 +4,9 @@
 /** 밀린 질문 한도 (답하는 중인 질문은 빼고) — 꽉 차면 질문을 받지 않고 입력창에 남긴다 */
 export const QUEUE_MAX = 3
 
+/** 질문 하나 글자 상한 — 받을 때 자르고, 합친 질문도 이 안이어야 한다 (한리뷰) */
+export const ASK_TEXT_MAX = 4000
+
 export interface QueuedAsk {
   /** 화면에 이미 보이는 'me' 메시지 id */
   msgId: number
@@ -53,12 +56,15 @@ export class AskQueue {
   /**
    * 대기 질문 2개 이상을 첫 질문 자리의 한 칸으로 합친다. 휴대폰 질문이 하나라도 있으면 합친 것도 휴대폰 질문 —
    * 원격 제한이 더 엄격한 쪽을 따른다 (PC 질문과 섞어 ①의 차단을 비켜 가지 못하게).
-   * 돌려주는 값: 남는 칸(첫 질문 id)과 지울 메시지 id들. 합칠 게 없으면(이미 답을 시작해 1개 이하) null
+   * 돌려주는 값: 남는 칸(첫 질문 id)과 지울 메시지 id들. 합칠 게 없으면(이미 답을 시작해 1개 이하) null,
+   * 합친 글이 질문 글자 상한을 넘으면 'tooLong' — 줄은 그대로 둔다 (잘라서 질문 끝을 잃지 않게)
    */
-  merge(intro: string): { kept: QueuedAsk; removed: number[] } | null {
+  merge(intro: string): { kept: QueuedAsk; removed: number[] } | 'tooLong' | null {
     if (this.items.length < 2) return null
+    const text = mergedText(this.items.map((x) => x.text), intro)
+    if (text.length > ASK_TEXT_MAX) return 'tooLong'
     const [first, ...rest] = this.items
-    const kept: QueuedAsk = { msgId: first.msgId, text: mergedText(this.items.map((x) => x.text), intro), remote: this.items.some((x) => x.remote) }
+    const kept: QueuedAsk = { msgId: first.msgId, text, remote: this.items.some((x) => x.remote) }
     this.items = [kept]
     return { kept, removed: rest.map((x) => x.msgId) }
   }

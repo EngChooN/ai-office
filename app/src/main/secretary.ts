@@ -24,7 +24,7 @@ import { contextParts, nextSummary, priorMessages, shouldSummarize, splitPrior, 
 import { briefCounts, briefDue, briefText, isBriefEmpty } from './secretaryBrief'
 import { awayAnswers, decideAway, mustHoldQuestion, RateWindow, SecretaryDesk, wrapDocument, type EditTarget } from './secretaryCore'
 import { maskSecrets } from '../shared/redact'
-import { AskQueue, type SecretaryAskResult } from '../shared/secretaryQueue'
+import { AskQueue, ASK_TEXT_MAX, type SecretaryAskResult } from '../shared/secretaryQueue'
 import { autoArrange } from '../shared/iso/autoArrange'
 import type { GridItem } from '../shared/iso/furniture'
 import { isoLevelOf } from '../shared/iso/levels'
@@ -47,7 +47,6 @@ import { engineGuide } from '../shared/engineModel'
 const SECRETARY_MODEL = 'sonnet'
 const MAX_TURNS = 12
 const TURN_BUDGET_USD = 0.5
-const ASK_TEXT_MAX = 4000
 const ASK_LIMITS = [
   { ms: 60_000, max: 6 },
   { ms: 3_600_000, max: 60 },
@@ -299,9 +298,13 @@ export class Secretary {
     return true
   }
 
-  /** 차례를 기다리는 질문을 첫 질문 자리의 말풍선 하나로 합친다 (한 번에 답한다). 합칠 게 2개 미만이면 false */
+  /** 차례를 기다리는 질문을 첫 질문 자리의 말풍선 하나로 합친다 (한 번에 답한다). 합칠 게 2개 미만이거나 합친 글이 너무 길면 false */
   mergeQueued(): boolean {
     const r = this.queue.merge(t('secretary.queue.mergedIntro'))
+    if (r === 'tooLong') {
+      this.add({ role: 'notice', text: t('secretary.queue.mergeTooLong') })
+      return false
+    }
     if (!r) return false
     const i = this.messages.findIndex((m) => m.id === r.kept.msgId)
     if (i >= 0) {

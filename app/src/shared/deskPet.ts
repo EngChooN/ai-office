@@ -351,7 +351,16 @@ export async function petApproveAlways(
 
 export type PetStopResult = "done" | "already" | "cancelled";
 
-/** ⋯ 메뉴 "일 멈추기": 고용 직원만, main 확인 창을 거쳐 앱과 같은 interrupt로 (업무 카드는 할 일로 돌아간다) */
+/** "일 멈추기"를 보여 줄 직원: 일하는 중(결재·인터넷 대기 포함)인 고용 직원만. 쉬는 직원에게는 멈출 일이 없다 (한리뷰) */
+export const canPetStopWork = (staff: Staff[], staffId: string) =>
+  staff.some(
+    (s) =>
+      s.id === staffId &&
+      s.kind === "hired" &&
+      (s.status === "working" || s.status === "waiting" || s.status === "netWait"),
+  );
+
+/** ⋯ 메뉴 "일 멈추기": 일하는 고용 직원만, main 확인 창을 거쳐 앱과 같은 interrupt로 (업무 카드는 할 일로 돌아간다) */
 export async function petStopWork(
   deps: {
     staff: () => Staff[];
@@ -360,10 +369,9 @@ export async function petStopWork(
   },
   staffId: string,
 ): Promise<PetStopResult> {
-  const isHired = (id: string) => deps.staff().some((s) => s.id === id && s.kind === "hired");
-  if (!isHired(staffId)) return "already";
+  if (!canPetStopWork(deps.staff(), staffId)) return "already";
   if (!(await deps.confirm())) return "cancelled";
-  if (!isHired(staffId)) return "already";
+  if (!canPetStopWork(deps.staff(), staffId)) return "already";
   await deps.interrupt(staffId);
   return "done";
 }

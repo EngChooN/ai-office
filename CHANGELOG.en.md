@@ -15,9 +15,9 @@ Writing rules
 
 ### Improvements
 - You can ask the assistant to post or reply in a team or project room. The confirm card shows the room, how it is sent and the post being replied to. Messages sent to a room from the desktop secretary reach working staff after their current work, and reply quotes and delivery status are shown there too.
-- Approval cards on the desktop secretary now show the same title, content view and requester as the app. Use the ⋯ menu to auto-approve from now on, stop the work or open it in the app.
+- Approval cards on the desktop secretary now show the same title, content view and requester as the app. Use the ⋯ menu to auto-approve from now on, stop the work (only while working) or open it in the app.
 - The Retro office game theme now applies to the desktop secretary window too, and its background changes right away when you switch themes.
-- When you ask the assistant several things in a row, waiting questions show 'Waiting · #n in line'. You can remove one or ask them together, and if the line is full your text stays in the input box.
+- When you ask the assistant several things in a row, waiting questions show 'Waiting · #n in line'. You can remove one or ask them together (unless the combined question would be too long), and if the line is full your text stays in the input box.
 - The assistant now points you to screens by their current names (Settings › Connect other devices, the staff panel 'Tools' tab and so on).
 - The 'N working' chip on the desktop secretary counts only staff who are working; staff waiting for their teammates' results show separately as 'n waiting'.
 - Turn the desktop secretary on or off right from the menu bar (the notification area on Windows). On Linux the desktop secretary setting is hidden.

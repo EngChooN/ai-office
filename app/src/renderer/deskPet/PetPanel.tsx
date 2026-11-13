@@ -41,6 +41,7 @@ import {
   fitsPetPanel,
   mergeFeed,
   PET_SECRETARY,
+  canPetStopWork,
   petApprovals,
   petTargetKey,
   petTargets,
@@ -835,6 +836,7 @@ function ApprovalMenu({
   const [isOpen, setIsOpen] = useState(false);
   const offer = alwaysApproveOffer(a, false);
   const isBusy = actions.states[a.id]?.kind === "busy";
+  const canStop = useOffice((s) => canPetStopWork(s.staff, a.staffId));
   const pick = (fn: () => void) => () => {
     setIsOpen(false);
     fn();
@@ -850,11 +852,15 @@ function ApprovalMenu({
           },
         ]
       : []),
-    {
-      key: "stop",
-      label: t("question.interrupt"),
-      onClick: () => void pet().stopWork(a.staffId),
-    },
+    ...(canStop
+      ? [
+          {
+            key: "stop",
+            label: t("question.interrupt"),
+            onClick: () => void pet().stopWork(a.staffId),
+          },
+        ]
+      : []),
     {
       key: "open",
       label: t("deskPet.openApp"),
