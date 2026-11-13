@@ -11,6 +11,8 @@ export default {
   'secretary.brief.sep': { ko: ', ', en: ', ', ja: '、', zh: '，' },
   'secretary.brief.off': { ko: '다시 안 보기', en: "Don't show again", ja: '今後は表示しない', zh: '不再显示' },
   'secretary.brief.offDone': { ko: '아침 요약을 껐어요. 설정에서 다시 켤 수 있어요.', en: 'Morning summary is off. You can turn it back on in Settings.', ja: '朝のまとめをオフにしました。設定で再びオンにできます。', zh: '已关闭早间摘要，可在设置中重新开启。' },
+  // 긴 대화 이어 가기: 오래된 대화 요약
+  'secretary.summary.title': { ko: '앞 대화 요약', en: 'Earlier conversation summary', ja: '前の会話の要約', zh: '之前对话的摘要' },
   // 비서 답 안의 결재 카드
   'secretary.approvals.gone': { ko: '이미 처리됐어요.', en: 'Already handled.', ja: 'すでに処理されました。', zh: '已处理。' },
   'secretary.approvals.approved': { ko: '승인했어요.', en: 'Approved.', ja: '承認しました。', zh: '已批准。' },

@@ -18,6 +18,7 @@ import { defineTool, registerLocalMcp, whenLocalMcpReady, type LocalMcpHandle } 
 import type { Office } from './office'
 import type { OfficeHandlers } from './officeHandlers'
 import { approvalCardIds } from './secretaryApprovals'
+import { contextParts, nextSummary, priorMessages, shouldSummarize, splitPrior, summaryAlive, summaryInput, SUMMARY_SYSTEM, type StoredSummary } from './secretaryMemory'
 import { briefCounts, briefDue, briefText, isBriefEmpty } from './secretaryBrief'
 import { awayAnswers, decideAway, mustHoldQuestion, RateWindow, SecretaryDesk, wrapDocument, type EditTarget } from './secretaryCore'
 import { maskSecrets } from '../shared/redact'
@@ -48,11 +49,8 @@ const ASK_LIMITS = [
   { ms: 3_600_000, max: 60 },
 ]
 const QUEUE_MAX = 3
-/** 질문마다 새로 부르며 넘기는 최근 대화 (이어 쓰는 세션 대신 — 토큰이 쌓이지 않게, QA) */
-const CONTEXT_MESSAGES = 8
 /** propose 설명에 인자 모양을 싣는 자주 쓰는 변경 */
 const COMMON_CHANGES = new Set<string>(['hire', 'updateStaff', 'instruct', 'decide', 'answerQuestion', 'createTeam', 'createLab', 'createTask', 'assignTask', 'updateTask', 'startMeeting', 'setAutoApprove', 'saveSchedule', 'deleteSchedule', 'setRefDocs', 'setEquipment', 'saveManual', 'deleteManual', 'placeGridItem', 'moveGridItem', 'storeItem', 'stowAllGrid'])
-const CONTEXT_TEXT_MAX = 400
 const AWAY_LIMITS = [{ ms: 3_600_000, max: 30 }]
 
 /** 화면 이동 링크로 쓸 수 있는 화면 (마크다운 [이름](#view=inbox)) */
@@ -161,6 +159,9 @@ export class Secretary {
   private undoOffered = new Set<string>()
   /** 이 앱 실행에서 비서 화면을 한 번이라도 열었는지 (아침 요약 판정) */
   private hasOpened = false
+  /** 8개 밖으로 밀려난 오래된 대화의 요약 (대화와 같이 30일 보관, 대화를 지우면 같이 지운다) */
+  private summary: StoredSummary | null = null
+  private isSummarizing = false
 
   constructor(office: Office, handlers: () => OfficeHandlers) {
     this.office = office
@@ -195,6 +196,8 @@ export class Secretary {
       cardChanged: (card) => this.onCardChanged(card),
     })
     const loaded = db.loadSecretaryMessages(Date.now() - KEEP_DAYS * 86_400_000, MESSAGES_KEEP)
+    this.summary = summaryAlive(db.secretarySummary(), Date.now(), KEEP_DAYS)
+    if (!this.summary) db.saveSecretarySummary(null)
     for (const m of loaded) {
       const { target, ...msg } = m as SecretaryMessage & { target?: EditTarget }
       if (msg.card) this.desk.restore(msg.card, target)
@@ -208,7 +211,7 @@ export class Secretary {
     const since = new Date()
     since.setHours(0, 0, 0, 0)
     const u = db.usageSince(SECRETARY_ID, since.getTime())
-    return { ...EMPTY_SECRETARY, messages: this.messages.slice(-MESSAGES_SHOWN), isBusy: this.isBusy, activity: this.activity, usageTodayTokens: u.tokensIn + u.tokensOut, isLimited: this.isLimited() }
+    return { ...EMPTY_SECRETARY, messages: this.messages.slice(-MESSAGES_SHOWN), isBusy: this.isBusy, activity: this.activity, usageTodayTokens: u.tokensIn + u.tokensOut, isLimited: this.isLimited(), summary: this.summary?.text ?? '' }
   }
 
   /** 토큰 한도(일·주·월) 중 하나라도 100%에 닿았는지 — 닿으면 조회·사용법 답만 (제안·AI 조회·대신 답하기는 쉰다) */
@@ -306,6 +309,8 @@ export class Secretary {
   /** 대화 지우기: 화면 대화와 세션 문맥을 비운다 (사용량 기록은 남는다) */
   clear() {
     db.clearSecretaryMessages()
+    db.saveSecretarySummary(null)
+    this.summary = null
     this.messages = []
     this.closeSession()
     this.add({ role: 'notice', text: '대화를 지웠어요. 새로 시작해요.' })
@@ -344,19 +349,44 @@ export class Secretary {
     this.endedWithText = false
     this.changed()
     await this.answer(text)
-    if (gen === this.generation) void this.next()
+    if (gen === this.generation) {
+      void this.maybeSummarize()
+      void this.next()
+    }
   }
 
-  /** 최근 대화 몇 개만 짧게 (카드는 제목·상태만) — 질문마다 새로 부르므로 문맥은 이것뿐 */
+  /** 앞 대화: 오래된 것은 요약 한 덩어리, 최근 몇 개는 그대로 (카드는 제목·상태만) — 질문마다 새로 부르므로 문맥은 이것뿐 */
   private recentContext() {
-    const prior = this.messages.slice(0, -1).filter((m) => m.role !== 'notice').slice(-CONTEXT_MESSAGES)
-    if (prior.length === 0) return ''
-    const line = (m: SecretaryMessage) => {
-      if (m.card) return `비서: [카드 "${m.card.title}" — ${m.card.status}]`
-      const t = m.text.replace(/\s+/g, ' ')
-      return `${m.role === 'me' ? '대표' : '비서'}: ${t.length > CONTEXT_TEXT_MAX ? `${t.slice(0, CONTEXT_TEXT_MAX)}…` : t}`
+    const { summary, lines } = contextParts(priorMessages(this.messages), this.summary)
+    if (!summary && lines.length === 0) return ''
+    return [summary && wrapDocument('앞 대화 요약 (참고만)', summary), lines.length ? wrapDocument('앞 대화 (참고만)', lines.join('\n')) : ''].filter(Boolean).join('\n\n')
+  }
+
+  /** 밀려난 오래된 대화가 쌓였으면 기존 요약에 이어 합친다 — 가장 값싼 모델 한 번, 답을 막지 않고, 실패·한도면 조용히 건너뛴다 (최근 8개로 계속) */
+  private async maybeSummarize() {
+    if (this.isSummarizing || this.isLimited()) return
+    const gen = this.generation
+    const { overflow } = splitPrior(priorMessages(this.messages), this.summary)
+    if (!shouldSummarize(overflow)) return
+    this.isSummarizing = true
+    const abort = new AbortController()
+    const timer = setTimeout(() => abort.abort(), 60_000)
+    try {
+      const r = await askOnce({ prompt: summaryInput(this.summary, overflow), system: SUMMARY_SYSTEM, tier: 'light', cwd: app.getPath('userData'), abortController: abort })
+      db.insertUsage(SECRETARY_ID, r.costUsd, r.tokensIn, r.tokensOut)
+      // 요약하는 동안 대화를 지우거나 멈췄다면 버린다
+      if (gen !== this.generation) return
+      const next = nextSummary(r.text, overflow)
+      if (!next) return
+      this.summary = next
+      db.saveSecretarySummary(next)
+      this.changed()
+    } catch (e) {
+      console.error('[secretary] summarize', e)
+    } finally {
+      clearTimeout(timer)
+      this.isSummarizing = false
     }
-    return wrapDocument('앞 대화 (참고만)', prior.map(line).join('\n'))
   }
 
   /** 질문 하나 = 새 query 하나 (세션을 이어 쓰지 않아 토큰이 쌓이지 않는다 — QA 12만~27만 토큰): 최근 대화만 넣고 턴·비용 상한 */

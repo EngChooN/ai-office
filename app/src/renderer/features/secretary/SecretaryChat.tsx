@@ -191,7 +191,7 @@ export function SecretaryMessages({
   className?: string;
   empty?: React.ReactNode;
 }) {
-  const { messages, isBusy, activity } = useSecretary();
+  const { messages, isBusy, activity, summary } = useSecretary();
   const shown = since ? messages.filter((m) => m.ts >= since) : messages;
   const endRef = useRef<HTMLDivElement>(null);
   // 중괄호로 감싼다: 요즘 Chrome의 scrollIntoView는 Promise를 돌려줘서 그대로 돌려주면 React가 정리 함수로 부른다
@@ -205,6 +205,14 @@ export function SecretaryMessages({
   if (shown.length === 0 && !isBusy) return <>{empty}</>;
   return (
     <div className={cn("flex flex-col gap-3", className)}>
+      {summary && !since && (
+        <details className="text-muted-foreground bg-muted/50 rounded-xl px-3 py-1.5 text-xs">
+          <summary className="cursor-pointer select-none">
+            {t("secretary.summary.title")}
+          </summary>
+          <p className="selectable mt-1 whitespace-pre-wrap">{summary}</p>
+        </details>
+      )}
       {shown.map((m) => (
         <SecretaryBubble
           key={m.id}

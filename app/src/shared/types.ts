@@ -1554,9 +1554,11 @@ export interface SecretaryState {
   usageTodayTokens: number
   /** 토큰 한도에 닿아 조회·사용법만 답하는 중 */
   isLimited: boolean
+  /** 8개 밖으로 밀려난 오래된 대화의 요약 (없으면 빈 글) */
+  summary: string
 }
 
-export const EMPTY_SECRETARY: SecretaryState = { messages: [], isBusy: false, activity: '', usageTodayTokens: 0, isLimited: false }
+export const EMPTY_SECRETARY: SecretaryState = { messages: [], isBusy: false, activity: '', usageTodayTokens: 0, isLimited: false, summary: '' }
 
 /** 사용량(usage) 표에서 비서 몫을 가리키는 id — 직원 id와 겹치지 않는다 */
 export const SECRETARY_ID = 'secretary'

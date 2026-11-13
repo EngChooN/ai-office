@@ -845,6 +845,22 @@ export function loadSecretaryMessages(keepSince: number, limit: number) {
   return all<SecretaryRow>('SELECT * FROM secretary_message ORDER BY id DESC LIMIT ?', limit).reverse().map(toSecretaryMessage)
 }
 
+/** 8개 밖으로 밀려난 오래된 대화의 요약 (없으면 null) — 대화와 같은 보관 기간을 쓴다 */
+export function secretarySummary(): { text: string; upTo: number; coveredTs: number } | null {
+  const raw = get<{ value: string }>("SELECT value FROM setting WHERE key = 'secretaryContextSummary'")?.value
+  if (!raw) return null
+  try {
+    const v = JSON.parse(raw) as { text?: unknown; upTo?: unknown; coveredTs?: unknown }
+    return typeof v.text === 'string' && typeof v.upTo === 'number' && typeof v.coveredTs === 'number' ? { text: v.text, upTo: v.upTo, coveredTs: v.coveredTs } : null
+  } catch {
+    return null
+  }
+}
+
+export function saveSecretarySummary(s: { text: string; upTo: number; coveredTs: number } | null) {
+  run("INSERT INTO setting (key, value) VALUES ('secretaryContextSummary', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", s ? JSON.stringify(s) : '')
+}
+
 /** 비서를 마지막으로 연 시각 (ms, 없으면 null) — 아침 요약이 "그동안"의 시작점으로 쓴다 */
 export function secretarySeenAt(): number | null {
   const v = Number(get<{ value: string }>("SELECT value FROM setting WHERE key = 'secretaryBriefSeenAt'")?.value)
