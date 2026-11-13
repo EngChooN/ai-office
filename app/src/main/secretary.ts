@@ -18,6 +18,7 @@ import { defineTool, registerLocalMcp, whenLocalMcpReady, type LocalMcpHandle } 
 import type { Office } from './office'
 import type { OfficeHandlers } from './officeHandlers'
 import { approvalCardIds } from './secretaryApprovals'
+import { briefCounts, briefDue, briefText, isBriefEmpty } from './secretaryBrief'
 import { awayAnswers, decideAway, mustHoldQuestion, RateWindow, SecretaryDesk, wrapDocument, type EditTarget } from './secretaryCore'
 import { maskSecrets } from '../shared/redact'
 import { autoArrange } from '../shared/iso/autoArrange'
@@ -158,6 +159,8 @@ export class Secretary {
   /** 마지막으로 치운 가구와 그 뒤 새로 놓은 층 — "되돌려줘"(undo_stow)용. 앱을 끄면 지워진다 */
   private lastStow: { items: GridItem[]; refill: number[] } | null = null
   private undoOffered = new Set<string>()
+  /** 이 앱 실행에서 비서 화면을 한 번이라도 열었는지 (아침 요약 판정) */
+  private hasOpened = false
 
   constructor(office: Office, handlers: () => OfficeHandlers) {
     this.office = office
@@ -282,6 +285,22 @@ export class Secretary {
 
   cancel(cardId: string) {
     this.desk.cancel(cardId)
+  }
+
+  /** 비서 화면을 열었다: 오래 비웠다 돌아왔으면(또는 앱을 새로 켠 뒤 첫 열기) 그동안 요약을 대화에 한 번 올린다 — 내용이 없으면 조용히 */
+  opened() {
+    const now = Date.now()
+    const seenAt = db.secretarySeenAt()
+    const isFirstOpenThisRun = !this.hasOpened
+    this.hasOpened = true
+    db.saveSecretarySeenAt(now)
+    const snap = this.office.snapshot()
+    if (!briefDue({ isEnabled: snap.settings.isSecretaryBriefOn, seenAt, now, isFirstOpenThisRun }) || seenAt === null) return
+    const counts = briefCounts(snap, seenAt)
+    if (isBriefEmpty(counts)) return
+    const ids = approvalCardIds(snap.staff.flatMap((s) => s.approvals))
+    this.add({ role: 'secretary', text: briefText(counts, now, now - seenAt), isBrief: true })
+    if (ids.length) this.add({ role: 'secretary', text: '', approvalIds: ids })
   }
 
   /** 대화 지우기: 화면 대화와 세션 문맥을 비운다 (사용량 기록은 남는다) */

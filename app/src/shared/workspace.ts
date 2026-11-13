@@ -253,6 +253,7 @@ export const METHOD_ACCESS: Record<OfficeMethod, MethodAccess> = {
   secretaryRun: 'write',
   secretaryCancel: 'write',
   secretaryClear: 'write',
+  secretaryOpened: 'write',
 }
 
 /** 화면이 보낸 이름의 구분 — 표에 없는 이름(옛·새 화면, 잘못된 값)은 write */

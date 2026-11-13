@@ -161,6 +161,7 @@ export const OFFICE_METHODS = [
   'secretaryRun',
   'secretaryCancel',
   'secretaryClear',
+  'secretaryOpened',
 ] as const satisfies readonly OfficeMethod[]
 
 export const OFFICE_EVENTS = ['onSnapshot', 'onLog', 'onApprovalRecord', 'onChat', 'onFocus', 'onRemoteStatus', 'onGalleryChanged'] as const satisfies readonly OfficeEvent[]

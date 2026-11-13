@@ -18,7 +18,9 @@ export function QuickSecretary() {
   const setView = useOffice((s) => s.setView)
   const [since, setSince] = useState(0)
   useEffect(() => {
-    if (isOpen) setSince(Date.now())
+    if (!isOpen) return
+    setSince(Date.now())
+    void window.office.secretaryOpened()
   }, [isOpen])
   // 참·거짓만 꺼낸다 (스냅샷마다 빠른 창 전체를 다시 그리지 않게)
   const hasCard = useOffice((s) => (s.secretary ?? EMPTY_SECRETARY).messages.some((m) => m.ts >= since && m.card))

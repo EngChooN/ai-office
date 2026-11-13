@@ -220,6 +220,7 @@ export const V2_METHODS: Record<OfficeMethod, MethodSpec> = {
   secretaryRun: R('s o?'),
   secretaryCancel: R('s'),
   secretaryClear: R(),
+  secretaryOpened: R(),
 }
 
 // ── 객체 인자: 메서드별 허용 필드 ─────────────────────────
@@ -271,7 +272,7 @@ export const V2_FIELDS: Partial<Record<OfficeMethod, Record<number, string[]>>> 
     // 막는 목록은 REMOTE_BLOCKED_SETTINGS 한 곳 — 비서 카드 실행도 같은 목록으로 막는다 (secretaryCore)
     // 화면 캡처 허용·공용 브라우저 로그인은 PC에서만 (폰에서 대표 화면 캡처 권한을 켜지 못하게). PC 화면 모드·색 테마·바탕화면 비서도 PC에서만
     // 기본 작업 폴더도 PC에서만 (원격에서 바꾸면 새 고용·지시의 작업 폴더 제한이 우회된다)
-    0: fieldsExcept('updateSettings', 0, REMOTE_BLOCKED_SETTINGS, { monthlyBudgetUsd: true, tokenBudget: true, theme: true, dayNight: true, plants: true, isChatterOn: true, workHours: true, layout: true, isTrayOn: true, launchAtLogin: true, isOnboarded: true, isWorkMode: true, isFullAccessNoticeSeen: true, isProviderBannerSeen: true, internalAi: true, language: true, demoDay: true, isSecretaryWebOn: true, tokenSaverMode: true, reportStyle: true }),
+    0: fieldsExcept('updateSettings', 0, REMOTE_BLOCKED_SETTINGS, { monthlyBudgetUsd: true, tokenBudget: true, theme: true, dayNight: true, plants: true, isChatterOn: true, isSecretaryBriefOn: true, workHours: true, layout: true, isTrayOn: true, launchAtLogin: true, isOnboarded: true, isWorkMode: true, isFullAccessNoticeSeen: true, isProviderBannerSeen: true, internalAi: true, language: true, demoDay: true, isSecretaryWebOn: true, tokenSaverMode: true, reportStyle: true }),
   },
 }
 

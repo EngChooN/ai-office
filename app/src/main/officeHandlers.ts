@@ -227,5 +227,6 @@ export function createOfficeHandlers(office: Office, remoteApi: () => RemoteServ
     secretaryRun: (cardId: string, options?: Parameters<Secretary['run']>[1]) => secretary().run(cardId, options ?? {}),
     secretaryCancel: (cardId: string) => secretary().cancel(cardId),
     secretaryClear: () => secretary().clear(),
+    secretaryOpened: () => secretary().opened(),
   }
 }

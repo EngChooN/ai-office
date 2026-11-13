@@ -2,6 +2,15 @@ import type { Entry } from './index.ts'
 
 /** 비서 확인 카드 본문 — 카드에 키+인자로 저장해 두고 화면 언어로 보인다 (main/secretaryDescribe·secretaryCore) */
 export default {
+  // 아침(밤사이) 요약
+  'secretary.brief.morning': { ko: '좋은 아침이에요. 밤사이 {items}.', en: 'Good morning. Overnight: {items}.', ja: 'おはようございます。夜の間に{items}。', zh: '早上好。夜间：{items}。' },
+  'secretary.brief.back': { ko: '다녀오셨네요. 그동안 {items}.', en: 'Welcome back. While you were away: {items}.', ja: 'おかえりなさい。その間に{items}。', zh: '欢迎回来。期间：{items}。' },
+  'secretary.brief.done': { ko: '업무 {n}건 끝', en: '{n} task(s) done', ja: '業務{n}件完了', zh: '完成 {n} 项任务' },
+  'secretary.brief.approvals': { ko: '결재 {n}건 대기 중', en: '{n} approval(s) waiting', ja: '承認{n}件待ち', zh: '{n} 项审批待处理' },
+  'secretary.brief.errors': { ko: '오류 난 직원 {n}명', en: '{n} staff with errors', ja: 'エラーのスタッフ{n}名', zh: '{n} 名员工出错' },
+  'secretary.brief.sep': { ko: ', ', en: ', ', ja: '、', zh: '，' },
+  'secretary.brief.off': { ko: '다시 안 보기', en: "Don't show again", ja: '今後は表示しない', zh: '不再显示' },
+  'secretary.brief.offDone': { ko: '아침 요약을 껐어요. 설정에서 다시 켤 수 있어요.', en: 'Morning summary is off. You can turn it back on in Settings.', ja: '朝のまとめをオフにしました。設定で再びオンにできます。', zh: '已关闭早间摘要，可在设置中重新开启。' },
   // 비서 답 안의 결재 카드
   'secretary.approvals.gone': { ko: '이미 처리됐어요.', en: 'Already handled.', ja: 'すでに処理されました。', zh: '已处理。' },
   'secretary.approvals.approved': { ko: '승인했어요.', en: 'Approved.', ja: '承認しました。', zh: '已批准。' },

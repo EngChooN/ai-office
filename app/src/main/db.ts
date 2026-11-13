@@ -166,6 +166,7 @@ export function openDb() {
   // 비서 답 안에 띄운 결재 카드의 결재 id들 (JSON 배열)
   const secretaryCols = (db.prepare('PRAGMA table_info(secretary_message)').all() as { name: string }[]).map((c) => c.name)
   if (!secretaryCols.includes('approval_ids')) db.exec('ALTER TABLE secretary_message ADD COLUMN approval_ids TEXT')
+  if (!secretaryCols.includes('is_brief')) db.exec('ALTER TABLE secretary_message ADD COLUMN is_brief INTEGER')
   db.exec('CREATE TABLE IF NOT EXISTS chat_reservation (id TEXT PRIMARY KEY, data TEXT NOT NULL, created_at INTEGER NOT NULL)')
 }
 
@@ -810,6 +811,7 @@ interface SecretaryRow {
   tokens: number | null
   is_error: number | null
   approval_ids: string | null
+  is_brief: number | null
 }
 
 const toSecretaryMessage = (r: SecretaryRow): SecretaryMessage & { target?: unknown } => ({
@@ -822,12 +824,13 @@ const toSecretaryMessage = (r: SecretaryRow): SecretaryMessage & { target?: unkn
   ...(r.tokens ? { tokens: r.tokens } : {}),
   ...(r.is_error ? { isError: true } : {}),
   ...(r.approval_ids ? { approvalIds: JSON.parse(r.approval_ids) as string[] } : {}),
+  ...(r.is_brief ? { isBrief: true } : {}),
 })
 
 export function insertSecretaryMessage(m: Omit<SecretaryMessage, 'id'>, target?: unknown): SecretaryMessage {
   const { lastInsertRowid } = run(
-    'INSERT INTO secretary_message (ts, role, text, card, target, tokens, is_error, approval_ids) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-    m.ts, m.role, m.text, m.card ? JSON.stringify(m.card) : null, target ? JSON.stringify(target) : null, m.tokens ?? null, m.isError ? 1 : null, m.approvalIds?.length ? JSON.stringify(m.approvalIds) : null,
+    'INSERT INTO secretary_message (ts, role, text, card, target, tokens, is_error, approval_ids, is_brief) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    m.ts, m.role, m.text, m.card ? JSON.stringify(m.card) : null, target ? JSON.stringify(target) : null, m.tokens ?? null, m.isError ? 1 : null, m.approvalIds?.length ? JSON.stringify(m.approvalIds) : null, m.isBrief ? 1 : null,
   )
   return { ...m, id: Number(lastInsertRowid) }
 }
@@ -840,6 +843,16 @@ export function updateSecretaryMessage(m: SecretaryMessage) {
 export function loadSecretaryMessages(keepSince: number, limit: number) {
   run('DELETE FROM secretary_message WHERE ts < ?', keepSince)
   return all<SecretaryRow>('SELECT * FROM secretary_message ORDER BY id DESC LIMIT ?', limit).reverse().map(toSecretaryMessage)
+}
+
+/** 비서를 마지막으로 연 시각 (ms, 없으면 null) — 아침 요약이 "그동안"의 시작점으로 쓴다 */
+export function secretarySeenAt(): number | null {
+  const v = Number(get<{ value: string }>("SELECT value FROM setting WHERE key = 'secretaryBriefSeenAt'")?.value)
+  return Number.isFinite(v) && v > 0 ? v : null
+}
+
+export function saveSecretarySeenAt(ts: number) {
+  run("INSERT INTO setting (key, value) VALUES ('secretaryBriefSeenAt', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", String(ts))
 }
 
 export function clearSecretaryMessages() {

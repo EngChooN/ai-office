@@ -804,6 +804,8 @@ export interface Settings {
   plants: number
   /** 휴게실 수다 말풍선 */
   isChatterOn: boolean
+  /** 오래 비웠다 돌아와 비서를 열면 밤사이 요약 한 번 */
+  isSecretaryBriefOn: boolean
   /** 근무시간 밖이면 쉬던 직원은 퇴근한다 */
   workHours: { isEnabled: boolean; start: string; end: string }
   /** 꾸미기 모드에서 옮긴 소품 위치 (소품 키 → 기본 위치에서의 이동량) */
@@ -1130,6 +1132,8 @@ export interface OfficeApi {
   secretaryRun(cardId: string, options?: SecretaryRunOptions): Promise<SecretaryCard | null>
   secretaryCancel(cardId: string): Promise<void>
   secretaryClear(): Promise<void>
+  /** 비서 화면을 열었다 — 오래 비웠다 돌아왔다면 아침 요약을 대화에 올린다 */
+  secretaryOpened(): Promise<void>
   onRemoteStatus(cb: (status: RemoteStatus) => void): () => void
   snapshot(): Promise<OfficeSnapshot>
   /** 첫 업무 튜토리얼 (모의 진행 — AI 호출 없음): 시나리오 시작(연습 회사가 없으면 만든다) · 진행(화면이 본 일·건너뛰기·지금 보기·끝내기) · 연습 회사 정리 */
@@ -1372,6 +1376,7 @@ export const DEFAULT_SETTINGS: Settings = {
   uiTheme: DEFAULT_UI_THEME,
   plants: 3,
   isChatterOn: true,
+  isSecretaryBriefOn: true,
   workHours: { isEnabled: false, start: '09:00', end: '19:00' },
   layout: {},
   isTrayOn: true,
@@ -1537,6 +1542,8 @@ export interface SecretaryMessage {
   isError?: boolean
   /** 답 안에 띄울 결재 카드의 결재 id들 — 화면이 지금 결재 목록에서 찾아 그리고, 없으면 "이미 처리됐어요" */
   approvalIds?: string[]
+  /** 아침(밤사이) 요약 — 아래에 [다시 안 보기]가 붙는다 */
+  isBrief?: boolean
 }
 
 export interface SecretaryState {

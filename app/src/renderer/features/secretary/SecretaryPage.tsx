@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Trash2Icon } from 'lucide-react'
 import { useShallow } from 'zustand/react/shallow'
 import { Button } from '@/components/ui/button'
@@ -29,6 +30,9 @@ export function SecretaryPage() {
       return { usageTodayTokens: sec.usageTodayTokens, isLimited: sec.isLimited, hasMessages: sec.messages.length > 0 }
     }),
   )
+  useEffect(() => {
+    void window.office.secretaryOpened()
+  }, [])
   const handleClear = () => {
     if (window.confirm(t('secretary.clearConfirm'))) void window.office.secretaryClear()
   }

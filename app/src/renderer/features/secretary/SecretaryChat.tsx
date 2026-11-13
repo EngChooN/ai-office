@@ -87,6 +87,26 @@ export function ExampleChips({
   );
 }
 
+/** 아침 요약 아래 [다시 안 보기] — 누르면 설정이 꺼지고 안내 문구로 바뀐다 */
+function BriefOff() {
+  const isOn = useOffice((s) => s.settings.isSecretaryBriefOn);
+  if (!isOn)
+    return (
+      <span className="text-muted-foreground text-xs">
+        {t("secretary.brief.offDone")}
+      </span>
+    );
+  return (
+    <button
+      type="button"
+      onClick={() => void window.office.updateSettings({ isSecretaryBriefOn: false })}
+      className="text-muted-foreground self-start text-xs underline-offset-2 hover:underline"
+    >
+      {t("secretary.brief.off")}
+    </button>
+  );
+}
+
 export const SecretaryBubble = memo(function SecretaryBubble({
   message: m,
   onRetry,
@@ -149,6 +169,7 @@ export const SecretaryBubble = memo(function SecretaryBubble({
             )}
           </div>
         )}
+        {m.isBrief && <BriefOff />}
         <span className="text-muted-foreground text-[10px]">
           {timeText(m.ts)}
           {m.tokens

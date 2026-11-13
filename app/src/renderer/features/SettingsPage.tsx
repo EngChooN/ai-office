@@ -377,6 +377,11 @@ export function SettingsPage() {
                 </label>
               )}
             </Section>
+            <Section title={t('settingsPage.secretaryBrief.title')} description={t('settingsPage.secretaryBrief.desc')}>
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={settings.isSecretaryBriefOn} onChange={(e) => update({ isSecretaryBriefOn: e.target.checked })} /> {t('settingsPage.secretaryBrief.toggle')}
+              </label>
+            </Section>
             <Section title={t('settingsPage.secretaryWeb.title')} description={t('settingsPage.secretaryWeb.desc')}>
               <label className="flex items-center gap-2 text-sm">
                 <input type="checkbox" checked={settings.isSecretaryWebOn} onChange={(e) => update({ isSecretaryWebOn: e.target.checked })} /> {t('settingsPage.secretaryWeb.toggle')}
