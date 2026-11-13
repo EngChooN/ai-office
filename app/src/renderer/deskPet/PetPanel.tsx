@@ -275,7 +275,7 @@ export function PetPanel() {
 
   return (
     <div className="pet-panel bg-background text-foreground relative flex h-screen flex-col text-[13px]">
-      <header className="flex items-center gap-1.5 border-b px-3 py-2.5 [-webkit-app-region:drag]">
+      <header className="flex items-center gap-1 border-b px-3 py-2.5 [-webkit-app-region:drag]">
         <SecretaryFace className="size-7 shrink-0" />
         <button
           type="button"
@@ -284,9 +284,9 @@ export function PetPanel() {
           aria-label={t("deskPet.pickTarget", { name })}
           title={name}
           onClick={() => setPickerOpen((v) => !v)}
-          className="hover:bg-accent focus-visible:ring-ring flex min-w-0 flex-1 items-center gap-1 rounded-md px-1.5 py-1 text-left outline-none focus-visible:ring-2 [-webkit-app-region:no-drag]"
+          className="hover:bg-accent focus-visible:ring-ring flex min-w-[52px] flex-1 items-center gap-1 rounded-md px-1.5 py-1 text-left outline-none focus-visible:ring-2 [-webkit-app-region:no-drag]"
         >
-          <span className="truncate text-[15px] font-semibold">{name}</span>
+          <span className="min-w-[2.5em] truncate text-[15px] font-semibold">{name}</span>
           <ChevronDownIcon className="text-muted-foreground size-4 shrink-0" />
         </button>
         {workingCount > 0 && (
