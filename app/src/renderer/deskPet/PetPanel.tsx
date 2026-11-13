@@ -26,6 +26,7 @@ import {
 import { QuestionBox } from "@/features/QuestionBox";
 import { WaitReasonLine } from "@/features/WaitReasonLine";
 import { ApprovalSummary } from "@/features/ApprovalSummary";
+import { DeliveryLine, ReplyQuote } from "@/features/ChatExtras";
 import { alwaysApproveOffer } from "@shared/approvalRules";
 import {
   EMPTY_SECRETARY,
@@ -242,8 +243,9 @@ export function PetPanel() {
         window.office.instruct(current.staffId, text).finally(reloadLogs);
     if (current.kind === "room")
       return (text: string) =>
+        // 직원 한 명에게 보낼 때처럼 일하는 직원에게는 하던 일이 끝나면 전한다 (끼어들기는 앱 대화방에서)
         window.office
-          .sendChat(text, undefined, current.room || undefined)
+          .sendChat(text, undefined, current.room || undefined, "wait")
           .finally(reloadChat);
     return undefined;
   }, [current, reloadLogs, reloadChat]);
@@ -579,6 +581,13 @@ function FeedRow({
               isQueued && "opacity-60",
             )}
           >
+            {item.chat?.replyTo && (
+              <ReplyQuote
+                reply={item.chat.replyTo}
+                isMe={item.isMine}
+                isStatic
+              />
+            )}
             {item.isMarkdown ? (
               <Markdown>{item.text}</Markdown>
             ) : (
@@ -599,6 +608,7 @@ function FeedRow({
               </div>
             )}
           </div>
+          {item.chat && <ChatMarks message={item.chat} />}
           {isQueued && item.secretaryMsgId !== undefined && (
             <QueuedBadge msgId={item.secretaryMsgId} />
           )}
@@ -618,6 +628,26 @@ function FeedRow({
     case "auto":
       return <AutoCard handled={item.handled} />;
   }
+}
+
+/** 대화방 글 아래 작은 표시: 첨부 이름 · 👍 · 처리 상태(본 창 DeliveryLine — 누르는 링크는 빼고). 본 창 말풍선은 좁은 창에 맞지 않아 가져오지 않는다 */
+function ChatMarks({ message: m }: { message: ChatMessage }) {
+  const files = m.attachments ?? [];
+  return (
+    <>
+      {(files.length > 0 || m.reaction) && (
+        <span className="text-muted-foreground flex flex-wrap gap-x-2 px-1 text-[11px]">
+          {files.map((f) => (
+            <span key={f.id} className="max-w-48 truncate">
+              📎 {f.name}
+            </span>
+          ))}
+          {m.reaction && <span>👍</span>}
+        </span>
+      )}
+      <DeliveryLine message={m} isStatic />
+    </>
+  );
 }
 
 /** 완료 카드: "○○ 완료" · 결과 요약 한 줄 · 결과 열기(앱의 그 직원 대화 — 보고 원문과 결과물이 있는 곳) */

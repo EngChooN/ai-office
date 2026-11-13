@@ -4,6 +4,7 @@
 
 import type { OfficeMethod } from '../shared/officeApiShape.ts'
 import type { Settings } from '../shared/types.ts'
+import { parseRoom } from '../shared/chatRooms.ts'
 import { SECRETARY_TOOLS, type SecretaryRisk } from '../shared/secretaryTools.ts'
 import { shopItem } from '../shared/economy.ts'
 import { tr, type I18nArg, type I18nText } from '../shared/i18n/index.ts'
@@ -90,9 +91,19 @@ export function describeLines(method: OfficeMethod, args: unknown[], nameOf: Nam
     case 'openFoundFile':
       lines.push(L(a1 === 'reveal' ? 'secretary.d.revealFile' : 'secretary.d.openFile', { target: id(a0) }))
       break
-    case 'sendChat':
-      lines.push(L('secretary.d.chat', { text: quote(a0) }))
+    case 'sendChat': {
+      // 실제 인자 순서 (text, attachments, room, mode, replyTo) — 받는 방·방식·답장 대상을 카드에 보인다. 없어진 방은 office.sendChat처럼 전체 방으로
+      const [, , room, mode, replyTo] = args
+      const where = parseRoom(typeof room === 'string' ? room : null)
+      const roomName = where ? nameOf(where.id) : null
+      lines.push(
+        L('secretary.d.chat', { text: quote(a0) }),
+        L('secretary.d.room', { room: !where ? L('secretary.d.roomAll') : roomName ? roomName : L('secretary.d.roomGone') }),
+        L(mode === 'now' ? 'secretary.d.sendNow' : mode === 'wait' ? 'secretary.d.sendWait' : 'secretary.d.sendDirect'),
+        ...(typeof replyTo === 'number' ? [L('secretary.d.replyTo', { text: nameOf(`chat:${replyTo}`) ?? `#${replyTo}` })] : []),
+      )
       break
+    }
     case 'decide':
       lines.push(L('secretary.d.approval', { target: id(a0) }), L(a1 ? 'secretary.d.approve' : 'secretary.d.reject'))
       break

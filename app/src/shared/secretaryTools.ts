@@ -334,7 +334,7 @@ export const SECRETARY_SIGNATURES: Partial<Record<OfficeMethod, string>> = {
   deleteSchedule: '(scheduleId)',
   runScheduleNow: '(scheduleId)',
   releasePlanHold: '()',
-  sendChat: '(text)',
+  sendChat: '(text, attachments: [] (비서는 늘 빈 목록), room: 팀 id·"lab:<프로젝트 id>"·null(전체 방), mode: "wait"(기본 — 일하는 직원에게는 하던 일이 끝나면 전함)|"now"(대표가 바로·끼어들어 달라고 할 때만), replyTo?: 답장할 글 번호(chatHistory의 #번호)) — 실제 함수와 같은 순서',
   saveChatReservation: '({ id (새로 만들면 새 UUID), kind: "once"|"repeat", text (@이름 지시 포함), room: 팀 id·"lab:<프로젝트 id>"·null(전체 방), at?: ms (once), time?: "HH:MM", weekdays?: number[] (repeat, 0=일~6=토), enabled: boolean })',
   chatReservationAction: '(id, action: "send"|"cancel"|"skip"|"pause"|"resume")',
   searchChat: '(query, room?: 팀 id·"lab:<프로젝트 id>"·null(전체 방) — 비우면 모든 방)',

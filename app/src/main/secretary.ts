@@ -12,7 +12,7 @@ import { app } from 'electron'
 import { z } from 'zod'
 import type { OfficeMethod } from '../shared/officeApiShape'
 import { BATCH_GUIDE, BATCH_ITEMS_MAX, BATCH_METHOD, CARD_STEPS_MAX, methodsOfKind, SECRETARY_SIGNATURES } from '../shared/secretaryTools'
-import { EMPTY_SECRETARY, SECRETARY_ID, type AutoHandled, type DailyRecord, type EngineChangeResult, type LogEntry, type Manual, type OfficeSnapshot, type Payslip, type SecretaryCard, type SecretaryCompare, type SecretaryMessage, type SecretaryRunOptions, type SecretaryState, type Staff, type StaffActivity, type StaffQuestion } from '../shared/types'
+import { EMPTY_SECRETARY, SECRETARY_ID, type AutoHandled, type ChatMessage, type DailyRecord, type EngineChangeResult, type LogEntry, type Manual, type OfficeSnapshot, type Payslip, type SecretaryCard, type SecretaryCompare, type SecretaryMessage, type SecretaryRunOptions, type SecretaryState, type Staff, type StaffActivity, type StaffQuestion } from '../shared/types'
 import * as db from './db'
 import { aiBackend, askOnce, type SecretaryEvent, type SecretaryRun } from './ai'
 import { defineTool, registerLocalMcp, whenLocalMcpReady, type LocalMcpHandle } from './mcp/localMcp'
@@ -30,7 +30,8 @@ import type { GridItem } from '../shared/iso/furniture'
 import { isoLevelOf } from '../shared/iso/levels'
 import { arrangeSteps, decorCompares, furnitureName, layoutText, undoSteps } from './secretaryDecor'
 import { compactStaffActivity } from '../shared/staffActivity'
-import { capText, compactGeneric, compareSteps, compactLogs, compactOverview, compactManual, compactPeriod, compactStaffDetail, guideLines } from './secretaryCompact'
+import { findRoom } from '../shared/chatRooms'
+import { capText, compactChatHistory, compactGeneric, compareSteps, compactLogs, compactOverview, compactManual, compactPeriod, compactStaffDetail, guideLines } from './secretaryCompact'
 
 const KEEP_DAYS = 30
 const MESSAGES_KEEP = 200
@@ -52,7 +53,7 @@ const ASK_LIMITS = [
   { ms: 3_600_000, max: 60 },
 ]
 /** propose 설명에 인자 모양을 싣는 자주 쓰는 변경 */
-const COMMON_CHANGES = new Set<string>(['hire', 'updateStaff', 'instruct', 'decide', 'answerQuestion', 'createTeam', 'createLab', 'createTask', 'assignTask', 'updateTask', 'startMeeting', 'setAutoApprove', 'saveSchedule', 'deleteSchedule', 'setRefDocs', 'setEquipment', 'saveManual', 'deleteManual', 'placeGridItem', 'moveGridItem', 'storeItem', 'stowAllGrid'])
+const COMMON_CHANGES = new Set<string>(['hire', 'updateStaff', 'instruct', 'decide', 'answerQuestion', 'createTeam', 'createLab', 'createTask', 'assignTask', 'updateTask', 'startMeeting', 'setAutoApprove', 'sendChat', 'saveSchedule', 'deleteSchedule', 'setRefDocs', 'setEquipment', 'saveManual', 'deleteManual', 'placeGridItem', 'moveGridItem', 'storeItem', 'stowAllGrid'])
 const AWAY_LIMITS = [{ ms: 3_600_000, max: 30 }]
 
 /** 지침은 한국어 한 벌 — 화면 이름은 메뉴 정의(navGroups)에서 만들어 메뉴가 바뀌면 같이 바뀐다 */
@@ -518,7 +519,7 @@ export class Secretary {
       const logs = result as LogEntry[]
       return capText(logs.filter((l) => l.type !== 'tool').slice(-60).map((l) => `- ${new Date(l.ts).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })} ${staffName(l.staffId)} ${l.type}: ${l.text.replace(/\s+/g, ' ').slice(0, 140)}`).join('\n'))
     }
-    if (method === 'chatHistory') return capText((result as { ts: number; from: string; text: string }[]).slice(-20).map((m) => `- ${m.from === 'me' ? '대표' : staffName(m.from)}: ${m.text.replace(/\s+/g, ' ').slice(0, 160)}`).join('\n'))
+    if (method === 'chatHistory') return compactChatHistory(result as ChatMessage[], (room) => this.roomLabel(room), staffName)
     if (method === 'autoApproveLog') return capText((result as AutoHandled[]).slice(0, 40).map((h) => `- ${new Date(h.at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })} ${h.staffName} ${h.kind === 'answer' ? '대신 답함' : h.toolName}: ${h.summary.slice(0, 140)}`).join('\n') || '기록이 없어요.')
     if (method === 'payslip') {
       const p = result as Payslip
@@ -750,8 +751,23 @@ export class Secretary {
       snap.meetings.find((m) => m.id === id)?.topic ??
       snap.schedules.find((x) => x.id === id)?.label ??
       ((g) => (g ? `${furnitureName(g.itemId)} (${g.floor}층 ${g.gx},${g.gy})` : null))(snap.shop.grid.find((g) => g.uid === id)) ??
-      (approval ? `${approval.who}: ${approval.ap.summary}` : null)
+      (approval ? `${approval.who}: ${approval.ap.summary}` : null) ??
+      this.chatQuote(id)
     )
+  }
+
+  /** 확인 카드의 답장 대상 ('chat:<번호>') — 그 글 앞부분 */
+  private chatQuote(id: string): string | null {
+    const n = /^chat:(\d+)$/.exec(id)?.[1]
+    const m = n ? this.office.chatHistory().find((x) => x.id === Number(n)) : undefined
+    return m ? `"${m.text.replace(/\s+/g, ' ').slice(0, 40)}"` : null
+  }
+
+  /** 방 이름 (팀·프로젝트, 없으면 전체 방) — chatHistory 요약 앞머리 */
+  private roomLabel(room: string | undefined): string {
+    const snap = this.office.snapshot()
+    const info = findRoom(room, snap.teams, snap.labs)
+    return info ? info.name : '전체 방'
   }
 
   /** 조회 도구가 읽어도 되는 폴더: 직원·랩 작업 폴더 (한리뷰 M2) */

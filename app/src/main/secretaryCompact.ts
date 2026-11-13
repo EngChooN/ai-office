@@ -3,7 +3,7 @@
 
 import type { OfficeMethod } from '../shared/officeApiShape.ts'
 import { t } from '../shared/i18n/index.ts'
-import type { Approval, AutoApproveState, AutoHandled, DailyRecord, LogEntry, Manual, OfficeSnapshot, SecretaryCompare, Task } from '../shared/types.ts'
+import type { Approval, AutoApproveState, ChatMessage, AutoHandled, DailyRecord, LogEntry, Manual, OfficeSnapshot, SecretaryCompare, Task } from '../shared/types.ts'
 import { approvalHeadline } from '../shared/approvalEffect.ts'
 
 /** 도구 결과 한 번의 상한 (글자) */
@@ -222,4 +222,9 @@ export function compareSteps(snap: OfficeSnapshot, manuals: Manual[], steps: { m
     }
     return []
   })
+}
+
+/** 단체방 최근 글 20개: 방 이름·글 번호(#답장용)와 함께 — 비서가 "디자인팀 방 최근 글"을 가려 읽는다 */
+export function compactChatHistory(messages: Pick<ChatMessage, 'id' | 'from' | 'text' | 'room'>[], roomLabel: (room: string | undefined) => string, staffName: (id: string) => string): string {
+  return capText(messages.slice(-20).map((m) => `- [${roomLabel(m.room)}] #${m.id} ${m.from === 'me' ? '대표' : staffName(m.from)}: ${m.text.replace(/\s+/g, ' ').slice(0, 160)}`).join('\n'))
 }

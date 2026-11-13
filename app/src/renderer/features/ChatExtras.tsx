@@ -51,7 +51,8 @@ function StateMark({ state }: { state: ShownState }) {
 }
 
 /** 내 메시지 아래: 받은 직원마다 어디까지 갔는지. 여러 명이면 묶어 보여 주고 누르면 펼친다 */
-export function DeliveryLine({ message: m }: { message: ChatMessage }) {
+/** isStatic: 바탕화면 비서처럼 본 창 화면으로 옮겨 갈 수 없는 곳 — 보고 보기·결재·카드 이동 링크를 뺀다 */
+export function DeliveryLine({ message: m, isStatic = false }: { message: ChatMessage; isStatic?: boolean }) {
   const staff = useOffice((s) => s.staff)
   const tasks = useOffice((s) => s.tasks)
   const [isOpen, setIsOpen] = useState(false)
@@ -63,12 +64,12 @@ export function DeliveryLine({ message: m }: { message: ChatMessage }) {
   })
   const cardId = list.find((d) => d.taskId && tasks.some((x) => x.id === d.taskId))?.taskId
   const card = cardId ? tasks.find((x) => x.id === cardId) : undefined
-  const cardLink = card && (
+  const cardLink = card && !isStatic && (
     <button type="button" onClick={() => useOffice.getState().setView('board')} title={t('chat.delivery.cardTitle')} className="hover:text-foreground max-w-48 truncate underline-offset-2 hover:underline">
       <DuoIcon name="meeting" size={14} className="mr-1" />{card.title}
     </button>
   )
-  if (rows.length === 1) return <div className="text-muted-foreground flex flex-wrap items-center justify-end gap-x-2 text-[11px]"><DeliveryRow row={rows[0]} m={m} />{cardLink}</div>
+  if (rows.length === 1) return <div className="text-muted-foreground flex flex-wrap items-center justify-end gap-x-2 text-[11px]"><DeliveryRow row={rows[0]} m={m} isStatic={isStatic} />{cardLink}</div>
   const count = (states: ShownState[]) => rows.filter((r) => states.includes(r.state)).length
   const done = count(['done'])
   const working = count(['working'])
@@ -83,20 +84,21 @@ export function DeliveryLine({ message: m }: { message: ChatMessage }) {
         {attention > 0 && <span className="text-status-waiting flex items-center gap-1">{t('chat.delivery.summaryAttention', { count: attention })}</span>}
         <ChevronDownIcon className={cn('size-3 transition-transform', isOpen && 'rotate-180')} />
       </button>
-      {isOpen && rows.map((r) => <DeliveryRow key={r.d.staffId} row={r} m={m} />)}
+      {isOpen && rows.map((r) => <DeliveryRow key={r.d.staffId} row={r} m={m} isStatic={isStatic} />)}
       {cardLink}
     </div>
   )
 }
 
-function DeliveryRow({ row, m }: { row: { d: ChatDelivery; s: Staff | undefined; name: string; state: ShownState }; m: ChatMessage }) {
+function DeliveryRow({ row, m, isStatic }: { row: { d: ChatDelivery; s: Staff | undefined; name: string; state: ShownState }; m: ChatMessage; isStatic: boolean }) {
   const { d, s, name, state } = row
   const minutes = state === 'working' && s ? Math.floor((Date.now() - s.statusSince) / 60_000) : 0
-  const link = (label: string, onClick: () => void) => (
-    <button type="button" onClick={onClick} className="text-primary underline-offset-2 hover:underline">
-      {label}
-    </button>
-  )
+  const link = (label: string, onClick: () => void) =>
+    !isStatic && (
+      <button type="button" onClick={onClick} className="text-primary underline-offset-2 hover:underline">
+        {label}
+      </button>
+    )
   return (
     <span className={cn('flex items-center gap-1', state === 'error' && 'text-status-error', state === 'approval' && 'text-status-waiting')}>
       <StateMark state={state} />
@@ -113,15 +115,17 @@ function DeliveryRow({ row, m }: { row: { d: ChatDelivery; s: Staff | undefined;
 
 export const senderName = (from: string, staff: readonly Staff[]) => (from === 'me' ? t('chat.reply.me') : (staff.find((s) => s.id === from)?.name ?? t('common.formerStaff')))
 
-/** 말풍선 위 인용: 누르면 원래 메시지로 */
-export function ReplyQuote({ reply, isMe }: { reply: NonNullable<ChatMessage['replyTo']>; isMe: boolean }) {
+/** 말풍선 위 인용: 누르면 원래 메시지로. isStatic이면 누를 수 없는 표시용 (바탕화면 비서) */
+export function ReplyQuote({ reply, isMe, isStatic = false }: { reply: NonNullable<ChatMessage['replyTo']>; isMe: boolean; isStatic?: boolean }) {
   const staff = useOffice((s) => s.staff)
+  const cls = cn('mb-1 block w-full truncate rounded-md border-l-[3px] px-2 py-0.5 text-left text-[11px]', isMe ? 'border-primary-foreground/60 bg-primary-foreground/15' : 'border-primary bg-muted text-muted-foreground')
+  if (isStatic) return <div className={cls}>↩ {senderName(reply.from, staff)} · {reply.text}</div>
   return (
     <button
       type="button"
       onClick={() => void goToMessage(reply.id)}
       title={t('chat.reply.jump')}
-      className={cn('mb-1 block w-full truncate rounded-md border-l-[3px] px-2 py-0.5 text-left text-[11px]', isMe ? 'border-primary-foreground/60 bg-primary-foreground/15' : 'border-primary bg-muted text-muted-foreground')}
+      className={cls}
     >
       ↩ {senderName(reply.from, staff)} · {reply.text}
     </button>

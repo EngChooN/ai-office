@@ -30,8 +30,15 @@ contextBridge.exposeInMainWorld("office", {
   // 첨부는 받지 않는다 (펼침 창은 글만 보낸다) — 앱 화면과 같은 인자 자리에 맞춘다
   instruct: (staffId: string, text: string) =>
     ipcRenderer.invoke("office:instruct", staffId, text),
-  sendChat: (text: string, _attachments: unknown, room?: string) =>
-    ipcRenderer.invoke("office:sendChat", text, undefined, room),
+  // 방·보내는 방식·답장 자리까지 앱 화면과 같게 넘긴다 (형식 검사는 officeHandlers.sendChat)
+  sendChat: (
+    text: string,
+    _attachments: unknown,
+    room?: string,
+    mode?: string,
+    replyTo?: number,
+  ) =>
+    ipcRenderer.invoke("office:sendChat", text, undefined, room, mode, replyTo),
   onSnapshot: (cb: (payload: unknown) => void) => {
     const listener = (_e: IpcRendererEvent, payload: unknown) => cb(payload);
     ipcRenderer.on("office:onSnapshot", listener);

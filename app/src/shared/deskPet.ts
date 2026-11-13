@@ -833,6 +833,8 @@ export type PetFeedItem =
       isMarkdown: boolean;
       isError?: boolean;
       hasCard?: boolean;
+      /** 대화방 글이면 원본 — 답장 인용·처리 상태·반응·첨부를 본 창과 같은 데이터로 그린다 */
+      chat?: ChatMessage;
       /** 비서에게 보낸 내 질문의 메시지 id — 차례를 기다리는 동안 '차례 기다림 · n번째'를 붙인다 */
       secretaryMsgId?: number;
     }
@@ -966,6 +968,7 @@ export function roomFeed(
       author: m.from === "me" ? undefined : nameOf(m.from),
       text: m.text,
       isMarkdown: m.from !== "me",
+      chat: m,
     }));
 }
 
