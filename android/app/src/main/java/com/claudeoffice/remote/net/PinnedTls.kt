@@ -59,8 +59,11 @@ class PinningHostnameVerifier(private val pin: String) : HostnameVerifier {
     }
 }
 
+const val REUSE_MAX_IDLE = 5
+const val REUSE_KEEP_ALIVE_SEC = 55L
+
 /** 이 PC 하나에만 붙는 HTTPS 클라이언트. 평문·리다이렉트·캐시·쿠키 없음 */
-fun pinnedClient(pin: String, connectTimeoutSec: Long = 10, readTimeoutSec: Long = 15, callTimeoutSec: Long = 25): OkHttpClient {
+fun pinnedClient(pin: String, connectTimeoutSec: Long = 10, readTimeoutSec: Long = 15, callTimeoutSec: Long = 25, reuseConnections: Boolean = false, timingLabel: String? = null): OkHttpClient {
     val tm = PinningTrustManager(pin)
     val ssl = SSLContext.getInstance("TLS").apply { init(null, arrayOf(tm), null) }
     return OkHttpClient.Builder()
@@ -70,9 +73,11 @@ fun pinnedClient(pin: String, connectTimeoutSec: Long = 10, readTimeoutSec: Long
         .followRedirects(false)
         .followSslRedirects(false)
         .retryOnConnectionFailure(false)
-        // 연결을 재사용하지 않는다: PC 서버는 쉬는 연결을 몇 초 뒤 닫아서, 재사용하면 끊긴 연결로 실패한다.
-        // 조회는 30초·15분 간격이라 매번 새로 맺어도 부담이 작고, 맺을 때마다 지문을 다시 확인한다
-        .connectionPool(ConnectionPool(0, 1, TimeUnit.SECONDS))
+        // 기본은 연결을 재사용하지 않는다(조회·SSE는 간격이 길고, 맺을 때마다 지문을 다시 확인한다).
+        // reuseConnections(v2 호출용)만 5개·55초 재사용: PC keep-alive(60초)보다 짧게 둬 끊긴 연결을 덜 만난다.
+        // 재사용 연결도 처음 맺을 때 지문을 확인한 같은 TLS 세션이다
+        .connectionPool(if (reuseConnections) ConnectionPool(REUSE_MAX_IDLE, REUSE_KEEP_ALIVE_SEC, TimeUnit.SECONDS) else ConnectionPool(0, 1, TimeUnit.SECONDS))
+        .apply { if (timingLabel != null) eventListenerFactory { CallTiming(timingLabel) } }
         .cache(null)
         .connectTimeout(connectTimeoutSec, TimeUnit.SECONDS)
         .readTimeout(readTimeoutSec, TimeUnit.SECONDS)

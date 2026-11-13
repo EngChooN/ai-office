@@ -248,10 +248,10 @@ class RemoteClient(
     private val callDispatcher = okhttp3.Dispatcher().apply { maxRequestsPerHost = V2_MAX_CONCURRENT; maxRequests = V2_MAX_CONCURRENT }
     private val v2Slots = kotlinx.coroutines.sync.Semaphore(V2_MAX_CONCURRENT)
     private val lanCallHttp by lazy {
-        pinnedClient(conn.spki, conn.lanConnectTimeoutSec(), V2_CALL_READ_SEC, V2_CALL_TOTAL_SEC).newBuilder().dispatcher(callDispatcher).build()
+        pinnedClient(conn.spki, conn.lanConnectTimeoutSec(), V2_CALL_READ_SEC, V2_CALL_TOTAL_SEC, reuseConnections = true, timingLabel = "v2call-lan").newBuilder().dispatcher(callDispatcher).build()
     }
     private val externalCallHttp by lazy {
-        pinnedClient(conn.spki, readTimeoutSec = V2_CALL_READ_SEC, callTimeoutSec = V2_CALL_TOTAL_SEC).newBuilder().dispatcher(callDispatcher).build()
+        pinnedClient(conn.spki, readTimeoutSec = V2_CALL_READ_SEC, callTimeoutSec = V2_CALL_TOTAL_SEC, reuseConnections = true, timingLabel = "v2call-ext").newBuilder().dispatcher(callDispatcher).build()
     }
     private val lanStreamHttp by lazy { pinnedClient(conn.spki, conn.lanConnectTimeoutSec(), SSE_SILENCE_SEC, 0) }
     private val externalStreamHttp by lazy { pinnedClient(conn.spki, readTimeoutSec = SSE_SILENCE_SEC, callTimeoutSec = 0) }
@@ -321,14 +321,20 @@ class RemoteClient(
      * 주소를 차례로 시도한다. 어떤 HTTP 응답이든 받으면 그 주소에 닿은 것이라 기억하고 거기서 끝낸다.
      * handle이 응답을 닫는다 (이벤트 스트림은 열어 둔 채 넘긴다)
      */
-    private suspend fun <T> exchange(client: (Endpoint) -> OkHttpClient, build: (Endpoint) -> Request, handle: (Response) -> ApiResult<T>): ApiResult<T> =
+    private suspend fun <T> exchange(client: (Endpoint) -> OkHttpClient, build: (Endpoint) -> Request, retryStale: Boolean = false, handle: (Response) -> ApiResult<T>): ApiResult<T> =
         withContext(Dispatchers.IO) {
             val tried = mutableListOf<Endpoint>()
             val errors = mutableListOf<ApiError>()
             for (e in ordered()) {
                 val req = build(e)
                 try {
-                    val response = client(e).newCall(req).execute()
+                    val response = try {
+                        client(e).newCall(req).execute()
+                    } catch (ex: IOException) {
+                        // 재사용하던 연결이 PC 쪽에서 닫혀 있었을 때: 같은 요청(같은 Idempotency-Key)을 새 연결로 한 번만 다시 보낸다
+                        if (!retryStale || !isStaleConnection(ex)) throw ex
+                        client(e).newCall(req).execute()
+                    }
                     memory.preferred = e.route
                     val result = handle(response)
                     return@withContext result
@@ -357,9 +363,14 @@ class RemoteClient(
         return v2Slots.withPermit {
             exchange(::callHttp, { e ->
                 request(urlV2(e, "call")).header("Idempotency-Key", idempotencyKey).capabilities(capabilities).post(body).build()
-            }) { res -> res.use { readV2(it) { o -> o["result"] ?: JsonNull } } }
+            }, retryStale = true) { res -> res.use { readV2(it) { o -> o["result"] ?: JsonNull } } }
         }
     }
+
+    /** 시간 초과·인증서·주소 문제가 아닌 연결 끊김 (끊긴 재사용 연결에서 나는 오류) */
+    private fun isStaleConnection(ex: IOException) =
+        ex !is InterruptedIOException && ex !is ConnectException && ex !is UnknownHostException &&
+            ex !is NoRouteToHostException && ex !is SSLException
 
     /** POST /v2/attachments — 파일 하나를 바이트 그대로 올린다. 결과는 {id,name,mime,size} */
     suspend fun v2Upload(name: String, mime: String, bytes: ByteArray): ApiResult<JsonElement> {
