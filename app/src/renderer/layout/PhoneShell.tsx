@@ -67,6 +67,9 @@ export function PhoneShell({ children }: { children?: React.ReactNode }) {
   )
 }
 
+// 위 줄 버튼은 32px 원: 공용 폰 규칙(40px)대로면 48px 줄에 꽉 차 보여 자금 표시·결재 대기와 같은 높이로 줄인다
+const HEADER_ICON = 'size-8 phone:min-h-8 phone:min-w-8'
+
 function PhoneTopBar() {
   const view = useOffice((s) => s.view)
   const setView = useOffice((s) => s.setView)
@@ -84,25 +87,25 @@ function PhoneTopBar() {
       <span className="min-w-0 flex-1 truncate font-semibold">{labelOf(view)}</span>
       {/* 자동결재 표시가 뜨면 폭이 모자라 자금은 숨긴다 (상점·급여 명세서에 같은 값) */}
       {!isWorkMode && !isAuto && !isSplitChat && (
-        <button type="button" onClick={() => setView('shop')} className="bg-accent shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold tabular-nums">
+        <button type="button" onClick={() => setView('shop')} className="bg-accent flex h-8 shrink-0 items-center rounded-full px-2.5 text-xs font-semibold tabular-nums">
           <DuoIcon name="money" size={14} className="mr-1" />{formatWon(funds)}
         </button>
       )}
       <AutoApproveBadge isCompact />
       {waitingCount > 0 && (
-        <Button size="sm" variant="outline" className="border-status-waiting text-status-waiting shrink-0 px-2" onClick={() => setView('inbox')} aria-label={t('shell.needsAttention', { n: waitingCount })}>
+        <Button size="sm" variant="outline" className="border-status-waiting text-status-waiting phone:min-h-8 h-8 shrink-0 px-2" onClick={() => setView('inbox')} aria-label={t('shell.needsAttention', { n: waitingCount })}>
           <BellIcon /> {waitingCount}
         </Button>
       )}
       {isSplitChat && (
-        <Button size="icon" variant="ghost" className="shrink-0" onClick={requestChatSearch} aria-label={t('chat.search.open')}>
+        <Button size="icon" variant="ghost" className={cn('shrink-0', HEADER_ICON)} onClick={requestChatSearch} aria-label={t('chat.search.open')}>
           <SearchIcon />
         </Button>
       )}
-      <Button size="icon" variant="outline" className={cn('shrink-0', view === 'secretary' && 'border-primary text-primary')} onClick={() => setView('secretary')} aria-label={t('shell.secretary')}>
+      <Button size="icon" variant="outline" className={cn('shrink-0', HEADER_ICON, view === 'secretary' && 'border-primary text-primary')} onClick={() => setView('secretary')} aria-label={t('shell.secretary')}>
         <SparklesIcon />
       </Button>
-      <Button size="icon" className="shrink-0" onClick={() => setHireOpen(true)} aria-label={t('shell.hire')} data-tour="hire">
+      <Button size="icon" className={cn('shrink-0', HEADER_ICON)} onClick={() => setHireOpen(true)} aria-label={t('shell.hire')} data-tour="hire">
         <UserPlusIcon />
       </Button>
     </header>

@@ -132,8 +132,9 @@ export function BoardPage() {
         </div>
       )}
       {/* 칸은 최소 240px을 지키고, 창이 좁으면 보드만 가로로 스크롤한다 */}
-      {/* 휴대폰: 칸 하나가 화면을 거의 채우고 한 칸씩 넘긴다 */}
-      <div className="phone:auto-cols-[calc(100%-24px)] phone:snap-x phone:snap-mandatory grid min-h-0 flex-1 auto-cols-[minmax(240px,1fr)] grid-flow-col gap-3 overflow-x-auto pb-1">
+      {/* 휴대폰: 칸 하나가 화면을 거의 채우고 한 칸씩 넘긴다. 칸 높이는 카드에 맞춰 늘고 화면 전체가 세로로 스크롤한다
+          (남은 높이에 끼우면 위 입력 상자에 밀려 카드가 반쯤 잘린다) */}
+      <div className="phone:auto-cols-[calc(100%-24px)] phone:snap-x phone:snap-mandatory phone:flex-none phone:items-start grid min-h-0 flex-1 auto-cols-[minmax(240px,1fr)] grid-flow-col gap-3 overflow-x-auto pb-1">
         {COLUMNS.map((col) => {
           // 기획에 묶인 카드는 기획 카드 상세에서만 보인다 (기획이 끝나면 함께 완료)
           const items = tasks
@@ -169,7 +170,7 @@ export function BoardPage() {
               </header>
               {col.hint && <p className="text-muted-foreground px-1 text-[11px]">{t(col.hint)}</p>}
               {/* 카드가 많거나 길면 칸 안에서 스크롤한다 */}
-              <div className="-mx-1 flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-1 pb-1">
+              <div className="phone:overflow-visible -mx-1 flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-1 pb-1">
                 {items.map((tk) => (
                   <TaskCard key={tk.id} task={tk} />
                 ))}

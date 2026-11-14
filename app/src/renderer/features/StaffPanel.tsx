@@ -736,13 +736,14 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
           <div
             data-tour="staff-composer"
             className={cn(
-              'border-input flex items-end gap-1 rounded-lg border px-1.5 py-1 focus-within:border-(--focus-border) focus-within:shadow-(--focus-ring)',
+              // 폰: 단체방 입력줄과 같은 모양 — 감싸개 테두리를 빼고 ＋(연한 원) · 테두리 입력창 · 보내기(원)를 40px 한 줄로
+              'border-input flex items-end gap-1 rounded-lg border px-1.5 py-1 focus-within:border-(--focus-border) focus-within:shadow-(--focus-ring) phone:gap-2 phone:border-0 phone:p-0 phone:focus-within:shadow-none',
               logs.length === 0 && !hasDraft && 'border-primary ring-primary/30 ring-2',
             )}
           >
             <AttachButton onPick={draftFiles.add} className="split:hidden slim:hidden shrink-0" />
             {/* 분할 화면: 첨부·자율 진행·기억 길이·매뉴얼·명령·내보내기·해고를 ＋ 하나에 (자율 진행이 켜져 있으면 점) */}
-            <PopMenu icon={<PlusIcon />} label={t('staffPanel.plusMenu')} hasDot={isAutonomous} className="split:block slim:block hidden [&>button]:size-8">
+            <PopMenu icon={<PlusIcon />} label={t('staffPanel.plusMenu')} hasDot={isAutonomous} className="split:block slim:block hidden [&>button]:size-8 phone:[&>button]:size-10" buttonClassName="phone:bg-primary/10 phone:text-primary phone:hover:bg-primary/15">
               {(close) => (
                 <>
                   <AttachButton onPick={(files) => (draftFiles.add(files), close())} className="hover:bg-accent flex min-h-9 items-center gap-2 rounded-lg px-2.5 text-left text-sm">
@@ -781,7 +782,7 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
                   ? t('staffPanel.composer.busyPlaceholder', { keys: `${STOP_HINT}${NEWLINE_HINT}` })
                   : t('staffPanel.composer.placeholder', { name: staff.name, keys: `${SEND_HINT}${NEWLINE_HINT}` })
               }
-              className="field-sizing-content placeholder:truncate placeholder-shown:field-sizing-fixed placeholder-shown:h-8 placeholder-shown:overflow-hidden placeholder-shown:whitespace-nowrap max-h-40 min-h-8 min-w-0 flex-1 resize-none border-0 px-1 py-1.5 focus-visible:shadow-none"
+              className="field-sizing-content placeholder:truncate placeholder-shown:field-sizing-fixed placeholder-shown:h-8 placeholder-shown:overflow-hidden placeholder-shown:whitespace-nowrap max-h-40 min-h-8 min-w-0 flex-1 resize-none border-0 px-1 py-1.5 focus-visible:shadow-none phone:min-h-10 phone:placeholder-shown:h-10 phone:border phone:px-3 phone:py-[7px] phone:leading-6 phone:focus-visible:shadow-(--focus-ring)"
               style={{ fontSize }}
             />
             {isBusy && !hasDraft ? (
@@ -811,7 +812,7 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
                 </Button>
               </div>
             ) : (
-              <Button type="button" size="icon" className="size-8 shrink-0 rounded-full" onClick={() => void handleSend()} disabled={!hasDraft} aria-label={t('staffPanel.composer.send')} title={t('staffPanel.composer.sendTitle')}>
+              <Button type="button" size="icon" className="phone:size-10 size-8 shrink-0 rounded-full" onClick={() => void handleSend()} disabled={!hasDraft} aria-label={t('staffPanel.composer.send')} title={t('staffPanel.composer.sendTitle')}>
                 <ArrowUpIcon className="size-4" />
               </Button>
             )}
