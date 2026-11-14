@@ -362,7 +362,21 @@ if (demo && LANGS.includes(demo)) {
   ] as unknown as OfficeSnapshot['meetings']
   snapshot.schedules = []
   snapshot.settings = { ...snapshot.settings, language: demo }
-  snapshot.secretary = { ...snapshot.secretary!, messages: [] }
+  // 비서 화면 예시: 밤사이 요약 → 결재를 물으면 답 안에 결재 카드 (approvalIds는 위 가상 직원의 결재 id)
+  const SEC: Record<Lang, { brief: string; ask: string; answer: string }> = {
+    ko: { brief: '밤사이 정리예요.\n- 끝난 일 4건\n- 기다리는 결재 2건\n- 오류로 멈춘 일은 없어요', ask: '결재 남은 거 있어?', answer: '지금 기다리는 결재는 두 건이에요. 아래 카드에서 바로 승인하거나 반려할 수 있어요.' },
+    en: { brief: 'Here is your overnight summary.\n- 4 tasks finished\n- 2 approvals waiting\n- Nothing stopped on an error', ask: 'Anything waiting for approval?', answer: 'Two approvals are waiting. You can approve or reject them right here in the cards below.' },
+    ja: { brief: '夜のあいだのまとめです。\n- 完了した仕事 4件\n- 待っている承認 2件\n- エラーで止まった仕事はありません', ask: '承認待ちはある？', answer: '承認待ちは2件です。下のカードからそのまま承認・却下できます。' },
+    zh: { brief: '这是昨晚的汇总。\n- 完成 4 项工作\n- 等待审批 2 项\n- 没有因出错而停下的工作', ask: '还有待审批的吗？', answer: '现在有两项审批在等你。可以直接在下面的卡片里批准或驳回。' },
+  }
+  snapshot.secretary = {
+    ...snapshot.secretary!,
+    messages: [
+      { id: 1, ts: now - 8 * min, role: 'secretary', text: SEC[demo].brief, isBrief: true },
+      { id: 2, ts: now - 3 * min, role: 'me', text: SEC[demo].ask },
+      { id: 3, ts: now - 3 * min, role: 'secretary', text: SEC[demo].answer, approvalIds: [demoApprovalId('d6'), demoApprovalId('d8')] },
+    ],
+  } as unknown as OfficeSnapshot['secretary']
   chat.splice(0, chat.length, ...DEMO_CHAT.map((c, i) => ({ id: i + 1, ts: now - c.ago * min, from: c.from, text: c.text[demo], ...(c.approvalOf ? { approval: { id: demoApprovalId(c.approvalOf) } } : {}) }) as ChatMessage))
   slip.rows = staff.slice(0, 6).map((s) => ({ staffId: s.id, name: s.name, role: s.role, avatar: s.avatar, costUsd: 3.21, tokensIn: 2_100_000, tokensOut: 180_000, tasksDone: 9 }))
 }
