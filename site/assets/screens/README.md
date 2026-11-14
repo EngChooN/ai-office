@@ -1,48 +1,39 @@
 # 스크린샷 폴더 규칙
 
-소개 페이지(`site/index.html`)는 고른 언어의 폴더에서 스크린샷을 불러옵니다. 파일은 모두 **WebP**이고, 레티나·휴대폰에서 번지지 않게 **PC는 2배, 휴대폰은 3배**로 찍었습니다. `<img>`의 `width/height`는 1배 크기(PC 1360×860, 휴대폰 390×844)로 둡니다.
+소개 페이지(`site/index.html`)는 고른 언어의 폴더에서 스크린샷을 불러옵니다. 파일은 모두 **WebP**이고, 레티나·휴대폰에서 번지지 않게 **PC는 2배(2800×1770), 휴대폰은 3배(1170×2532)** 로 찍습니다. `<img>`의 `width/height`는 1배 크기(PC 1400×885, 휴대폰 390×844)로 둡니다.
+
+사이트는 **라이트·다크** 두 모드를 지원하므로 같은 장면을 두 벌 둡니다. 라이트용은 `이름.webp`, 다크용은 `이름-dark.webp`입니다. 페이지가 지금 모드에 맞는 쪽을 골라 보여 줍니다(모드를 바꾸면 사진도 바로 바뀝니다). 레트로 테마 사진처럼 한 벌만 있는 것은 `data-nodark` 표시로 항상 같은 파일을 씁니다.
 
 ```
 screens/
   ko/  en/  ja/  zh/
-    office.webp           PC 사무실 실내 — 맨 위 큰 사진 (2720×1720)
-    staff-mix.webp        PC 직원 고용 창(Claude/Codex 베타 고르기) — 기능 f1
-    providers.webp        PC 설정 > AI 공급자 — 기능 f1 보조
-    chat.webp             PC 단체방(@이름 지시·GPT 직원 답) — 기능 f2
-    inbox.webp            PC 결재함(질문·컴퓨터 조작·명령 실행) — 기능 f3
-    board.webp            PC 업무 보드 — 기능 f4
-    meeting.webp          PC 회의실(발언·결정 요청) — 기능 f5
-    computer.webp         PC 컴퓨터 조작 결재 카드 + 장비 탭 — 기능 f6
-    secretary.webp        PC 비서 확인 카드(전·후 비교, 못 하는 일 안내) — 기능 f7
-    desk-pet.webp         바탕화면 비서(캐릭터 + 펼침 창의 질문·결재 카드)를 그라데이션 바탕화면에 합성 — 기능 n1
-    dashboard.webp        PC 대시보드(Claude·GPT 플랜 사용률) — 기능 f8
-    exterior.webp         PC 건물 외관 (Lv.20) — 꾸미기 1
-    decorate.webp         PC 꾸미기 모드(레벨 전용 가구) — 꾸미기 2
-    demoday.webp          PC 데모데이 무대·뒷벽 스크린 — 꾸미기 3
-    theme.webp            PC 설정 > 일반(화면 모드·색 테마 6종) — 스타일 l1·l2
-    settings.webp         PC 설정 > AI·업무(왼쪽 분류) — 스타일 l3
-    export.webp           PC 사무실 장면 내보내기 창(PNG/GIF) — 꾸미기 4
-    interaction.webp      PC 직원 상호작용(👀 어깨 너머 검토·👍 승인) — 꾸미기 5
-    phone-dashboard.webp  휴대폰 대시보드 (1170×2532)
-    phone-inbox.webp      휴대폰 결재함 (1170×2532)
-    phone-chat.webp       휴대폰 단체방 (1170×2532)
-
-../video/
-    approval-flow.webm          단체방 지시 → 결재함 카드 → 승인 (8.2초, 2720×1720, 한국어 화면)
-    computer-approval.webm      컴퓨터 조작 장비 → 클릭 승인 (5.4초, 2720×1720, 한국어 화면)
-    *-poster.webp               위 영상의 첫 장면 (`<video poster>`용)
+    office.webp  office-dark.webp            PC 사무실 실내 — 첫 화면 큰 사진
+    chat.webp  chat-dark.webp                PC 대화방(단체방) — 사용법 1단계
+    inbox.webp  inbox-dark.webp              PC 결재함 — 사용법 2단계
+    board.webp  board-dark.webp              PC 업무 보드 — 사용법 3단계
+    secretary.webp  secretary-dark.webp      PC 비서(밤사이 요약 + 답 안 결재 카드) — 비서 칸
+    theme.webp  theme-dark.webp              PC 설정 > 일반(화면 모드·색 테마 10종) — 스타일 칸
+    retro.webp                               PC 사무실, 레트로 오피스 게임 테마(다크 전용 — 한 벌만)
+    phone-secretary.webp  phone-secretary-dark.webp   휴대폰 비서 (1170×2532)
+    phone-inbox.webp  phone-inbox-dark.webp           휴대폰 결재함 (1170×2532)
+    phone-chat.webp  phone-chat-dark.webp             휴대폰 대화방 (1170×2532)
 ```
 
 - 폴더 이름은 언어 코드(`ko`, `en`, `ja`, `zh`), 파일 이름은 위 목록으로 고정입니다.
-- 그 언어 파일이 없으면 **영어 → 한국어** 순으로 대신 보여 줍니다. 그래서 `ko/`에는 위 파일이 모두 꼭 있어야 하고, 다른 언어는 비어 있어도 됩니다.
-- 앱이 새 언어를 지원하면 같은 크기·같은 이름으로 그 언어 폴더에 넣기만 하면 됩니다. 코드는 고칠 필요가 없습니다.
+- 그 언어 파일이 없으면 **영어 → 한국어** 순으로 대신 보여 줍니다. 그래도 4개 언어 모두 전체 파일을 둡니다.
 - `og:image`(링크 미리보기)는 따로 만든 `assets/og.png`(1200×630)를 씁니다.
-- 압축: `cwebp -q 85 -m 6 -sharp_yuv in.png -o out.webp`, 300KB가 넘으면 품질을 5씩 낮춥니다(외관 사진만 75). 외관은 새 주변 그림 때문에 품질 75에서 약 460KB입니다(해상도를 지키려고 그대로 둠). PNG 원본은 저장소 밖 `~/flitto/poc/site-shots-lavender-dark/{언어}/`에 둡니다.
-- 영상: `ffmpeg -f concat -i frames.txt -vf fps=30,format=yuv420p -c:v libvpx-vp9 -b:v 0 -crf 38 -an out.webm` (소리 없음 — 페이지에서 `muted loop playsinline autoplay`).
-- 모든 캡처는 **라벤더 테마·다크 모드**입니다(데모 데이터 폴더의 설정에 `uiTheme: 'lavender'`, `uiMode: 'dark'`). 휴대폰은 `prefers-color-scheme: dark`로 찍습니다.
-- 찍는 법 (0.14.0, 0.15.1 재촬영 때 `AI_OFFICE_USER_DATA`·디버그 포트 9447로 같은 방식)
-  - 가상 회사 데모: 빈 데이터 폴더에 `node app/scripts/demo-seed.mts <폴더> <언어>`로 넣고, `CLAUDE_OFFICE_USER_DATA=<폴더> CLAUDE_OFFICE_DEMO=1`에 빈 HOME으로 개발 앱을 띄워 디버그 포트로 찍습니다. `CLAUDE_OFFICE_DEMO=1`이면 결재 카드·사용률·터미널 세션과 Claude·Codex 로그인 상태가 데모 값으로 채워집니다(`app/src/main/demoLive.ts`).
-  - 외관·꾸미기·데모데이는 같은 데이터에 회사 레벨을 20으로 올려(`setting` 표의 `companyLevelMax`) 찍습니다. 나머지는 Lv.4입니다.
-  - 휴대폰은 `pnpm preview:mobile` 주소(`mobile-preview.html?demo=<언어>`)를 390×844 3배로 찍습니다.
-  - 찍기 전에 화면 글자의 이메일·`/Users/<이름>`·임시 폴더 경로를 샘플 값으로 바꿉니다. 대시보드의 '오늘' 기록은 자정 직후엔 비니 피해서 찍으세요.
-  - 바탕화면 비서(`desk-pet.webp`)는 실제 바탕화면을 찍지 않습니다. 데모 앱(`isDeskPetOn: true`)의 캐릭터 창(`?view=pet`, 투명)과 펼침 창(`?view=panel`)을 디버그 포트로 3배 캡처한 뒤 그라데이션 바탕화면·메뉴 막대 위에 합성합니다(2720×1720). 빈 HOME으로 띄우면 키체인 암호 창에서 멈추니 HOME은 그대로 둡니다.
+- 파일을 늘리거나 줄이면 `node site/check-i18n.mjs`로 4개 언어 사전의 키 개수와 사진 파일이 모두 맞는지 확인합니다.
+
+## 찍는 법 (모의 데이터 미리보기)
+
+실제 회사 데이터가 나오지 않게 **모의 데이터 미리보기**(`pnpm preview:mobile`, `app/src/renderer/mobile/preview/`)로 찍습니다. 가상 직원·가상 업무는 `demoData.ts`에 4개 언어로 들어 있습니다.
+
+- 주소: `http://localhost:5299/mobile-preview.html?view=<화면>&theme=lavender&mode=<light|dark>&demo=<ko|en|ja|zh>`
+  - `view`: `map`(+`inside=1`이면 사무실 안)·`chat`·`inbox`·`board`·`secretary`·`settings`
+  - 레트로: `theme=retro&mode=dark`. `theme`을 넣어야 `mode`가 먹습니다.
+  - `demo=<언어>`는 그 언어의 가상 회사 데이터와 앱 화면 언어를 함께 정합니다(비서 대화 예시도 4개 언어로 들어 있음).
+- 크기: PC는 1400×885(배율 2), 휴대폰은 390×844(배율 3). 1400 이상이어야 PC 배치가 나옵니다.
+- 색 테마 사진(`theme`)은 `settings` 화면을 0.8배 줄여 찍어 10개 칩이 한 장에 다 보이게 합니다.
+- WebP 변환: `cwebp -q 82 -m 6` 또는 같은 품질의 다른 도구. 한 장이 330KB를 넘으면 품질을 5씩 낮춥니다(레트로 사무실은 약 210KB).
+- `app/src/renderer/mobile/preview/fakeShell.ts`의 `demo` 구간에서 비서 예시(`SEC`)를 바꾸면 비서 사진의 대화를 바꿀 수 있습니다.
+- 대화방 사진에 시험용 이상한 글이 보이지 않는지 확인하세요. `demo=<언어>`로 찍으면 가상 대화만 나옵니다(`demo` 없이 찍으면 시험용 글이 섞입니다).
