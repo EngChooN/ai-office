@@ -823,8 +823,8 @@ function Composer({ room, onSend }: { room: RoomInfo | undefined; onSend: (input
       ? t(isLab ? 'chat.labRoom.recipientsLead' : 'chat.room.recipientsLead', { name: roomLead.name })
       : t(isLab ? 'chat.labRoom.recipientsNoLead' : 'chat.room.recipientsNoLead')
 
-  // 세로 폰: 멘션 없이 보내면 받을 사람(답장 상대·팀장·랩 리드)을 입력칸 옆 칩으로
-  const chipName = replyStaff?.name ?? roomLead?.name
+  // 세로 폰: 멘션 없이 보내면 기본 받는 사람(답장 상대·팀장·랩 리드)에게 가는 게 당연하니 따로 표시하지 않는다
+  const hasDefaultRecipient = Boolean(replyStaff ?? roomLead)
   return (
     <div className="typing:py-2 split:px-3 split:py-2 slim:px-3 slim:py-2 relative border-t p-4">
       {slashQuery !== null && (
@@ -879,8 +879,8 @@ function Composer({ room, onSend }: { room: RoomInfo | undefined; onSend: (input
       <div className="slim:mb-0 slim:[&>*]:mb-1 mx-auto mb-2 max-w-3xl">
         {reply && <ReplyBar reply={reply} onCancel={() => setReply(null)} />}
         <DraftAttachments files={draftFiles.files} onRemove={draftFiles.remove} />
-        {/* 분할·세로 폰은 받는 사람 줄을 @를 쓸 때만 (세로 폰은 기본 받는 사람을 입력칸 옆 칩으로) */}
-        {parsed && <div className={cn(parsed.matched.length === 0 && 'split:hidden', parsed.matched.length === 0 && chipName && 'slim:hidden')}><Recipients parsed={parsed} staffOf={(id) => staffById.get(id)} hasStaff={hired.length > 0} noneLabel={noneLabel} /></div>}
+        {/* 분할·세로 폰은 받는 사람 줄을 @를 쓸 때만 */}
+        {parsed && <div className={cn(parsed.matched.length === 0 && 'split:hidden', parsed.matched.length === 0 && hasDefaultRecipient && 'slim:hidden')}><Recipients parsed={parsed} staffOf={(id) => staffById.get(id)} hasStaff={hired.length > 0} noneLabel={noneLabel} /></div>}
         {isBusySend && (
           <p className="text-status-working mt-1 flex items-center gap-1.5 text-xs">
             <span className="bg-status-working size-1.5 shrink-0 animate-pulse rounded-full" />
@@ -912,11 +912,6 @@ function Composer({ room, onSend }: { room: RoomInfo | undefined; onSend: (input
             </>
           )}
         </PopMenu>
-        {chipName && (!parsed || parsed.matched.length === 0) && (
-          <span className="bg-primary/10 text-primary slim:inline-flex hidden h-9 max-w-[35%] shrink-0 items-center rounded-full px-2.5 text-xs font-medium" title={noneLabel}>
-            <span className="truncate">@{chipName}</span>
-          </span>
-        )}
         <MentionTextarea
           id={inputId}
           aria-expanded={isMentionOpen}
