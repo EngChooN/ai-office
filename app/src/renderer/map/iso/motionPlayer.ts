@@ -335,8 +335,8 @@ export class MotionPlayer {
   }
 
   private onDown(p: Phaser.Input.Pointer, objs: unknown[]) {
-    // 직원을 눌렀거나 꾸미기 중이면 그쪽 일
-    this.press = objs.length === 0 && !this.isDecorating() ? { x: p.x, y: p.y } : null
+    // 직원을 눌렀거나 꾸미기 중이면 그쪽 일. 캔버스 위에 덮인 화면(외관 거리·버튼)을 누른 것은 무시
+    this.press = p.downElement === this.scene.game.canvas && objs.length === 0 && !this.isDecorating() ? { x: p.x, y: p.y } : null
   }
 
   private onUp(p: Phaser.Input.Pointer) {

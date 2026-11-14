@@ -960,6 +960,11 @@ export class IsoOfficeScene extends Phaser.Scene {
     }
   }
 
+  /** 캔버스 자체를 누른 것인지 (위에 덮인 HTML을 누른 것은 아니다) */
+  private isCanvasPress(pointer: Phaser.Input.Pointer) {
+    return pointer.downElement === this.game.canvas
+  }
+
   private createActor(s: Staff): Actor {
     const body = this.add.image(0, 0, this.personTexture(s.avatar, 'stand', 'front')).setOrigin(0.5, 1)
     const ring = this.add.ellipse(0, 0, 40, 18).setStrokeStyle(2, 0xe8925a).setFillStyle(0xe8925a, 0.2)
@@ -973,7 +978,9 @@ export class IsoOfficeScene extends Phaser.Scene {
     const emote = this.add.image(0, -58, this.emoteTexture('happy')).setOrigin(0.5, 1).setAlpha(0)
     const label = this.add.container(0, 0, [name, bubble, emote]).setDepth(DEPTH.label)
     container.setInteractive({ useHandCursor: true, hitArea: new Phaser.Geom.Rectangle(-16, -54, 32, 58), hitAreaCallback: Phaser.Geom.Rectangle.Contains })
-    container.on('pointerdown', () => {
+    container.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      // Phaser는 캔버스 밖(위에 덮인 외관 거리·버튼)을 누른 것도 같은 자리로 판정한다 — 캔버스를 직접 누른 것만 받는다
+      if (!this.isCanvasPress(pointer)) return
       // 꾸미기 중엔 가구 선택이 우선 — 직원 패널이 열리면 선택창이 밀려 엉뚱한 버튼을 누르게 된다
       const st = useOffice.getState()
       if (!st.isDecorating) st.select(s.id)
@@ -2024,7 +2031,7 @@ export class IsoOfficeScene extends Phaser.Scene {
       else this.panBy(dx * window.devicePixelRatio, dy * window.devicePixelRatio)
     })
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer, objs: unknown[]) => {
-      this.panFrom = objs.length === 0 && !this.decor?.isCapturing ? { x: pointer.x, y: pointer.y } : null
+      this.panFrom = this.isCanvasPress(pointer) && objs.length === 0 && !this.decor?.isCapturing ? { x: pointer.x, y: pointer.y } : null
     })
     this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
       const [p1, p2] = [this.input.pointer1, this.input.pointer2]

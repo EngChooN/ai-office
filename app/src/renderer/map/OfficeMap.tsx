@@ -346,30 +346,6 @@ function Minimap() {
   )
 }
 
-/** 오른쪽 엘리베이터식 층 버튼 (층이 2개 이상일 때만) */
-function FloorButtons() {
-  const level = useViewLevel()
-  const viewFloor = useOffice((s) => s.viewFloor)
-  const setViewFloor = useOffice((s) => s.setViewFloor)
-  const { floors } = officeOf(level)
-  if (floors < 2) return null
-  return (
-    <div role="group" aria-label={t('map.floorMove')} className="absolute top-1/2 right-3 flex -translate-y-1/2 flex-col gap-1 rounded-full border border-hud-border bg-hud p-1 shadow-lg">
-      {Array.from({ length: floors }, (_, i) => floors - i).map((floor) => (
-        <button
-          key={floor}
-          type="button"
-          onClick={() => setViewFloor(floor)}
-          aria-pressed={floor === viewFloor}
-          className={cn('size-8 rounded-full font-mono text-xs font-bold', floor === viewFloor ? 'bg-primary text-primary-foreground' : 'text-hud-foreground hover:bg-hud-foreground/10')}
-        >
-          {floor}
-        </button>
-      ))}
-    </div>
-  )
-}
-
 /** 맵 오른쪽 위 현황판: 회사 레벨·직원 현황·꾸미기 모드 */
 function Hud() {
   const staff = useOffice((s) => s.staff)
@@ -488,10 +464,7 @@ export function OfficeMap() {
     <div className="relative h-full w-full">
       <div ref={hostRef} className="h-full w-full touch-none overflow-hidden" />
       {isInside ? (
-        <>
-          <Minimap />
-          <FloorButtons />
-        </>
+        <Minimap />
       ) : (
         <OfficeExterior />
       )}

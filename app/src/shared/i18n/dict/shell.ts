@@ -81,7 +81,6 @@ export default {
   'map.lobby': { ko: '로비 · 무소속', en: 'Lobby · unassigned', ja: 'ロビー · 無所属', zh: '大厅 · 未分组' },
   'map.emptyFloor': { ko: '빈 층', en: 'Empty floor', ja: '空きフロア', zh: '空楼层' },
   'map.inMeeting': { ko: '회의 중', en: 'In a meeting', ja: '会議中', zh: '会议中' },
-  'map.floorMove': { ko: '층 이동', en: 'Change floor', ja: 'フロア移動', zh: '切换楼层' },
   'map.stat.staff': { ko: '직원', en: 'Staff', ja: '社員', zh: '员工' },
   'map.stat.working': { ko: '일하는 중', en: 'Working', ja: '作業中', zh: '工作中' },
   'map.stat.waiting': { ko: '확인 필요', en: 'Needs attention', ja: '要確認', zh: '待确认' },
