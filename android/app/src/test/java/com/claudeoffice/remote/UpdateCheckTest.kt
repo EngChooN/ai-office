@@ -3,6 +3,7 @@ package com.claudeoffice.remote
 import com.claudeoffice.remote.update.compareVersions
 import com.claudeoffice.remote.update.currentVersionOf
 import com.claudeoffice.remote.update.isNewerVersion
+import com.claudeoffice.remote.update.isReleaseWithoutApk
 import com.claudeoffice.remote.update.parseRelease
 import com.claudeoffice.remote.update.shouldNotify
 import com.claudeoffice.remote.update.summarizeNotes
