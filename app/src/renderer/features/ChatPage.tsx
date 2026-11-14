@@ -889,8 +889,8 @@ function Composer({ room, onSend }: { room: RoomInfo | undefined; onSend: (input
       </div>
       <div className="mx-auto flex max-w-3xl items-end gap-2">
         <AttachButton onPick={draftFiles.add} className="split:hidden slim:hidden size-9" />
-        {/* 분할·세로 폰: 첨부·예약·매뉴얼·명령을 ＋ 하나에 (기존 버튼·흐름 그대로) */}
-        <PopMenu icon={<PlusIcon />} label={t('chat.plusMenu')} className="split:block slim:block hidden">
+        {/* 분할·세로 폰: 첨부·예약·매뉴얼·명령을 ＋ 하나에 (기존 버튼·흐름 그대로). 폰은 ＋도 보내기처럼 원으로, 입력창도 버튼과 같은 높이(40)로 맞춘다 */}
+        <PopMenu icon={<PlusIcon />} label={t('chat.plusMenu')} className="split:block slim:block hidden" buttonClassName="phone:bg-primary/10 phone:text-primary phone:hover:bg-primary/15">
           {(close) => (
             <>
               <AttachButton onPick={(files) => (draftFiles.add(files), close())} className="hover:bg-accent flex min-h-9 items-center gap-2 rounded-lg px-2.5 text-left text-sm">
@@ -931,7 +931,7 @@ function Composer({ room, onSend }: { room: RoomInfo | undefined; onSend: (input
           {...draftFiles.bind}
           rows={1}
           placeholder={t(!room ? 'chat.placeholder' : isLab ? 'chat.labRoom.placeholder' : 'chat.room.placeholder', { all: ALL_MENTION, newline: String(NEWLINE_HINT) })}
-          className="field-sizing-content placeholder:truncate placeholder-shown:field-sizing-fixed placeholder-shown:h-9 placeholder-shown:overflow-hidden placeholder-shown:whitespace-nowrap max-h-32 min-h-9 resize-none py-[7px]"
+          className="field-sizing-content placeholder:truncate placeholder-shown:field-sizing-fixed placeholder-shown:h-9 placeholder-shown:overflow-hidden placeholder-shown:whitespace-nowrap max-h-32 min-h-9 resize-none py-[7px] phone:min-h-10 phone:placeholder-shown:h-10"
         />
         {isBusySend ? (
           <div className="flex shrink-0 gap-1">
