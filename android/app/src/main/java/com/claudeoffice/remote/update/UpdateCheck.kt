@@ -19,7 +19,7 @@ data class ReleaseInfo(
     val version: String,
     /** Release 설명 요약 */
     val notes: String,
-    /** APK 주소 — 없으면 Release 페이지 */
+    /** APK 주소 (APK가 없는 Release는 ReleaseInfo로 만들지 않는다) */
     val downloadUrl: String,
 )
 
@@ -98,18 +98,31 @@ fun summarizeNotes(body: String?, lang: String = "en", maxLines: Int = 6, maxCha
     return if (text.length > maxChars) text.take(maxChars).trimEnd() + "…" else text
 }
 
-/** releases/latest 응답 해석. 이상하면 null */
+/** releases/latest 응답 해석. 이상하거나 휴대폰 APK가 아직 없으면 null (맥·윈도우만 먼저 배포한 Release는 알리지 않는다) */
 fun parseRelease(json: String, lang: String = "en"): ReleaseInfo? {
     val obj = runCatching { Json.parseToJsonElement(json) as? JsonObject }.getOrNull() ?: return null
-    fun str(o: JsonObject, k: String) = (o[k] as? JsonPrimitive)?.takeIf { it.isString }?.contentOrNull
-    val tag = str(obj, "tag_name") ?: return null
-    val version = tag.trim().removePrefix("v")
-    if (parse(version) == null) return null
+    val version = validVersionOf(obj) ?: return null
+    val apk = apkUrlOf(obj) ?: return null
+    return ReleaseInfo(version, summarizeNotes(strOf(obj, "body"), lang), apk)
+}
+
+/** 형식은 정상이지만 APK가 없는 Release인가 (수동 확인에서 '실패'가 아니라 '최신'으로 보이게) */
+fun isReleaseWithoutApk(json: String): Boolean {
+    val obj = runCatching { Json.parseToJsonElement(json) as? JsonObject }.getOrNull() ?: return false
+    return validVersionOf(obj) != null && apkUrlOf(obj) == null
+}
+
+private fun strOf(o: JsonObject, k: String) = (o[k] as? JsonPrimitive)?.takeIf { it.isString }?.contentOrNull
+
+private fun validVersionOf(obj: JsonObject): String? {
+    val version = (strOf(obj, "tag_name") ?: return null).trim().removePrefix("v")
+    return if (parse(version) == null) null else version
+}
+
+private fun apkUrlOf(obj: JsonObject): String? {
     val assets = (obj["assets"] as? JsonArray).orEmpty()
     fun assetUrl(name: String) = assets.firstNotNullOfOrNull { a ->
-        (a as? JsonObject)?.takeIf { str(it, "name") == name }?.let { str(it, "browser_download_url") }
+        (a as? JsonObject)?.takeIf { strOf(it, "name") == name }?.let { strOf(it, "browser_download_url") }
     }
-    val apk = (assetUrl(APK_NAME) ?: assetUrl(LEGACY_APK_NAME))?.takeIf { isGithubUrl(it) }
-    val page = str(obj, "html_url")?.takeIf { isGithubUrl(it) } ?: "https://github.com/EngChooN/ai-office/releases/latest"
-    return ReleaseInfo(version, summarizeNotes(str(obj, "body"), lang), apk ?: page)
+    return (assetUrl(APK_NAME) ?: assetUrl(LEGACY_APK_NAME))?.takeIf { isGithubUrl(it) }
 }

@@ -77,6 +77,11 @@ object UpdateManager {
     private suspend fun check(context: Context, manual: Boolean) {
         if (manual) _ui.update { it.copy(state = CheckState.CHECKING) }
         val info = withContext(Dispatchers.IO) { fetch(Lang.current(context).language) }
+        if (info === NO_APK) {
+            // APK가 없는 Release: 알리지 않고 '건너뛴 버전'도 남기지 않는다 → 나중에 APK가 붙으면 그 뒤 확인에서 뜬다
+            _ui.update { it.copy(state = CheckState.UP_TO_DATE, latest = null, banner = null) }
+            return
+        }
         if (info == null) {
             // 자동 확인의 실패는 조용히 무시한다
             if (manual) _ui.update { it.copy(state = CheckState.FAILED) }
@@ -92,8 +97,13 @@ object UpdateManager {
         }
     }
 
+    /** APK가 없는 Release를 나타내는 표식 */
+    private val NO_APK = ReleaseInfo("", "", "")
+
     private fun fetch(lang: String): ReleaseInfo? = runCatching {
         val req = Request.Builder().url(RELEASE_API_URL).header("Accept", "application/vnd.github+json").build()
-        http.newCall(req).execute().use { r -> if (r.isSuccessful) r.body?.string()?.let { parseRelease(it, lang) } else null }
+        http.newCall(req).execute().use { r ->
+            if (r.isSuccessful) r.body?.string()?.let { text -> parseRelease(text, lang) ?: if (isReleaseWithoutApk(text)) NO_APK else null } else null
+        }
     }.getOrNull()
 }
