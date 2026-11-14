@@ -40,7 +40,7 @@ export function NavTabs() {
             )}
           >
             {t(labelKey)}
-            {Boolean(badges[v]) && <span className="bg-status-waiting rounded-full px-1.5 text-[10px] font-semibold text-background">{badges[v]}</span>}
+            {Boolean(badges[v]) && <span data-nav-badge className="bg-status-waiting rounded-full px-1.5 text-[10px] font-semibold text-background">{badges[v]}</span>}
             {isUpdates && newVersion && (
               <span className="bg-status-waiting rounded-full px-1.5 text-[10px] font-semibold text-background" title={t('update.badge', { version: newVersion })}>
                 {t('update.badgeShort')}

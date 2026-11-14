@@ -1,5 +1,5 @@
 import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
-import { ArrowUpIcon, BookOpenIcon, BriefcaseIcon, CalendarClockIcon, CircleStopIcon, DownloadIcon, EllipsisIcon, FolderIcon, InfoIcon, PaperclipIcon, PlusIcon, SendIcon, SquareTerminalIcon, TrophyIcon, UserMinusIcon, XIcon, ZapIcon } from 'lucide-react'
+import { BookOpenIcon, BriefcaseIcon, CalendarClockIcon, CircleStopIcon, DownloadIcon, EllipsisIcon, FolderIcon, InfoIcon, PaperclipIcon, PlusIcon, SendIcon, SquareTerminalIcon, TrophyIcon, UserMinusIcon, XIcon, ZapIcon } from 'lucide-react'
 import { NativeSelect } from '@/components/ui/select'
 import { AttachButton, AttachmentView, DraftAttachments, useDraftAttachments } from '@/components/attachments'
 import { Button } from '@/components/ui/button'
@@ -731,19 +731,15 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
             <SlashMenu query={slashQuery} items={slashItems} active={slashKeys.active} onPick={handleSlashPick} emptyText={slashMode === 'manual' ? t('slashMenu.emptyManual') : undefined} />
           )}
           {/* 입력 상자 안: 왼쪽 첨부, 오른쪽 보내기. 일하는 중이면 비어 있을 땐 "멈추기", 글을 쓰면 "끝나면 보내기"·"지금 끼어들기" 두 갈래를 글자로 보여 준다 */}
-          {/* 포커스 표시는 감싸개 하나에만 (공용 입력란과 같은 토큰). 안쪽 textarea는 shadow-none으로 끈다 */}
-          {/* 고용 직후 아직 아무 지시도 없으면 이 칸을 강조해 어디에 쓰는지 보여 준다 */}
+          {/* 고용 직후 아직 아무 지시도 없으면 입력창을 강조해 어디에 쓰는지 보여 준다 */}
           <div
             data-tour="staff-composer"
-            className={cn(
-              // 폰: 단체방 입력줄과 같은 모양 — 감싸개 테두리를 빼고 ＋(연한 원) · 테두리 입력창 · 보내기(원)를 40px 한 줄로
-              'border-input flex items-end gap-1 rounded-lg border px-1.5 py-1 focus-within:border-(--focus-border) focus-within:shadow-(--focus-ring) phone:gap-2 phone:border-0 phone:p-0 phone:focus-within:shadow-none',
-              logs.length === 0 && !hasDraft && 'border-primary ring-primary/30 ring-2',
-            )}
+            // PC·폰 모두 단체방 입력줄과 같은 모양 — 감싸개 테두리 없이 첨부(＋) · 테두리 입력창 · 보내기를 한 줄로 (PC 36px, 폰 40px)
+            className="flex items-end gap-2"
           >
-            <AttachButton onPick={draftFiles.add} className="split:hidden slim:hidden shrink-0" />
+            <AttachButton onPick={draftFiles.add} className="split:hidden slim:hidden size-9 shrink-0" />
             {/* 분할 화면: 첨부·자율 진행·기억 길이·매뉴얼·명령·내보내기·해고를 ＋ 하나에 (자율 진행이 켜져 있으면 점) */}
-            <PopMenu icon={<PlusIcon />} label={t('staffPanel.plusMenu')} hasDot={isAutonomous} className="split:block slim:block hidden [&>button]:size-8 phone:[&>button]:size-10" buttonClassName="phone:bg-primary/10 phone:text-primary phone:hover:bg-primary/15">
+            <PopMenu icon={<PlusIcon />} label={t('staffPanel.plusMenu')} hasDot={isAutonomous} className="split:block slim:block hidden [&>button]:size-9 phone:[&>button]:size-10" buttonClassName="phone:bg-primary/10 phone:text-primary phone:hover:bg-primary/15">
               {(close) => (
                 <>
                   <AttachButton onPick={(files) => (draftFiles.add(files), close())} className="hover:bg-accent flex min-h-9 items-center gap-2 rounded-lg px-2.5 text-left text-sm">
@@ -782,7 +778,10 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
                   ? t('staffPanel.composer.busyPlaceholder', { keys: `${STOP_HINT}${NEWLINE_HINT}` })
                   : t('staffPanel.composer.placeholder', { name: staff.name, keys: `${SEND_HINT}${NEWLINE_HINT}` })
               }
-              className="field-sizing-content placeholder:truncate placeholder-shown:field-sizing-fixed placeholder-shown:h-8 placeholder-shown:overflow-hidden placeholder-shown:whitespace-nowrap max-h-40 min-h-8 min-w-0 flex-1 resize-none border-0 px-1 py-1.5 focus-visible:shadow-none phone:min-h-10 phone:placeholder-shown:h-10 phone:border phone:px-3 phone:py-[7px] phone:leading-6 phone:focus-visible:shadow-(--focus-ring)"
+              className={cn(
+                'field-sizing-content placeholder:truncate placeholder-shown:field-sizing-fixed placeholder-shown:h-9 placeholder-shown:overflow-hidden placeholder-shown:whitespace-nowrap max-h-40 min-h-9 min-w-0 flex-1 resize-none py-[7px] phone:min-h-10 phone:placeholder-shown:h-10 phone:leading-6',
+                logs.length === 0 && !hasDraft && 'border-primary ring-primary/30 ring-2',
+              )}
               style={{ fontSize }}
             />
             {isBusy && !hasDraft ? (
@@ -790,7 +789,7 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
                 type="button"
                 size="sm"
                 variant="outline"
-                className="h-8 shrink-0 px-2.5 text-xs"
+                className="h-9 shrink-0 px-2.5 text-xs"
                 onClick={handleInterrupt}
                 title={t('staffPanel.composer.stopTitle')}
               >
@@ -798,13 +797,13 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
               </Button>
             ) : isBusy ? (
               <div className="flex shrink-0 gap-1">
-                <Button type="button" size="sm" variant="ghost" className="h-8 px-2 text-xs" onClick={() => void handleSend()} title={t('staffPanel.composer.queueTitle')}>
+                <Button type="button" size="sm" variant="ghost" className="h-9 px-2 text-xs" onClick={() => void handleSend()} title={t('staffPanel.composer.queueTitle')}>
                   {t('staffPanel.composer.queue')}
                 </Button>
                 <Button
                   type="button"
                   size="sm"
-                  className="h-8 px-2.5 text-xs"
+                  className="h-9 px-2.5 text-xs"
                   onClick={() => void handleSend(true)}
                   title={t('staffPanel.composer.interruptTitle')}
                 >
@@ -812,8 +811,9 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
                 </Button>
               </div>
             ) : (
-              <Button type="button" size="icon" className="phone:size-10 size-8 shrink-0 rounded-full" onClick={() => void handleSend()} disabled={!hasDraft} aria-label={t('staffPanel.composer.send')} title={t('staffPanel.composer.sendTitle')}>
-                <ArrowUpIcon className="size-4" />
+              // 단체방 보내기와 같은 버튼
+              <Button type="button" className="phone:w-10 phone:px-0" onClick={() => void handleSend()} disabled={!hasDraft} aria-label={t('staffPanel.composer.send')} title={t('staffPanel.composer.sendTitle')}>
+                <SendIcon />
               </Button>
             )}
           </div>

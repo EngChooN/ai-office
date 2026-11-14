@@ -355,26 +355,21 @@
   outline-offset: 0;
 }
 
-/* ── 선택된 메뉴·탭: 노란 선택 칸 + ▶ (RPG 메뉴처럼) ── */
+/* ── 선택된 메뉴·탭: 노란 선택 칸 (RPG 메뉴처럼. ▶ 표시는 대표 요청으로 뺐다) ── */
 [data-theme='retro'] nav button[aria-current='page'] {
   background-color: var(--retro-sel);
   color: var(--foreground);
   box-shadow: inset 0 0 0 2px var(--retro-out);
 }
-[data-theme='retro'] nav button[aria-current='page']::before {
-  content: '▶';
-  font-family: var(--retro-small);
-  font-size: 10px;
-  margin-right: 4px;
-}
 [data-theme='retro'] [role='tab'][aria-selected='true'] {
   background-color: var(--card);
   box-shadow: inset 2px 0 0 0 var(--retro-out), inset -2px 0 0 0 var(--retro-out), inset 0 2px 0 0 var(--retro-out);
 }
-[data-theme='retro'] [role='tab'][aria-selected='true']::before {
-  content: '▶';
+/* 메뉴 숫자 뱃지: 굵은 글꼴·넓은 여백이면 아이콘보다 커 보여서, 가는 작은 글꼴에 여백을 줄인다 */
+[data-theme='retro'] [data-nav-badge] {
   font-family: var(--retro-small);
-  font-size: 10px;
+  line-height: 12px;
+  padding: 1px 3px;
 }
 
 /* ── 아이콘: 선 끝·꺾임을 각지게, 계단 모양으로 ── */

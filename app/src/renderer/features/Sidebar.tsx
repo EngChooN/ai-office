@@ -38,7 +38,7 @@ export function Sidebar() {
             >
               <Icon className="size-4" />
               <span className="flex-1">{g.label}</span>
-              {badge > 0 && <span className="bg-status-waiting shrink-0 rounded-full px-1.5 text-[10px] font-semibold text-background">{badge}</span>}
+              {badge > 0 && <span data-nav-badge className="bg-status-waiting shrink-0 rounded-full px-1.5 text-[10px] font-semibold text-background">{badge}</span>}
               {/* 새 버전은 '설정' 묶음에 (탭 '업데이트 소식'에도 같은 표시) */}
               {g.id === 'config' && newVersion && (
                 <span className="bg-status-waiting shrink-0 rounded-full px-1.5 text-[10px] font-semibold text-background" title={t('update.badge', { version: newVersion })}>
