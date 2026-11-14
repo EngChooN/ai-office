@@ -12,7 +12,7 @@ Writing rules
 - Couldn't do it before → new feature; easier than before → improvement; was working wrongly → bug fix.
 
 ## [미정] (설치본 미빌드)
-PC app only: the new assistant features are in the PC app. Opening files doesn't work from the phone (finding only); you can open them only at the PC.
+PC app only: the desktop secretary and turning it on from the menu bar work only in the PC app. On the phone you can only find files; opening them works only on the PC.
 
 ### At a glance
 - **New** Approve right inside the assistant's reply
@@ -23,16 +23,16 @@ PC app only: the new assistant features are in the PC app. Opening files doesn't
 
 ### New features
 - Approve or reject an approval the assistant told you about right from the card in its reply. It matches the Approvals inbox, and an already handled one shows 'Already handled'.
-- When you open the assistant for the first time after being away for 6+ hours, it sums up finished work, waiting approvals and errors once. Turn it off with a setting or 'Don't show again'.
+- When you open the assistant for the first time after being away for 6+ hours or after relaunching the app, it sums up finished work, waiting approvals and errors once. Turn it off with a setting or 'Don't show again'.
 - Older conversation is briefly summarized with a low-cost model and shown at the top as 'Earlier conversation summary'. It is kept for 30 days like the conversation.
 - The assistant finds and opens files and folders in staff results, received attachments and project folders. Opening takes one confirm card, and for programs it only shows the folder. On the phone, only finding works.
-- You can ask the assistant to post or reply in a team or project room. The confirm card shows the room, how it is sent and the post being replied to, and a message sent to a room reaches working staff after their current work.
+- You can ask the assistant to post or reply in a team or project room. The confirm card shows the room, how it is sent and the post being replied to, and by default it reaches working staff after their current work, and 'Send now' cuts in.
 
 ### Improvements
-- The desktop secretary now matches the app: approval cards show the same title, content and requester, and the ⋯ menu offers auto-approve from now on, stop the work and open in the app. The header splits 'N working' and 'n waiting'. The Retro office game theme applies to its window too.
+- The desktop secretary now matches the app: approval cards show the same title, content and requester, and the ⋯ menu offers auto-approve from now on, stop the work (shown only for staff who are working) and open in the app. The header splits 'N working' and 'n waiting'. The Retro office game theme applies to its window too.
 - When you ask the assistant several things in a row, waiting questions show 'Waiting · #n in line'. You can remove one or ask them together (unless too long). The assistant points you to screens by their current menu names, and you can turn the desktop secretary on or off from the menu bar (the notification area on Windows). On Linux its setting is hidden.
 - On the phone (and remote PC windows), Approve/Reject now switches to 'Processing' right away and your message shows as 'Sending' first, with 'Send again' if it fails.
-- The phone's input row and top buttons are tidied in size and spacing, and the staff chat input now looks like the group chat. Task board columns take only as much room as their cards.
+- The phone's input row and top buttons are tidied in size and spacing, and the staff chat input now looks like the group chat on both PC and phone. Task board columns take only as much room as their cards.
 
 ### Bug fixes
 - Fixed a hidden staff member getting selected when you click the street outside a building in the office. The floor buttons on the right were removed.
