@@ -875,7 +875,8 @@ function Composer({ room, onSend }: { room: RoomInfo | undefined; onSend: (input
       )}
       <ReservationCards room={room?.room} />
       <RoomWaiting room={room?.room} />
-      <div className="slim:mb-1 mx-auto mb-2 max-w-3xl">
+      {/* 세로 폰: 여백을 보이는 줄에만 줘서, 비어 있을 때 입력줄 위가 아래보다 넓어지지 않게 (위아래 8 = 8) */}
+      <div className="slim:mb-0 slim:[&>*]:mb-1 mx-auto mb-2 max-w-3xl">
         {reply && <ReplyBar reply={reply} onCancel={() => setReply(null)} />}
         <DraftAttachments files={draftFiles.files} onRemove={draftFiles.remove} />
         {/* 분할·세로 폰은 받는 사람 줄을 @를 쓸 때만 (세로 폰은 기본 받는 사람을 입력칸 옆 칩으로) */}

@@ -8,6 +8,7 @@ import { companyFromXp, DEFAULT_EQUIPMENT, DEFAULT_SETTINGS, type ChatMessage, t
 import type { GridItem, SeatSetPart } from '@shared/iso/furniture'
 import type { KnowledgeInput } from '@shared/knowledge'
 import { LANGS, t, type Lang } from '@shared/i18n'
+import { sanitizeUi } from '@shared/uiTheme'
 import { demoApprovalId, DEMO_CHAT, DEMO_EQUIPMENT, DEMO_EXTERNAL, DEMO_LAB, DEMO_LIVE, DEMO_MEETING, DEMO_PLAN_USAGE, DEMO_STAFF, DEMO_TASKS, DEMO_TEAMS } from './demoData'
 
 // 미리보기도 휴대폰처럼 손가락 기기로 친다 (단축키 문구·Enter 줄바꿈 확인용)
@@ -168,7 +169,7 @@ const snapshot = {
     },
   ],
   schedules: [{ id: 'sc1', staffId: 's1', label: '출근 브리핑', time: '09:00', weekdays: [1, 2, 3, 4, 5], instruction: '어제 한 일과 오늘 할 일을 정리해 주세요', enabled: true, lastRunDate: null }],
-  settings: { ...DEFAULT_SETTINGS, isOnboarded: true, tokenBudget: { day: 2_000_000, week: 10_000_000, month: 30_000_000 }, isWorkMode: params.get('work') === '1' },
+  settings: { ...DEFAULT_SETTINGS, isOnboarded: true, tokenBudget: { day: 2_000_000, week: 10_000_000, month: 30_000_000 }, isWorkMode: params.get('work') === '1', ...(params.get('theme') ? sanitizeUi({ uiTheme: params.get('theme'), uiMode: params.get('mode') ?? DEFAULT_SETTINGS.uiMode }) : {}) },
   monthCostUsd: 31.2,
   planUsage: [
     { type: 'five_hour', percent: 42, resetsAt: now + 2 * 3600_000, status: 'allowed', updatedAt: now - 5 * min },
