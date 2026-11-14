@@ -4,9 +4,9 @@
 
 # AI Office
 
-**ClaudeとGPTの社員を雇って、オフィスのように仕事を任せましょう。**
+**話しかけるだけで AI 社員が働く、あなただけのオフィス。**
 
-言葉で仕事を頼み、大事な作業だけ承認し、終わったら報告が届く無料のオープンソース デスクトップアプリです。<br>コマンド画面も難しい設定も不要です。
+ClaudeとGPTの社員を雇って仕事を任せ、大事な作業だけ承認し、終わったら報告が届く無料のオープンソースアプリです。<br>コマンド画面も難しい設定も不要です。
 
 <a href="https://github.com/EngChooN/ai-office/releases/latest"><img alt="最新リリース" src="https://img.shields.io/github/v/release/EngChooN/ai-office?include_prereleases&style=flat-square&label=最新リリース"></a>
 <a href="https://github.com/EngChooN/ai-office/releases/latest"><img alt="ダウンロード" src="https://img.shields.io/github/downloads/EngChooN/ai-office/total?style=flat-square&label=ダウンロード"></a>
@@ -37,22 +37,23 @@
 
 | | 機能 | 説明 |
 |:-:|---|---|
-| 👥 | **ClaudeとGPTの社員を一緒に** | 社員ごとに Claude か GPT を選べます。どちらか一方だけでも始められます。 |
-| 💬 | **雇って、言葉で頼む** | 職種と見た目を選べば準備完了。グループチャットで @名前 と呼ぶだけ。誰も呼ばなければ合う社員が引き受けます。 |
-| ✅ | **大事な作業は承認で** | ファイルの変更やコマンド実行は、まず承認箱に届きます。気に入らなければワンクリックで元に戻せます。 |
-| 🧑‍💼 | **リーダーが分担して進行** | 大きな仕事をリーダーに渡すと、計画を立てて分担し、確認後に進めて報告します。進み具合は業務ボードで確認できます。 |
-| 🏢 | **育つオフィス** | 誰が働き誰が待っているか一目で分かります。レベルが上がるとオフィスが広がり、家具で飾れます。 |
-| 📱 | **スマホからも** | Androidアプリをつなぐと、席を離れてもダッシュボード・承認箱・グループチャットが使えます。 |
+| 🧑‍💼 | **まず秘書に話しかける** | 秘書は返答の中のカードで承認を受け取り、夜のあいだの出来事を要約し、長い会話も続けられます。社員が作ったファイルも探してくれます。 |
+| 👥 | **ClaudeとGPTの社員を一緒に** | 社員ごとに Claude と GPT のどちらで働くか選べます。片方だけでも始められます。 |
+| 💬 | **メッセンジャーのようなチャット** | 頼むと「受付 → 作業中 → 完了」が見えます。返信・予約・割り込みもできます。 |
+| ✅ | **大事なことは承認で** | 危険な作業は何をするかを一行で伝え、先に確認します。変更したファイルは元に戻せます。 |
+| 🧭 | **リーダーが分担して進行** | 大きな仕事をリーダーに渡すと、計画を分け、確認を受けてから進めて報告します。 |
+| 📱 | **スマホからも** | Android アプリをつなぐと、席を離れていても承認や会話ができます。押すとすぐ「処理中」に変わります。 |
+| 🎮 | **好みに合わせて** | カラーテーマ10種、レトロなオフィスゲームのテーマ、働くほど育つオフィスです。 |
 
 ## 🚀 クイックスタート
 
-1. **インストールしてログイン** — 上からお使いのパソコン用をダウンロードして開きます。そのパソコンで Claude か GPT（ChatGPT）にログインしておいてください。
-2. **最初の社員を雇う** — 職種を選び、Claude と GPT のどちらで働くか決めます。席についたらすぐ準備します。
-3. **仕事を頼んで承認** — グループチャットで頼み、承認箱で承認し、終わったら報告を受け取ります。
+1. **インストールしてログイン** — 上のボタンから自分のパソコン用をダウンロードして開きます。そのパソコンで Claude か GPT（ChatGPT）にログインしている必要があります。
+2. **最初の社員を採用** — 職種を選び、Claude と GPT のどちらで働くか決めます。
+3. **仕事を任せて承認** — グループチャットや秘書に言葉で頼み、承認し、終わったら報告を受け取ります。
 
 ## 🔗 リンク
 
-[紹介サイト](https://engchoon.github.io/ai-office/) · [不具合・ご意見を送る](https://github.com/EngChooN/ai-office/issues/new) · [すべてのリリース](https://github.com/EngChooN/ai-office/releases/latest) · [支援する](https://fairy.hada.io/@ai-office)
+[紹介サイト](https://engchoon.github.io/ai-office/) · [不具合・ご意見を送る](https://github.com/EngChooN/ai-office/issues/new) · [すべてのリリース](https://github.com/EngChooN/ai-office/releases/latest) · [更新情報](CHANGELOG.ja.md) · [支援する](https://fairy.hada.io/@ai-office)
 
 ---
 
@@ -60,52 +61,42 @@
 
 Claude の社員と GPT の社員を一緒に**採用**し、ひとつのオフィスのように仕事を任せ、承認し、報告を受ける無料・オープンソースのデスクトップアプリ（Electron）です。社員は Claude Code または Codex（GPT）のセッションです。旧名称は Claude Office で、初回起動時に既存データを自動コピーします（旧フォルダーはそのまま残ります）。
 
-- 状態: **1.0.3** — GPT社員· オフィスマップ（チームエリア・会議室・休憩室）· チーム／チームリーダーへの委任 · タスクボード · 承認箱（再起動後も承認待ちを再開） · グループチャット · 会議 · 予約タスク · レポート · 給与明細 · 模様替え · フィードバックへのエラー記録添付（任意・機密を伏せ字） · GPT社員ごとのシェルネットワーク許可
-- スタック: Electron Forge + Vite · React 19 · Zustand · Tailwind 4 + shadcn/ui · Phaser 4 · SQLite（`node:sqlite`）· Claude Agent SDK · Codex app-server（GPT 社員）
-
 ## インストール前にお読みください
-- 上のボタンでダウンロードした `.dmg` を開き、Applications にドラッグします（自分でビルドした場合は `app/out/make/dmg/arm64/AI-Office.dmg`）
-- Apple Silicon 専用 · 署名・公証なし → 初回起動時に「開発元を確認できない」と表示されたら、システム設定 › プライバシーとセキュリティ › 「このまま開く」
-- 必要条件: その Mac で Claude（Claude Code）または GPT（ChatGPT・Codex）のどちらか1つ以上にログインしていること。両方つなぐと社員ごとに選べます（社員はそのアカウントで働き、料金もそのアカウントに請求されます）
-- 再ビルド: `cd app && pnpm make`
 
-## Windows
-- インストール: `AI-Office-win-x64-Setup.exe` をダウンロードして実行すると、ユーザーフォルダにインストールされ、スタートメニューとデスクトップにショートカットができます（管理者権限は不要）。以降のアップデートはアプリ内から新しい Setup.exe で行われます
-- ビルド: `cd app && pnpm install && pnpm make:win` → `app/out/make/squirrel.windows/x64/AI-Office-win-x64-Setup.exe`（Mac には wine がなくインストーラーを作れません。GitHub Actions の `win-installer` でビルド）
-  - Mac でビルドしても構いません。`pnpm-workspace.yaml` の `supportedArchitectures` により、Windows x64 用の claude 実行ファイルパッケージも取得されます（設定を変えたあと `pnpm install` を一度実行してください）
-- 署名なし → Setup.exe を初めて開くとき SmartScreen の「Windows によって PC が保護されました」が出たら「詳細情報 › 実行」
-- 以前 zip を展開して使っていた方: Setup.exe でインストールしたあと、古いフォルダを削除してください（設定と履歴は引き継がれます）
-- データ: `%APPDATA%\AI Office\office.db`
-- まだ Mac 専用: 外部社員の通知・質問受付（hooks）、画面キャプチャ。作業結果の確認（コミット・PR）には Git for Windows と GitHub CLI が必要で、まだ実際の確認はしていません
+**Mac**
+- 上のボタンでダウンロードした `.dmg` を開き、Applications にドラッグします。
+- Apple Silicon 専用で、署名・公証はありません。初回起動時に「開発元を確認できない」と表示されたら、システム設定 › プライバシーとセキュリティ › 「このまま開く」を押してください。
 
-## スマホからのリモート操作（0.8.0〜）
-- 設定 › スマホ接続でオンにし、QR コードで Android アプリ（`android/`）を接続します。**初期状態はオフ。** オンにすると Tailscale のアドレスからだけ接続できる方式が初期値で、同じネットワーク専用・ルーターのポート転送方式も選べます。ポート転送方式ではこの PC のポート（初期値 47900）がインターネット側に開くので、使わないときはオフにしてください。
-- スマホからの承認・指示は、PC で直接行うのと同じ権限を持ちます。紛失した場合は「QR を作り直す」を押してください。
-- 通知は約15分ごとに確認する方式のため、数十分遅れることがあります。PC のリモートキーが変わった場合（証明書の固定）は、QR を作り直して再接続してください。
-- 互換性: デスクトップ **0.8.0 以上** ↔ Android **1.0.x** ↔ プロトコル **v1**（`docs/specs/remote-protocol-v1.md`）。デスクトップ **0.9.0 以上** ↔ Android **1.1.x** ↔ プロトコル **v2**（PC 画面全体、`docs/specs/remote-protocol-v2.md`）— 1.0.x のアプリも 0.9.0 の PC には v1 で引き続き接続できます。**0.10.1 からスマホアプリの番号は PC と同じです（PC 0.10.1 ↔ スマホ 0.10.1。上の 1.x 表記はそれ以前の履歴です）。** アプリのビルド・署名フィンガープリントは `android/README.md`、0.8.0 のリリースノートは `docs/release-notes/0.8.0.md` を参照してください。
+**Windows**
+- `AI-Office-win-x64-Setup.exe` をダウンロードして実行すると、ユーザーフォルダーにインストールされ、スタートメニューとデスクトップにショートカットができます（管理者権限は不要）。更新はアプリ内から行います。
+- 署名がないため、初回起動時に SmartScreen の「Windows によって PC が保護されました」が表示されたら、「詳細情報 › 実行」を押してください。
+- 以前 zip を展開して使っていた方は、Setup.exe でインストールしてから旧フォルダーを削除してください（設定と履歴は引き継がれます）。
+- データは `%APPDATA%\AI Office\office.db` にあります。
+- まだ Mac のみ: アプリの外で起動した社員の通知・質問の受け取り（hooks）、画面キャプチャ。作業結果のレビュー（コミット・PR）には Git for Windows と GitHub CLI が必要で、実機での確認はまだです。
 
-## 開発時の実行
+**共通の必要条件**
+- そのパソコンで Claude（Claude Code）または GPT（ChatGPT・Codex）のどちらか1つ以上にログインしていること。両方つなぐと社員ごとに選べます。社員はそのアカウントで働き、料金もそのアカウントに請求されます。
+
+## スマホ接続
+
+- 設定 › スマホ接続でオンにし、QR コードで Android アプリをつなぎます。**初期設定はオフ**です。オンにすると Tailscale のアドレス経由のみで接続する方式が基本で、同じネットワークのみ・ルーターのポートフォワーディングも選べます。ポートフォワーディングはこの PC のポート（既定 47900）がインターネット側に開くため、使わないときはオフにしてください。
+- スマホからの承認・指示は、PC で直接行うのと同じ権限を持ちます。スマホを紛失したら「QR を作り直す」を押してください。
+- 通知は 15 分ほどごとに確認する方式のため、数十分遅れることがあります。PC のリモート鍵が変わったら、QR を作り直して接続し直してください。
+- スマホアプリは PC と同じバージョンを使ってください。アプリのビルド・署名フィンガープリントは `android/README.md` にあります。
+
+## 開発者向け
+
 ```bash
 cd app
 pnpm install
 pnpm start
 ```
-- ログイン: 別途 API キーは不要で、この Mac の Claude Code・Codex のログインをそのまま使います。接続状態は設定でプロバイダーごとに確認できます。
-- データ: `~/Library/Application Support/AI Office/office.db`
-- 1つのデータフォルダは1つのアプリだけが使います（`office.lock`）。インストール版が起動していると、開発版は「すでに起動しています」と表示して終了します。インストール版を起動したまま開発版や QA を動かすには、別のフォルダを指定します: `CLAUDE_OFFICE_USER_DATA=~/claude-office-dev pnpm start`
 
-## 社員の2種類
-| | 雇用社員 | 外部社員 |
-|---|---|---|
-| 正体 | アプリが起動したセッション（Claude: Agent SDK · GPT: Codex app-server） | ターミナル・デスクトップアプリで既に実行中の Claude Code・Codex セッション |
-| 状態 | リアルタイム（ストリーム） | Claude: `~/.claude/sessions` レジストリを2秒ごとにポーリング（+ オプトインの hooks）· Codex: `~/.codex/sessions` の記録ファイルで閲覧のみ |
-| 指示・承認 | アプリで | 元のウィンドウで |
-| 今日の作業 | アプリ DB | トランスクリプト jsonl |
-
-## フォルダ
-- `app/` — アプリ（`src/main` メインプロセス、`src/renderer` 画面、`src/shared` 共通の型）
-- `spikes/` — 第1段階の連携検証スクリプト
-- `docs/` — 調査・スパイクの記録
-
-## ドキュメント
-- [CONTEXT.md](CONTEXT.md) — 初めて見る人のための背景資料 · [intro.html](intro.html) — 紹介スライド（ブラウザで開く） · [SPEC.md](SPEC.md) — 決定済みの仕様 · [CHANGELOG.ja.md](CHANGELOG.ja.md) — 変更履歴 · [docs/spike-integration.md](docs/spike-integration.md)
+- スタック: Electron Forge + Vite · React 19 · Zustand · Tailwind 4 + shadcn/ui · Phaser 4 · SQLite（`node:sqlite`）· Claude Agent SDK · Codex app-server（GPT 社員）
+- ログイン: 別の API キーは不要で、このパソコンの Claude Code・Codex のログインをそのまま使います。接続状態は設定でプロバイダーごとに確認できます。
+- データ: Mac は `~/Library/Application Support/AI Office/office.db`
+- 1つのデータフォルダーは1つのアプリだけが使えます（`office.lock`）。インストール版が起動中だと、開発アプリは「すでに起動しています」と表示して終了します。インストール版を起動したまま開発アプリや QA を動かすには、別のフォルダーを指定します: `AI_OFFICE_USER_DATA=~/ai-office-dev pnpm start`（旧名 `CLAUDE_OFFICE_USER_DATA` も認識します）
+- Mac 用インストーラーの作成: `cd app && pnpm make` → `app/out/make/dmg/arm64/AI-Office.dmg`
+- Windows 用インストーラーの作成: `cd app && pnpm install && pnpm make:win` → `app/out/make/squirrel.windows/x64/AI-Office-win-x64-Setup.exe`。Mac には wine がないため、GitHub Actions の `win-installer` で作成します。Mac でも `pnpm-workspace.yaml` の `supportedArchitectures` で Windows x64 用の claude 実行ファイルのパッケージを取得できます（設定を変えたあと `pnpm install` を1回）。
+- フォルダー: `app/`（アプリ: `src/main` メインプロセス、`src/renderer` 画面、`src/shared` 共有型）· `android/`（スマホアプリ）· `site/`（紹介サイト）· `docs/`（仕様・調査記録）
+- ドキュメント: [CONTEXT.md](CONTEXT.md)（初めて見る人向けの背景、社員の2種類の説明を含む）· [intro.html](intro.html)（紹介スライド）· [SPEC.md](SPEC.md)（決定済み仕様）· [CHANGELOG.ja.md](CHANGELOG.ja.md)（変更履歴）

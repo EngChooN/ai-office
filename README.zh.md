@@ -4,9 +4,9 @@
 
 # AI Office
 
-**雇用 Claude 和 GPT 员工，像办公室一样交给他们工作。**
+**一句话交代，AI 员工就开工的专属办公室。**
 
-用说话的方式分配工作，只审批重要的事，完成后收到汇报的免费开源桌面应用。<br>无需命令行，无需复杂设置。
+雇用 Claude 和 GPT 员工来分配工作，只审批重要的事，完成后收到汇报的免费开源应用。<br>无需命令行，无需复杂设置。
 
 <a href="https://github.com/EngChooN/ai-office/releases/latest"><img alt="最新版本" src="https://img.shields.io/github/v/release/EngChooN/ai-office?include_prereleases&style=flat-square&label=最新版本"></a>
 <a href="https://github.com/EngChooN/ai-office/releases/latest"><img alt="下载量" src="https://img.shields.io/github/downloads/EngChooN/ai-office/total?style=flat-square&label=下载量"></a>
@@ -33,26 +33,27 @@
 
 > 首次打开的提示、前提条件以及 Windows、手机的说明见 [安装前请阅读](#安装前请阅读)。
 
-## ✨ 你可以这样用
+## ✨ 你可以做什么
 
 | | 功能 | 说明 |
 |:-:|---|---|
-| 👥 | **Claude 与 GPT 员工一起** | 每位员工可选择用 Claude 还是 GPT。只有其中一个也能开始。 |
-| 💬 | **雇用，然后直接吩咐** | 选好职务和外观就准备好了。在群聊里 @名字 即可，没人被点名时会由合适的员工接手。 |
-| ✅ | **重要的事先审批** | 修改文件或执行命令会先进入审批箱。不满意可以一键恢复。 |
-| 🧑‍💼 | **组长分工推进** | 把大任务交给组长，它会制定计划并分工，经你确认后推进并汇报。进度可在任务看板查看。 |
-| 🏢 | **会成长的办公室** | 谁在工作、谁在等待一目了然。等级提升后办公室会变大，还可以用家具装饰。 |
-| 📱 | **手机也能用** | 连接 Android 应用后，离开座位也能使用仪表盘、审批箱和群聊。 |
+| 🧑‍💼 | **先对秘书说** | 秘书直接在回复里的卡片中接收审批，汇总夜里发生的事，长对话也能接着聊。员工做出的文件也能帮你找。 |
+| 👥 | **Claude 与 GPT 员工一起用** | 每位员工可选择用 Claude 还是 GPT 工作。只有其中一个也能开始。 |
+| 💬 | **像聊天软件一样的对话室** | 下达指令后能看到“已收到 → 进行中 → 完成”。回复、定时、插话也都可以。 |
+| ✅ | **重要的事走审批** | 有风险的操作会用一行字说明要做什么，并先征求你的同意。改过的文件可以撤回。 |
+| 🧭 | **组长分工推进** | 把大任务交给组长，它会拆分计划，经你确认后执行并汇报。 |
+| 📱 | **手机上也能用** | 连接安卓应用后，不在座位上也能审批、对话。点一下就会立刻变成“处理中”。 |
+| 🎮 | **按你的喜好** | 10 种配色主题、复古办公室游戏主题，以及越用越大的办公室。 |
 
 ## 🚀 快速开始
 
-1. **安装并登录** — 从上方下载适合你电脑的版本并打开。请确保该电脑已登录 Claude 或 GPT（ChatGPT）。
-2. **雇用第一位员工** — 选择职务，并决定用 Claude 还是 GPT 工作。入座后马上就绪。
-3. **交代任务并审批** — 在群聊里吩咐，在审批箱里批准，完成后收到汇报。
+1. **安装并登录** — 从上方下载适合你电脑的版本并打开。该电脑上需要已登录 Claude 或 GPT（ChatGPT）。
+2. **雇第一位员工** — 选择职位，并决定用 Claude 还是 GPT 工作。
+3. **交办工作并审批** — 在群聊或对秘书用说话的方式下达指令，审批，完成后收到汇报。
 
 ## 🔗 链接
 
-[介绍网站](https://engchoon.github.io/ai-office/) · [反馈问题 / 意见](https://github.com/EngChooN/ai-office/issues/new) · [所有版本](https://github.com/EngChooN/ai-office/releases/latest) · [赞助支持](https://fairy.hada.io/@ai-office)
+[介绍网站](https://engchoon.github.io/ai-office/) · [反馈问题 / 意见](https://github.com/EngChooN/ai-office/issues/new) · [所有版本](https://github.com/EngChooN/ai-office/releases/latest) · [更新动态](CHANGELOG.zh.md) · [赞助支持](https://fairy.hada.io/@ai-office)
 
 ---
 
@@ -60,52 +61,42 @@
 
 同时**雇用** Claude 员工和 GPT 员工，像一间办公室一样分配工作、审批、接收汇报的免费开源桌面应用（Electron）。员工是 Claude Code 或 Codex（GPT）会话。旧名称为 Claude Office，首次启动时会自动复制已有数据（旧文件夹保持不动）。
 
-- 状态：**1.0.3** — GPT 员工· 办公室地图（团队区域、会议室、休息室）· 团队/组长委派 · 任务看板 · 审批箱（重启后继续待审批项） · 群聊 · 会议 · 定时任务 · 报告 · 工资单 · 布置 · 反馈附带错误记录（可选，已遮盖敏感信息） · 可按 GPT 员工开启 Shell 网络
-- 技术栈：Electron Forge + Vite · React 19 · Zustand · Tailwind 4 + shadcn/ui · Phaser 4 · SQLite（`node:sqlite`）· Claude Agent SDK · Codex app-server（GPT 员工）
-
 ## 安装前请阅读
-- 打开上方按钮下载的 `.dmg`，拖到 Applications 文件夹（自行构建时位于 `app/out/make/dmg/arm64/AI-Office.dmg`）
-- 仅限 Apple Silicon · 未签名/未公证 → 首次打开时若出现“无法验证开发者”提示，请前往 系统设置 › 隐私与安全性 › “仍要打开”
-- 前提条件：该 Mac 上已登录 Claude（Claude Code）或 GPT（ChatGPT · Codex）中的至少一个。两者都连接时可按员工选择（员工使用该账户工作，费用也计入该账户）
-- 重新构建：`cd app && pnpm make`
 
-## Windows
-- 安装：下载并运行 `AI-Office-win-x64-Setup.exe`，会安装到用户文件夹，并创建开始菜单和桌面快捷方式（无需管理员权限）。之后的更新在应用内通过新的 Setup.exe 进行
-- 构建：`cd app && pnpm install && pnpm make:win` → `app/out/make/squirrel.windows/x64/AI-Office-win-x64-Setup.exe`（Mac 没有 wine，无法生成安装程序，请用 GitHub Actions 的 `win-installer` 构建）
-  - 在 Mac 上构建也可以。`pnpm-workspace.yaml` 中的 `supportedArchitectures` 会同时下载 Windows x64 用 claude 可执行文件包（修改设置后需要运行一次 `pnpm install`）
-- 未签名 → 首次打开 Setup.exe 时若出现 SmartScreen“Windows 已保护你的电脑”窗口，点击“更多信息 › 仍要运行”
-- 之前解压 zip 使用的用户：用 Setup.exe 安装后删除旧文件夹即可（设置和记录会保留）
-- 数据：`%APPDATA%\AI Office\office.db`
-- 目前仅 Mac 支持：外部员工通知与提问接收（hooks）、屏幕截图。工作成果检查（提交·PR）需要 Git for Windows 和 GitHub CLI，且尚未实际验证
+**Mac**
+- 打开上方按钮下载的 `.dmg`，拖到 Applications 文件夹。
+- 仅限 Apple Silicon，未签名/未公证。首次打开时若出现“无法验证开发者”提示，请前往 系统设置 › 隐私与安全性 › “仍要打开”。
 
-## 手机远程（0.8.0 起）
-- 在 设置 › 手机连接 中开启，然后用二维码连接安卓应用（`android/`）。**默认关闭。** 开启后默认只允许通过 Tailscale 地址连接，也可以选择仅限同一网络或路由器端口转发方式。端口转发方式会把本机端口（默认 47900）向互联网开放，不用时请关闭。
-- 从手机进行的审批和指令与在电脑上直接操作具有相同权限。若手机丢失，请点击“重新生成二维码”。
-- 通知大约每 15 分钟检查一次，因此可能延迟几十分钟。若 PC 的远程密钥变化（证书固定），请重新生成二维码并重新连接。
-- 兼容性：电脑 **0.8.0 及以上** ↔ 安卓 **1.0.x** ↔ 协议 **v1**（`docs/specs/remote-protocol-v1.md`）。电脑 **0.9.0 及以上** ↔ 安卓 **1.1.x** ↔ 协议 **v2**（整个 PC 屏幕，`docs/specs/remote-protocol-v2.md`）— 1.0.x 应用仍可通过 v1 连接 0.9.0 的电脑。**从 0.10.1 起，手机应用版本号与电脑相同（PC 0.10.1 ↔ 手机 0.10.1；上面的 1.x 标注是之前的历史）。** 应用构建和签名指纹见 `android/README.md`，0.8.0 的发布说明见 `docs/release-notes/0.8.0.md`。
+**Windows**
+- 下载并运行 `AI-Office-win-x64-Setup.exe`，会安装到用户文件夹，并在开始菜单和桌面创建快捷方式（无需管理员权限）。之后的更新在应用内进行。
+- 未签名。首次打开 Setup.exe 时若出现 SmartScreen“Windows 已保护你的电脑”窗口，请点击“更多信息 › 仍要运行”。
+- 以前解压 zip 使用的用户：用 Setup.exe 安装后删除旧文件夹即可（设置和记录会保留）。
+- 数据位于 `%APPDATA%\AI Office\office.db`。
+- 目前仅限 Mac：在应用外启动的员工的通知与提问接收（hooks）、屏幕截图。审查任务结果（提交 · PR）需要 Git for Windows 和 GitHub CLI，尚未实际验证。
 
-## 开发运行
+**共同前提条件**
+- 该电脑上已登录 Claude（Claude Code）或 GPT（ChatGPT · Codex）中的至少一个。两者都连接时可按员工选择。员工使用该账户工作，费用也计入该账户。
+
+## 手机连接
+
+- 在 设置 › 手机连接 中开启，并用二维码连接安卓应用。**默认关闭。** 开启后默认仅通过 Tailscale 地址连接，也可选择仅限同一网络或路由器端口转发。端口转发会让这台电脑的端口（默认 47900）对互联网开放，不用时请关闭。
+- 手机上的审批和指令，权限与在电脑上直接操作相同。手机丢失时请点“重新生成二维码”。
+- 通知约每 15 分钟检查一次，可能延迟数十分钟。电脑的远程密钥改变后，请重新生成二维码并重新连接。
+- 手机应用请使用与电脑相同的版本。应用构建与签名指纹见 `android/README.md`。
+
+## 开发者
+
 ```bash
 cd app
 pnpm install
 pnpm start
 ```
-- 登录：无需单独的 API 密钥，直接使用本机 Claude Code 和 Codex 的登录状态。各提供方的连接状态可在设置中查看。
-- 数据：`~/Library/Application Support/AI Office/office.db`
-- 一个数据文件夹只能由一个应用使用（`office.lock`）。若已启动安装版，开发版会显示“已经在运行”并退出。要在保持安装版运行的同时启动开发版或 QA，请指定其他文件夹：`CLAUDE_OFFICE_USER_DATA=~/claude-office-dev pnpm start`
 
-## 两类员工
-| | 雇用员工 | 外部员工 |
-|---|---|---|
-| 身份 | 应用启动的会话（Claude：Agent SDK · GPT：Codex app-server） | 在终端或桌面应用中已在运行的 Claude Code、Codex 会话 |
-| 状态 | 实时（流） | Claude：每 2 秒轮询 `~/.claude/sessions` 注册表（+ 可选开启的 hooks）· Codex：通过 `~/.codex/sessions` 记录文件仅查看 |
-| 指令·审批 | 在应用中 | 在原窗口中 |
-| 今日工作 | 应用数据库 | 对话记录 jsonl |
-
-## 目录
-- `app/` — 应用（`src/main` 主进程、`src/renderer` 界面、`src/shared` 共享类型）
-- `spikes/` — 第一阶段联动验证脚本
-- `docs/` — 调研与 spike 记录
-
-## 文档
-- [CONTEXT.md](CONTEXT.md) — 给新人的背景资料 · [intro.html](intro.html) — 介绍幻灯片（用浏览器打开） · [SPEC.md](SPEC.md) — 已确定的规格 · [CHANGELOG.zh.md](CHANGELOG.zh.md) — 变更记录 · [docs/spike-integration.md](docs/spike-integration.md)
+- 技术栈：Electron Forge + Vite · React 19 · Zustand · Tailwind 4 + shadcn/ui · Phaser 4 · SQLite（`node:sqlite`）· Claude Agent SDK · Codex app-server（GPT 员工）
+- 登录：无需单独的 API 密钥，直接使用这台电脑上 Claude Code 和 Codex 的登录。连接状态可在设置中按提供方查看。
+- 数据：Mac 为 `~/Library/Application Support/AI Office/office.db`
+- 一个数据文件夹同一时间只能被一个应用使用（`office.lock`）。若已安装版正在运行，开发版会提示“已在运行”并退出。要在已安装版运行时启动开发版或 QA，请指定另一个文件夹：`AI_OFFICE_USER_DATA=~/ai-office-dev pnpm start`（旧名称 `CLAUDE_OFFICE_USER_DATA` 仍可识别）
+- 构建 Mac 安装包：`cd app && pnpm make` → `app/out/make/dmg/arm64/AI-Office.dmg`
+- 构建 Windows 安装包：`cd app && pnpm install && pnpm make:win` → `app/out/make/squirrel.windows/x64/AI-Office-win-x64-Setup.exe`。Mac 没有 wine，所以用 GitHub Actions 的 `win-installer` 构建。在 Mac 上也可通过 `pnpm-workspace.yaml` 的 `supportedArchitectures` 提前下载 Windows x64 用的 claude 可执行文件包（修改设置后运行一次 `pnpm install`）。
+- 文件夹：`app/`（应用：`src/main` 主进程、`src/renderer` 界面、`src/shared` 共用类型）· `android/`（手机应用）· `site/`（介绍网站）· `docs/`（规格与调研记录）
+- 文档：[CONTEXT.md](CONTEXT.md)（给新人的背景说明，含两类员工的介绍）· [intro.html](intro.html)（介绍幻灯片）· [SPEC.md](SPEC.md)（已确定的规格）· [CHANGELOG.zh.md](CHANGELOG.zh.md)（变更记录）
