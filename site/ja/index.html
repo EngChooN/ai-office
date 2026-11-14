@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script>
 /* 화면 색: 저장한 값이 없으면 기기 설정(prefers-color-scheme)을 따른다. 그려지기 전에 정해 깜빡임을 막는다 */
-(function(){var t=null;try{t=localStorage.getItem("theme")}catch(e){}if(t!=="light"&&t!=="dark")t=null;var d=t||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");document.documentElement.setAttribute("data-theme",d);if(t)document.documentElement.setAttribute("data-theme-set","1");var m=document.querySelector('meta[name="theme-color"]');if(m)m.content=d==="dark"?"#14131C":"#FBFAFF"})();
+(function(){var t=null;try{t=localStorage.getItem("theme")}catch(e){}if(t!=="light"&&t!=="dark")t=null;var d=t;if(!d){try{d=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light"}catch(e){d="light"}}document.documentElement.setAttribute("data-theme",d);if(t)document.documentElement.setAttribute("data-theme-set","1");var m=document.querySelector('meta[name="theme-color"]');if(m)m.content=d==="dark"?"#14131C":"#FBFAFF"})();
 </script>
 <script>
 /* ── 여기만 바꾸면 됩니다 ──────────────────────────────
@@ -38,15 +38,15 @@ var DOWNLOADS = {
 <meta name="google-site-verification" content="">
 <meta name="naver-site-verification" content="">
 -->
-<link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32.png?v=0.16.2">
-<link rel="icon" type="image/png" sizes="512x512" href="../assets/icon.png?v=0.16.2">
-<link rel="apple-touch-icon" sizes="180x180" href="../assets/apple-touch-icon.png?v=0.16.2">
+<link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32.png?v=1.4.1">
+<link rel="icon" type="image/png" sizes="512x512" href="../assets/icon.png?v=1.4.1">
+<link rel="apple-touch-icon" sizes="180x180" href="../assets/apple-touch-icon.png?v=1.4.1">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="AI Office">
 <meta property="og:url" content="https://engchoon.github.io/ai-office/ja/">
 <meta property="og:title" content="AI Office — AI社員に話しかけて仕事を任せる、自分だけのオフィス">
 <meta property="og:description" content="ClaudeとGPTの社員を採用し、話しかけて仕事を任せ、大事なことだけ承認し、終わったらわかりやすい言葉で報告を受け取る無料のオープンソースアプリ。秘書に聞けば、承認の確認・要約・ファイル探しまで。難しい設定は不要です。">
-<meta property="og:image" content="https://engchoon.github.io/ai-office/assets/og.png?v=0.16.2">
+<meta property="og:image" content="https://engchoon.github.io/ai-office/assets/og.png?v=1.4.1">
 <meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -58,15 +58,15 @@ var DOWNLOADS = {
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="AI Office — AI社員に話しかけて仕事を任せる、自分だけのオフィス">
 <meta name="twitter:description" content="ClaudeとGPTの社員を採用し、話しかけて仕事を任せ、大事なことだけ承認し、終わったらわかりやすい言葉で報告を受け取る無料のオープンソースアプリ。秘書に聞けば、承認の確認・要約・ファイル探しまで。難しい設定は不要です。">
-<meta name="twitter:image" content="https://engchoon.github.io/ai-office/assets/og.png?v=0.16.2">
+<meta name="twitter:image" content="https://engchoon.github.io/ai-office/assets/og.png?v=1.4.1">
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"SoftwareApplication","name":"AI Office","url":"https://engchoon.github.io/ai-office/ja/","image":"https://engchoon.github.io/ai-office/assets/og.png?v=0.16.2","applicationCategory":"BusinessApplication","operatingSystem":"macOS, Windows, Android","softwareVersion":"1.4.0","license":"https://opensource.org/licenses/MIT","downloadUrl":"https://github.com/EngChooN/ai-office/releases/latest","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"USD","url":"https://github.com/EngChooN/ai-office/releases/latest"},"screenshot":["https://engchoon.github.io/ai-office/assets/screens/ja/office.webp","https://engchoon.github.io/ai-office/assets/screens/ja/staff-mix.webp","https://engchoon.github.io/ai-office/assets/screens/ja/chat.webp","https://engchoon.github.io/ai-office/assets/screens/ja/inbox.webp","https://engchoon.github.io/ai-office/assets/screens/ja/board.webp"],"inLanguage":"ja","description":"ClaudeとGPTの社員を採用し、話しかけて仕事を任せ、大事なことだけ承認し、終わったらわかりやすい言葉で報告を受け取る無料のオープンソースアプリ。秘書に聞けば、承認の確認・要約・ファイル探しまで。難しい設定は不要です。"}
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"AI Office","url":"https://engchoon.github.io/ai-office/ja/","image":"https://engchoon.github.io/ai-office/assets/og.png?v=1.4.1","applicationCategory":"BusinessApplication","operatingSystem":"macOS, Windows, Android","softwareVersion":"1.4.0","license":"https://opensource.org/licenses/MIT","downloadUrl":"https://github.com/EngChooN/ai-office/releases/latest","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"USD","url":"https://github.com/EngChooN/ai-office/releases/latest"},"screenshot":["https://engchoon.github.io/ai-office/assets/screens/ja/office.webp","https://engchoon.github.io/ai-office/assets/screens/ja/staff-mix.webp","https://engchoon.github.io/ai-office/assets/screens/ja/chat.webp","https://engchoon.github.io/ai-office/assets/screens/ja/inbox.webp","https://engchoon.github.io/ai-office/assets/screens/ja/board.webp"],"inLanguage":"ja","description":"ClaudeとGPTの社員を採用し、話しかけて仕事を任せ、大事なことだけ承認し、終わったらわかりやすい言葉で報告を受け取る無料のオープンソースアプリ。秘書に聞けば、承認の確認・要約・ファイル探しまで。難しい設定は不要です。"}
 </script>
 <style>
 :root{
   color-scheme:light;
   --bg:#FBFAFF; --panel:#FFFFFF; --panel2:#F3F1FC; --line:#E4E1F2; --line2:#D3CFE6;
-  --fg:#1B1930; --muted:#5B5878; --dim:#8A87A3; --accent:#6D5BEF; --accent2:#D6409A; --beta:#B7791F;
+  --fg:#1B1930; --muted:#5B5878; --dim:#6C6989; --accent:#6D5BEF; --accent2:#D6409A; --beta:#8A5A0F;
   --hdr:rgba(251,250,255,.85); --hover-line:#B7B1DA; --hover-bg:#EAE7FA; --on-accent:#1A1240;
   --h1a:#1B1930; --h1b:#4B3FB5; --shadow-lg:0 30px 80px -24px rgba(109,91,239,.22),0 14px 36px rgba(40,30,90,.12);
   --glow1:rgba(155,140,255,.28); --glow2:rgba(255,122,198,.16); --glow3:rgba(244,140,96,.12);
@@ -76,7 +76,7 @@ var DOWNLOADS = {
 :root[data-theme="dark"]{
   color-scheme:dark;
   --bg:#14131C; --panel:#201F2D; --panel2:#292739; --line:#34314A; --line2:#413E5C;
-  --fg:#EDEBF8; --muted:#A7A3C4; --dim:#7A7697; --accent:#9B8CFF; --accent2:#FF7AC6; --beta:#fbbf24;
+  --fg:#EDEBF8; --muted:#A7A3C4; --dim:#9390B0; --accent:#9B8CFF; --accent2:#FF7AC6; --beta:#fbbf24;
   --hdr:rgba(20,19,28,.8); --hover-line:#5A5680; --hover-bg:#302D47;
   --h1a:#fff; --h1b:#CFC6F5; --shadow-lg:0 40px 120px -20px rgba(155,140,255,.16),0 20px 60px rgba(0,0,0,.5);
   --glow1:rgba(155,140,255,.22); --glow2:rgba(255,122,198,.12); --glow3:rgba(244,140,96,.10);
@@ -86,7 +86,7 @@ var DOWNLOADS = {
   :root:not([data-theme]){
     color-scheme:dark;
     --bg:#14131C; --panel:#201F2D; --panel2:#292739; --line:#34314A; --line2:#413E5C;
-    --fg:#EDEBF8; --muted:#A7A3C4; --dim:#7A7697; --accent:#9B8CFF; --accent2:#FF7AC6; --beta:#fbbf24;
+    --fg:#EDEBF8; --muted:#A7A3C4; --dim:#9390B0; --accent:#9B8CFF; --accent2:#FF7AC6; --beta:#fbbf24;
     --hdr:rgba(20,19,28,.8); --hover-line:#5A5680; --hover-bg:#302D47;
     --h1a:#fff; --h1b:#CFC6F5; --shadow-lg:0 40px 120px -20px rgba(155,140,255,.16),0 20px 60px rgba(0,0,0,.5);
     --glow1:rgba(155,140,255,.22); --glow2:rgba(255,122,198,.12); --glow3:rgba(244,140,96,.10);
@@ -196,6 +196,9 @@ figure.ph img{aspect-ratio:390/844}
 figcaption{padding:11px 14px;font-size:13.5px;color:var(--muted);border-top:1px solid var(--line)}
 figcaption b{color:var(--fg);font-weight:600}
 .pic img{cursor:zoom-in}
+#secretary .split{grid-template-columns:4fr 8fr;gap:40px}
+.pic{position:relative}
+.pic:after{content:"⤢";position:absolute;right:10px;bottom:10px;width:30px;height:30px;border-radius:8px;background:rgba(20,19,28,.72);color:#fff;font-size:17px;line-height:30px;text-align:center;pointer-events:none}
 .pic img:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
 
 /* 새 기능·안심 카드 */
@@ -398,7 +401,7 @@ footer .links .off{color:var(--dim);pointer-events:none}
       <p class="lead" data-i18n="sec.lead" style="margin-top:14px"><!--p-->「今日は何をした？」「承認待ちはある？」と聞けば、秘書がオフィスを見て答えます。スマホアプリでも同じです。<!--/p--></p>
       <ul class="list">
         <li><span data-i18n="sec1.t"><!--p-->返信の中でそのまま承認<!--/p--></span><small data-i18n="sec1.p"><!--p-->承認箱に行かなくても承認・却下<!--/p--></small></li>
-        <li><span data-i18n="sec2.t"><!--p-->朝のまとめ<!--/p--></span><small data-i18n="sec2.p"><!--p-->6時間以上離れて戻ると、仕事・承認・エラーをまとめて表示<!--/p--></small></li>
+        <li><span data-i18n="sec2.t"><!--p-->朝のまとめ<!--/p--></span><small data-i18n="sec2.p"><!--p-->6時間以上離れた後、またはアプリを起動し直して初めて開くと、仕事・承認・エラーをまとめて表示<!--/p--></small></li>
         <li><span data-i18n="sec3.t"><!--p-->長い会話も続けられる<!--/p--></span><small data-i18n="sec3.p"><!--p-->古い会話は要約して続きにつなぎます<!--/p--></small></li>
         <li><span data-i18n="sec4.t"><!--p-->ファイルを探して開く<!--/p--></span><small data-i18n="sec4.p"><!--p-->社員の成果物や添付ファイルを探し、確認のうえ開きます（開くのはPCのみ）<!--/p--></small></li>
       </ul>
@@ -642,7 +645,7 @@ var I18N = {
     "sec1.t": "답 안에서 바로 결재",
     "sec1.p": "결재함에 가지 않아도 승인·반려",
     "sec2.t": "아침 요약",
-    "sec2.p": "6시간 넘게 비웠다 오면 업무·결재·오류를 한 번에",
+    "sec2.p": "6시간 넘게 비웠거나 앱을 새로 켠 뒤 처음 열면 업무·결재·오류를 한 번에",
     "sec3.t": "긴 대화도 이어가기",
     "sec3.p": "오래된 대화는 요약해 이어 붙여요",
     "sec4.t": "파일 찾아 열기",
@@ -803,7 +806,7 @@ var I18N = {
     "sec1.t": "Approve right in the reply",
     "sec1.p": "Approve or reject without going to the inbox",
     "sec2.t": "Morning summary",
-    "sec2.p": "Back after more than 6 hours away? See work, approvals, and errors in one go",
+    "sec2.p": "Open the secretary after 6+ hours away, or after a fresh app launch, and see work, approvals, and errors in one go",
     "sec3.t": "Long chats carry on",
     "sec3.p": "Older conversation is summarized and kept in the thread",
     "sec4.t": "Find and open files",
@@ -964,7 +967,7 @@ var I18N = {
     "sec1.t": "返信の中でそのまま承認",
     "sec1.p": "承認箱に行かなくても承認・却下",
     "sec2.t": "朝のまとめ",
-    "sec2.p": "6時間以上離れて戻ると、仕事・承認・エラーをまとめて表示",
+    "sec2.p": "6時間以上離れた後、またはアプリを起動し直して初めて開くと、仕事・承認・エラーをまとめて表示",
     "sec3.t": "長い会話も続けられる",
     "sec3.p": "古い会話は要約して続きにつなぎます",
     "sec4.t": "ファイルを探して開く",
@@ -1125,7 +1128,7 @@ var I18N = {
     "sec1.t": "在回复里直接审批",
     "sec1.p": "不用去审批箱就能批准、驳回",
     "sec2.t": "早间汇总",
-    "sec2.p": "离开超过 6 小时再回来，一次看到工作、审批和错误",
+    "sec2.p": "离开超过 6 小时，或重新启动应用后首次打开，一次看到工作、审批和错误",
     "sec3.t": "长对话也能接着聊",
     "sec3.p": "较早的对话会先总结，再接在后面",
     "sec4.t": "查找并打开文件",
@@ -1208,6 +1211,9 @@ var I18N = {
   // 스크린샷: 그 언어 → 영어 → 한국어 순으로 대체, 다크 모드면 -dark 파일 (assets/screens/README.md)
   function shotPath(l, name, img){ return '../assets/screens/' + l + '/' + name + (isDark() && !img.hasAttribute('data-nodark') ? '-dark' : '') + '.webp'; }
   function setShot(img, lang){
+    var key = lang + (isDark() && !img.hasAttribute('data-nodark') ? '-dark' : '');
+    if (img._shotKey === key) return; // 같은 사진이면 건드리지 않는다(지연 로드 사진도 보일 때 그 값으로 불러온다)
+    img._shotKey = key;
     var chain = [lang, 'en', 'ko'].filter(function(l, n, a){ return a.indexOf(l) === n; });
     var name = img.getAttribute('data-shot'), i = 0;
     var gen = img._shotGen = (img._shotGen || 0) + 1;
@@ -1307,9 +1313,11 @@ var I18N = {
   });
   document.getElementById('tbtn').addEventListener('click', function(){ applyTheme(isDark() ? 'light' : 'dark', true); });
   // 고른 적이 없으면 기기 설정이 바뀔 때 같이 바뀐다
-  var mq = matchMedia('(prefers-color-scheme: dark)');
-  var onMq = function(e){ if (!root.hasAttribute('data-theme-set')) applyTheme(e.matches ? 'dark' : 'light', false); };
-  if (mq.addEventListener) mq.addEventListener('change', onMq); else if (mq.addListener) mq.addListener(onMq);
+  try {
+    var mq = matchMedia('(prefers-color-scheme: dark)');
+    var onMq = function(e){ if (!root.hasAttribute('data-theme-set')) applyTheme(e.matches ? 'dark' : 'light', false); };
+    if (mq.addEventListener) mq.addEventListener('change', onMq); else if (mq.addListener) mq.addListener(onMq);
+  } catch (e) {}
   // 스크롤하면 부드럽게 나타나기
   var rv = document.querySelectorAll('.rv');
   if ('IntersectionObserver' in window) {
