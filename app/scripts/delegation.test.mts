@@ -34,6 +34,20 @@ test('리더 기획의 하위 업무를 팀원이 할 일·진행 중으로 들�
   assert.equal(hasOpenDelegation(base({ tasks: [plan, sub({ assigneeId: 'x', status: 'doing' }), sub({ assigneeId: null })] })), false)
 })
 
+const pausedPlan = { ...plan, plan: { isPaused: true } }
+
+test('멈춘 기획의 todo 하위 카드는 기다리는 일이 아니다', () => {
+  assert.equal(hasOpenDelegation(base({ tasks: [pausedPlan, sub()] })), false)
+})
+
+test('멈춘 기획이어도 진행 중(doing) 하위 카드는 기다림', () => {
+  assert.equal(hasOpenDelegation(base({ tasks: [pausedPlan, sub({ status: 'doing' })] })), true)
+})
+
+test('멈추지 않은 기획의 todo 하위 카드는 기다림', () => {
+  assert.equal(hasOpenDelegation(base({ tasks: [{ ...plan, plan: { isPaused: false } }, sub()] })), true)
+})
+
 test('대표가 보드에서 팀원에게 직접 준 카드는 리더가 맡긴 일이 아니다 (영영 안 풀리는 표시 방지)', () => {
   assert.equal(hasOpenDelegation(base({ tasks: [sub({ parentId: null, status: 'doing' })] })), false)
   assert.equal(hasOpenDelegation(base({ tasks: [{ id: 'q', assigneeId: 'other', status: 'doing' }, sub({ parentId: 'q' })] })), false)

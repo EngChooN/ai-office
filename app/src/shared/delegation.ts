@@ -5,7 +5,7 @@ export interface DelegationInput {
   leadId: string
   /** 이 리더가 일을 맡길 수 있는 사람(팀원·랩 멤버)과 처리 중인 지시의 출처 */
   members: { id: string; origins: { kind: string; leadId?: string }[] }[]
-  tasks: { id: string; assigneeId: string | null; status: TaskStatus; parentId?: string | null }[]
+  tasks: { id: string; assigneeId: string | null; status: TaskStatus; parentId?: string | null; plan?: { isPaused?: boolean } | null }[]
   /** 이 리더가 add_task로 팀원에게 직접 배정한 카드 id */
   assignedTaskIds?: readonly string[]
 }
@@ -18,9 +18,15 @@ export interface DelegationInput {
 export function hasOpenDelegation(i: DelegationInput): boolean {
   if (i.members.some((m) => m.origins.some((o) => o.kind === 'delegate' && o.leadId === i.leadId))) return true
   const memberIds = new Set(i.members.map((m) => m.id))
-  const leadTaskIds = new Set(i.tasks.filter((t) => t.assigneeId === i.leadId).map((t) => t.id))
+  const leadTasks = new Map(i.tasks.filter((t) => t.assigneeId === i.leadId).map((t) => [t.id, t]))
   const assigned = new Set(i.assignedTaskIds ?? [])
-  return i.tasks.some((t) => t.assigneeId !== null && memberIds.has(t.assigneeId) && (Boolean(t.parentId && leadTaskIds.has(t.parentId)) || assigned.has(t.id)) && (t.status === 'todo' || t.status === 'doing'))
+  return i.tasks.some((t) => {
+    if (t.assigneeId === null || !memberIds.has(t.assigneeId) || (t.status !== 'todo' && t.status !== 'doing')) return false
+    const parent = t.parentId ? leadTasks.get(t.parentId) : undefined
+    if (!parent && !assigned.has(t.id)) return false
+    // 멈춘 기획은 다음 일을 시작하지 않는다 — 줄 서 있는 카드는 기다리는 일이 아니다 (진행 중은 그대로)
+    return !(parent?.plan?.isPaused && t.status === 'todo' && !assigned.has(t.id))
+  })
 }
 
 /**
