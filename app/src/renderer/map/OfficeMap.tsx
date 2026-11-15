@@ -10,7 +10,7 @@ import { buildFloors, MAX_LEVEL, officeOf, staffFloor } from '@shared/officeLeve
 import { COMPANY_LEVELS, isMeetingLive } from '@shared/types'
 import { dioramaPreviewUrl, DioramaStreet, drawDioramaDoorGlow, paintDiorama } from './exteriorDiorama'
 import { clampCamera, dioramaFit, dioramaLayout, dioramaWorld, isOnOffice, zoomCameraAt, type DioramaCamera } from './exteriorLayout'
-import { isNightTime } from '@shared/dayNight'
+import { timeOfDay, type TimeOfDay } from '@shared/dayNight'
 import { officeStage } from './officeStage'
 import { DecorDrawer } from './DecorDrawer'
 import { canExportScene, RecordingFrame, SceneExportButton, SceneExportNotice } from '@/features/sceneExport/SceneExport'
@@ -26,15 +26,30 @@ const NIGHT_CHECK_MS = 60_000
 const GLOW_SPEED = 5
 
 /** 낮밤 자동이면 1분마다 다시 본다 (외관을 켜 둔 채 저녁이 돼도 바뀌게) */
-function useIsNight() {
+function usePhase(): TimeOfDay {
   const dayNight = useOffice((s) => s.settings.dayNight)
-  const [isNight, setIsNight] = useState(() => isNightTime({ dayNight }))
+  const [phase, setPhase] = useState(() => timeOfDay({ dayNight }))
   useEffect(() => {
-    setIsNight(isNightTime({ dayNight }))
-    const timer = setInterval(() => setIsNight(isNightTime({ dayNight })), NIGHT_CHECK_MS)
+    setPhase(timeOfDay({ dayNight }))
+    const timer = setInterval(() => setPhase(timeOfDay({ dayNight })), NIGHT_CHECK_MS)
     return () => clearInterval(timer)
   }, [dayNight])
-  return isNight
+  return phase
+}
+
+/** 지금 일하는 직원이 있는 층(1층부터) — 밤에 그 층 창에만 불을 켠다. 그림 함수는 스토어를 읽지 않고 여기서 넘겨받는다.
+ * 같은 층 구성이면 같은 Set을 돌려줘 외관을 다시 굽지 않는다 */
+function useWorkingFloors(level: number): ReadonlySet<number> {
+  const staff = useOffice((s) => s.staff)
+  const teams = useOffice((s) => s.teams)
+  const key = useMemo(() => {
+    const working = staff.map((s) => (s.status === 'working' || isAwaitingTeam(s) ? { ...s, status: 'working' as const } : s))
+    return buildFloors(level, working, teams, [])
+      .filter((f) => f.staff.some((s) => s.status === 'working'))
+      .map((f) => f.floor)
+      .join(',')
+  }, [level, staff, teams])
+  return useMemo(() => new Set(key ? key.split(',').map(Number) : []), [key])
 }
 
 const ZOOM_STEP = 1.25
@@ -65,7 +80,8 @@ function ZoomControls({ onZoom, onFit }: { onZoom: (factor: number) => void; onF
  * 거리 크기는 화면과 상관없이 정해져 있고, 건물 안처럼 스크롤·핀치로 확대·축소, 끌어서 둘러본다 */
 function OfficeExterior() {
   const level = useViewLevel()
-  const isNight = useIsNight()
+  const phase = usePhase()
+  const litFloors = useWorkingFloors(level)
   const setInside = useOffice((s) => s.setInside)
   const setViewFloor = useOffice((s) => s.setViewFloor)
   const hostRef = useRef<HTMLDivElement>(null)
@@ -73,7 +89,7 @@ function OfficeExterior() {
   const [host, setHost] = useState<{ w: number; h: number } | null>(null)
   const [isHover, setIsHover] = useState(false)
   const nextLevel = level < MAX_LEVEL ? level + 1 : null
-  const nextUrl = useMemo(() => (!nextLevel ? '' : dioramaPreviewUrl(nextLevel, isNight)), [nextLevel, isNight])
+  const nextUrl = useMemo(() => (!nextLevel ? '' : dioramaPreviewUrl(nextLevel, phase)), [nextLevel, phase])
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
   const { floors } = officeOf(level)
 
@@ -90,8 +106,8 @@ function OfficeExterior() {
   // 그리기와 누르기 판정이 같은 배치를 쓴다 (낮밤까지 같은 값 — 판정만 옛 배치로 남지 않게). 화면 크기와는 상관없다
   const layout = useMemo(() => {
     const { W, H } = dioramaWorld(level)
-    return dioramaLayout(level, isNight, W, H)
-  }, [level, isNight])
+    return dioramaLayout(level, phase, litFloors, W, H)
+  }, [level, phase, litFloors])
   const fit = host ? dioramaFit(level, host.w, host.h).scale : 1
   // 처음 자리: 땅 판 가운데(위 핀 자리 몫으로 살짝 위), 땅 판이 다 보이는 배율
   const home = useMemo(() => ({ x: layout.ox + layout.board.cv.w / 2, y: layout.oy + layout.board.cv.h * 0.45 }), [layout])
@@ -190,8 +206,8 @@ function OfficeExterior() {
     canvas.height = H
     const [skyCanvas, scene, front] = [0, 0, 0].map(() => Object.assign(document.createElement('canvas'), { width: W, height: H }))
     const isStill = isReducedMotion()
-    paintDiorama(skyCanvas, scene, front, layout, isNight)
-    const street = new DioramaStreet(W, H, layout, isNight, isStill)
+    paintDiorama(skyCanvas, scene, front, layout, phase)
+    const street = new DioramaStreet(W, H, layout, phase, isStill)
     const step = (dt: number) => street.step(dt)
     const drawClouds = (c: CanvasRenderingContext2D) => street.drawClouds(c)
     const drawFront = (c: CanvasRenderingContext2D, g: number) => {
@@ -219,7 +235,7 @@ function OfficeExterior() {
     }
     raf = requestAnimationFrame(frame)
     return () => cancelAnimationFrame(raf)
-  }, [layout, isNight])
+  }, [layout, phase])
 
   const handleEnter = () => {
     setViewFloor(1)
@@ -395,7 +411,10 @@ function Hud() {
       >
         <div className="flex items-baseline justify-between">
           <span className="text-primary font-bold">{t('map.companyLevel', { level: company.level })}</span>
-          <span className="text-muted-foreground">{levelTitle(company.level, company.title)}</span>
+          <span className="text-muted-foreground">
+            {company.badge && <span className="text-primary mr-1 font-semibold">[{company.badge}]</span>}
+            {levelTitle(company.level, company.title)}
+          </span>
         </div>
         <div className="my-1 h-1.5 overflow-hidden rounded-full bg-hud-foreground/10">
           <div className="bg-primary h-full" style={{ width: `${Math.round(company.progress * 100)}%` }} />

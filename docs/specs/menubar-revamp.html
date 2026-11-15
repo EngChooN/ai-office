@@ -1,0 +1,130 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>메뉴바 개편 기획</title>
+<style>
+body{font-family:-apple-system,"Apple SD Gothic Neo",sans-serif;margin:0;background:#f6f5f2;color:#222;line-height:1.6}
+main{max-width:980px;margin:0 auto;padding:28px 24px 60px}
+h1{font-size:24px;margin:0 0 4px} h2{font-size:18px;margin:32px 0 10px;border-bottom:2px solid #e2ded6;padding-bottom:4px}
+.sub{color:#777;font-size:13px}
+.card{background:#fff;border-radius:12px;padding:16px 18px;box-shadow:0 1px 3px rgba(0,0,0,.06);margin:10px 0}
+.warn{background:#fff7e6;border:1px solid #f1d39a}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+pre{background:#1f2125;color:#e8e8e8;border-radius:10px;padding:14px;font-size:12.5px;overflow:auto;margin:6px 0;white-space:pre}
+table{border-collapse:collapse;width:100%;font-size:13.5px;background:#fff;border-radius:10px;overflow:hidden}
+th,td{padding:8px 10px;border-bottom:1px solid #eee;text-align:left;vertical-align:top} th{background:#efece6}
+.tag{display:inline-block;font-size:11px;font-weight:700;padding:1px 7px;border-radius:9px;color:#fff}
+.must{background:#d9534f}.nice{background:#3b82c4}.later{background:#999}
+.icons{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+.ic{text-align:center;font-size:12px;color:#666} .ic div{width:72px;height:72px;display:flex;align-items:center;justify-content:center;border-radius:10px;margin-bottom:4px}
+.ic img{width:36px;height:36px;image-rendering:pixelated}
+.light{background:#ececec} .dark{background:#2b2b2b} .dark img.tpl{filter:invert(1)}
+ol li{margin:6px 0} .rec{color:#2a7a3b;font-size:13px}
+@media(max-width:760px){.grid{grid-template-columns:1fr}}
+</style></head><body><main>
+<h1>메뉴바 메뉴 개편 기획</h1>
+<div class="sub">기획: 김기획 · 정리: ai-office · 2026-11-01 · 상태: 대표 결정 대기 · 코드는 아직 바꾸지 않았습니다</div>
+
+<div class="card"><b>한눈에 보기</b><ul>
+<li>지금 메뉴바 메뉴는 <b>결재·자동결재·직원 목록</b> 중심으로 잘 되어 있고, 4개 언어 문구도 모두 있습니다.</li>
+<li>최근 기능(<b>업데이트 알림</b>, 결재함·업무 보드 바로가기, 바탕화면 비서 켜고 끄기, 플랜 사용률)은 메뉴에 거의 없습니다.</li>
+<li>‘전체 멈추기’는 <b>확인 창 없이 바로</b> 모든 직원을 멈춥니다. 실수로 누르면 위험합니다.</li>
+<li>맥 화면 맨 위의 앱 메뉴(편집·보기 등)는 직접 만든 적이 없어서 <b>Electron 기본 메뉴가 그대로</b> 나옵니다. 코드에서 확인했습니다.</li>
+<li>권고: <b>‘꼭’ 4가지(A1~A4)를 먼저</b> 하기. 작업 크기는 약 2~3일입니다.</li></ul></div>
+
+<div class="card warn"><b>사진에 대해:</b> 실제 메뉴를 펼친 화면은 찍지 못했습니다. 화면 찍기 도구가 화면 전체를 찍고, 찍을 때마다 결재가 필요해서 개인 창이 함께 찍힐 수 있었기 때문입니다. 아래 메뉴 구성은 코드(<code>trayMenu.ts</code>)에서 읽은 것이라 실제 화면과 조금 다를 수 있습니다. 사진은 메뉴바 아이콘 원본만 넣었습니다.</div>
+
+<h2>메뉴바 아이콘 (지금)</h2>
+<div class="icons">
+<div class="ic"><div class="light"><img class="tpl" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACQAAAAkCAYAAADhAJiYAAAAW0lEQVR42u3XQQoAIAhE0e5/aTuBRKCi4xdm1+KBonQOlVf2yF6QfWYvyAN67/aBmCH2UHar0oFtQBYcQPogK85cUPWRng+Kbo0uKKo1uiBmiD3ELev2GaC06wJh565gPL8HuwAAAABJRU5ErkJggg=="></div>맥 · 밝은 메뉴바</div>
+<div class="ic"><div class="dark"><img class="tpl" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACQAAAAkCAYAAADhAJiYAAAAW0lEQVR42u3XQQoAIAhE0e5/aTuBRKCi4xdm1+KBonQOlVf2yF6QfWYvyAN67/aBmCH2UHar0oFtQBYcQPogK85cUPWRng+Kbo0uKKo1uiBmiD3ELev2GaC06wJh565gPL8HuwAAAABJRU5ErkJggg=="></div>맥 · 어두운 메뉴바</div>
+<div class="ic"><div class="light"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABi0lEQVR42n2TXyuDYRjG7wMHzh3JB1ByoIgjX0A5deLMHCh/QhYhWi1iTauZrWmZjTHGMrFotRYlQtRL+QLi1IEDrW5d73ave6/XDq6enj+/636f97luIiLKn745cievxsWxweepZ84kHzm9d8+pnVtOxm44sXXN8UiBo+E8R0I5DgcujaA/6yAFsx3cWNdsygJz0J/ldd8Z+9YyDrKrLGDx+92UzC0wez1pgzSswY+7bVPFz6uSlFEZ5tWVIybAdiDU29JaJavR8tIBk1TWoMCyjhHzp5Guyhdhze3eZ5I79z/0cMNGB3d2D5oCYDW0Grhcu0zytwHXtzdVDKCE66dKVoOFxRgT3lnuj/HrcKCmtMHcfJQJIcFkylswR1SpZZDqa6ucnZmNMCEkYuCJv5gGWtgDJJJzWHdObzJJwnBnbEL/Gcg+zgKecIaYdDy1iVQRyZqGxyYDTOXG0PH8YyRVcWcND4/7DUJXaRjxRMIQEnlO/G0bmIdGfaWORFehMTSMkOCd/4ENgX8B1iOEpldhoMEAAAAASUVORK5CYII="></div>윈도우 · 알림 영역</div>
+<div style="font-size:13px;color:#555;max-width:420px">아이콘 옆에는 <b>확인 필요 수</b>(결재·질문·외부 직원 대기를 합친 수)가 나오고, 자동결재 중이면 🤖가 붙습니다. 맥은 아이콘을 누르면 메뉴가 나오고, 윈도우는 왼쪽 클릭으로 사무실을 엽니다.</div>
+</div>
+
+<h2>메뉴 구성: 지금 → 바뀐 뒤</h2>
+<div class="grid">
+<div><b>지금</b><pre>AI Office                       (제목 · 눌러도 아무 일 없음)
+작업 중 N · 확인 필요 N · 오늘 완료 N · $0.00
+────────
+🤖 자동결재 중 · 남은 3시간 12분  ▶
+────────
+결재 대기 N   (있을 때만, 최대 15건)
+  직원 — 도구 요약 ▶ 승인 / 반려 / 사무실에서 보기
+  그 밖 N건 — 결재함에서 보기
+────────
+🟡 외부 직원 — 원래 창에서 확인 필요
+직원 전체 (N) ▶
+────────
+전체 멈추기                     ⚠ 확인 없이 바로 실행
+할 일 추가 (클립보드 글로)
+비서에게 말하기
+바탕화면 비서 다시 불러오기   (맥만)
+📱 휴대폰 연결 · 켜짐 ▶
+────────
+사무실 열기
+종료</pre></div>
+<div><b>바뀐 뒤 (목업)</b><pre>AI Office 0.19.0          → 새 버전이 있으면 &quot;⬆ 새 버전 0.20.0 · 지금 업데이트&quot;   [A1]
+작업 중 2 · 확인 필요 3 · 오늘 완료 5 · $1.20
+(Claude 5시간 62% · 7일 31%)                                            [B3]
+────────
+🤖 자동결재 중 · 남은 3시간 12분  ▶
+────────
+결재 대기 3
+  강백엔 — Bash npm test ▶ 승인 / 반려 / 사무실에서 보기
+────────
+결재함 열기                                                             [A3]
+업무 보드 열기                                                          [A3]
+직원 전체 (12) ▶
+────────
+비서에게 말하기   ⌘K
+바탕화면 비서 ☑ 보이기                                                  [B2]
+클립보드로 할 일 추가                                                   [A4]
+📱 휴대폰 연결 · 켜짐 ▶
+전체 멈추기…      (확인 창)                                             [A2]
+────────
+사무실 열기
+설정…                                                                   [A3]
+종료</pre></div>
+</div>
+
+<h2>최근 기능과 비교</h2>
+<table><tr><th>기능</th><th>지금 메뉴바</th><th>판단</th></tr>
+<tr><td>업데이트 알림</td><td>없음. 새 버전이 나와도 메뉴바에서는 알 수 없음</td><td><span class="tag must">꼭</span></td></tr>
+<tr><td>결재함</td><td>대기 목록만 있고, 결재함 자체를 여는 항목은 없음</td><td>보강</td></tr>
+<tr><td>업무 보드</td><td>‘할 일 추가(클립보드 글로)’만 있고, 보드 열기는 없음. 이름이 알아듣기 어려움</td><td>보강</td></tr>
+<tr><td>바탕화면 비서</td><td>‘다시 불러오기’만 있고, 끄기·숨기기는 없음</td><td>보강</td></tr>
+<tr><td>⌘K 비서</td><td>‘비서에게 말하기’는 있지만 단축키 표시가 없음</td><td>작은 보강</td></tr>
+<tr><td>플랜 사용률</td><td>없음 (앱 위쪽 칩에만 있음)</td><td>있으면 좋음</td></tr>
+<tr><td>설정</td><td>없음</td><td>있으면 좋음</td></tr>
+<tr><td>정리할 것</td><td>눌러도 아무 일 없는 ‘AI Office’ 제목 줄, 자동결재 상태줄이 두 번 나옴, 이미 출시된 기능에 남은 ‘준비 중’ 문구</td><td>정리</td></tr>
+</table>
+
+<h2>개선안</h2>
+<table><tr><th>#</th><th>개선</th><th>대표님이 느끼는 변화</th><th>위험</th><th>크기</th></tr>
+<tr><td><span class="tag must">꼭</span> A1</td><td>새 버전 알림 줄 + 아이콘 옆 작은 표시</td><td>앱을 열지 않아도 업데이트를 알고 바로 설치</td><td>누르면 설치가 시작되므로 확인을 한 번 받음</td><td>0.5~1일</td></tr>
+<tr><td><span class="tag must">꼭</span> A2</td><td>‘전체 멈추기’ 확인 창</td><td>실수로 모든 작업이 끊기는 일을 막음</td><td>자율 진행 중에는 확인 창을 띄울지 결정 필요</td><td>0.5일</td></tr>
+<tr><td><span class="tag must">꼭</span> A3</td><td>결재함·업무 보드·설정 바로가기</td><td>메뉴바에서 원하는 화면으로 바로 이동</td><td>낮음</td><td>1일</td></tr>
+<tr><td><span class="tag must">꼭</span> A4</td><td>죽은 줄·‘준비 중’ 정리, 쉬운 이름으로 바꾸기</td><td>메뉴가 짧아지고 이해하기 쉬움</td><td>낮음</td><td>0.5일</td></tr>
+<tr><td><span class="tag nice">좋음</span> B1</td><td>맥 맨 위 앱 메뉴를 직접 구성 (5개 메뉴, 4개 언어, 단축키 표시, 개발자 도구 숨김)</td><td>맥 기본 앱처럼 자연스러움</td><td>복사·붙여넣기 단축키가 계속 되도록 지켜야 함</td><td>1~1.5일</td></tr>
+<tr><td><span class="tag nice">좋음</span> B2</td><td>바탕화면 비서 보이기·숨기기</td><td>비서를 숨길 수도 있음</td><td>맥만 해당</td><td>소</td></tr>
+<tr><td><span class="tag nice">좋음</span> B3</td><td>플랜 사용률 한 줄</td><td>자리를 비우기 전에 남은 한도 확인</td><td>메뉴가 한 줄 길어짐</td><td>소~중</td></tr>
+<tr><td><span class="tag nice">좋음</span> B4</td><td>맥에서 ⌥+클릭으로 사무실 열기</td><td>윈도우와 비슷하게 편해짐</td><td>헷갈릴 수 있음</td><td>소</td></tr>
+<tr><td><span class="tag nice">좋음</span> B5</td><td>결재·질문·외부 대기를 구분 표시하고, 상태 점 옆에 글자 쓰기</td><td>숫자가 무엇을 뜻하는지 분명해짐</td><td>낮음</td><td>소</td></tr>
+<tr><td><span class="tag later">나중</span> C1~C4</td><td colspan="4">안내 다시 보기 메뉴, 상태별 아이콘 모양, 메뉴에서 바로 지시, 자주 쓰는 순 자동 정렬 — 효과가 적거나 다른 기능과 겹침</td></tr>
+</table>
+
+<h2>대표님이 정할 것</h2>
+<div class="card"><ol>
+<li><b>범위</b>: ‘꼭’ 4가지만 할지, 맨 위 앱 메뉴(B1)까지 할지 <div class="rec">권고: A1~A4 먼저, B1은 그 뒤에 따로</div></li>
+<li><b>업데이트 알림</b>: 아이콘 옆에도 표시할지, 메뉴 안에서만 알릴지 <div class="rec">권고: 아이콘 옆 작은 표시 포함</div></li>
+<li><b>전체 멈추기 확인 창</b>: 항상 물을지, 자율 진행 중에는 묻지 않을지 <div class="rec">권고: 평소에는 묻고, 자율 진행 중에는 지금처럼 바로 멈춤</div></li>
+<li><b>맥 아이콘 클릭</b>: 지금처럼 메뉴만 열지, ⌥+클릭으로 사무실 열기를 더할지 <div class="rec">권고: 지금처럼 메뉴만</div></li>
+<li><b>플랜 사용률</b>을 메뉴바에 넣을지 (B3)</li>
+<li><b>바로가기</b>: 결재함·업무 보드·설정을 모두 넣을지, 자주 쓰는 것만 넣을지</li>
+</ol></div>
+
+<h2>확인한 것 · 못 한 것</h2>
+<div class="card"><ul>
+<li>코드에서 직접 확인함: 앱 메뉴를 직접 만드는 코드(<code>setApplicationMenu</code>)가 없음, ‘준비 중’ 문구로 가는 분기가 <code>trayMenu.ts</code>에 남아 있음.</li>
+<li>못 한 것: 실제 메뉴를 펼친 화면을 보지 못했습니다. 맥 맨 위 앱 메뉴의 실제 항목도 앱을 띄워 봐야 압니다.</li>
+<li>개발 단계에서 확인할 것: 업데이트 상태를 메뉴에 전달하는 방법, 결재함·보드·설정 화면을 바로 여는 방법.</li>
+</ul><div class="sub">원문: docs/specs/menubar-revamp.md</div></div>
+</main></body></html>

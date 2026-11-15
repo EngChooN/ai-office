@@ -122,6 +122,7 @@ export const OFFICE_METHODS = [
   'setGear',
   'missions',
   'claimMission',
+  'setTitle',
   'startTasks',
   'saveAttachments',
   'openAttachment',

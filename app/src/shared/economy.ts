@@ -260,6 +260,19 @@ export const SHOP_ITEMS: ShopItem[] = [
   furn('snowman', '눈사람', 12 * M, 1, '당근 코 눈사람', WINTER),
   furn('lunar-lantern', '청사초롱', 15 * M, 1, '설날 맞이 등불', LUNAR),
   furn('cherry-tree', '벚꽃 나무', 40 * M, 1, '사무실 안 벚꽃', SPRING),
+  // 계절·테마 가구 (docs/design/season-theme/handoff.md). 해변 두 품목은 여름 기간이 정해지지 않아 상시 판매 — 기획 확인 필요
+  furn('sakura-pot', '벚꽃 화분', 25 * M, 1, '책상 옆에 놓는 작은 벚꽃', SPRING),
+  furn('maple-tree', '단풍나무', 40 * M, 1, '붉게 물든 단풍', AUTUMN),
+  furn('beach-parasol', '비치 파라솔', 15 * M, 2, '파랑·하양 줄무늬 파라솔'),
+  furn('watermelon-bar', '수박 주스 바', 55 * M, 4, '시원한 수박 주스 한 잔'),
+  furn('hanging-frame', '벽걸이 액자', 8 * M, 1, '산과 구름이 담긴 풍경 액자'),
+  furn('hanging-clock', '벽시계', 10 * M, 2, '보라색 시계 장식'),
+  furn('chandelier', '샹들리에', 70 * M, 6, '은은하게 빛나는 조명'),
+  furn('hanji-lamp', '한지 등', 20 * M, 2, '창살 무늬 한지 등'),
+  furn('tea-table', '다도 테이블', 35 * M, 3, '찻주전자와 방석이 있는 낮은 상'),
+  furn('space-console', '우주 관제 콘솔', 150 * M, 8, '화면 세 개짜리 관제 책상'),
+  furn('mini-desk-plant', '책상 미니 화분', 5 * M, 1, '작고 푸른 화분'),
+  furn('trophy-shelf', '트로피 선반', 45 * M, 5, '유리 선반 위 반짝이는 트로피'),
   // 직원 책상·의자 — 직원마다 적용
   desk('desk-white', '화이트 책상', 6 * M, 1, '깔끔한 흰 상판'),
   desk('desk-pastel', '파스텔 책상', 8 * M, 2, '민트빛 상판'),
@@ -374,6 +387,9 @@ export const SHOP_SETS: ShopSet[] = [
   { id: 'legend', name: '전설 세트', emoji: '👑', itemIds: ['robot', 'rocket', 'dino', 'gold-bar'], reward: 2_000 * M },
   { id: 'halloween', name: '할로윈 세트', emoji: '🎃', itemIds: ['pumpkin', 'ghost', 'wall-halloween', 'floor-leaves'], reward: 50 * M },
   { id: 'winter', name: '겨울 세트', emoji: '⛄', itemIds: ['xmas-tree', 'snowman', 'wall-xmas', 'floor-snow'], reward: 50 * M },
+  { id: 'spring', name: '봄 세트', emoji: '🌸', itemIds: ['cherry-tree', 'sakura-pot'], reward: 30 * M },
+  { id: 'autumn', name: '가을 세트', emoji: '🍁', itemIds: ['maple-tree', 'hanji-lamp'], reward: 30 * M },
+  { id: 'beach', name: '해변 세트', emoji: '🏖️', itemIds: ['beach-parasol', 'watermelon-bar'], reward: 30 * M },
 ].map((s) => ({
   ...s,
   get name() {
@@ -441,7 +457,7 @@ export function formatWon(won: number, lang = getLang()) {
 // ── 일일 미션·업적 ─────────────────────────────────────
 
 /** 미션·업적이 세는 값 */
-export type Metric = 'tasks' | 'tokens' | 'meetings' | 'approvals' | 'instructions' | 'purchases' | 'staff' | 'level' | 'items' | 'sets' | 'earned'
+export type Metric = 'tasks' | 'tokens' | 'meetings' | 'approvals' | 'instructions' | 'purchases' | 'staff' | 'level' | 'items' | 'sets' | 'earned' | 'streak' | 'night' | 'decor'
 
 export interface MissionDef {
   id: string
@@ -450,6 +466,10 @@ export interface MissionDef {
   metric: Metric
   target: number
   reward: number
+  /** 숨은 업적 — 받기 전엔 이름·진행을 '???'로 가린다 */
+  hidden?: boolean
+  /** 받으면 열리는 칭호 id (이름은 사전 키 title.<id>) */
+  title?: string
 }
 
 export interface MissionProgress extends MissionDef {
@@ -457,11 +477,25 @@ export interface MissionProgress extends MissionDef {
   key: string
   progress: number
   isClaimed: boolean
+  /** 숨은 업적을 아직 못 풀어 가려 둔 줄 (이름·진행은 이미 가려서 온다) */
+  isLocked?: boolean
+}
+
+/** 쓸 수 있는 칭호 (받은 업적에서 열린 것) */
+export interface TitleOption {
+  id: string
+  label: string
+  /** 이 칭호를 주는 업적 이름 */
+  from: string
 }
 
 export interface MissionsView {
   daily: MissionProgress[]
   achievements: MissionProgress[]
+  /** 열린 칭호 (옛 PC는 안 준다) */
+  titles?: TitleOption[]
+  /** 지금 쓰는 칭호 id — 열려 있지 않으면 null */
+  titleId?: string | null
 }
 
 /** 화면 이름은 읽을 때 현재 언어로 (사전 키 mission.<id>) */
@@ -518,9 +552,46 @@ export const ACHIEVEMENTS: MissionDef[] = ([
   { id: 'items80', emoji: '🖼️', label: '물건 80종 모으기', metric: 'items', target: 80, reward: 400 * M },
   { id: 'items120', emoji: '💎', label: '물건 120종 모으기', metric: 'items', target: 120, reward: 1_000 * M },
   { id: 'sets10', emoji: '🎁', label: '세트 10개 완성', metric: 'sets', target: 10, reward: 600 * M },
+  { id: 'sets13', emoji: '👑', label: '세트 13개 전부 완성', metric: 'sets', target: 13, reward: 1_200 * M },
   { id: 'earned5b', emoji: '💵', label: '누적 수당 ₩50억', metric: 'earned', target: 5_000 * M, reward: 500 * M },
   { id: 'earned20b', emoji: '🏦', label: '누적 수당 ₩200억', metric: 'earned', target: 20_000 * M, reward: 2_000 * M },
+  // 출근·야근·꾸미기 (연속 출근은 지금까지의 최장 기록, 야근은 22시~6시에 시작한 지시 수, 꾸미기는 지금 배치한 물건 수).
+  // 숨은 업적(hidden)은 받기 전엔 가려지고, title이 있으면 받는 순간 그 칭호를 쓸 수 있다
+  { id: 'streak3', emoji: '📅', label: '3일 연속 출근', metric: 'streak', target: 3, reward: 10 * M },
+  { id: 'streak7', emoji: '🔥', label: '7일 연속 출근', metric: 'streak', target: 7, reward: 30 * M, title: 'attendance' },
+  { id: 'streak30', emoji: '🏵️', label: '30일 연속 출근', metric: 'streak', target: 30, reward: 300 * M, title: 'ironButt', hidden: true },
+  { id: 'night5', emoji: '🌙', label: '야근 5번', metric: 'night', target: 5, reward: 20 * M, title: 'owl', hidden: true },
+  { id: 'night20', emoji: '🦉', label: '야근 20번', metric: 'night', target: 20, reward: 80 * M },
+  { id: 'decor10', emoji: '🪴', label: '방에 물건 10개 놓기', metric: 'decor', target: 10, reward: 15 * M },
+  { id: 'decor30', emoji: '🎨', label: '방에 물건 30개 놓기', metric: 'decor', target: 30, reward: 60 * M, title: 'interior' },
+  { id: 'decor60', emoji: '🏛️', label: '방에 물건 60개 놓기', metric: 'decor', target: 60, reward: 200 * M, hidden: true },
 ] as MissionDef[]).map(withMissionLabel)
+
+/** 칭호 이름은 읽을 때 현재 언어로 (사전 키 title.<id>) */
+export const titleLabel = (id: string) => tx(`title.${id}`, id)
+
+/** 받은 업적(ach: 장부 키)에서 열린 칭호들 */
+export function unlockedTitles(claimedKeys: ReadonlySet<string>): TitleOption[] {
+  return ACHIEVEMENTS.filter((a) => a.title && claimedKeys.has(`ach:${a.id}`)).map((a) => ({ id: a.title!, label: titleLabel(a.title!), from: a.label }))
+}
+
+/** 고른 칭호가 지금도 열려 있으면 그 id, 없는 id·안 열린 칭호면 null (저장값은 id 하나뿐) */
+export const activeTitle = (picked: string | null | undefined, titles: readonly TitleOption[]) => (picked && titles.some((x) => x.id === picked) ? picked : null)
+
+/** 하루 날짜('YYYY-MM-DD') 목록에서 가장 길게 이어진 날 수 */
+export function longestStreak(days: Iterable<string>): number {
+  const nums = [...new Set(days)].map((d) => Math.round(Date.parse(`${d}T00:00:00Z`) / 86_400_000)).filter(Number.isFinite).sort((a, b) => a - b)
+  let best = 0
+  let run = 0
+  for (let i = 0; i < nums.length; i++) {
+    run = i > 0 && nums[i] - nums[i - 1] === 1 ? run + 1 : 1
+    best = Math.max(best, run)
+  }
+  return best
+}
+
+/** 22시~다음 날 6시 사이인가 (야근) */
+export const isNightHour = (hour: number) => hour >= 22 || hour < 6
 
 const DAILY_COUNT = 3
 

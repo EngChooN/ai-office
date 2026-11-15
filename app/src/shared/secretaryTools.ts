@@ -182,6 +182,7 @@ export const SECRETARY_TOOLS: Record<OfficeMethod, ToolSpec> = {
   applySurface: exclude,
   setGear: exclude,
   claimMission: exclude,
+  setTitle: exclude,
   // 튜토리얼은 화면 안내를 따라 사용자가 직접 누른다
   tutorialStart: exclude,
   tutorialAct: exclude,
@@ -206,6 +207,7 @@ export const SECRETARY_TOOLS: Record<OfficeMethod, ToolSpec> = {
 export const EXCLUDE_HINTS: Partial<Record<OfficeMethod, string>> = {
   buyItem: '회사 돈(사무실 금고)을 쓰는 일이라 대표가 직접 사요. [상점 열기](#view=shop)에서 사 주세요',
   applySurface: '바닥·벽 꾸미기는 대표가 고르는 부분이라 대신 하지 않아요. [상점 열기](#view=shop)에서 직접 바꿔 주세요',
+  setTitle: '칭호는 대표가 직접 골라요. [상점 열기](#view=shop)의 업적에서 골라 주세요',
   claimMission: '미션 보상은 대표가 직접 받아요. [상점 열기](#view=shop)의 미션에서 받아 주세요',
   setGear: '직원 책상·의자 장식은 대표가 고르는 부분이라 대신 하지 않아요. [상점 열기](#view=shop)에서 직접 골라 주세요',
 }

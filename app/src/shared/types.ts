@@ -396,6 +396,8 @@ export interface Company {
   progress: number
   nextXp: number
   title: string
+  /** 대표가 고른 칭호 이름 (없거나 안 열렸으면 없음) */
+  badge?: string
 }
 
 // 레벨표는 shared/officeLevel.ts의 LEVEL_TABLE 한 곳에 있다 (예전 이름 COMPANY_LEVELS도 거기서 계산해 내보낸다)
@@ -782,7 +784,8 @@ export interface ChatApproval {
 }
 
 export type ThemeId = 'wood' | 'mint' | 'night' | 'pastel'
-export type DayNight = 'auto' | 'day' | 'night'
+/** 낮밤: 자동·항상 낮·항상 저녁·항상 밤·끄기(늘 낮 모습) */
+export type DayNight = 'auto' | 'day' | 'evening' | 'night' | 'off'
 
 export type BudgetPeriod = 'day' | 'week' | 'month'
 /** 기간별 토큰 상한 (0 = 제한 없음) */
@@ -1323,6 +1326,8 @@ export interface OfficeApi {
   setGear(staffId: string, slot: 'desk' | 'chair', itemId: string | null): Promise<void>
   missions(): Promise<MissionsView>
   claimMission(key: string): Promise<{ ok: boolean; message: string }>
+  /** 쓸 칭호 고르기 (null = 칭호 없음, 열리지 않은 id는 무시) */
+  setTitle(id: string | null): Promise<void>
   /** 담당자가 정해진 할 일 카드를 한꺼번에 시작(지시) */
   startTasks(taskIds: string[]): Promise<void>
 

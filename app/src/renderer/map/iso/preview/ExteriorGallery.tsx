@@ -1,3 +1,4 @@
+import type { TimeOfDay } from '@shared/dayNight'
 // 개편 외관 모음 (시제품 iso-preview.html?exterior=1) — 건물 단계 E1~E6과 레벨별 꾸밈을 낮·밤으로 (이디자 C3)
 // ?exterior=1 → 단계마다 마지막 꾸밈 낮·밤 / &stage=3 → 그 단계의 레벨 전부 낮·밤
 import { exteriorSpecOf, STAGE_NAMES, type ExteriorFeature } from '../../exteriorSpec'
@@ -22,15 +23,19 @@ const LEVELS = Array.from({ length: 20 }, (_, i) => i + 1)
 const W = 360
 const ZOOM = 2
 
-function Shot({ level, isNight }: { level: number; isNight: boolean }) {
+/** &lit=1,3 → 밤에 그 층(1층부터) 창만 불을 켠다 (앱은 일하는 직원이 있는 층) */
+const LIT = new URLSearchParams(location.search).get('lit')
+const LIT_FLOORS = LIT ? new Set(LIT.split(',').map(Number)) : null
+
+function Shot({ level, phase }: { level: number; phase: TimeOfDay }) {
   const spec = exteriorSpecOf(level)
   const on = (Object.keys(spec.features) as ExteriorFeature[]).map((f) => FEATURE_NAMES[f])
   return (
     <figure className="flex flex-col gap-1">
-      <img src={dioramaPreviewUrl(level, isNight)} alt="" style={{ width: W * ZOOM, imageRendering: 'pixelated' }} className="rounded" />
+      <img src={dioramaPreviewUrl(level, phase, LIT_FLOORS)} alt="" style={{ width: W * ZOOM, imageRendering: 'pixelated' }} className="rounded" />
       <figcaption className="text-xs text-white/70">
         <b className="text-white">Lv.{level}</b> · E{spec.stage} {STAGE_NAMES[spec.stage]}
-        {spec.stage === 7 && ' (지금은 E6으로)'} · {isNight ? '밤' : '낮'} {on.length > 0 && `· ${on.join(' · ')}`}
+        {spec.stage === 7 && ' (지금은 E6으로)'} · {{ day: '낮', evening: '저녁', night: '밤' }[phase]} {on.length > 0 && `· ${on.join(' · ')}`}
       </figcaption>
     </figure>
   )
@@ -46,8 +51,9 @@ export function ExteriorGallery() {
       <div className="flex flex-col gap-5">
         {levels.map((lv) => (
           <div key={lv} className="flex gap-4">
-            <Shot level={lv} isNight={false} />
-            <Shot level={lv} isNight />
+            <Shot level={lv} phase="day" />
+            <Shot level={lv} phase="evening" />
+            <Shot level={lv} phase="night" />
           </div>
         ))}
       </div>

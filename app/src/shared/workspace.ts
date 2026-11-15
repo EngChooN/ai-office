@@ -213,6 +213,7 @@ export const METHOD_ACCESS: Record<OfficeMethod, MethodAccess> = {
   setGear: 'write',
   missions: 'read',
   claimMission: 'write',
+  setTitle: 'write',
   startTasks: 'write',
   saveAttachments: 'write',
   openAttachment: 'write',

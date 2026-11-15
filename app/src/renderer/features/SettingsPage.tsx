@@ -32,7 +32,9 @@ const THEMES: { value: ThemeId; labelKey: TKey; swatch: string[] }[] = [
 const DAY_NIGHT: { value: DayNight; labelKey: TKey }[] = [
   { value: 'auto', labelKey: 'settingsPage.dayNight.auto' },
   { value: 'day', labelKey: 'settingsPage.dayNight.day' },
+  { value: 'evening', labelKey: 'settingsPage.dayNight.evening' },
   { value: 'night', labelKey: 'settingsPage.dayNight.night' },
+  { value: 'off', labelKey: 'settingsPage.dayNight.off' },
 ]
 const MAX_PLANTS = 6
 const UI_MODES: { value: UiMode; labelKey: TKey }[] = [
@@ -426,7 +428,7 @@ export function SettingsPage() {
               </div>
             </Section>
             <Section title={t('settingsPage.dayNight.title')}>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 {DAY_NIGHT.map((d) => (
                   <button key={d.value} type="button" onClick={() => update({ dayNight: d.value })} className={cn('rounded-md border px-3 py-1 text-xs', settings.dayNight === d.value && 'border-primary bg-accent')}>
                     {t(d.labelKey)}

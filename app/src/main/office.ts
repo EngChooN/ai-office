@@ -128,6 +128,10 @@ import { listManuals, removeManual, saveManual } from './manuals'
 import { cleanTitle, manualLabel, resolveTitle } from '../shared/manualName'
 import {
   ACHIEVEMENTS,
+  activeTitle,
+  longestStreak,
+  titleLabel,
+  unlockedTitles,
   dailyMissions,
   formatWon,
   isInSeason,
@@ -655,7 +659,7 @@ export class Office extends EventEmitter<{
       teams: [...this.teams.values(), ...projectTeams.values()],
       labs: [...this.labs.values()],
       runs: this.runs,
-      company: this.company(),
+      company: { ...this.company(), badge: this.badgeLabel() },
       tasks: [...this.tasks.values()],
       meetings: this.meetings,
       schedules: [...this.schedules.values()],
@@ -3517,6 +3521,14 @@ export class Office extends EventEmitter<{
       }
       case 'earned':
         return db.tokenTotal() * WON_PER_TOKEN
+      // 출근·야근은 지시 기록에서 (since는 쓰지 않는다 — 업적만 쓰는 값)
+      case 'streak':
+        return longestStreak(db.instructionDays())
+      case 'night':
+        return db.countNightInstructions()
+      // 방 꾸민 기록은 따로 없어 지금 배치한 물건 수 (칸 배치 + 예전 배치)
+      case 'decor':
+        return this.shop.grid.length + this.shop.placed.length
     }
   }
 
@@ -3534,10 +3546,35 @@ export class Office extends EventEmitter<{
         return { ...d, key, progress: Math.min(d.target, this.metricValue(d.metric, since)), isClaimed: claimed.has(key) }
       })
     const today = todayKey()
+    // 숨은 업적은 풀기 전까지 이름·진행·칭호를 가려서 내보낸다 (받을 수 있게 되면 이름이 드러난다)
+    // id·key·조건·보상도 가짜 값으로 바꿔 보낸다 (원격 읽기로 숨은 업적 정보가 새지 않게). target 1·progress 0이라 받기 대상도 아니다
+    const achievements = view(ACHIEVEMENTS, (d) => `ach:${d.id}`, 0).map((m, i): MissionProgress =>
+      m.hidden && !m.isClaimed && m.progress < m.target
+        ? { id: `locked-${i}`, key: `locked:${i}`, emoji: '🔒', label: '???', metric: 'tasks', target: 1, reward: 0, progress: 0, isClaimed: false, isLocked: true }
+        : m,
+    )
+    const titles = unlockedTitles(claimed)
     return {
       daily: view(dailyMissions(), (d) => `mission:${today}:${d.id}`, startOfDay(new Date())),
-      achievements: view(ACHIEVEMENTS, (d) => `ach:${d.id}`, 0),
+      achievements,
+      titles,
+      titleId: activeTitle(db.loadTitleId(), titles),
     }
+  }
+
+  /** 대표가 쓸 칭호를 고른다 (열리지 않은 id는 무시, null이면 칭호 없음) */
+  setTitle(id: string | null) {
+    if (id !== null && !unlockedTitles(db.ledgerKeys('ach:')).some((x) => x.id === id)) return
+    db.saveTitleId(id)
+    this.scheduleEmit()
+  }
+
+  /** 이름 옆에 보일 칭호 (고른 칭호가 지금도 열려 있을 때만) */
+  private badgeLabel() {
+    const picked = db.loadTitleId()
+    if (!picked) return undefined
+    const titles = unlockedTitles(db.ledgerKeys('ach:'))
+    return activeTitle(picked, titles) ? titleLabel(picked) : undefined
   }
 
   /** 받을 수 있는 보상 수 (사이드바 배지) */

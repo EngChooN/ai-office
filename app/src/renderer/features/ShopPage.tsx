@@ -19,6 +19,7 @@ import {
   SHOP_SETS,
   ZONE_LABEL,
   shopItem,
+  titleLabel,
   type LedgerRow,
   type MissionProgress,
   type MissionsView,
@@ -333,13 +334,46 @@ function Missions({ onNotice }: { onNotice: (m: string) => void }) {
   }, [funds, claimable])
   if (!view) return null
   const handleClaim = async (key: string) => onNotice((await window.office.claimMission(key)).message)
+  const claimables = [...view.daily, ...view.achievements].filter((m) => !m.isClaimed && m.progress >= m.target)
+  const handleClaimAll = async () => {
+    let count = 0
+    let reward = 0
+    for (const m of claimables) {
+      if ((await window.office.claimMission(m.key)).ok) {
+        count += 1
+        reward += m.reward
+      }
+    }
+    if (count > 0) onNotice(t('shop.mission.claimedAll', { count, reward: formatWon(reward) }))
+  }
+  const handleTitle = async (id: string | null) => {
+    await window.office.setTitle(id)
+    setView(await window.office.missions())
+  }
   const row = (m: MissionProgress) => {
     const isDone = m.progress >= m.target
+    // 숨은 업적: 조건을 풀기 전엔 자물쇠 줄 (이름·진행 막대·보상을 보여 주지 않는다)
+    if (m.isLocked) {
+      return (
+        <div key={m.key} className="bg-card text-muted-foreground flex items-center gap-3 rounded-xl border border-dashed p-3">
+          <span className="text-2xl grayscale">{m.emoji}</span>
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-medium">{m.label}</div>
+            <div className="text-[11px]">{t('shop.mission.hiddenHint')}</div>
+          </div>
+        </div>
+      )
+    }
+    const own = m.title ? view.titles?.find((x) => x.id === m.title) : undefined
     return (
       <div key={m.key} className={cn('bg-card flex items-center gap-3 rounded-xl border p-3', isDone && !m.isClaimed && 'border-status-waiting')}>
         <span className="text-2xl">{m.emoji}</span>
         <div className="min-w-0 flex-1">
-          <div className="text-sm font-medium">{m.label}</div>
+          <div className="text-sm font-medium">
+            {m.label}
+            {m.title && <span className="bg-primary/15 text-primary ml-2 rounded-full px-2 py-0.5 text-[10px] font-semibold">{t('shop.mission.titleBadge', { title: titleLabel(m.title) })}</span>}
+            {own && view.titleId === own.id && <span className="bg-status-working/15 text-status-working ml-1 rounded-full px-2 py-0.5 text-[10px] font-semibold">{t('shop.mission.titleInUse')}</span>}
+          </div>
           <div className="bg-muted mt-1 h-1.5 overflow-hidden rounded-full">
             <div className={cn('h-full', isDone ? 'bg-status-working' : 'bg-primary')} style={{ width: `${(m.progress / m.target) * 100}%` }} />
           </div>
@@ -348,6 +382,11 @@ function Missions({ onNotice }: { onNotice: (m: string) => void }) {
           </div>
         </div>
         <span className="text-xs font-semibold tabular-nums">{formatWon(m.reward)}</span>
+        {own && (
+          <Button size="sm" variant={view.titleId === own.id ? 'secondary' : 'outline'} onClick={() => void handleTitle(view.titleId === own.id ? null : own.id)}>
+            {view.titleId === own.id ? t('shop.mission.titleOff') : t('shop.mission.useTitle')}
+          </Button>
+        )}
         {m.isClaimed ? (
           <span className="text-muted-foreground flex w-20 items-center justify-center gap-1 text-xs">
             <CheckIcon className="size-3.5" /> {t('shop.mission.claimed')}
@@ -362,6 +401,11 @@ function Missions({ onNotice }: { onNotice: (m: string) => void }) {
   }
   return (
     <div className="flex max-w-3xl flex-col gap-6">
+      {claimables.length > 0 && (
+        <Button className="self-start" onClick={() => void handleClaimAll()}>
+          <GiftIcon /> {t('shop.mission.claimAll', { count: claimables.length })}
+        </Button>
+      )}
       <section className="flex flex-col gap-2">
         <h2 className="text-sm font-semibold">🎯 {t('shop.mission.daily')} <span className="text-muted-foreground text-xs font-normal">· {t('shop.resetsAtMidnight')}</span></h2>
         {view.daily.map(row)}

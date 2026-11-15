@@ -1,3 +1,4 @@
+import type { TimeOfDay } from '@shared/dayNight'
 import { HH, HW } from '../../shared/iso/grid.ts'
 import { artExteriorBoard, artNeighbors, type ExteriorBoard, type Pt } from './iso/exteriorArt.ts'
 
@@ -28,14 +29,14 @@ export interface DioramaLayout {
 
 /** 거리 전체의 논리 크기 — 화면 크기와 상관없이 레벨마다 같다 (부지 폭의 3×2배: 가로로 긴 창·세로로 긴 폰도 덮는다) */
 export function dioramaWorld(level: number) {
-  const { cv } = artExteriorBoard(level, false)
+  const { cv } = artExteriorBoard(level, 'day')
   const bw = cv.w + MARGIN * 2
   return { W: bw * 3, H: bw * 2 }
 }
 
 /** 처음 배율과 거리 크기. 배율은 땅 판이 다 보이는 가장 큰 값 (실수 — 정수로 내리면 창 비율에 따라 건물이 크게·작게 튄다) */
 export function dioramaFit(level: number, hostW: number, hostH: number) {
-  const { cv } = artExteriorBoard(level, false)
+  const { cv } = artExteriorBoard(level, 'day')
   const scale = Math.min(hostW / (cv.w + MARGIN * 2), hostH / (cv.h + MARGIN * 2))
   return { scale, ...dioramaWorld(level) }
 }
@@ -65,8 +66,8 @@ export function zoomCameraAt(cam: DioramaCamera, zoom: number, sx: number, sy: n
   return { zoom, x: cam.x + dx / cam.zoom - dx / zoom, y: cam.y + dy / cam.zoom - dy / zoom }
 }
 
-export function dioramaLayout(level: number, isNight: boolean, W: number, H: number): DioramaLayout {
-  const board = artExteriorBoard(level, isNight)
+export function dioramaLayout(level: number, phase: TimeOfDay, litFloors: ReadonlySet<number> | null, W: number, H: number): DioramaLayout {
+  const board = artExteriorBoard(level, phase, litFloors)
   const ox = Math.round((W - board.cv.w) / 2)
   // 위아래 남는 곳은 위쪽을 조금 더 (부지가 화면 가운데보다 살짝 아래 — 위에 핀 자리)
   const oy = Math.round((H - board.cv.h) * 0.55)
@@ -75,7 +76,7 @@ export function dioramaLayout(level: number, isNight: boolean, W: number, H: num
   const ys = board.door.map((p) => p[1])
   const O: Pt = [ox + board.o[0], oy + board.o[1]]
   // 부지 위에 얹히는 이웃 건물·가로등(side·front) — 그 픽셀은 눌러도 반응 없다
-  const cover = [artNeighbors(W, H, isNight, O, board, 'side'), artNeighbors(W, H, isNight, O, board, 'front')]
+  const cover = [artNeighbors(W, H, phase, O, board, 'side'), artNeighbors(W, H, phase, O, board, 'front')]
   const cx = Math.floor(b.cv.w / 2)
   let top = 0
   while (top < b.cv.h - 1 && !b.cv.has(top * b.cv.w + cx)) top++

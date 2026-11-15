@@ -895,6 +895,84 @@ const tuftFace = (base: string) => (q: Q) => {
 
 // ── 품목 그림 ────────────────────────────────────────────
 // 키 = itemId (shared/iso/furniture.ts FURNITURE·상점 SHOP_ITEMS와 같은 id). 칸 크기는 FURNITURE와 같다.
+// ── 계절·테마 가구 (docs/design/season-theme/handoff.md) — 벽·천장 배치가 없어 모두 바닥에 서는 모양 ──
+const SEASON_PLANTER = '#f1eee8'
+const LAMP_PAPER = '#fbefc8'
+const CONSOLE_NAVY = '#2a3358'
+
+/** 네 면 모두 같은 무늬 (돌려도 같은 모양이어야 하는 등·조명) */
+const allSides = (fill: Paint): Partial<Part> => ({ N: fill, E: fill, S: fill, W: fill })
+
+/** 나무 한 그루: 흰 화분 + 줄기 + 잎 덩어리 */
+const plantedTree = (name: string, blobs: number[][], pal: readonly string[], extraH: number): ItemDef => ({
+  name,
+  W: 1,
+  D: 1,
+  extraH: extraH - 6,
+  parts: [b(0.14, 0.14, 0.72, 0.72, 0, 7, SEASON_PLANTER), b(0.18, 0.18, 0.64, 0.64, 7, 1, '#8a6a4a'), b(0.45, 0.45, 0.1, 0.1, 8, 12, K.walnut)],
+  after: (a) => leaves(a, 0.5, 0.5, 14, blobs, pal),
+})
+
+/** 줄무늬 파라솔 지붕: 위에서 본 타원을 쐐기 모양으로 번갈아 칠한다 */
+function parasolCanopy(a: After, z: number) {
+  const [cx, cy] = a.at(0.5, 0.5, z)
+  for (let yy = -8; yy <= 6; yy++)
+    for (let xx = -15; xx <= 15; xx++) {
+      const inside = (xx / 15) ** 2 + (yy / 8) ** 2
+      if (inside > 1) continue
+      const wedge = Math.floor((Math.atan2(yy * 2, xx) / Math.PI + 1) * 4) % 2
+      const base = wedge ? '#8db4e8' : K.paper
+      a.cv.set(cx + xx, cy + yy, C(inside > 0.8 && yy > 0 ? mix(base, S.sh, 0.2) : base))
+    }
+}
+
+/** 서 있는 그림판(액자·시계)의 앞면: 가장자리 틀 + 안쪽 그림 */
+const framed = (frame: string, inside: (u: number, v: number) => Fill) => (q: Q): Fill => (q.u < 0.08 || q.u > 0.92 || q.v < 0.06 || q.v > 0.94 ? frame : inside(q.u, q.v))
+
+const landscapePicture = (u: number, v: number): Fill => {
+  if (v < 0.5) return u > 0.55 && u < 0.85 && v > 0.2 && v < 0.32 ? K.paper : K.sky
+  const hill = 0.6 + Math.sin(u * 5) * 0.08
+  return v > hill ? '#7cc46a' : '#8fd6c2'
+}
+
+const clockFace = (u: number, v: number): Fill => {
+  const isMinuteHand = Math.abs(u - 0.5) < 0.05 && v > 0.2 && v < 0.5
+  const isHourHand = Math.abs(v - 0.5) < 0.05 && u > 0.5 && u < 0.75
+  if (isMinuteHand || isHourHand) return K.dark
+  const isTick = (Math.abs(u - 0.5) < 0.04 && (v < 0.2 || v > 0.8)) || (Math.abs(v - 0.5) < 0.04 && (u < 0.2 || u > 0.8))
+  return isTick ? K.purple : K.paper
+}
+
+const spaceScreenPlanet = (u: number, v: number): Fill => {
+  const dx = u - 0.5
+  const dy = v - 0.5
+  if (Math.hypot(dx, dy) < 0.2) return '#b79cf0'
+  if (Math.abs(dy * 3 + dx * 0.6) < 0.1 && Math.abs(dx) < 0.4) return '#e2d6ff'
+  return noise(Math.floor(u * 12), Math.floor(v * 6)) > 0.93 ? K.paper : CONSOLE_NAVY
+}
+const spaceScreenBars = (u: number, v: number): Fill => {
+  const barHeights = [0.3, 0.5, 0.4, 0.7, 0.55]
+  const bar = Math.floor(u * 5)
+  return frac(u * 5) < 0.7 && v > 1 - barHeights[bar] ? '#7fe0ff' : CONSOLE_NAVY
+}
+const spaceScreenTarget = (u: number, v: number): Fill => {
+  const d = Math.hypot(u - 0.5, v - 0.5)
+  const isRing = Math.abs(d - 0.3) < 0.04
+  const isCross = (Math.abs(u - 0.5) < 0.03 || Math.abs(v - 0.5) < 0.03) && d < 0.38
+  return isRing || isCross ? '#8df0c8' : CONSOLE_NAVY
+}
+
+/** 트로피 선반 앞면: 유리 칸 세 줄에 수정·트로피·별을 놓는다 (그림일 뿐 업적과는 이어지지 않는다) */
+const trophyShelfFront = (q: Q): Fill => {
+  if (q.u < 0.04 || q.u > 0.96 || q.v < 0.05 || q.v > 0.95) return '#cfc6d6'
+  const row = frac(q.v * 3)
+  if (row > 0.9) return '#cfc6d6'
+  const col = Math.floor(q.u * 4)
+  const isInObject = Math.abs(frac(q.u * 4) - 0.5) < 0.2 && row > 0.4
+  if (!isInObject) return '#dff1f7'
+  return col === 0 || col === 3 ? '#8fc6ee' : K.gold
+}
+
 const ITEMS: Record<string, ItemDef> = {
   // 기본 자리
   desk: {
@@ -1924,6 +2002,113 @@ const ITEMS: Record<string, ItemDef> = {
     W: 1,
     D: 1,
     parts: [b(0.32, 0.32, 0.36, 0.36, 0, 2, K.woodD), b(0.47, 0.47, 0.06, 0.06, 2, 14, K.woodD), b(0.36, 0.36, 0.28, 0.28, 16, 14, K.red, { S: (q) => (q.v > 0.7 ? K.blue : K.red), E: (q) => (q.v > 0.7 ? K.blue : K.red) }), b(0.38, 0.38, 0.24, 0.24, 30, 2, K.gold)],
+  },
+
+  // ── 계절·테마 가구 ──
+  'sakura-pot': plantedTree('벚꽃 화분', [[0, -8, 6], [-6, -4, 4], [6, -4, 4], [0, -13, 4]], ['#e88aa8', '#f6b8cc', '#fde0ea'], 22),
+  'maple-tree': plantedTree('단풍나무', [[0, -14, 8], [-8, -8, 6], [8, -9, 6], [-2, -21, 5]], ['#c8442e', '#e8742e', '#f4a64a'], 30),
+  'beach-parasol': {
+    name: '비치 파라솔',
+    W: 1,
+    D: 1,
+    extraH: 10,
+    parts: [b(0.25, 0.25, 0.5, 0.5, 0, 2, K.stone), b(0.46, 0.46, 0.08, 0.08, 2, 34, K.woodL)],
+    after: (a) => parasolCanopy(a, 36),
+  },
+  'watermelon-bar': {
+    name: '수박 주스 바',
+    W: 2,
+    D: 1,
+    extraH: 4,
+    parts: [
+      b(0.08, 0.3, 1.84, 0.55, 0, 16, '#ead8b8', { S: (q) => (frac(q.u * 9) < 0.1 ? K.woodL : '#ead8b8') }),
+      b(0.04, 0.26, 1.92, 0.63, 16, 2, K.woodL),
+      b(0.04, 0.26, 0.06, 0.06, 18, 28, K.woodD),
+      b(1.9, 0.26, 0.06, 0.06, 18, 28, K.woodD),
+      b(0.02, 0.2, 1.96, 0.7, 46, 2, K.pink, { top: (q) => (frac(q.u * 6) < 0.5 ? K.pink : K.paper), ...allSides((q) => (frac(q.u * 6) < 0.5 ? K.pink : K.paper)) }),
+    ],
+    after: (a) => {
+      ball(a, 0.45, 0.55, 18, 6, '#e8707a')
+      ball(a, 1.45, 0.6, 18, 5, '#3f9a58', (dx, dy) => (Math.hypot(dx, dy) > 0.7 ? '#3f9a58' : K.red))
+    },
+  },
+  'hanging-frame': {
+    name: '벽걸이 액자',
+    W: 1,
+    D: 1,
+    parts: [b(0.25, 0.4, 0.5, 0.2, 0, 6, K.woodD), b(0.1, 0.45, 0.8, 0.1, 6, 26, K.woodL, { S: framed(K.woodL, landscapePicture) })],
+  },
+  'hanging-clock': {
+    name: '벽시계',
+    W: 1,
+    D: 1,
+    parts: [b(0.25, 0.4, 0.5, 0.2, 0, 6, '#b8a6e8'), b(0.14, 0.45, 0.72, 0.1, 6, 26, '#b8a6e8', { S: framed('#b8a6e8', clockFace) })],
+  },
+  chandelier: {
+    name: '샹들리에',
+    W: 1,
+    D: 1,
+    parts: [
+      b(0.3, 0.3, 0.4, 0.4, 0, 2, K.metalL),
+      b(0.47, 0.47, 0.06, 0.06, 2, 30, K.woodD),
+      b(0.2, 0.47, 0.6, 0.06, 32, 2, K.woodD),
+      b(0.47, 0.2, 0.06, 0.6, 32, 2, K.woodD),
+      b(0.1, 0.43, 0.14, 0.14, 26, 6, LAMP_PAPER),
+      b(0.76, 0.43, 0.14, 0.14, 26, 6, LAMP_PAPER),
+      b(0.43, 0.1, 0.14, 0.14, 26, 6, LAMP_PAPER),
+      b(0.43, 0.76, 0.14, 0.14, 26, 6, LAMP_PAPER),
+    ],
+  },
+  'hanji-lamp': {
+    name: '한지 등',
+    W: 1,
+    D: 1,
+    parts: [
+      b(0.3, 0.3, 0.4, 0.4, 0, 3, K.woodD),
+      b(0.32, 0.32, 0.36, 0.36, 3, 24, LAMP_PAPER, allSides((q) => (frac(q.u * 3) < 0.12 || frac(q.v * 4) < 0.1 ? K.woodD : LAMP_PAPER))),
+      b(0.3, 0.3, 0.4, 0.4, 27, 2, K.woodD),
+      b(0.45, 0.45, 0.1, 0.1, 29, 3, K.red),
+    ],
+  },
+  'tea-table': {
+    name: '다도 테이블',
+    W: 2,
+    D: 1,
+    parts: [
+      b(0.14, 0.14, 0.1, 0.1, 0, 8, K.walnut),
+      b(1.76, 0.14, 0.1, 0.1, 0, 8, K.walnut),
+      b(0.14, 0.5, 0.1, 0.1, 0, 8, K.walnut),
+      b(1.76, 0.5, 0.1, 0.1, 0, 8, K.walnut),
+      b(0.1, 0.1, 1.8, 0.6, 8, 3, K.walnutT),
+      b(0.6, 0.2, 0.9, 0.4, 11, 1, K.dark),
+      b(1.1, 0.3, 0.2, 0.2, 12, 6, K.paper),
+      b(0.75, 0.25, 0.1, 0.1, 12, 3, K.mintL),
+      b(0.75, 0.42, 0.1, 0.1, 12, 3, K.mintL),
+      b(0.22, 0.3, 0.12, 0.12, 11, 7, K.paper),
+      b(0.15, 0.72, 0.55, 0.26, 0, 3, K.purple),
+      b(1.1, 0.72, 0.55, 0.26, 0, 3, K.purple),
+    ],
+    after: (a) => leaves(a, 0.28, 0.36, 18, [[0, -3, 3]], ['#e88aa8', '#f6b8cc', '#fde0ea']),
+  },
+  'space-console': {
+    name: '우주 관제 콘솔',
+    W: 2,
+    D: 1,
+    parts: [
+      b(0.08, 0.35, 0.3, 0.5, 0, 12, K.metal),
+      b(1.62, 0.35, 0.3, 0.5, 0, 12, K.metal),
+      b(0.04, 0.3, 1.92, 0.6, 12, 3, '#dcdde8', { top: (q) => (q.v > 0.5 && frac(q.u * 14) < 0.55 && frac(q.v * 4) < 0.6 ? '#9b86d8' : '#dcdde8') }),
+      b(0.08, 0.32, 0.5, 0.08, 15, 18, '#8f80e6', { S: framed('#8f80e6', spaceScreenBars) }),
+      b(0.62, 0.3, 0.76, 0.08, 15, 22, '#8f80e6', { S: framed('#8f80e6', spaceScreenPlanet) }),
+      b(1.42, 0.32, 0.5, 0.08, 15, 18, '#8f80e6', { S: framed('#8f80e6', spaceScreenTarget) }),
+    ],
+  },
+  'mini-desk-plant': plant('책상 미니 화분', { c: '#f4f1ea', h: 5, s: 0.28 }, [[0, -5, 4], [-4, -3, 3], [4, -3, 3]], { extraH: 10 }),
+  'trophy-shelf': {
+    name: '트로피 선반',
+    W: 2,
+    D: 1,
+    parts: [b(0.05, 0.25, 1.9, 0.5, 0, 34, '#d8d4de', { S: trophyShelfFront }), b(0, 0.2, 2, 0.6, 34, 2, '#e6e2ea')],
   },
 
   // ── 상점 책상·의자 (개인 꾸밈 gear — 그 직원이 배정된 자리에 입힌다, 기술 설계 2-5절) ──

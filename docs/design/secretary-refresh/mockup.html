@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>비서 개선 시안 — 지금 vs 바꾸면</title>
+<style>
+  :root{--bg:#f6f5f2;--card:#fff;--line:#e4e1da;--mut:#7a766d;--ink:#22201c;--acc:#3b6ef5;--ok:#1f9d55;--warn:#d9822b;--bad:#d64545;--soft:#eef2ff}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.55 -apple-system,"Apple SD Gothic Neo","Pretendard",system-ui,sans-serif}
+  header{padding:28px 32px 8px;max-width:1180px;margin:auto}
+  h1{font-size:22px;margin:0 0 4px}
+  header p{margin:0;color:var(--mut)}
+  nav{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0 0}
+  nav a{font-size:12px;padding:4px 10px;border-radius:99px;background:#fff;border:1px solid var(--line);color:var(--ink);text-decoration:none}
+  main{max-width:1180px;margin:auto;padding:8px 32px 60px}
+  section{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px 22px;margin:18px 0}
+  .head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .head h2{font-size:17px;margin:0}
+  .tag{font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px}
+  .t1{background:#fde8e8;color:var(--bad)} .t2{background:#fff1e0;color:var(--warn)} .t3{background:var(--soft);color:var(--acc)} .t4{background:#eef0ee;color:var(--mut)}
+  .who{font-size:12px;color:var(--mut)}
+  .why{color:var(--mut);margin:6px 0 14px}
+  .cmp{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .col h3{font-size:12px;margin:0 0 8px;letter-spacing:.02em}
+  .now h3{color:var(--mut)} .new h3{color:var(--acc)}
+  .frame{border:1px solid var(--line);border-radius:12px;padding:12px;background:#fbfaf8;min-height:120px}
+  .new .frame{border-color:#c9d6ff;background:#f7f9ff}
+  /* 펫 창 모형 */
+  .pet{width:340px;max-width:100%;margin:auto;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 6px 20px #0001;overflow:hidden}
+  .pet .bar{display:flex;align-items:center;gap:6px;padding:8px 10px;border-bottom:1px solid var(--line);font-size:12px}
+  .chip{font-size:11px;padding:1px 7px;border-radius:99px;background:#f0eee9;color:var(--ink)}
+  .chip.b{background:#fde8e8;color:var(--bad)}
+  .pet .body{padding:10px;display:flex;flex-direction:column;gap:8px}
+  .card{border:1px solid var(--line);border-radius:10px;padding:9px 10px;background:#fff;font-size:12.5px}
+  .card .meta{font-size:11px;color:var(--mut)}
+  .card .ttl{font-weight:600;font-size:13.5px;margin:2px 0}
+  .mono{font-family:ui-monospace,Menlo,monospace;font-size:10.5px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .btns{display:flex;gap:6px;margin-top:7px;flex-wrap:wrap}
+  .btn{font-size:11.5px;padding:3px 10px;border-radius:7px;border:1px solid var(--line);background:#fff}
+  .btn.p{background:var(--acc);border-color:var(--acc);color:#fff}
+  .btn.g{color:var(--mut)}
+  .ai{font-size:11px;background:#f3efff;color:#6b46c1;padding:2px 7px;border-radius:6px;display:inline-block;margin-top:4px}
+  .hl{outline:2px dashed var(--acc);outline-offset:2px;border-radius:6px}
+  .miss{outline:2px dashed var(--bad);outline-offset:2px;border-radius:6px}
+  /* 대화 */
+  .chat{display:flex;flex-direction:column;gap:8px;max-width:360px;margin:auto}
+  .bub{padding:8px 11px;border-radius:12px;font-size:13px;max-width:92%}
+  .me{align-self:flex-end;background:var(--acc);color:#fff;border-bottom-right-radius:4px}
+  .bot{align-self:flex-start;background:#fff;border:1px solid var(--line);border-bottom-left-radius:4px}
+  .bot a{color:var(--acc)}
+  .x{color:var(--bad);text-decoration:line-through}
+  .reply{border-left:3px solid #c9d6ff;padding-left:7px;color:var(--mut);font-size:11.5px;margin-bottom:4px}
+  .react{font-size:11px;margin-top:4px;color:var(--mut)}
+  .note{font-size:12px;color:var(--mut);margin-top:10px}
+  .note b{color:var(--ink)}
+  .set{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13px}
+  .tog{width:34px;height:20px;border-radius:99px;background:var(--acc);position:relative;flex:none}
+  .tog:after{content:"";position:absolute;right:3px;top:3px;width:14px;height:14px;border-radius:50%;background:#fff}
+  .small{font-size:11.5px;color:var(--mut)}
+  .retro .pet{background:#1b1a2e;border:3px solid #f2c94c;border-radius:0;box-shadow:4px 4px 0 #000;color:#f6e7c1;font-family:"Courier New",monospace}
+  .retro .pet .bar{border-bottom:2px solid #f2c94c}
+  .retro .card{background:#26244a;border:2px solid #6c63ff;border-radius:0;color:#f6e7c1}
+  .retro .card .meta{color:#b9b3e6}
+  .retro .chip{background:#f2c94c;color:#1b1a2e;border-radius:0}
+  .retro .btn{border-radius:0;background:#26244a;color:#f6e7c1;border:2px solid #f2c94c}
+  .retro .btn.p{background:#f2c94c;color:#1b1a2e}
+  table{border-collapse:collapse;width:100%;font-size:13px}
+  td,th{border-bottom:1px solid var(--line);padding:8px 6px;text-align:left;vertical-align:top}
+  th{font-size:12px;color:var(--mut);font-weight:600}
+  @media(max-width:820px){.cmp{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <h1>비서 개선 시안 — 지금 vs 바꾸면</h1>
+  <p>⌘K 비서와 바탕화면 비서가 v1.3·1.4 변경을 따라가지 못한 곳을 화면으로 비교했습니다. 빨간 점선 = 지금 빠지거나 틀린 곳, 파란 점선 = 바꾸면 생기는 곳. 실제 화면이 아니라 모형입니다.</p>
+  <nav>
+    <a href="#a">① 원격 보안 빈틈</a><a href="#b">② 옛 화면 이름 안내</a><a href="#c">③ 바탕화면 비서 결재 카드</a>
+    <a href="#d">④ 대화방 메신저</a><a href="#e">⑤ 레트로 테마</a><a href="#f">⑥ 설정 문구·자잘한 것</a><a href="#g">⑦ 새 기능 후보</a><a href="#h">⑧ 연달아 물을 때 대기</a><a href="#sum">한눈에 보기</a>
+  </nav>
+</header>
+<main>
+
+<section id="a">
+  <div class="head"><h2>① 휴대폰·원격에서 막아 둔 설정이 비서 카드로 바뀜</h2><span class="tag t1">급함 · 보안</span><span class="who">⌘K 비서</span></div>
+  <p class="why">원격 화면에서는 기본 작업 폴더·화면 캡처 허용·공용 브라우저 로그인을 못 바꾸게 막아 두었는데, 비서에게 말하면 카드로 바뀌는 것으로 보입니다(코드로 추적, 실제 실행 확인 전).</p>
+  <div class="cmp">
+    <div class="col now"><h3>지금 (휴대폰에서)</h3><div class="frame"><div class="chat">
+      <div class="bub me">화면 캡처 허용 켜줘</div>
+      <div class="bub bot">이렇게 바꿀게요.
+        <div class="card" style="margin-top:6px"><div class="ttl">설정 바꾸기</div><div class="meta">화면 캡처 허용: 꺼짐 → 켜짐</div><div class="small" style="color:var(--warn)">⚠ 주의가 필요한 설정이에요</div>
+        <div class="btns"><span class="btn p miss">실행</span><span class="btn">취소</span></div></div></div>
+    </div><p class="note">주의 표시만 뜨고 <b>실행이 됩니다.</b></p></div></div>
+    <div class="col new"><h3>바꾸면</h3><div class="frame"><div class="chat">
+      <div class="bub me">화면 캡처 허용 켜줘</div>
+      <div class="bub bot hl">이 설정은 다른 기기에서는 바꿀 수 없어요. 이 PC 앞에서 [설정 열기](#view=settings)로 바꿔 주세요.</div>
+    </div><p class="note">원격에서 막힌 설정은 비서 카드도 <b>똑같이 막기</b>. PC 앞에서는 지금처럼 카드로 바꿈.</p></div></div>
+  </div>
+</section>
+
+<section id="b">
+  <div class="head"><h2>② 비서가 옛 화면 이름으로 길 안내</h2><span class="tag t2">작고 체감 큼</span><span class="who">⌘K 비서</span></div>
+  <p class="why">비서가 아는 화면 설명이 v1.2 기준입니다. 워크스페이스·다른 기기 연결·직원 패널 결재 탭을 모르고, 없는 이름으로 안내합니다.</p>
+  <div class="cmp">
+    <div class="col now"><h3>지금</h3><div class="frame"><div class="chat">
+      <div class="bub me">휴대폰이랑 다른 PC 연결 어디서 해?</div>
+      <div class="bub bot"><span class="miss">설정·꾸미기</span> 탭의 <span class="miss">휴대폰 연결</span>에서 할 수 있어요.</div>
+      <div class="bub me">수진 직원 쓸 수 있는 도구 바꾸려면?</div>
+      <div class="bub bot">직원 패널의 <span class="miss">장비 탭</span>에서 바꿔요.</div>
+    </div></div></div>
+    <div class="col new"><h3>바꾸면</h3><div class="frame"><div class="chat">
+      <div class="bub me">휴대폰이랑 다른 PC 연결 어디서 해?</div>
+      <div class="bub bot hl">설정 › <b>다른 기기 연결</b>에서 해요. 다른 PC 직원도 여기서 이어 붙여요. <a>[다른 기기 연결 열기]</a></div>
+      <div class="bub me">수진 직원 쓸 수 있는 도구 바꾸려면?</div>
+      <div class="bub bot hl">직원 패널의 <b>도구</b> 탭에서 바꿔요. 그 직원 결재 내역은 <b>결재</b> 탭에 있어요.</div>
+    </div><p class="note">비서 지침의 화면 설명을 지금 메뉴 이름에서 읽어 오게 바꿔서, 메뉴가 바뀌어도 <b>다시 틀리지 않게</b>.</p></div></div>
+  </div>
+</section>
+
+<section id="c">
+  <div class="head"><h2>③ 바탕화면 비서의 결재 카드가 본 창보다 정보가 적음</h2><span class="tag t3">새 기능 따라잡기</span><span class="who">바탕화면 비서</span></div>
+  <p class="why">본 창 결재 카드에는 AI 추정, 요청한 직원, "앞으로 자동 승인", 일 멈추기가 있지만 바탕화면 비서 창에는 없습니다. 원문도 두 줄에서 잘려 마우스를 올려야 보입니다.</p>
+  <div class="cmp">
+    <div class="col now"><h3>지금</h3><div class="frame"><div class="pet">
+      <div class="bar">비서 ▾ <span class="chip">작업 중 2명</span><span class="chip b">결재 1</span></div>
+      <div class="body"><div class="card">
+        <div class="meta">수진 · 개발</div>
+        <div class="ttl">프로젝트 폴더의 빌드 결과물을 지워요</div>
+        <div class="mono">rm -rf app/dist app/out &amp;&amp; npm run build -- --mac --x…</div>
+        <div class="btns"><span class="btn p">승인</span><span class="btn">반려</span></div>
+        <div class="small miss" style="margin-top:6px;padding:2px 4px">AI 추정·요청자·자동 승인·멈추기 없음</div>
+      </div></div></div></div></div>
+    <div class="col new"><h3>바꾸면</h3><div class="frame"><div class="pet">
+      <div class="bar">비서 ▾ <span class="chip">작업 중 2명</span><span class="chip b">결재 1</span></div>
+      <div class="body"><div class="card">
+        <div class="meta">수진 · 개발 <span class="hl">· 리드 민호가 맡긴 일</span></div>
+        <div class="ttl">프로젝트 폴더의 빌드 결과물을 지워요</div>
+        <span class="ai hl">AI 추정 · 되돌릴 수 없는 삭제 포함</span>
+        <div class="mono">rm -rf app/dist app/out &amp;&amp; npm run build -- --mac --x…</div>
+        <div class="small hl" style="color:var(--acc);margin-top:2px">▸ 명령 전체 보기</div>
+        <div class="btns"><span class="btn p">승인</span><span class="btn">반려</span><span class="btn g hl">⋯</span></div>
+        <div class="small hl" style="margin-top:6px;padding:4px;background:#fff;border:1px solid var(--line);border-radius:6px">⋯ 메뉴: 앞으로 자동 승인 · 수진 일 멈추기 · 앱에서 열기</div>
+      </div></div></div></div></div>
+  </div>
+  <p class="note">좁은 창이라 버튼을 다 늘어놓지 않고 <b>⋯ 메뉴</b>에 넣는 안. ⌘K 비서가 결재 현황을 말할 때도 명령 원문 대신 이 효과 문장으로 말하게 함께 고침.</p>
+</section>
+
+<section id="d">
+  <div class="head"><h2>④ 대화방 메신저 기능을 비서가 못 씀</h2><span class="tag t3">새 기능 따라잡기</span><span class="who">두 비서 모두</span></div>
+  <p class="why">⌘K 비서는 전체 방에만 말할 수 있고, 바탕화면 비서 창은 답장·반응·첨부가 안 보이며 보낼 때 대기 메시지 설정을 무시하고 바로 보냅니다.</p>
+  <div class="cmp">
+    <div class="col now"><h3>지금</h3><div class="frame"><div class="chat">
+      <div class="bub me">디자인팀 방에 "시안 내일까지"라고 남겨줘</div>
+      <div class="bub bot"><span class="miss">전체 방</span>에 남길게요. <span class="small">(팀 방은 못 고름)</span></div>
+    </div>
+    <div class="pet" style="margin-top:12px"><div class="bar">대화방 · 디자인팀</div><div class="body">
+      <div class="card"><div class="meta">지은 · 디자인</div>시안 v2 올렸어요 <span class="small miss">(첨부·답장 표시 안 보임)</span></div>
+    </div></div></div></div>
+    <div class="col new"><h3>바꾸면</h3><div class="frame"><div class="chat">
+      <div class="bub me">디자인팀 방에 "시안 내일까지"라고 남겨줘</div>
+      <div class="bub bot hl"><b>디자인팀 방</b>에 이렇게 보낼게요. 일하는 중인 직원에게는 끝나면 전달돼요.<div class="btns"><span class="btn p">보내기</span><span class="btn">취소</span></div></div>
+    </div>
+    <div class="pet" style="margin-top:12px"><div class="bar">대화방 · 디자인팀</div><div class="body">
+      <div class="card hl"><div class="reply">↪ 대표: 시안 내일까지</div><div class="meta">지은 · 디자인</div>시안 v2 올렸어요<div class="small">📎 secretary-v2.png</div><div class="react">👍 1 · 처리됨 ✓</div></div>
+    </div></div></div></div>
+  </div>
+</section>
+
+<section id="e">
+  <div class="head"><h2>⑤ 레트로 오피스 테마를 바탕화면 비서 창이 안 따라감</h2><span class="tag t3">새 기능 따라잡기</span><span class="who">바탕화면 비서</span></div>
+  <p class="why">테마 계획에서 "2차"로 미뤄 둔 부분입니다. 지금은 색만 일부 따라오고, 테마를 바꿔도 펼침 창 바탕색은 앱을 다시 켜야 바뀝니다.</p>
+  <div class="cmp">
+    <div class="col now"><h3>지금 (레트로 테마 켬)</h3><div class="frame"><div class="pet">
+      <div class="bar">비서 ▾ <span class="chip">작업 중 2명</span></div>
+      <div class="body"><div class="card"><div class="meta">수진 · 개발</div><div class="ttl">테스트를 돌려요</div><div class="btns"><span class="btn p">승인</span><span class="btn">반려</span></div></div></div>
+    </div><p class="note">본 창은 레트로인데 비서 창만 <b>일반 모양</b>.</p></div></div>
+    <div class="col new retro"><h3 style="color:var(--acc)">바꾸면</h3><div class="frame" style="background:#0f0e1d;border-color:#c9d6ff"><div class="pet">
+      <div class="bar">▶ 비서 <span class="chip">작업 중 2</span></div>
+      <div class="body"><div class="card"><div class="meta">수진 · 개발</div><div class="ttl">테스트를 돌려요</div><div class="btns"><span class="btn p">승인</span><span class="btn">반려</span></div></div></div>
+    </div><p class="note" style="color:#b9b3e6">테두리·글꼴·버튼까지 테마 적용, 테마 바꾸면 <b style="color:#f6e7c1">바로</b> 바뀜.</p></div></div>
+  </div>
+</section>
+
+<section id="f">
+  <div class="head"><h2>⑥ 설정 문구와 자잘한 것</h2><span class="tag t4">정리</span><span class="who">두 비서 모두</span></div>
+  <div class="cmp" style="margin-top:12px">
+    <div class="col now"><h3>지금</h3><div class="frame">
+      <div class="set"><div><b>바탕화면 비서</b><div class="small">앱 창을 닫아도 바탕화면에 비서가 떠 있어요. 눌러서 묻고 결재하고, 끌어서 옮겨요 <span class="miss">(맥 전용)</span></div></div><span class="tog"></span></div>
+      <div class="card" style="margin-top:10px"><div class="ttl">설정 바꾸기</div><div class="meta"><span class="miss">reportTone</span>: normal → easy</div></div>
+      <div class="pet" style="margin-top:10px"><div class="bar"><span class="chip miss">작업 중 3명</span> <span class="small">↳ 이름에는 2명만</span></div></div>
+    </div></div>
+    <div class="col new"><h3>바꾸면</h3><div class="frame">
+      <div class="set"><div><b>바탕화면 비서</b><div class="small">앱 창을 닫아도 바탕화면에 비서가 떠 있어요. 눌러서 묻고 결재하고, 끌어서 옮겨요 <span class="hl">(맥·윈도우)</span></div></div><span class="tog"></span></div>
+      <div class="card hl" style="margin-top:10px"><div class="ttl">설정 바꾸기</div><div class="meta">보고 말투: 보통 → 쉬운 말</div></div>
+      <div class="pet hl" style="margin-top:10px"><div class="bar"><span class="chip">작업 중 2명 · 대기 1명</span></div></div>
+    </div></div>
+  </div>
+  <p class="note">그 밖에: 메뉴바에 "바탕화면 비서 켜기/끄기" 추가, 리눅스에서 비서 설정 칸 숨기기, SPEC 문서의 비서 설명 갱신, 안 쓰는 코드·틀린 주석 정리.</p>
+</section>
+
+<section id="g">
+  <div class="head"><h2>⑦ 계획만 해 둔 새 기능 (후보)</h2><span class="tag t4">새로 만들기</span></div>
+  <div class="cmp" style="margin-top:12px">
+    <div class="col new"><h3>A. 아침 요약 + 대신 답한 것 고치기</h3><div class="frame"><div class="chat">
+      <div class="bub bot">좋은 아침이에요. 밤사이 업무 4건 끝, 결재 2건 대기 중이에요.<br>제가 대신 답한 질문 1건: 민호 "배포 전에 테스트 돌릴까요?" → <b>네</b>
+      <div class="btns"><span class="btn">결재함 열기</span><span class="btn">다르게 답하기</span></div></div>
+    </div></div></div>
+    <div class="col new"><h3>B. 비서 답 안에 결재 카드 바로</h3><div class="frame"><div class="chat">
+      <div class="bub me">지금 결재 뭐 있어?</div>
+      <div class="bub bot">2건 있어요.
+        <div class="card" style="margin-top:6px"><div class="meta">수진 · 개발</div><div class="ttl">빌드 결과물을 지워요</div><div class="btns"><span class="btn p">승인</span><span class="btn">반려</span></div></div>
+        <div class="card" style="margin-top:6px"><div class="meta">지은 · 디자인</div><div class="ttl">시안 폴더에 파일 3개 저장</div><div class="btns"><span class="btn p">승인</span><span class="btn">반려</span></div></div></div>
+    </div></div></div>
+  </div>
+  <div class="cmp" style="margin-top:16px">
+    <div class="col new"><h3>C. 파일·폴더 찾아 열기</h3><div class="frame"><div class="chat">
+      <div class="bub me">어제 지은이 만든 시안 파일 열어줘</div>
+      <div class="bub bot">찾았어요: <b>secretary-v2.png</b> (11-12, 지은) <div class="btns"><span class="btn p">열기</span><span class="btn">폴더에서 보기</span></div></div>
+    </div></div></div>
+    <div class="col new"><h3>D. 긴 대화 이어 가기</h3><div class="frame"><div class="chat">
+      <div class="bub me">아까 말한 그 배포 건 어떻게 됐어?</div>
+      <div class="bub bot">오전에 말씀하신 1.4.1 배포 건이요 — 민호가 테스트까지 끝냈고 결재 대기예요.</div>
+    </div><p class="note">지금은 최근 대화 8개만 기억해서 "아까 그거"를 놓칩니다. 오래된 대화는 요약해 이어 붙이기.</p></div></div>
+  </div>
+</section>
+
+<section id="h">
+  <div class="head"><h2>⑧ 비서에게 연달아 물으면 '대기 중'이 안 보임</h2><span class="tag t2">대표 지적 · 작고 체감 큼</span><span class="who">두 비서 모두</span></div>
+  <p class="why">지금도 앱 안에서는 순서대로 줄을 세우긴 합니다(최대 3개). 그런데 화면에는 보낸 말이 그냥 '보낸 것'처럼만 보여서, 어느 게 답하는 중이고 어느 게 기다리는지 모릅니다. 취소도 못 하고, 4번째부터는 "질문이 너무 잦아요"로 버려집니다. 직원 대화에는 이미 있는 '대기 메시지'(차례 기다림·지금 보내기·취소)를 비서에도 맞추는 안입니다.</p>
+  <div class="cmp">
+    <div class="col now"><h3>지금</h3><div class="frame"><div class="chat">
+      <div class="bub me">오늘 끝난 업무 정리해줘</div>
+      <div class="bub me">결재 몇 개 남았어?</div>
+      <div class="bub me miss">민호 지금 뭐 해?</div>
+      <div class="bub bot small">생각하는 중…</div>
+      <div class="bub me">수진한테 테스트 돌리라고 해</div>
+      <div class="bub bot small miss" style="color:var(--bad)">질문이 너무 잦아요. 앞 질문의 답을 받은 뒤 잠시 뒤에 다시 보내 주세요.</div>
+    </div><p class="note">세 개 다 보낸 것처럼 보이고, 네 번째는 <b>버려짐</b>.</p></div></div>
+    <div class="col new"><h3>바꾸면</h3><div class="frame"><div class="chat">
+      <div class="bub me">오늘 끝난 업무 정리해줘</div>
+      <div class="bub bot small">답하는 중… (업무 기록 보는 중)</div>
+      <div class="bub me hl" style="opacity:.75">결재 몇 개 남았어?<div style="font-size:10.5px;opacity:.9;margin-top:3px">⏳ 차례 기다림 · 1번째</div></div>
+      <div class="bub me hl" style="opacity:.75">민호 지금 뭐 해?<div style="font-size:10.5px;opacity:.9;margin-top:3px">⏳ 차례 기다림 · 2번째</div></div>
+      <div class="btns hl" style="align-self:flex-end"><span class="btn">하나로 합쳐 묻기</span><span class="btn">기다리는 것 취소</span></div>
+    </div><p class="note">기다리는 질문은 흐리게 + <b>차례 표시</b>, 하나씩 취소 가능. 짧은 질문이 여러 개면 <b>하나로 합쳐</b> 한 번에 답하게 해 비용도 아낌. 바탕화면 비서 창에도 똑같이. 줄이 꽉 차면 버리지 않고 입력창에 남겨 둠.</p></div></div>
+  </div>
+</section>
+
+<section id="sum">
+  <div class="head"><h2>한눈에 보기</h2></div>
+  <table style="margin-top:10px">
+    <tr><th>#</th><th>내용</th><th>어느 비서</th><th>크기</th><th>제안 순서</th></tr>
+    <tr><td>①</td><td>원격에서 막힌 설정은 비서 카드도 막기</td><td>⌘K</td><td>작음</td><td>1차</td></tr>
+    <tr><td>②</td><td>지금 화면 이름으로 안내 (메뉴에서 자동으로 읽기)</td><td>⌘K</td><td>작음</td><td>1차</td></tr>
+    <tr><td>⑧</td><td>연달아 물으면 '차례 기다림' 표시·취소·합쳐 묻기</td><td>둘 다</td><td>작음~중간</td><td>1차</td></tr>
+    <tr><td>⑥</td><td>설정 문구·영어 이름표·작업 중 숫자·메뉴바 켜기/끄기</td><td>둘 다</td><td>작음</td><td>1차</td></tr>
+    <tr><td>③</td><td>바탕화면 비서 결재 카드 = 본 창 수준</td><td>바탕화면</td><td>중간</td><td>2차</td></tr>
+    <tr><td>④</td><td>대화방 메신저(방 고르기·답장·대기 메시지)</td><td>둘 다</td><td>중간</td><td>2차</td></tr>
+    <tr><td>⑤</td><td>레트로 테마 적용</td><td>바탕화면</td><td>중간</td><td>2차</td></tr>
+    <tr><td>⑦</td><td>아침 요약·답 안 결재 카드·파일 찾기·긴 대화</td><td>⌘K</td><td>큼</td><td>골라서 3차</td></tr>
+  </table>
+</section>
+</main>
+</body>
+</html>

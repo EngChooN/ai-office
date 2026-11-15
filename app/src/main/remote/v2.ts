@@ -196,6 +196,7 @@ export const V2_METHODS: Record<OfficeMethod, MethodSpec> = {
   setGear: R('s s ~s'),
   missions: R(),
   claimMission: R('s'),
+  setTitle: R('~s'),
   startTasks: R('S'),
   saveSchedule: R('o'),
   deleteSchedule: R('s'),

@@ -4,6 +4,7 @@
 // 건물은 사무실 층 평면(planOf)을 층마다 칸 상자로 쌓는다(평면 1칸 = 외관 K칸) — 2층 ㄱ·3층 ㄷ·4층 T·5층 탑이 밖에서도 보이고,
 // 위층이 아래층 없는 칸 위로 나오면 기둥 없이 내민다(캔틸레버). 꾸밈 자리는 단계별 표(StageDef)로 정하고 레벨 숫자는 보지 않는다(C3 원칙).
 // DOM 없이 픽셀 배열(Cv)에 그린다 — 시안 생성기(scripts/iso-art.mts)도 같은 코드를 쓴다. 상자·정렬 규칙은 isoArt.ts와 같다(A 파스텔)
+import type { TimeOfDay } from '@shared/dayNight'
 import { HH, HW } from '../../../shared/iso/grid.ts'
 import { CellKind, kindAt, planOf } from '../../../shared/iso/plan.ts'
 import type { Rot } from '../../../shared/iso/furniture.ts'
@@ -347,16 +348,41 @@ export function nightTint(cv: Cv) {
   }
 }
 
+// ── 저녁: 시안(docs/design/office-ideation)의 노을빛(#ff9f6b)을 24% 얹는다. 불빛은 그대로 ──
+export function eveningTint(cv: Cv) {
+  for (let i = 0; i < cv.w * cv.h; i++) {
+    if (!cv.has(i)) continue
+    const c = cv.read(i)
+    if (!isLit(c)) cv.write(i, mix(c, '#ff9f6b', 0.24).slice(0, 3).concat(c[3]) as RGBA)
+  }
+}
+/** 낮밤 단계에 맞는 색 입히기 (낮은 그대로) */
+const tintFor = (cv: Cv, phase: TimeOfDay) => {
+  if (phase === 'night') nightTint(cv)
+  else if (phase === 'evening') eveningTint(cv)
+}
+
+// ── 창 불빛: 낮 / 저녁(노을 반사 — 불은 아직) / 밤(일하는 층만 켜짐 'lit', 나머지 'dark'; 어느 층이 일하는지 모르면 'night' = 드문드문) ──
+type Tone = 'day' | 'evening' | 'lit' | 'dark' | 'night'
+/** 이 층(1층부터) 창의 불빛 상태 — litFloors를 모르면(미리보기) 밤에 드문드문 켠다 */
+const toneOf = (phase: TimeOfDay, floor: number, litFloors: ReadonlySet<number> | null): Tone => (phase === 'night' ? (litFloors ? (litFloors.has(floor) ? 'lit' : 'dark') : 'night') : phase)
+
 // ── 재질 ──
-const winPx = (zz: number, a: number, isNight: boolean, seed: number, wide = 0.56, z0 = 6, z1 = FH - 5): Color | null => {
+const winPx = (zz: number, a: number, tone: Tone, seed: number, wide = 0.56, z0 = 6, z1 = FH - 5): Color | null => {
   const f = frac(a)
   if (f < 0.5 - wide / 2 || f > 0.5 + wide / 2 || zz < z0 || zz > z1) return null
-  if (isNight) return noise(Math.floor(a), seed) > 0.35 ? (zz > z1 - 3 ? '#ffe7a8' : '#ffd98a') : '#3a4470'
+  if (tone === 'lit') return zz > z1 - 3 ? '#ffe7a8' : '#ffd76a'
+  if (tone === 'dark') return '#3a4470'
+  if (tone === 'evening') return (f - zz * 0.02) % 0.3 < 0.05 ? '#ffe6c8' : zz > z1 - 3 ? '#ffd8b0' : '#f7b98c' // 노을을 비추는 유리 (불은 아직 안 켜짐)
+  if (tone === 'night') return noise(Math.floor(a), seed) > 0.35 ? (zz > z1 - 3 ? '#ffe7a8' : '#ffd98a') : '#3a4470'
   return (f - zz * 0.02) % 0.3 < 0.05 ? K.skyL : zz > z1 - 3 ? '#cfe9ee' : K.sky
 }
-const curtain = (zz: number, a: number, isNight: boolean, seed: number, fin: string): Color => {
+const curtain = (zz: number, a: number, tone: Tone, seed: number, fin: string): Color => {
   if (zz < 2 || frac(a * 2) < 0.06) return fin
-  if (isNight) return noise(Math.floor(a * 2), seed) > 0.3 ? '#ffd98a' : '#34406a'
+  if (tone === 'lit') return '#ffd76a'
+  if (tone === 'dark') return '#34406a'
+  if (tone === 'evening') return frac(a * 2 - zz * 0.03) < 0.12 ? '#ffe6c8' : '#f3c9a4'
+  if (tone === 'night') return noise(Math.floor(a * 2), seed) > 0.3 ? '#ffd98a' : '#34406a'
   return frac(a * 2 - zz * 0.03) < 0.12 ? K.skyL : '#bcdfe6'
 }
 /** 밤: 불빛으로 잘못 읽히는 따뜻한 재질(벽돌 등)은 미리 어둡게 — nightTint가 불빛만 남기므로 */
@@ -453,6 +479,8 @@ interface WallCtx {
   /** 면을 따라가는 외관 칸 좌표 (창 간격) */
   a: number
   isNight: boolean
+  /** 이 층 창의 불빛 */
+  tone: Tone
 }
 
 /** 단계마다 꾸밈 자리를 정하는 틀 — 그 단계 마지막 레벨의 건물 크기로 땅 판을 정하고, 꾸밈은 그 바깥(옆·앞 마당)에 둔다 */
@@ -481,6 +509,8 @@ interface DecorCtx {
   f: Frame
   b: Built
   isNight: boolean
+  /** 1층 창의 불빛 (별관 등) */
+  tone: Tone
   has: (f: ExteriorFeature) => boolean
   add: (o: Obj) => void
   lamp: (gx: number, gy: number) => void
@@ -506,16 +536,16 @@ const towerWall = (_q: Q, c: WallCtx) => {
   const f = frac(c.a)
   if (c.zz < 2 || c.zz > FH - 3 || f < 0.18) return f > 0.16 && f < 0.18 ? K.gold : c.zz > FH - 3 && c.zz < FH - 2.4 ? '#d8ccb6' : '#e8dfcf'
   if (f > 0.97) return K.gold
-  return curtain(c.zz, c.a, c.isNight, c.fl + 20, '#e8dfcf')
+  return curtain(c.zz, c.a, c.tone, c.fl + 20, '#e8dfcf')
 }
 /** E5 유리 사옥: 청록 유리 커튼월 + 층마다 짙은 띠(스팬드럴) + 가는 멀리언 */
 const glassWall = (_q: Q, c: WallCtx) => {
   if (c.zz > FH - 4) return c.zz > FH - 1 ? '#8b97a3' : '#56616f'
   if (frac(c.a * 2) < 0.05) return '#7b8796'
-  if (c.isNight) return curtain(c.zz, c.a, true, c.fl + 13, '#7b8796')
+  if (c.tone !== 'day' && c.tone !== 'evening') return curtain(c.zz, c.a, c.tone, c.fl + 13, '#7b8796')
   return frac(c.a * 2 - c.zz * 0.04) < 0.1 ? '#d6eeee' : c.zz > FH - 8 ? '#a9d2d0' : '#93c2c2'
 }
-const woodWall = (_q: Q, c: WallCtx) => (c.zz < 1.5 ? '#7a5634' : (winPx(c.zz, c.a, c.isNight, c.fl + 9, 0.7) ?? (frac(c.a * 3) < 0.12 ? '#b88c5e' : '#d9b285')))
+const woodWall = (_q: Q, c: WallCtx) => (c.zz < 1.5 ? '#7a5634' : (winPx(c.zz, c.a, c.tone, c.fl + 9, 0.7) ?? (frac(c.a * 3) < 0.12 ? '#b88c5e' : '#d9b285')))
 const towerLot = (q: Q, f: Frame) => (q.gy > f.y1 - 0.5 ? marble(q) : null)
 
 /** 줄무늬 차양 (상자 앞변, 로비 돌출 칸은 건너뜀) */
@@ -611,7 +641,7 @@ const STAGES: Record<ExteriorStage, StageDef> = {
     wall: (q, c) => {
       if (q.face === 'S' && c.a > 2.2 && c.a < 3.6 && c.zz < DOOR_H + 1) return c.zz % 3 < 1 ? '#8a8f98' : '#b9bec6'
       if (q.face === 'E') {
-        const w = winPx(c.zz, c.a, c.isNight, 1, 0.4, 9, 15)
+        const w = winPx(c.zz, c.a, c.tone, 1, 0.4, 9, 15)
         if (w) return w
       }
       return frac(c.a * 2 + (Math.floor(c.zz / 4) % 2) * 0.5) < 0.05 || c.zz % 4 < 0.5 ? '#c4c1ba' : '#dcd9d2'
@@ -633,7 +663,7 @@ const STAGES: Record<ExteriorStage, StageDef> = {
     at: [2, 1],
     right: 3,
     front: 2,
-    wall: (_q, c) => (c.zz < 2 ? '#94bfd3' : (winPx(c.zz, c.a, c.isNight, 2, 0.6, 5, 16) ?? '#f4f1ea')),
+    wall: (_q, c) => (c.zz < 2 ? '#94bfd3' : (winPx(c.zz, c.a, c.tone, 2, 0.6, 5, 16) ?? '#f4f1ea')),
     roof: '#d4d0c8',
     lot: paving,
     attach: (b, has, isNight) => [...(has('awning') ? awning(b) : []), ...(has('litSign') ? roofSign(b, isNight, FH, b.plan.n * PLAN_K - 0.5) : [])],
@@ -652,7 +682,7 @@ const STAGES: Record<ExteriorStage, StageDef> = {
     at: [2, 1],
     right: 2,
     front: 2,
-    wall: (_q, c) => (c.zz < 1.5 ? '#c08a72' : (winPx(c.zz, c.a, c.isNight, c.fl + 5, 0.5) ?? dusk(brick(c.a, c.zz), c.isNight))),
+    wall: (_q, c) => (c.zz < 1.5 ? '#c08a72' : (winPx(c.zz, c.a, c.tone, c.fl + 5, 0.5) ?? dusk(brick(c.a, c.zz), c.isNight))),
     roof: '#c9b8a8',
     lot: lawn,
     attach: (b, has) => (has('canopy') ? canopy(b) : []),
@@ -750,12 +780,12 @@ const STAGES: Record<ExteriorStage, StageDef> = {
     attach: (b, has) => STAGES[6].attach!(b, has, false),
     decor: (d) => {
       towerDecor(d)
-      const { f, add, isNight } = d
+      const { f, add, isNight, tone } = d
       // 2층 원목 별관 + 2층 높이 연결 다리
       const ax = f.x1 + 2.5
-      const annexFace = (q: Q) => (q.z < 1.5 ? '#7a5634' : woodWall(q, { fl: Math.floor(q.z / FH), zz: q.z % FH, a: q.face === 'S' ? q.gx : q.gy, isNight }))
+      const annexFace = (q: Q) => (q.z < 1.5 ? '#7a5634' : woodWall(q, { fl: Math.floor(q.z / FH), zz: q.z % FH, a: q.face === 'S' ? q.gx : q.gy, isNight, tone }))
       add(put(sprite([bx(0, 0, 5, 4, 0, FH * 2, '#c9b8a8', { S: annexFace, E: annexFace, noHi: true })]), ax, f.y0 + 0.5))
-      add(put(sprite([bx(0, 0.3, ax - d.b.right, 0.8, 0, 6, K.metalL, { S: (q) => curtain(q.z, q.gx, isNight, 50, K.metalL), E: K.metalL, top: '#c4ccd6', noHi: true })], { shadow: false }), d.b.right, f.y0 + 0.8, FH + 2))
+      add(put(sprite([bx(0, 0.3, ax - d.b.right, 0.8, 0, 6, K.metalL, { S: (q) => curtain(q.z, q.gx, tone, 50, K.metalL), E: K.metalL, top: '#c4ccd6', noHi: true })], { shadow: false }), d.b.right, f.y0 + 0.8, FH + 2))
       add(put(tree(8), ax + 5.5, f.y0 + 4))
       add(put(tree(7), f.x1 + 7.6, f.y1 - 0.6))
       add(put(bench(), ax + 1, f.y0 + 6))
@@ -812,7 +842,8 @@ function companyFlag(b: Built): Box[] {
 }
 
 /** 건물 한 장 (건물 로컬 좌표, 평면 1칸 = PLAN_K). 칸 정렬은 층 → 대각선 순서 (같은 크기 칸 격자라 이 순서면 맞다) */
-function buildingSprite(s: StageDef, b: Built, has: (f: ExteriorFeature) => boolean, isNight: boolean): { sprite: Sprite; lights: Pt[] } {
+function buildingSprite(s: StageDef, b: Built, has: (f: ExteriorFeature) => boolean, phase: TimeOfDay, litFloors: ReadonlySet<number> | null): { sprite: Sprite; lights: Pt[] } {
+  const isNight = phase === 'night'
   const { plan } = b
   const k = PLAN_K
   const parts: Box[] = []
@@ -845,9 +876,9 @@ function buildingSprite(s: StageDef, b: Built, has: (f: ExteriorFeature) => bool
           const face = (q: Q): Color => {
             const zz = q.z - z
             const a = q.face === 'S' ? q.gx : q.gy
-            if (isDoor && q.face === 'S' && zz < DOOR_H) return q.u < 0.12 || q.u > 0.88 || zz > DOOR_H - 1.5 || Math.abs(q.u - 0.5) < 0.05 ? K.metalL : isNight ? '#ffd98a' : '#cfeefa'
-            if (isLobby) return zz < 1.5 || zz > h - 2 ? K.metalL : curtain(zz, a, isNight, 3, K.metalL)
-            return s.wall(q, { fl, zz, a, isNight })
+            if (isDoor && q.face === 'S' && zz < DOOR_H) return q.u < 0.12 || q.u > 0.88 || zz > DOOR_H - 1.5 || Math.abs(q.u - 0.5) < 0.05 ? K.metalL : phase !== 'day' ? '#ffd98a' : '#cfeefa'
+            if (isLobby) return zz < 1.5 || zz > h - 2 ? K.metalL : curtain(zz, a, toneOf(phase, fl + 1, litFloors), 3, K.metalL)
+            return s.wall(q, { fl, zz, a, isNight, tone: toneOf(phase, fl + 1, litFloors) })
           }
           // 지붕: 맨 위 칸만, 둘레에 파라펫 색
           const rim = mix(s.roof, '#ffffff', 0.4)
@@ -988,11 +1019,13 @@ function outlineOf(src: Cv): Cv {
   return cv
 }
 
-/** 레벨의 외관 땅 판 (레벨·낮밤마다 한 번 굽는다) */
-export function artExteriorBoard(level: number, isNight: boolean): ExteriorBoard {
+/** 레벨의 외관 땅 판 (레벨·낮밤·불 켜진 층마다 한 번 굽는다).
+ * litFloors: 밤에 창에 불을 켤 층(1층부터) — 일하는 직원이 있는 층. 모르면(null) 드문드문 켠다 */
+export function artExteriorBoard(level: number, phase: TimeOfDay, litFloors: ReadonlySet<number> | null = null): ExteriorBoard {
+  const isNight = phase === 'night'
   const row = levelRowOf(level)
   const lv = LEVEL_TABLE.indexOf(row) + 1
-  const cacheKey = `${lv}-${isNight ? 'n' : 'd'}`
+  const cacheKey = `${lv}-${phase}-${isNight && litFloors ? [...litFloors].sort().join(',') : ''}`
   const hit = boardCache.get(cacheKey)
   if (hit) return hit
   const stage = row.exterior
@@ -1012,7 +1045,7 @@ export function artExteriorBoard(level: number, isNight: boolean): ExteriorBoard
 
   const objs: Obj[] = []
   const lamps: Pt[] = []
-  const { sprite: bs, lights } = buildingSprite(s, b, has, isNight)
+  const { sprite: bs, lights } = buildingSprite(s, b, has, phase, litFloors)
   const buildingObj = put(bs, f.x0, f.y0)
   objs.push(buildingObj)
   const ls = stage === 1 ? poleSprite(isNight) : lampSprite(isNight)
@@ -1020,6 +1053,7 @@ export function artExteriorBoard(level: number, isNight: boolean): ExteriorBoard
     f,
     b,
     isNight,
+    tone: toneOf(phase, 1, litFloors),
     has,
     add: (ob) => objs.push(ob),
     lamp: (gx, gy) => {
@@ -1028,6 +1062,7 @@ export function artExteriorBoard(level: number, isNight: boolean): ExteriorBoard
     },
   })
   for (const ob of sortBoxes(objs)) ob.draw(cv, o)
+  if (phase === 'evening') eveningTint(cv)
   if (isNight) {
     nightTint(cv)
     // 가로등 아래 노란 빛 웅덩이 · 야간 조명은 외벽을 비추는 빛기둥
@@ -1392,7 +1427,8 @@ function nbAt(i: number, r: number, GX: number, GY: number, maxFloors: number, t
 }
 
 /** 이웃 건물 한 채 (종류별 그림 — NB_KINDS). 2층 이상이면 가끔 뒤쪽에 한 층 낮은 곁채 */
-function nbSprite(nb: Nb, floors: number, isNight: boolean): Sprite {
+function nbSprite(nb: Nb, floors: number, phase: TimeOfDay): Sprite {
+  const isNight = phase === 'night'
   const seed = nb.i * 11 + nb.r * 17
   const t = (k: number) => noise(nb.i * 13 + k * 31 + 5000, nb.r * 19 + k * 7 + 5000)
   const hasWing = floors >= 2 && nb.wing > 0.55 && nb.w >= 2.5
@@ -1405,16 +1441,16 @@ function nbSprite(nb: Nb, floors: number, isNight: boolean): Sprite {
   }
   const sp = sprite(parts)
   nbMute(sp.cv)
-  if (isNight) nightTint(sp.cv)
+  tintFor(sp.cv, phase)
   return sp
 }
 
 /** 공원 블록: 나무 두세 그루 */
-function nbPark(nb: Nb, isNight: boolean): { sp: Sprite; gx: number; gy: number }[] {
+function nbPark(nb: Nb, phase: TimeOfDay): { sp: Sprite; gx: number; gy: number }[] {
   const n = (k: number) => noise(nb.i * 41 + k * 97 + 900, nb.r * 59 + k * 5 + 900)
   return [0, 1, 2].slice(0, 2 + Math.round(n(0))).map((k) => {
     const sp = tree(Math.round(6 + n(k + 1) * 3))
-    if (isNight) nightTint(sp.cv)
+    tintFor(sp.cv, phase)
     return { sp, gx: nb.gx + n(k + 4) * (nb.w - 0.5), gy: nb.gy + n(k + 7) * (nb.d - 0.5) }
   })
 }
@@ -1435,8 +1471,8 @@ interface NbScene {
 const nbCache = new Map<string, NbScene>()
 
 /** 화면에 보이는 이웃 건물·공원·가로등 (O = 부지 (0,0) 꼭짓점의 화면 px) */
-function neighborsOf(W: number, H: number, isNight: boolean, O: Pt, board: ExteriorBoard): NbScene {
-  const cacheKey = `${W},${H},${O[0]},${O[1]},${board.GX},${board.GY},${board.stageName},${board.floors},${isNight}`
+function neighborsOf(W: number, H: number, phase: TimeOfDay, O: Pt, board: ExteriorBoard): NbScene {
+  const cacheKey = `${W},${H},${O[0]},${O[1]},${board.GX},${board.GY},${board.stageName},${board.floors},${phase}`
   const hit = nbCache.get(cacheKey)
   if (hit) return hit
   const { GX, GY } = board
@@ -1486,13 +1522,13 @@ function neighborsOf(W: number, H: number, isNight: boolean, O: Pt, board: Exter
             const b = rectOf(gx, gy, 1, 1, 14)
             if (!onScreen(b) || (gx > -1 && gx < GX + 0.5 && gy > -1 && gy < GY)) continue
             const sp = tree(4, 2)
-            if (isNight) nightTint(sp.cv)
+            tintFor(sp.cv, phase)
             place(sp, gx, gy, r >= 0 ? 'front' : gx >= GX ? 'side' : 'back')
           }
         continue
       }
       if (nb.park) {
-        for (const t of nbPark(nb, isNight)) {
+        for (const t of nbPark(nb, phase)) {
           const b = rectOf(t.gx, t.gy, 1, 1, 34)
           if (onScreen(b) && (nb.layer === 'back' || !hitsBody(b))) place(t.sp, t.gx, t.gy, nb.layer)
         }
@@ -1503,13 +1539,13 @@ function neighborsOf(W: number, H: number, isNight: boolean, O: Pt, board: Exter
       if (!onScreen(b)) continue
       while (nb.layer !== 'back' && floors > 0 && hitsBody(b)) b = rectOf(nb.gx, nb.gy, nb.w, nb.d, --floors * FH + 18)
       if (floors === 0) continue
-      place(nbSprite({ ...nb, floors }, floors, isNight), nb.gx, nb.gy, nb.layer)
+      place(nbSprite({ ...nb, floors }, floors, phase), nb.gx, nb.gy, nb.layer)
       aprons.set(`${i},${r}`, [nb.gx - 0.3, nb.gy - 0.3, nb.gx + nb.w + 0.3, nb.gy + nb.d + 0.3])
     }
   // 큰길 건너편 인도의 가로등 (밤에 거리를 밝힌다)
   // 흙길 동네는 나무 전봇대, 동네가 좋아질수록 가로등이 촘촘해지고 사이에 가로수
-  const ls = town.road === 'dirt' ? poleSprite(isNight) : lampSprite(isNight)
-  if (isNight) nightTint(ls.cv)
+  const ls = town.road === 'dirt' ? poleSprite(phase === 'night') : lampSprite(phase === 'night')
+  tintFor(ls.cv, phase)
   const step = town.lampStep
   for (let gx = Math.floor(Math.min(...gxs) / step) * step + 2; gx < Math.max(...gxs) + 2; gx += step) {
     const b = rectOf(gx + 0.4, GY + 0.4, 0.2, 0.2, 40)
@@ -1522,7 +1558,7 @@ function neighborsOf(W: number, H: number, isNight: boolean, O: Pt, board: Exter
       const b = rectOf(gx + 0.3, GY + 0.3, 0.4, 0.4, 30)
       if (!onScreen(b) || hitsBody(b) || isAlleyRoadX(gx + 0.5, GX)) continue
       const sp = tree(5, 10)
-      if (isNight) nightTint(sp.cv)
+      tintFor(sp.cv, phase)
       place(sp, gx, GY + 0.1, 'front')
     }
   const scene = { placed: placed.sort((a, b) => a.depth - b.depth), aprons, lamps }
@@ -1542,9 +1578,9 @@ function apronPaint(q: Q, scene: NbScene, GX: number, GY: number, t: Town): Colo
 }
 
 /** 부지 오른쪽(side) 또는 거리 건너편(front) 이웃 건물·가로등만 투명 바탕 한 장에. side는 부지 위, front는 사람·차 위에 얹는다 */
-export function artNeighbors(W: number, H: number, isNight: boolean, boardO: Pt, board: ExteriorBoard, layer: 'side' | 'front'): Cv {
+export function artNeighbors(W: number, H: number, phase: TimeOfDay, boardO: Pt, board: ExteriorBoard, layer: 'side' | 'front'): Cv {
   const cv = new Cv(W, H)
-  for (const p of neighborsOf(W, H, isNight, boardO, board).placed) if (p.layer === layer) cv.blit(p.cv, p.x, p.y)
+  for (const p of neighborsOf(W, H, phase, boardO, board).placed) if (p.layer === layer) cv.blit(p.cv, p.x, p.y)
   return cv
 }
 
@@ -1557,9 +1593,10 @@ const lampPool = (cv: Cv, [lx, ly]: Pt) => {
  * 화면 전체 땅 (W×H, 하늘 없음): 부지 칸 좌표(boardO = 부지 (0,0) 꼭짓점)를 이어 큰길 · 골목길(큰길과 교차로로 이어짐) · 이웃 건물 마당 · 잔디를 칠하고,
  * 밤이면 부지와 같은 남색으로 어둡게 + 가로등 빛 웅덩이. 그 위에 부지 뒤·왼쪽 이웃 건물(back). 부지 자리는 부지 그림이 덮는다
  */
-export function artGround(W: number, H: number, isNight: boolean, boardO: Pt, board: ExteriorBoard): Cv {
+export function artGround(W: number, H: number, phase: TimeOfDay, boardO: Pt, board: ExteriorBoard): Cv {
+  const isNight = phase === 'night'
   const cv = new Cv(W, H)
-  const nbs = neighborsOf(W, H, isNight, boardO, board)
+  const nbs = neighborsOf(W, H, phase, boardO, board)
   const { GX, GY } = board
   const town = TOWNS[board.stage]
   for (let y = 0; y < H; y++)
@@ -1570,6 +1607,7 @@ export function artGround(W: number, H: number, isNight: boolean, boardO: Pt, bo
       const isLotEdge = q.gx >= -0.08 && q.gx < GX + 0.08 && q.gy >= -0.08 && q.gy < GY
       cv.write(y * W + x, C(alleyMouthPaint(q, GX, GY, isNight, town) ?? streetPaint(q, GY, isNight, town) ?? (isLotEdge && town.walk !== 'none' ? CURB : (alleyPaint(q, GX, GY, isNight, town) ?? apronPaint(q, nbs, GX, GY, town) ?? groundPaint(q, town)))))
     }
+  if (phase === 'evening') eveningTint(cv)
   if (isNight) {
     nightTint(cv)
     for (const p of nbs.lamps) lampPool(cv, p)
@@ -1600,31 +1638,31 @@ export function artPin(): Cv {
 }
 
 /** 걷는 사람 한 프레임 (사무실 직원 그림, 밤이면 어둡게) */
-export function artWalker(pose: PersonPose, dir: PersonDir, n: number, isNight: boolean): Cv {
+export function artWalker(pose: PersonPose, dir: PersonDir, n: number, phase: TimeOfDay): Cv {
   const p = miniPerson(pose, dir, n)
-  if (!isNight) return p
+  if (phase === 'day') return p
   const cv = new Cv(p.w, p.h)
   cv.blit(p, 0, 0)
-  nightTint(cv)
+  tintFor(cv, phase)
   return cv
 }
 
 /** 차 한 대 (밤이면 전조등만 남기고 어둡게) */
-export function artCar(color: string, isNight: boolean, dir: 1 | -1): Sprite {
-  const s = carSprite(color, isNight, dir)
-  if (isNight) nightTint(s.cv)
+export function artCar(color: string, phase: TimeOfDay, dir: 1 | -1): Sprite {
+  const s = carSprite(color, phase === 'night', dir)
+  tintFor(s.cv, phase)
   return s
 }
 
 /** 땅 + 부지 + 이웃 건물을 한 장으로 (다음 레벨 미리보기·시안 생성기) — 부지 둘레에 margin만큼 거리 */
-export function artExteriorPreview(level: number, isNight: boolean, margin = 24): Cv {
-  const board = artExteriorBoard(level, isNight)
+export function artExteriorPreview(level: number, phase: TimeOfDay, margin = 24, litFloors: ReadonlySet<number> | null = null): Cv {
+  const board = artExteriorBoard(level, phase, litFloors)
   const W = board.cv.w + margin * 2
   const H = board.cv.h + margin * 2
   const o: Pt = [board.o[0] + margin, board.o[1] + margin]
-  const cv = artGround(W, H, isNight, o, board)
+  const cv = artGround(W, H, phase, o, board)
   cv.blit(board.cv, margin, margin)
-  for (const layer of ['side', 'front'] as const) cv.blit(artNeighbors(W, H, isNight, o, board, layer), 0, 0)
+  for (const layer of ['side', 'front'] as const) cv.blit(artNeighbors(W, H, phase, o, board, layer), 0, 0)
   return cv
 }
 

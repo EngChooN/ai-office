@@ -1082,6 +1082,25 @@ export function countLogs(type: string, since: number) {
   return get<{ n: number }>('SELECT COUNT(*) n FROM log WHERE type = ? AND ts >= ?', type, since)!.n
 }
 
+/** 지시를 보낸 날짜들 ('YYYY-MM-DD', 이 PC 시간대) — 연속 출근 업적용. 따로 출근 기록을 남기지 않고 기존 지시 기록에서 뽑는다 */
+export function instructionDays(): string[] {
+  return all<{ d: string }>("SELECT DISTINCT strftime('%Y-%m-%d', ts / 1000, 'unixepoch', 'localtime') d FROM log WHERE type = 'instruction'").map((r) => r.d)
+}
+
+/** 22시~다음 날 6시(이 PC 시간대)에 보낸 지시 수 — 야근 업적용 */
+export function countNightInstructions(): number {
+  return get<{ n: number }>("SELECT COUNT(*) n FROM log WHERE type = 'instruction' AND (CAST(strftime('%H', ts / 1000, 'unixepoch', 'localtime') AS INTEGER) >= 22 OR CAST(strftime('%H', ts / 1000, 'unixepoch', 'localtime') AS INTEGER) < 6)")!.n
+}
+
+/** 고른 칭호 id 하나만 저장한다 (없으면 null) */
+export function loadTitleId(): string | null {
+  return get<{ value: string }>("SELECT value FROM setting WHERE key = 'titleId'")?.value || null
+}
+
+export function saveTitleId(id: string | null) {
+  run("INSERT INTO setting (key, value) VALUES ('titleId', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", id ?? '')
+}
+
 export function countMeetings(since: number) {
   return get<{ n: number }>('SELECT COUNT(*) n FROM meeting WHERE created_at >= ?', since)!.n
 }

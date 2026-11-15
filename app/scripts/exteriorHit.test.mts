@@ -20,7 +20,7 @@ function spotsOf(L: DioramaLayout) {
   // 이웃 건물: 부지 위·거리 건너편에 얹힌 이웃 건물 그림의 불투명 픽셀 (건물 사각형 밖)
   let neighbor: Pt | null = null
   for (const layer of ['front', 'side'] as const) {
-    const cv = artNeighbors(W, H, false, O, board, layer)
+    const cv = artNeighbors(W, H, 'day', O, board, layer)
     for (let i = 0; i < W * H && !neighbor; i += 7) if (cv.has(i) && !inBody(i % W, Math.floor(i / W))) neighbor = [i % W + 0.5, Math.floor(i / W) + 0.5]
   }
   return {
@@ -36,8 +36,8 @@ function spotsOf(L: DioramaLayout) {
 test('외관 누르기: 모든 단계에서 내 건물·부지만 들어가고 이웃 건물·잔디·큰길은 반응 없다', () => {
   for (const level of STAGE_LEVELS) {
     const { W, H } = dioramaFit(level, 1440, 900)
-    for (const isNight of [false, true]) {
-      const L = dioramaLayout(level, isNight, W, H)
+    for (const phase of ['day', 'evening', 'night'] as const) {
+      const L = dioramaLayout(level, phase, null, W, H)
       const s = spotsOf(L)
       assert.ok(L.hit(...s.building), `Lv.${level} 건물 가운데`)
       assert.ok(L.hit(...s.lot), `Lv.${level} 부지 땅`)
@@ -56,7 +56,7 @@ test('외관 누르기: 화면 px → 논리 px 변환이 배율·축소·잘림
       [700, 500],
     ]) {
       const { W, H, scale } = dioramaFit(level, hostW, hostH)
-      const L = dioramaLayout(level, false, W, H)
+      const L = dioramaLayout(level, 'day', null, W, H)
       const s = spotsOf(L)
       const rects = [
         // 정수 배율 그대로, 가운데 정렬로 왼쪽이 화면 밖으로 잘림
@@ -82,10 +82,10 @@ test('외관 누르기: 화면 px → 논리 px 변환이 배율·축소·잘림
 test('외관 골목: 모든 단계에서 골목 차도가 큰길 앞 틈·인도를 지나 큰길에 닿는다 (잔디에서 끊기지 않음)', () => {
   for (const level of STAGE_LEVELS) {
     const { W, H } = dioramaFit(level, 1440, 900)
-    const L = dioramaLayout(level, false, W, H)
+    const L = dioramaLayout(level, 'day', null, W, H)
     const O = originOf(L)
     const { GX, GY } = L.board
-    const ground = artGround(W, H, false, O, L.board)
+    const ground = artGround(W, H, 'day', O, L.board)
     const colorAt = ([x, y]: Pt) => {
       const px = Math.floor(x)
       const py = Math.floor(y)

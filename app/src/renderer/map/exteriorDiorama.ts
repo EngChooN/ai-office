@@ -1,3 +1,4 @@
+import type { TimeOfDay } from '@shared/dayNight'
 import { toCanvas } from './iso/isoArt'
 import { HH, HW } from '@shared/iso/grid'
 import { artCar, artExteriorPreview, artGround, artNeighbors, artPin, artWalker, P, type ExteriorBoard, type Pt } from './iso/exteriorArt'
@@ -20,25 +21,25 @@ const outlineCanvas = new WeakMap<ExteriorBoard, HTMLCanvasElement>()
 
 /** 화면 전체 땅·부지 뒤 이웃 건물은 groundCanvas에, 부지 + 오른쪽 이웃 건물은 sceneCanvas(투명 바탕)에.
  * 거리 건너편 이웃 건물·가로등은 frontCanvas(투명 바탕)에 — 사람·차 위에 얹는다 */
-export function paintDiorama(groundCanvas: HTMLCanvasElement, sceneCanvas: HTMLCanvasElement, frontCanvas: HTMLCanvasElement, layout: DioramaLayout, isNight: boolean) {
+export function paintDiorama(groundCanvas: HTMLCanvasElement, sceneCanvas: HTMLCanvasElement, frontCanvas: HTMLCanvasElement, layout: DioramaLayout, phase: TimeOfDay) {
   const { board, ox, oy } = layout
   const W = sceneCanvas.width
   const H = sceneCanvas.height
   const O: Pt = [ox + board.o[0], oy + board.o[1]]
-  groundCanvas.getContext('2d')!.drawImage(toCanvas(artGround(W, H, isNight, O, board), 1), 0, 0)
+  groundCanvas.getContext('2d')!.drawImage(toCanvas(artGround(W, H, phase, O, board), 1), 0, 0)
   let art = boardCanvas.get(board)
   if (!art) boardCanvas.set(board, (art = toCanvas(board.cv, 1)))
   const c = sceneCanvas.getContext('2d')!
   c.clearRect(0, 0, W, H)
   c.drawImage(art, ox, oy)
-  c.drawImage(toCanvas(artNeighbors(W, H, isNight, O, board, 'side'), 1), 0, 0)
+  c.drawImage(toCanvas(artNeighbors(W, H, phase, O, board, 'side'), 1), 0, 0)
   const f = frontCanvas.getContext('2d')!
   f.clearRect(0, 0, W, H)
-  f.drawImage(toCanvas(artNeighbors(W, H, isNight, O, board, 'front'), 1), 0, 0)
+  f.drawImage(toCanvas(artNeighbors(W, H, phase, O, board, 'front'), 1), 0, 0)
 }
 
 /** 다음 레벨 미리보기용 작은 그림 */
-export const dioramaPreviewUrl = (level: number, isNight: boolean) => toCanvas(artExteriorPreview(level, isNight, 12), 1).toDataURL()
+export const dioramaPreviewUrl = (level: number, phase: TimeOfDay, litFloors: ReadonlySet<number> | null = null) => toCanvas(artExteriorPreview(level, phase, 12, litFloors), 1).toDataURL()
 
 interface Walker {
   gx: number
@@ -74,7 +75,7 @@ export class DioramaStreet {
     private readonly W: number,
     private readonly H: number,
     private readonly layout: DioramaLayout,
-    private readonly isNight: boolean,
+    private readonly phase: TimeOfDay,
     private readonly isStill: boolean,
   ) {
     const { board, ox, oy } = layout
@@ -162,7 +163,7 @@ export class DioramaStreet {
       // +x(↘)로 가면 앞모습을 뒤집고, −x(↖)로 가면 뒷모습
       const dir = w.dir === 1 ? 'front' : 'back'
       const s = this.sprite(`w-${w.look}-${pose}-${dir}`, () => {
-        const cv = artWalker(this.isStill ? 'stand' : pose, dir, w.look, this.isNight)
+        const cv = artWalker(this.isStill ? 'stand' : pose, dir, w.look, this.phase)
         return { img: toCanvas(cv, 1), o: [Math.round(cv.w / 2), cv.h - 1] }
       })
       const [x, y] = P(this.O, w.gx, lanes.walk, 0)
@@ -180,12 +181,12 @@ export class DioramaStreet {
     for (const car of [...this.cars].sort((a, b) => a.dir - b.dir || a.gx - b.gx)) {
       const lane = car.dir === -1 ? lanes.far : lanes.near
       const s = this.sprite(`car-${car.color}-${car.dir}`, () => {
-        const sp = artCar(car.color, this.isNight, car.dir)
+        const sp = artCar(car.color, this.phase, car.dir)
         return { img: toCanvas(sp.cv, 1), o: sp.o }
       })
       const [x, y] = P(this.O, car.gx, lane, 0)
       c.drawImage(s.img, Math.round(x - s.o[0]), Math.round(y - s.o[1]))
-      if (this.isNight) {
+      if (this.phase === 'night') {
         // 전조등 빛: 진행 방향 앞으로 번지는 타원
         const [hx, hy] = P(this.O, car.dir === 1 ? car.gx + 2.6 : car.gx - 0.6, lane + 0.5, 0)
         c.fillStyle = 'rgba(255,236,170,0.16)'

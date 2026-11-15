@@ -95,6 +95,11 @@ export const FURNITURE: Record<string, FurnitureSpec> = {
   piano: front(2, 2, 'piano'),
   aquarium: front(2, 1, 'aquarium'),
   trophy: front(2, 1),
+  // 계절·테마 가구 — 벽·천장·책상 위 배치는 없어서 바닥에 서는 모양으로 그린다
+  'watermelon-bar': front(2, 1),
+  'tea-table': spec(2, 1),
+  'space-console': front(2, 1),
+  'trophy-shelf': spec(2, 1),
   // Lv.11~20 상점 가구 (0.14.0) — 1×1은 기본값이라 뺐다
   'massage-chair': seat(1),
   fireplace: spec(2, 1),

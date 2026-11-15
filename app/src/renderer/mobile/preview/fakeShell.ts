@@ -426,7 +426,19 @@ const impl: Record<string, (...args: never[]) => unknown> = {
   getRecordBefore: () => ({ logs: [], hasMore: false }),
   payslip: () => slip,
   ledger: () => [{ ts: now - 3600_000, amount: 3_000_000, kind: 'bonus', label: '업무 완료 보너스' }],
-  missions: () => ({ daily: [], achievements: [] }),
+  missions: () => ({
+    daily: [
+      { id: 'd1', key: 'mission:demo:d1', emoji: '✅', label: '업무 3건 끝내기', metric: 'tasks', target: 3, reward: 500_000, progress: 3, isClaimed: false },
+      { id: 'd2', key: 'mission:demo:d2', emoji: '🪙', label: '오늘 100만 원 벌기', metric: 'earned', target: 1_000_000, reward: 300_000, progress: 400_000, isClaimed: false },
+    ],
+    achievements: [
+      { id: 'a1', key: 'ach:a1', emoji: '🚀', label: '첫 업무 완료', metric: 'tasks', target: 1, reward: 1_000_000, progress: 1, isClaimed: false },
+      { id: 'a2', key: 'ach:a2', emoji: '🏆', label: '업무 10건 완료', metric: 'tasks', target: 10, reward: 3_000_000, progress: 10, isClaimed: false },
+      { id: 'a3', key: 'ach:a3', emoji: '💼', label: '직원 3명 고용', metric: 'tasks', target: 3, reward: 2_000_000, progress: 3, isClaimed: true },
+    ],
+  }),
+  claimMission: () => ({ ok: true, message: '받았어요.' }),
+  setTitle: () => undefined,
   dailyReport: () => '## 오늘 한 일\n- 프로토콜 v2 규격',
   hooksStatus: () => ({ installed: false, isAskInstalled: false, port: 47823 }),
   claudeStatus: () => ({ isLoggedIn: true, email: 'me@example.com', authMethod: 'claude.ai', hasTerminalClaude: true }),

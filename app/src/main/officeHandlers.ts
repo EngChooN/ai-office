@@ -163,6 +163,7 @@ export function createOfficeHandlers(office: Office, remoteApi: () => RemoteServ
     setGear: (staffId: string, slot: 'desk' | 'chair', itemId: string | null) => office.setGear(staffId, slot, itemId),
     missions: () => office.missions(),
     claimMission: (key: string) => office.claimMission(key),
+    setTitle: (id: string | null) => office.setTitle(id),
     startTasks: (ids: string[]) => office.startTasks(ids),
     saveSchedule: (s: Parameters<Office['saveSchedule']>[0]) => office.saveSchedule(s),
     deleteSchedule: (id: string) => office.deleteSchedule(id),
