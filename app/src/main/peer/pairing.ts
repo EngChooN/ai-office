@@ -1,4 +1,5 @@
-// PC 짝짓기 (설계서 1-4절 v2 규격): B컴이 짝짓기 창을 열고(시간 제한 없음 — 성공·닫기·앱 종료·3번 틀림에만 닫힌다), A컴(또는 휴대폰)이 12자 코드로 인증서를 묶어 토큰을 받는다
+// PC 짝짓기 (설계서 1-4절 v2 규격): B컴이 짝짓기 창을 열고(시간 제한 없음 — 사용자가 끌 때까지 코드가 유지되고, 연결이 성공해도 닫히지 않는다), A컴(또는 휴대폰)이 12자 코드로 인증서를 묶어 토큰을 받는다
+// 코드를 3번 틀리면 창을 닫지 않고 코드만 새로 바꾼다 (무차별 대입은 코드 한 개당 3번까지만 시험할 수 있다)
 // 코드는 PBKDF2 키(K)의 재료로만 쓰고 네트워크에 보내지 않는다 — 양쪽이 clientProof·serverProof로 서로를 증명한다
 // 서버 쪽(PairingWindow)과 클라이언트 쪽(pairWithHost)이 같은 키·증명 함수를 쓴다. 네트워크는 밖에서 넣어 준다 (테스트가 가짜를 넣는다)
 
@@ -60,14 +61,24 @@ export class PairingWindow implements PairingHost {
   private win: { kind: PairKind; code: string; tries: number; info: PairingInfo } | null = null
   private hellos = new Map<string, string>()
   private onChange: () => void
+  private onRotate: () => void
+  /** 코드가 틀려서 바뀐 마지막 시각 (화면이 새 코드를 다시 읽게 하는 신호 — 코드 자체는 아니다) */
+  private rotatedAtMs: number | null = null
 
-  constructor(opts: { onChange?: () => void } = {}) {
+  constructor(opts: { onChange?: () => void; onRotate?: () => void; now?: () => number } = {}) {
     this.onChange = opts.onChange ?? (() => {})
+    this.onRotate = opts.onRotate ?? (() => {})
+    this.now = opts.now ?? Date.now
+  }
+  private now: () => number
+
+  private newCode() {
+    return Array.from({ length: PEER_LIMITS.pairCodeLength }, () => PAIR_CODE_ALPHABET[crypto.randomInt(0, PAIR_CODE_ALPHABET.length)]).join('')
   }
 
   /** 새 짝짓기 창 (이미 있으면 닫고 새로 — 코드는 창마다 새로) */
   open(kind: PairKind, info: PairingInfo, code?: string): PairWindowView {
-    const c = (code && normalizePairCode(code)) || Array.from({ length: PEER_LIMITS.pairCodeLength }, () => PAIR_CODE_ALPHABET[crypto.randomInt(0, PAIR_CODE_ALPHABET.length)]).join('')
+    const c = (code && normalizePairCode(code)) || this.newCode()
     this.hellos.clear()
     this.win = { kind, code: c, tries: 0, info }
     this.onChange()
@@ -85,6 +96,24 @@ export class PairingWindow implements PairingHost {
     return this.win !== null
   }
 
+  /** 저장용: 지금 창의 종류와 코드 원문 (12자). 닫혀 있으면 null — 밖에서 반드시 암호화해 저장한다 */
+  persisted(): { kind: PairKind; code: string } | null {
+    return this.win ? { kind: this.win.kind, code: this.win.code } : null
+  }
+
+  /** 코드는 그대로 두고 이 PC 주소·인증서 정보만 새로 맞춘다 (서버를 다시 열어 주소·포트가 바뀐 경우). 진행 중이던 시도는 새로 센다 */
+  refreshInfo(info: PairingInfo) {
+    const w = this.win
+    if (!w) return
+    this.win = { ...w, info }
+    this.hellos.clear()
+    this.onChange()
+  }
+
+  get rotatedAt() {
+    return this.rotatedAtMs
+  }
+
   /** 지금 열린 창의 종류 (닫혀 있으면 null) */
   get kind(): PairKind | null {
     return this.win?.kind ?? null
@@ -94,7 +123,7 @@ export class PairingWindow implements PairingHost {
     const w = this.win
     if (!w) return null
     const code = formatPairCode(w.code)
-    return { kind: w.kind, code, host: w.info.host, port: w.info.port, fingerprint: fingerprintShort(w.info.spki), until: null, copyText: `${w.info.host}:${w.info.port} ${code}` }
+    return { kind: w.kind, code, rotatedAt: this.rotatedAtMs, host: w.info.host, port: w.info.port, fingerprint: fingerprintShort(w.info.spki), until: null, copyText: `${w.info.host}:${w.info.port} ${code}` }
   }
 
   hello(nonceA: unknown) {
@@ -115,7 +144,8 @@ export class PairingWindow implements PairingHost {
     w.tries++
     const left = Math.max(0, PEER_LIMITS.pairMaxWrong - w.tries)
     const fail = (): PairConfirmResult => {
-      if (w.tries >= PEER_LIMITS.pairMaxWrong && this.win === w) this.close()
+      // 3번 틀리면 창은 열어 둔 채 코드만 새로 바꾼다 — 이미 들어온 다른 시도(옛 창 객체)는 아래 this.win !== w 검사로 모두 실패한다
+      if (w.tries >= PEER_LIMITS.pairMaxWrong && this.win === w) this.rotate()
       return { ok: false, code: 'pair_failed', remaining: left }
     }
     if (w.tries > PEER_LIMITS.pairMaxWrong) return fail()
@@ -130,10 +160,20 @@ export class PairingWindow implements PairingHost {
     const mine = clientProofOf(k, salt)
     if (!same(clientProof, mine.toString('hex')) || this.win !== w) return fail()
     const label = typeof body.peerLabel === 'string' && body.peerLabel.trim() ? body.peerLabel.trim().slice(0, 60) : w.kind === 'phone' ? 'phone' : 'peer'
-    // 코드는 한 번 성공하면 폐기 — 창도 닫힌다
-    const kind = w.kind
-    this.close()
-    return { ok: true, kind, label, serverProof: serverProofOf(k, salt, mine).toString('hex') }
+    // 성공해도 코드·창은 그대로 둔다 (여러 기기가 같은 코드로 연결할 수 있다). 앞선 오답 횟수는 맞는 코드를 아는 사람이 왔으니 비운다
+    w.tries = 0
+    return { ok: true, kind: w.kind, label, serverProof: serverProofOf(k, salt, mine).toString('hex') }
+  }
+
+  /** 코드를 새로 만들고 시도 횟수를 비운다 (창 객체를 갈아 끼워 계산 중이던 옛 시도는 성공할 수 없다) */
+  private rotate() {
+    const w = this.win
+    if (!w) return
+    this.win = { kind: w.kind, code: this.newCode(), tries: 0, info: w.info }
+    this.hellos.clear()
+    this.rotatedAtMs = this.now()
+    this.onChange()
+    this.onRotate()
   }
 }
 

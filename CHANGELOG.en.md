@@ -11,14 +11,14 @@ Writing rules
 - Leave out: internal or development matters, re-fixes of features added in the same version, how a security hole worked (if needed, one line on the result), minor wording or spacing tweaks.
 - Couldn't do it before → new feature; easier than before → improvement; was working wrongly → bug fix.
 
-## [미정] (설치본 미빌드)
-PC app only: the desktop secretary and turning it on from the menu bar work only in the PC app. On the phone you can only find files; opening them works only on the PC.
+## [1.4.1] - 2026-11-16
+PC app only: the desktop secretary, turning it on from the menu bar and the connection code setting work only in the PC app. On the phone you can only find files; opening them works only on the PC.
 
 ### At a glance
 - **New** Approve right inside the assistant's reply
 - **New** The assistant sums up the night when you return
 - **New** The assistant finds and opens files and folders
-- **New** Long conversations continue with a summary
+- **Better** Connection codes stay until you turn them off
 - **Better** Phone taps switch to 'Processing' at once
 
 ### New features
@@ -29,13 +29,16 @@ PC app only: the desktop secretary and turning it on from the menu bar work only
 - You can ask the assistant to post or reply in a team or project room. The confirm card shows the room, how it is sent and the post being replied to, and by default it reaches working staff after their current work, and 'Send now' cuts in.
 
 ### Improvements
-- The desktop secretary now matches the app: approval cards show the same title, content and requester, and the ⋯ menu offers auto-approve from now on, stop the work (shown only for staff who are working) and open in the app. The header splits 'N working' and 'n waiting'. The Retro office game theme applies to its window too.
-- When you ask the assistant several things in a row, waiting questions show 'Waiting · #n in line'. You can remove one or ask them together (unless too long). The assistant points you to screens by their current menu names, and you can turn the desktop secretary on or off from the menu bar (the notification area on Windows). On Linux its setting is hidden.
-- On the phone (and remote PC windows), Approve/Reject now switches to 'Processing' right away and your message shows as 'Sending' first, with 'Send again' if it fails.
+- The connection code for a phone or another PC now stays until you turn it off. It remains after a successful connection, you turn it off with 'Turn off code', and it survives an app restart. After 3 wrong tries it switches to a new code and tells you. When a new phone connects, the previous phone is disconnected.
+- The assistant screens are polished. The desktop secretary's approval cards now match the app, with a ⋯ menu (auto-approve from now on, stop the work, open in the app). Asking several things in a row shows 'Waiting · #n in line', and you can remove one or ask them together. Turn it on or off from the menu bar (the notification area on Windows). The Retro theme applies too.
+- The phone responds faster. Approve/Reject switches to 'Processing' right away, your message shows as 'Sending' first with 'Send again' if it fails. Connections are reused so the first reply is quicker, and PC status is pushed at once.
 - The phone's input row and top buttons are tidied in size and spacing, and the staff chat input now looks like the group chat on both PC and phone. Task board columns take only as much room as their cards.
 
 ### Bug fixes
 - Fixed a hidden staff member getting selected when you click the street outside a building in the office. The floor buttons on the right were removed.
+- Fixed staff names being cut off in the desktop secretary's header in the Retro office game theme.
+- Fixed a stalled plan's to-do cards being wrongly counted as 'waiting'.
+- Fixed an approval that succeeded showing as failed on the phone, and update alerts appearing for new versions that have no file.
 
 ## [1.4.0] - 2026-11-13
 PC app only: the Connect-devices card and the team creation window are in the PC app. In the phone app, first-time connection now has a 3-step guide.

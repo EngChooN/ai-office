@@ -49,7 +49,7 @@ function rawReq(port: number, path: string, token: string, method = 'GET', body?
 }
 
 /** B컴: 실제 RemoteService (짝짓기·슬롯·이벤트) */
-function makeB(port: number, now?: () => number) {
+function makeB(port: number, now?: () => number, pairStore: { v: { kind: 'peer' | 'phone' | 'view'; code: string } | null } = { v: null }, alerts: string[] = []) {
   let config: RemoteConfig = { ...DEFAULT_REMOTE_CONFIG, port, host: '127.0.0.1', mode: 'router', tokenHash: null, isTokenUsed: true, isLanNoticeSeen: true, isTsNoticeSeen: true }
   let keys = createSelfSignedCert()
   const calls: string[] = []
@@ -61,7 +61,9 @@ function makeB(port: number, now?: () => number) {
     saveConfig: (c) => (config = c),
     loadKeys: () => keys,
     saveKeys: (k) => (keys = k),
-    alert: () => {},
+    loadPairing: () => pairStore.v,
+    savePairing: (p) => (pairStore.v = p),
+    alert: (title) => void alerts.push(title),
     changed: () => {},
     upnp: null,
     listenHost: '127.0.0.1',
@@ -228,7 +230,7 @@ test('휴대폰 IP 입력: 같은 짝짓기 길(/v2/pair/*)로 휴대폰 토큰�
 
 const HOUR = 60 * 60_000
 
-test('짝짓기 창은 시간 제한이 없다: 5분·1시간이 지나도 열려 있고, 연결에 성공하면 닫힌다', { timeout: 20_000 }, async () => {
+test('짝짓기 창은 시간 제한이 없다: 5분·1시간이 지나도 열려 있고, 연결에 성공해도 같은 코드로 계속 열려 있다', { timeout: 20_000 }, async () => {
   const port = await freePort()
   let clock = Date.now()
   const B = makeB(port, () => clock)
@@ -242,22 +244,15 @@ test('짝짓기 창은 시간 제한이 없다: 5분·1시간이 지나도 열�
     assert.deepEqual([B.svc.pairingView()?.code, B.svc.status().pairOpen], [win.code, 'peer'])
     const r = await pairWithHost(createPairTransport('127.0.0.1', port), { code: win.code, clientName: 'A컴', kind: 'peer' })
     assert.ok(r.slotId)
-    assert.deepEqual([B.svc.pairingView(), B.svc.status().pairOpen], [null, null])
-  } finally {
-    await B.svc.disable()
-  }
-})
-
-test('짝짓기 창은 코드를 3번 틀리면 닫힌다 (시간이 지나도 보호는 그대로)', { timeout: 20_000 }, async () => {
-  const port = await freePort()
-  let clock = Date.now()
-  const B = makeB(port, () => clock)
-  try {
-    await B.svc.enable(port)
-    const win = (await B.svc.openPairing('peer'))!
-    clock += HOUR
-    const wrong = win.code === '0000-0000-0000' ? '1111-1111-1111' : '0000-0000-0000'
-    for (const left of [2, 1, 0]) await assert.rejects(pairWithHost(createPairTransport('127.0.0.1', port), { code: wrong, clientName: 'A', kind: 'peer' }), (e: PairFailure) => e.code === 'wrong_code' && e.remaining === left)
+    assert.deepEqual([B.svc.pairingView()?.code, B.svc.status().pairOpen], [win.code, 'peer'])
+    // 같은 코드로 다른 기기가 또 연결된다 (다른 슬롯)
+    const r2 = await pairWithHost(createPairTransport('127.0.0.1', port), { code: win.code, clientName: 'C컴', kind: 'peer' })
+    assert.ok(r2.slotId && r2.slotId !== r.slotId)
+    assert.equal(B.svc.peerSlots().length, 2)
+    // 같은 종류로 다시 열어도 코드는 그대로다
+    assert.equal((await B.svc.openPairing('peer'))!.code, win.code)
+    // 코드 끄기를 눌러야 닫힌다
+    B.svc.closePairing()
     assert.deepEqual([B.svc.pairingView(), B.svc.status().pairOpen], [null, null])
     await assert.rejects(pairWithHost(createPairTransport('127.0.0.1', port), { code: win.code, clientName: 'A', kind: 'peer' }), (e: PairFailure) => e.code === 'closed')
   } finally {
@@ -265,7 +260,67 @@ test('짝짓기 창은 코드를 3번 틀리면 닫힌다 (시간이 지나도 �
   }
 })
 
-test('휴대폰 연결도 시간 제한이 없다: 1시간 뒤에도 같은 QR 토큰으로 코드 연결이 되고, 붙으면 QR을 거둔다', { timeout: 20_000 }, async () => {
+test('코드를 3번 틀리면 창은 열린 채 새 코드로 바뀌고, 알림이 한 번 간다 (시간이 지나도 보호는 그대로)', { timeout: 20_000 }, async () => {
+  const port = await freePort()
+  let clock = Date.now()
+  const alerts: string[] = []
+  const B = makeB(port, () => clock, undefined, alerts)
+  try {
+    await B.svc.enable(port)
+    const win = (await B.svc.openPairing('peer'))!
+    clock += HOUR
+    const wrong = win.code === '0000-0000-0000' ? '1111-1111-1111' : '0000-0000-0000'
+    for (const left of [2, 1, 0]) await assert.rejects(pairWithHost(createPairTransport('127.0.0.1', port), { code: wrong, clientName: 'A', kind: 'peer' }), (e: PairFailure) => e.code === 'wrong_code' && e.remaining === left)
+    assert.equal(B.svc.status().pairOpen, 'peer')
+    assert.notEqual(B.svc.pairingView()?.code, win.code)
+    assert.equal(typeof B.svc.status().pairRotatedAt, 'number')
+    assert.equal(alerts.length, 1)
+    // 옛 코드는 소용없고, 새 코드는 통한다
+    await assert.rejects(pairWithHost(createPairTransport('127.0.0.1', port), { code: win.code, clientName: 'A', kind: 'peer' }), (e: PairFailure) => e.code === 'wrong_code')
+    const r = await pairWithHost(createPairTransport('127.0.0.1', port), { code: B.svc.pairingView()!.code, clientName: 'A', kind: 'peer' })
+    assert.ok(r.slotId)
+  } finally {
+    await B.svc.disable()
+  }
+})
+
+test('재시작 유지: 저장된 코드로 앱을 다시 켜면 같은 코드로 창이 되살아나고, 코드 끄기를 하면 저장도 지워진다', { timeout: 30_000 }, async () => {
+  const port = await freePort()
+  const store: { v: { kind: 'peer' | 'phone' | 'view'; code: string } | null } = { v: null }
+  const first = makeB(port, undefined, store)
+  let code = ''
+  try {
+    await first.svc.enable(port)
+    code = (await first.svc.openPairing('peer'))!.code
+    assert.equal(store.v?.code, code.replace(/-/g, ''))
+    assert.equal(store.v?.kind, 'peer')
+  } finally {
+    await first.svc.disable()
+  }
+  // 새 서비스(= 앱 재시작): 켜기 전에는 창이 없고, 켜면 같은 코드로 되살아난다
+  const second = makeB(port, undefined, store)
+  try {
+    assert.equal(second.svc.status().pairOpen, null)
+    await second.svc.enable(port)
+    assert.deepEqual([second.svc.pairingView()?.code, second.svc.status().pairOpen], [code, 'peer'])
+    const r = await pairWithHost(createPairTransport('127.0.0.1', port), { code, clientName: 'A컴', kind: 'peer' })
+    assert.ok(r.slotId)
+    second.svc.closePairing()
+    assert.equal(store.v, null)
+  } finally {
+    await second.svc.disable()
+  }
+  // 끈 뒤 다시 시작하면 되살아나지 않는다
+  const third = makeB(port, undefined, store)
+  try {
+    await third.svc.enable(port)
+    assert.deepEqual([third.svc.pairingView(), third.svc.status().pairOpen], [null, null])
+  } finally {
+    await third.svc.disable()
+  }
+})
+
+test('휴대폰 연결도 시간 제한이 없다: 1시간 뒤에도 같은 QR 토큰으로 코드 연결이 되고, 붙으면 QR을 거두지만 코드는 유지된다', { timeout: 20_000 }, async () => {
   const port = await freePort()
   let clock = Date.now()
   const B = makeB(port, () => clock)
@@ -279,11 +334,11 @@ test('휴대폰 연결도 시간 제한이 없다: 1시간 뒤에도 같은 QR �
     clock += HOUR
     // 창을 다시 열어도 QR 토큰을 새로 만들지 않는다 (예전에는 5분이 지나면 새 토큰 → 붙어 있던 휴대폰이 끊겼다)
     const again = (await B.svc.openPairing('phone'))!
-    assert.notEqual(again.code, win.code)
+    assert.equal(again.code, win.code)
     assert.equal(B.config().tokenHash, tokenHash)
     assert.deepEqual([B.svc.status().isQrReady, B.svc.status().pairOpen], [true, 'phone'])
     const r = await pairWithHost(createPairTransport('127.0.0.1', port), { code: again.code, clientName: '내 폰', kind: 'phone' })
-    assert.equal(B.svc.status().pairOpen, null)
+    assert.equal(B.svc.status().pairOpen, 'phone')
     assert.equal((await rawReq(port, '/v1/status', r.token)).status, 200)
     // 이 토큰으로 휴대폰이 붙었으니 QR(토큰 원문)은 거둔다
     assert.deepEqual([B.svc.status().isQrReady, B.svc.status().isTokenUsed, B.svc.qr()], [false, true, null])

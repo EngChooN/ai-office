@@ -60,28 +60,81 @@ function fakeHost(win: PairingWindow, seen: string | null, forgeServerProof = fa
   return { t, hits }
 }
 
-test('짝짓기 성공: 코드가 맞으면 토큰을 받고 창은 닫힌다 (코드는 1회용)', async () => {
+test('짝짓기 성공: 코드가 맞으면 토큰을 받고, 창과 코드는 그대로라 같은 코드로 또 연결된다', async () => {
   const win = new PairingWindow()
   const view = win.open('peer', { host: '100.64.0.2', port: 47900, spki: SPKI }, '7M3Q-H9XK-2VTB')
   assert.deepEqual([view.code, view.fingerprint, view.until], ['7M3Q-H9XK-2VTB', 'AAAAAAAA', null])
   const { t } = fakeHost(win, SPKI)
   const r = await pairWithHost(t, { code: '7M3Q-H9XK-2VTB', clientName: 'A컴', kind: 'peer' })
   assert.deepEqual([r.slotId, r.peerName, r.spki, r.fingerprint], ['slot1', 'B컴', SPKI, 'AAAAAAAA'])
-  assert.equal(win.isOpen, false)
-  // 같은 코드로 다시 → 닫힘
-  await assert.rejects(pairWithHost(fakeHost(win, SPKI).t, { code: '7M3Q-H9XK-2VTB', clientName: 'A컴', kind: 'peer' }), (e: PairFailure) => e.code === 'closed')
+  assert.equal(win.isOpen, true)
+  assert.equal(win.view()?.code, '7M3Q-H9XK-2VTB')
+  // 같은 코드로 다른 기기가 또 연결된다
+  const again = await pairWithHost(fakeHost(win, SPKI).t, { code: '7M3Q-H9XK-2VTB', clientName: '폰', kind: 'peer' })
+  assert.equal(again.slotId, 'slot1')
+  assert.equal(win.isOpen, true)
 })
 
-test('틀린 코드 3번이면 창이 닫힌다 (남은 횟수를 알려 준다)', async () => {
-  const win = new PairingWindow()
+test('틀린 코드 3번이면 창은 열어 둔 채 코드가 새로 바뀐다 (남은 횟수를 알려 주고, 알림 콜백이 불린다)', async () => {
+  let rotated = 0
+  let changed = 0
+  const win = new PairingWindow({ onRotate: () => rotated++, onChange: () => changed++ })
   win.open('peer', { host: '100.64.0.2', port: 47900, spki: SPKI }, '1111-1111-1111')
+  const before = changed
   const attempt = () => pairWithHost(fakeHost(win, SPKI).t, { code: '2222-2222-2222', clientName: 'A', kind: 'peer' })
   await assert.rejects(attempt(), (e: PairFailure) => e.code === 'wrong_code' && e.remaining === 2)
   await assert.rejects(attempt(), (e: PairFailure) => e.code === 'wrong_code' && e.remaining === 1)
+  assert.equal(rotated, 0)
   await assert.rejects(attempt(), (e: PairFailure) => e.code === 'wrong_code' && e.remaining === 0)
-  assert.equal(win.isOpen, false)
-  // 이제는 맞는 코드도 소용없다
-  await assert.rejects(pairWithHost(fakeHost(win, SPKI).t, { code: '1111-1111-1111', clientName: 'A', kind: 'peer' }), (e: PairFailure) => e.code === 'closed')
+  assert.equal(win.isOpen, true)
+  assert.equal(rotated, 1)
+  assert.equal(changed, before + 1)
+  assert.notEqual(win.view()?.code, '1111-1111-1111')
+  assert.equal(typeof win.rotatedAt, 'number')
+  // 옛 코드는 이제 통하지 않는다 (새 코드의 오답으로 센다)
+  await assert.rejects(pairWithHost(fakeHost(win, SPKI).t, { code: '1111-1111-1111', clientName: 'A', kind: 'peer' }), (e: PairFailure) => e.code === 'wrong_code' && e.remaining === 2)
+  // 새 코드는 통한다
+  const r = await pairWithHost(fakeHost(win, SPKI).t, { code: win.view()!.code, clientName: 'A', kind: 'peer' })
+  assert.equal(r.slotId, 'slot1')
+})
+
+test('무차별 대입 방어: 동시에 많이 보내도 코드 하나당 3번까지만 시험되고, 코드는 바뀐다', async () => {
+  const win = new PairingWindow()
+  win.open('peer', { host: 'h', port: 1, spki: SPKI }, '7M3Q-H9XK-2VTB')
+  const first = win.view()!.code
+  const A = 'A'.repeat(22)
+  const hellos = Array.from({ length: 6 }, () => win.hello(A) as { nonceB: string })
+  const results = await Promise.all(hellos.map((h) => win.confirm({ nonceA: A, nonceB: h.nonceB, clientProof: '0'.repeat(64) })))
+  assert.equal(results.every((r) => !r.ok), true)
+  assert.notEqual(win.view()!.code, first)
+  assert.equal(win.isOpen, true)
+})
+
+test('성공은 앞선 오답 횟수를 비운다 (맞는 코드를 아는 사람이 왔으니)', async () => {
+  const win = new PairingWindow()
+  win.open('peer', { host: 'h', port: 1, spki: SPKI }, '1111-1111-1111')
+  const wrong = () => pairWithHost(fakeHost(win, SPKI).t, { code: '2222-2222-2222', clientName: 'A', kind: 'peer' })
+  await assert.rejects(wrong(), (e: PairFailure) => e.remaining === 2)
+  await assert.rejects(wrong(), (e: PairFailure) => e.remaining === 1)
+  await pairWithHost(fakeHost(win, SPKI).t, { code: '1111-1111-1111', clientName: 'A', kind: 'peer' })
+  await assert.rejects(wrong(), (e: PairFailure) => e.remaining === 2)
+  assert.equal(win.view()?.code, '1111-1111-1111')
+})
+
+test('저장·복원: persisted()의 코드로 다시 열면 같은 코드로 연결된다 (앱 재시작)', async () => {
+  const first = new PairingWindow()
+  first.open('phone', { host: 'h', port: 1, spki: SPKI })
+  const saved = first.persisted()!
+  assert.match(saved.code, /^[0-9A-Z]{12}$/)
+  assert.equal(saved.kind, 'phone')
+  const second = new PairingWindow()
+  second.open(saved.kind, { host: 'h2', port: 2, spki: SPKI }, saved.code)
+  assert.equal(second.view()?.code, formatPairCode(saved.code))
+  const r = await pairWithHost(fakeHost(second, SPKI).t, { code: saved.code, clientName: '폰', kind: 'phone' })
+  assert.equal(r.slotId, 'slot1')
+  assert.equal(new PairingWindow().persisted(), null)
+  second.close()
+  assert.equal(second.persisted(), null)
 })
 
 test('시간 제한 없음: 창은 닫기를 눌러야 닫히고, 닫히면 hello도 받지 않는다', () => {
@@ -94,6 +147,8 @@ test('시간 제한 없음: 창은 닫기를 눌러야 닫히고, 닫히면 hell
   assert.equal(win.isOpen, false)
   assert.equal(win.kind, null)
   assert.equal(win.hello('A'.repeat(22)), 'pair_closed')
+  // 닫힌 뒤엔 맞는 코드도 소용없다
+  return assert.rejects(pairWithHost(fakeHost(win, SPKI).t, { code: '7M3Q-H9XK-2VTB', clientName: 'A', kind: 'peer' }), (e: PairFailure) => e.code === 'closed')
 })
 
 test('중간자: 연결에서 본 인증서 지문이 B컴이 말한 지문과 다르면 코드를 보내지 않고 중단', async () => {
@@ -124,7 +179,9 @@ test('코드 없이 만든 proof와 hello 없이 온 confirm은 실패로 센다
   assert.equal((await win.confirm({ nonceA: B, nonceB: h.nonceB, clientProof: await proofFor('7M3QH9XK2VTB', B, h.nonceB) })).ok, false)
   // 모양이 틀린 값
   assert.equal((await win.confirm({})).ok, false)
-  assert.equal(win.isOpen, false)
+  // 3번 틀렸으니 코드가 바뀌고 창은 열려 있다
+  assert.equal(win.isOpen, true)
+  assert.notEqual(win.view()?.code, '7M3Q-H9XK-2VTB')
 })
 
 test('입력 검사: 연결 시도 전에 공인 IP·잘못된 코드를 막는다', () => {
@@ -220,7 +277,9 @@ test('동시에 여러 confirm을 보내도 3번까지만 시험된다 (시도�
   const hs = Array.from({ length: 6 }, (_, i) => win.hello(`${String(i).repeat(22)}`) as { nonceB: string })
   const rs = await Promise.all(hs.map((h, i) => win.confirm({ nonceA: String(i).repeat(22), nonceB: h.nonceB, clientProof: '0'.repeat(64) })))
   assert.equal(rs.every((r) => !r.ok), true)
-  assert.equal(win.isOpen, false)
+  // 3번 틀려 코드가 새로 바뀌었다 (창은 열려 있다)
+  assert.equal(win.isOpen, true)
+  assert.notEqual(win.view()?.code, '1111-1111-1111')
 })
 
 test('같은 hello 짝은 한 번만 쓸 수 있다 (재전송 방지)', async () => {

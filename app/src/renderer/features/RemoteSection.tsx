@@ -28,15 +28,43 @@ export function upnpText(s: RemoteStatus) {
 }
 
 /** 휴대폰용 연결 코드(12자) — QR을 못 찍는 안드로이드가 주소+코드를 직접 입력할 때.
- *  시간 제한 없이 연결되거나(코드 1회용) 코드를 3번 틀리거나 다른 창을 열어 휴대폰용 창이 닫히면 화면에서 지운다 */
-export function PhoneCode({ pairOpen }: { pairOpen: RemoteStatus['pairOpen'] }) {
+ *  시간 제한 없이 '코드 끄기'를 누르거나 다른 연결 창을 열어 휴대폰용 코드가 닫힐 때까지 같은 코드가 유지된다 (연결돼도 그대로, 3번 틀리면 새 코드로 바뀐다) */
+export function PhoneCode({ pairOpen, pairRotatedAt }: { pairOpen: RemoteStatus['pairOpen']; pairRotatedAt: RemoteStatus['pairRotatedAt'] }) {
   const [win, setWin] = useState<PairWindowView | null>(null)
   const [error, setError] = useState('')
   const [isCopied, setIsCopied] = useState(false)
+  const [isRotated, setIsRotated] = useState(false)
   useEffect(() => {
     if (win && pairOpen !== 'phone') setWin(null)
   }, [win, pairOpen])
-  // 1회용 코드만 복사한다 — QR 주소·열쇠는 클립보드에 남기지 않는다
+  // 앱을 다시 켠 뒤에도 코드가 살아 있으면 바로 보여 준다 (같은 종류가 열려 있으면 코드를 바꾸지 않고 그대로 돌려준다)
+  useEffect(() => {
+    if (pairOpen !== 'phone') return
+    let isActive = true
+    void window.office
+      .peerPairStart('phone')
+      .then((v) => {
+        if (!isActive) return
+        setWin((prev) => {
+          if (prev && prev.code !== v.code) setIsRotated(true)
+          return v
+        })
+      })
+      .catch(() => {})
+    return () => {
+      isActive = false
+    }
+  }, [pairOpen, pairRotatedAt])
+  const turnOff = async () => {
+    try {
+      await window.office.peerPairClose()
+      setWin(null)
+      setIsRotated(false)
+    } catch (e) {
+      setError(ipcErrorText(e))
+    }
+  }
+  // 연결 코드만 복사한다 — QR 주소·열쇠는 클립보드에 남기지 않는다
   const copy = async () => {
     if (!win) return
     await navigator.clipboard.writeText(formatPairCode(win.code))
@@ -63,7 +91,11 @@ export function PhoneCode({ pairOpen }: { pairOpen: RemoteStatus['pairOpen'] }) 
           <Button size="sm" variant="outline" className="ml-2 h-6 px-2 text-[11px]" onClick={() => void copy()}>
             {isCopied ? t('connect.copied') : t('connect.copy')}
           </Button>
+          <Button size="sm" variant="outline" className="ml-2 h-6 px-2 text-[11px]" onClick={() => void turnOff()}>
+            {t('peer.host.off')}
+          </Button>
           <span className="text-muted-foreground ml-2">{t('peer.host.untilUsed')}</span>
+          {isRotated && <span className="text-status-working ml-2">{t('peer.host.rotated')}</span>}
         </p>
       ) : (
         <Button size="sm" variant="outline" className="w-fit" onClick={() => void show()}>

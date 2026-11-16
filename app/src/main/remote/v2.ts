@@ -444,7 +444,7 @@ const V2_MESSAGE: Record<string, string> = {
   not_found: '없는 기능이에요',
   method_not_allowed: '지원하지 않는 방식이에요',
   pair_failed: '짝짓기 코드가 맞지 않아요',
-  pair_closed: '짝짓기 창이 닫혀 있어요. PC에서 코드를 새로 만들어 주세요',
+  pair_closed: '연결 코드가 꺼져 있어요. PC에서 코드를 켜고 새 코드를 확인해 주세요',
   scope_denied: '이 연결로는 할 수 없는 일이에요',
   job_not_found: '그 일을 찾을 수 없어요',
   peer_feature_removed: '다른 PC 직원에게 일 맡기기는 없어진 기능이에요. 두 PC 모두 AI Office를 업데이트해 주세요',

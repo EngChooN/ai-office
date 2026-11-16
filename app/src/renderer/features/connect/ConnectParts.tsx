@@ -190,7 +190,7 @@ export function PhoneConnect({ status, setStatus, isBusy, onTurnOn }: { status: 
   return (
     <div className="flex flex-col gap-3">
       <QrPanel status={status} />
-      <PhoneCode pairOpen={status.pairOpen} />
+      <PhoneCode pairOpen={status.pairOpen} pairRotatedAt={status.pairRotatedAt} />
       <p className="text-muted-foreground text-xs">{t('connect.qr.oneTime')}</p>
     </div>
   )

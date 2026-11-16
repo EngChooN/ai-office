@@ -12,10 +12,11 @@ import { formatPairCode, normalizePairCode, parsePeerInvite, type PairWindowView
 const DEFAULT_PORT = 47900 // main/remote/service.ts DEFAULT_REMOTE_PORT와 같아야 함
 const COPIED_MS = 1500
 const errText = (e: unknown) => ipcErrorText(e, t('peer.error.failed'))
-/** 보내는 PC: 들어오면 바로 연결 정보를 만들고, 코드·복사 버튼을 보여 준다(시간 제한 없음). 연결이 생기면 알린다 */
+/** 보내는 PC: 들어오면 연결 코드를 보여 준다(없으면 만들고, 있으면 그대로 — 시간 제한 없이 '코드 끄기'를 누를 때까지 유지, 연결돼도 그대로). 새 연결이 생기면 알린다 */
 export function HostPart({ onSlotsChanged }: { onSlotsChanged: () => void }) {
   const [win, setWin] = useState<PairWindowView | null>(null)
   const [isClosed, setIsClosed] = useState(false)
+  const [isRotated, setIsRotated] = useState(false)
   const [error, setError] = useState('')
   const [isCopied, setIsCopied] = useState(false)
   const [newName, setNewName] = useState('')
@@ -24,23 +25,23 @@ export function HostPart({ onSlotsChanged }: { onSlotsChanged: () => void }) {
   // 늦게 끝난 이전 요청이 화면을 바꾸거나, 떠난 뒤에 연결 창을 다시 열지 못하게 한다
   const openSeq = useRef(0)
   const isMounted = useRef(false)
+  // 마지막으로 본 '코드가 바뀐 시각' — 달라지면 새 코드를 다시 읽는다
+  const lastRotatedAt = useRef<number | null | undefined>(undefined)
 
   const open = useCallback(async () => {
     const seq = ++openSeq.current
     const isStale = () => seq !== openSeq.current
     setError('')
     setIsClosed(false)
+    setIsRotated(false)
     setNewName('')
     try {
       const base = await window.office.peerSlots()
       if (isStale()) return
       knownIds.current = new Set(base.map((x) => x.id))
       const opened = await window.office.peerPairStart('peer')
-      if (isStale()) {
-        // 화면을 떠났으면 방금 연 창을 닫는다. 새 요청이 진행 중이면 그 요청이 창을 바꿔 연다
-        if (!isMounted.current) void window.office.peerPairClose()
-        return
-      }
+      // 화면을 떠나도 코드는 닫지 않는다 (사용자가 '코드 끄기'를 눌러야 닫힌다)
+      if (isStale()) return
       setWin(opened)
     } catch (e) {
       if (!isStale()) setError(errText(e))
@@ -49,16 +50,25 @@ export function HostPart({ onSlotsChanged }: { onSlotsChanged: () => void }) {
   useEffect(() => {
     isMounted.current = true
     void open()
-    // 역할을 바꾸거나 화면을 떠나면 창을 닫는다
     return () => {
       isMounted.current = false
       openSeq.current++
-      void window.office.peerPairClose()
     }
   }, [open])
+  // 코드를 끈다 (저장된 코드도 지워진다)
+  const turnOff = async () => {
+    try {
+      await window.office.peerPairClose()
+      setWin(null)
+      setIsRotated(false)
+      setIsClosed(true)
+    } catch (e) {
+      setError(errText(e))
+    }
+  }
   // 창이 열린 동안 3초마다 새 연결과 창 상태를 본다 (시간 제한은 없다).
-  // 창을 열 때 있던 PC 말고 새 PC가 붙으면 "연결됐어요" — 코드는 한 번 쓰면 끝이므로 코드 표시도 거둔다.
-  // 새 연결 없이 창이 닫혔으면(코드 3번 틀림) 닫혔다고 알린다
+  // 새 PC가 붙으면 "연결됐어요"만 알리고 코드는 그대로 둔다 (같은 코드로 다른 PC도 연결할 수 있다).
+  // 코드가 3번 틀려 새 코드로 바뀌었으면 새 코드를 다시 읽어 와 알리고, 다른 곳에서 코드가 꺼졌으면 닫혔다고 알린다
   useEffect(() => {
     if (!win) return
     let isActive = true
@@ -66,13 +76,22 @@ export function HostPart({ onSlotsChanged }: { onSlotsChanged: () => void }) {
       void Promise.all([window.office.peerSlots(), window.office.remoteStatus()]).then(([list, status]) => {
         if (!isActive) return
         onSlotsChanged()
+        if (lastRotatedAt.current === undefined) lastRotatedAt.current = status.pairRotatedAt ?? null
         const added = list.find((x) => !knownIds.current.has(x.id))
         if (added) {
           setNewName(added.label)
-          setWin(null)
-        } else if (status.pairOpen !== 'peer') {
+          knownIds.current = new Set(list.map((x) => x.id))
+        }
+        if (status.pairOpen !== 'peer') {
           setWin(null)
           setIsClosed(true)
+        } else if ((status.pairRotatedAt ?? null) !== lastRotatedAt.current) {
+          lastRotatedAt.current = status.pairRotatedAt ?? null
+          void window.office.peerPairStart('peer').then((v) => {
+            if (!isActive) return
+            setWin(v)
+            setIsRotated(true)
+          })
         }
       })
     }, 3000)
@@ -95,6 +114,7 @@ export function HostPart({ onSlotsChanged }: { onSlotsChanged: () => void }) {
       <p className="text-muted-foreground">{t('peer.host.sendDesc')}</p>
       {error && <p className="text-status-error">{error}</p>}
       {newName && <p className="text-status-working">{t('peer.host.newSlot', { name: newName })}</p>}
+      {isRotated && win && <p className="text-status-working">{t('peer.host.rotated')}</p>}
       {win && (
         <div className="flex flex-wrap items-start gap-4">
           {win.qr && <img src={win.qr} alt={t('peer.host.qrAlt')} className="size-28 rounded bg-white p-1" />}
@@ -109,6 +129,9 @@ export function HostPart({ onSlotsChanged }: { onSlotsChanged: () => void }) {
               <Button size="sm" onClick={() => void copy()}>
                 {isCopied ? t('peer.host.copied') : t('peer.host.copy')}
               </Button>
+              <Button size="sm" variant="outline" onClick={() => void turnOff()}>
+                {t('peer.host.off')}
+              </Button>
             </div>
             <details>
               <summary className="text-muted-foreground w-fit cursor-pointer">{t('peer.host.fingerprint')}</summary>
@@ -122,7 +145,7 @@ export function HostPart({ onSlotsChanged }: { onSlotsChanged: () => void }) {
         <div className="flex items-center gap-2">
           {isClosed && <p className="text-muted-foreground">{t('peer.host.closed')}</p>}
           <Button size="sm" variant="outline" onClick={() => void open()}>
-            {newName ? t('peer.host.another') : error ? t('peer.host.retry') : t('peer.host.renew')}
+            {newName ? t('peer.host.another') : error ? t('peer.host.retry') : isClosed ? t('peer.host.on') : t('peer.host.renew')}
           </Button>
         </div>
       )}

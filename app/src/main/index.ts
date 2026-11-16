@@ -18,7 +18,7 @@ import { runAsRemote } from './remoteContext'
 import { restrictRemoteArgs } from './remoteGuard'
 import { IS_WINDOWS } from './platform'
 import { RemoteService } from './remote/service.ts'
-import { loadRemoteKeys, saveRemoteKeys } from './remote/keystore.ts'
+import { loadPairingCode, loadRemoteKeys, savePairingCode, saveRemoteKeys } from './remote/keystore.ts'
 import * as upnp from './remote/upnp.ts'
 import { PeerManager } from './peer/peerManager'
 import { fileTokenVault } from './peer/peerRegistry'
@@ -84,6 +84,8 @@ function createRemote() {
     saveConfig: saveRemoteConfig,
     loadKeys: loadRemoteKeys,
     saveKeys: saveRemoteKeys,
+    loadPairing: loadPairingCode,
+    savePairing: savePairingCode,
     alert: (title, body) => new Notification({ title, body }).show(),
     changed: () => {
       if (remote) win?.webContents.send('office:onRemoteStatus', remote.status())

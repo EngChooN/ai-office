@@ -40,3 +40,31 @@ export function saveRemoteKeys(keys: { keyPem: string; certPem: string }) {
     fs.rmSync(path.join(dir(), KEY_PLAIN), { force: true })
   } else writePrivate(path.join(dir(), KEY_PLAIN), keys.keyPem)
 }
+
+/** 짝짓기 코드 (사용자가 끌 때까지 유지하려고 저장) — 코드는 비밀이라 safeStorage로 암호화한 파일에만 둔다. 암호화를 못 쓰면 저장하지 않는다 (평문 저장 금지) */
+const PAIR_ENC = 'pair.enc'
+const PAIR_KINDS = ['peer', 'phone', 'view']
+
+export function loadPairingCode(): { kind: 'peer' | 'phone' | 'view'; code: string } | null {
+  try {
+    const file = path.join(dir(), PAIR_ENC)
+    if (!fs.existsSync(file) || !safeStorage.isEncryptionAvailable()) return null
+    const v = JSON.parse(safeStorage.decryptString(fs.readFileSync(file))) as { kind?: unknown; code?: unknown }
+    return typeof v.kind === 'string' && PAIR_KINDS.includes(v.kind) && typeof v.code === 'string' && /^[A-Z0-9]{12}$/.test(v.code) ? (v as { kind: 'peer' | 'phone' | 'view'; code: string }) : null
+  } catch {
+    // 키체인이 바뀌었거나 파일이 깨짐 — 코드는 새로 만들면 되므로 없는 것으로 본다
+    return null
+  }
+}
+
+export function savePairingCode(p: { kind: 'peer' | 'phone' | 'view'; code: string } | null) {
+  try {
+    const file = path.join(dir(), PAIR_ENC)
+    if (!p || !safeStorage.isEncryptionAvailable()) return fs.rmSync(file, { force: true })
+    fs.mkdirSync(dir(), { recursive: true, mode: 0o700 })
+    fs.chmodSync(dir(), 0o700)
+    writePrivate(file, safeStorage.encryptString(JSON.stringify(p)))
+  } catch {
+    // 저장에 실패해도 이번 실행의 코드는 그대로 쓴다 (다시 켜면 새 코드)
+  }
+}

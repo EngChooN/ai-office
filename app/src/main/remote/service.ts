@@ -12,7 +12,7 @@ import { shapeFor } from './capabilities.ts'
 import { EventHub, type HubEvent } from './events.ts'
 import { V2Routes, type V2Office } from './v2routes.ts'
 import { PeerRoutes } from './peerRoutes.ts'
-import { PairingWindow } from '../peer/pairing.ts'
+import { PairingWindow, type PairingInfo } from '../peer/pairing.ts'
 import type { PairKind, PairWindowView, PeerSlotView } from '../../shared/peerProtocol'
 import type { AccessEntry, RemoteMode, RemoteQr, RemoteStatus, UpnpState } from '../../shared/types'
 import * as upnp from './upnp.ts'
@@ -55,6 +55,9 @@ export interface RemoteDeps {
   /** 키·인증서 (없으면 null, 파일은 있는데 읽거나 복호화하지 못하면 'unreadable') — 개인 키는 소유자만 읽게 저장한다 */
   loadKeys(): { keyPem: string; certPem: string } | 'unreadable' | null
   saveKeys(keys: { keyPem: string; certPem: string }): void
+  /** 짝짓기 코드 저장·읽기 — 코드는 비밀이라 반드시 암호화해 저장해야 하고, 암호화를 못 쓰는 환경이면 저장하지 않는다 (없으면 앱을 껐다 켜면 코드가 사라진다). null을 저장하면 지운다 */
+  loadPairing?(): { kind: PairKind; code: string } | null
+  savePairing?(p: { kind: PairKind; code: string } | null): void
   /** PC 알림 (잠금 등) */
   alert(title: string, body: string): void
   /** 상태가 바뀌면 화면에 다시 보낸다 */
@@ -165,9 +168,43 @@ export class RemoteService {
 
   // ── 다른 PC 연결 (B컴 쪽, 설계서 1절) ──
 
-  private pairing = new PairingWindow({ onChange: () => this.deps.changed() })
+  private pairing = new PairingWindow({
+    onChange: () => {
+      this.deps.savePairing?.(this.pairing.persisted())
+      this.deps.changed()
+    },
+    onRotate: () => this.alertPairRotated(),
+  })
+  /** 저장된 짝짓기 코드를 이번 실행에서 이미 되살렸는지 (한 번만) */
+  private isPairingRestored = false
+  private lastRotateAlertAt = 0
 
-  /** 짝짓기 창 열기 (시간 제한 없음 — 연결 성공·닫기·앱 종료·코드 3번 틀림에만 닫힌다). 서버가 떠 있고 이 PC의 주소를 알아야 한다. 휴대폰용은 QR과 같은 토큰을 쓰므로 QR이 없으면 새로 만든다 */
+  /** 코드를 3번 틀려 새 코드가 만들어졌다는 PC 알림 — 여러 곳에서 계속 틀려도 알림이 쏟아지지 않게 1분에 한 번만 */
+  private alertPairRotated() {
+    const t = this.now()
+    if (t - this.lastRotateAlertAt < 60_000) return
+    this.lastRotateAlertAt = t
+    this.deps.alert('🔑 새 연결 코드가 만들어졌어요', '연결 코드를 3번 틀리게 입력해서 코드를 새로 바꿨어요. 설정에서 새 코드를 확인해 주세요. 내가 한 일이 아니라면 연결 코드를 꺼 주세요.')
+  }
+
+  private pairingInfo(): PairingInfo | null {
+    if (!this.server.isListening || !this.keys) return null
+    const host = this.connectHost()?.host
+    return host ? { host, port: this.config.port, spki: spkiFingerprint(this.keys.certPem) } : null
+  }
+
+  /** 서버를 연 뒤: 열려 있는 짝짓기 창은 새 주소로 맞추고, 앱을 다시 켠 직후면 저장해 둔 코드로 창을 되살린다 */
+  private syncPairing() {
+    const info = this.pairingInfo()
+    if (!info) return
+    if (this.pairing.isOpen) return this.pairing.refreshInfo(info)
+    if (this.isPairingRestored) return
+    this.isPairingRestored = true
+    const saved = this.deps.loadPairing?.()
+    if (saved && (saved.kind === 'peer' || saved.kind === 'phone' || saved.kind === 'view') && typeof saved.code === 'string') this.pairing.open(saved.kind, info, saved.code)
+  }
+
+  /** 짝짓기 창 열기 (시간 제한 없음 — 사용자가 끌 때까지 같은 코드가 유지되고, 연결이 성공해도 닫히지 않는다). 같은 종류가 이미 열려 있으면 코드를 바꾸지 않고 그대로 돌려준다. 서버가 떠 있고 이 PC의 주소를 알아야 한다. 휴대폰용은 QR과 같은 토큰을 쓰므로 QR이 없으면 새로 만든다 */
   async openPairing(kind: PairKind): Promise<PairWindowView | null> {
     if (!this.server.isListening || !this.keys) return null
     const host = this.connectHost()?.host
@@ -176,13 +213,19 @@ export class RemoteService {
     // 새 인증서·포트로 다시 열렸을 수 있으니 열기 전에 서버 상태를 다시 확인한다
     if (!this.server.isListening || !this.keys) return null
     const spki = spkiFingerprint(this.keys.certPem)
-    const view = this.pairing.open(kind, { host, port: this.config.port, spki })
-    // 다른 PC용은 토큰 없는 QR(1회용 코드만)을 함께 — 휴대폰용은 기존 QR이 따로 있다
+    const info = { host, port: this.config.port, spki }
+    if (this.pairing.kind !== kind) this.pairing.open(kind, info)
+    else this.pairing.refreshInfo(info)
+    const view = this.pairing.view()!
+    // 다른 PC용은 토큰 없는 QR(연결 코드만)을 함께 — 휴대폰용은 기존 QR이 따로 있다
     return kind === 'peer' ? { ...view, qr: peerQrImage({ v: 1, kind: 'peer', host, port: this.config.port, spki, code: view.code, name: this.deps.peer?.ownName() ?? '', pv: 2 }) } : view
   }
 
+  /** 코드 끄기: 창을 닫고 저장해 둔 코드도 지운다 (앱을 다시 켜도 되살아나지 않는다) */
   closePairing() {
+    this.isPairingRestored = true
     this.pairing.close()
+    this.deps.savePairing?.(null)
   }
 
   pairingView() {
@@ -192,8 +235,13 @@ export class RemoteService {
   /** 짝짓기 성공: 피어면 새 슬롯, 휴대폰이면 지금 QR의 토큰 */
   private finishPairing(r: { kind: PairKind; label: string }): { token: string; slotId?: string } | null {
     if (r.kind === 'phone') {
-      const shown = this.shownToken
-      return shown ? { token: shown.token } : null
+      // 휴대폰 열쇠는 한 개뿐이다. 코드가 계속 유지되므로 QR이 이미 거둬졌으면(휴대폰이 한 번 붙은 뒤·앱을 다시 켠 뒤) 새 열쇠를 내고, 전에 붙어 있던 휴대폰은 끊긴다
+      if (!this.shownToken) {
+        this.issueToken()
+        this.save()
+        this.hub.closeAll('token_revoked', { phonesOnly: true })
+      }
+      return { token: this.shownToken!.token }
     }
     const made = this.guard.addPeerSlot(r.label, this.now(), { view: r.kind === 'view' })
     if (!made) return null
@@ -289,6 +337,7 @@ export class RemoteService {
       recentAccess: this.access,
       isQrReady: Boolean(this.shownToken),
       pairOpen: this.pairing.kind,
+      pairRotatedAt: this.pairing.rotatedAt,
       isTokenUsed: this.config.isTokenUsed || this.guard.isTokenUsed,
       phoneSeenAt: this.guard.phoneSeenAt,
       isFullAccess: true,
@@ -485,6 +534,7 @@ export class RemoteService {
       this.save()
     }
     await this.listen()
+    this.syncPairing()
     // 전용·Tailscale 모드는 공유기 포트를 열지 않는다 (UPnP 끔) — 대신 주소 변화를 지켜본다
     if (this.mode !== 'router') this.startWatch()
     else if (this.server.isListening) void this.mapPort()
