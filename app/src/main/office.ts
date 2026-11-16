@@ -501,6 +501,8 @@ export class Office extends EventEmitter<{
         this.saveTask(task)
         return task
       },
+      postPracticeChat: (from, text, room, meta) => this.postChat(from, text, undefined, undefined, room, Boolean(meta.isReport), { ...meta.plan ? { plan: meta.plan } : {}, ...meta.taskId ? { taskId: meta.taskId } : {}, isPractice: true }).id,
+      chatExists: (id) => Boolean(db.getChat(id)),
       approvePlan: (taskId) => void this.reviewPlan(taskId, true, ''),
       meeting: (id) => this.meetings.find((m) => m.id === id),
       saveMeeting: (meeting) => {
@@ -3714,10 +3716,7 @@ export class Office extends EventEmitter<{
     const s = this.hired.get(staffId)
     if (!task || !s) return
     // 연습 카드·연습 직원은 AI 대신 튜토리얼로 (둘 중 하나만 연습이면 시작하지 않는다)
-    if (task.isPractice || s.isPractice) {
-      if (task.isPractice && s.isPractice) this.tutorial.notify('taskStarted', taskId)
-      return
-    }
+    if (task.isPractice || s.isPractice) return
     // 이미 이 카드를 하는 중이면 다시 보내지 않는다 (시작을 두 번 눌러도 지시는 한 번)
     if (this.isWorkingOn(staffId, taskId)) return
     this.taskStartedAt.set(taskId, Date.now())
@@ -3937,6 +3936,8 @@ export class Office extends EventEmitter<{
       for (const sc of [...this.schedules.values()]) if (sc.staffId === id) this.schedules.delete(sc.id)
     }
     db.deleteStaffTraces(staffIds)
+    // 업무 연습에서 내가 보낸 지시 (연습 직원 글은 위에서 함께 지워진다)
+    db.deletePracticeChats()
     for (const l of [...this.labs.values()]) {
       if (l.isPractice) this.deleteLab(l.id)
       else if (l.memberIds.some((m) => staffIds.includes(m))) this.saveLabObj({ ...l, memberIds: l.memberIds.filter((m) => !staffIds.includes(m)), leadId: l.leadId && staffIds.includes(l.leadId) ? null : l.leadId })
@@ -4612,6 +4613,8 @@ export class Office extends EventEmitter<{
     // 답장: 인용한 말의 앞부분을 말풍선에 남기고, 직원에게는 인용 내용을 함께 전한다
     const quoted = replyToId ? db.getChat(replyToId) : null
     const replyTo = quoted ? { id: quoted.id, from: quoted.from, text: quoted.text.replace(/\s+/g, ' ').trim().slice(0, REPLY_QUOTE_MAX) } : undefined
+    // 업무 연습의 '단체방에서 지시' 단계: 연습 리드를 부른 말은 연습으로 받는다 (AI에게 보내지 않는다)
+    if (!replyTo && !scheduled && attachments.length === 0 && this.tutorial.takeChat(text, room)) return
     const mine = this.postChat('me', text, attachments, undefined, room, false, { ...(replyTo ? { replyTo } : {}), ...(scheduled ? { scheduled } : {}) })
     // 앱이 직접 처리하는 단체방 명령: /데모데이
     if (!room && /^\/(데모데이|demoday)$/i.test(text.trim())) return this.runDemoDayNow()

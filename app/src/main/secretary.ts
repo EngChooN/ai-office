@@ -25,6 +25,7 @@ import { briefCounts, briefDue, briefText, isBriefEmpty } from './secretaryBrief
 import { awayAnswers, decideAway, mustHoldQuestion, RateWindow, SecretaryDesk, wrapDocument, type EditTarget } from './secretaryCore'
 import { maskSecrets } from '../shared/redact'
 import { AskQueue, ASK_TEXT_MAX, type SecretaryAskResult } from '../shared/secretaryQueue'
+import { addStep, canOfferResume, isResumable, markResumeUsed, nextResume, resumePrompt, startsWork, stopNotice, toolKind, type ProgressSteps, type SecretaryResume, type SecretaryResumeResult } from '../shared/secretaryProgress'
 import { autoArrange } from '../shared/iso/autoArrange'
 import type { GridItem } from '../shared/iso/furniture'
 import { isoLevelOf } from '../shared/iso/levels'
@@ -45,8 +46,9 @@ import { lastProviderStatus } from './setup'
 import { isRemoteCall } from './remoteContext'
 import { engineGuide } from '../shared/engineModel'
 const SECRETARY_MODEL = 'sonnet'
-const MAX_TURNS = 12
-const TURN_BUDGET_USD = 0.5
+// 12턴·$0.5로는 여러 직원·카드를 훑는 긴 질문이 중간에 멈췄다 — 턴과 비용을 같은 비율로 두 배 (턴당 약 $0.04 그대로). 그래도 걸리면 [이어서 하기]
+const MAX_TURNS = 24
+const TURN_BUDGET_USD = 1.0
 const ASK_LIMITS = [
   { ms: 60_000, max: 6 },
   { ms: 3_600_000, max: 60 },
@@ -161,6 +163,13 @@ export class Secretary {
   private turnTools = 0
   /** 이번 질문의 마지막 이벤트가 답 글이었는지 (상한에 걸려도 답을 끝냈는지 판단) */
   private endedWithText = false
+  /** 이번 시도에서 쓴 도구 종류별 수 · 원래 질문 · 이어 하기면 앞 시도 정보 · 시도 시작 전 마지막 메시지 id (멈춘 안내에 "어디까지 했는지") */
+  private turnSteps: ProgressSteps = {}
+  private turnQuestion = ''
+  private turnResume: SecretaryResume | null = null
+  private turnStartId = 0
+  /** [이어서 하기]로 시작했지만 아직 실제로 일을 시작하지 않은 안내 — 첫 답·도구가 나오면 '썼음'으로 (그 전에 실패·멈춤이면 버튼이 남는다) */
+  private pendingResumeId: number | null = null
   private askRate = new RateWindow(ASK_LIMITS)
   private awayRate = new RateWindow(AWAY_LIMITS)
   /** 실행 중인 카드가 치운 가구 (카드가 끝나면 되돌리기 카드로 넘긴다) */
@@ -323,6 +332,28 @@ export class Secretary {
     this.changed()
   }
 
+  /** 멈춘 안내의 [이어서 하기]: 비서가 쉬고 있을 때만 (PC·휴대폰이 같이 눌러도 먼저 온 것만 — turn()이 바로 바쁨을 켠다) — 대기열을 거치지 않는다.
+   *  '썼음'은 실제로 일을 시작했을 때 표시한다 (한리뷰: 도구 서버 미준비·오류·멈춤이면 버튼을 남긴다) */
+  resume(noticeId: number): SecretaryResumeResult {
+    if (!isResumable(this.messages, noticeId)) return { ok: false, reason: 'gone' }
+    if (this.isBusy) return { ok: false, reason: 'busy' }
+    if (!this.askRate.take(Date.now())) return { ok: false, reason: 'rate' }
+    const prev = this.messages.find((m) => m.id === noticeId)!.resume as SecretaryResume
+    this.pendingResumeId = noticeId
+    void this.turn(prev.question, isRemoteCall(), prev)
+    return { ok: true }
+  }
+
+  /** 이어 하기가 실제로 시작됐다 — 안내를 '썼음'으로 바꿔 버튼을 없앤다 */
+  private resumeStarted() {
+    const next = this.pendingResumeId === null ? null : markResumeUsed(this.messages, this.pendingResumeId)
+    this.pendingResumeId = null
+    if (!next) return
+    this.messages = this.messages.map((m) => (m.id === next.id ? next : m))
+    db.updateSecretaryMessage(next)
+    this.changed()
+  }
+
   run(cardId: string, options?: SecretaryRunOptions) {
     return this.desk.run(cardId, options)
   }
@@ -365,6 +396,7 @@ export class Secretary {
 
   private closeSession() {
     this.generation++
+    this.pendingResumeId = null
     this.queue.clear()
     this.q?.close()
     this.q = null
@@ -375,22 +407,32 @@ export class Secretary {
   /** 밀린 질문을 하나씩 */
   private async next() {
     const item = this.queue.shift()
-    const text = item?.text
-    this.turnRemote = item?.remote ?? false
-    if (!text) {
+    if (!item?.text) {
+      this.turnRemote = false
       this.isBusy = false
       this.activity = ''
       this.changed()
       return
     }
+    await this.turn(item.text, item.remote, null)
+  }
+
+  /** 질문 하나(또는 이어 하기 한 번)에 답하고 다음 질문으로 */
+  private async turn(text: string, remote: boolean, resume: SecretaryResume | null) {
     const gen = this.generation
+    this.turnRemote = remote
     this.isBusy = true
     this.activity = '생각하는 중…'
     this.turnTools = 0
     this.endedWithText = false
+    this.turnSteps = {}
+    this.turnQuestion = text
+    this.turnResume = resume
+    this.turnStartId = this.messages.at(-1)?.id ?? 0
     this.changed()
-    await this.answer(text)
+    await this.answer(resume ? resumePrompt(resume, this.recentContext().includes(resume.question)) : `대표의 새 질문: ${text}`)
     if (gen === this.generation) {
+      this.pendingResumeId = null
       void this.maybeSummarize()
       void this.next()
     }
@@ -431,7 +473,7 @@ export class Secretary {
   }
 
   /** 질문 하나 = 새 query 하나 (세션을 이어 쓰지 않아 토큰이 쌓이지 않는다 — QA 12만~27만 토큰): 최근 대화만 넣고 턴·비용 상한 */
-  private async answer(text: string) {
+  private async answer(ask: string) {
     const cwd = path.join(app.getPath('userData'), 'secretary')
     fs.mkdirSync(cwd, { recursive: true })
     const now = new Date()
@@ -446,7 +488,7 @@ export class Secretary {
     }
     const toolsHandle = this.tools()
     const q = aiBackend().secretary({
-      prompt: [status, context, `대표의 새 질문: ${text}`].filter(Boolean).join('\n\n'),
+      prompt: [status, context, ask].filter(Boolean).join('\n\n'),
       system: `${SYSTEM_PROMPT}${engineGuide(lastProviderStatus())}\n\n${t('staff.language')}\n${reportStyleRule(this.office.snapshot().settings.reportStyle)}\n오늘은 ${now.getFullYear()}년 ${now.getMonth() + 1}월 ${now.getDate()}일 ${now.getHours()}시 ${now.getMinutes()}분입니다.`,
       cwd,
       tier: 'standard',
@@ -464,6 +506,7 @@ export class Secretary {
       for await (const m of q.events) {
         if (gen !== this.generation) continue
         if (m.type === 'result') gotResult = true
+        if (this.pendingResumeId !== null && startsWork(m.type)) this.resumeStarted()
         this.handle(m)
       }
     } catch (e) {
@@ -485,6 +528,7 @@ export class Secretary {
     if (m.type === 'tool') {
       this.endedWithText = false
       this.turnTools++
+      this.turnSteps = addStep(this.turnSteps, toolKind(m.name))
       const input = m.input as { method?: string; doc?: string }
       this.activity = m.name.endsWith('propose') || m.name.endsWith('propose_edit') ? '확인 카드를 만드는 중…' : m.name.endsWith('read_guide') ? '사용법을 찾아보는 중…' : m.name.endsWith('overview') ? '사무실 현황을 보는 중…' : m.name.endsWith('staff_detail') ? '직원 정보를 보는 중…' : m.name.endsWith('period_summary') ? '기간 기록을 모으는 중…' : m.name.endsWith('arrange_office') ? '배치안을 만드는 중…' : m.name.endsWith('office_layout') ? '사무실 배치를 보는 중…' : (ACTIVITY[input.method ?? ''] ?? '살펴보는 중…')
       this.changed()
@@ -504,9 +548,17 @@ export class Secretary {
     // 상한에 걸렸어도 마지막이 도구 없이 끝난 답이면 답은 다 한 것 — "멈췄어요"를 붙이지 않는다
     const limited = m.subtype === 'max_turns' || m.subtype === 'max_budget'
     if (limited) {
-      if (!this.endedWithText) this.add({ role: 'notice', text: '이번 질문은 일이 많아 여기서 멈췄어요. 나눠서 물어봐 주세요.' })
+      if (!this.endedWithText) this.addStopNotice()
     } else if (m.subtype !== 'success') this.add({ role: 'secretary', text: '답하지 못했어요. 다시 보내 볼까요?', isError: true })
     this.changed()
+  }
+
+  /** 상한에 걸려 멈춤: 어디까지 했는지 + (이어 하기가 남았으면) [이어서 하기] */
+  private addStopNotice() {
+    const cards = this.messages.filter((x) => x.id > this.turnStartId && x.card).map((x) => x.card!.title)
+    const r = nextResume(this.turnResume, this.turnQuestion, this.turnSteps, cards)
+    const isOffered = canOfferResume(r, this.turnTools)
+    this.add({ role: 'notice', text: stopNotice(r, isOffered), ...(isOffered ? { resume: r } : {}) })
   }
 
   // ── 도구 ──────────────────────────────────────────────

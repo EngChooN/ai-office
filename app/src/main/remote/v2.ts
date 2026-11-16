@@ -73,9 +73,10 @@ export const V2_METHODS: Record<OfficeMethod, MethodSpec> = {
   dismissRemoteTsNotice: P('open_on_pc'),
   snapshot: R(),
   // 첫 업무 튜토리얼: 모의 진행(AI 호출 없음)이라 휴대폰에서도 그대로
-  tutorialStart: R('s'),
-  tutorialAct: R('o'),
-  tutorialCleanup: R(),
+  // 연습(튜토리얼)은 PC에서만 — 휴대폰·원격 화면은 진행 상태를 받지 않고 시작·진행·정리도 못 한다
+  tutorialStart: P('open_on_pc', 's'),
+  tutorialAct: P('open_on_pc', 'o'),
+  tutorialCleanup: P('open_on_pc'),
   hire: S('o'),
   // 마켓 채용: 작업 폴더(기본 폴더)·승인(묻기)·장비(없음)를 PC가 정하고 엔진은 claude·codex만 받는다 — 원격 hire보다 좁다
   hireMarket: S('s s?'),
@@ -221,6 +222,7 @@ export const V2_METHODS: Record<OfficeMethod, MethodSpec> = {
   secretaryAsk: R('s'),
   secretaryCancelQueued: R('n'),
   secretaryMergeQueued: R(),
+  secretaryResume: R('n'),
   secretaryRun: R('s o?'),
   secretaryCancel: R('s'),
   secretaryClear: R(),
@@ -276,7 +278,7 @@ export const V2_FIELDS: Partial<Record<OfficeMethod, Record<number, string[]>>> 
     // 막는 목록은 REMOTE_BLOCKED_SETTINGS 한 곳 — 비서 카드 실행도 같은 목록으로 막는다 (secretaryCore)
     // 화면 캡처 허용·공용 브라우저 로그인은 PC에서만 (폰에서 대표 화면 캡처 권한을 켜지 못하게). PC 화면 모드·색 테마·바탕화면 비서도 PC에서만
     // 기본 작업 폴더도 PC에서만 (원격에서 바꾸면 새 고용·지시의 작업 폴더 제한이 우회된다)
-    0: fieldsExcept('updateSettings', 0, REMOTE_BLOCKED_SETTINGS, { monthlyBudgetUsd: true, tokenBudget: true, theme: true, dayNight: true, plants: true, isChatterOn: true, isSecretaryBriefOn: true, workHours: true, layout: true, isTrayOn: true, launchAtLogin: true, isOnboarded: true, isWorkMode: true, isFullAccessNoticeSeen: true, isProviderBannerSeen: true, internalAi: true, language: true, demoDay: true, isSecretaryWebOn: true, tokenSaverMode: true, reportStyle: true }),
+    0: fieldsExcept('updateSettings', 0, REMOTE_BLOCKED_SETTINGS, { monthlyBudgetUsd: true, tokenBudget: true, theme: true, dayNight: true, plants: true, isChatterOn: true, isSecretaryBriefOn: true, workHours: true, layout: true, isTrayOn: true, launchAtLogin: true, isOnboarded: true, seenHints: true, isHintsOff: true, isWorkMode: true, isFullAccessNoticeSeen: true, isProviderBannerSeen: true, internalAi: true, language: true, demoDay: true, isSecretaryWebOn: true, tokenSaverMode: true, reportStyle: true }),
   },
 }
 

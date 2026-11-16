@@ -38,6 +38,7 @@ import {
   type Task,
   type Team,
 } from '../shared/types'
+import { parseResume } from '../shared/secretaryProgress'
 import { EMPTY_SHOP, type LedgerEntry, type LedgerKind, type ShopState } from '../shared/economy'
 import type { RemoteConfig } from './remote/service.ts'
 import { settleGrid } from './shopGrid.ts'
@@ -167,6 +168,8 @@ export function openDb() {
   const secretaryCols = (db.prepare('PRAGMA table_info(secretary_message)').all() as { name: string }[]).map((c) => c.name)
   if (!secretaryCols.includes('approval_ids')) db.exec('ALTER TABLE secretary_message ADD COLUMN approval_ids TEXT')
   if (!secretaryCols.includes('is_brief')) db.exec('ALTER TABLE secretary_message ADD COLUMN is_brief INTEGER')
+  // 상한에 걸려 멈춘 안내의 이어 하기 정보 (JSON — secretaryProgress)
+  if (!secretaryCols.includes('resume')) db.exec('ALTER TABLE secretary_message ADD COLUMN resume TEXT')
   db.exec('CREATE TABLE IF NOT EXISTS chat_reservation (id TEXT PRIMARY KEY, data TEXT NOT NULL, created_at INTEGER NOT NULL)')
 }
 
@@ -644,6 +647,11 @@ export function deleteStaffTraces(ids: string[]) {
   }
 }
 
+/** 업무 연습 단체방 글을 지운다 (연습 회사 정리) */
+export function deletePracticeChats() {
+  run(`DELETE FROM chat WHERE meta LIKE '%"isPractice":true%'`)
+}
+
 // ── 예약 업무 ───────────────────────────────────────────
 
 export function loadSchedules(): Schedule[] {
@@ -679,7 +687,7 @@ export function deleteScheduleRow(id: string) {
 type ChatRow = { id: number; ts: number; sender: string; text: string; attachments: string | null; approval: string | null; room: string | null; is_report?: number | null; meta?: string | null }
 
 /** chat.meta 칸에 모아 두는 것 */
-export type ChatMeta = Pick<ChatMessage, 'replyTo' | 'deliveries' | 'reaction' | 'taskId' | 'scheduled' | 'plan'>
+export type ChatMeta = Pick<ChatMessage, 'replyTo' | 'deliveries' | 'reaction' | 'taskId' | 'scheduled' | 'plan' | 'isPractice'>
 
 function parseChatMeta(raw: string | null | undefined): ChatMeta {
   if (!raw) return {}
@@ -812,6 +820,13 @@ interface SecretaryRow {
   is_error: number | null
   approval_ids: string | null
   is_brief: number | null
+  resume: string | null
+}
+
+/** 이어 하기 정보가 깨졌으면 버튼만 빼고 대화는 그대로 읽는다 (한리뷰) */
+const resumeOf = (raw: string | null) => {
+  const resume = raw ? parseResume(raw) : undefined
+  return resume ? { resume } : {}
 }
 
 const toSecretaryMessage = (r: SecretaryRow): SecretaryMessage & { target?: unknown } => ({
@@ -825,18 +840,19 @@ const toSecretaryMessage = (r: SecretaryRow): SecretaryMessage & { target?: unkn
   ...(r.is_error ? { isError: true } : {}),
   ...(r.approval_ids ? { approvalIds: JSON.parse(r.approval_ids) as string[] } : {}),
   ...(r.is_brief ? { isBrief: true } : {}),
+  ...resumeOf(r.resume),
 })
 
 export function insertSecretaryMessage(m: Omit<SecretaryMessage, 'id'>, target?: unknown): SecretaryMessage {
   const { lastInsertRowid } = run(
-    'INSERT INTO secretary_message (ts, role, text, card, target, tokens, is_error, approval_ids, is_brief) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-    m.ts, m.role, m.text, m.card ? JSON.stringify(m.card) : null, target ? JSON.stringify(target) : null, m.tokens ?? null, m.isError ? 1 : null, m.approvalIds?.length ? JSON.stringify(m.approvalIds) : null, m.isBrief ? 1 : null,
+    'INSERT INTO secretary_message (ts, role, text, card, target, tokens, is_error, approval_ids, is_brief, resume) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    m.ts, m.role, m.text, m.card ? JSON.stringify(m.card) : null, target ? JSON.stringify(target) : null, m.tokens ?? null, m.isError ? 1 : null, m.approvalIds?.length ? JSON.stringify(m.approvalIds) : null, m.isBrief ? 1 : null, m.resume ? JSON.stringify(m.resume) : null,
   )
   return { ...m, id: Number(lastInsertRowid) }
 }
 
 export function updateSecretaryMessage(m: SecretaryMessage) {
-  run('UPDATE secretary_message SET text = ?, card = ?, tokens = ?, is_error = ? WHERE id = ?', m.text, m.card ? JSON.stringify(m.card) : null, m.tokens ?? null, m.isError ? 1 : null, m.id)
+  run('UPDATE secretary_message SET text = ?, card = ?, tokens = ?, is_error = ?, resume = ? WHERE id = ?', m.text, m.card ? JSON.stringify(m.card) : null, m.tokens ?? null, m.isError ? 1 : null, m.resume ? JSON.stringify(m.resume) : null, m.id)
 }
 
 /** 차례를 기다리던 질문을 빼거나 합쳐 사라진 말풍선 */

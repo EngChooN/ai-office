@@ -9,6 +9,7 @@ import { NAV_GROUP_DEFS, groupBadge, groupOfView, visibleGroups, visibleTabs } f
 import { NavTabs } from '@/features/NavTabs'
 import { notifiableVersion, useUpdateStore } from '@/lib/update'
 import { StaffPanel } from '@/features/StaffPanel'
+import { HelpButton } from '@/features/HelpMenu'
 import { AutoApproveBadge } from '@/features/AutoApprove'
 import { cn } from '@/lib/utils'
 import { recentFolders } from '@/mobile/recentFolders'
@@ -108,6 +109,7 @@ function PhoneTopBar() {
       <Button size="icon" className={cn('shrink-0', HEADER_ICON)} onClick={() => setHireOpen(true)} aria-label={t('shell.hire')} data-tour="hire">
         <UserPlusIcon />
       </Button>
+      <HelpButton className="size-8" />
     </header>
   )
 }
@@ -198,6 +200,7 @@ function PhoneTabBar() {
         <Button size="icon" onClick={() => setHireOpen(true)} aria-label={t('shell.hire')}>
           <UserPlusIcon />
         </Button>
+        <HelpButton />
       </div>
     </nav>
   )

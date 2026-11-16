@@ -15,6 +15,7 @@ import { NativeSelect } from '@/components/ui/select'
 import { hireDefaults } from '@shared/tokenSaving'
 import { newStaffApprovalMode, ROLE_PRESETS, type AgentTemplate, type ApprovalMode, type HireInput, type ModelChoice } from '@shared/types'
 import { PROVIDER_NAME, PROVIDERS, useProviders } from './ProviderCards'
+import { FirstHint } from './FirstHint'
 import { engineReason, isBothReady, ProviderPicker } from './ProviderPicker'
 import { defaultProvider } from '@shared/engineModel'
 import { shortPath } from './status'
@@ -331,6 +332,8 @@ export function HireDialog() {
                     <span className="text-muted-foreground text-xs">{form.cwd ? t('hire.where.folderHint') : t('hire.where.anyHint')}</span>
                   </>
                 )}
+                {/* 첫 실행 안내에서 뺀 작업 폴더 고르기를 처음 한 번 여기서 알려 준다 (창 안 한 줄 상자) */}
+                <FirstHint id="hire" inline />
               </div>
 
               {/* 직원 상태를 아직 모르거나 고른 AI가 준비 안 됐으면 이유가 보이게 접지 않는다 */}

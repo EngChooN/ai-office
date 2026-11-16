@@ -20,7 +20,7 @@ export type NameOf = (id: string) => string | null
 /** 설정 이름표 (사전 키 secretary.setting.<키>). Settings의 모든 키를 적어야 타입 검사를 통과한다 — 새 설정이 카드에 영어 키로 보이지 않게 */
 const SETTING_KEY_MAP: Record<keyof Settings, true> = {
   monthlyBudgetUsd: true, tokenBudget: true, theme: true, dayNight: true, uiMode: true, uiTheme: true, plants: true, isChatterOn: true, isSecretaryBriefOn: true,
-  workHours: true, layout: true, isTrayOn: true, isDeskPetOn: true, deskPetSize: true, deskPetOpacity: true, launchAtLogin: true, isOnboarded: true, defaultCwd: true,
+  workHours: true, layout: true, isTrayOn: true, isDeskPetOn: true, deskPetSize: true, deskPetOpacity: true, launchAtLogin: true, isOnboarded: true, defaultCwd: true, seenHints: true, isHintsOff: true,
   isWorkMode: true, isFullAccessNoticeSeen: true, isProviderBannerSeen: true, internalAi: true, language: true, demoDay: true, isStaffCaptureOn: true,
   isSecretaryWebOn: true, sharedBrowserLogin: true, tokenSaverMode: true, reportStyle: true,
 }

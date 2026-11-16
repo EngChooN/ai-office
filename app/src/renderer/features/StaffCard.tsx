@@ -48,6 +48,7 @@ function InitialAvatar({ name, teamId, className }: { name: string; teamId?: str
   return (
     <span
       aria-hidden
+      data-slot="initial-avatar"
       title={name}
       style={style}
       className={cn(

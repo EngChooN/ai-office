@@ -1,4 +1,5 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { FirstHint } from './FirstHint'
 import { CheckIcon, ChevronDownIcon, FlaskConicalIcon, MinusIcon, PresentationIcon, SquareIcon, UsersIcon } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -93,6 +94,8 @@ export function MeetingPage() {
     // PC는 왼쪽에 단체방과 같은 방 목록(회의실 줄이 선택됨, 방을 누르면 단체방으로). 폰 배치에서는 RoomListColumn이 숨는다
     <div ref={listLayout.rowRef} className="flex h-full">
       <RoomListColumn room={undefined} layout={listLayout} />
+      {/* 처음 열 때 한 번: '회의 시작' 버튼 아래 */}
+      <FirstHint id="meeting" target="tut-meeting-start" sides={['below', 'left', 'above']} />
       <div className="min-w-0 flex-1">
         <Page title={t('meeting.title')} description={t('meeting.description')}>
           <form onSubmit={handleStart} className="bg-card mb-6 flex max-w-3xl flex-col gap-3 rounded-xl border p-4">

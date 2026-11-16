@@ -194,6 +194,7 @@ export const SECRETARY_TOOLS: Record<OfficeMethod, ToolSpec> = {
   secretaryAsk: exclude,
   secretaryCancelQueued: exclude,
   secretaryMergeQueued: exclude,
+  secretaryResume: exclude,
   secretaryRun: exclude,
   secretaryCancel: exclude,
   secretaryClear: exclude,
@@ -218,7 +219,7 @@ export const excludeMessage = (m: string) => {
   return hint ? `"${m}"는 비서가 쓸 수 없는 기능이에요 — ${hint}.` : `"${m}"는 비서가 쓸 수 없는 기능이에요.`
 }
 
-export const SECRETARY_SELF_METHODS =['secretaryAsk', 'secretaryCancelQueued', 'secretaryMergeQueued', 'secretaryRun', 'secretaryCancel', 'secretaryClear', 'secretaryOpened'] as const
+export const SECRETARY_SELF_METHODS =['secretaryAsk', 'secretaryCancelQueued', 'secretaryMergeQueued', 'secretaryResume', 'secretaryRun', 'secretaryCancel', 'secretaryClear', 'secretaryOpened'] as const
 
 export const methodsOfKind = (kind: SecretaryToolKind) => (Object.keys(SECRETARY_TOOLS) as OfficeMethod[]).filter((m) => SECRETARY_TOOLS[m].kind === kind)
 

@@ -11,6 +11,25 @@ Writing rules
 - Leave out: internal or development matters, re-fixes of features added in the same version, how a security hole worked (if needed, one line on the result), minor wording or spacing tweaks.
 - Couldn't do it before → new feature; easier than before → improvement; was working wrongly → bug fix.
 
+## [1.4.2] - 2026-11-16
+PC app only: task and meeting practice and the first-run guide work only in the PC app. On the phone you still get first-time tips and the ? help.
+
+### At a glance
+- **Better** A much shorter first-run guide (1–2 min)
+- **Better** Practice and help from the ? at top right
+- **Better** Turn work mode on from the left menu
+- **Better** The assistant can continue long answers
+- **Fixed** Retro initials no longer spill out
+
+### Improvements
+- The first-run guide is now much shorter. After a welcome screen and an AI account check, you learn the basics in a minute or two with one practice task (assign in the group chat → approve → get the result) that uses no AI quota. You choose the work folder when you add staff.
+- Open practice, tours, and help anytime from the ? at the top right. A short tip appears once the first time you open a screen.
+- You can now turn work mode on or off right from the bottom of the left menu.
+- The assistant now works longer on big questions. If it still has to stop, it tells you how far it got, and Continue picks up where it left off.
+
+### Bug fixes
+- In the Retro theme, the letters in staff initial avatars no longer stick out of their box.
+
 ## [1.4.1] - 2026-11-16
 PC app only: the desktop secretary, turning it on from the menu bar and the connection code setting work only in the PC app. On the phone you can only find files; opening them works only on the PC.
 

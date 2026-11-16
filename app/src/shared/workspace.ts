@@ -254,6 +254,7 @@ export const METHOD_ACCESS: Record<OfficeMethod, MethodAccess> = {
   secretaryAsk: 'write',
   secretaryCancelQueued: 'write',
   secretaryMergeQueued: 'write',
+  secretaryResume: 'write',
   secretaryRun: 'write',
   secretaryCancel: 'write',
   secretaryClear: 'write',

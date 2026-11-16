@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="ko" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>시안 B — 바로 시작 + 필요할 때 도움</title>
+<style>
+  :root, [data-theme="light"] {
+    --background:#F6F5FB; --foreground:#221F33; --card:#FFFFFF; --primary:#6C5CE7; --on-primary:#FFFFFF;
+    --muted:#ECEAF6; --muted-foreground:#66627F; --accent:#E9E6FA; --border:#DEDAF0; --input:#CFCAE6;
+    --chrome:#FBFAFF; --working:#1C7C46; --waiting:#9A5B00; --error:#C42B2B; --page:#E4E1F2;
+    --floor:#e3ddf0; --floor2:#d8d1e8; --dim:rgba(20,16,40,.42); --ring:#6C5CE7; --tag:#FFF1C9; --tag-fg:#7A5300;
+  }
+  [data-theme="dark"] {
+    --background:#14131C; --foreground:#EDEBF8; --card:#201F2D; --primary:#9B8CFF; --on-primary:#1A1240;
+    --muted:#292739; --muted-foreground:#A7A3C4; --accent:#302D47; --border:#34314A; --input:#413E5C;
+    --chrome:#181723; --working:#4ADE80; --waiting:#F2C94C; --error:#FF6B6B; --page:#0C0B12;
+    --floor:#2b2638; --floor2:#322c41; --dim:rgba(0,0,0,.55); --ring:#9B8CFF; --tag:#4A3A10; --tag-fg:#F7D77A;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--page); color:var(--foreground); font:14px/1.5 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Malgun Gothic",sans-serif; }
+  button { font:inherit; color:inherit; cursor:pointer; }
+  .top { display:flex; align-items:center; gap:12px; padding:14px 24px; flex-wrap:wrap; }
+  .top h1 { font-size:18px; margin:0; }
+  .top .sub { color:var(--muted-foreground); font-size:13px; }
+  .top .sp { flex:1; }
+  .seg { display:inline-flex; background:var(--card); border:1px solid var(--border); border-radius:999px; padding:3px; }
+  .seg button { border:0; background:transparent; padding:4px 12px; border-radius:999px; font-size:13px; }
+  .seg button.on { background:var(--primary); color:var(--on-primary); }
+  .ghost { border:1px solid var(--border); background:var(--card); border-radius:999px; padding:5px 12px; font-size:13px; }
+  .wrap { display:flex; gap:20px; padding:0 24px 16px; align-items:flex-start; }
+  /* ---------- 앱 창 ---------- */
+  .app { position:relative; flex:none; width:940px; height:580px; background:var(--background); border:1px solid var(--border); border-radius:14px; overflow:hidden; display:grid; grid-template-columns:172px 1fr; grid-template-rows:40px 1fr; box-shadow:0 12px 40px rgba(30,20,80,.14); }
+  .tb { grid-column:1/3; display:flex; align-items:center; gap:10px; padding:0 14px; background:var(--chrome); border-bottom:1px solid var(--border); font-size:13px; }
+  .tb .dots { display:flex; gap:6px; } .tb .dots i { width:11px; height:11px; border-radius:50%; background:var(--input); display:block; }
+  .tb .name { font-weight:600; } .tb .sp { flex:1; }
+  .chip { display:inline-flex; align-items:center; gap:4px; padding:2px 9px; border-radius:999px; background:var(--muted); color:var(--muted-foreground); font-size:12px; }
+  .help { width:26px; height:26px; border-radius:50%; border:1px solid var(--border); background:var(--card); font-weight:700; color:var(--primary); }
+  .side { background:var(--chrome); border-right:1px solid var(--border); padding:10px 8px; display:flex; flex-direction:column; gap:2px; }
+  .nav { display:flex; align-items:center; gap:8px; padding:7px 10px; border-radius:9px; font-size:13px; color:var(--muted-foreground); position:relative; }
+  .nav.on { background:var(--accent); color:var(--foreground); font-weight:600; }
+  .nav .badge { margin-left:auto; background:var(--error); color:#fff; font-size:11px; border-radius:999px; padding:0 6px; }
+  .nav.dimmed { opacity:.45; }
+  .side .sp { flex:1; }
+  .hirebtn { display:flex; align-items:center; justify-content:center; gap:6px; border:0; border-radius:10px; padding:8px; background:var(--primary); color:var(--on-primary); font-weight:600; font-size:13px; }
+  .main { position:relative; overflow:hidden; padding:16px 18px; }
+  .h2 { font-size:15px; font-weight:700; margin:0 0 10px; display:flex; align-items:center; gap:8px; }
+  .tag { font-size:10.5px; font-weight:700; background:var(--tag); color:var(--tag-fg); border-radius:5px; padding:0 5px; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px 14px; }
+  .muted { color:var(--muted-foreground); }
+  .small { font-size:12px; }
+  .btn { border:0; border-radius:9px; padding:7px 14px; background:var(--primary); color:var(--on-primary); font-weight:600; font-size:13px; }
+  .btn.sec { background:var(--muted); color:var(--foreground); }
+  .btn.link { background:transparent; color:var(--muted-foreground); padding:7px 6px; }
+  .row { display:flex; gap:8px; align-items:center; }
+  /* 사무실 */
+  .floor { position:absolute; inset:0; background:
+      linear-gradient(45deg, var(--floor2) 25%, transparent 25%, transparent 75%, var(--floor2) 75%) 0 0/40px 40px,
+      linear-gradient(45deg, var(--floor2) 25%, transparent 25%, transparent 75%, var(--floor2) 75%) 20px 20px/40px 40px, var(--floor); opacity:.9; }
+  .desks { position:absolute; left:0; right:0; top:120px; display:flex; justify-content:center; gap:70px; }
+  .desk { position:relative; width:120px; display:flex; flex-direction:column; align-items:center; }
+  .desk .tbl { width:110px; height:34px; background:#b88a5a; border-radius:6px; box-shadow:0 4px 0 #8c6540; }
+  .desk .mon { width:36px; height:24px; background:#3a3650; border-radius:3px; margin-bottom:-8px; z-index:1; }
+  .ava { width:44px; height:44px; border-radius:50%; display:grid; place-items:center; color:#fff; font-weight:700; font-size:15px; border:3px solid var(--card); margin-top:6px; }
+  .desk .nm { font-size:12px; margin-top:4px; display:flex; gap:4px; align-items:center; background:var(--card); padding:1px 7px; border-radius:999px; border:1px solid var(--border); }
+  .bub { position:absolute; bottom:112px; left:50%; transform:translateX(-50%); width:168px; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:6px 9px; font-size:12px; box-shadow:0 4px 12px rgba(0,0,0,.08); }
+  .bub::after { content:""; position:absolute; bottom:-6px; left:50%; margin-left:-6px; border:6px solid transparent; border-top-color:var(--card); border-bottom:0; }
+  .empty { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:360px; text-align:center; padding:22px; }
+  .empty .big { font-size:34px; }
+  /* 채팅 */
+  .chat { display:flex; flex-direction:column; height:100%; }
+  .msgs { flex:1; display:flex; flex-direction:column; gap:10px; overflow:hidden; }
+  .msg { display:flex; gap:8px; align-items:flex-start; max-width:78%; }
+  .msg .ava { width:30px; height:30px; font-size:12px; border-width:2px; margin:0; flex:none; }
+  .msg .b { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:7px 11px; font-size:13px; }
+  .msg .who { font-size:11.5px; color:var(--muted-foreground); margin-bottom:2px; display:flex; gap:4px; align-items:center; }
+  .msg.me { align-self:flex-end; } .msg.me .b { background:var(--primary); color:var(--on-primary); border-color:transparent; }
+  .inputrow { display:flex; gap:8px; margin-top:10px; }
+  .input { flex:1; border:1px solid var(--input); background:var(--card); border-radius:10px; padding:8px 12px; font-size:13px; }
+  .mention { color:var(--primary); font-weight:600; }
+  /* 결재함·보드 */
+  .split { display:grid; grid-template-columns:220px 1fr; gap:12px; height:100%; }
+  .item { padding:9px 11px; border-radius:10px; border:1px solid var(--border); background:var(--card); font-size:12.5px; }
+  .item.on { border-color:var(--primary); box-shadow:0 0 0 1px var(--primary) inset; }
+  .sec { margin:6px 0; font-size:12.5px; } .sec b { display:inline-block; width:62px; color:var(--muted-foreground); font-weight:500; }
+  .kan { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+  .col { background:var(--muted); border-radius:10px; padding:8px; min-height:200px; font-size:12px; }
+  .col h4 { margin:0 0 6px; font-size:12px; color:var(--muted-foreground); }
+  .kc { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:7px 8px; margin-bottom:6px; }
+  .toast { position:absolute; left:50%; bottom:16px; transform:translateX(-50%); background:var(--foreground); color:var(--background); padding:7px 14px; border-radius:10px; font-size:12.5px; }
+  .pill { display:inline-block; padding:3px 9px; border-radius:999px; background:var(--accent); font-size:12px; margin:2px 3px 2px 0; }
+  /* 겹침: 모달·안내 풍선·힌트 */
+  .dim { position:absolute; inset:0; background:var(--dim); z-index:20; display:grid; place-items:center; }
+  .modal { width:440px; background:var(--card); border:1px solid var(--border); border-radius:16px; padding:22px 24px; box-shadow:0 20px 60px rgba(0,0,0,.25); }
+  .modal h3 { margin:0 0 6px; font-size:19px; }
+  .modal .foot { display:flex; align-items:center; gap:8px; margin-top:16px; }
+  .modal .foot .sp { flex:1; }
+  .three { display:flex; gap:8px; margin:14px 0 4px; align-items:center; }
+  .three .c { flex:1; text-align:center; background:var(--muted); border-radius:10px; padding:9px 4px; font-size:12px; }
+  .three .c span { display:block; font-size:20px; }
+  .three .ar { color:var(--muted-foreground); }
+  .check { display:flex; gap:10px; align-items:center; padding:9px 11px; border:1px solid var(--border); border-radius:10px; margin-top:8px; font-size:13px; }
+  .ok { color:var(--working); font-weight:700; }
+  .opt { display:flex; gap:10px; align-items:center; width:100%; text-align:left; border:1px solid var(--border); background:var(--background); border-radius:12px; padding:10px 12px; margin-top:8px; }
+  .opt:hover { border-color:var(--primary); }
+  .opt .ic { font-size:22px; } .opt .t { font-weight:600; } .opt .d { font-size:12px; color:var(--muted-foreground); }
+  .opt .tm { margin-left:auto; font-size:12px; color:var(--primary); white-space:nowrap; font-weight:600; }
+  .hl { position:relative; z-index:31; outline:3px solid var(--ring); outline-offset:3px; border-radius:10px; animation:pulse 1.6s infinite; }
+  @keyframes pulse { 0%,100% { outline-color:var(--ring); } 50% { outline-color:transparent; } }
+  .spot { position:absolute; inset:0; background:var(--dim); z-index:30; pointer-events:none; }
+  .coach { position:absolute; z-index:40; width:264px; background:var(--card); border:1px solid var(--border); border-radius:14px; padding:12px 14px; box-shadow:0 12px 32px rgba(0,0,0,.22); font-size:13px; }
+  .coach .k { font-size:11.5px; color:var(--primary); font-weight:700; margin-bottom:3px; display:flex; gap:6px; }
+  .coach .k .sp { flex:1; } .coach .k .tm { color:var(--muted-foreground); font-weight:500; }
+  .coach .acts { display:flex; gap:6px; margin-top:9px; align-items:center; }
+  .coach .acts .sp { flex:1; }
+  .hint { position:absolute; z-index:40; width:236px; background:var(--foreground); color:var(--background); border-radius:12px; padding:9px 12px; font-size:12.5px; box-shadow:0 8px 24px rgba(0,0,0,.2); }
+  .hint .acts { display:flex; justify-content:flex-end; gap:8px; margin-top:6px; }
+  .hint button { border:0; background:transparent; color:inherit; font-size:12px; font-weight:700; padding:0; }
+  .hint .x { opacity:.7; font-weight:500; }
+  .hint .k { font-size:11px; opacity:.75; margin-bottom:2px; }
+  .drawer { position:absolute; top:0; right:0; bottom:0; width:300px; background:var(--card); border-left:1px solid var(--border); z-index:25; padding:16px; box-shadow:-8px 0 30px rgba(0,0,0,.12); }
+  .drawer h4 { margin:12px 0 6px; font-size:12px; color:var(--muted-foreground); }
+  .dl { padding:8px 10px; border-radius:9px; font-size:13px; border:1px solid var(--border); margin-bottom:6px; background:var(--background); }
+  /* ---------- 오른쪽 흐름 ---------- */
+  .flow { flex:1; min-width:300px; max-width:420px; display:flex; flex-direction:column; gap:12px; }
+  .panel { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:14px 16px; }
+  .panel h3 { margin:0 0 8px; font-size:14px; }
+  .sum { display:flex; gap:10px; } .sum .n { flex:1; background:var(--muted); border-radius:10px; padding:8px 10px; }
+  .sum .n b { display:block; font-size:18px; color:var(--primary); } .sum .n span { font-size:12px; color:var(--muted-foreground); }
+  .steps { list-style:none; margin:0; padding:0; }
+  .steps li { display:flex; gap:8px; align-items:center; padding:6px 8px; border-radius:9px; cursor:pointer; font-size:13px; }
+  .steps li:hover { background:var(--muted); }
+  .steps li.on { background:var(--accent); font-weight:600; }
+  .steps li.done .no { background:var(--primary); color:var(--on-primary); }
+  .steps .no { flex:none; width:22px; height:22px; border-radius:50%; display:grid; place-items:center; background:var(--muted); font-size:11.5px; font-weight:700; }
+  .steps .nm { flex:1; min-width:0; }
+  .steps .kind, .steps .s { flex:none; }
+  .steps .s { font-size:11.5px; color:var(--muted-foreground); white-space:nowrap; }
+  .kind { font-size:10.5px; border-radius:5px; padding:0 5px; font-weight:700; white-space:nowrap; }
+  .kind.k-req { background:var(--accent); color:var(--primary); }
+  .kind.k-auto { background:var(--muted); color:var(--muted-foreground); }
+  .kind.k-opt, .kind.k-later { background:var(--tag); color:var(--tag-fg); }
+  .grp { font-size:11.5px; color:var(--muted-foreground); margin:8px 0 2px 4px; font-weight:600; }
+  .branches { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:6px; }
+  .branches button { border:1px solid var(--border); background:var(--background); border-radius:999px; padding:3px 10px; font-size:12px; }
+  .branches button.on { background:var(--primary); border-color:var(--primary); color:var(--on-primary); }
+  .note { font-size:13px; } .note p { margin:4px 0; }
+  .navbtns { display:flex; gap:8px; }
+  .compare { margin:0 24px 24px; background:var(--card); border:1px solid var(--border); border-radius:14px; padding:12px 16px; font-size:13px; }
+  .compare div { padding:3px 0; } .compare b { color:var(--primary); }
+  .compare .cur b { color:var(--muted-foreground); }
+  .compare .foot { font-size:12px; color:var(--muted-foreground); }
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>시안 B — 바로 시작 + 필요할 때 도움</h1>
+  <span class="sub">로그인 후 바로 빈 사무실, 화면마다 처음 한 번 힌트와 ? 도움말</span>
+  <span class="sp"></span>
+  <div class="seg" id="themeSeg"><button data-t="light">라이트</button><button data-t="dark">다크</button></div>
+  <button class="ghost" id="restart">처음부터</button>
+</div>
+<div class="wrap">
+  <div class="app" id="app"></div>
+  <div class="flow">
+    <div class="panel">
+      <div class="sum" id="sum"></div>
+    </div>
+    <div class="panel">
+      <h3>화면 흐름 <span class="muted small">— 눌러서 이동, ← → 키도 돼요</span></h3>
+      <div id="branches" class="branches"></div>
+      <ul class="steps" id="steps"></ul>
+      <div class="navbtns" style="margin-top:10px"><button class="ghost" id="prev">← 이전</button><button class="ghost" id="next">다음 →</button></div>
+    </div>
+    <div class="panel note" id="note"></div>
+  </div>
+</div>
+<div class="compare" id="compare"></div>
+<script>
+const CAST = {
+  lead: { n:'이리드', r:'팀장', c:'#7C6CF0', i:'리' },
+  des:  { n:'박디자', r:'디자이너', c:'#E07A9B', i:'박' },
+  dev:  { n:'최코드', r:'개발자', c:'#3FA67A', i:'최' },
+}
+const NAV = [
+  ['map','🏢','사무실'],['chat','💬','단체방'],['board','📋','업무 보드'],['meeting','🗣️','회의실'],['inbox','✅','결재함'],
+  ['dashboard','🗂️','대시보드'],['manuals','📘','업무 매뉴얼'],['payroll','💳','급여 명세서'],['settings','⚙️','설정'],
+]
+const ava = (k, s='') => `<div class="ava" style="background:${CAST[k].c};${s}">${CAST[k].i}</div>`
+const tagP = (on) => on ? '<span class="tag">연습</span>' : ''
+
+/* ---------- 화면 조각 ---------- */
+const V = {
+  office(a={}) {
+    if (a.empty) return `<div class="floor"></div>
+      <div class="card empty" data-hl="empty">
+        <div class="big">🏢</div>
+        <div style="font-weight:700;font-size:15px;margin:6px 0 4px">아직 직원이 없어요</div>
+        <div class="muted small" style="margin-bottom:12px">직원을 추가하고 단체방에서 일을 맡기면 돼요.</div>
+        <div class="row" style="justify-content:center"><button class="btn" data-hl="hire-main">직원 추가</button>
+        ${a.practiceLink ? '<button class="btn sec" data-hl="practice">연습해 보기</button>' : ''}</div>
+        ${a.practiceLink ? '<div class="muted small" style="margin-top:8px">연습은 AI 사용량이 들지 않아요</div>' : ''}
+      </div>`
+    const st = a.staff || ['lead','des','dev']
+    return `<div class="floor"></div><div class="desks" data-hl="desks">${st.map(k => `<div class="desk">
+        ${a.bubbles && a.bubbles[k] ? `<div class="bub">${a.bubbles[k]}</div>` : ''}
+        ${ava(k)}<div class="mon"></div><div class="tbl"></div>
+        <div class="nm">${CAST[k].n}${tagP(a.practice)}</div></div>`).join('')}</div>
+      ${a.toast ? `<div class="toast">${a.toast}</div>` : ''}`
+  },
+  chat(a={}) {
+    const ms = (a.msgs||[]).map(m => m.me
+      ? `<div class="msg me"><div class="b">${m.t}</div></div>`
+      : `<div class="msg">${ava(m.k)}<div><div class="who">${CAST[m.k].n}${tagP(a.practice)}</div><div class="b" ${m.hl?`data-hl="${m.hl}"`:''}>${m.t}</div></div></div>`).join('')
+    return `<div class="chat"><div class="h2">💬 ${a.room||'단체방'} ${a.practice?'<span class="tag">연습</span>':''}</div>
+      <div class="msgs">${ms}</div>
+      <div class="inputrow"><div class="input" data-hl="input">${a.input||'<span class="muted">@이름 으로 지시해요</span>'}</div><button class="btn" data-hl="send">보내기</button></div></div>
+      ${a.toast ? `<div class="toast">${a.toast}</div>` : ''}`
+  },
+  inbox(a={}) {
+    return `<div class="h2">✅ 결재함</div><div class="split">
+      <div><div class="item on">📝 <b>로그인 화면 만들기 — 기획안</b><div class="muted small">이리드 ${tagP(a.practice)} · 방금</div></div></div>
+      <div class="card"><div style="font-weight:700;margin-bottom:6px">로그인 화면 만들기 — 기획안 ${tagP(a.practice)}</div>
+        <div class="sec"><b>목적</b>이메일과 비밀번호로 로그인하는 화면을 만든다.</div>
+        <div class="sec"><b>요구사항</b>① 이메일·비밀번호 입력 ② 비밀번호 보기/숨기기 ③ 틀렸을 때 안내 문구</div>
+        <div class="sec"><b>범위</b>화면과 입력 검사까지. 서버 연동은 이번엔 제외.</div>
+        <div class="sec"><b>나눈 일</b>디자인 → 박디자 / 구현 → 최코드</div>
+        <div class="row" style="margin-top:12px"><button class="btn" data-hl="approve">승인</button><button class="btn sec">반려</button><button class="btn link">질문하기</button></div>
+      </div></div>
+      ${a.toast ? `<div class="toast">${a.toast}</div>` : ''}`
+  },
+  board(a={}) {
+    return `<div class="h2">📋 업무 보드</div><div class="kan">
+      <div class="col"><h4>할 일</h4>${(a.todo||[]).map(t=>`<div class="kc" ${a.hlTodo?'data-hl="todo-cards"':''}>${t} ${tagP(a.practice)}</div>`).join('')}</div>
+      <div class="col"><h4>진행 중</h4></div>
+      <div class="col"><h4>검토</h4>${a.review?`<div class="kc" data-hl="result">📦 로그인 화면 만들기 — 결과 ${tagP(a.practice)}</div>`:''}</div>
+      <div class="col"><h4>완료</h4></div></div>`
+  },
+  meeting(a={}) {
+    const says = (a.says||[]).map(([k,t]) => `<div class="msg">${ava(k)}<div><div class="who">${CAST[k].n}${tagP(true)}</div><div class="b">${t}</div></div></div>`).join('')
+    return `<div class="h2">🗣️ 회의실 <span class="tag">연습</span></div>
+      <div class="card" style="margin-bottom:10px"><div class="row"><b style="width:52px" class="small muted">주제</b><span>다음 주 우선순위 정하기</span></div>
+      <div class="row" style="margin-top:6px"><b style="width:52px" class="small muted">참석자</b><span class="pill">이리드</span><span class="pill">박디자</span><span class="pill">최코드</span>
+      ${a.start?'<span class="sp" style="flex:1"></span><button class="btn" data-hl="start">회의 시작</button>':''}</div></div>
+      <div class="msgs" style="gap:8px">${says}</div>
+      ${a.decision?`<div class="card" style="margin-top:10px"><b>결정 사항</b><div class="small" style="margin:4px 0">① 로그인 화면을 먼저 끝낸다. ② 그다음 가입 화면 디자인을 시작한다.</div><button class="btn" data-hl="todo">할 일로 올리기</button></div>`:''}`
+  },
+  hire(a={}) {
+    return V.office({empty:true}) + `<div class="dim" style="z-index:15"><div class="modal">
+      <h3>직원 추가</h3><div class="muted small">어떤 일을 맡길 직원인가요?</div>
+      <div style="margin-top:10px" data-hl="roles">${['기획자','디자이너','개발자','마케터','직접 입력'].map((r,i)=>`<span class="pill" style="${i==1?'background:var(--primary);color:var(--on-primary)':''}">${r}</span>`).join('')}</div>
+      <div class="check"><span class="muted" style="width:70px">이름</span><b>김디자</b></div>
+      <div class="check" data-hl="folder"><span class="muted" style="width:70px">작업 폴더</span><span class="muted">나중에 정해도 돼요</span><span style="flex:1"></span><button class="btn sec">고르기</button></div>
+      <div class="foot"><span class="sp"></span><button class="btn link">취소</button><button class="btn">추가</button></div></div></div>`
+  },
+}
+
+/* ---------- 공용 모달 ---------- */
+const M = {
+  login(btn='확인하고 계속') { return `<h3>AI 계정 확인</h3>
+    <div class="muted small">이 컴퓨터에 로그인된 계정을 그대로 써요. 따로 키는 필요 없어요.</div>
+    <div class="check"><span class="ok">✓</span><b>Claude</b><span class="muted small">로그인됨</span></div>
+    <div class="check"><span class="muted">—</span><b>ChatGPT</b><span class="muted small">선택 · 나중에 연결해도 돼요</span></div>
+    <div class="foot"><span class="muted small">둘 중 하나만 있으면 돼요</span><span class="sp"></span><button class="btn" data-go="next">${btn}</button></div>` },
+}
+
+/* ---------- 엔진 ---------- */
+const F = {
+  helpBtn: true,
+  common: [
+    { name:'환영 + AI 계정 확인', kind:'req', sec:20, view:'office', args:{empty:true}, navDim:true,
+      modal:`<h3>AI Office에 오신 걸 환영해요</h3>
+        <div class="muted small">AI를 직원으로 두고 일을 맡기는 사무실이에요. 계정만 확인하면 바로 시작해요.</div>
+        <div class="check"><span class="ok">✓</span><b>Claude</b><span class="muted small">로그인됨</span></div>
+        <div class="check"><span class="muted">—</span><b>ChatGPT</b><span class="muted small">선택 · 나중에 연결해도 돼요</span></div>
+        <div class="foot"><span class="muted small">이 한 장이면 끝이에요</span><span class="sp"></span><button class="btn" data-go="next">사무실로 들어가기</button></div>`,
+      note:`<p>환영과 로그인 확인을 <b>한 장</b>에 합쳤어요. 설명 카드 3장, 폴더 고르기, 실제 첫 업무, 준비 완료 화면은 모두 없어요.</p><p>이미 로그인돼 있으면 버튼 한 번으로 끝나요.</p>` },
+    { name:'빈 사무실 도착', kind:'req', sec:10, active:'map', view:'office', args:{empty:true, practiceLink:true}, spot:false, hl:'hire-main',
+      hints:[{at:'empty', side:'bottom', k:'처음 한 번만 보여요', t:'여기서 첫 직원을 추가해요. 모르는 게 있으면 오른쪽 위 <b>?</b>를 눌러요.'}],
+      note:`<p>빈 사무실이 곧 안내예요. 할 일은 <b>직원 추가</b> 하나뿐이라 눈에 띄게 가운데 둬요.</p><p>연습은 <b>선택 버튼</b>으로만 둬요(누르면 지금의 업무 맡기기 연습).</p><p>둘러보기(5곳)는 자동으로 뜨지 않아요.</p>` },
+    { group:'그 화면을 처음 열 때만 (예시)', name:'직원 추가 창 처음 열 때', kind:'later', sec:5, active:'map', view:'hire', spot:false,
+      hints:[{at:'folder', side:'right', t:'직무만 고르면 돼요. <b>작업 폴더</b>는 이 직원이 볼 폴더예요. 나중에 정해도 돼요.'}],
+      note:`<p>지금 첫 설정에 있던 <b>폴더 고르기</b> 설명이 여기로 와요. 실제로 폴더가 필요한 순간에만 보여요.</p>` },
+    { name:'단체방 처음 열 때', kind:'later', sec:5, active:'chat', view:'chat', args:{msgs:[]}, spot:false,
+      hints:[{at:'input', side:'top', t:'<b>@이름</b>으로 부르면 그 직원이 일을 받아요. 이름 없이 쓰면 직무가 맞는 직원이 받아요.'}],
+      note:`<p>둘러보기의 '단체방' 설명을 그대로 옮겼어요. 실제로 지시를 쓰려는 순간에 보이니 기억에 남아요.</p>` },
+    { name:'첫 결재가 왔을 때', kind:'later', sec:5, active:'inbox', badge:{inbox:1}, view:'inbox', spot:false,
+      hints:[{at:'approve', side:'top', t:'직원이 확인이 필요한 일은 여기로 와요. 읽고 <b>승인</b>하면 일이 이어져요.'}],
+      note:`<p>결재는 첫 결재가 실제로 올 때만 설명해요. 사이드바 배지가 생길 때 결재함 메뉴에도 작은 점 하나가 같이 떠요(추천).</p>` },
+    { group:'필요할 때 스스로 열기', name:'? 도움말', kind:'opt', sec:0, active:'map', view:'office', args:{staff:['des']}, hl:'help', spot:false, at:'left',
+      drawer:`<div class="drawer"><div class="row"><b>도움말</b><span style="flex:1"></span><span class="muted">✕</span></div>
+        <h4>지금 화면 · 사무실</h4><div class="dl">직원을 누르면 하는 일과 대화가 보여요</div>
+        <h4>자주 찾는 것</h4><div class="dl">일을 시키려면?</div><div class="dl">결재는 언제 오나요?</div><div class="dl">사용량은 어디서 보나요?</div>
+        <h4>연습해 보기 (AI 사용량 없음)</h4><div class="dl" data-hl="tut">💬 업무 맡기기 연습 · 약 1분</div><div class="dl">🗣️ 회의 열기 연습 · 약 1분</div><div class="dl">🧭 화면 둘러보기 · 5곳</div></div>`,
+      note:`<p>오른쪽 위 <b>?</b> 하나에 지금 화면 설명, 자주 찾는 질문, 연습 2종, 둘러보기를 모아요.</p><p>지금은 둘러보기와 연습이 처음에 자동으로 이어지는데, 이 시안은 <b>여기서 고를 때만</b> 시작해요.</p>` },
+  ],
+  summary:(b, steps) => [['2번','꼭 눌러야 하는 단계'],['약 30초','사무실에 들어가기까지'],['힌트 3개','그 화면 처음 열 때 한 번씩']],
+  compare:`<div class="cur">현재: 첫 설정 5단계 + 둘러보기 5곳 + 업무 연습 7번 클릭 → <b>꼭 거치는 단계 약 17개 · 약 5분</b>(추정)</div>
+    <div>시안 B: 환영·로그인 1장 + 사무실 도착 → <b>꼭 누르는 단계 2개 · 약 30초</b>. 힌트는 화면마다 처음 한 번(각 5초 안팎), 연습은 원할 때만</div>
+    <div class="foot">현재 시간은 대본 예산(업무 연습 55초)과 화면 수로 어림한 값이에요. 실제 측정은 아직 안 했어요.</div>`,
+}
+
+let branch = F.defaultBranch || null
+let idx = 0
+let drawer = false
+const stepsNow = () => F.common.concat(branch && F.branches ? F.branches[branch].steps : [], F.tail || [])
+const fmt = (s) => s >= 60 ? `${Math.floor(s/60)}분${s%60?` ${s%60}초`:''}` : `${s}초`
+const kindLabel = { req:'필수', auto:'자동', opt:'선택', later:'처음 한 번' }
+
+function render() {
+  const steps = stepsNow()
+  idx = Math.max(0, Math.min(idx, steps.length - 1))
+  const st = steps[idx]
+  const app = document.getElementById('app')
+  const nav = NAV.map(([id,ic,lb]) => `<div class="nav ${st.active===id?'on':''} ${st.navDim?'dimmed':''}" data-hl="nav-${id}">${ic} ${lb}${st.badge&&st.badge[id]?`<span class="badge">${st.badge[id]}</span>`:''}</div>`).join('')
+  const view = st.view ? V[st.view](st.args||{}) : ''
+  app.innerHTML = `<div class="tb"><div class="dots"><i></i><i></i><i></i></div><span class="name">AI Office</span>
+      ${st.practice?'<span class="chip">🧪 연습 중 · AI 사용량 없음</span>':''}<span class="sp"></span>
+      ${st.prog?`<span class="chip">${st.prog}</span>`:''}
+      ${F.helpBtn?'<button class="help" data-hl="help" title="도움말">?</button>':''}
+      <span class="chip">Claude 12%</span></div>
+    <div class="side">${nav}<div class="sp"></div><button class="hirebtn" data-hl="hire">＋ 직원 추가</button></div>
+    <div class="main" id="mainArea">${view}</div>
+    ${st.modal?`<div class="dim"><div class="modal">${st.modal}</div></div>`:''}`
+  if (st.drawer) document.getElementById('mainArea').insertAdjacentHTML('beforeend', st.drawer)
+  // 강조
+  if (st.hl) {
+    const el = app.querySelector(`[data-hl="${st.hl}"]`)
+    if (el) { el.classList.add('hl'); if (st.spot !== false) app.insertAdjacentHTML('beforeend','<div class="spot"></div>'); place(app, el, st.coach ? coachHtml(st, steps) : null, 'coach', st.at) }
+  } else if (st.coach) {
+    app.insertAdjacentHTML('beforeend', `<div class="coach" style="right:20px;bottom:20px">${coachHtml(st, steps)}</div>`)
+  }
+  for (const h of st.hints||[]) {
+    const el = app.querySelector(`[data-hl="${h.at}"]`)
+    if (el) { if (h.ring) el.classList.add('hl'); place(app, el, `<div class="k">${h.k||'처음 한 번만 보여요'}</div>${h.t}<div class="acts"><button class="x">다시 보지 않기</button><button data-go="next">알겠어요</button></div>`, 'hint', h.side) }
+  }
+  // 오른쪽 흐름
+  const req = steps.filter(s => s.kind==='req'), reqSec = steps.filter(s=>s.kind!=='later'&&s.kind!=='opt').reduce((a,s)=>a+(s.sec||0),0)
+  document.getElementById('sum').innerHTML = (F.summary ? F.summary(branch, steps) : [
+    [`${req.length}번`, '꼭 눌러야 하는 단계'], [`약 ${fmt(reqSec)}`, '끝까지 걸리는 시간(예상)'], [`${idx+1} / ${steps.length}`, '지금 보는 화면']
+  ]).map(([b,s]) => `<div class="n"><b>${b}</b><span>${s}</span></div>`).join('')
+  let html = '', lastG = null, n = 0
+  steps.forEach((s,i) => {
+    if (s.group && s.group !== lastG) { html += `<div class="grp">${s.group}</div>`; lastG = s.group }
+    html += `<li data-i="${i}" class="${i===idx?'on':''} ${i<idx?'done':''}"><span class="no">${++n}</span><span class="nm">${s.name}</span><span class="kind k-${s.kind}">${kindLabel[s.kind]}</span><span class="s">${s.sec?fmt(s.sec):''}</span></li>`
+  })
+  document.getElementById('steps').innerHTML = html
+  document.getElementById('branches').innerHTML = F.branches ? Object.entries(F.branches).map(([k,b]) => `<button data-b="${k}" class="${k===branch?'on':''}">${b.label}</button>`).join('') : ''
+  document.getElementById('branches').style.display = F.branches ? '' : 'none'
+  document.getElementById('note').innerHTML = `<h3>이 화면에서</h3>${st.note||''}`
+}
+function coachHtml(st, steps) {
+  const pos = steps.filter(s=>s.coach).indexOf(st) + 1
+  return `<div class="k"><span>${st.coachK||'연습'}</span><span class="sp"></span><span class="tm">${st.coachN||''}</span></div>${st.coach}
+    <div class="acts">${st.auto?'<button class="btn" data-go="next">지금 보기</button>':''}${st.coachNext?`<button class="btn" data-go="next">${st.coachNext}</button>`:''}<span class="sp"></span><button class="btn link" data-go="end">${st.endLabel||'그만하기'}</button></div>`
+}
+function place(app, el, html, cls, at) {
+  if (!html) return
+  const a = app.getBoundingClientRect(), r = el.getBoundingClientRect()
+  const box = document.createElement('div'); box.className = cls; box.innerHTML = html; app.appendChild(box)
+  const w = box.offsetWidth, h = box.offsetHeight
+  let x, y
+  const side = at || (r.left - a.left < 200 ? 'right' : (r.top - a.top > a.height/2 ? 'top' : 'bottom'))
+  if (side==='right') { x = r.right - a.left + 14; y = r.top - a.top + r.height/2 - h/2 }
+  else if (side==='left') { x = r.left - a.left - w - 14; y = r.top - a.top + r.height/2 - h/2 }
+  else if (side==='top') { x = r.left - a.left + r.width/2 - w/2; y = r.top - a.top - h - 14 }
+  else { x = r.left - a.left + r.width/2 - w/2; y = r.bottom - a.top + 14 }
+  box.style.left = Math.max(10, Math.min(x, a.width - w - 10)) + 'px'
+  box.style.top = Math.max(48, Math.min(y, a.height - h - 10)) + 'px'
+}
+function go(d) { idx += d; render() }
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('[data-go],[data-branch],[data-i],[data-b],.hl')
+  if (!t) return
+  if (t.dataset.branch) { branch = t.dataset.branch; return go(1) }
+  if (t.dataset.b) { branch = t.dataset.b; idx = F.common.length; return render() }
+  if (t.dataset.i) { idx = +t.dataset.i; return render() }
+  if (t.dataset.go === 'end') { idx = stepsNow().length - 1; return render() }
+  if (t.dataset.go === 'next' || t.classList.contains('hl')) go(1)
+})
+document.getElementById('prev').onclick = () => go(-1)
+document.getElementById('next').onclick = () => go(1)
+document.getElementById('restart').onclick = () => { idx = 0; branch = F.defaultBranch || null; render() }
+document.addEventListener('keydown', (e) => { if (e.key==='ArrowRight') go(1); if (e.key==='ArrowLeft') go(-1) })
+const qs = new URLSearchParams(location.search)
+function setTheme(t) { document.documentElement.dataset.theme = t; document.querySelectorAll('#themeSeg button').forEach(b => b.classList.toggle('on', b.dataset.t===t)); render() }
+document.querySelectorAll('#themeSeg button').forEach(b => b.onclick = () => setTheme(b.dataset.t))
+if (qs.get('step')) idx = +qs.get('step') - 1
+if (qs.get('branch')) branch = qs.get('branch')
+document.getElementById('compare').innerHTML = F.compare
+setTheme(qs.get('mode') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'))
+</script>
+</body>
+</html>

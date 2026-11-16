@@ -3,7 +3,8 @@ import { BellIcon, SparklesIcon, StoreIcon, UserPlusIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CoachTour } from '@/features/CoachTour'
 import { Onboarding } from '@/features/Onboarding'
-import { TutorialDone, TutorialGuide, TutorialPicker } from '@/features/Tutorial'
+import { TutorialChip, TutorialDone, TutorialGuide, TutorialPicker } from '@/features/Tutorial'
+import { HelpButton } from '@/features/HelpMenu'
 import { HireDialog } from '@/features/HireDialog'
 import { NavTabs } from '@/features/NavTabs'
 import { NAV_GROUP_DEFS, groupOfView, showsTabRow } from '@/features/navGroups'
@@ -30,7 +31,6 @@ import { useLayout } from '@/layout/useLayout'
 import { useLang } from '@/lib/i18n'
 import { connectOffice, useOffice, useWorkMode } from './store'
 import { ToastHost } from '@/lib/toast'
-import { shouldOfferPractice } from '@/lib/firstTaskFlow'
 import { keyName } from '@/lib/keyName'
 import { t } from '@shared/i18n'
 import { DuoIcon } from '@/components/duo-icon'
@@ -47,8 +47,10 @@ export default function App() {
 const handledRequests = { tour: 0, practice: 0 }
 
 function AppBody() {
-  const [isTourOpen, setIsTourOpen] = useState(false)
-  // 코치마크를 끝까지 보면 "한 사이클 해 보기" 선택을 띄운다
+  // 화면 둘러보기 — ? 도움말·첫 실행 끝 화면·설정 › 안내에서 고를 때만 연다 (처음 힌트가 기다리도록 store에 둔다)
+  const isTourOpen = useOffice((s) => s.isCoachTourOpen)
+  const setIsTourOpen = useOffice((s) => s.setCoachTourOpen)
+  // 연습 고르기 — 설정 › 안내 › 연습 튜토리얼 해 보기에서만
   const [isPickerOpen, setIsPickerOpen] = useState(false)
   // 설정에서 누른 요청은 한 번만 연다 (언어를 바꿔 이 틀을 새로 그려도 다시 열지 않게 처리한 번호를 모듈에 둔다)
   const tourRequest = useOffice((s) => s.tourRequest)
@@ -56,7 +58,7 @@ function AppBody() {
     if (tourRequest <= handledRequests.tour) return
     handledRequests.tour = tourRequest
     setIsTourOpen(true)
-  }, [tourRequest])
+  }, [tourRequest, setIsTourOpen])
   const practiceRequest = useOffice((s) => s.practiceRequest)
   useEffect(() => {
     if (practiceRequest <= handledRequests.practice) return
@@ -80,15 +82,8 @@ function AppBody() {
   const overlays = (
     <>
       <HireDialog />
-      <Onboarding onStartTour={() => setIsTourOpen(true)} />
-      <CoachTour
-        isOpen={isTourOpen}
-        onClose={(isFinished) => {
-          setIsTourOpen(false)
-          // 이미 실제 업무를 해 본 사람에게는 연습 고르기를 또 띄우지 않는다 (설정 › 안내에서 언제든)
-          setIsPickerOpen(isFinished && shouldOfferPractice(useOffice.getState().staff))
-        }}
-      />
+      <Onboarding />
+      <CoachTour isOpen={isTourOpen} onClose={() => setIsTourOpen(false)} />
       <TutorialPicker isOpen={isPickerOpen} onClose={() => setIsPickerOpen(false)} />
       <TutorialGuide />
       <TutorialDone />
@@ -148,7 +143,9 @@ function DesktopShell({ children }: { children?: React.ReactNode }) {
         )}
         {/* 실제 한도는 엔진 플랜 사용률 (앱이 환산하던 $·예산 대신) — 직원이 쓰는 엔진만, 둘 다면 엔진 이름을 붙여 */}
         <PlanUsageChip engines={usageEngines} onOpen={() => setView('payroll')} />
+        <TutorialChip />
         <div className="ml-auto flex shrink-0 items-center gap-1 [-webkit-app-region:no-drag]">
+          <HelpButton className="mr-1" />
           <AutoApproveBadge />
           {waitingCount > 0 && (
             <Button size="sm" variant="outline" className="border-status-waiting text-status-waiting" onClick={() => setView('inbox')}>
@@ -197,9 +194,11 @@ function EmptyOfficeHint() {
       <StoreIcon className="size-4 shrink-0" />
       <span>{t('guideHint.empty.hint')}</span>
       <div className="ml-auto flex gap-1.5">
-        <Button size="sm" variant="ghost" onClick={() => void window.office.updateSettings({ isOnboarded: false })}>
-          {t('guideHint.replay')}
-        </Button>
+        {!IS_REMOTE_SCREEN && (
+          <Button size="sm" variant="ghost" onClick={() => void window.office.updateSettings({ isOnboarded: false })}>
+            {t('guideHint.replay')}
+          </Button>
+        )}
         <Button size="sm" variant="outline" onClick={openMarket}>
           {t('market.bring')}
         </Button>

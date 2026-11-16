@@ -6,6 +6,7 @@ import type { RefDocReject } from './refDocs'
 import type { AutoApproveConfig, AutoApprovePlan, AutoKind } from './autoApprove'
 import type { StaffCommand } from './slashCommands'
 import type { SecretaryAskResult } from './secretaryQueue'
+import type { SecretaryResume, SecretaryResumeResult } from './secretaryProgress'
 import type { PlanHoldState } from './planHold'
 import type { ApprovalRule, ApprovalRuleDraft } from './approvalRules'
 import type { KnowledgeEntry, KnowledgeInput } from './knowledge'
@@ -17,6 +18,7 @@ import type { PackResult } from './staffPack'
 import type { PairKind, PairWindowView, PeerSlotView, PeerView } from './peerProtocol'
 import { COMPANY_LEVELS, companyLevelOf } from './officeLevel.ts'
 import { DEFAULT_UI_MODE, DEFAULT_UI_THEME, sanitizeUi, type UiMode, type UiThemeId } from './uiTheme.ts'
+import { initialSeenHints } from './firstHints.ts'
 import type { I18nArg, I18nText, LangSetting } from './i18n/index.ts'
 
 export type StaffKind = 'hired' | 'external'
@@ -719,6 +721,8 @@ export interface ChatMessage {
   scheduled?: { kind: 'once' | 'repeat'; reservationId: string }
   /** 리드가 올린 기획안 확인 요청 — 그 카드의 기획안 (다시 올리면 proposedAt이 바뀐다) */
   plan?: { taskId: string; proposedAt: number }
+  /** 업무 연습(튜토리얼) 단체방 글 — 연습 회사를 정리하면 함께 지운다 */
+  isPractice?: boolean
 }
 
 export interface ChatReplyRef {
@@ -826,8 +830,12 @@ export interface Settings {
   launchAtLogin: boolean
   /** 첫 실행 안내를 마쳤는지 */
   isOnboarded: boolean
-  /** 첫 실행 마법사에서 고른 기본 작업 폴더 — 고용 창의 폴더 칸을 미리 채운다 ('' = 없음) */
+  /** 첫 실행 마법사에서 고른 기본 작업 폴더 — 고용 창의 폴더 칸을 미리 채운다 ('' = 없음). 지금 첫 실행 안내에는 폴더 단계가 없고, 예전에 고른 값만 쓴다 */
   defaultCwd: string
+  /** 화면을 처음 열 때 한 번 뜨는 힌트 중 본 것 (shared/firstHints.ts FIRST_HINT_IDS) */
+  seenHints: string[]
+  /** '힌트 모두 끄기' */
+  isHintsOff: boolean
   /** 업무 모드: 회사에 띄워 둘 때 게임 요소(자금·상점·레벨·말풍선)를 숨기고 대시보드로 시작한다 */
   isWorkMode: boolean
   /** 0.9.0 안내("이제 연결된 휴대폰이 PC를 전부 조작할 수 있어요")를 봤는지 — 한 번만 띄운다 */
@@ -1139,6 +1147,8 @@ export interface OfficeApi {
   /** 차례를 기다리는 질문 빼기 · 대기 질문을 하나로 합쳐 묻기 (이미 답을 시작했으면 false) */
   secretaryCancelQueued(msgId: number): Promise<boolean>
   secretaryMergeQueued(): Promise<boolean>
+  /** 상한에 걸려 멈춘 안내의 [이어서 하기] — 앞 시도에서 한 일을 넘겨 새로 답한다 (비서가 쉬고 있을 때만) */
+  secretaryResume(noticeId: number): Promise<SecretaryResumeResult>
   secretaryRun(cardId: string, options?: SecretaryRunOptions): Promise<SecretaryCard | null>
   secretaryCancel(cardId: string): Promise<void>
   secretaryClear(): Promise<void>
@@ -1400,6 +1410,8 @@ export const DEFAULT_SETTINGS: Settings = {
   launchAtLogin: false,
   isOnboarded: false,
   defaultCwd: '',
+  seenHints: [],
+  isHintsOff: false,
   isWorkMode: false,
   isFullAccessNoticeSeen: false,
   isProviderBannerSeen: false,
@@ -1412,7 +1424,7 @@ export const DEFAULT_SETTINGS: Settings = {
 
 /** 저장된(또는 옛 버전) 설정의 빈 칸을 기본값으로 채운다 — 토큰 예산이 없던 설정은 USD 예산은 두고 토큰 한도를 "제한 없음"으로 */
 export function withSettingsDefaults(saved: Partial<Settings>): Settings {
-  return { ...DEFAULT_SETTINGS, ...saved, ...sanitizeUi(saved), tokenBudget: { ...DEFAULT_SETTINGS.tokenBudget, ...saved.tokenBudget }, demoDay: { ...DEFAULT_SETTINGS.demoDay, ...saved.demoDay } }
+  return { ...DEFAULT_SETTINGS, ...saved, ...sanitizeUi(saved), seenHints: initialSeenHints(saved), tokenBudget: { ...DEFAULT_SETTINGS.tokenBudget, ...saved.tokenBudget }, demoDay: { ...DEFAULT_SETTINGS.demoDay, ...saved.demoDay } }
 }
 
 /** 토큰 수 짧게 (999,950 이상은 반올림하면 1000.0K가 되므로 M으로 올린다) */
@@ -1558,6 +1570,8 @@ export interface SecretaryMessage {
   approvalIds?: string[]
   /** 아침(밤사이) 요약 — 아래에 [다시 안 보기]가 붙는다 */
   isBrief?: boolean
+  /** 상한에 걸려 멈춘 안내(notice) — 아래에 [이어서 하기]가 붙는다 */
+  resume?: SecretaryResume
 }
 
 export interface SecretaryState {

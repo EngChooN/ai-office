@@ -90,7 +90,6 @@ export default {
     zh: '现在也可以添加 GPT（Codex）员工了。去设置里连接 GPT（Codex）吧。',
   },
   'provider.banner.open': { ko: '연결하러 가기', en: 'Connect', ja: 'つなげる', zh: '去连接' },
-  'onboarding.provider.laterTour': { ko: '나중에 연결하고 둘러보기', en: 'Connect later and look around', ja: '後で接続して見て回る', zh: '稍后连接，先看看' },
   'onboarding.provider.title': { ko: 'AI 계정 연결', en: 'Connect an AI account', ja: 'AIアカウントの接続', zh: '连接 AI 账号' },
   'onboarding.provider.checkingDesc': {
     ko: 'Claude와 ChatGPT(Codex) 계정을 함께 확인하고 있어요. 둘 중 하나만 연결돼 있으면 충분해요.',

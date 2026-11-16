@@ -441,7 +441,11 @@ test('지연: 질문을 받은 때부터 답·보류까지 걸린 시간을 기�
 test('토큰: 비서 질문은 매번 새로 부르고(세션 이어 쓰기 없음) 최근 대화 8개만 짧게 넘긴다', () => {
   const sec = readApp('src/main/secretary.ts')
   assert.match(readApp('src/main/ai/claude.ts'), /persistSession: false,/)
-  assert.doesNotMatch(sec, /resume:/)
+  // [이어서 하기]도 SDK 세션을 이어 쓰지 않고 새로 부른다 (안내 메시지의 resume 필드는 앱 데이터)
+  const call = sec.slice(sec.indexOf('aiBackend().secretary({'), sec.indexOf('this.q = q'))
+  assert.ok(call.length > 0)
+  assert.doesNotMatch(call, /resume/i)
+  assert.doesNotMatch(readApp('src/main/ai/types.ts').slice(readApp('src/main/ai/types.ts').indexOf('interface SecretaryRunOpts'), readApp('src/main/ai/types.ts').indexOf('export type SecretaryEvent')), /resume/i)
   assert.match(readApp('src/main/secretaryMemory.ts'), /CONTEXT_MESSAGES = 8/)
   assert.match(sec, /wrapDocument\('앞 대화 \(참고만\)'/)
   // 인자 모양 표는 지침이 아니라 propose 도구 설명에만 (두 번 넣지 않는다)

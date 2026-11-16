@@ -23,6 +23,8 @@ contextBridge.exposeInMainWorld("office", {
   secretaryCancelQueued: (msgId: number) =>
     ipcRenderer.invoke("office:secretaryCancelQueued", msgId),
   secretaryMergeQueued: () => ipcRenderer.invoke("office:secretaryMergeQueued"),
+  secretaryResume: (noticeId: number) =>
+    ipcRenderer.invoke("office:secretaryResume", noticeId),
   autoApproveLog: () => ipcRenderer.invoke("office:autoApproveLog"),
   getRecord: (staffId: string) =>
     ipcRenderer.invoke("office:getRecord", staffId),

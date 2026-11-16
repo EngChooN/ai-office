@@ -28,8 +28,6 @@ interface TourStep {
   chapter: Chapter
   /** 앱 창 밖(바탕화면)을 설명하는 단계 — 휴대폰 앱에서는 뺀다 */
   isDesktopOnly?: boolean
-  /** 마지막 단계에 '직원 고용하기' 버튼을 붙인다 */
-  hasHireButton?: boolean
 }
 
 const CHAPTERS: { id: Chapter; label: TKey }[] = [
@@ -49,15 +47,13 @@ const menuStep = (chapter: Chapter, menu: View, icon: string, body: TKey, isOpen
   body,
 })
 
-/** 처음 보는 핵심 5단계: 사무실 → 고용 → 지시 → 결재 → 첫 고용. 나머지는 마지막에 '더 보기'를 눌렀을 때만 */
+/** 사무실·단체방·결재함 설명 — 첫 실행 업무 연습에서 직접 해 보므로 둘러보기에는 없고, ? 도움말 '지금 화면' 설명으로만 쓴다 */
 const CORE_STEPS: TourStep[] = [
   menuStep('office', 'map', '🏢', 'coachTour.map.body'),
-  { chapter: 'office', target: 'hire', icon: '🧑‍💼', title: 'coachTour.hire.title', body: 'coachTour.hire.body' },
   menuStep('work', 'chat', '💬', 'coachTour.chat.body'),
   menuStep('review', 'inbox', '✅', 'coachTour.inbox.body', false),
 ]
-const LAST_STEP: TourStep = { chapter: 'company', target: 'hire', icon: '🚀', title: 'coachTour.firstHire.title', body: 'coachTour.firstHire.body', hasHireButton: true }
-/** '더 보기': 핵심 단계 뒤, 마지막 단계 앞에 이어진다 (장 순서대로) */
+/** 화면 둘러보기: 연습에서 다루지 않은 나머지 화면 (장 순서대로) — ? 도움말·첫 실행 끝 화면·설정 › 안내에서 고를 때만 */
 const MORE_STEPS: TourStep[] = [
   { chapter: 'office', target: 'hud', view: 'map', icon: '📈', title: 'coachTour.hud.title', body: 'coachTour.hud.body' },
   menuStep('office', 'secretary', '✨', 'coachTour.secretary.body'),
@@ -77,11 +73,19 @@ const MORE_STEPS: TourStep[] = [
 /** 업무 모드에서 숨긴 화면을 설명하는 단계 */
 const GAME_TARGETS = new Set(['nav-map', 'hud', 'nav-shop'])
 
-/** 보여 줄 단계: 핵심(또는 '더 보기'면 핵심+나머지를 장 순서대로) → 마지막 단계. 업무 모드·휴대폰에서 못 쓰는 단계는 뺀다 */
-function tourSteps(isMore: boolean, isWorkMode: boolean): TourStep[] {
+/** 보여 줄 단계: 나머지 화면을 장 순서대로. 업무 모드·휴대폰에서 못 쓰는 단계는 뺀다 */
+function tourSteps(isWorkMode: boolean): TourStep[] {
   const chapterOrder = (s: TourStep) => CHAPTERS.findIndex((c) => c.id === s.chapter)
-  const body = isMore ? [...CORE_STEPS, ...MORE_STEPS].sort((a, b) => chapterOrder(a) - chapterOrder(b)) : CORE_STEPS
-  return [...body, LAST_STEP].filter((s) => !(isWorkMode && GAME_TARGETS.has(s.target)) && !(IS_REMOTE_SCREEN && s.isDesktopOnly))
+  return [...MORE_STEPS].sort((a, b) => chapterOrder(a) - chapterOrder(b)).filter((s) => !(isWorkMode && GAME_TARGETS.has(s.target)) && !(IS_REMOTE_SCREEN && s.isDesktopOnly))
+}
+
+/** 화면 둘러보기 단계 수 ('나머지 화면 둘러보기 · n곳') — 업무 모드·휴대폰에서 빠지는 단계는 세지 않는다 */
+export const moreTourCount = (isWorkMode: boolean) => tourSteps(isWorkMode).length
+
+/** ? 도움말 '지금 화면' 설명 — 그 화면의 둘러보기 설명을 그대로 쓴다 (없으면 null) */
+export function screenHelp(view: View): string | null {
+  const step = [...CORE_STEPS, ...MORE_STEPS].find((s) => s.menu === view || s.view === view)
+  return step ? t(step.body, { modKey: MOD_KEY, trayPlace: osText(t('coachTour.trayPlace.mac'), t('coachTour.trayPlace.win')) }) : null
 }
 const PAD = 6
 /** 높이를 재기 전 첫 자리 계산에 쓰는 설명 상자 높이 */
@@ -119,16 +123,13 @@ export function useTourTarget(target: string | null) {
 }
 
 /**
- * 메뉴별 코치마크: 대상만 밝게 비추고 옆에 설명을 띄운다. 메뉴·비서·바탕화면 비서를 4개 장으로 묶어 장마다 건너뛸 수 있다.
- * onClose(isFinished) — 끝까지 봤거나 마지막 장을 건너뛰면 true (다음에 시나리오 선택을 띄운다), 그만 보기면 false
+ * 화면 둘러보기 코치마크: 대상만 밝게 비추고 옆에 설명을 띄운다. 메뉴·비서·바탕화면 비서를 4개 장으로 묶어 장마다 건너뛸 수 있다.
+ * 첫 실행 뒤 저절로 열지 않는다 — ? 도움말·첫 실행 끝 화면·설정 › 안내에서 고를 때만
  */
-export function CoachTour({ isOpen, onClose }: { isOpen: boolean; onClose: (isFinished: boolean) => void }) {
+export function CoachTour({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const setView = useOffice((s) => s.setView)
   const isWorkMode = useWorkMode()
-  const setHireOpen = useOffice((s) => s.setHireOpen)
-  // '더 보기'를 누르면 핵심 단계 사이에 나머지를 끼워 장 순서대로 다시 늘어놓는다
-  const [isMore, setIsMore] = useState(false)
-  const steps = useMemo(() => tourSteps(isMore, isWorkMode), [isWorkMode, isMore])
+  const steps = useMemo(() => tourSteps(isWorkMode), [isWorkMode])
   const [index, setIndex] = useState(0)
   const step = steps[Math.min(index, steps.length - 1)]
   const rect = useTourTarget(isOpen ? step.target : null)
@@ -140,7 +141,6 @@ export function CoachTour({ isOpen, onClose }: { isOpen: boolean; onClose: (isFi
   useEffect(() => {
     if (!isOpen) return
     setIndex(0)
-    setIsMore(false)
   }, [isOpen])
 
   useLayoutEffect(() => {
@@ -180,29 +180,17 @@ export function CoachTour({ isOpen, onClose }: { isOpen: boolean; onClose: (isFi
 
   // 그만 보기: 다시 보는 곳을 알려 준다
   function stop() {
-    onClose(false)
+    onClose()
     showToast(t('guideHint.replayToast'))
   }
 
   if (!isOpen) return null
   const isLast = index >= steps.length - 1
   const finish = () => {
-    onClose(true)
+    onClose()
     setView('map')
   }
   const next = () => (isLast ? finish() : setIndex(index + 1))
-  // 마지막 단계에서 '더 보기': 나머지를 끼워 넣고, 핵심 단계 다음(처음 보는 단계)부터 이어 본다
-  const showMore = () => {
-    const seen = new Set(steps)
-    setIsMore(true)
-    setIndex(Math.max(0, tourSteps(true, isWorkMode).findIndex((s) => !seen.has(s))))
-  }
-  // 고용 창으로 바로: 연습 고르기는 띄우지 않는다 (설정 › 안내에서 언제든 할 수 있다)
-  const hire = () => {
-    onClose(false)
-    setView('map')
-    setHireOpen(true)
-  }
   // 지금 장의 단계들 (업무 모드에서 빠진 단계는 세지 않는다)
   const chapterNo = CHAPTERS.findIndex((c) => c.id === step.chapter)
   const inChapter = steps.filter((s) => s.chapter === step.chapter)
@@ -267,17 +255,7 @@ export function CoachTour({ isOpen, onClose }: { isOpen: boolean; onClose: (isFi
                 {t('coachTour.prev')}
               </Button>
             )}
-            {isLast && !isMore && (
-              <Button size="sm" variant="outline" onClick={showMore}>
-                {t('coachTour.more')}
-              </Button>
-            )}
-            {step.hasHireButton && (
-              <Button size="sm" onClick={hire}>
-                {t('coachTour.hireStaff')}
-              </Button>
-            )}
-            <Button size="sm" variant={step.hasHireButton ? 'outline' : 'default'} onClick={next}>
+            <Button size="sm" onClick={next}>
               {isLast ? t('coachTour.finish') : t('coachTour.next')}
             </Button>
           </div>

@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
 import { NativeSelect } from '@/components/ui/select'
 import { Page } from '@/components/ui/page'
@@ -15,6 +16,8 @@ import { PROVIDER_SECTION_ID, ProviderSection } from './ProviderCards'
 import { COMPANY_LEVELS, type DayNight, type HooksStatus, type Settings, type ThemeId } from '@shared/types'
 import { DARK_ONLY_THEMES, DEFAULT_UI_THEME, UI_THEME_GROUPS, type UiMode } from '@shared/uiTheme'
 import { CheckIcon } from 'lucide-react'
+import { moreTourCount } from './CoachTour'
+import { showToast } from '@/lib/toast'
 import { RetroThemePreview } from './RetroThemePreview'
 import { PET_OPACITY_RANGE, PET_SIZE_RANGE, petOpacity, petSize } from '@shared/deskPet'
 import { officeOf } from '@shared/officeLevel'
@@ -309,8 +312,10 @@ export function SettingsPage() {
             </Section>
             <Section id={SECTION_ID.workMode} title={t('settingsPage.workMode.title')} description={t('settingsPage.workMode.desc')}>
               <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" checked={settings.isWorkMode} onChange={(e) => update({ isWorkMode: e.target.checked })} /> {t('settingsPage.workMode.toggle')}
+                <Switch checked={settings.isWorkMode} onCheckedChange={(v) => update({ isWorkMode: v })} /> {t('settingsPage.workMode.toggle')}
               </label>
+              {/* 왼쪽 메뉴 스위치(Sidebar WorkModeRow)는 PC 창에만 있다 */}
+              {!IS_REMOTE_SCREEN && <p className="text-muted-foreground text-xs">{t('settingsPage.workMode.sidebarHint')}</p>}
             </Section>
             {/* 개발 실행에서는 등록되지 않는다 (설치본만 로그인 항목에 들어간다) */}
             <Section title={t('settingsPage.login.title')} description={t('settingsPage.login.desc')}>
@@ -330,16 +335,27 @@ export function SettingsPage() {
             )}
             <Section title={t('settingsPage.guide.title')} description={t('settingsPage.guide.desc')}>
               <div className="flex flex-wrap gap-2">
-                <Button variant="outline" size="sm" onClick={() => update({ isOnboarded: false })}>
-                  {t('settingsPage.guide.onboarding')}
-                </Button>
+                {/* 처음 안내·연습은 PC에서만 (휴대폰·원격 화면은 둘러보기·힌트만) */}
+                {!IS_REMOTE_SCREEN && (
+                  <Button variant="outline" size="sm" onClick={() => update({ isOnboarded: false })}>
+                    {t('settingsPage.guide.onboarding')}
+                  </Button>
+                )}
                 <Button variant="outline" size="sm" onClick={requestTour}>
-                  {t('settingsPage.guide.tour')}
+                  {t('helpMenu.tour', { n: moreTourCount(settings.isWorkMode) })}
                 </Button>
-                <Button variant="outline" size="sm" onClick={requestPractice}>
-                  {t('settingsPage.guide.practice')}
+                {!IS_REMOTE_SCREEN && (
+                  <Button variant="outline" size="sm" onClick={requestPractice}>
+                    {t('settingsPage.guide.practice')}
+                  </Button>
+                )}
+                <Button variant="outline" size="sm" onClick={() => {
+                  update({ seenHints: [], isHintsOff: false })
+                  showToast(t('helpMenu.hintsResetToast'))
+                }}>
+                  {t('helpMenu.hintsReset')}
                 </Button>
-                {hasPractice && (
+                {hasPractice && !IS_REMOTE_SCREEN && (
                   <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={() => void window.office.tutorialCleanup()}>
                     {t('tutorial.done.cleanup')}
                   </Button>

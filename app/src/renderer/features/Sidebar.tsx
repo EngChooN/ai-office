@@ -1,4 +1,7 @@
+import { BriefcaseIcon } from 'lucide-react'
+import { SwitchTrack } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
+import { IS_REMOTE_SCREEN } from '@/shell'
 import { useOffice, useWorkMode } from '@/store'
 import { t } from '@shared/i18n'
 import { NAV_GROUPS, useNavBadges, useOpenGroup } from './nav'
@@ -49,8 +52,34 @@ export function Sidebar() {
           )
         })}
       </div>
+      {!IS_REMOTE_SCREEN && <WorkModeRow />}
       <FeedbackButton />
       <DonateButton />
     </nav>
+  )
+}
+
+/** 업무 모드 켜고 끄기 — 설정 화면과 같은 값(settings.isWorkMode). 줄 전체가 스위치 하나.
+ * 휴대폰·다른 PC 원격 창에서는 숨긴다: 이 PC 한 대의 값이라 원격에서 바꾸면 PC 화면도 바뀐다 (원격은 설정 화면에서만) */
+function WorkModeRow() {
+  const isWorkMode = useWorkMode()
+  return (
+    <div data-slot="work-mode-row" className="mt-1 shrink-0 border-t pt-1">
+      <button
+        type="button"
+        role="switch"
+        aria-checked={isWorkMode}
+        onClick={() => void window.office.updateSettings({ isWorkMode: !isWorkMode })}
+        title={t('sidebar.workMode.tip')}
+        className={cn(
+          'hover:bg-accent/60 focus-ring flex w-full items-center gap-1.5 rounded-md px-2.5 py-1.5 text-left text-xs',
+          isWorkMode ? 'text-foreground font-medium' : 'text-muted-foreground hover:text-foreground',
+        )}
+      >
+        <BriefcaseIcon className={cn('size-3.5 shrink-0', isWorkMode && 'text-primary')} />
+        <span className="min-w-0 flex-1 truncate whitespace-nowrap">{t('settingsPage.workMode.title')}</span>
+        <SwitchTrack checked={isWorkMode} />
+      </button>
+    </div>
   )
 }

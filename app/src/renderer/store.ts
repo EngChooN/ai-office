@@ -7,6 +7,8 @@ import { applyUiTheme } from '@/lib/uiTheme'
 import { t } from '@shared/i18n'
 import { appendChat } from '@shared/chatRooms'
 import { markSeen, type ChatSeen } from '@shared/chatUnread'
+import { remoteTutorialSnapshot } from '@shared/tutorial'
+import { IS_REMOTE_SCREEN } from '@/shell'
 
 export type View = 'secretary' | 'map' | 'dashboard' | 'org' | 'board' | 'inbox' | 'chat' | 'meeting' | 'manuals' | 'knowledge' | 'gallery' | 'schedule' | 'report' | 'payroll' | 'settings' | 'updates' | 'shop'
 
@@ -72,6 +74,12 @@ interface OfficeState extends OfficeSnapshot {
   openMarket(): void
   /** 비서 빠른 창(⌘K·메뉴바 "비서에게 말하기") */
   isQuickSecretaryOpen: boolean
+  /** 화면 둘러보기가 열려 있는지 (처음 힌트는 기다린다) */
+  isCoachTourOpen: boolean
+  setCoachTourOpen(isOpen: boolean): void
+  /** 지금 떠 있는 처음 힌트 (한 번에 하나만) */
+  activeHint: string | null
+  setActiveHint(id: string | null): void
   setQuickSecretaryOpen(open: boolean): void
   pushLog(entry: LogEntry): void
   pushChat(m: ChatMessage): void
@@ -163,7 +171,11 @@ export const useOffice = create<OfficeState>((set) => ({
       const view = shownView(s.view, settings.isWorkMode)
       // 레벨이 내려가 보던 층이 없어지면 1층으로
       const viewFloor = clampFloor(s.viewFloor, viewLevelOf({ previewLevel: s.previewLevel, company: snap.company }))
-      return { ...snap, settings, view, viewFloor, isLoaded: true, selectedId: s.selectedId && snap.staff.some((x) => x.id === s.selectedId) ? s.selectedId : null }
+      // 연습 회사를 정리하면 업무 연습 단체방 글도 화면에서 뺀다 (main은 이미 지웠다)
+      const chat = snap.tutorial?.hasPractice === false && s.chat.some((m) => m.isPractice) ? s.chat.filter((m) => !m.isPractice) : s.chat
+      // 휴대폰·원격 화면에서는 연습을 하지 않는다 — PC에서 진행 중인 연습 단계는 빼고 받는다
+      const tutorial = IS_REMOTE_SCREEN ? remoteTutorialSnapshot(snap.tutorial) : snap.tutorial
+      return { ...snap, settings, view, viewFloor, chat, tutorial, isLoaded: true, selectedId: s.selectedId && snap.staff.some((x) => x.id === s.selectedId) ? s.selectedId : null }
     }),
   select: (selectedId) => set({ selectedId }),
   setView: (view) => set((s) => ({ view: shownView(view, s.settings.isWorkMode) })),
@@ -172,6 +184,10 @@ export const useOffice = create<OfficeState>((set) => ({
   setMarketOpen: (isMarketOpen) => set({ isMarketOpen }),
   openMarket: () => set({ hireOpen: true, isMarketOpen: true }),
   isQuickSecretaryOpen: false,
+  isCoachTourOpen: false,
+  setCoachTourOpen: (isCoachTourOpen) => set({ isCoachTourOpen }),
+  activeHint: null,
+  setActiveHint: (activeHint) => set({ activeHint }),
   setQuickSecretaryOpen: (isQuickSecretaryOpen) => set({ isQuickSecretaryOpen }),
   pushLog: (entry) => set((s) => ({ liveLogs: [...s.liveLogs.slice(-LIVE_LOG_MAX + 1), entry] })),
   // 같은 id면 결재 결과로 바뀐 메시지 → 제자리에서 바꾼다. 방마다 최근 CHAT_MAX개

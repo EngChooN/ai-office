@@ -60,3 +60,16 @@ test('크기 0인 숨은 요소는 보이지 않는 것으로 친다', () => {
   assert.equal(isVisibleBox({ width: 80, height: 0 }), false)
   assert.equal(isVisibleBox({ width: 80, height: 32 }), true)
 })
+
+test('놓는 순서를 바꿀 수 있다 — 업무 연습 승인 단계는 버튼 아래 (오른쪽 공간이 있어도)', () => {
+  const button = box(400, 300, 60, 32)
+  const below = placeTip(button, 150, 1280, 800, ['below', 'above', 'right', 'left'])
+  assert.equal(below.top, 300 + 32 + 14)
+  assert.equal(placeTip(button, 150, 1280, 800).left, 400 + 60 + 14, '기본은 오른쪽')
+})
+
+test('폭을 줄인 말풍선(처음 힌트 236px)도 화면 안에', () => {
+  const p = placeTip(box(1180, 20, 90, 32), 110, 1280, 800, ['right', 'below'], 236)
+  assert.equal(p.width, 236)
+  assert.ok(p.left + p.width <= 1280 - TIP_MARGIN)
+})

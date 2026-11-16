@@ -11,24 +11,29 @@ export type CastRole = 'lead' | 'designer' | 'dev'
 /** 사용자가 진짜 화면에서 한 일 (화면이 알려 주거나, office가 카드·회의를 처리하며 알려 준다). timer = 대기가 끝남·"지금 보기" */
 export type TutorialEvent =
   | { type: 'view'; view: TutorialView }
-  | { type: 'taskCreated' | 'taskStarted' | 'planApproved' | 'resultOpened' | 'taskDone' | 'meetingStarted' | 'todosCreated' | 'finish' | 'timer' }
+  | { type: 'ack' | 'chatSent' | 'planApproved' | 'taskDone' | 'meetingStarted' | 'todosCreated' | 'finish' | 'timer' }
 
-/** 화면이 보내는 진행 입력: 본 화면·연 카드 · 끝내기 버튼(B5) · 회의 결정 '할 일로 올리기'(B3) · 건너뛰기 · 지금 보기 · 튜토리얼 끝내기 */
+/** 화면이 보내는 진행 입력: 본 화면 · 안내 상자 '다음'(P1) · 끝내기 버튼(B5) · 회의 결정 '할 일로 올리기'(B3) · 건너뛰기 · 지금 보기 · 튜토리얼 끝내기 */
 export type TutorialInput =
   | { type: 'view'; view: TutorialView }
-  | { type: 'resultOpened' }
+  | { type: 'ack' }
   | { type: 'finish' }
   | { type: 'createTodos' }
   | { type: 'skipStep' }
   | { type: 'showNow' }
   | { type: 'end' }
 
+/** 연습 단체방에 리드가 올리는 말: 지시를 받음 · 기획안 확인 요청 · 결과 보고 */
+export type PracticeChatLine = 'ack' | 'plan' | 'report'
+
 /**
  * 대본이 사무실에 일으키는 일. 모두 여러 번 해도 결과가 같아야 한다 — 앱을 다시 켜면 지금 단계의 효과를 한 번 더 한다.
- * createTask·startTask·approvePlan·finishTask·startMeeting·createTodos는 "이 단계 건너뛰기"에서 사용자 대신 누르는 일
+ * sendChat·approvePlan·finishTask·startMeeting·createTodos는 "이 단계 건너뛰기"에서 사용자 대신 누르는 일
  */
 export type TutorialEffect =
-  | { kind: 'createTask' | 'startTask' | 'proposePlan' | 'approvePlan' | 'finishTask' | 'startMeeting' | 'wrapMeeting' | 'createTodos' }
+  | { kind: 'sendChat' | 'proposePlan' | 'approvePlan' | 'finishTask' | 'startMeeting' | 'wrapMeeting' | 'createTodos' }
+  /** 연습 단체방에 리드의 말을 올린다 (이미 올렸으면 그대로) */
+  | { kind: 'chat'; line: PracticeChatLine }
   | { kind: 'work'; phase: 'start' | 'done' }
   /** 회의 발언을 대본 앞에서부터 count개로 맞춘다 */
   | { kind: 'talk'; count: number }
@@ -55,46 +60,49 @@ interface StepDef {
   skip?: TutorialEffect[]
   /** 단계 안내 아래 덧붙이는 한 줄 (토스트·메모) */
   note?: TKey
+  /** 사용자가 직접 하는 단계 — 'n / 전체' 진행 표시는 이 단계만 센다 (기다리는 단계는 앞 단계 번호 그대로) */
+  isMain?: boolean
 }
 
 const SAY_MS = 4_000
 
 const STEPS: Record<TutorialScenario, StepDef[]> = {
+  // 단체방에서 지시 → 리드가 기획안 → 결재함에서 승인 → 팀원 작업 → 단체방 결과 보고에서 완료 (handoff onboarding-shorten ①-3)
   task: [
-    { id: 'a1', hint: 'tutorial.task.a1.hint', until: 'view', view: 'board' },
-    { id: 'a2', hint: 'tutorial.task.a2.hint', note: 'tutorial.task.a2.note', until: 'taskCreated', skip: [{ kind: 'createTask' }] },
-    { id: 'a3', hint: 'tutorial.task.a3.hint', until: 'taskStarted', skip: [{ kind: 'startTask' }] },
-    { id: 'a3wait', hint: 'tutorial.task.auto1.hint', until: 'timer', waitMs: 4_000, bubbles: { lead: 'tutorial.task.a3.bubble' } },
-    { id: 'a4', hint: 'tutorial.task.a4.hint', until: 'view', view: 'inbox', enter: [{ kind: 'proposePlan' }], bubbles: { lead: 'tutorial.task.auto1.bubble' } },
-    { id: 'a5', hint: 'tutorial.task.a5.hint', until: 'planApproved', skip: [{ kind: 'approvePlan' }] },
+    { id: 'p1', hint: 'tutorial.task.p1.hint', until: 'ack', isMain: true },
+    { id: 'p2', hint: 'tutorial.task.p2.hint', until: 'chatSent', isMain: true, skip: [{ kind: 'sendChat' }] },
+    { id: 'p2wait', hint: 'tutorial.task.auto1.hint', until: 'timer', waitMs: 4_000, enter: [{ kind: 'chat', line: 'ack' }], bubbles: { lead: 'tutorial.task.a3.bubble' } },
+    { id: 'p3', hint: 'tutorial.task.p3.hint', until: 'view', view: 'inbox', enter: [{ kind: 'proposePlan' }, { kind: 'chat', line: 'plan' }], bubbles: { lead: 'tutorial.task.auto1.bubble' } },
+    { id: 'a5', hint: 'tutorial.task.a5.hint', until: 'planApproved', isMain: true, skip: [{ kind: 'approvePlan' }] },
     {
       id: 'a5wait',
       hint: 'tutorial.task.auto2.hint',
       until: 'timer',
-      waitMs: 12_000,
+      waitMs: 8_000,
       note: 'tutorial.task.a5.toast',
       enter: [{ kind: 'work', phase: 'start' }],
       bubbles: { designer: 'tutorial.task.designer.working', dev: 'tutorial.task.dev.working' },
     },
     {
-      id: 'a6',
-      hint: 'tutorial.task.a6.hint',
-      until: 'resultOpened',
-      enter: [{ kind: 'work', phase: 'done' }],
+      id: 'p6',
+      hint: 'tutorial.task.p6.hint',
+      until: 'taskDone',
+      isMain: true,
+      enter: [{ kind: 'work', phase: 'done' }, { kind: 'chat', line: 'report' }],
       bubbles: { designer: 'tutorial.task.designer.done', dev: 'tutorial.task.dev.done', lead: 'tutorial.task.lead.wrap' },
+      skip: [{ kind: 'finishTask' }],
     },
-    { id: 'a7', hint: 'tutorial.task.a7.hint', until: 'taskDone', skip: [{ kind: 'finishTask' }] },
   ],
   meeting: [
-    { id: 'b1', hint: 'tutorial.meeting.b1.hint', until: 'view', view: 'meeting' },
-    { id: 'b2', hint: 'tutorial.meeting.b2.hint', until: 'meetingStarted', skip: [{ kind: 'startMeeting' }] },
+    { id: 'b1', isMain: true, hint: 'tutorial.meeting.b1.hint', until: 'view', view: 'meeting' },
+    { id: 'b2', isMain: true, hint: 'tutorial.meeting.b2.hint', until: 'meetingStarted', skip: [{ kind: 'startMeeting' }] },
     { id: 'b2say1', hint: 'tutorial.meeting.auto.hint', until: 'timer', waitMs: SAY_MS, enter: [{ kind: 'talk', count: 1 }], bubbles: { lead: 'tutorial.meeting.say.lead' } },
     { id: 'b2say2', hint: 'tutorial.meeting.auto.hint', until: 'timer', waitMs: SAY_MS, enter: [{ kind: 'talk', count: 2 }], bubbles: { designer: 'tutorial.meeting.say.designer' } },
     { id: 'b2say3', hint: 'tutorial.meeting.auto.hint', until: 'timer', waitMs: SAY_MS, enter: [{ kind: 'talk', count: 3 }], bubbles: { dev: 'tutorial.meeting.say.dev' } },
     { id: 'b2wrap', hint: 'tutorial.meeting.wrap.hint', until: 'timer', waitMs: 3_000, enter: [{ kind: 'talk', count: 3 }], bubbles: { lead: 'tutorial.meeting.wrap.bubble' } },
-    { id: 'b3', hint: 'tutorial.meeting.b3.hint', until: 'todosCreated', enter: [{ kind: 'wrapMeeting' }], skip: [{ kind: 'createTodos' }] },
-    { id: 'b4', hint: 'tutorial.meeting.b4.hint', until: 'view', view: 'board', note: 'tutorial.meeting.b4.note' },
-    { id: 'b5', hint: 'tutorial.meeting.b5.hint', until: 'finish' },
+    { id: 'b3', isMain: true, hint: 'tutorial.meeting.b3.hint', until: 'todosCreated', enter: [{ kind: 'wrapMeeting' }], skip: [{ kind: 'createTodos' }] },
+    { id: 'b4', isMain: true, hint: 'tutorial.meeting.b4.hint', until: 'view', view: 'board', note: 'tutorial.meeting.b4.note' },
+    { id: 'b5', isMain: true, hint: 'tutorial.meeting.b5.hint', until: 'finish' },
   ],
 }
 
@@ -125,6 +133,15 @@ export interface Transition {
 }
 
 export const stepsOf = (scenario: TutorialScenario) => STEPS[scenario]
+
+/** 진행 표시 'n / 전체' — 사용자가 직접 하는 단계만 센다. 기다리는 단계는 바로 앞 직접 단계의 번호 (없으면 1) */
+export function mainProgress(scenario: TutorialScenario, stepId: string | null): { n: number; total: number } {
+  const steps = STEPS[scenario]
+  const total = steps.filter((s) => s.isMain).length
+  const i = steps.findIndex((s) => s.id === stepId)
+  if (i < 0) return { n: total, total }
+  return { n: Math.max(1, steps.slice(0, i + 1).filter((s) => s.isMain).length), total }
+}
 
 export function currentStep(state: TutorialState): StepDef | null {
   if (!state.scenario) return null
@@ -204,6 +221,8 @@ export interface TutorialSnapshot {
   /** 시나리오 A의 연습 카드 · 시나리오 B의 연습 회의 */
   taskId: string | null
   meetingId: string | null
+  /** 시나리오 A에서 지시를 보낸 방 ('' = 전체 방, null = 아직 안 보냄) — 리드의 답·보고가 이 방에 올라간다 */
+  chatRoom: string | null
 }
 
 export interface PracticeCast {
@@ -214,7 +233,7 @@ export interface PracticeCast {
   devId: string
 }
 
-export function tutorialSnapshot(state: TutorialState, extra: Pick<TutorialSnapshot, 'hasPractice' | 'cast' | 'taskId' | 'meetingId'>): TutorialSnapshot {
+export function tutorialSnapshot(state: TutorialState, extra: Pick<TutorialSnapshot, 'hasPractice' | 'cast' | 'taskId' | 'meetingId' | 'chatRoom'>): TutorialSnapshot {
   const step = currentStep(state)
   return {
     scenario: state.scenario,
@@ -229,4 +248,13 @@ export function tutorialSnapshot(state: TutorialState, extra: Pick<TutorialSnaps
     reward: state.reward,
     ...extra,
   }
+}
+
+/**
+ * 휴대폰·원격 화면이 보는 진행 상태: 연습은 PC에서만 하므로 진행 중인 단계를 지운다 (안내 상자·칩·축하 화면·연습 버튼이 뜨지 않는다).
+ * 해 본 시나리오(completed)와 연습 회사가 남았는지(hasPractice)는 그대로 둔다
+ */
+export function remoteTutorialSnapshot(snap: TutorialSnapshot | undefined): TutorialSnapshot | undefined {
+  if (!snap?.scenario) return snap
+  return { ...snap, scenario: null, step: null, hint: null, note: null, until: null, view: null, waitMs: null, reward: 0, cast: null, taskId: null, meetingId: null, chatRoom: null }
 }

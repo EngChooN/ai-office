@@ -1,4 +1,5 @@
 import { CheckCheckIcon, CheckIcon, UserPlusIcon } from 'lucide-react'
+import { FirstHint } from './FirstHint'
 import { Button } from '@/components/ui/button'
 import { EmptyGuide } from '@/components/empty-guide'
 import { Page } from '@/components/ui/page'
@@ -100,9 +101,11 @@ export function InboxPage() {
         </EmptyGuide>
       )}
       <div className="flex max-w-3xl flex-col gap-3">
-        {approvals.map((a) => (
-          <InboxApprovalCard key={a.id} approval={a} onOpenStaff={openStaffApprovals} />
+        {approvals.map((a, i) => (
+          <InboxApprovalCard key={a.id} approval={a} onOpenStaff={openStaffApprovals} isFirst={i === 0} />
         ))}
+        {/* 진짜 결재가 처음 왔을 때 한 번 (업무 연습을 해 본 사람에게는 안 띄움): 첫 결재의 승인 버튼 위 */}
+        <FirstHint id="inbox" target="first-approve" sides={['above', 'below', 'right']} isOn={approvals.length > 0 || waitingPlans.some((tk) => !tk.isPractice)} />
         {externalWaiting.length > 0 && (
           <>
             <h2 className="text-muted-foreground mt-4 text-sm font-semibold">{t('inbox.externalWaiting')}</h2>
@@ -129,7 +132,7 @@ export function InboxPage() {
 }
 
 /** 결재함 카드 하나 — 승인·반려는 누르자마자 '처리 중', 결과를 확인한 뒤에 카드를 치운다 */
-function InboxApprovalCard({ approval: a, onOpenStaff }: { approval: Approval & { staff: Staff }; onOpenStaff: (staffId: string) => void }) {
+function InboxApprovalCard({ approval: a, onOpenStaff, isFirst }: { approval: Approval & { staff: Staff }; onOpenStaff: (staffId: string) => void; isFirst: boolean }) {
   const { isBusy, isDone, isFailed, decide } = useDecide(a.id)
   if (isDone) return null
   return (
@@ -166,7 +169,7 @@ function InboxApprovalCard({ approval: a, onOpenStaff }: { approval: Approval & 
       </div>
       {!a.questions && (
         <div className="flex flex-col gap-2">
-          <Button size="sm" disabled={isBusy} onClick={() => void decide(true)}>
+          <Button size="sm" disabled={isBusy} onClick={() => void decide(true)} data-tour={isFirst ? 'first-approve' : undefined}>
             <CheckIcon /> {t('inbox.approve')}
           </Button>
           <AlwaysApproveButton approval={a} staffName={a.staff.name} isDisabled={isBusy} />

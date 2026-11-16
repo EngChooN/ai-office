@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>비서 · 이어서 하기 시안</title>
+<style>
+  body { margin: 0; padding: 28px; background: #E4E2EE; font-family: -apple-system, "Apple SD Gothic Neo", "Pretendard", sans-serif; color: #221F33; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .lead { font-size: 13px; color: #66627F; margin: 0 0 22px; line-height: 1.6; }
+  .row { display: flex; gap: 28px; align-items: flex-start; flex-wrap: wrap; margin-bottom: 30px; }
+  .label { font-size: 12px; font-weight: 600; color: #66627F; margin-bottom: 8px; }
+
+  /* 테마 색 (index.css 기본 테마 라이트·다크) */
+  .light { --bg:#F6F5FB; --fg:#221F33; --card:#FFFFFF; --primary:#6C5CE7; --pfg:#FFFFFF; --muted:#ECEAF6; --mfg:#66627F; --border:#DEDAF0; --accent:#E9E6FA; }
+  .dark  { --bg:#14131C; --fg:#EDEBF8; --card:#201F2D; --primary:#9B8CFF; --pfg:#1A1240; --muted:#292739; --mfg:#A7A3C4; --border:#34314A; --accent:#302D47; }
+
+  .frame { background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 22px; overflow: hidden; box-shadow: 0 8px 28px rgba(34,31,51,.12); display: flex; flex-direction: column; }
+  .pc { width: 620px; height: 560px; }
+  .phone { width: 360px; height: 680px; border-radius: 38px; border: 8px solid #1d1b27; }
+  .top { padding: 12px 16px; border-bottom: 1px solid var(--border); font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 8px; background: var(--card); }
+  .phone .top { padding-top: 26px; }
+  .msgs { flex: 1; padding: 16px; display: flex; flex-direction: column; gap: 12px; overflow: hidden; }
+  .face { width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, #FFD7A8, #F2A97A); flex-shrink: 0; border: 2px solid var(--card); box-shadow: 0 0 0 1px var(--border); }
+  .sec { display: flex; gap: 8px; align-items: flex-start; }
+  .sec .col { display: flex; flex-direction: column; gap: 2px; max-width: 75%; }
+  .name { font-size: 12px; color: var(--mfg); }
+  .bubble { background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 8px 12px; font-size: 14px; line-height: 1.5; }
+  .time { font-size: 10px; color: var(--mfg); }
+  .me { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+  .me .bubble { background: var(--primary); color: var(--pfg); border: none; max-width: 75%; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 10px 12px; font-size: 13px; width: 100%; box-sizing: border-box; }
+  .card b { display: block; margin-bottom: 4px; }
+  .card .st { font-size: 11px; color: var(--mfg); }
+
+  /* ★ 새 부분: 멈춤 안내 + [이어서 하기] */
+  .notice { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .pill { background: var(--muted); color: var(--mfg); border-radius: 18px; padding: 5px 12px; font-size: 12px; max-width: 90%; text-align: center; line-height: 1.5; }
+  .btn { border: 1px solid var(--border); background: var(--card); color: var(--fg); border-radius: 999px; padding: 5px 14px; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
+  .btn:hover { background: var(--accent); }
+  .phone .btn { min-height: 36px; padding: 0 16px; font-size: 13px; }
+  .btn.dis { opacity: .5; }
+  .hl { outline: 2px dashed #F2A97A; outline-offset: 6px; border-radius: 20px; }
+  .thinking { font-size: 12px; color: var(--mfg); display: flex; gap: 8px; align-items: center; }
+  .input { border-top: 1px solid var(--border); padding: 10px 12px; background: var(--card); }
+  .input div { border: 1px solid var(--border); border-radius: 18px; padding: 9px 12px; font-size: 13px; color: var(--mfg); }
+  .tabs { display: flex; justify-content: space-around; padding: 8px 0 16px; border-top: 1px solid var(--border); background: var(--card); font-size: 10px; color: var(--mfg); }
+  .tabs .on { color: var(--primary); font-weight: 700; }
+
+  .states { display: flex; gap: 18px; flex-wrap: wrap; }
+  .state { width: 300px; }
+  .state .frame { height: auto; }
+  .state .msgs { padding: 14px; }
+  .cap { font-size: 12px; color: #4b4763; margin-top: 6px; line-height: 1.5; }
+</style>
+</head>
+<body>
+<h1>비서 · "이어서 하기" 시안</h1>
+<p class="lead">비서가 한도에 걸려 멈추면, 회색 안내 줄에 <b>어디까지 했는지</b>를 적고 그 아래 가운데에 <b>[이어서 하기]</b> 버튼을 둡니다. 점선(주황)이 새로 생기는 부분입니다.<br>
+색과 모양은 지금 비서 화면 그대로입니다(회색 안내 줄, 테두리만 있는 둥근 작은 버튼은 [다시 보내기]와 같은 모양). 휴대폰은 손가락으로 누르기 쉽게 버튼을 조금 더 크게 합니다.</p>
+
+<div class="row">
+  <div>
+    <div class="label">① PC · 라이트 (비서 화면)</div>
+    <div class="frame pc light">
+      <div class="top"><span class="face" style="width:22px;height:22px"></span> 비서</div>
+      <div class="msgs">
+        <div class="me"><div class="bubble">팀별로 이번 주 밀린 업무 정리하고, 오래된 카드는 닫는 카드 만들어 줘. 프론트·백엔드·디자인 다 봐 줘</div><span class="time">11. 16. 오후 03:12</span></div>
+        <div class="sec"><span class="face"></span><div class="col"><span class="name">비서</span><div class="bubble">프론트엔드 팀부터 볼게요. 밀린 업무가 7개예요. 그중 3주 넘게 멈춘 카드 4개를 닫는 카드로 만들었어요.</div></div></div>
+        <div class="sec"><span class="face"></span><div class="col" style="flex:1;max-width:none"><span class="name">비서</span><div class="card"><b>프론트엔드 오래된 카드 닫기 (4개)</b><span class="st">확인 카드 · 실행 대기</span></div></div></div>
+        <div class="notice hl">
+          <span class="pill">일이 많아 여기서 잠깐 멈췄어요. 지금까지 사무실 조회 14번 · 확인 카드 만들기 1번 했어요.</span>
+          <button class="btn">↻ 이어서 하기</button>
+        </div>
+      </div>
+      <div class="input"><div>비서에게 말하기…</div></div>
+    </div>
+  </div>
+
+  <div>
+    <div class="label">② 휴대폰 · 라이트</div>
+    <div class="frame phone light">
+      <div class="top"><span class="face" style="width:22px;height:22px"></span> 비서</div>
+      <div class="msgs">
+        <div class="me"><div class="bubble">팀별로 이번 주 밀린 업무 정리하고, 오래된 카드는 닫는 카드 만들어 줘</div><span class="time">오후 03:12</span></div>
+        <div class="sec"><span class="face"></span><div class="col"><span class="name">비서</span><div class="bubble">프론트엔드 팀부터 볼게요. 3주 넘게 멈춘 카드 4개를 닫는 카드로 만들었어요.</div></div></div>
+        <div class="sec"><span class="face"></span><div class="col" style="flex:1;max-width:none"><span class="name">비서</span><div class="card"><b>프론트엔드 오래된 카드 닫기 (4개)</b><span class="st">확인 카드 · 실행 대기</span></div></div></div>
+        <div class="notice hl">
+          <span class="pill">일이 많아 여기서 잠깐 멈췄어요. 지금까지 사무실 조회 14번 · 확인 카드 만들기 1번 했어요.</span>
+          <button class="btn">↻ 이어서 하기</button>
+        </div>
+      </div>
+      <div class="input"><div>비서에게 말하기…</div></div>
+      <div class="tabs"><span>사무실</span><span>결재</span><span class="on">비서</span><span>대화</span><span>더보기</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <div>
+    <div class="label">③ PC · 다크</div>
+    <div class="frame pc dark" style="height:330px">
+      <div class="top"><span class="face" style="width:22px;height:22px"></span> 비서</div>
+      <div class="msgs">
+        <div class="sec"><span class="face"></span><div class="col"><span class="name">비서</span><div class="bubble">프론트엔드 팀부터 볼게요. 밀린 업무가 7개예요.</div></div></div>
+        <div class="sec"><span class="face"></span><div class="col" style="flex:1;max-width:none"><span class="name">비서</span><div class="card"><b>프론트엔드 오래된 카드 닫기 (4개)</b><span class="st">확인 카드 · 실행 대기</span></div></div></div>
+        <div class="notice hl">
+          <span class="pill">일이 많아 여기서 잠깐 멈췄어요. 지금까지 사무실 조회 14번 · 확인 카드 만들기 1번 했어요.</span>
+          <button class="btn">↻ 이어서 하기</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="label">④ 누른 뒤와 그 밖의 경우 (라이트)</div>
+<div class="states">
+  <div class="state">
+    <div class="frame light"><div class="msgs">
+      <div class="notice"><span class="pill">일이 많아 여기서 잠깐 멈췄어요. 지금까지 사무실 조회 14번 · 확인 카드 만들기 1번 했어요.</span></div>
+      <div class="thinking"><span class="face"></span>생각하는 중…</div>
+    </div></div>
+    <div class="cap">누르면 버튼이 사라지고 바로 이어서 답합니다. PC와 휴대폰에서 같이 눌러도 한 번만 실행됩니다.</div>
+  </div>
+  <div class="state">
+    <div class="frame light"><div class="msgs">
+      <div class="notice"><span class="pill">일이 많아 여기서 잠깐 멈췄어요. 지금까지 사무실 조회 9번 했어요.</span><button class="btn dis">↻ 이어서 하기</button></div>
+    </div></div>
+    <div class="cap">비서가 다른 질문에 답하는 중이면 버튼이 흐려지고 눌리지 않습니다. 끝나면 다시 누를 수 있습니다.</div>
+  </div>
+  <div class="state">
+    <div class="frame light"><div class="msgs">
+      <div class="notice"><span class="pill">여기서 멈췄어요. 지금까지 사무실 조회 38번 · 확인 카드 만들기 3번 했어요. 남은 부분은 나눠서 물어봐 주세요.</span></div>
+    </div></div>
+    <div class="cap">이어 하기를 2번 한 뒤에도 또 멈추면 버튼 없이 이렇게 안내합니다(비용이 끝없이 늘지 않게). 새 질문을 보내도 예전 버튼은 사라집니다.</div>
+  </div>
+</div>
+</body>
+</html>

@@ -169,7 +169,11 @@ const snapshot = {
     },
   ],
   schedules: [{ id: 'sc1', staffId: 's1', label: '출근 브리핑', time: '09:00', weekdays: [1, 2, 3, 4, 5], instruction: '어제 한 일과 오늘 할 일을 정리해 주세요', enabled: true, lastRunDate: null }],
-  settings: { ...DEFAULT_SETTINGS, isOnboarded: true, tokenBudget: { day: 2_000_000, week: 10_000_000, month: 30_000_000 }, isWorkMode: params.get('work') === '1', ...(params.get('theme') ? sanitizeUi({ uiTheme: params.get('theme'), uiMode: params.get('mode') ?? DEFAULT_SETTINGS.uiMode }) : {}) },
+  // ?tut=1: PC에서 업무 연습이 진행 중인 상태 (휴대폰에는 안내가 뜨지 않아야 한다) · ?onb=0: 처음 안내를 마치기 전 · ?hints=1: 처음 힌트를 아직 안 본 상태
+  ...(params.get('tut') === '1'
+    ? { tutorial: { scenario: 'task' as const, step: 'p2', stepAt: now, hint: null, note: null, until: null, view: null, waitMs: null, completed: [], reward: 0, hasPractice: true, cast: null, taskId: null, meetingId: null, chatRoom: null } }
+    : {}),
+  settings: { ...DEFAULT_SETTINGS, isOnboarded: params.get('onb') !== '0', ...(params.get('hints') === '1' ? { seenHints: [] } : {}), tokenBudget: { day: 2_000_000, week: 10_000_000, month: 30_000_000 }, isWorkMode: params.get('work') === '1', ...(params.get('theme') ? sanitizeUi({ uiTheme: params.get('theme'), uiMode: params.get('mode') ?? DEFAULT_SETTINGS.uiMode }) : {}) },
   monthCostUsd: 31.2,
   planUsage: [
     { type: 'five_hour', percent: 42, resetsAt: now + 2 * 3600_000, status: 'allowed', updatedAt: now - 5 * min },
@@ -402,8 +406,27 @@ if (params.get('stage') === '1') {
   ] as unknown as OfficeSnapshot['meetings']
 }
 
+// resume=1: 비서가 상한에 걸려 멈춘 안내 + [이어서 하기] (누르면 버튼이 사라지고 '생각하는 중')
+if (params.get('resume') === '1') {
+  const resume = { question: '팀별로 이번 주 밀린 업무 정리하고, 오래된 카드는 닫는 카드 만들어 줘', steps: { look: 14, card: 1 }, cards: ['프론트엔드 오래된 카드 닫기 (4개)'], round: 1 }
+  snapshot.secretary = {
+    ...snapshot.secretary!,
+    messages: [
+      { id: 11, ts: now - 2 * min, role: 'me', text: resume.question },
+      { id: 12, ts: now - min, role: 'secretary', text: '프론트엔드 팀부터 볼게요. 3주 넘게 멈춘 카드 4개를 닫는 카드로 만들었어요.' },
+      { id: 13, ts: now, role: 'notice', text: t('secretary.resume.stopped', { done: '사무실 조회 14번 · 확인 카드 만들기 1번 했어요.' }), resume },
+    ],
+  } as unknown as OfficeSnapshot['secretary']
+}
+
 const impl: Record<string, (...args: never[]) => unknown> = {
   snapshot: () => snapshot,
+  secretaryResume: (id: number) => {
+    const sec = snapshot.secretary!
+    snapshot.secretary = { ...sec, isBusy: true, messages: sec.messages.map((m) => (m.id === id && m.resume ? { ...m, resume: { ...m.resume, used: true } } : m)) }
+    setTimeout(() => port.onmessage?.({ data: JSON.stringify({ type: 'event', name: 'snapshot', data: { ...snapshot } }) }), 60)
+    return { ok: true }
+  },
   // 마켓 채용: PC처럼 같은 모양의 결과만 돌려준다 (직원은 늘리지 않는다)
   hireMarket: (id: string) => ({ ok: true, message: `${t(`pack.market.${id}.name` as never)} 채용 (미리보기)`, staffIds: [] }),
   chatHistory: () => chat,

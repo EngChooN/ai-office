@@ -6,7 +6,7 @@ import {
   useState,
   type KeyboardEvent,
 } from "react";
-import { SendIcon } from "lucide-react";
+import { RotateCwIcon, SendIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Markdown } from "@/components/markdown";
@@ -26,6 +26,8 @@ import { SecretaryFace } from "./SecretaryFace";
 import { QueuedBadge, useQueuePosition } from "./QueuedBadge";
 import { fmtDate, t } from "@shared/i18n";
 import { QUEUE_MAX } from "@shared/secretaryQueue";
+import { isResumable, type SecretaryResumeFail } from "@shared/secretaryProgress";
+import { IS_TOUCH } from "@/shell";
 
 // 비서 대화: 단체방 말풍선·입력창과 같은 모양 (secretary-ui.md 2·3절). 비서 화면과 ⌘K 빠른 창이 함께 쓴다
 
@@ -109,6 +111,46 @@ function BriefOff() {
   );
 }
 
+/** 상한에 걸려 멈춘 안내 아래 [이어서 하기] — 누르면 답하는 동안 꺼지고, 비서가 실제로 일을 시작하면 서버가 '썼음'으로 바꿔 사라진다 (시작 전에 실패하면 다시 누를 수 있다). 그 뒤 새 질문을 했으면 안 보인다.
+ *  다른 기기에서 먼저 눌러 늦게 누른 쪽은 버튼이 사라져도 안내 한 줄을 남긴다 */
+function ResumeButton({ noticeId }: { noticeId: number }) {
+  const { messages, isBusy } = useSecretary();
+  const [failed, setFailed] = useState<SecretaryResumeFail | null>(null);
+  const isOpen = isResumable(messages, noticeId);
+  if (!isOpen && !failed) return null;
+  const press = async () => {
+    const r = await window.office.secretaryResume(noticeId);
+    setFailed(r.ok ? null : r.reason);
+  };
+  // 버튼이 없어졌으면(다른 기기에서 먼저 시작 등) 어떤 이유로 못 눌렀든 "이미 이어서 하는 중"
+  const error = !failed
+    ? ""
+    : !isOpen || failed === "gone"
+      ? t("secretary.resume.gone")
+      : failed === "rate"
+        ? t("secretary.queue.rate")
+        : t("secretary.resume.busy");
+  return (
+    <>
+      {isOpen && (
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={isBusy}
+          onClick={() => void press()}
+          className={cn(IS_TOUCH && "min-h-9 px-4")}
+        >
+          <RotateCwIcon />
+          {t("secretary.resume.button")}
+        </Button>
+      )}
+      {error && (
+        <span className="text-muted-foreground text-xs">{error}</span>
+      )}
+    </>
+  );
+}
+
 export const SecretaryBubble = memo(function SecretaryBubble({
   message: m,
   onRetry,
@@ -118,10 +160,11 @@ export const SecretaryBubble = memo(function SecretaryBubble({
 }) {
   if (m.role === "notice")
     return (
-      <div className="flex justify-center">
+      <div className="flex flex-col items-center gap-1.5">
         <span className="bg-muted text-muted-foreground max-w-[90%] rounded-2xl px-3 py-1 text-xs whitespace-pre-wrap">
           {m.text}
         </span>
+        {m.resume && <ResumeButton noticeId={m.id} />}
       </div>
     );
   if (m.role === "me") return <MyBubble message={m} />;

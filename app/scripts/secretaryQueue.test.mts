@@ -104,7 +104,8 @@ test('Secretary: 꽉 차거나 잦으면 말풍선 없이 ok:false, 답할 때�
   assert.ok(ask.indexOf("reason: 'full'") < ask.indexOf("this.add({ role: 'me'"))
   assert.ok(ask.indexOf("reason: 'rate'") < ask.indexOf("this.add({ role: 'me'"))
   assert.match(ask, /this\.queue\.push\(\{ msgId: mine\.id, text: body, remote: isRemoteCall\(\) \}\)/)
-  assert.match(src, /this\.turnRemote = item\?\.remote \?\? false/)
+  assert.match(src, /await this\.turn\(item\.text, item\.remote, null\)/)
+  assert.match(src, /this\.turnRemote = remote\n/)
   assert.match(src, /queued: this\.queue\.ids\(\)/)
   assert.match(src, /private closeSession\(\) \{[\s\S]*?this\.queue\.clear\(\)/)
   // 빼기·합치기로 사라진 말풍선은 DB에서도 지운다

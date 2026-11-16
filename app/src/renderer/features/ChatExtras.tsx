@@ -176,6 +176,7 @@ export function ReplyBar({ reply, onCancel }: { reply: { id: number; mode: 'repl
 export function ReportActions({ message: m }: { message: ChatMessage }) {
   const hasCard = useOffice((s) => Boolean(m.taskId && s.tasks.some((x) => x.id === m.taskId)))
   const chip = 'bg-background hover:bg-accent rounded-full border px-2.5 py-0.5 text-[11px]'
+  if (m.isPractice) return <PracticeReportDone message={m} />
   if (m.reaction?.kind === 'like')
     return (
       <div className="mt-1 flex flex-wrap gap-1.5">
@@ -203,6 +204,17 @@ export function ReportActions({ message: m }: { message: ChatMessage }) {
       </button>
       {hasCard && <CardChip className={chip} />}
     </div>
+  )
+}
+
+/** 업무 연습의 결과 보고: '완료로 옮기기' — 업무 보드의 완료 버튼과 같다 (연습 엔진이 마지막 단계로 받는다) */
+function PracticeReportDone({ message: m }: { message: ChatMessage }) {
+  const isOpen = useOffice((s) => Boolean(m.taskId && s.tasks.some((x) => x.id === m.taskId && x.status !== 'done')))
+  if (!m.taskId || !isOpen) return null
+  return (
+    <Button size="sm" className="mt-1 w-fit" onClick={() => void window.office.updateTask(m.taskId!, { status: 'done' })}>
+      {t('tutorial.task.p6.done')}
+    </Button>
   )
 }
 

@@ -162,6 +162,7 @@ export const OFFICE_METHODS = [
   'secretaryAsk',
   'secretaryCancelQueued',
   'secretaryMergeQueued',
+  'secretaryResume',
   'secretaryRun',
   'secretaryCancel',
   'secretaryClear',

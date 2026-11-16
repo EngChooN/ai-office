@@ -340,6 +340,22 @@
   filter: grayscale(1);
 }
 
+/* ── 이니셜 얼굴(업무 모드): 도트 글자 두 자가 작은 칸(20px)에서 줄바꿈돼 튀어나오지 않게 최소 30px·한 줄 ── */
+[data-theme='retro'] [data-slot='initial-avatar'] {
+  min-width: 30px;
+  min-height: 30px;
+  white-space: nowrap;
+}
+/* 겹친 얼굴 줄(-space-x-1.5): 글자가 칸을 꽉 채우므로 겹침을 2px로 줄여 앞 얼굴의 둘째 글자를 가리지 않게 */
+[data-theme='retro'] .-space-x-1\.5 > [data-slot='initial-avatar']:not(:last-child) {
+  margin-inline-end: -2px;
+}
+
+/* ── 왼쪽 메뉴 업무 모드 줄: 위 구분선은 다른 레트로 구분선처럼 옅은 2px ── */
+[data-theme='retro'] [data-slot='work-mode-row'] {
+  border-top-color: var(--retro-line-soft);
+}
+
 /* ── 대기 숫자 배지: 노란 칸 + 진한 글자 (시안 A) ── */
 [data-theme='retro'] .bg-status-waiting {
   background-color: var(--retro-wait);

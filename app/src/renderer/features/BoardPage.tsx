@@ -1,5 +1,5 @@
 import { findRoom } from '@shared/chatRooms'
-import { useEffect, useState, type DragEvent, type FormEvent } from 'react'
+import { useState, type DragEvent, type FormEvent } from 'react'
 import { PlayIcon, PlusIcon, SquareIcon, Trash2Icon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -19,7 +19,8 @@ import { useManualLabelOf } from '@/components/slash-menu'
 import type { Task, TaskStatus } from '@shared/types'
 import { PlanCard } from './PlanCard'
 import { RunCard } from './RunCard'
-import { useTutorialStep, useTutorialTaskId } from './Tutorial'
+import { FirstHint } from './FirstHint'
+import { navTourTarget } from './nav'
 import { Avatar, PracticeBadge } from './StaffCard'
 import { formatCost, formatTokens } from './status'
 import { roleLabel } from '@shared/roleLabel'
@@ -54,14 +55,6 @@ export function BoardPage() {
   const [isAutonomous, setIsAutonomous] = useState(false)
   /** 보드 필터: 전체 또는 특정 랩 */
   const [labFilter, setLabFilter] = useState('')
-  // 튜토리얼 '카드 만들기' 단계: 대본의 제목·설명을 미리 채운다
-  const tutorialStep = useTutorialStep()
-  useEffect(() => {
-    if (tutorialStep !== 'a2') return
-    setTitle((v) => v || t('tutorial.task.card.title'))
-    setDetail((v) => v || t('tutorial.task.card.detail'))
-  }, [tutorialStep])
-
   const draftFiles = useDraftAttachments()
   const handleCreate = async (e: FormEvent) => {
     e.preventDefault()
@@ -89,6 +82,8 @@ export function BoardPage() {
 
   return (
     <Page title={t('board.title')} description={t('board.description')} className="flex flex-col gap-4">
+      {/* 처음 열 때 한 번: 사이드바 '업무 보드' 옆 (폰은 화면 아래) */}
+      <FirstHint id="board" target={navTourTarget('board')} sides={['right', 'below']} />
       <form onSubmit={handleCreate} className="bg-card flex flex-col gap-2 rounded-xl border p-3">
         {/* 좁으면 팀·랩·추가 버튼이 다음 줄로 내려간다 */}
         <div className="flex flex-wrap gap-2">
@@ -109,7 +104,7 @@ export function BoardPage() {
               </option>
             ))}
           </NativeSelect>
-          <Button type="submit" disabled={!title.trim()} data-tour="tut-add">
+          <Button type="submit" disabled={!title.trim()}>
             <PlusIcon /> {t('board.add')}
           </Button>
         </div>
@@ -206,17 +201,7 @@ function TaskCard({ task }: { task: Task }) {
   const lab = useOffice((s) => s.labs.find((l) => l.id === task.labId))
   const assignee = staff.find((s) => s.id === task.assigneeId)
   const [isOpen, setIsOpen] = useState(false)
-  // 튜토리얼 연습 카드면 누를 곳에 표시를 붙이고, 결과를 열면 엔진에 알린다
-  const isTutorialTask = useTutorialTaskId() === task.id
-  // 마지막 단계('검토 완료')는 보드 열의 버튼이라, 열어 둔 상세 창이 가리지 않게 닫는다
-  const tutorialStepNow = useTutorialStep()
-  useEffect(() => {
-    if (isTutorialTask && tutorialStepNow === 'a7') setIsOpen(false)
-  }, [isTutorialTask, tutorialStepNow])
-  const openDetail = () => {
-    setIsOpen(true)
-    if (isTutorialTask && task.result) void window.office.tutorialAct({ type: 'resultOpened' })
-  }
+  const openDetail = () => setIsOpen(true)
   const preview = task.result || task.detail
   const parent = useOffice((s) => s.tasks.find((x) => x.id === task.parentId))
   const children = useOffice(useShallow((s) => s.tasks.filter((x) => x.parentId === task.id)))
@@ -300,7 +285,6 @@ function TaskCard({ task }: { task: Task }) {
         <button
           type="button"
           onClick={openDetail}
-          data-tour={isTutorialTask && task.status === 'review' ? 'tut-result' : undefined}
           className={cn('relative max-h-24 overflow-hidden rounded p-2 text-left text-xs', task.result ? 'bg-muted' : 'text-muted-foreground border')}
         >
           <Markdown className="pointer-events-none">{preview}</Markdown>
@@ -368,7 +352,6 @@ function TaskCard({ task }: { task: Task }) {
             className="h-7 px-2 text-xs"
             disabled={!task.assigneeId}
             onClick={() => task.assigneeId && void window.office.assignTask(task.id, task.assigneeId)}
-            data-tour={isTutorialTask ? 'tut-start' : undefined}
           >
             {t('board.start')}
           </Button>
@@ -402,7 +385,7 @@ function TaskCard({ task }: { task: Task }) {
         </div>
       )}
       {task.status === 'review' && (
-        <Button size="sm" variant="secondary" onClick={() => void window.office.updateTask(task.id, { status: 'done' })} data-tour={isTutorialTask ? 'tut-done' : undefined}>
+        <Button size="sm" variant="secondary" onClick={() => void window.office.updateTask(task.id, { status: 'done' })}>
           {t('board.reviewDone')}
         </Button>
       )}

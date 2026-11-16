@@ -16,7 +16,8 @@ import { chatLines, chatResponder, chatRoomMembers, chatRoomMentionTargets, find
 import { ALL_MENTION, mentionTargets, mentionToken, OFFICE_SENDER, parseMentions, slashButtonDraft, type MentionKind, type MentionTarget } from '@shared/mention'
 import { fmtDate, t, tr, type TKey } from '@shared/i18n'
 import { roleLabel } from '@shared/roleLabel'
-import { Avatar } from './StaffCard'
+import { Avatar, PracticeBadge } from './StaffCard'
+import { FirstHint } from './FirstHint'
 import { Markdown } from '@/components/markdown'
 import { MentionText, MentionTextarea, remarkMentions } from '@/components/mention-text'
 import { JumpToBottom, useStickToBottom } from '@/components/stick-to-bottom'
@@ -158,6 +159,8 @@ export function ChatPage() {
         <div className="flex min-w-0 flex-1 flex-col">
           <MessageList room={room?.room} searchQuery={isSearchOpen ? searchQuery : ''} pending={pendingSends.items} onRetry={pendingSends.retry} />
           <Composer room={room} onSend={pendingSends.send} />
+          {/* 처음 열 때 한 번 (업무 연습을 해 본 사람에게는 안 띄움): 보내기 위 */}
+          <FirstHint id="chat" target="tut-send" sides={['above', 'left']} />
         </div>
       </div>
     </div>
@@ -549,10 +552,11 @@ const Bubble = memo(function Bubble({
           <Avatar avatar={senderAvatar} name={senderName} teamId={senderTeamId} className="size-8" />
         </button>
       )}
-      <div className={cn('split:max-w-[82%] flex max-w-[75%] flex-col gap-0.5', isMe && 'items-end')}>
+      <div className={cn('split:max-w-[82%] flex max-w-[75%] flex-col gap-0.5', isMe && 'items-end')} data-tour={m.isPractice && m.isReport ? 'tut-report' : undefined}>
         {!isMe && (
           <span className="text-muted-foreground text-xs">
             {senderName}
+            {m.isPractice && <PracticeBadge className="ml-1" />}
             {m.isReport && ` · ${t('chat.report.label')}`}
           </span>
         )}
@@ -940,7 +944,7 @@ function Composer({ room, onSend }: { room: RoomInfo | undefined; onSend: (input
           </div>
         ) : (
           /* 폰: 직원 패널·비서 보내기처럼 정원 */
-          <Button onClick={() => void handleSend()} disabled={!hasDraft} className="phone:w-10 phone:px-0">
+          <Button onClick={() => void handleSend()} disabled={!hasDraft} className="phone:w-10 phone:px-0" title={t('secretary.send')} aria-label={t('secretary.send')} data-tour="tut-send">
             <SendIcon />
           </Button>
         )}

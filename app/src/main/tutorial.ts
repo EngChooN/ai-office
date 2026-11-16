@@ -14,8 +14,8 @@ import {
   tutorialSnapshot,
   type CastRole,
   type PracticeCast,
+  type PracticeChatLine,
   type TutorialEffect,
-  type TutorialEvent,
   type TutorialInput,
   type TutorialScenario,
   type TutorialSnapshot,
@@ -35,6 +35,9 @@ export interface TutorialPort {
   task(id: string): Task | undefined
   saveTask(task: Task): void
   createPracticeTask(input: { title: string; detail: string; teamId: string; labId: string; meetingId?: string }): Task
+  /** 연습 단체방 글 (연습 표시를 달아 정리할 때 함께 지운다) — 새 글 id */
+  postPracticeChat(from: string, text: string, room: string, meta: { isReport?: boolean; taskId?: string; plan?: { taskId: string; proposedAt: number } }): number
+  chatExists(id: number): boolean
   approvePlan(taskId: string): void
   meeting(id: string): Meeting | undefined
   saveMeeting(meeting: Meeting): void
@@ -53,9 +56,12 @@ interface Saved {
   taskId: string | null
   meetingId: string | null
   todoIds: string[]
+  /** 시나리오 A: 지시를 보낸 방 ('' = 전체 방, null = 아직) · 올린 단체방 글 id (다시 켜도 두 번 올리지 않게) */
+  chatRoom: string | null
+  chatIds: Partial<Record<PracticeChatLine | 'me', number>>
 }
 
-const EMPTY: Saved = { state: IDLE_TUTORIAL, cast: null, taskId: null, meetingId: null, todoIds: [] }
+const EMPTY: Saved = { state: IDLE_TUTORIAL, cast: null, taskId: null, meetingId: null, todoIds: [], chatRoom: null, chatIds: {} }
 /** 연습 직원 아바타 (기존 캐릭터 중 고정 3종) */
 const CAST_AVATARS: Record<CastRole, number> = { lead: 5, designer: 18, dev: 13 }
 
@@ -63,7 +69,11 @@ export class Tutorial {
   private saved: Saved = EMPTY
   private timer: NodeJS.Timeout | null = null
 
-  constructor(private port: TutorialPort) {}
+  private port: TutorialPort
+
+  constructor(port: TutorialPort) {
+    this.port = port
+  }
 
   /** 앱을 켤 때: 저장된 단계를 이어 간다 (지금 단계에 들어올 때 한 일을 한 번 더 — 모두 여러 번 해도 같은 결과) */
   load() {
@@ -81,15 +91,15 @@ export class Tutorial {
   }
 
   snapshot(): TutorialSnapshot {
-    const { state, cast, taskId, meetingId } = this.saved
-    return tutorialSnapshot(state, { hasPractice: this.port.hasPracticeData(), cast, taskId, meetingId })
+    const { state, cast, taskId, meetingId, chatRoom } = this.saved
+    return tutorialSnapshot(state, { hasPractice: this.port.hasPracticeData(), cast, taskId, meetingId, chatRoom })
   }
 
   /** 시나리오 시작 — 연습 회사가 없으면 만든다. 앞 시나리오의 연습 카드는 정리할 때까지 남는다 */
   start(scenario: TutorialScenario) {
     if (scenario !== 'task' && scenario !== 'meeting') return
     const cast = this.ensureCast()
-    this.saved = scenario === 'task' ? { ...this.saved, cast, taskId: null } : { ...this.saved, cast, meetingId: null, todoIds: [] }
+    this.saved = scenario === 'task' ? { ...this.saved, cast, taskId: null, chatRoom: null, chatIds: {} } : { ...this.saved, cast, meetingId: null, todoIds: [] }
     this.apply(startScenario(this.saved.state, scenario, Date.now()))
   }
 
@@ -116,16 +126,29 @@ export class Tutorial {
 
   /**
    * office가 카드·회의를 처리하며 알려 준다. 이번 연습의 카드·회의일 때만 단계를 넘긴다 — 받아들였으면 true.
-   * taskCreated(지금 단계가 카드 만들기면 그 카드를 연습 카드로) · taskStarted(연습 직원에게 맡김 — AI 대신 진행 중으로) · meetingStarted(연습 직원 회의)
+   * meetingStarted(연습 직원 회의) · planApproved·taskDone(이번 연습 카드)
    */
-  notify(type: Exclude<TutorialEvent['type'], 'view'>, id: string): boolean {
+  notify(type: 'planApproved' | 'taskDone' | 'meetingStarted', id: string): boolean {
     const now = Date.now()
     const tr = onEvent(this.saved.state, { type }, now)
     if (!tr) return false
-    if (type === 'taskCreated') this.adoptTask(id)
-    else if (type === 'meetingStarted') this.saved = { ...this.saved, meetingId: id }
+    if (type === 'meetingStarted') this.saved = { ...this.saved, meetingId: id }
     else if (id !== this.saved.taskId) return false
-    if (type === 'taskStarted') this.startTask()
+    this.apply(tr)
+    return true
+  }
+
+  /**
+   * 단체방에서 보낸 말: 지금 단계가 지시 보내기이고 연습 리드를 @로 불렀으면 연습으로 받아 단체방에 올린다 (AI에게 보내지 않는다).
+   * 받아들였으면 true — office는 이 말을 실제 직원에게 보내지 않는다
+   */
+  takeChat(text: string, room: string): boolean {
+    const cast = this.saved.cast
+    if (!cast || !text.includes(`@${this.port.staffName(cast.leadId)}`)) return false
+    const tr = onEvent(this.saved.state, { type: 'chatSent' }, Date.now())
+    if (!tr) return false
+    const me = this.port.postPracticeChat('me', text, room, {})
+    this.saved = { ...this.saved, chatRoom: room, chatIds: { ...this.saved.chatIds, me } }
     this.apply(tr)
     return true
   }
@@ -176,15 +199,6 @@ export class Tutorial {
     return { labId: lab.id, teamId: team.id, leadId, designerId, devId }
   }
 
-  /** 사용자가 만든 카드를 이번 연습 카드로 (연습 표시·연습 팀·랩) */
-  private adoptTask(taskId: string) {
-    const task = this.port.task(taskId)
-    const cast = this.saved.cast
-    if (!task || !cast) return
-    this.port.saveTask({ ...task, teamId: cast.teamId, labId: cast.labId, isPractice: true })
-    this.saved = { ...this.saved, taskId }
-  }
-
   /** 이번 연습 카드 (없으면 대본 제목으로 만든다 — 카드 만들기를 건너뛴 경우) */
   private ensureTask(): Task | null {
     const cast = this.saved.cast
@@ -196,11 +210,20 @@ export class Tutorial {
     return task
   }
 
-  /** 리드에게 맡긴 것으로 — AI에게 보내지 않고 진행 중 칸으로만 */
-  private startTask() {
-    const task = this.ensureTask()
-    if (!task || !this.saved.cast) return
-    this.port.saveTask({ ...task, assigneeId: this.saved.cast.leadId, status: 'doing', updatedAt: Date.now() })
+  /** 연습 단체방에 리드의 말을 올린다 — 이미 올렸으면(다시 켬) 그대로 */
+  private postLine(line: PracticeChatLine, cast: PracticeCast) {
+    const posted = this.saved.chatIds[line]
+    if (posted !== undefined && this.port.chatExists(posted)) return
+    const room = this.saved.chatRoom ?? ''
+    const task = line === 'ack' ? null : this.ensureTask()
+    if (line !== 'ack' && !task) return
+    const id =
+      line === 'ack'
+        ? this.port.postPracticeChat(cast.leadId, t('tutorial.task.a3.bubble'), room, {})
+        : line === 'plan'
+          ? this.port.postPracticeChat(cast.leadId, t('tutorial.task.auto1.bubble'), room, task?.plan ? { plan: { taskId: task.id, proposedAt: task.plan.proposedAt } } : {})
+          : this.port.postPracticeChat(cast.leadId, practiceResult(), room, { isReport: true, taskId: task!.id })
+    this.saved = { ...this.saved, chatIds: { ...this.saved.chatIds, [line]: id } }
   }
 
   private run(effects: TutorialEffect[]) {
@@ -212,11 +235,15 @@ export class Tutorial {
     if (!cast) return
     const now = Date.now()
     switch (effect.kind) {
-      case 'createTask':
-        this.ensureTask()
+      case 'sendChat':
+        if (this.saved.chatIds.me === undefined) {
+          const room = this.saved.chatRoom ?? ''
+          const me = this.port.postPracticeChat('me', t('tutorial.task.p2.message', { lead: this.port.staffName(cast.leadId) }), room, {})
+          this.saved = { ...this.saved, chatRoom: room, chatIds: { ...this.saved.chatIds, me } }
+        }
         return
-      case 'startTask':
-        this.startTask()
+      case 'chat':
+        this.postLine(effect.line, cast)
         return
       case 'proposePlan': {
         const task = this.ensureTask()

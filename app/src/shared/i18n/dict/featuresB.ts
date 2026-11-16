@@ -741,6 +741,12 @@ export default {
     ja: '職場で開いておくときにオンにしてください。オフィスマップ・資金・ショップ・レベルなどのゲーム要素を隠し、アプリを開くとダッシュボードが最初に表示されます。',
     zh: '在公司使用时请开启。将隐藏办公室地图、资金、商店、等级等游戏元素，打开应用时先显示仪表盘。',
   },
+  'settingsPage.workMode.sidebarHint': {
+    ko: '왼쪽 메뉴 맨 아래에서도 바로 켜고 끌 수 있어요.',
+    en: 'You can also switch it at the bottom of the left menu.',
+    ja: '左メニューのいちばん下でもすぐに切り替えられます。',
+    zh: '也可以在左侧菜单底部直接开关。',
+  },
   'settingsPage.workMode.toggle': { ko: '업무 모드 사용', en: 'Use work mode', ja: '業務モードを使う', zh: '使用工作模式' },
   'settingsPage.staffCapture.title': { ko: '직원 화면 캡처', en: 'Staff screen capture', ja: 'スタッフの画面キャプチャ', zh: '员工屏幕截图' },
   'settingsPage.staffCapture.desc': {
@@ -836,9 +842,14 @@ export default {
     zh: '可以重新查看首次启动时的介绍和准备检查、菜单导览，以及练习教程（分配任务、召开会议）。',
   },
   'settingsPage.guide.onboarding': { ko: '처음 안내 다시 보기', en: 'Replay the intro', ja: '初回の案内をもう一度見る', zh: '重新查看入门指南' },
-  'settingsPage.guide.tour': { ko: '메뉴 둘러보기 다시 보기', en: 'Replay the menu tour', ja: 'メニューツアーをもう一度見る', zh: '重新查看菜单导览' },
   'settingsPage.guide.practice': { ko: '연습 튜토리얼 해 보기', en: 'Try the practice tutorial', ja: '練習チュートリアルをやってみる', zh: '试试练习教程' },
   'settingsPage.guide.feedback': { ko: '피드백 보내기', en: 'Send feedback', ja: 'フィードバックを送る', zh: '发送反馈' },
+  'sidebar.workMode.tip': {
+    ko: '켜면 사무실 지도·자금·상점·레벨을 숨기고 업무 화면만 보여요.',
+    en: 'Hides the office map, funds, shop and levels so only work screens show.',
+    ja: 'オンにするとオフィスマップ・資金・ショップ・レベルを隠し、業務画面だけを表示します。',
+    zh: '开启后会隐藏办公室地图、资金、商店和等级，只显示工作界面。',
+  },
   'sidebar.donate': { ko: '후원하기', en: 'Support us', ja: '支援する', zh: '赞助支持' },
   'settingsPage.guide.feedbackPrompt': {
     ko: '무엇이 불편했는지, 어떻게 하면 좋을지 적어 주세요. (오류라면 어떤 순서로 했을 때 생겼는지도요)',

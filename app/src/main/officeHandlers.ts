@@ -111,12 +111,7 @@ export function createOfficeHandlers(office: Office, remoteApi: () => RemoteServ
     deleteTeam: (id: string) => office.deleteTeam(id),
     mergeTeams: (fromId: string, intoId: string) => office.mergeTeams(fromId, intoId),
     moveStaff: (id: string, move: Parameters<Office['moveStaff']>[1]) => office.moveStaff(id, move),
-    createTask: (input: Parameters<Office['createTask']>[0]) => {
-      const task = office.createTask(input)
-      // 튜토리얼 '카드 만들기' 단계면 사용자가 만든 이 카드를 연습 카드로 삼는다
-      office.tutorial.notify('taskCreated', task.id)
-      return task
-    },
+    createTask: (input: Parameters<Office['createTask']>[0]) => office.createTask(input),
     tutorialStart: (scenario: TutorialScenario) => office.tutorial.start(scenario),
     tutorialAct: (input: TutorialInput) => office.tutorial.act(input),
     tutorialCleanup: () => office.tutorial.cleanup(),
@@ -228,6 +223,7 @@ export function createOfficeHandlers(office: Office, remoteApi: () => RemoteServ
     // 비서: 실행(secretaryRun)은 대표가 카드에서 누른 것 — 카드 안의 단계는 이 표의 다른 처리 함수로 돈다
     secretaryAsk: (text: string) => secretary().ask(text),
     secretaryCancelQueued: (msgId: number) => secretary().cancelQueued(msgId),
+    secretaryResume: (noticeId: number) => secretary().resume(noticeId),
     secretaryMergeQueued: () => secretary().mergeQueued(),
     secretaryRun: (cardId: string, options?: Parameters<Secretary['run']>[1]) => secretary().run(cardId, options ?? {}),
     secretaryCancel: (cardId: string) => secretary().cancel(cardId),
