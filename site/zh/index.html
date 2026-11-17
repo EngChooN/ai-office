@@ -173,7 +173,7 @@ section{padding:88px 0}
 .st.wait i{background:var(--warn)}.st.wait{color:var(--warn)}
 .st.got i{background:var(--accent)}.st.got{color:var(--accent)}
 .st.done i{background:var(--accent2)}
-.feed{min-height:340px;padding:14px;display:grid;gap:10px;align-content:start}
+.feed{min-height:400px;padding:14px;display:grid;gap:10px;align-content:start}
 .feed>*{animation:pop .35s both}
 @keyframes pop{from{opacity:0;transform:translateY(6px)}}
 .av{width:26px;height:26px;border-radius:8px;flex:none;display:grid;place-items:center;font-size:11px;font-weight:800;color:#fff}
@@ -195,38 +195,24 @@ section{padding:88px 0}
 .appr .bt{display:flex;gap:6px}
 .appr .bt b{flex:1;text-align:center;font-size:12.5px;border-radius:8px;padding:6px 0;border:1px solid var(--line2)}
 .appr .bt b.y{background:var(--accent);color:var(--onacc);border-color:transparent}
-.mlbl{font-size:11.5px;color:var(--dim);display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
-.mini{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
-.mini div{border-radius:10px;padding:8px 6px;text-align:center;font-size:11.5px;color:#1B1930;background:var(--floor);position:relative}
-:root[data-theme="dark"] .mini div{color:#fff}
-.mini div b{display:block;font-size:12px}
-.mini div.run{box-shadow:inset 0 0 0 2px #1F8F5F}
-.mini div.wait{box-shadow:inset 0 0 0 2px #D99A12}
-.mini .pc{display:block;width:26px;height:18px;margin:0 auto 4px;border-radius:3px;background:var(--wood);position:relative}
-.mini div.run .pc:after{content:"";position:absolute;inset:3px;border-radius:2px;background:#7FE3A8;animation:pulse 1s infinite}
-.mini div.wait .pc:after{content:"!";position:absolute;top:-14px;left:50%;transform:translateX(-50%);font-weight:900;color:#B67800}
-:root[data-theme="dark"] .mini div.wait .pc:after{color:#FBBF24}
 @keyframes pulse{50%{opacity:.55}}
 
 /* 꾸미기 */
 #decor{background:linear-gradient(180deg,color-mix(in srgb,var(--brick) 34%,var(--bg)),var(--bg))}
-.flow3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.room{display:grid;grid-template-columns:1.5fr 1fr;align-items:center;border:1px solid var(--line);background:var(--panel);border-radius:18px;overflow:hidden;margin-bottom:30px}
+.room .shot{aspect-ratio:16/10;background:#1B1A22;border-right:1px solid var(--line)}
+.room .shot img{width:100%;height:100%;object-fit:cover;cursor:zoom-in}
+.room .tx{padding:24px 28px;display:grid;gap:8px}
+.room h3{font-size:21px;letter-spacing:-.01em;line-height:1.35}
+.room p{font-size:15px;color:var(--muted)}
+.flow2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.fc .shot{border:1px solid var(--line);border-radius:10px;overflow:hidden;aspect-ratio:20/11;background:var(--panel2)}
+.fc .shot img{width:100%;height:100%;object-fit:cover;object-position:left top;cursor:zoom-in}
 .fc{position:relative;border:1px solid var(--line);background:var(--panel);border-radius:16px;padding:22px 18px 18px;display:grid;gap:8px;align-content:start}
 .fc .stp{position:absolute;top:-12px;left:16px;font-size:12px;font-weight:800;background:var(--accent2);color:#fff;border-radius:99px;padding:2px 10px}
 :root[data-theme="dark"] .fc .stp{color:#2A0E20}
 .fc h3{font-size:17px;letter-spacing:-.01em}
 .fc p{font-size:14px;color:var(--muted)}
-.fund{justify-self:start;display:inline-flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--line2);border-radius:99px;padding:3px 11px;font-size:13px;font-weight:700}
-.drawer{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
-.drawer div{border:1px solid var(--line);border-radius:10px;padding:8px 6px;text-align:center;font-size:11.5px;background:var(--panel2)}
-.drawer b{display:block;font-size:12px}
-.drawer em{font-style:normal;font-size:10.5px;color:var(--dim)}
-.cells{display:grid;grid-template-columns:repeat(8,1fr);gap:3px}
-.cells i{aspect-ratio:1;border-radius:3px;background:var(--floor)}
-.cells i.ok{background:#5ED38C}.cells i.no{background:#F07A7A}
-.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:11.5px;color:var(--muted)}
-.legend span:before{content:"";display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;vertical-align:-1px;background:#5ED38C}
-.legend span.no:before{background:#F07A7A}
 .lvbox{display:grid;grid-template-columns:1.25fr 1fr;gap:36px;align-items:center;margin-top:34px}
 .lvview{background:linear-gradient(180deg,var(--sky1),var(--sky2));border-radius:22px;aspect-ratio:3/2;overflow:hidden;border:1px solid var(--line)}
 .lvview img{width:100%;height:100%;object-fit:cover;image-rendering:pixelated}
@@ -250,8 +236,9 @@ section{padding:88px 0}
 .fx .shot{position:relative;aspect-ratio:16/10;overflow:hidden;background:var(--panel2);border-right:1px solid var(--line)}
 .fx:nth-child(even) .shot{order:2;border-right:0;border-left:1px solid var(--line)}
 .fx .shot img{width:100%;height:100%;object-fit:cover;object-position:left top;cursor:zoom-in}
-.fx .shot.ph{display:flex;justify-content:center;align-items:flex-end;padding-top:22px;background:linear-gradient(135deg,var(--accentSoft),var(--pinkSoft))}
-.fx .shot.ph .pf{width:40%;height:100%;border:6px solid #1B1930;border-bottom:0;border-radius:22px 22px 0 0;overflow:hidden;background:var(--panel)}
+.fx .shot.ph{aspect-ratio:auto;display:flex;justify-content:center;align-items:center;gap:5%;padding:28px 20px;background:linear-gradient(135deg,var(--accentSoft),var(--pinkSoft))}
+.fx .shot.ph .pf{width:36%;max-width:240px;aspect-ratio:390/844;border:5px solid #1B1930;border-radius:24px;overflow:hidden;background:var(--panel);box-shadow:var(--shadow-lg)}
+.fx .shot.ph .pf img{object-position:center top}
 :root[data-theme="dark"] .fx .shot.ph .pf{border-color:#3A3752}
 .fx .tx{padding:24px 28px;display:grid;gap:6px}
 .fx .no{font:800 12px ui-monospace,Menlo,monospace;color:var(--accent)}
@@ -311,7 +298,6 @@ footer .links .off{color:var(--dim);pointer-events:none}
 @media (prefers-reduced-motion:reduce){
   .rv{opacity:1;transform:none;transition:none}
   .feed>*{animation:none}
-  .mini div.run .pc:after{animation:none}
   html{scroll-behavior:auto}
 }
 
@@ -335,7 +321,12 @@ footer .links .off{color:var(--dim);pointer-events:none}
   .presets button{font-size:14px}
   .cta .btn{flex:1 1 100%}
   .feed{min-height:300px}
-  .flow3{grid-template-columns:1fr;gap:22px}
+  .flow2{grid-template-columns:1fr;gap:22px}
+  .room{grid-template-columns:1fr;margin-bottom:26px}
+  .room .shot{border-right:0;border-bottom:1px solid var(--line)}
+  .room .tx{padding:16px 18px 18px}
+  .room h3{font-size:17px}
+  .room p{font-size:14.5px}
   .lvbox{grid-template-columns:1fr;gap:18px}
   .lvctl .big{font-size:34px}
   #features{padding-top:52px}
@@ -343,6 +334,8 @@ footer .links .off{color:var(--dim);pointer-events:none}
   .fx .shot,.fx:nth-child(even) .shot{order:0;border:0;border-bottom:1px solid var(--line)}
   .fx .tx{padding:16px 18px 18px}
   .fx h3{font-size:17px}
+  .fx .shot.ph{padding:20px 14px}
+  .fx .shot.ph .pf{width:42%;border-width:4px;border-radius:18px}
   .fx p{font-size:14.5px}
   .logo span{display:none}
 }
@@ -391,18 +384,16 @@ footer .links .off{color:var(--dim);pointer-events:none}
       <div class="roster" id="roster" aria-hidden="true"></div>
       <div class="feed" id="feed" aria-live="polite"></div>
     </div>
-    <div class="mlbl" aria-hidden="true"><span data-i18n="exp.seats"><!--p-->办公室座位<!--/p--></span><span data-i18n="exp.legend"><!--p-->绿色边框 = 工作中 · ! = 需要你确认<!--/p--></span></div>
-    <div class="mini" id="mini" aria-hidden="true"></div>
   </div>
 </div></section>
 
-<!-- 2 · 핵심 2: 사무실 꾸미기 + 레벨 막대 (단계·층은 app/src/shared/officeLevel.ts LEVEL_TABLE 기준) -->
+<!-- 2 · 핵심 2: 사무실 꾸미기(실제 사무실 안·상점 화면) + 레벨 막대 (단계·층은 app/src/shared/officeLevel.ts LEVEL_TABLE 기준) -->
 <section id="decor"><div class="wrap">
   <div class="head c rv"><span class="rank pink" data-i18n="decor.rank"><!--p-->核心 2 · 装修办公室<!--/p--></span><h2 class="h2" data-i18n="decor.title"><!--p-->干得越多，办公室越好<!--/p--></h2><p class="sub" data-i18n="decor.sub"><!--p-->工作就能赚钱，用钱来装修，等级提升后大楼也会变。<!--/p--></p></div>
-  <div class="flow3">
-    <div class="fc rv"><span class="stp" data-i18n="d1.stp"><!--p-->1 · 攒钱<!--/p--></span><h3 data-i18n="d1.t"><!--p-->越工作资金越多<!--/p--></h3><span class="fund" data-i18n="d1.fund"><!--p-->₩ 1.284 亿<!--/p--></span><p data-i18n="d1.p"><!--p-->员工工作、完成任务越多，公司资金和等级就越高。还有每日任务和成就奖励。<!--/p--></p></div>
-    <div class="fc rv"><span class="stp" data-i18n="d2.stp"><!--p-->2 · 购买<!--/p--></span><h3 data-i18n="d2.t"><!--p-->商店里有 101 种<!--/p--></h3><div class="drawer"><div><b data-i18n="d2.c1"><!--p-->咖啡机<!--/p--></b><em data-i18n="d2.c1s"><!--p-->家具<!--/p--></em></div><div><b data-i18n="d2.c2"><!--p-->壁纸<!--/p--></b><em data-i18n="d2.c2s"><!--p-->15 种<!--/p--></em></div><div><b data-i18n="d2.c3"><!--p-->地板<!--/p--></b><em data-i18n="d2.c3s"><!--p-->14 种<!--/p--></em></div></div><p data-i18n="d2.p"><!--p-->家具、摆件、壁纸、地板、桌子、椅子。每日特价、季节限定、成套奖励。<!--/p--></p></div>
-    <div class="fc rv"><span class="stp" data-i18n="d3.stp"><!--p-->3 · 摆放<!--/p--></span><h3 data-i18n="d3.t"><!--p-->从抽屉里拿出来摆放<!--/p--></h3><div class="cells" aria-hidden="true"><i></i><i class="ok"></i><i class="ok"></i><i></i><i></i><i class="no"></i><i></i><i></i></div><div class="legend"><span data-i18n="d3.ok"><!--p-->可以放<!--/p--></span><span class="no" data-i18n="d3.no"><!--p-->不能放（附一句原因）<!--/p--></span></div><p data-i18n="d3.p"><!--p-->可以旋转、移动、收回。猫和狗会到处走动，也可以让秘书帮你摆放。<!--/p--></p></div>
+  <div class="room rv"><div class="shot pic"><img src="../assets/screens/ko/office.webp" data-shot="office" data-i18n-alt="alt.room" loading="lazy" width="1600" height="1000"></div><div class="tx"><h3 data-i18n="room.t"><!--p-->员工在你装修的办公室里工作<!--/p--></h3><p data-i18n="room.p"><!--p-->买来的家具可以拖进办公室，再旋转、移动。工作中的员工坐在座位上，需要你确认的员工头上会出现“!”。猫和狗会到处走动，也可以让秘书帮你摆放。<!--/p--></p></div></div>
+  <div class="flow2">
+    <div class="fc rv"><span class="stp" data-i18n="d1.stp"><!--p-->1 · 攒钱<!--/p--></span><h3 data-i18n="d1.t"><!--p-->越工作资金越多<!--/p--></h3><div class="shot pic"><img src="../assets/screens/ko/missions.webp" data-shot="missions" data-i18n-alt="alt.missions" loading="lazy" width="1580" height="868"></div><p data-i18n="d1.p"><!--p-->员工工作、完成任务越多，公司资金和等级就越高。还有每日任务和成就奖励。<!--/p--></p></div>
+    <div class="fc rv"><span class="stp" data-i18n="d2.stp"><!--p-->2 · 购买<!--/p--></span><h3 data-i18n="d2.t"><!--p-->商店里有 101 种<!--/p--></h3><div class="shot pic"><img src="../assets/screens/ko/shop.webp" data-shot="shop" data-i18n-alt="alt.shop" loading="lazy" width="1600" height="880"></div><p data-i18n="d2.p"><!--p-->家具、摆件、壁纸、地板、桌子、椅子。每日特价、季节限定、成套奖励。<!--/p--></p></div>
   </div>
   <div class="lvbox rv" id="lvbox">
     <div class="lvview"><img class="lvimg" src="../assets/building/lv3.webp" alt="" width="744" height="504"></div>
@@ -423,9 +414,9 @@ footer .links .off{color:var(--dim);pointer-events:none}
   <div class="rows">
     <div class="fx rv"><div class="shot pic"><img src="../assets/screens/ko/feat-approve.webp" data-shot="feat-approve" data-i18n-alt="alt.f3" loading="lazy" width="896" height="560"></div><div class="tx"><span class="no" data-i18n="f3.no"><!--p-->03 · 审批<!--/p--></span><h3 data-i18n="f3.t"><!--p-->重要的事先问你<!--/p--></h3><p data-i18n="f3.p"><!--p-->修改文件、运行命令等影响大的操作，会在聊天和审批箱里由你批准或驳回。每位员工能自主做到哪一步由你决定，改过的文件也能一键还原。<!--/p--></p></div></div>
     <div class="fx rv"><div class="shot pic"><img src="../assets/screens/ko/feat-lead.webp" data-shot="feat-lead" data-i18n-alt="alt.f4" loading="lazy" width="994" height="621"></div><div class="tx"><span class="no" data-i18n="f4.no"><!--p-->04 · 组长<!--/p--></span><h3 data-i18n="f4.t"><!--p-->大任务由组长拆分分派<!--/p--></h3><p data-i18n="f4.p"><!--p-->组长写好方案和子任务，你确认后，团队按顺序推进并整理汇报。<!--/p--></p></div></div>
-    <div class="fx rv"><div class="shot pic"><img src="../assets/screens/ko/feat-secretary.webp" data-shot="feat-secretary" data-i18n-alt="alt.f5" loading="lazy" width="938" height="586"></div><div class="tx"><span class="no" data-i18n="f5.no"><!--p-->05 · 秘书<!--/p--></span><h3 data-i18n="f5.t"><!--p-->用说的就能操作应用<!--/p--></h3><p data-i18n="f5.p"><!--p-->夜间汇总、在回答里直接审批、查找并打开文件。桌面秘书不用打开窗口也能回答。<!--/p--></p></div></div>
+    <div class="fx rv"><div class="shot pic"><img src="../assets/screens/ko/feat-secretary.webp" data-shot="feat-secretary" data-i18n-alt="alt.f5" loading="lazy" width="1328" height="830"></div><div class="tx"><span class="no" data-i18n="f5.no"><!--p-->05 · 秘书<!--/p--></span><h3 data-i18n="f5.t"><!--p-->用说的就能操作应用<!--/p--></h3><p data-i18n="f5.p"><!--p-->说一句“招一名设计师”，秘书会先用确认卡片展示招聘员工、创建团队、分配工作，点［执行］后就办好。还能做夜间汇总、审批、查找并打开文件。<!--/p--></p></div></div>
     <div class="fx rv"><div class="shot pic"><img src="../assets/screens/ko/feat-ai.webp" data-shot="feat-ai" data-i18n-alt="alt.f6" loading="lazy" width="1600" height="1000"></div><div class="tx"><span class="no" data-i18n="f6.no"><!--p-->06 · AI<!--/p--></span><h3 data-i18n="f6.t"><!--p-->Claude 和 GPT 员工在同一间办公室<!--/p--></h3><p data-i18n="f6.p"><!--p-->每位员工选 Claude 或 GPT 即可。直接用你已有的登录，不需要 API 密钥，有一个就能开始。两个套餐的用量也能在一个画面里查看。<!--/p--></p></div></div>
-    <div class="fx rv"><div class="shot ph"><div class="pf pic"><img src="../assets/screens/ko/feat-phone.webp" data-shot="feat-phone" data-i18n-alt="alt.f7" loading="lazy" width="1170" height="1266"></div></div><div class="tx"><span class="no" data-i18n="f7.no"><!--p-->07 · 连接<!--/p--></span><h3 data-i18n="f7.t"><!--p-->手机·其他电脑<!--/p--></h3><p data-i18n="f7.p"><!--p-->外出时用安卓应用审批和聊天。还可以连接最多 3 台其他电脑，来回切换。<!--/p--></p></div></div>
+    <div class="fx rv"><div class="shot ph"><div class="pf pic"><img src="../assets/screens/ko/phone-chat.webp" data-shot="phone-chat" data-i18n-alt="alt.f7" loading="lazy" width="1170" height="2532"></div><div class="pf pic"><img src="../assets/screens/ko/phone-inbox.webp" data-shot="phone-inbox" data-i18n-alt="alt.f7b" loading="lazy" width="1170" height="2532"></div></div><div class="tx"><span class="no" data-i18n="f7.no"><!--p-->07 · 连接<!--/p--></span><h3 data-i18n="f7.t"><!--p-->手机·其他电脑<!--/p--></h3><p data-i18n="f7.p"><!--p-->外出时用安卓应用审批和聊天。还可以连接最多 3 台其他电脑，来回切换。<!--/p--></p></div></div>
     <div class="fx rv"><div class="shot pic"><img src="../assets/screens/ko/feat-dash.webp" data-shot="feat-dash" data-i18n-alt="alt.f8" loading="lazy" width="1600" height="1000"></div><div class="tx"><span class="no" data-i18n="f8.no"><!--p-->08 · 安心<!--/p--></span><h3 data-i18n="f8.t"><!--p-->仪表盘·工资单·工作模式<!--/p--></h3><p data-i18n="f8.p"><!--p-->谁在工作、谁在等你确认，一眼就能看清。在公司可以用隐藏游戏元素的工作模式，干净清爽。<!--/p--></p></div></div>
     <div class="fx rv"><div class="shot pic"><img src="../assets/screens/ko/feat-tools.webp" data-shot="feat-tools" data-i18n-alt="alt.f9" loading="lazy" width="1344" height="840"></div><div class="tx"><span class="no" data-i18n="f9.no"><!--p-->09 · 工具<!--/p--></span><h3 data-i18n="f9.t"><!--p-->任务看板·会议室·手册·定时任务<!--/p--></h3><p data-i18n="f9.p"><!--p-->待办看板、会议纪要和任务卡片、先读参考文档再工作、按时重复的任务。<!--/p--></p></div></div>
   </div>
@@ -575,8 +566,6 @@ var I18N = {
     "try.other": "다른 기기",
     "exp.room": "전체 방",
     "exp.badge": "체험용 화면 · AI 사용 없음",
-    "exp.seats": "사무실 자리",
-    "exp.legend": "초록 테두리 = 일하는 중 · ! = 확인 필요",
     "exp.count": "{n}명",
     "exp.boss": "대표",
     "exp.me": "나",
@@ -621,22 +610,15 @@ var I18N = {
     "decor.sub": "일하면 돈이 쌓이고, 돈으로 꾸미고, 레벨이 오르면 건물이 바뀌어요.",
     "d1.stp": "1 · 모으기",
     "d1.t": "일할수록 자금이 쌓여요",
-    "d1.fund": "₩ 1억 2,840만",
+    "alt.missions": "실제 앱의 미션·업적 화면 — 오늘의 미션과 보상",
     "d1.p": "직원이 일하고 업무를 마칠수록 회사 자금과 레벨이 올라요. 매일 미션과 업적 보상도 있어요.",
     "d2.stp": "2 · 사기",
     "d2.t": "상점에서 101종",
-    "d2.c1": "커피머신",
-    "d2.c1s": "가구",
-    "d2.c2": "벽지",
-    "d2.c2s": "15가지",
-    "d2.c3": "바닥재",
-    "d2.c3s": "14가지",
     "d2.p": "가구·소품·벽지·바닥재·책상·의자. 오늘의 특가, 계절 한정, 세트 완성 보너스.",
-    "d3.stp": "3 · 놓기",
-    "d3.t": "서랍에서 꺼내 배치",
-    "d3.ok": "놓을 수 있어요",
-    "d3.no": "안 돼요(이유 한 줄)",
-    "d3.p": "돌리고 옮기고 다시 넣기. 고양이·강아지가 돌아다니고, 비서에게 배치를 맡겨도 돼요.",
+    "room.t": "꾸민 사무실에서 직원들이 일해요",
+    "room.p": "산 가구는 사무실에 끌어다 놓고 돌리고 옮겨요. 일하는 직원은 자리에서 일하고, 확인이 필요한 직원 위에는 느낌표가 떠요. 고양이·강아지가 돌아다니고, 배치는 비서에게 맡겨도 돼요.",
+    "alt.room": "실제 앱의 사무실 안 — 자리에서 일하는 직원과 꾸민 가구",
+    "alt.shop": "실제 앱의 가구 상점 화면",
     "lv.names": ["차고", "1층 상가", "벽돌 건물", "3층 오피스", "유리 사옥", "5층 타워", "캠퍼스"],
     "lv.floors": "{n}층 건물",
     "lv.unlocks": ["커피 코너", "탕비실·휴게실", "강당(20명)", "대표실"],
@@ -656,8 +638,8 @@ var I18N = {
     "alt.f4": "팀장이 만든 기획서와 하위 업무 3건",
     "f5.no": "05 · 비서",
     "f5.t": "말로 앱을 써요",
-    "f5.p": "밤사이 요약, 답 안에서 바로 결재, 파일 찾아 열기. 바탕화면 비서로 창을 열지 않고도 답해요.",
-    "alt.f5": "비서가 보여 주는 밤사이 요약",
+    "f5.p": "“디자이너 한 명 뽑아 줘”처럼 말하면 직원 뽑기·팀 만들기·일 맡기기를 확인 카드로 보여 주고, [실행]을 누르면 해요. 밤사이 요약, 결재, 파일 찾아 열기도 해요.",
+    "alt.f5": "비서에게 말로 직원을 뽑는 화면 — 확인 카드",
     "f6.no": "06 · AI",
     "f6.t": "Claude·GPT 직원을 한 사무실에",
     "f6.p": "직원마다 Claude나 GPT를 고르면 돼요. 쓰던 로그인 그대로라 따로 키가 필요 없고, 하나만 있어도 시작해요. 두 요금제의 사용량도 한 화면에서 봐요.",
@@ -665,7 +647,8 @@ var I18N = {
     "f7.no": "07 · 연결",
     "f7.t": "휴대폰·다른 PC",
     "f7.p": "밖에서는 안드로이드 앱으로 결재하고 대화해요. 다른 PC도 최대 3대까지 연결해 오가며 일을 시켜요.",
-    "alt.f7": "휴대폰 앱의 대화방 화면",
+    "alt.f7": "휴대폰 앱의 단체방 화면",
+    "alt.f7b": "휴대폰 앱의 결재함 화면",
     "f8.no": "08 · 안심",
     "f8.t": "대시보드·급여 명세서·업무 모드",
     "f8.p": "누가 일하고 누가 확인을 기다리는지 한눈에 봐요. 회사에서는 게임 요소를 숨긴 업무 모드로 깔끔하게 써요.",
@@ -767,8 +750,6 @@ var I18N = {
     "try.other": "Other devices",
     "exp.room": "All-hands room",
     "exp.badge": "Demo screen · no AI used",
-    "exp.seats": "Office seats",
-    "exp.legend": "Green border = working · ! = needs you",
     "exp.count": "{n} staff",
     "exp.boss": "You (CEO)",
     "exp.me": "Me",
@@ -813,22 +794,15 @@ var I18N = {
     "decor.sub": "Work earns money, money buys decor, and leveling up changes your building.",
     "d1.stp": "1 · Earn",
     "d1.t": "Funds grow as you work",
-    "d1.fund": "₩ 128.4M",
+    "alt.missions": "Missions and achievements in the real app — today’s missions and rewards",
     "d1.p": "As staff work and finish tasks, company funds and level go up. There are daily missions and achievement rewards too.",
     "d2.stp": "2 · Buy",
     "d2.t": "101 items in the shop",
-    "d2.c1": "Coffee machine",
-    "d2.c1s": "Furniture",
-    "d2.c2": "Wallpaper",
-    "d2.c2s": "15 kinds",
-    "d2.c3": "Flooring",
-    "d2.c3s": "14 kinds",
     "d2.p": "Furniture, props, wallpaper, flooring, desks and chairs. Daily deals, seasonal items and set bonuses.",
-    "d3.stp": "3 · Place",
-    "d3.t": "Take it out of the drawer and place it",
-    "d3.ok": "Can place",
-    "d3.no": "Can't (with a reason)",
-    "d3.p": "Rotate, move, or put it back. Cats and dogs wander around, and you can let the secretary arrange things.",
+    "room.t": "Your staff work in the office you decorate",
+    "room.p": "Drag the furniture you buy into the office, then rotate and move it. Working staff sit at their desks, and an exclamation mark pops up over anyone who needs you. Cats and dogs wander around, and you can let the secretary arrange things.",
+    "alt.room": "Inside the office in the real app — staff at their desks and decorated furniture",
+    "alt.shop": "The furniture shop in the real app",
     "lv.names": ["Garage", "Street shop", "Brick building", "3-floor office", "Glass HQ", "5-floor tower", "Campus"],
     "lv.floors": "{n}-floor building",
     "lv.unlocks": ["Coffee corner", "Pantry & lounge", "Auditorium (20)", "CEO office"],
@@ -848,8 +822,8 @@ var I18N = {
     "alt.f4": "A plan and 3 subtasks written by the team lead",
     "f5.no": "05 · Secretary",
     "f5.t": "Use the app by talking",
-    "f5.p": "Overnight summaries, approvals right inside the answer, finding and opening files. The desktop secretary answers without opening the window.",
-    "alt.f5": "Overnight summary from the secretary",
+    "f5.p": "Say “Hire a designer” and the secretary shows a confirmation card for hiring staff, creating teams or assigning work, then does it when you press [Run]. It also sums up the night, handles approvals, and finds and opens files.",
+    "alt.f5": "Hiring staff by asking the secretary — confirmation card",
     "f6.no": "06 · AI",
     "f6.t": "Claude and GPT staff in one office",
     "f6.p": "Pick Claude or GPT for each staff member. They use the login you already have, so no API key is needed, and one is enough to start. See usage for both plans on one screen.",
@@ -857,7 +831,8 @@ var I18N = {
     "f7.no": "07 · Connect",
     "f7.t": "Phone and other PCs",
     "f7.p": "On the go, approve and chat from the Android app. Connect up to 3 other PCs and switch between them.",
-    "alt.f7": "Chat room in the phone app",
+    "alt.f7": "Group chat in the phone app",
+    "alt.f7b": "Approvals in the phone app",
     "f8.no": "08 · Peace of mind",
     "f8.t": "Dashboard, payslip and work mode",
     "f8.p": "See at a glance who's working and who's waiting for you. At the office, work mode hides the game elements.",
@@ -959,8 +934,6 @@ var I18N = {
     "try.other": "ほかの端末",
     "exp.room": "全体ルーム",
     "exp.badge": "体験用の画面 · AIは使いません",
-    "exp.seats": "オフィスの席",
-    "exp.legend": "緑の枠 = 作業中 · ! = 確認が必要",
     "exp.count": "{n}人",
     "exp.boss": "代表",
     "exp.me": "私",
@@ -1005,22 +978,15 @@ var I18N = {
     "decor.sub": "働くとお金がたまり、お金で飾り、レベルが上がると建物が変わります。",
     "d1.stp": "1 · ためる",
     "d1.t": "働くほど資金がたまる",
-    "d1.fund": "₩ 1億2,840万",
+    "alt.missions": "実際のアプリのミッション・実績画面 — 本日のミッションと報酬",
     "d1.p": "スタッフが働いてタスクを終えるほど、会社の資金とレベルが上がります。毎日のミッションと実績の報酬もあります。",
     "d2.stp": "2 · 買う",
     "d2.t": "ショップに101種類",
-    "d2.c1": "コーヒーマシン",
-    "d2.c1s": "家具",
-    "d2.c2": "壁紙",
-    "d2.c2s": "15種類",
-    "d2.c3": "床材",
-    "d2.c3s": "14種類",
     "d2.p": "家具・小物・壁紙・床材・机・椅子。今日の特価、季節限定、セットのボーナス。",
-    "d3.stp": "3 · 置く",
-    "d3.t": "引き出しから出して配置",
-    "d3.ok": "置けます",
-    "d3.no": "置けません（理由を一行で）",
-    "d3.p": "回す、動かす、しまう。猫や犬が歩き回り、秘書に配置を任せることもできます。",
+    "room.t": "飾ったオフィスでスタッフが働きます",
+    "room.p": "買った家具はオフィスにドラッグして置き、回したり動かしたりできます。作業中のスタッフは席で働き、確認が必要なスタッフの上には「!」が出ます。猫や犬が歩き回り、配置を秘書に任せることもできます。",
+    "alt.room": "実際のアプリのオフィス内 — 席で働くスタッフと飾った家具",
+    "alt.shop": "実際のアプリの家具ショップ画面",
     "lv.names": ["ガレージ", "1階の店舗", "レンガの建物", "3階建てオフィス", "ガラスの社屋", "5階建てタワー", "キャンパス"],
     "lv.floors": "{n}階建て",
     "lv.unlocks": ["コーヒーコーナー", "給湯室・休憩室", "講堂（20人）", "代表室"],
@@ -1040,8 +1006,8 @@ var I18N = {
     "alt.f4": "リーダーが作った企画書とサブタスク3件",
     "f5.no": "05 · 秘書",
     "f5.t": "話しかけてアプリを使う",
-    "f5.p": "夜のあいだのまとめ、回答の中ですぐ承認、ファイルを探して開く。デスクトップ秘書ならウィンドウを開かずに答えられます。",
-    "alt.f5": "秘書が見せる夜のあいだのまとめ",
+    "f5.p": "「デザイナーを 1 人採用して」のように話すと、スタッフの採用・チーム作成・仕事の割り当てを確認カードで見せ、［実行］を押すと行います。夜のあいだのまとめ、承認、ファイルを探して開くこともできます。",
+    "alt.f5": "秘書に話してスタッフを採用する画面 — 確認カード",
     "f6.no": "06 · AI",
     "f6.t": "Claude と GPT のスタッフを同じオフィスに",
     "f6.p": "スタッフごとに Claude か GPT を選ぶだけ。いつものログインのまま使うので API キーは不要、どちらか一つでも始められます。両方のプランの使用量も一つの画面で見られます。",
@@ -1049,7 +1015,8 @@ var I18N = {
     "f7.no": "07 · 接続",
     "f7.t": "スマホ・ほかのPC",
     "f7.p": "外出先では Android アプリで承認やチャットができます。ほかのPCも最大3台までつないで行き来できます。",
-    "alt.f7": "スマホアプリのチャット画面",
+    "alt.f7": "スマホアプリのグループチャット画面",
+    "alt.f7b": "スマホアプリの決裁箱画面",
     "f8.no": "08 · 安心",
     "f8.t": "ダッシュボード・給与明細・業務モード",
     "f8.p": "誰が働いていて誰が確認を待っているかがひと目でわかります。会社ではゲーム要素を隠した業務モードですっきり使えます。",
@@ -1151,8 +1118,6 @@ var I18N = {
     "try.other": "其他设备",
     "exp.room": "全员群",
     "exp.badge": "体验画面 · 不使用 AI",
-    "exp.seats": "办公室座位",
-    "exp.legend": "绿色边框 = 工作中 · ! = 需要你确认",
     "exp.count": "{n} 人",
     "exp.boss": "老板",
     "exp.me": "我",
@@ -1197,22 +1162,15 @@ var I18N = {
     "decor.sub": "工作就能赚钱，用钱来装修，等级提升后大楼也会变。",
     "d1.stp": "1 · 攒钱",
     "d1.t": "越工作资金越多",
-    "d1.fund": "₩ 1.284 亿",
+    "alt.missions": "真实应用中的任务·成就画面 — 今日任务和奖励",
     "d1.p": "员工工作、完成任务越多，公司资金和等级就越高。还有每日任务和成就奖励。",
     "d2.stp": "2 · 购买",
     "d2.t": "商店里有 101 种",
-    "d2.c1": "咖啡机",
-    "d2.c1s": "家具",
-    "d2.c2": "壁纸",
-    "d2.c2s": "15 种",
-    "d2.c3": "地板",
-    "d2.c3s": "14 种",
     "d2.p": "家具、摆件、壁纸、地板、桌子、椅子。每日特价、季节限定、成套奖励。",
-    "d3.stp": "3 · 摆放",
-    "d3.t": "从抽屉里拿出来摆放",
-    "d3.ok": "可以放",
-    "d3.no": "不能放（附一句原因）",
-    "d3.p": "可以旋转、移动、收回。猫和狗会到处走动，也可以让秘书帮你摆放。",
+    "room.t": "员工在你装修的办公室里工作",
+    "room.p": "买来的家具可以拖进办公室，再旋转、移动。工作中的员工坐在座位上，需要你确认的员工头上会出现“!”。猫和狗会到处走动，也可以让秘书帮你摆放。",
+    "alt.room": "真实应用中的办公室内部 — 在座位上工作的员工和装修好的家具",
+    "alt.shop": "真实应用中的家具商店画面",
     "lv.names": ["车库", "一层店面", "砖楼", "三层写字楼", "玻璃总部", "五层大厦", "园区"],
     "lv.floors": "{n} 层建筑",
     "lv.unlocks": ["咖啡角", "茶水间·休息室", "礼堂（20 人）", "总裁办公室"],
@@ -1232,8 +1190,8 @@ var I18N = {
     "alt.f4": "组长写的方案和 3 项子任务",
     "f5.no": "05 · 秘书",
     "f5.t": "用说的就能操作应用",
-    "f5.p": "夜间汇总、在回答里直接审批、查找并打开文件。桌面秘书不用打开窗口也能回答。",
-    "alt.f5": "秘书给出的夜间汇总",
+    "f5.p": "说一句“招一名设计师”，秘书会先用确认卡片展示招聘员工、创建团队、分配工作，点［执行］后就办好。还能做夜间汇总、审批、查找并打开文件。",
+    "alt.f5": "对秘书说话来招聘员工 — 确认卡片",
     "f6.no": "06 · AI",
     "f6.t": "Claude 和 GPT 员工在同一间办公室",
     "f6.p": "每位员工选 Claude 或 GPT 即可。直接用你已有的登录，不需要 API 密钥，有一个就能开始。两个套餐的用量也能在一个画面里查看。",
@@ -1241,7 +1199,8 @@ var I18N = {
     "f7.no": "07 · 连接",
     "f7.t": "手机·其他电脑",
     "f7.p": "外出时用安卓应用审批和聊天。还可以连接最多 3 台其他电脑，来回切换。",
-    "alt.f7": "手机应用的聊天画面",
+    "alt.f7": "手机应用的群聊画面",
+    "alt.f7b": "手机应用的审批箱画面",
     "f8.no": "08 · 安心",
     "f8.t": "仪表盘·工资单·工作模式",
     "f8.p": "谁在工作、谁在等你确认，一眼就能看清。在公司可以用隐藏游戏元素的工作模式，干净清爽。",
@@ -1440,10 +1399,6 @@ var I18N = {
     document.getElementById('roster').innerHTML = '<span class="ttl">' + esc(t['exp.count'].replace('{n}', STAFF.length)) + '</span>' + STAFF.map(function(s){
       var k = ST[s[0]];
       return '<span class="st ' + k + '">' + avatar(s[0], s[1]) + esc(nameOf(s[0])) + ' · ' + esc(t['exp.st.' + k]) + '<i></i></span>';
-    }).join('');
-    document.getElementById('mini').innerHTML = STAFF.map(function(s){
-      var k = ST[s[0]];
-      return '<div class="' + (k === 'run' || k === 'got' ? 'run' : k === 'wait' ? 'wait' : '') + '"><span class="pc"></span><b>' + esc(nameOf(s[0])) + '</b>' + esc(t['exp.st.' + k]) + '</div>';
     }).join('');
   }
   // 한 단계를 그린다. 상태 바뀜은 null(대화 칸에 아무것도 붙이지 않음)
