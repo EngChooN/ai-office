@@ -11,15 +11,19 @@ Writing rules
 - Leave out: internal or development matters, re-fixes of features added in the same version, how a security hole worked (if needed, one line on the result), minor wording or spacing tweaks.
 - Couldn't do it before → new feature; easier than before → improvement; was working wrongly → bug fix.
 
-## [미정] (설치본 미빌드)
+## [1.4.3] - 2026-11-17
+Good to know: after updating, the connection code under “Let another PC view this one” changes once. We have not yet tested a real connection between a Mac and a Windows PC, and after you restart the app, a PC you declined earlier shows “Ask for access” again.
+
 ### At a glance
-- **Fix** Viewing another PC's screen now actually opens
-- **Fix** If a PC can't connect, you see why
+- **Fixed** Viewing another PC's screen now actually opens
+- **Fixed** If a PC can't connect, you see why
+- **Fixed** Permission prompts are no longer hidden
 
 ### Bug fixes
 - After pairing another PC, it no longer stays stuck on "Connecting" under Switch PC. That PC's office window now opens, and you can give its staff work and handle approvals.
 - When a PC can't connect, you now see why: "Allow it on that PC", "Please update that PC", "Please update this PC", "Please connect again", or "Off or disconnected".
-- A PC connected with the code from “Let another PC view this one” can view it right away. For a PC you connected before, this PC asks for permission the first time. If it was declined, press "Ask again".
+- A PC connected with the code from “Let another PC view this one” can view it right away. For a PC you connected before, this PC asks for permission the first time. A PC you haven't asked yet shows “You haven't asked for access yet” and an “Ask for access” button; if it was declined, press “Ask again”.
+- Fixed the other PC's permission prompt being hidden behind an app window that was hidden or minimized.
 
 ## [1.4.2] - 2026-11-16
 PC app only: task and meeting practice and the first-run guide work only in the PC app. On the phone you still get first-time tips and the ? help.
