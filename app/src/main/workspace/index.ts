@@ -3,12 +3,14 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
-import { BrowserWindow, ipcMain, nativeTheme, webContents } from 'electron'
+import { app, BrowserWindow, ipcMain, nativeTheme, webContents } from 'electron'
 import { openLinksInBrowser } from '../externalLinks'
 import { WORKSPACE_COLOR_HEX } from '../../shared/workspace.ts'
 import { createWorkspaceStore } from './workspaceStore.ts'
 import { createWindowHub, type HubWindow } from './workspaceWindows.ts'
-import { createWorkspaceService, noLinks } from './workspaceService.ts'
+import { freeFileName } from './linkModel.ts'
+import { createWorkspaceLinks, type LinkPeers } from './workspaceLinks.ts'
+import { createWorkspaceService } from './workspaceService.ts'
 
 export interface WorkspacesDeps {
   userDataDir: string
@@ -17,6 +19,8 @@ export interface WorkspacesDeps {
   showLocal(): void
   /** 기존 짝 목록에서 그 PC 이름 (없는 PC면 null) */
   peerName(peerId: string): string | null
+  /** 짝지은 PC 연결 (PeerManager) — 화면 보기는 그 줄을 함께 쓴다 */
+  peers: LinkPeers
   /** 원격 창 화면(remote.html)을 불러온다 */
   load(win: BrowserWindow): void
   preloadPath: string
@@ -90,10 +94,22 @@ export function createWorkspaces(deps: WorkspacesDeps) {
       return wrap(w)
     },
   })
+  const links = createWorkspaceLinks({
+    peers: deps.peers,
+    peerIdOf: (id) => store.get(id)?.peerId ?? null,
+    saveDownload: async (name, data) => {
+      const dir = app.getPath('downloads')
+      const file = freeFileName(dir, name)
+      await fs.promises.writeFile(path.join(dir, file), data)
+      return file
+    },
+    appVersion: app.getVersion(),
+    platform: process.platform,
+  })
   const service = createWorkspaceService({
     store,
     hub,
-    links: noLinks,
+    links,
     peerName: deps.peerName,
     emit: (senderId, state) => webContents.fromId(senderId)?.send('workspace:onChange', state),
   })
@@ -102,6 +118,7 @@ export function createWorkspaces(deps: WorkspacesDeps) {
   ipcMain.handle('workspace:switchTo', (e, target: unknown) => service.switchTo(e.sender.id, target))
   ipcMain.handle('workspace:add', (e, input: { peerId?: unknown; name?: unknown; color?: unknown }) => service.add(e.sender.id, input ?? {}))
   ipcMain.handle('workspace:update', (e, id: unknown, patch: { name?: unknown; color?: unknown }) => service.update(e.sender.id, id, patch ?? {}))
+  ipcMain.handle('workspace:requestGrant', (e, id: unknown) => service.requestGrant(e.sender.id, id))
   ipcMain.handle('workspace:remove', (e, id: unknown) => service.remove(e.sender.id, id))
   ipcMain.on('ws:post', (e, text: unknown) => void service.post(e.sender.id, text))
 

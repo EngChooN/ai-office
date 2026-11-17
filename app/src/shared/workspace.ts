@@ -8,8 +8,8 @@ import type { OfficeMethod } from './officeApiShape.ts'
 export const WORKSPACE_MAX = 3
 /** 끊긴 뒤 '끊김'으로 보이기까지 (안드로이드와 같은 값, workspace-defaults.md 4번) */
 export const WORKSPACE_OFFLINE_GRACE_MS = 8_000
-/** 화면 보기를 할 수 있는 상대 PC 프로토콜 — 0단계(기기별 열쇠·화면 보기 권한)에서 확정해 문서와 함께 올린다 */
-export const WORKSPACE_MIN_PEER_PROTOCOL = 3
+/** 화면 보기를 할 수 있는 상대 PC 프로토콜 (v2). 번호는 휴대폰과 같이 쓰므로 올리지 않고, 화면 보기를 아는지는 hello의 허락 상태(permissions)로 가린다 */
+export const WORKSPACE_MIN_PEER_PROTOCOL = 2
 export const WORKSPACE_NAME_MAX = 30
 
 /** 연결 PC 색 (이 PC는 기존 primary 보라). 실제 색은 CSS 변수 --ws-<색>이 라이트·다크별로 정한다 */
@@ -39,6 +39,7 @@ export type WorkspaceStatus =
   | 'ready'
   | 'reconnecting'
   | 'offline'
+  | 'grantNone'
   | 'grantPending'
   | 'grantDenied'
   | 'peerOutdated'
@@ -53,7 +54,8 @@ export interface WorkspaceHello {
   protocol: number
   /** 이 열쇠가 화면 보기 권한을 가졌는지 */
   canView: boolean
-  grant: 'granted' | 'pending' | 'denied'
+  /** none = 아직 이 PC가 허락을 요청하지 않음 (거절된 적 없음) */
+  grant: 'granted' | 'pending' | 'denied' | 'none'
 }
 
 export interface StatusInput {
@@ -69,7 +71,7 @@ export interface StatusInput {
 }
 
 /** 다시 짝지어야 하는 실패 (열쇠가 폐기됐거나 인증서가 바뀜) */
-const UNPAIRED_ERRORS = new Set(['unauthorized', 'forbidden', 'token_revoked', 'SPKI_MISMATCH', 'http_401', 'http_403', 'http_426'])
+const UNPAIRED_ERRORS = new Set(['unauthorized', 'forbidden', 'token_revoked', 'SPKI_MISMATCH', 'http_401', 'http_403'])
 
 /** 화면 보기 상태 판정 — 이 함수 말고 다른 곳에서 상태를 정하지 않는다 */
 export function statusOf(input: StatusInput): WorkspaceStatus {
@@ -77,9 +79,12 @@ export function statusOf(input: StatusInput): WorkspaceStatus {
   if (error && UNPAIRED_ERRORS.has(error)) return 'unpaired'
   if (error === 'protocol_unsupported') return 'selfOutdated'
   if (error === 'slots_full') return 'peerFull'
+  // 연결은 됐는데 hello에 답이 없다 — '연결하는 중'에 머물지 않고 끊김으로 (다시 시도는 링크가 한다)
+  if (error === 'unreachable') return 'offline'
   if (link === 'online') {
     if (!hello) return 'connecting'
     if (hello.protocol < WORKSPACE_MIN_PEER_PROTOCOL || !hello.canView) return 'peerOutdated'
+    if (hello.grant === 'none') return 'grantNone'
     if (hello.grant === 'pending') return 'grantPending'
     if (hello.grant === 'denied') return 'grantDenied'
     return 'ready'
@@ -320,5 +325,7 @@ export interface OfficeWorkspacesApi {
   onChange(cb: (state: WorkspacesState) => void): () => void
   add?(input: { peerId: string; name: string; color: WorkspaceColor }): Promise<WorkspaceAddResult>
   update?(id: string, patch: { name?: string; color?: WorkspaceColor }): Promise<boolean>
+  /** 저쪽 PC에 화면 보기 허락을 다시 요청 (거절됐거나 대기가 사라졌을 때) */
+  requestGrant?(id: string): Promise<boolean>
   remove?(id: string): Promise<boolean>
 }

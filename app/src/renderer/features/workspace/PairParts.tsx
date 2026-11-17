@@ -39,7 +39,7 @@ export function HostPart({ onSlotsChanged }: { onSlotsChanged: () => void }) {
       const base = await window.office.peerSlots()
       if (isStale()) return
       knownIds.current = new Set(base.map((x) => x.id))
-      const opened = await window.office.peerPairStart('peer')
+      const opened = await window.office.peerPairStart('view')
       // 화면을 떠나도 코드는 닫지 않는다 (사용자가 '코드 끄기'를 눌러야 닫힌다)
       if (isStale()) return
       setWin(opened)
@@ -82,12 +82,12 @@ export function HostPart({ onSlotsChanged }: { onSlotsChanged: () => void }) {
           setNewName(added.label)
           knownIds.current = new Set(list.map((x) => x.id))
         }
-        if (status.pairOpen !== 'peer') {
+        if (status.pairOpen !== 'view') {
           setWin(null)
           setIsClosed(true)
         } else if ((status.pairRotatedAt ?? null) !== lastRotatedAt.current) {
           lastRotatedAt.current = status.pairRotatedAt ?? null
-          void window.office.peerPairStart('peer').then((v) => {
+          void window.office.peerPairStart('view').then((v) => {
             if (!isActive) return
             setWin(v)
             setIsRotated(true)
@@ -112,6 +112,7 @@ export function HostPart({ onSlotsChanged }: { onSlotsChanged: () => void }) {
     <div className="flex flex-col gap-2 text-xs">
       <h3 className="text-sm font-semibold">{t('peer.host.sendTitle')}</h3>
       <p className="text-muted-foreground">{t('peer.host.sendDesc')}</p>
+      <p className="text-muted-foreground">{t('peer.host.viewNote')}</p>
       {error && <p className="text-status-error">{error}</p>}
       {newName && <p className="text-status-working">{t('peer.host.newSlot', { name: newName })}</p>}
       {isRotated && win && <p className="text-status-working">{t('peer.host.rotated')}</p>}

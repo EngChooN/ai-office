@@ -11,6 +11,7 @@ import { memoryTokenVault } from '../src/main/peer/peerRegistry.ts'
 import { createOpenStream, createPairTransport, createPeerHttp } from '../src/main/peer/peerTransport.ts'
 import { createSelfSignedCert } from '../src/main/remote/cert.ts'
 import { pairWithHost, type PairFailure } from '../src/main/peer/pairing.ts'
+import { createWorkspaceLinks } from '../src/main/workspace/workspaceLinks.ts'
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms))
 async function until(cond: () => boolean, label = '', ms = 4000) {
@@ -49,7 +50,7 @@ function rawReq(port: number, path: string, token: string, method = 'GET', body?
 }
 
 /** B컴: 실제 RemoteService (짝짓기·슬롯·이벤트) */
-function makeB(port: number, now?: () => number, pairStore: { v: { kind: 'peer' | 'phone' | 'view'; code: string } | null } = { v: null }, alerts: string[] = []) {
+function makeB(port: number, now?: () => number, pairStore: { v: { kind: 'peer' | 'phone' | 'view'; code: string } | null } = { v: null }, alerts: string[] = [], onViewRequest?: (slot: { id: string; label: string }) => void) {
   let config: RemoteConfig = { ...DEFAULT_REMOTE_CONFIG, port, host: '127.0.0.1', mode: 'router', tokenHash: null, isTokenUsed: true, isLanNoticeSeen: true, isTsNoticeSeen: true }
   let keys = createSelfSignedCert()
   const calls: string[] = []
@@ -73,7 +74,7 @@ function makeB(port: number, now?: () => number, pairStore: { v: { kind: 'peer' 
       attachment: () => null,
       saveUpload: () => ({ id: 'x', name: 'x', path: '/x', mime: '', size: 0 }),
     },
-    peer: { ownName: () => 'B컴' },
+    peer: { ownName: () => 'B컴', onViewRequest: (slot) => onViewRequest?.(slot) },
   })
   return { svc, calls, config: () => config }
 }
@@ -373,6 +374,78 @@ test('인증 전 짝짓기 호출은 한 주소에서 분당 12번까지만 (그
     for (let i = 0; i < 14; i++) codes.push((await t.post('/v2/pair/hello', { nonceA: 'A'.repeat(22) })).status)
     assert.deepEqual([codes.slice(0, 12).every((c) => c === 410), codes[12], codes[13]], [true, 429, 429])
   } finally {
+    await B.svc.disable()
+  }
+})
+
+// ── 화면 보기(워크스페이스 연결 부품) — 실제 서버로 짝짓기 → 허락 → 연결됨 → 이벤트·요청 ──
+
+function linksFor(A: ReturnType<typeof makeA>, peerId: string) {
+  const messages: { type: string; name?: string; state?: string }[] = []
+  const links = createWorkspaceLinks({
+    peers: A.mgr,
+    peerIdOf: (id) => (id === 'w1' ? peerId : null),
+    saveDownload: async (name) => name,
+    appVersion: 'test',
+    platform: 'darwin',
+    retryMs: [30],
+  })
+  links.listen({ changed: () => {}, message: (_id, m) => void messages.push(m as { type: string }) })
+  return { links, messages }
+}
+
+test('화면 보기: 이 PC 보여 주기(view) 코드로 짝지으면 바로 연결됨 — 저쪽 사무실 이벤트를 받고 요청이 간다', { timeout: 20_000 }, async () => {
+  const port = await freePort()
+  const B = makeB(port)
+  const A = makeA()
+  try {
+    await B.svc.enable(port)
+    const win = (await B.svc.openPairing('view'))!
+    const paired = await A.mgr.pairConnect('127.0.0.1', port, win.code)
+    const { links, messages } = linksFor(A, paired.id)
+    links.sync(['w1'])
+    await until(() => links.status('w1') === 'ready', 'ready')
+    assert.ok(messages.some((m) => m.type === 'connection' && m.state === 'open'))
+    // 허락된 열쇠는 휴대폰과 같은 이벤트를 같은 줄로 받는다
+    B.svc.publish('snapshot', { staff: [{ approvals: [{ id: 'a' }] }] })
+    await until(() => links.pending('w1') === 1, '결재 수')
+    assert.ok(messages.some((m) => m.type === 'event' && m.name === 'snapshot'))
+    const before = B.calls.filter((m) => m === 'snapshot').length
+    const snap = (await links.request('w1', { type: 'call', method: 'snapshot', args: [] })) as { staff: { name: string }[] }
+    assert.equal(snap.staff[0].name, '김배포')
+    assert.equal(B.calls.filter((m) => m === 'snapshot').length, before + 1, '요청이 저쪽 PC의 같은 처리 함수로 간다')
+    links.dispose()
+  } finally {
+    A.mgr.dispose()
+    await B.svc.disable()
+  }
+})
+
+test('화면 보기: 일반 짝(peer)은 허락 요청 → 저쪽 허락 → 연결됨, 거절하면 grantDenied', { timeout: 20_000 }, async () => {
+  const port = await freePort()
+  const asked: string[] = []
+  const B = makeB(port, undefined, { v: null }, [], (slot) => void asked.push(slot.id))
+  const A = makeA()
+  try {
+    await B.svc.enable(port)
+    const win = (await B.svc.openPairing('peer'))!
+    const paired = await A.mgr.pairConnect('127.0.0.1', port, win.code)
+    await until(() => A.mgr.linkState(paired.id) === 'online', 'online')
+    const { links } = linksFor(A, paired.id)
+    links.sync(['w1'])
+    await until(() => links.status('w1') === 'grantNone', '요청 전엔 거절이 아닌 요청 전')
+    assert.equal(asked.length, 0, '자동 확인은 저쪽에 묻지 않는다')
+    links.requestGrant('w1')
+    await until(() => links.status('w1') === 'grantPending', '허락 대기')
+    assert.equal(asked.length, 1)
+    B.svc.setPeerView(asked[0], true)
+    await until(() => links.status('w1') === 'ready', '허락 뒤 연결됨')
+    B.svc.setPeerView(asked[0], false)
+    await until(() => links.status('w1') === 'grantDenied', '회수 뒤 거절')
+    assert.equal(asked.length, 1, '거절·회수 뒤 다시 붙어도 카드를 또 띄우지 않는다')
+    links.dispose()
+  } finally {
+    A.mgr.dispose()
     await B.svc.disable()
   }
 })

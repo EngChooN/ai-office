@@ -78,7 +78,7 @@ const peerApi = () => {
 function createRemote() {
   return new RemoteService({
     office: office.remotePort(),
-    peer: { ownName: () => os.hostname().replace(/\.local$/, '') || 'Mac' },
+    peer: { ownName: () => os.hostname().replace(/\.local$/, '') || 'Mac', onViewRequest: (slot) => void askViewGrant(slot) },
     serverVersion: app.getVersion(),
     loadConfig: loadRemoteConfig,
     saveConfig: saveRemoteConfig,
@@ -100,6 +100,16 @@ function createRemote() {
       saveUpload,
     },
   })
+}
+/** 짝지은 다른 PC가 이 PC 화면 보기를 요청했다 — 이 PC 앞의 사람에게 묻고 결과를 열쇠에 적는다 (닫으면 거절) */
+async function askViewGrant(slot: { id: string; label: string }) {
+  const name = slot.label || 'PC'
+  new Notification({ title: t('peer.view.askTitle', { name }), body: t('peer.view.askDetail') }).show()
+  const options = { type: 'question' as const, buttons: [t('peer.view.allow'), t('peer.view.deny')], defaultId: 1, cancelId: 1, message: t('peer.view.askTitle', { name }), detail: t('peer.view.askDetail') }
+  // 숨기거나 내린 창에 붙이면 허락 창도 함께 안 보인다 — 창이 보일 때만 붙이고, 아니면 단독 창으로 띄운다
+  const parent = win && !win.isDestroyed() && win.isVisible() && !win.isMinimized() ? win : null
+  const r = parent ? await dialog.showMessageBox(parent, options) : await dialog.showMessageBox(options)
+  remote?.setPeerView(slot.id, r.response === 0)
 }
 const remoteApi = () => {
   if (!remote) throw new Error('remote not ready')
@@ -385,6 +395,7 @@ app.whenReady().then(async () => {
       if (!isQuitting) showWindow()
     },
     peerName: (peerId) => peerStore().peers.get(peerId)?.name ?? null,
+    peers: peerApi(),
     load: (w) => {
       if (REMOTE_WINDOW_VITE_DEV_SERVER_URL) void w.loadURL(`${REMOTE_WINDOW_VITE_DEV_SERVER_URL}/remote.html`)
       else void w.loadFile(path.join(__dirname, `../renderer/${REMOTE_WINDOW_VITE_NAME}/remote.html`))

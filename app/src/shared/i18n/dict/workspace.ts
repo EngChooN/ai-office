@@ -18,6 +18,7 @@ export default {
   'workspace.status.ready': { ko: '연결됨', en: 'Connected', ja: '接続済み', zh: '已连接' },
   'workspace.status.reconnecting': { ko: '다시 연결하는 중', en: 'Reconnecting', ja: '再接続中', zh: '正在重新连接' },
   'workspace.status.offline': { ko: '꺼져 있거나 연결이 끊겼어요', en: 'Off or disconnected', ja: '電源オフか接続が切れています', zh: '已关机或连接断开' },
+  'workspace.status.grantNone': { ko: '아직 허락을 요청하지 않았어요', en: "You haven't asked for access yet", ja: 'まだ許可を依頼していません', zh: '尚未请求许可' },
   'workspace.status.grantPending': { ko: '그 PC에서 허락해 주세요', en: 'Allow it on that PC', ja: 'その PC で許可してください', zh: '请在那台电脑上允许' },
   'workspace.status.grantDenied': { ko: '그 PC에서 거절했어요', en: 'That PC declined', ja: 'その PC で拒否されました', zh: '那台电脑拒绝了' },
   'workspace.status.peerOutdated': { ko: '그 PC를 업데이트해 주세요', en: 'Please update that PC', ja: 'その PC をアップデートしてください', zh: '请更新那台电脑' },
@@ -29,6 +30,10 @@ export default {
     ja: 'その PC の接続機器がいっぱいです。その PC の接続機器から一つ切断してください',
     zh: '那台电脑连接的设备已满。请在那台电脑的已连接设备中断开一个',
   },
+
+  'workspace.grant.ask': { ko: '허락 요청', en: 'Ask for access', ja: '許可を依頼', zh: '请求许可' },
+  'workspace.grant.retry': { ko: '다시 요청', en: 'Ask again', ja: 'もう一度依頼', zh: '再次请求' },
+  'workspace.grant.sent': { ko: '그 PC에 다시 물어봤어요', en: 'Asked that PC again', ja: 'その PC にもう一度確認しました', zh: '已再次询问那台电脑' },
 
   'workspace.band.viewing': { ko: '{name}의 사무실을 보는 중', en: "Viewing {name}'s office", ja: '{name} のオフィスを表示中', zh: '正在查看 {name} 的办公室' },
   'workspace.band.offline': {

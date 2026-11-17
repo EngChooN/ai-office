@@ -5,22 +5,37 @@ import { canOpenWindow, gateCall, type WorkspaceAddResult, type WorkspaceColor, 
 import type { WorkspaceStore } from './workspaceStore.ts'
 import type { WindowHub } from './workspaceWindows.ts'
 
-/** 화면 보기 연결 (0단계 뒤 붙인다). 지금은 noLinks — 모두 '연결 중', 요청은 끊김 오류 */
+/** links가 총괄에 알리는 것: 상태·결재 수가 바뀜 · 그 PC 창에 보낼 메시지(event·resync·connection·hello) */
+export interface LinkListener {
+  changed(): void
+  message(workspaceId: string, msg: unknown): void
+}
+
+/** 화면 보기 연결 (진짜 부품: workspaceLinks.ts). noLinks는 시험용 빈 부품 */
 export interface WorkspaceLinks {
   status(workspaceId: string): WorkspaceStatus
   /** 그 PC의 결재 대기 수 */
   pending(workspaceId: string): number
   /** 원격 창 요청을 저쪽 PC로 보낸다 (call·upload·download) */
   request(workspaceId: string, req: RemoteRequest): Promise<unknown>
-  /** 워크스페이스가 생기고 없어질 때 (연결을 열고 닫는다) */
+  /** 워크스페이스가 생기고 없어질 때 (기록을 만들고 지운다) */
   sync(ids: string[]): void
+  listen(l: LinkListener): void
+  /** 그 PC 창이 준비됐다 (ready) — 지금 연결 상태를 알려 준다 */
+  ready(workspaceId: string): void
+  /** 저쪽 PC에 화면 보기 허락을 (다시) 요청한다 — PC를 추가했거나 '다시 요청'을 눌렀을 때만 */
+  requestGrant(workspaceId: string): void
 }
 
+/** 아무 PC와도 잇지 않는 빈 부품 (시험용) — 늘 '연결하는 중', 요청은 막힘 */
 export const noLinks: WorkspaceLinks = {
   status: () => 'connecting',
   pending: () => 0,
-  request: () => Promise.reject({ status: 0, code: 'workspace_offline', message: '' }),
+  request: () => Promise.reject({ status: 0, code: 'workspace_not_ready', message: '' }),
   sync: () => {},
+  listen: () => {},
+  ready: () => {},
+  requestGrant: () => {},
 }
 
 export type RemoteRequest =
@@ -80,6 +95,8 @@ export function createWorkspaceService(deps: ServiceDeps) {
   const targetOf = (senderId: number): WorkspaceTarget | null => (hub.isLocal(senderId) ? 'self' : hub.ownerOf(senderId))
 
   const reply = (workspaceId: string, msg: unknown) => hub.window(workspaceId)?.send('ws:msg', JSON.stringify(msg))
+  links.listen({ changed: () => broadcast(), message: reply })
+  links.sync(store.list().map((w) => w.id))
 
   return {
     state(senderId: number): WorkspacesState | null {
@@ -105,6 +122,7 @@ export function createWorkspaceService(deps: ServiceDeps) {
       const r = store.add({ peerId: input.peerId, name: typeof input.name === 'string' ? input.name : '', color: input.color as WorkspaceColor }, peerName)
       if (r.ok) {
         links.sync(store.list().map((w) => w.id))
+        links.requestGrant(r.workspace.id)
         broadcast()
       }
       return r
@@ -114,6 +132,12 @@ export function createWorkspaceService(deps: ServiceDeps) {
       const ok = store.update(id, patch)
       if (ok) broadcast()
       return ok
+    },
+    /** 거절됐거나 대기가 사라졌을 때 '다시 요청' (이 PC 창에서만) */
+    requestGrant(senderId: number, id: unknown): boolean {
+      if (!hub.isLocal(senderId) || typeof id !== 'string' || !store.get(id)) return false
+      links.requestGrant(id)
+      return true
     },
     /** 목록에서만 뺀다 — 그 PC 사무실·짝 열쇠는 그대로 */
     remove(senderId: number, id: unknown): boolean {
@@ -130,7 +154,8 @@ export function createWorkspaceService(deps: ServiceDeps) {
       const workspaceId = hub.ownerOf(senderId)
       if (workspaceId === null) return
       const req = parseRemotePost(text)
-      if (!req || req.type === 'ready') return
+      if (!req) return
+      if (req.type === 'ready') return links.ready(workspaceId)
       const { id, ...body } = req
       const gate = gateCall(gateName(body), links.status(workspaceId))
       if (!gate.ok) return void reply(workspaceId, { type: 'result', id, ok: false, error: { status: 0, code: gate.code, message: '' } })
@@ -138,8 +163,9 @@ export function createWorkspaceService(deps: ServiceDeps) {
         const result = await links.request(workspaceId, body)
         reply(workspaceId, { type: 'result', id, ok: true, result })
       } catch (e) {
-        const err = (e && typeof e === 'object' ? e : {}) as { status?: unknown; code?: unknown; message?: unknown }
-        reply(workspaceId, { type: 'result', id, ok: false, error: { status: Number(err.status) || 0, code: typeof err.code === 'string' ? err.code : 'app_error', message: typeof err.message === 'string' ? err.message : '' } })
+        const err = (e && typeof e === 'object' ? e : {}) as { status?: unknown; code?: unknown; message?: unknown; alternative?: unknown; reason?: unknown }
+        const extra = { ...(typeof err.alternative === 'string' ? { alternative: err.alternative } : {}), ...(typeof err.reason === 'string' ? { reason: err.reason } : {}) }
+        reply(workspaceId, { type: 'result', id, ok: false, error: { status: Number(err.status) || 0, code: typeof err.code === 'string' ? err.code : 'app_error', message: typeof err.message === 'string' ? err.message : '', ...extra } })
       }
     },
     broadcast,

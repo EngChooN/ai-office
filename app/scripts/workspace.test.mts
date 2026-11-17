@@ -54,17 +54,20 @@ test('statusOf: 상태 표', () => {
     ['화면 보기 권한 없음', { hello: { ...HELLO_OK, canView: false } }, 'peerOutdated'],
     ['허락 대기', { hello: { ...HELLO_OK, grant: 'pending' } }, 'grantPending'],
     ['거절', { hello: { ...HELLO_OK, grant: 'denied' } }, 'grantDenied'],
+    ['요청 전', { hello: { ...HELLO_OK, grant: 'none' } }, 'grantNone'],
     ['이쪽이 옛 버전', { error: 'protocol_unsupported' }, 'selfOutdated'],
     ['열쇠 폐기', { error: 'token_revoked' }, 'unpaired'],
     ['인증서 바뀜', { link: 'offline', error: 'SPKI_MISMATCH' }, 'unpaired'],
     ['저쪽 열쇠 칸 꽉 참', { link: 'offline', hasBeenOnline: false, error: 'slots_full' }, 'peerFull'],
+    ['붙었는데 hello에 답이 없음 = 연결 중에 머물지 않음', { hello: null, error: 'unreachable' }, 'offline'],
+    ['426은 다시 짝지을 일이 아님', { error: 'http_426' }, 'ready'],
   ]
   for (const [name, patch, want] of rows) assert.equal(statusOf({ ...base, ...patch }), want, name)
 })
 
 test('창은 확인을 통과했거나 한 번 열었던 상태에서만 연다', () => {
   assert.deepEqual(
-    (['connecting', 'ready', 'reconnecting', 'offline', 'grantPending', 'grantDenied', 'peerOutdated', 'selfOutdated', 'unpaired', 'peerFull'] as WorkspaceStatus[]).filter(canOpenWindow),
+    (['connecting', 'ready', 'reconnecting', 'offline', 'grantNone', 'grantPending', 'grantDenied', 'peerOutdated', 'selfOutdated', 'unpaired', 'peerFull'] as WorkspaceStatus[]).filter(canOpenWindow),
     ['ready', 'reconnecting', 'offline'],
   )
 })
@@ -89,7 +92,7 @@ test('gateCall: ready만 쓰기, 끊김·붙는 중은 읽기만, 그 밖은 모
     assert.deepEqual(gateCall('decide', s), { ok: false, code: 'workspace_offline' }, s)
     assert.deepEqual(gateCall('unknownThing', s), { ok: false, code: 'workspace_offline' }, s)
   }
-  for (const s of ['grantPending', 'grantDenied', 'peerOutdated', 'selfOutdated', 'unpaired', 'peerFull'] as const) assert.deepEqual(gateCall('snapshot', s), { ok: false, code: 'workspace_not_ready' }, s)
+  for (const s of ['grantNone', 'grantPending', 'grantDenied', 'peerOutdated', 'selfOutdated', 'unpaired', 'peerFull'] as const) assert.deepEqual(gateCall('snapshot', s), { ok: false, code: 'workspace_not_ready' }, s)
 })
 
 // ── 한도·색 ───────────────────────────────────────────
@@ -309,11 +312,22 @@ function fakeService(links: WorkspaceLinks = noLinks) {
   return { service, hub, local, created, store, emitted }
 }
 
+/** 연결 중에서 멈춘 링크 — 쓰기 막기 시험용 (요청은 끊김 오류) */
+const connectingLinks: WorkspaceLinks = {
+  status: () => 'connecting',
+  pending: () => 0,
+  request: () => Promise.reject({ status: 0, code: 'workspace_offline', message: '' }),
+  sync: () => {},
+  listen: () => {},
+  ready: () => {},
+  requestGrant: () => {},
+}
+
 const readyLinks = (requests: unknown[] = []): WorkspaceLinks => ({
+  ...noLinks,
   status: () => 'ready',
   pending: () => 2,
   request: async (_id, req) => (requests.push(req), { ok: 'fine' }),
-  sync: () => {},
 })
 
 test('총괄: 추가·수정·삭제는 이 PC 창만, 짝 목록에 없는 PC는 거절', () => {
@@ -324,17 +338,19 @@ test('총괄: 추가·수정·삭제는 이 PC 창만, 짝 목록에 없는 PC�
   assert.ok(r.ok)
   assert.equal(r.ok && r.workspace.name, '회사 PC', '이름이 비면 짝 이름')
   assert.equal(emitted.at(-1)?.[0], 1)
-  assert.equal(emitted.at(-1)?.[1].list[0].status, 'connecting', '연결 전(0단계 전)에는 연결 중')
+  assert.equal(emitted.at(-1)?.[1].list[0].status, 'connecting', '빈 부품(noLinks)은 연결 중 — 실제 조립부는 진짜 부품을 쓴다(아래 조립 시험)')
   assert.equal(service.update(999, 'w1', { name: 'x' }), false)
   assert.equal(service.remove(999, 'w1'), false)
   assert.equal(service.state(999), null, '모르는 창은 목록도 못 본다')
 })
 
 test('총괄: 확인 전(연결 중)에는 창을 열지 않고, ready면 열고 사용 시각을 남긴다', () => {
-  const blocked = fakeService()
-  blocked.service.add(1, { peerId: 'p1' })
-  assert.equal(blocked.service.switchTo(1, 'w1'), false)
-  assert.equal(blocked.created.length, 0)
+  for (const links of [connectingLinks, noLinks]) {
+    const blocked = fakeService(links)
+    blocked.service.add(1, { peerId: 'p1' })
+    assert.equal(blocked.service.switchTo(1, 'w1'), false)
+    assert.equal(blocked.created.length, 0)
+  }
 
   const ok = fakeService(readyLinks())
   ok.service.add(1, { peerId: 'p1' })
@@ -350,7 +366,7 @@ test('총괄: 확인 전(연결 중)에는 창을 열지 않고, ready면 열고
 })
 
 test('총괄: ws:post — 원격 창이 아니면 버리고, 끊김·연결 중에는 쓰기를 메인에서 막는다', async () => {
-  const { service, store, created, hub } = fakeService()
+  const { service, store, created, hub } = fakeService(connectingLinks)
   service.add(1, { peerId: 'p1' })
   // 이 PC 창이 ws:post를 보내도 아무 일도 없다
   await service.post(1, JSON.stringify({ type: 'call', id: 'x', method: 'decide', args: [] }))
@@ -362,8 +378,19 @@ test('총괄: ws:post — 원격 창이 아니면 버리고, 끊김·연결 중�
   await service.post(win.senderId, JSON.stringify({ type: 'upload', id: 'r2', name: 'a.png', mime: 'image/png', base64: 'AA' }))
   assert.equal(JSON.parse(String(win.sent.at(-1)?.[1])).error.code, 'workspace_offline', '올리기도 쓰기')
   await service.post(win.senderId, JSON.stringify({ type: 'call', id: 'r3', method: 'snapshot', args: [] }))
-  assert.equal(JSON.parse(String(win.sent.at(-1)?.[1])).error.code, 'workspace_offline', '읽기는 통과해 연결(noLinks)에서 끊김 오류')
+  assert.equal(JSON.parse(String(win.sent.at(-1)?.[1])).error.code, 'workspace_offline', '읽기는 통과해 연결에서 끊김 오류')
   assert.ok(win.sent.every(([c]) => c === 'ws:msg'))
+})
+
+test('총괄: 허락 대기·옛 PC에는 읽기·쓰기 모두 막고 준비 안 됨으로 답한다', async () => {
+  const { service, store, created, hub } = fakeService({ ...noLinks, status: () => 'grantPending' })
+  service.add(1, { peerId: 'p1' })
+  hub.switchTo(store.list()[0].id)
+  const win = created[0].win
+  for (const [id, method] of [['s1', 'snapshot'], ['s2', 'decide']] as const) {
+    await service.post(win.senderId, JSON.stringify({ type: 'call', id, method, args: [] }))
+    assert.equal(JSON.parse(String(win.sent.at(-1)?.[1])).error.code, 'workspace_not_ready', method)
+  }
 })
 
 test('총괄: ready면 요청을 저쪽으로 넘기고 결과를 그 창에만 돌려준다', async () => {
@@ -379,6 +406,41 @@ test('총괄: ready면 요청을 저쪽으로 넘기고 결과를 그 창에만 
   assert.deepEqual(requests, [{ type: 'call', method: 'decide', args: ['a1', true] }])
   assert.deepEqual(JSON.parse(String(w1.sent.filter(([c]) => c === 'ws:msg').at(-1)?.[1])), { type: 'result', id: 'q', ok: true, result: { ok: 'fine' } })
   assert.equal(w2.sent.filter(([c]) => c === 'ws:msg').length, before, '다른 PC 창에는 가지 않는다')
+})
+
+test('총괄: 추가하면 허락을 요청하고, 창의 ready·links 메시지·다시 요청을 잇는다', async () => {
+  const calls: string[] = []
+  let listener: Parameters<WorkspaceLinks['listen']>[0] | null = null
+  const links: WorkspaceLinks = {
+    ...readyLinks(),
+    sync: (ids) => void calls.push(`sync:${ids.join(',')}`),
+    listen: (l) => void (listener = l),
+    ready: (id) => void calls.push(`ready:${id}`),
+    requestGrant: (id) => void calls.push(`grant:${id}`),
+  }
+  const { service, created, emitted } = fakeService(links)
+  assert.deepEqual(calls, ['sync:'], '만들 때 저장된 목록으로 한 번')
+  service.add(1, { peerId: 'p1' })
+  assert.deepEqual(calls.slice(1), ['sync:w1', 'grant:w1'])
+  service.switchTo(1, 'w1')
+  const win = created[0].win
+  await service.post(win.senderId, JSON.stringify({ type: 'ready', features: [] }))
+  assert.equal(calls.at(-1), 'ready:w1')
+  listener!.message('w1', { type: 'connection', state: 'open' })
+  assert.deepEqual(JSON.parse(String(win.sent.at(-1)?.[1])), { type: 'connection', state: 'open' })
+  const before = emitted.length
+  listener!.changed()
+  assert.ok(emitted.length > before, '상태가 바뀌면 목록을 다시 보낸다')
+  assert.equal(service.requestGrant(999, 'w1'), false, '원격 창·모르는 창은 다시 요청 못 함')
+  assert.equal(service.requestGrant(1, 'nope'), false)
+  assert.equal(service.requestGrant(1, 'w1'), true)
+  assert.equal(calls.at(-1), 'grant:w1')
+})
+
+test('조립: 앱은 빈 부품(noLinks)이 아니라 진짜 연결 부품을 쓴다', () => {
+  const src = read('src/main/workspace/index.ts')
+  assert.ok(!/noLinks/.test(src), 'index.ts에 noLinks가 없어야 한다')
+  assert.match(src, /links: createWorkspaceLinks|createWorkspaceLinks\(/)
 })
 
 test('parseRemotePost: 모양이 틀리면 버린다', () => {

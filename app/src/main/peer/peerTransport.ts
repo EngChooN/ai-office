@@ -18,7 +18,9 @@ export interface PeerHttp {
   call(method: 'GET' | 'POST' | 'PUT', path: string, body?: unknown, opts?: { idempotencyKey?: string }): Promise<PeerHttpResponse>
   /** 파일 바이트 올리기·받기 (복사본·변경 묶음, 4번). 없는 통로(테스트의 가짜)면 파일 동기화를 쓰지 않는다 */
   putBytes?(path: string, data: Buffer, headers?: Record<string, string>): Promise<PeerHttpResponse>
-  getBytes?(path: string, limit: number): Promise<{ status: number; data: Buffer | null }>
+  /** 첨부 올리기(POST /v2/attachments, 화면 보기 창) */
+  postBytes?(path: string, data: Buffer, headers?: Record<string, string>): Promise<PeerHttpResponse>
+  getBytes?(path: string, limit: number): Promise<{ status: number; data: Buffer | null; fileName?: string }>
 }
 
 export interface PeerEndpoint {
@@ -100,8 +102,19 @@ function requestJson(e: PeerEndpoint, token: string | null, method: string, path
 
 const BYTES_TIMEOUT_MS = 120_000
 
-/** 바이트 올리기(PUT)·받기(GET). 받을 때는 limit을 넘으면 끊는다. extra는 첨부 이름·종류 같은 머리글 (인증·길이는 덮어쓰지 못한다) */
-function requestBytes(e: PeerEndpoint, token: string, method: 'PUT' | 'GET', path: string, data: Buffer | null, limit: number, extra: Record<string, string> = {}): Promise<{ status: number; body: Record<string, unknown>; data: Buffer | null }> {
+/** Content-Disposition의 filename*=UTF-8''… (없거나 못 읽으면 undefined) */
+export function fileNameOf(header: unknown): string | undefined {
+  const m = /filename\*=UTF-8''([^;]+)/i.exec(String(header ?? ''))
+  if (!m) return undefined
+  try {
+    return decodeURIComponent(m[1]) || undefined
+  } catch {
+    return undefined
+  }
+}
+
+/** 바이트 올리기(PUT·POST)·받기(GET). 받을 때는 limit을 넘으면 끊는다. extra는 첨부 이름·종류 같은 머리글 (인증·길이는 덮어쓰지 못한다) */
+function requestBytes(e: PeerEndpoint, token: string, method: 'PUT' | 'POST' | 'GET', path: string, data: Buffer | null, limit: number, extra: Record<string, string> = {}): Promise<{ status: number; body: Record<string, unknown>; data: Buffer | null; fileName?: string }> {
   return new Promise((resolve, reject) => {
     const headers: Record<string, string | number> = { 'X-Office-Capabilities': 'iso-office', ...(data ? { 'Content-Type': 'application/octet-stream' } : {}), ...extra, Authorization: `Bearer ${token}` }
     if (data) headers['Content-Length'] = data.length
@@ -116,6 +129,8 @@ function requestBytes(e: PeerEndpoint, token: string, method: 'PUT' | 'GET', pat
       res.on('end', () => {
         const raw = Buffer.concat(chunks)
         const status = res.statusCode ?? 0
+        // 받기는 파일 종류와 상관없이 바이트로 (첨부는 그림·글 파일도 있다). 올리기 응답·실패는 JSON
+        if (status === 200 && method === 'GET') return resolve({ status, body: {}, data: raw, fileName: fileNameOf(res.headers['content-disposition']) })
         if (status === 200 && /^application\/octet-stream/i.test(String(res.headers['content-type'] ?? ''))) return resolve({ status, body: {}, data: raw })
         let parsed: Record<string, unknown> = {}
         try {
@@ -151,9 +166,13 @@ export function createPeerHttp(e: PeerEndpoint & { spki: string }, token: string
       const r = await requestBytes(e, token, 'PUT', path, data, BODY_MAX, headers)
       return { status: r.status, body: r.body }
     },
+    postBytes: async (path, data, headers) => {
+      const r = await requestBytes(e, token, 'POST', path, data, BODY_MAX, headers)
+      return { status: r.status, body: r.body }
+    },
     getBytes: async (path, limit) => {
       const r = await requestBytes(e, token, 'GET', path, null, limit)
-      return { status: r.status, data: r.data }
+      return { status: r.status, data: r.data, ...(r.fileName ? { fileName: r.fileName } : {}) }
     },
   }
 }

@@ -36,6 +36,9 @@ export interface PeerManagerDeps {
   clientOptions?: Pick<PeerClientOptions, 'retryMs' | 'offlineAfterMs' | 'idleMs'>
 }
 
+/** 연결 하나에서 일어난 일 — 워크스페이스(화면 보기)가 구독한다 (PeerManager는 받은 것을 그대로 넘길 뿐) */
+export type PeerLinkEvent = { type: 'state'; state: PeerLinkState } | { type: 'event'; name: string; data: unknown }
+
 export class PeerError extends Error {
   code: 'unknown_peer'
   constructor(code: PeerError['code']) {
@@ -50,6 +53,7 @@ export class PeerManager {
   private d: PeerManagerDeps
   private clients = new Map<string, PeerClient>()
   private states = new Map<string, PeerLinkState>()
+  private watchers = new Set<(peerId: string, e: PeerLinkEvent) => void>()
 
   constructor(d: PeerManagerDeps) {
     this.d = d
@@ -72,6 +76,21 @@ export class PeerManager {
     return this.clients.get(peerId)?.state ?? this.states.get(peerId) ?? 'unpaired'
   }
 
+  /** 연결 상태·이벤트 구독 (화면 보기). 돌려준 함수로 끊는다 */
+  watch(fn: (peerId: string, e: PeerLinkEvent) => void): () => void {
+    this.watchers.add(fn)
+    return () => void this.watchers.delete(fn)
+  }
+
+  private notify(peerId: string, e: PeerLinkEvent) {
+    for (const fn of this.watchers) fn(peerId, e)
+  }
+
+  /** 그 PC에 인증된 호출 통로 (짝이 없거나 열쇠를 못 읽으면 null) */
+  http(peerId: string): PeerHttp | null {
+    return this.httpOf(peerId)
+  }
+
   private httpOf(peerId: string): PeerHttp | null {
     const peer = this.registry.getPeer(peerId)
     const token = this.registry.tokenOf(peerId)
@@ -86,6 +105,7 @@ export class PeerManager {
     if (!token || token === 'unreadable') {
       this.clients.delete(peer.id)
       this.states.set(peer.id, 'unpaired')
+      this.notify(peer.id, { type: 'state', state: 'unpaired' })
       return this.d.office.changed()
     }
     const client = new PeerClient({
@@ -93,10 +113,11 @@ export class PeerManager {
       openStream: this.d.net.stream(peer, token),
       onState: (s) => {
         this.states.set(peer.id, s)
+        this.notify(peer.id, { type: 'state', state: s })
         this.d.office.changed()
       },
-      // 연결 상태만 쓴다 (이벤트 본문은 화면 보기 창이 따로 받는다)
-      onEvent: () => {},
+      // 이벤트 본문은 화면 보기(워크스페이스)가 받는다. 허락 전 열쇠에는 hello·keep-alive만 온다
+      onEvent: (name, data) => this.notify(peer.id, { type: 'event', name, data }),
       onOnline: () => this.registry.touch(peer.id),
       ...this.d.clientOptions,
     })
@@ -138,6 +159,7 @@ export class PeerManager {
     this.clients.delete(peerId)
     this.states.delete(peerId)
     this.registry.removePeer(peerId)
+    this.notify(peerId, { type: 'state', state: 'unpaired' })
     this.d.office.changed()
   }
 

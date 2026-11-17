@@ -218,7 +218,7 @@ export class RemoteService {
     else this.pairing.refreshInfo(info)
     const view = this.pairing.view()!
     // 다른 PC용은 토큰 없는 QR(연결 코드만)을 함께 — 휴대폰용은 기존 QR이 따로 있다
-    return kind === 'peer' ? { ...view, qr: peerQrImage({ v: 1, kind: 'peer', host, port: this.config.port, spki, code: view.code, name: this.deps.peer?.ownName() ?? '', pv: 2 }) } : view
+    return kind === 'peer' || kind === 'view' ? { ...view, qr: peerQrImage({ v: 1, kind: 'peer', host, port: this.config.port, spki, code: view.code, name: this.deps.peer?.ownName() ?? '', pv: 2 }) } : view
   }
 
   /** 코드 끄기: 창을 닫고 저장해 둔 코드도 지운다 (앱을 다시 켜도 되살아나지 않는다) */

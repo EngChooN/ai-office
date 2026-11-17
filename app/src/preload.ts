@@ -100,6 +100,7 @@ const workspaces: OfficeWorkspacesApi = {
   },
   add: (input) => ipcRenderer.invoke('workspace:add', input),
   update: (id, patch) => ipcRenderer.invoke('workspace:update', id, patch),
+  requestGrant: (id) => ipcRenderer.invoke('workspace:requestGrant', id),
   remove: (id) => ipcRenderer.invoke('workspace:remove', id),
 }
 contextBridge.exposeInMainWorld('officeWorkspaces', workspaces)

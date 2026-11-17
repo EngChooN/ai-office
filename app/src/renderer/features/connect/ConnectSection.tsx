@@ -243,6 +243,11 @@ function DeviceList({ devices, workspaces, now, onSlotsChanged, onPeersChanged }
                       {t('workspace.manage.open')}
                     </Button>
                   )}
+                  {(d.workspace?.status === 'grantNone' || d.workspace?.status === 'grantDenied' || d.workspace?.status === 'grantPending') && (
+                    <Button size="sm" variant="ghost" className="h-6 px-2 text-[11px]" onClick={() => void window.officeWorkspaces?.requestGrant?.(d.workspace!.id)}>
+                      {t(d.workspace.status === 'grantNone' ? 'workspace.grant.ask' : 'workspace.grant.retry')}
+                    </Button>
+                  )}
                   {d.workspace && (
                     <Button size="sm" variant="ghost" className="h-6 px-2 text-[11px]" onClick={() => setEditId(editId === d.id ? null : d.id)}>
                       {t('workspace.manage.edit')}
