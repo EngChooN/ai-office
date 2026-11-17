@@ -12,7 +12,7 @@ Writing rules
 - Couldn't do it before → new feature; easier than before → improvement; was working wrongly → bug fix.
 
 ## [1.4.3] - 2026-11-17
-Good to know: after updating, the connection code under “Let another PC view this one” changes once. We have not yet tested a real connection between a Mac and a Windows PC, and after you restart the app, a PC you declined earlier shows “Ask for access” again.
+Good to know: we have not yet tested a real connection between a Mac and a Windows PC, and after you restart the app, a PC you declined earlier shows “Ask for access” again.
 
 ### At a glance
 - **Fixed** Viewing another PC's screen now actually opens
