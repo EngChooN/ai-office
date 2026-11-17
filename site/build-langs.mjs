@@ -8,13 +8,14 @@ import vm from 'node:vm';
 const ROOT = dirname(fileURLToPath(import.meta.url));
 const SITE = 'https://engchoon.github.io/ai-office/';
 const LANGS = { ko: ['', 'ko', 'ko_KR'], en: ['en/', 'en', 'en_US'], ja: ['ja/', 'ja', 'ja_JP'], zh: ['zh/', 'zh-CN', 'zh_CN'] };
-const SHOTS = ['office', 'staff-mix', 'chat', 'inbox', 'board'];
+const SHOTS = ['office', 'chat', 'inbox', 'board', 'secretary'];
 
 // index.html은 한국어 정적 본문을 <!--p-->…<!--/p--> 표시로 품는다. 다시 만들 때 표시 구간을 비우고 새로 채운다
 const src = readFileSync(join(ROOT, 'index.html'), 'utf8').replace(/<!--p-->[\s\S]*?<!--\/p-->/g, '');
 const i18nSrc = src.match(/var I18N = (\{[\s\S]*?\n\});\n/)[1];
 const I18N = vm.runInNewContext('(' + i18nSrc + ')');
 const version = src.match(/version: '([\d.]+)'/)[1];
+const FAQ_KEYS = [...src.matchAll(/<summary data-i18n="q(\d+)"/g)].map((m) => m[1]);
 const url = (l) => SITE + LANGS[l][0];
 const esc = (s) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 
@@ -30,13 +31,19 @@ function head(l) {
     offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD', url: 'https://github.com/EngChooN/ai-office/releases/latest' },
     screenshot: SHOTS.map((s) => `${SITE}assets/screens/${l}/${s}.webp`), inLanguage: LANGS[l][1], description: t['meta.desc'],
   };
-  return { hreflang, ld: JSON.stringify(ld) };
+  // 자주 묻는 질문(본문 #faq의 q/a 키 순서 그대로) — 화면에 보이는 글과 같아야 한다
+  const faq = {
+    '@context': 'https://schema.org', '@type': 'FAQPage', inLanguage: LANGS[l][1],
+    mainEntity: FAQ_KEYS.map((n) => ({ '@type': 'Question', name: t['q' + n], acceptedAnswer: { '@type': 'Answer', text: t['a' + n] } })),
+  };
+  return { hreflang, ld: JSON.stringify(ld), faq: JSON.stringify(faq).replace(/</g, '\\u003c') };
 }
 
 function page(l, html) {
-  const t = I18N[l], { hreflang, ld } = head(l), [path, htmlLang, og] = LANGS[l];
+  const t = I18N[l], { hreflang, ld, faq } = head(l), [path, htmlLang, og] = LANGS[l];
   let o = html;
   const sub = (re, to) => { if (!re.test(o)) throw new Error('패턴 없음: ' + re); o = o.replace(re, () => to); };
+  sub(/<script type="application\/ld\+json" id="ld-faq">[\s\S]*?<\/script>/, `<script type="application/ld+json" id="ld-faq">\n${faq}\n</script>`);
   if (!path) { // 한국어: index.html 자체 — head는 직접 관리, 본문만 채운다
     return o.replace(/(<(\w+)\b[^>]*\bdata-i18n="([^"]+)"[^>]*>)(<\/\2>)/g, (m, open, tag, key) => (key in t ? open + '<!--p-->' + t[key] + '<!--/p--></' + tag + '>' : m));
   }

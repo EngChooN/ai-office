@@ -17,6 +17,7 @@ screens/
     phone-secretary.webp  phone-secretary-dark.webp   휴대폰 비서 (1170×2532)
     phone-inbox.webp  phone-inbox-dark.webp           휴대폰 결재함 (1170×2532)
     phone-chat.webp  phone-chat-dark.webp             휴대폰 대화방 (1170×2532)
+    feat-*.webp  feat-*-dark.webp            기능 7줄(03~09)용으로 미리 잘라 둔 그림 (아래 '기능 줄 그림')
 ```
 
 - 폴더 이름은 언어 코드(`ko`, `en`, `ja`, `zh`), 파일 이름은 위 목록으로 고정입니다.
@@ -37,3 +38,23 @@ screens/
 - WebP 변환: `cwebp -q 82 -m 6` 또는 같은 품질의 다른 도구. 한 장이 330KB를 넘으면 품질을 5씩 낮춥니다(레트로 사무실은 약 210KB).
 - `app/src/renderer/mobile/preview/fakeShell.ts`의 `demo` 구간에서 비서 예시(`SEC`)를 바꾸면 비서 사진의 대화를 바꿀 수 있습니다.
 - 대화방 사진에 시험용 이상한 글이 보이지 않는지 확인하세요. `demo=<언어>`로 찍으면 가상 대화만 나옵니다(`demo` 없이 찍으면 시험용 글이 섞입니다).
+
+## 기능 줄 그림 (`feat-*`, 2026-11 안 3 개편)
+
+소개 페이지 기능 7줄은 큰 캡처를 CSS로 자르지 않고 **미리 잘라 둔 16:10 파일**을 씁니다. 언어·라이트/다크마다 한 벌씩(7종 × 4개 언어 × 2).
+
+| 파일 | 줄 | 만드는 법 (왼쪽·위·오른쪽 비율, 높이는 폭의 10/16) |
+|---|---|---|
+| `feat-approve` | 03 결재 | `chat` 캡처 `.36,.555,.68` |
+| `feat-lead` | 04 팀장 | `inbox` 캡처 `.145,.245,.50` |
+| `feat-secretary` | 05 비서 | `secretary` 캡처 `.285,.15,.62` |
+| `feat-ai` | 06 AI | 미리보기 `view=payroll`(AI 사용 비용)을 1400×885·배율 2로 열고 (180,100)부터 800×500 |
+| `feat-phone` | 07 연결 | `phone-chat` 캡처의 위쪽 절반 |
+| `feat-dash` | 08 안심 | 미리보기 `view=dashboard`(직원 현황)를 (180,86)부터 800×500 |
+| `feat-tools` | 09 도구 | `board` 캡처 `.14,.44,.62` |
+
+원본 캡처를 새로 찍으면 `feat-*`도 같이 다시 자르세요. WebP 품질 0.82.
+
+## 건물 7단계 (`site/assets/building/lv1~7.webp`)
+
+레벨 막대의 건물 그림은 언어와 상관없어 한 벌만 둡니다. 실제 앱을 따로 띄워(`app/scripts/qa-start.sh start <이름> --cdp 9447`, 데이터 폴더 분리) 설정 › 사무실 › **레벨 미리보기**(개발 빌드 전용)로 Lv.1·3·6·10·14·18·20을 고른 뒤, 사무실 외관 2D 캔버스에서 화면에 보이는 영역만 잘라 저장했습니다(사람 표시·안내 칸 없이 앱이 맞춘 시점 그대로). 픽셀 그림이라 원래 크기(폭 458~883px)로 두고 페이지에서 `image-rendering:pixelated`로 키웁니다.

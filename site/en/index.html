@@ -60,38 +60,36 @@ var DOWNLOADS = {
 <meta name="twitter:description" content="A free, open-source app to hire Claude and GPT staff, give them work by talking, approve only what matters, and get reports in plain words. Ask the secretary and it checks approvals, summarizes, and finds files. No hard setup.">
 <meta name="twitter:image" content="https://engchoon.github.io/ai-office/assets/og.png?v=1.4.1">
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"SoftwareApplication","name":"AI Office","url":"https://engchoon.github.io/ai-office/en/","image":"https://engchoon.github.io/ai-office/assets/og.png?v=1.4.1","applicationCategory":"BusinessApplication","operatingSystem":"macOS, Windows, Android","softwareVersion":"1.4.0","license":"https://opensource.org/licenses/MIT","downloadUrl":"https://github.com/EngChooN/ai-office/releases/latest","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"USD","url":"https://github.com/EngChooN/ai-office/releases/latest"},"screenshot":["https://engchoon.github.io/ai-office/assets/screens/en/office.webp","https://engchoon.github.io/ai-office/assets/screens/en/staff-mix.webp","https://engchoon.github.io/ai-office/assets/screens/en/chat.webp","https://engchoon.github.io/ai-office/assets/screens/en/inbox.webp","https://engchoon.github.io/ai-office/assets/screens/en/board.webp"],"inLanguage":"en","description":"A free, open-source app to hire Claude and GPT staff, give them work by talking, approve only what matters, and get reports in plain words. Ask the secretary and it checks approvals, summarizes, and finds files. No hard setup."}
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"AI Office","url":"https://engchoon.github.io/ai-office/en/","image":"https://engchoon.github.io/ai-office/assets/og.png?v=1.4.1","applicationCategory":"BusinessApplication","operatingSystem":"macOS, Windows, Android","softwareVersion":"1.4.0","license":"https://opensource.org/licenses/MIT","downloadUrl":"https://github.com/EngChooN/ai-office/releases/latest","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"USD","url":"https://github.com/EngChooN/ai-office/releases/latest"},"screenshot":["https://engchoon.github.io/ai-office/assets/screens/en/office.webp","https://engchoon.github.io/ai-office/assets/screens/en/chat.webp","https://engchoon.github.io/ai-office/assets/screens/en/inbox.webp","https://engchoon.github.io/ai-office/assets/screens/en/board.webp","https://engchoon.github.io/ai-office/assets/screens/en/secretary.webp"],"inLanguage":"en","description":"A free, open-source app to hire Claude and GPT staff, give them work by talking, approve only what matters, and get reports in plain words. Ask the secretary and it checks approvals, summarizes, and finds files. No hard setup."}
+</script>
+<script type="application/ld+json" id="ld-faq">
+{"@context":"https://schema.org","@type":"FAQPage","inLanguage":"en","mainEntity":[{"@type":"Question","name":"Do I need to sign up or get an API key?","acceptedAnswer":{"@type":"Answer","text":"No. It uses the Claude or GPT (ChatGPT) account already logged in on your computer. Staff work under that account and usage counts against it."}},{"@type":"Question","name":"Do I need both Claude and GPT?","acceptedAnswer":{"@type":"Answer","text":"No. One logged-in account is enough to start; connect the other later in Settings. With both, you choose per employee which one they work on. GPT staff are fully supported."}},{"@type":"Question","name":"What does the secretary do?","acceptedAnswer":{"@type":"Answer","text":"It tells you how your staff are doing, approves or rejects approvals, summarizes what happened overnight, finds and opens files and folders, and leaves messages in team and project rooms. Bigger actions show a confirmation card first."}},{"@type":"Question","name":"Can I use it with no dev background?","acceptedAnswer":{"@type":"Answer","text":"Yes. Hire staff, give work in chat, and approve or reject in the inbox. You never type a command."}},{"@type":"Question","name":"Won’t staff change my files on their own?","acceptedAnswer":{"@type":"Answer","text":"High-impact actions go to the approval inbox first and only proceed once you approve. You can roll back everything they changed with “Undo to before the task,” and risky commands that can’t be undone are always blocked."}},{"@type":"Question","name":"Can the secretary open any file on my computer?","acceptedAnswer":{"@type":"Answer","text":"No. It only searches staff results, attachments, and project folders, and a confirmation card appears once before opening. Executable files aren’t opened — it only shows the folder. On a phone it can find files but can’t open them."}},{"@type":"Question","name":"Can staff control my screen freely?","acceptedAnswer":{"@type":"Answer","text":"No. Only staff given the computer kit can see your screen, and clicks and typing happen only after you approve them in the inbox."}},{"@type":"Question","name":"Where is my data stored?","acceptedAnswer":{"@type":"Answer","text":"Staff, tasks, and chats are stored on your computer. Phone connection is off by default and only connects when you turn it on. The app doesn’t hold your GPT sign-in; the login tool manages it."}},{"@type":"Question","name":"Can I connect my phone and other PCs?","acceptedAnswer":{"@type":"Answer","text":"Yes. Connect an Android phone by QR from the “Connect other devices” card in Settings. You can also connect up to 3 other PCs and move between them with “Switch PC” (PC app only). The connected PC app must be running."}},{"@type":"Question","name":"Can I use the phone app alone?","acceptedAnswer":{"@type":"Answer","text":"No. It’s a remote for the AI Office running on your PC, so the PC app must be on. It also works away from home."}},{"@type":"Question","name":"I see a warning when installing.","acceptedAnswer":{"@type":"Answer","text":"The app isn’t code-signed yet. On Mac, choose “Open Anyway” in System Settings › Privacy & Security. On Windows, choose “More info › Run anyway”."}},{"@type":"Question","name":"Can I change the colors or use dark mode?","acceptedAnswer":{"@type":"Answer","text":"Yes. In Settings, pick from ten color themes, the retro office game theme, and light, dark, or follow-device mode. The phone app follows your PC’s choice."}},{"@type":"Question","name":"Which languages are supported?","acceptedAnswer":{"@type":"Answer","text":"Korean, English, Japanese, and Chinese. It starts in your computer’s (or phone’s) language, or English if that isn’t supported. You can change it anytime under Language at the top of Settings."}},{"@type":"Question","name":"Where do I report a problem or request something?","acceptedAnswer":{"@type":"Answer","text":"Press “Send feedback” in the app’s left sidebar. It opens a GitHub form with your app version and operating system already filled in. If there were recent errors, it first asks whether to include them."}}]}
 </script>
 <style>
 :root{
   color-scheme:light;
   --bg:#FBFAFF; --panel:#FFFFFF; --panel2:#F3F1FC; --line:#E4E1F2; --line2:#D3CFE6;
-  --fg:#1B1930; --muted:#5B5878; --dim:#6C6989; --accent:#6D5BEF; --accent2:#D6409A; --beta:#8A5A0F;
+  --fg:#1B1930; --muted:#5B5878; --dim:#6C6989; --accent:#6D5BEF; --accent2:#D6409A;
+  --accentSoft:rgba(109,91,239,.1); --pinkSoft:rgba(214,64,154,.11); --onacc:#fff;
+  --ok:#1F8F5F; --okSoft:rgba(31,143,95,.12); --warn:#A86A0C; --warnSoft:rgba(245,178,26,.16);
+  --brick:#E9B9B1; --floor:#B3BEE6; --wood:#E8C799; --sky1:#CFE6FF; --sky2:#EAF4FF;
   --hdr:rgba(251,250,255,.85); --hover-line:#B7B1DA; --hover-bg:#EAE7FA; --on-accent:#1A1240;
-  --h1a:#1B1930; --h1b:#4B3FB5; --shadow-lg:0 30px 80px -24px rgba(109,91,239,.22),0 14px 36px rgba(40,30,90,.12);
-  --glow1:rgba(155,140,255,.28); --glow2:rgba(255,122,198,.16); --glow3:rgba(244,140,96,.12);
+  --shadow:0 10px 30px -12px rgba(40,30,90,.18); --shadow-lg:0 30px 80px -24px rgba(109,91,239,.22),0 14px 36px rgba(40,30,90,.12);
+  --glow1:rgba(155,140,255,.28); --glow2:rgba(255,122,198,.16);
   --chip-bg:rgba(109,91,239,.1); --chip-line:rgba(109,91,239,.3);
   --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial;
 }
 :root[data-theme="dark"]{
   color-scheme:dark;
   --bg:#14131C; --panel:#201F2D; --panel2:#292739; --line:#34314A; --line2:#413E5C;
-  --fg:#EDEBF8; --muted:#A7A3C4; --dim:#9390B0; --accent:#9B8CFF; --accent2:#FF7AC6; --beta:#fbbf24;
+  --fg:#EDEBF8; --muted:#A7A3C4; --dim:#9390B0; --accent:#9B8CFF; --accent2:#FF7AC6;
+  --accentSoft:rgba(155,140,255,.14); --pinkSoft:rgba(255,122,198,.13); --onacc:#1A1240;
+  --ok:#4ADE80; --okSoft:rgba(74,222,128,.13); --warn:#FBBF24; --warnSoft:rgba(251,191,36,.13);
+  --brick:#B98A84; --floor:#5F6BA3; --wood:#A7845A; --sky1:#25304F; --sky2:#1B2238;
   --hdr:rgba(20,19,28,.8); --hover-line:#5A5680; --hover-bg:#302D47;
-  --h1a:#fff; --h1b:#CFC6F5; --shadow-lg:0 40px 120px -20px rgba(155,140,255,.16),0 20px 60px rgba(0,0,0,.5);
-  --glow1:rgba(155,140,255,.22); --glow2:rgba(255,122,198,.12); --glow3:rgba(244,140,96,.10);
+  --shadow:0 12px 34px -12px rgba(0,0,0,.5); --shadow-lg:0 40px 120px -20px rgba(155,140,255,.16),0 20px 60px rgba(0,0,0,.5);
+  --glow1:rgba(155,140,255,.22); --glow2:rgba(255,122,198,.12);
   --chip-bg:rgba(155,140,255,.1); --chip-line:rgba(155,140,255,.28);
-}
-@media (prefers-color-scheme:dark){
-  :root:not([data-theme]){
-    color-scheme:dark;
-    --bg:#14131C; --panel:#201F2D; --panel2:#292739; --line:#34314A; --line2:#413E5C;
-    --fg:#EDEBF8; --muted:#A7A3C4; --dim:#9390B0; --accent:#9B8CFF; --accent2:#FF7AC6; --beta:#fbbf24;
-    --hdr:rgba(20,19,28,.8); --hover-line:#5A5680; --hover-bg:#302D47;
-    --h1a:#fff; --h1b:#CFC6F5; --shadow-lg:0 40px 120px -20px rgba(155,140,255,.16),0 20px 60px rgba(0,0,0,.5);
-    --glow1:rgba(155,140,255,.22); --glow2:rgba(255,122,198,.12); --glow3:rgba(244,140,96,.10);
-    --chip-bg:rgba(155,140,255,.1); --chip-line:rgba(155,140,255,.28);
-  }
 }
 *{box-sizing:border-box;margin:0;padding:0}
 [hidden]{display:none!important}
@@ -101,24 +99,25 @@ body{background:var(--bg);color:var(--fg);line-height:1.6;-webkit-font-smoothing
 html:lang(ko) body{font-family:var(--sans),"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR","Noto Sans CJK KR",system-ui,sans-serif;word-break:keep-all}
 html:lang(ja) body{font-family:var(--sans),"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic UI","Yu Gothic",Meiryo,"Noto Sans JP","Noto Sans CJK JP",system-ui,sans-serif;line-break:strict;word-break:auto-phrase}
 html:lang(zh-CN) body{font-family:var(--sans),"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans SC","Noto Sans CJK SC",system-ui,sans-serif}
-.nw{display:inline-block;white-space:nowrap}
 a{color:inherit;text-decoration:none}
 img{max-width:100%;height:auto;display:block}
+button{font:inherit;color:inherit}
 .wrap{max-width:1140px;margin:0 auto;padding:0 24px}
-section{padding:104px 0}
-h1{font-size:clamp(36px,6.2vw,68px);line-height:1.1;font-weight:700;letter-spacing:-.03em;max-width:900px;margin:0 auto}
-h2{font-size:clamp(26px,3.6vw,40px);line-height:1.2;font-weight:700;letter-spacing:-.02em}
-.eyebrow{font-size:13px;font-weight:700;color:var(--accent);letter-spacing:.05em;margin-bottom:12px}
-.sub{color:var(--muted);font-size:17px;max-width:680px;margin-top:12px}
-.head{margin-bottom:48px}
+section{padding:88px 0}
+.h2{font-size:36px;line-height:1.2;font-weight:800;letter-spacing:-.025em}
+.sub{color:var(--muted);font-size:16.5px;max-width:640px;margin-top:10px}
+.head{margin-bottom:36px}
 .head.c{text-align:center}.head.c .sub{margin-left:auto;margin-right:auto}
+.rank{display:inline-flex;align-items:center;font-size:12.5px;font-weight:800;color:var(--accent);background:var(--accentSoft);border-radius:99px;padding:3px 11px;margin-bottom:12px}
+.rank.pink{color:var(--accent2);background:var(--pinkSoft)}
 
-/* 헤더 */
+/* 머리줄 */
 .top{position:sticky;top:0;z-index:10;background:var(--hdr);backdrop-filter:saturate(1.4) blur(12px);-webkit-backdrop-filter:saturate(1.4) blur(12px);border-bottom:1px solid var(--line)}
-.top .wrap{display:flex;align-items:center;gap:28px;height:60px}
+.top .wrap{display:flex;align-items:center;gap:28px;min-height:60px}
 .logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px;white-space:nowrap}
 .logo img{width:28px;height:28px}
 .top nav{display:flex;gap:22px;font-size:14px;color:var(--muted)}
+.top nav a{white-space:nowrap}
 .top nav a:hover{color:var(--fg)}
 .top .right{margin-left:auto;display:flex;align-items:center;gap:10px}
 .lang{appearance:none;-webkit-appearance:none;background:transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238A87A3' fill='none' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 10px center;color:var(--muted);border:1px solid var(--line2);border-radius:999px;font:inherit;font-size:13px;padding:6px 30px 6px 14px;cursor:pointer}
@@ -126,12 +125,11 @@ h2{font-size:clamp(26px,3.6vw,40px);line-height:1.2;font-weight:700;letter-spaci
 .lang option{background:var(--panel);color:var(--fg)}
 .tbtn{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;border:1px solid var(--line2);background:transparent;color:var(--muted);cursor:pointer;transition:color .15s,border-color .15s,background .15s}
 .tbtn:hover{color:var(--fg);border-color:var(--hover-line);background:var(--panel2)}
-.tbtn:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .tbtn svg{width:18px;height:18px}
 .tbtn .sun{display:none}
 :root[data-theme="dark"] .tbtn .sun{display:block}
 :root[data-theme="dark"] .tbtn .moon{display:none}
-@media (prefers-color-scheme:dark){:root:not([data-theme]) .tbtn .sun{display:block}:root:not([data-theme]) .tbtn .moon{display:none}}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 
 /* 버튼 */
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:44px;padding:0 20px;border-radius:999px;border:1px solid var(--line2);background:var(--panel2);color:var(--fg);font-weight:600;font-size:15px;white-space:nowrap;transition:background .15s,border-color .15s}
@@ -139,109 +137,131 @@ h2{font-size:clamp(26px,3.6vw,40px);line-height:1.2;font-weight:700;letter-spaci
 .btn.primary{background:linear-gradient(135deg,#9B8CFF,#C884E5);border-color:transparent;color:var(--on-accent);box-shadow:0 8px 28px -8px rgba(155,140,255,.6)}
 .btn.primary:hover{background:linear-gradient(135deg,#ADA0FF,#D399EC)}
 .btn.sm{height:34px;padding:0 14px;font-size:13px}
+.btn.lg{height:56px;padding:0 26px;font-size:16.5px;font-weight:700}
 .btn.off{opacity:.5;pointer-events:none}
 .btn small{font-weight:500;opacity:.65;font-size:.85em}
 .btn svg{width:18px;height:18px;flex:none}
 
-/* 첫 화면 */
-.hero{position:relative;overflow:hidden;padding:88px 0 0;text-align:center}
-.hero .appicon{width:84px;height:84px;margin:0 auto 26px;filter:drop-shadow(0 12px 32px rgba(155,140,255,.35));animation:float 6s ease-in-out infinite}
-@keyframes float{50%{transform:translateY(-6px)}}
-.badge{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line2);border-radius:99px;padding:5px 12px 5px 6px;font-size:13px;color:var(--muted);margin-bottom:26px}
-.badge b{background:var(--chip-bg);color:var(--accent);font-weight:600;border-radius:99px;padding:1px 8px}
-.hero h1{font-size:clamp(34px,5.6vw,60px);line-height:1.14;max-width:880px;background:linear-gradient(180deg,var(--h1a) 30%,var(--h1b));-webkit-background-clip:text;background-clip:text;color:transparent}
+/* 첫 화면 · 보내 보기 체험 */
+.hero{position:relative;overflow:hidden;padding:56px 0 72px}
+.hero:before{content:"";position:absolute;inset:-10% -20% auto;height:720px;z-index:-1;pointer-events:none;
+  background:radial-gradient(600px 340px at 78% 10%,var(--glow1),transparent 70%),radial-gradient(420px 260px at 12% 30%,var(--glow2),transparent 70%)}
+.hero .wrap{display:grid;grid-template-columns:.85fr 1.15fr;gap:40px;align-items:start}
+.hero h1{font-size:46px;line-height:1.15;font-weight:800;letter-spacing:-.03em}
 .hero h1 em{font-style:normal;background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent}
-.hero .lead{font-size:clamp(17px,2vw,20px);color:var(--muted);max-width:680px;margin:22px auto 0}
-.hero:before{content:"";position:absolute;inset:-10% -20% auto;height:820px;z-index:-1;pointer-events:none;
-  background:radial-gradient(600px 340px at 50% 18%,var(--glow1),transparent 70%),radial-gradient(420px 260px at 78% 42%,var(--glow2),transparent 70%),radial-gradient(380px 240px at 20% 46%,var(--glow3),transparent 70%)}
-.hero:after{content:"";position:absolute;inset:0 0 auto;height:760px;z-index:-2;pointer-events:none;
-  background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:44px 44px;opacity:.35;
-  -webkit-mask-image:radial-gradient(ellipse 70% 60% at 50% 20%,#000,transparent 75%);mask-image:radial-gradient(ellipse 70% 60% at 50% 20%,#000,transparent 75%)}
-.cta{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-top:30px;min-height:60px}
-.btn.hero{height:60px;padding:0 32px;gap:12px;font-size:18px;font-weight:700}
-.btn.hero svg{width:22px;height:22px}
-.btn.hero small{font-size:14px}
-.cta-note{margin-top:10px;font-size:13px;color:var(--dim)}
-#also a.off{color:var(--dim);text-decoration:none;cursor:default}
-.chips{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:18px}
-.chip{background:var(--panel);border:1px solid var(--line2);border-radius:99px;padding:5px 14px;font-size:13.5px;color:var(--muted)}
-.meta{margin-top:16px;min-height:24px;display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:8px 14px;font-size:13.5px;color:var(--muted)}
-.meta a{color:var(--muted);text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--line2)}
-.meta a:hover{color:var(--fg)}
-.meta .sep{width:1px;height:14px;background:var(--line2)}
-.meta .brk{display:none}
-.beta{font-size:11.5px;font-weight:700;letter-spacing:.06em;color:var(--beta);background:rgba(251,191,36,.12);border:1px solid rgba(183,121,31,.4);border-radius:6px;padding:1px 7px}
-.shot{position:relative;margin:64px auto 0;max-width:1100px;border:1px solid var(--line2);border-radius:18px;overflow:hidden;background:var(--panel);box-shadow:var(--shadow-lg)}
-.shot img{width:100%;height:auto;aspect-ratio:1400/885;object-fit:contain}
-.chrome{display:flex;align-items:center;gap:7px;height:34px;padding:0 14px;border-bottom:1px solid var(--line);background:var(--panel2)}
-.chrome i{width:11px;height:11px;border-radius:50%;background:var(--line2)}
-.chrome i:nth-child(1){background:#ff5f57}.chrome i:nth-child(2){background:#febc2e}.chrome i:nth-child(3){background:#28c840}
-.chrome span{margin:0 auto;padding-right:50px;font-size:12px;color:var(--dim)}
+.hero .lead{font-size:17px;color:var(--muted);margin:16px 0 22px}
+.presets{display:grid;gap:8px}
+.presets .lbl{font-size:12.5px;font-weight:800;color:var(--accent);letter-spacing:.04em}
+.presets button{text-align:left;font-size:14.5px;border:1px solid var(--line2);background:var(--panel);border-radius:12px;padding:10px 14px;cursor:pointer;display:flex;gap:8px;align-items:center;transition:border-color .15s,box-shadow .15s}
+.presets button:hover{border-color:var(--hover-line)}
+.presets button small{margin-left:auto;font-size:11.5px;color:var(--dim);white-space:nowrap;padding-left:8px}
+.presets button[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 3px var(--accentSoft)}
+.mention{color:var(--accent);font-weight:800}
+.cta{display:flex;gap:10px;flex-wrap:wrap;margin-top:22px}
+.cta-note{margin-top:8px;font-size:13px;color:var(--dim)}
+.demo{display:grid;gap:10px}
+.mk{background:var(--panel);border:1px solid var(--line2);border-radius:16px;box-shadow:var(--shadow-lg);overflow:hidden;font-size:13px}
+.mk .hd{display:flex;align-items:center;gap:8px;padding:9px 13px;border-bottom:1px solid var(--line);background:var(--panel2);font-weight:700;font-size:12.5px}
+.mk .hd .dot{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 3px var(--okSoft)}
+.mk .hd .demo-badge{margin-left:auto;font-weight:700;color:var(--warn);background:var(--warnSoft);border-radius:99px;padding:1px 9px;font-size:11.5px}
+.roster{display:flex;gap:6px;flex-wrap:wrap;padding:10px 12px;border-bottom:1px solid var(--line);background:var(--panel)}
+.roster .ttl{font-size:12px;color:var(--dim);margin-right:4px;align-self:center}
+.st{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line2);background:var(--panel);border-radius:99px;padding:2px 9px 2px 3px;font-size:11.5px;white-space:nowrap;color:var(--muted)}
+.st .av{width:20px;height:20px;border-radius:50%;font-size:10px}
+.st i{width:7px;height:7px;border-radius:50%;background:var(--line2)}
+.st.run i{background:var(--ok)}.st.run{color:var(--ok)}
+.st.wait i{background:var(--warn)}.st.wait{color:var(--warn)}
+.st.got i{background:var(--accent)}.st.got{color:var(--accent)}
+.st.done i{background:var(--accent2)}
+.feed{min-height:340px;padding:14px;display:grid;gap:10px;align-content:start}
+.feed>*{animation:pop .35s both}
+@keyframes pop{from{opacity:0;transform:translateY(6px)}}
+.av{width:26px;height:26px;border-radius:8px;flex:none;display:grid;place-items:center;font-size:11px;font-weight:800;color:#fff}
+.av.a{background:#E07A5F}.av.b{background:#5B8DEF}.av.c{background:#C79300}.av.d{background:#7B6CF0}.av.s{background:linear-gradient(135deg,#9B8CFF,#FF7AC6)}
+.msg{display:flex;gap:8px;align-items:flex-start}
+.msg .bb{background:var(--panel2);border:1px solid var(--line);border-radius:4px 12px 12px 12px;padding:7px 10px;max-width:92%}
+.msg .bb .n{font-size:11px;font-weight:700;color:var(--dim);margin-bottom:1px}
+.msg.me{flex-direction:row-reverse}
+.msg.me .bb{background:var(--accent);color:var(--onacc);border-color:transparent;border-radius:12px 4px 12px 12px}
+.msg.me .bb .n{color:inherit;opacity:.75}
+.msg.me .bb .mention{color:inherit;text-decoration:underline;text-underline-offset:2px}
+.sys{text-align:center;font-size:11.5px;color:var(--dim)}
+.sys b{color:var(--accent);background:var(--accentSoft);border-radius:99px;padding:1px 9px}
+.appr{border:1px solid var(--line2);border-radius:12px;padding:10px 12px;background:var(--panel);display:grid;gap:7px;margin-top:4px}
+.appr .t{display:flex;gap:8px;align-items:center;font-weight:700}
+.appr .tag{font-size:11px;font-weight:800;color:var(--warn);background:var(--warnSoft);border-radius:6px;padding:1px 7px;white-space:nowrap}
+.appr .tag.plan{color:var(--accent);background:var(--accentSoft)}
+.appr .ef{font-size:12.5px;color:var(--muted)}
+.appr .bt{display:flex;gap:6px}
+.appr .bt b{flex:1;text-align:center;font-size:12.5px;border-radius:8px;padding:6px 0;border:1px solid var(--line2)}
+.appr .bt b.y{background:var(--accent);color:var(--onacc);border-color:transparent}
+.mlbl{font-size:11.5px;color:var(--dim);display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.mini{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.mini div{border-radius:10px;padding:8px 6px;text-align:center;font-size:11.5px;color:#1B1930;background:var(--floor);position:relative}
+:root[data-theme="dark"] .mini div{color:#fff}
+.mini div b{display:block;font-size:12px}
+.mini div.run{box-shadow:inset 0 0 0 2px #1F8F5F}
+.mini div.wait{box-shadow:inset 0 0 0 2px #D99A12}
+.mini .pc{display:block;width:26px;height:18px;margin:0 auto 4px;border-radius:3px;background:var(--wood);position:relative}
+.mini div.run .pc:after{content:"";position:absolute;inset:3px;border-radius:2px;background:#7FE3A8;animation:pulse 1s infinite}
+.mini div.wait .pc:after{content:"!";position:absolute;top:-14px;left:50%;transform:translateX(-50%);font-weight:900;color:#B67800}
+:root[data-theme="dark"] .mini div.wait .pc:after{color:#FBBF24}
+@keyframes pulse{50%{opacity:.55}}
 
-/* 하루 흐름 */
-.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;counter-reset:step}
-.step{position:relative;display:flex;flex-direction:column;border:1px solid var(--line2);border-radius:18px;padding:22px;background:linear-gradient(180deg,var(--panel2),var(--panel))}
-.step:before{counter-increment:step;content:counter(step);display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;margin-bottom:14px;font-weight:800;font-size:15px;color:var(--on-accent);background:linear-gradient(135deg,#9B8CFF,#FF7AC6)}
-.step h3{font-size:18px;font-weight:700;margin-bottom:6px}
-.step p{font-size:14.5px;color:var(--muted);margin-bottom:16px}
-.step figure{margin-top:auto}
-.step:not(:last-child):after{content:"";position:absolute;top:36px;right:-14px;width:10px;height:10px;border-top:2px solid var(--line2);border-right:2px solid var(--line2);transform:rotate(45deg)}
+/* 꾸미기 */
+#decor{background:linear-gradient(180deg,color-mix(in srgb,var(--brick) 34%,var(--bg)),var(--bg))}
+.flow3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.fc{position:relative;border:1px solid var(--line);background:var(--panel);border-radius:16px;padding:22px 18px 18px;display:grid;gap:8px;align-content:start}
+.fc .stp{position:absolute;top:-12px;left:16px;font-size:12px;font-weight:800;background:var(--accent2);color:#fff;border-radius:99px;padding:2px 10px}
+:root[data-theme="dark"] .fc .stp{color:#2A0E20}
+.fc h3{font-size:17px;letter-spacing:-.01em}
+.fc p{font-size:14px;color:var(--muted)}
+.fund{justify-self:start;display:inline-flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--line2);border-radius:99px;padding:3px 11px;font-size:13px;font-weight:700}
+.drawer{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.drawer div{border:1px solid var(--line);border-radius:10px;padding:8px 6px;text-align:center;font-size:11.5px;background:var(--panel2)}
+.drawer b{display:block;font-size:12px}
+.drawer em{font-style:normal;font-size:10.5px;color:var(--dim)}
+.cells{display:grid;grid-template-columns:repeat(8,1fr);gap:3px}
+.cells i{aspect-ratio:1;border-radius:3px;background:var(--floor)}
+.cells i.ok{background:#5ED38C}.cells i.no{background:#F07A7A}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:11.5px;color:var(--muted)}
+.legend span:before{content:"";display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;vertical-align:-1px;background:#5ED38C}
+.legend span.no:before{background:#F07A7A}
+.lvbox{display:grid;grid-template-columns:1.25fr 1fr;gap:36px;align-items:center;margin-top:34px}
+.lvview{background:linear-gradient(180deg,var(--sky1),var(--sky2));border-radius:22px;aspect-ratio:3/2;overflow:hidden;border:1px solid var(--line)}
+.lvview img{width:100%;height:100%;object-fit:cover;image-rendering:pixelated}
+.lvctl{display:grid;gap:12px}
+.lvctl .big{font-size:44px;font-weight:800;letter-spacing:-.03em;line-height:1}
+.lvctl .big small{font-size:16px;color:var(--muted);font-weight:700;margin-left:8px;letter-spacing:0}
+.lvctl input[type=range]{width:100%;accent-color:var(--accent)}
+.marks{display:flex;justify-content:space-between;font-size:11px;color:var(--dim)}
+.lvsteps{display:flex;gap:5px;flex-wrap:wrap}
+.lvsteps button{font-size:11.5px;border:1px solid var(--line2);background:var(--panel);color:var(--muted);border-radius:99px;padding:3px 9px;cursor:pointer}
+.lvsteps button[aria-pressed="true"]{background:var(--accent2);color:#fff;border-color:transparent;font-weight:700}
+:root[data-theme="dark"] .lvsteps button[aria-pressed="true"]{color:#2A0E20}
+.unl{display:flex;gap:6px;flex-wrap:wrap;min-height:26px}
+.unl span{font-size:12.5px;border-radius:8px;padding:3px 9px;background:var(--panel2);border:1px solid var(--line);color:var(--muted)}
+.lvnote{font-size:13px;color:var(--dim)}
 
-/* 사진 틀 */
-figure{border:1px solid var(--line2);border-radius:14px;overflow:hidden;background:var(--panel);transition:transform .25s,border-color .25s}
-figure:hover{transform:translateY(-3px);border-color:var(--hover-line)}
-figure img{width:100%;height:auto}
-figure.pc img{aspect-ratio:1400/885}
-figure.ph img{aspect-ratio:390/844}
-figcaption{padding:11px 14px;font-size:13.5px;color:var(--muted);border-top:1px solid var(--line)}
-figcaption b{color:var(--fg);font-weight:600}
-.pic img{cursor:zoom-in}
-#secretary .split{grid-template-columns:4fr 8fr;gap:40px}
-.pic{position:relative}
-.pic:after{content:"⤢";position:absolute;right:10px;bottom:10px;width:30px;height:30px;border-radius:8px;background:rgba(20,19,28,.72);color:#fff;font-size:17px;line-height:30px;text-align:center;pointer-events:none}
-.pic img:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
-
-/* 새 기능·안심 카드 */
-.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
-.card{border:1px solid var(--line2);border-radius:18px;padding:24px 22px;background:linear-gradient(180deg,var(--panel2),var(--panel))}
-.card .v{display:inline-block;font-size:11.5px;color:var(--accent2);font-weight:700;margin-bottom:6px}
-.card h3{font-size:17.5px;font-weight:700;margin-bottom:6px}
-.card p{font-size:14.5px;color:var(--muted)}
-
-/* 비서 */
-.split{display:grid;grid-template-columns:5fr 7fr;gap:56px;align-items:center}
-.split h2{margin-bottom:14px}
-.split .lead{color:var(--muted);font-size:17px}
-.list{list-style:none;margin-top:22px}
-.list li{padding:11px 0 11px 32px;border-bottom:1px solid var(--line);position:relative;font-size:15.5px;font-weight:600}
-.list li:before{content:"✓";position:absolute;left:5px;color:var(--accent);font-weight:800}
-.list li small{display:block;color:var(--muted);font-size:13.5px;font-weight:400}
-.note{margin-top:18px;font-size:13.5px;color:var(--dim)}
-.split figure{box-shadow:var(--shadow-lg)}
-
-/* 스타일 */
-.duo{display:grid;grid-template-columns:1fr 1fr;gap:20px}
-.duo figure{box-shadow:var(--shadow-lg)}
-.swatches{list-style:none;display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:28px auto 0;max-width:820px}
-.swatches li{display:inline-flex;align-items:center;gap:8px;padding:5px 12px 5px 5px;border:1px solid var(--line2);border-radius:999px;background:var(--panel);font-size:13px;white-space:nowrap}
-.swatches li:first-child{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
-.swatches i{flex:none;width:22px;height:22px;border-radius:50%;border:1px solid rgba(128,128,128,.25)}
-.ph-note{margin:24px auto 0;text-align:center;font-size:14px}
-.ph-note + .ph-note{margin-top:10px}
-
-/* 휴대폰 */
-.shots{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;align-items:start;max-width:880px;margin:0 auto}
-.shots figure{border-radius:22px}
-
-/* 알려진 제한 사항 */
-.limits{max-width:820px;list-style:none;display:grid;gap:12px}
-.limits li{display:flex;gap:12px;align-items:baseline;color:var(--muted);font-size:15px}
-.limits li:before{content:"";flex:none;width:6px;height:6px;border-radius:50%;background:var(--beta);transform:translateY(-2px)}
+/* 기능 7줄 */
+#features{padding-top:64px}
+.rows{display:grid;gap:18px}
+.fx{display:grid;grid-template-columns:1.2fr 1fr;align-items:center;border:1px solid var(--line);background:var(--panel);border-radius:18px;overflow:hidden}
+.fx .shot{position:relative;aspect-ratio:16/10;overflow:hidden;background:var(--panel2);border-right:1px solid var(--line)}
+.fx:nth-child(even) .shot{order:2;border-right:0;border-left:1px solid var(--line)}
+.fx .shot img{width:100%;height:100%;object-fit:cover;object-position:left top;cursor:zoom-in}
+.fx .shot.ph{display:flex;justify-content:center;align-items:flex-end;padding-top:22px;background:linear-gradient(135deg,var(--accentSoft),var(--pinkSoft))}
+.fx .shot.ph .pf{width:40%;height:100%;border:6px solid #1B1930;border-bottom:0;border-radius:22px 22px 0 0;overflow:hidden;background:var(--panel)}
+:root[data-theme="dark"] .fx .shot.ph .pf{border-color:#3A3752}
+.fx .tx{padding:24px 28px;display:grid;gap:6px}
+.fx .no{font:800 12px ui-monospace,Menlo,monospace;color:var(--accent)}
+.fx h3{font-size:21px;letter-spacing:-.01em;line-height:1.35}
+.fx p{font-size:15px;color:var(--muted)}
 
 /* 다운로드 */
+#download{background:var(--panel2)}
 .dls{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
-.dlc{border:1px solid var(--line2);border-radius:18px;padding:26px;display:flex;flex-direction:column;gap:14px;background:var(--panel);transition:transform .2s,border-color .2s}
-.dlc:hover{transform:translateY(-3px);border-color:var(--hover-line)}
+.dlc{border:1px solid var(--line2);border-radius:18px;padding:26px;display:flex;flex-direction:column;gap:14px;background:var(--panel)}
 .dlc.mine{border-color:var(--accent);background:linear-gradient(180deg,var(--chip-bg),var(--panel) 60%)}
 .dlc h3{font-size:18px;font-weight:600;display:flex;align-items:center;gap:10px}
 .dlc h3 svg{width:20px;height:20px;color:var(--muted)}
@@ -253,19 +273,24 @@ figcaption b{color:var(--fg);font-weight:600}
 .dlc li.note{color:var(--dim);font-size:13px}
 .dlc .btn{width:100%;height:auto;min-height:44px;padding:10px 16px;white-space:normal;text-align:center}
 
+/* 꼬리 */
+/* 내 PC 여러 대 */
+.pcbox{display:grid;grid-template-columns:1.2fr 1fr;gap:28px;align-items:center}
+.pcbox .shot{border:1px solid var(--line);border-radius:18px;overflow:hidden;aspect-ratio:16/10;background:var(--panel2)}
+.pcbox .shot img{width:100%;height:100%;object-fit:cover;object-position:left top;cursor:zoom-in}
+.pts{list-style:none;display:grid;gap:16px}
+.pts li{border-left:3px solid var(--accent);padding:2px 0 2px 14px}
+.pts h3{font-size:16.5px;letter-spacing:-.01em;line-height:1.35}
+.pts p{font-size:14.5px;color:var(--muted);margin-top:4px}
+@media (max-width:1000px){.pcbox{grid-template-columns:1fr;gap:20px}}
 /* FAQ */
 .faq{max-width:820px;border-top:1px solid var(--line)}
-details{border-bottom:1px solid var(--line);padding:20px 0}
-summary{cursor:pointer;font-weight:600;font-size:16px;list-style:none;display:flex;justify-content:space-between;gap:16px}
-summary::-webkit-details-marker{display:none}
-summary:after{content:"+";color:var(--dim);font-size:20px;line-height:1.2;font-weight:400}
-details[open] summary:after{content:"−"}
-details p{color:var(--muted);font-size:15px;margin-top:10px;max-width:720px}
-
-/* 마지막 권유·푸터 */
-.final{text-align:center;padding:88px 0 112px}
-.final .box{border:1px solid var(--line2);border-radius:24px;padding:64px 24px;background:radial-gradient(500px 220px at 50% 0%,var(--glow1),transparent 70%),var(--panel)}
-.final .sub{margin:12px auto 28px}
+.faq details{border-bottom:1px solid var(--line);padding:20px 0}
+.faq summary{cursor:pointer;font-weight:600;font-size:16px;list-style:none;display:flex;justify-content:space-between;gap:16px}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary:after{content:"+";color:var(--dim);font-size:20px;line-height:1.2;font-weight:400}
+.faq details[open] summary:after{content:"−"}
+.faq details p{color:var(--muted);font-size:15px;margin-top:10px;max-width:720px}
 footer{border-top:1px solid var(--line);padding:40px 0 56px;font-size:13.5px;color:var(--dim)}
 footer .wrap{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px}
 footer .brand{display:flex;align-items:center;gap:10px;color:var(--muted)}
@@ -285,40 +310,40 @@ footer .links .off{color:var(--dim);pointer-events:none}
 .rv.in{opacity:1;transform:none}
 @media (prefers-reduced-motion:reduce){
   .rv{opacity:1;transform:none;transition:none}
-  .hero .appicon{animation:none}
-  figure:hover,.dlc:hover{transform:none}
+  .feed>*{animation:none}
+  .mini div.run .pc:after{animation:none}
   html{scroll-behavior:auto}
 }
 
 @media (max-width:1000px){
-  .top nav{display:none}
-  .steps,.cards{grid-template-columns:1fr}
-  .step:after{display:none}
-  .step figure{max-width:560px}
-  .split{grid-template-columns:1fr;gap:32px}
-  .duo{grid-template-columns:1fr}
+  .hero .wrap{grid-template-columns:1fr;gap:28px}
   .dls{grid-template-columns:1fr}
-  .shots{gap:14px}
 }
-@media (max-width:600px){
-  section{padding:76px 0}
+@media (max-width:700px){
+  section{padding:52px 0}
   .wrap{padding:0 18px}
-  .top .wrap{gap:14px}
-  .hero{padding-top:56px}
-  .hero .appicon{width:68px;height:68px}
-  .hero h1{font-size:29px}
-  .badge{font-size:12px}
-  .btn.hero{height:56px;font-size:17px}
-  .btn.hero small{display:none}
-  .meta{gap:8px 10px;font-size:13px}
-  .meta .sep.pc{display:none}
-  .meta .brk{display:block;flex-basis:100%;height:0}
+  .h2{font-size:26px}
+  .sub{font-size:15px}
+  .top .wrap{flex-wrap:wrap;gap:0 12px;min-height:0;padding-top:8px}
+  .top .right{gap:8px}
+  .top .right .btn{display:none}
+  .top nav{order:3;flex-basis:100%;overflow-x:auto;scrollbar-width:none;padding:8px 0 10px;gap:18px}
+  .top nav::-webkit-scrollbar{display:none}
+  .hero{padding:32px 0 44px}
+  .hero h1{font-size:30px}
+  .hero .lead{font-size:15.5px}
+  .presets button{font-size:14px}
   .cta .btn{flex:1 1 100%}
-  .shot{margin-top:44px;border-radius:14px}
-  .shots{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -18px;padding:0 18px 8px;scrollbar-width:none}
-  .shots::-webkit-scrollbar{display:none}
-  .shots figure{flex:0 0 72%;scroll-snap-align:center}
-  .top .gh span{display:none}
+  .feed{min-height:300px}
+  .flow3{grid-template-columns:1fr;gap:22px}
+  .lvbox{grid-template-columns:1fr;gap:18px}
+  .lvctl .big{font-size:34px}
+  #features{padding-top:52px}
+  .fx{grid-template-columns:1fr}
+  .fx .shot,.fx:nth-child(even) .shot{order:0;border:0;border-bottom:1px solid var(--line)}
+  .fx .tx{padding:16px 18px 18px}
+  .fx h3{font-size:17px}
+  .fx p{font-size:14.5px}
   .logo span{display:none}
 }
 </style>
@@ -328,12 +353,10 @@ footer .links .off{color:var(--dim);pointer-events:none}
 <header class="top"><div class="wrap">
   <a class="logo" href="#"><img src="../assets/icon.png" alt="" width="28" height="28"><span>AI Office</span></a>
   <nav>
-    <a href="#how" data-i18n="nav.how"><!--p-->How it works<!--/p--></a>
-    <a href="#new" data-i18n="nav.new"><!--p-->What’s new<!--/p--></a>
-    <a href="#secretary" data-i18n="nav.secretary"><!--p-->Secretary<!--/p--></a>
-    <a href="#trust" data-i18n="nav.trust"><!--p-->Safety<!--/p--></a>
-    <a href="#look" data-i18n="nav.look"><!--p-->Style<!--/p--></a>
-    <a href="#screens" data-i18n="nav.screens"><!--p-->Phone<!--/p--></a>
+    <a href="#try" data-i18n="nav.try"><!--p-->Try it<!--/p--></a>
+    <a href="#decor" data-i18n="nav.decor"><!--p-->Decorate<!--/p--></a>
+    <a href="#features" data-i18n="nav.features"><!--p-->Features<!--/p--></a>
+    <a href="#pcs" data-i18n="nav.pcs"><!--p-->Multiple PCs<!--/p--></a>
     <a href="#download" data-i18n="nav.download"><!--p-->Download<!--/p--></a>
     <a href="#faq" data-i18n="nav.faq"><!--p-->FAQ<!--/p--></a>
   </nav>
@@ -342,173 +365,114 @@ footer .links .off{color:var(--dim);pointer-events:none}
       <option value="ko">한국어</option><option value="en">English</option><option value="ja">日本語</option><option value="zh">简体中文</option>
     </select>
     <button class="tbtn" id="tbtn" type="button"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1111.2 3a7 7 0 009.8 9.8z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
-    <a class="btn sm gh" data-gh><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5a11.5 11.5 0 00-3.6 22.4c.6.1.8-.3.8-.6v-2c-3.2.7-3.9-1.4-3.9-1.4-.5-1.3-1.3-1.7-1.3-1.7-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.7 1.3 3.4 1 .1-.8.4-1.3.7-1.6-2.6-.3-5.3-1.3-5.3-5.7 0-1.3.5-2.3 1.2-3.1-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.2 1.2a11 11 0 015.8 0C17.3 4.9 18.3 5.2 18.3 5.2c.6 1.6.2 2.8.1 3.1.8.8 1.2 1.8 1.2 3.1 0 4.4-2.7 5.4-5.3 5.7.4.4.8 1.1.8 2.2v3.2c0 .3.2.7.8.6A11.5 11.5 0 0012 .5z"/></svg><span>GitHub</span></a>
+    <a class="btn sm primary" href="#download" data-i18n="nav.cta"><!--p-->Free download<!--/p--></a>
   </div>
 </div></header>
 
-<section class="hero"><div class="wrap">
-  <img class="appicon" src="../assets/icon.png" alt="AI Office" width="84" height="84">
-  <div class="badge"><b>v<span data-version></span></b><span data-i18n="badge.oss"><!--p-->Free · Open source · Mac · Windows · Android<!--/p--></span></div>
-  <h1 data-i18n="hero.title"><!--p-->Hand work to AI staff <em>just by talking</em><br>in your own office<!--/p--></h1>
-  <p class="lead" data-i18n="hero.lead"><!--p-->Hire Claude and GPT staff and give them work in the chat room. Approve the important parts, and get reports in plain words when they’re done. No command line, no hard setup.<!--/p--></p>
-  <div class="cta" id="cta"></div>
-  <p class="cta-note" id="cta-note" hidden></p>
-  <div class="chips"><span class="chip" data-i18n="hero.chip1"><!--p-->💬 Just say it<!--/p--></span><span class="chip" data-i18n="hero.chip2"><!--p-->✅ Approve only what matters<!--/p--></span><span class="chip" data-i18n="hero.chip3"><!--p-->📋 Plain-language reports<!--/p--></span></div>
-  <div class="meta">
-    <span id="also"></span>
-    <span class="sep pc"></span><span class="brk"></span>
-    <span class="beta">BETA</span>
-    <a href="#limits" data-i18n="hero.limits"><!--p-->Known limitations<!--/p--></a>
-    <span class="sep"></span>
-    <a data-link="feedback" target="_blank" rel="noopener"><span data-i18n="foot.feedback"><!--p-->Send feedback<!--/p--></span> ↗</a>
-  </div>
-  <div class="shot"><div class="chrome"><i></i><i></i><i></i><span>AI Office</span></div><div class="pic"><img src="../assets/screens/ko/office.webp" data-shot="office" data-i18n-alt="alt.office" width="1400" height="885"></div></div>
-</div></section>
-
-<section id="how"><div class="wrap">
-  <div class="head c rv">
-    <div class="eyebrow" data-i18n="how.eyebrow"><!--p-->How it works<!--/p--></div>
-    <h2 data-i18n="how.title"><!--p-->Ask, check, get the report — that’s it<!--/p--></h2>
-    <p class="sub" data-i18n="how.sub"><!--p-->Use it like handing work to a human team. Staff get on with it, and only what needs you comes up.<!--/p--></p>
-  </div>
-  <div class="steps">
-    <div class="step rv"><h3 data-i18n="s1.t"><!--p-->Just say it in the chat room<!--/p--></h3><p data-i18n="s1.p"><!--p-->Call @name, or just write and the team lead picks it up and splits the work. Replies, scheduled sends, and cutting in work too.<!--/p--></p><figure class="pc"><div class="pic"><img src="../assets/screens/ko/chat.webp" data-shot="chat" data-i18n-alt="alt.s1" loading="lazy" width="1400" height="885"></div></figure></div>
-    <div class="step rv"><h3 data-i18n="s2.t"><!--p-->Approve only what matters<!--/p--></h3><p data-i18n="s2.p"><!--p-->Things like deleting or uploading files ask first. Each card says in one line what it will do.<!--/p--></p><figure class="pc"><div class="pic"><img src="../assets/screens/ko/inbox.webp" data-shot="inbox" data-i18n-alt="alt.s2" loading="lazy" width="1400" height="885"></div></figure></div>
-    <div class="step rv"><h3 data-i18n="s3.t"><!--p-->Progress on the board, reports in plain words<!--/p--></h3><p data-i18n="s3.p"><!--p-->To do → In progress → Review → Done. When it’s finished, you get the result first, in plain words.<!--/p--></p><figure class="pc"><div class="pic"><img src="../assets/screens/ko/board.webp" data-shot="board" data-i18n-alt="alt.s3" loading="lazy" width="1400" height="885"></div></figure></div>
-  </div>
-</div></section>
-
-<section id="new"><div class="wrap">
-  <div class="head c rv">
-    <div class="eyebrow" data-i18n="new.eyebrow"><!--p-->What’s new<!--/p--></div>
-    <h2 data-i18n="new.title"><!--p-->What’s changed in this release<!--/p--></h2>
-  </div>
-  <div class="cards">
-    <div class="card rv"><span class="v" data-i18n="nw1.v"><!--p-->This release<!--/p--></span><h3 data-i18n="nw1.t"><!--p-->🤖 The secretary even handles approvals<!--/p--></h3><p data-i18n="nw1.p"><!--p-->Approve or reject right inside its reply. Come back after time away and it summarizes what happened overnight.<!--/p--></p></div>
-    <div class="card rv"><span class="v">1.4</span><h3 data-i18n="nw2.t"><!--p-->💬 A chat room like a messenger<!--/p--></h3><p data-i18n="nw2.p"><!--p-->Replies, reactions, scheduled sends, and search. Your message shows as “Received → Working → Done.”<!--/p--></p></div>
-    <div class="card rv"><span class="v">1.2 – 1.3</span><h3 data-i18n="nw3.t"><!--p-->✅ Approvals you can read in one line<!--/p--></h3><p data-i18n="nw3.p"><!--p-->One sentence on what will happen, with a warning first for deletes and overwrites.<!--/p--></p></div>
-    <div class="card rv"><span class="v">1.4</span><h3 data-i18n="nw4.t"><!--p-->🎮 Retro office game theme<!--/p--></h3><p data-i18n="nw4.p"><!--p-->Pixel fonts and square borders. Color themes grew to ten, too.<!--/p--></p></div>
-    <div class="card rv"><span class="v">1.3 – 1.4</span><h3 data-i18n="nw5.t"><!--p-->📱 One card to connect other devices<!--/p--></h3><p data-i18n="nw5.p"><!--p-->Connect your phone and other PCs from one card, and switch between several PCs to give work.<!--/p--></p></div>
-    <div class="card rv"><span class="v">1.3</span><h3 data-i18n="nw6.t"><!--p-->📘 Easier manuals<!--/p--></h3><p data-i18n="nw6.p"><!--p-->Describe it in words and it drafts one for you. Or pick from seven examples.<!--/p--></p></div>
-  </div>
-</div></section>
-
-<section id="secretary"><div class="wrap">
-  <div class="split">
-    <div class="rv">
-      <div class="eyebrow" data-i18n="sec.eyebrow"><!--p-->AI secretary<!--/p--></div>
-      <h2 data-i18n="sec.title"><!--p-->Ask, and it finds things<br>and handles them for you<!--/p--></h2>
-      <p class="lead" data-i18n="sec.lead" style="margin-top:14px"><!--p-->Ask “What did we do today?” or “Anything waiting for approval?” and the secretary looks around the office and answers. The phone app works the same way.<!--/p--></p>
-      <ul class="list">
-        <li><span data-i18n="sec1.t"><!--p-->Approve right in the reply<!--/p--></span><small data-i18n="sec1.p"><!--p-->Approve or reject without going to the inbox<!--/p--></small></li>
-        <li><span data-i18n="sec2.t"><!--p-->Morning summary<!--/p--></span><small data-i18n="sec2.p"><!--p-->Open the secretary after 6+ hours away, or after a fresh app launch, and see work, approvals, and errors in one go<!--/p--></small></li>
-        <li><span data-i18n="sec3.t"><!--p-->Long chats carry on<!--/p--></span><small data-i18n="sec3.p"><!--p-->Older conversation is summarized and kept in the thread<!--/p--></small></li>
-        <li><span data-i18n="sec4.t"><!--p-->Find and open files<!--/p--></span><small data-i18n="sec4.p"><!--p-->Finds staff results and attachments, then opens them after you confirm (opening works on the PC only)<!--/p--></small></li>
-      </ul>
-      <p class="note" data-i18n="sec.note"><!--p-->The desktop secretary (PC app) lets you ask questions or approve from a corner of your screen without opening the app.<!--/p--></p>
+<!-- 1 · 첫 화면: 예시 메시지를 눌러 보내 보는 체험 (체험용 대본 — 실제 AI 호출 없음) -->
+<section class="hero" id="try"><div class="wrap">
+  <div>
+    <span class="rank" data-i18n="hero.rank"><!--p-->AI staff office · Free · Open source<!--/p--></span>
+    <h1 data-i18n="hero.title"><!--p-->One message to your staff.<br><em>That's all it takes.</em><!--/p--></h1>
+    <p class="lead" data-i18n="hero.lead"><!--p-->Tap a message below and send it yourself. See who picks it up in the group chat, how they work, and when they ask you first.<!--/p--></p>
+    <div class="presets" id="presets">
+      <span class="lbl" data-i18n="try.label"><!--p-->Tap to send<!--/p--></span>
+      <button type="button" data-k="a" aria-pressed="true"><span data-i18n="try.a"><!--p--><span class="mention">@Design</span> two login screen drafts<!--/p--></span><small data-i18n="try.a.hint"><!--p-->to a team<!--/p--></small></button>
+      <button type="button" data-k="b" aria-pressed="false"><span data-i18n="try.b"><!--p-->Who can tidy up this week's meeting notes?<!--/p--></span><small data-i18n="try.b.hint"><!--p-->no mention<!--/p--></small></button>
+      <button type="button" data-k="c" aria-pressed="false"><span data-i18n="try.c"><!--p--><span class="mention">@all</span> quick recap of today<!--/p--></span><small data-i18n="try.c.hint"><!--p-->to everyone<!--/p--></small></button>
+      <button type="button" data-k="d" aria-pressed="false"><span data-i18n="try.d"><!--p--><span class="mention">@Lead</span> take on the sign-up revamp<!--/p--></span><small data-i18n="try.d.hint"><!--p-->big job<!--/p--></small></button>
     </div>
-    <figure class="pc rv"><div class="pic"><img src="../assets/screens/ko/secretary.webp" data-shot="secretary" data-i18n-alt="alt.sec" loading="lazy" width="1400" height="885"></div></figure>
+    <div class="cta" id="cta"></div>
+    <p class="cta-note" id="cta-note" hidden></p>
+  </div>
+  <div class="demo">
+    <div class="mk">
+      <div class="hd"><span class="dot"></span><span data-i18n="exp.room"><!--p-->All-hands room<!--/p--></span><span class="demo-badge" data-i18n="exp.badge"><!--p-->Demo screen · no AI used<!--/p--></span></div>
+      <div class="roster" id="roster" aria-hidden="true"></div>
+      <div class="feed" id="feed" aria-live="polite"></div>
+    </div>
+    <div class="mlbl" aria-hidden="true"><span data-i18n="exp.seats"><!--p-->Office seats<!--/p--></span><span data-i18n="exp.legend"><!--p-->Green border = working · ! = needs you<!--/p--></span></div>
+    <div class="mini" id="mini" aria-hidden="true"></div>
   </div>
 </div></section>
 
-<section id="trust"><div class="wrap">
-  <div class="head c rv">
-    <div class="eyebrow" data-i18n="trust.eyebrow"><!--p-->Safe to delegate<!--/p--></div>
-    <h2 data-i18n="trust.title"><!--p-->You always decide the important things<!--/p--></h2>
-    <p class="sub" data-i18n="trust.lead"><!--p-->Delegate with ease — risky things always ask first.<!--/p--></p>
+<!-- 2 · 핵심 2: 사무실 꾸미기 + 레벨 막대 (단계·층은 app/src/shared/officeLevel.ts LEVEL_TABLE 기준) -->
+<section id="decor"><div class="wrap">
+  <div class="head c rv"><span class="rank pink" data-i18n="decor.rank"><!--p-->Core 2 · Decorate your office<!--/p--></span><h2 class="h2" data-i18n="decor.title"><!--p-->The more you work, the nicer your office gets<!--/p--></h2><p class="sub" data-i18n="decor.sub"><!--p-->Work earns money, money buys decor, and leveling up changes your building.<!--/p--></p></div>
+  <div class="flow3">
+    <div class="fc rv"><span class="stp" data-i18n="d1.stp"><!--p-->1 · Earn<!--/p--></span><h3 data-i18n="d1.t"><!--p-->Funds grow as you work<!--/p--></h3><span class="fund" data-i18n="d1.fund"><!--p-->₩ 128.4M<!--/p--></span><p data-i18n="d1.p"><!--p-->As staff work and finish tasks, company funds and level go up. There are daily missions and achievement rewards too.<!--/p--></p></div>
+    <div class="fc rv"><span class="stp" data-i18n="d2.stp"><!--p-->2 · Buy<!--/p--></span><h3 data-i18n="d2.t"><!--p-->101 items in the shop<!--/p--></h3><div class="drawer"><div><b data-i18n="d2.c1"><!--p-->Coffee machine<!--/p--></b><em data-i18n="d2.c1s"><!--p-->Furniture<!--/p--></em></div><div><b data-i18n="d2.c2"><!--p-->Wallpaper<!--/p--></b><em data-i18n="d2.c2s"><!--p-->15 kinds<!--/p--></em></div><div><b data-i18n="d2.c3"><!--p-->Flooring<!--/p--></b><em data-i18n="d2.c3s"><!--p-->14 kinds<!--/p--></em></div></div><p data-i18n="d2.p"><!--p-->Furniture, props, wallpaper, flooring, desks and chairs. Daily deals, seasonal items and set bonuses.<!--/p--></p></div>
+    <div class="fc rv"><span class="stp" data-i18n="d3.stp"><!--p-->3 · Place<!--/p--></span><h3 data-i18n="d3.t"><!--p-->Take it out of the drawer and place it<!--/p--></h3><div class="cells" aria-hidden="true"><i></i><i class="ok"></i><i class="ok"></i><i></i><i></i><i class="no"></i><i></i><i></i></div><div class="legend"><span data-i18n="d3.ok"><!--p-->Can place<!--/p--></span><span class="no" data-i18n="d3.no"><!--p-->Can't (with a reason)<!--/p--></span></div><p data-i18n="d3.p"><!--p-->Rotate, move, or put it back. Cats and dogs wander around, and you can let the secretary arrange things.<!--/p--></p></div>
   </div>
-  <div class="cards">
-    <div class="card rv"><h3 data-i18n="tr1.t"><!--p-->Set it per employee<!--/p--></h3><p data-i18n="tr1.p"><!--p-->For each kind of work, pick Block, Ask for approval, or No approval.<!--/p--></p></div>
-    <div class="card rv"><h3 data-i18n="tr2.t"><!--p-->Undo in one go<!--/p--></h3><p data-i18n="tr2.p"><!--p-->Roll back everything staff changed with “Undo to before the task.”<!--/p--></p></div>
-    <div class="card rv"><h3 data-i18n="tr3.t"><!--p-->Picks up after a restart<!--/p--></h3><p data-i18n="tr3.p"><!--p-->Pending approvals come back as a “Continue” card within 7 days, even after you close and reopen the app.<!--/p--></p></div>
+  <div class="lvbox rv" id="lvbox">
+    <div class="lvview"><img class="lvimg" src="../assets/building/lv3.webp" alt="" width="744" height="504"></div>
+    <div class="lvctl">
+      <div class="big"><span class="lvnum">Lv.7</span><small class="lvname"></small></div>
+      <input type="range" min="1" max="20" value="7" class="lvr">
+      <div class="marks" aria-hidden="true"><span>1</span><span>5</span><span>10</span><span>15</span><span>20</span></div>
+      <div class="lvsteps"><button type="button" data-l="1"></button><button type="button" data-l="3"></button><button type="button" data-l="6"></button><button type="button" data-l="10"></button><button type="button" data-l="14"></button><button type="button" data-l="18"></button><button type="button" data-l="20"></button></div>
+      <div class="unl"></div>
+      <p class="lvnote" data-i18n="lv.note"><!--p-->Work mode hides levels, the shop and the office art.<!--/p--></p>
+    </div>
   </div>
 </div></section>
 
-<section id="look"><div class="wrap">
-  <div class="head c rv">
-    <div class="eyebrow" data-i18n="look.eyebrow"><!--p-->Your style<!--/p--></div>
-    <h2 data-i18n="look.title"><!--p-->An office that fits your taste<!--/p--></h2>
-    <p class="sub" data-i18n="look.lead"><!--p-->Light or dark, ten color themes, and a retro game theme. As your level rises, the office grows and you can decorate it with furniture.<!--/p--></p>
+<!-- 3 · 그 밖의 핵심 7가지: 실제 앱 화면(미리 잘라 둔 feat-*.webp, assets/screens/README.md)과 설명을 번갈아 -->
+<section id="features"><div class="wrap">
+  <div class="head rv"><span class="rank" data-i18n="feat.rank"><!--p-->7 more essentials<!--/p--></span><h2 class="h2" data-i18n="feat.title"><!--p-->In order of importance<!--/p--></h2><p class="sub" data-i18n="feat.sub"><!--p-->You've seen group-chat orders and decorating above. Here's the rest, with real app screens.<!--/p--></p></div>
+  <div class="rows">
+    <div class="fx rv"><div class="shot pic"><img src="../assets/screens/ko/feat-approve.webp" data-shot="feat-approve" data-i18n-alt="alt.f3" loading="lazy" width="896" height="560"></div><div class="tx"><span class="no" data-i18n="f3.no"><!--p-->03 · Approvals<!--/p--></span><h3 data-i18n="f3.t"><!--p-->Big things are asked first<!--/p--></h3><p data-i18n="f3.p"><!--p-->High-impact work like editing files or running commands is approved or rejected in chat and the inbox. Set how much each staff member can do alone, and undo changed files in one go.<!--/p--></p></div></div>
+    <div class="fx rv"><div class="shot pic"><img src="../assets/screens/ko/feat-lead.webp" data-shot="feat-lead" data-i18n-alt="alt.f4" loading="lazy" width="994" height="621"></div><div class="tx"><span class="no" data-i18n="f4.no"><!--p-->04 · Team lead<!--/p--></span><h3 data-i18n="f4.t"><!--p-->The lead splits big jobs<!--/p--></h3><p data-i18n="f4.p"><!--p-->The lead writes a plan and subtasks, you confirm, and the team works through them in order and reports back.<!--/p--></p></div></div>
+    <div class="fx rv"><div class="shot pic"><img src="../assets/screens/ko/feat-secretary.webp" data-shot="feat-secretary" data-i18n-alt="alt.f5" loading="lazy" width="938" height="586"></div><div class="tx"><span class="no" data-i18n="f5.no"><!--p-->05 · Secretary<!--/p--></span><h3 data-i18n="f5.t"><!--p-->Use the app by talking<!--/p--></h3><p data-i18n="f5.p"><!--p-->Overnight summaries, approvals right inside the answer, finding and opening files. The desktop secretary answers without opening the window.<!--/p--></p></div></div>
+    <div class="fx rv"><div class="shot pic"><img src="../assets/screens/ko/feat-ai.webp" data-shot="feat-ai" data-i18n-alt="alt.f6" loading="lazy" width="1600" height="1000"></div><div class="tx"><span class="no" data-i18n="f6.no"><!--p-->06 · AI<!--/p--></span><h3 data-i18n="f6.t"><!--p-->Claude and GPT staff in one office<!--/p--></h3><p data-i18n="f6.p"><!--p-->Pick Claude or GPT for each staff member. They use the login you already have, so no API key is needed, and one is enough to start. See usage for both plans on one screen.<!--/p--></p></div></div>
+    <div class="fx rv"><div class="shot ph"><div class="pf pic"><img src="../assets/screens/ko/feat-phone.webp" data-shot="feat-phone" data-i18n-alt="alt.f7" loading="lazy" width="1170" height="1266"></div></div><div class="tx"><span class="no" data-i18n="f7.no"><!--p-->07 · Connect<!--/p--></span><h3 data-i18n="f7.t"><!--p-->Phone and other PCs<!--/p--></h3><p data-i18n="f7.p"><!--p-->On the go, approve and chat from the Android app. Connect up to 3 other PCs and switch between them.<!--/p--></p></div></div>
+    <div class="fx rv"><div class="shot pic"><img src="../assets/screens/ko/feat-dash.webp" data-shot="feat-dash" data-i18n-alt="alt.f8" loading="lazy" width="1600" height="1000"></div><div class="tx"><span class="no" data-i18n="f8.no"><!--p-->08 · Peace of mind<!--/p--></span><h3 data-i18n="f8.t"><!--p-->Dashboard, payslip and work mode<!--/p--></h3><p data-i18n="f8.p"><!--p-->See at a glance who's working and who's waiting for you. At the office, work mode hides the game elements.<!--/p--></p></div></div>
+    <div class="fx rv"><div class="shot pic"><img src="../assets/screens/ko/feat-tools.webp" data-shot="feat-tools" data-i18n-alt="alt.f9" loading="lazy" width="1344" height="840"></div><div class="tx"><span class="no" data-i18n="f9.no"><!--p-->09 · Tools<!--/p--></span><h3 data-i18n="f9.t"><!--p-->Task board, meetings, manuals, schedules<!--/p--></h3><p data-i18n="f9.p"><!--p-->A to-do kanban, meeting notes with task cards, reading reference docs before working, and recurring tasks on a schedule.<!--/p--></p></div></div>
   </div>
-  <div class="duo">
-    <figure class="pc rv"><div class="pic"><img src="../assets/screens/ko/theme.webp" data-shot="theme" data-i18n-alt="alt.look1" loading="lazy" width="1400" height="885"></div><figcaption data-i18n="look.cap1"><!--p--><b>Default look</b> — ten color themes, light and dark<!--/p--></figcaption></figure>
-    <figure class="pc rv"><div class="pic"><img src="../assets/screens/ko/retro.webp" data-shot="retro" data-nodark data-i18n-alt="alt.look2" loading="lazy" width="1400" height="885"></div><figcaption data-i18n="look.cap2"><!--p--><b>Retro office game</b> — pixel fonts and square borders (dark mode only)<!--/p--></figcaption></figure>
-  </div>
-  <ul class="swatches rv"><li><i style="background:linear-gradient(135deg,#8B7BFF,#FF7AC6)"></i><span data-i18n="theme.lavender"><!--p-->Lavender<!--/p--></span></li><li><i style="background:linear-gradient(135deg,#6C9BFF,#35D0E0)"></i><span data-i18n="theme.sky"><!--p-->Sky<!--/p--></span></li><li><i style="background:linear-gradient(135deg,#FFB35C,#E0642A)"></i><span data-i18n="theme.sunset"><!--p-->Sunset<!--/p--></span></li><li><i style="background:linear-gradient(135deg,#C8E86A,#1F9A68)"></i><span data-i18n="theme.moss"><!--p-->Moss<!--/p--></span></li><li><i style="background:linear-gradient(135deg,#FF9AB8,#D6336C)"></i><span data-i18n="theme.blossom"><!--p-->Blossom<!--/p--></span></li><li><i style="background:linear-gradient(135deg,#E5E5E5,#171717)"></i><span data-i18n="theme.mono"><!--p-->Mono<!--/p--></span></li><li><i style="background:linear-gradient(135deg,#7C6CFF,#14B8A6)"></i><span data-i18n="theme.aurora"><!--p-->Aurora<!--/p--></span></li><li><i style="background:linear-gradient(135deg,#6366F1,#F97316)"></i><span data-i18n="theme.twilight"><!--p-->Twilight<!--/p--></span></li><li><i style="background:linear-gradient(135deg,#D946EF,#38BDF8)"></i><span data-i18n="theme.candy"><!--p-->Candy<!--/p--></span></li><li><i style="background:linear-gradient(135deg,#22C55E,#F5B21A)"></i><span data-i18n="theme.meadow"><!--p-->Meadow<!--/p--></span></li></ul>
-  <p class="sub ph-note rv" data-i18n="l.note"><!--p-->Change theme and mode on your PC; the phone follows your PC’s choice. Day and night in the office scene are set separately.<!--/p--></p>
 </div></section>
 
-<section id="screens"><div class="wrap">
-  <div class="head c rv">
-    <div class="eyebrow" data-i18n="scr.eyebrow"><!--p-->On your phone, too<!--/p--></div>
-    <h2 data-i18n="scr.title"><!--p-->Approve and instruct, even away from your desk<!--/p--></h2>
-    <p class="sub" data-i18n="scr.sub"><!--p-->Link the Android app by QR and use the secretary, approval inbox, and chat room as they are. Tap a button and it shows “Processing” right away. Foldables split the screen in two.<!--/p--></p>
-  </div>
-  <div class="shots">
-    <figure class="ph rv"><div class="pic"><img src="../assets/screens/ko/phone-secretary.webp" data-shot="phone-secretary" data-i18n-alt="alt.psec" loading="lazy" width="390" height="844"></div><figcaption data-i18n="cap.sec"><!--p--><b>Secretary</b> — ask, then approve on the spot<!--/p--></figcaption></figure>
-    <figure class="ph rv"><div class="pic"><img src="../assets/screens/ko/phone-inbox.webp" data-shot="phone-inbox" data-i18n-alt="alt.pinbox" loading="lazy" width="390" height="844"></div><figcaption data-i18n="cap.inbox"><!--p--><b>Approval inbox</b> — approve or reject from anywhere<!--/p--></figcaption></figure>
-    <figure class="ph rv"><div class="pic"><img src="../assets/screens/ko/phone-chat.webp" data-shot="phone-chat" data-i18n-alt="alt.pchat" loading="lazy" width="390" height="844"></div><figcaption data-i18n="cap.chat"><!--p--><b>Chat room</b> — give orders and get reports<!--/p--></figcaption></figure>
-  </div>
-  <p class="sub ph-note" data-i18n="ph.note"><!--p-->No router changes — it connects over a private link between your own devices (Tailscale). You can also limit it to the same Wi-Fi.<!--/p--></p>
-  <p class="sub ph-note" data-i18n="phone.note"><!--p-->Some actions, like opening files, work only at your PC, for safety.<!--/p--></p>
+<!-- 3-1 · 내 PC 여러 대 (CHANGELOG 1.3.0·1.4.1·1.4.3, SPEC 워크스페이스): 실제 앱의 'PC 바꾸기' 메뉴 화면 -->
+<section id="pcs"><div class="wrap">
+  <div class="head rv"><span class="rank" data-i18n="pcs.rank"><!--p-->All your PCs<!--/p--></span><h2 class="h2" data-i18n="pcs.title"><!--p-->Your other PCs’ offices, right here<!--/p--></h2><p class="sub" data-i18n="pcs.sub"><!--p-->Connect up to 3 of your PCs, and from the one in front of you, see another PC’s office, staff, chats and approvals, and give it work. Available in the PC app.<!--/p--></p></div>
+  <div class="pcbox rv"><div class="shot pic"><img src="../assets/screens/ko/pcs.webp" data-shot="pcs" data-i18n-alt="alt.pcs" loading="lazy" width="1120" height="700"></div><ul class="pts"><li><h3 data-i18n="pcs.1t"><!--p-->Move between them with “Switch PC”<!--/p--></h3><p data-i18n="pcs.1p"><!--p-->Pick a PC from the name box at the top left to open that PC’s office window. Give its staff work and approve their requests.<!--/p--></p></li><li><h3 data-i18n="pcs.2t"><!--p-->Only with that PC’s permission<!--/p--></h3><p data-i18n="pcs.2p"><!--p-->Connect with a code made in “Let another PC view this one” and you can see it right away. For a PC you connected earlier, that PC shows a permission prompt the first time you view it.<!--/p--></p></li><li><h3 data-i18n="pcs.3t"><!--p-->The connection code stays until you turn it off<!--/p--></h3><p data-i18n="pcs.3p"><!--p-->The code stays after a successful connection, until you press “Turn off code”. It survives app restarts, and changes to a new code after 3 wrong tries.<!--/p--></p></li><li><h3 data-i18n="pcs.4t"><!--p-->Tells you why it can’t connect<!--/p--></h3><p data-i18n="pcs.4p"><!--p-->You’ll see what to do, such as “Allow it on that PC”, “Update that PC” or “Reconnect”.<!--/p--></p></li></ul></div>
 </div></section>
 
+<!-- 4 · 다운로드 (내 기기 강조) -->
 <section id="download"><div class="wrap">
-  <div class="head rv">
-    <div class="eyebrow" data-i18n="dl.eyebrow"><!--p-->Download<!--/p--></div>
-    <h2 data-i18n="dl.title"><!--p-->Get it for free<!--/p--></h2>
-    <p class="sub" data-i18n="dl.sub"><!--p-->One logged-in account, Claude or GPT (ChatGPT), is enough to start.<!--/p--></p>
-  </div>
+  <div class="head c rv"><h2 class="h2" data-i18n="dl.title"><!--p-->Start free today<!--/p--></h2><p class="sub" data-i18n="dl.sub"><!--p-->One logged-in account, Claude or GPT (ChatGPT), is enough to start.<!--/p--></p></div>
   <div class="dls" id="dls">
     <div class="dlc rv" data-os="mac"><h3 data-os-title></h3><ul><li data-i18n="mac.1"><!--p-->Apple Silicon (M1 or later) only<!--/p--></li><li data-i18n="mac.2"><!--p-->Open the .dmg and drag the app into Applications<!--/p--></li><li data-i18n="mac.3"><!--p-->If you see a warning on first launch, go to System Settings › Privacy & Security › “Open Anyway”<!--/p--></li><li class="note" data-i18n="mac.4"><!--p-->Larger download (includes GPT staff, about 350 MB)<!--/p--></li></ul><a data-dl></a></div>
-    <div class="dlc rv" data-os="win"><h3 data-os-title></h3><ul><li data-i18n="win.1"><!--p-->Preview · 64-bit · run Setup.exe to install (old zip users: delete the old folder afterward)<!--/p--></li><li data-i18n="win.2"><!--p-->If “Windows protected your PC” appears, choose “More info › Run anyway”<!--/p--></li><li data-i18n="win.3"><!--p-->External session alerts and screen capture are Mac-only for now<!--/p--></li></ul><a data-dl></a></div>
+    <div class="dlc rv" data-os="win"><h3 data-os-title></h3><ul><li data-i18n="win.1"><!--p-->64-bit · run Setup.exe to install (old zip users: delete the old folder afterward)<!--/p--></li><li data-i18n="win.2"><!--p-->If “Windows protected your PC” appears, choose “More info › Run anyway”<!--/p--></li><li data-i18n="win.3"><!--p-->External session alerts and screen capture are Mac-only for now<!--/p--></li></ul><a data-dl></a></div>
     <div class="dlc rv" data-os="android"><h3 data-os-title></h3><ul><li data-i18n="and.1"><!--p-->A remote companion for the desktop app<!--/p--></li><li data-i18n="and.2"><!--p-->Turn on Settings › Phone connection on your PC, then scan the QR code<!--/p--></li><li data-i18n="and.3"><!--p-->Use the same version as your PC<!--/p--></li></ul><a data-dl></a></div>
   </div>
 </div></section>
 
-<section id="limits"><div class="wrap">
-  <div class="head rv">
-    <div class="eyebrow">BETA</div>
-    <h2 data-i18n="limits.title"><!--p-->Known limitations<!--/p--></h2>
-    <p class="sub" data-i18n="limits.sub"><!--p-->AI Office is in beta, so a few limits apply. Tell us what bothers you through feedback.<!--/p--></p>
-  </div>
-  <ul class="limits rv" id="limits-list"></ul>
-</div></section>
-
+<!-- 5 · 자주 묻는 질문 (앱 기준: SPEC·CHANGELOG. JSON-LD FAQPage는 build-langs.mjs가 같은 q/a 키로 만든다) -->
 <section id="faq"><div class="wrap">
-  <div class="head rv">
-    <div class="eyebrow">FAQ</div>
-    <h2 data-i18n="faq.title"><!--p-->Frequently asked questions<!--/p--></h2>
-  </div>
+  <div class="head rv"><span class="rank">FAQ</span><h2 class="h2" data-i18n="faq.title"><!--p-->Frequently asked questions<!--/p--></h2></div>
   <div class="faq rv">
     <details><summary data-i18n="q1"><!--p-->Do I need to sign up or get an API key?<!--/p--></summary><p data-i18n="a1"><!--p-->No. It uses the Claude or GPT (ChatGPT) account already logged in on your computer. Staff work under that account and usage counts against it.<!--/p--></p></details>
     <details><summary data-i18n="q2"><!--p-->Do I need both Claude and GPT?<!--/p--></summary><p data-i18n="a2"><!--p-->No. One logged-in account is enough to start; connect the other later in Settings. With both, you choose per employee which one they work on. GPT staff are fully supported.<!--/p--></p></details>
-    <details><summary data-i18n="q12"><!--p-->What does the secretary do?<!--/p--></summary><p data-i18n="a12"><!--p-->It answers staff questions, approves or rejects approvals, summarizes what happened overnight, finds files, and leaves messages in team rooms. Bigger actions show a confirmation card first.<!--/p--></p></details>
+    <details><summary data-i18n="q12"><!--p-->What does the secretary do?<!--/p--></summary><p data-i18n="a12"><!--p-->It tells you how your staff are doing, approves or rejects approvals, summarizes what happened overnight, finds and opens files and folders, and leaves messages in team and project rooms. Bigger actions show a confirmation card first.<!--/p--></p></details>
     <details><summary data-i18n="q3"><!--p-->Can I use it with no dev background?<!--/p--></summary><p data-i18n="a3"><!--p-->Yes. Hire staff, give work in chat, and approve or reject in the inbox. You never type a command.<!--/p--></p></details>
     <details><summary data-i18n="q5"><!--p-->Won’t staff change my files on their own?<!--/p--></summary><p data-i18n="a5"><!--p-->High-impact actions go to the approval inbox first and only proceed once you approve. You can roll back everything they changed with “Undo to before the task,” and risky commands that can’t be undone are always blocked.<!--/p--></p></details>
     <details><summary data-i18n="q13"><!--p-->Can the secretary open any file on my computer?<!--/p--></summary><p data-i18n="a13"><!--p-->No. It only searches staff results, attachments, and project folders, and a confirmation card appears once before opening. Executable files aren’t opened — it only shows the folder. On a phone it can find files but can’t open them.<!--/p--></p></details>
     <details><summary data-i18n="q7"><!--p-->Can staff control my screen freely?<!--/p--></summary><p data-i18n="a7"><!--p-->No. Only staff given the computer kit can see your screen, and clicks and typing happen only after you approve them in the inbox.<!--/p--></p></details>
     <details><summary data-i18n="q6"><!--p-->Where is my data stored?<!--/p--></summary><p data-i18n="a6"><!--p-->Staff, tasks, and chats are stored on your computer. Phone connection is off by default and only connects when you turn it on. The app doesn’t hold your GPT sign-in; the login tool manages it.<!--/p--></p></details>
-    <details><summary data-i18n="q14"><!--p-->Can I connect my phone and other PCs?<!--/p--></summary><p data-i18n="a14"><!--p-->Yes. Connect an Android phone by QR from the “Connect other devices” card in Settings. Other PCs connect from the same card too, so you can switch between them (PC app only). The PC app must be running.<!--/p--></p></details>
+    <details><summary data-i18n="q14"><!--p-->Can I connect my phone and other PCs?<!--/p--></summary><p data-i18n="a14"><!--p-->Yes. Connect an Android phone by QR from the “Connect other devices” card in Settings. You can also connect up to 3 other PCs and move between them with “Switch PC” (PC app only). The connected PC app must be running.<!--/p--></p></details>
     <details><summary data-i18n="q8"><!--p-->Can I use the phone app alone?<!--/p--></summary><p data-i18n="a8"><!--p-->No. It’s a remote for the AI Office running on your PC, so the PC app must be on. It also works away from home.<!--/p--></p></details>
     <details><summary data-i18n="q4"><!--p-->I see a warning when installing.<!--/p--></summary><p data-i18n="a4"><!--p-->The app isn’t code-signed yet. On Mac, choose “Open Anyway” in System Settings › Privacy & Security. On Windows, choose “More info › Run anyway”.<!--/p--></p></details>
     <details><summary data-i18n="q10"><!--p-->Can I change the colors or use dark mode?<!--/p--></summary><p data-i18n="a10"><!--p-->Yes. In Settings, pick from ten color themes, the retro office game theme, and light, dark, or follow-device mode. The phone app follows your PC’s choice.<!--/p--></p></details>
     <details><summary data-i18n="q9"><!--p-->Which languages are supported?<!--/p--></summary><p data-i18n="a9"><!--p-->Korean, English, Japanese, and Chinese. It starts in your computer’s (or phone’s) language, or English if that isn’t supported. You can change it anytime under Language at the top of Settings.<!--/p--></p></details>
-    <details><summary data-i18n="q11"><!--p-->Where do I report a problem or request something?<!--/p--></summary><p data-i18n="a11"><!--p-->Press “Send feedback” in the app’s left sidebar. It opens a GitHub form with your app version and operating system already filled in.<!--/p--></p></details>
+    <details><summary data-i18n="q11"><!--p-->Where do I report a problem or request something?<!--/p--></summary><p data-i18n="a11"><!--p-->Press “Send feedback” in the app’s left sidebar. It opens a GitHub form with your app version and operating system already filled in. If there were recent errors, it first asks whether to include them.<!--/p--></p></details>
   </div>
 </div></section>
-
-<section class="final"><div class="wrap"><div class="box rv">
-  <h2 data-i18n="end.title"><!--p-->Hire your first employee today<!--/p--></h2>
-  <p class="sub" data-i18n="end.sub"><!--p-->It’s free, and a few minutes after installing you can hand a first task to Claude or GPT.<!--/p--></p>
-  <a class="btn primary" href="#download" data-i18n="end.btn"><!--p-->Get it free<!--/p--></a>
-</div></div></section>
 
 <footer><div class="wrap">
   <div class="brand"><img src="../assets/icon.png" alt="" width="20" height="20"><span>AI Office · v<span data-version></span></span></div>
   <div class="links">
     <a data-link="license"></a>
-    <a data-link="changelog" data-i18n="foot.changelog"><!--p-->Changelog<!--/p--></a>
+    <a data-link="changelog" data-i18n="foot.changelog"><!--p-->Updates<!--/p--></a>
     <a data-link="feedback" data-i18n="foot.feedback"><!--p-->Send feedback<!--/p--></a>
     <a data-link="donate" data-i18n="foot.donate"><!--p-->Support us<!--/p--></a>
     <a data-link="github">GitHub</a>
@@ -522,646 +486,770 @@ var I18N = {
   ko: {
     "meta.title": "AI Office — AI 직원에게 말로 일을 맡기는 나만의 사무실",
     "meta.desc": "Claude와 GPT 직원을 뽑아 말로 일을 맡기고, 중요한 일만 결재하고, 끝나면 쉬운 말로 보고받는 무료 오픈소스 앱. 비서에게 물으면 결재 확인·요약·파일 찾기까지 해 줘요. 어려운 설정은 필요 없어요.",
-    "nav.how": "사용법",
-    "nav.look": "스타일",
-    "nav.screens": "휴대폰",
     "nav.download": "다운로드",
-    "nav.faq": "FAQ",
-    "badge.oss": "무료 · 오픈소스 · 맥·윈도우·안드로이드",
-    "hero.title": "AI 직원에게 <em>말로 일을 맡기는</em><br>나만의 사무실",
-    "hero.lead": "Claude·GPT 직원을 뽑아 대화방에서 시키세요. 중요한 일은 결재로 확인하고, 끝나면 쉬운 말로 보고받아요. 명령어 창도, 어려운 설정도 필요 없어요.",
     "btn.download": "{os}용 무료 다운로드",
     "btn.soon": "준비 중",
-    "btn.also": "다른 플랫폼:",
-    "hero.limits": "알려진 제한 사항",
     "hero.android.note": "PC 앱과 함께 써요",
     "hero.ios.note": "PC(맥·윈도우)에서 설치해 주세요",
-    "limits.title": "알려진 제한 사항",
-    "limits.sub": "지금은 베타라 아래 제한이 있어요. 불편한 점은 피드백으로 알려 주세요.",
-    "limits.items": ["베타 기간에는 예고 없이 기능과 화면이 바뀔 수 있어요.", "컴퓨터에 Claude 또는 GPT(ChatGPT) 계정이 로그인돼 있어야 직원이 일해요. 사용량은 그 계정에 잡혀요.", "Mac 앱은 Apple Silicon(M1 이후) 전용이에요.", "Windows 앱은 시험판이에요. 외부 직원 알림·화면 캡처는 아직 Mac에서만 돼요.", "안드로이드 앱은 PC 앱을 원격으로 쓰는 앱이라 PC 앱이 켜져 있어야 해요.", "앱에 아직 서명을 하지 않아 설치할 때 경고창이 떠요. 여는 방법은 아래 FAQ에 있어요."],
     "os.mac": "Mac",
     "os.win": "Windows",
     "os.android": "안드로이드",
-    "how.eyebrow": "이렇게 써요",
-    "how.title": "시키고, 확인하고, 보고받으면 끝",
-    "how.sub": "사람 팀에 일을 맡기듯 써요. 직원이 알아서 진행하고, 내가 볼 것만 올라와요.",
-    "s1.t": "대화방에서 말로 시키기",
-    "s1.p": "@이름으로 부르거나 그냥 쓰면 리더가 받아 나눠요. 답장·예약 보내기·끼어들기도 돼요.",
-    "s2.t": "중요한 일만 결재",
-    "s2.p": "파일 지우기·올리기 같은 일은 먼저 물어요. 카드에 \"무엇을 하는지\"가 한 줄로 보여요.",
-    "s3.t": "진행은 보드에서, 보고는 쉬운 말로",
-    "s3.p": "할 일 → 진행 중 → 검토 → 완료. 끝나면 결과부터 쉬운 말로 알려 줘요.",
-    "alt.office": "AI Office 사무실에서 직원들이 일하는 모습",
-    "look.eyebrow": "내 스타일로",
-    "look.title": "사무실을 내 취향대로",
-    "l.note": "색 테마와 화면 모드는 PC에서 바꾸고, 휴대폰은 PC에서 정한 대로 보여요. 사무실 그림의 낮·밤은 따로 정해요.",
-    "theme.lavender": "라벤더",
-    "theme.sky": "스카이",
-    "theme.sunset": "노을",
-    "theme.moss": "숲속",
-    "theme.blossom": "벚꽃",
-    "theme.mono": "모노",
-    "alt.look1": "색 테마 10종과 화면 모드를 고르는 설정 화면",
-    "alt.look2": "레트로 오피스 게임 테마로 바뀐 사무실 화면",
-    "scr.eyebrow": "휴대폰에서도",
-    "scr.title": "자리를 비워도 결재하고 지시해요",
-    "scr.sub": "안드로이드 앱을 QR로 연결하면 비서·결재함·대화방을 그대로 써요. 누르면 바로 ‘처리 중’이 보여요. 폴드는 화면을 둘로 나눠 써요.",
-    "cap.inbox": "<b>결재함</b> — 밖에서도 승인·반려",
-    "cap.chat": "<b>대화방</b> — 말로 지시하고 보고받기",
-    "ph.note": "공유기 설정을 바꾸지 않고, 내 기기끼리만 이어지는 개인 전용 연결(Tailscale)로 안전하게 붙어요. 같은 와이파이에서만 쓰게 제한할 수도 있어요.",
-    "dl.eyebrow": "다운로드",
-    "dl.title": "무료로 받아 보세요",
     "dl.sub": "Claude 또는 GPT(ChatGPT) 계정 중 하나만 로그인돼 있으면 시작할 수 있어요.",
     "dl.mine": "내 기기",
     "mac.1": "Apple Silicon(M1 이후) 전용",
     "mac.2": "dmg를 열어 응용 프로그램 폴더로 끌어다 놓기",
     "mac.3": "처음 열 때 경고가 나오면 시스템 설정 › 개인정보 보호 및 보안 › \"그래도 열기\"",
     "mac.4": "용량이 커요(GPT 직원 기능 포함, 약 350MB)",
-    "win.1": "시험판 · 64비트 · Setup.exe를 실행해 설치 (이전 zip 사용자는 설치 후 옛 폴더 삭제)",
     "win.2": "\"Windows의 PC 보호\" 창이 뜨면 \"추가 정보 › 실행\"",
     "win.3": "외부 직원 알림·화면 캡처는 아직 Mac 전용",
     "and.1": "PC 앱을 원격으로 쓰는 휴대폰 앱",
     "and.2": "PC의 설정 › 휴대폰 연결에서 켜고 QR로 연결",
     "and.3": "PC와 같은 버전을 쓰세요",
+    "foot.license": "{license} 라이선스",
+    "foot.feedback": "피드백 보내기",
+    "foot.donate": "후원하기",
+    "theme.toLight": "라이트 모드로 바꾸기",
+    "theme.toDark": "다크 모드로 바꾸기",
+    "win.1": "64비트 · Setup.exe를 실행해 설치 (이전 zip 사용자는 설치 후 옛 폴더 삭제)",
+    "foot.changelog": "업데이트 소식",
+    "dl.title": "지금 무료로 시작하세요",
+    "nav.try": "보내 보기",
+    "nav.decor": "꾸미기",
+    "nav.features": "기능",
+    "nav.cta": "무료 다운로드",
+    "nav.pcs": "PC 연결",
+    "pcs.rank": "내 PC 여러 대",
+    "pcs.title": "다른 PC의 사무실도 여기서",
+    "pcs.sub": "내 PC를 최대 3대까지 연결하면, 지금 앞에 있는 PC에서 다른 PC의 사무실·직원·대화·결재를 보고 일을 시켜요. PC 앱에서 써요.",
+    "pcs.1t": "'PC 바꾸기'로 오가요",
+    "pcs.1p": "왼쪽 위 이름 칸에서 PC를 고르면 그 PC의 사무실 창이 열려요. 그 PC 직원에게 일을 시키고 결재해요.",
+    "pcs.2t": "그 PC가 허락해야 보여요",
+    "pcs.2p": "'다른 PC에서 이 PC를 보게 하기'로 만든 코드로 연결하면 바로 보여요. 전에 연결한 PC는 처음 볼 때 그 PC에 허락 창이 떠요.",
+    "pcs.3t": "연결 코드는 끌 때까지 유지",
+    "pcs.3p": "연결에 성공해도 코드가 남고 '코드 끄기'로 꺼요. 앱을 다시 켜도 이어지고, 3번 틀리면 새 코드로 바뀌어요.",
+    "pcs.4t": "안 되면 이유를 알려 줘요",
+    "pcs.4p": "\"그 PC에서 허락해 주세요\", \"그 PC를 업데이트해 주세요\", \"다시 연결해 주세요\"처럼 할 일을 알려 줘요.",
+    "alt.pcs": "AI Office 왼쪽 위 'PC 바꾸기' 메뉴 — 이 PC, 연결한 다른 PC, PC 추가",
+    "nav.faq": "FAQ",
     "faq.title": "자주 묻는 질문",
     "q1": "따로 가입하거나 API 키가 필요한가요?",
     "a1": "아니요. 컴퓨터에 로그인된 Claude 또는 GPT(ChatGPT) 계정을 그대로 씁니다. 직원들은 그 계정으로 일하고, 사용량도 그 계정에 잡힙니다.",
     "q2": "Claude와 GPT 중 하나만 있어도 되나요?",
     "a2": "네. 하나만 로그인해 있으면 바로 시작할 수 있고, 나머지는 설정에서 나중에 연결하면 돼요. 두 계정이 모두 있으면 직원마다 어느 쪽으로 일할지 고를 수 있어요. GPT 직원도 정식으로 지원해요.",
+    "q12": "비서는 뭘 해 주나요?",
+    "a12": "직원 현황 알려 주기, 결재 승인·반려, 밤사이 요약, 파일·폴더 찾아 열기, 팀·프로젝트 방에 말 남기기를 해 줘요. 큰일은 확인 카드를 먼저 보여 줘요.",
     "q3": "개발을 전혀 몰라도 쓸 수 있나요?",
     "a3": "네. 직원을 뽑고, 채팅으로 일을 시키고, 결재함에서 승인·반려만 하면 됩니다. 명령어를 입력할 일은 없습니다.",
-    "q4": "설치할 때 경고창이 떠요.",
-    "a4": "아직 앱에 서명을 하지 않아서 나오는 안내입니다. Mac은 시스템 설정 › 개인정보 보호 및 보안에서 \"그래도 열기\", Windows는 \"추가 정보 › 실행\"을 누르면 열립니다.",
     "q5": "직원이 마음대로 파일을 바꾸지 않나요?",
     "a5": "영향이 큰 일은 결재함에 먼저 올라오고, 승인해야 진행됩니다. 직원이 바꾼 파일은 ‘작업 전으로 되돌리기’로 한 번에 돌릴 수 있어요. 되돌리기 어려운 위험한 명령은 항상 막습니다.",
-    "q6": "내 데이터는 어디에 저장되나요?",
-    "a6": "직원·업무·대화 기록은 내 컴퓨터 안에 저장됩니다. 휴대폰 연결은 기본으로 꺼져 있고, 켤 때만 연결돼요. GPT 로그인 정보는 앱이 갖지 않고 로그인 도구가 관리해요.",
-    "q7": "직원이 내 컴퓨터 화면을 마음대로 조작하나요?",
-    "a7": "아니요. 장비를 지급받은 직원만 화면을 볼 수 있고, 클릭·입력은 결재함에서 승인해야만 합니다.",
-    "q8": "휴대폰 앱만 따로 쓸 수 있나요?",
-    "a8": "아니요. PC에서 켜 둔 AI Office를 원격으로 쓰는 앱이라 PC 앱이 켜져 있어야 합니다. 집 밖에서도 연결할 수 있어요.",
-    "q9": "어떤 언어로 쓸 수 있나요?",
-    "a9": "한국어, 영어, 일본어, 중국어를 지원합니다. 처음에는 컴퓨터(휴대폰) 언어를 따르고, 지원하지 않는 언어면 영어로 시작해요. 설정 맨 위의 '언어'에서 언제든 바꿀 수 있습니다.",
-    "q10": "화면 색이나 어두운 모드를 바꿀 수 있나요?",
-    "a10": "네. 설정에서 색 테마 10종과 레트로 오피스 게임 테마, 라이트·다크·기기 설정 따르기 중에서 골라요. 휴대폰 앱은 PC에서 정한 대로 보여요.",
-    "q11": "문제나 바라는 점은 어디에 알리나요?",
-    "a11": "앱 왼쪽 사이드바의 ‘피드백 보내기’를 누르면 앱 버전과 운영체제가 미리 채워진 GitHub 작성 화면이 열려요.",
-    "end.title": "오늘 첫 직원을 뽑아 보세요",
-    "end.sub": "무료이고, 설치하고 몇 분이면 Claude든 GPT든 첫 업무를 맡길 수 있어요.",
-    "end.btn": "무료로 받기",
-    "foot.license": "{license} 라이선스",
-    "foot.changelog": "변경 기록",
-    "foot.feedback": "피드백 보내기",
-    "foot.donate": "후원하기",
-    "nav.new": "새 기능",
-    "nav.secretary": "비서",
-    "nav.trust": "안심",
-    "theme.toLight": "라이트 모드로 바꾸기",
-    "theme.toDark": "다크 모드로 바꾸기",
-    "hero.chip1": "💬 말로 시키기",
-    "hero.chip2": "✅ 중요한 일만 결재",
-    "hero.chip3": "📋 쉬운 말 보고",
-    "alt.s1": "단체방에서 직원에게 지시한 화면",
-    "alt.s2": "결재함에 요청 카드가 올라온 화면",
-    "alt.s3": "할 일·진행 중·검토·완료 칸이 있는 업무 보드",
-    "new.eyebrow": "새 기능",
-    "new.title": "이번 버전에서 달라진 것",
-    "nw1.v": "이번 버전",
-    "nw1.t": "🤖 비서가 결재까지",
-    "nw1.p": "비서 답 안에서 바로 승인·반려. 자리를 비웠다 오면 밤사이 일을 요약해 줘요.",
-    "nw2.t": "💬 메신저 같은 대화방",
-    "nw2.p": "답장·반응·예약 보내기·찾기. 보낸 말이 ‘받음 → 작업 중 → 완료’로 보여요.",
-    "nw3.t": "✅ 한 줄로 읽히는 결재",
-    "nw3.p": "무엇을 하는지 한 문장으로, 삭제·덮어쓰기는 먼저 경고해요.",
-    "nw4.t": "🎮 레트로 오피스 게임 테마",
-    "nw4.p": "도트 글꼴과 네모 테두리. 색 테마도 10종으로 늘었어요.",
-    "nw5.t": "📱 다른 기기 연결 카드",
-    "nw5.p": "휴대폰·다른 PC 연결을 카드 하나로. PC 여러 대를 오가며 일을 시켜요.",
-    "nw6.t": "📘 쉬워진 매뉴얼",
-    "nw6.p": "말로 설명하면 초안을 써 줘요. 예시 7개에서 고를 수도 있어요.",
-    "sec.eyebrow": "AI 비서",
-    "sec.title": "물어보면 찾아 주고,<br>대신 처리해 줘요",
-    "sec.lead": "\"오늘 뭐 했어?\" \"결재 남은 거 있어?\"처럼 물으면 비서가 사무실을 살펴 답해요. 휴대폰 앱에서도 같아요.",
-    "sec1.t": "답 안에서 바로 결재",
-    "sec1.p": "결재함에 가지 않아도 승인·반려",
-    "sec2.t": "아침 요약",
-    "sec2.p": "6시간 넘게 비웠거나 앱을 새로 켠 뒤 처음 열면 업무·결재·오류를 한 번에",
-    "sec3.t": "긴 대화도 이어가기",
-    "sec3.p": "오래된 대화는 요약해 이어 붙여요",
-    "sec4.t": "파일 찾아 열기",
-    "sec4.p": "직원 결과물·첨부 파일을 찾고, 확인 후 열어요(열기는 PC에서만)",
-    "sec.note": "바탕화면 비서(PC 앱)는 앱을 열지 않아도 화면 구석에서 질문·결재를 해요.",
-    "alt.sec": "밤사이 요약과 승인·반려할 수 있는 결재 카드가 든 비서의 답",
-    "trust.eyebrow": "안심하고 맡기기",
-    "trust.title": "중요한 일은 늘 내가 정해요",
-    "trust.lead": "편하게 맡기되, 위험한 일은 꼭 먼저 물어봐요.",
-    "tr1.t": "결재 방식을 직원마다",
-    "tr1.p": "일 종류별로 ‘막기·결재 받기·결재 없이’를 골라요.",
-    "tr2.t": "한 번에 되돌리기",
-    "tr2.p": "직원이 바꾼 파일은 ‘작업 전으로 되돌리기’로 한 번에 돌려놓아요.",
-    "tr3.t": "껐다 켜도 이어져요",
-    "tr3.p": "기다리던 결재는 앱을 껐다 켜도 7일 안이면 ‘이어 가기’ 카드로 다시 나타나요.",
-    "look.lead": "밝은·어두운 화면, 색 테마 10가지, 게임 같은 레트로 테마. 레벨이 오르면 사무실이 넓어지고 가구로 꾸밀 수 있어요.",
-    "look.cap1": "<b>기본 화면</b> — 색 테마 10종과 라이트·다크",
-    "look.cap2": "<b>레트로 오피스 게임</b> — 도트 글꼴과 네모 테두리(어두운 화면 전용)",
-    "theme.aurora": "오로라",
-    "theme.twilight": "황혼",
-    "theme.candy": "캔디",
-    "theme.meadow": "초원",
-    "cap.sec": "<b>비서</b> — 물어보고 그 자리에서 결재",
-    "alt.psec": "휴대폰 비서 화면",
-    "alt.pinbox": "휴대폰 결재함 화면",
-    "alt.pchat": "휴대폰 대화방 화면",
-    "phone.note": "파일 열기 같은 일부 기능은 안전을 위해 PC 앞에서만 돼요.",
-    "q12": "비서는 뭘 해 주나요?",
-    "a12": "직원 질문 답하기, 결재 승인·반려, 밤사이 요약, 파일 찾기, 팀 방에 말 남기기를 해 줘요. 큰일은 확인 카드를 먼저 보여 줘요.",
     "q13": "비서가 내 컴퓨터 파일을 마음대로 열 수 있나요?",
     "a13": "아니요. 직원 결과물·첨부·프로젝트 폴더 안에서만 찾고, 열기 전에는 확인 카드가 한 번 떠요. 실행 파일은 열지 않고 폴더만 보여 줘요. 휴대폰에서는 찾기만 되고 열 수는 없어요.",
+    "q7": "직원이 내 컴퓨터 화면을 마음대로 조작하나요?",
+    "a7": "아니요. 장비를 지급받은 직원만 화면을 볼 수 있고, 클릭·입력은 결재함에서 승인해야만 합니다.",
+    "q6": "내 데이터는 어디에 저장되나요?",
+    "a6": "직원·업무·대화 기록은 내 컴퓨터 안에 저장됩니다. 휴대폰 연결은 기본으로 꺼져 있고, 켤 때만 연결돼요. GPT 로그인 정보는 앱이 갖지 않고 로그인 도구가 관리해요.",
     "q14": "휴대폰·다른 PC도 연결되나요?",
-    "a14": "네. 안드로이드 휴대폰은 설정의 ‘다른 기기 연결’ 카드에서 QR로 연결해요. 다른 PC도 같은 카드에서 연결해 오가며 쓸 수 있어요(PC 앱에서만). PC 앱이 켜져 있어야 해요."
+    "a14": "네. 안드로이드 휴대폰은 설정의 ‘다른 기기 연결’ 카드에서 QR로 연결해요. 다른 PC도 최대 3대까지 연결해 ‘PC 바꾸기’로 오가며 쓸 수 있어요(PC 앱에서만). 연결한 PC 앱이 켜져 있어야 해요.",
+    "q8": "휴대폰 앱만 따로 쓸 수 있나요?",
+    "a8": "아니요. PC에서 켜 둔 AI Office를 원격으로 쓰는 앱이라 PC 앱이 켜져 있어야 합니다. 집 밖에서도 연결할 수 있어요.",
+    "q4": "설치할 때 경고창이 떠요.",
+    "a4": "아직 앱에 서명을 하지 않아서 나오는 안내입니다. Mac은 시스템 설정 › 개인정보 보호 및 보안에서 \"그래도 열기\", Windows는 \"추가 정보 › 실행\"을 누르면 열립니다.",
+    "q10": "화면 색이나 어두운 모드를 바꿀 수 있나요?",
+    "a10": "네. 설정에서 색 테마 10종과 레트로 오피스 게임 테마, 라이트·다크·기기 설정 따르기 중에서 골라요. 휴대폰 앱은 PC에서 정한 대로 보여요.",
+    "q9": "어떤 언어로 쓸 수 있나요?",
+    "a9": "한국어, 영어, 일본어, 중국어를 지원합니다. 처음에는 컴퓨터(휴대폰) 언어를 따르고, 지원하지 않는 언어면 영어로 시작해요. 설정 맨 위의 '언어'에서 언제든 바꿀 수 있습니다.",
+    "q11": "문제나 바라는 점은 어디에 알리나요?",
+    "a11": "앱 왼쪽 사이드바의 ‘피드백 보내기’를 누르면 앱 버전과 운영체제가 미리 채워진 GitHub 작성 화면이 열려요. 최근 오류가 있으면 함께 보낼지 먼저 물어요.",
+    "hero.rank": "AI 직원 사무실 · 무료 · 오픈소스",
+    "hero.title": "직원에게 메시지 한 줄,<br><em>그게 전부예요</em>",
+    "hero.lead": "아래 메시지를 눌러 직접 보내 보세요. 단체방에서 누가 받고, 어떻게 일하고, 언제 묻는지 그대로 보여 드려요.",
+    "try.label": "눌러서 보내 보기",
+    "try.a": "<span class=\"mention\">@디자인팀</span> 로그인 화면 시안 두 가지",
+    "try.a.hint": "팀에게",
+    "try.b": "이번 주 회의록 정리해 줄 사람?",
+    "try.b.hint": "안 부르고",
+    "try.c": "<span class=\"mention\">@전체</span> 오늘 한 일 짧게 보고",
+    "try.c.hint": "모두에게",
+    "try.d": "<span class=\"mention\">@팀장</span> 회원가입 개선 맡아 줘",
+    "try.d.hint": "큰 일",
+    "try.other": "다른 기기",
+    "exp.room": "전체 방",
+    "exp.badge": "체험용 화면 · AI 사용 없음",
+    "exp.seats": "사무실 자리",
+    "exp.legend": "초록 테두리 = 일하는 중 · ! = 확인 필요",
+    "exp.count": "{n}명",
+    "exp.boss": "대표",
+    "exp.me": "나",
+    "exp.n.dz": "디자이너",
+    "exp.n.gh": "기획자",
+    "exp.n.dv": "개발자",
+    "exp.n.tl": "팀장",
+    "exp.st.idle": "쉬는 중",
+    "exp.st.got": "받음",
+    "exp.st.run": "작업 중",
+    "exp.st.wait": "대표님 확인 기다림",
+    "exp.st.done": "완료",
+    "exp.tag.appr": "결재",
+    "exp.yes": "승인",
+    "exp.no": "반려",
+    "exp.tag.plan": "기획 확인",
+    "exp.plan.t": "회원가입 개선 · 할 일 3개",
+    "exp.plan.ef": "확인하면 팀장이 순서대로 나눠 맡겨요",
+    "exp.plan.yes": "확인",
+    "exp.plan.no": "고치기",
+    "exp.sys.ok": "대표님이 승인했어요",
+    "exp.a.me": "<span class=\"mention\">@디자인팀</span> 로그인 화면 시안 두 가지 만들어 줘",
+    "exp.a.1": "알겠어요! 사진형과 일러스트형으로 만들어 볼게요.",
+    "exp.a.appr": "시안 파일 2개를 저장하려고 해요",
+    "exp.a.ef": "작업 폴더에 새 파일이 생겨요 · 되돌릴 수 있어요",
+    "exp.a.2": "시안 2개 올렸어요. 결과물에서 바로 볼 수 있어요.",
+    "exp.b.me": "이번 주 회의록 정리해 줄 사람?",
+    "exp.b.sys": "기획자 님이 받았어요",
+    "exp.b.1": "네, 정리해서 보고할게요.",
+    "exp.b.2": "정리했어요. 결정 3건, 할 일 4건으로 나눴어요.",
+    "exp.c.me": "<span class=\"mention\">@전체</span> 오늘 한 일 짧게 보고해 주세요",
+    "exp.c.dz": "로그인 시안 2개 마쳤어요.",
+    "exp.c.gh": "회의록 정리했어요.",
+    "exp.c.dv": "가입 화면 오류 고치는 중이에요.",
+    "exp.c.tl": "팀 일정 확인했어요. 내일 오전에 검토할게요.",
+    "exp.d.me": "<span class=\"mention\">@팀장</span> 회원가입 개선 맡아 줘",
+    "exp.d.1": "계획을 세웠어요. ① 요구사항 정리(기획자) ② 화면 시안(디자이너) ③ 구현(개발자). 확인해 주세요.",
+    "exp.d.sys": "대표님이 기획을 확인했어요",
+    "exp.d.2": "확인 고마워요. 순서대로 진행하고 정리해서 보고할게요.",
+    "decor.rank": "핵심 2 · 사무실 꾸미기",
+    "decor.title": "일한 만큼, 사무실이 좋아져요",
+    "decor.sub": "일하면 돈이 쌓이고, 돈으로 꾸미고, 레벨이 오르면 건물이 바뀌어요.",
+    "d1.stp": "1 · 모으기",
+    "d1.t": "일할수록 자금이 쌓여요",
+    "d1.fund": "₩ 1억 2,840만",
+    "d1.p": "직원이 일하고 업무를 마칠수록 회사 자금과 레벨이 올라요. 매일 미션과 업적 보상도 있어요.",
+    "d2.stp": "2 · 사기",
+    "d2.t": "상점에서 101종",
+    "d2.c1": "커피머신",
+    "d2.c1s": "가구",
+    "d2.c2": "벽지",
+    "d2.c2s": "15가지",
+    "d2.c3": "바닥재",
+    "d2.c3s": "14가지",
+    "d2.p": "가구·소품·벽지·바닥재·책상·의자. 오늘의 특가, 계절 한정, 세트 완성 보너스.",
+    "d3.stp": "3 · 놓기",
+    "d3.t": "서랍에서 꺼내 배치",
+    "d3.ok": "놓을 수 있어요",
+    "d3.no": "안 돼요(이유 한 줄)",
+    "d3.p": "돌리고 옮기고 다시 넣기. 고양이·강아지가 돌아다니고, 비서에게 배치를 맡겨도 돼요.",
+    "lv.names": ["차고", "1층 상가", "벽돌 건물", "3층 오피스", "유리 사옥", "5층 타워", "캠퍼스"],
+    "lv.floors": "{n}층 건물",
+    "lv.unlocks": ["커피 코너", "탕비실·휴게실", "강당(20명)", "대표실"],
+    "lv.aria": "회사 레벨",
+    "lv.alt": "Lv.{n} {name} — 실제 앱의 회사 건물 외관",
+    "lv.note": "업무 모드에서는 레벨·상점·사무실 그림을 모두 숨겨요.",
+    "feat.rank": "그 밖의 핵심 7가지",
+    "feat.title": "중요한 순서대로",
+    "feat.sub": "단체방 지시와 사무실 꾸미기는 위에서 봤어요. 나머지를 실제 앱 화면으로 보여 드려요.",
+    "f3.no": "03 · 결재",
+    "f3.t": "중요한 일은 먼저 물어봐요",
+    "f3.p": "파일 수정·명령 실행처럼 영향이 큰 일은 대화방과 결재함에서 승인·반려해요. 얼마나 맡길지 직원마다 정하고, 바꾼 파일은 한 번에 되돌려요.",
+    "alt.f3": "대화방에 올라온 승인·반려 결재 카드",
+    "f4.no": "04 · 팀장",
+    "f4.t": "큰 일은 팀장이 나눠 맡겨요",
+    "f4.p": "팀장이 기획서와 하위 업무를 만들면 내가 확인하고, 순서대로 진행한 뒤 정리해 보고해요.",
+    "alt.f4": "팀장이 만든 기획서와 하위 업무 3건",
+    "f5.no": "05 · 비서",
+    "f5.t": "말로 앱을 써요",
+    "f5.p": "밤사이 요약, 답 안에서 바로 결재, 파일 찾아 열기. 바탕화면 비서로 창을 열지 않고도 답해요.",
+    "alt.f5": "비서가 보여 주는 밤사이 요약",
+    "f6.no": "06 · AI",
+    "f6.t": "Claude·GPT 직원을 한 사무실에",
+    "f6.p": "직원마다 Claude나 GPT를 고르면 돼요. 쓰던 로그인 그대로라 따로 키가 필요 없고, 하나만 있어도 시작해요. 두 요금제의 사용량도 한 화면에서 봐요.",
+    "alt.f6": "Claude와 GPT 요금제 사용량을 함께 보여 주는 화면",
+    "f7.no": "07 · 연결",
+    "f7.t": "휴대폰·다른 PC",
+    "f7.p": "밖에서는 안드로이드 앱으로 결재하고 대화해요. 다른 PC도 최대 3대까지 연결해 오가며 일을 시켜요.",
+    "alt.f7": "휴대폰 앱의 대화방 화면",
+    "f8.no": "08 · 안심",
+    "f8.t": "대시보드·급여 명세서·업무 모드",
+    "f8.p": "누가 일하고 누가 확인을 기다리는지 한눈에 봐요. 회사에서는 게임 요소를 숨긴 업무 모드로 깔끔하게 써요.",
+    "alt.f8": "일하는 중·확인 기다림·쉬는 중 직원 수가 보이는 직원 현황",
+    "f9.no": "09 · 도구",
+    "f9.t": "업무 보드·회의실·매뉴얼·예약 업무",
+    "f9.p": "할 일 칸반, 회의록과 할 일 카드, 참고 문서를 먼저 읽고 일하기, 정해진 시간에 반복 업무.",
+    "alt.f9": "할 일·진행 중 칸이 있는 업무 보드"
   },
   en: {
     "meta.title": "AI Office — Your own office where you hand work to AI staff by talking",
     "meta.desc": "A free, open-source app to hire Claude and GPT staff, give them work by talking, approve only what matters, and get reports in plain words. Ask the secretary and it checks approvals, summarizes, and finds files. No hard setup.",
-    "nav.how": "How it works",
-    "nav.look": "Style",
-    "nav.screens": "Phone",
     "nav.download": "Download",
-    "nav.faq": "FAQ",
-    "badge.oss": "Free · Open source · Mac · Windows · Android",
-    "hero.title": "Hand work to AI staff <em>just by talking</em><br>in your own office",
-    "hero.lead": "Hire Claude and GPT staff and give them work in the chat room. Approve the important parts, and get reports in plain words when they’re done. No command line, no hard setup.",
     "btn.download": "Free download for {os}",
     "btn.soon": "Coming soon",
-    "btn.also": "Also available for",
-    "hero.limits": "Known limitations",
     "hero.android.note": "Works together with the PC app",
     "hero.ios.note": "Please install it on a PC (Mac or Windows)",
-    "limits.title": "Known limitations",
-    "limits.sub": "AI Office is in beta, so a few limits apply. Tell us what bothers you through feedback.",
-    "limits.items": ["Features and screens may change without notice during the beta.", "Staff work only while a Claude or GPT (ChatGPT) account is logged in on your computer. Usage counts toward that account.", "The Mac app supports Apple Silicon (M1 or later) only.", "The Windows app is a preview. External session alerts and screen capture are Mac-only for now.", "The Android app is a remote for the PC app, so the PC app must be running.", "The app isn’t code-signed yet, so you’ll see a warning when installing. See the FAQ below to open it."],
     "os.mac": "Mac",
     "os.win": "Windows",
     "os.android": "Android",
-    "how.eyebrow": "How it works",
-    "how.title": "Ask, check, get the report — that’s it",
-    "how.sub": "Use it like handing work to a human team. Staff get on with it, and only what needs you comes up.",
-    "s1.t": "Just say it in the chat room",
-    "s1.p": "Call @name, or just write and the team lead picks it up and splits the work. Replies, scheduled sends, and cutting in work too.",
-    "s2.t": "Approve only what matters",
-    "s2.p": "Things like deleting or uploading files ask first. Each card says in one line what it will do.",
-    "s3.t": "Progress on the board, reports in plain words",
-    "s3.p": "To do → In progress → Review → Done. When it’s finished, you get the result first, in plain words.",
-    "alt.office": "Staff working in the AI Office office",
-    "look.eyebrow": "Your style",
-    "look.title": "An office that fits your taste",
-    "l.note": "Change theme and mode on your PC; the phone follows your PC’s choice. Day and night in the office scene are set separately.",
-    "theme.lavender": "Lavender",
-    "theme.sky": "Sky",
-    "theme.sunset": "Sunset",
-    "theme.moss": "Moss",
-    "theme.blossom": "Blossom",
-    "theme.mono": "Mono",
-    "alt.look1": "The Settings screen for choosing one of ten color themes and a display mode",
-    "alt.look2": "The office in the retro office game theme",
-    "scr.eyebrow": "On your phone, too",
-    "scr.title": "Approve and instruct, even away from your desk",
-    "scr.sub": "Link the Android app by QR and use the secretary, approval inbox, and chat room as they are. Tap a button and it shows “Processing” right away. Foldables split the screen in two.",
-    "cap.inbox": "<b>Approval inbox</b> — approve or reject from anywhere",
-    "cap.chat": "<b>Chat room</b> — give orders and get reports",
-    "ph.note": "No router changes — it connects over a private link between your own devices (Tailscale). You can also limit it to the same Wi-Fi.",
-    "dl.eyebrow": "Download",
-    "dl.title": "Get it for free",
     "dl.sub": "One logged-in account, Claude or GPT (ChatGPT), is enough to start.",
     "dl.mine": "Your device",
     "mac.1": "Apple Silicon (M1 or later) only",
     "mac.2": "Open the .dmg and drag the app into Applications",
     "mac.3": "If you see a warning on first launch, go to System Settings › Privacy & Security › “Open Anyway”",
     "mac.4": "Larger download (includes GPT staff, about 350 MB)",
-    "win.1": "Preview · 64-bit · run Setup.exe to install (old zip users: delete the old folder afterward)",
     "win.2": "If “Windows protected your PC” appears, choose “More info › Run anyway”",
     "win.3": "External session alerts and screen capture are Mac-only for now",
     "and.1": "A remote companion for the desktop app",
     "and.2": "Turn on Settings › Phone connection on your PC, then scan the QR code",
     "and.3": "Use the same version as your PC",
+    "foot.license": "{license} License",
+    "foot.feedback": "Send feedback",
+    "foot.donate": "Support us",
+    "theme.toLight": "Switch to light mode",
+    "theme.toDark": "Switch to dark mode",
+    "win.1": "64-bit · run Setup.exe to install (old zip users: delete the old folder afterward)",
+    "foot.changelog": "Updates",
+    "dl.title": "Start free today",
+    "nav.try": "Try it",
+    "nav.decor": "Decorate",
+    "nav.features": "Features",
+    "nav.cta": "Free download",
+    "nav.pcs": "Multiple PCs",
+    "pcs.rank": "All your PCs",
+    "pcs.title": "Your other PCs’ offices, right here",
+    "pcs.sub": "Connect up to 3 of your PCs, and from the one in front of you, see another PC’s office, staff, chats and approvals, and give it work. Available in the PC app.",
+    "pcs.1t": "Move between them with “Switch PC”",
+    "pcs.1p": "Pick a PC from the name box at the top left to open that PC’s office window. Give its staff work and approve their requests.",
+    "pcs.2t": "Only with that PC’s permission",
+    "pcs.2p": "Connect with a code made in “Let another PC view this one” and you can see it right away. For a PC you connected earlier, that PC shows a permission prompt the first time you view it.",
+    "pcs.3t": "The connection code stays until you turn it off",
+    "pcs.3p": "The code stays after a successful connection, until you press “Turn off code”. It survives app restarts, and changes to a new code after 3 wrong tries.",
+    "pcs.4t": "Tells you why it can’t connect",
+    "pcs.4p": "You’ll see what to do, such as “Allow it on that PC”, “Update that PC” or “Reconnect”.",
+    "alt.pcs": "AI Office “Switch PC” menu at the top left — this PC, a connected PC, Add PC",
+    "nav.faq": "FAQ",
     "faq.title": "Frequently asked questions",
     "q1": "Do I need to sign up or get an API key?",
     "a1": "No. It uses the Claude or GPT (ChatGPT) account already logged in on your computer. Staff work under that account and usage counts against it.",
     "q2": "Do I need both Claude and GPT?",
     "a2": "No. One logged-in account is enough to start; connect the other later in Settings. With both, you choose per employee which one they work on. GPT staff are fully supported.",
+    "q12": "What does the secretary do?",
+    "a12": "It tells you how your staff are doing, approves or rejects approvals, summarizes what happened overnight, finds and opens files and folders, and leaves messages in team and project rooms. Bigger actions show a confirmation card first.",
     "q3": "Can I use it with no dev background?",
     "a3": "Yes. Hire staff, give work in chat, and approve or reject in the inbox. You never type a command.",
-    "q4": "I see a warning when installing.",
-    "a4": "The app isn’t code-signed yet. On Mac, choose “Open Anyway” in System Settings › Privacy & Security. On Windows, choose “More info › Run anyway”.",
     "q5": "Won’t staff change my files on their own?",
     "a5": "High-impact actions go to the approval inbox first and only proceed once you approve. You can roll back everything they changed with “Undo to before the task,” and risky commands that can’t be undone are always blocked.",
-    "q6": "Where is my data stored?",
-    "a6": "Staff, tasks, and chats are stored on your computer. Phone connection is off by default and only connects when you turn it on. The app doesn’t hold your GPT sign-in; the login tool manages it.",
-    "q7": "Can staff control my screen freely?",
-    "a7": "No. Only staff given the computer kit can see your screen, and clicks and typing happen only after you approve them in the inbox.",
-    "q8": "Can I use the phone app alone?",
-    "a8": "No. It’s a remote for the AI Office running on your PC, so the PC app must be on. It also works away from home.",
-    "q9": "Which languages are supported?",
-    "a9": "Korean, English, Japanese, and Chinese. It starts in your computer’s (or phone’s) language, or English if that isn’t supported. You can change it anytime under Language at the top of Settings.",
-    "q10": "Can I change the colors or use dark mode?",
-    "a10": "Yes. In Settings, pick from ten color themes, the retro office game theme, and light, dark, or follow-device mode. The phone app follows your PC’s choice.",
-    "q11": "Where do I report a problem or request something?",
-    "a11": "Press “Send feedback” in the app’s left sidebar. It opens a GitHub form with your app version and operating system already filled in.",
-    "end.title": "Hire your first employee today",
-    "end.sub": "It’s free, and a few minutes after installing you can hand a first task to Claude or GPT.",
-    "end.btn": "Get it free",
-    "foot.license": "{license} License",
-    "foot.changelog": "Changelog",
-    "foot.feedback": "Send feedback",
-    "foot.donate": "Support us",
-    "nav.new": "What’s new",
-    "nav.secretary": "Secretary",
-    "nav.trust": "Safety",
-    "theme.toLight": "Switch to light mode",
-    "theme.toDark": "Switch to dark mode",
-    "hero.chip1": "💬 Just say it",
-    "hero.chip2": "✅ Approve only what matters",
-    "hero.chip3": "📋 Plain-language reports",
-    "alt.s1": "A group chat room with an order given to staff",
-    "alt.s2": "The approval inbox with a request card",
-    "alt.s3": "A task board with To do, In progress, Review, and Done columns",
-    "new.eyebrow": "What’s new",
-    "new.title": "What’s changed in this release",
-    "nw1.v": "This release",
-    "nw1.t": "🤖 The secretary even handles approvals",
-    "nw1.p": "Approve or reject right inside its reply. Come back after time away and it summarizes what happened overnight.",
-    "nw2.t": "💬 A chat room like a messenger",
-    "nw2.p": "Replies, reactions, scheduled sends, and search. Your message shows as “Received → Working → Done.”",
-    "nw3.t": "✅ Approvals you can read in one line",
-    "nw3.p": "One sentence on what will happen, with a warning first for deletes and overwrites.",
-    "nw4.t": "🎮 Retro office game theme",
-    "nw4.p": "Pixel fonts and square borders. Color themes grew to ten, too.",
-    "nw5.t": "📱 One card to connect other devices",
-    "nw5.p": "Connect your phone and other PCs from one card, and switch between several PCs to give work.",
-    "nw6.t": "📘 Easier manuals",
-    "nw6.p": "Describe it in words and it drafts one for you. Or pick from seven examples.",
-    "sec.eyebrow": "AI secretary",
-    "sec.title": "Ask, and it finds things<br>and handles them for you",
-    "sec.lead": "Ask “What did we do today?” or “Anything waiting for approval?” and the secretary looks around the office and answers. The phone app works the same way.",
-    "sec1.t": "Approve right in the reply",
-    "sec1.p": "Approve or reject without going to the inbox",
-    "sec2.t": "Morning summary",
-    "sec2.p": "Open the secretary after 6+ hours away, or after a fresh app launch, and see work, approvals, and errors in one go",
-    "sec3.t": "Long chats carry on",
-    "sec3.p": "Older conversation is summarized and kept in the thread",
-    "sec4.t": "Find and open files",
-    "sec4.p": "Finds staff results and attachments, then opens them after you confirm (opening works on the PC only)",
-    "sec.note": "The desktop secretary (PC app) lets you ask questions or approve from a corner of your screen without opening the app.",
-    "alt.sec": "The secretary’s reply with an overnight summary and approval cards you can approve or reject",
-    "trust.eyebrow": "Safe to delegate",
-    "trust.title": "You always decide the important things",
-    "trust.lead": "Delegate with ease — risky things always ask first.",
-    "tr1.t": "Set it per employee",
-    "tr1.p": "For each kind of work, pick Block, Ask for approval, or No approval.",
-    "tr2.t": "Undo in one go",
-    "tr2.p": "Roll back everything staff changed with “Undo to before the task.”",
-    "tr3.t": "Picks up after a restart",
-    "tr3.p": "Pending approvals come back as a “Continue” card within 7 days, even after you close and reopen the app.",
-    "look.lead": "Light or dark, ten color themes, and a retro game theme. As your level rises, the office grows and you can decorate it with furniture.",
-    "look.cap1": "<b>Default look</b> — ten color themes, light and dark",
-    "look.cap2": "<b>Retro office game</b> — pixel fonts and square borders (dark mode only)",
-    "theme.aurora": "Aurora",
-    "theme.twilight": "Twilight",
-    "theme.candy": "Candy",
-    "theme.meadow": "Meadow",
-    "cap.sec": "<b>Secretary</b> — ask, then approve on the spot",
-    "alt.psec": "The secretary on a phone",
-    "alt.pinbox": "The approval inbox on a phone",
-    "alt.pchat": "The chat room on a phone",
-    "phone.note": "Some actions, like opening files, work only at your PC, for safety.",
-    "q12": "What does the secretary do?",
-    "a12": "It answers staff questions, approves or rejects approvals, summarizes what happened overnight, finds files, and leaves messages in team rooms. Bigger actions show a confirmation card first.",
     "q13": "Can the secretary open any file on my computer?",
     "a13": "No. It only searches staff results, attachments, and project folders, and a confirmation card appears once before opening. Executable files aren’t opened — it only shows the folder. On a phone it can find files but can’t open them.",
+    "q7": "Can staff control my screen freely?",
+    "a7": "No. Only staff given the computer kit can see your screen, and clicks and typing happen only after you approve them in the inbox.",
+    "q6": "Where is my data stored?",
+    "a6": "Staff, tasks, and chats are stored on your computer. Phone connection is off by default and only connects when you turn it on. The app doesn’t hold your GPT sign-in; the login tool manages it.",
     "q14": "Can I connect my phone and other PCs?",
-    "a14": "Yes. Connect an Android phone by QR from the “Connect other devices” card in Settings. Other PCs connect from the same card too, so you can switch between them (PC app only). The PC app must be running."
+    "a14": "Yes. Connect an Android phone by QR from the “Connect other devices” card in Settings. You can also connect up to 3 other PCs and move between them with “Switch PC” (PC app only). The connected PC app must be running.",
+    "q8": "Can I use the phone app alone?",
+    "a8": "No. It’s a remote for the AI Office running on your PC, so the PC app must be on. It also works away from home.",
+    "q4": "I see a warning when installing.",
+    "a4": "The app isn’t code-signed yet. On Mac, choose “Open Anyway” in System Settings › Privacy & Security. On Windows, choose “More info › Run anyway”.",
+    "q10": "Can I change the colors or use dark mode?",
+    "a10": "Yes. In Settings, pick from ten color themes, the retro office game theme, and light, dark, or follow-device mode. The phone app follows your PC’s choice.",
+    "q9": "Which languages are supported?",
+    "a9": "Korean, English, Japanese, and Chinese. It starts in your computer’s (or phone’s) language, or English if that isn’t supported. You can change it anytime under Language at the top of Settings.",
+    "q11": "Where do I report a problem or request something?",
+    "a11": "Press “Send feedback” in the app’s left sidebar. It opens a GitHub form with your app version and operating system already filled in. If there were recent errors, it first asks whether to include them.",
+    "hero.rank": "AI staff office · Free · Open source",
+    "hero.title": "One message to your staff.<br><em>That's all it takes.</em>",
+    "hero.lead": "Tap a message below and send it yourself. See who picks it up in the group chat, how they work, and when they ask you first.",
+    "try.label": "Tap to send",
+    "try.a": "<span class=\"mention\">@Design</span> two login screen drafts",
+    "try.a.hint": "to a team",
+    "try.b": "Who can tidy up this week's meeting notes?",
+    "try.b.hint": "no mention",
+    "try.c": "<span class=\"mention\">@all</span> quick recap of today",
+    "try.c.hint": "to everyone",
+    "try.d": "<span class=\"mention\">@Lead</span> take on the sign-up revamp",
+    "try.d.hint": "big job",
+    "try.other": "Other devices",
+    "exp.room": "All-hands room",
+    "exp.badge": "Demo screen · no AI used",
+    "exp.seats": "Office seats",
+    "exp.legend": "Green border = working · ! = needs you",
+    "exp.count": "{n} staff",
+    "exp.boss": "You (CEO)",
+    "exp.me": "Me",
+    "exp.n.dz": "Designer",
+    "exp.n.gh": "Planner",
+    "exp.n.dv": "Developer",
+    "exp.n.tl": "Team Lead",
+    "exp.st.idle": "Resting",
+    "exp.st.got": "Got it",
+    "exp.st.run": "Working",
+    "exp.st.wait": "Waiting for your OK",
+    "exp.st.done": "Done",
+    "exp.tag.appr": "Approval",
+    "exp.yes": "Approve",
+    "exp.no": "Reject",
+    "exp.tag.plan": "Plan review",
+    "exp.plan.t": "Sign-up revamp · 3 tasks",
+    "exp.plan.ef": "Once you confirm, the lead hands them out in order",
+    "exp.plan.yes": "Confirm",
+    "exp.plan.no": "Revise",
+    "exp.sys.ok": "You approved it",
+    "exp.a.me": "<span class=\"mention\">@Design</span> make two drafts of the login screen",
+    "exp.a.1": "On it! I'll do one photo style and one illustration style.",
+    "exp.a.appr": "I'd like to save 2 draft files",
+    "exp.a.ef": "New files appear in the work folder · can be undone",
+    "exp.a.2": "Both drafts are up. You can open them in Results.",
+    "exp.b.me": "Who can tidy up this week's meeting notes?",
+    "exp.b.sys": "Planner picked it up",
+    "exp.b.1": "Sure, I'll sort them out and report back.",
+    "exp.b.2": "Done. Split into 3 decisions and 4 to-dos.",
+    "exp.c.me": "<span class=\"mention\">@all</span> please give a quick recap of today",
+    "exp.c.dz": "Finished the 2 login drafts.",
+    "exp.c.gh": "Meeting notes are tidied up.",
+    "exp.c.dv": "Still fixing a bug on the sign-up screen.",
+    "exp.c.tl": "Checked the team schedule. I'll review tomorrow morning.",
+    "exp.d.me": "<span class=\"mention\">@Lead</span> please take on the sign-up revamp",
+    "exp.d.1": "Here's the plan: ① requirements (Planner) ② screen drafts (Designer) ③ build (Developer). Please take a look.",
+    "exp.d.sys": "You confirmed the plan",
+    "exp.d.2": "Thanks! We'll go step by step and I'll send you a summary.",
+    "decor.rank": "Core 2 · Decorate your office",
+    "decor.title": "The more you work, the nicer your office gets",
+    "decor.sub": "Work earns money, money buys decor, and leveling up changes your building.",
+    "d1.stp": "1 · Earn",
+    "d1.t": "Funds grow as you work",
+    "d1.fund": "₩ 128.4M",
+    "d1.p": "As staff work and finish tasks, company funds and level go up. There are daily missions and achievement rewards too.",
+    "d2.stp": "2 · Buy",
+    "d2.t": "101 items in the shop",
+    "d2.c1": "Coffee machine",
+    "d2.c1s": "Furniture",
+    "d2.c2": "Wallpaper",
+    "d2.c2s": "15 kinds",
+    "d2.c3": "Flooring",
+    "d2.c3s": "14 kinds",
+    "d2.p": "Furniture, props, wallpaper, flooring, desks and chairs. Daily deals, seasonal items and set bonuses.",
+    "d3.stp": "3 · Place",
+    "d3.t": "Take it out of the drawer and place it",
+    "d3.ok": "Can place",
+    "d3.no": "Can't (with a reason)",
+    "d3.p": "Rotate, move, or put it back. Cats and dogs wander around, and you can let the secretary arrange things.",
+    "lv.names": ["Garage", "Street shop", "Brick building", "3-floor office", "Glass HQ", "5-floor tower", "Campus"],
+    "lv.floors": "{n}-floor building",
+    "lv.unlocks": ["Coffee corner", "Pantry & lounge", "Auditorium (20)", "CEO office"],
+    "lv.aria": "Company level",
+    "lv.alt": "Lv.{n} {name} — company building as it looks in the app",
+    "lv.note": "Work mode hides levels, the shop and the office art.",
+    "feat.rank": "7 more essentials",
+    "feat.title": "In order of importance",
+    "feat.sub": "You've seen group-chat orders and decorating above. Here's the rest, with real app screens.",
+    "f3.no": "03 · Approvals",
+    "f3.t": "Big things are asked first",
+    "f3.p": "High-impact work like editing files or running commands is approved or rejected in chat and the inbox. Set how much each staff member can do alone, and undo changed files in one go.",
+    "alt.f3": "Approve/reject cards posted in the chat room",
+    "f4.no": "04 · Team lead",
+    "f4.t": "The lead splits big jobs",
+    "f4.p": "The lead writes a plan and subtasks, you confirm, and the team works through them in order and reports back.",
+    "alt.f4": "A plan and 3 subtasks written by the team lead",
+    "f5.no": "05 · Secretary",
+    "f5.t": "Use the app by talking",
+    "f5.p": "Overnight summaries, approvals right inside the answer, finding and opening files. The desktop secretary answers without opening the window.",
+    "alt.f5": "Overnight summary from the secretary",
+    "f6.no": "06 · AI",
+    "f6.t": "Claude and GPT staff in one office",
+    "f6.p": "Pick Claude or GPT for each staff member. They use the login you already have, so no API key is needed, and one is enough to start. See usage for both plans on one screen.",
+    "alt.f6": "Screen showing Claude and GPT plan usage together",
+    "f7.no": "07 · Connect",
+    "f7.t": "Phone and other PCs",
+    "f7.p": "On the go, approve and chat from the Android app. Connect up to 3 other PCs and switch between them.",
+    "alt.f7": "Chat room in the phone app",
+    "f8.no": "08 · Peace of mind",
+    "f8.t": "Dashboard, payslip and work mode",
+    "f8.p": "See at a glance who's working and who's waiting for you. At the office, work mode hides the game elements.",
+    "alt.f8": "Staff overview with counts of working, waiting and resting staff",
+    "f9.no": "09 · Tools",
+    "f9.t": "Task board, meetings, manuals, schedules",
+    "f9.p": "A to-do kanban, meeting notes with task cards, reading reference docs before working, and recurring tasks on a schedule.",
+    "alt.f9": "Task board with to-do and in-progress columns"
   },
   ja: {
     "meta.title": "AI Office — AI社員に話しかけて仕事を任せる、自分だけのオフィス",
     "meta.desc": "ClaudeとGPTの社員を採用し、話しかけて仕事を任せ、大事なことだけ承認し、終わったらわかりやすい言葉で報告を受け取る無料のオープンソースアプリ。秘書に聞けば、承認の確認・要約・ファイル探しまで。難しい設定は不要です。",
-    "nav.how": "使い方",
-    "nav.look": "スタイル",
-    "nav.screens": "スマホ",
     "nav.download": "ダウンロード",
-    "nav.faq": "FAQ",
-    "badge.oss": "無料 · オープンソース · Mac・Windows・Android",
-    "hero.title": "AI社員に<em>話しかけて仕事を任せる</em><br>自分だけのオフィス",
-    "hero.lead": "ClaudeとGPTの社員を採用して、チャットルームで仕事を頼みましょう。大事なことは承認で確認し、終わったらやさしい言葉で報告が届きます。コマンド入力も、難しい設定も不要です。",
     "btn.download": "{os} 版を無料ダウンロード",
     "btn.soon": "準備中",
-    "btn.also": "ほかのプラットフォーム：",
-    "hero.limits": "既知の制限事項",
     "hero.android.note": "PCアプリと一緒に使います",
     "hero.ios.note": "PC（Mac・Windows）でインストールしてください",
-    "limits.title": "既知の制限事項",
-    "limits.sub": "現在ベータ版のため、以下の制限があります。気になる点はフィードバックでお知らせください。",
-    "limits.items": ["ベータ期間中は、予告なく機能や画面が変わることがあります。", "パソコンでClaudeまたはGPT（ChatGPT）のアカウントにログインしている必要があります。使用量はそのアカウントに計上されます。", "Mac 版は Apple シリコン（M1 以降）専用です。", "Windows 版はプレビュー版です。外部セッションの通知と画面キャプチャは現在 Mac のみです。", "Android アプリはPCアプリを遠隔操作するアプリなので、PCアプリを起動しておく必要があります。", "アプリにまだ署名をしていないため、インストール時に警告が出ます。開き方は下のFAQをご覧ください。"],
     "os.mac": "Mac",
     "os.win": "Windows",
     "os.android": "Android",
-    "how.eyebrow": "使い方",
-    "how.title": "頼んで、確認して、報告を受けるだけ",
-    "how.sub": "人のチームに仕事を任せる感覚で使えます。社員が進めてくれて、見るべきものだけが上がってきます。",
-    "s1.t": "チャットルームで話しかけて頼む",
-    "s1.p": "@名前で呼ぶか、そのまま書けばリーダーが受けて振り分けます。返信・予約送信・割り込みもできます。",
-    "s2.t": "大事なことだけ承認",
-    "s2.p": "ファイルの削除やアップロードなどは先に確認します。カードに「何をするか」が一行で表示されます。",
-    "s3.t": "進み具合はボード、報告はやさしい言葉で",
-    "s3.p": "やること → 進行中 → レビュー → 完了。終わったら結果から、やさしい言葉でお知らせします。",
-    "alt.office": "AI Office のオフィスでスタッフが働く様子",
-    "look.eyebrow": "自分らしく",
-    "look.title": "オフィスを好みのスタイルに",
-    "l.note": "カラーテーマと画面モードはPCで変更し、スマホはPCの設定に合わせて表示されます。オフィスの昼夜は別に設定します。",
-    "theme.lavender": "ラベンダー",
-    "theme.sky": "スカイ",
-    "theme.sunset": "夕焼け",
-    "theme.moss": "モス",
-    "theme.blossom": "ブロッサム",
-    "theme.mono": "モノクロ",
-    "alt.look1": "10種のカラーテーマと画面モードを選ぶ設定画面",
-    "alt.look2": "レトロオフィスゲームテーマのオフィス画面",
-    "scr.eyebrow": "スマホでも",
-    "scr.title": "席を空けても、承認と指示ができる",
-    "scr.sub": "AndroidアプリをQRでつなぐと、秘書・承認箱・チャットルームをそのまま使えます。ボタンを押すとすぐ「処理中」と表示されます。折りたたみ端末は画面を2つに分けて使えます。",
-    "cap.inbox": "<b>承認箱</b> — 外出先でも承認・却下",
-    "cap.chat": "<b>チャットルーム</b> — 指示して報告を受ける",
-    "ph.note": "ルーターの設定は不要で、自分の端末同士だけをつなぐ専用回線（Tailscale）で安全に接続します。同じWi-Fiだけに制限することもできます。",
-    "dl.eyebrow": "ダウンロード",
-    "dl.title": "無料でどうぞ",
     "dl.sub": "ClaudeまたはGPT（ChatGPT）のアカウントのどちらか1つにログインしていれば始められます。",
     "dl.mine": "お使いの端末",
     "mac.1": "Apple シリコン（M1 以降）専用",
     "mac.2": ".dmg を開いて「アプリケーション」フォルダへドラッグ",
     "mac.3": "初回起動で警告が出たら、システム設定 › プライバシーとセキュリティ ›「このまま開く」",
     "mac.4": "ファイルサイズが大きめです（GPT社員機能を含む、約350MB）",
-    "win.1": "プレビュー版・64 ビット・Setup.exe を実行してインストール（以前の zip 利用者はインストール後に古いフォルダを削除）",
     "win.2": "「Windows によって PC が保護されました」と出たら「詳細情報 › 実行」",
     "win.3": "外部セッションの通知と画面キャプチャは現在 Mac のみ",
     "and.1": "PC アプリをリモートで使うスマホアプリ",
     "and.2": "PC の 設定 › スマホ連携 をオンにして QR コードで接続",
     "and.3": "PC と同じバージョンを使ってください",
+    "foot.license": "{license} ライセンス",
+    "foot.feedback": "フィードバックを送る",
+    "foot.donate": "支援する",
+    "theme.toLight": "ライトモードに切り替え",
+    "theme.toDark": "ダークモードに切り替え",
+    "win.1": "64 ビット・Setup.exe を実行してインストール（以前の zip 利用者はインストール後に古いフォルダを削除）",
+    "foot.changelog": "アップデート情報",
+    "dl.title": "今すぐ無料で始めましょう",
+    "nav.try": "送ってみる",
+    "nav.decor": "飾りつけ",
+    "nav.features": "機能",
+    "nav.cta": "無料ダウンロード",
+    "nav.pcs": "PC 接続",
+    "pcs.rank": "自分の PC を何台も",
+    "pcs.title": "ほかの PC のオフィスもここから",
+    "pcs.sub": "自分の PC を最大3台までつなぐと、目の前の PC からほかの PC のオフィス・社員・会話・決裁を見て、仕事を頼めます。PC アプリで使えます。",
+    "pcs.1t": "「PC を切り替え」で行き来",
+    "pcs.1p": "左上の名前欄で PC を選ぶと、その PC のオフィス画面が開きます。その PC の社員に仕事を頼み、決裁できます。",
+    "pcs.2t": "相手の PC が許可したら見られます",
+    "pcs.2p": "「別の PC からこの PC を見られるようにする」で作ったコードで接続すると、すぐに見られます。以前つないだ PC は、初めて見るときにその PC に許可の画面が出ます。",
+    "pcs.3t": "接続コードはオフにするまで有効",
+    "pcs.3p": "接続に成功してもコードは残り、「コードをオフ」で止めます。アプリを再起動しても続き、3回間違えると新しいコードに変わります。",
+    "pcs.4t": "つながらない理由を表示",
+    "pcs.4p": "「その PC で許可してください」「その PC をアップデートしてください」「もう一度接続してください」のように、何をすればよいかを教えてくれます。",
+    "alt.pcs": "AI Office 左上の「PC を切り替え」メニュー — この PC、接続したほかの PC、PC を追加",
+    "nav.faq": "FAQ",
     "faq.title": "よくある質問",
     "q1": "会員登録やAPIキーは必要ですか？",
     "a1": "いいえ。パソコンにログインしているClaudeまたはGPT（ChatGPT）のアカウントをそのまま使います。社員はそのアカウントで働き、使用量もそのアカウントにカウントされます。",
     "q2": "ClaudeとGPTの両方が必要ですか？",
     "a2": "いいえ。どちらか1つにログインしていれば始められ、もう一方は後から設定でつなげます。両方あれば、社員ごとにどちらで働くか選べます。GPT社員も正式に対応しています。",
+    "q12": "秘書は何をしてくれますか？",
+    "a12": "社員の状況の案内、承認・却下、夜のあいだの要約、ファイル・フォルダを探して開く、チーム・プロジェクトのルームへの伝言をしてくれます。大きな操作は先に確認カードが表示されます。",
     "q3": "開発を全く知らなくても使えますか？",
     "a3": "はい。社員を雇い、チャットで仕事を頼み、承認箱で承認・却下するだけです。コマンドを入力する必要はありません。",
-    "q4": "インストール時に警告が出ます。",
-    "a4": "アプリにまだ署名をしていないために表示されます。Mac はシステム設定 › プライバシーとセキュリティで「このまま開く」、Windows は「詳細情報 › 実行」で開けます。",
     "q5": "社員が勝手にファイルを変えませんか？",
     "a5": "影響の大きい作業はまず承認箱に届き、承認して初めて進みます。社員が変えたファイルは「作業前に戻す」で一度に戻せます。元に戻せない危険なコマンドは常にブロックします。",
-    "q6": "データはどこに保存されますか？",
-    "a6": "社員・業務・会話の記録はパソコン内に保存されます。スマホ接続は初期状態ではオフで、オンにしたときだけ接続できます。GPTのログイン情報はアプリではなくログイン用ツールが管理します。",
-    "q7": "社員が勝手にパソコンの画面を操作しませんか？",
-    "a7": "いいえ。装備を支給された社員だけが画面を見られ、クリックや入力は承認箱で承認したときだけ行われます。",
-    "q8": "スマホアプリだけで使えますか？",
-    "a8": "いいえ。PCで起動中のAI Officeを遠隔操作するアプリなので、PCアプリを起動しておく必要があります。外出先からも接続できます。",
-    "q9": "どの言語で使えますか？",
-    "a9": "韓国語、英語、日本語、中国語に対応しています。最初はパソコン（スマホ）の言語に合わせ、対応していない言語の場合は英語で始まります。設定の一番上の「言語」でいつでも変更できます。",
-    "q10": "カラーやダークモードは変えられますか？",
-    "a10": "はい。設定で、10種のカラーテーマとレトロオフィスゲームテーマ、ライト・ダーク・端末設定に合わせる、から選べます。スマホアプリはPCで決めたとおりに表示されます。",
-    "q11": "不具合や要望はどこに伝えればいいですか？",
-    "a11": "アプリ左のサイドバーにある「フィードバックを送る」を押すと、アプリのバージョンとOSが入力済みのGitHub作成画面が開きます。",
-    "end.title": "今日、最初の社員を雇いましょう",
-    "end.sub": "無料で、インストールして数分でClaudeにもGPTにも最初の仕事を任せられます。",
-    "end.btn": "無料で入手",
-    "foot.license": "{license} ライセンス",
-    "foot.changelog": "更新履歴",
-    "foot.feedback": "フィードバックを送る",
-    "foot.donate": "支援する",
-    "nav.new": "新機能",
-    "nav.secretary": "秘書",
-    "nav.trust": "安心",
-    "theme.toLight": "ライトモードに切り替え",
-    "theme.toDark": "ダークモードに切り替え",
-    "hero.chip1": "💬 話しかけて頼む",
-    "hero.chip2": "✅ 大事なことだけ承認",
-    "hero.chip3": "📋 やさしい言葉で報告",
-    "alt.s1": "グループチャットでスタッフに指示した画面",
-    "alt.s2": "承認箱に依頼カードが届いた画面",
-    "alt.s3": "やること・進行中・レビュー・完了の列があるタスクボード",
-    "new.eyebrow": "新機能",
-    "new.title": "今回のバージョンで変わったこと",
-    "nw1.v": "今回",
-    "nw1.t": "🤖 秘書が承認まで",
-    "nw1.p": "秘書の返信の中でそのまま承認・却下。席を空けて戻ると、夜のあいだの出来事をまとめます。",
-    "nw2.t": "💬 メッセンジャーのようなチャットルーム",
-    "nw2.p": "返信・リアクション・予約送信・検索。送った言葉が「受信 → 作業中 → 完了」と表示されます。",
-    "nw3.t": "✅ 一行で読める承認",
-    "nw3.p": "何をするかを一文で。削除や上書きは先に警告します。",
-    "nw4.t": "🎮 レトロオフィスゲームテーマ",
-    "nw4.p": "ドット文字と四角い枠。カラーテーマも10種に増えました。",
-    "nw5.t": "📱 他のデバイス接続カード",
-    "nw5.p": "スマホや他のPCの接続を1枚のカードで。複数のPCを行き来して仕事を頼めます。",
-    "nw6.t": "📘 かんたんになったマニュアル",
-    "nw6.p": "言葉で説明すると下書きを書いてくれます。7つの例から選ぶこともできます。",
-    "sec.eyebrow": "AI秘書",
-    "sec.title": "聞けば探して、<br>代わりに処理します",
-    "sec.lead": "「今日は何をした？」「承認待ちはある？」と聞けば、秘書がオフィスを見て答えます。スマホアプリでも同じです。",
-    "sec1.t": "返信の中でそのまま承認",
-    "sec1.p": "承認箱に行かなくても承認・却下",
-    "sec2.t": "朝のまとめ",
-    "sec2.p": "6時間以上離れた後、またはアプリを起動し直して初めて開くと、仕事・承認・エラーをまとめて表示",
-    "sec3.t": "長い会話も続けられる",
-    "sec3.p": "古い会話は要約して続きにつなぎます",
-    "sec4.t": "ファイルを探して開く",
-    "sec4.p": "社員の成果物や添付ファイルを探し、確認のうえ開きます（開くのはPCのみ）",
-    "sec.note": "デスクトップ秘書（PCアプリ）なら、アプリを開かなくても画面の隅から質問や承認ができます。",
-    "alt.sec": "夜のあいだのまとめと、承認・却下できるカードが入った秘書の返信",
-    "trust.eyebrow": "安心して任せる",
-    "trust.title": "大事なことは、いつも自分で決める",
-    "trust.lead": "気軽に任せても、危ないことは必ず先に確認します。",
-    "tr1.t": "承認の方法を社員ごとに",
-    "tr1.p": "作業の種類ごとに「ブロック・承認を求める・承認なし」を選べます。",
-    "tr2.t": "ワンタッチで元に戻す",
-    "tr2.p": "社員が変更したファイルは「作業前に戻す」で一度に元に戻せます。",
-    "tr3.t": "再起動しても続きから",
-    "tr3.p": "待っていた承認は、アプリを閉じて開き直しても7日以内なら「続ける」カードとして再表示されます。",
-    "look.lead": "ライト・ダーク、10種のカラーテーマ、ゲームのようなレトロテーマ。レベルが上がるとオフィスが広がり、家具で飾れます。",
-    "look.cap1": "<b>標準の画面</b> — カラーテーマ10種とライト・ダーク",
-    "look.cap2": "<b>レトロオフィスゲーム</b> — ドット文字と四角い枠（ダークモード専用）",
-    "theme.aurora": "オーロラ",
-    "theme.twilight": "トワイライト",
-    "theme.candy": "キャンディ",
-    "theme.meadow": "メドウ",
-    "cap.sec": "<b>秘書</b> — 聞いてその場で承認",
-    "alt.psec": "スマホの秘書画面",
-    "alt.pinbox": "スマホの承認箱画面",
-    "alt.pchat": "スマホのチャットルーム画面",
-    "phone.note": "ファイルを開くなど一部の機能は、安全のためPCの前でのみ使えます。",
-    "q12": "秘書は何をしてくれますか？",
-    "a12": "社員の質問への回答、承認・却下、夜のあいだの要約、ファイル探し、チーム用ルームへの伝言をしてくれます。大きな操作は先に確認カードが表示されます。",
     "q13": "秘書は私のパソコンのファイルを勝手に開けますか？",
     "a13": "いいえ。社員の成果物・添付ファイル・プロジェクトフォルダの中だけを探し、開く前に確認カードが一度表示されます。実行ファイルは開かず、フォルダを表示するだけです。スマホでは探すだけで、開くことはできません。",
+    "q7": "社員が勝手にパソコンの画面を操作しませんか？",
+    "a7": "いいえ。装備を支給された社員だけが画面を見られ、クリックや入力は承認箱で承認したときだけ行われます。",
+    "q6": "データはどこに保存されますか？",
+    "a6": "社員・業務・会話の記録はパソコン内に保存されます。スマホ接続は初期状態ではオフで、オンにしたときだけ接続できます。GPTのログイン情報はアプリではなくログイン用ツールが管理します。",
     "q14": "スマホや他のPCもつなげられますか？",
-    "a14": "はい。Androidスマホは設定の「他のデバイスを接続」カードからQRでつなぎます。他のPCも同じカードから接続して行き来できます（PCアプリのみ）。PCアプリを起動しておく必要があります。"
+    "a14": "はい。Androidスマホは設定の「ほかの機器と接続」カードからQRでつなぎます。他のPCも最大3台まで接続し、「PC を切り替え」で行き来できます（PCアプリのみ）。接続したPCアプリを起動しておく必要があります。",
+    "q8": "スマホアプリだけで使えますか？",
+    "a8": "いいえ。PCで起動中のAI Officeを遠隔操作するアプリなので、PCアプリを起動しておく必要があります。外出先からも接続できます。",
+    "q4": "インストール時に警告が出ます。",
+    "a4": "アプリにまだ署名をしていないために表示されます。Mac はシステム設定 › プライバシーとセキュリティで「このまま開く」、Windows は「詳細情報 › 実行」で開けます。",
+    "q10": "カラーやダークモードは変えられますか？",
+    "a10": "はい。設定で、10種のカラーテーマとレトロオフィスゲームテーマ、ライト・ダーク・端末設定に合わせる、から選べます。スマホアプリはPCで決めたとおりに表示されます。",
+    "q9": "どの言語で使えますか？",
+    "a9": "韓国語、英語、日本語、中国語に対応しています。最初はパソコン（スマホ）の言語に合わせ、対応していない言語の場合は英語で始まります。設定の一番上の「言語」でいつでも変更できます。",
+    "q11": "不具合や要望はどこに伝えればいいですか？",
+    "a11": "アプリ左のサイドバーにある「フィードバックを送る」を押すと、アプリのバージョンとOSが入力済みのGitHub作成画面が開きます。最近のエラーがあれば、一緒に送るか先に確認します。",
+    "hero.rank": "AIスタッフのオフィス · 無料 · オープンソース",
+    "hero.title": "スタッフにメッセージを一行。<br><em>それだけです</em>",
+    "hero.lead": "下のメッセージを押して、実際に送ってみてください。グループチャットで誰が受け取り、どう働き、いつ確認を求めるかをそのままお見せします。",
+    "try.label": "押して送ってみる",
+    "try.a": "<span class=\"mention\">@デザインチーム</span> ログイン画面の案を2つ",
+    "try.a.hint": "チームへ",
+    "try.b": "今週の議事録をまとめてくれる人？",
+    "try.b.hint": "呼ばずに",
+    "try.c": "<span class=\"mention\">@全員</span> 今日やったことを短く報告",
+    "try.c.hint": "全員へ",
+    "try.d": "<span class=\"mention\">@リーダー</span> 会員登録の改善をお願い",
+    "try.d.hint": "大きな仕事",
+    "try.other": "ほかの端末",
+    "exp.room": "全体ルーム",
+    "exp.badge": "体験用の画面 · AIは使いません",
+    "exp.seats": "オフィスの席",
+    "exp.legend": "緑の枠 = 作業中 · ! = 確認が必要",
+    "exp.count": "{n}人",
+    "exp.boss": "代表",
+    "exp.me": "私",
+    "exp.n.dz": "デザイナー",
+    "exp.n.gh": "プランナー",
+    "exp.n.dv": "開発者",
+    "exp.n.tl": "リーダー",
+    "exp.st.idle": "休憩中",
+    "exp.st.got": "受け取り",
+    "exp.st.run": "作業中",
+    "exp.st.wait": "代表の確認待ち",
+    "exp.st.done": "完了",
+    "exp.tag.appr": "承認",
+    "exp.yes": "承認",
+    "exp.no": "却下",
+    "exp.tag.plan": "企画の確認",
+    "exp.plan.t": "会員登録の改善 · タスク3件",
+    "exp.plan.ef": "確認するとリーダーが順番に割り振ります",
+    "exp.plan.yes": "確認",
+    "exp.plan.no": "直す",
+    "exp.sys.ok": "代表が承認しました",
+    "exp.a.me": "<span class=\"mention\">@デザインチーム</span> ログイン画面の案を2つ作って",
+    "exp.a.1": "わかりました！写真タイプとイラストタイプで作ってみます。",
+    "exp.a.appr": "案のファイルを2つ保存します",
+    "exp.a.ef": "作業フォルダに新しいファイルができます · 元に戻せます",
+    "exp.a.2": "案を2つアップしました。成果物からすぐ見られます。",
+    "exp.b.me": "今週の議事録をまとめてくれる人？",
+    "exp.b.sys": "プランナーが受け取りました",
+    "exp.b.1": "はい、まとめて報告します。",
+    "exp.b.2": "まとめました。決定3件、タスク4件に分けました。",
+    "exp.c.me": "<span class=\"mention\">@全員</span> 今日やったことを短く報告してください",
+    "exp.c.dz": "ログイン案を2つ仕上げました。",
+    "exp.c.gh": "議事録をまとめました。",
+    "exp.c.dv": "登録画面のエラーを直しているところです。",
+    "exp.c.tl": "チームの予定を確認しました。明日の午前にレビューします。",
+    "exp.d.me": "<span class=\"mention\">@リーダー</span> 会員登録の改善をお願い",
+    "exp.d.1": "計画を立てました。① 要件の整理（プランナー）② 画面の案（デザイナー）③ 実装（開発者）。確認をお願いします。",
+    "exp.d.sys": "代表が企画を確認しました",
+    "exp.d.2": "ありがとうございます。順番に進めて、まとめて報告します。",
+    "decor.rank": "コア 2 · オフィスの飾りつけ",
+    "decor.title": "働いた分だけ、オフィスが良くなる",
+    "decor.sub": "働くとお金がたまり、お金で飾り、レベルが上がると建物が変わります。",
+    "d1.stp": "1 · ためる",
+    "d1.t": "働くほど資金がたまる",
+    "d1.fund": "₩ 1億2,840万",
+    "d1.p": "スタッフが働いてタスクを終えるほど、会社の資金とレベルが上がります。毎日のミッションと実績の報酬もあります。",
+    "d2.stp": "2 · 買う",
+    "d2.t": "ショップに101種類",
+    "d2.c1": "コーヒーマシン",
+    "d2.c1s": "家具",
+    "d2.c2": "壁紙",
+    "d2.c2s": "15種類",
+    "d2.c3": "床材",
+    "d2.c3s": "14種類",
+    "d2.p": "家具・小物・壁紙・床材・机・椅子。今日の特価、季節限定、セットのボーナス。",
+    "d3.stp": "3 · 置く",
+    "d3.t": "引き出しから出して配置",
+    "d3.ok": "置けます",
+    "d3.no": "置けません（理由を一行で）",
+    "d3.p": "回す、動かす、しまう。猫や犬が歩き回り、秘書に配置を任せることもできます。",
+    "lv.names": ["ガレージ", "1階の店舗", "レンガの建物", "3階建てオフィス", "ガラスの社屋", "5階建てタワー", "キャンパス"],
+    "lv.floors": "{n}階建て",
+    "lv.unlocks": ["コーヒーコーナー", "給湯室・休憩室", "講堂（20人）", "代表室"],
+    "lv.aria": "会社のレベル",
+    "lv.alt": "Lv.{n} {name} — アプリで見える会社の建物の外観",
+    "lv.note": "業務モードでは、レベル・ショップ・オフィスの絵をすべて隠します。",
+    "feat.rank": "そのほかのコア機能 7つ",
+    "feat.title": "大事な順に",
+    "feat.sub": "グループチャットでの指示とオフィスの飾りつけは上で見ました。残りを実際のアプリ画面でお見せします。",
+    "f3.no": "03 · 承認",
+    "f3.t": "大事なことは先に聞きます",
+    "f3.p": "ファイルの変更やコマンドの実行など影響の大きい作業は、チャットと承認ボックスで承認・却下します。どこまで任せるかをスタッフごとに決め、変えたファイルはまとめて元に戻せます。",
+    "alt.f3": "チャットに届いた承認・却下のカード",
+    "f4.no": "04 · リーダー",
+    "f4.t": "大きな仕事はリーダーが分けて任せます",
+    "f4.p": "リーダーが企画書とサブタスクを作り、あなたが確認すると、順番に進めてまとめて報告します。",
+    "alt.f4": "リーダーが作った企画書とサブタスク3件",
+    "f5.no": "05 · 秘書",
+    "f5.t": "話しかけてアプリを使う",
+    "f5.p": "夜のあいだのまとめ、回答の中ですぐ承認、ファイルを探して開く。デスクトップ秘書ならウィンドウを開かずに答えられます。",
+    "alt.f5": "秘書が見せる夜のあいだのまとめ",
+    "f6.no": "06 · AI",
+    "f6.t": "Claude と GPT のスタッフを同じオフィスに",
+    "f6.p": "スタッフごとに Claude か GPT を選ぶだけ。いつものログインのまま使うので API キーは不要、どちらか一つでも始められます。両方のプランの使用量も一つの画面で見られます。",
+    "alt.f6": "Claude と GPT のプラン使用量を並べて表示する画面",
+    "f7.no": "07 · 接続",
+    "f7.t": "スマホ・ほかのPC",
+    "f7.p": "外出先では Android アプリで承認やチャットができます。ほかのPCも最大3台までつないで行き来できます。",
+    "alt.f7": "スマホアプリのチャット画面",
+    "f8.no": "08 · 安心",
+    "f8.t": "ダッシュボード・給与明細・業務モード",
+    "f8.p": "誰が働いていて誰が確認を待っているかがひと目でわかります。会社ではゲーム要素を隠した業務モードですっきり使えます。",
+    "alt.f8": "作業中・確認待ち・休憩中の人数が見えるスタッフ一覧",
+    "f9.no": "09 · ツール",
+    "f9.t": "タスクボード・会議室・マニュアル・定期タスク",
+    "f9.p": "タスクのカンバン、議事録とタスクカード、参考資料を先に読んでから作業、決まった時間に繰り返すタスク。",
+    "alt.f9": "未着手・進行中の列があるタスクボード"
   },
   zh: {
     "meta.title": "AI Office — 用说话把工作交给 AI 员工的专属办公室",
     "meta.desc": "免费开源的应用：招聘 Claude 和 GPT 员工，用说话交代工作，只对重要的事审批，完成后用通俗的话汇报。问问秘书，它会帮你查看审批、做汇总、找文件。无需复杂设置。",
-    "nav.how": "使用方法",
-    "nav.look": "风格",
-    "nav.screens": "手机",
     "nav.download": "下载",
-    "nav.faq": "FAQ",
-    "badge.oss": "免费 · 开源 · Mac · Windows · Android",
-    "hero.title": "用说话把工作交给 AI 员工的<br><em>专属办公室</em>",
-    "hero.lead": "招聘 Claude 和 GPT 员工，在聊天室里交代工作。重要的事用审批确认，完成后用通俗的话向你汇报。不需要命令行，也不需要复杂设置。",
     "btn.download": "免费下载 {os} 版",
     "btn.soon": "即将推出",
-    "btn.also": "其他平台：",
-    "hero.limits": "已知限制",
     "hero.android.note": "需与电脑端配合使用",
     "hero.ios.note": "请在电脑（Mac、Windows）上安装",
-    "limits.title": "已知限制",
-    "limits.sub": "目前为测试版，存在以下限制。如有不便，欢迎通过反馈告诉我们。",
-    "limits.items": ["测试期间，功能和界面可能会不经通知而变化。", "电脑上需要登录 Claude 或 GPT（ChatGPT）账号，员工才能工作。用量计入该账号。", "Mac 版仅支持 Apple 芯片（M1 及以上）。", "Windows 版为预览版。外部会话通知和截屏目前仅支持 Mac。", "安卓应用是远程使用电脑端的应用，电脑端必须保持开启。", "应用还没有签名，安装时会出现警告。打开方法见下方 FAQ。"],
     "os.mac": "Mac",
     "os.win": "Windows",
     "os.android": "Android",
-    "how.eyebrow": "使用方法",
-    "how.title": "交代、确认、听汇报，就这么简单",
-    "how.sub": "就像把工作交给真人团队一样使用。员工自己推进，只有需要你看的才会送上来。",
-    "s1.t": "在聊天室里说一声",
-    "s1.p": "用 @名字 称呼，或者直接写，负责人会接手并分工。也可以回复、定时发送、插话。",
-    "s2.t": "只审批重要的事",
-    "s2.p": "删除、上传文件之类的事会先询问。卡片上用一行字说明“要做什么”。",
-    "s3.t": "进度看看板，汇报用通俗的话",
-    "s3.p": "待办 → 进行中 → 评审 → 完成。完成后先告诉你结果，用通俗的话。",
-    "alt.office": "AI Office 办公室里员工们工作的样子",
-    "look.eyebrow": "你的风格",
-    "look.title": "按你的喜好布置办公室",
-    "l.note": "颜色主题和显示模式在电脑上更改，手机会跟随电脑的设置。办公室画面的昼夜另行设置。",
-    "theme.lavender": "薰衣草",
-    "theme.sky": "天空",
-    "theme.sunset": "晚霞",
-    "theme.moss": "苔绿",
-    "theme.blossom": "樱花",
-    "theme.mono": "黑白",
-    "alt.look1": "可选 10 种颜色主题和显示模式的设置界面",
-    "alt.look2": "复古办公室游戏主题下的办公室",
-    "scr.eyebrow": "手机上也能用",
-    "scr.title": "不在座位上，也能审批和下指令",
-    "scr.sub": "用二维码连接安卓应用后，秘书、审批箱和聊天室都能照常使用。点一下按钮会立刻显示“处理中”。折叠屏会把屏幕分成两半使用。",
-    "cap.inbox": "<b>审批箱</b> — 在外面也能批准、驳回",
-    "cap.chat": "<b>聊天室</b> — 下指令、听汇报",
-    "ph.note": "无需改路由器设置，通过只连接你自己设备的专用网络（Tailscale）安全接入。也可以限制只能在同一 Wi-Fi 下使用。",
-    "dl.eyebrow": "下载",
-    "dl.title": "免费获取",
     "dl.sub": "只要登录 Claude 或 GPT（ChatGPT）账号中的一个就能开始。",
     "dl.mine": "你的设备",
     "mac.1": "仅支持 Apple 芯片（M1 及以上）",
     "mac.2": "打开 .dmg，把应用拖进“应用程序”文件夹",
     "mac.3": "首次打开出现警告时，前往 系统设置 › 隐私与安全性 › “仍要打开”",
     "mac.4": "体积较大（含 GPT 员工功能，约 350MB）",
-    "win.1": "预览版 · 64 位 · 运行 Setup.exe 安装（之前用 zip 的用户安装后删除旧文件夹）",
     "win.2": "出现“Windows 已保护你的电脑”时，选择“更多信息 › 仍要运行”",
     "win.3": "外部会话通知和截屏目前仅支持 Mac",
     "and.1": "远程使用电脑端应用的手机应用",
     "and.2": "在电脑的 设置 › 手机连接 中开启，然后扫描二维码",
     "and.3": "请使用与电脑相同的版本",
+    "foot.license": "{license} 许可证",
+    "foot.feedback": "发送反馈",
+    "foot.donate": "赞助支持",
+    "theme.toLight": "切换到浅色模式",
+    "theme.toDark": "切换到深色模式",
+    "win.1": "64 位 · 运行 Setup.exe 安装（之前用 zip 的用户安装后删除旧文件夹）",
+    "foot.changelog": "更新动态",
+    "dl.title": "现在就免费开始",
+    "nav.try": "试着发送",
+    "nav.decor": "装修",
+    "nav.features": "功能",
+    "nav.cta": "免费下载",
+    "nav.pcs": "电脑连接",
+    "pcs.rank": "我的多台电脑",
+    "pcs.title": "其他电脑的办公室，也在这里看",
+    "pcs.sub": "最多连接 3 台自己的电脑，就能在眼前这台电脑上查看其他电脑的办公室、员工、对话和审批，并给它派活。在电脑端应用中使用。",
+    "pcs.1t": "用“切换电脑”来回切换",
+    "pcs.1p": "在左上角的名称栏选择电脑，就会打开那台电脑的办公室窗口。可以给那台电脑的员工派活、处理审批。",
+    "pcs.2t": "需要那台电脑同意",
+    "pcs.2p": "用“让另一台电脑查看这台”生成的代码连接，马上就能查看。以前连接过的电脑，第一次查看时那台电脑上会弹出许可窗口。",
+    "pcs.3t": "连接代码一直有效，直到关闭",
+    "pcs.3p": "连接成功后代码仍然保留，按“关闭代码”才停用。重启应用后依然有效，输错 3 次会换成新代码。",
+    "pcs.4t": "连不上时告诉你原因",
+    "pcs.4p": "会告诉你该做什么，比如“请在那台电脑上允许”“请更新那台电脑”“请重新连接”。",
+    "alt.pcs": "AI Office 左上角的“切换电脑”菜单 — 这台电脑、已连接的电脑、添加电脑",
+    "nav.faq": "FAQ",
     "faq.title": "常见问题",
     "q1": "需要注册或 API 密钥吗？",
     "a1": "不需要。直接使用电脑上已登录的 Claude 或 GPT（ChatGPT）账号。员工用该账号工作，用量也计入该账号。",
     "q2": "必须同时有 Claude 和 GPT 吗？",
     "a2": "不必。登录其中一个就能开始，另一个可以以后在设置里连接。两个都有时，可以为每位员工选择用哪一个。GPT 员工也已正式支持。",
+    "q12": "秘书能做什么？",
+    "a12": "告诉你员工的情况、批准或驳回审批、汇总昨晚的情况、查找并打开文件和文件夹，还能在团队和项目房间里留言。较大的操作会先显示确认卡片。",
     "q3": "完全不懂开发也能用吗？",
     "a3": "可以。雇人、在聊天里交代任务、在审批箱批准或驳回即可，不需要输入命令。",
-    "q4": "安装时出现了警告。",
-    "a4": "这是因为应用还没有签名。Mac 上在 系统设置 › 隐私与安全性 中点“仍要打开”，Windows 上点“更多信息 › 仍要运行”即可。",
     "q5": "员工会擅自修改文件吗？",
     "a5": "影响较大的操作会先进入审批箱，批准后才会进行。员工改动的文件可以用“恢复到任务之前”一次还原。无法撤销的危险命令始终会被拦截。",
-    "q6": "我的数据存放在哪里？",
-    "a6": "员工、任务和聊天记录都存放在你的电脑里。手机连接默认关闭，开启后才可连接。GPT 登录信息不由应用保管，而由登录工具管理。",
-    "q7": "员工会随意操作我的屏幕吗？",
-    "a7": "不会。只有配发了装备的员工才能看到屏幕，点击和输入必须经你在审批箱批准。",
-    "q8": "可以只用手机应用吗？",
-    "a8": "不可以。手机应用是远程使用电脑上运行的 AI Office，所以电脑端必须保持开启。在外面也能连接。",
-    "q9": "支持哪些语言？",
-    "a9": "支持韩语、英语、日语和中文。默认跟随电脑（手机）的语言，不支持时以英语启动。随时可在设置顶部的“语言”中更改。",
-    "q10": "可以更换颜色或使用深色模式吗？",
-    "a10": "可以。在设置中可选 10 种颜色主题、复古办公室游戏主题，以及浅色、深色、跟随设备设置。手机应用会按电脑上的设定显示。",
-    "q11": "遇到问题或有建议该去哪里反馈？",
-    "a11": "点击应用左侧边栏的“发送反馈”，会打开已自动填好应用版本和操作系统的 GitHub 提交页面。",
-    "end.title": "今天就雇用第一位员工吧",
-    "end.sub": "免费使用，安装后几分钟就能把第一项任务交给 Claude 或 GPT。",
-    "end.btn": "免费获取",
-    "foot.license": "{license} 许可证",
-    "foot.changelog": "更新日志",
-    "foot.feedback": "发送反馈",
-    "foot.donate": "赞助支持",
-    "nav.new": "新功能",
-    "nav.secretary": "秘书",
-    "nav.trust": "安心",
-    "theme.toLight": "切换到浅色模式",
-    "theme.toDark": "切换到深色模式",
-    "hero.chip1": "💬 说一声就行",
-    "hero.chip2": "✅ 只审批重要的事",
-    "hero.chip3": "📋 通俗易懂的汇报",
-    "alt.s1": "在群聊里给员工下指令的画面",
-    "alt.s2": "审批箱里出现请求卡片的画面",
-    "alt.s3": "带有待办、进行中、评审、完成各列的任务看板",
-    "new.eyebrow": "新功能",
-    "new.title": "这个版本有哪些变化",
-    "nw1.v": "本次版本",
-    "nw1.t": "🤖 秘书连审批也能办",
-    "nw1.p": "直接在秘书的回复里批准或驳回。离开一会儿再回来，它会汇总昨晚发生的事。",
-    "nw2.t": "💬 像即时通讯一样的聊天室",
-    "nw2.p": "回复、表情回应、定时发送、搜索。发出的话会显示“已收到 → 工作中 → 完成”。",
-    "nw3.t": "✅ 一行就能读懂的审批",
-    "nw3.p": "一句话说明要做什么，删除和覆盖会先发出警告。",
-    "nw4.t": "🎮 复古办公室游戏主题",
-    "nw4.p": "像素字体和方形边框。颜色主题也增加到了 10 种。",
-    "nw5.t": "📱 连接其他设备的卡片",
-    "nw5.p": "手机和其他电脑的连接集中在一张卡片里。可以在多台电脑之间切换来交代工作。",
-    "nw6.t": "📘 更容易的手册",
-    "nw6.p": "用说话描述，就会帮你写出初稿。也可以从 7 个示例里选。",
-    "sec.eyebrow": "AI 秘书",
-    "sec.title": "问一声就帮你找，<br>还能替你处理",
-    "sec.lead": "问“今天做了什么？”“还有待审批的吗？”，秘书会查看办公室后回答你。手机应用里也一样。",
-    "sec1.t": "在回复里直接审批",
-    "sec1.p": "不用去审批箱就能批准、驳回",
-    "sec2.t": "早间汇总",
-    "sec2.p": "离开超过 6 小时，或重新启动应用后首次打开，一次看到工作、审批和错误",
-    "sec3.t": "长对话也能接着聊",
-    "sec3.p": "较早的对话会先总结，再接在后面",
-    "sec4.t": "查找并打开文件",
-    "sec4.p": "找出员工的成果和附件，确认后再打开（打开仅限电脑端）",
-    "sec.note": "桌面秘书（电脑端应用）让你不用打开应用，在屏幕一角就能提问和审批。",
-    "alt.sec": "秘书的回复里有昨晚汇总和可批准、驳回的卡片",
-    "trust.eyebrow": "放心交给它",
-    "trust.title": "重要的事，永远由你决定",
-    "trust.lead": "放心交办，危险的事一定先问你。",
-    "tr1.t": "按员工设置审批方式",
-    "tr1.p": "按工作类型选择“禁止、需审批、无需审批”。",
-    "tr2.t": "一键撤回",
-    "tr2.p": "员工改动的文件，可以用“恢复到工作之前”一次还原。",
-    "tr3.t": "重启后也能接着来",
-    "tr3.p": "等待中的审批，7 天内即使关闭再打开应用，也会以“继续”卡片重新出现。",
-    "look.lead": "浅色、深色，10 种颜色主题，还有像游戏一样的复古主题。等级提升后办公室会变大，还能用家具装饰。",
-    "look.cap1": "<b>默认界面</b> — 10 种颜色主题与浅色、深色",
-    "look.cap2": "<b>复古办公室游戏</b> — 像素字体与方形边框（仅深色模式）",
-    "theme.aurora": "极光",
-    "theme.twilight": "暮光",
-    "theme.candy": "糖果",
-    "theme.meadow": "草原",
-    "cap.sec": "<b>秘书</b> — 问完就地审批",
-    "alt.psec": "手机上的秘书界面",
-    "alt.pinbox": "手机上的审批箱界面",
-    "alt.pchat": "手机上的聊天室界面",
-    "phone.note": "打开文件等部分功能，出于安全考虑只能在电脑前使用。",
-    "q12": "秘书能做什么？",
-    "a12": "回答员工的提问、批准或驳回审批、汇总昨晚的情况、查找文件，还能在团队房间里留言。较大的操作会先显示确认卡片。",
     "q13": "秘书能随意打开我电脑里的文件吗？",
     "a13": "不能。它只在员工成果、附件和项目文件夹里查找，打开前会先出现一次确认卡片。可执行文件不会被打开，只会显示所在文件夹。在手机上只能查找，无法打开。",
+    "q7": "员工会随意操作我的屏幕吗？",
+    "a7": "不会。只有配发了装备的员工才能看到屏幕，点击和输入必须经你在审批箱批准。",
+    "q6": "我的数据存放在哪里？",
+    "a6": "员工、任务和聊天记录都存放在你的电脑里。手机连接默认关闭，开启后才可连接。GPT 登录信息不由应用保管，而由登录工具管理。",
     "q14": "手机和其他电脑也能连接吗？",
-    "a14": "可以。安卓手机在设置的“连接其他设备”卡片里扫二维码连接，其他电脑也可以在同一张卡片里连接并来回切换（仅限电脑端应用）。电脑端应用必须保持开启。"
+    "a14": "可以。安卓手机在设置的“连接其他设备”卡片里扫二维码连接。还能连接最多 3 台其他电脑，用“切换电脑”来回切换（仅限电脑端应用）。连接的电脑端应用必须保持开启。",
+    "q8": "可以只用手机应用吗？",
+    "a8": "不可以。手机应用是远程使用电脑上运行的 AI Office，所以电脑端必须保持开启。在外面也能连接。",
+    "q4": "安装时出现了警告。",
+    "a4": "这是因为应用还没有签名。Mac 上在 系统设置 › 隐私与安全性 中点“仍要打开”，Windows 上点“更多信息 › 仍要运行”即可。",
+    "q10": "可以更换颜色或使用深色模式吗？",
+    "a10": "可以。在设置中可选 10 种颜色主题、复古办公室游戏主题，以及浅色、深色、跟随设备设置。手机应用会按电脑上的设定显示。",
+    "q9": "支持哪些语言？",
+    "a9": "支持韩语、英语、日语和中文。默认跟随电脑（手机）的语言，不支持时以英语启动。随时可在设置顶部的“语言”中更改。",
+    "q11": "遇到问题或有建议该去哪里反馈？",
+    "a11": "点击应用左侧边栏的“发送反馈”，会打开已自动填好应用版本和操作系统的 GitHub 提交页面。如果最近有错误，会先问你是否一起发送。",
+    "hero.rank": "AI 员工办公室 · 免费 · 开源",
+    "hero.title": "给员工发一句话，<br><em>就这么简单</em>",
+    "hero.lead": "点下面的消息亲自发送试试。群聊里谁接下了任务、怎么干活、什么时候先来问你，都会原样展示给你看。",
+    "try.label": "点一下就发送",
+    "try.a": "<span class=\"mention\">@设计组</span> 登录页做两版方案",
+    "try.a.hint": "发给团队",
+    "try.b": "谁来整理一下本周的会议纪要？",
+    "try.b.hint": "不点名",
+    "try.c": "<span class=\"mention\">@全体</span> 简单汇报今天的工作",
+    "try.c.hint": "发给所有人",
+    "try.d": "<span class=\"mention\">@组长</span> 注册流程改进交给你了",
+    "try.d.hint": "大任务",
+    "try.other": "其他设备",
+    "exp.room": "全员群",
+    "exp.badge": "体验画面 · 不使用 AI",
+    "exp.seats": "办公室座位",
+    "exp.legend": "绿色边框 = 工作中 · ! = 需要你确认",
+    "exp.count": "{n} 人",
+    "exp.boss": "老板",
+    "exp.me": "我",
+    "exp.n.dz": "设计师",
+    "exp.n.gh": "策划",
+    "exp.n.dv": "开发",
+    "exp.n.tl": "组长",
+    "exp.st.idle": "休息中",
+    "exp.st.got": "已接收",
+    "exp.st.run": "工作中",
+    "exp.st.wait": "等待老板确认",
+    "exp.st.done": "完成",
+    "exp.tag.appr": "审批",
+    "exp.yes": "批准",
+    "exp.no": "驳回",
+    "exp.tag.plan": "方案确认",
+    "exp.plan.t": "注册流程改进 · 3 项任务",
+    "exp.plan.ef": "确认后组长会按顺序分派",
+    "exp.plan.yes": "确认",
+    "exp.plan.no": "修改",
+    "exp.sys.ok": "老板已批准",
+    "exp.a.me": "<span class=\"mention\">@设计组</span> 登录页做两版方案",
+    "exp.a.1": "好的！我做一版照片风格、一版插画风格。",
+    "exp.a.appr": "准备保存 2 个方案文件",
+    "exp.a.ef": "工作文件夹里会新增文件 · 可以撤销",
+    "exp.a.2": "两版方案都上传了，在成果里就能看到。",
+    "exp.b.me": "谁来整理一下本周的会议纪要？",
+    "exp.b.sys": "策划接下了任务",
+    "exp.b.1": "好的，整理完向你汇报。",
+    "exp.b.2": "整理好了，分成 3 项决定和 4 项待办。",
+    "exp.c.me": "<span class=\"mention\">@全体</span> 请简单汇报一下今天的工作",
+    "exp.c.dz": "两版登录方案已完成。",
+    "exp.c.gh": "会议纪要整理好了。",
+    "exp.c.dv": "正在修注册页面的错误。",
+    "exp.c.tl": "已确认团队日程，明天上午来审核。",
+    "exp.d.me": "<span class=\"mention\">@组长</span> 注册流程改进交给你了",
+    "exp.d.1": "计划做好了：① 整理需求（策划）② 页面方案（设计师）③ 实现（开发）。请确认。",
+    "exp.d.sys": "老板已确认方案",
+    "exp.d.2": "谢谢确认！我们按顺序推进，完成后整理汇报。",
+    "decor.rank": "核心 2 · 装修办公室",
+    "decor.title": "干得越多，办公室越好",
+    "decor.sub": "工作就能赚钱，用钱来装修，等级提升后大楼也会变。",
+    "d1.stp": "1 · 攒钱",
+    "d1.t": "越工作资金越多",
+    "d1.fund": "₩ 1.284 亿",
+    "d1.p": "员工工作、完成任务越多，公司资金和等级就越高。还有每日任务和成就奖励。",
+    "d2.stp": "2 · 购买",
+    "d2.t": "商店里有 101 种",
+    "d2.c1": "咖啡机",
+    "d2.c1s": "家具",
+    "d2.c2": "壁纸",
+    "d2.c2s": "15 种",
+    "d2.c3": "地板",
+    "d2.c3s": "14 种",
+    "d2.p": "家具、摆件、壁纸、地板、桌子、椅子。每日特价、季节限定、成套奖励。",
+    "d3.stp": "3 · 摆放",
+    "d3.t": "从抽屉里拿出来摆放",
+    "d3.ok": "可以放",
+    "d3.no": "不能放（附一句原因）",
+    "d3.p": "可以旋转、移动、收回。猫和狗会到处走动，也可以让秘书帮你摆放。",
+    "lv.names": ["车库", "一层店面", "砖楼", "三层写字楼", "玻璃总部", "五层大厦", "园区"],
+    "lv.floors": "{n} 层建筑",
+    "lv.unlocks": ["咖啡角", "茶水间·休息室", "礼堂（20 人）", "总裁办公室"],
+    "lv.aria": "公司等级",
+    "lv.alt": "Lv.{n} {name} — 应用中的公司大楼外观",
+    "lv.note": "工作模式下会隐藏等级、商店和办公室画面。",
+    "feat.rank": "另外 7 项核心功能",
+    "feat.title": "按重要程度排列",
+    "feat.sub": "群聊下指令和装修办公室上面已经看过了。其余功能用真实的应用画面展示。",
+    "f3.no": "03 · 审批",
+    "f3.t": "重要的事先问你",
+    "f3.p": "修改文件、运行命令等影响大的操作，会在聊天和审批箱里由你批准或驳回。每位员工能自主做到哪一步由你决定，改过的文件也能一键还原。",
+    "alt.f3": "聊天中出现的批准/驳回审批卡片",
+    "f4.no": "04 · 组长",
+    "f4.t": "大任务由组长拆分分派",
+    "f4.p": "组长写好方案和子任务，你确认后，团队按顺序推进并整理汇报。",
+    "alt.f4": "组长写的方案和 3 项子任务",
+    "f5.no": "05 · 秘书",
+    "f5.t": "用说的就能操作应用",
+    "f5.p": "夜间汇总、在回答里直接审批、查找并打开文件。桌面秘书不用打开窗口也能回答。",
+    "alt.f5": "秘书给出的夜间汇总",
+    "f6.no": "06 · AI",
+    "f6.t": "Claude 和 GPT 员工在同一间办公室",
+    "f6.p": "每位员工选 Claude 或 GPT 即可。直接用你已有的登录，不需要 API 密钥，有一个就能开始。两个套餐的用量也能在一个画面里查看。",
+    "alt.f6": "同时显示 Claude 和 GPT 套餐用量的画面",
+    "f7.no": "07 · 连接",
+    "f7.t": "手机·其他电脑",
+    "f7.p": "外出时用安卓应用审批和聊天。还可以连接最多 3 台其他电脑，来回切换。",
+    "alt.f7": "手机应用的聊天画面",
+    "f8.no": "08 · 安心",
+    "f8.t": "仪表盘·工资单·工作模式",
+    "f8.p": "谁在工作、谁在等你确认，一眼就能看清。在公司可以用隐藏游戏元素的工作模式，干净清爽。",
+    "alt.f8": "显示工作中、等待确认、休息中人数的员工概况",
+    "f9.no": "09 · 工具",
+    "f9.t": "任务看板·会议室·手册·定时任务",
+    "f9.p": "待办看板、会议纪要和任务卡片、先读参考文档再工作、按时重复的任务。",
+    "alt.f9": "带有待办和进行中栏的任务看板"
   }
 };
 
@@ -1254,33 +1342,22 @@ var I18N = {
     document.querySelectorAll('[data-version]').forEach(function(el){ el.textContent = D.version; });
     document.querySelectorAll('[data-shot]').forEach(function(el){ setShot(el, lang); });
     applyTheme(root.getAttribute('data-theme'), false);
+    renderLevel();
+    play(curScript);
 
     // 첫 화면: 내 기기용 큰 버튼 1개(아이폰·기타는 맥), 나머지 플랫폼은 작은 링크
-    var main = os || 'mac', cta = document.getElementById('cta'), also = document.getElementById('also'), note = document.getElementById('cta-note');
+    var main = os || 'mac', cta = document.getElementById('cta'), note = document.getElementById('cta-note');
     var big = dlButton(main, t, true);
-    big.classList.add('hero');
+    big.classList.add('lg');
     cta.innerHTML = '';
     cta.appendChild(big);
+    var other = document.createElement('a');
+    other.className = 'btn lg';
+    other.href = '#download';
+    other.textContent = t['try.other'];
+    cta.appendChild(other);
     note.textContent = os === 'android' ? t['hero.android.note'] : ios ? t['hero.ios.note'] : '';
     note.hidden = !note.textContent;
-    also.textContent = t['btn.also'] + ' ';
-    ['mac', 'win', 'android'].filter(function(k){ return k !== main; }).forEach(function(k, n){
-      if (n) also.appendChild(document.createTextNode(' · '));
-      var a = document.createElement('a');
-      a.textContent = t['os.' + k];
-      if (ios) link(a, '');
-      else a.href = D[k] || '#download';
-      also.appendChild(a);
-    });
-
-    // 알려진 제한 사항
-    var limits = document.getElementById('limits-list');
-    limits.innerHTML = '';
-    t['limits.items'].forEach(function(s){
-      var li = document.createElement('li');
-      li.textContent = s;
-      limits.appendChild(li);
-    });
 
     // 다운로드 칸
     var box = document.getElementById('dls');
@@ -1294,7 +1371,6 @@ var I18N = {
     });
 
     // 헤더·푸터 링크
-    link(document.querySelector('[data-gh]'), D.github);
     var lic = document.querySelector('[data-link="license"]');
     lic.textContent = t['foot.license'].replace('{license}', D.license);
     link(lic, licenseUrl);
@@ -1343,6 +1419,98 @@ var I18N = {
   });
   zoom.addEventListener('click', function(){ zoom.close(); });
 
+
+  // ── 보내 보기 체험 (체험용 대본 — 실제 AI 호출 없음) ──
+  // 대본 뼈대는 언어와 무관하고, 글은 모두 사전의 exp.* 키에서 가져온다. 간격: 상태 바뀜 0.45초, 그 밖 0.9초
+  var STAFF = [['dz', 'a'], ['gh', 'c'], ['dv', 'b'], ['tl', 'd']];
+  var SCRIPTS = {
+    a: [['me', 'exp.a.me'], ['st', 'dz', 'got'], ['say', 'dz', 'exp.a.1'], ['st', 'dz', 'run'], ['appr', 'dz', 'exp.a.appr', 'exp.a.ef'], ['st', 'dz', 'wait'], ['sys', 'exp.sys.ok'], ['st', 'dz', 'run'], ['say', 'dz', 'exp.a.2'], ['st', 'dz', 'done']],
+    b: [['me', 'exp.b.me'], ['sys', 'exp.b.sys'], ['st', 'gh', 'got'], ['say', 'gh', 'exp.b.1'], ['st', 'gh', 'run'], ['say', 'gh', 'exp.b.2'], ['st', 'gh', 'done']],
+    c: [['me', 'exp.c.me'], ['st', 'dz', 'got'], ['st', 'gh', 'got'], ['st', 'dv', 'got'], ['st', 'tl', 'got'], ['say', 'dz', 'exp.c.dz'], ['st', 'dz', 'done'], ['say', 'gh', 'exp.c.gh'], ['st', 'gh', 'done'], ['say', 'dv', 'exp.c.dv'], ['st', 'dv', 'run'], ['say', 'tl', 'exp.c.tl'], ['st', 'tl', 'done']],
+    d: [['me', 'exp.d.me'], ['st', 'tl', 'got'], ['say', 'tl', 'exp.d.1'], ['plan'], ['sys', 'exp.d.sys'], ['st', 'tl', 'run'], ['st', 'gh', 'run'], ['say', 'tl', 'exp.d.2']]
+  };
+  var ST = {}, timers = [], curScript = 'a';
+  var reduceMotion = false;
+  try { reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+  function esc(s){ return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;'); }
+  function nameOf(id){ return I18N[curLang]['exp.n.' + id]; }
+  function avatar(id, cls){ return '<span class="av ' + cls + '">' + esc(Array.from(nameOf(id))[0]) + '</span>'; }
+  function drawStaff(){
+    var t = I18N[curLang];
+    document.getElementById('roster').innerHTML = '<span class="ttl">' + esc(t['exp.count'].replace('{n}', STAFF.length)) + '</span>' + STAFF.map(function(s){
+      var k = ST[s[0]];
+      return '<span class="st ' + k + '">' + avatar(s[0], s[1]) + esc(nameOf(s[0])) + ' · ' + esc(t['exp.st.' + k]) + '<i></i></span>';
+    }).join('');
+    document.getElementById('mini').innerHTML = STAFF.map(function(s){
+      var k = ST[s[0]];
+      return '<div class="' + (k === 'run' || k === 'got' ? 'run' : k === 'wait' ? 'wait' : '') + '"><span class="pc"></span><b>' + esc(nameOf(s[0])) + '</b>' + esc(t['exp.st.' + k]) + '</div>';
+    }).join('');
+  }
+  // 한 단계를 그린다. 상태 바뀜은 null(대화 칸에 아무것도 붙이지 않음)
+  function stepNode(step){
+    var t = I18N[curLang], n = document.createElement('div'), who = step[1] && STAFF.filter(function(s){ return s[0] === step[1]; })[0];
+    if (step[0] === 'st') { ST[step[1]] = step[2]; return null; }
+    if (step[0] === 'me') { n.className = 'msg me'; n.innerHTML = '<span class="av s">' + esc(t['exp.me']) + '</span><div class="bb"><div class="n">' + esc(t['exp.boss']) + '</div>' + t[step[1]] + '</div>'; }
+    else if (step[0] === 'sys') { n.className = 'sys'; n.innerHTML = '<b>' + esc(t[step[1]]) + '</b>'; }
+    else if (step[0] === 'say') { n.className = 'msg'; n.innerHTML = avatar(who[0], who[1]) + '<div class="bb"><div class="n">' + esc(nameOf(who[0])) + '</div>' + esc(t[step[2]]) + '</div>'; }
+    else if (step[0] === 'appr') { n.className = 'msg'; n.innerHTML = avatar(who[0], who[1]) + '<div class="bb" style="width:100%"><div class="n">' + esc(nameOf(who[0])) + '</div><div class="appr"><div class="t"><span class="tag">' + esc(t['exp.tag.appr']) + '</span>' + esc(t[step[2]]) + '</div><div class="ef">' + esc(t[step[3]]) + '</div><div class="bt" aria-hidden="true"><b class="y">' + esc(t['exp.yes']) + '</b><b>' + esc(t['exp.no']) + '</b></div></div></div>'; }
+    else if (step[0] === 'plan') { n.className = 'appr'; n.innerHTML = '<div class="t"><span class="tag plan">' + esc(t['exp.tag.plan']) + '</span>' + esc(t['exp.plan.t']) + '</div><div class="ef">' + esc(t['exp.plan.ef']) + '</div><div class="bt" aria-hidden="true"><b class="y">' + esc(t['exp.plan.yes']) + '</b><b>' + esc(t['exp.plan.no']) + '</b></div>'; }
+    return n;
+  }
+  // 다른 버튼을 누르면 처음부터 다시. 움직임 줄이기가 켜져 있으면 끝 상태를 바로 보여 준다
+  function play(k){
+    curScript = k;
+    timers.forEach(clearTimeout); timers = [];
+    STAFF.forEach(function(s){ ST[s[0]] = 'idle'; });
+    var feed = document.getElementById('feed');
+    feed.innerHTML = '';
+    document.querySelectorAll('#presets button').forEach(function(b){ b.setAttribute('aria-pressed', String(b.getAttribute('data-k') === k)); });
+    if (reduceMotion) {
+      SCRIPTS[k].forEach(function(step){ var n = stepNode(step); if (n) feed.appendChild(n); });
+      drawStaff();
+      return;
+    }
+    drawStaff();
+    var at = 0;
+    SCRIPTS[k].forEach(function(step){
+      at += step[0] === 'st' ? 450 : 900;
+      timers.push(setTimeout(function(){ var n = stepNode(step); if (n) feed.appendChild(n); else drawStaff(); }, at));
+    });
+  }
+  document.getElementById('presets').addEventListener('click', function(e){ var b = e.target.closest('button'); if (b) play(b.getAttribute('data-k')); });
+
+  // ── 레벨 막대: 건물 7단계(lv.names)와 층 (app/src/shared/officeLevel.ts LEVEL_TABLE) ──
+  var STAGE_FROM = [1, 3, 6, 10, 14, 18, 20];
+  var curLevel = 7;
+  function stageOf(l){ for (var i = STAGE_FROM.length - 1; i >= 0; i--) if (l >= STAGE_FROM[i]) return i; return 0; }
+  function floorsOf(l){ return l >= 18 ? 5 : l >= 14 ? 4 : l >= 10 ? 3 : l >= 6 ? 2 : 1; }
+  function setLevel(l){
+    var t = I18N[curLang], box = document.getElementById('lvbox'), s = stageOf(l), name = t['lv.names'][s];
+    curLevel = l;
+    box.querySelector('.lvr').value = l;
+    box.querySelector('.lvr').setAttribute('aria-valuetext', 'Lv.' + l + ' ' + name);
+    box.querySelector('.lvnum').textContent = 'Lv.' + l;
+    box.querySelector('.lvname').textContent = name;
+    var img = box.querySelector('.lvimg'), src = '../assets/building/lv' + (s + 1) + '.webp';
+    if (img.getAttribute('src') !== src) img.src = src;
+    img.alt = t['lv.alt'].replace('{n}', l).replace('{name}', name);
+    box.querySelectorAll('.lvsteps button').forEach(function(b){ b.setAttribute('aria-pressed', String(stageOf(+b.getAttribute('data-l')) === s)); });
+    // 열리는 것: 커피 코너 Lv.2 · 탕비실·휴게실 Lv.7 · 강당 Lv.16 · 대표실 Lv.20
+    var u = [t['lv.floors'].replace('{n}', floorsOf(l))];
+    [2, 7, 16, 20].forEach(function(from, i){ if (l >= from) u.push(t['lv.unlocks'][i]); });
+    box.querySelector('.unl').innerHTML = u.map(function(x){ return '<span>' + esc(x) + '</span>'; }).join('');
+  }
+  function renderLevel(){
+    var t = I18N[curLang], box = document.getElementById('lvbox');
+    box.querySelector('.lvr').setAttribute('aria-label', t['lv.aria']);
+    box.querySelectorAll('.lvsteps button').forEach(function(b){ b.textContent = t['lv.names'][stageOf(+b.getAttribute('data-l'))]; });
+    setLevel(curLevel);
+  }
+  document.querySelector('#lvbox .lvr').addEventListener('input', function(){ setLevel(+this.value); });
+  document.querySelector('#lvbox .lvsteps').addEventListener('click', function(e){ var b = e.target.closest('button'); if (b) setLevel(+b.getAttribute('data-l')); });
+  // 다른 단계 그림은 처음 한 번 미리 받아 막대를 밀 때 깜빡이지 않게 한다
+  setTimeout(function(){ for (var i = 1; i <= 7; i++) { var p = new Image(); p.src = '../assets/building/lv' + i + '.webp'; } }, 2500);
+
   render(pickLang());
 
   // 버전: GitHub 최신 Release의 tag_name(v0.14.0 → 0.14.0). 실패·3초 초과·이상한 값이면 DOWNLOADS.version 그대로
@@ -1364,5 +1532,3 @@ var I18N = {
   }
 })();
 </script>
-</body>
-</html>
