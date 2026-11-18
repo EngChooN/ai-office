@@ -449,6 +449,59 @@ test('/v2/events: 인증 실패는 401, QR을 다시 만들면 bye(token_revoked
   }
 })
 
+test('결과물 받기: id·버전으로만, 저장소 밖·잘못된 id·5MB 초과는 거절, 항상 내려받기 형식', async () => {
+  const port = await freePort()
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'office-art-'))
+  const outside = path.join(os.tmpdir(), `office-art-out-${crypto.randomUUID()}.html`)
+  fs.writeFileSync(outside, 'SECRET')
+  const id = crypto.randomUUID()
+  const f1 = path.join(root, 'a.html')
+  fs.writeFileSync(f1, '<h1>안녕</h1>')
+  const big = path.join(root, 'big.html')
+  fs.writeFileSync(big, Buffer.alloc(5 * 1024 * 1024 + 1, 97))
+  const link = path.join(root, 'link.html')
+  fs.symlinkSync(outside, link)
+  const one = { file: f1, name: '보고서.html', size: 13 }
+  const bigId = crypto.randomUUID()
+  const linkId = crypto.randomUUID()
+  const files: Record<string, { file: string; name: string; size: number }> = {
+    [`${id}:1`]: one,
+    [`${id}:`]: one,
+    [`${bigId}:`]: { file: big, name: 'big.html', size: 5 * 1024 * 1024 + 1 },
+    [`${linkId}:`]: { file: link, name: 'link.html', size: 6 },
+  }
+  const t = makeV2Service(port, {}, { artifactFile: (i, v) => files[`${i}:${v ?? ''}`] ?? null })
+  try {
+    await t.svc.enable(port)
+    const ok = await req(port, { path: `/v2/artifacts/${id}/1`, token: t.token })
+    assert.deepEqual([ok.status, ok.text, ok.headers['x-content-type-options']], [200, '<h1>안녕</h1>', 'nosniff'])
+    assert.match(String(ok.headers['content-type']), /^text\/plain/)
+    assert.match(String(ok.headers['content-disposition']), /^attachment; filename\*=UTF-8''/)
+    // 캐시: 버전 없는 주소(최신)는 저장 금지, 버전을 붙인 주소는 길게
+    assert.equal(ok.headers['cache-control'], 'private, max-age=3600')
+    const latest = await req(port, { path: `/v2/artifacts/${id}`, token: t.token })
+    assert.deepEqual([latest.text, latest.headers['cache-control']], ['<h1>안녕</h1>', 'no-store'])
+    for (const p of ['/v2/artifacts/..%2F..%2Fetc%2Fpasswd', '/v2/artifacts/%2Fetc%2Fpasswd', '/v2/artifacts/../../etc/passwd', `/v2/artifacts/${id}/0`]) {
+      const r = await req(port, { path: p, token: t.token })
+      assert.ok([400, 404].includes(r.status), `${p} → ${r.status}`)
+      assert.ok(!r.text.includes('SECRET'))
+    }
+    assert.equal((await req(port, { path: `/v2/artifacts/${crypto.randomUUID()}`, token: t.token })).body.error, 'file_not_found')
+    assert.equal((await req(port, { path: `/v2/artifacts/${id}/2`, token: t.token })).body.error, 'file_not_found')
+    assert.equal((await req(port, { path: `/v2/artifacts/${bigId}`, token: t.token })).body.error, 'payload_too_large')
+    // 목록에는 있지만 실제로는 밖을 가리키는 링크는 보내지 않는다
+    const l = await req(port, { path: `/v2/artifacts/${linkId}`, token: t.token })
+    assert.notEqual(l.status, 200)
+    assert.ok(!l.text.includes('SECRET'))
+    assert.equal((await req(port, { path: `/v2/artifacts/${id}` })).status, 401)
+    assert.equal((await req(port, { method: 'POST', path: `/v2/artifacts/${id}`, token: t.token })).body.error, 'method_not_allowed')
+  } finally {
+    await t.cleanup()
+    fs.rmSync(outside, { force: true })
+    fs.rmSync(root, { recursive: true, force: true })
+  }
+})
+
 test('첨부 올리기·받기: 201로 id를 주고(경로 없음), id로만 받는다 — 사무실 파일 폴더 밖 경로는 거절', async () => {
   const port = await freePort()
   const t = makeV2Service(port)
@@ -462,6 +515,7 @@ test('첨부 올리기·받기: 201로 id를 주고(경로 없음), id로만 받
     assert.deepEqual([a.name, a.size], ['메모.txt', data.length])
 
     const got = await req(port, { path: `/v2/files/${a.id}`, token: t.token })
+    assert.equal(got.headers['cache-control'], 'private, max-age=3600')
     assert.deepEqual([got.status, got.text, got.headers['x-content-type-options']], [200, 'hello phone', 'nosniff'])
     // 올린 첨부를 지시에 붙이면 저장소 값(PC 경로 포함)으로 바뀌어 처리 함수에 간다
     await v2call(port, t.token, { method: 'instruct', args: ['kim', '파일', [{ id: a.id }]] })

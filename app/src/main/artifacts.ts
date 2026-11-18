@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { t } from '../shared/i18n/index.ts'
-import { ARTIFACT_SCHEME, artifactDocument, artifactUrl, withCspMeta } from '../shared/artifact.ts'
+import { ARTIFACT_MAX_BYTES, ARTIFACT_SCHEME, artifactDocument, artifactUrl, withCspMeta } from '../shared/artifact.ts'
 import type { ArtifactInfo, ArtifactVersionInfo, ArtifactView } from '../shared/types'
 import { artifactVersions, findArtifactVersion, listArtifacts, readArtifactText, respondArtifact, saveArtifact, writeBrowserCopy } from './artifactStore.ts'
 
@@ -29,6 +29,13 @@ export function artifactOpen(id: string, version?: number): ArtifactView | null 
   const source = readArtifactText(root(), found.file)
   if (source === null) return null
   return { ...found.ref, url: artifactUrl(id, found.ref.version), source, versions: found.versions }
+}
+
+/** 원격 v2 받기: 저장소 안(realpath)의 실제 파일만 — id·버전이 이상하거나 5MB를 넘으면 null */
+export function artifactFileFor(id: string, version?: number): { file: string; name: string; size: number } | null {
+  const found = findArtifactVersion(root(), id, version)
+  if (!found || found.ref.size > ARTIFACT_MAX_BYTES) return null
+  return { file: found.file, name: found.ref.name, size: found.ref.size }
 }
 
 export function artifactReveal(id: string, version?: number) {

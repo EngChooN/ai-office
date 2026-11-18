@@ -8,7 +8,24 @@ import { fmtDate, t } from '@shared/i18n'
 import { IS_REMOTE_SCREEN } from '@/shell'
 
 type Tab = 'live' | 'source'
-type Load = { status: 'loading' } | { status: 'ready'; view: ArtifactView } | { status: 'missing' } | { status: 'tooBig' } | { status: 'error' }
+type Load = { status: 'loading' } | { status: 'ready'; view: ArtifactView } | { status: 'missing' } | { status: 'tooBig' } | { status: 'offline' } | { status: 'error' }
+
+const isOffline = (code?: string) => code === 'unreachable' || code === 'workspace_not_ready'
+
+/** 보기 실패 → 상태 (5MB 초과·이미 없음·연결 끊김·그 밖의 오류) */
+function loadFailure(e: { code?: string }): Load {
+  if (e?.code === 'payload_too_large') return { status: 'tooBig' }
+  if (e?.code === 'file_not_found') return { status: 'missing' }
+  return isOffline(e?.code) ? { status: 'offline' } : { status: 'error' }
+}
+
+/** 내려받기·열기 실패 → 안내 문구 키 */
+export function actionFailureKey(e: unknown) {
+  const code = (e as { code?: string } | null)?.code
+  if (code === 'payload_too_large') return 'artifact.downloadTooBig' as const
+  if (code === 'file_not_found') return 'artifact.gone' as const
+  return isOffline(code) ? ('artifact.downloadOffline' as const) : ('artifact.actionFailed' as const)
+}
 
 /** 아티팩트 크게 보기: 실제 화면(격리 iframe)·원본 탭, 버전 고르기, 브라우저로 열기·파일 위치 열기 (원격 화면에서는 브라우저·파일 위치 대신 내려받기) */
 export function ArtifactViewer({ artifact, returnFocusRef, onClose }: { artifact: ArtifactRef | null; returnFocusRef?: RefObject<HTMLElement | null>; onClose: () => void }) {
@@ -28,6 +45,8 @@ export function ArtifactViewer({ artifact, returnFocusRef, onClose }: { artifact
   )
 }
 
+const LOAD_TEXT = { loading: 'artifact.loading', missing: 'artifact.missing', tooBig: 'artifact.tooBig', offline: 'artifact.offline', error: 'artifact.error' } as const
+
 function ViewerBody({ artifact }: { artifact: ArtifactRef }) {
   const [tab, setTab] = useState<Tab>('live')
   // 처음엔 최신 버전 (undefined = 최신)
@@ -41,17 +60,17 @@ function ViewerBody({ artifact }: { artifact: ArtifactRef }) {
     window.office
       .artifactOpen(artifact.id, version)
       .then((view) => !isCancelled && setLoad(view ? { status: 'ready', view } : { status: 'missing' }))
-      .catch((e: { code?: string }) => !isCancelled && setLoad({ status: e?.code === 'payload_too_large' ? 'tooBig' : 'error' }))
+      .catch((e: { code?: string }) => !isCancelled && setLoad(loadFailure(e)))
     return () => {
       isCancelled = true
     }
   }, [artifact.id, version])
 
-  const [actionError, setActionError] = useState(false)
+  const [actionError, setActionError] = useState<ReturnType<typeof actionFailureKey> | null>(null)
   // 열기·파일 위치 실패는 창을 닫지 않고 안에서 알린다
   const run = (act: () => Promise<unknown>) => {
-    setActionError(false)
-    act().catch(() => setActionError(true))
+    setActionError(null)
+    act().catch((e) => setActionError(actionFailureKey(e)))
   }
 
   const view = load.status === 'ready' ? load.view : null
@@ -113,12 +132,12 @@ function ViewerBody({ artifact }: { artifact: ArtifactRef }) {
       </div>
       {actionError && (
         <p role="alert" className="text-destructive text-sm">
-          {t('artifact.actionFailed')}
+          {t(actionError)}
         </p>
       )}
       <div className="min-h-0 flex-1 overflow-hidden rounded-md border">
         {load.status !== 'ready' ? (
-          <p className="text-muted-foreground p-4 text-sm">{t(load.status === 'loading' ? 'artifact.loading' : load.status === 'missing' ? 'artifact.missing' : load.status === 'tooBig' ? 'artifact.tooBig' : 'artifact.error')}</p>
+          <p className="text-muted-foreground p-4 text-sm">{t(LOAD_TEXT[load.status])}</p>
         ) : tab === 'live' ? (
           // allow-same-origin을 주지 않아 앱과 다른 출처로 갇힌다. 바탕은 칠하지 않는다 — 색 모드를 정하지 않은 html은 브라우저가 흰 캔버스를 깔고, md는 앱 라이트·다크를 따른다
           <iframe key={load.view.doc === undefined ? load.view.url : `${load.view.id}-${load.view.version}`} sandbox="allow-scripts" {...(load.view.doc === undefined ? { src: load.view.url } : { srcDoc: load.view.doc })} title={load.view.title} className="size-full" />

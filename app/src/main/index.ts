@@ -6,7 +6,7 @@ import { cancelCodexLogin } from './ai/codexLogin'
 import { app, BrowserWindow, clipboard, dialog, ipcMain, nativeTheme, Notification, safeStorage } from 'electron'
 import path from 'node:path'
 import { cleanupLegacyPeer, loadRemoteConfig, openDb, peerStore, saveRemoteConfig } from './db'
-import { serveArtifacts } from './artifacts'
+import { artifactFileFor, serveArtifacts } from './artifacts'
 import { attachmentById, registerAttachmentScheme, removeAttachment, saveUpload, serveAttachments } from './attachments'
 import { Office } from './office'
 import { OfficeTray } from './tray'
@@ -98,6 +98,7 @@ function createRemote() {
       restrict: (method, args) => restrictRemoteArgs(method, args, { defaultCwd: office.snapshot().settings.defaultCwd ?? '' }),
       attachment: attachmentById,
       saveUpload,
+      artifactFile: artifactFileFor,
     },
   })
 }

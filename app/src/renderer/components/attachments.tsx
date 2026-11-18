@@ -99,7 +99,7 @@ export function AttachmentView({ attachments, size = 'md' }: { attachments?: Att
             <img src={attachmentUrl(a)} alt={a.name} className={cn('object-cover', THUMB_CLASS[size])} />
           </button>
         ) : (
-          <button key={a.id} type="button" onClick={() => void window.office.openAttachment(a.id)} className="bg-muted flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs">
+          <button key={a.id} type="button" onClick={() => window.office.openAttachment(a.id).catch(() => {})} className="bg-muted flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs">
             <FileIcon className="size-3.5" />
             <span className="max-w-40 truncate">{a.name}</span>
           </button>
@@ -110,7 +110,7 @@ export function AttachmentView({ attachments, size = 'md' }: { attachments?: Att
           <DialogTitle className="truncate text-sm">{zoom?.name}</DialogTitle>
           {zoom && <img src={attachmentUrl(zoom)} alt={zoom.name} className="max-h-[70vh] w-full object-contain" />}
           {zoom && (
-            <Button size="sm" variant="outline" className="w-fit" onClick={() => void window.office.openAttachment(zoom.id)}>
+            <Button size="sm" variant="outline" className="w-fit" onClick={() => window.office.openAttachment(zoom.id).catch(() => {})}>
               {IS_REMOTE_SCREEN ? t('artifact.download') : t('attach.openDefault')}
             </Button>
           )}

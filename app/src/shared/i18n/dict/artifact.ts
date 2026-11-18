@@ -19,6 +19,7 @@ export default {
   'artifact.kind.html': { ko: 'HTML', en: 'HTML', ja: 'HTML', zh: 'HTML' },
   'artifact.kind.md': { ko: '문서', en: 'Document', ja: '文書', zh: '文档' },
   'artifact.open': { ko: '열기', en: 'Open', ja: '開く', zh: '打开' },
+  'artifact.preview': { ko: '보기', en: 'View', ja: '見る', zh: '查看' },
   'artifact.view': {
     ko: '보기 방식',
     en: 'View',
@@ -109,5 +110,23 @@ export default {
     en: 'Could not download it. The file may be gone or the connection lost.',
     ja: 'ダウンロードできませんでした。ファイルが削除されたか、接続が切れた可能性があります。',
     zh: '无法下载，文件可能已被删除或连接已断开。',
+  },
+  'artifact.offline': {
+    ko: '그 PC와 연결이 끊겨서 불러오지 못했어요. 연결을 확인하고 다시 열어 주세요.',
+    en: 'The connection to that PC was lost, so it could not be loaded. Check the connection and open it again.',
+    ja: 'その PC との接続が切れたため読み込めませんでした。接続を確認してもう一度開いてください。',
+    zh: '与那台电脑的连接已断开，无法加载。请检查连接后重新打开。',
+  },
+  'artifact.gone': {
+    ko: '이 결과물은 이미 없어졌어요. 그 PC에서 지워졌을 수 있어요.',
+    en: 'This result no longer exists. It may have been deleted on that PC.',
+    ja: 'この結果物はすでにありません。その PC で削除された可能性があります。',
+    zh: '此结果物已不存在，可能已在那台电脑上被删除。',
+  },
+  'artifact.downloadOffline': {
+    ko: '그 PC와 연결이 끊겨서 내려받지 못했어요. 연결을 확인하고 다시 눌러 주세요.',
+    en: 'The connection to that PC was lost, so it could not be downloaded. Check the connection and try again.',
+    ja: 'その PC との接続が切れたためダウンロードできませんでした。接続を確認してもう一度お試しください。',
+    zh: '与那台电脑的连接已断开，无法下载。请检查连接后重试。',
   },
 } satisfies Record<string, Entry>

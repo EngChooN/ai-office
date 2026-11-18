@@ -5,6 +5,7 @@ import crypto from 'node:crypto'
 import fs from 'node:fs'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import type { OfficeMethod } from '../../shared/officeApiShape'
+import { ARTIFACT_MAX_BYTES } from '../../shared/artifact.ts'
 import type { Attachment } from '../../shared/types'
 import { bearerToken, hashToken, type AuthGuard } from './auth.ts'
 import { acceptHello, CAPABILITIES_HEADER, helloRequestsView, HELLO_METHOD, NO_CAPABILITIES, parseCapabilities, shapeFor } from './capabilities.ts'
@@ -17,9 +18,14 @@ import { encodeV2Response, handleV2Call, IdempotencyStore, stripAttachmentPaths,
 
 /** 첨부 한 개 올리기 상한 */
 export const V2_UPLOAD_MAX = 20 * 1024 * 1024
+/** 결과물 한 개 받기 상한 (저장 한도와 같은 5MB) */
+export const V2_ARTIFACT_MAX = ARTIFACT_MAX_BYTES
 const FILE_NAME_MAX = 200
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const FILE_PATH = /^\/v2\/files\/([^/]+)$/
+/** 결과물(아티팩트) 받기: /v2/artifacts/{id} (최신) 또는 /v2/artifacts/{id}/{버전} */
+const CACHE_LONG = 'private, max-age=3600'
+const ARTIFACT_PATH = /^\/v2\/artifacts\/([^/]+)(?:\/(\d{1,6}))?$/
 /** 브라우저 안에서 바로 보여 줘도 되는 종류 (그 밖은 내려받기) */
 const INLINE_MIME = /^(image\/(png|jpeg|gif|webp)|application\/pdf|text\/plain)$/
 
@@ -33,6 +39,8 @@ export interface V2Office {
   attachment: AttachmentLookup
   /** 첨부 저장소에 새 파일 넣기 (이름·mime은 PC 화면과 같은 규칙으로 고친다) */
   saveUpload(name: string, mime: string, data: Buffer): Attachment
+  /** 결과물 저장소에서 id·버전(생략=최신)의 파일 찾기 — 저장소 밖·링크·5MB 초과는 null. 없으면 이 경로는 404 */
+  artifactFile?(id: string, version?: number): { file: string; name: string; size: number } | null
 }
 
 /** hello 답에 넣는 전용 모드 필드 (lan은 모를 때 생략) */
@@ -91,11 +99,12 @@ export class V2Routes {
     const path = (req.url ?? '/').split('?')[0]
     const isEvents = path === '/v2/events'
     const file = path.match(FILE_PATH)
+    const artifact = path.match(ARTIFACT_PATH)
     const isUpload = path === '/v2/attachments'
     const isByteUpload = isUpload
     const isPair = PeerRoutes.isPairPath(path)
     const isPeer = PeerRoutes.isPeerPath(path)
-    if (!isEvents && !file && !isUpload && !isPair && !isPeer) return false
+    if (!isEvents && !file && !artifact && !isUpload && !isPair && !isPeer) return false
     const reply = (r: RemoteResponse, extra?: Record<string, string>) => {
       json(res, r, extra)
       access(r.status, typeof r.body.error === 'string' ? r.body.error : undefined)
@@ -137,6 +146,7 @@ export class V2Routes {
     }
     if (isEvents) this.openEvents(req, res, reply, access)
     else if (file) this.sendFile(file[1], res, reply, access)
+    else if (artifact) this.sendArtifact(artifact[1], artifact[2] === undefined ? undefined : Number(artifact[2]), res, reply, access)
     else this.receiveUpload(req, res, reply, access)
     return true
   }
@@ -164,35 +174,62 @@ export class V2Routes {
     if (!UUID.test(id)) return reply(v2Fail('invalid_request'))
     const found = this.ctx.office.attachment(id)
     if (!found?.path) return reply(v2Fail('file_not_found'))
-    let size: number
+    const isInline = INLINE_MIME.test(found.mime)
+    this.streamFile(found.path, {
+      'Content-Type': isInline || /^(text\/(markdown|csv)|application\/json)$/.test(found.mime) ? found.mime : 'application/octet-stream',
+      'Content-Disposition': isInline ? 'inline' : `attachment; filename*=UTF-8''${encodeURIComponent(found.name)}`,
+      'Cache-Control': CACHE_LONG,
+    }, res, reply, access)
+  }
+
+  // ── /v2/artifacts/{id}[/{버전}] ──────────────────────
+
+  /** 결과물 원본(html·md)을 바이트로 내려 준다. 항상 내려받기 형식(attachment) + text/plain — 받은 쪽이 앱 안의 격리된 틀(iframe sandbox)로만 그린다 */
+  private sendArtifact(id: string, version: number | undefined, res: ServerResponse, reply: (r: RemoteResponse) => void, access: AccessLogger) {
+    // id는 UUID 모양만, 버전은 숫자만 — 경로 문자는 한 글자도 쓰지 않는다
+    if (!UUID.test(id) || (version !== undefined && version < 1)) return reply(v2Fail('invalid_request'))
+    const found = this.ctx.office.artifactFile?.(id, version)
+    if (!found) return reply(v2Fail('file_not_found'))
+    // 버전을 안 붙인 주소는 '최신'이라 내용이 바뀐다 — 저장하지 않게 한다. 버전을 붙인 것은 바뀌지 않으니 오래 둬도 된다
+    this.streamFile(found.file, {
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(found.name)}`,
+      'Cache-Control': version === undefined ? 'no-store' : CACHE_LONG,
+    }, res, reply, access, V2_ARTIFACT_MAX)
+  }
+
+  /** 파일을 연 뒤에 헤더를 보낸다 — 열다 실패하면 아직 404로 답할 수 있다. 보내는 도중 실패하면 연결을 끊는다 (메인 프로세스 예외로 번지지 않게) */
+  private streamFile(file: string, headers: Record<string, string>, res: ServerResponse, reply: (r: RemoteResponse) => void, access: AccessLogger, max = Infinity) {
+    // 링크는 따라가지 않고 연다 (O_NOFOLLOW) — 열린 번호를 넘기면 스트림이 그 파일만 읽는다
+    let fd: number
     try {
-      const stat = fs.statSync(found.path)
-      // 폴더(EISDIR)·특수 파일은 보내지 않는다
-      if (!stat.isFile()) return reply(v2Fail('file_not_found'))
-      size = stat.size
+      fd = fs.openSync(file, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW)
     } catch {
-      // 그 사이에 지워졌거나 읽을 수 없다
       return reply(v2Fail('file_not_found'))
     }
-    const isInline = INLINE_MIME.test(found.mime)
-    const stream = fs.createReadStream(found.path)
-    // 파일을 연 뒤에 헤더를 보낸다 — 열다 실패하면 아직 404로 답할 수 있다. 보내는 도중 실패하면 연결을 끊는다 (메인 프로세스 예외로 번지지 않게)
+    // 열린 파일에서 크기를 잰다 (재고 여는 사이에 바뀌는 틈이 없다)
+    let size: number
+    try {
+      const stat = fs.fstatSync(fd)
+      if (!stat.isFile() || stat.size > max) {
+        fs.closeSync(fd)
+        return reply(v2Fail(stat.isFile() ? 'payload_too_large' : 'file_not_found'))
+      }
+      size = stat.size
+    } catch {
+      fs.closeSync(fd)
+      return reply(v2Fail('file_not_found'))
+    }
+    const stream = fs.createReadStream('', { fd })
     stream.on('error', () => {
       if (!res.headersSent) reply(v2Fail('file_not_found'))
       else res.destroy()
     })
     res.on('close', () => stream.destroy())
-    stream.once('open', () => {
-      res.writeHead(200, {
-        'Content-Type': isInline || /^(text\/(markdown|csv)|application\/json)$/.test(found.mime) ? found.mime : 'application/octet-stream',
-        'Content-Length': size,
-        'Content-Disposition': isInline ? 'inline' : `attachment; filename*=UTF-8''${encodeURIComponent(found.name)}`,
-        'X-Content-Type-Options': 'nosniff',
-        'Cache-Control': 'private, max-age=3600',
-      })
-      stream.pipe(res)
-      access(200)
-    })
+    // 이미 열렸으니 바로 헤더를 보낸다
+    res.writeHead(200, { ...headers, 'Content-Length': String(size), 'X-Content-Type-Options': 'nosniff' })
+    stream.pipe(res)
+    access(200)
   }
 
   // ── /v2/attachments ──────────────────────────────────
