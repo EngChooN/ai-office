@@ -1,0 +1,4 @@
+# 윈도우 체크아웃에서도 줄바꿈을 LF로 고정 (소스를 글자로 읽어 비교하는 테스트·셸 스크립트가 CRLF에 깨지지 않게)
+* text=auto eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf

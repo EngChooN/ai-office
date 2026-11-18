@@ -4,8 +4,11 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { test } from 'node:test'
+import { test as nodeTest } from 'node:test'
 import { cancelCodexLogin, loginCodex } from '../src/main/ai/codexLogin.ts'
+
+// 가짜 app-server는 확장자 없는 스크립트(shebang)라 윈도우에서는 실행할 수 없다 — 윈도우에서는 건너뛴다
+const test = (name: string, fn: () => Promise<void>) => nodeTest(name, { skip: process.platform === 'win32' && '윈도우는 shebang 실행 파일을 못 쓴다' }, fn)
 
 /** completed: 로그인 시작 뒤 보낼 알림 (null이면 보내지 않고 대기) */
 function fakeServer(completed: object | null, method = 'account/login/completed'): string {

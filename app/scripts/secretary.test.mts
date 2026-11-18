@@ -415,7 +415,7 @@ import { compactOverview, compactPeriod, compactStaffDetail, guideLines, COMPACT
 
 test('지연 원인: 고용 직원 세션은 "질문 받기" hook을 건너뛴다 (다른 Claude Office가 포트를 잡고 있으면 최대 9분 붙잡혔다)', () => {
   const ext = readApp('src/main/external.ts')
-  assert.match(ext, /export const ASK_COMMAND = `\[ -n "\$\$\{HIRED_ENV\}" \] \|\| \[ "\$CLAUDE_CODE_ENTRYPOINT" = "\$\{DESKTOP_ENTRYPOINT\}" \] \|\| curl /)
+  assert.match(readApp('src/main/externalCommands.ts'), /export const ASK_COMMAND = `\[ -n "\$\$\{HIRED_ENV\}" \] \|\| \[ "\$CLAUDE_CODE_ENTRYPOINT" = "\$\{DESKTOP_ENTRYPOINT\}" \] \|\| curl /)
   assert.match(ext, /export function upgradeAskHook\(\)/)
   assert.match(readApp('src/main/ai/claude.ts'), /env: \{ \.\.\.process\.env, \[HIRED_ENV\]: '1' \}/)
   assert.match(readApp('src/main/office.ts'), /upgradeAskHook\(\)/)

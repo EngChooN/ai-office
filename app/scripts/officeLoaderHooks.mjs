@@ -6,7 +6,7 @@ import fs from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { transformSync } from 'rolldown/utils'
 
-const ELECTRON_NAMES = ['app', 'net', 'shell', 'dialog', 'ipcMain', 'BrowserWindow', 'powerMonitor', 'screen', 'safeStorage', 'session', 'protocol', 'webContents', 'systemPreferences', 'Menu', 'nativeImage', 'Tray', 'clipboard', 'nativeTheme', 'Notification']
+const ELECTRON_NAMES = ['app', 'net', 'shell', 'dialog', 'ipcMain', 'BrowserWindow', 'powerMonitor', 'screen', 'safeStorage', 'session', 'protocol', 'webContents', 'systemPreferences', 'Menu', 'nativeImage', 'Tray', 'clipboard', 'nativeTheme', 'Notification', 'desktopCapturer']
 const ELECTRON_STUB = 'data:text/javascript,' + encodeURIComponent(ELECTRON_NAMES.map((n) => `export const ${n} = globalThis.__electron?.${n} ?? {};`).join('') + 'export default {}')
 
 export async function resolve(specifier, context, next) {

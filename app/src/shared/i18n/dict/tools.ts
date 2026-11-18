@@ -23,12 +23,12 @@ export default {
     ja: 'スタッフ専用の Chrome ウィンドウでサイトを開き、クリックや入力をします。移動・クリック・入力は決裁が必要です。',
     zh: '用员工专用的 Chrome 窗口打开网站并点击、输入。跳转、点击、输入需要审批。',
   },
-  'equip.computer.name': { ko: '컴퓨터 조작 (맥 전용)', en: 'Computer control (Mac only)', ja: 'コンピューター操作（Mac 専用）', zh: '电脑操作（仅限 Mac）' },
+  'equip.computer.name': { ko: '컴퓨터 조작', en: 'Computer control', ja: 'コンピューター操作', zh: '电脑操作' },
   'equip.computer.desc': {
-    ko: '마우스 클릭·이동, 키 입력, 화면 스크린샷으로 이 컴퓨터의 앱 화면을 직접 다뤄요(맥 전용). 스크린샷만 결재 없이 찍고, 클릭·입력·이동은 결재를 받아요. 화면 전체가 보이니 꼭 필요한 직원에게만 지급하세요.',
-    en: "Controls app windows on this computer with mouse clicks and moves, key presses and screenshots (Mac only). Screenshots need no approval; clicking, typing and moving do. It can see the whole screen, so equip only staff who need it.",
-    ja: 'マウスのクリック・移動、キー入力、スクリーンショットでこのコンピューターのアプリ画面を直接操作します（Mac 専用）。スクリーンショットは決裁不要、クリック・入力・移動は決裁が必要です。画面全体が見えるため、必要なスタッフにだけ支給してください。',
-    zh: '通过鼠标点击与移动、键盘输入和截图直接操作这台电脑的应用界面（仅限 Mac）。截图无需审批，点击、输入、移动需要审批。它能看到整个屏幕，请只配给确实需要的员工。',
+    ko: '마우스 클릭·이동, 키 입력, 화면 스크린샷으로 이 컴퓨터의 앱 화면을 직접 다뤄요(맥·윈도우). 스크린샷만 결재 없이 찍고, 클릭·입력·이동은 결재를 받아요. 화면 전체가 보이니 꼭 필요한 직원에게만 지급하세요.',
+    en: "Controls app windows on this computer with mouse clicks and moves, key presses and screenshots (Mac and Windows). Screenshots need no approval; clicking, typing and moving do. It can see the whole screen, so equip only staff who need it.",
+    ja: 'マウスのクリック・移動、キー入力、スクリーンショットでこのコンピューターのアプリ画面を直接操作します（Mac・Windows 対応）。スクリーンショットは決裁不要、クリック・入力・移動は決裁が必要です。画面全体が見えるため、必要なスタッフにだけ支給してください。',
+    zh: '通过鼠标点击与移动、键盘输入和截图直接操作这台电脑的应用界面（支持 Mac 和 Windows）。截图无需审批，点击、输入、移动需要审批。它能看到整个屏幕，请只配给确实需要的员工。',
   },
   'equip.computer.needAccess': {
     ko: '맥 설정 > 개인정보 보호 및 보안 > 손쉬운 사용에서 이 앱을 켜 주세요. 켜지 않으면 클릭·입력이 안 돼요.',

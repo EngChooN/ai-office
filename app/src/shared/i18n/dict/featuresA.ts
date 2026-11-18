@@ -765,7 +765,6 @@ export default {
     'equipment.skills.all': { ko: '모든 매뉴얼 쓰기', en: 'Use all manuals', ja: 'すべてのマニュアルを使う', zh: '使用所有手册' },
     'equipment.skills.empty': { ko: '설치된 매뉴얼(스킬)이 없어요.', en: 'No manuals (skills) installed.', ja: 'インストールされたマニュアル（スキル）はありません。', zh: '没有已安装的手册（技能）。' },
     'equipment.tools.title': { ko: '결재 없이 할 일 · 못 하게 할 일', en: 'What runs without approval · what is blocked', ja: '承認なしでやること・させないこと', zh: '无需审批的事 · 禁止的事' },
-    'equipment.tools.captureMacOnly': { ko: '화면 찍기는 아직 맥에서만 돼요.', en: 'Screen capture works only on Mac for now.', ja: '画面の撮影は今のところ Mac でのみ動作します。', zh: '截屏目前仅支持 Mac。' },
     'equipment.save': { ko: '이대로 지급', en: 'Provide as set', ja: 'この内容で支給', zh: '按此配发' },
     'equipment.saveNote': { ko: '지금 하는 일이 끝나면, 다음 일부터 바뀐 장비로 일해요.', en: 'After the current work is done, the next work uses the new equipment.', ja: '今の仕事が終わったら、次の仕事から新しい装備で働きます。', zh: '当前工作完成后，从下一项工作起使用新装备。' },
     'equipment.intro': { ko: '이 직원이 쓸 도구와, 결재 없이 해도 되는 일을 정해요.', en: 'Choose the tools this staff member uses and what they can do without approval.', ja: 'このスタッフが使う道具と、承認なしでしてよいことを決めます。', zh: '设置这名员工使用的工具，以及无需审批就能做的事。' },

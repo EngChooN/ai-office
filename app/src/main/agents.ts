@@ -8,7 +8,7 @@ import type { AgentTemplate, ModelChoice } from '../shared/types'
 const MODELS: ModelChoice[] = ['fable', 'opus', 'sonnet', 'haiku']
 
 function parse(file: string, source: string): AgentTemplate | null {
-  const raw = fs.readFileSync(file, 'utf8')
+  const raw = fs.readFileSync(file, 'utf8').replace(/\r\n?/g, '\n') // CRLF로 저장된 파일도 읽는다
   const m = raw.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/)
   if (!m) return null
   const meta: Record<string, string> = {}

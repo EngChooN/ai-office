@@ -12,6 +12,7 @@ const sh = (cwd: string, ...a: string[]) => execFileSync('git', a, { cwd, encodi
 function makeRepo() {
   const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'co-revert-')))
   sh(dir, 'init', '-q')
+  sh(dir, 'config', 'core.autocrlf', 'false')
   sh(dir, 'config', 'user.email', 't@t')
   sh(dir, 'config', 'user.name', 't')
   fs.writeFileSync(path.join(dir, 'a.txt'), 'a1\n')
@@ -28,7 +29,7 @@ test('스냅샷 → 수정·추가·삭제 → 차이 → 선택한 파일만 �
   fs.writeFileSync(path.join(dir, 'b.txt'), 'b-dirty-before\n') // 일 시작 전부터 있던 변경은 기준에 포함
   const base = await snapshotTree(dir)
   assert.ok(base)
-  fs.writeFileSync(path.join(dir, 'a.txt'), 'a2\n')
+  fs.writeFileSync(path.join(dir, 'a.txt'), 'a2-changed\n')
   fs.writeFileSync(path.join(dir, 'new.txt'), 'n\n')
   fs.rmSync(path.join(dir, 'sub', 'c.txt'))
   const now = await snapshotTree(dir)
@@ -39,7 +40,7 @@ test('스냅샷 → 수정·추가·삭제 → 차이 → 선택한 파일만 �
   assert.deepEqual([r.restored, r.failed], [2, []])
   assert.equal(fs.existsSync(path.join(dir, 'new.txt')), false)
   assert.equal(fs.readFileSync(path.join(dir, 'sub', 'c.txt'), 'utf8'), 'c1\n')
-  assert.equal(fs.readFileSync(path.join(dir, 'a.txt'), 'utf8'), 'a2\n')
+  assert.equal(fs.readFileSync(path.join(dir, 'a.txt'), 'utf8'), 'a2-changed\n')
   assert.equal(fs.readFileSync(path.join(dir, 'b.txt'), 'utf8'), 'b-dirty-before\n')
   // 스냅샷은 브랜치·스테이징을 건드리지 않는다
   assert.equal(sh(dir, 'diff', '--cached', '--name-only').trim(), '')
@@ -48,7 +49,8 @@ test('스냅샷 → 수정·추가·삭제 → 차이 → 선택한 파일만 �
 test('하위 폴더에서도 저장소 맨 위 기준 경로, 작업 폴더 밖 경로는 거부', async () => {
   const dir = makeRepo()
   const sub = path.join(dir, 'sub')
-  assert.equal(await repoRoot(sub), dir)
+  const norm = (p?: string | null) => (p ? fs.realpathSync.native(p) : '').split(path.sep).join('/')
+  assert.equal(norm(await repoRoot(sub)), norm(dir))
   const base = await snapshotTree(sub)
   fs.writeFileSync(path.join(dir, 'a.txt'), 'x\n')
   const files = await treeDiff(dir, base!, (await snapshotTree(sub))!)

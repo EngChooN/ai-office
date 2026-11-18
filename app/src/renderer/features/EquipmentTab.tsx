@@ -5,7 +5,6 @@ import { cn } from '@/lib/utils'
 import type { Equipment, EquipmentCatalog, Staff } from '@shared/types'
 import { changedRows, levelOf, policyLevels, policyRow, withLevel, type PolicyLevel, type PolicyRowId } from '@shared/toolPolicyRows'
 import { McpSection } from './McpSection'
-import { NotOnWindows } from '@/components/not-on-windows'
 import { t } from '@shared/i18n'
 import type { TKey } from '@shared/i18n'
 import { PcOnlyState } from '@/components/pc-only-state'
@@ -194,7 +193,6 @@ export function EquipmentTab({ staff }: { staff: Staff }) {
         </EquipCard>
 
         <EquipCard icon={<CameraIcon />} title={t('policy.capture.title')} desc={t('policy.capture.desc')} badge={pcBadge}>
-          <NotOnWindows reason={t('equipment.tools.captureMacOnly')} />
           <LevelPicker id="capture" eq={eq} setEq={setEq} disabled={isLocked} />
         </EquipCard>
 

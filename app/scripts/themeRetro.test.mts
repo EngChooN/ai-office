@@ -4,10 +4,11 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
 import { test } from 'node:test'
+import { fileURLToPath } from 'node:url'
 import { DARK_ONLY_THEMES, resolveMode, sanitizeUi, themeMode, UI_MODES, UI_THEME_IDS, windowBg, WINDOW_BG } from '../src/shared/uiTheme.ts'
 import { DEFAULT_LOG_FONT_SIZE, LOG_FONT_SIZES, logFontSizes, logFontStep, RETRO_LOG_FONT_SIZES, sanitizeLogFont } from '../src/renderer/lib/logFont.ts'
 
-const root = new URL('../', import.meta.url).pathname
+const root = fileURLToPath(new URL('../', import.meta.url))
 const read = (p: string) => fs.readFileSync(path.join(root, p), 'utf8')
 const RETRO = read('src/renderer/theme-retro.css')
 const BASE = read('src/renderer/index.css')

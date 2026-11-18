@@ -1,4 +1,3 @@
-import { execFile } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { EventEmitter } from 'node:events'
 import fs from 'node:fs'
@@ -106,6 +105,7 @@ import * as shopGrid from './shopGrid'
 import { MAX_FLOORS, meetingRoomOf } from '../shared/officeLevel'
 import { BUDGET_PERIODS, budgetTokens, nextBudgetAlert, periodStart, pruneAlertKeys } from '../shared/budget'
 import { importFile, mimeOf } from './attachments'
+import { captureScreenPng, electronCaptureDeps } from './screenCapture'
 import { saveArtifactFile } from './artifacts'
 import { replaceArtifactRef } from '../shared/artifact'
 import type { RemoteOfficePort } from './remote/handler.ts'
@@ -442,7 +442,7 @@ export class Office extends EventEmitter<{
               const config = browserMcpConfig(s.id, isShared)
               return config ? [[name, config]] : []
             }
-            // 기본 장비 '컴퓨터 조작'(맥 전용)
+            // 기본 장비 '컴퓨터 조작'(맥·윈도우)
             if (name === COMPUTER_EQUIPMENT) {
               const config = computerMcpConfig()
               return config ? [[name, config]] : []
@@ -2652,11 +2652,11 @@ export class Office extends EventEmitter<{
           t('staff.tool.screen.desc'),
           { caption: z.string().describe(t('staff.tool.caption')) },
           async ({ caption }) => {
-            // 윈도우 화면 캡처는 2차 (screencapture는 맥 전용 명령)
-            if (process.platform === 'win32') return text(t('staff.tool.screen.noWin'))
             const file = path.join(os.tmpdir(), `claude-office-capture-${Date.now()}.png`)
             try {
-              await new Promise<void>((resolve, reject) => execFile('screencapture', ['-x', file], (e) => (e ? reject(e) : resolve())))
+              const png = await captureScreenPng(electronCaptureDeps)
+              if (!png) return text(t('staff.tool.screen.fail'))
+              fs.writeFileSync(file, png)
             } catch {
               return text(t('staff.tool.screen.fail'))
             }

@@ -529,7 +529,7 @@ test('PC 전용 잠금: IS_MOBILE_SHELL은 배치 판정(useLayout·App 틀 고�
   const ALLOWED: Record<string, number> = { 'src/renderer/App.tsx': 1, 'src/renderer/layout/useLayout.ts': 6 }
   const found: Record<string, number> = {}
   for (const f of walk(path.join(SRC, 'renderer'))) {
-    const rel = path.relative(APP, f)
+    const rel = path.relative(APP, f).split(path.sep).join('/')
     if (rel === 'src/renderer/shell.ts' || rel.startsWith('src/renderer/mobile/')) continue
     const n = fs.readFileSync(f, 'utf8').split('\n').filter((l) => /\bIS_MOBILE_SHELL\b/.test(l) && !/^\s*import /.test(l)).length
     if (n) found[rel] = n

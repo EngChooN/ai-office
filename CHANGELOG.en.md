@@ -11,6 +11,19 @@ Writing rules
 - Leave out: internal or development matters, re-fixes of features added in the same version, how a security hole worked (if needed, one line on the result), minor wording or spacing tweaks.
 - Couldn't do it before → new feature; easier than before → improvement; was working wrongly → bug fix.
 
+## [1.4.4] - 2026-11-18
+Good to know: Windows screen capture, computer control and notifications for staff working outside the app have not been verified on a real Windows PC yet. If something goes wrong, please let us know as an issue.
+
+### At a glance
+- **New** Screen capture now works on Windows
+- **New** Computer control now works on Windows
+- **New** Windows gets outside-staff notifications
+
+### New features
+- Staff can now capture the screen and attach it to their report on Windows too. It is no longer Mac only.
+- Staff can now control the computer on Windows too, with mouse clicks, key presses and screenshots. Screenshots need no approval; clicking, typing and moving do.
+- On Windows you can now receive progress notifications and questions from staff working outside the app (for example in a terminal).
+
 ## [1.4.3] - 2026-11-17
 Good to know: we have not yet tested a real connection between a Mac and a Windows PC, and after you restart the app, a PC you declined earlier shows “Ask for access” again.
 

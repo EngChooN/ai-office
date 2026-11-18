@@ -7,7 +7,6 @@ import { Page } from '@/components/ui/page'
 import { cn } from '@/lib/utils'
 import { useOffice } from '@/store'
 import { HAS_DESK_PET, IS_WINDOWS, osText, trayPlace } from '@/lib/platform'
-import { NotOnWindows } from '@/components/not-on-windows'
 import { PcOnlyState } from '@/components/pc-only-state'
 import { IS_REMOTE_SCREEN } from '@/shell'
 import { ConnectSection } from './connect/ConnectSection'
@@ -503,21 +502,21 @@ export function SettingsPage() {
               <ConnectSection />
             </Section>
             <Section id={SECTION_ID.hooks} title={t('settingsPage.hooks.title')} description={t('settingsPage.hooks.desc')} detail={t('settingsPage.hooks.detail')}>
-              <NotOnWindows reason={t('settingsPage.notOnWindows')} />
+              {IS_WINDOWS && <p className="text-muted-foreground text-xs">{t('settingsPage.notOnWindows')}</p>}
               {IS_REMOTE_SCREEN ? (
                 <PcOnlyState isOn={hooks?.installed} />
               ) : (
-                <Button onClick={handleHooks} disabled={!hooks || isBusy || IS_WINDOWS} variant={hooks?.installed ? 'outline' : 'default'} className="w-fit">
+                <Button onClick={handleHooks} disabled={!hooks || isBusy} variant={hooks?.installed ? 'outline' : 'default'} className="w-fit">
                   {hooks?.installed ? t('settingsPage.hooks.off') : t('settingsPage.hooks.on')}
                 </Button>
               )}
             </Section>
             <Section title={t('settingsPage.askHook.title')} description={t('settingsPage.askHook.desc')} detail={t('settingsPage.askHook.detail')}>
-              <NotOnWindows reason={t('settingsPage.notOnWindows')} />
+              {IS_WINDOWS && <p className="text-muted-foreground text-xs">{t('settingsPage.notOnWindows')}</p>}
               {IS_REMOTE_SCREEN ? (
                 <PcOnlyState isOn={hooks?.isAskInstalled} />
               ) : (
-                <Button onClick={handleAskHook} disabled={!hooks || isBusy || IS_WINDOWS} variant={hooks?.isAskInstalled ? 'outline' : 'default'} className="w-fit">
+                <Button onClick={handleAskHook} disabled={!hooks || isBusy} variant={hooks?.isAskInstalled ? 'outline' : 'default'} className="w-fit">
                   {hooks?.isAskInstalled ? t('settingsPage.askHook.off') : t('settingsPage.askHook.on')}
                 </Button>
               )}

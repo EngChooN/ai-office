@@ -7,6 +7,9 @@ import { t, tr, type I18nArg } from './i18n/index.ts'
 export const COMPUTER_EQUIPMENT = 'office-computer'
 export const COMPUTER_TOOL_PREFIX = `mcp__${COMPUTER_EQUIPMENT}__`
 
+/** 컴퓨터 조작 장비를 쓸 수 있는 OS — 맥·윈도우 (리눅스는 장비 목록에서 뺀다) */
+export const isComputerSupported = (platform: string): boolean => platform === 'darwin' || platform === 'win32'
+
 /** 도구 하나(computer)에 action으로 동작을 고른다 — 화면을 바꾸지 않고 보기만 하는 action */
 const READ_ACTIONS = new Set(['get_screenshot', 'get_cursor_position'])
 

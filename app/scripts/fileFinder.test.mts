@@ -28,7 +28,7 @@ fs.mkdirSync(path.join(proj, 'x.pdf'))
 fs.symlinkSync(path.join(tmp, 'proj-evil'), path.join(proj, 'link-out'))
 fs.symlinkSync(path.join(tmp, 'proj-evil/steal.pdf'), path.join(proj, 'link.pdf'))
 
-const names = (q: { words: string[] }) => findInRoot(proj, q).map((c) => path.relative(proj, c.path)).sort()
+const names = (q: { words: string[] }) => findInRoot(proj, q).map((c) => path.relative(proj, c.path).split(path.sep).join('/')).sort()
 
 test('범위 판정: 형제 폴더(/proj-evil)·..·자기 자신은 밖', () => {
   assert.equal(isInside(proj, path.join(proj, 'a/b.pdf')), true)

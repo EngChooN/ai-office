@@ -750,10 +750,10 @@ export default {
   'settingsPage.workMode.toggle': { ko: '업무 모드 사용', en: 'Use work mode', ja: '業務モードを使う', zh: '使用工作模式' },
   'settingsPage.staffCapture.title': { ko: '직원 화면 캡처', en: 'Staff screen capture', ja: 'スタッフの画面キャプチャ', zh: '员工屏幕截图' },
   'settingsPage.staffCapture.desc': {
-    ko: '직원이 화면·페이지 작업을 끝낼 때 결과 화면을 캡처해 보고에 붙여요. 대표 화면이 그대로 찍히므로, 끄면 장비로 지급받은 직원만 캡처해요. (맥 전용)',
-    en: 'When staff finish screen or page work, they capture the result and attach it to their report. This captures your actual screen, so turning it off limits capture to staff equipped with it. (Mac only)',
-    ja: 'スタッフが画面・ページの作業を終えるとき、結果画面をキャプチャして報告に添付します。画面がそのまま撮られるため、オフにすると装備で支給されたスタッフだけがキャプチャできます。（Mac のみ）',
-    zh: '员工完成界面/页面工作后，会截取结果画面并附在报告中。截图会拍到你的实际屏幕，关闭后仅限通过装备获得该权限的员工截图。（仅限 Mac）',
+    ko: '직원이 화면·페이지 작업을 끝낼 때 결과 화면을 캡처해 보고에 붙여요. 대표 화면이 그대로 찍히므로, 끄면 장비로 지급받은 직원만 캡처해요.',
+    en: 'When staff finish screen or page work, they capture the result and attach it to their report. This captures your actual screen, so turning it off limits capture to staff equipped with it.',
+    ja: 'スタッフが画面・ページの作業を終えるとき、結果画面をキャプチャして報告に添付します。画面がそのまま撮られるため、オフにすると装備で支給されたスタッフだけがキャプチャできます。',
+    zh: '员工完成界面/页面工作后，会截取结果画面并附在报告中。截图会拍到你的实际屏幕，关闭后仅限通过装备获得该权限的员工截图。',
   },
   'settingsPage.staffCapture.toggle': { ko: '직원 화면 캡처 허용', en: 'Allow staff screen capture', ja: 'スタッフの画面キャプチャを許可', zh: '允许员工截图' },
   'settingsPage.secretaryWeb.title': { ko: '비서 웹 검색', en: 'Assistant web search', ja: '秘書のウェブ検索', zh: '秘书网页搜索' },
@@ -924,11 +924,12 @@ export default {
   'settingsPage.askHook.on': { ko: '질문 받기 켜기', en: 'Turn on questions', ja: '質問の受け取りをオン', zh: '开启接收提问' },
   'settingsPage.askHook.off': { ko: '질문 받기 끄기', en: 'Turn off questions', ja: '質問の受け取りをオフ', zh: '关闭接收提问' },
   'settingsPage.notOnWindows': {
-    ko: '터미널에서 일하는 다른 창 직원 연결은 다음 업데이트에서 지원해요.',
-    en: 'Connecting external staff working in the terminal will be supported in a future update.',
-    ja: 'ターミナルで働く外部スタッフとの連携は今後のアップデートで対応します。',
-    zh: '与在终端工作的外部员工的连接将在后续更新中支持。',
+    ko: '윈도우에서도 연결할 수 있어요. 아직 윈도우 실기기에서는 확인하지 못했어요(윈도우 실기기 확인 전).',
+    en: 'You can connect on Windows too, but it has not been verified on a real Windows PC yet (awaiting real-device check).',
+    ja: 'Windowsでも接続できますが、Windows実機ではまだ確認していません(Windows実機確認前)。',
+    zh: 'Windows 上也可以连接，但尚未在 Windows 真机上验证(Windows 真机待验证)。',
   },
+
   // 자동결재 (AutoApprove.tsx)
   'autoApprove.scope': {
     ko: '파일 수정은 대신 승인해요(컴퓨터·보안·자동 배포 설정 파일은 제외). 대표님이 정한 위험 명령·코드 올리기·외부 전송은 결재를 기다려요. 다만 모든 경우를 다 막지는 못해요.',

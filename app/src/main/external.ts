@@ -5,6 +5,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { DEFAULT_EQUIPMENT, HOOK_PORT, type Approval, type StaffQuestion, type StaffStatus } from '../shared/types'
 import type { StoredStaff as Staff } from './db'
+import { askCommand, HIRED_ENV, hookCommand } from './externalCommands'
 import { scanCodexSessions, type CodexExternalSession } from './ai/codexExternal'
 
 // 사무실 밖에서 띄운 Claude Code 세션 = "외부 직원". 설정 변경 없이 세션 레지스트리를 읽고,
@@ -21,7 +22,8 @@ const CODEX_SESSIONS_DIR = path.join(os.homedir(), '.codex', 'sessions')
 const CODEX_SCAN_MS = 6000
 const HOOK_EVENTS = ['UserPromptSubmit', 'PreToolUse', 'Notification', 'Stop', 'SessionEnd'] as const
 const HOOK_MARKER = `127.0.0.1:${HOOK_PORT}/hook`
-const HOOK_COMMAND = `curl -s -m 1 -X POST -H 'content-type: application/json' --data-binary @- http://${HOOK_MARKER} >/dev/null 2>&1 || true`
+/** 고용 직원 세션 표시 — 정의는 externalCommands.ts (hook 명령 순수부) */
+export { HIRED_ENV }
 const ACTIVITY_MAX = 80
 // 질문 받기(옵트인): AskUserQuestion 직전 hook이 사무실의 답을 기다린다. 사무실이 꺼져 있거나
 // 원래 창에서 답하기로 넘기면 빈 응답 → 원래 창에 질문이 그대로 뜬다
@@ -29,14 +31,6 @@ const ASK_MARKER = `127.0.0.1:${HOOK_PORT}/ask`
 /** hook 기본 제한(600초)보다 먼저 놓아 원래 창으로 돌려보낸다 */
 const ASK_WAIT_MS = 540_000
 const ASK_HOOK_TIMEOUT_S = 600
-/**
- * 고용 직원 세션(CLAUDE_OFFICE_HIRED=1)은 건너뛴다 — 사용자 설정을 읽는 고용 직원에게도 이 hook이 돌아서,
- * 다른 AI Office(설치본·개발 앱)가 포트를 잡고 있으면 그 앱이 외부 직원 질문으로 붙잡아 최대 9분 멈췄다 (QA: 대신 답하기 6분)
- * Claude 데스크톱 앱 세션도 건너뛴다 — 앱 자체 질문 UI를 쓰는데 이 hook이 질문을 사무실로 가져가 버렸다
- */
-export const HIRED_ENV = 'CLAUDE_OFFICE_HIRED'
-const DESKTOP_ENTRYPOINT = 'claude-desktop'
-export const ASK_COMMAND = `[ -n "$${HIRED_ENV}" ] || [ "$CLAUDE_CODE_ENTRYPOINT" = "${DESKTOP_ENTRYPOINT}" ] || curl -s -m ${ASK_HOOK_TIMEOUT_S - 10} -X POST -H 'content-type: application/json' --data-binary @- http://${ASK_MARKER} 2>/dev/null || true`
 const QUESTION_TOOL = 'AskUserQuestion'
 
 interface PendingAsk {
@@ -377,7 +371,7 @@ export function askHookInstalled() {
 /** 예전 질문 받기 hook(고용 직원도 붙잡던 것)이 깔려 있으면 지금 명령으로 바꿔 둔다 (앱을 켤 때) */
 export function upgradeAskHook() {
   const entries = readSettings().hooks?.PreToolUse ?? []
-  const isOld = entries.some((e) => isAsk(e) && e.hooks?.some((h) => h.command?.includes(ASK_MARKER) && h.command !== ASK_COMMAND))
+  const isOld = entries.some((e) => isAsk(e) && e.hooks?.some((h) => h.command?.includes(ASK_MARKER) && h.command !== askCommand()))
   if (isOld) setAskHookInstalled(true)
   return isOld
 }
@@ -388,7 +382,7 @@ export function setAskHookInstalled(installed: boolean) {
   if (fs.existsSync(SETTINGS_PATH)) fs.copyFileSync(SETTINGS_PATH, `${SETTINGS_PATH}.claude-office.bak`)
   const hooks = { ...(s.hooks ?? {}) }
   const rest = (hooks.PreToolUse ?? []).filter((e) => !isAsk(e))
-  hooks.PreToolUse = installed ? [...rest, { matcher: QUESTION_TOOL, hooks: [{ type: 'command', command: ASK_COMMAND, timeout: ASK_HOOK_TIMEOUT_S }] }] : rest
+  hooks.PreToolUse = installed ? [...rest, { matcher: QUESTION_TOOL, hooks: [{ type: 'command', command: askCommand(), timeout: ASK_HOOK_TIMEOUT_S }] }] : rest
   if (hooks.PreToolUse.length === 0) delete hooks.PreToolUse
   const next: Settings = { ...s, hooks }
   if (Object.keys(hooks).length === 0) delete next.hooks
@@ -408,7 +402,7 @@ export function setHooksInstalled(installed: boolean) {
   const hooks = { ...(s.hooks ?? {}) }
   for (const ev of HOOK_EVENTS) {
     const rest = (hooks[ev] ?? []).filter((e) => !isOurs(e))
-    hooks[ev] = installed ? [...rest, { hooks: [{ type: 'command', command: HOOK_COMMAND }] }] : rest
+    hooks[ev] = installed ? [...rest, { hooks: [{ type: 'command', command: hookCommand() }] }] : rest
     if (hooks[ev].length === 0) delete hooks[ev]
   }
   const next: Settings = { ...s, hooks }

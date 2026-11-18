@@ -3,6 +3,7 @@
 // 설계: docs/design-refresh/connect-workspace/links-design-decision.md
 
 import assert from 'node:assert/strict'
+import path from 'node:path'
 import { mock, test } from 'node:test'
 import type { PeerLinkState } from '../src/shared/peerProtocol.ts'
 import { WORKSPACE_OFFLINE_GRACE_MS } from '../src/shared/workspace.ts'
@@ -111,7 +112,7 @@ test('파일 이름: Content-Disposition 읽기·다운로드 폴더에서 겹�
   assert.equal(fileNameOf(`attachment; filename*=UTF-8''${encodeURIComponent('보고서 1.pdf')}`), '보고서 1.pdf')
   assert.equal(fileNameOf('inline'), undefined)
   assert.equal(fileNameOf("attachment; filename*=UTF-8''%E0%A4%A"), undefined)
-  const have = new Set(['/d/a.txt', '/d/a (2).txt'])
+  const have = new Set([path.join('/d', 'a.txt'), path.join('/d', 'a (2).txt')])
   assert.equal(freeFileName('/d', 'a.txt', (p) => have.has(p)), 'a (3).txt')
   assert.equal(freeFileName('/d', '../../etc/x:y', () => false), 'x_y')
   assert.equal(freeFileName('/d', '', () => false), 'file')

@@ -423,7 +423,7 @@ test('두 손가락 확대: 손가락 사이가 2배가 되면 2배, 기준점�
 // ── 경계·보안 ─────────────────────────────────────────
 
 const walk = (dir: string): string[] =>
-  fs.readdirSync(path.join(APP, dir), { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(dir, e.name)) : /\.(tsx?|mts)$/.test(e.name) ? [path.join(dir, e.name)] : []))
+  fs.readdirSync(path.join(APP, dir), { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(dir, e.name)) : /\.(tsx?|mts)$/.test(e.name) ? [path.join(dir, e.name).split(path.sep).join('/')] : []))
 
 test('폰 배치 분기는 틀·UI 부품·phone: 변형에서만 — feature·지도·부품 화면은 useLayout을 쓰지 않는다', () => {
   const offenders = ['src/renderer/features', 'src/renderer/map', 'src/renderer/components'].flatMap(walk).filter((f) => /layout\/useLayout/.test(read(f)))

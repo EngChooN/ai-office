@@ -72,7 +72,7 @@ A free, open-source desktop app (Electron) where you **hire** Claude staff and G
 - Not signed. If the SmartScreen "Windows protected your PC" window appears the first time you open Setup.exe, click "More info › Run anyway".
 - If you used the old zip: install with Setup.exe, then delete the old folder (your settings and history carry over).
 - Data is in `%APPDATA%\AI Office\office.db`.
-- Still Mac-only: notifications and question handling for staff started outside the app (hooks), and screen capture. Reviewing task results (commit · PR) requires Git for Windows and GitHub CLI, and has not been verified in practice yet.
+- Windows screen capture, computer control, and notifications/question handling for staff started outside the app (hooks) are supported as of 1.4.4, but have not been verified on a real Windows PC yet — if something goes wrong, please report it as an issue. Reviewing task results (commit · PR) requires Git for Windows and GitHub CLI, and has not been verified in practice yet.
 
 **Requirement for both**
 - At least one of Claude (Claude Code) or GPT (ChatGPT · Codex) must be signed in on that computer. With both connected you choose per employee. Staff work under that account, and usage is billed to it.

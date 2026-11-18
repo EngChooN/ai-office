@@ -16,8 +16,10 @@ test('토큰 금고: 암호화 파일 0600·폴더 0700, 읽지 못하면 unread
   v.save('p1', 'SECRET-TOKEN')
   assert.equal(v.load('p1'), 'SECRET-TOKEN')
   const file = path.join(dir, 'p1.token.enc')
-  assert.equal(fs.statSync(file).mode & 0o777, 0o600)
-  assert.equal(fs.statSync(dir).mode & 0o777, 0o700)
+  if (process.platform !== 'win32') {
+    assert.equal(fs.statSync(file).mode & 0o777, 0o600)
+    assert.equal(fs.statSync(dir).mode & 0o777, 0o700)
+  }
   assert.equal(fs.readFileSync(file, 'utf8').includes('SECRET-TOKEN'), false) // 평문이 아니다
   // 다른 키체인(복호화 실패)이면 unreadable — 몰래 새로 만들지 않는다
   const broken = fileTokenVault(dir, { encrypt: crypt.encrypt, decrypt: () => { throw new Error('bad key') } })

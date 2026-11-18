@@ -24,8 +24,8 @@ android {
         applicationId = "com.claudeoffice.remote"
         minSdk = 26
         targetSdk = 34
-        versionCode = 56
-        versionName = "1.4.3"
+        versionCode = 57
+        versionName = "1.4.4"
     }
 
     signingConfigs {

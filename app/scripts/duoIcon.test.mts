@@ -3,10 +3,11 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import path from 'node:path'
 import { test } from 'node:test'
+import { fileURLToPath } from 'node:url'
 import { DUO_ICON_DATA } from '../src/renderer/components/duo-icon-data.ts'
 import { DUO_NAMES, EMOJI_TO_ICON, splitEdgeIcon, splitLeadingIcon, stripIconEmoji } from '../src/shared/iconText.ts'
 
-const root = new URL('../', import.meta.url).pathname
+const root = fileURLToPath(new URL('../', import.meta.url))
 const src = (p: string) => fs.readFileSync(path.join(root, p), 'utf8')
 
 test('21종이 모두 그림을 가지고, 이모지 대응표는 21종 이름만 가리킨다', () => {
@@ -76,7 +77,7 @@ test('화면 코드에 20종 이모지가 허용 목록 밖에 남지 않는다 
   const dir = path.join(root, 'src/renderer')
   const found: string[] = []
   for (const f of walk(dir)) {
-    const rel = path.relative(dir, f)
+    const rel = path.relative(dir, f).split(path.sep).join('/')
     if (SKIP.test(`/${rel}`) || !/\.tsx?$/.test(f) || rel.startsWith('components/duo-icon')) continue
     fs.readFileSync(f, 'utf8')
       .split('\n')

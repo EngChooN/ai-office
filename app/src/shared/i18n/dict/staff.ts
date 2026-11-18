@@ -447,12 +447,6 @@ export default {
     ja: '代表の画面全体をキャプチャして画像で報告する。毎回代表の承認が必要。作業中のアプリ画面だけでよければ、できるだけ別の方法（ブラウザツールなど）で撮って report_image を使う。',
     zh: '截取代表的整个屏幕并以图片汇报。每次都需要代表审批。如果只需要正在处理的应用画面，请尽量用其他方式（浏览器工具等）截图后使用 report_image。',
   },
-  'staff.tool.screen.noWin': {
-    ko: '윈도우에서는 아직 화면 캡처를 지원하지 않아요. 작업 화면은 다른 방법으로 찍어 report_image로 보고하세요.',
-    en: 'Screen capture is not supported on Windows yet. Take the work screen another way and report it with report_image.',
-    ja: 'Windowsではまだ画面キャプチャに対応していません。作業画面は別の方法で撮って report_image で報告してください。',
-    zh: 'Windows 上暂不支持屏幕截图。请用其他方式截取工作画面，并用 report_image 汇报。',
-  },
   'staff.tool.screen.fail': {
     ko: '화면 캡처에 실패했습니다. 시스템 설정 › 개인정보 보호 및 보안 › 화면 기록에서 AI Office를 허용해야 할 수 있어요.',
     en: 'Screen capture failed. You may need to allow AI Office under System Settings › Privacy & Security › Screen Recording.',

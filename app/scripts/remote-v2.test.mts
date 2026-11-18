@@ -595,7 +595,7 @@ test('L1: 파일 받기 — 폴더·지워진 파일·읽을 수 없는 파일�
     fs.writeFileSync(lockedFile, 'secret')
     fs.chmodSync(lockedFile, 0o000)
     const locked = put('못 읽는 파일', lockedFile)
-    for (const id of [folder, gone, ...(process.getuid?.() === 0 ? [] : [locked])]) {
+    for (const id of [folder, gone, ...(process.getuid?.() === 0 || process.platform === 'win32' ? [] : [locked])]) {
       const r = await req(port, { path: `/v2/files/${id}`, token: t.token })
       assert.deepEqual([r.status, r.body?.error, r.body?.protocolVersion], [404, 'file_not_found', 2], id)
     }

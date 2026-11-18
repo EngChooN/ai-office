@@ -8,7 +8,7 @@ import { t } from '../shared/i18n/index.ts'
 import type { TKey } from '../shared/i18n/index.ts'
 import { browserUnavailable } from './browser'
 import { COMPUTER_EQUIPMENT } from '../shared/computerTools.ts'
-import { computerPermissionNotice, computerUnavailable, isComputerSupported } from './computer'
+import { computerPermissionNotice, computerUnavailable, isSupportedHere } from './computer'
 import * as db from './db'
 import { codexAssets } from './ai/codexAssets'
 import { readMcpSources, type McpEntry, type McpSourceInput } from './mcpSources'
@@ -95,8 +95,8 @@ export function equipmentCatalog(cwd: string): EquipmentCatalog {
     .map((e) => ({ name: e.name, source: sourceLabel(e), detail: e.detail, sourceKind: e.kind, status: e.status, ...(e.reason ? { reason: e.reason, reasonText: t(`equip.reason.${e.reason}`) } : {}) }))
   const mcp: EquipmentMcp[] = [
     { ...browser, sourceKind: 'builtin', status: unavailable ? 'unsupported' : 'ok' },
-    // 앱 기본 장비 '컴퓨터 조작'은 맥에서만 보인다
-    ...(isComputerSupported() ? [computerEntry()] : []),
+    // 앱 기본 장비 '컴퓨터 조작'은 맥·윈도우에서 보인다
+    ...(isSupportedHere() ? [computerEntry()] : []),
     ...claudeEntries,
     ...codexMcpEntries(new Set([BROWSER_EQUIPMENT, COMPUTER_EQUIPMENT, ...claudeEntries.map((e) => e.name)])),
   ]

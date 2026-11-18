@@ -72,7 +72,7 @@
 - 未签名。首次打开 Setup.exe 时若出现 SmartScreen“Windows 已保护你的电脑”窗口，请点击“更多信息 › 仍要运行”。
 - 以前解压 zip 使用的用户：用 Setup.exe 安装后删除旧文件夹即可（设置和记录会保留）。
 - 数据位于 `%APPDATA%\AI Office\office.db`。
-- 目前仅限 Mac：在应用外启动的员工的通知与提问接收（hooks）、屏幕截图。审查任务结果（提交 · PR）需要 Git for Windows 和 GitHub CLI，尚未实际验证。
+- Windows 上的屏幕截图、电脑操作以及在应用外启动的员工的通知与提问接收（hooks）自 1.4.4 起支持，但尚未在 Windows 真机上验证，如有问题请通过 issue 告诉我们。审查任务结果（提交 · PR）需要 Git for Windows 和 GitHub CLI，尚未实际验证。
 
 **共同前提条件**
 - 该电脑上已登录 Claude（Claude Code）或 GPT（ChatGPT · Codex）中的至少一个。两者都连接时可按员工选择。员工使用该账户工作，费用也计入该账户。
