@@ -452,6 +452,10 @@ test('parseRemotePost: 모양이 틀리면 버린다', () => {
   assert.equal(parseRemotePost(JSON.stringify({ type: 'wipe', id: 'a' })), null)
   assert.deepEqual(parseRemotePost(JSON.stringify({ type: 'ready', features: ['iso-office', 3] })), { type: 'ready', features: ['iso-office'] })
   assert.deepEqual(parseRemotePost(JSON.stringify({ type: 'download', id: 'd', fileId: 'f', name: 'n' })), { type: 'download', id: 'd', fileId: 'f', name: 'n' })
+  assert.deepEqual(parseRemotePost(JSON.stringify({ type: 'download', id: 'd', fileId: 'f', name: '', kind: 'artifact', version: 3 })), { type: 'download', id: 'd', fileId: 'f', name: '', kind: 'artifact', version: 3 })
+  assert.deepEqual(parseRemotePost(JSON.stringify({ type: 'read', id: 'r', fileId: 'f', version: 0 })), { type: 'read', id: 'r', fileId: 'f' }, '버전은 1 이상 정수만')
+  assert.deepEqual(parseRemotePost(JSON.stringify({ type: 'read', id: 'r', fileId: 'f', version: '2' })), { type: 'read', id: 'r', fileId: 'f' })
+  assert.equal(parseRemotePost(JSON.stringify({ type: 'read', id: 'r' })), null)
 })
 
 // ── 마법사 ────────────────────────────────────────────

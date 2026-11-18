@@ -118,5 +118,5 @@ export default {
   // ── 휴대폰에서 보는 PC 전용 설정 ──
   'pcOnly.on': { ko: '켜져 있어요', en: 'On', ja: 'オンです', zh: '已开启' },
   'pcOnly.off': { ko: '꺼져 있어요', en: 'Off', ja: 'オフです', zh: '已关闭' },
-  'pcOnly.hint': { ko: 'PC에서 바꿀 수 있어요.', en: 'You can change this on the PC.', ja: 'PC で変更できます。', zh: '可在电脑上更改。' },
+  'pcOnly.hint': { ko: '안전을 위해 원격 화면에서는 보기만 돼요. 바꾸려면 그 PC에서 해 주세요.', en: 'For safety, this is view-only on a remote screen. Change it on that PC.', ja: '安全のため、リモート画面では見るだけです。変更はその PC で行ってください。', zh: '为了安全，远程画面中只能查看。要更改请在那台电脑上操作。' },
 } satisfies Record<string, Entry>

@@ -8,6 +8,7 @@ import { openLinksInBrowser } from '../externalLinks'
 import { WORKSPACE_COLOR_HEX } from '../../shared/workspace.ts'
 import { createWorkspaceStore } from './workspaceStore.ts'
 import { createWindowHub, type HubWindow } from './workspaceWindows.ts'
+import { handleOnce } from './handleOnce.ts'
 import { freeFileName } from './linkModel.ts'
 import { createWorkspaceLinks, type LinkPeers } from './workspaceLinks.ts'
 import { createWorkspaceService } from './workspaceService.ts'
@@ -86,6 +87,12 @@ export function createWorkspaces(deps: WorkspacesDeps) {
       // 원격 창은 그 PC 화면만 — 카메라·마이크·알림 같은 권한은 모두 거절하고 remote.html 밖으로 옮겨 가지 않는다
       w.webContents.session.setPermissionRequestHandler((_wc, _permission, callback) => callback(false))
       w.webContents.session.setPermissionCheckHandler(() => false)
+      // 첨부 그림 주소(office-file://file/<id>)는 이 PC 저장소가 아니라 그 PC 것을 가리켜야 한다 — 이 창 안에서만 그 PC에서 받아 온다
+      // 같은 저장 영역(persist:ws-<id>)의 창을 다시 만들어도 한 번만 등록한다
+      handleOnce(w.webContents.session, w.webContents.session.protocol, 'office-file', async (req) => {
+        const found = await links.readFile?.(workspaceId, new URL(req.url).pathname.replace(/^\//, ''))
+        return found ? new Response(new Uint8Array(found.data), { headers: { 'content-type': found.mime, 'x-content-type-options': 'nosniff' } }) : new Response('not found', { status: 404 })
+      })
       w.webContents.on('will-navigate', (e, url) => {
         if (!isSamePage(url, w.webContents.getURL())) e.preventDefault()
       })

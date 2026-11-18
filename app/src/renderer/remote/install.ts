@@ -36,6 +36,7 @@ const session = createRemoteOffice(bridge, {
   },
   notice: (text) => useRemoteUi.getState().showNotice(text),
   confirm: (message) => window.confirm(message),
+  canPreviewArtifact: true,
   pcChecked: (isoOffice) => {
     useRemoteUi.setState({ isPcOutdated: !isoOffice })
     if (isoOffice) void window.office.snapshot().then(useOffice.getState().setSnapshot)

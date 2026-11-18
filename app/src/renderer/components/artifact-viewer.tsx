@@ -1,15 +1,16 @@
 import { useEffect, useState, type RefObject } from 'react'
-import { ExternalLinkIcon, FolderOpenIcon } from 'lucide-react'
+import { DownloadIcon, ExternalLinkIcon, FolderOpenIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { NativeSelect } from '@/components/ui/select'
 import type { ArtifactRef, ArtifactView } from '@shared/types'
 import { fmtDate, t } from '@shared/i18n'
+import { IS_REMOTE_SCREEN } from '@/shell'
 
 type Tab = 'live' | 'source'
-type Load = { status: 'loading' } | { status: 'ready'; view: ArtifactView } | { status: 'missing' } | { status: 'error' }
+type Load = { status: 'loading' } | { status: 'ready'; view: ArtifactView } | { status: 'missing' } | { status: 'tooBig' } | { status: 'error' }
 
-/** 아티팩트 크게 보기: 실제 화면(격리 iframe)·원본 탭, 버전 고르기, 브라우저로 열기·파일 위치 열기 (PC 전용 — 휴대폰은 카드에서 막는다) */
+/** 아티팩트 크게 보기: 실제 화면(격리 iframe)·원본 탭, 버전 고르기, 브라우저로 열기·파일 위치 열기 (원격 화면에서는 브라우저·파일 위치 대신 내려받기) */
 export function ArtifactViewer({ artifact, returnFocusRef, onClose }: { artifact: ArtifactRef | null; returnFocusRef?: RefObject<HTMLElement | null>; onClose: () => void }) {
   // 트리거 없이 여는 창이라 Radix가 초점을 돌려주지 않는다 — 닫으면 열었던 버튼으로
   const handleCloseAutoFocus = (e: Event) => {
@@ -40,7 +41,7 @@ function ViewerBody({ artifact }: { artifact: ArtifactRef }) {
     window.office
       .artifactOpen(artifact.id, version)
       .then((view) => !isCancelled && setLoad(view ? { status: 'ready', view } : { status: 'missing' }))
-      .catch(() => !isCancelled && setLoad({ status: 'error' }))
+      .catch((e: { code?: string }) => !isCancelled && setLoad({ status: e?.code === 'payload_too_large' ? 'tooBig' : 'error' }))
     return () => {
       isCancelled = true
     }
@@ -93,12 +94,21 @@ function ViewerBody({ artifact }: { artifact: ArtifactRef }) {
           </NativeSelect>
         )}
         <div className="ml-auto flex flex-wrap gap-2">
-          <Button size="sm" variant="outline" disabled={!view} onClick={() => view && run(() => window.office.artifactOpenExternal(view.id, view.version))}>
-            <ExternalLinkIcon /> {t('artifact.openExternal')}
-          </Button>
-          <Button size="sm" variant="outline" disabled={!view} onClick={() => view && run(() => window.office.artifactReveal(view.id, view.version))}>
-            <FolderOpenIcon /> {t('artifact.reveal')}
-          </Button>
+          {IS_REMOTE_SCREEN ? (
+            // 원격 화면: 그 PC의 브라우저·폴더를 열 수 없으니 이 기기로 내려받는다 (같은 메서드가 내려받기로 바뀌어 있다)
+            <Button size="sm" variant="outline" disabled={!view} onClick={() => view && run(() => window.office.artifactOpenExternal(view.id, view.version))}>
+              <DownloadIcon /> {t('artifact.download')}
+            </Button>
+          ) : (
+            <>
+              <Button size="sm" variant="outline" disabled={!view} onClick={() => view && run(() => window.office.artifactOpenExternal(view.id, view.version))}>
+                <ExternalLinkIcon /> {t('artifact.openExternal')}
+              </Button>
+              <Button size="sm" variant="outline" disabled={!view} onClick={() => view && run(() => window.office.artifactReveal(view.id, view.version))}>
+                <FolderOpenIcon /> {t('artifact.reveal')}
+              </Button>
+            </>
+          )}
         </div>
       </div>
       {actionError && (
@@ -108,10 +118,10 @@ function ViewerBody({ artifact }: { artifact: ArtifactRef }) {
       )}
       <div className="min-h-0 flex-1 overflow-hidden rounded-md border">
         {load.status !== 'ready' ? (
-          <p className="text-muted-foreground p-4 text-sm">{t(load.status === 'loading' ? 'artifact.loading' : load.status === 'missing' ? 'artifact.missing' : 'artifact.error')}</p>
+          <p className="text-muted-foreground p-4 text-sm">{t(load.status === 'loading' ? 'artifact.loading' : load.status === 'missing' ? 'artifact.missing' : load.status === 'tooBig' ? 'artifact.tooBig' : 'artifact.error')}</p>
         ) : tab === 'live' ? (
           // allow-same-origin을 주지 않아 앱과 다른 출처로 갇힌다. 바탕은 칠하지 않는다 — 색 모드를 정하지 않은 html은 브라우저가 흰 캔버스를 깔고, md는 앱 라이트·다크를 따른다
-          <iframe key={load.view.url} sandbox="allow-scripts" src={load.view.url} title={load.view.title} className="size-full" />
+          <iframe key={load.view.doc === undefined ? load.view.url : `${load.view.id}-${load.view.version}`} sandbox="allow-scripts" {...(load.view.doc === undefined ? { src: load.view.url } : { srcDoc: load.view.doc })} title={load.view.title} className="size-full" />
         ) : (
           <pre className="selectable bg-muted size-full overflow-auto p-3 font-mono text-xs break-words whitespace-pre-wrap">{load.view.source}</pre>
         )}

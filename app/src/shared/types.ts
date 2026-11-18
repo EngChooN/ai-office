@@ -680,6 +680,8 @@ export interface ArtifactView extends ArtifactRef {
   url: string
   /** 원본 보기용 텍스트 (html·md 그대로) */
   source: string
+  /** 원격 화면에서만: url 대신 이 문서를 격리 iframe(srcDoc)에 넣는다 — 저쪽 PC에서 받은 원본이라 전용 주소가 없다 */
+  doc?: string
   versions: ArtifactVersionInfo[]
 }
 

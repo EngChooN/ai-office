@@ -14,6 +14,44 @@ export default {
     zh: '请在那台电脑上直接选择文件夹和文件',
   },
 
+  // ── 원격 화면 안내 (휴대폰·다른 PC 공통): 이유 + 대신 할 일 한 줄 ──
+  'remote.pcOnly.generic': {
+    ko: '이 기능은 PC의 파일·프로그램을 직접 다루는 일이라 원격 화면에서는 쓸 수 없어요. 그 PC 앞에서 해 주세요.',
+    en: 'This works directly with the PC’s files and programs, so it is not available on a remote screen. Please do it at that PC.',
+    ja: 'この機能は PC のファイルやプログラムを直接扱うため、リモート画面では使えません。その PC の前で行ってください。',
+    zh: '此功能需要直接操作电脑里的文件和程序，远程画面无法使用。请在那台电脑前操作。',
+  },
+  'remote.pcOnly.terminal': {
+    ko: '터미널은 PC 화면을 직접 띄우는 기능이라 원격 화면에서는 못 열어요. 그 PC 앞에서 열어 주세요.',
+    en: 'The terminal opens a window on the PC itself, so it cannot be opened from a remote screen. Please open it at that PC.',
+    ja: 'ターミナルは PC の画面に直接開くため、リモート画面からは開けません。その PC の前で開いてください。',
+    zh: '终端会在电脑屏幕上直接打开，远程画面无法打开。请在那台电脑前打开。',
+  },
+  'remote.pcOnly.codexLogin': {
+    ko: 'Codex 로그인은 그 PC의 브라우저에서 이어져서 원격 화면에서는 못 해요. PC의 AI Office 설정에서 연결해 주세요.',
+    en: 'Codex sign-in continues in that PC’s browser, so it cannot be done on a remote screen. Connect it in AI Office settings on the PC.',
+    ja: 'Codex のログインはその PC のブラウザで続くため、リモート画面では行えません。PC の AI Office 設定で接続してください。',
+    zh: 'Codex 登录需要在那台电脑的浏览器中继续，远程画面无法完成。请在电脑的 AI Office 设置中连接。',
+  },
+  'remote.pcOnly.claudeLogin': {
+    ko: 'Claude 로그인은 그 PC의 브라우저에서 이어져서 원격 화면에서는 못 해요. PC의 AI Office 첫 실행 안내를 따라 주세요.',
+    en: 'Claude sign-in continues in that PC’s browser, so it cannot be done on a remote screen. Follow the first-run guide of AI Office on the PC.',
+    ja: 'Claude のログインはその PC のブラウザで続くため、リモート画面では行えません。PC の AI Office の初回案内に従ってください。',
+    zh: 'Claude 登录需要在那台电脑的浏览器中继续，远程画面无法完成。请按电脑上 AI Office 的首次运行指引操作。',
+  },
+  'remote.pcOnly.qr': {
+    ko: '연결 QR은 안전을 위해 PC 화면에서만 보여 줘요. 그 PC 앞에서 확인해 주세요.',
+    en: 'For safety, the connection QR is shown only on the PC screen. Please check it at that PC.',
+    ja: '安全のため、接続 QR は PC の画面にだけ表示されます。その PC の前でご確認ください。',
+    zh: '为了安全，连接二维码只在电脑屏幕上显示。请在那台电脑前查看。',
+  },
+  'remote.saved': {
+    ko: '다운로드 폴더에 저장했어요.',
+    en: 'Saved to the Downloads folder.',
+    ja: 'ダウンロードフォルダに保存しました。',
+    zh: '已保存到下载文件夹。',
+  },
+
   'workspace.status.connecting': { ko: '연결하는 중', en: 'Connecting', ja: '接続中', zh: '正在连接' },
   'workspace.status.ready': { ko: '연결됨', en: 'Connected', ja: '接続済み', zh: '已连接' },
   'workspace.status.reconnecting': { ko: '다시 연결하는 중', en: 'Reconnecting', ja: '再接続中', zh: '正在重新连接' },

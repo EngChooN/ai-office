@@ -11,6 +11,25 @@ Writing rules
 - Leave out: internal or development matters, re-fixes of features added in the same version, how a security hole worked (if needed, one line on the result), minor wording or spacing tweaks.
 - Couldn't do it before → new feature; easier than before → improvement; was working wrongly → bug fix.
 
+## [1.4.5] - 2026-11-18
+Heads-up: the phone app does not yet support previewing or downloading results (planned for the next version). This has not been checked on real devices yet.
+
+### At a glance
+- **New** Preview results on another PC's screen
+- **New** Download results to your device
+- **Fixed** Broken photos on another PC's screen
+- **Better** Clearer notes for remote screens
+
+### New features
+- In the window showing another PC's office, tap a result card to view it right there. Results over 5 MB are too large to preview, and the app tells you so.
+- Results and attachments can be saved to this device's Downloads folder with "Download". It replaces "Open in browser" and "Show file location", which make no sense remotely.
+
+### Improvements
+- Notes for features that can't be used on a remote screen now say "remote screen" instead of "phone", with a one-line reason and what to do instead (4 languages).
+
+### Bug fixes
+- Fixed attachment photos appearing broken in another PC's office window. The photo is now fetched from that PC and shown.
+
 ## [1.4.4] - 2026-11-18
 Good to know: Windows screen capture, computer control and notifications for staff working outside the app have not been verified on a real Windows PC yet. If something goes wrong, please let us know as an issue.
 

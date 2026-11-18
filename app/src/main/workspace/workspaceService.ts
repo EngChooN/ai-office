@@ -16,8 +16,10 @@ export interface WorkspaceLinks {
   status(workspaceId: string): WorkspaceStatus
   /** 그 PC의 결재 대기 수 */
   pending(workspaceId: string): number
-  /** 원격 창 요청을 저쪽 PC로 보낸다 (call·upload·download) */
+  /** 원격 창 요청을 저쪽 PC로 보낸다 (call·upload·download·read) */
   request(workspaceId: string, req: RemoteRequest): Promise<unknown>
+  /** 첨부 한 개의 바이트를 저쪽 PC에서 받는다 (그림 미리보기용 office-file 주소 응답). 없거나 실패면 null */
+  readFile?(workspaceId: string, fileId: string): Promise<{ data: Buffer; mime: string } | null>
   /** 워크스페이스가 생기고 없어질 때 (기록을 만들고 지운다) */
   sync(ids: string[]): void
   listen(l: LinkListener): void
@@ -41,7 +43,10 @@ export const noLinks: WorkspaceLinks = {
 export type RemoteRequest =
   | { type: 'call'; method: string; args: unknown[]; confirm?: boolean }
   | { type: 'upload'; name: string; mime: string; base64: string }
-  | { type: 'download'; fileId: string; name: string }
+  /** kind: 'artifact'면 fileId는 결과물 id (version 생략 = 최신), 없으면 첨부 id */
+  | { type: 'download'; fileId: string; name: string; kind?: 'artifact'; version?: number }
+  /** 결과물 원본을 받아 미리보기에 쓴다 (저장하지 않는다) */
+  | { type: 'read'; fileId: string; version?: number }
 
 export interface ServiceDeps {
   store: WorkspaceStore
@@ -70,12 +75,16 @@ export function parseRemotePost(text: unknown): (RemoteRequest & { id: string })
   if (typeof m.id !== 'string' || !m.id || m.id.length > ID_MAX) return null
   if (m.type === 'call' && typeof m.method === 'string' && Array.isArray(m.args)) return { type: 'call', id: m.id, method: m.method, args: m.args, ...(m.confirm === true ? { confirm: true } : {}) }
   if (m.type === 'upload' && typeof m.name === 'string' && typeof m.mime === 'string' && typeof m.base64 === 'string') return { type: 'upload', id: m.id, name: m.name, mime: m.mime, base64: m.base64 }
-  if (m.type === 'download' && typeof m.fileId === 'string' && typeof m.name === 'string') return { type: 'download', id: m.id, fileId: m.fileId, name: m.name }
+  const version = typeof m.version === 'number' && Number.isInteger(m.version) && m.version >= 1 && m.version <= 999_999 ? m.version : undefined
+  if (m.type === 'download' && typeof m.fileId === 'string' && typeof m.name === 'string') {
+    return { type: 'download', id: m.id, fileId: m.fileId, name: m.name, ...(m.kind === 'artifact' ? { kind: 'artifact' as const, ...(version ? { version } : {}) } : {}) }
+  }
+  if (m.type === 'read' && typeof m.fileId === 'string') return { type: 'read', id: m.id, fileId: m.fileId, ...(version ? { version } : {}) }
   return null
 }
 
 /** 요청 종류별로 막을지 정할 때 쓰는 이름 — 올리기는 쓰기, 내려받기는 읽기 */
-const gateName = (req: RemoteRequest) => (req.type === 'call' ? req.method : req.type === 'download' ? 'snapshot' : 'saveAttachments')
+const gateName = (req: RemoteRequest) => (req.type === 'call' ? req.method : req.type === 'download' || req.type === 'read' ? 'snapshot' : 'saveAttachments')
 
 export function createWorkspaceService(deps: ServiceDeps) {
   const now = deps.now ?? Date.now

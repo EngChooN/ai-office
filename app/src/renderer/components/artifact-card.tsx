@@ -3,11 +3,11 @@ import { FileCode2Icon, FileTextIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ArtifactViewer } from '@/components/artifact-viewer'
 import { cn } from '@/lib/utils'
-import { IS_REMOTE_SCREEN } from '@/shell'
+import { CAN_OPEN_ARTIFACT } from '@/shell'
 import type { ArtifactRef } from '@shared/types'
 import { t } from '@shared/i18n'
 
-/** 아티팩트 한 장: 종류 아이콘·제목·종류·버전·열기 (휴대폰은 열기 대신 PC 안내) */
+/** 아티팩트 한 장: 종류 아이콘·제목·종류·버전·열기 (휴대폰 셸은 열기 대신 PC 안내) */
 export function ArtifactCard({ artifact: a, onOpen }: { artifact: ArtifactRef; onOpen: (button: HTMLButtonElement) => void }) {
   const Icon = a.kind === 'html' ? FileCode2Icon : FileTextIcon
   return (
@@ -19,10 +19,10 @@ export function ArtifactCard({ artifact: a, onOpen }: { artifact: ArtifactRef; o
         </p>
         <p className="text-muted-foreground truncate text-[11px]">
           {t(`artifact.kind.${a.kind}`)} · v{a.version}
-          {IS_REMOTE_SCREEN && ` · ${t('artifact.pcOnlyHint')}`}
+          {!CAN_OPEN_ARTIFACT && ` · ${t('artifact.pcOnlyHint')}`}
         </p>
       </div>
-      {IS_REMOTE_SCREEN ? (
+      {!CAN_OPEN_ARTIFACT ? (
         <span className="text-muted-foreground shrink-0">{t('artifact.pcOnly')}</span>
       ) : (
         <Button size="sm" variant="outline" className="h-7 shrink-0 px-2.5 text-xs" onClick={(e) => onOpen(e.currentTarget)}>
@@ -52,7 +52,7 @@ export function ArtifactCards({ artifacts, className }: { artifacts?: ArtifactRe
           }}
         />
       ))}
-      {!IS_REMOTE_SCREEN && <ArtifactViewer artifact={opened} returnFocusRef={openerRef} onClose={() => setOpened(null)} />}
+      {CAN_OPEN_ARTIFACT && <ArtifactViewer artifact={opened} returnFocusRef={openerRef} onClose={() => setOpened(null)} />}
     </div>
   )
 }

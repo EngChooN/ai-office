@@ -96,7 +96,7 @@ export default {
   'autonomy.badge': { ko: '자율 진행 중 — 묻지 않고 끝까지', en: 'Autonomous — runs to the end without asking', ja: '自律進行中 — 質問せず最後まで', zh: '自主推进中 — 不提问、推进到完成' },
   'autonomy.turnOff': { ko: '자율 진행 끄기', en: 'Turn off autonomous', ja: '自律進行をオフ', zh: '关闭自主推进' },
   'autonomy.turnOn': { ko: '자율 진행 켜기', en: 'Turn on autonomous', ja: '自律進行をオン', zh: '开启自主推进' },
-  'autonomy.pcOnly': { ko: '자율 진행은 PC에서만 켤 수 있어요', en: 'Autonomous mode can only be turned on from the PC', ja: '自律進行は PC でのみオンにできます', zh: '自主推进只能在电脑上开启' },
+  'autonomy.pcOnly': { ko: '자율 진행은 안전을 위해 PC에서만 켤 수 있어요. 그 PC 앞에서 켜 주세요', en: 'For safety, autonomous mode can only be turned on at the PC. Please turn it on there', ja: '自律進行は安全のため PC でのみオンにできます。その PC の前でオンにしてください', zh: '为了安全，自主推进只能在电脑上开启。请在那台电脑前开启' },
   'autonomy.full': { ko: '완전 자율', en: 'Fully autonomous', ja: '完全自律', zh: '完全自主' },
   'autonomy.fullActive': { ko: '완전 자율 중', en: 'Fully autonomous', ja: '完全自律中', zh: '完全自主中' },
   'autonomy.fullHint': {

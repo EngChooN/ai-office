@@ -277,7 +277,7 @@ export default {
   'manuals.section.personal': { ko: '📘 한 명이 하는 업무 — 직원이 써요', en: '📘 One-person tasks — used by staff', ja: '📘 1人で行う業務 — スタッフが使います', zh: '📘 一人完成的工作 — 员工使用' },
   'manuals.empty': { ko: '아직 없어요.', en: 'None yet.', ja: 'まだありません。', zh: '暂无。' },
   'manuals.scopeUser': { ko: '내 계정', en: 'My account', ja: 'マイアカウント', zh: '我的账户' },
-  'manuals.userPcOnly': { ko: '내 계정 매뉴얼은 PC에서 고치고 지울 수 있어요.', en: 'My-account manuals can be edited or deleted on the PC.', ja: 'マイアカウントのマニュアルは PC で編集・削除できます。', zh: '“我的账户”手册可在电脑上修改或删除。' },
+  'manuals.userPcOnly': { ko: '내 계정 매뉴얼은 그 PC의 파일이라 원격 화면에서는 고칠 수 없어요. PC에서 고치거나 지워 주세요.', en: 'My-account manuals are files on that PC, so they cannot be changed on a remote screen. Edit or delete them on the PC.', ja: 'マイアカウントのマニュアルはその PC のファイルのため、リモート画面では変更できません。PC で編集・削除してください。', zh: '“我的账户”手册是那台电脑里的文件，远程画面无法修改。请在电脑上修改或删除。' },
   'manuals.noDescription': { ko: '설명 없음', en: 'No description', ja: '説明なし', zh: '无说明' },
   'manuals.noSteps': { ko: '단계 없음', en: 'No steps', ja: 'ステップなし', zh: '无步骤' },
   'manuals.trainCount': { ko: '쓰는 곳 {count}', en: 'In use {count}', ja: '利用中 {count}', zh: '使用中 {count}' },

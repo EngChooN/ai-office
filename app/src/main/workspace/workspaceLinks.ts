@@ -33,6 +33,21 @@ export interface LinksDeps {
 /** 올리기 상한 (휴대폰 셸과 같은 20MB) · 받기 상한 */
 const UPLOAD_MAX = 20 * 1024 * 1024
 const DOWNLOAD_MAX = 200 * 1024 * 1024
+/** 결과물 받기 상한 (저쪽 PC 저장 한도 5MB와 같다 — 넘으면 저쪽이 413으로 막는다) */
+const ARTIFACT_MAX = 5 * 1024 * 1024
+const IMAGE_MAX = 20 * 1024 * 1024
+const ID_SHAPE = /^[0-9a-f-]{36}$/i
+const artifactPath = (id: string, version?: number) => `/v2/artifacts/${id}${version ? `/${version}` : ''}`
+
+/** 앞 몇 바이트로 그림·PDF 종류를 알아본다 (저쪽 응답의 Content-Type은 getBytes가 넘기지 않는다). 모르면 내려받기용 */
+export function sniffMime(d: Buffer): string {
+  if (d.length >= 8 && d.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return 'image/png'
+  if (d.length >= 3 && d[0] === 0xff && d[1] === 0xd8 && d[2] === 0xff) return 'image/jpeg'
+  if (d.length >= 6 && /^GIF8[79]a$/.test(d.subarray(0, 6).toString('latin1'))) return 'image/gif'
+  if (d.length >= 12 && d.subarray(0, 4).toString('latin1') === 'RIFF' && d.subarray(8, 12).toString('latin1') === 'WEBP') return 'image/webp'
+  if (d.length >= 5 && d.subarray(0, 5).toString('latin1') === '%PDF-') return 'application/pdf'
+  return 'application/octet-stream'
+}
 /** 한 PC로 동시에 보내는 요청 수 (휴대폰 셸과 같은 5개, docs/specs/android-bridge.md 3절) */
 const CONCURRENT_MAX = 5
 const HELLO_TIMEOUT_MS = 10_000
@@ -271,12 +286,15 @@ export function createWorkspaceLinks(deps: LinksDeps): WorkspaceLinks & { dispos
       if ((res.status === 200 || res.status === 201) && res.body.attachment) return res.body.attachment
       throw failOf(res.status, res.body)
     }
-    if (!/^[0-9a-f-]{36}$/i.test(req.fileId)) throw fail(400, 'invalid_request')
+    if (!ID_SHAPE.test(req.fileId)) throw fail(400, 'invalid_request')
     if (!http.getBytes) throw fail(0, 'unreachable')
-    const res = await http.getBytes(`/v2/files/${req.fileId}`, DOWNLOAD_MAX).catch(() => {
+    const isArtifact = req.type === 'read' || req.kind === 'artifact'
+    const path = isArtifact ? artifactPath(req.fileId, req.version) : `/v2/files/${req.fileId}`
+    const res = await http.getBytes(path, isArtifact ? ARTIFACT_MAX : DOWNLOAD_MAX).catch(() => {
       throw fail(0, 'unreachable')
     })
-    if (res.status !== 200 || !res.data) throw fail(res.status, res.status === 404 ? 'file_not_found' : 'call_failed')
+    if (res.status !== 200 || !res.data) throw fail(res.status, res.status === 404 ? 'file_not_found' : res.status === 413 ? 'payload_too_large' : 'call_failed')
+    if (req.type === 'read') return { name: res.fileName ?? '', text: res.data.toString('utf8') }
     return deps.saveDownload(req.name || res.fileName || 'file', res.data)
   }
 
@@ -286,6 +304,13 @@ export function createWorkspaceLinks(deps: LinksDeps): WorkspaceLinks & { dispos
       return r ? statusOfRec(r) : 'connecting'
     },
     pending: (id) => recs.get(id)?.pending ?? 0,
+    readFile: async (id, fileId) => {
+      const r = recs.get(id)
+      const http = r ? deps.peers.http(r.peerId) : null
+      if (!r || !http?.getBytes || !ID_SHAPE.test(fileId)) return null
+      const res = await limited(r, () => http.getBytes!(`/v2/files/${fileId}`, IMAGE_MAX)).catch(() => null)
+      return res?.status === 200 && res.data ? { data: res.data, mime: sniffMime(res.data) } : null
+    },
     request: (id, req) => {
       const r = recs.get(id)
       const http = r ? deps.peers.http(r.peerId) : null

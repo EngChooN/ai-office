@@ -81,9 +81,33 @@ export default {
     zh: '请在电脑上打开',
   },
   'artifact.pcOnlyHint': {
-    ko: '이 결과물은 PC 앱에서 볼 수 있어요.',
-    en: 'This result can be viewed in the PC app.',
-    ja: 'この成果物は PC アプリで見られます。',
-    zh: '此成果可在电脑应用中查看。',
+    ko: '이 화면에서는 아직 미리 볼 수 없어요. 그 PC 앱에서 열어 주세요.',
+    en: 'Preview is not available here yet. Open it in that PC’s app.',
+    ja: 'この画面ではまだ見られません。その PC のアプリで開いてください。',
+    zh: '此画面暂时无法预览，请在那台电脑的应用中打开。',
+  },
+  'artifact.download': {
+    ko: '내려받기',
+    en: 'Download',
+    ja: 'ダウンロード',
+    zh: '下载',
+  },
+  'artifact.tooBig': {
+    ko: '파일이 5MB보다 커서 미리 볼 수 없어요. 그 PC 앱에서 열어 주세요.',
+    en: 'This file is over 5 MB, so it cannot be previewed. Open it in that PC’s app.',
+    ja: 'ファイルが 5MB を超えるためプレビューできません。その PC のアプリで開いてください。',
+    zh: '文件超过 5MB，无法预览。请在那台电脑的应用中打开。',
+  },
+  'artifact.downloadTooBig': {
+    ko: '파일이 5MB보다 커서 내려받을 수 없어요. 그 PC 앱에서 열어 주세요.',
+    en: 'This file is over 5 MB, so it cannot be downloaded. Open it in that PC’s app.',
+    ja: 'ファイルが 5MB を超えるためダウンロードできません。その PC のアプリで開いてください。',
+    zh: '文件超过 5MB，无法下载。请在那台电脑的应用中打开。',
+  },
+  'artifact.downloadFailed': {
+    ko: '내려받지 못했어요. 파일이 지워졌거나 연결이 끊겼을 수 있어요.',
+    en: 'Could not download it. The file may be gone or the connection lost.',
+    ja: 'ダウンロードできませんでした。ファイルが削除されたか、接続が切れた可能性があります。',
+    zh: '无法下载，文件可能已被删除或连接已断开。',
   },
 } satisfies Record<string, Entry>

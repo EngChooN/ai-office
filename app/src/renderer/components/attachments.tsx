@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import { attachmentUrl, isImageAttachment, type Attachment } from '@shared/types'
 import { t } from '@shared/i18n'
+import { IS_REMOTE_SCREEN } from '@/shell'
 
 const FILE_MAX_BYTES = 20 * 1024 * 1024
 
@@ -110,7 +111,7 @@ export function AttachmentView({ attachments, size = 'md' }: { attachments?: Att
           {zoom && <img src={attachmentUrl(zoom)} alt={zoom.name} className="max-h-[70vh] w-full object-contain" />}
           {zoom && (
             <Button size="sm" variant="outline" className="w-fit" onClick={() => void window.office.openAttachment(zoom.id)}>
-              {t('attach.openDefault')}
+              {IS_REMOTE_SCREEN ? t('artifact.download') : t('attach.openDefault')}
             </Button>
           )}
         </DialogContent>

@@ -34,7 +34,10 @@ export type ShellMessage =
 export type BridgeRequest =
   | { type: 'call'; method: string; args: unknown[]; confirm?: boolean }
   | { type: 'upload'; name: string; mime: string; base64: string }
-  | { type: 'download'; fileId: string; name: string }
+  /** kind: 'artifact'면 fileId는 결과물 id (version 생략 = 최신). 데스크톱 원격 창만 안다 */
+  | { type: 'download'; fileId: string; name: string; kind?: 'artifact'; version?: number }
+  /** 결과물 원본 텍스트를 받아 미리보기에 쓴다 (저장 안 함). 데스크톱 원격 창만 안다 */
+  | { type: 'read'; fileId: string; version?: number }
 
 /** 답이 없는 알림 */
 export type BridgeNotice = { type: 'ready'; features?: string[] } | { type: 'backResult'; handled: boolean }

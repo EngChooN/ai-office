@@ -6,7 +6,8 @@
 // PC가 아는지는 연결될 때마다 hello로 확인한다 — 예전 PC(404·능력 없음)면 칸 배치를 보내지 않는다 (docs/specs/office-iso-tech.md 4-3절)
 
 import { OFFICE_EVENTS, OFFICE_METHODS, type OfficeEvent, type OfficeMethod } from '../../shared/officeApiShape.ts'
-import type { AiProvider, Attachment, LogEntry, OfficeApi, UploadFile } from '../../shared/types.ts'
+import { artifactDocument, artifactKindOf, withCspMeta } from '../../shared/artifact.ts'
+import type { AiProvider, ArtifactInfo, ArtifactVersionInfo, ArtifactView, Attachment, LogEntry, OfficeApi, UploadFile } from '../../shared/types.ts'
 import type { PackResult } from '../../shared/staffPack.ts'
 import type { Bridge, BridgeError } from './bridge.ts'
 import { t, type TKey } from '../../shared/i18n/index.ts'
@@ -41,17 +42,31 @@ export interface RemoteHandlers {
   shouldDeliverFocus?(): boolean
   /** PC가 아이소 사무실을 아는지 판정됐을 때 (hello 응답·칸 배치 404) — true면 hello 전에 줄어 온 스냅샷을 다시 읽는다 */
   pcChecked?(isoOffice: boolean): void
+  /** 이 셸이 결과물 원본을 받아 미리 보여 줄 수 있는지 (read 요청을 아는 데스크톱 원격 창만 true — 휴대폰 셸은 모른다) */
+  canPreviewArtifact?: boolean
 }
 
-/** PC 전용 동작 안내 문구 (docs/specs/android-pc-layout.md 6절) */
+/** PC 전용 동작 안내 문구 (이유 + 대신 할 일 한 줄) — 언어가 바뀌어도 맞게 부를 때마다 사전에서 읽는다 */
 export const PC_ONLY_TEXT = {
-  generic: 'PC에서 열어 주세요. 휴대폰에서는 할 수 없는 기능이에요.',
-  resumeInTerminal: '터미널은 PC에서 열어 주세요.',
-  openCodexLogin: 'Codex 로그인은 PC에서 해 주세요. PC 화면의 AI Office 설정에서 연결할 수 있어요.',
-  openClaudeLogin: 'Claude 로그인은 PC에서 해 주세요. PC 화면의 AI Office 첫 실행 안내를 따라 주세요.',
-  remoteQr: '연결 QR은 PC 화면에서만 볼 수 있어요.',
-  saved: '휴대폰의 다운로드 폴더에 저장했어요.',
-} as const
+  get generic() {
+    return t('remote.pcOnly.generic')
+  },
+  get resumeInTerminal() {
+    return t('remote.pcOnly.terminal')
+  },
+  get openCodexLogin() {
+    return t('remote.pcOnly.codexLogin')
+  },
+  get openClaudeLogin() {
+    return t('remote.pcOnly.claudeLogin')
+  },
+  get remoteQr() {
+    return t('remote.pcOnly.qr')
+  },
+  get saved() {
+    return t('remote.saved')
+  },
+}
 
 /** 화면이 그릴 수 있다고 PC에 알리는 능력 (ready features → 셸이 헤더 X-Office-Capabilities로) */
 export const SCREEN_CAPABILITIES = ['iso-office'] as const
@@ -89,6 +104,9 @@ export function fillOldSnapshot<T>(snap: T): T {
   if (!shop || typeof shop !== 'object' || Array.isArray(shop.grid)) return snap
   return { ...snap, shop: { ...shop, grid: [] } }
 }
+
+/** 내려받기 실패 안내: 5MB 넘음과 그 밖(파일 없음·연결 끊김)을 나눈다 */
+const downloadFailText = (e: BridgeError) => t(e.code === 'payload_too_large' ? 'artifact.downloadTooBig' : 'artifact.downloadFailed')
 
 export function toBase64(data: ArrayBuffer): string {
   const bytes = new Uint8Array(data)
@@ -171,6 +189,27 @@ export function createRemoteOffice(bridge: Bridge, h: RemoteHandlers): RemoteSes
   }
   const flag = (v: unknown, key: string) => typeof v === 'object' && v !== null && (v as Record<string, unknown>)[key]
 
+  /** 원격 화면의 결과물 크게 보기: 목록·버전은 평소 호출로, 원본은 read로 받아 와 화면에서 격리 틀(srcDoc)로 그린다 */
+  const openArtifact = async (id: string, version?: number): Promise<ArtifactView | null> => {
+    const latest = ((await call('artifactList', [])) as ArtifactInfo[]).find((a) => a.id === id)
+    if (!latest) return null
+    const versions = (await call('artifactVersions', [id])) as ArtifactVersionInfo[]
+    const shown = version === undefined ? versions.at(-1) : versions.find((v) => v.version === version)
+    const kind = shown && artifactKindOf(shown.name)
+    if (!shown || !kind) return null
+    const { text } = (await bridge.request({ type: 'read', fileId: id, version: shown.version }).catch((e: BridgeError) => {
+      throw new RemoteCallError('artifactOpen', e)
+    })) as { text: string }
+    return { id, title: latest.title, kind, version: shown.version, name: shown.name, size: shown.size, url: '', doc: withCspMeta(artifactDocument(kind, text, latest.title)), source: text, versions }
+  }
+  const downloadArtifact = async (id: string, version?: number) => {
+    await bridge.request({ type: 'download', fileId: id, name: '', kind: 'artifact', ...(version ? { version } : {}) }).catch((e: BridgeError) => {
+      h.notice(downloadFailText(e))
+      throw new RemoteCallError('artifactOpenExternal', e)
+    })
+    h.notice(PC_ONLY_TEXT.saved)
+  }
+
   // PC 전용 동작은 서버에 보내지 않고 같은 모양의 값을 돌려준다 (서버도 같은 것을 422 pc_only로 막는다)
   const overrides: Partial<Record<OfficeMethod, (...args: never[]) => Promise<unknown>>> = {
     saveAttachments: async (files: UploadFile[]) => {
@@ -186,10 +225,13 @@ export function createRemoteOffice(bridge: Bridge, h: RemoteHandlers): RemoteSes
     },
     openAttachment: async (id: string) => {
       await bridge.request({ type: 'download', fileId: id, name: '' }).catch((e: BridgeError) => {
+        h.notice(downloadFailText(e))
         throw new RemoteCallError('openAttachment', e)
       })
       h.notice(PC_ONLY_TEXT.saved)
     },
+    // 원격 화면의 '밖에서 열기'·'폴더에서 보기'는 의미가 없어 내려받기로 바꾼다 (화면은 같은 메서드를 부른다)
+    ...(h.canPreviewArtifact ? { artifactOpen: openArtifact, artifactOpenExternal: downloadArtifact, artifactReveal: downloadArtifact } : {}),
     pickFolder: async () => {
       const v = await h.enterPath('folder')
       return typeof v === 'string' && v.trim() ? v.trim() : null

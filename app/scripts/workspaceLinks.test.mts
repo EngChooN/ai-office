@@ -10,7 +10,7 @@ import { WORKSPACE_OFFLINE_GRACE_MS } from '../src/shared/workspace.ts'
 import type { PeerLinkEvent } from '../src/main/peer/peerManager.ts'
 import type { PeerHttp, PeerHttpResponse } from '../src/main/peer/peerTransport.ts'
 import { failureOf, freeFileName, helloFromResult, pendingFromSnapshot } from '../src/main/workspace/linkModel.ts'
-import { createWorkspaceLinks } from '../src/main/workspace/workspaceLinks.ts'
+import { createWorkspaceLinks, sniffMime } from '../src/main/workspace/workspaceLinks.ts'
 import { fileNameOf } from '../src/main/peer/peerTransport.ts'
 
 const flush = async () => {
@@ -29,6 +29,8 @@ function setup(opts: { link?: PeerLinkState; hello?: (body: unknown) => Promise<
   let callReply: (body: unknown) => Promise<PeerHttpResponse> = async () => ({ status: 200, body: { ok: true, result: { done: 1 } } })
   const uploads: { path: string; size: number; headers?: Record<string, string> }[] = []
   const saved: string[] = []
+  const gets: string[] = []
+  let getReply: (p: string) => Awaited<ReturnType<NonNullable<PeerHttp['getBytes']>>> = () => ({ status: 200, data: Buffer.from('hi'), fileName: '보고서.pdf' })
   const http: PeerHttp = {
     call: async (_m, _p, body) => {
       const b = body as { method: string; args: { requestView: boolean }[] }
@@ -40,7 +42,7 @@ function setup(opts: { link?: PeerLinkState; hello?: (body: unknown) => Promise<
       return callReply(body)
     },
     postBytes: async (path, data, headers) => (uploads.push({ path, size: data.length, headers }), { status: 201, body: { attachment: { id: 'a1', name: 'x.png' } } }),
-    getBytes: async () => ({ status: 200, data: Buffer.from('hi'), fileName: '보고서.pdf' }),
+    getBytes: async (p) => (gets.push(p), getReply(p)),
   }
   const changes: number[] = []
   const messages: [string, Record<string, unknown>][] = []
@@ -75,6 +77,8 @@ function setup(opts: { link?: PeerLinkState; hello?: (body: unknown) => Promise<
     calls,
     uploads,
     saved,
+    gets,
+    setGetReply: (f: typeof getReply) => void (getReply = f),
     changes,
     messages,
     hasWatcher: () => watcher !== null,
@@ -293,6 +297,43 @@ test('요청: call 결과·실패(대체 동작 포함)·올리기 20MB·내려�
 
   assert.equal(await t.links.request('w1', { type: 'download', fileId: '123e4567-e89b-12d3-a456-426614174000', name: '' }), '보고서.pdf')
   await assert.rejects(t.links.request('w1', { type: 'download', fileId: '../x', name: '' }), { code: 'invalid_request' })
+})
+
+test('결과물: 내려받기·미리보기는 결과물 길로만 받고, 5MB 넘음·없음을 나눠 알린다', async () => {
+  const t = setup({ link: 'online' })
+  t.links.sync(['w1'])
+  await flush()
+  const id = '123e4567-e89b-12d3-a456-426614174000'
+  t.setGetReply(() => ({ status: 200, data: Buffer.from('<h1>안녕</h1>'), fileName: 'a.html' }))
+  assert.equal(await t.links.request('w1', { type: 'download', fileId: id, name: '', kind: 'artifact' }), 'a.html')
+  assert.deepEqual(await t.links.request('w1', { type: 'read', fileId: id, version: 2 }), { name: 'a.html', text: '<h1>안녕</h1>' })
+  assert.deepEqual(t.gets, [`/v2/artifacts/${id}`, `/v2/artifacts/${id}/2`])
+  t.setGetReply(() => ({ status: 413, data: null }))
+  await assert.rejects(t.links.request('w1', { type: 'read', fileId: id }), { code: 'payload_too_large' })
+  t.setGetReply(() => ({ status: 404, data: null }))
+  await assert.rejects(t.links.request('w1', { type: 'download', fileId: id, name: '', kind: 'artifact' }), { code: 'file_not_found' })
+  // 경로 문자가 섞인 id는 저쪽으로 보내지 않는다
+  const before = t.gets.length
+  await assert.rejects(t.links.request('w1', { type: 'read', fileId: '../../etc/passwd' }), { code: 'invalid_request' })
+  await assert.rejects(t.links.request('w1', { type: 'download', fileId: `${id}/../x`, name: '', kind: 'artifact' }), { code: 'invalid_request' })
+  assert.equal(t.gets.length, before)
+})
+
+test('첨부 그림: 그 PC에서 받아 종류를 알아본다 — 모르는 id·실패는 null', async () => {
+  const t = setup({ link: 'online' })
+  t.links.sync(['w1'])
+  await flush()
+  const id = '123e4567-e89b-12d3-a456-426614174000'
+  t.setGetReply(() => ({ status: 200, data: Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0]) }))
+  const got = await t.links.readFile!('w1', id)
+  assert.equal(got?.mime, 'image/png')
+  assert.deepEqual(t.gets, [`/v2/files/${id}`])
+  assert.equal(await t.links.readFile!('w1', '../x'), null)
+  assert.equal(await t.links.readFile!('nope', id), null)
+  t.setGetReply(() => ({ status: 404, data: null }))
+  assert.equal(await t.links.readFile!('w1', id), null)
+  assert.equal(sniffMime(Buffer.from('%PDF-1.4')), 'application/pdf')
+  assert.equal(sniffMime(Buffer.from('<svg onload=x>')), 'application/octet-stream', 'svg·html은 그림으로 내주지 않는다')
 })
 
 test('요청: 한 PC에 동시에 5개까지, 나머지는 차례를 기다린다', async () => {
