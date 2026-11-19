@@ -106,10 +106,10 @@ export default {
     zh: '文件超过 5MB，无法下载。请在那台电脑的应用中打开。',
   },
   'artifact.downloadFailed': {
-    ko: '내려받지 못했어요. 파일이 지워졌거나 연결이 끊겼을 수 있어요.',
-    en: 'Could not download it. The file may be gone or the connection lost.',
-    ja: 'ダウンロードできませんでした。ファイルが削除されたか、接続が切れた可能性があります。',
-    zh: '无法下载，文件可能已被删除或连接已断开。',
+    ko: '내려받지 못했어요. 파일이 지워졌거나 연결이 끊겼거나, 그 PC 앱이 옛 버전(1.4.5 미만)일 수 있어요.',
+    en: 'Could not download it. The file may be gone, the connection lost, or that PC’s app older than 1.4.5.',
+    ja: 'ダウンロードできませんでした。ファイルの削除、接続切れ、またはその PC のアプリが 1.4.5 より古い可能性があります。',
+    zh: '无法下载，文件可能已被删除、连接已断开，或那台电脑的应用低于 1.4.5。',
   },
   'artifact.offline': {
     ko: '그 PC와 연결이 끊겨서 불러오지 못했어요. 연결을 확인하고 다시 열어 주세요.',

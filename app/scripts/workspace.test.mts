@@ -549,6 +549,8 @@ test('원격 창 진입은 mobile/install.ts를 쓰지 않는다 (휴대폰 회�
   assert.doesNotMatch(install, /from ['"][^'"]*mobile\/install/)
   assert.match(read('src/renderer/remote/main.tsx'), /import '\.\/install'\s*\nimport '\.\.\/main'/)
   assert.match(read('remote.html'), /src="\/src\/renderer\/remote\/main\.tsx"/)
+  // 첨부 그림(office-file://)이 보안 규칙(CSP)에 막혀 깨지던 문제 방지
+  assert.match(read('remote.html'), /img-src [^;]*office-file:/)
   assert.match(read('forge.config.mts'), /name: 'remote_window', config: 'vite\.remote\.config\.mts'/)
   assert.match(read('forge.config.mts'), /entry: 'src\/remotePreload\.ts'/)
 })
