@@ -11,6 +11,23 @@ Writing rules
 - Leave out: internal or development matters, re-fixes of features added in the same version, how a security hole worked (if needed, one line on the result), minor wording or spacing tweaks.
 - Couldn't do it before → new feature; easier than before → improvement; was working wrongly → bug fix.
 
+## [1.5.0] - 2026-11-19
+
+### At a glance
+- **New** Team and project leaders can ask each other for help
+- **New** First cross-project help needs your approval
+- **New** Group rooms spanning several teams and projects
+- **Better** Staff can't assign cards to just anyone
+
+### New features
+- A team lead or project lead can ask the leader of another team or project for help. The leader who receives it can decline, or hand it once more to their own members and report back with the results gathered in one go. You also get a one-line note on screen when a request goes through.
+- The first help request going to another project shows an approval card, and you must approve it. An approved project pair goes through directly afterwards, and you are asked again if the folder changes or the token budget is exceeded. If two projects use the same folder, both sides are warned (it is not blocked).
+- You can pick several teams and projects and create a group room. Each member's team or project is shown beside their name, you can give instructions to up to 6 people at a time, and token budgets and limits still apply. Creating a room doesn't widen what staff may do, and only you can give instructions in it. Group rooms also show up in the desktop secretary and on the board.
+
+### Improvements
+- When staff create a card, the assignee can only be themselves or people they can direct. For people outside their project or team, they ask through a help request instead.
+- While a help approval is pending, the staff member's work is no longer cut off and waits for up to a day. If you restart the app, approvals that were waiting are dropped.
+
 ## [1.4.6] - 2026-11-19
 
 ### At a glance

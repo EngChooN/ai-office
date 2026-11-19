@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 import { useOffice } from '@/store'
 import { fmtDate, t } from '@shared/i18n'
 import { findRoom } from '@shared/chatRooms'
+import { useChatGroups } from './chatRoomHooks'
 import type { ChatDelivery, ChatMessage, ChatReservation, ChatReservationInput, ChatSearchHit, Staff } from '@shared/types'
 import { DuoIcon, IconText } from '@/components/duo-icon'
 
@@ -447,6 +448,7 @@ export function ChatSearch({ room, onClose, onQuery }: { room: string | undefine
   const [index, setIndex] = useState(0)
   const teams = useOffice((s) => s.teams)
   const labs = useOffice((s) => s.labs)
+  const groups = useChatGroups()
   const staff = useOffice((s) => s.staff)
   useEffect(() => {
     const q = query.trim()
@@ -477,7 +479,7 @@ export function ChatSearch({ room, onClose, onQuery }: { room: string | undefine
       move(e.shiftKey ? -1 : 1)
     }
   }
-  const roomName = (r: string | undefined) => findRoom(r, teams, labs)?.name ?? t('chat.room.allName')
+  const roomName = (r: string | undefined) => findRoom(r, teams, labs, groups)?.name ?? t('chat.room.allName')
   const scopeBtn = (value: 'room' | 'all', label: string) => (
     <button type="button" aria-pressed={scope === value} onClick={() => setScope(value)} className={cn('rounded-full border px-2 py-0.5 text-[11px]', scope === value ? 'bg-primary text-primary-foreground border-primary' : 'text-muted-foreground hover:bg-accent')}>
       {label}

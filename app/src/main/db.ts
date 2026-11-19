@@ -22,6 +22,7 @@ import {
   withSettingsDefaults,
   type Equipment,
   type Lab,
+  type ChatGroup,
   type ProcessRun,
   type ChatApproval,
   type ChatMessage,
@@ -171,6 +172,7 @@ export function openDb() {
   // 상한에 걸려 멈춘 안내의 이어 하기 정보 (JSON — secretaryProgress)
   if (!secretaryCols.includes('resume')) db.exec('ALTER TABLE secretary_message ADD COLUMN resume TEXT')
   db.exec('CREATE TABLE IF NOT EXISTS chat_reservation (id TEXT PRIMARY KEY, data TEXT NOT NULL, created_at INTEGER NOT NULL)')
+  db.exec('CREATE TABLE IF NOT EXISTS chat_group (id TEXT PRIMARY KEY, data TEXT NOT NULL, created_at INTEGER NOT NULL)')
 }
 
 const run = (sql: string, ...params: (string | number | null)[]) => db.prepare(sql).run(...params)
@@ -962,6 +964,20 @@ export function saveAutoApprove(v: StoredAutoApprove) {
   run("INSERT INTO setting (key, value) VALUES ('autoApprove', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", JSON.stringify(v))
 }
 
+/** 대표가 승인한 프로젝트 쌍 (프로젝트 간 협업 첫 요청·단체방 — shared/collabPairs.ts) */
+export function loadCollabPairs(): unknown {
+  const row = get<{ value: string }>("SELECT value FROM setting WHERE key = 'collabPairs'")
+  try {
+    return row ? JSON.parse(row.value) : []
+  } catch {
+    return []
+  }
+}
+
+export function saveCollabPairs(list: readonly unknown[]) {
+  run("INSERT INTO setting (key, value) VALUES ('collabPairs', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", JSON.stringify(list))
+}
+
 /** 결재함에 올라와 아직 닫히지 않은 결재·질문 (앱을 껐다 켜도 이어 가려고 저장) */
 export function loadPendingApprovals(): PendingApproval[] {
   const row = get<{ value: string }>("SELECT value FROM setting WHERE key = 'pendingApprovals'")
@@ -1198,6 +1214,20 @@ export function saveLab(lab: Lab) {
 export function deleteLabRow(id: string) {
   run('DELETE FROM lab WHERE id = ?', id)
   run('UPDATE task SET lab_id = NULL WHERE lab_id = ?', id)
+}
+
+// ── 여러 팀·프로젝트 단체방 ─────────────────────────────
+
+export function loadChatGroups(): ChatGroup[] {
+  return all<{ data: string }>('SELECT data FROM chat_group ORDER BY created_at').map((r) => JSON.parse(r.data) as ChatGroup)
+}
+
+export function saveChatGroup(g: ChatGroup) {
+  run('INSERT INTO chat_group (id, data, created_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data', g.id, JSON.stringify(g), Date.now())
+}
+
+export function deleteChatGroupRow(id: string) {
+  run('DELETE FROM chat_group WHERE id = ?', id)
 }
 
 // ── 프로세스 실행 ───────────────────────────────────────

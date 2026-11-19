@@ -1,4 +1,5 @@
 import { findRoom } from '@shared/chatRooms'
+import { useChatGroups } from './chatRoomHooks'
 import { memo, useMemo, useState, type DragEvent, type FormEvent } from 'react'
 import { PlayIcon, PlusIcon, SquareIcon, Trash2Icon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -205,7 +206,8 @@ export function BoardPage() {
 function FromChatChip({ from }: { from: NonNullable<Task['fromChat']> }) {
   const teams = useOffice((s) => s.teams)
   const labs = useOffice((s) => s.labs)
-  const info = findRoom(from.room ?? undefined, teams, labs)
+  const groups = useChatGroups()
+  const info = findRoom(from.room ?? undefined, teams, labs, groups)
   const open = () => {
     const { openChatRoom, focusChat } = useOffice.getState()
     openChatRoom(info?.room ?? null)

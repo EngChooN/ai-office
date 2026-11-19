@@ -51,6 +51,8 @@ export function codexMcpConfig(servers: Record<string, RuntimeMcpServer>, disabl
     }
     // 시작이 오래 걸려도(npx 첫 실행 등) 직원이 일을 시작할 수 있게
     set(name, 'startup_timeout_sec', '60')
+    // 사무실 도구는 대표 결재(프로젝트 간 협업 승인)를 기다리며 답을 늦게 줄 수 있다 — 기본 60초에 끊기지 않게 하루까지 기다린다
+    if (name === 'office') set(name, 'tool_timeout_sec', '86400')
   }
   // 사용자 Codex 설정(config.toml)에 있는 서버 중 직원 장비로 고르지 않은 것은 이 세션에서만 끈다 (설정 파일은 건드리지 않는다)
   for (const name of disable) if (!(name in servers)) args.push('-c', `mcp_servers.${tomlKey(name)}.enabled=false`)

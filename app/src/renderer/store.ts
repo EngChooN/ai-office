@@ -23,11 +23,14 @@ interface OfficeState extends OfficeSnapshot {
   isMarketOpen: boolean
   liveLogs: LogEntry[]
   chat: ChatMessage[]
-  /** 단체방에서 보고 있는 방 — null = 전체 방, 팀 id = 팀 방, 'lab:<랩 id>' = 랩 방 */
+  /** 단체방에서 보고 있는 방 — null = 전체 방, 팀 id = 팀 방, 'lab:<랩 id>' = 랩 방, 'group:<id>' = 여러 팀·프로젝트 단체방 */
   chatRoom: string | null
   setChatRoom(room: string | null): void
   /** 단체방 화면으로 가서 그 방을 연다 (조직도 팀 카드 '팀 대화방', 랩 카드 '랩 대화방') */
   openChatRoom(room: string | null): void
+  /** 여러 팀·프로젝트 단체방 만들기 창 (방 목록이 팝업 안에 있어도 창이 닫히지 않게 대화방 화면이 그린다) */
+  isChatGroupDialogOpen: boolean
+  setChatGroupDialogOpen(isOpen: boolean): void
   /** 랩 회의 열기 등에서 회의실 화면에 미리 채울 참석자 */
   meetingPreset: { topic: string; participantIds: string[] } | null
   /** 직원 카드의 예시·버튼이 그 직원 패널 지시창에 채울 글 (nonce가 바뀔 때마다 한 번 채움, 보내기는 대표가) */
@@ -138,6 +141,8 @@ export const useOffice = create<OfficeState>((set) => ({
   chatRoom: null,
   setChatRoom: (chatRoom) => set({ chatRoom }),
   openChatRoom: (chatRoom) => set((s) => ({ chatRoom, view: shownView('chat', s.settings.isWorkMode) })),
+  isChatGroupDialogOpen: false,
+  setChatGroupDialogOpen: (isChatGroupDialogOpen) => set({ isChatGroupDialogOpen }),
   meetingPreset: null,
   staffDraft: null,
   setStaffDraft: (draft) => set((s) => ({ staffDraft: draft && { ...draft, nonce: (s.staffDraft?.nonce ?? 0) + 1 } })),

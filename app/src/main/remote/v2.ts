@@ -114,6 +114,8 @@ export const V2_METHODS: Record<OfficeMethod, MethodSpec> = {
   createLab: S('o'),
   updateLab: S('s o'),
   deleteLab: R('s'),
+  createChatGroup: R('o'),
+  deleteChatGroup: R('s'),
   setRefDocs: S('o S'),
   pickFiles: P('enter_path'),
   missingFiles: S('S'),
@@ -252,6 +254,7 @@ export const V2_FIELDS: Partial<Record<OfficeMethod, Record<number, string[]>>> 
   // 랩 작업 폴더는 직원 작업 폴더처럼 PC에서만 (restrict가 새 랩은 폴더 없음으로 채운다)
   createLab: { 0: fieldsExcept('createLab', 0, ['cwd'], { name: true, color: true, goal: true, leadId: true, memberIds: true, manuals: true }) },
   updateLab: { 1: fieldsExcept('updateLab', 1, ['cwd'], { name: true, color: true, goal: true, leadId: true, memberIds: true, manuals: true }) },
+  createChatGroup: { 0: fieldsOf('createChatGroup', 0, { name: true, color: true, teamIds: true, labIds: true }) },
   setRefDocs: { 0: fieldsOf('setRefDocs', 0, { kind: true, id: true }) },
   recruitExternal: { 1: fieldsExcept('recruitExternal', 1, ['approvalMode'], { role: true, model: true, teamId: true }) },
   // 원격은 MCP·스킬·예산만 — Bash 같은 허용·금지 도구와 셸 네트워크 허용은 PC에서만

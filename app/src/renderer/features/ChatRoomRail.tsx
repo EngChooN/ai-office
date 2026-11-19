@@ -65,7 +65,7 @@ export function ChatRoomRail({ room, onPin }: { room: ChatRoomInfo<Team, Lab> | 
         style={e.color ? ({ '--room': e.color } as CSSProperties) : undefined}
         className={cn(
           'text-foreground relative flex size-9 shrink-0 items-center justify-center text-[13px] font-semibold',
-          e.group === 'lab' ? 'rounded-full' : 'rounded-[10px]',
+          e.group === 'lab' ? 'rounded-full' : e.group === 'group' ? 'rounded-[4px]' : 'rounded-[10px]',
           e.color ? 'bg-[color-mix(in_srgb,var(--room)_18%,transparent)] dark:bg-[color-mix(in_srgb,var(--room)_28%,transparent)]' : 'bg-primary/15',
           e.isActive && 'ring-primary ring-2',
         )}
@@ -79,7 +79,7 @@ export function ChatRoomRail({ room, onPin }: { room: ChatRoomInfo<Team, Lab> | 
     )
   }
   // 묶음(전체 ↔ 팀 ↔ 랩) 사이는 제목 대신 얇은 선
-  const icons = (['all', 'team', 'lab'] as const).flatMap((g, i) => {
+  const icons = (['all', 'team', 'lab', 'group'] as const).flatMap((g, i) => {
     const list = entries.filter((e) => e.group === g)
     if (list.length === 0) return []
     return [
@@ -148,6 +148,7 @@ function RailTip({ entry: e, rect }: { entry: RoomEntry; rect: DOMRect }) {
         <span className="font-medium">{e.label}</span>
         {e.unread > 0 && <span className="text-muted-foreground"> · {t('chat.side.tipUnread', { count: unreadText(e.unread) })}</span>}
       </div>
+      {e.sub && <div className="text-muted-foreground">{e.sub}</div>}
       {e.hasApproval && <div className="text-status-waiting">{t('chat.unread.approval')}</div>}
     </div>
   )

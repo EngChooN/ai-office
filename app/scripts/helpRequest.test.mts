@@ -1,7 +1,7 @@
 // 직원끼리 도움 요청 — 대상 계산·제한 장치·자율 이어받기 단위 테스트 — npm test
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { HELP_TEXT_MAX, HelpLedger, mustUseHelp, helpDepthOf, helpTargetIds, inHelpContext, type HelpCtx } from '../src/shared/helpRequest.ts'
+import { HELP_TEXT_MAX, HelpLedger, isHelpWaiting, mustUseHelp, helpDepthOf, helpTargetIds, inHelpContext, type HelpCtx } from '../src/shared/helpRequest.ts'
 import { resolveAutonomy } from '../src/shared/autonomy.ts'
 
 const hired = (...ids: string[]) => (id: string) => ids.includes(id)
@@ -183,4 +183,82 @@ test('실패·중지: 열린 요청을 닫아 같은 대상에게 다시 부탁�
   // 다시 부탁 가능, 같은 원업무로 센다
   assert.equal(l.check({ staffId: 'a', targetId: 'b', text: 'x', requesterOrigins: [{ kind: 'user', help: ctx! }], targetOrigins: [] }), null)
   assert.equal(l.close('없는요청'), null)
+})
+
+test('리더 대상: 팀장·랩 리드는 다른 프로젝트·팀 리더에게 요청 가능, 팀원은 불가', () => {
+  const S = (x: object) => ({ teamMemberIds: [] as string[], labMemberIds: [] as string[][], isLabLead: false, isTeamLead: false, ...x })
+  assert.deepEqual(helpTargetIds('a', S({ isLabLead: true, leaderPeerIds: ['x', 'a', 'gone'] }), hired('a', 'x')), ['x'])
+  assert.deepEqual(helpTargetIds('a', S({ isTeamLead: true, teamMemberIds: ['a', 'b'], leaderPeerIds: ['x'] }), hired('a', 'b', 'x')), ['x'])
+  assert.deepEqual(helpTargetIds('m', S({ teamMemberIds: ['m', 'b'], leaderPeerIds: ['x'] }), hired('m', 'b', 'x')), ['b'])
+})
+
+test('리더 사슬: 리더→리더 요청 후 받은 리더의 재위임 1회만 허용, 그다음 단계·비리더·남의 사람은 거절', () => {
+  const l = new HelpLedger()
+  const base = { text: 'x', targetOrigins: [] as O[] }
+  assert.equal(l.check({ ...base, staffId: 'A', targetId: 'B', requesterOrigins: [], requesterIsLeader: true }), null)
+  const o1 = l.open('A', 'B', [], true)
+  const b: O[] = [{ kind: 'help', fromId: 'A', reqId: o1.reqId, help: o1.help }]
+  assert.equal(o1.help.leaderChain, true)
+  assert.equal(l.check({ ...base, staffId: 'B', targetId: 'C', requesterOrigins: b, requesterIsLeader: true, targetIsOwnMember: true }), null)
+  assert.equal(l.check({ ...base, staffId: 'B', targetId: 'D', requesterOrigins: b, requesterIsLeader: true, targetIsOwnMember: false }), 'tooDeep')
+  assert.equal(l.check({ ...base, staffId: 'B', targetId: 'C', requesterOrigins: b, requesterIsLeader: false, targetIsOwnMember: true }), 'tooDeep')
+  const o2 = l.open('B', 'C', b, false)
+  assert.deepEqual(o2.help.path, ['A', 'B', 'C'])
+  assert.equal(o2.help.leaderChain, true)
+  const c: O[] = [{ kind: 'help', fromId: 'B', reqId: o2.reqId, help: o2.help }]
+  assert.equal(l.check({ ...base, staffId: 'C', targetId: 'E', requesterOrigins: c, requesterIsLeader: true, targetIsOwnMember: true }), 'tooDeep')
+  assert.equal(l.check({ ...base, staffId: 'B', targetId: 'A', requesterOrigins: b, requesterIsLeader: true, targetIsOwnMember: true }), 'cycle')
+  assert.deepEqual(l.close(o2.reqId), { rootId: o1.help.rootId, path: ['A', 'B'], leaderChain: true })
+})
+
+test('리더 사슬: 일반 팀원 요청 사슬에서는 리더도 재위임 못 한다 (우회 방지)', () => {
+  const l = new HelpLedger()
+  const o = l.open('m', 'lead', [], false)
+  const lead: O[] = [{ kind: 'help', fromId: 'm', reqId: o.reqId, help: o.help }]
+  assert.equal(l.check({ text: 'x', targetOrigins: [], staffId: 'lead', targetId: 'z', requesterOrigins: lead, requesterIsLeader: true, targetIsOwnMember: true }), 'tooDeep')
+})
+
+test('리더 사슬: 800자·동시 3건·대상 바쁨 한도는 그대로', () => {
+  const l = new HelpLedger()
+  assert.equal(l.check({ staffId: 'A', targetId: 'B', text: 'x'.repeat(HELP_TEXT_MAX + 1), requesterOrigins: [], targetOrigins: [], requesterIsLeader: true }), 'tooLong')
+  for (const t of ['B', 'C', 'D']) l.open('A', t, [], true)
+  assert.equal(l.check({ staffId: 'A', targetId: 'E', text: 'x', requesterOrigins: [], targetOrigins: [], requesterIsLeader: true }), 'tooMany')
+  assert.equal(l.check({ staffId: 'Z', targetId: 'B', text: 'x', requesterOrigins: [], targetOrigins: [{ kind: 'help', fromId: 'A' }], requesterIsLeader: true }), 'busy')
+})
+
+test('결과 취합: 재위임한 리더는 하위 결과가 모두 돌아올 때까지 열린 요청이 있고, 닫히면 요청한 리더용 사슬이 유지된다', () => {
+  const l = new HelpLedger()
+  const o1 = l.open('A', 'B', [], true)
+  const b: O[] = [{ kind: 'help', fromId: 'A', reqId: o1.reqId, help: o1.help }]
+  assert.equal(l.hasOpenFrom('B', o1.help.rootId), false)
+  const c1 = l.open('B', 'C', b, false)
+  const c2 = l.open('B', 'D', b, false)
+  assert.equal(l.hasOpenFrom('B', o1.help.rootId), true)
+  assert.equal(l.hasOpenFrom('A', o1.help.rootId), true) // A→B 요청 자체도 A가 연 열린 요청
+  l.close(c1.reqId)
+  assert.equal(l.hasOpenFrom('B', o1.help.rootId), true) // D가 아직 안 돌아옴
+  assert.deepEqual(l.close(c2.reqId), { rootId: o1.help.rootId, path: ['A', 'B'], leaderChain: true })
+  assert.equal(l.hasOpenFrom('B', o1.help.rootId), false) // 모두 돌아옴 → B가 A에게 취합 보고
+  assert.deepEqual(l.close(o1.reqId), { rootId: o1.help.rootId, path: ['A'], leaderChain: true })
+  assert.equal(l.hasOpenFrom('A', o1.help.rootId), false)
+})
+
+test('거절: 받은 요청을 닫으면 요청한 리더에게 사슬이 이어지고 같은 대상에게 다시 요청할 수 있다', () => {
+  const l = new HelpLedger()
+  const o = l.open('A', 'B', [], true)
+  assert.equal(l.check({ staffId: 'A', targetId: 'B', text: 'x', requesterOrigins: [], targetOrigins: [{ kind: 'help', fromId: 'A', reqId: o.reqId }], requesterIsLeader: true }), 'duplicate')
+  assert.deepEqual(l.close(o.reqId), { rootId: o.help.rootId, path: ['A'], leaderChain: true })
+  assert.equal(l.check({ staffId: 'A', targetId: 'B', text: 'x', requesterOrigins: [{ kind: 'user', help: { rootId: o.help.rootId, path: ['A'], leaderChain: true } }], targetOrigins: [], requesterIsLeader: true }), null)
+})
+
+test('보고 보류: 하위 요청이 열려 있거나, 돌아온 하위 결과를 아직 처리하지 않았으면 위로 보고하지 않는다', () => {
+  const l = new HelpLedger()
+  const o1 = l.open('A', 'B', [], true)
+  const c = l.open('B', 'C', [{ kind: 'help', fromId: 'A', reqId: o1.reqId, help: o1.help }])
+  const root = o1.help.rootId
+  assert.equal(isHelpWaiting('B', root, [], l), true, '하위 요청이 열려 있다')
+  const back = l.close(c.reqId)!
+  assert.equal(isHelpWaiting('B', root, [{ kind: 'user', help: back }], l), true, '결과가 대기열에 남아 있다')
+  assert.equal(isHelpWaiting('B', root, [], l), false, '결과를 처리한 턴')
+  assert.equal(isHelpWaiting('B', root, [{ kind: 'user', help: { rootId: 'other', path: ['X'] } }], l), false, '다른 원업무 결과는 상관없다')
 })

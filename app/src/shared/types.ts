@@ -258,6 +258,15 @@ export interface Lab {
   isPractice?: boolean
 }
 
+/** 여러 팀·프로젝트 단체방: 대표가 팀·프로젝트를 골라 만드는 방. 참여자는 고른 팀·프로젝트 방 참여자를 합친 사람들 */
+export interface ChatGroup {
+  id: string
+  name: string
+  color: string
+  teamIds: string[]
+  labIds: string[]
+}
+
 /** 업무 매뉴얼 = Claude Code 스킬. 개인 매뉴얼은 직원에게, 프로세스 매뉴얼은 팀·랩에 교육한다 */
 export type ManualKind = 'personal' | 'process'
 export type ManualScope = 'project' | 'user'
@@ -876,6 +885,8 @@ export interface OfficeSnapshot {
   schedules: Schedule[]
   /** 대화방 예약 보내기·반복 지시 */
   chatReservations?: ChatReservation[]
+  /** 여러 팀·프로젝트 단체방 */
+  chatGroups?: ChatGroup[]
   settings: Settings
   monthCostUsd: number
   /** Claude 구독 사용률 (직원이 일할 때 Claude가 알려 준 마지막 값) */
@@ -1213,6 +1224,8 @@ export interface OfficeApi {
 
   // 참고 문서는 setRefDocs로만 바꾼다 (경로 검사·상한·세션 다시 열기를 한 곳에서)
   createLab(input: Omit<Lab, 'id' | 'refDocs' | 'isPractice'>): Promise<Lab>
+  createChatGroup(input: Omit<ChatGroup, 'id'>): Promise<ChatGroup>
+  deleteChatGroup(id: string): Promise<void>
   updateLab(labId: string, patch: Partial<Omit<Lab, 'id' | 'refDocs' | 'isPractice'>>): Promise<void>
   deleteLab(labId: string): Promise<void>
 

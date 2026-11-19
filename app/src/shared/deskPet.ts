@@ -4,6 +4,7 @@
 import type {
   Approval,
   AutoHandled,
+  ChatGroup,
   ChatMessage,
   Lab,
   LogEntry,
@@ -15,6 +16,8 @@ import { isCompleteAnswer } from "./questionAnswer.ts";
 import { isAwaitingTeam } from "./delegation.ts";
 import { alwaysApproveOffer, type AlwaysApproveOffer } from "./approvalRules.ts";
 import {
+  groupRoomId,
+  groupRoomMembers,
   labRoomId,
   labRoomMembers,
   roomLabs,
@@ -773,8 +776,8 @@ export interface PetTargetOption {
   memberIds?: string[];
 }
 
-/** 고를 수 있는 상대: 비서 → 고용 직원 → 대화방(전체 방 · 팀 방 · 랩 방 — 앱 단체방 탭과 같은 순서) */
-export function petTargets(s: { staff: Staff[]; teams: Team[]; labs: Lab[] }): {
+/** 고를 수 있는 상대: 비서 → 고용 직원 → 대화방(전체 방 · 팀 방 · 랩 방 · 여러 팀·프로젝트 단체방 — 앱 단체방 탭과 같은 순서) */
+export function petTargets(s: { staff: Staff[]; teams: Team[]; labs: Lab[]; chatGroups?: ChatGroup[] }): {
   secretary: PetTargetOption;
   staff: PetTargetOption[];
   rooms: PetTargetOption[];
@@ -795,6 +798,17 @@ export function petTargets(s: { staff: Staff[]; teams: Team[]; labs: Lab[] }): {
       target: { kind: "room", room: labRoomId(lb.id) } as PetTarget,
       name: lb.name,
       memberIds: labRoomMembers(lb, hired).map((x) => x.id),
+    })),
+    ...(s.chatGroups ?? []).map((g) => ({
+      target: { kind: "room", room: groupRoomId(g.id) } as PetTarget,
+      name: g.name,
+      memberIds: groupRoomMembers(
+        {
+          teams: roomTeams(s.teams).filter((tm) => g.teamIds.includes(tm.id)),
+          labs: roomLabs(s.labs).filter((lb) => g.labIds.includes(lb.id)),
+        },
+        hired,
+      ).map((x) => x.id),
     })),
   ];
   return {

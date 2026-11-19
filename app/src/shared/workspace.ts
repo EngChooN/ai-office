@@ -161,6 +161,8 @@ export const METHOD_ACCESS: Record<OfficeMethod, MethodAccess> = {
   createLab: 'write',
   updateLab: 'write',
   deleteLab: 'write',
+  createChatGroup: 'write',
+  deleteChatGroup: 'write',
   fireExternal: 'write',
   recruitExternal: 'write',
   equipmentCatalog: 'read',

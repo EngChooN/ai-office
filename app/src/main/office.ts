@@ -15,6 +15,7 @@ import {
   levelFromXp,
   type Equipment,
   type Lab,
+  type ChatGroup,
   type Manual,
   type ManualInput,
   type ManualKind,
@@ -88,7 +89,7 @@ import { NO_HOLD, planHold, type HeldItem, type PlanHoldState } from '../shared/
 import { isScheduleDue } from '../shared/schedule'
 import { detectTextQuestion, toTextQuestions } from '../shared/textQuestion'
 import { mentionTargets, OFFICE_SENDER, parseMentions } from '../shared/mention'
-import { cardRoom, chatResponder, chatRoomMembers, chatRoomMentionTargets, findRoom, GLOBAL_ROOM, homeRoom, labRoomId, originRoom, parseRoom, roomExists, roomForOrigins as roomForOriginsOf, roomsForOrigins as roomsForOriginsOf, resolveOriginRoom, roomHead } from '../shared/chatRooms'
+import { cardRoom, chatResponder, chatRoomMembers, chatRoomMentionTargets, findRoom, GLOBAL_ROOM, groupRoomId, homeRoom, labRoomId, normalizeChatGroup, originRoom, parseRoom, roomExists, roomForOrigins as roomForOriginsOf, roomsForOrigins as roomsForOriginsOf, resolveOriginRoom, roomHead } from '../shared/chatRooms'
 import { mergeRefDocs, normalizeRefDocPath, refDocKey, refDocsPrompt, sanitizeRefDocs } from '../shared/refDocs'
 import { draftCovered, isSameRule, matchRule, ruleLabel, type ApprovalRule } from '../shared/approvalRules'
 import { askDecisionInput, matchPastDecisions, sameAskDecisions } from '../shared/askDecision'
@@ -98,7 +99,7 @@ import { abortable, demoOutcome, addPraise, cleanSpeech, settleStaleMeeting, dat
 import { InvalidArgsError } from '../shared/errors'
 import { addUnread, clearUnread, unreadOf, type UnreadReports } from '../shared/unreadReports'
 import { planBoardCleanup, selectDoneToDelete, type BoardCleanupPlan, type DeleteTasksCond } from '../shared/boardCleanup'
-import { OneShotAllow, isPersistable, restoredInstruction, splitRestorable, toPending, toRestoredApproval, withPending, withoutPending, type PendingApproval } from './pendingApprovals.ts'
+import { APP_ASK_PREFIX, OneShotAllow, isPersistable, restoredInstruction, splitRestorable, toPending, toRestoredApproval, withPending, withoutPending, type PendingApproval } from './pendingApprovals.ts'
 import { plansToAdvanceOnStart, shouldReopenForAnswer, tasksToReturnToTodo } from '../shared/taskResume'
 import { remoteSafeEquipment } from '../shared/staffPack'
 import * as shopGrid from './shopGrid'
@@ -113,6 +114,7 @@ import { isRemoteAutoAllowed, REMOTE_BLOCKED_SETTINGS, isRemoteManualDeleteAllow
 import { pickStaffPatch, type StaffPatch } from './staffPatch'
 import { isRemoteCall, REMOTE_MARK, remoteMarked, remoteMarkedI18n } from './remoteContext'
 import * as db from './db'
+import { checkCollab, collabLimit, folderClash, GROUP_MAX_RECIPIENTS, parseApprovedPairs, sameScopes, scopesOf, withApproved, type ApprovedPair, type CollabCheck, type CollabScope } from '../shared/collabPairs'
 import { legacyLevelOfXp } from './isoMigrate'
 import type { GridItem, SeatSetPart } from '../shared/iso/furniture'
 import { ExternalWatcher, upgradeAskHook } from './external'
@@ -168,7 +170,7 @@ import { codexBinaryPath } from './ai/codex'
 import { codexUsageAfterFailure, readCodexRateLimits, refreshCodexAssets, shareInFlight } from './ai/codexAssets'
 import { defineTool, registerLocalMcp, type LocalMcpHandle } from './mcp/localMcp'
 import { autoWaitReason, autoActionKey, autoKindOf, autoStep, autoSummaryText, autoWindow, AWAY_ANSWER, formatRemaining, planToConfig, type AutoApprovePlan } from '../shared/autoApprove'
-import { HELP_MAX_PER_TASK, HELP_TEXT_MAX, HelpLedger, mustUseHelp, helpTargetIds, inHelpContext, type HelpCtx } from '../shared/helpRequest'
+import { HELP_MAX_PER_TASK, HELP_TEXT_MAX, HelpLedger, mustUseHelp, helpTargetIds, helpCtxOf, inHelpContext, isHelpWaiting, type HelpCtx } from '../shared/helpRequest'
 import { AUTONOMY_TEXT_ASK_MAX, autonomyVerdict, fallbackAnswers, isFullAutonomy, isTaskAutonomous, markProxyAnswers, nextTextAskRetry, resolveAutonomy } from '../shared/autonomy'
 import { clipLeaderReport } from '../shared/memberReport'
 import { commitAll, folderState, pushAndPr, repoRoot, restoreFiles, snapshotTree, treeDiff, workBaseStillValid, workChanges } from './review'
@@ -248,6 +250,8 @@ export class Office extends EventEmitter<{
   private external: db.StoredStaff[] = []
   private teams = new Map<string, Team>()
   private labs = new Map<string, Lab>()
+  /** 여러 팀·프로젝트 단체방 */
+  private chatGroups = new Map<string, ChatGroup>()
   private runs: ProcessRun[] = []
   private companyLevel = 0
   private tasks = new Map<string, Task>()
@@ -536,6 +540,7 @@ export class Office extends EventEmitter<{
     this.budgetWarned = new Set(pruneAlertKeys(db.loadBudgetAlerts(), new Date()))
     for (const t of db.loadTeams()) this.teams.set(t.id, t)
     for (const l of db.loadLabs()) this.labs.set(l.id, l)
+    for (const g of db.loadChatGroups()) this.chatGroups.set(g.id, g)
     // 앱이 꺼지면 진행 중이던 단계의 지시 연결이 끊기므로, 다시 켜면 이어서 할지 확인을 받는다
     this.runs = db
       .loadRuns(RUN_KEEP)
@@ -544,6 +549,7 @@ export class Office extends EventEmitter<{
     this.planUsage = db.loadPlanUsage()
     this.auto = { ...this.auto, ...db.loadAutoApprove() }
     this.rules = db.loadApprovalRules()
+    this.collabPairs = parseApprovedPairs(db.loadCollabPairs())
     this.knowledge = db.loadKnowledge()
     this.gallery = db.loadGallery()
     this.demoDayLast = db.loadDemoDayLast()
@@ -672,6 +678,7 @@ export class Office extends EventEmitter<{
       staff: [...[...this.hired.values()].map((s) => this.liveStaff(s)), ...external.map((s) => this.liveStaff(s))],
       teams: [...this.teams.values(), ...projectTeams.values()],
       labs: [...this.labs.values()],
+      chatGroups: [...this.chatGroups.values()],
       runs: this.runs,
       company: { ...this.company(), badge: this.badgeLabel() },
       tasks: [...this.tasks.values()],
@@ -741,15 +748,18 @@ export class Office extends EventEmitter<{
   }
 
   /** 부탁받은 일이 오류·중지로 끝나 결과 없이 사라지지 않게: 요청을 닫고(대상당 1건 제한 해제) 부탁한 직원에게 못 마쳤다고 보고한다 */
-  private failHelpRequests(staffId: string, origins: readonly Origin[], why: 'error' | 'stopped') {
+  private failHelpRequests(staffId: string, ownOrigins: readonly Origin[], why: 'error' | 'stopped') {
     const name = this.hired.get(staffId)?.name ?? ''
+    // 재위임 결과를 기다리느라 보류해 둔 요청도 함께 실패로 닫는다 (요청한 리더에게 끊기지 않고 알린다)
+    const origins = [...ownOrigins, ...(this.helpHeld.get(staffId) ?? [])]
+    this.helpHeld.delete(staffId)
     for (const o of origins) {
       if (o.kind !== 'help') continue
       const resumeCtx = this.helpLedger.close(o.reqId)
       if (!this.hired.has(o.fromId)) continue
       this.instruct(o.fromId, t(why === 'error' ? 'staff.msg.helpFailed.error' : 'staff.msg.helpFailed.stopped', { name }), { kind: 'user', room: o.room, ...(resumeCtx ? { help: resumeCtx } : {}), ...(o.isAutonomous ? { isAutonomous: true } : {}) })
     }
-    this.helpLedger.release(staffId, [], (id) => [...this.origins.values()].some((os) => os.some((x) => x.kind === 'help' && x.reqId === id)))
+    this.helpLedger.release(staffId, [], (id) => this.isHelpLive(id))
   }
 
   /** 실행 중 예외(SDK·Codex 오류): 인터넷이 끊긴 것이면 받은 일을 보관해 연결되면 이어 가고, 아니면 받은 일을 정리한다 */
@@ -1169,6 +1179,9 @@ export class Office extends EventEmitter<{
     for (const a of list) {
       this.textAsks.delete(a.id)
       this.restoredAsks.delete(a.id)
+      // 앱 결재를 기다리던 도구 호출은 반려로 풀어 준다
+      this.appAsks.get(a.id)?.(false)
+      this.appAsks.delete(a.id)
       this.unpersistApproval(a.id)
       // 새 지시·퇴사로 닫힌 카드도 기록에 '취소'로 남긴다 ("안 눌렀는데 카드가 사라졌다"를 찾을 수 있게) — 연습 카드는 빼고
       if (!this.demoApprovalIds.delete(a.id)) this.recordApproval(s.id, { approvalId: a.id, requestedAt: a.createdAt, result: 'canceled', actor: '', toolName: a.toolName, summary: a.summary, summaryI18n: a.summaryI18n, effectI18n: a.effectI18n })
@@ -1480,7 +1493,12 @@ export class Office extends EventEmitter<{
       this.settleChat({ id: approvalId, result: 'skipped' })
       return true
     }
-    if (!this.manager.decide(approvalId, allow) && !this.demoApprovalIds.delete(approvalId)) {
+    // 앱이 직접 올린 결재(프로젝트 간 협업 승인)는 기다리던 도구 호출에 답을 돌려준다
+    const appAsk = this.appAsks.get(approvalId)
+    if (appAsk) {
+      this.appAsks.delete(approvalId)
+      appAsk(allow)
+    } else if (!this.manager.decide(approvalId, allow) && !this.demoApprovalIds.delete(approvalId)) {
       this.dropApproval(approvalId, '이미 끝난 결재')
       return false
     }
@@ -1695,7 +1713,15 @@ export class Office extends EventEmitter<{
     if (!pending) this.oneShot.revoke(staffId)
     this.netParked.succeeded(staffId) // 이어 간 일이 정상으로 끝났으면 이어 가기 횟수를 비운다
     // 일하는 중에 받아 아직 답하지 않은 지시는 다음 결과 몫으로 남긴다 (그 답이 지시가 온 방에 올라가게)
-    const { done: origins, keep } = splitFinished(this.origins.get(staffId) ?? [], pending)
+    const split = splitFinished(this.origins.get(staffId) ?? [], pending)
+    const keep = split.keep
+    // 받은 리더가 팀원에게 재위임해 결과를 기다리는 요청은 위로 보고하지 않고 보류한다 — 하위 결과가 모두 돌아오고
+    // 리더가 그 결과를 받아 처리한 턴에서 한 번에 취합해 보고한다 (결과가 와 있어도 아직 대기열에 있으면 보류)
+    const allDone = [...(this.helpHeld.get(staffId) ?? []), ...split.done]
+    const waitingHelp = allDone.filter((o) => o.kind === 'help' && o.help && isHelpWaiting(staffId, o.help.rootId, keep, this.helpLedger))
+    const origins = allDone.filter((o) => !waitingHelp.includes(o))
+    if (waitingHelp.length) this.helpHeld.set(staffId, waitingHelp)
+    else this.helpHeld.delete(staffId)
     const rooms = this.roomsForOrigins(staffId, origins)
     const room = rooms[0]
     this.origins.set(staffId, keep)
@@ -1731,7 +1757,7 @@ export class Office extends EventEmitter<{
       }
     }
     // 이 직원이 연 도움 요청 원업무가 모두 끝났으면(열린 요청·돌아올 결과 없음) 센 횟수를 비운다 — 받은 요청은 위에서 닫은 뒤에 본다
-    this.helpLedger.release(staffId, keep, (id) => [...this.origins.values()].some((os) => os.some((o) => o.kind === 'help' && o.reqId === id)))
+    this.helpLedger.release(staffId, keep, (id) => this.isHelpLive(id))
     // 단체방에는 보고 원문을 그대로 남긴다 (긴 보고는 화면에서 접어 보여 준다). 이어진 카드가 있으면 보고에 붙여 '카드 열기'·👍로 쓴다
     const reportTaskId = origins.map((o) => (o.kind === 'task' ? o.taskId : o.cardId)).find((id) => id && this.tasks.has(id))
     // 여러 방의 지시를 한 턴에 처리했으면 같은 보고를 그 방들 각각에 올린다
@@ -2456,8 +2482,8 @@ export class Office extends EventEmitter<{
    * - replace: 하던 일을 버린다 (받은 카드·대기 카드는 할 일로 — 중단과 같은 정리) 그 뒤 새 지시를 보낸다
    */
   private delegateFrom(staffId: string, member: string, instruction: string, interrupt?: 'continue' | 'replace'): string {
-    // 도움 요청으로 받은 일에서는 위임으로 깊이·대상·횟수 제한을 우회하지 못한다
-    if (inHelpContext(this.origins.get(staffId) ?? [])) return t('staff.tool.help.noBypass')
+    // 도움 요청으로 받은 일에서는 위임으로 깊이·대상·횟수 제한을 우회하지 못한다 (재위임 결과를 기다리며 보류한 요청도 포함)
+    if (inHelpContext(this.helpOriginsOf(staffId))) return t('staff.tool.help.noBypass')
     const candidates = this.delegatesOf(staffId)
     if (candidates.length === 0) return this.helpTargetsOf(staffId).length ? t('staff.tool.delegate.useHelp') : t('staff.tool.delegate.notLeader')
     const target = candidates.find((m) => m.name === member)
@@ -2488,20 +2514,231 @@ export class Office extends EventEmitter<{
     return t(interrupt === 'replace' ? 'staff.tool.delegate.replaced' : 'staff.tool.delegate.interrupted', { name: target.name })
   }
 
-  /** 이 직원이 도움을 요청할 수 있는 동료: 같은 팀·같은 랩의 이 PC 직원(본인 제외). 랩 리드는 delegate를 쓰므로 비어 있고, 팀장은 자기 팀원을 뺀 같은 랩 직원만 남는다 */
+  /** 다른 팀·프로젝트의 리더(이 PC에 고용된 사람, 본인·내 시키기 대상 제외) */
+  private leaderPeersOf(staffId: string) {
+    const leaders = new Set<string>()
+    for (const tm of this.teams.values()) if (tm.leadId) leaders.add(tm.leadId)
+    for (const l of this.labs.values()) if (l.leadId) leaders.add(l.leadId)
+    leaders.delete(staffId)
+    for (const m of this.delegatesOf(staffId)) leaders.delete(m.id)
+    return [...leaders].filter((id) => this.hired.has(id))
+  }
+
+  /** 이 직원이 리더(팀장 또는 랩 리드)인가 */
+  private isLeaderStaff(staffId: string) {
+    return this.teamOf(staffId)?.leadId === staffId || [...this.labs.values()].some((l) => l.leadId === staffId)
+  }
+
+  /**
+   * 이 직원이 도움을 요청할 수 있는 사람: 같은 팀·같은 랩의 이 PC 직원(본인 제외) + 리더라면 다른 팀·프로젝트 리더.
+   * 랩 리드는 자기 랩 멤버에게 delegate를 쓰므로 다른 리더만, 팀장은 자기 팀원을 뺀 같은 랩 직원과 다른 리더.
+   * 리더→리더로 받은 일의 받은 리더는 재위임 1회로 자기 시키기 대상에게도 요청할 수 있다
+   */
   private helpTargetsOf(staffId: string) {
     const team = this.teamOf(staffId)
     const labs = this.labsOf(staffId)
     const ids = helpTargetIds(
       staffId,
-      { teamMemberIds: team ? this.membersOf(team.id).map((m) => m.id) : [], labMemberIds: labs.map((l) => l.memberIds), isLabLead: labs.some((l) => l.leadId === staffId), isTeamLead: team?.leadId === staffId },
+      { teamMemberIds: team ? this.membersOf(team.id).map((m) => m.id) : [], labMemberIds: labs.map((l) => l.memberIds), isLabLead: labs.some((l) => l.leadId === staffId), isTeamLead: team?.leadId === staffId, leaderPeerIds: this.leaderPeersOf(staffId) },
       (id) => this.hired.has(id),
     )
-    return ids.map((id) => this.hired.get(id)!)
+    const out = new Map(ids.map((id) => [id, this.hired.get(id)!]))
+    const ctx = helpCtxOf(this.helpOriginsOf(staffId))
+    if (ctx?.leaderChain && this.isLeaderStaff(staffId)) for (const m of this.delegatesOf(staffId)) if (!ctx.path.includes(m.id)) out.set(m.id, m)
+    return [...out.values()]
   }
 
   /** 도움 요청 장부: 요청별 상관 id·원업무별 보낸 수·사슬 */
   private helpLedger = new HelpLedger()
+  /** 재위임한 하위 결과를 기다리느라 위로 보고를 미룬 받은 요청 (직원별) */
+  private helpHeld = new Map<string, Origin[]>()
+
+  /** 도움 요청 검사에 쓰는 받은 일: 지금 하는 지시 + 재위임 결과를 기다리며 보류한 요청 (보류 중인 리더도 중복·바쁨·사슬 검사에 넣는다) */
+  private helpOriginsOf(staffId: string): Origin[] {
+    return [...(this.origins.get(staffId) ?? []), ...(this.helpHeld.get(staffId) ?? [])]
+  }
+
+  /** 요청이 아직 살아 있는가 — 받은 쪽이 일하는 중이거나 하위 결과를 기다리며 보류 중 */
+  private isHelpLive(reqId: string) {
+    const isIt = (o: Origin) => o.kind === 'help' && o.reqId === reqId
+    return [...this.origins.values(), ...this.helpHeld.values()].some((os) => os.some(isIt))
+  }
+
+  /** 앱이 직접 올리고 도구 호출 안에서 기다리는 결재 (id → 승인·반려를 돌려줄 함수). 자동결재·"항상 승인" 규칙을 거치지 않는 대표 전용 카드 */
+  private appAsks = new Map<string, (allow: boolean) => void>()
+  /** 대표가 승인한 프로젝트 쌍 (협업 첫 요청·단체방 — shared/collabPairs.ts) */
+  private collabPairs: ApprovedPair[] = []
+
+  /** 결재 카드를 그 직원 이름으로 올리고 대표의 승인·반려를 기다린다 (반려·철회·퇴사면 false) */
+  private askOwner(staffId: string, toolName: string, summary: I18nArg): Promise<boolean> {
+    if (!this.hired.has(staffId)) return Promise.resolve(false)
+    const id = `${APP_ASK_PREFIX}${crypto.randomUUID()}`
+    return new Promise((resolve) => {
+      this.appAsks.set(id, resolve)
+      this.addApproval({ id, staffId, toolName, summary: trI18n(summary), summaryI18n: summary, createdAt: Date.now() })
+    })
+  }
+
+  /** 직원의 협업 단위(속한 프로젝트들, 없으면 팀)와 그 작업 폴더(실제 경로) — 직원이 직접 지정한 작업 폴더가 있으면 그 폴더 */
+  private collabScopesOf(staffId: string): CollabScope[] {
+    const s = this.hired.get(staffId)
+    return scopesOf(
+      this.labsOf(staffId).map((l) => ({ id: l.id, cwd: this.realDir(l.cwd) })),
+      this.teamOf(staffId)?.id ?? null,
+      s?.cwdSource === 'own' ? this.realDir(s.cwd) : null,
+    )
+  }
+
+  /** 동시에 일할 직원들 중 서로 다른 프로젝트·팀인데 같은 폴더를 쓰는 첫 쌍 (리더 간 요청·단체방 병렬 지시 공통) */
+  private folderClashOf(staffIds: readonly string[]) {
+    return folderClash(
+      staffIds.map((id) => {
+        const scopes = this.collabScopesOf(id)
+        return { name: this.hired.get(id)?.name ?? '', keys: scopes.map((x) => x.key), cwds: scopes.map((x) => x.cwd) }
+      }),
+    )
+  }
+
+  /** 단체방 지시 공통 한도: 한 번에 받는 사람 수·토큰 예산 (막혔으면 방에 남길 안내, 괜찮으면 null) */
+  private groupSendBlock(count: number): string | null {
+    const limit = collabLimit({ count, max: GROUP_MAX_RECIPIENTS, isOverBudget: this.isOverTokenBudget() })
+    if (limit === 'tooMany') return t('chat.group.tooMany', { count, max: GROUP_MAX_RECIPIENTS })
+    if (limit === 'overBudget') return t('chat.group.overBudget')
+    return null
+  }
+
+  /** 폴더 비교용 실제 경로 (없는 폴더면 적힌 그대로) */
+  private realDir(d: string | null) {
+    if (!d) return null
+    try {
+      return fs.realpathSync(d)
+    } catch {
+      return d
+    }
+  }
+
+  private scopeName(key: string) {
+    return key.startsWith('team:') ? (this.teams.get(key.slice(5))?.name ?? '') : (this.labs.get(key)?.name ?? '')
+  }
+
+  private rememberCollabPairs(add: readonly ApprovedPair[]) {
+    if (!add.length) return
+    this.collabPairs = withApproved(this.collabPairs, add)
+    db.saveCollabPairs(this.collabPairs)
+  }
+
+  /** 토큰 예산(일·주·월 중 하나라도)을 이미 다 썼는가 — 리더끼리 새 협업 요청을 막는 데 쓴다 */
+  private isOverTokenBudget() {
+    return BUDGET_PERIODS.some((period) => {
+      const u = this.periodUsage(period)
+      return u.limitTokens > 0 && u.usedTokens >= u.limitTokens
+    })
+  }
+
+  /**
+   * 협업 요청 공통 검사 — 요청 직전과 결재 승인 직후에 같은 함수로 본다 (기다리는 사이 소속·리더 자격·폴더가 바뀔 수 있다):
+   * 지금 소속으로 요청할 수 있는 사람인가(권한) → 장부(길이·단계·사슬·중복·바쁨·횟수, 보류 중인 요청 포함) → 쌍 승인·폴더·토큰 예산
+   */
+  private gateHelp(
+    staffId: string,
+    member: string,
+    request: string,
+    approved: readonly ApprovedPair[],
+    isBudgetApproved: boolean,
+  ): { error: string } | { target: db.StoredStaff; isLeaderToLeader: boolean; fromScopes: CollabScope[]; toScopes: CollabScope[]; collab: CollabCheck; sharedFolder: string | null } {
+    const candidates = this.helpTargetsOf(staffId)
+    if (candidates.length === 0) return { error: t('staff.tool.help.noTarget') }
+    const target = candidates.find((m) => m.name === member)
+    if (!target) return { error: t('staff.tool.notFound', { name: member }) }
+    const requesterIsLeader = this.isLeaderStaff(staffId)
+    const isOwnMember = this.delegatesOf(staffId).some((m) => m.id === target.id)
+    const rejected = this.helpLedger.check({ staffId, targetId: target.id, text: request, requesterOrigins: this.helpOriginsOf(staffId), targetOrigins: this.helpOriginsOf(target.id), requesterIsLeader, targetIsOwnMember: isOwnMember })
+    if (rejected) return { error: t(`staff.tool.help.${rejected}`, { name: target.name, max: rejected === 'tooLong' ? HELP_TEXT_MAX : HELP_MAX_PER_TASK }) }
+    const isLeaderToLeader = requesterIsLeader && this.isLeaderStaff(target.id)
+    const fromScopes = this.collabScopesOf(staffId)
+    // 받은 리더가 자기 팀원·구성원에게 넘기는 재위임은 자기 조직 안의 일이라 쌍 승인을 묻지 않는다 (위로 받은 요청에서 이미 승인됐다)
+    const toScopes = isOwnMember ? fromScopes : this.collabScopesOf(target.id)
+    const collab = checkCollab({ from: fromScopes, to: toScopes, approved, isOverBudget: isLeaderToLeader && !isBudgetApproved && this.isOverTokenBudget(), now: Date.now() })
+    const clash = this.folderClashOf([staffId, target.id])
+    return { target, isLeaderToLeader, fromScopes, toScopes, collab, sharedFolder: clash?.cwd ?? null }
+  }
+
+  /** request_help 도구: 같은 팀·프로젝트 동료나 다른 리더에게 협업을 요청한다. 다른 프로젝트로 가는 첫 요청 등은 대표 결재를 기다린다 */
+  private async requestHelpFrom(staffId: string, member: string, request: string): Promise<string> {
+    let gate = this.gateHelp(staffId, member, request, this.collabPairs, false)
+    if ('error' in gate) return gate.error
+    const from = this.hired.get(staffId)!
+    // 다른 프로젝트로 가는 첫 요청·승인 뒤 폴더가 바뀐 쌍·다른 폴더·예산 초과는 대표 결재 (카드는 일하는 직원 = 요청한 리더 이름으로)
+    const first = gate
+    if (first.collab.reasons.length) {
+      const { collab, fromScopes, toScopes, target } = first
+      const where = (scopes: CollabScope[]) => scopes.map((x) => this.scopeName(x.key)).filter(Boolean).join(', ') || '-'
+      const reasons: I18nArg[] = collab.reasons.map((r) => (r === 'otherFolder' && collab.otherFolders ? tk('log.collabReason.otherFolder', { a: collab.otherFolders[0], b: collab.otherFolders[1] }) : tk(`log.collabReason.${r}`)))
+      const summary = tk('log.collabAsk', { from: from.name, fromWhere: where(fromScopes), name: target.name, toWhere: where(toScopes), reasons: { list: reasons, sep: ' · ' }, text: request.length > 120 ? `${request.slice(0, 120)}…` : request })
+      const allowed = await this.askOwner(staffId, 'request_help', summary)
+      if (!allowed) return t(collab.reasons.length === 1 && collab.reasons[0] === 'overBudget' ? 'staff.tool.help.overBudget' : 'staff.tool.help.collabRejected', { name: target.name })
+      if (!this.hired.has(staffId)) return t('staff.tool.help.collabRejected', { name: target.name })
+      // 승인 직후 지금 소속·리더 자격·폴더로 다시 검사한다 — 승인한 쌍·예산만 통과로 치고, 그 사이 바뀐 것이 있으면 보내지 않는다
+      // (소속이 겹치도록 바뀌면 재검사에서 결재 이유가 사라지므로, 승인 전후의 소속·폴더를 직접 비교한다)
+      const again = this.gateHelp(staffId, member, request, withApproved(this.collabPairs, collab.drafts), collab.reasons.includes('overBudget'))
+      if ('error' in again) return again.error
+      const isChanged =
+        again.target.id !== target.id ||
+        again.isLeaderToLeader !== first.isLeaderToLeader ||
+        !sameScopes(again.fromScopes, fromScopes) ||
+        !sameScopes(again.toScopes, toScopes) ||
+        again.collab.reasons.length > 0
+      if (isChanged) return t('staff.tool.help.changed', { name: target.name })
+      this.rememberCollabPairs(collab.drafts)
+      gate = again
+    }
+    const { target, isLeaderToLeader } = gate
+    const myOrigins = this.origins.get(staffId) ?? []
+    const opened = this.helpLedger.open(staffId, target.id, this.helpOriginsOf(staffId), isLeaderToLeader)
+    // 대표 화면·팀장에게 "A → B: 요약 (도움 요청)" 한 줄 — 채팅과 활동 기록, 가벼운 알림
+    const line = tk('log.help', { from: from.name, name: target.name, text: request.length > 80 ? `${request.slice(0, 80)}…` : request })
+    this.log(staffId, 'delegate', line)
+    this.postChat(staffId, t('log.help', { from: from.name, name: target.name, text: request.slice(0, 80) }).slice(0, CHAT_TEXT_MAX))
+    const leadId = this.leadOf(staffId)
+    if (leadId) {
+      this.log(leadId, 'delegate', line)
+      this.emit('notify', { title: t('log.helpNotify', { from: from.name, name: target.name }), body: request.slice(0, 120), staffId: leadId })
+    }
+    // 리더끼리 보낸 요청은 대표에게도 알린다 (프로젝트·팀 경계를 넘는 일)
+    if (isLeaderToLeader) this.emit('notify', { title: t('log.helpLeaderNotify', { from: from.name, name: target.name }), body: request.slice(0, 120), staffId })
+    // 자율 진행 중이던 일에서 시작된 요청은 자율로 이어 간다
+    const isAuto = this.hasAutonomousOrigin(myOrigins)
+    // 두 프로젝트가 같은 폴더를 쓰면 동시에 같은 파일을 고치지 않게 양쪽에 알린다 (막지는 않는다)
+    const shared = gate.sharedFolder
+    if (shared) {
+      this.log(staffId, 'status', tk('log.sameFolderWarn', { from: from.name, name: target.name, cwd: shared }))
+      this.postChat(staffId, t('log.sameFolderWarn', { from: from.name, name: target.name, cwd: shared }).slice(0, CHAT_TEXT_MAX))
+    }
+    this.instruct(target.id, t('staff.msg.helpRequest', { from: from.name, text: request }) + (isLeaderToLeader ? `\n${t('staff.msg.helpLeaderOptions')}` : '') + (shared ? `\n${t('staff.msg.sameFolder', { from: from.name, cwd: shared })}` : ''), { kind: 'help', fromId: staffId, reqId: opened.reqId, help: opened.help, room: this.roomOf(staffId), ...(isAuto ? { isAutonomous: true } : {}) })
+    return t('staff.tool.help.done', { name: target.name }) + (shared ? ` ${t('staff.tool.help.sameFolder', { name: target.name, cwd: shared })}` : '')
+  }
+
+  /** 거절: 받은 요청을 닫고 부탁한 리더에게 "할 수 없음"을 알린다 (재위임 보류 중이던 요청도 포함) */
+  private declineHelp(staffId: string, reason: string): string {
+    const held = this.helpHeld.get(staffId) ?? []
+    const own = this.origins.get(staffId) ?? []
+    const o = [...own, ...held].find((x) => x.kind === 'help')
+    if (!o || o.kind !== 'help') return t('staff.tool.decline.none')
+    this.origins.set(staffId, own.filter((x) => x !== o))
+    const left = held.filter((x) => x !== o)
+    if (left.length) this.helpHeld.set(staffId, left)
+    else this.helpHeld.delete(staffId)
+    const s = this.hired.get(staffId)
+    const resumeCtx = this.helpLedger.close(o.reqId)
+    const why = reason.slice(0, 400)
+    if (s && this.hired.has(o.fromId)) {
+      this.instruct(o.fromId, t('staff.msg.helpDeclined', { name: s.name, role: s.role, text: why }), { kind: 'user', room: o.room, ...(resumeCtx ? { help: resumeCtx } : {}), ...(o.isAutonomous ? { isAutonomous: true } : {}) })
+      const from = this.hired.get(o.fromId)
+      this.log(staffId, 'status', tk('log.helpDeclined', { name: s.name, from: from?.name ?? '', text: why }))
+      this.emit('notify', { title: t('log.helpDeclinedNotify', { name: s.name, from: from?.name ?? '' }), body: why.slice(0, 120), staffId })
+    }
+    return t('staff.tool.decline.done')
+  }
 
   private teamContext(staffId: string) {
     const team = this.teamOf(staffId)
@@ -2557,6 +2794,11 @@ export class Office extends EventEmitter<{
             const lines = members.map((m) => `${describe(m)}${lab.leadId === m.id ? t('staff.tool.team.tagLabLead') : ''}`)
             parts.push(`${t('staff.tool.team.labHeader', { name: lab.name, goal: lab.goal || t('staff.ctx.goalNone') })}\n${lines.join('\n')}`)
           }
+          if (this.isLeaderStaff(staffId)) {
+            const peers = this.leaderPeersOf(staffId).map((id) => this.hired.get(id)!)
+            const where = (id: string) => [...[...this.teams.values()].filter((x) => x.leadId === id).map((x) => x.name), ...[...this.labs.values()].filter((x) => x.leadId === id).map((x) => x.name)].join(', ')
+            if (peers.length) parts.push(`${t('staff.tool.team.peerLeaders')}\n${peers.map((m) => `${describe(m)} [${where(m.id)}]`).join('\n')}`)
+          }
           return text(parts.join('\n\n') || t('staff.tool.team.none'))
         }),
         defineTool(
@@ -2575,30 +2817,17 @@ export class Office extends EventEmitter<{
                 'request_help',
                 t('staff.tool.help.desc'),
                 { member: z.string().describe(t('staff.tool.help.member')), request: z.string().describe(t('staff.tool.help.request')) },
-                async ({ member, request }) => {
-                  const candidates = this.helpTargetsOf(staffId)
-                  if (candidates.length === 0) return text(t('staff.tool.help.noTarget'))
-                  const target = candidates.find((m) => m.name === member)
-                  if (!target) return text(t('staff.tool.notFound', { name: member }))
-                  const myOrigins = this.origins.get(staffId) ?? []
-                  const rejected = this.helpLedger.check({ staffId, targetId: target.id, text: request, requesterOrigins: myOrigins, targetOrigins: this.origins.get(target.id) ?? [] })
-                  if (rejected) return text(t(`staff.tool.help.${rejected}`, { name: target.name, max: rejected === 'tooLong' ? HELP_TEXT_MAX : HELP_MAX_PER_TASK }))
-                  const from = this.hired.get(staffId)!
-                  const opened = this.helpLedger.open(staffId, target.id, myOrigins)
-                  // 대표 화면·팀장에게 "A → B: 요약 (도움 요청)" 한 줄 — 채팅과 활동 기록, 가벼운 알림
-                  const line = tk('log.help', { from: from.name, name: target.name, text: request.length > 80 ? `${request.slice(0, 80)}…` : request })
-                  this.log(staffId, 'delegate', line)
-                  this.postChat(staffId, t('log.help', { from: from.name, name: target.name, text: request.slice(0, 80) }).slice(0, CHAT_TEXT_MAX))
-                  const leadId = this.leadOf(staffId)
-                  if (leadId) {
-                    this.log(leadId, 'delegate', line)
-                    this.emit('notify', { title: t('log.helpNotify', { from: from.name, name: target.name }), body: request.slice(0, 120), staffId: leadId })
-                  }
-                  // 자율 진행 중이던 일에서 시작된 요청은 자율로 이어 간다
-                  const isAuto = this.hasAutonomousOrigin(myOrigins)
-                  this.instruct(target.id, t('staff.msg.helpRequest', { from: from.name, text: request }), { kind: 'help', fromId: staffId, reqId: opened.reqId, help: opened.help, room: this.roomOf(staffId), ...(isAuto ? { isAutonomous: true } : {}) })
-                  return text(t('staff.tool.help.done', { name: target.name }))
-                },
+                async ({ member, request }) => text(await this.requestHelpFrom(staffId, member, request)),
+              ),
+            ]
+          : []),
+        ...(this.helpTargetsOf(staffId).length > 0 || this.isLeaderStaff(staffId)
+          ? [
+              defineTool(
+                'decline_help',
+                t('staff.tool.decline.desc'),
+                { reason: z.string().describe(t('staff.tool.decline.reason')) },
+                async ({ reason }) => text(this.declineHelp(staffId, reason)),
               ),
             ]
           : []),
@@ -2693,7 +2922,7 @@ export class Office extends EventEmitter<{
             absorbs: z.array(z.string()).optional().describe(t('staff.tool.plan.absorbs')),
           },
           async ({ spec, subtasks, task: taskTitle, title, absorbs }) => {
-            if (inHelpContext(this.origins.get(staffId) ?? [])) return text(t('staff.tool.help.noBypass'))
+            if (inHelpContext(this.helpOriginsOf(staffId))) return text(t('staff.tool.help.noBypass'))
             const candidates = this.delegatesOf(staffId)
             if (candidates.length === 0) return text(this.helpTargetsOf(staffId).length ? t('staff.tool.plan.useHelp') : t('staff.tool.plan.notLeader'))
             const unknown = subtasks.filter((st) => !candidates.some((m) => m.name === st.assignee)).map((st) => st.assignee)
@@ -2772,13 +3001,15 @@ export class Office extends EventEmitter<{
           { title: z.string(), detail: z.string().optional(), assignee: z.string().optional().describe(t('staff.tool.add.assignee')) },
           async ({ title, detail, assignee }) => {
             // 도움 요청으로 받은 일에서는 업무 카드 생성·배정으로 요청 제한을 우회하지 못한다 (카드는 부탁한 사람·팀장 몫)
-            if (inHelpContext(this.origins.get(staffId) ?? [])) return text(t('staff.tool.help.noBypass'))
+            if (inHelpContext(this.helpOriginsOf(staffId))) return text(t('staff.tool.help.noBypass'))
             // 팀장·랩 리드가 아닌 팀원은 카드로 아무에게나 일을 배정하지 못한다 (동료 부탁은 request_help)
             if (mustUseHelp(this.delegatesOf(staffId).length, this.helpTargetsOf(staffId).length)) return text(t('staff.tool.add.useHelp'))
             const lab = this.labsOf(staffId).find((l) => l.leadId === staffId) ?? null
             // 자율 업무를 하다 올린 카드는 자율을 물려받는다
             const card = this.createTask({ title, detail: detail ?? '', teamId: this.teamOf(staffId)?.id ?? null, labId: lab?.id ?? null, isAutonomous: this.hasAutonomousOrigin(this.origins.get(staffId) ?? []) })
-            const named = assignee?.trim() ? [...this.hired.values()].find((s) => s.name === assignee.trim()) : undefined
+            // 담당자 이름은 나·내 시키기 대상만 인정한다 — 프로젝트·팀 밖 사람에게 카드로 일을 배정하는 우회를 막는다 (밖의 사람은 리더 간 협업 요청으로)
+            const assignable = [this.hired.get(staffId), ...this.delegatesOf(staffId)]
+            const named = assignee?.trim() ? assignable.find((s) => s?.name === assignee.trim()) : undefined
             // 담당이 없으면 내 리드에게 (리드가 올린 카드는 보드에 남겨 두고 대표·리드가 배정)
             const toId = named?.id ?? this.leadOf(staffId)
             if (!toId) return text(t('staff.tool.add.posted', { title: card.title, note: assignee ? t('staff.tool.add.postedNoMatch', { name: assignee }) : '' }))
@@ -2815,6 +3046,32 @@ export class Office extends EventEmitter<{
     db.deleteLabRow(labId)
     this.labs.delete(labId)
     for (const t of this.tasks.values()) if (t.labId === labId) t.labId = null
+    this.scheduleEmit()
+  }
+
+  // ── 여러 팀·프로젝트 단체방 ──────────────────────────────
+
+  /**
+   * 대표가 팀·프로젝트를 둘 이상 골라 단체방을 만든다. 방은 대화를 모으는 곳일 뿐 — 직원의 결재·허용 규칙, 시키기·협업 요청 대상은
+   * 방과 상관없이 조직(팀·프로젝트) 기준 그대로다. 방 안에서 지시하는 사람도 대표뿐이다(직원 글의 @는 지시로 풀지 않는다)
+   */
+  createChatGroup(input: Omit<ChatGroup, 'id'>): ChatGroup {
+    const picked = normalizeChatGroup(input, [...this.teams.values()], [...this.labs.values()])
+    if (!picked) throw new Error(t('chat.group.needTwo'))
+    const group: ChatGroup = { id: crypto.randomUUID(), color: input.color || TEAM_COLORS[this.chatGroups.size % TEAM_COLORS.length], ...picked }
+    db.saveChatGroup(group)
+    this.chatGroups.set(group.id, group)
+    // 방을 만든 것만으로는 프로젝트 쌍을 승인하지 않는다 — 리더끼리 협업 요청의 자동 통과는 결재 카드에서 따로 승인한다
+    this.scheduleEmit()
+    const names = [...group.teamIds.map((id) => this.teams.get(id)?.name), ...group.labIds.map((id) => this.labs.get(id)?.name)].filter(Boolean)
+    this.postChat(OFFICE_SENDER, t('chat.group.created', { name: group.name, groups: names.join(', ') }), undefined, undefined, groupRoomId(group.id))
+    return group
+  }
+
+  /** 단체방을 지운다 — 방 글은 남고 전체 방에서 '없어진 방'으로 접힌다. 이 방에서 시작된 일의 보고는 소속 방으로 간다 */
+  deleteChatGroup(id: string) {
+    if (!this.chatGroups.delete(id)) return
+    db.deleteChatGroupRow(id)
     this.scheduleEmit()
   }
 
@@ -4632,7 +4889,7 @@ export class Office extends EventEmitter<{
   sendChat(text: string, attachments: Attachment[] = [], room?: string, mode?: ChatSendMode, replyToId?: number, scheduled?: ChatMessage['scheduled']) {
     const allTeams = [...this.teams.values()]
     const allLabs = [...this.labs.values()]
-    const info = findRoom(room, allTeams, allLabs)
+    const info = findRoom(room, allTeams, allLabs, [...this.chatGroups.values()])
     // 없어졌거나 방이 없는 팀·랩(project·연습)이면 전체 방으로
     room = info?.room ?? GLOBAL_ROOM
     const say = (line: string) => this.postChat(OFFICE_SENDER, line, undefined, undefined, room)
@@ -4649,6 +4906,7 @@ export class Office extends EventEmitter<{
     const hired = info ? chatRoomMembers(info, allHired) : allHired
     if (hired.length === 0) {
       if (!info) return say(t('officeMsg.sendNoStaff'))
+      if (info.kind === 'group') return say(t('chat.group.noMembers', { name: info.name }))
       return say(info.kind === 'lab' ? t('chat.labRoom.noMembers', { lab: info.name }) : t('chat.room.noMembers', { team: info.name }))
     }
     const teams = allTeams.filter((t) => !t.isPractice)
@@ -4665,7 +4923,7 @@ export class Office extends EventEmitter<{
     // `@이름 /명령`은 머리말 없이 그대로 보내야 세션이 명령으로 알아듣는다
     const head = info ? roomHead(info) : '[단체방]'
     const quote = replyTo ? `${t('chat.reply.context', { name: quoted?.from === 'me' ? t('chat.reply.me') : (this.hired.get(quoted?.from ?? '')?.name ?? ''), text: (quoted?.text ?? '').slice(0, REPLY_CONTEXT_MAX) })}\n\n` : ''
-    const message = body.startsWith('/') ? body : `${head} ${quote}${body || '첨부 파일을 확인해 주세요.'}`
+    let message = body.startsWith('/') ? body : `${head} ${quote}${body || '첨부 파일을 확인해 주세요.'}`
     const origin: Origin = { kind: 'chat', room, chatId: mine.id }
     // 앱 대화방(mode)은 직원 패널처럼: 일하는 중이면 대기 메시지로 들고 있거나(wait) 하던 일을 멈추고 바로 전한다(now).
     // mode가 없으면(비서·바탕화면 비서·휴대폰) 예전처럼 바로 보낸다
@@ -4688,8 +4946,20 @@ export class Office extends EventEmitter<{
       const candidates = hired.map((s) => ({ id: s.id, role: s.role, status: s.status, isOverBudget: false, isLead: leadIds.has(s.id) }))
       const id = chatResponder(body, info, candidates)
       if (!id) return say(t('officeMsg.sendNoBudget'))
+      const blocked = info?.kind === 'group' ? this.groupSendBlock(1) : null
+      if (blocked) return say(blocked)
       say(t('officeMsg.sendReceived', { name: this.hired.get(id)?.name ?? '' }))
       return deliver(id)
+    }
+    // 단체방(여러 팀·프로젝트)은 리더 간 협업과 같은 한도(받는 사람 수·토큰 예산)를 지키고, 같은 폴더를 쓰는 사람끼리 함께 받으면 알린다
+    if (info?.kind === 'group') {
+      const blocked = this.groupSendBlock(recipientIds.length)
+      if (blocked) return say(blocked)
+      const clash = this.folderClashOf(recipientIds)
+      if (clash) {
+        say(t('chat.group.sameFolderWarn', { a: clash.a, b: clash.b, cwd: clash.cwd }))
+        if (!body.startsWith('/')) message += `\n${t('chat.group.sameFolderNote', { a: clash.a, b: clash.b, cwd: clash.cwd })}`
+      }
     }
     const empty = matched.filter((t) => t.memberIds.length === 0).map((t) => t.name)
     if (empty.length) say(t('officeMsg.sendEmptyGroups', { names: empty.join(', ') }))
@@ -4721,7 +4991,7 @@ export class Office extends EventEmitter<{
   }
 
   private roomAlive(room: string): boolean {
-    return roomExists(room, [...this.teams.values()], [...this.labs.values()])
+    return roomExists(room, [...this.teams.values()], [...this.labs.values()], [...this.chatGroups.values()])
   }
 
   private homeRoomOf(staffId: string): string | undefined {

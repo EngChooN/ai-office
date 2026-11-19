@@ -323,3 +323,99 @@ test('roomForOrigins: 없어진 팀·랩 방은 건너뛰고 카드 방 → 소�
   assert.deepEqual(roomsForOrigins([{ room: 'tA' }, {}], () => undefined, 'tHome', isRoom), ['tA'], '방이 안 정해진 지시는 다른 방이 있으면 거기 묻는다')
   assert.deepEqual(roomsForOrigins([], () => undefined, undefined, isRoom), [''])
 })
+
+// ── 여러 팀·프로젝트 단체방 (프로젝트 간 협업 9~11) ─────────────────
+
+const groupTeams = [dev, { id: 'design', name: '디자인팀', leadId: 'boss', kind: 'hired' as const, color: '#e05a7a' }]
+const groupLabs = [
+  { id: 'app', name: '앱', leadId: 'kim', memberIds: ['kim', 'outsider'], color: '#4a7fe0' },
+  { id: 'web', name: '웹', leadId: 'park', memberIds: ['park'], color: '#58b07a' },
+]
+const groupHired = [...hired, { id: 'outsider', name: '외부인', teamId: 'ops' }, { id: 'far', name: '먼사람', teamId: 'ops' }]
+
+test('단체방 room 값은 group:<id> — 팀 id·랩 방과 겹치지 않는다', async () => {
+  const { groupRoomId } = await import('../src/shared/chatRooms.ts')
+  assert.equal(groupRoomId('g1'), 'group:g1')
+  assert.deepEqual(parseRoom('group:g1'), { kind: 'group', id: 'g1' })
+  assert.equal(parseRoom('group:'), undefined)
+})
+
+test('단체방 찾기: 고른 팀·프로젝트 중 지금 방이 있는 것만 싣고, 없어진 단체방은 전체 방', () => {
+  const group = { id: 'g1', name: '앱 출시', teamIds: ['dev', 'gone'], labIds: ['app'] }
+  const info = findRoom('group:g1', groupTeams, groupLabs, [group])
+  assert.equal(info?.kind, 'group')
+  if (info?.kind !== 'group') return
+  assert.deepEqual(info.teams.map((x) => x.id), ['dev'])
+  assert.deepEqual(info.labs.map((x) => x.id), ['app'])
+  assert.equal(info.leadId, null)
+  assert.equal(findRoom('group:nope', groupTeams, groupLabs, [group]), undefined)
+  // 단체방 목록을 넘기지 않는 예전 호출은 전체 방으로 (팀 방으로 잘못 읽지 않는다)
+  assert.equal(findRoom('group:g1', groupTeams, groupLabs), undefined)
+})
+
+test('단체방 참여자: 고른 팀 방·프로젝트 방 참여자를 합친다 (중복 없음, 고르지 않은 소속은 빠짐)', () => {
+  const info = findRoom('group:g1', groupTeams, groupLabs, [{ id: 'g1', name: 'x', teamIds: ['dev'], labIds: ['app'] }])!
+  // dev 팀(kim·lee + 팀장 boss) + 앱 프로젝트(kim·outsider) — far는 어디에도 없다
+  assert.deepEqual(chatRoomMembers(info, groupHired).map((s) => s.id), ['kim', 'lee', 'boss', 'outsider'])
+})
+
+test('단체방 멘션: 방 참여자·고른 팀·프로젝트만 — 방 밖 직원은 불러도 지시가 가지 않는다', () => {
+  const info = findRoom('group:g1', groupTeams, groupLabs, [{ id: 'g1', name: 'x', teamIds: ['dev'], labIds: ['app'] }])!
+  const targets = chatRoomMentionTargets(info, groupHired)
+  assert.deepEqual(parseMentions('@먼사람 이거 해 줘', targets).recipientIds, [])
+  // 고르지 않은 웹 프로젝트·디자인팀은 대상이 아니다
+  assert.deepEqual(parseMentions('@웹 확인', targets).recipientIds, [])
+  assert.deepEqual(parseMentions('@디자인팀 확인', targets).recipientIds, [])
+  // 고른 프로젝트는 방 안 멤버만 (리드 포함)
+  assert.deepEqual(parseMentions('@앱 확인', targets).recipientIds.sort(), ['kim', 'outsider'])
+  assert.deepEqual(parseMentions('@개발팀 확인', targets).recipientIds.sort(), ['kim', 'lee'])
+  assert.deepEqual(parseMentions('@전체 공지', targets).recipientIds.sort(), ['boss', 'kim', 'lee', 'outsider'])
+})
+
+test('단체방 받는 사람: 리드가 없어 방 안에서 알맞은 한 명, 머리말은 [이름 단체방]', () => {
+  const info = findRoom('group:g1', groupTeams, groupLabs, [{ id: 'g1', name: '앱 출시', teamIds: ['dev'], labIds: ['app'] }])!
+  const candidates: ResponderCandidate[] = chatRoomMembers(info, groupHired).map((s) => ({ id: s.id, role: '', status: 'idle', isOverBudget: false, isLead: false }))
+  const id = chatResponder('확인해 줘', info, candidates)
+  assert.ok(id && candidates.some((c) => c.id === id))
+  assert.equal(roomHead(info), '[앱 출시 단체방]')
+})
+
+test('단체방 소속 표시: 참여자가 고른 팀·프로젝트 중 어디에 속하는지', async () => {
+  const { groupAffiliations } = await import('../src/shared/chatRooms.ts')
+  const info = findRoom('group:g1', groupTeams, groupLabs, [{ id: 'g1', name: 'x', teamIds: ['dev'], labIds: ['app'] }])
+  if (info?.kind !== 'group') throw new Error('group room expected')
+  assert.deepEqual(groupAffiliations(info, { id: 'kim', teamId: 'dev' }).map((g) => g.name), ['개발팀', '앱'])
+  assert.deepEqual(groupAffiliations(info, { id: 'outsider', teamId: 'ops' }).map((g) => g.name), ['앱'])
+  assert.deepEqual(groupAffiliations(info, { id: 'boss', teamId: 'design' }).map((g) => g.name), ['개발팀'])
+})
+
+test('새 단체방 입력: 방이 있는 팀·프로젝트 둘 이상, 이름이 비면 고른 이름을 잇는다', async () => {
+  const { normalizeChatGroup } = await import('../src/shared/chatRooms.ts')
+  const teams = [...groupTeams, { id: 'p', name: '외부', leadId: null, kind: 'project' as const }]
+  assert.equal(normalizeChatGroup({ name: '', teamIds: ['dev'], labIds: [] }, teams, groupLabs), null)
+  // project 종류 팀·없는 id는 세지 않는다
+  assert.equal(normalizeChatGroup({ name: '', teamIds: ['dev', 'p', 'nope'], labIds: [] }, teams, groupLabs), null)
+  assert.deepEqual(normalizeChatGroup({ name: '  ', teamIds: ['dev'], labIds: ['web', 'app'] }, teams, groupLabs), { name: '개발팀 · 앱 · 웹', teamIds: ['dev'], labIds: ['app', 'web'] })
+  assert.equal(normalizeChatGroup({ name: ' 출시 ', teamIds: ['dev', 'design'], labIds: [] }, teams, groupLabs)?.name, '출시')
+})
+
+test('단체방 결과 방: 단체방에서 시작된 일은 그 방, 단체방을 지우면 소속 방으로', async () => {
+  const { roomExists } = await import('../src/shared/chatRooms.ts')
+  const group = { id: 'g1', name: 'x', teamIds: ['dev'], labIds: ['app'] }
+  const isRoom = (groups: (typeof group)[]) => (r: string) => roomExists(r, groupTeams, groupLabs, groups)
+  assert.equal(roomForOrigins([{ kind: 'chat', room: 'group:g1' }], () => undefined, 'dev', isRoom([group])), 'group:g1')
+  assert.equal(roomForOrigins([{ kind: 'chat', room: 'group:g1' }], () => undefined, 'dev', isRoom([])), 'dev')
+})
+
+test('단체방은 권한 우회 통로가 아니다: 시키기·협업 요청 대상 계산은 대화방을 보지 않는다', async () => {
+  const fs = await import('node:fs')
+  const src = fs.readFileSync(new URL('../src/main/office.ts', import.meta.url), 'utf8')
+  for (const fn of ['private delegatesOf(', 'private leaderPeersOf(', 'private helpTargetsOf(']) {
+    const start = src.indexOf(fn)
+    assert.ok(start > 0, fn)
+    const body = src.slice(start, src.indexOf('\n  }\n', start))
+    assert.doesNotMatch(body, /chatGroups|room/i, `${fn} 가 대화방을 본다`)
+  }
+  // 방 안 지시는 대표 글(sendChat)에서만 멘션을 푼다 — 직원 글의 @는 지시로 풀지 않는다
+  assert.equal((src.match(/parseMentions\(/g) ?? []).length, 1)
+})

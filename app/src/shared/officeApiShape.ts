@@ -65,6 +65,8 @@ export const OFFICE_METHODS = [
   'createLab',
   'updateLab',
   'deleteLab',
+  'createChatGroup',
+  'deleteChatGroup',
   'fireExternal',
   'recruitExternal',
   'equipmentCatalog',

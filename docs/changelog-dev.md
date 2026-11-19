@@ -43,6 +43,18 @@
 - 사무실 외관 거리 클릭이 숨은 직원을 선택하던 문제 + 오른쪽 층 버튼 제거, 레트로 글꼴에서 비서 머리줄 이름 잘림, 멈춘 기획 todo 카드 '기다리는 중' 오집계, 원격 결재 성공이 실패로 보이던 문제, 안드로이드 APK 없는 Release 업데이트 알림 제외(`isReleaseWithoutApk`).
 - 소개 사이트·README 4개 언어 개편(릴리즈 파일 무관). 안드로이드 `versionCode` 54.
 
+## [1.5.0] - 2026-11-19
+
+### 새 기능
+- 리더끼리 협업 요청: `shared/helpRequest.ts`에 `HELP_MAX_DEPTH_LEADER`(2)·`leaderChain`·`leaderPeerIds`·`isHelpWaiting`·`HelpLedger.hasOpenFrom`. 리더→리더 사슬에서 받은 리더가 자기 팀원·구성원에게 재위임 1회, 하위 결과가 모두 돌아와 처리된 턴에서만 위로 취합 보고. `office.ts`에 `request_help` 공통 검사(요청 직전·결재 승인 직후 재검사), 거절(재위임 보류 요청 포함), 요청은 대표 화면에 한 줄 알림.
+- 프로젝트 쌍 승인: `shared/collabPairs.ts`(`checkCollab`·`scopesOf`·`folderClash`·`collabLimit`, 승인 쌍은 `setting.collabPairs`에 작업 폴더와 함께 저장 — `db.ts` `loadCollabPairs`/`saveCollabPairs`). 이유 `newPair`·`folderChanged`·`otherFolder`·`overBudget`. 앱이 올리는 결재(`pendingApprovals.ts` `APP_ASK_PREFIX='app:'`)는 저장하지 않고 자동결재·"항상 승인"을 거치지 않는다.
+- 여러 팀·프로젝트 단체방: `ChatGroup`(`types.ts`)·`chat_group` 표(`db.ts`)·`shared/chatRooms.ts`(`group:<id>`, 참여자 합집합, 소속 표시), 만들기 창 `ChatGroupDialog.tsx`, `createChatGroup`/`deleteChatGroup`(비서 도구에서는 제외). 한 번에 `GROUP_MAX_RECIPIENTS`(6)명·토큰 예산·같은 폴더 경고. 방 안 지시는 대표만.
+
+### 개선
+- 직원 `add_task` 담당자는 본인·시키기 대상만(`office.ts`).
+- Codex `office` 도구 대기 시간 86400초(`codexMcp.ts`) — 협업 승인을 기다리며 끊기지 않게.
+- 바탕화면 비서(`deskPet.ts` `petTargets`)·보드·비서(`secretary.ts`)·원격(`remote/v2.ts`)이 단체방을 인식. 시험: `collabApproval`·`collabPairs`·`chatRooms`·`helpRequest` 등.
+
 ## [1.4.6] - 2026-11-19
 
 ### 새 기능

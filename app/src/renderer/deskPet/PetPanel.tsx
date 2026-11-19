@@ -95,10 +95,11 @@ export function PetPanel() {
   const staff = useOffice((s) => s.staff);
   const teams = useOffice((s) => s.teams);
   const labs = useOffice((s) => s.labs);
+  const chatGroups = useOffice((s) => s.chatGroups);
   const approvals = useMemo(() => petApprovals(staff), [staff]);
   const targets = useMemo(
-    () => petTargets({ staff, teams, labs }),
-    [staff, teams, labs],
+    () => petTargets({ staff, teams, labs, chatGroups }),
+    [staff, teams, labs, chatGroups],
   );
   const [target, setTarget] = useState<PetTarget>(PET_SECRETARY);
   const option = findPetTarget(target, targets);

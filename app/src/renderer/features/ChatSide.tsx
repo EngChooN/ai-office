@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { PinIcon, PresentationIcon } from 'lucide-react'
+import { PinIcon, PlusIcon, PresentationIcon } from 'lucide-react'
 import { useOffice } from '@/store'
 import { cn } from '@/lib/utils'
 import type { Lab, Team } from '@shared/types'
@@ -9,10 +9,10 @@ import { Avatar } from './StaffCard'
 import { statusMetaOf } from './status'
 import { doingOf, roomArrowKeys, unreadText, useMeetingEntry, useRoomEntries, useRoomPeople, type RoomEntry } from './chatRoomHooks'
 
-const GROUP_LABEL = { all: 'chat.room.all', team: 'chat.room.groupTeams', lab: 'chat.room.groupLabs' } as const
+const GROUP_LABEL = { all: 'chat.room.all', team: 'chat.room.groupTeams', lab: 'chat.room.groupLabs', group: 'chat.group.listHeading' } as const
 
 /**
- * 대화방 왼쪽 방 목록: 전체 / 팀 / 랩 묶음 → 회의실 → (지금 하는 일).
+ * 대화방 왼쪽 방 목록: 전체 / 팀 / 랩 / 단체방 묶음(+ 단체방 만들기) → 회의실 → (지금 하는 일).
  * 데스크톱 단체방(펼친 목록·띠의 겹쳐 펼침)과 좌우 분할(폴드 와이드 커버 등)이 같이 쓴다. 칸 안에서만 세로로 스크롤
  */
 export function ChatSide({
@@ -35,6 +35,7 @@ export function ChatSide({
   onPicked?: () => void
 }) {
   const select = useOffice((s) => s.select)
+  const openGroupDialog = useOffice((s) => s.setChatGroupDialogOpen)
   const meeting = useMeetingEntry()
   const entries = useRoomEntries(room?.room, t('chat.room.allName'))
   const roomPeople = useRoomPeople(room)
@@ -51,8 +52,15 @@ export function ChatSide({
       }}
       className={cn('flex min-h-8 items-center gap-2 rounded-[10px] px-2 text-left text-sm', e.isActive ? 'bg-accent text-foreground font-medium' : 'text-muted-foreground hover:bg-accent/60')}
     >
-      <span className="size-2 shrink-0 rounded-full" style={{ background: e.color ?? 'var(--primary)' }} />
-      <span className="min-w-0 flex-1 truncate">{e.label}</span>
+      <span className={cn('size-2 shrink-0', e.group === 'group' ? 'rounded-[3px]' : 'rounded-full')} style={{ background: e.color ?? 'var(--primary)' }} />
+      {e.sub ? (
+        <span className="flex min-w-0 flex-1 flex-col py-0.5 leading-tight">
+          <span className="truncate">{e.label}</span>
+          <span className="text-muted-foreground/80 truncate text-[10px] font-normal">{e.sub}</span>
+        </span>
+      ) : (
+        <span className="min-w-0 flex-1 truncate">{e.label}</span>
+      )}
       {e.hasApproval && <span className="bg-status-waiting size-1.5 shrink-0 rounded-full" title={t('chat.unread.approval')} />}
       {e.unread > 0 && (
         <span className="bg-status-error dark:text-background min-w-4 shrink-0 rounded-full px-1.5 text-center text-[10px] leading-4 font-semibold text-white" aria-label={t('chat.unread.count', { count: e.unread })}>
@@ -62,7 +70,7 @@ export function ChatSide({
     </button>
   )
   // 묶음마다 제목 — 방이 없는 묶음은 제목도 그리지 않는다
-  const groups = (['all', 'team', 'lab'] as const).flatMap((g) => {
+  const groups = (['all', 'team', 'lab', 'group'] as const).flatMap((g) => {
     const list = entries.filter((e) => e.group === g)
     if (list.length === 0) return []
     return [
@@ -80,6 +88,19 @@ export function ChatSide({
         {headAction}
       </div>
       {groups}
+      {/* 팀·프로젝트를 둘 이상 골라 한 방에 — 창은 대화방 화면이 그린다(팝업 안 목록이 닫혀도 남게) */}
+      <button
+        type="button"
+        data-room-item
+        onClick={() => {
+          openGroupDialog(true)
+          onPicked?.()
+        }}
+        className="text-muted-foreground hover:bg-accent/60 mt-1 flex min-h-8 items-center gap-2 rounded-[10px] px-2 text-left text-sm"
+      >
+        <PlusIcon className="size-3.5 shrink-0" />
+        <span className="min-w-0 flex-1 truncate">{t('chat.group.new')}</span>
+      </button>
       <div className="mt-2 border-t pt-2">
         {/* 회의실 줄: 회의실 화면이면 선택됨, 답 기다리는 회의 결정 수는 방 안 읽은 수(빨강)와 구분되게 노랑 */}
         <button

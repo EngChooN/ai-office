@@ -10,9 +10,9 @@ import { commandDescription, commandItem, manualItem, SlashMenu, usePersonalManu
 import { matchCommands, runsOnEnter } from '@shared/slashCommands'
 import { manualLabel } from '@shared/manualName'
 import { useOffice } from '@/store'
-import type { Approval, ChatApproval, ChatApprovalResult, ChatMessage, ChatSendMode, Lab, Staff, Team } from '@shared/types'
+import type { Approval, ChatApproval, ChatApprovalResult, ChatGroup, ChatMessage, ChatSendMode, Lab, Staff, Team } from '@shared/types'
 import { chatApprovalView } from '@shared/chatApproval'
-import { chatLines, chatResponder, chatRoomMembers, chatRoomMentionTargets, findRoom, parseRoom, type ChatLine, type ChatRoomInfo } from '@shared/chatRooms'
+import { chatLines, chatResponder, chatRoomMembers, chatRoomMentionTargets, findRoom, groupAffiliations, parseRoom, type ChatLine, type ChatRoomInfo } from '@shared/chatRooms'
 import { ALL_MENTION, mentionTargets, mentionToken, OFFICE_SENDER, parseMentions, slashButtonDraft, type MentionKind, type MentionTarget } from '@shared/mention'
 import { fmtDate, t, tr, type TKey } from '@shared/i18n'
 import { roleLabel } from '@shared/roleLabel'
@@ -34,7 +34,8 @@ import { firstUnread, roomKey, seenOf } from '@shared/chatUnread'
 import { keyName } from '@/lib/keyName'
 import { DuoIcon, IconText } from '@/components/duo-icon'
 import { splitLeadingIcon } from '@shared/iconText'
-import { doingOf, stripHead, unreadText, useRoomEntries, useRoomPeople } from './chatRoomHooks'
+import { doingOf, stripHead, unreadText, useChatGroups, useChatRoom, useRoomEntries, useRoomPeople } from './chatRoomHooks'
+import { ChatGroupDialog } from './ChatGroupDialog'
 import { ChatSide } from './ChatSide'
 import { RoomListColumn, useRoomListLayout } from './RoomListColumn'
 import { chatWidthOf, CHIP_MIN_WIDTH, summarizeRoomPeople } from '@shared/chatRoomLayout'
@@ -56,15 +57,10 @@ const RESULT_LABEL: Record<ChatApprovalResult, TKey> = {
   superseded: 'chat.approval.superseded',
 }
 
-type RoomInfo = ChatRoomInfo<Team, Lab>
+type RoomInfo = ChatRoomInfo<Team, Lab, ChatGroup>
 
-/** 지금 보고 있는 팀·랩 방 (방이 없어진 팀·랩이면 전체 방) */
-function useChatRoom(): RoomInfo | undefined {
-  const chatRoom = useOffice((s) => s.chatRoom)
-  const teams = useOffice((s) => s.teams)
-  const labs = useOffice((s) => s.labs)
-  return useMemo(() => findRoom(chatRoom, teams, labs), [chatRoom, teams, labs])
-}
+/** 방 종류별 문구 키 고르기: 전체 방 · 팀 방 · 프로젝트 방 · 여러 팀·프로젝트 단체방 */
+const byKind = <K extends TKey>(room: RoomInfo | undefined, keys: { all?: K; team: K; lab: K; group: K }): K => (!room ? (keys.all ?? keys.team) : keys[room.kind])
 
 /** 내 말풍선(대표 글·앱이 대표 이름으로 남긴 알림) — 맨 앞 이모지가 아이콘 20종이면 아이콘으로 보여 준다(저장 글은 그대로) */
 function MeText({ text, targets }: { text: string; targets: MentionTarget[] }) {
@@ -83,8 +79,8 @@ export function ChatPage() {
   const room = useChatRoom()
   // 휴대폰·원격 화면: 보낸 글이 PC에서 돌아올 때까지 보여 줄 '보내는 중' 말풍선
   const pendingSends = usePendingSends()
-  const title = !room ? t('chat.title') : room.kind === 'lab' ? t('chat.labRoom.title', { lab: room.name }) : t('chat.room.title', { team: room.name })
-  const description = t(!room ? 'chat.description' : room.kind === 'lab' ? 'chat.labRoom.description' : 'chat.room.description', { all: ALL_MENTION })
+  const title = !room ? t('chat.title') : room.kind === 'group' ? t('chat.group.title', { name: room.name }) : room.kind === 'lab' ? t('chat.labRoom.title', { lab: room.name }) : t('chat.room.title', { team: room.name })
+  const description = t(byKind(room, { all: 'chat.description', team: 'chat.room.description', lab: 'chat.labRoom.description', group: 'chat.group.description' }), { all: ALL_MENTION })
   // 대화 찾기: 제목 옆 🔍 또는 ⌘F·Ctrl+F (분할 화면은 상단 바 🔍가 store 신호로 연다)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const searchRequest = useOffice((s) => s.chatSearchRequest)
@@ -115,13 +111,14 @@ export function ChatPage() {
       <div className="phone:hidden border-b px-4 pt-3 pb-2">
         <div className="flex h-8 items-center gap-1.5">
           <h1 className="min-w-0 truncate text-base font-semibold">{room ? room.name : t('chat.room.allName')}</h1>
-          {room && <span className="text-muted-foreground shrink-0 rounded-full border px-1.5 text-[10px] leading-4">{t(room.kind === 'lab' ? 'chat.head.tagLab' : 'chat.head.tagTeam')}</span>}
+          {room && <span className="text-muted-foreground shrink-0 rounded-full border px-1.5 text-[10px] leading-4">{t(byKind(room, { team: 'chat.head.tagTeam', lab: 'chat.head.tagLab', group: 'chat.group.tag' }))}</span>}
           <span className="flex-1" />
           <PopMenu opens="down" icon={<InfoIcon />} label={t('chat.slim.about')} buttonClassName="size-8 p-0">
             {() => (
               <div className="max-w-72 p-1.5">
                 <p className="text-muted-foreground text-xs">{description}</p>
                 {/* 띠일 때는 방 목록 맨 아래 '다른 PC' 줄이 안 보이므로 여기서 */}
+                {room?.kind === 'group' && <GroupRoomAbout room={room} />}
               </div>
             )}
           </PopMenu>
@@ -163,6 +160,33 @@ export function ChatPage() {
           <FirstHint id="chat" target="tut-send" sides={['above', 'left']} />
         </div>
       </div>
+      <ChatGroupDialog />
+    </div>
+  )
+}
+
+/** 단체방 ⓘ 안: 함께 있는 팀·프로젝트 · 지우기 (대화 기록은 남는다) */
+function GroupRoomAbout({ room }: { room: Extract<RoomInfo, { kind: 'group' }> }) {
+  const setChatRoom = useOffice((s) => s.setChatRoom)
+  const handleDelete = async () => {
+    if (!window.confirm(t('chat.group.confirmDelete', { name: room.name }))) return
+    await window.office.deleteChatGroup(room.group.id)
+    setChatRoom(null)
+  }
+  return (
+    <div className="mt-2 flex flex-col gap-1.5 border-t pt-2">
+      <span className="text-muted-foreground text-[11px] font-medium">{t('chat.group.includes')}</span>
+      <span className="flex flex-wrap gap-1">
+        {[...room.teams, ...room.labs].map((g) => (
+          <span key={g.id} className="flex items-center gap-1 rounded-full border px-1.5 text-[11px] leading-5">
+            <span className="size-1.5 rounded-full" style={{ background: g.color }} />
+            {g.name}
+          </span>
+        ))}
+      </span>
+      <Button size="sm" variant="ghost" className="text-status-error justify-start px-1.5" onClick={() => void handleDelete()}>
+        {t('chat.group.delete')}
+      </Button>
     </div>
   )
 }
@@ -183,6 +207,8 @@ function RoomStatusStrip({ room, isSummary, isFaces }: { room: RoomInfo | undefi
   const people = useRoomPeople(room)
   if (people.length === 0) return null
   const shown = isOpen ? people : people.slice(0, STRIP_MAX)
+  // 단체방은 이름 옆에 소속 팀·프로젝트 (여럿이면 첫 소속 + 나머지는 마우스를 올리면)
+  const affOf = (s: Staff) => (room?.kind === 'group' ? groupAffiliations(room, s) : [])
   const tipStaff = tip && people.find((p) => p.id === tip.staff.id)
   const chips = (
     <div
@@ -217,6 +243,7 @@ function RoomStatusStrip({ room, isSummary, isFaces }: { room: RoomInfo | undefi
           >
             <Avatar avatar={s.avatar} name={s.name} teamId={s.teamId} className="size-5" />
             <span className="shrink-0 font-medium">{s.name}</span>
+            <AffiliationTag groups={affOf(s)} />
             <span className={cn('size-2 shrink-0 rounded-full', meta.dot, s.status === 'working' && 'animate-pulse')} />
             <span className={cn('min-w-0 truncate', doing ? 'text-muted-foreground' : meta.text)}>{doing || meta.label}</span>
           </button>
@@ -227,7 +254,7 @@ function RoomStatusStrip({ room, isSummary, isFaces }: { room: RoomInfo | undefi
           {isOpen ? t('chat.status.less') : t('chat.status.more', { count: people.length - STRIP_MAX })}
         </button>
       )}
-      {tip && tipStaff && createPortal(<StatusTip staff={tipStaff} rect={tip.rect} />, document.body)}
+      {tip && tipStaff && createPortal(<StatusTip staff={tipStaff} rect={tip.rect} groups={affOf(tipStaff)} />, document.body)}
     </div>
   )
   if (isSummary) {
@@ -258,8 +285,21 @@ function RoomStatusStrip({ room, isSummary, isFaces }: { room: RoomInfo | undefi
   return chips
 }
 
-/** 상태 줄 칸에 마우스를 올리면 뜨는 설명: 맡은 일 · 지금 하는 것 · 뒤에 기다리는 일 */
-function StatusTip({ staff: s, rect }: { staff: Staff; rect: DOMRect }) {
+/** 단체방 참여자 소속 꼬리표: 첫 소속 팀·프로젝트 색 점과 이름 (+N) */
+function AffiliationTag({ groups }: { groups: { id: string; name: string; color: string }[] }) {
+  if (groups.length === 0) return null
+  const [first] = groups
+  return (
+    <span className="text-muted-foreground flex max-w-24 min-w-0 shrink-0 items-center gap-1 rounded-full border px-1.5 text-[10px] leading-4">
+      <span className="size-1.5 shrink-0 rounded-full" style={{ background: first.color }} />
+      <span className="truncate">{first.name}</span>
+      {groups.length > 1 && <span className="shrink-0">+{groups.length - 1}</span>}
+    </span>
+  )
+}
+
+/** 상태 줄 칸에 마우스를 올리면 뜨는 설명: (단체방 소속) · 맡은 일 · 지금 하는 것 · 뒤에 기다리는 일 */
+function StatusTip({ staff: s, rect, groups = [] }: { staff: Staff; rect: DOMRect; groups?: { id: string; name: string }[] }) {
   const meta = statusMetaOf(s)
   const task = s.progress?.text ? stripHead(s.progress.text) : ''
   const queued = s.progress?.queued ?? 0
@@ -274,6 +314,7 @@ function StatusTip({ staff: s, rect }: { staff: Staff; rect: DOMRect }) {
         <span className={cn('ml-1 size-2 shrink-0 rounded-full', meta.dot)} />
         <span className={meta.text}>{meta.label}</span>
       </div>
+      {groups.length > 0 && <span className="text-muted-foreground">{t('chat.group.memberOf', { groups: groups.map((g) => g.name).join(', ') })}</span>}
       {task && (
         <>
           <span className="text-muted-foreground mt-1 text-[11px]">{t('chat.status.task')}</span>
@@ -307,6 +348,7 @@ function RoomWaiting({ room }: { room: string | undefined }) {
 /** 가로 방 탭(가로 짧은 폰 머리): 전체 / 팀들 / 랩들 (project 종류·연습 팀, 연습 랩은 방이 없다) — 계산은 왼쪽 방 목록과 같은 useRoomEntries */
 function RoomTabs({ current }: { current: string | undefined }) {
   const entries = useRoomEntries(current, t('chat.room.all'))
+  const openGroupDialog = useOffice((s) => s.setChatGroupDialogOpen)
   if (entries.length === 1) return null
   return (
     <div className="mt-2 flex gap-1.5 overflow-x-auto overflow-y-hidden [scrollbar-width:none]" role="tablist" aria-label={t('chat.rooms')}>
@@ -315,7 +357,7 @@ function RoomTabs({ current }: { current: string | undefined }) {
         ...(e.group !== 'all' && entries[i - 1]?.group !== e.group
           ? [
               <span key={`group:${e.group}`} className="text-muted-foreground/70 ml-1 flex shrink-0 items-center text-[11px] font-medium">
-                {t(e.group === 'team' ? 'chat.room.groupTeams' : 'chat.room.groupLabs')}
+                {t(e.group === 'team' ? 'chat.room.groupTeams' : e.group === 'group' ? 'chat.group.listHeading' : 'chat.room.groupLabs')}
               </span>,
             ]
           : []),
@@ -325,6 +367,7 @@ function RoomTabs({ current }: { current: string | undefined }) {
           role="tab"
           aria-selected={e.isActive}
           onClick={e.select}
+          title={e.sub}
           className={cn('flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs', e.isActive ? 'bg-primary text-primary-foreground border-primary' : 'hover:bg-accent text-muted-foreground')}
         >
           {e.color && <span className="size-2 rounded-full" style={{ background: e.color }} />}
@@ -337,6 +380,10 @@ function RoomTabs({ current }: { current: string | undefined }) {
           {e.hasApproval && <span className="bg-status-waiting size-1.5 rounded-full" title={t('chat.unread.approval')} />}
         </button>,
       ])}
+      <button type="button" onClick={() => openGroupDialog(true)} className="hover:bg-accent text-muted-foreground flex shrink-0 items-center gap-1 rounded-full border border-dashed px-2.5 py-0.5 text-xs">
+        <PlusIcon className="size-3" />
+        {t('chat.group.new')}
+      </button>
     </div>
   )
 }
@@ -349,6 +396,7 @@ function MessageList({ room, searchQuery, pending, onRetry }: { room: string | u
   const staff = useOffice((s) => s.staff)
   const teams = useOffice((s) => s.teams)
   const labs = useOffice((s) => s.labs)
+  const groups = useChatGroups()
   const select = useOffice((s) => s.select)
   const setChatRoom = useOffice((s) => s.setChatRoom)
   const lines = useMemo(() => chatLines(chat, room), [chat, room])
@@ -418,9 +466,9 @@ function MessageList({ room, searchQuery, pending, onRetry }: { room: string | u
         <div ref={scroll.contentRef} className="mx-auto flex max-w-3xl flex-col gap-3">
           {lines.map((line) => {
             if (line.kind === 'roomSummary') {
-              const info = findRoom(line.room, teams, labs)
-              const isLab = parseRoom(line.room)?.kind === 'lab'
-              return <RoomSummary key={`room:${line.room}:${line.firstId}`} info={info} isLab={isLab} count={line.count} onOpen={info ? () => setChatRoom(line.room) : undefined} />
+              const info = findRoom(line.room, teams, labs, groups)
+              const kind = parseRoom(line.room)?.kind ?? 'team'
+              return <RoomSummary key={`room:${line.room}:${line.firstId}`} info={info} kind={kind} count={line.count} onOpen={info ? () => setChatRoom(line.room) : undefined} />
             }
             const m = line.message
             const sender = staff.find((s) => s.id === m.from)
@@ -498,9 +546,14 @@ function ProgressLines({ room }: { room: string | undefined }) {
 }
 
 /** 전체 방에 접어 보여 주는 팀·랩 방 글 한 줄 — 누르면 그 방으로 */
-function RoomSummary({ info, isLab, count, onOpen }: { info: RoomInfo | undefined; isLab: boolean; count: number; onOpen: (() => void) | undefined }) {
-  const label = isLab ? t('chat.labRoom.summary', { lab: info?.name ?? t('chat.labRoom.deleted'), count }) : t('chat.room.summary', { team: info?.name ?? t('chat.room.deletedTeam'), count })
-  const color = info ? (info.kind === 'lab' ? info.lab.color : info.team.color) : undefined
+function RoomSummary({ info, kind, count, onOpen }: { info: RoomInfo | undefined; kind: RoomInfo['kind']; count: number; onOpen: (() => void) | undefined }) {
+  const label =
+    kind === 'group'
+      ? t('chat.group.summary', { name: info?.name ?? t('chat.group.deleted'), count })
+      : kind === 'lab'
+        ? t('chat.labRoom.summary', { lab: info?.name ?? t('chat.labRoom.deleted'), count })
+        : t('chat.room.summary', { team: info?.name ?? t('chat.room.deletedTeam'), count })
+  const color = !info ? undefined : info.kind === 'group' ? info.group.color : info.kind === 'lab' ? info.lab.color : info.team.color
   return (
     <div className="flex justify-center">
       <button
@@ -823,9 +876,11 @@ function Composer({ room, onSend }: { room: RoomInfo | undefined; onSend: (input
     ? t('chat.reply.to', { name: replyStaff.name })
     : !room
     ? t('chat.recipientsNone')
-    : roomLead
-      ? t(isLab ? 'chat.labRoom.recipientsLead' : 'chat.room.recipientsLead', { name: roomLead.name })
-      : t(isLab ? 'chat.labRoom.recipientsNoLead' : 'chat.room.recipientsNoLead')
+    : room.kind === 'group'
+      ? t('chat.group.recipients')
+      : roomLead
+        ? t(isLab ? 'chat.labRoom.recipientsLead' : 'chat.room.recipientsLead', { name: roomLead.name })
+        : t(isLab ? 'chat.labRoom.recipientsNoLead' : 'chat.room.recipientsNoLead')
 
   // 세로 폰: 멘션 없이 보내면 기본 받는 사람(답장 상대·팀장·랩 리드)에게 가는 게 당연하니 따로 표시하지 않는다
   const hasDefaultRecipient = Boolean(replyStaff ?? roomLead)
@@ -867,7 +922,7 @@ function Composer({ room, onSend }: { room: RoomInfo | undefined; onSend: (input
                       {tg.kind === 'staff'
                         ? roleLabel(staffById.get(tg.memberIds[0])?.role ?? '')
                         : tg.kind === 'all'
-                          ? t(!room ? 'chat.allHired' : isLab ? 'chat.labRoom.allMembers' : 'chat.room.allMembers', { count: tg.memberIds.length })
+                          ? t(byKind(room, { all: 'chat.allHired', team: 'chat.room.allMembers', lab: 'chat.labRoom.allMembers', group: 'chat.group.allMembers' }), { count: tg.memberIds.length })
                           : t('chat.peopleCount', { count: tg.memberIds.length })}
                     </span>
                   </button>
@@ -930,7 +985,7 @@ function Composer({ room, onSend }: { room: RoomInfo | undefined; onSend: (input
           onKeyDown={handleKeyDown}
           {...draftFiles.bind}
           rows={1}
-          placeholder={t(!room ? 'chat.placeholder' : isLab ? 'chat.labRoom.placeholder' : 'chat.room.placeholder', { all: ALL_MENTION, newline: String(NEWLINE_HINT) })}
+          placeholder={t(byKind(room, { all: 'chat.placeholder', team: 'chat.room.placeholder', lab: 'chat.labRoom.placeholder', group: 'chat.group.placeholder' }), { all: ALL_MENTION, newline: String(NEWLINE_HINT) })}
           className="field-sizing-content placeholder:truncate placeholder-shown:field-sizing-fixed placeholder-shown:h-9 placeholder-shown:overflow-hidden placeholder-shown:whitespace-nowrap max-h-32 min-h-9 resize-none py-[7px] phone:min-h-10 phone:placeholder-shown:h-10"
         />
         {isBusySend ? (

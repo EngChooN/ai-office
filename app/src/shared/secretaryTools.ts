@@ -74,6 +74,9 @@ export const SECRETARY_TOOLS: Record<OfficeMethod, ToolSpec> = {
   createLab: change('프로젝트 만들기'),
   updateLab: change('프로젝트 바꾸기'),
   deleteLab: change('프로젝트 끝내기', 'danger'),
+  // 여러 팀·프로젝트 단체방은 대표가 대화방 화면에서 직접 만든다 (방을 만드는 일 자체가 프로젝트를 섞는 대표 확인)
+  createChatGroup: exclude,
+  deleteChatGroup: exclude,
   createTask: change('업무 카드 만들기'),
   updateTask: change('업무 카드 바꾸기'),
   assignTask: change('업무 맡기기'),

@@ -1,7 +1,7 @@
 import { useMemo, type KeyboardEvent } from 'react'
 import { useOffice } from '@/store'
-import type { Staff, StaffStatus, Team, Lab } from '@shared/types'
-import { chatRoomMembers, labRoomId, roomLabs, roomTeams, type ChatRoomInfo } from '@shared/chatRooms'
+import type { ChatGroup, Staff, StaffStatus, Team, Lab } from '@shared/types'
+import { chatRoomMembers, findRoom, groupRoomId, labRoomId, roomLabs, roomTeams, type ChatRoomInfo } from '@shared/chatRooms'
 import { roomKey, roomsWithPendingApproval, unreadByRoom } from '@shared/chatUnread'
 import { nextFocusIndex } from '@shared/chatRoomLayout'
 import { isAwaitingTeam } from '@shared/delegation'
@@ -17,24 +17,46 @@ export const stripHead = (text: string) => text.replace(/^\[[^\]]+\]\s*/, '')
 /** 일하는 중이면 지금 하는 일 한 줄 (없으면 빈 글) */
 export const doingOf = (s: Staff) => (s.status === 'working' ? stripHead(s.progress?.text ?? '') || s.activity : isAwaitingTeam(s) ? t('staffCard.now.awaitingTeam') : '')
 
-/** 방 목록(팀·랩 방)과 방마다 안 읽은 수·기다리는 결재 */
+const NO_GROUPS: ChatGroup[] = []
+
+/** 여러 팀·프로젝트 단체방 목록 (예전 PC 스냅숏엔 없을 수 있다) */
+export const useChatGroups = () => useOffice((s) => s.chatGroups ?? NO_GROUPS)
+
+/** 지금 보고 있는 팀·랩·단체방 (방이 없어졌으면 전체 방) */
+export function useChatRoom(): ChatRoomInfo<Team, Lab, ChatGroup> | undefined {
+  const chatRoom = useOffice((s) => s.chatRoom)
+  const teams = useOffice((s) => s.teams)
+  const labs = useOffice((s) => s.labs)
+  const groups = useChatGroups()
+  return useMemo(() => findRoom(chatRoom, teams, labs, groups), [chatRoom, teams, labs, groups])
+}
+
+/** 방 목록(팀·랩 방·단체방)과 방마다 안 읽은 수·기다리는 결재 */
 export function useRoomList() {
   const teams = useOffice((s) => s.teams)
   const labs = useOffice((s) => s.labs)
+  const groups = useChatGroups()
   const chat = useOffice((s) => s.chat)
   const chatSeen = useOffice((s) => s.chatSeen)
   const staff = useOffice((s) => s.staff)
   const unread = useMemo(() => (chatSeen ? unreadByRoom(chat, chatSeen) : {}), [chat, chatSeen])
   const pendingIds = useMemo(() => new Set(staff.flatMap((s) => s.approvals.map((a) => a.id))), [staff])
   const approvalRooms = useMemo(() => roomsWithPendingApproval(chat, pendingIds), [chat, pendingIds])
-  return { teamRooms: roomTeams(teams), labRooms: roomLabs(labs), unread, approvalRooms }
+  // 단체방 옆에 함께 있는 팀·프로젝트 이름 (휴대폰·띠에서도 어느 소속이 섞였는지 보이게)
+  const groupRooms = useMemo(
+    () => groups.map((g) => ({ ...g, members: [...roomTeams(teams).filter((x) => g.teamIds.includes(x.id)), ...roomLabs(labs).filter((x) => g.labIds.includes(x.id))].map((x) => x.name) })),
+    [groups, teams, labs],
+  )
+  return { teamRooms: roomTeams(teams), labRooms: roomLabs(labs), groupRooms, unread, approvalRooms }
 }
 
 export type RoomEntry = {
   /** 'all' | 팀 id | labRoomId */
   key: string
   label: string
-  group: 'all' | 'team' | 'lab'
+  group: 'all' | 'team' | 'lab' | 'group'
+  /** 단체방에 함께 있는 팀·프로젝트 이름 ("개발팀 · 앱 프로젝트") */
+  sub?: string
   /** 팀·랩 색 (전체 방은 없음 → var(--primary)) */
   color?: string
   isActive: boolean
@@ -51,16 +73,17 @@ export type RoomEntry = {
 export function useRoomEntries(current: string | undefined, allLabel: string): RoomEntry[] {
   const openChatRoom = useOffice((s) => s.openChatRoom)
   const isChatView = useOffice((s) => s.view === 'chat')
-  const { teamRooms, labRooms, unread, approvalRooms } = useRoomList()
-  const entry = (key: string, label: string, group: RoomEntry['group'], room: string | null, color?: string): RoomEntry => {
+  const { teamRooms, labRooms, groupRooms, unread, approvalRooms } = useRoomList()
+  const entry = (key: string, label: string, group: RoomEntry['group'], room: string | null, color?: string, sub?: string): RoomEntry => {
     const isActive = isChatView && (current ?? null) === room
     const k = roomKey(room)
-    return { key, label, group, color, isActive, unread: isActive ? 0 : (unread[k] ?? 0), hasApproval: approvalRooms.has(k), select: () => openChatRoom(room) }
+    return { key, label, group, color, sub, isActive, unread: isActive ? 0 : (unread[k] ?? 0), hasApproval: approvalRooms.has(k), select: () => openChatRoom(room) }
   }
   return [
     entry('all', allLabel, 'all', null),
     ...teamRooms.map((tm) => entry(tm.id, tm.name, 'team', tm.id, tm.color)),
     ...labRooms.map((lb) => entry(labRoomId(lb.id), lb.name, 'lab', labRoomId(lb.id), lb.color)),
+    ...groupRooms.map((g) => entry(groupRoomId(g.id), g.name, 'group', groupRoomId(g.id), g.color, g.members.join(' · '))),
   ]
 }
 

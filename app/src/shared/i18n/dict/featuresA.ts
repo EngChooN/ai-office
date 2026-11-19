@@ -113,7 +113,7 @@ export default {
   'chat.room.summary': { ko: '[{team} 방] 새 글 {count}개', en: '[{team} room] {count} new messages', ja: '[{team}ルーム] 新着 {count}件', zh: '[{team}群] {count} 条新消息' },
   'chat.room.deletedTeam': { ko: '없어진 팀', en: 'Deleted team', ja: '削除されたチーム', zh: '已删除的团队' },
   'chat.room.description': {
-    ko: '리더와 팀원만 있는 방이에요. 아무도 부르지 않으면 리더가 받아 나눠 맡기고, @이름은 그 팀원, @{all}은 팀 전원이에요. 결과도 이 방에 올라와요.',
+    ko: '리더와 팀원만 있는 방이에요. 아무도 부르지 않으면 리더가 받아 나눠 맡기고, @이름은 그 팀원, @{all}는 팀 전원이에요. 결과도 이 방에 올라와요.',
     en: 'A room with just the lead and members. With no mention, the lead picks it up and splits the work; @name reaches that member and @{all} reaches the whole team. Results come back to this room.',
     ja: 'リーダーとメンバーだけのルームです。誰も呼ばなければリーダーが受けて振り分け、@名前はそのメンバー、@{all}はチーム全員です。結果もこのルームに届きます。',
     zh: '只有负责人和组员的群。不点名时由负责人接收并分配工作；@姓名 交给该组员，@{all} 表示全队。结果也会发回这个群。',
@@ -144,7 +144,7 @@ export default {
   'chat.labRoom.summary': { ko: '[{lab} 프로젝트] 새 글 {count}개', en: '[{lab} project] {count} new messages', ja: '[{lab}プロジェクト] 新着 {count}件', zh: '[{lab}项目] {count} 条新消息' },
   'chat.labRoom.deleted': { ko: '없어진 프로젝트', en: 'Deleted project', ja: '削除されたプロジェクト', zh: '已删除的项目' },
   'chat.labRoom.description': {
-    ko: '리더와 프로젝트 멤버만 있는 방이에요. 아무도 부르지 않으면 리더가 받아 나눠 맡기고, @이름은 그 멤버, @{all}은 프로젝트 전원이에요. 결과도 이 방에 올라와요.',
+    ko: '리더와 프로젝트 멤버만 있는 방이에요. 아무도 부르지 않으면 리더가 받아 나눠 맡기고, @이름은 그 멤버, @{all}는 프로젝트 전원이에요. 결과도 이 방에 올라와요.',
     en: 'A room with just the lead and project members. With no mention, the lead picks it up and splits the work; @name reaches that member and @{all} reaches the whole project. Results come back to this room.',
     ja: 'リーダーとプロジェクトメンバーだけのルームです。誰も呼ばなければリーダーが受けて振り分け、@名前はそのメンバー、@{all}はプロジェクト全員です。結果もこのルームに届きます。',
     zh: '只有负责人和成员的群。不点名时由负责人接收并分配工作；@姓名 交给该成员，@{all} 表示项目全员。结果也会发回这个群。',

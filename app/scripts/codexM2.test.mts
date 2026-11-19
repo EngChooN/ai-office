@@ -110,6 +110,9 @@ test('Codex MCP: 장비로 고르지 않은 설정 서버만 끈다', () => {
   assert.ok(r.args.includes('mcp_servers.figma.enabled=false'))
   assert.ok(r.args.includes('mcp_servers."my server".enabled=false'))
   assert.ok(!r.args.includes('mcp_servers.office.enabled=false'))
+  // 사무실 도구만 결재 대기로 늦게 답할 수 있어 도구 시간 제한을 늘린다
+  assert.ok(r.args.includes('mcp_servers.office.tool_timeout_sec=86400'))
+  assert.ok(!codexMcpConfig({ figma: { command: 'x' } }).args.some((a) => a.includes('tool_timeout_sec')))
 })
 
 test('Codex 스킬 루트: all이면 Claude 스킬 폴더, 목록이면 고른 것만 링크', () => {

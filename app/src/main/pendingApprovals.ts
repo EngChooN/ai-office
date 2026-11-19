@@ -22,8 +22,11 @@ export interface PendingApproval {
   taskId: string | null
 }
 
-/** 저장할 수 있는 결재인가: 다른 PC 중계(PeerChanges)·외부 직원 질문은 저장하지 않는다 */
-export const isPersistable = (a: Pick<Approval, 'id' | 'toolName'>) => a.toolName !== 'PeerChanges' && !a.id.startsWith('peer:')
+/** 앱이 직접 올리고 도구 호출 안에서 기다리는 결재(프로젝트 간 협업 승인 등)의 id 앞머리 */
+export const APP_ASK_PREFIX = 'app:'
+
+/** 저장할 수 있는 결재인가: 다른 PC 중계(PeerChanges)·외부 직원 질문·앱 결재(재시작하면 기다리던 도구 호출이 없다)는 저장하지 않는다 */
+export const isPersistable = (a: Pick<Approval, 'id' | 'toolName'>) => a.toolName !== 'PeerChanges' && !a.id.startsWith('peer:') && !a.id.startsWith(APP_ASK_PREFIX)
 
 export function toPending(a: Approval, taskId: string | null): PendingApproval {
   return {

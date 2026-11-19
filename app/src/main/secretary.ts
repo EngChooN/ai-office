@@ -811,6 +811,7 @@ export class Secretary {
       snap.staff.find((x) => x.id === id)?.name ??
       snap.teams.find((t) => t.id === id)?.name ??
       snap.labs.find((l) => l.id === id)?.name ??
+      snap.chatGroups?.find((g) => g.id === id)?.name ??
       snap.tasks.find((t) => t.id === id)?.title ??
       snap.meetings.find((m) => m.id === id)?.topic ??
       snap.schedules.find((x) => x.id === id)?.label ??
@@ -830,7 +831,7 @@ export class Secretary {
   /** 방 이름 (팀·프로젝트, 없으면 전체 방) — chatHistory 요약 앞머리 */
   private roomLabel(room: string | undefined): string {
     const snap = this.office.snapshot()
-    const info = findRoom(room, snap.teams, snap.labs)
+    const info = findRoom(room, snap.teams, snap.labs, snap.chatGroups)
     return info ? info.name : '전체 방'
   }
 
