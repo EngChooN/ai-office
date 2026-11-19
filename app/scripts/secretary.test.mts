@@ -42,7 +42,7 @@ const hireArgs = (name: string) => [{ name, role: '프론트엔드 개발', avat
 test('분류표: OfficeApi 메서드 전부를 조회 30·변경 64·제외 56(+비서 자신 4)으로 빠짐없이', () => {
   assert.deepEqual(Object.keys(SECRETARY_TOOLS).sort(), [...OFFICE_METHODS].sort())
   assert.equal(methodsOfKind('read').length, 30)
-  assert.equal(methodsOfKind('change').length, 64)
+  assert.equal(methodsOfKind('change').length, 65)
   assert.equal(methodsOfKind('exclude').length, 56 + SECRETARY_SELF_METHODS.length)
   // 연결·보안·상점 구매·바닥/벽·미션 보상·직원 장식·코드 저장은 비서 도구에 없다
   for (const m of ['regenerateRemoteQr', 'setRemoteEnabled', 'commitChanges', 'revertWork', 'pushAndCreatePr', 'buyItem', 'applySurface', 'claimMission', 'setGear', 'pickFolder', 'setHooksInstalled', 'fireExternal', 'secretaryRun']) assert.equal(SECRETARY_TOOLS[m as keyof typeof SECRETARY_TOOLS].kind, 'exclude', m)
@@ -729,4 +729,22 @@ test('설정 이름표: Settings의 키마다 4개 언어 이름이 있다 (새 
     assert.ok(e, `사전 없음: ${k}`)
     for (const lang of ['ko', 'en', 'ja', 'zh']) assert.ok(e[lang], `${k} ${lang}`)
   }
+})
+
+test('deleteTasks: 위험(danger)이라 묶음에 못 섞이고 단독 카드로, 카드에 대상 개수·되돌릴 수 없음이 나온다 (실행은 [실행] 전까지 안 함)', async () => {
+  const { describeStep } = await import('../src/main/secretaryDescribe.ts')
+  assert.equal(SECRETARY_TOOLS.deleteTasks.kind, 'change')
+  assert.equal(SECRETARY_TOOLS.deleteTasks.risk, 'danger')
+  const { desk, calls } = setup()
+  const ok = desk.propose({ steps: [{ method: 'deleteTasks', args: [{ olderThanDays: 30 }] }] })
+  assert.ok('card' in ok)
+  assert.equal(ok.card.risk, 'danger')
+  assert.equal(ok.card.status, 'pending')
+  assert.ok('error' in desk.propose({ steps: [{ method: BATCH_METHOD, items: [{ method: 'deleteTasks', args: [{ olderThanDays: 30 }] }] }] }), '묶음에 못 넣는다')
+  assert.ok('error' in desk.propose({ steps: [{ method: 'deleteTasks', args: ['30'] }] }), '조건은 객체')
+  assert.deepEqual(calls, [], '제안만 만든다')
+  const text = describeStep('deleteTasks', [{ olderThanDays: 30 }], (id) => (id.startsWith('doneCount:') ? '425' : null))
+  assert.match(text, /30일 이상 지난 완료 카드/)
+  assert.match(text, /425장/)
+  assert.match(text, /되돌릴 수 없어요/)
 })

@@ -54,6 +54,12 @@ export function compactOverview(snap: OfficeSnapshot, section: OverviewSection =
   if (section === 'tasks') {
     const open = snap.tasks.filter((t) => t.status !== 'done').sort((a, b) => b.updatedAt - a.updatedAt)
     out.push(`## 업무 카드 (열린 것 ${open.length} · 완료 ${snap.tasks.length - open.length})`)
+    const done = snap.tasks.filter((t) => t.status === 'done' && !t.isPractice)
+    if (done.length) {
+      const days = (t: Task) => Math.floor((now - t.updatedAt) / 86_400_000)
+      const oldest = Math.max(...done.map(days))
+      out.push(`완료 요약(연습 제외 ${done.length}장, 목록은 생략): 가장 오래된 것 ${oldest}일 전 · 7일↑ ${done.filter((t) => days(t) >= 7).length} · 30일↑ ${done.filter((t) => days(t) >= 30).length} · 90일↑ ${done.filter((t) => days(t) >= 90).length} — 지우려면 deleteTasks`)
+    }
     for (const t of open.slice(0, 40)) out.push(`- [${t.id}] ${clip(t.title, 70)} · ${TASK_STATUS[t.status]} · ${name(t.assigneeId) || '담당 없음'}${t.plan ? ` · 기획 ${t.plan.status}${t.plan.isPaused ? '(멈춤)' : ''}` : ''}`)
   }
   if (section === 'org') {

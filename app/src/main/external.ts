@@ -151,7 +151,7 @@ export class ExternalWatcher {
       this.asks.set(approval.id, { approval, input: p.tool_input, res, timer })
       // 원래 창에서 세션을 멈추면(Esc) 연결이 끊긴다
       res.on('close', () => this.drop(approval.id))
-      this.hookOverride.set(p.session_id, { status: 'waiting', activity: '대표 답변 대기' })
+      this.hookOverride.set(p.session_id, { status: 'waiting', activity: t('officeMsg.waitAnswer') })
       this.poll()
       this.hooks.asked(this.staff.get(staff.id) ?? staff, approval)
     })

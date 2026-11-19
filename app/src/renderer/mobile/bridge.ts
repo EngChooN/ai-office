@@ -1,6 +1,7 @@
 // 화면 ↔ 안드로이드 셸 메시지 통로 (계약: docs/specs/android-bridge.md)
 // 화면 → 셸: OfficeBridge.postMessage(JSON 문자열) · 셸 → 화면: OfficeBridge.onmessage (e.data = JSON 문자열)
 // DOM·React를 쓰지 않는다 — scripts/mobile.test.mts가 가짜 통로로 그대로 돌린다
+import { t } from '../../shared/i18n/index.ts'
 
 export interface BridgePort {
   postMessage(text: string): void
@@ -97,7 +98,7 @@ export function createBridge(port: BridgePort, { timeoutMs = BRIDGE_TIMEOUT_MS }
       return new Promise((resolve, reject) => {
         const timer = setTimeout(() => {
           pending.delete(id)
-          reject({ status: 0, code: 'bridge_timeout', message: '휴대폰 앱이 답하지 않아요. 잠시 뒤에 다시 시도하세요' })
+          reject({ status: 0, code: 'bridge_timeout', message: t('mobile.bridgeTimeout') })
         }, timeoutMs)
         pending.set(id, { resolve, reject, timer })
         port.postMessage(JSON.stringify({ ...msg, id }))

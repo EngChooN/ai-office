@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react'
 import { mergeLogs, mergeRecent, RECORD_PAGE, type LoadedRecord } from '@shared/recordLogs'
 import type { DailyRecord, LogEntry } from '@shared/types'
+import { everyWhileShown } from '@/lib/visibleInterval'
 
 const EXTERNAL_REFRESH_MS = 5000
 /** 맨 위에서 이만큼 안으로 올라오면 이전 기록을 미리 불러온다 */
@@ -28,10 +29,11 @@ export function useStaffRecord(staffId: string, isHired: boolean, costUsd: numbe
         setLoaded((prev) => mergeRecent(prev, { logs: r.logs, hasMore: r.hasMore ?? false }))
       })
     load()
-    const timer = isHired ? undefined : setInterval(load, EXTERNAL_REFRESH_MS)
+    // 앱 창을 숨기거나 최소화한 동안은 쉬고, 다시 보이면 바로 한 번 읽는다
+    const stop = isHired ? undefined : everyWhileShown(load, EXTERNAL_REFRESH_MS, window.officeWindow?.onShown)
     return () => {
       isLive = false
-      clearInterval(timer)
+      stop?.()
     }
     // 고용 직원은 턴이 끝나 비용이 바뀔 때마다 오늘 사용량을 다시 읽는다 (새 기록은 실시간 줄로 붙는다)
   }, [staffId, isHired, costUsd])

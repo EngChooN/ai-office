@@ -12,7 +12,7 @@ import type { ApprovalRule, ApprovalRuleDraft } from './approvalRules'
 import type { KnowledgeEntry, KnowledgeInput } from './knowledge'
 import type { DemoDayConfig, DemoReaction, DemoStage, GalleryEntry, Praise } from './gallery'
 import type { TutorialInput, TutorialScenario, TutorialSnapshot } from './tutorial'
-import type { BoardCleanupPlan } from './boardCleanup'
+import type { BoardCleanupPlan, DeleteTasksCond } from './boardCleanup'
 import type { CustomMcp, CustomMcpInput } from './customMcp'
 import type { PackResult } from './staffPack'
 import type { PairKind, PairWindowView, PeerSlotView, PeerView } from './peerProtocol'
@@ -1274,6 +1274,8 @@ export interface OfficeApi {
   assignTask(taskId: string, staffId: string): Promise<void>
   deleteTask(taskId: string): Promise<void>
   /** 중복 카드를 keep 카드 하나로: 설명·첨부를 keep에 덧붙이고 나머지는 지운다 (시작 안 한 카드만) */
+  /** 조건(완료 + N일 이상 지난 것 등)에 맞는 완료 카드를 한꺼번에 지우고 지운 개수를 돌려준다 */
+  deleteTasks(cond: DeleteTasksCond): Promise<number>
   mergeTasks(keepId: string, mergeIds: string[]): Promise<void>
   /** 업무 보드 정리안 — 비서 확인 카드의 묶음 단계 모양 (실행하지 않음, 연습 카드 제외) */
   boardCleanupPlan(): Promise<BoardCleanupPlan>

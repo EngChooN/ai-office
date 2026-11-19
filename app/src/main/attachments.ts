@@ -47,10 +47,28 @@ export function serveAttachments() {
   })
 }
 
+/** id → 파일 경로 색인 (폴더를 매번 읽지 않는다). 폴더가 바뀌면 새로 만든다 */
+let index: { dir: string; files: Map<string, string> } | null = null
+
+function buildIndex(d: string) {
+  const files = new Map<string, string>()
+  for (const f of fs.readdirSync(d)) {
+    const at = f.indexOf('__')
+    if (at > 0) files.set(f.slice(0, at), path.join(d, f))
+  }
+  index = { dir: d, files }
+  return index
+}
+
 export function findById(id: string) {
   if (!/^[a-f0-9-]{36}$/.test(id)) return null
-  const name = fs.readdirSync(dir()).find((f) => f.startsWith(`${id}__`))
-  return name ? path.join(dir(), name) : null
+  const d = dir()
+  const idx = index?.dir === d ? index : buildIndex(d)
+  const hit = idx.files.get(id)
+  // 색인에 있고 파일도 있으면 끝. 없거나 지워졌으면 폴더를 한 번 다시 읽는다 (다른 곳에서 넣은 파일도 찾는다)
+  if (hit && fs.existsSync(hit)) return hit
+  const next = buildIndex(d).files.get(id)
+  return next ?? null
 }
 
 /** id로 저장소의 첨부 정보를 다시 만든다 (원격 v2: 폰이 보낸 id만 믿고 나머지는 여기서 채운다) */
@@ -71,6 +89,7 @@ function write(name: string, mime: string, data: Buffer): Attachment {
   const id = crypto.randomUUID()
   const file = path.join(dir(), `${id}__${safeName(name)}`)
   fs.writeFileSync(file, data)
+  if (index?.dir === path.dirname(file)) index.files.set(id, file)
   return { id, name, path: file, mime, size: data.length }
 }
 
@@ -78,6 +97,7 @@ function write(name: string, mime: string, data: Buffer): Attachment {
 export function removeAttachment(id: string) {
   const file = findById(id)
   if (file) fs.rmSync(file, { force: true })
+  index?.files.delete(id)
 }
 
 export function saveUploads(files: UploadFile[]): Attachment[] {

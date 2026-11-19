@@ -102,13 +102,13 @@ export default {
   'autonomy.fullHint': {
     ko: '켜져 있는 동안 모든 직원이 묻지 않고 끝까지 진행해요. 질문은 비서가(안 되면 추천안으로) 대신 답하고, 기획안은 자동 승인하고, 위험 작업은 결재함에 올리지 않고 건너뛰어 결과 보고의 "대표 확인 필요"에 남겨요. 위험 명령 금지도 함께 켜져요. PC에서만 켤 수 있어요.',
     en: 'While on, every hired employee carries on to the end without asking. Questions are answered for them (by the secretary, or with the recommended option), plans are approved automatically, and risky actions are skipped instead of going to Approvals — they are listed under "Needs owner check" in the report. "No risky commands" is forced on. Can only be turned on from the PC.',
-    ja: 'オンの間、すべての雇用社員が質問せず最後まで進めます。質問は秘書が（無理ならおすすめ案で）代わりに答え、企画案は自動承認し、危険な作業は決裁箱に上げずスキップして結果報告の「代表の確認が必要」に残します。危険コマンド禁止も強制的にオンになります。PC でのみオンにできます。',
+    ja: 'オンの間、すべての雇用スタッフが質問せず最後まで進めます。質問は秘書が（無理ならおすすめ案で）代わりに答え、企画案は自動承認し、危険な作業は決裁箱に上げずスキップして結果報告の「代表の確認が必要」に残します。危険コマンド禁止も強制的にオンになります。PC でのみオンにできます。',
     zh: '开启期间，所有雇佣员工都会不提问、推进到完成。问题由秘书代答（不行则按推荐项），规划方案自动批准，危险操作不进审批箱而是跳过，并写进结果汇报的“需代表确认”。“禁止危险命令”也会强制开启。只能在电脑上开启。',
   },
   'autonomy.fullStart': {
     ko: '🤖 완전 자율 단계예요 — 모든 직원이 묻지 않고 끝까지 진행하고, 위험 작업은 건너뛰고 보고에 남겨요.',
     en: '🤖 Fully autonomous — every employee carries on to the end without asking; risky actions are skipped and listed in the reports.',
-    ja: '🤖 完全自律モードです — すべての社員が質問せず最後まで進め、危険な作業はスキップして報告に残します。',
+    ja: '🤖 完全自律モードです — すべてのスタッフが質問せず最後まで進め、危険な作業はスキップして報告に残します。',
     zh: '🤖 完全自主模式 — 所有员工都不提问、推进到完成；危险操作会跳过并写进汇报。',
   },
   'autonomy.skipped': { ko: '건너뜀(자율)', en: 'Skipped (autonomous)', ja: 'スキップ（自律）', zh: '已跳过（自主）' },

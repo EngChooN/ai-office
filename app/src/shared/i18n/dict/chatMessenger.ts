@@ -41,7 +41,7 @@ export default {
   // 3. 완료 보고 빠른 버튼
   'chat.report.label': { ko: '완료 보고', en: 'Report', ja: '完了報告', zh: '完成报告' },
   'chat.quick.like': { ko: '👍 좋아요', en: '👍 Looks good', ja: '👍 いいね', zh: '👍 很好' },
-  'chat.quick.likeTitle': { ko: '확인 끝 — 이어진 업무 카드가 확인 대기면 완료로 옮겨요 (직원에게 말은 가지 않아요)', en: 'Mark as checked — moves the linked task card from review to done (nothing is sent to the staff)', ja: '確認済みにします — つながった業務カードが確認待ちなら完了へ (社員には送りません)', zh: '标记为已确认 — 关联任务卡若在待确认则移到完成 (不会发给员工)' },
+  'chat.quick.likeTitle': { ko: '확인 끝 — 이어진 업무 카드가 확인 대기면 완료로 옮겨요 (직원에게 말은 가지 않아요)', en: 'Mark as checked — moves the linked task card from review to done (nothing is sent to the staff)', ja: '確認済みにします — つながった業務カードが確認待ちなら完了へ (スタッフには送りません)', zh: '标记为已确认 — 关联任务卡若在待确认则移到完成 (不会发给员工)' },
   'chat.quick.liked': { ko: '👍 확인했어요 · {time}', en: '👍 Checked · {time}', ja: '👍 確認済み · {time}', zh: '👍 已确认 · {time}' },
   'chat.quick.unlike': { ko: '누르면 확인을 취소해요', en: 'Click to undo', ja: 'クリックで取り消し', zh: '点击取消确认' },
   'chat.quick.redo': { ko: '🔁 다시 해 줘', en: '🔁 Redo', ja: '🔁 やり直して', zh: '🔁 重做' },

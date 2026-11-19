@@ -9,6 +9,7 @@ import { appendChat } from '@shared/chatRooms'
 import { markSeen, type ChatSeen } from '@shared/chatUnread'
 import { remoteTutorialSnapshot } from '@shared/tutorial'
 import { IS_REMOTE_SCREEN } from '@/shell'
+import { shareUnchanged } from '@/lib/shareUnchanged'
 
 export type View = 'secretary' | 'map' | 'dashboard' | 'org' | 'board' | 'inbox' | 'chat' | 'meeting' | 'manuals' | 'knowledge' | 'gallery' | 'schedule' | 'report' | 'payroll' | 'settings' | 'updates' | 'shop'
 
@@ -165,7 +166,9 @@ export const useOffice = create<OfficeState>((set) => ({
     // 옛 main 프로세스가 보낸 스냅샷처럼 새 설정 칸(tokenBudget 등)이 비어 있어도 화면이 깨지지 않게 채운다
     // 업무 모드면 사무실 대신 대시보드로 시작하고, 사무실을 보던 중에 켜도 대시보드로 옮긴다
     set((s) => {
-      const settings = withSettingsDefaults(snap.settings)
+      // 내용이 그대로인 카드·직원·팀 등은 이전 객체를 그대로 쓴다 — 카드 하나가 바뀌어도 나머지 카드는 다시 그리지 않게
+      snap = Object.fromEntries(Object.entries(snap).map(([k, v]) => [k, shareUnchanged(s[k as keyof OfficeSnapshot], v)])) as OfficeSnapshot
+      const settings = shareUnchanged(s.settings, withSettingsDefaults(snap.settings))
       applyLanguage(settings.language)
       applyUiTheme(settings)
       const view = shownView(s.view, settings.isWorkMode)

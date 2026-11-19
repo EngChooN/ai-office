@@ -7,10 +7,10 @@ export default {
   'gallery.description': {
     ko: '끝난 업무의 캡처·링크·바뀐 파일을 카드로 모아요. 업무 카드가 "검토"로 넘어가거나, 카드 없이 맡긴 일에서 직원이 결과물·사진을 올리면 저절로 생겨요.',
     en: 'Screenshots, links, and changed files from finished work, collected as cards. A card appears when a board task moves to Review, or when staff post a result or picture for work without a board task.',
-    ja: '完了した業務のキャプチャ・リンク・変更ファイルをカードにまとめます。業務カードが「レビュー」に移るか、カードなしで任せた仕事で社員が成果物・画像を上げると自動で作られます。',
+    ja: '完了した業務のキャプチャ・リンク・変更ファイルをカードにまとめます。業務カードが「レビュー」に移るか、カードなしで任せた仕事でスタッフが成果物・画像を上げると自動で作られます。',
     zh: '把已完成工作的截图、链接和改动文件汇集成卡片。看板任务进入“审核”时，或员工在没有看板任务的工作中上传成果、图片时自动生成。',
   },
-  'gallery.filter.staff': { ko: '모든 직원', en: 'All staff', ja: '全社員', zh: '所有员工' },
+  'gallery.filter.staff': { ko: '모든 직원', en: 'All staff', ja: '全スタッフ', zh: '所有员工' },
   'gallery.filter.lab': { ko: '모든 프로젝트', en: 'All projects', ja: '全プロジェクト', zh: '所有项目' },
   'gallery.period.week': { ko: '최근 7일', en: 'Last 7 days', ja: '直近7日', zh: '最近7天' },
   'gallery.period.month': { ko: '최근 30일', en: 'Last 30 days', ja: '直近30日', zh: '最近30天' },
@@ -58,7 +58,7 @@ export default {
   'gallery.demo.ran': { ko: '데모데이를 열었어요. 회의실과 단체방을 확인해 보세요.', en: 'Demo day started. Check the meeting room and Team chat.', ja: 'デモデーを開きました。会議室とグループチャットを確認してください。', zh: '演示日已开始。请查看会议室和群聊。' },
   'gallery.demo.topic': { ko: '데모데이 · {date}', en: 'Demo day · {date}', ja: 'デモデー · {date}', zh: '演示日 · {date}' },
   'gallery.demo.start': { ko: '데모데이를 시작해요. 회의실에서 이번 주 결과물을 차례로 보여 드릴게요.', en: 'Demo day is starting. The meeting room will show this week\'s work one by one.', ja: 'デモデーを始めます。会議室で今週の成果を順に紹介します。', zh: '演示日开始了。会议室将依次展示本周的成果。' },
-  'gallery.demo.head': { ko: '데모데이 — 결과물 {n}건 · 직원 {people}명', en: 'Demo day — {n} results from {people} staff', ja: 'デモデー — 成果 {n}件 · 社員 {people}名', zh: '演示日 — 成果 {n} 项 · 员工 {people} 名' },
+  'gallery.demo.head': { ko: '데모데이 — 결과물 {n}건 · 직원 {people}명', en: 'Demo day — {n} results from {people} staff', ja: 'デモデー — 成果 {n}件 · スタッフ {people}名', zh: '演示日 — 成果 {n} 项 · 员工 {people} 名' },
   'gallery.demo.more': { ko: '외 {n}건', en: '+{n} more', ja: 'ほか{n}件', zh: '等 {n} 项' },
   'gallery.demo.morePeople': { ko: '그 밖에 {n}명', en: 'and {n} more staff', ja: 'ほか{n}名', zh: '另有 {n} 名员工' },
   'gallery.demo.empty': {

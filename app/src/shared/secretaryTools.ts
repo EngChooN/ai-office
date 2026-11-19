@@ -78,6 +78,8 @@ export const SECRETARY_TOOLS: Record<OfficeMethod, ToolSpec> = {
   updateTask: change('업무 카드 바꾸기'),
   assignTask: change('업무 맡기기'),
   deleteTask: change('업무 카드 지우기', 'caution'),
+  // 되돌릴 수 없는 대량 삭제 — 묶음에 못 섞고 단독 카드로 (카드에 대상 개수·되돌릴 수 없음 표시)
+  deleteTasks: change('완료 카드 한꺼번에 지우기', 'danger'),
   mergeTasks: change('중복 카드 합치기', 'caution'),
   startTasks: change('업무 한꺼번에 시작'),
   stopTask: change('업무 멈추기', 'caution'),
@@ -327,6 +329,7 @@ export const SECRETARY_SIGNATURES: Partial<Record<OfficeMethod, string>> = {
   updateTask: '(taskId, { title?, detail?, status?: "todo"|"doing"|"review"|"done", teamId?, labId?, assigneeId? })',
   assignTask: '(taskId, staffId)',
   deleteTask: '(taskId)',
+  deleteTasks: '({ olderThanDays: number(1 이상), teamId?: string, labId?: string }) — 완료 카드 중 그 일수 이상 지난 것만 한 번에 지움(되돌릴 수 없음, 미완료·연습 카드는 안 지움, 개수 제한 없음). 정리 때는 boardCleanupPlan의 doneDelete.args를 그대로',
   mergeTasks: '(keepId, mergeIds: string[]) — 시작 안 한 카드만 keep에 합침',
   startTasks: '(taskIds: string[])',
   stopTask: '(taskId)',

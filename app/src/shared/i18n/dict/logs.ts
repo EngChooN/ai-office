@@ -44,7 +44,7 @@ export default {
     zh: '已将 AI 引擎从 {from} 改为 {to}。模型恢复默认，将开始新对话。{to} 无法使用的连接工具将不加载：{tools}',
   },
   'chat.engineChanged': { ko: '{name} 님의 AI 엔진을 {from}에서 {to}(으)로 바꿨습니다. 대화는 새로 시작합니다.', en: "Switched {name}'s AI engine from {from} to {to}. Their conversation starts fresh.", ja: '{name} さんのAIエンジンを {from} から {to} に変更しました。会話は新しく始まります。', zh: '已将 {name} 的 AI 引擎从 {from} 改为 {to}，对话将重新开始。' },
-  'engineChange.error.notHired': { ko: '이 앱에서 추가한 직원만 AI 엔진을 바꿀 수 있어요.', en: 'Only staff added in this app can switch AI engines.', ja: 'AIエンジンを変更できるのはこのアプリで追加した社員だけです。', zh: '只有在此应用中添加的员工可以更换 AI 引擎。' },
+  'engineChange.error.notHired': { ko: '이 앱에서 추가한 직원만 AI 엔진을 바꿀 수 있어요.', en: 'Only staff added in this app can switch AI engines.', ja: 'AIエンジンを変更できるのはこのアプリで追加したスタッフだけです。', zh: '只有在此应用中添加的员工可以更换 AI 引擎。' },
   'engineChange.error.busy': { ko: '일하는 중에는 AI 엔진을 바꿀 수 없어요. 일이 끝난 뒤에 바꿔 주세요.', en: "Can't switch AI engines while working. Please switch after the task is done.", ja: '作業中はAIエンジンを変更できません。作業が終わってから変更してください。', zh: '工作中无法更换 AI 引擎，请在任务结束后再更换。' },
   'engineChange.error.notReady': { ko: '{engine}이(가) 설치·로그인되어 있지 않아요. 설정에서 먼저 연결해 주세요.', en: "{engine} isn't installed or signed in. Connect it in Settings first.", ja: '{engine} がインストール・ログインされていません。先に設定で接続してください。', zh: '{engine} 未安装或未登录，请先在设置中连接。' },
   'log.interrupted': { ko: '하던 일을 멈추고 새 지시를 받았습니다.', en: 'Stopped what I was doing and took a new instruction.', ja: '作業を中断して新しい指示を受けました。', zh: '已停下手头工作并接收新指示。' },

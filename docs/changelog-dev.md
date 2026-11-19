@@ -43,6 +43,20 @@
 - 사무실 외관 거리 클릭이 숨은 직원을 선택하던 문제 + 오른쪽 층 버튼 제거, 레트로 글꼴에서 비서 머리줄 이름 잘림, 멈춘 기획 todo 카드 '기다리는 중' 오집계, 원격 결재 성공이 실패로 보이던 문제, 안드로이드 APK 없는 Release 업데이트 알림 제외(`isReleaseWithoutApk`).
 - 소개 사이트·README 4개 언어 개편(릴리즈 파일 무관). 안드로이드 `versionCode` 54.
 
+## [1.4.6] - 2026-11-19
+
+### 새 기능
+- 완료 카드 정리(강백엔): `shared/boardCleanup.ts`에 `selectDeleteTasks`·`DeleteTasksCond`(`doneOnly`+`olderThanDays`, 팀·프로젝트 한정). 완료(done) 카드만, 연습·직원 소유·대기열·진행 중 하위가 딸린 부모·승인 대기 기획 카드는 제외, 일수 <1·비정상이면 빈 선택. 정리 계획에 `doneDelete`(기준 30일) 추가 — 묶음(`applyBoardCleanup`)에 못 섞고 `deleteTasks` 단독 카드로만. API `deleteTasks(cond): Promise<number>`(`main/office.ts`, `officeHandlers.ts`, `officeApiShape.ts`=write, `workspace.ts`, 원격 v2 `deleteTasks: R('o')`·허용 필드 `olderThanDays/teamId/labId`, 원격 분류 R 103→104). 40개·8단계 한도 없이 한 번에 처리.
+- 비서: `secretaryTools.ts`에 change·danger 도구 등록(묶음에 넣으면 거절, 변경 도구 64→65), `secretaryDescribe.ts` 카드 본문에 "지워지는 카드 지금 기준 N장"·되돌릴 수 없음(개수는 모델 값이 아니라 `secretary.ts`가 직접 셈), `secretaryCompact.ts` 현황 조회에 완료 요약 한 줄(연습 제외 개수·가장 오래된 일수·7/30/90일 이상 개수). 문구 `dict/secretary.ts`·`dict/officeMsg.ts` 4개 언어. 시험 `boardCleanup.test.mts`(+5)·`secretary.test.mts`(+1).
+- 카드 생성(10분 만료 안)~[실행] 사이 새로 조건에 걸린 카드도 지워질 수 있다(표시 개수는 생성 시점 값).
+
+### 개선
+- 숨김 중 주기 읽기 중단: `renderer/lib/visibleInterval.ts`(`everyWhileShown`) — 펫 펼침 창(`pet:panelVisible`, `petWindow.ts`)·외부 세션 확인(`window.officeWindow.onShown`)이 숨겨진 동안 쉬고 다시 보이면 바로 한 번 읽음. 외부 세션 확인은 목록이 그대로면 현황을 다시 보내지 않음(`main/external.ts`, `externalSnapshotQuiet.test.mts`).
+- 보드 성능: `renderer/lib/shareUnchanged.ts`(`store.ts`가 받은 현황의 안 바뀐 부분은 이전 객체 재사용), `BoardPage.tsx` TaskCard `memo`·id→카드/부모→하위 표 1회 계산·완료 칸 `content-visibility:auto`. `shareUnchanged.test.mts`.
+- 문구 4개 언어화: 사무실 말풍선·직원 위 안내 창 `map.say.*`·`map.tip.*`(`IsoOfficeScene.ts`, `dict/shell.ts`), 휴대폰 화면 `mobile.*`(`mobile/bridge.ts`·`install.ts`·`remoteOffice.ts`, `PC_ONLY_TEXT`는 사전 키로 바꿔 쓰는 곳에서 `t()`), `officeMsg.waitAnswer`(`external.ts`). 일본어 '社員'→'スタッフ' 통일 등 사전 문구 다듬기(featuresB·game·pack·orgCard 등). eslint-disable 사유 주석.
+- 첨부 파일 id→경로 색인(`main/attachments.ts`, 폴더 변경·누락 시 재생성), 앱 종료 때 DB 닫기(`index.ts` `will-quit` → `closeDb`). 점검 보고서 `app/docs/audit-1.4.5-*.md`.
+- `.github/workflows/win-test.yml` 추가(윈도우 시험).
+
 ## [1.0.3] - 2026-11-06
 
 ### 새 기능

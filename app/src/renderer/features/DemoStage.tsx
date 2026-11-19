@@ -138,8 +138,7 @@ export function StageOverlay({ meetingId, onClose }: { meetingId: string; onClos
       officeStage.setCovered(false)
       game.destroy(true)
     }
-    // leave는 매번 새로 만들지만 하는 일이 같다
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 장면은 처음 한 번만 만든다. leave는 매번 새로 만들지만 하는 일이 같다
   }, [])
 
   const demo = meeting?.demo

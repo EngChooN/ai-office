@@ -97,7 +97,7 @@ import { maskSecrets } from '../shared/redact'
 import { abortable, demoOutcome, addPraise, cleanSpeech, settleStaleMeeting, dateKeyOf, DEMO_COMMENT_MAX, DEMO_REACTIONS, demoPhaseMs, type DemoPhase, type DemoReaction, type DemoStage, type Praise, demoCoverImages, demoEntries, demoImages, demoLine, demoPresentInput, demoSummary, extractLinks, GALLERY_FILES_MAX, GALLERY_IMAGES_MAX, GALLERY_MAX, galleryBody, groupByStaff, isDemoDue, bumpGalleryRefs, looseArtifactEntry, looseImageEntry, storeGalleryEntry, summarize, type GalleryEntry, type GalleryStoreIo, type LooseGalleryWho } from '../shared/gallery'
 import { InvalidArgsError } from '../shared/errors'
 import { addUnread, clearUnread, unreadOf, type UnreadReports } from '../shared/unreadReports'
-import { planBoardCleanup, type BoardCleanupPlan } from '../shared/boardCleanup'
+import { planBoardCleanup, selectDoneToDelete, type BoardCleanupPlan, type DeleteTasksCond } from '../shared/boardCleanup'
 import { OneShotAllow, isPersistable, restoredInstruction, splitRestorable, toPending, toRestoredApproval, withPending, withoutPending, type PendingApproval } from './pendingApprovals.ts'
 import { plansToAdvanceOnStart, shouldReopenForAnswer, tasksToReturnToTodo } from '../shared/taskResume'
 import { remoteSafeEquipment } from '../shared/staffPack'
@@ -341,6 +341,8 @@ export class Office extends EventEmitter<{
   readonly tutorial: Tutorial
   private watcher: ExternalWatcher
   private emitTimer: NodeJS.Timeout | null = null
+  /** 마지막으로 받은 외부 세션 목록의 모양 (그대로면 현황을 다시 보내지 않는다) */
+  private externalSig = ''
   private scheduleTimer: NodeJS.Timeout | null = null
   private approvalPrunedAt = 0
   /** 자동결재(대표 부재 중) 상태 */
@@ -461,12 +463,20 @@ export class Office extends EventEmitter<{
     this.watcher = new ExternalWatcher(
       {
         sync: (external) => {
+          // 2초마다 오는 확인: 목록이 그대로면 현황을 다시 보내지 않는다 (폴더·회사 레벨 확인은 예전처럼 매번 돈다)
+          const sig = JSON.stringify(external)
+          if (sig === this.externalSig) {
+            this.syncWorkDirs()
+            this.checkCompanyLevel()
+            return
+          }
+          this.externalSig = sig
           this.external = external
           this.scheduleEmit()
         },
         waiting: (s, message) => this.emit('notify', { title: t('notify.attention', { name: s.name }), body: message, staffId: s.id }),
         asked: (s, a) => {
-          this.postChat(s.id, `질문이 있어요 ❓ ${a.summary}`.slice(0, CHAT_TEXT_MAX), undefined, { id: a.id })
+          this.postChat(s.id, t('officeMsg.question', { summary: a.summary }).slice(0, CHAT_TEXT_MAX), undefined, { id: a.id })
           this.emit('notify', { title: t('notify.question', { name: s.name }), body: a.summary.slice(0, 120), staffId: s.id })
         },
       },
@@ -639,6 +649,8 @@ export class Office extends EventEmitter<{
   stop() {
     if (this.scheduleTimer) clearInterval(this.scheduleTimer)
     if (this.netTimer) clearInterval(this.netTimer)
+    if (this.emitTimer) clearTimeout(this.emitTimer)
+    this.emitTimer = null
     this.tutorial.stop()
     this.isStopping = true
     this.watcher.stop()
@@ -859,7 +871,7 @@ export class Office extends EventEmitter<{
   private checkCompanyLevel() {
     const c = this.company()
     if (this.companyLevel && c.level > this.companyLevel) {
-      this.postChat('me', `🎉 회사가 성장했어요! Lv.${c.level} ${c.title} — 사무실이 넓어졌습니다.`)
+      this.postChat('me', t('officeMsg.levelUp', { level: c.level, title: c.title }))
       if (!this.settings.isWorkMode) this.emit('notify', { title: t('notify.levelUp'), body: `Lv.${c.level} ${c.title}`, staffId: '' })
     }
     this.companyLevel = c.level
@@ -975,9 +987,9 @@ export class Office extends EventEmitter<{
   /** 직원 대화를 Claude Code에서 이어서 연다. 일하는 중이면 막고, 열기 전에 사무실 쪽 세션을 닫아 다음 지시 때 터미널 대화까지 이어받게 한다 */
   async resumeInTerminal(staffId: string): Promise<string> {
     const s = this.hired.get(staffId)
-    if (!s) return '이 앱에서 추가한 직원만 열 수 있어요.'
-    if (!s.sessionId) return '아직 대화가 없어요. 한 번 지시한 뒤에 열 수 있어요.'
-    if (s.status === 'working' || s.status === 'waiting' || s.status === 'netWait') return '일하는 중에는 열 수 없어요. 일이 끝난 뒤에 열어 주세요.'
+    if (!s) return t('officeMsg.openNoStaff')
+    if (!s.sessionId) return t('officeMsg.openNoSession')
+    if (s.status === 'working' || s.status === 'waiting' || s.status === 'netWait') return t('officeMsg.openBusy')
     // 열 수 없으면(Codex CLI 없음) 사무실 쪽 세션은 그대로 둔다
     if (s.provider === 'codex' && !(await findCodexCli())) return t('staffPanel.resume.codexMissing')
     this.manager.restart(staffId)
@@ -1008,7 +1020,7 @@ export class Office extends EventEmitter<{
     }
     for (const t of this.tasks.values()) if (t.assigneeId === staffId) t.assigneeId = null
     for (const sc of [...this.schedules.values()]) if (sc.staffId === staffId) this.schedules.delete(sc.id)
-    if (s) this.postChat('me', `${s.name} 님이 퇴사했습니다.`)
+    if (s) this.postChat('me', t('officeMsg.staffLeft', { name: s.name }))
     this.markReportsRead(staffId)
     this.scheduleEmit()
   }
@@ -1347,8 +1359,8 @@ export class Office extends EventEmitter<{
     const isHard = this.hardStops.delete(staffId)
     if (!isHard && taskIds.length) {
       this.resumeAfterTalk.set(staffId, taskIds)
-      this.postChat(staffId, '하던 일을 멈췄어요. 이야기가 끝나면 하던 업무를 이어서 할게요. (완전히 멈추려면 업무 보드에서 멈추기)')
-    } else this.postChat(staffId, '하던 일을 멈췄어요. 다시 시켜 주시면 이어서 할게요.')
+      this.postChat(staffId, t('officeMsg.stoppedWillResume'))
+    } else this.postChat(staffId, t('officeMsg.stopped'))
     this.releaseHeld(staffId)
     this.releaseWaiting(staffId)
   }
@@ -1643,7 +1655,7 @@ export class Office extends EventEmitter<{
   /** 멈춘 직원 진단: 읽기만 한다 (고용 직원만, 최근 24시간 기록 기준) */
   staffActivity(staffId: string): StaffActivity {
     const s = this.hired.get(staffId)
-    if (!s) throw new InvalidArgsError('이 앱에서 추가한 직원만 활동을 볼 수 있어요')
+    if (!s) throw new InvalidArgsError(t('officeMsg.errActivityOnlyApp'))
     const now = Date.now()
     const queue = (this.taskQueue.get(staffId) ?? []).map((q) => ({ taskId: q.taskId, title: this.tasks.get(q.taskId)?.title ?? q.taskId }))
     return buildStaffActivity(this.liveStaff(s), db.logsSince(staffId, now - 24 * 3_600_000), queue, now)
@@ -1842,7 +1854,7 @@ export class Office extends EventEmitter<{
       s.approvals = [...s.approvals, toRestoredApproval(p)]
       this.restoredAsks.set(p.id, p)
       s.status = 'waiting'
-      s.activity = p.questions ? '대표 답변 대기' : `결재 대기: ${p.toolName}`
+      s.activity = p.questions ? t('officeMsg.waitAnswer') : t('officeMsg.waitApproval', { tool: p.toolName })
     }
     if (restore.length) this.scheduleEmit()
   }
@@ -1892,13 +1904,13 @@ export class Office extends EventEmitter<{
     s.approvals = [...s.approvals, a]
     this.persistApproval(a)
     if (a.questions) {
-      this.patch(s.id, { status: 'waiting', activity: '대표 답변 대기' })
-      this.postChat(s.id, `질문이 있어요 ❓ ${a.summary}`.slice(0, CHAT_TEXT_MAX), undefined, { id: a.id })
+      this.patch(s.id, { status: 'waiting', activity: t('officeMsg.waitAnswer') })
+      this.postChat(s.id, t('officeMsg.question', { summary: a.summary }).slice(0, CHAT_TEXT_MAX), undefined, { id: a.id })
       this.emit('notify', { title: t('notify.question', { name: s.name }), body: a.summary.slice(0, 120), staffId: s.id })
       return
     }
-    this.patch(s.id, { status: 'waiting', activity: `결재 대기: ${a.toolName}` })
-    this.postChat(s.id, `결재 부탁드려요 🙏 ${a.toolName} ${a.summary}`.slice(0, CHAT_TEXT_MAX), undefined, { id: a.id })
+    this.patch(s.id, { status: 'waiting', activity: t('officeMsg.waitApproval', { tool: a.toolName }) })
+    this.postChat(s.id, t('officeMsg.approvalAsk', { tool: a.toolName, summary: a.summary }).slice(0, CHAT_TEXT_MAX), undefined, { id: a.id })
     this.emit('notify', { title: t('notify.approval', { name: s.name }), body: `${a.toolName} ${a.summary}`.slice(0, 120), staffId: s.id })
     this.requestEffectGuess(a)
   }
@@ -1935,7 +1947,7 @@ export class Office extends EventEmitter<{
     // '완전 자율' 단계는 고르지 않았으면 지금 단계를 따른다. 원격에서 끄면 단계도 내린다 (다시 켜기는 PC에서)
     const isFull = isRemoteCall() ? false : (plan.isFull ?? Boolean(this.auto.config.isFull))
     const config = planToConfig({ ...plan, isFull }, Date.now())
-    if (!config) throw new InvalidArgsError('자동결재 기간이 맞지 않아요')
+    if (!config) throw new InvalidArgsError(t('officeMsg.errAutoPeriod'))
     this.auto = { ...this.auto, config }
     this.saveAuto()
     this.syncAutoWindow()
@@ -2013,8 +2025,8 @@ export class Office extends EventEmitter<{
       .filter((h) => h.kind === 'answer')
       .slice(-c.answered)
       .slice(-AUTO_SUMMARY_ANSWERS)
-    const lines = [`🤖 자동결재를 마쳤어요 — ${text}`, ...answers.map((h) => `· ${h.staffName}: ${h.summary}`)]
-    if (c.answered > answers.length) lines.push(`· 그 밖 ${c.answered - answers.length}건은 결재함 "자동 처리됨"에서 볼 수 있어요`)
+    const lines = [t('officeMsg.autoDone', { text }), ...answers.map((h) => `· ${h.staffName}: ${h.summary}`)]
+    if (c.answered > answers.length) lines.push(t('officeMsg.autoMore', { n: c.answered - answers.length }))
     this.postChat('me', lines.join('\n').slice(0, CHAT_TEXT_MAX * 2))
     this.emit('notify', { title: t('notify.autoSummary'), body: text, staffId: '' })
     this.auto = { ...this.auto, wasActive: false }
@@ -2355,7 +2367,7 @@ export class Office extends EventEmitter<{
     if (patch.leadId) {
       const lead = this.hired.get(patch.leadId)
       if (lead && lead.teamId !== teamId) this.updateStaff(lead.id, { teamId })
-      if (lead) this.postChat('me', `${lead.name} 님을 ${t.name} 리더로 정했습니다.`)
+      if (lead) this.postChat('me', trI18n(tk('officeMsg.leaderSet', { name: lead.name, team: t.name })))
     }
     this.scheduleEmit()
   }
@@ -2372,8 +2384,8 @@ export class Office extends EventEmitter<{
   mergeTeams(fromTeamId: string, intoTeamId: string) {
     const from = this.teams.get(fromTeamId)
     const into = this.teams.get(intoTeamId)
-    if (!from || !into || from.id === into.id || from.kind !== 'hired' || into.kind !== 'hired') throw new InvalidArgsError('합칠 팀 두 개를 골라 주세요')
-    if (from.isPractice || into.isPractice) throw new InvalidArgsError('연습 팀은 합칠 수 없어요')
+    if (!from || !into || from.id === into.id || from.kind !== 'hired' || into.kind !== 'hired') throw new InvalidArgsError(t('officeMsg.errPickTwoTeams'))
+    if (from.isPractice || into.isPractice) throw new InvalidArgsError(t('officeMsg.errPracticeTeam'))
     const members = this.membersOf(from.id)
     for (const s of members) this.updateStaff(s.id, { teamId: into.id })
     const tasks = [...this.tasks.values()].filter((x) => x.teamId === from.id)
@@ -2386,9 +2398,9 @@ export class Office extends EventEmitter<{
   /** 직원 배치 바꾸기 — 팀 옮기기와 랩 넣고 빼기 (랩은 더하고 빼기만이라 여러 직원을 묶어 옮겨도 서로 덮어쓰지 않는다) */
   moveStaff(staffId: string, move: { teamId?: string | null; joinLabIds?: string[]; leaveLabIds?: string[] }) {
     const s = this.hired.get(staffId)
-    if (!s) throw new InvalidArgsError('직원을 찾지 못했어요')
-    if (s.isPractice) throw new InvalidArgsError('연습 직원은 옮길 수 없어요')
-    if (move.teamId && !this.teams.get(move.teamId)) throw new InvalidArgsError('옮길 팀을 찾지 못했어요')
+    if (!s) throw new InvalidArgsError(t('officeMsg.errStaffNotFound'))
+    if (s.isPractice) throw new InvalidArgsError(t('officeMsg.errPracticeStaff'))
+    if (move.teamId && !this.teams.get(move.teamId)) throw new InvalidArgsError(t('officeMsg.errTeamNotFound'))
     if (move.teamId !== undefined && move.teamId !== s.teamId) this.updateStaff(staffId, { teamId: move.teamId })
     for (const id of move.joinLabIds ?? []) {
       const lab = this.labs.get(id)
@@ -2871,7 +2883,7 @@ export class Office extends EventEmitter<{
     } catch {
       return false
     }
-    this.postChat('me', `${s.name} 세션을 종료했습니다.`)
+    this.postChat('me', t('officeMsg.sessionEnded', { name: s.name }))
     return true
   }
 
@@ -2924,14 +2936,14 @@ export class Office extends EventEmitter<{
 
   saveManual(input: ManualInput, previousPath?: string) {
     const prev = previousPath ? this.listManuals().find((x) => x.path === previousPath) : undefined
-    if (previousPath && !prev) throw new InvalidArgsError('등록된 매뉴얼이 아니에요')
+    if (previousPath && !prev) throw new InvalidArgsError(t('officeMsg.errManualNotRegistered'))
     // 휴대폰에서 프로젝트 매뉴얼은 등록된 랩 폴더(또는 고치는 매뉴얼이 이미 있는 폴더)에만 — 아무 폴더에 파일을 만들지 못하게
     if (isRemoteCall()) {
       // 전역 매뉴얼(~/.claude/skills)은 모든 프로젝트에 영향 — 만들기·고치기·프로젝트로 옮기기 모두 PC에서만
-      if (!isRemoteManualScopeAllowed(input.scope, prev?.scope)) throw new InvalidArgsError('전역 매뉴얼은 PC에서 해 주세요 (프로젝트 폴더 매뉴얼만 휴대폰에서 할 수 있어요)')
+      if (!isRemoteManualScopeAllowed(input.scope, prev?.scope)) throw new InvalidArgsError(t('officeMsg.errManualGlobalPc'))
       if (input.scope === 'project') {
         const labDirs = [...this.labs.values()].flatMap((l) => (l.cwd ? [l.cwd] : []))
-        if (!isRemoteManualDirAllowed(input.projectDir, labDirs, prev?.projectDir ?? null)) throw new InvalidArgsError('매뉴얼은 등록된 프로젝트 폴더에만 만들 수 있어요')
+        if (!isRemoteManualDirAllowed(input.projectDir, labDirs, prev?.projectDir ?? null)) throw new InvalidArgsError(t('officeMsg.errManualProjectDir'))
       }
     }
     // 고치기에서 표시 이름을 안 보내면(비서 등) 기존 제목을 지키고, ''면 지운다
@@ -2944,9 +2956,9 @@ export class Office extends EventEmitter<{
 
   deleteManual(file: string) {
     const m = this.listManuals().find((x) => x.path === file)
-    if (!m) throw new InvalidArgsError('등록된 매뉴얼이 아니에요')
+    if (!m) throw new InvalidArgsError(t('officeMsg.errManualNotRegistered'))
     // 전역 매뉴얼은 모든 프로젝트에 영향 — 휴대폰에서는 지우지 못한다
-    if (isRemoteCall() && !isRemoteManualDeleteAllowed(m.scope)) throw new InvalidArgsError('전역 매뉴얼은 PC에서 해 주세요 (프로젝트 폴더 매뉴얼만 휴대폰에서 할 수 있어요)')
+    if (isRemoteCall() && !isRemoteManualDeleteAllowed(m.scope)) throw new InvalidArgsError(t('officeMsg.errManualGlobalPc'))
     removeManual(file)
     for (const s of this.hired.values())
       if (Array.isArray(s.equipment.skills) && s.equipment.skills.includes(m.name)) this.setEquipment(s.id, { ...s.equipment, skills: s.equipment.skills.filter((n) => n !== m.name) })
@@ -2957,7 +2969,7 @@ export class Office extends EventEmitter<{
   async draftManual(staffId: string, request: string, kind: ManualKind) {
     // 직원이 없거나 staffId가 비면(직원 0명 포함) 앱이 직접 쓴다 — 사용량은 비서 몫
     const s = staffId ? this.hired.get(staffId) : undefined
-    if (staffId && !s) throw new Error('직원을 찾을 수 없어요.')
+    if (staffId && !s) throw new Error(t('officeMsg.errStaffNotFoundDot'))
     const hiredRoles = [...new Set([...this.hired.values()].map((x) => x.role))]
     const roles = (hiredRoles.length ? hiredRoles : ['기획자', '디자이너', '개발자', '리뷰어', 'QA']).join(', ')
     const r = await askOnce({
@@ -3005,7 +3017,7 @@ export class Office extends EventEmitter<{
       if (want === has) continue
       const next = want ? [...new Set([...list, manualName])] : list.filter((n) => n !== manualName)
       this.setEquipment(s.id, { ...s.equipment, skills: next })
-      if (want) this.postChat(s.id, `📘 "${this.manualLabel(manualName)}" 매뉴얼을 쓸 수 있게 됐어요!`)
+      if (want) this.postChat(s.id, t('officeMsg.manualReady', { name: this.manualLabel(manualName) }))
     }
   }
 
@@ -3085,7 +3097,7 @@ export class Office extends EventEmitter<{
     const staff = this.staffForStep(run, step)
     if (!staff) {
       run.status = 'checking'
-      run.pendingOutput = `"${step.role}" 역할을 맡을 직원이 ${run.scope.name}에 없어요. 직원을 배치한 뒤 "다시"를 누르거나 다음 단계로 넘겨 주세요.`
+      run.pendingOutput = t('officeMsg.processNoStaff', { role: step.role, scope: run.scope.name })
       this.saveRunObj(run)
       return
     }
@@ -3120,11 +3132,11 @@ export class Office extends EventEmitter<{
       if (loops <= step.maxLoops && back >= 0) {
         run.loops[step.id] = loops
         run.stepIndex = back
-        this.postChat(staff.id, `↩️ ${step.title}: 수정이 필요해서 "${run.steps[back].title}" 단계로 되돌려요 (${loops}/${step.maxLoops})`)
+        this.postChat(staff.id, t('officeMsg.processBack', { step: step.title, back: run.steps[back].title, loops, max: step.maxLoops }))
         this.runStep(run, output.slice(0, STEP_CONTEXT_MAX))
         return
       }
-      return this.askCheck(run, `되돌리기를 ${step.maxLoops}번 했는데도 수정이 필요하대요. 확인해 주세요.\n\n${output}`)
+      return this.askCheck(run, `${t('officeMsg.processLoopLimit', { max: step.maxLoops })}\n\n${output}`)
     }
     if (step.needsMyCheck) return this.askCheck(run, output)
     this.advanceRun(run)
@@ -3135,7 +3147,7 @@ export class Office extends EventEmitter<{
     run.pendingOutput = output
     const step = run.steps[run.stepIndex]
     this.saveRunObj(run)
-    this.postChat(run.currentStaffId ?? 'me', `🙋 "${run.manualTitle || run.manualName}" ${step.title} 단계를 확인해 주세요 (업무 보드·결재함)`)
+    this.postChat(run.currentStaffId ?? 'me', t('officeMsg.processCheck', { name: run.manualTitle || run.manualName, step: step.title }))
     this.emit('notify', { title: t('notify.processConfirm', { title: step.title }), body: output.slice(0, 120), staffId: run.currentStaffId ?? '' })
   }
 
@@ -3365,7 +3377,7 @@ export class Office extends EventEmitter<{
 
   async commitChanges(staffId: string, message: string) {
     const cwd = this.cwdOf(staffId)
-    if (!cwd) return { ok: false, output: '작업 폴더를 찾을 수 없습니다.' }
+    if (!cwd) return { ok: false, output: t('officeMsg.noWorkDir') }
     const r = await commitAll(cwd, message)
     if (r.ok) {
       this.workBases.delete(staffId)
@@ -3381,11 +3393,11 @@ export class Office extends EventEmitter<{
 
   async pushAndCreatePr(staffId: string, title: string, body: string) {
     const cwd = this.cwdOf(staffId)
-    if (!cwd) return { ok: false, output: '작업 폴더를 찾을 수 없습니다.' }
+    if (!cwd) return { ok: false, output: t('officeMsg.noWorkDir') }
     const r = await pushAndPr(cwd, title, body)
     if (r.ok && this.hired.has(staffId)) {
       this.log(staffId, 'commit', tk('log.pr', { text: title }))
-      this.postChat(staffId, `🚀 PR을 올렸어요: ${title}`)
+      this.postChat(staffId, t('officeMsg.prOpened', { title }))
     }
     return r
   }
@@ -3412,26 +3424,26 @@ export class Office extends EventEmitter<{
 
   buyItem(itemId: string) {
     const item = shopItem(itemId)
-    if (!item) return { ok: false, message: '없는 물건이에요.' }
+    if (!item) return { ok: false, message: t('officeMsg.shopNoItem') }
     const level = this.company().level
-    if (level < item.minLevel) return { ok: false, message: `회사 Lv.${item.minLevel}부터 살 수 있어요.` }
-    if (!isInSeason(item)) return { ok: false, message: `${item.season?.name} 시즌에만 팔아요.` }
+    if (level < item.minLevel) return { ok: false, message: t('officeMsg.shopMinLevel', { level: item.minLevel }) }
+    if (!isInSeason(item)) return { ok: false, message: t('officeMsg.shopSeason', { season: item.season?.name ?? '' }) }
     // 벽지·바닥·책상·의자는 한 번 사면 여러 곳에 쓴다 — 가구만 여러 개 산다
-    if (!isGridCategory(item.category) && this.shop.owned[itemId]) return { ok: false, message: '이미 가지고 있어요.' }
+    if (!isGridCategory(item.category) && this.shop.owned[itemId]) return { ok: false, message: t('officeMsg.shopOwned') }
     const funds = this.funds()
     // 오늘의 특가면 할인된 값으로
     const price = priceOf(item)
-    if (funds < price) return { ok: false, message: `자금이 ${formatWon(price - funds)} 모자라요.` }
+    if (funds < price) return { ok: false, message: t('officeMsg.shopShort', { amount: formatWon(price - funds) }) }
     db.addLedger(-price, 'purchase', `구매: ${item.name}${price < item.price ? ' (특가)' : ''}`)
     const owned = { ...this.shop.owned, [itemId]: (this.shop.owned[itemId] ?? 0) + 1 }
     this.saveShopState({ ...this.shop, owned })
     // 이번 구매로 세트를 다 모으면 완성 보상 (세트마다 한 번)
     const completed = SHOP_SETS.filter((set) => set.itemIds.includes(itemId) && isSetComplete(set, owned))
     for (const set of completed) db.addLedger(set.reward, 'bonus', `세트 완성: ${set.emoji} ${set.name}`, `set:${set.id}`)
-    const bonus = completed.length ? ` ${completed.map((c) => `${c.emoji} ${c.name}`).join(', ')} 완성! +${formatWon(completed.reduce((s, c) => s + c.reward, 0))}` : ''
+    const bonus = completed.length ? t('officeMsg.shopSetDone', { names: completed.map((c) => `${c.emoji} ${c.name}`).join(', '), reward: formatWon(completed.reduce((s, c) => s + c.reward, 0)) }) : ''
     // 가구는 서랍으로 간다 (김기획 문서 6-1절)
-    const where = isGridCategory(item.category) ? " 서랍에 넣었어요. 사무실 '꾸미기'에서 꺼내 놓으세요." : ''
-    return { ok: true, message: `${item.name}을(를) 샀어요.${where}${bonus}` }
+    const where = isGridCategory(item.category) ? t('officeMsg.shopDrawer') : ''
+    return { ok: true, message: t('officeMsg.shopBought', { name: item.name, where, bonus }) }
   }
 
   applySurface(zone: Zone, slot: 'wallpaper' | 'floor', itemId: string | null) {
@@ -3587,10 +3599,10 @@ export class Office extends EventEmitter<{
 
   claimMission(key: string) {
     const m = [...this.missions().daily, ...this.missions().achievements].find((x) => x.key === key)
-    if (!m || m.isClaimed || m.progress < m.target) return { ok: false, message: '아직 받을 수 없어요.' }
+    if (!m || m.isClaimed || m.progress < m.target) return { ok: false, message: t('officeMsg.missionNotYet') }
     db.addLedger(m.reward, 'bonus', `${key.startsWith('ach:') ? '업적' : '오늘의 미션'}: ${m.emoji} ${m.label}`, key)
     this.scheduleEmit()
-    return { ok: true, message: `${m.emoji} ${m.label} — ${formatWon(m.reward)} 받았어요.` }
+    return { ok: true, message: t('officeMsg.missionClaimed', { emoji: m.emoji, label: m.label, reward: formatWon(m.reward) }) }
   }
 
   // ── Claude 플랜 사용률 ────────────────────────────────
@@ -3880,14 +3892,28 @@ export class Office extends EventEmitter<{
     this.scheduleEmit()
   }
 
+  /** 조건에 맞는 완료 카드를 한꺼번에 지운다 (개수 반환) — 미완료·연습·진행/대기 중 카드는 조건과 무관하게 남는다 */
+  deleteTasks(cond: DeleteTasksCond): number {
+    if (!cond || typeof cond !== 'object' || !Number.isFinite(Number(cond.olderThanDays)) || Number(cond.olderThanDays) < 1) throw new InvalidArgsError(t('officeMsg.errDeleteDays'))
+    const busyTaskIds = new Set([...this.tasks.keys()].filter((id) => this.isBusyTask(id)))
+    const doomed = selectDoneToDelete([...this.tasks.values()], cond, Date.now(), busyTaskIds)
+    for (const x of doomed) {
+      db.deleteTaskRow(x.id)
+      this.tasks.delete(x.id)
+      this.leadAssigned.delete(x.id)
+    }
+    if (doomed.length) this.scheduleEmit()
+    return doomed.length
+  }
+
   /** 중복 카드를 keep 하나로 — 시작 안 한 카드만 합친다 (기획·하위·진행 중·연습 카드는 그대로 둔다) */
   mergeTasks(keepId: string, mergeIds: string[]) {
     const keep = this.tasks.get(keepId)
-    if (!keep || keep.isPractice) throw new InvalidArgsError('남길 카드를 찾지 못했어요')
+    if (!keep || keep.isPractice) throw new InvalidArgsError(t('officeMsg.errKeepCard'))
     const merged = mergeIds
       .flatMap((id) => this.tasks.get(id) ?? [])
       .filter((x) => x.id !== keep.id && x.status === 'todo' && !x.isPractice && !x.plan && !x.parentId && !this.isBusyTask(x.id))
-    if (merged.length === 0) throw new InvalidArgsError('합칠 수 있는 카드가 없어요 (시작 안 한 카드만 합쳐요)')
+    if (merged.length === 0) throw new InvalidArgsError(t('officeMsg.errNoMergeCards'))
     const notes = merged.map((x) => [t('board.merge.from', { title: x.title }), x.detail.trim()].filter(Boolean).join('\n'))
     const attachments = [...(keep.attachments ?? []), ...merged.flatMap((x) => x.attachments ?? [])]
     this.saveTask({
@@ -4311,7 +4337,7 @@ export class Office extends EventEmitter<{
       rounds: for (let round = 0; round < m.rounds; round++) {
         for (const p of people) {
           if (this.meetingStops.has(m.id)) break rounds
-          this.patch(p.id, { activity: '회의 중 발언 준비' })
+          this.patch(p.id, { activity: t('officeMsg.meetingPrep') })
           const canAsk = m.decisions.length < MEETING_DECISIONS_MAX
           const r = await askAsProvider(p.provider, p.model, {
             cwd: p.cwd,
@@ -4343,7 +4369,7 @@ export class Office extends EventEmitter<{
       const isDiscarded = this.meetingStops.get(m.id) === 'discard' || (this.meetingStops.has(m.id) && m.messages.length === 0)
       if (isDiscarded) {
         m.status = 'stopped'
-        m.summary = '대표가 회의를 중간에 끝냈어요.'
+        m.summary = t('officeMsg.meetingEnded')
       } else if (chair) {
         const names = people.map((p) => `${p.name}(${p.role})`).join(', ')
         const r = await askAsProvider(chair.provider, chair.model, {
@@ -4380,11 +4406,11 @@ export class Office extends EventEmitter<{
       }
       if (!isDiscarded) {
         m.status = 'done'
-        this.postChat(chair?.id ?? 'me', `📋 회의록 — ${m.topic}\n${m.summary}`.slice(0, CHAT_TEXT_MAX * 2))
+        this.postChat(chair?.id ?? 'me', t('officeMsg.minutes', { topic: m.topic, summary: m.summary }).slice(0, CHAT_TEXT_MAX * 2))
       }
     } catch (e) {
       m.status = 'failed'
-      m.summary = `회의가 중단됐습니다: ${String(e)}`
+      m.summary = t('officeMsg.meetingAborted', { error: String(e) })
     }
     this.meetingStops.delete(m.id)
     for (const p of people) this.patch(p.id, { activity: '' })
@@ -4398,8 +4424,8 @@ export class Office extends EventEmitter<{
     m.decisions = [...(m.decisions ?? []), decision]
     m.status = 'waiting'
     db.saveMeeting(m)
-    this.patch(p.id, { activity: `결정 요청: ${question}`.slice(0, 80) })
-    this.postChat(p.id, `🙋 회의 "${m.topic}" 결정 부탁드려요: ${question}${options.length ? ` (${options.join(' / ')})` : ''}`)
+    this.patch(p.id, { activity: t('officeMsg.meetingDecideAct', { question }).slice(0, 80) })
+    this.postChat(p.id, t('officeMsg.meetingAsk', { topic: m.topic, question: `${question}${options.length ? ` (${options.join(' / ')})` : ''}` }))
     this.emit('notify', { title: t('notify.meetingDecision', { topic: m.topic }), body: question.slice(0, 120), staffId: p.id })
     this.scheduleEmit()
     return new Promise<MeetingDecision>((resolve) => {
@@ -4407,7 +4433,7 @@ export class Office extends EventEmitter<{
         recordAnswer(decision, answer, Boolean(ended), Date.now())
         m.status = 'running'
         db.saveMeeting(m)
-        if (!this.meetingStops.has(m.id)) this.postChat('me', `✅ 결정: ${question} → ${answer || '알아서 정해 주세요'}`)
+        if (!this.meetingStops.has(m.id)) this.postChat('me', t('officeMsg.meetingDecided', { question, answer: answer || t('officeMsg.meetingDecideForMe') }))
         this.scheduleEmit()
         resolve(decision)
       })
@@ -4416,7 +4442,7 @@ export class Office extends EventEmitter<{
 
   /** 대표가 "알아서 정해"라고 한 결정을 진행자가 바로 한 번 정한다 — 결정자·최종 선택·이유를 남기고 다음 발언부터 그 값을 따른다 */
   private async decideDelegated(m: Meeting, d: MeetingDecision, chair: db.StoredStaff, transcript: string) {
-    this.patch(chair.id, { activity: '위임된 결정 정하는 중' })
+    this.patch(chair.id, { activity: t('officeMsg.meetingDelegating') })
     this.scheduleEmit()
     try {
       const r = await askAsProvider(chair.provider, chair.model, {
@@ -4430,7 +4456,7 @@ export class Office extends EventEmitter<{
       if (!picked) return
       recordDelegated(d, chair, picked, Date.now())
       db.saveMeeting(m)
-      this.postChat(chair.id, `🤝 위임 결정(${chair.name}): ${d.question} → ${picked.choice}${picked.reason ? ` — ${picked.reason}` : ''}`.slice(0, CHAT_TEXT_MAX))
+      this.postChat(chair.id, t('officeMsg.meetingDelegated', { name: chair.name, question: d.question, choice: `${picked.choice}${picked.reason ? ` — ${picked.reason}` : ''}` }).slice(0, CHAT_TEXT_MAX))
     } catch {
       // 정하지 못하면 "위임 · 아직 정하지 않음"으로 남고 회의는 이어진다
     } finally {
@@ -4622,7 +4648,7 @@ export class Office extends EventEmitter<{
     const allHired = [...this.hired.values()].filter((s) => !s.isPractice)
     const hired = info ? chatRoomMembers(info, allHired) : allHired
     if (hired.length === 0) {
-      if (!info) return say('직원이 없어 아무에게도 전달하지 못했어요.')
+      if (!info) return say(t('officeMsg.sendNoStaff'))
       return say(info.kind === 'lab' ? t('chat.labRoom.noMembers', { lab: info.name }) : t('chat.room.noMembers', { team: info.name }))
     }
     const teams = allTeams.filter((t) => !t.isPractice)
@@ -4635,7 +4661,7 @@ export class Office extends EventEmitter<{
     const matched = replyStaff ? [{ key: `staff:${replyStaff.id}`, kind: 'staff' as const, name: replyStaff.name, memberIds: [replyStaff.id] }] : parsedMentions.matched
     const recipientIds = replyStaff ? [replyStaff.id] : parsedMentions.recipientIds
     // 멘션만 있고 할 말이 없으면 여러 명에게 빈 지시가 가지 않게 막는다. 첨부만 있으면 첨부를 보라고 전한다
-    if (!body && attachments.length === 0) return say('내용이 없어 전달하지 않았어요.')
+    if (!body && attachments.length === 0) return say(t('officeMsg.sendEmpty'))
     // `@이름 /명령`은 머리말 없이 그대로 보내야 세션이 명령으로 알아듣는다
     const head = info ? roomHead(info) : '[단체방]'
     const quote = replyTo ? `${t('chat.reply.context', { name: quoted?.from === 'me' ? t('chat.reply.me') : (this.hired.get(quoted?.from ?? '')?.name ?? ''), text: (quoted?.text ?? '').slice(0, REPLY_CONTEXT_MAX) })}\n\n` : ''
@@ -4661,17 +4687,17 @@ export class Office extends EventEmitter<{
       const leadIds = new Set([...teams, ...labs].map((g) => g.leadId))
       const candidates = hired.map((s) => ({ id: s.id, role: s.role, status: s.status, isOverBudget: false, isLead: leadIds.has(s.id) }))
       const id = chatResponder(body, info, candidates)
-      if (!id) return say('모든 직원이 이번 달 예산을 다 써서 전달하지 못했어요.')
-      say(`${this.hired.get(id)?.name} 님이 받았어요.`)
+      if (!id) return say(t('officeMsg.sendNoBudget'))
+      say(t('officeMsg.sendReceived', { name: this.hired.get(id)?.name ?? '' }))
       return deliver(id)
     }
     const empty = matched.filter((t) => t.memberIds.length === 0).map((t) => t.name)
-    if (empty.length) say(`${empty.join(', ')}에는 직원이 없어요.`)
+    if (empty.length) say(t('officeMsg.sendEmptyGroups', { names: empty.join(', ') }))
     // 직원 한 명만 부른 예전 방식은 안내 줄 없이 그대로
     const isSingleStaff = matched.length === 1 && matched[0].kind === 'staff'
     if (recipientIds.length > 0 && !isSingleStaff) {
       const groups = matched.filter((t) => t.kind !== 'staff' && t.memberIds.length > 0).map((t) => t.name)
-      say(`${groups.length ? `${groups.join(', ')} 포함 ` : ''}${recipientIds.length}명에게 전달했어요.`)
+      say(groups.length ? t('officeMsg.sendDeliveredGroups', { groups: groups.join(', '), count: recipientIds.length }) : t('officeMsg.sendDelivered', { count: recipientIds.length }))
     }
     for (const id of recipientIds) deliver(id)
   }

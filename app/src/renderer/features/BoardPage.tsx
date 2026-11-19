@@ -1,5 +1,5 @@
 import { findRoom } from '@shared/chatRooms'
-import { useState, type DragEvent, type FormEvent } from 'react'
+import { memo, useMemo, useState, type DragEvent, type FormEvent } from 'react'
 import { PlayIcon, PlusIcon, SquareIcon, Trash2Icon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -16,7 +16,7 @@ import { useOffice } from '@/store'
 import { isAbsorbedOpen } from '@shared/planTasks'
 import { t, type TKey } from '@shared/i18n'
 import { useManualLabelOf } from '@/components/slash-menu'
-import type { Task, TaskStatus } from '@shared/types'
+import type { Staff, Task, TaskStatus } from '@shared/types'
 import { PlanCard } from './PlanCard'
 import { RunCard } from './RunCard'
 import { FirstHint } from './FirstHint'
@@ -40,10 +40,26 @@ const COLUMNS: { status: TaskStatus; label: TKey; hint: TKey | null }[] = [
   { status: 'done', label: 'board.col.done', hint: null },
 ]
 const DRAG_TYPE = 'text/task-id'
+const NO_TASKS: Task[] = []
+/** 완료 칸: 쌓이기만 하므로 화면 밖 카드는 배치·그리기를 건너뛴다 (StaffPanel 기록 줄과 같은 방식, 처음 높이는 카드 한 장쯤) */
+const DONE_CARD_CLASS = '[contain-intrinsic-size:auto_9rem] [content-visibility:auto]'
 
 /** 업무 보드(칸반): 카드를 직원에게 배정하면 지시가 나가고, 보고가 오면 검토로 넘어온다 */
 export function BoardPage() {
   const tasks = useOffice((s) => s.tasks)
+  // 카드마다 전체 목록을 뒤지지 않게 id→카드, 부모→하위 카드 표를 한 번만 만든다
+  const { byId, childrenOf } = useMemo(() => {
+    const byId = new Map(tasks.map((tk) => [tk.id, tk]))
+    const childrenOf = new Map<string, Task[]>()
+    for (const tk of tasks) {
+      if (!tk.parentId) continue
+      const list = childrenOf.get(tk.parentId)
+      if (list) list.push(tk)
+      else childrenOf.set(tk.parentId, [tk])
+    }
+    return { byId, childrenOf }
+  }, [tasks])
+  const hiredStaff = useOffice(useShallow((s) => s.staff.filter((x) => x.kind === 'hired')))
   const teams = useOffice(useShallow((s) => s.teams.filter((tm) => tm.kind === 'hired')))
   const [title, setTitle] = useState('')
   const [detail, setDetail] = useState('')
@@ -139,7 +155,7 @@ export function BoardPage() {
                 (!labFilter || tk.labId === labFilter) &&
                 !isAbsorbedOpen(
                   tk,
-                  tasks.find((p) => p.id === tk.parentId),
+                  tk.parentId ? byId.get(tk.parentId) : undefined,
                 ),
             )
             .sort((a, b) => b.updatedAt - a.updatedAt)
@@ -167,7 +183,14 @@ export function BoardPage() {
               {/* 카드가 많거나 길면 칸 안에서 스크롤한다 */}
               <div className="phone:overflow-visible -mx-1 flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-1 pb-1">
                 {items.map((tk) => (
-                  <TaskCard key={tk.id} task={tk} />
+                  <TaskCard
+                    key={tk.id}
+                    task={tk}
+                    parent={tk.parentId ? byId.get(tk.parentId) : undefined}
+                    subtasks={childrenOf.get(tk.id) ?? NO_TASKS}
+                    staff={hiredStaff}
+                    className={col.status === 'done' ? DONE_CARD_CLASS : undefined}
+                  />
                 ))}
               </div>
             </section>
@@ -195,16 +218,33 @@ function FromChatChip({ from }: { from: NonNullable<Task['fromChat']> }) {
   )
 }
 
-function TaskCard({ task }: { task: Task }) {
-  const staff = useOffice(useShallow((s) => s.staff.filter((x) => x.kind === 'hired')))
+type TaskCardProps = {
+  task: Task
+  parent: Task | undefined
+  /** 이 카드를 부모로 둔 카드 (보드가 한 번에 모아 내려준다) */
+  subtasks: Task[]
+  /** 고용 직원 (보드가 한 번 골라 내려준다) */
+  staff: Staff[]
+  className?: string
+}
+
+/** 하위 카드 목록은 보드가 매번 새 배열로 모으므로 안의 카드가 같으면 같은 것으로 본다 */
+const isSameCardProps = (a: TaskCardProps, b: TaskCardProps) =>
+  a.task === b.task &&
+  a.parent === b.parent &&
+  a.staff === b.staff &&
+  a.className === b.className &&
+  a.subtasks.length === b.subtasks.length &&
+  a.subtasks.every((c, i) => c === b.subtasks[i])
+
+// 현황이 와도 이 카드에 쓰는 값(카드·부모·하위·직원)이 그대로면 다시 그리지 않는다 — 안 바뀐 카드는 store가 이전 객체를 그대로 준다
+const TaskCard = memo(function TaskCard({ task, parent, subtasks: children, staff, className }: TaskCardProps) {
   const team = useOffice((s) => s.teams.find((tm) => tm.id === task.teamId))
   const lab = useOffice((s) => s.labs.find((l) => l.id === task.labId))
   const assignee = staff.find((s) => s.id === task.assigneeId)
   const [isOpen, setIsOpen] = useState(false)
   const openDetail = () => setIsOpen(true)
   const preview = task.result || task.detail
-  const parent = useOffice((s) => s.tasks.find((x) => x.id === task.parentId))
-  const children = useOffice(useShallow((s) => s.tasks.filter((x) => x.parentId === task.id)))
   const planLabel = planStatusLabel(task, children)
   const run = useOffice((s) => s.runs.find((r) => r.taskId === task.id && r.status !== 'stopped'))
   const allLabs = useOffice((s) => s.labs)
@@ -246,7 +286,7 @@ function TaskCard({ task }: { task: Task }) {
   )
 
   return (
-    <article draggable onDragStart={(e) => e.dataTransfer.setData(DRAG_TYPE, task.id)} className="bg-card flex min-w-0 shrink-0 cursor-grab flex-col gap-2 rounded-lg border p-3 text-sm shadow-sm">
+    <article draggable onDragStart={(e) => e.dataTransfer.setData(DRAG_TYPE, task.id)} className={cn('bg-card flex min-w-0 shrink-0 cursor-grab flex-col gap-2 rounded-lg border p-3 text-sm shadow-sm', className)}>
       <div className="flex items-start gap-2">
         <button type="button" onClick={openDetail} className="min-w-0 flex-1 text-left font-medium break-words hover:underline">
           {task.title}
@@ -294,7 +334,7 @@ function TaskCard({ task }: { task: Task }) {
       {task.usage && (
         <span className="text-muted-foreground text-[10px] tabular-nums"><IconText size={11} text={t('board.card.usage', { tokens: formatTokens(task.usage.tokens), cost: formatCost(task.usage.costUsd) })} /></span>
       )}
-      <TaskDetail task={task} isOpen={isOpen} onOpenChange={setIsOpen} />
+      <TaskDetail task={task} subtasks={children} isOpen={isOpen} onOpenChange={setIsOpen} />
       {/* 휴대폰: 카드 끌어 옮기기가 터치에서 안 되니 칸을 골라 옮긴다 */}
       <NativeSelect
         value={task.status}
@@ -391,7 +431,7 @@ function TaskCard({ task }: { task: Task }) {
       )}
     </article>
   )
-}
+}, isSameCardProps)
 
 const STATUS_LABEL: Record<TaskStatus, TKey> = Object.fromEntries(COLUMNS.map((c) => [c.status, c.label])) as Record<TaskStatus, TKey>
 
@@ -408,10 +448,9 @@ function planStatusLabel(task: Task, children: Task[]) {
 }
 
 /** 카드 상세: 설명·첨부·보고를 마크다운으로 크게 본다 */
-function TaskDetail({ task, isOpen, onOpenChange }: { task: Task; isOpen: boolean; onOpenChange: (isOpen: boolean) => void }) {
+function TaskDetail({ task, subtasks: children, isOpen, onOpenChange }: { task: Task; subtasks: Task[]; isOpen: boolean; onOpenChange: (isOpen: boolean) => void }) {
   const staff = useOffice((s) => s.staff)
   const assignee = staff.find((x) => x.id === task.assigneeId)
-  const children = useOffice(useShallow((s) => s.tasks.filter((x) => x.parentId === task.id)))
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl">

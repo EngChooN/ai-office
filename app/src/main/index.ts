@@ -5,8 +5,8 @@ import { cancelClaudeLogin } from './ai/claudeLogin'
 import { cancelCodexLogin } from './ai/codexLogin'
 import { app, BrowserWindow, clipboard, dialog, ipcMain, nativeTheme, Notification, safeStorage } from 'electron'
 import path from 'node:path'
-import { cleanupLegacyPeer, loadRemoteConfig, openDb, peerStore, saveRemoteConfig } from './db'
 import { artifactFileFor, serveArtifacts } from './artifacts'
+import { cleanupLegacyPeer, closeDb, loadRemoteConfig, openDb, peerStore, saveRemoteConfig } from './db'
 import { attachmentById, registerAttachmentScheme, removeAttachment, saveUpload, serveAttachments } from './attachments'
 import { Office } from './office'
 import { OfficeTray } from './tray'
@@ -447,6 +447,8 @@ app.on('before-quit', (e) => {
   e.preventDefault()
   void remote.shutdown().finally(() => app.quit())
 })
+// 모든 정리(원격 닫기 포함)가 끝나고 앱이 꺼지기 직전에 DB 연결을 닫는다
+app.on('will-quit', closeDb)
 // 맥은 창을 닫아도 Dock에 남고, 윈도우는 트레이를 켜 두었으면 트레이에 남아 결재 알림을 계속 받는다
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin' && !office.snapshot().settings.isTrayOn) app.quit()

@@ -16,6 +16,7 @@ import { Markdown } from "@/components/markdown";
 import { JumpToBottom, useStickToBottom } from "@/components/stick-to-bottom";
 import { cn } from "@/lib/utils";
 import { trayPlace } from "@/lib/platform";
+import { everyWhileShown } from "@/lib/visibleInterval";
 import { useOffice } from "@/store";
 import { SecretaryComposer } from "@/features/secretary/SecretaryChat";
 import { SecretaryFace } from "@/features/secretary/SecretaryFace";
@@ -989,8 +990,8 @@ function useStaffLogs(
   }, [staffId, refreshKey, tick]);
   useEffect(() => {
     if (!staffId || !isWorking) return;
-    const timer = setInterval(() => setTick((n) => n + 1), STAFF_REFRESH_MS);
-    return () => clearInterval(timer);
+    // 펼침 창을 닫아(숨겨) 둔 동안은 쉬고, 다시 열면 바로 한 번 읽은 뒤 다시 센다
+    return everyWhileShown(() => setTick((n) => n + 1), STAFF_REFRESH_MS, (cb) => pet().onPanelVisible(cb));
   }, [staffId, isWorking]);
   const reload = useCallback(() => setTick((n) => n + 1), []);
   return {

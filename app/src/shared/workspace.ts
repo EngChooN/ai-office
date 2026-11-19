@@ -137,6 +137,7 @@ export const METHOD_ACCESS: Record<OfficeMethod, MethodAccess> = {
   updateTask: 'write',
   assignTask: 'write',
   deleteTask: 'write',
+  deleteTasks: 'write',
   mergeTasks: 'write',
   boardCleanupPlan: 'read',
   startMeeting: 'write',

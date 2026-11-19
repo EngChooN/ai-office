@@ -11,6 +11,23 @@ Writing rules
 - Leave out: internal or development matters, re-fixes of features added in the same version, how a security hole worked (if needed, one line on the result), minor wording or spacing tweaks.
 - Couldn't do it before → new feature; easier than before → improvement; was working wrongly → bug fix.
 
+## [1.4.6] - 2026-11-19
+
+### At a glance
+- **New** The secretary tidies up old done cards
+- **Better** Hidden windows stop refreshing
+- **Better** The board stays light with many done cards
+- **Better** Staff bubbles and tips in 4 languages
+
+### New features
+- Ask the secretary to "clean up done cards" and it tells you how many have piled up and how old they are, then offers to delete done cards older than 30 days in one go. The approval card shows how many will be deleted, and nothing is removed until you press Run. Deleted cards cannot be restored, and cards that aren't done are never deleted. Works from the phone too.
+
+### Improvements
+- While the app window or the staff pop-out window is hidden, staff status stops refreshing, and it reads once right away when you open it again.
+- The board runs smoother even with many done cards, and cards that haven't changed are not redrawn.
+- Staff speech bubbles, the tips above staff and the phone screen notes now follow the app language (Korean, English, Japanese, Chinese).
+- Attachments are found faster, and saved data is closed safely when the app quits.
+
 ## [1.4.5] - 2026-11-18
 Heads-up: the phone app does not yet support previewing or downloading results (planned for the next version). This has not been checked on real devices yet.
 

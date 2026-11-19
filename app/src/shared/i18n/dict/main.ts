@@ -2,7 +2,7 @@ import type { Entry } from './index.ts'
 
 /** 메뉴바·알림·네이티브 창 (main 프로세스가 직접 띄우는 글자) */
 export default {
-  'meeting.fallbackNote': { ko: ' (이 직원의 AI 계정에 연결이 안 돼 앱 기본 AI가 대신 말했어요)', en: ' (this staff member’s AI account isn’t connected — the app default AI spoke instead)', ja: '（この社員のAIアカウントに接続できないため、アプリ既定のAIが代わりに発言）', zh: '（该员工的 AI 账号未连接，由应用默认 AI 代为发言）' },
+  'meeting.fallbackNote': { ko: ' (이 직원의 AI 계정에 연결이 안 돼 앱 기본 AI가 대신 말했어요)', en: ' (this staff member’s AI account isn’t connected — the app default AI spoke instead)', ja: '（このスタッフのAIアカウントに接続できないため、アプリ既定のAIが代わりに発言）', zh: '（该员工的 AI 账号未连接，由应用默认 AI 代为发言）' },
   'tray.tooltipAttention': { ko: '확인 필요 {n}', en: 'Needs attention {n}', ja: '要確認 {n}', zh: '待确认 {n}' },
   'tray.tooltipAuto': { ko: '자동결재 중', en: 'Auto-approving', ja: '自動承認中', zh: '自动审批中' },
   'tray.autoActive': { ko: '🤖 자동결재 중 · 남은 {left}', en: '🤖 Auto-approving · {left} left', ja: '🤖 自動承認中 · 残り{left}', zh: '🤖 自动审批中 · 剩余 {left}' },
@@ -13,7 +13,7 @@ export default {
   'tray.team': { ko: '팀 · {name}', en: 'Team · {name}', ja: 'チーム · {name}', zh: '团队 · {name}' },
   'tray.noTeam': { ko: '팀 없음', en: 'No team', ja: 'チームなし', zh: '无团队' },
   'tray.lab': { ko: '프로젝트 · {name}', en: 'Project · {name}', ja: 'プロジェクト · {name}', zh: '项目 · {name}' },
-  'tray.external': { ko: '앱 밖 직원 (터미널 등)', en: 'Staff outside the app (e.g. terminal)', ja: 'アプリ外の社員（ターミナルなど）', zh: '应用外的员工（如终端）' },
+  'tray.external': { ko: '앱 밖 직원 (터미널 등)', en: 'Staff outside the app (e.g. terminal)', ja: 'アプリ外のスタッフ（ターミナルなど）', zh: '应用外的员工（如终端）' },
   'tray.autoDone': { ko: '대신 승인 {done}건 · 대신 답한 질문 {answered}건', en: '{done} approved for you · {answered} questions answered for you', ja: '代理承認 {done}件 · 代理回答 {answered}件', zh: '代为批准 {done} 件 · 代为回答 {answered} 个问题' },
   'tray.autoStop': { ko: '자동결재 끄기', en: 'Turn off auto-approve', ja: '自動承認をオフにする', zh: '关闭自动审批' },
   'tray.autoHours': { ko: '지금부터 {hours}시간', en: 'For the next {hours} hours', ja: '今から{hours}時間', zh: '从现在起 {hours} 小时' },
@@ -31,7 +31,7 @@ export default {
   'tray.reject': { ko: '반려', en: 'Reject', ja: '却下', zh: '驳回' },
   'tray.moreApprovals': { ko: '그 밖 {n}건 — 결재함에서 보기', en: '{n} more — see in Inbox', ja: 'その他{n}件 — 承認箱で見る', zh: '另有 {n} 件 — 在审批箱查看' },
   'tray.externalWaiting': { ko: '🟡 {name} — 앱 밖(터미널 등) 창에서 확인 필요', en: '🟡 {name} — check in the window outside the app (e.g. terminal)', ja: '🟡 {name} — アプリ外（ターミナルなど）のウィンドウで確認が必要', zh: '🟡 {name} — 需在应用外（如终端）的窗口中确认' },
-  'tray.allStaff': { ko: '직원 전체 ({n})', en: 'All staff ({n})', ja: '全社員 ({n})', zh: '全部员工（{n}）' },
+  'tray.allStaff': { ko: '직원 전체 ({n})', en: 'All staff ({n})', ja: '全スタッフ ({n})', zh: '全部员工（{n}）' },
   'tray.stopAll': { ko: '전체 멈추기…', en: 'Stop everything…', ja: 'すべて停止…', zh: '全部停止…' },
   'tray.quickTask': { ko: '클립보드로 할 일 추가', en: 'Add a task from clipboard', ja: 'クリップボードからタスクを追加', zh: '用剪贴板添加任务' },
   'tray.talkSecretary': { ko: '비서에게 말하기', en: 'Talk to the secretary', ja: '秘書に話しかける', zh: '与秘书对话' },

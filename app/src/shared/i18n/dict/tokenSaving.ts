@@ -6,7 +6,7 @@ export default {
   'tokenSaver.desc': {
     ko: '이번 주에 토큰을 많이 쓴 직원 중 설정을 한 단계 낮추면 아낄 수 있는 사람이에요',
     en: 'Staff who used the most tokens this week and could save by lowering one setting a step',
-    ja: '今週トークンを多く使った社員のうち、設定を一段階下げると節約できる人です',
+    ja: '今週トークンを多く使ったスタッフのうち、設定を一段階下げると節約できる人です',
     zh: '本周用令牌最多、把一项设置调低一档就能节省的员工',
   },
   'tokenSaver.tokens': { ko: '{n} 사용', en: '{n} used', ja: '{n} 使用', zh: '已用 {n}' },
@@ -34,7 +34,7 @@ export default {
   'settingsPage.tokenSaver.desc': {
     ko: '새로 추가하는 직원을 Haiku 모델과 짧은 대화 기억으로 시작해요. GPT 직원은 대화 기억만 짧게 해요. 지금 있는 직원은 바뀌지 않아요',
     en: 'New hires start with the Haiku model and short conversation memory. GPT staff only get short memory. Current staff are not changed',
-    ja: '新しく雇う社員を Haiku モデルと短い会話の記憶で始めます。GPT 社員は会話の記憶だけ短くします。今いる社員は変わりません',
+    ja: '新しく雇うスタッフを Haiku モデルと短い会話の記憶で始めます。GPT スタッフは会話の記憶だけ短くします。今いるスタッフは変わりません',
     zh: '新雇用的员工默认用 Haiku 模型和短对话记忆。GPT 员工只把对话记忆设短。现有员工不变',
   },
   'settingsPage.tokenSaver.toggle': { ko: '토큰 절약 모드 켜기', en: 'Turn on token saver mode', ja: 'トークン節約モードをオンにする', zh: '开启令牌节省模式' },

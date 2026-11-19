@@ -46,27 +46,15 @@ export interface RemoteHandlers {
   canPreviewArtifact?: boolean
 }
 
-/** PC 전용 동작 안내 문구 (이유 + 대신 할 일 한 줄) — 언어가 바뀌어도 맞게 부를 때마다 사전에서 읽는다 */
+/** PC 전용 동작 안내 문구의 사전 키 (docs/specs/android-pc-layout.md 6절) — 언어를 바꿔도 맞게 쓰는 곳에서 t()로 푼다 */
 export const PC_ONLY_TEXT = {
-  get generic() {
-    return t('remote.pcOnly.generic')
-  },
-  get resumeInTerminal() {
-    return t('remote.pcOnly.terminal')
-  },
-  get openCodexLogin() {
-    return t('remote.pcOnly.codexLogin')
-  },
-  get openClaudeLogin() {
-    return t('remote.pcOnly.claudeLogin')
-  },
-  get remoteQr() {
-    return t('remote.pcOnly.qr')
-  },
-  get saved() {
-    return t('remote.saved')
-  },
-}
+  generic: 'mobile.pcOnly.generic',
+  resumeInTerminal: 'mobile.pcOnly.resumeInTerminal',
+  openCodexLogin: 'mobile.pcOnly.openCodexLogin',
+  openClaudeLogin: 'mobile.pcOnly.openClaudeLogin',
+  remoteQr: 'mobile.pcOnly.remoteQr',
+  saved: 'mobile.pcOnly.saved',
+} as const satisfies Record<string, TKey>
 
 /** 화면이 그릴 수 있다고 PC에 알리는 능력 (ready features → 셸이 헤더 X-Office-Capabilities로) */
 export const SCREEN_CAPABILITIES = ['iso-office'] as const
@@ -131,10 +119,10 @@ export function createRemoteOffice(bridge: Bridge, h: RemoteHandlers): RemoteSes
       const e = raw as BridgeError
       if (e.code === 'confirm_required' && !confirm) {
         if (await h.confirm(confirmText(method as OfficeMethod, e.message))) return call(method, args, true)
-        throw new RemoteCallError(method, { status: 0, code: 'confirm_cancelled', message: '취소했어요' })
+        throw new RemoteCallError(method, { status: 0, code: 'confirm_cancelled', message: t('mobile.cancelled') })
       }
       // PC만 할 수 있는 기능을 서버가 막았으면(어댑터가 모르는 새 기능 포함) 안내를 띄운다
-      if (e.code === 'pc_only') h.notice(PC_ONLY_TEXT.generic)
+      if (e.code === 'pc_only') h.notice(t(PC_ONLY_TEXT.generic))
       throw new RemoteCallError(method, e)
     }
   }
@@ -207,7 +195,7 @@ export function createRemoteOffice(bridge: Bridge, h: RemoteHandlers): RemoteSes
       h.notice(downloadFailText(e))
       throw new RemoteCallError('artifactOpenExternal', e)
     })
-    h.notice(PC_ONLY_TEXT.saved)
+    h.notice(t(PC_ONLY_TEXT.saved))
   }
 
   // PC 전용 동작은 서버에 보내지 않고 같은 모양의 값을 돌려준다 (서버도 같은 것을 422 pc_only로 막는다)
@@ -228,7 +216,7 @@ export function createRemoteOffice(bridge: Bridge, h: RemoteHandlers): RemoteSes
         h.notice(downloadFailText(e))
         throw new RemoteCallError('openAttachment', e)
       })
-      h.notice(PC_ONLY_TEXT.saved)
+      h.notice(t(PC_ONLY_TEXT.saved))
     },
     // 원격 화면의 '밖에서 열기'·'폴더에서 보기'는 의미가 없어 내려받기로 바꾼다 (화면은 같은 메서드를 부른다)
     ...(h.canPreviewArtifact ? { artifactOpen: openArtifact, artifactOpenExternal: downloadArtifact, artifactReveal: downloadArtifact } : {}),
@@ -241,14 +229,14 @@ export function createRemoteOffice(bridge: Bridge, h: RemoteHandlers): RemoteSes
       return Array.isArray(v) ? v : []
     },
     // 기존 오류 문구 자리(resumeError)에 그대로 보인다
-    resumeInTerminal: async () => PC_ONLY_TEXT.resumeInTerminal,
-    openClaudeLogin: async () => h.notice(PC_ONLY_TEXT.openClaudeLogin),
+    resumeInTerminal: async () => t(PC_ONLY_TEXT.resumeInTerminal),
+    openClaudeLogin: async () => h.notice(t(PC_ONLY_TEXT.openClaudeLogin)),
     openCodexLogin: async () => {
-      h.notice(PC_ONLY_TEXT.openCodexLogin)
+      h.notice(t(PC_ONLY_TEXT.openCodexLogin))
       return ''
     },
     remoteQr: async () => {
-      h.notice(PC_ONLY_TEXT.remoteQr)
+      h.notice(t(PC_ONLY_TEXT.remoteQr))
       return null
     },
     ...Object.fromEntries([...GRID_METHODS].map((m) => [m, gridCall(m)])),

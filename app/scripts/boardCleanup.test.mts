@@ -2,7 +2,7 @@
 
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { planBoardCleanup, STALE_DAYS } from '../src/shared/boardCleanup.ts'
+import { DONE_DELETE_DAYS, planBoardCleanup, selectDoneToDelete, STALE_DAYS } from '../src/shared/boardCleanup.ts'
 import { BATCH_ITEMS_MAX, BATCH_METHOD, CARD_STEPS_MAX } from '../src/shared/secretaryTools.ts'
 import type { Task } from '../src/shared/types.ts'
 
@@ -74,4 +74,44 @@ test('묶음 항목 상한마다 나누고, 카드 단계 상한을 넘는 항�
   assert.equal(r.steps.length, CARD_STEPS_MAX)
   assert.ok(r.steps.every((s) => s.items.length <= BATCH_ITEMS_MAX))
   assert.equal(r.omitted, 5)
+})
+
+const done = (id: string, daysAgo: number, over: Partial<Task> = {}) => task(id, { status: 'done', updatedAt: NOW - daysAgo * DAY, ...over })
+const ids = (list: Task[]) => list.map((x) => x.id)
+
+test('완료 카드 삭제 조건: 완료 + N일 이상 지난 것만 (경계 포함), 팀·프로젝트로 좁힐 수 있다', () => {
+  const tasks = [done('old', 31), done('edge', 30), done('new', 29), done('b-old', 90, { teamId: 'team-b' }), done('lab-old', 90, { labId: 'lab-1' })]
+  assert.deepEqual(ids(selectDoneToDelete(tasks, { olderThanDays: 30 }, NOW)), ['old', 'edge', 'b-old', 'lab-old'])
+  assert.deepEqual(ids(selectDoneToDelete(tasks, { olderThanDays: 60 }, NOW)), ['b-old', 'lab-old'])
+  assert.deepEqual(ids(selectDoneToDelete(tasks, { olderThanDays: 1, teamId: 'team-b' }, NOW)), ['b-old'])
+  assert.deepEqual(ids(selectDoneToDelete(tasks, { olderThanDays: 1, labId: 'lab-1' }, NOW)), ['lab-old'])
+})
+
+test('완료 카드 삭제: 연습 카드는 제외', () => {
+  const tasks = [done('p', 400, { isPractice: true }), done('real', 400)]
+  assert.deepEqual(ids(selectDoneToDelete(tasks, { olderThanDays: 1 }, NOW)), ['real'])
+})
+
+test('완료 카드 삭제: 미완료 카드는 얼마나 오래됐든 절대 대상이 아니다 (조건이 이상해도)', () => {
+  const open = (['todo', 'doing', 'review'] as const).map((status) => task(`open-${status}`, { status, updatedAt: 0 }))
+  for (const cond of [{ olderThanDays: 1 }, { olderThanDays: 1, teamId: 'team-a' }, { olderThanDays: 0.5 }, { olderThanDays: 99999 }]) {
+    assert.deepEqual(selectDoneToDelete(open, cond, NOW), [])
+  }
+  for (const bad of [0, -5, NaN, Infinity * 0, Number('x')]) assert.deepEqual(selectDoneToDelete([done('d', 999)], { olderThanDays: bad }, NOW), [], `잘못된 일수 ${bad}`)
+  // 진행 중인 하위 업무가 부모로 삼은 완료 카드, 승인 대기 기획이 걸린 카드, 대기열에 있는 카드도 남긴다
+  const tasks = [done('parent', 100), task('kid', { parentId: 'parent', status: 'doing' }), done('waiting-plan', 100, { plan: { status: 'waiting' } as Task['plan'] }), done('queued', 100)]
+  assert.deepEqual(ids(selectDoneToDelete(tasks, { olderThanDays: 1 }, NOW, new Set(['queued']))), [])
+})
+
+test('정리안의 doneDelete: 오래된 완료 카드 개수·가장 오래된 일수와 deleteTasks 인자를 준다 (묶음 steps와 별개, 없으면 null)', () => {
+  assert.equal(plan([done('fresh', DONE_DELETE_DAYS - 1), task('t')]).doneDelete, null)
+  const r = plan([done('a', DONE_DELETE_DAYS + 1), done('b', 100), done('p', 500, { isPractice: true }), task('open', { updatedAt: 0, status: 'doing', assigneeId: 's1' })], ['open'])
+  assert.deepEqual(r.doneDelete, { count: 2, oldestDays: 100, args: [{ olderThanDays: DONE_DELETE_DAYS }] })
+  assert.ok(r.steps.every((s) => s.items.every((it) => it.method !== ('deleteTasks' as string))), '묶음에 삭제를 섞지 않는다')
+})
+
+test('완료 카드가 40항목·8단계 한도보다 많아도 한 번에 모두 고른다', () => {
+  const many = Array.from({ length: BATCH_ITEMS_MAX * CARD_STEPS_MAX + 100 }, (_, i) => done(`d${i}`, 60))
+  assert.equal(selectDoneToDelete(many, { olderThanDays: 30 }, NOW).length, many.length)
+  assert.equal(plan(many).doneDelete?.count, many.length)
 })

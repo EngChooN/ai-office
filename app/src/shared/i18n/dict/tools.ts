@@ -80,7 +80,7 @@ export default {
   'equip.reason.claudeai': {
     ko: '직원에게 줄 수 없어요. 같은 서비스의 연결 주소를 [직접 추가]로 넣어 주세요.',
     en: 'This can’t be given to staff. Add the same service’s connection address with [Add manually] instead.',
-    ja: '社員には渡せません。同じサービスの接続アドレスを［手動で追加］から入れてください。',
+    ja: 'スタッフには渡せません。同じサービスの接続アドレスを［手動で追加］から入れてください。',
     zh: '无法提供给员工。请通过［手动添加］填入同一服务的连接地址。',
   },
   'equip.reason.badConfig': {
@@ -221,7 +221,7 @@ export default {
   'slash.desc.init': {
     ko: '프로젝트를 살펴보고 직원이 읽을 안내 파일(CLAUDE.md)을 만들어요',
     en: 'Look through the project and create a guide file (CLAUDE.md) for staff to read',
-    ja: 'プロジェクトを調べて、社員が読む案内ファイル（CLAUDE.md）を作ります',
+    ja: 'プロジェクトを調べて、スタッフが読む案内ファイル（CLAUDE.md）を作ります',
     zh: '查看项目并创建供员工阅读的说明文件（CLAUDE.md）',
   },
   'slash.desc.review': {
@@ -422,7 +422,7 @@ export default {
   'slash.desc.model': {
     ko: '이 직원의 모델을 바꿔요 (default·fable·opus·sonnet·haiku). 값 없이 치면 지금 모델을 알려 줘요',
     en: 'Change this employee’s model (default, fable, opus, sonnet, haiku). Without a value it shows the current model',
-    ja: 'この社員のモデルを変えます (default・fable・opus・sonnet・haiku)。値なしで入力すると現在のモデルを表示します',
+    ja: 'このスタッフのモデルを変えます (default・fable・opus・sonnet・haiku)。値なしで入力すると現在のモデルを表示します',
     zh: '更改该员工的模型（default、fable、opus、sonnet、haiku）。不带值则显示当前模型',
   },
   'slash.desc.effort': {

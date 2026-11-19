@@ -366,7 +366,7 @@ function MessageList({ room, searchQuery, pending, onRetry }: { room: string | u
     // 보내는 중 말풍선이 새로 생길 때(개수가 늘 때)만 맨 아래로
     if (roomPending.length > prevPendingCount.current) scroll.scrollToBottom()
     prevPendingCount.current = roomPending.length
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 개수가 바뀔 때만 (scroll은 매번 새 객체라 넣으면 그릴 때마다 돈다)
   }, [roomPending.length])
   const lastLine = lines.at(-1)
   const last = lastLine?.kind === 'message' ? lastLine.message : undefined
@@ -374,7 +374,7 @@ function MessageList({ room, searchQuery, pending, onRetry }: { room: string | u
   useEffect(() => {
     if (last?.from === 'me') scroll.scrollToBottom()
     // 새 말이 붙을 때만 본다 (상한 500에 닿아도 개수 대신 마지막 id로)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 마지막 말 id가 바뀔 때만 (last·scroll 객체가 바뀔 때마다 돌면 위를 읽다 끌려 내려간다)
   }, [last?.id])
 
   // 안 읽은 수: 방에 들어온 순간 마지막으로 본 자리를 잡아 '여기부터 새 메시지' 줄을 긋고, 보고 있는 방은 바로 읽음으로
@@ -728,7 +728,7 @@ function Composer({ room, onSend }: { room: RoomInfo | undefined; onSend: (input
   }, [chatDraft?.nonce])
   useEffect(() => {
     if (reply) focusEnd()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 답장 대상이 바뀔 때만 (focusEnd는 그릴 때마다 새 함수)
   }, [reply?.id, reply?.mode])
   // 방을 옮기면 답장 줄을 내린다 (다른 방 메시지에 답하지 않게)
   useEffect(() => () => setReply(null), [room?.room, setReply])

@@ -9,6 +9,7 @@ import { OFFICE_EVENTS, OFFICE_METHODS } from '../src/shared/officeApiShape.ts'
 import { createBridge, parseShellMessage, type Bridge, type BridgeRequest, type ShellMessage } from '../src/renderer/mobile/bridge.ts'
 import { createRemoteOffice, fillOldSnapshot, normalizeArgs, PC_ONLY_TEXT, pcUpdateFeatureText, pcUpdateText, RemoteCallError, SCREEN_CAPABILITIES, type RemoteHandlers } from '../src/renderer/mobile/remoteOffice.ts'
 import { recentFolders } from '../src/renderer/mobile/recentFolders.ts'
+import { t } from '../src/shared/i18n/index.ts'
 import { pinchStep } from '../src/renderer/map/gestures.ts'
 import { createLayoutTracker, decideLayout, getLayoutState, setLayoutState, subscribeLayout } from '../src/renderer/layout/layoutState.ts'
 
@@ -128,7 +129,7 @@ test('어댑터: 실패는 RemoteCallError(status·code·method 보존)로 rejec
   await assert.rejects(office.decide('a1', true), (e: RemoteCallError) => e instanceof Error && e.status === 409 && e.code === 'already_decided' && e.method === 'decide' && e.message === '이미 처리됐어요')
   assert.deepEqual(x.notices, [])
   await assert.rejects(office.hooksStatus(), (e: RemoteCallError) => e.code === 'pc_only' && e.alternative === 'open_on_pc')
-  assert.deepEqual(x.notices, [PC_ONLY_TEXT.generic])
+  assert.deepEqual(x.notices, [t(PC_ONLY_TEXT.generic)])
 })
 
 // ── 아이소 사무실 능력 (office-iso-tech.md 4-3절) ─────────
@@ -276,11 +277,11 @@ test('PC 전용: 폴더·파일 고르기는 경로 입력 시트, 터미널·�
   const { office } = createRemoteOffice(f.bridge, x.h)
   assert.equal(await office.pickFolder(), '~/projects/app')
   assert.deepEqual(await office.pickFiles(), ['~/a.md', '~/b.md'])
-  assert.equal(await office.resumeInTerminal('s1'), PC_ONLY_TEXT.resumeInTerminal)
+  assert.equal(await office.resumeInTerminal('s1'), t(PC_ONLY_TEXT.resumeInTerminal))
   assert.equal(await office.remoteQr(), null)
   await office.openClaudeLogin()
   assert.deepEqual(x.paths, ['folder', 'files'])
-  assert.deepEqual(x.notices, [PC_ONLY_TEXT.remoteQr, PC_ONLY_TEXT.openClaudeLogin])
+  assert.deepEqual(x.notices, [t(PC_ONLY_TEXT.remoteQr), t(PC_ONLY_TEXT.openClaudeLogin)])
   assert.equal(f.sent.length, 0)
   // 취소·빈 입력은 PC처럼 null / []
   const empty = createRemoteOffice(f.bridge, handlers({ enterPath: async () => null }).h).office
@@ -305,7 +306,7 @@ test('첨부: 파일마다 upload(base64) 한 번 → Attachment[] (PC 경로는
   assert.deepEqual(f.sent[0], { type: 'upload', name: 'a.txt', mime: 'text/plain', base64: 'YWJj' })
   await office.openAttachment('11111111-2222-4333-8444-555555555555')
   assert.deepEqual(f.sent[2], { type: 'download', fileId: '11111111-2222-4333-8444-555555555555', name: '' })
-  assert.deepEqual(x.notices, [PC_ONLY_TEXT.saved])
+  assert.deepEqual(x.notices, [t(PC_ONLY_TEXT.saved)])
 })
 
 test('어댑터: 원격 창은 결과물을 받아 미리 보여 주고, 밖에서 열기·폴더 보기는 내려받기로 — 휴대폰 셸은 그대로 PC 전용', async () => {
@@ -334,7 +335,7 @@ test('어댑터: 원격 창은 결과물을 받아 미리 보여 주고, 밖에�
     { type: 'download', fileId: id, name: '', kind: 'artifact', version: 1 },
     { type: 'download', fileId: id, name: '', kind: 'artifact' },
   ])
-  assert.deepEqual(x.notices, [PC_ONLY_TEXT.saved, PC_ONLY_TEXT.saved])
+  assert.deepEqual(x.notices, [t(PC_ONLY_TEXT.saved), t(PC_ONLY_TEXT.saved)])
   // 5MB를 넘으면 미리보기·내려받기 모두 안내
   const big = fakeBridge((m) => {
     if (m.type === 'call') return m.method === 'artifactList' ? info : versions

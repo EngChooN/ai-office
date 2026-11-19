@@ -10,6 +10,7 @@ import main from './main.ts'
 import staff from './staff.ts'
 import logs from './logs.ts'
 import update from './update.ts'
+import officeMsg from './officeMsg.ts'
 import tools from './tools.ts'
 import knowledge from './knowledge.ts'
 import pack from './pack.ts'
@@ -45,7 +46,7 @@ export interface Entry {
 }
 
 /** 영역별 조각 (같은 키가 두 파일에 있으면 테스트가 잡는다) */
-export const DICT_PARTS = { common, settings, featuresA, featuresB, shell, game, main, staff, logs, update, tools, knowledge, pack, gallery, tutorial, board, secretary, sceneExport, autonomy, deskPet, artifact, peer, memory, guideHint, chatStatus, chatMessenger, tokenSaving, workspace, manualTemplates, manualStart, connect, roleInfo, staffCard, alertBar, orgCard, approvalTab, recordDay }
+export const DICT_PARTS = { common, settings, featuresA, featuresB, shell, game, main, staff, logs, update, tools, knowledge, pack, gallery, tutorial, board, secretary, sceneExport, autonomy, deskPet, artifact, peer, memory, guideHint, chatStatus, chatMessenger, tokenSaving, workspace, manualTemplates, manualStart, connect, roleInfo, staffCard, alertBar, orgCard, approvalTab, recordDay, officeMsg }
 
-export const DICT = { ...common, ...settings, ...featuresA, ...featuresB, ...shell, ...game, ...main, ...staff, ...logs, ...update, ...tools, ...knowledge, ...pack, ...gallery, ...tutorial, ...board, ...secretary, ...sceneExport, ...autonomy, ...deskPet, ...artifact, ...peer, ...memory, ...guideHint, ...chatStatus, ...chatMessenger, ...tokenSaving, ...workspace, ...manualTemplates, ...manualStart, ...connect, ...roleInfo, ...staffCard, ...alertBar, ...orgCard, ...approvalTab, ...recordDay } satisfies Record<string, Entry>
+export const DICT = { ...common, ...settings, ...featuresA, ...featuresB, ...shell, ...game, ...main, ...staff, ...logs, ...update, ...tools, ...knowledge, ...pack, ...gallery, ...tutorial, ...board, ...secretary, ...sceneExport, ...autonomy, ...deskPet, ...artifact, ...peer, ...memory, ...guideHint, ...chatStatus, ...chatMessenger, ...tokenSaving, ...workspace, ...manualTemplates, ...manualStart, ...connect, ...roleInfo, ...staffCard, ...alertBar, ...orgCard, ...approvalTab, ...recordDay, ...officeMsg } satisfies Record<string, Entry>
 export type TKey = keyof typeof DICT

@@ -11,6 +11,7 @@ import path from 'node:path'
 import { app } from 'electron'
 import { z } from 'zod'
 import type { OfficeMethod } from '../shared/officeApiShape'
+import { selectDoneToDelete } from '../shared/boardCleanup'
 import { BATCH_GUIDE, BATCH_ITEMS_MAX, BATCH_METHOD, CARD_STEPS_MAX, methodsOfKind, SECRETARY_SIGNATURES } from '../shared/secretaryTools'
 import { EMPTY_SECRETARY, SECRETARY_ID, type AutoHandled, type ChatMessage, type DailyRecord, type EngineChangeResult, type LogEntry, type Manual, type OfficeSnapshot, type Payslip, type SecretaryCard, type SecretaryCompare, type SecretaryMessage, type SecretaryRunOptions, type SecretaryState, type Staff, type StaffActivity, type StaffQuestion } from '../shared/types'
 import * as db from './db'
@@ -86,7 +87,7 @@ const SYSTEM_PROMPT = `당신은 AI Office의 비서입니다. 대표(사용자)
 - 무언가를 바꾸는 일은 직접 하지 않고 propose로 "제안"을 만듭니다. 제안은 확인 카드로 보이고, 대표가 [실행]을 눌러야 실행됩니다. "했어요"라고 말하지 말고 "이렇게 할까요?"라고 말합니다.
   - 여러 단계는 한 카드에(최대 8단계). 앞 단계 결과는 "$단계번호.id"처럼 참조합니다(예: 1단계 createTeam의 팀 → "$1.id", 2단계 hire의 직원 → "$2.id").
   - 같은 성격의 변경이 8개를 넘으면(보드 정리, 여러 카드 닫기 등) 묶음 단계(method "batch", items에 항목)로 한 카드에 담습니다. 대표가 카드에서 항목마다 뺄 수 있습니다. 묶음 항목은 앞 단계를 참조하지 않습니다.
-  - 업무 보드 정리("정리해줘"): read의 boardCleanupPlan을 부르고, 돌려받은 steps를 고치지 말고 그대로 propose 단계로 씁니다(오래된 카드 닫기·중복 합치기·팀/프로젝트 정하기·상태 바로잡기 묶음). 연습 카드와 기획에 딸린 카드는 앱이 이미 뺐습니다. steps가 비었으면 정리할 게 없다고 답하고, omitted가 있으면 실행 뒤 한 번 더 정리하자고 덧붙입니다.
+  - 업무 보드 정리("정리해줘"): read의 boardCleanupPlan을 부르고, 돌려받은 steps를 고치지 말고 그대로 propose 단계로 씁니다(오래된 카드 닫기·중복 합치기·팀/프로젝트 정하기·상태 바로잡기 묶음). 연습 카드와 기획에 딸린 카드는 앱이 이미 뺐습니다. steps가 비었으면 정리할 게 없다고 답하고(doneDelete가 있으면 그것만 제안), omitted가 있으면 실행 뒤 한 번 더 정리하자고 덧붙입니다. 완료 카드 삭제: doneDelete(오래된 완료 카드 count장)가 null이 아니면 묶음에 넣지 말고 deleteTasks(doneDelete.args) 하나만 단독 카드로 따로 제안하고, 되돌릴 수 없다고 한 줄 알립니다. 대표가 "완료 카드 N일 지난 것 지워줘"처럼 말하면 같은 도구에 olderThanDays를 그 값으로(1 이상). 개수 제한이 없어 한 번에 다 지웁니다. 미완료·연습 카드는 앱이 지우지 않습니다.
   - 팀·프로젝트 구성(대표가 예전 말 "랩"이라고 해도 프로젝트입니다): 직원 이동(팀↔팀, 프로젝트 넣고 빼기)은 moveStaff, 팀 합치기는 mergeTeams 한 단계(직원·카드를 옮기고 팀을 없앰 — 직원을 하나씩 옮기는 단계를 따로 만들지 않습니다), 프로젝트 목표·리드·멤버 전체를 바꿀 때는 updateLab. 여러 직원 이동은 moveStaff 묶음으로.
   - 사무실 꾸미기(가지고 있는 가구만): 지금 배치와 서랍은 office_layout(층)으로 봅니다. 놓기 placeGridItem, 옮기기·돌리기 moveGridItem, 하나 치우기 storeItem, 켜고 끄기 setGridItemOn. 카드에 그 층의 지금 ↔ 바꾼 뒤 평면도가 붙습니다. 자리가 막히면(길 막힘·겹침·회의실·계단 자리) 실행할 때 그 항목만 실패합니다.
     - "가구 다 빼줘"·"전부 치워줘": stowAllGrid 한 단계(floor 0은 건물 전체, 대표가 층을 말하면 그 층). 대표가 책상·의자까지라고 하지 않았으면 keepSeats true로 직원 자리는 남깁니다. 실행되면 앱이 되돌리기 카드를 바로 올립니다. 나중에 "되돌려줘"라고 하면 undo_stow를 부릅니다(restoreGridItems 카드를 직접 만들지 않습니다).
@@ -795,6 +796,14 @@ export class Secretary {
   /** id → 이름 (카드 본문을 실제 인자로 만들 때) */
   private nameOf(id: string): string | null {
     const snap = this.office.snapshot()
+    if (id.startsWith('doneCount:')) {
+      try {
+        const [olderThanDays, teamId, labId] = JSON.parse(id.slice('doneCount:'.length)) as [number, string | null, string | null]
+        return String(selectDoneToDelete(snap.tasks, { olderThanDays, teamId, labId }, Date.now()).length)
+      } catch {
+        return null
+      }
+    }
     const found = describeFound(id)
     if (found) return found
     const approval = snap.staff.flatMap((x) => x.approvals.map((ap) => ({ ap, who: x.name }))).find((x) => x.ap.id === id)

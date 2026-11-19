@@ -112,7 +112,7 @@ export default {
   'workspace.wizard.what.pcDesc': {
     ko: '회사 PC·집 PC처럼 다른 PC의 직원·대화·결재를 여기서 그대로 다뤄요',
     en: "Work with another PC's staff, chats, and approvals right here, like a work or home PC",
-    ja: '会社の PC・自宅の PC のように、別の PC の社員・会話・決裁をここでそのまま扱います',
+    ja: '会社の PC・自宅の PC のように、別の PC のスタッフ・会話・決裁をここでそのまま扱います',
     zh: '像公司电脑、家里电脑那样，在这里直接处理另一台电脑的员工、对话和审批',
   },
   'workspace.wizard.what.host': { ko: '다른 PC에서 이 PC를 보게 하기', en: 'Let another PC view this one', ja: '別の PC からこの PC を見られるようにする', zh: '让另一台电脑查看这台' },

@@ -1,9 +1,10 @@
 // 아이소메트릭 칸 사무실 장면 (docs/specs/office-iso-tech.md 1절·6절, 작업 B2).
 // 사무실의 유일한 장면이다(예전 OfficeScene은 지웠다). 미니 뷰 계약 7종은 officeStage가 쓴다.
-// 칸 계산은 shared/iso(순수 함수), 그림은 iso/isoArt(이디자 A3에서 합치는 중). 그림이 없는 품목은 임시 상자로 그린다.
+// 칸 계산은 shared/iso(순수 함수), 그림은 iso/isoArt. 그림이 없는 품목은 임시 상자로 그린다.
 // 가구는 shop.grid(B1, GridItem)에서 읽고, 의자가 모자라면 저장하지 않는 기본 자리(autoSeats)를 깐다.
 import * as Phaser from 'phaser'
 import { useOffice, viewLevelOf } from '@/store'
+import { t, type TKey } from '@shared/i18n'
 import { buildFloors, levelRowOf, officeOf } from '@shared/officeLevel'
 import type { ShopState } from '@shared/economy'
 import { isMeetingLive, type Meeting, type Settings, type Staff, type Team } from '@shared/types'
@@ -76,7 +77,8 @@ const OUTLINE = 0x2a2230
 /** 직원 그림자는 직원 깊이에서 이만큼 아래 */
 const SHADOW_BELOW = 0.01
 const DEPTH = { floor: -10_000, night: 50_000, levelUp: 55_000, label: 60_000, tooltip: 61_000 } as const
-const STATUS_LABEL: Record<Staff['status'], string> = { working: '작업 중', waiting: '확인 필요', idle: '대기', offline: '퇴근', error: '오류', netWait: '연결 대기' }
+/** 안내 창 상태 이름 — 사무실 위 집계(map.stat.*)와 직원 카드(status.*)에 있는 번역을 그대로 쓴다 */
+const STATUS_LABEL: Record<Staff['status'], TKey> = { working: 'map.stat.working', waiting: 'map.stat.waiting', idle: 'map.stat.idle', offline: 'status.offline', error: 'status.error', netWait: 'status.netWait' }
 const EMOTES: Partial<Record<string, string>> = { 'working>idle': '✅', 'idle>working': '💡', '*>waiting': '🙋', '*>error': '💦' }
 /** 쉬는 직원이 고르는 행동 비율 (칸 사무실에 맞게 줄인 값) */
 const PLAN_WEIGHTS: ['desk' | 'fun' | 'rest' | 'office' | 'wander' | 'visit', number][] = [
@@ -104,17 +106,17 @@ const VISIT_GRACE_MS = 30_000
 
 /** 구역 가중치 (같은 종류 안에서 구역 안 자리를 이만큼 더 고른다) · 구역별 말풍선 (구역 id 앞부분 = 바닥 종류) */
 const ZONE_WEIGHT = 2
-const ZONE_SAY: Partial<Record<string, string[]>> = {
-  kitchen: ['커피 한 잔 할까요?', '간식 챙겼어요', '물 한 잔…'],
-  lounge: ['잠깐 쉬어요', '소파가 편해요'],
-  game: ['한 판만 더!', '이번엔 제가 이겨요'],
-  sleep: ['💤', '잠깐만 눈 좀…'],
-  library: ['이 책 괜찮네요', '조용히 읽는 중'],
-  fitness: ['스트레칭!', '운동 한 세트'],
-  cafe: ['라떼 한 잔', '오늘의 커피는?'],
-  cafeteria: ['점심 뭐 먹지?', '맛있다!'],
-  sky: ['전망이 좋아요', '바람 쐬는 중'],
-  ceo: ['대표님 자리 구경…'],
+const ZONE_SAY: Partial<Record<string, TKey[]>> = {
+  kitchen: ['map.say.kitchen.1', 'map.say.kitchen.2', 'map.say.kitchen.3'],
+  lounge: ['map.say.lounge.1', 'map.say.lounge.2'],
+  game: ['map.say.game.1', 'map.say.game.2'],
+  sleep: ['map.say.sleep.1', 'map.say.sleep.2'],
+  library: ['map.say.library.1', 'map.say.library.2'],
+  fitness: ['map.say.fitness.1', 'map.say.fitness.2'],
+  cafe: ['map.say.cafe.1', 'map.say.cafe.2'],
+  cafeteria: ['map.say.cafeteria.1', 'map.say.cafeteria.2'],
+  sky: ['map.say.sky.1', 'map.say.sky.2'],
+  ceo: ['map.say.ceo.1'],
 }
 
 /** leave: 다른 층으로 가려고(또는 놀러 왔다 돌아가려고) 계단으로 걷는 중 */
@@ -509,10 +511,10 @@ export class IsoOfficeScene extends Phaser.Scene {
     const oldKey = `iso-${planRoomTextureKey(from, was)}`
     const isFinishChanged = finishKey(was) !== finishKey(now) && this.textures.exists(oldKey)
     const lines: string[] = []
-    if (from.cols !== this.room.cols || from.rows !== this.room.rows) lines.push(`사무실이 넓어졌어요 · ${from.cols}×${from.rows} → ${this.room.cols}×${this.room.rows}칸`)
+    if (from.cols !== this.room.cols || from.rows !== this.room.rows) lines.push(t('map.tip.grown', { from: `${from.cols}×${from.rows}`, to: `${this.room.cols}×${this.room.rows}` }))
     const floors = officeOf(this.level).floors
-    if (floors > officeOf(fromLevel).floors) lines.push(`${floors}층이 생겼어요`)
-    if (isFinishChanged && (was.floor !== now.floor || was.wall !== now.wall)) lines.push(`새 바닥·벽 — ${finishLabel(now).split(' · ').slice(1).join(' · ')}`)
+    if (floors > officeOf(fromLevel).floors) lines.push(t('map.tip.newFloor', { floor: floors }))
+    if (isFinishChanged && (was.floor !== now.floor || was.wall !== now.wall)) lines.push(t('map.tip.newFinish', { finish: finishLabel(now).split(' · ').slice(1).join(' · ') }))
     playLevelUpFx(this, {
       level: this.level,
       o: this.o,
@@ -1257,7 +1259,8 @@ export class IsoOfficeScene extends Phaser.Scene {
       }
     }
     // 구역 안이면 그 구역 말풍선, 아니면 가구 동작의 말풍선
-    const say = (spot.zone && ZONE_SAY[spot.zone.split(':')[0]]) || spot.say
+    const zoneSay = spot.zone ? ZONE_SAY[spot.zone.split(':')[0]] : undefined
+    const say = zoneSay?.length ? zoneSay.map((k) => t(k)) : spot.say
     if (say?.length) {
       a.chatText = pick(say)
       a.chatUntil = this.time.now + CHAT_SHOW_MS
@@ -1418,7 +1421,7 @@ export class IsoOfficeScene extends Phaser.Scene {
       let last: (typeof messages)[number] | undefined
       for (let i = messages.length - 1; i >= 0 && !last; i--) if (messages[i].staffId === s.id) last = messages[i]
       if (last && Date.now() - last.ts < 7000) text = last.text
-    } else if (this.awayMeeting.has(s.id)) text = `${this.awayMeeting.get(s.id)}층 회의 중`
+    } else if (this.awayMeeting.has(s.id)) text = t('map.say.meetingFloor', { floor: this.awayMeeting.get(s.id) ?? '' })
     else if (atDesk && s.activity && (isSelected || s.status === 'waiting')) text = s.activity
     this.setBubble(a, text)
   }
@@ -1470,8 +1473,9 @@ export class IsoOfficeScene extends Phaser.Scene {
     if (!a) return
     const s = a.staff
     const activity = s.activity.length > 42 ? `${s.activity.slice(0, 42)}…` : s.activity
-    const lines = [`${s.name} · ${roleLabel(s.role)}`, `상태  ${s.awaitingTeam ? '팀원 기다리는 중' : STATUS_LABEL[s.status]}`, `활동  ${activity || '—'}`]
-    if (s.kind === 'hired') lines.push(`Lv.${s.stats.level}  ·  완료 ${s.stats.tasksDone}`)
+    const status = t(s.awaitingTeam ? 'status.awaitingTeam' : STATUS_LABEL[s.status])
+    const lines = [`${s.name} · ${roleLabel(s.role)}`, t('map.tip.status', { status }), t('map.tip.activity', { activity: activity || '—' })]
+    if (s.kind === 'hired') lines.push(t('map.tip.level', { level: s.stats.level, done: s.stats.tasksDone }))
     this.tooltipText.setText(lines.join('\n'))
     const b = this.tooltipText.getBounds()
     const pad = 8
@@ -1922,7 +1926,7 @@ export class IsoOfficeScene extends Phaser.Scene {
       this.director = offer(this.director, { kind: k, actor: actor.staff.id, ...(target ? { target: target.staff.id } : {}), ...(text ? { text } : {}), at: now, isPreview: true }, now)
     }
     if (kind === 'wave') add('wave', lead)
-    else if (kind === 'chat') add('chat', other ?? lead, undefined, chatLine((other ?? lead).staff.id, tasks) ?? '오늘 할 일 정리 중')
+    else if (kind === 'chat') add('chat', other ?? lead, undefined, chatLine((other ?? lead).staff.id, tasks) ?? t('map.say.planning'))
     else if (kind === 'coffee') add('coffee', other ?? lead, other ? lead : undefined)
     else if (!other) return false
     else if (kind === 'handoff') {

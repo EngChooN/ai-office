@@ -147,7 +147,7 @@ export function HireDialog() {
         model: 'default',
         ...hireDefaults(useOffice.getState().settings.tokenSaverMode, next),
       }))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 창을 열 때·상태가 올 때만 (고른 공급자가 바뀔 때마다 돌면 대표가 고른 것을 되돌린다)
   }, [isOpen, providers.status])
 
   useEffect(() => {

@@ -3,22 +3,22 @@ import type { Entry } from './index.ts'
 /** 직원·랩 파일(내보내기·가져오기)과 기본 직원 마켓 */
 export default {
   // ── 고용 창 진입 ──
-  'market.bring': { ko: '직원 마켓에서 데려오기', en: 'Bring someone from the staff market', ja: '社員マーケットから迎える', zh: '从员工市场招募' },
-  'pack.hire.market': { ko: '직원 마켓', en: 'Staff market', ja: '社員マーケット', zh: '员工市场' },
+  'market.bring': { ko: '직원 마켓에서 데려오기', en: 'Bring someone from the staff market', ja: 'スタッフマーケットから迎える', zh: '从员工市场招募' },
+  'pack.hire.market': { ko: '직원 마켓', en: 'Staff market', ja: 'スタッフマーケット', zh: '员工市场' },
   'pack.hire.import': { ko: '파일에서 가져오기', en: 'Import from file', ja: 'ファイルから読み込む', zh: '从文件导入' },
   'pack.hire.hint': {
     ko: '내보낸 직원·프로젝트 파일을 고르면 검사 후 바로 추가해요.',
     en: 'Pick an exported staff or project file. It is checked and the staff are added right away.',
-    ja: '書き出した社員・プロジェクトのファイルを選ぶと、確認後にすぐ追加します。',
+    ja: '書き出したスタッフ・プロジェクトのファイルを選ぶと、確認後にすぐ追加します。',
     zh: '选择导出的员工或项目文件，检查后立即添加。',
   },
 
   // ── 직원 마켓 창 ──
-  'pack.market.title': { ko: '직원 마켓', en: 'Staff market', ja: '社員マーケット', zh: '员工市场' },
+  'pack.market.title': { ko: '직원 마켓', en: 'Staff market', ja: 'スタッフマーケット', zh: '员工市场' },
   'pack.market.hint': {
     ko: '기본으로 준비된 직원 목록이에요. [추가]를 누르면 바로 추가돼요. 이름은 나중에 바꿀 수 있어요.',
     en: 'Ready-made staff. Press Add to add them right away. You can rename them later.',
-    ja: '用意された社員の一覧です。[追加]を押すとすぐ追加されます。名前は後から変えられます。',
+    ja: '用意されたスタッフの一覧です。[追加]を押すとすぐ追加されます。名前は後から変えられます。',
     zh: '内置的员工列表。点击[添加]即可立即添加，名字之后可以修改。',
   },
   'pack.market.hire': { ko: '추가', en: 'Add', ja: '追加', zh: '添加' },
@@ -88,11 +88,11 @@ export default {
 
   // ── 직원 내보내기 창 ──
   'pack.export.button': { ko: '내보내기', en: 'Export', ja: '書き出し', zh: '导出' },
-  'pack.export.title': { ko: '직원 내보내기', en: 'Export staff', ja: '社員の書き出し', zh: '导出员工' },
+  'pack.export.title': { ko: '직원 내보내기', en: 'Export staff', ja: 'スタッフの書き出し', zh: '导出员工' },
   'pack.export.hint': {
     ko: '고른 직원을 파일 하나로 저장해요. 작업 폴더와 이 컴퓨터의 파일 위치는 빠지고, 다른 컴퓨터에서 가져오면 그곳에 추가돼요.',
     en: 'Saves the selected staff as one file. Work folders and paths on this computer are left out. Importing on another computer adds them there.',
-    ja: '選んだ社員を1つのファイルに保存します。作業フォルダとこのコンピュータのパスは除かれ、別のコンピュータで読み込むとそこに追加されます。',
+    ja: '選んだスタッフを1つのファイルに保存します。作業フォルダとこのコンピュータのパスは除かれ、別のコンピュータで読み込むとそこに追加されます。',
     zh: '将所选员工保存为一个文件。工作文件夹和本机路径不会包含在内，在其他电脑上导入即可添加到那里。',
   },
   'pack.export.count': { ko: '{count}명 고름', en: '{count} selected', ja: '{count}人選択中', zh: '已选 {count} 人' },
@@ -100,9 +100,9 @@ export default {
   'pack.lab.export': { ko: '프로젝트 내보내기', en: 'Export project', ja: 'プロジェクトを書き出す', zh: '导出项目' },
 
   // ── 파일 대화상자 ──
-  'pack.dialog.save': { ko: '직원 파일 저장', en: 'Save staff file', ja: '社員ファイルを保存', zh: '保存员工文件' },
-  'pack.dialog.open': { ko: '직원 파일 고르기', en: 'Choose staff file', ja: '社員ファイルを選ぶ', zh: '选择员工文件' },
-  'pack.dialog.filter': { ko: '직원 파일', en: 'Staff file', ja: '社員ファイル', zh: '员工文件' },
+  'pack.dialog.save': { ko: '직원 파일 저장', en: 'Save staff file', ja: 'スタッフファイルを保存', zh: '保存员工文件' },
+  'pack.dialog.open': { ko: '직원 파일 고르기', en: 'Choose staff file', ja: 'スタッフファイルを選ぶ', zh: '选择员工文件' },
+  'pack.dialog.filter': { ko: '직원 파일', en: 'Staff file', ja: 'スタッフファイル', zh: '员工文件' },
 
   // ── 결과 문구 ──
   'pack.done.hired': { ko: '{names} 추가했어요.', en: 'Added {names}.', ja: '{names}を追加しました。', zh: '已添加 {names}。' },
@@ -113,11 +113,11 @@ export default {
     ja: 'このコンピュータにない装備は外して追加しました: {list}',
     zh: '已添加，但已去掉本机没有的装备：{list}',
   },
-  'pack.done.exported': { ko: '직원 {count}명을 저장했어요.', en: 'Saved {count} staff.', ja: '社員{count}人を保存しました。', zh: '已保存 {count} 名员工。' },
+  'pack.done.exported': { ko: '직원 {count}명을 저장했어요.', en: 'Saved {count} staff.', ja: 'スタッフ{count}人を保存しました。', zh: '已保存 {count} 名员工。' },
   'pack.done.exportedLab': {
     ko: '프로젝트 "{lab}"과 직원 {count}명을 저장했어요.',
     en: 'Saved project "{lab}" and {count} staff.',
-    ja: 'プロジェクト「{lab}」と社員{count}人を保存しました。',
+    ja: 'プロジェクト「{lab}」とスタッフ{count}人を保存しました。',
     zh: '已保存项目“{lab}”和 {count} 名员工。',
   },
 
@@ -125,7 +125,7 @@ export default {
   'pack.err.size': {
     ko: '파일이 너무 커요. 1MB 이하의 직원 파일만 가져올 수 있어요.',
     en: 'The file is too large. Only staff files up to 1MB can be imported.',
-    ja: 'ファイルが大きすぎます。1MB以下の社員ファイルだけ読み込めます。',
+    ja: 'ファイルが大きすぎます。1MB以下のスタッフファイルだけ読み込めます。',
     zh: '文件太大了。只能导入 1MB 以内的员工文件。',
   },
   'pack.err.read': { ko: '파일을 읽을 수 없어요.', en: 'The file cannot be read.', ja: 'ファイルを読み込めません。', zh: '无法读取文件。' },
@@ -133,7 +133,7 @@ export default {
   'pack.err.parse': {
     ko: '파일 내용을 읽을 수 없어요. 직원 파일이 맞는지 확인해 주세요.',
     en: 'The file content cannot be read. Check that it is a staff file.',
-    ja: 'ファイルの内容を読み取れません。社員ファイルか確認してください。',
+    ja: 'ファイルの内容を読み取れません。スタッフファイルか確認してください。',
     zh: '无法读取文件内容，请确认是员工文件。',
   },
   'pack.err.shape': {
@@ -145,7 +145,7 @@ export default {
   'pack.err.format': {
     ko: 'AI Office 직원 파일이 아니에요.',
     en: 'This is not a AI Office staff file.',
-    ja: 'AI Office の社員ファイルではありません。',
+    ja: 'AI Office のスタッフファイルではありません。',
     zh: '这不是 AI Office 的员工文件。',
   },
   'pack.err.version': {
@@ -157,19 +157,19 @@ export default {
   'pack.err.staffCount': {
     ko: '직원은 1명 이상 50명 이하여야 해요.',
     en: 'There must be between 1 and 50 staff.',
-    ja: '社員は1人以上50人以下である必要があります。',
+    ja: 'スタッフは1人以上50人以下である必要があります。',
     zh: '员工人数必须在 1 到 50 人之间。',
   },
   'pack.err.staffName': {
     ko: '직원 이름은 1~40글자로 적어 주세요.',
     en: 'Staff names must be 1 to 40 characters.',
-    ja: '社員の名前は1〜40文字で入力してください。',
+    ja: 'スタッフの名前は1〜40文字で入力してください。',
     zh: '员工名字需为 1 至 40 个字。',
   },
   'pack.err.role': {
     ko: '직원 "{name}"의 직무는 1~{max}글자로 적어 주세요.',
     en: 'The role of "{name}" must be 1 to {max} characters.',
-    ja: '社員「{name}」の職務は1〜{max}文字で入力してください。',
+    ja: 'スタッフ「{name}」の職務は1〜{max}文字で入力してください。',
     zh: '员工“{name}”的职务需为 1 至 {max} 个字。',
   },
   'pack.err.model': {
@@ -178,7 +178,7 @@ export default {
     ja: 'モデル「{model}」はこのアプリでは選べません。',
     zh: '此应用无法选择模型“{model}”。',
   },
-  'pack.err.avatar': { ko: '직원 생김새 값이 올바르지 않아요.', en: 'The staff appearance value is not valid.', ja: '社員の見た目の値が正しくありません。', zh: '员工外观的值不正确。' },
+  'pack.err.avatar': { ko: '직원 생김새 값이 올바르지 않아요.', en: 'The staff appearance value is not valid.', ja: 'スタッフの見た目の値が正しくありません。', zh: '员工外观的值不正确。' },
   'pack.err.approval': { ko: '결재 방식 값이 올바르지 않아요.', en: 'The approval setting is not valid.', ja: '承認方法の値が正しくありません。', zh: '审批方式的值不正确。' },
   'pack.err.prompt': {
     ko: '업무 지침은 8,000글자 이하여야 해요.',
@@ -201,7 +201,7 @@ export default {
   'pack.err.manualCount': {
     ko: '매뉴얼은 직원 한 명당 20개 이하여야 해요.',
     en: 'Each staff member can have up to 20 manuals.',
-    ja: 'マニュアルは社員1人につき20個以下にしてください。',
+    ja: 'マニュアルはスタッフ1人につき20個以下にしてください。',
     zh: '每名员工最多 20 份手册。',
   },
   'pack.err.manualName': {
@@ -229,17 +229,17 @@ export default {
     zh: '文件中包含文件夹位置。本机的位置不能保存在文件里。',
   },
   'pack.err.lab': { ko: '프로젝트 정보가 올바르지 않아요.', en: 'The project information is not valid.', ja: 'プロジェクト情報が正しくありません。', zh: '项目信息不正确。' },
-  'pack.err.leader': { ko: '리더가 파일의 직원 중에 없어요.', en: 'The lead is not among the staff in the file.', ja: 'リーダーがファイルの社員にいません。', zh: '负责人不在文件的员工中。' },
+  'pack.err.leader': { ko: '리더가 파일의 직원 중에 없어요.', en: 'The lead is not among the staff in the file.', ja: 'リーダーがファイルのスタッフにいません。', zh: '负责人不在文件的员工中。' },
   'pack.err.exportTooBig': {
     ko: '내보낼 내용이 1MB를 넘어요. 매뉴얼을 줄이거나 직원을 나눠서 내보내 주세요.',
     en: 'The export is larger than 1MB. Reduce the manuals or export fewer staff at a time.',
-    ja: '書き出す内容が1MBを超えています。マニュアルを減らすか、社員を分けて書き出してください。',
+    ja: '書き出す内容が1MBを超えています。マニュアルを減らすか、スタッフを分けて書き出してください。',
     zh: '导出内容超过 1MB。请减少手册或分批导出员工。',
   },
-  'pack.err.noStaff': { ko: '내보낼 직원을 골라 주세요.', en: 'Choose the staff to export.', ja: '書き出す社員を選んでください。', zh: '请选择要导出的员工。' },
+  'pack.err.noStaff': { ko: '내보낼 직원을 골라 주세요.', en: 'Choose the staff to export.', ja: '書き出すスタッフを選んでください。', zh: '请选择要导出的员工。' },
   'pack.err.labMissing': { ko: '프로젝트를 찾을 수 없어요.', en: 'The project cannot be found.', ja: 'プロジェクトが見つかりません。', zh: '找不到该项目。' },
-  'pack.err.labNoMembers': { ko: '이 프로젝트에는 직원이 없어 내보낼 수 없어요.', en: 'This project has no staff, so it cannot be exported.', ja: 'このプロジェクトには社員がいないため書き出せません。', zh: '该项目没有员工，无法导出。' },
-  'pack.err.marketMissing': { ko: '마켓에서 그 직원을 찾을 수 없어요.', en: 'That staff member is not in the market.', ja: 'マーケットにその社員がいません。', zh: '员工市场中没有该员工。' },
+  'pack.err.labNoMembers': { ko: '이 프로젝트에는 직원이 없어 내보낼 수 없어요.', en: 'This project has no staff, so it cannot be exported.', ja: 'このプロジェクトにはスタッフがいないため書き出せません。', zh: '该项目没有员工，无法导出。' },
+  'pack.err.marketMissing': { ko: '마켓에서 그 직원을 찾을 수 없어요.', en: 'That staff member is not in the market.', ja: 'マーケットにそのスタッフがいません。', zh: '员工市场中没有该员工。' },
   'pack.err.provider': { ko: 'AI 엔진은 Claude나 GPT 중에서 골라 주세요.', en: 'Choose Claude or GPT as the AI engine.', ja: 'AIエンジンは Claude か GPT から選んでください。', zh: '请从 Claude 或 GPT 中选择 AI 引擎。' },
   'engine.recommended': { ko: '추천', en: 'Recommended', ja: 'おすすめ', zh: '推荐' },
   'engine.reason.lead': {
@@ -269,7 +269,7 @@ export default {
   'engine.reason.reviewer': {
     ko: '코드를 쓴 Claude 직원과 다른 눈으로 검토해요.',
     en: 'Reviews with a different eye from the Claude staff who wrote the code.',
-    ja: 'コードを書いた Claude 社員とは別の目でレビューします。',
+    ja: 'コードを書いた Claude スタッフとは別の目でレビューします。',
     zh: '以不同于编写代码的 Claude 员工的视角来审查。',
   },
   'engine.reason.qa': {

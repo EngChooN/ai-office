@@ -8,7 +8,7 @@ export default {
   'chat.status.task': { ko: '맡은 일', en: 'Assigned', ja: '担当の仕事', zh: '负责的工作' },
   'chat.status.now': { ko: '지금 하는 것', en: 'Doing now', ja: '今やっていること', zh: '正在做' },
   'chat.status.queued': { ko: '뒤에 기다리는 일 {count}건', en: '{count} more waiting', ja: '後に待っている仕事 {count}件', zh: '后面还有 {count} 项' },
-  'chat.status.open': { ko: '누르면 직원 패널이 열려요', en: 'Click to open the staff panel', ja: 'クリックで社員パネルを開きます', zh: '点击打开员工面板' },
+  'chat.status.open': { ko: '누르면 직원 패널이 열려요', en: 'Click to open the staff panel', ja: 'クリックでスタッフパネルを開きます', zh: '点击打开员工面板' },
   'chat.busyNote': {
     ko: '{names} 님은 작업 중이에요 · 끝나면 보내거나 지금 끼어들 수 있어요',
     en: '{names} is working · send when done, or interrupt now',

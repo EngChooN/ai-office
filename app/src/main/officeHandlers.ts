@@ -1,5 +1,6 @@
 import { dialog, shell } from 'electron'
 import type { AutoApprovePlan } from '../shared/autoApprove'
+import type { DeleteTasksCond } from '../shared/boardCleanup'
 import type { DemoReaction } from '../shared/gallery'
 import type { KnowledgeInput } from '../shared/knowledge'
 import type { Zone } from '../shared/economy'
@@ -118,6 +119,7 @@ export function createOfficeHandlers(office: Office, remoteApi: () => RemoteServ
     updateTask: (id: string, patch: Parameters<Office['updateTask']>[1]) => office.updateTask(id, patch),
     assignTask: (taskId: string, staffId: string) => office.assignTask(taskId, staffId),
     deleteTask: (id: string) => office.deleteTask(id),
+    deleteTasks: (cond: DeleteTasksCond) => office.deleteTasks(cond),
     mergeTasks: (keepId: string, mergeIds: string[]) => office.mergeTasks(keepId, mergeIds),
     boardCleanupPlan: () => office.boardCleanupPlan(),
     startMeeting: (input: Parameters<Office['startMeeting']>[0]) => office.startMeeting(input),

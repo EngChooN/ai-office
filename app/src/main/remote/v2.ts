@@ -150,6 +150,7 @@ export const V2_METHODS: Record<OfficeMethod, MethodSpec> = {
   updateTask: R('s o'),
   assignTask: R('s s'),
   deleteTask: R('s'),
+  deleteTasks: R('o'),
   mergeTasks: R('s S'),
   boardCleanupPlan: R(),
   startMeeting: R('o'),
@@ -260,6 +261,7 @@ export const V2_FIELDS: Partial<Record<OfficeMethod, Record<number, string[]>>> 
   instruct: { 3: fieldsOf('instruct', 3, { isAutonomous: true }) },
   // 자율 진행 켜기도 휴대폰에서 (위험 작업은 자율 진행이어도 건너뛰고, 켜면 PC에 알린다)
   createTask: { 0: fieldsOf('createTask', 0, { title: true, detail: true, teamId: true, labId: true, attachments: true, isAutonomous: true }) },
+  deleteTasks: { 0: fieldsOf('deleteTasks', 0, { olderThanDays: true, teamId: true, labId: true }) },
   moveStaff: { 1: fieldsOf('moveStaff', 1, { teamId: true, joinLabIds: true, leaveLabIds: true }) },
   // isAutonomous 켜기·끄기 모두 (켜면 office가 PC에 알린다)
   updateTask: { 1: fieldsOf('updateTask', 1, { title: true, detail: true, status: true, teamId: true, labId: true, assigneeId: true, isAutonomous: true }) },

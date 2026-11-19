@@ -12,5 +12,5 @@ export default {
   'board.cleanup.stuckItem': { ko: "'{title}' — 진행 중인데 아무도 하고 있지 않아 할 일로", en: "'{title}' — in progress but no one is on it, back to To do", ja: '「{title}」— 進行中なのに誰も作業していないのでTo doへ', zh: '“{title}”— 进行中却无人处理，退回待办' },
   'board.cleanup.noAssigneeItem': { ko: "'{title}' — 담당 없이 진행 중이라 할 일로", en: "'{title}' — in progress with no assignee, back to To do", ja: '「{title}」— 担当者なしで進行中なのでTo doへ', zh: '“{title}”— 无负责人却在进行中，退回待办' },
   'board.merge.from': { ko: "합친 카드: '{title}'", en: "Merged card: '{title}'", ja: '統合したカード:「{title}」', zh: '合并的卡片：“{title}”' },
-  'org.mergeTeams.chat': { ko: '{from} 팀을 {into} 팀으로 합쳤어요 (직원 {n}명 이동).', en: 'Merged the {from} team into {into} ({n} staff moved).', ja: '{from}チームを{into}チームに統合しました(社員{n}人を移動)。', zh: '已将 {from} 团队并入 {into}（调动 {n} 名员工）。' },
+  'org.mergeTeams.chat': { ko: '{from} 팀을 {into} 팀으로 합쳤어요 (직원 {n}명 이동).', en: 'Merged the {from} team into {into} ({n} staff moved).', ja: '{from}チームを{into}チームに統合しました(スタッフ{n}人を移動)。', zh: '已将 {from} 团队并入 {into}（调动 {n} 名员工）。' },
 } satisfies Record<string, Entry>

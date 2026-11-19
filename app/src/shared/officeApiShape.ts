@@ -41,6 +41,7 @@ export const OFFICE_METHODS = [
   'updateTask',
   'assignTask',
   'deleteTask',
+  'deleteTasks',
   'mergeTasks',
   'boardCleanupPlan',
   'startMeeting',

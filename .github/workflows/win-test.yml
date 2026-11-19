@@ -1,0 +1,34 @@
+# 윈도우 가상 PC에서 자동 테스트와 타입 검사를 돌려, 윈도우에서만 깨지는 곳(경로 구분자·줄바꿈·권한)을 찾는다.
+# 설치 파일은 만들지 않는다(그건 win-installer.yml). 결과는 로그로만 본다.
+name: Windows tests
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ['wincheck/**']
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: app/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: 타입 검사
+        run: pnpm typecheck
+      - name: 자동 테스트 (윈도우)
+        run: pnpm test

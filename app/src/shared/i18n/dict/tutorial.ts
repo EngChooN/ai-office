@@ -93,10 +93,10 @@ export default {
   'tutorial.task.result.summary': { ko: '로그인 화면을 만들고 입력 검사를 붙였어요.', en: 'Built the login screen and added input checks.', ja: 'ログイン画面を作り、入力チェックを付けました。', zh: '做好了登录页面并加上了输入校验。' },
   'tutorial.task.result.changes': { ko: '① 이메일·비밀번호 입력창 ② 비밀번호 보기/숨기기 ③ 틀렸을 때 안내 문구', en: '① Email and password fields ② Show/hide password ③ Message when input is wrong', ja: '① メール・パスワード入力欄 ② パスワード表示/非表示 ③ 間違えたときの案内文', zh: '① 邮箱和密码输入框 ② 显示/隐藏密码 ③ 输入错误时的提示' },
   'tutorial.task.result.who': { ko: '박디자(디자인), 최코드(구현)', en: 'Dana (design), Cody (build)', ja: 'デザ（デザイン）、コード（実装）', zh: '朴设计（设计）、崔代码（实现）' },
-  'tutorial.task.result.note': { ko: '연습용 결과예요. 진짜 업무에서는 직원이 한 일과 바뀐 파일이 여기에 정리돼요.', en: 'This is a practice result. In real work, what the staff did and the files they changed are summarized here.', ja: '練習用の結果です。実際の業務では、社員がしたことと変更したファイルがここにまとまります。', zh: '这是练习用的结果。实际工作中，员工做的事和改动的文件会整理在这里。' },
+  'tutorial.task.result.note': { ko: '연습용 결과예요. 진짜 업무에서는 직원이 한 일과 바뀐 파일이 여기에 정리돼요.', en: 'This is a practice result. In real work, what the staff did and the files they changed are summarized here.', ja: '練習用の結果です。実際の業務では、スタッフがしたことと変更したファイルがここにまとまります。', zh: '这是练习用的结果。实际工作中，员工做的事和改动的文件会整理在这里。' },
 
   // 시나리오 B — 회의 열기
-  'tutorial.meeting.b1.hint': { ko: '여러 직원의 생각이 필요하면 회의를 열어요.', en: 'When you need several staff members to weigh in, hold a meeting.', ja: '複数の社員の意見が必要なら会議を開きます。', zh: '需要多位员工的意见时，就召开会议。' },
+  'tutorial.meeting.b1.hint': { ko: '여러 직원의 생각이 필요하면 회의를 열어요.', en: 'When you need several staff members to weigh in, hold a meeting.', ja: '複数のスタッフの意見が必要なら会議を開きます。', zh: '需要多位员工的意见时，就召开会议。' },
   'tutorial.meeting.topic': { ko: '다음 주 우선순위 정하기', en: "Set next week's priorities", ja: '来週の優先順位を決める', zh: '确定下周的优先级' },
   'tutorial.meeting.b2.hint': { ko: "주제와 참석자를 확인하고 '회의 시작'을 눌러요.", en: "Check the topic and attendees, then press 'Start meeting'.", ja: '議題と参加者を確認して「会議開始」を押します。', zh: '确认议题和参会者后点击“开始会议”。' },
   'tutorial.meeting.say.lead': { ko: '지난주에 못 끝낸 로그인 화면부터 마무리하는 게 좋겠어요.', en: "Let's first finish the login screen we didn't get to last week.", ja: '先週終わらなかったログイン画面から仕上げるのがよさそうです。', zh: '最好先把上周没做完的登录页面收尾。' },
@@ -116,8 +116,8 @@ export default {
 
   // 축하 화면
   'tutorial.done.title': { ko: '해냈어요! 🎉', en: 'You did it! 🎉', ja: 'やりました！🎉', zh: '完成了！🎉' },
-  'tutorial.done.task': { ko: '업무를 맡기고, 승인하고, 결과까지 받았어요. 진짜 직원도 똑같이 일해요.', en: 'You assigned work, approved the plan, and got the result. Real staff work the same way.', ja: '業務を任せて、承認して、結果まで受け取りました。本物の社員も同じように働きます。', zh: '您分配了工作、批准了策划并拿到了结果。真正的员工也是这样工作的。' },
-  'tutorial.done.meeting': { ko: '회의를 열고, 결정을 할 일로 바꿨어요. 진짜 직원도 똑같이 의견을 내요.', en: 'You held a meeting and turned decisions into tasks. Real staff share their views the same way.', ja: '会議を開き、決定をタスクに変えました。本物の社員も同じように意見を出します。', zh: '您召开了会议并把决定变成了待办。真正的员工也会这样发表意见。' },
+  'tutorial.done.task': { ko: '업무를 맡기고, 승인하고, 결과까지 받았어요. 진짜 직원도 똑같이 일해요.', en: 'You assigned work, approved the plan, and got the result. Real staff work the same way.', ja: '業務を任せて、承認して、結果まで受け取りました。本物のスタッフも同じように働きます。', zh: '您分配了工作、批准了策划并拿到了结果。真正的员工也是这样工作的。' },
+  'tutorial.done.meeting': { ko: '회의를 열고, 결정을 할 일로 바꿨어요. 진짜 직원도 똑같이 의견을 내요.', en: 'You held a meeting and turned decisions into tasks. Real staff share their views the same way.', ja: '会議を開き、決定をタスクに変えました。本物のスタッフも同じように意見を出します。', zh: '您召开了会议并把决定变成了待办。真正的员工也会这样发表意见。' },
   'tutorial.done.reward': { ko: '회사 자금 +{amount}', en: 'Company funds +{amount}', ja: '会社資金 +{amount}', zh: '公司资金 +{amount}' },
   'tutorial.done.real': { ko: '진짜로 해 보기', en: 'Try it for real', ja: '本番でやってみる', zh: '正式试试' },
   'tutorial.done.other': { ko: '다른 시나리오 해 보기', en: 'Try the other scenario', ja: '別のシナリオを試す', zh: '试试另一个场景' },

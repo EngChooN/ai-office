@@ -35,7 +35,7 @@ export default {
   'staff.ctx.intro': {
     ko: '당신은 "AI Office" 사무실의 직원입니다. 사무실 도구(mcp__office__*)로 팀·프로젝트 현황을 보고 업무 보드에 할 일을 올릴 수 있습니다.',
     en: 'You are an employee of the "AI Office" office. With the office tools (mcp__office__*) you can see the team and project status and post to-dos on the task board.',
-    ja: 'あなたは「AI Office」オフィスの社員です。オフィスツール（mcp__office__*）でチーム・プロジェクトの状況を確認し、業務ボードにタスクを追加できます。',
+    ja: 'あなたは「AI Office」オフィスのスタッフです。オフィスツール（mcp__office__*）でチーム・プロジェクトの状況を確認し、業務ボードにタスクを追加できます。',
     zh: '你是“AI Office”办公室的员工。可以通过办公室工具（mcp__office__*）查看团队和项目状况，并在任务看板上添加待办事项。',
   },
   'staff.ctx.team': { ko: '소속 팀: {name}{lead}.', en: 'Team: {name}{lead}.', ja: '所属チーム: {name}{lead}。', zh: '所属团队：{name}{lead}。' },
@@ -76,7 +76,7 @@ export default {
   'staff.ctx.askGuide': {
     ko: '사용자에게 묻거나 결정·확인을 받아야 하면 답변 글에 질문을 적지 말고 AskUserQuestion 도구로 물으세요(가능하면 선택지 2~4개, 추천안은 첫 번째). 그래야 결재함에 질문으로 올라갑니다. 대표가 직접 고르지 않은 선택(추천안·대신 고른 답·스스로 정한 가정·다른 직원의 말)을 "대표가 정했다"고 쓰지 마세요. 그런 것은 "추천안(대표 미확인)"으로 쓰세요.',
     en: 'When you need to ask the user something or get a decision or confirmation, do not write the question in your reply — ask with the AskUserQuestion tool (2–4 options when possible, recommended one first). That way it shows up as a question in Approvals. Never write that the owner decided something the owner did not pick (a recommended option, an answer picked on their behalf, your own assumption, or another teammate\'s word); call it "recommended option (not confirmed by the owner)".',
-    ja: 'ユーザーに質問したり判断・確認をもらう必要があるときは、返答の文章に質問を書かず AskUserQuestion ツールで質問してください（できれば選択肢 2〜4 個、おすすめを最初に）。そうすると決裁箱に質問として表示されます。代表が直接選んでいない選択（おすすめ案・代わりに選ばれた回答・自分で決めた前提・他の社員の発言）を「代表が決めた」と書かないでください。それは「おすすめ案（代表未確認）」と書いてください。',
+    ja: 'ユーザーに質問したり判断・確認をもらう必要があるときは、返答の文章に質問を書かず AskUserQuestion ツールで質問してください（できれば選択肢 2〜4 個、おすすめを最初に）。そうすると決裁箱に質問として表示されます。代表が直接選んでいない選択（おすすめ案・代わりに選ばれた回答・自分で決めた前提・他のスタッフの発言）を「代表が決めた」と書かないでください。それは「おすすめ案（代表未確認）」と書いてください。',
     zh: '需要向用户提问或请其决定、确认时，不要把问题写在回复正文里，请用 AskUserQuestion 工具提问（尽量给出 2–4 个选项，推荐项放在第一个）。这样问题才会出现在审批箱中。代表没有亲自选择的内容（推荐方案、代为选择的回答、自己定的假设、其他员工的说法）不要写成“代表决定的”，请写作“推荐方案（代表未确认）”。',
   },
   'staff.refdocs.intro': {
@@ -99,7 +99,7 @@ export default {
   'staff.err.forceStopped': { ko: '엔진이 중단 요청에 응답하지 않아 세션을 강제로 닫았어요. 다음 지시 때 새로 열어요.', en: 'The engine did not answer the stop request, so the session was force-closed. It will reopen on the next instruction.', ja: 'エンジンが停止に応答しないため、セッションを強制終了しました。次の指示で開き直します。', zh: '引擎未响应停止请求，已强制关闭会话。下次指示时会重新打开。' },
   'staff.err.forceClosed': { ko: '엔진이 끊기 요청에 응답하지 않아 세션을 강제로 닫고 새로 시작해요.', en: 'The engine did not answer the interrupt, so the session was force-closed and will restart.', ja: 'エンジンが中断に応答しないため、セッションを強制終了して再開します。', zh: '引擎未响应中断请求，已强制关闭会话并重新开始。' },
   'staff.deny.equip': { ko: '장비 교체로 세션을 다시 시작합니다.', en: 'Restarting the session because of an equipment change.', ja: '装備の交換のためセッションを再開します。', zh: '因更换装备，会话将重新开始。' },
-  'staff.deny.fired': { ko: '직원이 퇴사했습니다.', en: 'The employee has left the company.', ja: '社員が退職しました。', zh: '该员工已离职。' },
+  'staff.deny.fired': { ko: '직원이 퇴사했습니다.', en: 'The employee has left the company.', ja: 'スタッフが退職しました。', zh: '该员工已离职。' },
   'staff.deny.cancelled': { ko: '요청이 취소되었습니다.', en: 'The request was cancelled.', ja: 'リクエストがキャンセルされました。', zh: '请求已取消。' },
   'staff.deny.withdrawn': {
     ko: '대표가 직접 새 지시를 했습니다. 이 결재는 철회되었으니, 필요하면 바뀐 내용으로 다시 결재를 올리세요.',
@@ -134,7 +134,7 @@ export default {
   'staff.msg.memberReportCut': {
     ko: '…(보고가 길어 {n}자를 생략했습니다. 전체는 단체방의 이 직원 보고나 업무 카드 결과에서 보세요)',
     en: '…({n} characters omitted because the report is long. See the full text in this teammate\'s report in the group chat or the task card result)',
-    ja: '…（報告が長いため {n} 文字を省略しました。全文はグループチャットのこの社員の報告か、業務カードの結果で確認してください）',
+    ja: '…（報告が長いため {n} 文字を省略しました。全文はグループチャットのこのスタッフの報告か、業務カードの結果で確認してください）',
     zh: '…（汇报过长，已省略 {n} 字。完整内容请在群聊中该员工的汇报或任务卡结果中查看）',
   },
   'staff.msg.proxyAnswer': {
@@ -467,7 +467,7 @@ export default {
     zh: '规划书（Markdown）：目的、需求、范围、完成标准',
   },
   'staff.tool.plan.detail': { ko: '담당자가 바로 시작할 수 있게 구체적으로', en: 'Concrete enough for the assignee to start right away', ja: '担当者がすぐ始められるよう具体的に', zh: '足够具体，让负责人能立即开始' },
-  'staff.tool.plan.assignee': { ko: '담당 직원 이름 (team 도구로 확인)', en: 'Assignee name (check with the team tool)', ja: '担当社員の名前（team ツールで確認）', zh: '负责员工姓名（用 team 工具确认）' },
+  'staff.tool.plan.assignee': { ko: '담당 직원 이름 (team 도구로 확인)', en: 'Assignee name (check with the team tool)', ja: '担当スタッフの名前（team ツールで確認）', zh: '负责员工姓名（用 team 工具确认）' },
   'staff.tool.plan.task': {
     ko: '이 기획안이 속한 업무 보드 카드 제목("[{mark}]" 뒤의 제목 그대로). 여러 업무를 받았으면 반드시 적는다',
     en: 'Title of the task board card this plan belongs to (exactly the title after "[{mark}]"). Required if you received several tasks',
@@ -520,10 +520,10 @@ export default {
   'staff.tool.add.desc': {
     ko: '업무 보드에 할 일 카드를 올린다. 담당을 적으면 그 직원에게 바로 맡겨지고(바쁘면 지금 일 다음 차례), 비우면 리더에게 간다',
     en: 'Post a to-do card on the task board. If you name an assignee it is handed to them right away (next in line if they are busy); if left empty it goes to the lead',
-    ja: '業務ボードにやることカードを追加する。担当を書くとその社員にすぐ任され（忙しければ今の仕事の次）、空ならリーダーに行く',
+    ja: '業務ボードにやることカードを追加する。担当を書くとそのスタッフにすぐ任され（忙しければ今の仕事の次）、空ならリーダーに行く',
     zh: '在任务看板上添加待办卡片。填写负责人则立即交给对方（对方忙时排在当前工作之后），留空则交给负责人',
   },
-  'staff.tool.add.assignee': { ko: '담당 직원 이름 (team 도구로 확인)', en: 'Assignee name (check with the team tool)', ja: '担当社員の名前（team ツールで確認）', zh: '负责员工姓名（用 team 工具确认）' },
+  'staff.tool.add.assignee': { ko: '담당 직원 이름 (team 도구로 확인)', en: 'Assignee name (check with the team tool)', ja: '担当スタッフの名前（team ツールで確認）', zh: '负责员工姓名（用 team 工具确认）' },
   'staff.tool.add.posted': { ko: '보드에 올렸습니다: {title}{note}', en: 'Posted to the board: {title}{note}', ja: 'ボードに追加しました: {title}{note}', zh: '已添加到看板：{title}{note}' },
   'staff.tool.add.postedNoMatch': {
     ko: ' (담당 "{name}"를 찾지 못해 배정하지 않았어요)',

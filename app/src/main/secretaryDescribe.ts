@@ -166,6 +166,14 @@ export function describeLines(method: OfficeMethod, args: unknown[], nameOf: Nam
     case 'startTasks':
       lines.push(L('secretary.d.task', { target: valueText('taskIds', a0, nameOf) }))
       break
+    case 'deleteTasks': {
+      const c = obj(a0)
+      const scope = [c.teamId ? nameOf(String(c.teamId)) ?? String(c.teamId) : '', c.labId ? nameOf(String(c.labId)) ?? String(c.labId) : ''].filter(Boolean).join(', ')
+      // 개수는 카드를 만들 때 앱이 센다 (모델이 적은 값이 아니다) — nameOf('doneCount:…')
+      const n = nameOf(`doneCount:${JSON.stringify([c.olderThanDays, c.teamId ?? null, c.labId ?? null])}`)
+      lines.push(L('secretary.d.deleteDone', { days: String(c.olderThanDays), scope: scope ? ` (${scope})` : '' }), ...(n ? [L('secretary.d.deleteDoneCount', { n })] : []), L('secretary.d.deleteDoneNote'))
+      break
+    }
     case 'mergeTasks':
       lines.push(L('secretary.d.keepCard', { target: id(a0) }), L('secretary.d.mergeCards', { list: valueText('taskIds', a1, nameOf) }))
       break

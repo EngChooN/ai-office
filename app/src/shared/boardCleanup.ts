@@ -12,6 +12,36 @@ export const STALE_DAYS: Partial<Record<TaskStatus, number>> = { todo: 30, doing
 /** 진행 중인데 아무도 하고 있지 않은 채 이만큼 지나면 '할 일'로 돌린다 */
 export const STUCK_DOING_DAYS = 1
 
+/** 완료 카드를 지우자고 제안하는 기준 — 완료한 지 이만큼 지난 카드 */
+export const DONE_DELETE_DAYS = 30
+
+/** deleteTasks 조건 — 완료 카드만 대상이다. 미완료·연습·기획 진행 중 카드는 어떤 조건이든 지우지 않는다 */
+export interface DeleteTasksCond {
+  /** 완료로 바뀐(마지막으로 손댄) 지 이 일수 이상 지난 카드 (1 이상) */
+  olderThanDays: number
+  teamId?: string | null
+  labId?: string | null
+}
+
+/** 조건에 맞는 '지워도 되는' 완료 카드 — 앱 핸들러·비서 카드 개수·정리안이 같은 규칙을 쓴다 */
+export function selectDoneToDelete(tasks: Task[], cond: DeleteTasksCond, now: number, busyTaskIds: ReadonlySet<string> = new Set()): Task[] {
+  const days = Number(cond.olderThanDays)
+  if (!Number.isFinite(days) || days < 1) return []
+  // 아직 끝나지 않은 카드가 부모로 삼고 있는 완료 카드는 남긴다 (하위 업무가 진행 중일 때)
+  const openParents = new Set(tasks.filter((x) => x.status !== 'done' && x.parentId).map((x) => x.parentId))
+  return tasks.filter(
+    (x) =>
+      x.status === 'done' &&
+      !x.isPractice &&
+      !busyTaskIds.has(x.id) &&
+      !openParents.has(x.id) &&
+      (!x.plan || x.plan.status === 'approved') &&
+      now - x.updatedAt >= days * DAY &&
+      (cond.teamId == null || x.teamId === cond.teamId) &&
+      (cond.labId == null || x.labId === cond.labId),
+  )
+}
+
 export type CleanupKind = 'close' | 'merge' | 'assign' | 'status'
 export interface CleanupItem {
   method: 'updateTask' | 'mergeTasks'
@@ -27,6 +57,8 @@ export interface BoardCleanupPlan {
   steps: CleanupStep[]
   /** 카드 한 장에 다 못 담아 뺀 항목 수 (다음 정리 때 다시 나온다) */
   omitted: number
+  /** 지워도 되는 오래된 완료 카드 — 묶음에 못 섞는 위험한 일이라 steps와 따로, 비서가 deleteTasks 카드 하나로 제안한다 (없으면 null) */
+  doneDelete: { count: number; oldestDays: number; args: [DeleteTasksCond] } | null
 }
 
 interface Input {
@@ -105,5 +137,8 @@ export function planBoardCleanup({ tasks, staff, labs, busyTaskIds, now }: Input
       else steps.push({ method: BATCH_METHOD, label: t(KIND_LABEL[kind]), items: chunk })
     }
   }
-  return { steps, omitted }
+  const cond: DeleteTasksCond = { olderThanDays: DONE_DELETE_DAYS }
+  const doomed = selectDoneToDelete(tasks, cond, now, busyTaskIds)
+  const doneDelete = doomed.length ? { count: doomed.length, oldestDays: Math.floor(Math.max(...doomed.map(daysIdle))), args: [cond] as [DeleteTasksCond] } : null
+  return { steps, omitted, doneDelete }
 }

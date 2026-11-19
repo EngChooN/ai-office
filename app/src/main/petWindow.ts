@@ -296,6 +296,7 @@ export class PetWindows {
   /** 캐릭터 창에 펼침 창이 보이는지 알린다 (완료 ✓ 배지 읽음 처리) */
   private sendPanelVisible(isVisible: boolean) {
     if (this.pet && !this.pet.isDestroyed()) this.pet.webContents.send('pet:panelVisible', isVisible)
+    if (this.panel && !this.panel.isDestroyed()) this.panel.webContents.send('pet:panelVisible', isVisible)
   }
 
   private showPanel() {
