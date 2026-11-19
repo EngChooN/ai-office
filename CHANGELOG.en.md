@@ -11,6 +11,20 @@ Writing rules
 - Leave out: internal or development matters, re-fixes of features added in the same version, how a security hole worked (if needed, one line on the result), minor wording or spacing tweaks.
 - Couldn't do it before → new feature; easier than before → improvement; was working wrongly → bug fix.
 
+## [1.5.1] - 2026-11-20
+
+### At a glance
+- **Fixed** Attached photos broken on another PC's screen
+- **Fixed** Downloads and previews blocked on another PC
+- **Better** Failed downloads now hint to check the other PC's version
+
+### Improvements
+- When a download fails, the message now suggests checking that the other PC is also up to date.
+
+### Bug fixes
+- Fixed attached photos from staff showing as broken when viewing another PC.
+- Fixed result downloads and previews being refused with "no permission" when connected to another PC. Both connected PCs must be on 1.5.1.
+
 ## [1.5.0] - 2026-11-19
 
 ### At a glance
