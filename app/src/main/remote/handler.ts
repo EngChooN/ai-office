@@ -57,7 +57,8 @@ export interface RemoteContext {
 }
 
 /** 피어 토큰이 닿을 수 있는 경로 (허용 목록 — 여기 없으면 403 scope_denied) */
-export const isPeerPathAllowed = (path: string) => path === '/v2/events' || path === '/v2/call' || path.startsWith('/v2/peer/')
+// 첨부·결과물 받기(/v2/files·/v2/artifacts)는 '화면 보기' 허락을 받은 열쇠만 — 그 허락 검사는 v2routes가 한다
+export const isPeerPathAllowed = (path: string) => path === '/v2/events' || path === '/v2/call' || path.startsWith('/v2/peer/') || /^\/v2\/(files|artifacts)\//.test(path)
 
 const RETRY_SEC_WHEN_UNAVAILABLE = 5
 const STATUS_PATH = '/v1/status'

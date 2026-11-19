@@ -1095,6 +1095,8 @@ test('0단계 3: hello가 프로토콜 버전·허락 상태를 준다 — 기�
     const perms = async (token: string, arg: object = {}) => (await v2call(port, token, { method: 'hello', args: [{ capabilities: [], ...arg }] })).body.result
     assert.deepEqual([(await perms(t.token)).protocol, (await perms(t.token)).permissions], [2, { key: 'phone', view: 'granted' }])
     assert.deepEqual((await perms(k.viewA.token)).permissions, { key: 'peer', view: 'granted' })
+    // 화면 보기 허락을 받은 PC 열쇠는 파일·결과물 받기 길까지 닿는다 (예전엔 허용 목록에 없어 403 → 사진 깨짐·내려받기 실패)
+    for (const u of ['/v2/files/11111111-2222-4333-8444-555555555555', '/v2/artifacts/11111111-2222-4333-8444-555555555555']) assert.equal((await req(port, { path: u, token: k.viewA.token })).body.error, 'file_not_found', u)
     assert.deepEqual((await perms(k.pcOnly.token)).permissions, { key: 'peer', view: 'none' })
     assert.deepEqual(asked, [])
     assert.deepEqual((await perms(k.pcOnly.token, { requestView: true })).permissions, { key: 'peer', view: 'pending' })

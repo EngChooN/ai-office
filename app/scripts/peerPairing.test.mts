@@ -251,13 +251,13 @@ test('속도 제한은 토큰 칸마다 따로 센다', () => {
   assert.equal(g.rateLimit(NOW, 'phone'), null)
 })
 
-test('preflight: 피어 토큰은 허용 목록 밖 경로(v1·/v2/attachments·/v2/files…)에서 403 scope_denied', () => {
+test('preflight: 피어 토큰은 허용 목록 밖 경로(v1·/v2/attachments…)에서 403 — 파일·결과물 받기는 허용(허락 검사는 v2routes) scope_denied', () => {
   const g = slotGuard()
   const phone = g.rotate().token
   const peer = g.addPeerSlot('B', NOW)!.token
   const run = (url: string, token: string) => preflight({ url, authorization: `Bearer ${token}`, ip: '1.1.1.1' }, { guard: g, now: NOW, isReady: true })
-  const allowed = ['/v2/events', '/v2/call', '/v2/peer/jobs', '/v2/peer/staff', '/v2/peer/jobs/abc/cancel']
-  const denied = ['/v1/status', '/v1/decisions', '/v1/instructions', '/v1/decisions/x', '/v2/attachments', '/v2/files/11111111-2222-4333-8444-555555555555', '/v2/other', '/v2/pair/hello']
+  const allowed = ['/v2/events', '/v2/call', '/v2/peer/jobs', '/v2/peer/staff', '/v2/peer/jobs/abc/cancel', '/v2/files/11111111-2222-4333-8444-555555555555', '/v2/artifacts/11111111-2222-4333-8444-555555555555/2']
+  const denied = ['/v1/status', '/v1/decisions', '/v1/instructions', '/v1/decisions/x', '/v2/attachments', '/v2/other', '/v2/filesx', '/v2/pair/hello']
   for (const u of allowed) assert.equal(run(u, peer), null, u)
   for (const u of denied) assert.equal(run(u, peer)?.body.error, 'scope_denied', u)
   // 휴대폰 토큰은 그대로 (v1·v2 모두)
