@@ -29,9 +29,8 @@ import { ProgressLine, WaitingCards } from './ProgressLine'
 import { statusMetaOf } from './status'
 import { progressesForRoom } from '@shared/progressView'
 import { AlwaysApproveButton } from './AutoApprove'
-import { BubbleMenu, ChatSearch, DeliveryLine, PlanNotice, ReplyBar, ReplyQuote, ReportActions, ReservationCards, ReserveMenu, reservationInput, useSearchHighlight } from './ChatExtras'
+import { BubbleMenu, ChatSearch, DeliveryLine, PlanNotice, ReplyBar, ReplyQuote, ReportActions, ReservationCards, ReserveMenu, reservationInput, useFindShortcut, useSearchHighlight } from './ChatExtras'
 import { firstUnread, roomKey, seenOf } from '@shared/chatUnread'
-import { keyName } from '@/lib/keyName'
 import { DuoIcon, IconText } from '@/components/duo-icon'
 import { splitLeadingIcon } from '@shared/iconText'
 import { doingOf, stripHead, unreadText, useChatGroups, useChatRoom, useRoomEntries, useRoomPeople } from './chatRoomHooks'
@@ -89,16 +88,7 @@ export function ChatPage() {
     if (searchRequest !== firstRequest.current) setIsSearchOpen(true)
   }, [searchRequest])
   const [searchQuery, setSearchQuery] = useState('')
-  useEffect(() => {
-    const onKey = (e: globalThis.KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && keyName(e) === 'f') {
-        e.preventDefault()
-        setIsSearchOpen(true)
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [])
+  useFindShortcut(() => setIsSearchOpen(true))
   // 데스크톱 왼쪽 방 목록: 행 폭을 재서 좁으면 56px 띠로 (회의실 화면과 같은 판정)
   const listLayout = useRoomListLayout()
   const { rowRef, rowWidth, mode: listMode } = listLayout

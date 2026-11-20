@@ -1,11 +1,12 @@
-import { useEffect } from 'react'
-import { Trash2Icon } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
+import { SearchIcon, Trash2Icon } from 'lucide-react'
 import { useShallow } from 'zustand/react/shallow'
 import { Button } from '@/components/ui/button'
 import { Page } from '@/components/ui/page'
 import { useOffice } from '@/store'
 import { EMPTY_SECRETARY, formatTokens } from '@shared/types'
-import { ExampleChips, SecretaryComposer, SecretaryMessages } from './SecretaryChat'
+import { ExampleChips, SecretaryComposer, SecretaryMessages, SecretarySearch, type SecretaryFocus } from './SecretaryChat'
+import { useFindShortcut } from '../ChatExtras'
 import { SecretaryFace } from './SecretaryFace'
 import { t } from '@shared/i18n'
 
@@ -33,6 +34,12 @@ export function SecretaryPage() {
   useEffect(() => {
     void window.office.secretaryOpened()
   }, [])
+  // 대화 찾기 (#18): 위 🔍 또는 ⌘F·Ctrl+F — 단체방 찾기 줄과 같은 모양·키
+  const [isSearchOpen, setIsSearchOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [focus, setFocus] = useState<SecretaryFocus | null>(null)
+  useFindShortcut(() => setIsSearchOpen(true))
+  const goTo = useCallback((id: number) => setFocus((f) => ({ id, seq: (f?.seq ?? 0) + 1 })), [])
   const handleClear = () => {
     if (window.confirm(t('secretary.clearConfirm'))) void window.office.secretaryClear()
   }
@@ -44,14 +51,24 @@ export function SecretaryPage() {
       actions={
         <div className="flex items-center gap-2">
           <span className="text-muted-foreground text-xs tabular-nums">{t('secretary.todayTokens', { n: formatTokens(usageTodayTokens) })}</span>
+          <Button size="sm" variant="ghost" className="size-8 p-0" onClick={() => setIsSearchOpen((v) => !v)} disabled={!hasMessages} title={t('chat.search.open')} aria-label={t('chat.search.open')}>
+            <SearchIcon />
+          </Button>
           <Button size="sm" variant="ghost" onClick={handleClear} disabled={!hasMessages}>
             <Trash2Icon /> {t('secretary.clear')}
           </Button>
         </div>
       }
     >
+      {isSearchOpen && (
+        <div className="border-b px-6 py-2 phone:px-4">
+          <div className="mx-auto max-w-3xl">
+            <SecretarySearch onClose={() => setIsSearchOpen(false)} onQuery={setSearchQuery} onGo={goTo} />
+          </div>
+        </div>
+      )}
       <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4 phone:px-4">
-        <SecretaryMessages className="mx-auto max-w-3xl" empty={<Empty />} />
+        <SecretaryMessages className="mx-auto max-w-3xl" empty={<Empty />} searchQuery={isSearchOpen ? searchQuery : ''} focus={focus} />
       </div>
       <div className="flex flex-col gap-2 border-t px-6 py-3 phone:px-4">
         {isLimited && <p className="text-status-waiting text-xs">{t('secretary.limited')}</p>}

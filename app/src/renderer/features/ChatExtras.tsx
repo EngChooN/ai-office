@@ -1,11 +1,13 @@
 // 대화방 메신저 기능 부품: 처리 상태 줄 · 답장 인용 · 보고 빠른 버튼 · 기획안 카드 · 예약 보내기 · 대화 찾기
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { ChevronDownIcon, ChevronUpIcon, CopyIcon, ReplyIcon, SearchIcon, XIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { keyName } from '@/lib/keyName'
 import { useOffice } from '@/store'
 import { fmtDate, t } from '@shared/i18n'
 import { findRoom } from '@shared/chatRooms'
+import { stepIndex } from '@shared/chatFind'
 import { useChatGroups } from './chatRoomHooks'
 import type { ChatDelivery, ChatMessage, ChatReservation, ChatReservationInput, ChatSearchHit, Staff } from '@shared/types'
 import { DuoIcon, IconText } from '@/components/duo-icon'
@@ -466,18 +468,10 @@ export function ChatSearch({ room, onClose, onQuery }: { room: string | undefine
   }, [query, scope, room])
   useEffect(() => () => onQuery(''), [onQuery])
   const move = (step: number) => {
-    if (hits.length === 0) return
-    const next = (index + step + hits.length) % hits.length
+    const next = stepIndex(index, step, hits.length)
+    if (next === null) return
     setIndex(next)
     void goToMessage(hits[next].message.id)
-  }
-  const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.nativeEvent.isComposing) return
-    if (e.key === 'Escape') return onClose()
-    if (e.key === 'Enter' && scope === 'room') {
-      e.preventDefault()
-      move(e.shiftKey ? -1 : 1)
-    }
   }
   const roomName = (r: string | undefined) => findRoom(r, teams, labs, groups)?.name ?? t('chat.room.allName')
   const scopeBtn = (value: 'room' | 'all', label: string) => (
@@ -487,22 +481,10 @@ export function ChatSearch({ room, onClose, onQuery }: { room: string | undefine
   )
   return (
     <div className="relative mt-2">
-      <div className="focus-within:ring-ring/50 flex items-center gap-2 rounded-md border px-2 py-1 text-sm focus-within:ring-2">
-        <SearchIcon className="text-muted-foreground size-4 shrink-0" />
-        <input autoFocus value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={onKeyDown} placeholder={t('chat.search.placeholder')} className="min-w-0 flex-1 bg-transparent text-sm outline-none" />
-        {query.trim() && scope === 'room' && (
-          <span className="text-muted-foreground shrink-0 text-[11px] tabular-nums">{hits.length ? t('chat.search.count', { total: hits.length, index: index + 1 }) : t('chat.search.none')}</span>
-        )}
-        {scope === 'room' && (
-          <>
-            <button type="button" onClick={() => move(-1)} title={t('chat.search.prev')} className="text-muted-foreground hover:text-foreground"><ChevronUpIcon className="size-4" /></button>
-            <button type="button" onClick={() => move(1)} title={t('chat.search.next')} className="text-muted-foreground hover:text-foreground"><ChevronDownIcon className="size-4" /></button>
-          </>
-        )}
+      <SearchField query={query} onChange={setQuery} total={hits.length} index={index} onMove={scope === 'room' ? move : undefined} onClose={onClose}>
         {scopeBtn('room', t('chat.search.thisRoom'))}
         {scopeBtn('all', t('chat.search.allRooms'))}
-        <button type="button" onClick={onClose} title={t('chat.search.close')} className="text-muted-foreground hover:text-foreground"><XIcon className="size-4" /></button>
-      </div>
+      </SearchField>
       {scope === 'all' && query.trim() && (
         <div className="bg-popover absolute inset-x-0 top-full z-20 mt-1 flex max-h-80 flex-col gap-1 overflow-y-auto rounded-lg border p-1 shadow-lg">
           {hits.length === 0 && <span className="text-muted-foreground px-2 py-1 text-xs">{t('chat.search.none')}</span>}
@@ -518,6 +500,55 @@ export function ChatSearch({ room, onClose, onQuery }: { room: string | undefine
       )}
     </div>
   )
+}
+
+/**
+ * 찾기 줄 겉모양 (단체방·비서 대화가 함께 쓴다): 입력 · "n개 중 m번째" · ↑↓ · children(범위 버튼 등) · 닫기.
+ * onMove가 있을 때만 하나씩 이동한다 — Enter·↓는 다음(더 예전), Shift+Enter·↑는 이전, Esc는 닫기
+ */
+export function SearchField({ query, onChange, total, index, onMove, onClose, children }: { query: string; onChange: (q: string) => void; total: number; index: number; onMove?: (step: number) => void; onClose: () => void; children?: ReactNode }) {
+  const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.nativeEvent.isComposing) return
+    if (e.key === 'Escape') return onClose()
+    if (!onMove) return
+    const step = e.key === 'Enter' ? (e.shiftKey ? -1 : 1) : e.key === 'ArrowDown' ? 1 : e.key === 'ArrowUp' ? -1 : 0
+    if (!step) return
+    e.preventDefault()
+    onMove(step)
+  }
+  return (
+    <div className="focus-within:ring-ring/50 flex items-center gap-2 rounded-md border px-2 py-1 text-sm focus-within:ring-2">
+      <SearchIcon className="text-muted-foreground size-4 shrink-0" />
+      <input autoFocus value={query} onChange={(e) => onChange(e.target.value)} onKeyDown={onKeyDown} placeholder={t('chat.search.placeholder')} className="min-w-0 flex-1 bg-transparent text-sm outline-none" />
+      {query.trim() && onMove && (
+        <span className="text-muted-foreground shrink-0 text-[11px] tabular-nums">{total ? t('chat.search.count', { total, index: index + 1 }) : t('chat.search.none')}</span>
+      )}
+      {onMove && (
+        <>
+          <button type="button" onClick={() => onMove(-1)} title={t('chat.search.prev')} aria-label={t('chat.search.prev')} className="text-muted-foreground hover:text-foreground"><ChevronUpIcon className="size-4" /></button>
+          <button type="button" onClick={() => onMove(1)} title={t('chat.search.next')} aria-label={t('chat.search.next')} className="text-muted-foreground hover:text-foreground"><ChevronDownIcon className="size-4" /></button>
+        </>
+      )}
+      {children}
+      <button type="button" onClick={onClose} title={t('chat.search.close')} aria-label={t('chat.search.close')} className="text-muted-foreground hover:text-foreground"><XIcon className="size-4" /></button>
+    </div>
+  )
+}
+
+/** ⌘F·Ctrl+F로 찾기 줄을 연다 (이 화면이 떠 있는 동안만) */
+export function useFindShortcut(onOpen: () => void) {
+  const ref = useRef(onOpen)
+  ref.current = onOpen
+  useEffect(() => {
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && keyName(e) === 'f') {
+        e.preventDefault()
+        ref.current()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 }
 
 function Highlighted({ text, query }: { text: string; query: string }) {

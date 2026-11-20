@@ -2,6 +2,7 @@ import {
   memo,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type KeyboardEvent,
@@ -28,6 +29,8 @@ import { fmtDate, t } from "@shared/i18n";
 import { QUEUE_MAX } from "@shared/secretaryQueue";
 import { isResumable, type SecretaryResumeFail } from "@shared/secretaryProgress";
 import { IS_TOUCH } from "@/shell";
+import { findSecretaryHits, stepIndex } from "@shared/chatFind";
+import { SearchField, useSearchHighlight } from "../ChatExtras";
 
 // 비서 대화: 단체방 말풍선·입력창과 같은 모양 (secretary-ui.md 2·3절). 비서 화면과 ⌘K 빠른 창이 함께 쓴다
 
@@ -240,15 +243,25 @@ function MyBubble({ message: m }: { message: SecretaryMessage }) {
   );
 }
 
-/** 대화 목록 (아래로 스크롤 고정). since를 주면 그 뒤 대화만 (빠른 창) */
+/** 찾기 결과로 갈 말풍선 — seq는 같은 말풍선으로 다시 갈 때도 움직이게 */
+export interface SecretaryFocus {
+  id: number;
+  seq: number;
+}
+
+/** 대화 목록 (아래로 스크롤 고정). since를 주면 그 뒤 대화만 (빠른 창). searchQuery·focus는 비서 화면의 대화 찾기 */
 export function SecretaryMessages({
   since,
   className,
   empty,
+  searchQuery = "",
+  focus = null,
 }: {
   since?: number;
   className?: string;
   empty?: React.ReactNode;
+  searchQuery?: string;
+  focus?: SecretaryFocus | null;
 }) {
   const { messages, isBusy, activity, summary } = useSecretary();
   const shown = since ? messages.filter((m) => m.ts >= since) : messages;
@@ -257,13 +270,26 @@ export function SecretaryMessages({
   useLayoutEffect(() => {
     endRef.current?.scrollIntoView({ block: "end" });
   }, [shown.length, isBusy, shown.at(-1)?.card?.status]);
+  // 대화 찾기: 찾는 말 표시 · 결과로 고른 말풍선으로 스크롤하고 잠깐 강조 (단체방과 같은 방식)
+  const [box, setBox] = useState<HTMLDivElement | null>(null);
+  useSearchHighlight(box, searchQuery, shown);
+  const [flashId, setFlashId] = useState<number | null>(null);
+  useEffect(() => {
+    if (!focus) return;
+    box
+      ?.querySelector(`[data-secretary-id="${focus.id}"]`)
+      ?.scrollIntoView({ block: "center" });
+    setFlashId(focus.id);
+    const timer = setTimeout(() => setFlashId(null), 1600);
+    return () => clearTimeout(timer);
+  }, [focus, box]);
   const lastMine = [...messages].reverse().find((m) => m.role === "me");
   const retry = lastMine
     ? () => void window.office.secretaryAsk(lastMine.text)
     : undefined;
   if (shown.length === 0 && !isBusy) return <>{empty}</>;
   return (
-    <div className={cn("flex flex-col gap-3", className)}>
+    <div ref={setBox} className={cn("flex flex-col gap-3", className)}>
       {summary && !since && (
         <details className="text-muted-foreground bg-muted/50 rounded-xl px-3 py-1.5 text-xs">
           <summary className="cursor-pointer select-none">
@@ -273,11 +299,20 @@ export function SecretaryMessages({
         </details>
       )}
       {shown.map((m) => (
-        <SecretaryBubble
+        <div
           key={m.id}
-          message={m}
-          onRetry={m.isError ? retry : undefined}
-        />
+          data-secretary-id={m.id}
+          className={cn(
+            "rounded-2xl transition-shadow",
+            flashId === m.id &&
+              "ring-primary/70 ring-offset-background ring-2 ring-offset-4",
+          )}
+        >
+          <SecretaryBubble
+            message={m}
+            onRetry={m.isError ? retry : undefined}
+          />
+        </div>
       ))}
       {isBusy && (
         <div className="flex items-center gap-2">
@@ -289,6 +324,61 @@ export function SecretaryMessages({
       )}
       <div ref={endRef} />
     </div>
+  );
+}
+
+const SEARCH_GO_DELAY_MS = 250;
+
+/** 비서 대화 찾기 줄 (#18): 단체방 찾기 줄을 그대로 쓰고, 결과는 화면에 있는 비서 대화에서 바로 찾는다 */
+export function SecretarySearch({
+  onClose,
+  onQuery,
+  onGo,
+}: {
+  onClose: () => void;
+  onQuery: (q: string) => void;
+  onGo: (id: number) => void;
+}) {
+  const { messages } = useSecretary();
+  const [query, setQuery] = useState("");
+  const [index, setIndex] = useState(0);
+  const hits = useMemo(
+    () => findSecretaryHits(messages, query),
+    [messages, query],
+  );
+  // 새 대화가 와서 결과가 줄어도 칸을 넘지 않게
+  const current = Math.min(index, Math.max(hits.length - 1, 0));
+  const hitsRef = useRef(hits);
+  hitsRef.current = hits;
+  useEffect(() => {
+    const q = query.trim();
+    onQuery(q);
+    setIndex(0);
+    if (!q) return;
+    // 치는 동안 매번 끌려가지 않게 잠깐 멈췄을 때 가장 최근 결과로
+    const timer = setTimeout(() => {
+      const first = hitsRef.current[0];
+      if (first !== undefined) onGo(first);
+    }, SEARCH_GO_DELAY_MS);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 찾는 말이 바뀔 때만
+  }, [query]);
+  useEffect(() => () => onQuery(""), [onQuery]);
+  const move = (step: number) => {
+    const next = stepIndex(current, step, hits.length);
+    if (next === null) return;
+    setIndex(next);
+    onGo(hits[next]);
+  };
+  return (
+    <SearchField
+      query={query}
+      onChange={setQuery}
+      total={hits.length}
+      index={current}
+      onMove={move}
+      onClose={onClose}
+    />
   );
 }
 
