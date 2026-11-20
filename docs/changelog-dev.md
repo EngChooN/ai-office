@@ -55,6 +55,15 @@
 - Codex `office` 도구 대기 시간 86400초(`codexMcp.ts`) — 협업 승인을 기다리며 끊기지 않게.
 - 바탕화면 비서(`deskPet.ts` `petTargets`)·보드·비서(`secretary.ts`)·원격(`remote/v2.ts`)이 단체방을 인식. 시험: `collabApproval`·`collabPairs`·`chatRooms`·`helpRequest` 등.
 
+
+## [1.5.2] - 2026-11-20
+
+### 새 기능
+- 비서 대화 찾기(#18, 설치본 빌드): `ChatExtras.tsx`에 단체방과 함께 쓰는 `SearchField`(입력·n개 중 m번째·↑↓·닫기)와 `useFindShortcut`(⌘F·Ctrl+F, 화면이 떠 있는 동안만)을 뽑아 `SecretaryPage`(🔍 버튼·찾기 줄)·`SecretaryChat`(`SecretarySearch`·`SecretaryMessages`의 `searchQuery`·`focus`, 결과 말풍선 스크롤·강조)가 쓴다. 찾기 규칙은 `shared/chatFind.ts`(`findSecretaryHits`·`stepIndex`), 시험 `chatFind.test.mts`.
+
+### 개선
+- 단체방 찾기도 `SearchField`로 바뀌어 ↑↓ 키로 이동(Enter·Shift+Enter 유지).
+
 ## [1.4.6] - 2026-11-19
 
 ### 새 기능

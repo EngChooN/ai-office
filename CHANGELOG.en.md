@@ -11,6 +11,19 @@ Writing rules
 - Leave out: internal or development matters, re-fixes of features added in the same version, how a security hole worked (if needed, one line on the result), minor wording or spacing tweaks.
 - Couldn't do it before → new feature; easier than before → improvement; was working wrongly → bug fix.
 
+## [1.5.2] - 2026-11-20
+
+### At a glance
+- **New** Find in conversation with ⌘F in the secretary chat
+- **Better** ↑↓ keys move between results in group chat search
+- **Better** Same find bar in secretary and group chat
+
+### New features
+- You can now search past messages in the secretary chat with ⌘F (Ctrl+F on Windows) or the magnifier button at the top. The search term is highlighted and ↑↓ jump between results.
+
+### Improvements
+- In group chat search, the ↑↓ keys now move between results one by one.
+
 ## [1.5.1] - 2026-11-20
 
 ### At a glance
