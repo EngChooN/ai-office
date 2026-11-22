@@ -561,7 +561,10 @@ const port: Port = {
       return ok(impl[msg.method]?.(...(msg.args as never[])))
     }
     if (msg.type === 'upload') return ok({ id: crypto.randomUUID(), name: msg.name, mime: msg.mime, size: Math.floor((msg.base64.length * 3) / 4) })
-    if (msg.type === 'download') return ok(msg.name)
+    // 예전 PC(1.4.5 전)는 결과물 받기 주소를 몰라 not_found로 답한다
+    if ((msg.type === 'read' || (msg.type === 'download' && msg.kind === 'artifact')) && params.get('pc') === 'old') return fail(404, 'not_found', '찾을 수 없어요')
+    if (msg.type === 'read') return ok({ name: 'preview.html', text: '<h1>미리보기 결과물</h1><p>휴대폰에서 받은 원본이에요.</p>' })
+    if (msg.type === 'download') return ok(msg.name || `${msg.fileId}.html`)
   },
 }
 window.OfficeBridge = port

@@ -383,8 +383,14 @@ class RemoteClient(
     }
 
     /** GET /v2/files/{id} — 사무실 파일 바이트 (WebView의 office-file 주소를 대신 받는다) */
-    suspend fun v2File(id: String): ApiResult<FileBytes> = v2Slots.withPermit { exchange(::callHttp, { e ->
-        request(urlV2(e, "files", id)).get().build()
+    suspend fun v2File(id: String): ApiResult<FileBytes> = v2Bytes("files", id)
+
+    /** GET /v2/artifacts/{id}[/{버전}] — 결과물 원본 (버전 null = 최신). 예전 PC(1.4.5 전)는 이 주소를 몰라 not_found로 답한다 */
+    suspend fun v2Artifact(id: String, version: Int?): ApiResult<FileBytes> =
+        if (version == null) v2Bytes("artifacts", id) else v2Bytes("artifacts", id, version.toString())
+
+    private suspend fun v2Bytes(vararg segments: String): ApiResult<FileBytes> = v2Slots.withPermit { exchange(::callHttp, { e ->
+        request(urlV2(e, *segments)).get().build()
     }) { res ->
         res.use {
             if (!it.isSuccessful) return@use ApiResult.Fail(mapV2Error(it.code, it.body?.string()))

@@ -25,6 +25,7 @@ import android.util.Base64
 import android.view.ViewGroup
 import android.webkit.GeolocationPermissions
 import android.webkit.JsPromptResult
+import android.webkit.MimeTypeMap
 import android.webkit.JsResult
 import android.webkit.PermissionRequest
 import android.webkit.ValueCallback
@@ -75,6 +76,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 
 const val ASSET_HOST = "appassets.androidplatform.net"
 const val ASSET_ORIGIN = "https://$ASSET_HOST"
@@ -415,16 +418,37 @@ private class Bridge(
                 )
             }
             is BridgeRequest.Download -> scope.launch {
+                val res = if (r.isArtifact) repo.v2Artifact(r.fileId, r.version) else repo.v2File(r.fileId)
                 post(
-                    when (val res = repo.v2File(r.fileId)) {
-                        is ApiResult.Ok -> {
-                            val name = r.name.ifBlank { r.fileId }.replace(Regex("[/\\\\]"), "_").take(120)
-                            val saved = withContext(Dispatchers.IO) { saveToDownloads(activity, name, res.value.mime, res.value.bytes) }
+                    when (res) {
+                        is ApiResult.Fail -> BridgeOut.fail(r.id, res.error)
+                        is ApiResult.Ok -> if (r.isArtifact && res.value.bytes.size > ARTIFACT_MAX) {
+                            BridgeOut.fail(r.id, 413, "payload_too_large", S.get(R.string.bridge_save_failed))
+                        } else {
+                            val name = downloadName(res.value.disposition, r.name, r.fileId)
+                            // 결과물은 PC가 text/plain으로 보낸다 — 그대로 두면 .html·.md 뒤에 .txt가 붙을 수 있어 확장자로 고른다
+                            val mime = if (r.isArtifact) MimeTypeMap.getSingleton().getMimeTypeFromExtension(name.substringAfterLast('.', "").lowercase()) ?: "text/plain" else res.value.mime
+                            val saved = withContext(Dispatchers.IO) { saveToDownloads(activity, name, mime, res.value.bytes) }
                             if (saved) Toast.makeText(activity, S.get(R.string.download_saved, name), Toast.LENGTH_SHORT).show()
                             if (saved) BridgeOut.ok(r.id, kotlinx.serialization.json.JsonPrimitive(name))
                             else BridgeOut.fail(r.id, 0, "save_failed", S.get(R.string.bridge_save_failed))
                         }
+                    },
+                )
+            }
+            is BridgeRequest.Read -> scope.launch {
+                val res = repo.v2Artifact(r.fileId, r.version)
+                post(
+                    when (res) {
                         is ApiResult.Fail -> BridgeOut.fail(r.id, res.error)
+                        is ApiResult.Ok -> if (res.value.bytes.size > ARTIFACT_MAX) {
+                            BridgeOut.fail(r.id, 413, "payload_too_large", S.get(R.string.bridge_send_failed))
+                        } else {
+                            BridgeOut.ok(r.id, buildJsonObject {
+                                put("name", downloadName(res.value.disposition, "", r.fileId))
+                                put("text", res.value.bytes.toString(Charsets.UTF_8))
+                            })
+                        }
                     },
                 )
             }

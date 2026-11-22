@@ -10,8 +10,6 @@ export const IS_MOBILE_SHELL = SHELL === 'mobile'
 /** 다른 기기에서 원격으로 보는 화면인지 (휴대폰·다른 PC 원격 창) — PC 전용 기능(폴더 고르기·로그인·연결 설정 등)을 잠근다.
  * scripts/workspace.test.mts가 IS_MOBILE_SHELL을 레이아웃 파일 밖에서 쓰지 않는지 확인한다 */
 export const IS_REMOTE_SCREEN = SHELL !== 'desktop'
-/** 결과물을 이 화면에서 열 수 있는지 — PC 창과 다른 PC 원격 창은 되고, 휴대폰 셸은 결과물 받기를 아직 모른다 */
-export const CAN_OPEN_ARTIFACT = SHELL !== 'mobile'
 
 /** 손가락으로 쓰는 기기인지 (모바일 빌드에서만 참 — 데스크톱 문구·키는 그대로) */
 export const IS_TOUCH = IS_MOBILE_SHELL && typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches

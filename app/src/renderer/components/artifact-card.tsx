@@ -3,11 +3,11 @@ import { FileCode2Icon, FileTextIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ArtifactViewer, actionFailureKey } from '@/components/artifact-viewer'
 import { cn } from '@/lib/utils'
-import { CAN_OPEN_ARTIFACT, IS_REMOTE_SCREEN } from '@/shell'
+import { IS_REMOTE_SCREEN } from '@/shell'
 import type { ArtifactRef } from '@shared/types'
 import { t } from '@shared/i18n'
 
-/** 아티팩트 한 장: 종류 아이콘·제목·종류·버전·열기 (휴대폰 셸은 열기 대신 PC 안내) */
+/** 아티팩트 한 장: 종류 아이콘·제목·종류·버전·열기 (원격 화면은 미리보기·내려받기) */
 export function ArtifactCard({ artifact: a, onOpen }: { artifact: ArtifactRef; onOpen: (button: HTMLButtonElement) => void }) {
   const Icon = a.kind === 'html' ? FileCode2Icon : FileTextIcon
   const [downloadError, setDownloadError] = useState<ReturnType<typeof actionFailureKey> | null>(null)
@@ -25,23 +25,18 @@ export function ArtifactCard({ artifact: a, onOpen }: { artifact: ArtifactRef; o
         </p>
         <p className="text-muted-foreground truncate text-[11px]">
           {t(`artifact.kind.${a.kind}`)} · v{a.version}
-          {!CAN_OPEN_ARTIFACT && ` · ${t('artifact.pcOnlyHint')}`}
         </p>
       </div>
-      {!CAN_OPEN_ARTIFACT ? (
-        <span className="text-muted-foreground shrink-0">{t('artifact.pcOnly')}</span>
-      ) : (
-        <div className="flex shrink-0 gap-1.5">
-          <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" onClick={(e) => onOpen(e.currentTarget)}>
-            {IS_REMOTE_SCREEN ? t('artifact.preview') : t('artifact.open')}
+      <div className="flex shrink-0 gap-1.5">
+        <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" onClick={(e) => onOpen(e.currentTarget)}>
+          {IS_REMOTE_SCREEN ? t('artifact.preview') : t('artifact.open')}
+        </Button>
+        {IS_REMOTE_SCREEN && (
+          <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" onClick={download}>
+            {t('artifact.download')}
           </Button>
-          {IS_REMOTE_SCREEN && (
-            <Button size="sm" variant="outline" className="h-7 px-2.5 text-xs" onClick={download}>
-              {t('artifact.download')}
-            </Button>
-          )}
-        </div>
-      )}
+        )}
+      </div>
       {downloadError && (
         <p role="alert" className="text-destructive basis-full text-[11px]">
           {t(downloadError)}
@@ -70,7 +65,7 @@ export function ArtifactCards({ artifacts, className }: { artifacts?: ArtifactRe
           }}
         />
       ))}
-      {CAN_OPEN_ARTIFACT && <ArtifactViewer artifact={opened} returnFocusRef={openerRef} onClose={() => setOpened(null)} />}
+      <ArtifactViewer artifact={opened} returnFocusRef={openerRef} onClose={() => setOpened(null)} />
     </div>
   )
 }

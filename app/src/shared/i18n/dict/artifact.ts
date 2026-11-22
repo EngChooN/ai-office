@@ -75,18 +75,6 @@ export default {
     ja: '開けませんでした。少し待ってからもう一度お試しください。',
     zh: '无法打开，请稍后再试。',
   },
-  'artifact.pcOnly': {
-    ko: 'PC에서 열어 주세요',
-    en: 'Open it on the PC',
-    ja: 'PC で開いてください',
-    zh: '请在电脑上打开',
-  },
-  'artifact.pcOnlyHint': {
-    ko: '이 화면에서는 아직 미리 볼 수 없어요. 그 PC 앱에서 열어 주세요.',
-    en: 'Preview is not available here yet. Open it in that PC’s app.',
-    ja: 'この画面ではまだ見られません。その PC のアプリで開いてください。',
-    zh: '此画面暂时无法预览，请在那台电脑的应用中打开。',
-  },
   'artifact.download': {
     ko: '내려받기',
     en: 'Download',

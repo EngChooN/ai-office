@@ -530,6 +530,11 @@ class OfficeRepository(private val context: Context) {
         return c.v2File(id)
     }
 
+    suspend fun v2Artifact(id: String, version: Int?): ApiResult<com.claudeoffice.remote.net.FileBytes> {
+        val c = client ?: return ApiResult.Fail(ApiError.Unauthorized)
+        return c.v2Artifact(id, version)
+    }
+
     companion object {
         /**
          * v2 규격 2-1절: supportedProtocols가 권위. 없으면 [1].

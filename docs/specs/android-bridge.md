@@ -51,11 +51,13 @@
 | `ready` | `features`(선택, 문자열 배열) | `hello`로 답하고 이벤트 스트림(SSE)을 연다. `features`에 `"ime"`가 있으면 키보드를 화면이 처리한다(아래 "키보드"). `"iso-office"`가 있으면 셸이 `/v2/call`·`/v2/events`(재연결 포함) 요청에 헤더 `X-Office-Capabilities: iso-office`를 싣는다 — 없으면 PC가 회사 레벨을 10으로 줄여 보낸다(`office-iso-tech.md` 4-3절). 셸은 아는 값(`iso-office`)만 넘긴다 |
 | `call` | `id`, `method`, `args`(배열, 없으면 `[]`), `confirm`(선택) | `POST /v2/call {method, args, confirm}`. `Idempotency-Key`는 셸이 붙인다(같은 `id`로 다시 보내면 같은 키 → PC가 한 번만 처리) |
 | `upload` | `id`, `name`, `mime`, `base64` | `POST /v2/attachments` 한 번. `saveAttachments(files)`는 어댑터가 파일마다 이것을 보내 `Attachment[]`로 모은다. 20MB 넘으면 셸이 `413 payload_too_large`로 바로 답한다 |
-| `download` | `id`, `fileId`(UUID), `name` | `GET /v2/files/{fileId}`를 받아 **휴대폰의 다운로드 폴더에 저장**(`openAttachment` 대신). 결과는 저장한 이름 |
+| `download` | `id`, `fileId`(UUID), `name`, `kind`(선택, `"artifact"`), `version`(선택, 1 이상 정수) | 첨부는 `GET /v2/files/{fileId}`, `kind:"artifact"`면 결과물 `GET /v2/artifacts/{fileId}[/{version}]`(버전 없으면 최신)을 받아 **휴대폰의 다운로드 폴더에 저장**(`openAttachment`·결과물 내려받기 대신). 저장 이름은 PC가 준 `Content-Disposition`의 `filename*` → 화면이 준 `name` → `fileId` 순, 경로 문자·제어 문자는 `_`, 앞쪽 점은 빼고 120자까지. 결과물은 확장자로 형식을 정한다(PC는 `text/plain`으로 보낸다). 결과물 5MB 넘으면 `413 payload_too_large`. 결과는 저장한 이름 |
+| `read` | `id`, `fileId`(UUID), `version`(선택) | 결과물 `GET /v2/artifacts/{fileId}[/{version}]`을 받아 `{name, text}`로 답한다(**저장하지 않음**). 화면은 이 텍스트를 격리 틀(`iframe sandbox` + CSP, `srcDoc`)로만 그린다. 5MB 넘으면 `413 payload_too_large`. 모양이 틀리면 `bad_read` |
 | `backResult` | `handled`(boolean) | 셸의 `back`에 대한 답 (4절) |
 
 - `method`는 이름 모양(`^[A-Za-z][A-Za-z0-9]{0,63}$`)만 셸이 거른다. 어떤 메서드가 되는지는 PC가 정한다(`404 unknown_method`, `422 pc_only` 등).
-- **동시에 PC로 가는 요청은 5개까지**(`call`·`upload`·첨부 그림 합산). 서버가 주소당 연결 8개를 받고 이벤트 스트림이 2개를 쓰기 때문이다(한리뷰 권고). 넘는 요청은 셸 안에서 차례를 기다린다 — 화면은 신경 쓰지 않아도 된다.
+- **예전 PC(1.4.5 전)**는 `/v2/artifacts`를 몰라 `404 not_found`로 답한다(없는 결과물은 `file_not_found`). 화면은 `not_found`를 "PC를 업데이트해 주세요"로 바꿔 보인다. 화면은 APK 안에 함께 들어 있어 셸 지원 여부를 따로 묻지 않는다.
+- **동시에 PC로 가는 요청은 5개까지**(`call`·`upload`·`download`·`read`·첨부 그림 합산). 서버가 주소당 연결 8개를 받고 이벤트 스트림이 2개를 쓰기 때문이다(한리뷰 권고). 넘는 요청은 셸 안에서 차례를 기다린다 — 화면은 신경 쓰지 않아도 된다.
 
 ## 4. 셸 → 화면
 | `type` | 필드 | 뜻 |

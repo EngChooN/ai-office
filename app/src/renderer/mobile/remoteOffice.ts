@@ -42,8 +42,6 @@ export interface RemoteHandlers {
   shouldDeliverFocus?(): boolean
   /** PC가 아이소 사무실을 아는지 판정됐을 때 (hello 응답·칸 배치 404) — true면 hello 전에 줄어 온 스냅샷을 다시 읽는다 */
   pcChecked?(isoOffice: boolean): void
-  /** 이 셸이 결과물 원본을 받아 미리 보여 줄 수 있는지 (read 요청을 아는 데스크톱 원격 창만 true — 휴대폰 셸은 모른다) */
-  canPreviewArtifact?: boolean
 }
 
 /** PC 전용 동작 안내 문구의 사전 키 (docs/specs/android-pc-layout.md 6절) — 언어를 바꿔도 맞게 쓰는 곳에서 t()로 푼다 */
@@ -95,6 +93,8 @@ export function fillOldSnapshot<T>(snap: T): T {
 
 /** 내려받기 실패 안내: 5MB 넘음과 그 밖(파일 없음·연결 끊김)을 나눈다 */
 const downloadFailText = (e: BridgeError) => t(e.code === 'payload_too_large' ? 'artifact.downloadTooBig' : 'artifact.downloadFailed')
+/** 결과물 받기(/v2/artifacts)를 모르는 예전 PC(1.4.5 전)는 모르는 주소라 not_found로 답한다 — 없는 결과물은 file_not_found */
+const isOldPcArtifact = (e: BridgeError) => e.code === 'not_found'
 
 export function toBase64(data: ArrayBuffer): string {
   const bytes = new Uint8Array(data)
@@ -177,6 +177,12 @@ export function createRemoteOffice(bridge: Bridge, h: RemoteHandlers): RemoteSes
   }
   const flag = (v: unknown, key: string) => typeof v === 'object' && v !== null && (v as Record<string, unknown>)[key]
 
+  /** 예전 PC면 "PC를 업데이트해 주세요"로 바꾼다 (파일이 없다고 잘못 알리지 않게) */
+  const artifactError = (method: OfficeMethod, e: BridgeError) => {
+    if (!isOldPcArtifact(e)) return new RemoteCallError(method, e)
+    h.notice(pcUpdateFeatureText())
+    return new RemoteCallError(method, { status: 0, code: 'pc_update_required', message: pcUpdateFeatureText() })
+  }
   /** 원격 화면의 결과물 크게 보기: 목록·버전은 평소 호출로, 원본은 read로 받아 와 화면에서 격리 틀(srcDoc)로 그린다 */
   const openArtifact = async (id: string, version?: number): Promise<ArtifactView | null> => {
     const latest = ((await call('artifactList', [])) as ArtifactInfo[]).find((a) => a.id === id)
@@ -186,14 +192,14 @@ export function createRemoteOffice(bridge: Bridge, h: RemoteHandlers): RemoteSes
     const kind = shown && artifactKindOf(shown.name)
     if (!shown || !kind) return null
     const { text } = (await bridge.request({ type: 'read', fileId: id, version: shown.version }).catch((e: BridgeError) => {
-      throw new RemoteCallError('artifactOpen', e)
+      throw artifactError('artifactOpen', e)
     })) as { text: string }
     return { id, title: latest.title, kind, version: shown.version, name: shown.name, size: shown.size, url: '', doc: withCspMeta(artifactDocument(kind, text, latest.title)), source: text, versions }
   }
   const downloadArtifact = async (id: string, version?: number) => {
     await bridge.request({ type: 'download', fileId: id, name: '', kind: 'artifact', ...(version ? { version } : {}) }).catch((e: BridgeError) => {
-      h.notice(downloadFailText(e))
-      throw new RemoteCallError('artifactOpenExternal', e)
+      if (!isOldPcArtifact(e)) h.notice(downloadFailText(e))
+      throw artifactError('artifactOpenExternal', e)
     })
     h.notice(t(PC_ONLY_TEXT.saved))
   }
@@ -219,7 +225,9 @@ export function createRemoteOffice(bridge: Bridge, h: RemoteHandlers): RemoteSes
       h.notice(t(PC_ONLY_TEXT.saved))
     },
     // 원격 화면의 '밖에서 열기'·'폴더에서 보기'는 의미가 없어 내려받기로 바꾼다 (화면은 같은 메서드를 부른다)
-    ...(h.canPreviewArtifact ? { artifactOpen: openArtifact, artifactOpenExternal: downloadArtifact, artifactReveal: downloadArtifact } : {}),
+    artifactOpen: openArtifact,
+    artifactOpenExternal: downloadArtifact,
+    artifactReveal: downloadArtifact,
     pickFolder: async () => {
       const v = await h.enterPath('folder')
       return typeof v === 'string' && v.trim() ? v.trim() : null

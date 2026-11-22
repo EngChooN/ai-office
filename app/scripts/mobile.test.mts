@@ -52,7 +52,7 @@ function handlers(over: Partial<RemoteHandlers> = {}) {
   return { h, notices, confirms, paths }
 }
 
-const OVERRIDDEN = ['saveAttachments', 'openAttachment', 'pickFolder', 'pickFiles', 'resumeInTerminal', 'openClaudeLogin', 'openCodexLogin', 'remoteQr']
+const OVERRIDDEN = ['saveAttachments', 'openAttachment', 'pickFolder', 'pickFiles', 'resumeInTerminal', 'openClaudeLogin', 'openCodexLogin', 'remoteQr', 'artifactOpen', 'artifactOpenExternal', 'artifactReveal']
 
 // ── 어댑터 ────────────────────────────────────────────
 
@@ -309,7 +309,7 @@ test('첨부: 파일마다 upload(base64) 한 번 → Attachment[] (PC 경로는
   assert.deepEqual(x.notices, [t(PC_ONLY_TEXT.saved)])
 })
 
-test('어댑터: 원격 창은 결과물을 받아 미리 보여 주고, 밖에서 열기·폴더 보기는 내려받기로 — 휴대폰 셸은 그대로 PC 전용', async () => {
+test('어댑터: 원격 화면(휴대폰·다른 PC 창)은 결과물을 받아 미리 보여 주고, 밖에서 열기·폴더 보기는 내려받기로', async () => {
   const id = '11111111-2222-4333-8444-555555555555'
   const info = [{ id, title: '보고서', kind: 'html', version: 2, name: 'r.html', size: 9, staffId: 's', createdAt: 1 }]
   const versions = [{ version: 1, name: 'r.html', size: 5, createdAt: 1 }, { version: 2, name: 'r.html', size: 9, createdAt: 2 }]
@@ -320,7 +320,7 @@ test('어댑터: 원격 창은 결과물을 받아 미리 보여 주고, 밖에�
     return 'r.html'
   })
   const x = handlers()
-  const { office } = createRemoteOffice(f.bridge, { ...x.h, canPreviewArtifact: true })
+  const { office } = createRemoteOffice(f.bridge, x.h)
   const view = await office.artifactOpen(id)
   assert.equal(view?.version, 2, '버전을 안 주면 최신')
   assert.equal(view?.source, '<h1>안녕</h1>')
@@ -342,15 +342,28 @@ test('어댑터: 원격 창은 결과물을 받아 미리 보여 주고, 밖에�
     throw { status: 413, code: 'payload_too_large', message: '' }
   })
   const y = handlers()
-  const o2 = createRemoteOffice(big.bridge, { ...y.h, canPreviewArtifact: true }).office
+  const o2 = createRemoteOffice(big.bridge, y.h).office
   await assert.rejects(o2.artifactOpen(id), { code: 'payload_too_large' })
   await assert.rejects(o2.artifactOpenExternal(id), { code: 'payload_too_large' })
   assert.equal(y.notices.length, 1)
   assert.match(y.notices[0], /5MB/)
-  // 휴대폰 셸(canPreviewArtifact 없음)은 서버가 막는 PC 전용 그대로 — 어댑터가 가로채지 않는다
-  const phone = fakeBridge(() => null)
-  await createRemoteOffice(phone.bridge, handlers().h).office.artifactOpen(id).catch(() => {})
-  assert.ok(phone.sent.every((m) => m.type === 'call' && m.method !== 'artifactList'))
+  // 예전 PC(1.4.5 전)는 결과물 주소를 몰라 not_found — "파일 없음" 대신 PC 업데이트 안내 (없는 결과물인 file_not_found와 나눈다)
+  const old = fakeBridge((m) => {
+    if (m.type === 'call') return m.method === 'artifactList' ? info : versions
+    throw { status: 404, code: 'not_found', message: '' }
+  })
+  const z = handlers()
+  const o3 = createRemoteOffice(old.bridge, z.h).office
+  await assert.rejects(o3.artifactOpen(id), { code: 'pc_update_required' })
+  await assert.rejects(o3.artifactOpenExternal(id), { code: 'pc_update_required' })
+  assert.deepEqual(z.notices, [pcUpdateFeatureText(), pcUpdateFeatureText()])
+  const gone = fakeBridge((m) => {
+    if (m.type === 'call') return m.method === 'artifactList' ? info : versions
+    throw { status: 404, code: 'file_not_found', message: '' }
+  })
+  const w = handlers()
+  await assert.rejects(createRemoteOffice(gone.bridge, w.h).office.artifactOpenExternal(id), { code: 'file_not_found' })
+  assert.deepEqual(w.notices, [t('artifact.downloadFailed')])
 })
 
 test('어댑터: 예전 PC 스냅샷(shop.grid 없음)은 grid를 빈 배열로 채운다 — 꾸미기·상점이 grid를 읽다가 빈 화면이 되지 않게', async () => {

@@ -18,6 +18,7 @@ import com.claudeoffice.remote.web.SseParser
 import com.claudeoffice.remote.web.capabilitiesOf
 import com.claudeoffice.remote.web.isExternalLink
 import com.claudeoffice.remote.web.mimeOf
+import com.claudeoffice.remote.web.downloadName
 import com.claudeoffice.remote.web.parseBridge
 import com.claudeoffice.remote.web.reconnectDelayMs
 import java.util.concurrent.CopyOnWriteArrayList
@@ -89,8 +90,32 @@ class V2ShellTest {
         assertTrue(parseBridge("""{"type":"call","id":"c3","method":"../v1/status"}""") is BridgeRequest.Invalid)
         assertTrue(parseBridge("""{"type":"call","id":"c4","method":"x","args":"no"}""") is BridgeRequest.Invalid)
         assertTrue(parseBridge("""{"type":"download","id":"d1","fileId":"../../etc/passwd"}""") is BridgeRequest.Invalid)
+        // 결과물 내려받기·읽기: kind·version은 결과물일 때만, 버전은 1 이상 정수만 (PC의 /v2/artifacts 주소 모양)
+        val fid = "11111111-2222-4333-8444-555555555555"
+        assertEquals(BridgeRequest.Download("d2", fid, ""), parseBridge("""{"type":"download","id":"d2","fileId":"$fid","name":""}"""))
+        assertEquals(BridgeRequest.Download("d3", fid, "", isArtifact = true, version = 2), parseBridge("""{"type":"download","id":"d3","fileId":"$fid","name":"","kind":"artifact","version":2}"""))
+        assertEquals(BridgeRequest.Download("d4", fid, "", isArtifact = true), parseBridge("""{"type":"download","id":"d4","fileId":"$fid","name":"","kind":"artifact"}"""))
+        assertTrue(parseBridge("""{"type":"download","id":"d5","fileId":"$fid","kind":"artifact","version":0}""") is BridgeRequest.Invalid)
+        assertEquals(BridgeRequest.Read("r1", fid, 3), parseBridge("""{"type":"read","id":"r1","fileId":"$fid","version":3}"""))
+        assertEquals(BridgeRequest.Read("r2", fid), parseBridge("""{"type":"read","id":"r2","fileId":"$fid"}"""))
+        assertTrue(parseBridge("""{"type":"read","id":"r3","fileId":"$fid","version":"3"}""") is BridgeRequest.Invalid)
+        assertTrue(parseBridge("""{"type":"read","id":"r4","fileId":"$fid","version":1.5}""") is BridgeRequest.Invalid)
+        assertTrue(parseBridge("""{"type":"read","id":"r5","fileId":"../x"}""") is BridgeRequest.Invalid)
         assertTrue(parseBridge("not json") is BridgeRequest.Invalid)
         assertTrue(parseBridge("""{"type":"evil"}""") is BridgeRequest.Invalid)
+    }
+
+    @Test fun downloadNamePrefersPcNameAndStripsPathParts() {
+        val fid = "11111111-2222-4333-8444-555555555555"
+        assertEquals("보고서 v2.html", downloadName("attachment; filename*=UTF-8''%EB%B3%B4%EA%B3%A0%EC%84%9C%20v2.html", "", fid))
+        // PC 이름이 없으면 화면이 준 이름, 그것도 없으면 id
+        assertEquals("a.txt", downloadName(null, "a.txt", fid))
+        assertEquals(fid, downloadName("inline", "", fid))
+        // 경로·숨김 파일이 되지 않게
+        assertEquals("_.._etc_passwd", downloadName("attachment; filename*=UTF-8''..%2F..%2Fetc%2Fpasswd", "", fid))
+        assertEquals("a_b", downloadName(null, "a\\b", fid))
+        assertEquals(fid, downloadName(null, "...", fid))
+        assertEquals(120, downloadName(null, "x".repeat(300), fid).length)
     }
 
     @Test fun bridgeResultsCarryServerErrorsForTheScreen() {

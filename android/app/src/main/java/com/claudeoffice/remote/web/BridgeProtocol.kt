@@ -47,8 +47,13 @@ sealed interface BridgeRequest {
     data class Call(val id: String, val method: String, val args: JsonArray, val confirm: Boolean) : BridgeRequest
     /** saveAttachments의 파일 하나 — POST /v2/attachments */
     data class Upload(val id: String, val name: String, val mime: String, val base64: String) : BridgeRequest
-    /** 첨부를 휴대폰에 저장 (openAttachment 대신) — GET /v2/files/{id} */
-    data class Download(val id: String, val fileId: String, val name: String) : BridgeRequest
+    /**
+     * 휴대폰에 저장 (openAttachment·결과물 내려받기 대신).
+     * isArtifact면 fileId는 결과물 id — GET /v2/artifacts/{id}[/{version}] (version null = 최신), 아니면 첨부 — GET /v2/files/{id}
+     */
+    data class Download(val id: String, val fileId: String, val name: String, val isArtifact: Boolean = false, val version: Int? = null) : BridgeRequest
+    /** 결과물 원본 텍스트를 화면에 넘긴다 (저장 안 함, 화면이 격리 틀로만 그린다) — GET /v2/artifacts/{id}[/{version}] */
+    data class Read(val id: String, val fileId: String, val version: Int? = null) : BridgeRequest
     /** 셸이 보낸 back에 대한 답: 화면이 처리했는지 (시트 닫기·이전 화면 등) */
     data class BackResult(val handled: Boolean) : BridgeRequest
     /** 모양이 틀림 — id가 있으면 오류로 답한다 */
@@ -56,6 +61,13 @@ sealed interface BridgeRequest {
 }
 
 private fun JsonObject.str(key: String) = (this[key] as? JsonPrimitive)?.takeIf { it.isString }?.content
+
+/** 결과물 버전: 없으면 Ok(null) = 최신, 1~999999 정수가 아니면 null (요청을 거절한다 — PC의 /v2/artifacts 주소 모양과 같게) */
+private fun JsonObject.version(): Result<Int?>? = when (val v = this["version"]) {
+    null, JsonNull -> Result.success(null)
+    is JsonPrimitive -> v.takeIf { !it.isString }?.content?.toIntOrNull()?.takeIf { it in 1..999_999 }?.let { Result.success(it) }
+    else -> null
+}
 
 fun parseBridge(text: String): BridgeRequest {
     if (text.length > BRIDGE_MESSAGE_MAX) return BridgeRequest.Invalid(null, "too_large")
@@ -86,12 +98,34 @@ fun parseBridge(text: String): BridgeRequest {
         }
         "download" -> {
             val fileId = o.str("fileId")?.takeIf { FILE_ID.matches(it) }
-            if (id == null || fileId == null) BridgeRequest.Invalid(id, "bad_download")
-            else BridgeRequest.Download(id, fileId, o.str("name").orEmpty())
+            val isArtifact = o.str("kind") == "artifact"
+            val version = if (isArtifact) o.version() else Result.success(null)
+            if (id == null || fileId == null || version == null) BridgeRequest.Invalid(id, "bad_download")
+            else BridgeRequest.Download(id, fileId, o.str("name").orEmpty(), isArtifact, version.getOrNull())
+        }
+        "read" -> {
+            val fileId = o.str("fileId")?.takeIf { FILE_ID.matches(it) }
+            val version = o.version()
+            if (id == null || fileId == null || version == null) BridgeRequest.Invalid(id, "bad_read")
+            else BridgeRequest.Read(id, fileId, version.getOrNull())
         }
         "backResult" -> BridgeRequest.BackResult((o["handled"] as? JsonPrimitive)?.content == "true")
         else -> BridgeRequest.Invalid(id, "unknown_type")
     }
+}
+
+/** 결과물 원본 상한 — PC의 V2_ARTIFACT_MAX(5MB)와 같다 (셸도 한 번 더 막는다) */
+const val ARTIFACT_MAX = 5 * 1024 * 1024
+
+/**
+ * 휴대폰에 저장할 이름: PC가 준 Content-Disposition의 filename*(UTF-8 퍼센트 인코딩)을 먼저, 없으면 화면이 준 이름, 그것도 없으면 id.
+ * 경로 문자(/ \)·제어 문자는 _로, 앞쪽 점은 빼고(숨김 파일·상위 폴더 이름이 되지 않게), 120자까지
+ */
+fun downloadName(disposition: String?, fallback: String, fileId: String): String {
+    val fromPc = disposition?.let { Regex("filename\\*=UTF-8''([^;]+)", RegexOption.IGNORE_CASE).find(it)?.groupValues?.get(1) }
+        ?.let { runCatching { java.net.URLDecoder.decode(it.trim().replace("+", "%2B"), "UTF-8") }.getOrNull() }
+    val raw = listOf(fromPc, fallback).firstOrNull { !it.isNullOrBlank() } ?: fileId
+    return raw.replace(Regex("[/\\\\\\x00-\\x1f]"), "_").trimStart('.').take(120).ifBlank { fileId }
 }
 
 // ── 셸 → 화면 ─────────────────────────────────────────
