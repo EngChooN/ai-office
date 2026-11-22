@@ -52,7 +52,8 @@ export function useDraftAttachments() {
 export function pasteCodeBlock(e: ClipboardEvent): boolean {
   const el = e.target
   if (!(el instanceof HTMLTextAreaElement)) return false
-  const text = e.clipboardData.getData('text/plain')
+  // 입력칸은 윈도우 줄바꿈(\r\n)을 \n 하나로 바꿔 넣는다 — 미리 맞춰야 아래 선택 길이가 실제 넣은 글과 같다
+  const text = e.clipboardData.getData('text/plain').replace(/\r\n?/g, '\n')
   const before = el.value.slice(0, el.selectionStart)
   if (!looksLikeCode(text) || isInsideFence(before)) return false
   e.preventDefault()

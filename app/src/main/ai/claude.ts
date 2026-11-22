@@ -95,6 +95,8 @@ export class ClaudeRuntime implements AgentRuntime {
   private pending = new PendingSends()
   /** 보낸 지시 원본 (결과가 오면 지운다) — 세션을 강제로 닫을 때 줄 선 지시를 다시 보내는 데 쓴다 */
   private sentMsgs = new Map<string, SDKUserMessage>()
+  /** 이번 턴에 로그인 오류(authentication_failed)를 받았나 — 결과 글 모양과 상관없이 실패로 넘긴다 (#20) */
+  private authFailed = false
 
   constructor(private onEvent: (e: RuntimeEvent) => void) {}
 
@@ -259,6 +261,7 @@ export class ClaudeRuntime implements AgentRuntime {
     } finally {
       if (this.q === q) {
         this.q = null
+        this.authFailed = false
         this.forgetDelivered()
       }
     }
@@ -274,7 +277,10 @@ export class ClaudeRuntime implements AgentRuntime {
       const ctx = contextOf(m.message.usage)
       if (ctx) emit({ type: 'context', tokens: ctx })
       // 로그인 안 됨 글(영어 원문)은 보고로 남기지 않는다 — 결과에서 쉬운 안내로 바꿔 오류로 넘긴다 (#20)
-      if (m.error === 'authentication_failed') return
+      if (m.error === 'authentication_failed') {
+        this.authFailed = true
+        return
+      }
       for (const b of m.message.content) {
         if (b.type === 'text' && b.text.trim()) emit({ type: 'text', text: b.text })
         if (b.type === 'tool_use' && EDIT_TOOLS.has(b.name)) {
@@ -292,7 +298,8 @@ export class ClaudeRuntime implements AgentRuntime {
       // API 연결 실패는 subtype success·is_error true로 온다 ("API Error: Can't reach the API server … (ENOTFOUND)") — 인터넷 오류만 실패로 넘긴다 (다른 API 오류는 지금처럼 답 글로)
       const isNetFail = m.subtype === 'success' && m.is_error && isNetworkError(m.result)
       // 로그인 안 됨도 실패로 — 받는 쪽은 결과 글(4개 언어 안내)을 오류 사유로 보여 준다 (#20)
-      const isLoginFail = m.subtype === 'success' && m.is_error && isLoginError(undefined, m.result)
+      const isLoginFail = this.authFailed || (m.subtype === 'success' && m.is_error && isLoginError(undefined, m.result))
+      this.authFailed = false
       emit({ type: 'result', ok: m.subtype === 'success' && !isNetFail && !isLoginFail, subtype: m.subtype, text: isLoginFail ? t('claude.loginNeeded.staff') : m.subtype === 'success' ? m.result : '', numTurns: m.num_turns, costUsd: m.total_cost_usd, ...usageTotals(m.modelUsage) })
     }
   }
@@ -325,11 +332,13 @@ export class ClaudeBackend implements AiBackend {
     let costUsd = 0
     let tokensIn = 0
     let tokensOut = 0
+    let authFailed = false
     for await (const m of q) {
       if (m.type === 'rate_limit_event') opts.onRateLimit?.(m.rate_limit_info)
+      if (m.type === 'assistant' && m.error === 'authentication_failed') authFailed = true
       if (m.type === 'result') {
         // 로그인 안 됨 글을 답으로 쓰지 않는다 — 던져서 다른 공급자(Codex)로 넘기거나 부른 쪽이 실패로 처리한다 (#20)
-        if (m.subtype === 'success' && m.is_error && isLoginError(undefined, m.result)) throw new Error(m.result)
+        if (authFailed || (m.subtype === 'success' && m.is_error && isLoginError(undefined, m.result))) throw new Error(m.subtype === 'success' ? m.result : 'authentication_failed')
         if (m.subtype === 'success') text = m.result
         costUsd = m.total_cost_usd
         ;({ tokensIn, tokensOut } = usageTotals(m.modelUsage))

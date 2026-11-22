@@ -12,6 +12,7 @@ const CODE = {
   css: '.btn {\n  color: red;\n  padding: 4px;\n}',
   sql: 'SELECT name, age\nFROM users\nWHERE age > 20\nORDER BY age;',
   java: 'public class Main {\n  public static void main(String[] args) {\n    System.out.println("hi");\n  }\n}',
+  blockComment: '/**\n * 합계를 구한다\n * @param list 숫자 목록\n */\nfunction sum(list) {\n  return list.reduce((a, b) => a + b, 0)\n}',
   koreanComments: '// 합계를 구한다\nlet sum = 0\nfor (const n of list) {\n  sum += n\n}',
 }
 
@@ -24,6 +25,9 @@ const PROSE = {
   twoLines: 'const a = 1\nconst b = 2',
   memo: '회의: 오후 3시\n장소: 3층\n참석: 김기획, 이디자',
   fenced: '```js\nconst a = 1\nconst b = 2\nconst c = 3\n```',
+  tildeFenced: '~~~js\nconst a = 1\nconst b = 2\nconst c = 3\n~~~',
+  starList: '* 보고서 쓰기\n* 디자인 확인\n* 배포 준비',
+  starListEnglish: '* write report\n* check design\n* deploy',
 }
 
 test('코드: 여러 언어의 여러 줄 코드를 알아본다', () => {
@@ -43,4 +47,13 @@ test('감싸기: 줄 중간이면 줄을 바꿔 시작하고 끝 공백·윈도�
 test('이미 코드 블록 안이면 감싸지 않는다', () => {
   assert.equal(isInsideFence('질문\n```\n'), true)
   assert.equal(isInsideFence('```\na\n```\n'), false)
+})
+
+test('물결표(~~~) 코드 블록 안, 긴 ``` 표시, 닫힌 블록 뒤를 가린다 (한리뷰 R1)', () => {
+  assert.equal(isInsideFence('질문\n~~~js\nconst a = 1\n'), true)
+  assert.equal(isInsideFence('~~~\na\n~~~\n'), false)
+  assert.equal(isInsideFence('~~~\n```\n'), true) // 다른 문자는 닫지 못한다
+  assert.equal(isInsideFence('````\n```\n'), true) // 짧은 표시는 닫지 못한다
+  assert.equal(isInsideFence('````\n````\n'), false)
+  assert.equal(isInsideFence('```js\r\na\r\n```\r\n'), false)
 })

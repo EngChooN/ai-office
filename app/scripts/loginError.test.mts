@@ -12,6 +12,10 @@ test('로그인 안 됨: error 칸 authentication_failed 또는 실제 결과 �
   assert.equal(isLoginError('authentication_failed', ''), true)
   assert.equal(isLoginError(undefined, NOT_LOGGED_IN), true)
   assert.equal(isLoginError(undefined, 'Invalid API key · Please run /login'), true)
+  // 번들 claude에 있는 다른 로그인 문구 (한리뷰 R1)
+  for (const text of ['Login expired · Please run /login', 'OAuth token revoked · Please run /login', 'API Error: 401 Invalid API key · Please run /login', 'Please run /login · API Error: 401']) {
+    assert.equal(isLoginError(undefined, text), true, text)
+  }
 })
 
 test('로그인 안 됨 아님: 다른 오류와 /login을 설명하는 보통 답은 그대로', () => {
