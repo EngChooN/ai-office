@@ -1,4 +1,5 @@
-import { memo } from 'react'
+import { memo, useRef, useState, type ReactNode } from 'react'
+import { CheckIcon, CopyIcon } from 'lucide-react'
 import ReactMarkdown, { type Components, type Options } from 'react-markdown'
 import remarkCjkFriendly from 'remark-cjk-friendly'
 import remarkGfm from 'remark-gfm'
@@ -6,6 +7,8 @@ import { cn } from '@/lib/utils'
 import { useOffice, type View } from '@/store'
 import { PROVIDER_SECTION_ID } from '@/features/ProviderCards'
 import { requestSettingsSection } from '@/features/SettingsPage'
+import { copyText } from '@/lib/copyText'
+import { t } from '@shared/i18n'
 
 // 직원 보고·일감 설명은 대부분 마크다운이라, 좁은 카드에서도 깨지지 않게 긴 경로·코드는 줄바꿈한다
 // 한국어는 **"굵게"**에 처럼 조사가 바로 붙어 기본 규칙으론 굵게가 안 풀리므로 CJK 플러그인을 쓴다
@@ -31,7 +34,7 @@ const COMPONENTS: Components = {
     ),
   blockquote: ({ children }) => <blockquote className="text-muted-foreground my-1.5 border-l-2 pl-3">{children}</blockquote>,
   hr: () => <hr className="my-3" />,
-  pre: ({ children }) => <pre className="bg-background/60 my-1.5 overflow-x-auto rounded border p-2 text-[0.92em]">{children}</pre>,
+  pre: ({ children }) => <CodeBlock>{children}</CodeBlock>,
   code: ({ children, className }) => <code className={cn('bg-background/60 rounded px-1 py-px font-mono text-[0.92em] [pre_&]:bg-transparent [pre_&]:p-0', className)}>{children}</code>,
   table: ({ children }) => (
     <div className="my-1.5 overflow-x-auto">
@@ -41,6 +44,37 @@ const COMPONENTS: Components = {
   th: ({ children }) => <th className="border px-2 py-1 text-left font-semibold">{children}</th>,
   td: ({ children }) => <td className="border px-2 py-1 align-top">{children}</td>,
   input: ({ checked }) => <input type="checkbox" checked={checked} readOnly className="mr-1 align-middle" />,
+}
+
+/** 코드 블록 + 오른쪽 위 복사 버튼 (#19). 손가락 화면엔 마우스 올림이 없어 버튼은 늘 보인다. 오른쪽 여백을 둬 첫 줄이 버튼에 가리지 않게 */
+function CodeBlock({ children }: { children?: ReactNode }) {
+  const preRef = useRef<HTMLPreElement>(null)
+  const [isCopied, setIsCopied] = useState(false)
+  const handleCopy = () => {
+    const text = (preRef.current?.textContent ?? '').replace(/\n$/, '')
+    void copyText(text).then((ok) => {
+      if (!ok) return
+      setIsCopied(true)
+      setTimeout(() => setIsCopied(false), 1500)
+    })
+  }
+  const label = t(isCopied ? 'common.copiedCode' : 'common.copyCode')
+  return (
+    <div className="relative my-1.5">
+      <pre ref={preRef} className="bg-background/60 overflow-x-auto rounded border p-2 pr-9 text-[0.92em]">
+        {children}
+      </pre>
+      <button
+        type="button"
+        onClick={handleCopy}
+        aria-label={label}
+        title={label}
+        className={cn('bg-card/90 text-muted-foreground hover:text-foreground absolute top-1 right-1 flex size-7 items-center justify-center rounded-md border', isCopied && 'text-status-working')}
+      >
+        {isCopied ? <CheckIcon className="size-3.5" /> : <CopyIcon className="size-3.5" />}
+      </button>
+    </div>
+  )
 }
 
 const REMARK_PLUGINS = [remarkGfm, remarkCjkFriendly]

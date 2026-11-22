@@ -10,6 +10,7 @@ import {
 import { RotateCwIcon, SendIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { pasteCodeBlock } from "@/components/attachments";
 import { Markdown } from "@/components/markdown";
 import { handleComposerKey, NEWLINE_HINT } from "@/lib/composerKeys";
 import { cn } from "@/lib/utils";
@@ -458,6 +459,7 @@ export function SecretaryComposer({
             setFailText("");
           }}
           onKeyDown={handleKeyDown}
+          onPaste={pasteCodeBlock}
           rows={1}
           placeholder={
             placeholder ??

@@ -218,9 +218,10 @@ const logKey = (l: LogEntry) => `${l.id}-${l.ts}`
 
 // 지시를 입력하는 동안 기록 줄이 다시 그려지지 않도록 한 줄씩 메모한다
 // 긴 기록: 화면 밖 줄은 그리기·배치를 건너뛴다(content-visibility). 높이는 한 번 그려진 값을 기억하고 처음엔 두 줄쯤으로 잡는다
+// 대표의 지시는 연한 주 색 배경 칸으로 보고와 구분한다 (#19 — 같은 방향으로 이어져 어디까지가 내 말인지 헷갈림). 좌우 정렬은 시각·종류 칸이 있는 좁은 기록에서 줄이 들쭉날쭉해져 쓰지 않는다
 const LogRow = memo(function LogRow({ entry: l }: { entry: LogEntry }) {
   return (
-    <div className="flex gap-2 [contain-intrinsic-size:auto_2.5em] [content-visibility:auto]">
+    <div className={cn('flex gap-2 [contain-intrinsic-size:auto_2.5em] [content-visibility:auto]', l.type === 'instruction' && 'bg-primary/10 border-primary/60 -mx-1.5 my-0.5 rounded-md border-l-2 py-1 pr-1.5 pl-1')}>
       <span className="text-muted-foreground w-[3.4em] shrink-0 tabular-nums">
         {fmtDate(l.ts, {
           hour: '2-digit',

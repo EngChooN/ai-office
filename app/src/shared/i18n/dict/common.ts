@@ -8,6 +8,9 @@ export default {
   'common.close': { ko: '닫기', en: 'Close', ja: '閉じる', zh: '关闭' },
   'common.delete': { ko: '삭제', en: 'Delete', ja: '削除', zh: '删除' },
   'common.more': { ko: '자세히', en: 'Details', ja: '詳しく', zh: '详细' },
+  // 마크다운 코드 블록 오른쪽 위 복사 버튼 (#19)
+  'common.copyCode': { ko: '코드 복사', en: 'Copy code', ja: 'コードをコピー', zh: '复制代码' },
+  'common.copiedCode': { ko: '코드를 복사했어요', en: 'Code copied', ja: 'コードをコピーしました', zh: '已复制代码' },
   'common.me': { ko: '나', en: 'Me', ja: '自分', zh: '我' },
   'common.formerStaff': { ko: '퇴사자', en: 'Former staff', ja: '退職者', zh: '已离职员工' },
   'common.toBottom': { ko: '맨 아래로', en: 'Jump to latest', ja: '最新へ', zh: '回到底部' },

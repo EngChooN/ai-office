@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import { attachmentUrl, isImageAttachment, type Attachment } from '@shared/types'
 import { t } from '@shared/i18n'
 import { IS_REMOTE_SCREEN } from '@/shell'
+import { fenceCode, isInsideFence, looksLikeCode } from '@shared/codePaste'
 
 const FILE_MAX_BYTES = 20 * 1024 * 1024
 
@@ -30,7 +31,9 @@ export function useDraftAttachments() {
       if (e.clipboardData.files.length) {
         e.preventDefault()
         add(e.clipboardData.files)
+        return
       }
+      pasteCodeBlock(e)
     },
     onDragOver: (e: DragEvent) => e.preventDefault(),
     onDrop: (e: DragEvent) => {
@@ -40,6 +43,25 @@ export function useDraftAttachments() {
     },
   }
   return { files, add, remove, clear, upload, bind }
+}
+
+/**
+ * 입력칸에 붙여넣은 여러 줄 코드를 ``` 코드 블록으로 감싼다 (#19). 코드처럼 보일 때만, 이미 코드 블록 안이면 그대로.
+ * 원문을 먼저 넣고 감싼 글로 바꿔서, ⌘Z·Ctrl+Z 한 번이면 감싸기 전 원문으로 돌아간다. 처리했으면 true
+ */
+export function pasteCodeBlock(e: ClipboardEvent): boolean {
+  const el = e.target
+  if (!(el instanceof HTMLTextAreaElement)) return false
+  const text = e.clipboardData.getData('text/plain')
+  const before = el.value.slice(0, el.selectionStart)
+  if (!looksLikeCode(text) || isInsideFence(before)) return false
+  e.preventDefault()
+  const start = el.selectionStart
+  // 실행 취소 단계를 남기려고 입력 명령으로 넣는다 (React onChange도 그대로 불린다)
+  document.execCommand('insertText', false, text)
+  el.setSelectionRange(start, start + text.length)
+  document.execCommand('insertText', false, fenceCode(text, before))
+  return true
 }
 
 /** 클립 버튼: 파일 고르기 */
