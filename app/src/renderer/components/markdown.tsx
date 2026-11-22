@@ -4,6 +4,8 @@ import remarkCjkFriendly from 'remark-cjk-friendly'
 import remarkGfm from 'remark-gfm'
 import { cn } from '@/lib/utils'
 import { useOffice, type View } from '@/store'
+import { PROVIDER_SECTION_ID } from '@/features/ProviderCards'
+import { requestSettingsSection } from '@/features/SettingsPage'
 
 // 직원 보고·일감 설명은 대부분 마크다운이라, 좁은 카드에서도 깨지지 않게 긴 경로·코드는 줄바꿈한다
 // 한국어는 **"굵게"**에 처럼 조사가 바로 붙어 기본 규칙으론 굵게가 안 풀리므로 CJK 플러그인을 쓴다
@@ -52,6 +54,12 @@ function openView(view: string) {
   const s = useOffice.getState()
   // 직원 고용은 화면이 아니라 창이라 따로
   if (view === 'hire') return s.setHireOpen(true)
+  // 설정의 AI 계정 칸 (비서의 로그인 안내 #20) — 로그인·다시 확인 버튼이 있다
+  if (view === 'providers') {
+    s.setQuickSecretaryOpen(false)
+    s.setView('settings')
+    return requestSettingsSection(PROVIDER_SECTION_ID)
+  }
   if (!VIEWS.has(view as View)) return
   s.setQuickSecretaryOpen(false)
   s.setView(view as View)

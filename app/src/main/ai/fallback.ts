@@ -44,11 +44,12 @@ export class FallbackBackend implements AiBackend {
         try {
           for await (const e of run.events) {
             // 아무 말도 하기 전에 오류로 끝나면 다음 공급자로 (로그인 만료·실행 실패)
-            if (!started && e.type === 'result' && e.subtype === 'error' && i < order.length - 1) {
+            // 로그인 안 됨 글은 보여 주기 전에 다음 공급자로 넘긴다 (#20 — 예전엔 영어 원문이 답으로 나가 넘어가지 못했다)
+            if (!started && (e.type === 'loginNeeded' || (e.type === 'result' && e.subtype === 'error')) && i < order.length - 1) {
               failed = true
               break
             }
-            if (e.type !== 'result') started = true
+            if (e.type !== 'result' && e.type !== 'loginNeeded') started = true
             yield e
           }
         } catch (err) {

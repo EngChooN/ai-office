@@ -48,6 +48,19 @@ export default {
     ja: 'Claudeのサブスクリプション（Pro・Max）または開発者アカウント（使った分だけ課金されるAnthropic Consoleアカウント）でログインすると、Claudeスタッフを雇えます。',
     zh: '使用 Claude 订阅（Pro/Max）或开发者账号（按用量付费的 Anthropic Console 账号）登录后，即可雇用 Claude 员工。',
   },
+  // Claude Code 로그인이 안 돼 답을 못 했을 때 (#20) — 비서 말풍선은 마크다운(로그인 화면 링크), 직원은 오류 사유 한 줄
+  'claude.loginNeeded.secretary': {
+    ko: 'Claude 로그인이 안 돼 있어서 답하지 못했어요. 비서와 직원은 Claude 데스크톱 앱이 아니라 **Claude Code** 로그인을 따로 써요.\n\n1. [Claude 로그인 화면 열기](#view=providers)에서 [로그인]을 눌러 주세요. 터미널을 쓸 줄 안다면 터미널(윈도우는 PowerShell)에서 `claude`를 실행하고 `/login`을 입력해도 돼요.\n2. 로그인이 끝나면 [다시 확인]을 누르고, 여기로 돌아와 [다시 보내기]를 눌러 주세요.',
+    en: "I couldn't answer because Claude isn't signed in. The secretary and staff use a separate **Claude Code** sign-in, not the Claude desktop app.\n\n1. Open [Claude sign-in](#view=providers) and press [Sign in]. If you're comfortable with a terminal, you can also run `claude` in a terminal (PowerShell on Windows) and type `/login`.\n2. When you're signed in, press [Check again], then come back here and press [Resend].",
+    ja: 'Claudeにログインしていないため、答えられませんでした。秘書とスタッフはClaudeデスクトップアプリではなく、別の **Claude Code** ログインを使います。\n\n1. [Claudeのログイン画面を開く](#view=providers)で[ログイン]を押してください。ターミナルに慣れていれば、ターミナル（WindowsはPowerShell）で `claude` を実行し、`/login` と入力してもかまいません。\n2. ログインが済んだら[再確認]を押し、ここに戻って[再送信]を押してください。',
+    zh: '由于尚未登录 Claude，无法回答。秘书和员工使用的是单独的 **Claude Code** 登录，而不是 Claude 桌面应用。\n\n1. 在[打开 Claude 登录页面](#view=providers)中点击[登录]。如果您会用终端，也可以在终端（Windows 为 PowerShell）中运行 `claude`，然后输入 `/login`。\n2. 登录完成后点击[重新检查]，再回到这里点击[重新发送]。',
+  },
+  'claude.loginNeeded.staff': {
+    ko: 'Claude 로그인이 안 돼 있어 일을 하지 못했어요. 설정 > AI·업무 > AI 계정에서 Claude [로그인]을 누르거나, 터미널(윈도우는 PowerShell)에서 claude를 실행해 /login 한 뒤 다시 지시해 주세요. (Claude 데스크톱 앱 로그인과는 따로예요)',
+    en: "Couldn't work because Claude isn't signed in. Press Claude [Sign in] in Settings > AI & work > AI accounts, or run claude in a terminal (PowerShell on Windows) and type /login, then give the instruction again. (This is separate from the Claude desktop app sign-in.)",
+    ja: 'Claudeにログインしていないため、作業できませんでした。設定 > AI・業務 > AIアカウントでClaudeの[ログイン]を押すか、ターミナル（WindowsはPowerShell）で claude を実行して /login したあと、もう一度指示してください。（Claudeデスクトップアプリのログインとは別です）',
+    zh: '由于尚未登录 Claude，无法工作。请在 设置 > AI与工作 > AI 账号 中点击 Claude 的[登录]，或在终端（Windows 为 PowerShell）中运行 claude 并输入 /login，然后重新下达指示。（这与 Claude 桌面应用的登录是分开的）',
+  },
   'provider.claude.unknown': {
     ko: 'Claude 상태를 확인하지 못했어요. 잠시 뒤 다시 확인해 주세요.',
     en: "Couldn't check Claude's status. Please try again in a moment.",

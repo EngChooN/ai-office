@@ -566,7 +566,8 @@ class Worker {
       }
       const isError = !m.ok
       // /compact처럼 답 글이 없는 명령은 "실행했어요"로 보고한다
-      const summary = m.ok ? m.text || (slash ? t('slash.ran', { name: slash }) : '') : `오류로 중단 (${m.subtype})`
+      // 실패 글이 있으면(로그인 안 됨 안내 등) 그것을 사유로
+      const summary = m.ok ? m.text || (slash ? t('slash.ran', { name: slash }) : '') : m.text || `오류로 중단 (${m.subtype})`
       if (!isError && summary.trim()) this.lastReport = summary
       // 성공 보고 본문은 이미 assistant 텍스트로 기록됐으므로 완료 로그는 짧게 남긴다
       this.hooks.log(id, isError ? 'error' : 'result', isError ? summary : tk('log.taskDone', { n: m.numTurns }))

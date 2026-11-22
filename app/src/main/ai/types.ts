@@ -122,6 +122,8 @@ export interface SecretaryRunOpts {
 export type SecretaryEvent =
   | { type: 'text'; text: string }
   | { type: 'tool'; name: string; input: Record<string, unknown> }
+  /** Claude Code 로그인이 안 돼 답을 못 함 (#20) */
+  | { type: 'loginNeeded' }
   | { type: 'result'; subtype: 'success' | 'max_turns' | 'max_budget' | 'error'; costUsd: number; tokensIn: number; tokensOut: number }
 export interface SecretaryRun {
   events: AsyncIterable<SecretaryEvent>

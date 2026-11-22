@@ -12,6 +12,7 @@ import { contextOf } from '../sessionRotate'
 import { PendingSends } from './pendingSends'
 import { exeName } from '../platform'
 import { isNetworkError } from '../../shared/networkError.ts'
+import { isLoginError } from '../../shared/loginError.ts'
 import type { AgentRuntime, AiBackend, AskOptions, AskResult, RuntimeEvent, RuntimeStartOpts, SecretaryEvent, SecretaryRun, SecretaryRunOpts } from './types'
 
 // SDK는 ESM 전용이라 externals로 두고 require(esm)로 불러온다
@@ -272,6 +273,8 @@ export class ClaudeRuntime implements AgentRuntime {
     if (m.type === 'assistant') {
       const ctx = contextOf(m.message.usage)
       if (ctx) emit({ type: 'context', tokens: ctx })
+      // 로그인 안 됨 글(영어 원문)은 보고로 남기지 않는다 — 결과에서 쉬운 안내로 바꿔 오류로 넘긴다 (#20)
+      if (m.error === 'authentication_failed') return
       for (const b of m.message.content) {
         if (b.type === 'text' && b.text.trim()) emit({ type: 'text', text: b.text })
         if (b.type === 'tool_use' && EDIT_TOOLS.has(b.name)) {
@@ -288,7 +291,9 @@ export class ClaudeRuntime implements AgentRuntime {
       this.pruneSent()
       // API 연결 실패는 subtype success·is_error true로 온다 ("API Error: Can't reach the API server … (ENOTFOUND)") — 인터넷 오류만 실패로 넘긴다 (다른 API 오류는 지금처럼 답 글로)
       const isNetFail = m.subtype === 'success' && m.is_error && isNetworkError(m.result)
-      emit({ type: 'result', ok: m.subtype === 'success' && !isNetFail, subtype: m.subtype, text: m.subtype === 'success' ? m.result : '', numTurns: m.num_turns, costUsd: m.total_cost_usd, ...usageTotals(m.modelUsage) })
+      // 로그인 안 됨도 실패로 — 받는 쪽은 결과 글(4개 언어 안내)을 오류 사유로 보여 준다 (#20)
+      const isLoginFail = m.subtype === 'success' && m.is_error && isLoginError(undefined, m.result)
+      emit({ type: 'result', ok: m.subtype === 'success' && !isNetFail && !isLoginFail, subtype: m.subtype, text: isLoginFail ? t('claude.loginNeeded.staff') : m.subtype === 'success' ? m.result : '', numTurns: m.num_turns, costUsd: m.total_cost_usd, ...usageTotals(m.modelUsage) })
     }
   }
 }
@@ -323,6 +328,8 @@ export class ClaudeBackend implements AiBackend {
     for await (const m of q) {
       if (m.type === 'rate_limit_event') opts.onRateLimit?.(m.rate_limit_info)
       if (m.type === 'result') {
+        // 로그인 안 됨 글을 답으로 쓰지 않는다 — 던져서 다른 공급자(Codex)로 넘기거나 부른 쪽이 실패로 처리한다 (#20)
+        if (m.subtype === 'success' && m.is_error && isLoginError(undefined, m.result)) throw new Error(m.result)
         if (m.subtype === 'success') text = m.result
         costUsd = m.total_cost_usd
         ;({ tokensIn, tokensOut } = usageTotals(m.modelUsage))
@@ -355,6 +362,11 @@ export class ClaudeBackend implements AiBackend {
     async function* events(): AsyncGenerator<SecretaryEvent> {
       for await (const m of q) {
         if (m.type === 'assistant') {
+          // 로그인 안 됨: 영어 원문 대신 비서가 쉬운 안내를 띄운다 (#20)
+          if (m.error === 'authentication_failed') {
+            yield { type: 'loginNeeded' }
+            continue
+          }
           for (const b of m.message.content) {
             if (b.type === 'text' && b.text.trim()) yield { type: 'text', text: b.text.trim() }
             if (b.type === 'tool_use') yield { type: 'tool', name: b.name, input: b.input as Record<string, unknown> }

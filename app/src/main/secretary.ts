@@ -43,7 +43,7 @@ const TOOL_RESULT_MAX = 60_000
 /** 대신 답하기 상한 — 그동안 직원이 멈춰 있으므로 짧게. 넘으면 예전 고정 답으로 바로 넘긴다 (QA: 2~3분 걸림) */
 const AWAY_TIMEOUT_MS = 60_000
 /** 비용 상한 (한리뷰 M1): 모델 고정 · 질문 하나에 도구 턴·비용 · 질문 빈도 · 밀린 질문 · 세션을 이어 쓰는 기간·횟수 · 대신 답하기 빈도 */
-import { lastProviderStatus } from './setup'
+import { lastProviderStatus, providerStatus } from './setup'
 import { isRemoteCall } from './remoteContext'
 import { engineGuide } from '../shared/engineModel'
 const SECRETARY_MODEL = 'sonnet'
@@ -521,6 +521,13 @@ export class Secretary {
   }
 
   private handle(m: SecretaryEvent) {
+    if (m.type === 'loginNeeded') {
+      // 영어 원문 대신 4개 언어 안내 + 로그인 화면 링크, [다시 보내기]는 오류 말풍선에 붙는다 (#20). 설정·첫 안내가 '로그인 필요'를 보도록 상태도 다시 읽는다
+      this.add({ role: 'secretary', text: t('claude.loginNeeded.secretary'), isError: true })
+      this.endedWithText = true
+      void providerStatus().catch(() => {})
+      return
+    }
     if (m.type === 'text') {
       this.add({ role: 'secretary', text: m.text })
       this.endedWithText = true

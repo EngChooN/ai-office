@@ -195,7 +195,8 @@ export const SecretaryBubble = memo(function SecretaryBubble({
           <div className="bg-card selectable min-w-0 rounded-2xl border px-3 py-2 text-sm">
             {m.isError ? (
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-status-error text-xs">{m.text}</span>
+                {/* 앱이 쓴 안내라 마크다운으로 (로그인 안내의 화면 링크·번호 목록 #20) */}
+                <Markdown className="text-status-error text-xs">{m.text}</Markdown>
                 {onRetry && (
                   <Button size="sm" variant="outline" onClick={onRetry}>
                     {t("secretary.resend")}
