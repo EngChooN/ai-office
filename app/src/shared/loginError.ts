@@ -11,3 +11,22 @@ const LOGIN_TEXT = /^\s*(?:[^\n]{1,80}\s·\s*please run \/login|please run \/log
 
 /** assistant 메시지(error 칸이 있다) 또는 오류 결과 글이 로그인 문제인가 */
 export const isLoginError = (error: unknown, text: string) => error === 'authentication_failed' || LOGIN_TEXT.test(text)
+
+/**
+ * 한 세션(query)의 로그인 오류 상태. 세션마다 새로 만든다 — 결과 전에 닫힌 세션의 오류가 다음 세션 결과에 남지 않게 (한리뷰 R2)
+ * 결과 글이 다른 문구여도(예: 번들의 새 문구) 앞서 authentication_failed를 받았으면 실패로 본다
+ */
+export class LoginWatch {
+  private failed = false
+  /** assistant 메시지의 error 칸을 본다. 로그인 오류면 true */
+  see(error: unknown): boolean {
+    if (error === 'authentication_failed') this.failed = true
+    return error === 'authentication_failed'
+  }
+  /** 턴 결과가 로그인 실패인가 — 다음 턴을 위해 상태를 지운다 */
+  settle(isError: boolean, text: string): boolean {
+    const failed = this.failed || (isError && isLoginError(undefined, text))
+    this.failed = false
+    return failed
+  }
+}

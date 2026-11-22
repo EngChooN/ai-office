@@ -12,7 +12,7 @@ import { contextOf } from '../sessionRotate'
 import { PendingSends } from './pendingSends'
 import { exeName } from '../platform'
 import { isNetworkError } from '../../shared/networkError.ts'
-import { isLoginError } from '../../shared/loginError.ts'
+import { LoginWatch } from '../../shared/loginError.ts'
 import type { AgentRuntime, AiBackend, AskOptions, AskResult, RuntimeEvent, RuntimeStartOpts, SecretaryEvent, SecretaryRun, SecretaryRunOpts } from './types'
 
 // SDK는 ESM 전용이라 externals로 두고 require(esm)로 불러온다
@@ -95,8 +95,8 @@ export class ClaudeRuntime implements AgentRuntime {
   private pending = new PendingSends()
   /** 보낸 지시 원본 (결과가 오면 지운다) — 세션을 강제로 닫을 때 줄 선 지시를 다시 보내는 데 쓴다 */
   private sentMsgs = new Map<string, SDKUserMessage>()
-  /** 이번 턴에 로그인 오류(authentication_failed)를 받았나 — 결과 글 모양과 상관없이 실패로 넘긴다 (#20) */
-  private authFailed = false
+  /** 이번 세션의 로그인 오류 상태 — 세션을 닫거나 열 때마다 새로 만든다. 결과 전에 닫힌 세션의 오류가 다음 세션 결과에 남지 않게 (#20, 한리뷰 R2) */
+  private login = new LoginWatch()
 
   constructor(private onEvent: (e: RuntimeEvent) => void) {}
 
@@ -164,6 +164,7 @@ export class ClaudeRuntime implements AgentRuntime {
     this.wake?.()
     this.q?.close()
     this.q = null
+    this.login = new LoginWatch()
     this.forgetDelivered()
   }
 
@@ -242,6 +243,7 @@ export class ClaudeRuntime implements AgentRuntime {
       },
     })
     this.q = q
+    this.login = new LoginWatch()
     void this.consume(q)
     q.supportedCommands().then(
       (raw) => this.q === q && this.onEvent({ type: 'commands', commands: raw }),
@@ -261,7 +263,6 @@ export class ClaudeRuntime implements AgentRuntime {
     } finally {
       if (this.q === q) {
         this.q = null
-        this.authFailed = false
         this.forgetDelivered()
       }
     }
@@ -277,10 +278,7 @@ export class ClaudeRuntime implements AgentRuntime {
       const ctx = contextOf(m.message.usage)
       if (ctx) emit({ type: 'context', tokens: ctx })
       // 로그인 안 됨 글(영어 원문)은 보고로 남기지 않는다 — 결과에서 쉬운 안내로 바꿔 오류로 넘긴다 (#20)
-      if (m.error === 'authentication_failed') {
-        this.authFailed = true
-        return
-      }
+      if (this.login.see(m.error)) return
       for (const b of m.message.content) {
         if (b.type === 'text' && b.text.trim()) emit({ type: 'text', text: b.text })
         if (b.type === 'tool_use' && EDIT_TOOLS.has(b.name)) {
@@ -298,8 +296,7 @@ export class ClaudeRuntime implements AgentRuntime {
       // API 연결 실패는 subtype success·is_error true로 온다 ("API Error: Can't reach the API server … (ENOTFOUND)") — 인터넷 오류만 실패로 넘긴다 (다른 API 오류는 지금처럼 답 글로)
       const isNetFail = m.subtype === 'success' && m.is_error && isNetworkError(m.result)
       // 로그인 안 됨도 실패로 — 받는 쪽은 결과 글(4개 언어 안내)을 오류 사유로 보여 준다 (#20)
-      const isLoginFail = this.authFailed || (m.subtype === 'success' && m.is_error && isLoginError(undefined, m.result))
-      this.authFailed = false
+      const isLoginFail = this.login.settle(m.is_error, m.subtype === 'success' ? m.result : '')
       emit({ type: 'result', ok: m.subtype === 'success' && !isNetFail && !isLoginFail, subtype: m.subtype, text: isLoginFail ? t('claude.loginNeeded.staff') : m.subtype === 'success' ? m.result : '', numTurns: m.num_turns, costUsd: m.total_cost_usd, ...usageTotals(m.modelUsage) })
     }
   }
@@ -332,13 +329,13 @@ export class ClaudeBackend implements AiBackend {
     let costUsd = 0
     let tokensIn = 0
     let tokensOut = 0
-    let authFailed = false
+    const login = new LoginWatch()
     for await (const m of q) {
       if (m.type === 'rate_limit_event') opts.onRateLimit?.(m.rate_limit_info)
-      if (m.type === 'assistant' && m.error === 'authentication_failed') authFailed = true
+      if (m.type === 'assistant') login.see(m.error)
       if (m.type === 'result') {
         // 로그인 안 됨 글을 답으로 쓰지 않는다 — 던져서 다른 공급자(Codex)로 넘기거나 부른 쪽이 실패로 처리한다 (#20)
-        if (authFailed || (m.subtype === 'success' && m.is_error && isLoginError(undefined, m.result))) throw new Error(m.subtype === 'success' ? m.result : 'authentication_failed')
+        if (login.settle(m.is_error, m.subtype === 'success' ? m.result : '')) throw new Error(m.subtype === 'success' ? m.result : 'authentication_failed')
         if (m.subtype === 'success') text = m.result
         costUsd = m.total_cost_usd
         ;({ tokensIn, tokensOut } = usageTotals(m.modelUsage))

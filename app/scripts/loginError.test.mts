@@ -1,7 +1,7 @@
 // Claude Code 로그인 안 됨 (#20): 오류 글 판정과, 비서가 다음 공급자로 넘어가는지
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { isLoginError } from '../src/shared/loginError.ts'
+import { isLoginError, LoginWatch } from '../src/shared/loginError.ts'
 import { FallbackBackend } from '../src/main/ai/fallback.ts'
 import type { AiBackend, SecretaryEvent } from '../src/main/ai/types.ts'
 
@@ -49,4 +49,20 @@ test('비서: Claude 로그인 안 됨이면 Codex로 넘어가고, 다른 공�
   assert.deepEqual(await collect(both), [{ type: 'text', text: '안녕하세요' }, result])
   const only = new FallbackBackend(() => ['claude'], () => claude)
   assert.deepEqual(await collect(only), [{ type: 'loginNeeded' }, result])
+})
+
+test('로그인 오류 상태: 결과 글이 달라도 앞서 받은 오류로 실패, 결과 뒤에는 지운다 (한리뷰 R1·R2)', () => {
+  const w = new LoginWatch()
+  assert.equal(w.see('authentication_failed'), true)
+  assert.equal(w.settle(true, 'Some new auth message'), true)
+  assert.equal(w.settle(false, '다 했습니다'), false) // 다음 턴은 정상
+  assert.equal(w.see(undefined), false)
+  assert.equal(w.settle(false, '다 했습니다'), false)
+})
+
+test('로그인 오류 상태: 결과 전에 닫힌 세션의 오류가 새 세션 결과에 남지 않는다 (한리뷰 R2)', () => {
+  const old = new LoginWatch()
+  old.see('authentication_failed') // 결과가 오기 전에 세션 종료
+  const next = new LoginWatch() // 같은 직원 재시작 = 새 세션
+  assert.equal(next.settle(false, '다 했습니다'), false)
 })
