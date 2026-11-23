@@ -4923,7 +4923,9 @@ export class Office extends EventEmitter<{
     // `@이름 /명령`은 머리말 없이 그대로 보내야 세션이 명령으로 알아듣는다
     const head = info ? roomHead(info) : '[단체방]'
     const quote = replyTo ? `${t('chat.reply.context', { name: quoted?.from === 'me' ? t('chat.reply.me') : (this.hired.get(quoted?.from ?? '')?.name ?? ''), text: (quoted?.text ?? '').slice(0, REPLY_CONTEXT_MAX) })}\n\n` : ''
-    let message = body.startsWith('/') ? body : `${head} ${quote}${body || '첨부 파일을 확인해 주세요.'}`
+    // 코드 블록으로 시작하는 글은 머리말과 같은 줄에 두면 ``` 가 줄 맨 앞이 아니라 코드로 인식되지 않으니 줄을 바꿔 붙인다
+    const headGap = !quote && /^(```|~~~)/.test(body) ? '\n' : ' '
+    let message = body.startsWith('/') ? body : `${head}${headGap}${quote}${body || '첨부 파일을 확인해 주세요.'}`
     const origin: Origin = { kind: 'chat', room, chatId: mine.id }
     // 앱 대화방(mode)은 직원 패널처럼: 일하는 중이면 대기 메시지로 들고 있거나(wait) 하던 일을 멈추고 바로 전한다(now).
     // mode가 없으면(비서·바탕화면 비서·휴대폰) 예전처럼 바로 보낸다
