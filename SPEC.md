@@ -133,6 +133,7 @@
 | 55 | 1.4.2: 비서 이어서 하기(한도 12→24번·0.5→1달러)·첫 실행 안내 1~2분·? 도움말·업무 모드 사이드바 | 대표 승인(2026-11-16) |
 | 57 | 1.5.0: 리더끼리 협업 요청·프로젝트 쌍 승인·여러 팀·프로젝트 단체방 | 대표 결정(2026-11-19): 리더→리더 요청(거절·1회 재위임·결과 취합), 쌍별 첫 1회 결재·같은 폴더 경고, 단체방(`group:<id>`, 6명 제한·예산 적용), `add_task` 담당자 제한. 상세 `docs/changelog-dev.md` |
 | 58 | 1.5.2: 비서 대화 ⌘F·Ctrl+F 찾기, 단체방 찾기 ↑↓ 이동 | `shared/chatFind.ts`·`ChatExtras.tsx`(`SearchField`·`useFindShortcut`)·`SecretaryChat/Page` — 휴대폰·분할 화면·일/영/중 화면은 미확인 | 구현 |
+| 59 | 1.6.0: 휴대폰 결과물 미리보기·내려받기(셸 read·view 전용 주소·최근 4개 보관), 코드 블록 복사 버튼·붙여넣은 코드 자동 코드 블록·지시 줄 구분(#19), 로그인 안 됨 4개 언어 안내(#20) | `artifactViews.ts`·`WebShell.kt`·`markdown.tsx`·`codePaste.ts`·`loginError.ts` — 휴대폰 실기기·윈도우 실기는 미확인 | 구현 |
 | 56 | 1.4.3: 다른 PC 연결(워크스페이스) 근본 수정 | 대표 승인(2026-11-17) |
 | 51 | 1.2.0: 색 테마 4종·결재 카드 결과 한 줄·폴드 좌우 분할·듀오톤 아이콘·Fable | 대표 결정(2026-11-11): 색 테마 `aurora`·`twilight`·`candy`·`meadow`(`UiThemeId`, `--sidebar-bg` 두 색 그라데이션, 라이트·다크 각 8세트, 설정은 '기본 색'/'두 색 그라데이션' 묶음). `Approval.effectI18n`(`shared/approvalEffect.ts effectOf`, 확실할 때만 — 규칙·일회 허용 매칭은 `summary` 그대로). 폴드 `decideLayout`/`isSplit`(폭 600 이상). `DuoIcon` 20종·`IconText`. 모델 `fable`(실제 호출 claude-fable-5-1)·`modelOptions.ts`. 도움 요청 `isLabLead`/`isTeamLead` 분리 | 구현 |
 | 44 | 1.0.3: 팀장 끼어들기 | **delegate `interrupt`** `continue`(끊고 먼저 전한 뒤 이어 감)·`replace`(`dropWork`로 카드 할 일로, `[지시 변경]`), delegate 출처 유지해 리더 보고, 결재 없이 양쪽 기록, 다른 PC 직원은 줄 세움 | 안드로이드 `versionCode` 44 |

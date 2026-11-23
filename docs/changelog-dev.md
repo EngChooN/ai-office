@@ -56,6 +56,18 @@
 - 바탕화면 비서(`deskPet.ts` `petTargets`)·보드·비서(`secretary.ts`)·원격(`remote/v2.ts`)이 단체방을 인식. 시험: `collabApproval`·`collabPairs`·`chatRooms`·`helpRequest` 등.
 
 
+## [1.6.0] - 2026-11-23
+
+### 새 기능
+- 휴대폰 결과물 미리보기·내려받기(f82fa8b·5f26fd3): 안드로이드 `WebShell`이 결과물 문서를 전용 주소로 열고(`view` 요청, 외부 라이브러리 허용 목록, 최근 4개 보관, `artifactViews.ts`) 내려받기는 셸 `download`. `artifact.pcOnly*` 문구 삭제.
+- 코드 블록 복사 버튼(`markdown.tsx` `CodeBlock`·`copyText.ts`), 붙여넣은 코드 자동 ``` 감싸기(`shared/codePaste.ts`, 3줄 이상·코드 줄 60% 이상·사람 글 20% 미만), 직원 패널 지시 줄 구분(#19).
+
+### 개선
+- Claude 로그인 안 됨을 `shared/loginError.ts` + `claude.loginNeeded.*` 4개 언어 안내로(비서는 `#view=providers` 링크, 직원은 한 줄), 세션마다 오류 상태 초기화(#20).
+
+### 버그 수정
+- 방에서 코드만 보낸 지시가 업무 기록에서 깨짐: 머리말 뒤 줄 바꿈(1827194, #19).
+
 ## [1.5.2] - 2026-11-20
 
 ### 새 기능

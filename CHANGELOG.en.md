@@ -11,6 +11,29 @@ Writing rules
 - Leave out: internal or development matters, re-fixes of features added in the same version, how a security hole worked (if needed, one line on the result), minor wording or spacing tweaks.
 - Couldn't do it before → new feature; easier than before → improvement; was working wrongly → bug fix.
 
+## [1.6.0] - 2026-11-23
+
+### At a glance
+- **New** Preview and download results on your phone
+- **New** Copy button on code blocks; pasted code auto-formatted
+- **Better** Your instructions stand out in the staff work log
+- **Better** Clear guidance when Claude isn't signed in
+- **Fixed** Instructions with only code broke in group chats
+
+Phone result preview has not yet been checked on a real phone or a Windows PC.
+
+### New features
+- On your phone you can now preview and download results from another PC inside the app. Before, it only said "Open it on the PC".
+- Code blocks in chats have a button at the top right to copy the code in one tap.
+- Pasting several lines of code into the input box wraps it in a code block automatically. One undo (⌘Z / Ctrl+Z) restores the original text.
+
+### Improvements
+- In the staff work log, the instructions you gave are shown with a different background from reports.
+- When Claude can't answer because you aren't signed in, you now get steps to fix it in Korean, English, Japanese and Chinese instead of an English error.
+
+### Bug fixes
+- Fixed instructions containing only code looking broken in the work log after being sent from a group chat.
+
 ## [1.5.2] - 2026-11-20
 
 ### At a glance
