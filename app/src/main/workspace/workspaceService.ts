@@ -56,13 +56,19 @@ export interface ServiceDeps {
   peerName(peerId: string): string | null
   /** 목록·상태가 바뀌었다고 창들에 알린다 (창마다 current가 다르다) */
   emit(senderId: number, state: WorkspacesState): void
+  /** 결과물 미리보기 문서를 맡기고 그 창 안의 전용 주소를 받는다 (없으면 view 요청을 거절한다) */
+  stageView?(workspaceId: string, html: string): string
   now?: () => number
 }
 
 const ID_MAX = 64
+/** 맡기는 미리보기 문서 상한 (글자 수) — 결과물 원본 5MB가 마크다운→HTML로 늘어나는 몫까지 */
+const VIEW_MAX = 10 * 1024 * 1024
+
+type ViewPost = { type: 'view'; id: string; html: string }
 
 /** ws:post로 온 글을 요청으로 읽는다. 모양이 틀리면 null (버린다) */
-export function parseRemotePost(text: unknown): (RemoteRequest & { id: string }) | { type: 'ready'; features: string[] } | null {
+export function parseRemotePost(text: unknown): (RemoteRequest & { id: string }) | ViewPost | { type: 'ready'; features: string[] } | null {
   if (typeof text !== 'string' || text.length > 40_000_000) return null
   let m: Record<string, unknown>
   try {
@@ -79,6 +85,7 @@ export function parseRemotePost(text: unknown): (RemoteRequest & { id: string })
   if (m.type === 'download' && typeof m.fileId === 'string' && typeof m.name === 'string') {
     return { type: 'download', id: m.id, fileId: m.fileId, name: m.name, ...(m.kind === 'artifact' ? { kind: 'artifact' as const, ...(version ? { version } : {}) } : {}) }
   }
+  if (m.type === 'view' && typeof m.html === 'string' && m.html.length <= VIEW_MAX) return { type: 'view', id: m.id, html: m.html }
   if (m.type === 'read' && typeof m.fileId === 'string') return { type: 'read', id: m.id, fileId: m.fileId, ...(version ? { version } : {}) }
   return null
 }
@@ -165,6 +172,11 @@ export function createWorkspaceService(deps: ServiceDeps) {
       const req = parseRemotePost(text)
       if (!req) return
       if (req.type === 'ready') return links.ready(workspaceId)
+      // 미리보기 문서는 저쪽 PC에 보내지 않고 이 PC가 맡는다
+      if (req.type === 'view') {
+        const url = deps.stageView?.(workspaceId, req.html)
+        return void reply(workspaceId, url ? { type: 'result', id: req.id, ok: true, result: { url } } : { type: 'result', id: req.id, ok: false, error: { status: 0, code: 'unknown_type', message: '' } })
+      }
       const { id, ...body } = req
       const gate = gateCall(gateName(body), links.status(workspaceId))
       if (!gate.ok) return void reply(workspaceId, { type: 'result', id, ok: false, error: { status: 0, code: gate.code, message: '' } })

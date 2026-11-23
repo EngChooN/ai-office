@@ -54,6 +54,8 @@ sealed interface BridgeRequest {
     data class Download(val id: String, val fileId: String, val name: String, val isArtifact: Boolean = false, val version: Int? = null) : BridgeRequest
     /** 결과물 원본 텍스트를 화면에 넘긴다 (저장 안 함, 화면이 격리 틀로만 그린다) — GET /v2/artifacts/{id}[/{version}] */
     data class Read(val id: String, val fileId: String, val version: Int? = null) : BridgeRequest
+    /** 화면이 그린 결과물 문서를 셸에 맡기고 미리보기 주소를 받는다 (srcDoc은 화면 CSP를 물려받아 스크립트가 막힌다) */
+    data class View(val id: String, val html: String) : BridgeRequest
     /** 셸이 보낸 back에 대한 답: 화면이 처리했는지 (시트 닫기·이전 화면 등) */
     data class BackResult(val handled: Boolean) : BridgeRequest
     /** 모양이 틀림 — id가 있으면 오류로 답한다 */
@@ -109,6 +111,10 @@ fun parseBridge(text: String): BridgeRequest {
             if (id == null || fileId == null || version == null) BridgeRequest.Invalid(id, "bad_read")
             else BridgeRequest.Read(id, fileId, version.getOrNull())
         }
+        "view" -> {
+            val html = o.str("html")?.takeIf { it.length <= ARTIFACT_VIEW_MAX }
+            if (id == null || html == null) BridgeRequest.Invalid(id, "bad_view") else BridgeRequest.View(id, html)
+        }
         "backResult" -> BridgeRequest.BackResult((o["handled"] as? JsonPrimitive)?.content == "true")
         else -> BridgeRequest.Invalid(id, "unknown_type")
     }
@@ -116,6 +122,39 @@ fun parseBridge(text: String): BridgeRequest {
 
 /** 결과물 원본 상한 — PC의 V2_ARTIFACT_MAX(5MB)와 같다 (셸도 한 번 더 막는다) */
 const val ARTIFACT_MAX = 5 * 1024 * 1024
+
+/** 맡기는 문서 상한 (글자 수) — 원본 5MB가 마크다운→HTML로 늘어나는 몫까지 */
+const val ARTIFACT_VIEW_MAX = 2 * ARTIFACT_MAX
+
+/** 결과물 미리보기 주소의 경로 (자산 출처 아래, 화면 CSP의 frame-src는 이 경로만 허용) */
+const val ARTIFACT_VIEW_PATH = "/artifact-view/"
+
+/** 결과물이 외부 라이브러리를 불러올 수 있는 곳 — 화면의 ARTIFACT_CDNS(app/src/shared/artifact.ts)와 같게 */
+val ARTIFACT_CDN_HOSTS = setOf("cdnjs.cloudflare.com", "unpkg.com", "cdn.jsdelivr.net")
+
+/**
+ * 미리보기 문서 응답의 CSP — 화면의 ARTIFACT_CSP(app/src/shared/artifact.ts)와 같게.
+ * sandbox로 앱과 다른 출처(opaque)에 가둬 OfficeBridge·자산에 닿지 못하고, 인라인 스크립트·세 CDN만 허용한다
+ */
+val ARTIFACT_CSP: String = ARTIFACT_CDN_HOSTS.joinToString(" ") { "https://$it" }.let { cdns ->
+    "default-src 'none'; script-src 'unsafe-inline' $cdns; style-src 'unsafe-inline' $cdns; img-src data: blob:; " +
+        "font-src data: $cdns; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; sandbox allow-scripts"
+}
+
+/** 맡은 미리보기 문서 — 최근 몇 개만 메모리에 둔다 (WebView 스레드에서도 읽으므로 잠근다) */
+class ArtifactViews(private val keep: Int = 4) {
+    private val docs = LinkedHashMap<String, String>()
+
+    @Synchronized fun put(html: String): String {
+        val token = java.util.UUID.randomUUID().toString()
+        docs[token] = html
+        while (docs.size > keep) docs.remove(docs.keys.first())
+        return token
+    }
+
+    /** 경로(토큰)로 찾는다. UUID 모양이 아니면 null */
+    @Synchronized fun get(token: String): String? = token.takeIf { FILE_ID.matches(it) }?.let { docs[it] }
+}
 
 /**
  * 휴대폰에 저장할 이름: PC가 준 Content-Disposition의 filename*(UTF-8 퍼센트 인코딩)을 먼저, 없으면 화면이 준 이름, 그것도 없으면 id.

@@ -5,7 +5,7 @@
     <meta charset="UTF-8" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: office-file:; font-src 'self' data:; media-src 'self' blob:; connect-src 'self' ws://localhost:* http://localhost:*; worker-src 'self' blob:; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: office-file:; font-src 'self' data:; media-src 'self' blob:; connect-src 'self' ws://localhost:* http://localhost:*; worker-src 'self' blob:; object-src 'none'; frame-src office-artifact:; base-uri 'none'; form-action 'none'"
     />
     <title>AI Office</title>
     <!-- 첫 페인트 전에 바깥 UI 화면 모드·색 테마를 칠한다 (캐시: lib/uiTheme.ts, 규칙: shared/uiTheme.ts resolveMode) -->

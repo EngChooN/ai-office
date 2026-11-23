@@ -140,7 +140,7 @@ function ViewerBody({ artifact }: { artifact: ArtifactRef }) {
           <p className="text-muted-foreground p-4 text-sm">{t(LOAD_TEXT[load.status])}</p>
         ) : tab === 'live' ? (
           // allow-same-origin을 주지 않아 앱과 다른 출처로 갇힌다. 바탕은 칠하지 않는다 — 색 모드를 정하지 않은 html은 브라우저가 흰 캔버스를 깔고, md는 앱 라이트·다크를 따른다
-          <iframe key={load.view.doc === undefined ? load.view.url : `${load.view.id}-${load.view.version}`} sandbox="allow-scripts" {...(load.view.doc === undefined ? { src: load.view.url } : { srcDoc: load.view.doc })} title={load.view.title} className="size-full" />
+          <iframe key={load.view.url} sandbox="allow-scripts" src={load.view.url} title={load.view.title} className="size-full" />
         ) : (
           <pre className="selectable bg-muted size-full overflow-auto p-3 font-mono text-xs break-words whitespace-pre-wrap">{load.view.source}</pre>
         )}

@@ -16,7 +16,7 @@
 
 ### 셸이 막는 것
 - **네트워크:** WebView의 모든 요청은 셸이 가로챈다. `/app/`의 자산과 `/office-file/{id}`(아래 5절) 말고는 전부 `403`. 인터넷·PC 주소·`content://`·`file://` 모두 막힌다.
-- **CSP 머리글**(HTML 응답에 붙임): `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' blob:; connect-src 'self'; worker-src 'self' blob:; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'`
+- **CSP 머리글**(HTML 응답에 붙임): `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' blob:; connect-src 'self'; worker-src 'self' blob:; object-src 'none'; frame-src https://appassets.androidplatform.net/artifact-view/; base-uri 'none'; form-action 'none'`
   - **인라인 `<script>`는 실행되지 않는다.** 스크립트는 파일로 둔다(Vite 빌드는 기본이 파일이다).
   - `fetch`/`XHR`/`WebSocket`은 자산 출처에만 된다. PC와의 통신은 모두 아래 브리지로 한다.
 - **탐색:** `/app/` 밖으로 이동(링크·`location` 변경)은 무시한다. 새 창(`window.open`) 없음.
@@ -52,7 +52,8 @@
 | `call` | `id`, `method`, `args`(배열, 없으면 `[]`), `confirm`(선택) | `POST /v2/call {method, args, confirm}`. `Idempotency-Key`는 셸이 붙인다(같은 `id`로 다시 보내면 같은 키 → PC가 한 번만 처리) |
 | `upload` | `id`, `name`, `mime`, `base64` | `POST /v2/attachments` 한 번. `saveAttachments(files)`는 어댑터가 파일마다 이것을 보내 `Attachment[]`로 모은다. 20MB 넘으면 셸이 `413 payload_too_large`로 바로 답한다 |
 | `download` | `id`, `fileId`(UUID), `name`, `kind`(선택, `"artifact"`), `version`(선택, 1 이상 정수) | 첨부는 `GET /v2/files/{fileId}`, `kind:"artifact"`면 결과물 `GET /v2/artifacts/{fileId}[/{version}]`(버전 없으면 최신)을 받아 **휴대폰의 다운로드 폴더에 저장**(`openAttachment`·결과물 내려받기 대신). 저장 이름은 PC가 준 `Content-Disposition`의 `filename*` → 화면이 준 `name` → `fileId` 순, 경로 문자·제어 문자는 `_`, 앞쪽 점은 빼고 120자까지. 결과물은 확장자로 형식을 정한다(PC는 `text/plain`으로 보낸다). 결과물 5MB 넘으면 `413 payload_too_large`. 결과는 저장한 이름 |
-| `read` | `id`, `fileId`(UUID), `version`(선택) | 결과물 `GET /v2/artifacts/{fileId}[/{version}]`을 받아 `{name, text}`로 답한다(**저장하지 않음**). 화면은 이 텍스트를 격리 틀(`iframe sandbox` + CSP, `srcDoc`)로만 그린다. 5MB 넘으면 `413 payload_too_large`. 모양이 틀리면 `bad_read` |
+| `read` | `id`, `fileId`(UUID), `version`(선택) | 결과물 `GET /v2/artifacts/{fileId}[/{version}]`을 받아 `{name, text}`로 답한다(**저장하지 않음**). 화면은 이 텍스트로 문서를 만들어 `view`로 맡긴 뒤 받은 주소로만 그린다. 5MB 넘으면 `413 payload_too_large`. 모양이 틀리면 `bad_read` |
+| `view` | `id`, `html`(문자열, 10MB 글자까지) | 미리보기 문서를 메모리에 맡기고(최근 4개) `{url}`(`https://appassets.androidplatform.net/artifact-view/<UUID>`)로 답한다. 그 주소는 결과물 CSP(`app/src/shared/artifact.ts`의 `ARTIFACT_CSP`, `sandbox allow-scripts` 포함)를 머리글로 붙여 내준다 — `srcDoc`은 화면 CSP를 물려받아 인라인 스크립트·CDN이 막히기 때문. 화면은 `iframe sandbox="allow-scripts"`로 연다(앱과 다른 출처라 `OfficeBridge`·자산에 닿지 못함). 셸은 iframe의 세 CDN(cdnjs·unpkg·jsdelivr) 요청만 인터넷으로 보낸다. 모양이 틀리면 `bad_view` |
 | `backResult` | `handled`(boolean) | 셸의 `back`에 대한 답 (4절) |
 
 - `method`는 이름 모양(`^[A-Za-z][A-Za-z0-9]{0,63}$`)만 셸이 거른다. 어떤 메서드가 되는지는 PC가 정한다(`404 unknown_method`, `422 pc_only` 등).

@@ -39,6 +39,8 @@ export type BridgeRequest =
   | { type: 'download'; fileId: string; name: string; kind?: 'artifact'; version?: number }
   /** 결과물 원본 텍스트를 받아 미리보기에 쓴다 (저장 안 함) */
   | { type: 'read'; fileId: string; version?: number }
+  /** 미리보기 문서를 셸에 맡기고 전용 주소({url})를 받는다 — srcDoc은 화면 CSP를 물려받아 결과물 스크립트가 막힌다 */
+  | { type: 'view'; html: string }
 
 /** 답이 없는 알림 */
 export type BridgeNotice = { type: 'ready'; features?: string[] } | { type: 'backResult'; handled: boolean }

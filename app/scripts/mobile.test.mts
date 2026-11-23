@@ -10,6 +10,7 @@ import { createBridge, parseShellMessage, type Bridge, type BridgeRequest, type 
 import { createRemoteOffice, fillOldSnapshot, normalizeArgs, PC_ONLY_TEXT, pcUpdateFeatureText, pcUpdateText, RemoteCallError, SCREEN_CAPABILITIES, type RemoteHandlers } from '../src/renderer/mobile/remoteOffice.ts'
 import { recentFolders } from '../src/renderer/mobile/recentFolders.ts'
 import { t } from '../src/shared/i18n/index.ts'
+import { ARTIFACT_CDNS } from '../src/shared/artifact.ts'
 import { pinchStep } from '../src/renderer/map/gestures.ts'
 import { createLayoutTracker, decideLayout, getLayoutState, setLayoutState, subscribeLayout } from '../src/renderer/layout/layoutState.ts'
 
@@ -317,6 +318,7 @@ test('어댑터: 원격 화면(휴대폰·다른 PC 창)은 결과물을 받아 
     if (m.type === 'call' && m.method === 'artifactList') return info
     if (m.type === 'call' && m.method === 'artifactVersions') return versions
     if (m.type === 'read') return { name: 'r.html', text: '<h1>안녕</h1>' }
+    if (m.type === 'view') return { url: 'https://appassets.androidplatform.net/artifact-view/t' }
     return 'r.html'
   })
   const x = handlers()
@@ -324,8 +326,10 @@ test('어댑터: 원격 화면(휴대폰·다른 PC 창)은 결과물을 받아 
   const view = await office.artifactOpen(id)
   assert.equal(view?.version, 2, '버전을 안 주면 최신')
   assert.equal(view?.source, '<h1>안녕</h1>')
-  assert.equal(view?.url, '')
-  assert.match(view?.doc ?? '', /Content-Security-Policy[\s\S]*<h1>안녕<\/h1>/, '격리 문서에 CSP를 넣는다')
+  // srcDoc은 화면 CSP를 물려받아 결과물 스크립트가 막힌다 — 셸에 맡겨 받은 전용 주소(결과물 CSP 머리글)로 연다
+  assert.equal(view?.url, 'https://appassets.androidplatform.net/artifact-view/t')
+  const staged = f.sent.find((m) => m.type === 'view') as { html: string } | undefined
+  assert.match(staged?.html ?? '', /Content-Security-Policy[\s\S]*<h1>안녕<\/h1>/, '맡기는 문서에도 CSP를 넣는다')
   assert.deepEqual(f.sent.find((m) => m.type === 'read'), { type: 'read', fileId: id, version: 2 })
   assert.equal((await office.artifactOpen(id, 1))?.version, 1)
   assert.equal(await office.artifactOpen('99999999-2222-4333-8444-555555555555'), null, '목록에 없으면 null')
@@ -523,6 +527,11 @@ test('CSP: mobile.html의 CSP가 안드로이드 셸 머리글과 같고, 인라
   assert.match(meta!, /connect-src 'self'/)
   assert.match(meta!, /object-src 'none'/)
   assert.match(meta!, /base-uri 'none'/)
+  // 틀(iframe)은 셸의 결과물 미리보기 주소만 — 셸은 그 주소에 결과물 CSP를 붙인다
+  assert.match(meta!, /frame-src https:\/\/appassets\.androidplatform\.net\/artifact-view\/;/)
+  const proto = fs.readFileSync(path.join(APP, '../android/app/src/main/java/com/claudeoffice/remote/web/BridgeProtocol.kt'), 'utf8')
+  const hosts = proto.match(/ARTIFACT_CDN_HOSTS = setOf\(([^)]*)\)/)?.[1].match(/"([^"]+)"/g)?.map((h) => `https://${h.slice(1, -1)}`)
+  assert.deepEqual(hosts, ARTIFACT_CDNS, '셸이 열어 주는 CDN이 결과물 CSP와 같다')
 })
 
 test('빌드 결과(dist-mobile): 상대 경로·인라인 스크립트 없음·미리보기 가짜 셸 없음', { skip: !fs.existsSync(path.join(APP, 'dist-mobile/mobile.html')) && 'pnpm build:mobile 뒤에 확인' }, () => {

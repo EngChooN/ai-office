@@ -25,6 +25,8 @@ import {
 } from '../src/shared/workspace.ts'
 import { createWorkspaceStore } from '../src/main/workspace/workspaceStore.ts'
 import { createWindowHub, partitionOf, type Bounds, type HubWindow } from '../src/main/workspace/workspaceWindows.ts'
+import { createArtifactViews } from '../src/main/workspace/artifactViews.ts'
+import { ARTIFACT_CSP } from '../src/shared/artifact.ts'
 import { createWorkspaceService, noLinks, parseRemotePost, type WorkspaceLinks } from '../src/main/workspace/workspaceService.ts'
 import { canFinish, canNext, initialWizard, wizardReducer } from '../src/renderer/features/workspace/wizard.ts'
 
@@ -456,6 +458,25 @@ test('parseRemotePost: 모양이 틀리면 버린다', () => {
   assert.deepEqual(parseRemotePost(JSON.stringify({ type: 'read', id: 'r', fileId: 'f', version: 0 })), { type: 'read', id: 'r', fileId: 'f' }, '버전은 1 이상 정수만')
   assert.deepEqual(parseRemotePost(JSON.stringify({ type: 'read', id: 'r', fileId: 'f', version: '2' })), { type: 'read', id: 'r', fileId: 'f' })
   assert.equal(parseRemotePost(JSON.stringify({ type: 'read', id: 'r' })), null)
+  assert.deepEqual(parseRemotePost(JSON.stringify({ type: 'view', id: 'v', html: '<p>a</p>' })), { type: 'view', id: 'v', html: '<p>a</p>' })
+  assert.equal(parseRemotePost(JSON.stringify({ type: 'view', id: 'v', html: 3 })), null)
+})
+
+test('원격 창 결과물 미리보기: 맡긴 문서만 그 창의 전용 주소로, 결과물 CSP(sandbox)를 머리글로 붙인다', async () => {
+  const views = createArtifactViews(2)
+  const url = views.stage('ws1', '<script>1</script>')
+  assert.match(url, /^office-artifact:\/\/view\/[a-f0-9-]{36}$/)
+  const res = views.respond('ws1', url)
+  assert.equal(res.status, 200)
+  assert.equal(await res.text(), '<script>1</script>')
+  assert.equal(res.headers.get('content-security-policy'), ARTIFACT_CSP)
+  assert.match(ARTIFACT_CSP, /sandbox allow-scripts/)
+  assert.equal(views.respond('ws2', url).status, 404, '다른 창이 맡긴 것은 못 연다')
+  assert.equal(views.respond('ws1', 'office-artifact://view/../x').status, 404)
+  views.stage('ws1', 'b')
+  views.stage('ws1', 'c')
+  assert.equal(views.respond('ws1', url).status, 404, '최근 것만 둔다')
+  views.drop('ws1')
 })
 
 // ── 마법사 ────────────────────────────────────────────

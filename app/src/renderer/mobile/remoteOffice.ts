@@ -183,7 +183,7 @@ export function createRemoteOffice(bridge: Bridge, h: RemoteHandlers): RemoteSes
     h.notice(pcUpdateFeatureText())
     return new RemoteCallError(method, { status: 0, code: 'pc_update_required', message: pcUpdateFeatureText() })
   }
-  /** 원격 화면의 결과물 크게 보기: 목록·버전은 평소 호출로, 원본은 read로 받아 와 화면에서 격리 틀(srcDoc)로 그린다 */
+  /** 원격 화면의 결과물 크게 보기: 목록·버전은 평소 호출로, 원본은 read로 받아 문서로 만든 뒤 셸에 맡겨(view) 받은 전용 주소를 격리 틀에 연다 */
   const openArtifact = async (id: string, version?: number): Promise<ArtifactView | null> => {
     const latest = ((await call('artifactList', [])) as ArtifactInfo[]).find((a) => a.id === id)
     if (!latest) return null
@@ -194,7 +194,10 @@ export function createRemoteOffice(bridge: Bridge, h: RemoteHandlers): RemoteSes
     const { text } = (await bridge.request({ type: 'read', fileId: id, version: shown.version }).catch((e: BridgeError) => {
       throw artifactError('artifactOpen', e)
     })) as { text: string }
-    return { id, title: latest.title, kind, version: shown.version, name: shown.name, size: shown.size, url: '', doc: withCspMeta(artifactDocument(kind, text, latest.title)), source: text, versions }
+    const { url } = (await bridge.request({ type: 'view', html: withCspMeta(artifactDocument(kind, text, latest.title)) }).catch((e: BridgeError) => {
+      throw new RemoteCallError('artifactOpen', e)
+    })) as { url: string }
+    return { id, title: latest.title, kind, version: shown.version, name: shown.name, size: shown.size, url, source: text, versions }
   }
   const downloadArtifact = async (id: string, version?: number) => {
     await bridge.request({ type: 'download', fileId: id, name: '', kind: 'artifact', ...(version ? { version } : {}) }).catch((e: BridgeError) => {

@@ -8,6 +8,7 @@ import { openLinksInBrowser } from '../externalLinks'
 import { WORKSPACE_COLOR_HEX } from '../../shared/workspace.ts'
 import { createWorkspaceStore } from './workspaceStore.ts'
 import { createWindowHub, type HubWindow } from './workspaceWindows.ts'
+import { createArtifactViews } from './artifactViews.ts'
 import { handleOnce } from './handleOnce.ts'
 import { freeFileName } from './linkModel.ts'
 import { createWorkspaceLinks, type LinkPeers } from './workspaceLinks.ts'
@@ -62,6 +63,7 @@ export function createWorkspaces(deps: WorkspacesDeps) {
     read: () => (fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null),
     write: (text) => fs.writeFileSync(file, text),
   })
+  const artifactViews = createArtifactViews()
   const hub = createWindowHub({
     local: () => {
       const w = deps.local()
@@ -93,10 +95,23 @@ export function createWorkspaces(deps: WorkspacesDeps) {
         const found = await links.readFile?.(workspaceId, new URL(req.url).pathname.replace(/^\//, ''))
         return found ? new Response(new Uint8Array(found.data), { headers: { 'content-type': found.mime, 'x-content-type-options': 'nosniff' } }) : new Response('not found', { status: 404 })
       })
+      // 결과물 미리보기 주소(office-artifact://view/<토큰>)는 이 창이 맡긴 문서만 — 이 PC의 결과물 저장소는 열지 않는다
+      const ses = w.webContents.session
+      if (handleOnce(ses, ses.protocol, 'office-artifact', (req) => artifactViews.respond(workspaceId, req.url))) {
+        // 결과물이 시작한 다운로드는 막는다 (이 PC 창과 같은 규칙, 저장 영역마다 한 번만 등록) — 내려받기 버튼은 다운로드를 거치지 않고 저장한다
+        ses.on('will-download', (e, item, wc) => {
+          const url = item.getURL()
+          const fromArtifact = Boolean(wc?.mainFrame.framesInSubtree.some((f) => f.url.startsWith('office-artifact:')))
+          if (url.startsWith('office-artifact:') || (fromArtifact && /^(blob|data):/i.test(url))) e.preventDefault()
+        })
+      }
       w.webContents.on('will-navigate', (e, url) => {
         if (!isSamePage(url, w.webContents.getURL())) e.preventDefault()
       })
-      w.on('closed', onClosed)
+      w.on('closed', () => {
+        artifactViews.drop(workspaceId)
+        onClosed()
+      })
       deps.load(w)
       return wrap(w)
     },
@@ -119,6 +134,7 @@ export function createWorkspaces(deps: WorkspacesDeps) {
     links,
     peerName: deps.peerName,
     emit: (senderId, state) => webContents.fromId(senderId)?.send('workspace:onChange', state),
+    stageView: artifactViews.stage,
   })
 
   ipcMain.handle('workspace:state', (e) => service.state(e.sender.id))

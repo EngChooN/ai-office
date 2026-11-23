@@ -11,6 +11,8 @@ import com.claudeoffice.remote.net.RemoteClient
 import com.claudeoffice.remote.net.spkiPin
 import com.claudeoffice.remote.web.BridgeOut
 import com.claudeoffice.remote.web.BridgeRequest
+import com.claudeoffice.remote.web.ARTIFACT_CSP
+import com.claudeoffice.remote.web.ArtifactViews
 import com.claudeoffice.remote.web.CSP
 import com.claudeoffice.remote.web.EventSink
 import com.claudeoffice.remote.web.EventStream
@@ -101,6 +103,8 @@ class V2ShellTest {
         assertTrue(parseBridge("""{"type":"read","id":"r3","fileId":"$fid","version":"3"}""") is BridgeRequest.Invalid)
         assertTrue(parseBridge("""{"type":"read","id":"r4","fileId":"$fid","version":1.5}""") is BridgeRequest.Invalid)
         assertTrue(parseBridge("""{"type":"read","id":"r5","fileId":"../x"}""") is BridgeRequest.Invalid)
+        assertEquals(BridgeRequest.View("v1", "<p>a</p>"), parseBridge("""{"type":"view","id":"v1","html":"<p>a</p>"}"""))
+        assertTrue(parseBridge("""{"type":"view","id":"v2"}""") is BridgeRequest.Invalid)
         assertTrue(parseBridge("not json") is BridgeRequest.Invalid)
         assertTrue(parseBridge("""{"type":"evil"}""") is BridgeRequest.Invalid)
     }
@@ -142,9 +146,23 @@ class V2ShellTest {
         assertNull(err["alternative"])
     }
 
+    @Test fun artifactViewsKeepRecentAndSandbox() {
+        val views = ArtifactViews(keep = 2)
+        val first = views.put("<script>1</script>")
+        assertEquals("<script>1</script>", views.get(first))
+        assertNull(views.get("../$first"))
+        views.put("b")
+        views.put("c")
+        assertNull(views.get(first))
+        // 미리보기는 앱과 다른 출처로 갇히고, 인라인 스크립트와 세 CDN만 허용
+        assertTrue(ARTIFACT_CSP.endsWith("sandbox allow-scripts"))
+        assertTrue(ARTIFACT_CSP.contains("script-src 'unsafe-inline' https://cdnjs.cloudflare.com https://unpkg.com https://cdn.jsdelivr.net;"))
+        assertTrue(ARTIFACT_CSP.contains("connect-src 'none'"))
+    }
+
     @Test fun assetsAreServedWithStrictPolicy() {
         assertTrue(CSP.contains("connect-src 'self'"))
-        assertTrue(CSP.contains("frame-src 'none'"))
+        assertTrue(CSP.contains("frame-src https://appassets.androidplatform.net/artifact-view/;"))
         assertEquals("text/javascript", mimeOf("assets/index-abc.js"))
         assertEquals("text/html", mimeOf("mobile.html"))
     }

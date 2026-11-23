@@ -98,10 +98,10 @@ object WebBundle {
     }
 }
 
-/** 자산 응답에 붙이는 보안 머리글. connect-src 'self' — 화면 코드가 PC나 인터넷에 직접 나가지 못한다 */
+/** 자산 응답에 붙이는 보안 머리글. connect-src 'self' — 화면 코드가 PC나 인터넷에 직접 나가지 못한다. 틀(iframe)은 결과물 미리보기 주소만 */
 internal const val CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
     "img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' blob:; connect-src 'self'; " +
-    "worker-src 'self' blob:; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'"
+    "worker-src 'self' blob:; object-src 'none'; frame-src https://appassets.androidplatform.net/artifact-view/; base-uri 'none'; form-action 'none'"
 
 internal fun mimeOf(path: String): String = when (path.substringAfterLast('.', "").lowercase()) {
     "html" -> "text/html"
@@ -152,6 +152,15 @@ private class AppAssets(private val context: Context, private val root: String) 
             if (mime == "text/html") put("Content-Security-Policy", CSP)
         }
         return WebResourceResponse(mime, if (mime.startsWith("text/") || mime.endsWith("json")) "utf-8" else null, 200, "OK", headers, stream)
+    }
+}
+
+/** 결과물 미리보기 문서: 화면이 view로 맡긴 것만, 결과물 CSP(sandbox)를 붙여 내준다 */
+private class ArtifactViewAssets(private val views: ArtifactViews) : WebViewAssetLoader.PathHandler {
+    override fun handle(path: String): WebResourceResponse {
+        val html = views.get(path) ?: return blocked()
+        val headers = mapOf("Content-Security-Policy" to ARTIFACT_CSP, "X-Content-Type-Options" to "nosniff", "Cache-Control" to "no-store")
+        return WebResourceResponse("text/html", "utf-8", 200, "OK", headers, ByteArrayInputStream(html.toByteArray(Charsets.UTF_8)))
     }
 }
 
@@ -243,6 +252,7 @@ private fun createWebView(
     val loader = WebViewAssetLoader.Builder()
         .setDomain(ASSET_HOST)
         .addPathHandler("/app/", AppAssets(activity, entry.root))
+        .addPathHandler(ARTIFACT_VIEW_PATH, ArtifactViewAssets(bridge.views))
         .build()
 
     return WebView(activity).apply {
@@ -265,9 +275,11 @@ private fun createWebView(
             cacheMode = WebSettings.LOAD_NO_CACHE
         }
         webViewClient = object : WebViewClient() {
-            override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse {
+            override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
                 val url = request.url
                 officeFileId(url)?.let { return bridge.officeFile(it) }
+                // 결과물 미리보기의 외부 라이브러리 (세 CDN만). 화면 CSP는 script-src 'self'라 화면 코드는 여전히 못 불러온다
+                if (!request.isForMainFrame && url.scheme == "https" && url.host in ARTIFACT_CDN_HOSTS) return null
                 // 자산만 연다. 그 밖(인터넷·PC 주소·content://·file://)은 모두 막는다
                 if (url.scheme == "https" && url.host == ASSET_HOST) return loader.shouldInterceptRequest(url) ?: blocked()
                 return blocked()
@@ -283,7 +295,9 @@ private fun createWebView(
                     }
                     return true
                 }
-                return !(url.scheme == "https" && url.host == ASSET_HOST && url.path?.startsWith("/app/") == true)
+                if (url.scheme != "https" || url.host != ASSET_HOST) return true
+                // 미리보기 틀(iframe)은 맡긴 문서 주소로만 연다
+                return !(url.path?.startsWith("/app/") == true || (!request.isForMainFrame && url.path?.startsWith(ARTIFACT_VIEW_PATH) == true))
             }
         }
         webChromeClient = object : WebChromeClient() {
@@ -365,6 +379,8 @@ private class Bridge(
     /** 같은 요청 id를 다시 보내면 같은 Idempotency-Key — PC가 한 번만 처리한다 */
     private val session = UUID.randomUUID().toString()
     var isTablet = false
+    /** 결과물 미리보기 문서 (view로 맡긴 것) */
+    val views = ArtifactViews()
 
     /** 화면이 ready로 알린 능력 (SCREEN_CAPABILITIES 안에서만) — /v2/call·/v2/events 헤더로 PC에 알린다 */
     @Volatile private var screenCapabilities: Set<String> = emptySet()
@@ -452,6 +468,7 @@ private class Bridge(
                     },
                 )
             }
+            is BridgeRequest.View -> post(BridgeOut.ok(r.id, buildJsonObject { put("url", "$ASSET_ORIGIN$ARTIFACT_VIEW_PATH${views.put(r.html)}") }))
             is BridgeRequest.BackResult -> pendingBack?.complete(r.handled)
             is BridgeRequest.Invalid -> r.id?.let { post(BridgeOut.fail(it, 0, "invalid_message", S.get(R.string.bridge_bad_request))) }
         }

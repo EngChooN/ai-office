@@ -565,6 +565,8 @@ const port: Port = {
     if ((msg.type === 'read' || (msg.type === 'download' && msg.kind === 'artifact')) && params.get('pc') === 'old') return fail(404, 'not_found', '찾을 수 없어요')
     if (msg.type === 'read') return ok({ name: 'preview.html', text: '<h1>미리보기 결과물</h1><p>휴대폰에서 받은 원본이에요.</p>' })
     if (msg.type === 'download') return ok(msg.name || `${msg.fileId}.html`)
+    // 셸은 자산 출처의 미리보기 주소를 준다. 브라우저 미리보기는 blob 주소로 대신한다 (blob은 화면 CSP를 물려받아 스크립트는 안 돈다)
+    if (msg.type === 'view') return ok({ url: URL.createObjectURL(new Blob([msg.html], { type: 'text/html' })) })
   },
 }
 window.OfficeBridge = port
