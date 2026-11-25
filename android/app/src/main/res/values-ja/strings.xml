@@ -162,6 +162,9 @@
     <string name="banner_update_pc">PCアプリを0.9.0に更新すると、スマホですべての機能を使えます。</string>
     <string name="btn_ok">OK</string>
     <string name="webview_old">システムWebViewが古くなっています。Playストアで「Android System WebView」を更新してください。</string>
+    <string name="web_failed_title">画面を読み込めませんでした</string>
+    <string name="web_failed_body">画面エンジンが停止したか、読み込みに失敗しました。入力中の文章はそのままで、再読み込みできます。</string>
+    <string name="web_failed_reload">再読み込み</string>
     <string name="bridge_file_read">ファイルを読み込めませんでした</string>
     <string name="bridge_file_too_big">20MBを超えるファイルはアップロードできません</string>
     <string name="bridge_save_failed">スマホに保存できませんでした</string>

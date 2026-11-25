@@ -1,7 +1,7 @@
 // 작성 중인 글 임시 보관 (lib/drafts) — 페이지 이동 뒤 복원, 키 분리, 처음 값이면 지우기, 접두사 비우기
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { clearDraft, draftCount, draftState, fixInitial, ifUnchanged, keepNewer, pruneDrafts, readDraft, selectDraft, writeDraft } from '../src/renderer/lib/drafts.ts'
+import { attachDraftStorage, flushDrafts, persistable, clearDraft, draftCount, draftState, fixInitial, ifUnchanged, keepNewer, pruneDrafts, readDraft, selectDraft, writeDraft } from '../src/renderer/lib/drafts.ts'
 
 test('쓴 값은 같은 키로 다시 읽으면 돌아오고, 다른 키와 섞이지 않는다', () => {
   clearDraft('')
@@ -110,4 +110,49 @@ test('저장 대기 중 화면을 나갔다 와서 새로 쓰면, 늦게 끝난 
   writeDraft<string | null>('staff:s1:guide', '지침 v2', null)
   writeDraft<string | null>('staff:s1:guide', ifUnchanged<string | null>('지침 v1', null), null)
   assert.equal(readDraft<string | null>('staff:s1:guide', null), '지침 v2')
+})
+
+function fakeStore(init: Record<string, string> = {}) {
+  const m = new Map(Object.entries(init))
+  return { m, getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v), removeItem: (k: string) => void m.delete(k) }
+}
+
+test('저장 대상은 비어 있지 않은 글뿐 — 첨부·폼·불리언·null은 빠진다', () => {
+  const file = { name: 'a.png' }
+  assert.deepEqual(persistable({ a: '글', b: '', c: [file], d: { x: 1 }, e: true, f: null, g: 'x'.repeat(200_001) }), { a: '글' })
+})
+
+test('글은 저장소에 적히고, 새로 켠 것처럼 불러오면 돌아온다 (첨부는 안 돌아온다)', () => {
+  clearDraft('')
+  const st = fakeStore()
+  attachDraftStorage(st)
+  writeDraft('staff:s1:draft', '쓰던 글', '')
+  writeDraft<unknown[]>('staff:s1:files', [{ name: 'a.png' }], [])
+  flushDrafts()
+  const saved = JSON.parse(st.m.get('ai-office:drafts:v1')!)
+  assert.deepEqual(saved, { 'staff:s1:draft': '쓰던 글' })
+  clearDraft('')
+  flushDrafts()
+  assert.equal(st.m.size, 0)
+  attachDraftStorage(fakeStore({ 'ai-office:drafts:v1': JSON.stringify(saved) }))
+  assert.equal(readDraft('staff:s1:draft', ''), '쓰던 글')
+  assert.equal(readDraft<unknown[]>('staff:s1:files', []).length, 0)
+  clearDraft('')
+  attachDraftStorage(null)
+})
+
+test('깨진 저장값·막힌 저장소여도 멈추지 않고, 이미 쓰는 값이 저장값보다 우선한다', () => {
+  clearDraft('')
+  attachDraftStorage(fakeStore({ 'ai-office:drafts:v1': '{깨짐' }))
+  assert.equal(draftCount(), 0)
+  writeDraft('a', '지금 글', '')
+  attachDraftStorage(fakeStore({ 'ai-office:drafts:v1': JSON.stringify({ a: '옛 글', b: '다른 글' }) }))
+  assert.equal(readDraft('a', ''), '지금 글')
+  assert.equal(readDraft('b', ''), '다른 글')
+  attachDraftStorage({ getItem: () => { throw new Error('x') }, setItem: () => { throw new Error('x') }, removeItem: () => { throw new Error('x') } })
+  writeDraft('c', '글', '')
+  flushDrafts()
+  assert.equal(readDraft('c', ''), '글')
+  clearDraft('')
+  attachDraftStorage(null)
 })

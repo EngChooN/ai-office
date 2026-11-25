@@ -46,6 +46,21 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.background
+import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
@@ -190,8 +205,11 @@ fun WebShell(repo: OfficeRepository, entry: WebEntry, modifier: Modifier = Modif
     }
 
     val bridge = remember { Bridge(activity, repo, scope) }
-    val webView = remember {
-        createWebView(activity, entry, bridge) { callback, accept ->
+    // 화면 엔진이 멈추거나 처음 화면을 못 불러오면 빈 화면 대신 안내를 띄우고, 누르면 새 WebView로 다시 연다
+    var failed by remember { mutableStateOf(false) }
+    var reloadKey by remember { mutableIntStateOf(0) }
+    val webView = remember(reloadKey) {
+        createWebView(activity, entry, bridge, onFailed = { failed = true }) { callback, accept ->
             fileCallback[0]?.onReceiveValue(null)
             fileCallback[0] = callback
             val isImageOnly = accept.isNotEmpty() && accept.all { it.startsWith("image/") }
@@ -205,7 +223,7 @@ fun WebShell(repo: OfficeRepository, entry: WebEntry, modifier: Modifier = Modif
 
     // 이벤트 스트림은 화면이 보이는 동안만 연다 (백그라운드 알림은 v1 15분 조회)
     val owner = LocalLifecycleOwner.current
-    DisposableEffect(owner) {
+    DisposableEffect(owner, webView) {
         val obs = LifecycleEventObserver { _, e ->
             when (e) {
                 Lifecycle.Event.ON_START -> bridge.onForeground()
@@ -234,10 +252,29 @@ fun WebShell(repo: OfficeRepository, entry: WebEntry, modifier: Modifier = Modif
         }
     }
 
-    AndroidView(
-        modifier = modifier.fillMaxSize().then(if (bridge.isImeByScreen) Modifier else Modifier.imePadding()),
-        factory = { webView.also { (it.parent as? ViewGroup)?.removeView(it) } },
-    )
+    Box(modifier = modifier.fillMaxSize()) {
+        key(webView) {
+            AndroidView(
+                modifier = Modifier.fillMaxSize().then(if (bridge.isImeByScreen) Modifier else Modifier.imePadding()),
+                factory = { webView.also { (it.parent as? ViewGroup)?.removeView(it) } },
+            )
+        }
+        if (failed) {
+            Column(
+                modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(stringResource(R.string.web_failed_title), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onBackground, textAlign = TextAlign.Center)
+                Text(stringResource(R.string.web_failed_body), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
+                Button(onClick = {
+                    bridge.resetForReload()
+                    failed = false
+                    reloadKey++
+                }) { Text(stringResource(R.string.web_failed_reload)) }
+            }
+        }
+    }
 }
 
 @SuppressLint("SetJavaScriptEnabled")
@@ -245,6 +282,7 @@ private fun createWebView(
     activity: Activity,
     entry: WebEntry,
     bridge: Bridge,
+    onFailed: () -> Unit,
     chooseFiles: (ValueCallback<Array<Uri>>, List<String>) -> Unit,
 ): WebView {
     // 릴리스에서는 크롬 원격 디버깅을 끈다
@@ -275,6 +313,21 @@ private fun createWebView(
             cacheMode = WebSettings.LOAD_NO_CACHE
         }
         webViewClient = object : WebViewClient() {
+            // 처음 화면(최상위 프레임)을 못 불러옴 — 하위 자원 오류는 무시
+            override fun onReceivedError(view: WebView, request: WebResourceRequest, error: android.webkit.WebResourceError) {
+                if (request.isForMainFrame) onFailed()
+            }
+
+            override fun onReceivedHttpError(view: WebView, request: WebResourceRequest, errorResponse: WebResourceResponse) {
+                if (request.isForMainFrame && errorResponse.statusCode >= 400) onFailed()
+            }
+
+            // 렌더 프로세스가 죽거나 메모리 부족으로 회수됨 — true를 돌려 앱이 같이 죽지 않게 하고 다시 불러오기를 안내한다
+            override fun onRenderProcessGone(view: WebView, detail: android.webkit.RenderProcessGoneDetail): Boolean {
+                onFailed()
+                return true
+            }
+
             override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
                 val url = request.url
                 officeFileId(url)?.let { return bridge.officeFile(it) }
@@ -515,6 +568,15 @@ private class Bridge(
     }
 
     fun close() = stream.stop()
+
+    /** 새 WebView로 다시 열기 전: 옛 화면에 묶인 상태를 비운다 (새 화면이 ready를 다시 보낸다) */
+    fun resetForReload() {
+        isReady = false
+        reply = null
+        lastIme = -1
+        pendingBack?.complete(false)
+        pendingBack = null
+    }
 
     // ── EventSink ──
     override fun onEvent(name: String, data: String) {
