@@ -1,7 +1,7 @@
 // 작성 중인 글 임시 보관 (lib/drafts) — 페이지 이동 뒤 복원, 키 분리, 처음 값이면 지우기, 접두사 비우기
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { attachDraftStorage, flushDrafts, persistable, clearDraft, draftCount, draftState, fixInitial, ifUnchanged, keepNewer, pruneDrafts, readDraft, selectDraft, writeDraft } from '../src/renderer/lib/drafts.ts'
+import { setSyncSave, attachDraftStorage, flushDrafts, persistable, clearDraft, draftCount, draftState, fixInitial, ifUnchanged, keepNewer, pruneDrafts, readDraft, selectDraft, writeDraft } from '../src/renderer/lib/drafts.ts'
 
 test('쓴 값은 같은 키로 다시 읽으면 돌아오고, 다른 키와 섞이지 않는다', () => {
   clearDraft('')
@@ -157,12 +157,13 @@ test('깨진 저장값·막힌 저장소여도 멈추지 않고, 이미 쓰는 �
   attachDraftStorage(null)
 })
 
-test('입력 직후 저장 → 다른 PC 갔다 와도 글이 남는다 (flush 즉시 반영)', () => {
+test('폰: 입력 이벤트 안에서 바로 저장 — 수동 flush 없이 입력 직후 전환해도 글이 남는다', () => {
   const st = fakeStore()
   attachDraftStorage(st)
-  writeDraft('staff:x:draft', '방금 쓴 글', '')
-  flushDrafts()
+  setSyncSave(true)
+  writeDraft('staff:y:draft', '방금 쓴 글', '')
   assert.ok((st.getItem('ai-office:drafts:v1') ?? '').includes('방금 쓴 글'))
-  clearDraft('staff:x:')
+  clearDraft('staff:y:')
+  setSyncSave(false)
   flushDrafts()
 })

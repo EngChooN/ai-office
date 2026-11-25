@@ -56,7 +56,7 @@ object PcBooks {
             }
             append('"')
         }
-        return "try{localStorage.removeItem($q)}catch(e){}"
+        return "(function(){try{localStorage.removeItem($q);return localStorage.getItem($q)===null}catch(e){return false}})()"
     }
 
     /** 새 연결을 넣는다. 같은 PC면 갱신(별칭·순서 유지, 3대가 차 있어도 허용), 새 PC가 4번째면 거부. 결과 PC가 현재 PC가 된다 */

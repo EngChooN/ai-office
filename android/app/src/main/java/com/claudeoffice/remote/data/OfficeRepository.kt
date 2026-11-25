@@ -235,25 +235,37 @@ class OfficeRepository(private val context: Context) {
         offlineJob?.cancel()
     }
 
-    /** 끊은 PC의 보관 글을 지금 지운다 — 웹 화면이 열려 있지 않아도 같은 출처의 보이지 않는 WebView로 지운다 (다음 실행에 미루지 않음) */
+    /**
+     * 끊은 PC의 보관 글을 지금 지운다 — 웹 화면이 열려 있지 않아도 같은 출처의 보이지 않는 WebView로 지운다.
+     * 삭제가 확인될 때까지 남은 삭제 목록(pendingPurge)에 두고, 실패·시간 초과면 WebView를 정리하고 다음 실행 때 다시 지운다
+     */
     @android.annotation.SuppressLint("SetJavaScriptEnabled")
     private fun purgeWebDraft(pcId: String) {
-        runCatching {
-            android.os.Handler(android.os.Looper.getMainLooper()).post {
-                runCatching {
-                    val wv = android.webkit.WebView(context)
-                    wv.settings.javaScriptEnabled = true
-                    wv.settings.domStorageEnabled = true
-                    wv.webViewClient = object : android.webkit.WebViewClient() {
+        prefs.pendingPurge = prefs.pendingPurge + pcId
+        val main = android.os.Handler(android.os.Looper.getMainLooper())
+        main.post {
+            var wv: android.webkit.WebView? = null
+            var done = false
+            fun finish(ok: Boolean) {
+                if (done) return
+                done = true
+                if (ok) prefs.pendingPurge = prefs.pendingPurge - pcId
+                runCatching { wv?.destroy() }
+            }
+            main.postDelayed({ finish(false) }, 5000)
+            try {
+                wv = android.webkit.WebView(context).also { v ->
+                    v.settings.javaScriptEnabled = true
+                    v.settings.domStorageEnabled = true
+                    v.webViewClient = object : android.webkit.WebViewClient() {
                         override fun onPageFinished(view: android.webkit.WebView, url: String?) {
-                            view.evaluateJavascript(PcBooks.purgeDraftScript(pcId)) {
-                                android.webkit.CookieManager.getInstance().flush()
-                                view.destroy()
-                            }
+                            view.evaluateJavascript(PcBooks.purgeDraftScript(pcId)) { r -> finish(r == "true") }
                         }
                     }
-                    wv.loadDataWithBaseURL("https://${com.claudeoffice.remote.web.ASSET_HOST}/app/", "<html></html>", "text/html", "utf-8", null)
+                    v.loadDataWithBaseURL("https://${com.claudeoffice.remote.web.ASSET_HOST}/app/", "<html></html>", "text/html", "utf-8", null)
                 }
+            } catch (e: Exception) {
+                finish(false)
             }
         }
     }
@@ -270,6 +282,8 @@ class OfficeRepository(private val context: Context) {
     fun webQuery(): String = PcBooks.webQuery(book)
 
     fun prepareWebStorage() {
+        // 지난번에 삭제가 확인되지 않은 PC의 글을 다시 지운다 (아직 저장된 PC는 건너뛴다)
+        prefs.pendingPurge.forEach { id -> if (book.find(id) == null) purgeWebDraft(id) else prefs.pendingPurge = prefs.pendingPurge - id }
         prefs.webStoragePc = book.currentId ?: return
     }
 

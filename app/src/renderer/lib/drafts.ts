@@ -9,8 +9,11 @@ const useDrafts = create<Record<string, unknown>>(() => ({}))
 
 // 셸이 준 PC 구분이 있으면 PC별 키 (webOwner.ts)
 const STORE_KEY = draftKey(typeof location === 'undefined' ? '' : ownerFromSearch(location.search).pc)
-// 안드로이드 셸(pc 있음)은 PC 전환·화면 종료 직전 입력을 잃지 않게 바로 저장한다 (같은 틱에 모아서)
-const SAVE_DELAY_MS = typeof location !== 'undefined' && ownerFromSearch(location.search).pc ? 0 : 400
+// 안드로이드 셸(pc 있음)은 PC 전환·화면 종료 직전 입력을 잃지 않게 입력 이벤트 안에서 바로(동기) 저장한다
+let syncSave = typeof location !== 'undefined' && !!ownerFromSearch(location.search).pc
+/** 테스트용: 입력 즉시 저장 켜고 끄기 */
+export const setSyncSave = (on: boolean) => void (syncSave = on)
+const SAVE_DELAY_MS = 400
 const MAX_TEXT = 200_000
 
 type TextStore = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>
@@ -73,6 +76,7 @@ export function attachDraftStorage(next: TextStore | null) {
 
 useDrafts.subscribe(() => {
   if (!store) return
+  if (syncSave) return flushDrafts()
   clearTimeout(timer)
   timer = setTimeout(flushDrafts, SAVE_DELAY_MS)
 })

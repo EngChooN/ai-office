@@ -53,9 +53,16 @@ test('이전 버전 글: 첫 실행에 새 PC 보관함으로 옮긴 뒤 지운�
   assert.equal(s.getItem('ai-office:drafts:v1'), null)
 })
 
-test('옮기기가 실패하면 이전 글을 남긴다', () => {
+test('옮기기가 실패하면 원본·주인 표시를 그대로 두고, 다음 실행에서 다시 옮긴다', () => {
   const s = fakeStore({ 'ai-office:drafts:v1': '옛글' })
+  const real = s.setItem
   s.setItem = () => { throw new Error('quota') }
-  assert.throws(() => cleanForOwner(s, 'a', ['a']))
+  cleanForOwner(s, 'a', ['a'])
   assert.equal(s.getItem('ai-office:drafts:v1'), '옛글')
+  assert.equal(s.getItem(OWNER_KEY), null)
+  s.setItem = real
+  cleanForOwner(s, 'a', ['a'])
+  assert.equal(s.getItem('ai-office:drafts:v1:a'), '옛글')
+  assert.equal(s.getItem('ai-office:drafts:v1'), null)
+  assert.equal(s.getItem(OWNER_KEY), 'a')
 })

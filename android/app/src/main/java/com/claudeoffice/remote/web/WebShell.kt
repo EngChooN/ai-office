@@ -240,8 +240,11 @@ fun WebShell(repo: OfficeRepository, entry: WebEntry, modifier: Modifier = Modif
             owner.lifecycle.removeObserver(obs)
             bridge.close()
             // 화면이 종료·PC 전환 직전 입력을 저장소에 적게 한 뒤 닫는다 (글은 입력 즉시 저장되고, 이건 마지막 안전장치)
-            webView.evaluateJavascript("window.dispatchEvent(new Event('pagehide'))", null)
-            webView.destroy()
+            // 저장이 끝났다는 응답(콜백)을 받은 뒤 닫는다. 응답이 없으면 1초 뒤 닫는다
+            var closed = false
+            val close = { if (!closed) { closed = true; webView.destroy() } }
+            webView.evaluateJavascript("(function(){window.dispatchEvent(new Event('pagehide'));return true})()") { close() }
+            webView.postDelayed({ close() }, 1000)
         }
     }
 

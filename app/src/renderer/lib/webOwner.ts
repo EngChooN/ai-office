@@ -31,26 +31,26 @@ export function cleanForOwner(store: KeyStore, pc: string, pcs: string[]): void 
   }
   const owner = store.getItem(OWNER_KEY)
   const changed = owner !== pc
-  // 이전 버전(PC 구분 없음)의 글: 처음 실행(주인 표시 없음)이면 이 PC 보관함으로 옮기고, 옮겨진 것을 확인한 뒤에만 지운다
-  const legacy = store.getItem(LEGACY_KEY)
-  if (legacy !== null) {
-    const target = draftKey(pc)
-    if (owner === null && store.getItem(target) === null) {
-      try {
-        store.setItem(target, legacy)
-      } catch {
-        /* 용량 초과 — 옮기지 못했으니 원본을 남긴다 */
-      }
-    }
-    if (owner !== null || store.getItem(target) === legacy) store.removeItem(LEGACY_KEY)
-  }
   for (const k of keys) {
     if (k === OWNER_KEY || k === LEGACY_KEY) continue
     if (k.startsWith(DRAFT_PREFIX)) {
       if (!keep.has(k.slice(DRAFT_PREFIX.length))) store.removeItem(k)
     } else if (changed) store.removeItem(k)
   }
+  // 이전 버전(PC 구분 없음)의 글: 새 PC 보관함으로 옮겨진 것이 확인된 뒤에만 주인 표시를 적고 원본을 지운다.
+  // 하나라도 실패하면 둘 다 하지 않아 다음 실행에서 다시 시도한다
+  const legacy = store.getItem(LEGACY_KEY)
+  if (legacy !== null) {
+    const target = draftKey(pc)
+    try {
+      if (store.getItem(target) === null) store.setItem(target, legacy)
+      if (store.getItem(target) === null) return
+    } catch {
+      return
+    }
+  }
   if (changed) store.setItem(OWNER_KEY, pc)
+  if (legacy !== null) store.removeItem(LEGACY_KEY)
 }
 
 function run() {

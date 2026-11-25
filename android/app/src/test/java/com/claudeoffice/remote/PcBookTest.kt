@@ -229,7 +229,7 @@ class PcBookTest {
 
     @Test fun purgeScriptRemovesOnlyThatPcsDraftWithoutWebScreen() {
         val s = PcBooks.purgeDraftScript("ab\"c\\d</script>")
-        assertTrue(s, s.startsWith("try{localStorage.removeItem(\"ai-office:drafts:v1:ab\\\"c\\\\d"))
+        assertTrue(s, s.startsWith("(function(){try{localStorage.removeItem(\"ai-office:drafts:v1:ab\\\"c\\\\d"))
         assertTrue(s, !s.contains("</script>") && !s.contains("clear()"))
     }
 

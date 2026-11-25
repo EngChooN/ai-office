@@ -69,6 +69,11 @@ class AppPrefs(context: Context, var pcId: String = "") {
         get() = prefs.getString("webStoragePc", "") ?: ""
         set(v) = prefs.edit().putString("webStoragePc", v).apply()
 
+    /** 끊었지만 웹 저장소에서 글 삭제가 확인되지 않은 PC들 — 다음 실행 때 다시 지운다 */
+    var pendingPurge: Set<String>
+        get() = prefs.getStringSet("pendingPurge", emptySet())?.toSet() ?: emptySet()
+        set(v) = prefs.edit().putStringSet("pendingPurge", v).apply()
+
     /** 첫 백그라운드 알림 뒤 앱을 열면 지연 안내 배너를 1회 보인다 */
     var delayBannerPending: Boolean
         get() = prefs.getBoolean("delayBannerPending", false)
