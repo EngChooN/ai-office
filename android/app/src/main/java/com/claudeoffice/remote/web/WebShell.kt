@@ -62,6 +62,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.imeAnimationTarget
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
@@ -179,6 +181,7 @@ private class ArtifactViewAssets(private val views: ArtifactViews) : WebViewAsse
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun WebShell(repo: OfficeRepository, entry: WebEntry, modifier: Modifier = Modifier) {
@@ -188,7 +191,8 @@ fun WebShell(repo: OfficeRepository, entry: WebEntry, modifier: Modifier = Modif
     // 키보드가 WebView 아래를 가리는 높이 (CSS px = dp). 시스템 바 높이는 셸이 이미 비켜 두었으므로 뺀다
     val density = androidx.compose.ui.platform.LocalDensity.current
     val imeDp = with(density) {
-        val ime = WindowInsets.ime.getBottom(this)
+        // 키보드가 올라오는 동안의 중간 높이가 아니라 도착할 높이를 쓴다 — 화면 크기를 프레임마다 다시 계산하지 않고 한 번만 바꾼다
+        val ime = WindowInsets.imeAnimationTarget.getBottom(this)
         val nav = WindowInsets.navigationBars.getBottom(this)
         (ime - nav).coerceAtLeast(0).toDp().value.toInt()
     }
@@ -260,7 +264,7 @@ fun WebShell(repo: OfficeRepository, entry: WebEntry, modifier: Modifier = Modif
     Box(modifier = modifier.fillMaxSize()) {
         key(webView) {
             AndroidView(
-                modifier = Modifier.fillMaxSize().then(if (bridge.isImeByScreen) Modifier else Modifier.imePadding()),
+                modifier = Modifier.fillMaxSize().then(if (bridge.isImeByScreen) Modifier else Modifier.padding(bottom = (imeDp).dp)),
                 factory = { webView.also { (it.parent as? ViewGroup)?.removeView(it) } },
             )
         }
