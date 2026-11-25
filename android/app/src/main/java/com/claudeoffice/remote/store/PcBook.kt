@@ -3,6 +3,8 @@
 
 package com.claudeoffice.remote.store
 
+import kotlinx.coroutines.sync.withLock
+
 import com.claudeoffice.remote.net.Connection
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -34,6 +36,33 @@ sealed interface PcAdd {
 class BookGate {
     private val lock = Any()
     fun <T> locked(block: () -> T): T = synchronized(lock, block)
+}
+
+/**
+ * 끊은 PC의 보관 글 삭제 대기열. 삭제는 한 번에 하나씩(잠금) 하고, 실행 직전에 아직 대기 중인지 다시 본다 —
+ * 이미 지워졌거나 취소된 것을 늦게 다시 실행하지 않는다. 성공이 확인돼야 대기에서 빠진다
+ */
+class PurgeQueue(
+    private val load: () -> Set<String>,
+    private val save: (Set<String>) -> Unit,
+    private val runner: suspend (String) -> Boolean,
+) {
+    private val mutex = kotlinx.coroutines.sync.Mutex()
+    private val mem = Any()
+
+    fun mark(id: String) = synchronized(mem) { save(load() + id) }
+    fun pending(): Set<String> = synchronized(mem) { load() }
+
+    /** 이 PC의 삭제를 마친다. 이미 끝났으면 true, 실패·시간 초과면 false(대기에 남음) */
+    suspend fun confirm(id: String): Boolean = mutex.withLock {
+        if (id !in pending()) return true
+        val ok = runCatching { runner(id) }.getOrDefault(false)
+        if (ok) synchronized(mem) { save(load() - id) }
+        ok
+    }
+
+    /** 대기 중인 모든 삭제를 시도한다 */
+    suspend fun flush() { pending().forEach { confirm(it) } }
 }
 
 object PcBooks {

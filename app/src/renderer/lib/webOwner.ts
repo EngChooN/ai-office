@@ -37,20 +37,23 @@ export function cleanForOwner(store: KeyStore, pc: string, pcs: string[]): void 
       if (!keep.has(k.slice(DRAFT_PREFIX.length))) store.removeItem(k)
     } else if (changed) store.removeItem(k)
   }
-  // 이전 버전(PC 구분 없음)의 글: 새 PC 보관함으로 옮겨진 것이 확인된 뒤에만 주인 표시를 적고 원본을 지운다.
-  // 하나라도 실패하면 둘 다 하지 않아 다음 실행에서 다시 시도한다
+  // 이전 버전(PC 구분 없음)의 글: 새 PC 보관함에 '같은 내용'으로 옮겨진 것이 확인된 뒤에만 원본을 지운다.
+  // 쓰기가 실패하면 주인 표시도 적지 않아 다음 실행에서 다시 시도하고, 보관함에 다른 내용이 이미 있으면 원본을 그대로 둔다 (손실 없음 우선)
   const legacy = store.getItem(LEGACY_KEY)
+  let moved = false
   if (legacy !== null) {
     const target = draftKey(pc)
     try {
       if (store.getItem(target) === null) store.setItem(target, legacy)
-      if (store.getItem(target) === null) return
     } catch {
       return
     }
+    const now = store.getItem(target)
+    if (now === null) return
+    moved = now === legacy
   }
   if (changed) store.setItem(OWNER_KEY, pc)
-  if (legacy !== null) store.removeItem(LEGACY_KEY)
+  if (moved) store.removeItem(LEGACY_KEY)
 }
 
 function run() {

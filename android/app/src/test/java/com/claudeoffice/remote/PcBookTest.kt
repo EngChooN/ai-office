@@ -1,5 +1,6 @@
 package com.claudeoffice.remote
 
+import kotlinx.coroutines.async
 import com.claudeoffice.remote.net.Connection
 import com.claudeoffice.remote.store.MAX_PCS
 import com.claudeoffice.remote.store.PcAdd
@@ -260,5 +261,41 @@ class PcBookTest {
         forget.start(); response.start(); forget.join(); response.join()
         assertTrue("해제 도중에 응답이 처리됨", !appliedDuringForget.get())
         assertTrue("끊긴 PC에 알림·저장이 됨", !applied.get())
+    }
+
+    private fun queue(store: MutableSet<String>, runner: suspend (String) -> Boolean) =
+        com.claudeoffice.remote.store.PurgeQueue({ store.toSet() }, { store.clear(); store.addAll(it) }, runner)
+
+    /** 삭제 실패 후 같은 PC 재연결: 성공이 확인되기 전에는 대기에서 빠지지 않는다 */
+    @Test fun failedPurgeStaysPendingUntilConfirmed() = kotlinx.coroutines.runBlocking {
+        val pending = mutableSetOf<String>()
+        var ok = false
+        val q = queue(pending) { ok }
+        q.mark("a")
+        assertTrue(!q.confirm("a"))
+        assertEquals(setOf("a"), pending)
+        ok = true
+        assertTrue(q.confirm("a"))
+        assertTrue(pending.isEmpty())
+    }
+
+    /** 늦게 끝나는 삭제: 진행 중이면 재연결 확인이 기다리고, 끝난 삭제는 다시 실행하지 않는다 */
+    @Test fun slowPurgeIsNotRunTwice() = kotlinx.coroutines.runBlocking {
+        val pending = mutableSetOf<String>()
+        var runs = 0
+        val gate = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val q = queue(pending) { runs++; gate.await(); true }
+        q.mark("a")
+        val first = async(kotlinx.coroutines.Dispatchers.Default) { q.confirm("a") }
+        kotlinx.coroutines.delay(100)
+        val second = async(kotlinx.coroutines.Dispatchers.Default) { q.confirm("a") }
+        kotlinx.coroutines.delay(100)
+        assertTrue(!second.isCompleted)
+        gate.complete(Unit)
+        assertTrue(first.await() && second.await())
+        assertEquals(1, runs)
+        // 재연결 뒤 새 글이 생기고 나서 낡은 삭제가 다시 돌지 않는다
+        assertTrue(q.confirm("a"))
+        assertEquals(1, runs)
     }
 }

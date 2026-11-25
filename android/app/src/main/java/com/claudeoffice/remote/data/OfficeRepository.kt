@@ -28,6 +28,7 @@ import com.claudeoffice.remote.store.PcBook
 import com.claudeoffice.remote.store.BookGate
 import com.claudeoffice.remote.store.PcBooks
 import com.claudeoffice.remote.store.PcEntry
+import com.claudeoffice.remote.store.PurgeQueue
 import com.claudeoffice.remote.store.SecureStore
 import com.claudeoffice.remote.store.StopReason
 import com.claudeoffice.remote.work.Notifier
@@ -235,44 +236,43 @@ class OfficeRepository(private val context: Context) {
         offlineJob?.cancel()
     }
 
-    /**
-     * 끊은 PC의 보관 글을 지금 지운다 — 웹 화면이 열려 있지 않아도 같은 출처의 보이지 않는 WebView로 지운다.
-     * 삭제가 확인될 때까지 남은 삭제 목록(pendingPurge)에 두고, 실패·시간 초과면 WebView를 정리하고 다음 실행 때 다시 지운다
-     */
+    /** 끊은 PC의 보관 글 삭제 대기열 — 삭제가 확인될 때까지 대기에 남고, 재연결·새 화면 열기 전에 먼저 확인한다 */
+    private val purges = PurgeQueue(
+        load = { prefs.pendingPurge },
+        save = { prefs.pendingPurge = it },
+        runner = { id -> purgeWebDraft(id) },
+    )
+
+    /** 같은 출처의 보이지 않는 WebView로 그 PC의 글을 지우고 지워졌는지 확인한다. 5초 안에 끝나지 않으면 WebView를 정리하고 실패 */
     @android.annotation.SuppressLint("SetJavaScriptEnabled")
-    private fun purgeWebDraft(pcId: String) {
-        prefs.pendingPurge = prefs.pendingPurge + pcId
-        val main = android.os.Handler(android.os.Looper.getMainLooper())
-        main.post {
-            var wv: android.webkit.WebView? = null
-            var done = false
-            fun finish(ok: Boolean) {
-                if (done) return
-                done = true
-                if (ok) prefs.pendingPurge = prefs.pendingPurge - pcId
-                runCatching { wv?.destroy() }
-            }
-            main.postDelayed({ finish(false) }, 5000)
-            try {
-                wv = android.webkit.WebView(context).also { v ->
+    private suspend fun purgeWebDraft(pcId: String): Boolean = kotlinx.coroutines.withContext(Dispatchers.Main) {
+        var wv: android.webkit.WebView? = null
+        try {
+            kotlinx.coroutines.withTimeoutOrNull(5000) {
+                kotlinx.coroutines.suspendCancellableCoroutine<Boolean> { cont ->
+                    val v = android.webkit.WebView(context)
+                    wv = v
                     v.settings.javaScriptEnabled = true
                     v.settings.domStorageEnabled = true
                     v.webViewClient = object : android.webkit.WebViewClient() {
                         override fun onPageFinished(view: android.webkit.WebView, url: String?) {
-                            view.evaluateJavascript(PcBooks.purgeDraftScript(pcId)) { r -> finish(r == "true") }
+                            view.evaluateJavascript(PcBooks.purgeDraftScript(pcId)) { r -> if (cont.isActive) cont.resumeWith(Result.success(r == "true")) }
                         }
                     }
                     v.loadDataWithBaseURL("https://${com.claudeoffice.remote.web.ASSET_HOST}/app/", "<html></html>", "text/html", "utf-8", null)
                 }
-            } catch (e: Exception) {
-                finish(false)
-            }
+            } ?: false
+        } catch (e: Exception) {
+            false
+        } finally {
+            runCatching { wv?.destroy() }
         }
     }
 
     private fun clearWebStorage() {
         runCatching { android.webkit.WebStorage.getInstance().deleteAllData() }
         prefs.webStoragePc = ""
+        prefs.pendingPurge = emptySet()
     }
 
     /**
@@ -281,9 +281,9 @@ class OfficeRepository(private val context: Context) {
      */
     fun webQuery(): String = PcBooks.webQuery(book)
 
-    fun prepareWebStorage() {
-        // 지난번에 삭제가 확인되지 않은 PC의 글을 다시 지운다 (아직 저장된 PC는 건너뛴다)
-        prefs.pendingPurge.forEach { id -> if (book.find(id) == null) purgeWebDraft(id) else prefs.pendingPurge = prefs.pendingPurge - id }
+    /** 새 화면을 열기 전에 호출 — 끊은 PC의 글 삭제가 끝날 때까지 기다린다 (실패해도 앱은 열고, 대기에 남겨 다음에 다시 지운다) */
+    suspend fun prepareWebStorage() {
+        purges.flush()
         prefs.webStoragePc = book.currentId ?: return
     }
 
@@ -326,6 +326,8 @@ class OfficeRepository(private val context: Context) {
     suspend fun connect(qr: QrPayload): ConnectResult {
         val candidate = Connection(qr.host, qr.port, qr.token, qr.spki, qr.lan, qr.isLanOnly, qr.isTailscale)
         if (book.find(candidate.spki) == null && book.isFull) return ConnectResult.Full
+        // 이 PC의 지난 글 삭제가 남아 있으면 연결 전에 끝낸다 (못 지우면 이전 글이 새 연결에 섞이므로 연결하지 않는다)
+        if (!purges.confirm(candidate.spki)) return ConnectResult.Failed(ApiError.Unreachable)
         // 저장 전이라 기억한 길은 임시로 두고, 성공하면 prefs에 옮긴다
         val firstRoute = InMemoryRoute()
         val c = RemoteClient(candidate, ::isPhoneOnline, firstRoute)
@@ -402,7 +404,8 @@ class OfficeRepository(private val context: Context) {
             refreshLock = Mutex()
             _state.value = OfficeState(gate = Gate.NotConnected)
         } else {
-            purgeWebDraft(e.id)
+            purges.mark(e.id)
+            scope.launch { purges.confirm(e.id) }
             activate(next)
             _state.value = initialState()
             if (_state.value.gate == null) scope.launch { refresh() }

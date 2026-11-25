@@ -66,3 +66,17 @@ test('옮기기가 실패하면 원본·주인 표시를 그대로 두고, 다�
   assert.equal(s.getItem('ai-office:drafts:v1'), null)
   assert.equal(s.getItem(OWNER_KEY), 'a')
 })
+
+test('새 보관함에 다른 글이 이미 있으면 원본을 지우지도 덮지도 않는다', () => {
+  const s = fakeStore({ 'ai-office:drafts:v1': '옛글', 'ai-office:drafts:v1:a': '새글' })
+  cleanForOwner(s, 'a', ['a'])
+  assert.equal(s.getItem('ai-office:drafts:v1'), '옛글')
+  assert.equal(s.getItem('ai-office:drafts:v1:a'), '새글')
+})
+
+test('새 보관함에 같은 내용이 이미 있으면 원본만 지운다', () => {
+  const s = fakeStore({ 'ai-office:drafts:v1': '글', 'ai-office:drafts:v1:a': '글' })
+  cleanForOwner(s, 'a', ['a'])
+  assert.equal(s.getItem('ai-office:drafts:v1'), null)
+  assert.equal(s.getItem('ai-office:drafts:v1:a'), '글')
+})
