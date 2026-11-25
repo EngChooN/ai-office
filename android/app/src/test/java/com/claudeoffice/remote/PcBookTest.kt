@@ -227,6 +227,12 @@ class PcBookTest {
         assertEquals("", PcBooks.webQuery(PcBook()))
     }
 
+    @Test fun purgeScriptRemovesOnlyThatPcsDraftWithoutWebScreen() {
+        val s = PcBooks.purgeDraftScript("ab\"c\\d</script>")
+        assertTrue(s, s.startsWith("try{localStorage.removeItem(\"ai-office:drafts:v1:ab\\\"c\\\\d"))
+        assertTrue(s, !s.contains("</script>") && !s.contains("clear()"))
+    }
+
     /** 연결 해제와 응답 처리(검사→알림·저장)가 동시에 실행되지 않는다: 해제가 잠금을 잡고 있는 동안 응답 처리는 기다렸다가, 끝난 뒤 검사에서 떨어진다 */
     @Test fun forgetAndLateResponseNeverRunTogether() {
         val gate = com.claudeoffice.remote.store.BookGate()

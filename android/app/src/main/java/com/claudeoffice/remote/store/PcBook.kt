@@ -44,6 +44,21 @@ object PcBooks {
         return "?pc=${enc(pc)}&pcs=${book.entries.joinToString(",") { enc(it.id) }}"
     }
 
+    /** 끊은 PC의 보관 글을 웹 저장소에서 지우는 스크립트 (키는 web/lib/webOwner.ts의 DRAFT_PREFIX + PC 식별자) */
+    fun purgeDraftScript(pcId: String): String {
+        val key = "ai-office:drafts:v1:$pcId"
+        val q = buildString {
+            append('"')
+            for (c in key) when {
+                c == '"' || c == '\\' -> append('\\').append(c)
+                c.code < 0x20 || c == '<' || c == '>' || c == ' ' || c == ' ' -> append("\\u%04x".format(c.code))
+                else -> append(c)
+            }
+            append('"')
+        }
+        return "try{localStorage.removeItem($q)}catch(e){}"
+    }
+
     /** 새 연결을 넣는다. 같은 PC면 갱신(별칭·순서 유지, 3대가 차 있어도 허용), 새 PC가 4번째면 거부. 결과 PC가 현재 PC가 된다 */
     fun add(book: PcBook, conn: Connection, now: Long): PcAdd {
         val existing = book.find(conn.spki)

@@ -156,3 +156,13 @@ test('깨진 저장값·막힌 저장소여도 멈추지 않고, 이미 쓰는 �
   clearDraft('')
   attachDraftStorage(null)
 })
+
+test('입력 직후 저장 → 다른 PC 갔다 와도 글이 남는다 (flush 즉시 반영)', () => {
+  const st = fakeStore()
+  attachDraftStorage(st)
+  writeDraft('staff:x:draft', '방금 쓴 글', '')
+  flushDrafts()
+  assert.ok((st.getItem('ai-office:drafts:v1') ?? '').includes('방금 쓴 글'))
+  clearDraft('staff:x:')
+  flushDrafts()
+})

@@ -45,3 +45,17 @@ test('pc가 없으면(데스크톱) 아무것도 지우지 않는다', () => {
   cleanForOwner(s, '', [])
   assert.equal(s.getItem('ui:theme'), 'dark')
 })
+
+test('이전 버전 글: 첫 실행에 새 PC 보관함으로 옮긴 뒤 지운다', () => {
+  const s = fakeStore({ 'ai-office:drafts:v1': '옛글', 'ui:theme': 'dark' })
+  cleanForOwner(s, 'a', ['a'])
+  assert.equal(s.getItem('ai-office:drafts:v1:a'), '옛글')
+  assert.equal(s.getItem('ai-office:drafts:v1'), null)
+})
+
+test('옮기기가 실패하면 이전 글을 남긴다', () => {
+  const s = fakeStore({ 'ai-office:drafts:v1': '옛글' })
+  s.setItem = () => { throw new Error('quota') }
+  assert.throws(() => cleanForOwner(s, 'a', ['a']))
+  assert.equal(s.getItem('ai-office:drafts:v1'), '옛글')
+})

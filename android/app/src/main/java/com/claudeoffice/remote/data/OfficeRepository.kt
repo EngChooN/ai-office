@@ -235,6 +235,29 @@ class OfficeRepository(private val context: Context) {
         offlineJob?.cancel()
     }
 
+    /** 끊은 PC의 보관 글을 지금 지운다 — 웹 화면이 열려 있지 않아도 같은 출처의 보이지 않는 WebView로 지운다 (다음 실행에 미루지 않음) */
+    @android.annotation.SuppressLint("SetJavaScriptEnabled")
+    private fun purgeWebDraft(pcId: String) {
+        runCatching {
+            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                runCatching {
+                    val wv = android.webkit.WebView(context)
+                    wv.settings.javaScriptEnabled = true
+                    wv.settings.domStorageEnabled = true
+                    wv.webViewClient = object : android.webkit.WebViewClient() {
+                        override fun onPageFinished(view: android.webkit.WebView, url: String?) {
+                            view.evaluateJavascript(PcBooks.purgeDraftScript(pcId)) {
+                                android.webkit.CookieManager.getInstance().flush()
+                                view.destroy()
+                            }
+                        }
+                    }
+                    wv.loadDataWithBaseURL("https://${com.claudeoffice.remote.web.ASSET_HOST}/app/", "<html></html>", "text/html", "utf-8", null)
+                }
+            }
+        }
+    }
+
     private fun clearWebStorage() {
         runCatching { android.webkit.WebStorage.getInstance().deleteAllData() }
         prefs.webStoragePc = ""
@@ -365,6 +388,7 @@ class OfficeRepository(private val context: Context) {
             refreshLock = Mutex()
             _state.value = OfficeState(gate = Gate.NotConnected)
         } else {
+            purgeWebDraft(e.id)
             activate(next)
             _state.value = initialState()
             if (_state.value.gate == null) scope.launch { refresh() }
