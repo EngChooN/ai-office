@@ -224,11 +224,16 @@ class OfficeRepository(private val context: Context) {
         offlineJob?.cancel()
     }
 
+    private fun clearWebStorage() {
+        runCatching { android.webkit.WebStorage.getInstance().deleteAllData() }
+        prefs.webStoragePc = ""
+    }
+
     /** 웹 화면 저장 공간(localStorage)은 PC가 달라도 같은 출처다 — 다른 PC가 쓰던 거면 화면을 열기 전에 비운다 */
     fun prepareWebStorage() {
         val id = book.currentId ?: return
         if (prefs.webStoragePc == id) return
-        android.webkit.WebStorage.getInstance().deleteAllData()
+        clearWebStorage()
         prefs.webStoragePc = id
     }
 
@@ -335,6 +340,8 @@ class OfficeRepository(private val context: Context) {
         val next = nb.current
         if (next == null) {
             PollWorker.cancel(context)
+            // 웹 저장소(보관 글 포함)와 주인 표시도 정리 — 안 그러면 다음에 연결하는 다른 PC에 이전 PC 글이 섞인다
+            clearWebStorage()
             prefs.pcId = ""
             conn = null
             client = null
@@ -616,7 +623,8 @@ class OfficeRepository(private val context: Context) {
 
     private suspend fun pollOne(entry: PcEntry, isCurrent: Boolean) {
         if (entry.conn.token.isEmpty()) return
-        val p = if (isCurrent) prefs else AppPrefs(context, entry.id)
+        // 조회 내내 이 PC 값에 묶인 저장소를 쓴다 — 현재 PC용 prefs는 전환 때 pcId가 바뀌어, 늦게 온 응답이 다른 PC 값을 덮을 수 있다
+        val p = AppPrefs(context, entry.id)
         if (p.stopReason != null) return
         val serverNow = System.currentTimeMillis() + p.clockOffset
         if (p.lockRetryAt > serverNow) return
@@ -624,6 +632,8 @@ class OfficeRepository(private val context: Context) {
         val prefix = PcBooks.noticePrefix(book, entry)
 
         val r = c.decisions()
+        // 기다리는 사이 이 PC가 끊겼거나 다시 연결돼 열쇠가 바뀌었으면 결과를 버린다 (알림·설정·열쇠 폐기 모두)
+        if (!PcBooks.isLive(book, entry)) return
         // 조회하는 사이 화면 PC가 바뀐 경우 화면 상태에는 손대지 않는다 (값은 그 PC의 prefs에만 적는다)
         val onScreen = isCurrent && client === c
         when (r) {
@@ -679,6 +689,17 @@ class OfficeRepository(private val context: Context) {
             is ApiError.Remote, is ApiError.RateLimited -> Unit
             else -> applyError(e, tried)
         }
+    }
+
+    /** 이벤트 스트림처럼 늦게 도착하는 신호: 그 신호를 낸 PC(client)가 아직 화면 PC일 때만 반영한다 (다른 PC의 키 폐기가 지금 PC 키를 지우지 않게) */
+    fun applyV2ErrorFrom(from: RemoteClient?, e: ApiError, tried: List<Endpoint> = emptyList()) {
+        if (from == null || client !== from) return
+        applyV2Error(e, tried)
+    }
+
+    fun markReachableFrom(from: RemoteClient?) {
+        if (from == null || client !== from) return
+        markReachable()
     }
 
     /**

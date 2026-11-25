@@ -590,12 +590,17 @@ private class Bridge(
     override fun onState(state: String, reason: String?) {
         reporter.report(state, reason)
         // 스트림이 다시 열렸다 = PC에 닿는다. 셸이 들고 있던 "닿지 않음"을 지운다 (화면은 connection으로 따로 안다)
-        if (state == "open") main.post { repo.markReachable() }
+        if (state == "open") {
+            val from = repo.currentClient()
+            main.post { repo.markReachableFrom(from) }
+        }
     }
 
     override fun onFatal(error: com.claudeoffice.remote.net.ApiError) {
         reporter.report("closed", appCode(error))
-        main.post { repo.applyV2Error(error) }
+        // 예약된 사이 PC가 바뀔 수 있다 — 오류를 낸 PC(연결 식별자)를 지금 잡아 두고, 실행할 때 같은 PC일 때만 반영한다
+        val from = repo.currentClient()
+        main.post { repo.applyV2ErrorFrom(from, error) }
     }
 
     private fun post(text: String) {

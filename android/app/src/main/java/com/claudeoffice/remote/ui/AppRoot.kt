@@ -108,9 +108,11 @@ private class PcCtl(
     val onFull: () -> Unit,
     val onForget: () -> Unit,
     val onRename: (String, String) -> Unit,
+    /** PC 화면(웹)에서 설정(연결 관리)을 여는 길. 웹이 아닌 화면은 null */
+    val onSettings: (() -> Unit)? = null,
 ) {
     @Composable
-    fun Bar() = PcBar(pcs, onSwitch, onAdd, onFull)
+    fun Bar() = PcBar(pcs, onSwitch, onAdd, onFull, onSettings = onSettings)
 }
 
 @Composable
@@ -121,6 +123,8 @@ fun AppRoot(repo: OfficeRepository, launch: LaunchRequest?, onLaunchHandled: () 
     var onboarding by remember { mutableStateOf<Onboarding?>(null) }
     var tab by rememberSaveable { mutableStateOf<Tab?>(null) }
     var fullDialog by remember { mutableStateOf(false) }
+    /** PC 화면(웹) 위에 덮는 설정 (연결 끊기·이름 바꾸기) */
+    var webSettings by remember { mutableStateOf(false) }
     val rootSnackbar = remember { SnackbarHostState() }
 
     fun connect(qr: QrPayload) {
@@ -144,15 +148,17 @@ fun AppRoot(repo: OfficeRepository, launch: LaunchRequest?, onLaunchHandled: () 
     // PC 바꾸기·끊기: 이전 PC의 상세 화면·선택은 닫고 직원 탭 첫 화면으로 (화면은 PC id로 key를 걸어 새로 만든다)
     val ctl = PcCtl(
         pcs,
-        onSwitch = { id -> repo.switchTo(id); tab = Tab.STAFF },
+        onSwitch = { id -> repo.switchTo(id); tab = Tab.STAFF; webSettings = false },
         onAdd = { onboarding = Onboarding.Scan },
         onFull = { fullDialog = true },
         onForget = {
             val r = repo.forget()
+            webSettings = false
             tab = if (r?.next != null) Tab.STAFF else null
             if (r != null) scope.launch { rootSnackbar.showSnackbar(S.get(R.string.pc_disconnected, r.forgotten)) }
         },
         onRename = repo::rename,
+        onSettings = { webSettings = true },
     )
 
     // PC 화면 모바일 빌드 (APK에 들어 있을 때). 디버그 빌드는 브리지 시험 페이지로 바꿔 띄울 수 있다
@@ -224,6 +230,10 @@ fun AppRoot(repo: OfficeRepository, launch: LaunchRequest?, onLaunchHandled: () 
             // PC가 바뀌면 key가 달라져 화면(웹·상세·선택)이 새로 만들어진다 — 이전 PC 내용이 남지 않는다
             keepWeb -> key(pcs.currentId) {
                 WebRoot(repo, webEntry!!, ctl)
+                if (webSettings && gate == null) Box(Modifier.fillMaxSize().background(Office.colors.background).systemBarsPadding()) {
+                    BackHandler { webSettings = false }
+                    SettingsTab(state, ctl.pcs, onForget = ctl.onForget, onRename = ctl.onRename, onBack = { webSettings = false })
+                }
                 if (gate != null) Box(Modifier.fillMaxSize().background(Office.colors.background).systemBarsPadding()) {
                     GatedRoot(repo, gate, state.clockOffset, ctl, onScan = { onboarding = Onboarding.Scan })
                 }
@@ -243,7 +253,7 @@ fun AppRoot(repo: OfficeRepository, launch: LaunchRequest?, onLaunchHandled: () 
                     PlainTextButton(S.get(R.string.btn_open_settings), {
                         fullDialog = false
                         onboarding = null
-                        tab = Tab.SETTINGS
+                        if (keepWeb && gate == null) webSettings = true else tab = Tab.SETTINGS
                     })
                 },
                 dismissButton = { PlainTextButton(S.get(R.string.btn_ok), { fullDialog = false }, color = Office.colors.onSurfaceMuted) },

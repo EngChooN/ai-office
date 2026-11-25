@@ -156,4 +156,66 @@ class PcBookTest {
         // 옛 값을 새 형식으로 쓰고 다시 읽어도 그대로 (이전이 끝난 뒤의 상태)
         assertEquals(book, PcBookCodec.decode(PcBookCodec.encode(book)))
     }
+
+    // ── 한리뷰 필수 수정 ──
+
+    @Test fun migrationKeepsLegacyWhenSaveFails() {
+        val book = add(PcBook(), conn(1))
+        var removed = false
+        val done = PcBooks.migrateSafely(book, save = { error("disk full") }, readBack = { book }, removeLegacy = { removed = true })
+        assertTrue(!done && !removed)
+    }
+
+    @Test fun migrationKeepsLegacyWhenReadBackIsMissingOrDifferent() {
+        val book = add(PcBook(), conn(1))
+        var removed = 0
+        assertTrue(!PcBooks.migrateSafely(book, save = {}, readBack = { null }, removeLegacy = { removed++ }))
+        assertTrue(!PcBooks.migrateSafely(book, save = {}, readBack = { add(PcBook(), conn(2)) }, removeLegacy = { removed++ }))
+        assertTrue(!PcBooks.migrateSafely(book, save = {}, readBack = { error("decrypt") }, removeLegacy = { removed++ }))
+        assertEquals(0, removed)
+    }
+
+    @Test fun migrationRemovesLegacyOnlyAfterVerifiedReadBack() {
+        val book = add(PcBook(), conn(1))
+        val order = mutableListOf<String>()
+        var stored: PcBook? = null
+        assertTrue(PcBooks.migrateSafely(book, save = { stored = it; order += "save" }, readBack = { order += "read"; stored }, removeLegacy = { order += "remove" }))
+        assertEquals(listOf("save", "read", "remove"), order)
+    }
+
+    @Test fun lateReplyFromForgottenPcIsDropped() {
+        val book = three()
+        val seenA = book.find(conn(1).spki)!!
+        assertTrue(PcBooks.isLive(book, seenA))
+        // 응답을 기다리는 사이 A를 끊음 → 늦은 응답은 알림·설정·열쇠 폐기를 못 한다
+        assertTrue(!PcBooks.isLive(PcBooks.remove(book, seenA.id), seenA))
+    }
+
+    @Test fun lateReplyWithOldTokenIsDroppedAfterReconnect() {
+        val book = three()
+        val seenA = book.find(conn(1).spki)!!
+        // 끊고 같은 PC를 새 열쇠로 다시 연결 → 옛 열쇠로 보낸 요청의 "폐기됨" 응답이 새 열쇠를 지우면 안 된다
+        val reconnected = add(PcBooks.remove(book, seenA.id), conn(1, token = "newtok"))
+        assertTrue(!PcBooks.isLive(reconnected, seenA))
+        // 열쇠가 이미 지워진 항목도 조회 대상이 아니다
+        assertTrue(!PcBooks.isLive(PcBooks.withoutToken(book, seenA.id), seenA))
+    }
+
+    @Test fun roundTripSwitchAtoBtoAKeepsStateSeparateAndLive() {
+        var book = three()
+        val a = book.find(conn(1).spki)!!
+        val b = book.find(conn(2).spki)!!
+        book = PcBooks.select(PcBooks.select(book, b.id), a.id)
+        assertEquals(a.id, book.currentId)
+        // 오가기만 해서는 A·B의 조회 결과가 버려지지 않는다
+        assertTrue(PcBooks.isLive(book, a) && PcBooks.isLive(book, b))
+        // 값 저장 키는 PC마다 다르다 — A 응답이 B 키에 쓰이지 않는다
+        assertNotEquals(PcBooks.key(a.id, "lockRetryAt"), PcBooks.key(b.id, "lockRetryAt"))
+    }
+
+    @Test fun forgettingLastPcEmptiesBook() {
+        val book = add(PcBook(), conn(1))
+        val after = PcBooks.remove(book, book.entries[0].id)
+        assertTrue(after.entries.isEmpty() && after.current == null)
+    }
 }

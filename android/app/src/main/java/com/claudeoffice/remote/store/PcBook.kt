@@ -59,6 +59,22 @@ object PcBooks {
     fun withoutToken(book: PcBook, id: String): PcBook =
         book.copy(entries = book.entries.map { if (it.id == id) it.copy(conn = it.conn.copy(token = "")) else it })
 
+    /** 조회를 시작할 때 본 PC 항목이 지금도 같은 연결인가 — 그새 끊겼거나(없음) 다시 연결돼 열쇠가 바뀌었으면 거짓. A→B→A로 오가기만 한 건 참 */
+    fun isLive(book: PcBook, seen: PcEntry): Boolean {
+        val now = book.find(seen.id) ?: return false
+        return now.conn.token == seen.conn.token && now.conn.token.isNotEmpty()
+    }
+
+    /**
+     * 옛 1대 저장 → 새 목록 이전. 새 목록을 저장하고 다시 읽어 같을 때만 옛 값을 지운다
+     * (저장 실패·읽기 실패·내용 불일치면 옛 값을 남겨 다음 실행에서 다시 옮긴다). 지웠으면 true
+     */
+    fun migrateSafely(book: PcBook, save: (PcBook) -> Unit, readBack: () -> PcBook?, removeLegacy: () -> Unit): Boolean {
+        val isSaved = runCatching { save(book) }.isSuccess && runCatching(readBack).getOrNull() == book
+        if (isSaved) removeLegacy()
+        return isSaved
+    }
+
     fun name(e: PcEntry) = e.alias.ifBlank { "PC ${e.slot}" }
 
     /** 알림 제목 앞에 붙일 이름. PC가 1대면 붙이지 않아 지금과 똑같이 보인다 */

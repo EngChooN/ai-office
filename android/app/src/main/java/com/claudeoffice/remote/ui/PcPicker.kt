@@ -20,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Badge
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -50,7 +51,7 @@ import com.claudeoffice.remote.ui.theme.Type
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PcBar(pcs: PcListState, onSwitch: (String) -> Unit, onAdd: () -> Unit, onFull: () -> Unit, modifier: Modifier = Modifier) {
+fun PcBar(pcs: PcListState, onSwitch: (String) -> Unit, onAdd: () -> Unit, onFull: () -> Unit, modifier: Modifier = Modifier, onSettings: (() -> Unit)? = null) {
     val current = pcs.current ?: return
     val c = Office.colors
     var open by remember { mutableStateOf(false) }
@@ -101,6 +102,15 @@ fun PcBar(pcs: PcListState, onSwitch: (String) -> Unit, onAdd: () -> Unit, onFul
                 ) {
                     Icon(Icons.Filled.Add, contentDescription = null, tint = c.primary)
                     Text(S.get(R.string.pc_add), style = Type.bodyLarge, color = c.primary)
+                }
+                // PC 화면(웹)에는 설정 탭이 없다 — 연결 끊기·이름 바꾸기는 여기서 연다
+                if (onSettings != null) Row(
+                    Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable { open = false; onSettings() },
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(Space.s2),
+                ) {
+                    Icon(Icons.Filled.Settings, contentDescription = null, tint = c.onSurfaceMuted)
+                    Text(S.get(R.string.cd_settings), style = Type.bodyLarge, color = c.onSurface)
                 }
             }
         }

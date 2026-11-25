@@ -22,16 +22,21 @@ class SecureStore(context: Context) {
      */
     @Synchronized
     fun loadBook(): PcBook {
-        prefs.getString(KEY_BOOK, null)?.let { blob ->
-            // 새 목록이 있으면 옛 값은 남은 찌꺼기 — 지운다
+        readBook()?.let { book ->
+            // 새 목록을 읽을 수 있으면 옛 값은 남은 찌꺼기 — 지운다
             if (prefs.contains(KEY_CONN)) prefs.edit().remove(KEY_CONN).commit()
-            return decrypt(blob)?.let { runCatching { PcBookCodec.decode(it) }.getOrNull() } ?: PcBook()
+            return book
         }
         val legacy = prefs.getString(KEY_CONN, null) ?: return PcBook()
         val book = decrypt(legacy)?.let { runCatching { PcBookCodec.fromLegacy(it) }.getOrNull() } ?: return PcBook()
-        saveBook(book)
-        prefs.edit().remove(KEY_CONN).commit()
+        PcBooks.migrateSafely(book, ::saveBook, ::readBook) { prefs.edit().remove(KEY_CONN).commit() }
         return book
+    }
+
+    /** 저장된 새 목록을 읽는다. 없거나 풀 수 없으면 null */
+    private fun readBook(): PcBook? {
+        val blob = prefs.getString(KEY_BOOK, null) ?: return null
+        return decrypt(blob)?.let { runCatching { PcBookCodec.decode(it) }.getOrNull() }
     }
 
     @Synchronized
