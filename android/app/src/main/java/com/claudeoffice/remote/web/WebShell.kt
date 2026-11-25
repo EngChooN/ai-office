@@ -61,7 +61,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.imeAnimationTarget
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.runtime.setValue
@@ -268,7 +267,7 @@ fun WebShell(
     }
 
     val config = LocalConfiguration.current
-    val isChipMode = chip != null && bridge.hasPcChip && config.screenWidthDp < 600 && config.orientation == android.content.res.Configuration.ORIENTATION_PORTRAIT
+    val isChipMode = chip != null && bridge.hasPcChip && bridge.isChipSlot && config.screenWidthDp < 600 && config.orientation == android.content.res.Configuration.ORIENTATION_PORTRAIT
     SideEffect { onChipMode(isChipMode) }
     DisposableEffect(Unit) { onDispose { onChipMode(false) } }
     var chipWidth by remember { mutableStateOf(0) }
@@ -461,6 +460,9 @@ private class Bridge(
     /** 화면이 제목 줄에 PC 칩 자리를 비워 줄 수 있는지 (ready의 features "pc-chip") */
     var hasPcChip by androidx.compose.runtime.mutableStateOf(false)
         private set
+    /** 화면이 알린 "지금 칩 자리(왼쪽 위)에 제목 줄이 보인다" — 덮이면 false (ready마다 다시 알린다) */
+    var isChipSlot by androidx.compose.runtime.mutableStateOf(false)
+        private set
     /** 같은 요청 id를 다시 보내면 같은 Idempotency-Key — PC가 한 번만 처리한다 */
     private val session = UUID.randomUUID().toString()
     var isTablet = false
@@ -485,6 +487,7 @@ private class Bridge(
                 isReady = true
                 isImeByScreen = "ime" in r.features
                 hasPcChip = "pc-chip" in r.features
+                isChipSlot = false
                 lastChip = -1
                 readyTick++
                 val caps = capabilitiesOf(r.features)
@@ -557,6 +560,7 @@ private class Bridge(
                 )
             }
             is BridgeRequest.View -> post(BridgeOut.ok(r.id, buildJsonObject { put("url", "$ASSET_ORIGIN$ARTIFACT_VIEW_PATH${views.put(r.html)}") }))
+            is BridgeRequest.Chip -> isChipSlot = r.show
             is BridgeRequest.BackResult -> pendingBack?.complete(r.handled)
             is BridgeRequest.Invalid -> r.id?.let { post(BridgeOut.fail(it, 0, "invalid_message", S.get(R.string.bridge_bad_request))) }
         }
@@ -623,6 +627,7 @@ private class Bridge(
         lastIme = -1
         lastChip = -1
         hasPcChip = false
+        isChipSlot = false
         pendingBack?.complete(false)
         pendingBack = null
     }

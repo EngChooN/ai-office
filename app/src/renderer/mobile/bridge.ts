@@ -43,7 +43,7 @@ export type BridgeRequest =
   | { type: 'view'; html: string }
 
 /** 답이 없는 알림 */
-export type BridgeNotice = { type: 'ready'; features?: string[] } | { type: 'backResult'; handled: boolean }
+export type BridgeNotice = { type: 'ready'; features?: string[] } | { type: 'backResult'; handled: boolean } | { type: 'chip'; show: boolean }
 
 /** 셸 응답을 기다리는 시간: PC 처리 상한 120초 + 여유 */
 export const BRIDGE_TIMEOUT_MS = 130_000

@@ -43,6 +43,8 @@ sealed interface BridgeRequest {
      * "iso-office" 등 SCREEN_CAPABILITIES에 있는 값은 /v2/call·/v2/events 요청 헤더로 PC에 알린다
      */
     data class Ready(val features: Set<String> = emptySet()) : BridgeRequest
+    /** 화면이 "칩 자리 비울 수 있고 지금 제목 줄이 맨 위에 보인다"를 알림 (직원 패널·팝업·안내가 위를 덮으면 false) */
+    data class Chip(val show: Boolean) : BridgeRequest
     /** window.office.<method>(...args) — POST /v2/call */
     data class Call(val id: String, val method: String, val args: JsonArray, val confirm: Boolean) : BridgeRequest
     /** saveAttachments의 파일 하나 — POST /v2/attachments */
@@ -115,6 +117,7 @@ fun parseBridge(text: String): BridgeRequest {
             val html = o.str("html")?.takeIf { it.length <= ARTIFACT_VIEW_MAX }
             if (id == null || html == null) BridgeRequest.Invalid(id, "bad_view") else BridgeRequest.View(id, html)
         }
+        "chip" -> BridgeRequest.Chip((o["show"] as? JsonPrimitive)?.content == "true")
         "backResult" -> BridgeRequest.BackResult((o["handled"] as? JsonPrimitive)?.content == "true")
         else -> BridgeRequest.Invalid(id, "unknown_type")
     }

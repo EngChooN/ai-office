@@ -133,3 +133,23 @@ document.addEventListener('focusin', (e) => {
 // 'pc-chip' = 위 제목 줄 왼쪽에 폰 앱이 PC 칩을 얹는다 → 셸이 --pc-chip(칩 오른쪽 끝, px)·data-pcchip를 <html>에 넣고, 제목 줄은 그만큼 비킨다 (index.css .pc-header)
 // 'iso-office' = 회사 레벨 11 이상을 그릴 수 있다 → 셸이 /v2/call·/v2/events 헤더 X-Office-Capabilities로 PC에 알린다 (없으면 PC가 Lv.10으로 줄여 보냄)
 bridge.notify({ type: 'ready', features: ['ime', 'pc-chip', ...SCREEN_CAPABILITIES] })
+
+// 칩을 얹어도 되는지: 칩이 올라갈 점(왼쪽 위)에 실제로 제목 줄(.pc-header)이 보일 때만 true.
+// 직원 패널·팝업·대화방 연결 안내(제목 위)·가로/낮은 창에서 제목 줄이 숨은 경우는 그 점이 다른 요소라 false → 앱이 예전 별도 PC 줄로 돌린다
+let lastChipShow: boolean | null = null
+let chipFrame = 0
+function reportChip(): void {
+  chipFrame = 0
+  const el = document.elementFromPoint(16, 24)
+  const show = !!el?.closest('.pc-header') && (el!.closest('.pc-header') as HTMLElement).getBoundingClientRect().top <= 2
+  if (show === lastChipShow) return
+  lastChipShow = show
+  bridge.notify({ type: 'chip', show })
+}
+const scheduleChip = () => {
+  if (!chipFrame) chipFrame = requestAnimationFrame(reportChip)
+}
+new MutationObserver(scheduleChip).observe(document.documentElement, { subtree: true, childList: true, attributes: true, attributeFilter: ['class', 'style', 'data-state', 'hidden'] })
+window.addEventListener('resize', scheduleChip)
+// 앱이 화면을 다시 읽으면 ready를 다시 보낸다 → 상태도 다시 알린다
+scheduleChip()
