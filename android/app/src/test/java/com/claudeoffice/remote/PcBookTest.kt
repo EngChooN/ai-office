@@ -298,4 +298,17 @@ class PcBookTest {
         assertTrue(q.confirm("a"))
         assertEquals(1, runs)
     }
+
+    /** 마지막 PC 끊기: 확인 못 한 삭제(A)는 대기에 남고, flush가 성공해야 비워진다 */
+    @Test fun flushKeepsUnconfirmedAndClearsConfirmed() = kotlinx.coroutines.runBlocking {
+        val pending = mutableSetOf<String>()
+        var okA = false
+        val q = queue(pending) { id -> if (id == "a") okA else true }
+        q.mark("a"); q.mark("b")
+        q.flush()
+        assertEquals(setOf("a"), pending)
+        okA = true
+        q.flush()
+        assertTrue(pending.isEmpty())
+    }
 }

@@ -272,7 +272,6 @@ class OfficeRepository(private val context: Context) {
     private fun clearWebStorage() {
         runCatching { android.webkit.WebStorage.getInstance().deleteAllData() }
         prefs.webStoragePc = ""
-        prefs.pendingPurge = emptySet()
     }
 
     /**
@@ -397,7 +396,10 @@ class OfficeRepository(private val context: Context) {
         if (next == null) {
             PollWorker.cancel(context)
             // 웹 저장소(보관 글 포함)와 주인 표시도 정리 — 안 그러면 다음에 연결하는 다른 PC에 이전 PC 글이 섞인다
+            // 전체 삭제는 성공 여부를 알 수 없다 — 대기 목록은 유지하고, 각 PC 글 삭제가 확인될 때만 비운다
+            purges.mark(e.id)
             clearWebStorage()
+            scope.launch { purges.flush() }
             prefs.pcId = ""
             conn = null
             client = null
