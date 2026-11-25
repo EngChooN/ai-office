@@ -56,6 +56,15 @@
 - 바탕화면 비서(`deskPet.ts` `petTargets`)·보드·비서(`secretary.ts`)·원격(`remote/v2.ts`)이 단체방을 인식. 시험: `collabApproval`·`collabPairs`·`chatRooms`·`helpRequest` 등.
 
 
+## [1.7.0] - 2026-11-25
+
+### 새 기능
+- 도우미(서브에이전트) 나눠 쓰기(e0c7f6b): 장비 탭 스위치, 사무실 ×N·카드 칩·상태 줄(`helper-badge.tsx`).
+- 회의실 개편(93342f6): `MeetingLive`·`MeetingOutcomeDialog`, 결재/결과물/건너뛰기.
+- 작성 중인 글 유지(ac96e18·20f705e): `lib/drafts.ts`(글은 localStorage, 첨부는 메모리), 전송 실패 시 되돌림.
+- 안드로이드 PC 최대 3대(d0c66ca): `PcBook.kt`·`PcPicker.kt`, 알림 PC별 분리, 기존 1대 자동 이전. 한리뷰 7차 승인(a6c07cc~f6066a3: 글 PC별 보관·이전 확인 후 원본 삭제·삭제 대기열).
+- 실기기·윈도우 확인 전.
+
 ## [1.6.0] - 2026-11-23
 
 ### 새 기능

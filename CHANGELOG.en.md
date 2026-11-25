@@ -11,6 +11,31 @@ Writing rules
 - Leave out: internal or development matters, re-fixes of features added in the same version, how a security hole worked (if needed, one line on the result), minor wording or spacing tweaks.
 - Couldn't do it before → new feature; easier than before → improvement; was working wrongly → bug fix.
 
+## [1.7.0] - 2026-11-25
+
+### At a glance
+- **New** Split work across helpers (switch)
+- **New** Live meeting screen; choose the outcome
+- **New** Drafts stay when you switch pages
+- **New** Save and switch up to 3 PCs on phone
+- **Better** Phone drafts are kept per PC
+
+Switching between several PCs on the phone and draft keeping there have not been checked on a real phone, and the rest has not been checked on a Windows PC.
+
+### New features
+- Turn on "Share work with helpers" in the Equipment tab and staff split tasks among several helpers. When 2 or more work at once you see ×N over the office, "Helpers N" on the staff card, and a status line.
+- A meeting now has its own screen showing who is speaking, who is next and which round it is. Afterwards you choose: send for approval, publish a result, or skip. Past meetings open with "View result".
+- Text and attachments you were typing stay when you move between pages, staff and chat rooms. If sending fails the text comes back, and text survives restarting the app (attachments do not).
+- The phone app can save up to 3 PCs and switch between them. You can disconnect each PC, notifications are separated per PC, and your existing single PC is moved over automatically.
+
+### Improvements
+- Text you were typing on the phone is kept per PC, so it never mixes when you switch PCs.
+- If a screen fails to load, you now get a prompt to reload it.
+- Before deleting the text of a disconnected PC you are asked first, and it retries on failure. Old text is deleted only after the moved copy is confirmed identical.
+
+### Bug fixes
+- Fixed the "To do:" line in meeting minutes sticking to the item above it.
+
 ## [1.6.0] - 2026-11-23
 
 ### At a glance
