@@ -309,7 +309,8 @@ fun ConnectingScreen(address: String) {
 }
 
 @Composable
-fun ConnectedScreen(address: String, onDone: () -> Unit) {
+/** refreshedName이 있으면 "같은 PC를 다시 연결해 정보를 새로 고쳤다"는 안내 */
+fun ConnectedScreen(address: String, refreshedName: String? = null, onDone: () -> Unit) {
     val c = Office.colors
     val context = LocalContext.current
     val notifLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
@@ -329,7 +330,7 @@ fun ConnectedScreen(address: String, onDone: () -> Unit) {
             contentAlignment = Alignment.Center,
         ) { Icon(Icons.Filled.Check, contentDescription = null, tint = c.statusWorking) }
         Spacer(Modifier.height(Space.s5))
-        Text(S.get(R.string.onb_done_title), style = Type.titleLarge, color = c.onSurface)
+        Text(if (refreshedName != null) S.get(R.string.pc_refreshed, refreshedName) else S.get(R.string.onb_done_title), style = Type.titleLarge, color = c.onSurface)
         Spacer(Modifier.height(Space.s2))
         MutedText(address)
         Spacer(Modifier.height(Space.s5))

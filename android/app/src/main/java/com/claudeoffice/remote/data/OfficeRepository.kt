@@ -22,12 +22,18 @@ import com.claudeoffice.remote.net.RemoteClient
 import com.claudeoffice.remote.net.refreshedFromHello
 import com.claudeoffice.remote.net.StatusResponse
 import com.claudeoffice.remote.store.AppPrefs
+import com.claudeoffice.remote.store.MAX_PCS
+import com.claudeoffice.remote.store.PcAdd
+import com.claudeoffice.remote.store.PcBook
+import com.claudeoffice.remote.store.PcBooks
+import com.claudeoffice.remote.store.PcEntry
 import com.claudeoffice.remote.store.SecureStore
 import com.claudeoffice.remote.store.StopReason
 import com.claudeoffice.remote.work.Notifier
 import com.claudeoffice.remote.work.pinNotice
 import com.claudeoffice.remote.work.PollWorker
 import com.claudeoffice.remote.work.reconnectNotice
+import com.claudeoffice.remote.work.forPc
 import com.claudeoffice.remote.work.decisionNotice
 import com.claudeoffice.remote.work.lockNotice
 import com.claudeoffice.remote.work.newDecisions
@@ -99,7 +105,10 @@ data class OfficeState(
 }
 
 sealed interface ConnectResult {
-    data object Ok : ConnectResult
+    /** refreshed: 이미 저장된 같은 PC라 새 항목 없이 연결 정보만 새로 고쳤다 */
+    data class Ok(val name: String, val refreshed: Boolean) : ConnectResult
+    /** 새 PC를 넣으려는데 이미 3대 */
+    data object Full : ConnectResult
     data class Failed(val error: ApiError, val tried: List<Endpoint> = emptyList()) : ConnectResult
 }
 
@@ -108,6 +117,17 @@ sealed interface ActionResult {
     data class Failed(val error: ApiError) : ActionResult
 }
 
+/** PC 선택 목록의 한 줄 */
+data class PcInfo(val id: String, val name: String, val alias: String, val address: String, val paused: Boolean, val pending: Int)
+
+data class PcListState(val items: List<PcInfo> = emptyList(), val currentId: String? = null) {
+    val isFull get() = items.size >= MAX_PCS
+    val current get() = items.firstOrNull { it.id == currentId }
+}
+
+/** 연결 끊기 결과: 끊은 PC 이름과, 남은 PC가 있으면 이어서 보는 PC 이름 */
+data class ForgetOutcome(val forgotten: String, val next: String?)
+
 /** 기본 네트워크를 잃은 뒤 이만큼 기다려도 다른 망이 없으면 오프라인 표시 */
 const val OFFLINE_GRACE_MS = 3000L
 
@@ -115,10 +135,14 @@ class OfficeRepository(private val context: Context) {
     private val secure = SecureStore(context)
     private val prefs = AppPrefs(context)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    private val refreshLock = Mutex()
+    /** 전환하면 새 자물쇠로 바꾼다 — 이전 PC의 느린 조회가 새 PC 조회를 붙잡지 않게 */
+    private var refreshLock = Mutex()
     private val connectivity = context.getSystemService(ConnectivityManager::class.java)
-    private var conn: Connection? = secure.load()
-    private var client: RemoteClient? = conn?.let(::newClient)
+    /** 저장된 PC 목록(최대 3대). 옛 버전의 1대 저장은 여기서 1번 PC로 옮긴다 */
+    private var book: PcBook = secure.loadBook().also(::migrateLegacy)
+    // conn·client는 "지금 화면에 붙은 PC" 하나. 다른 PC는 백그라운드 조회만 한다
+    private var conn: Connection? = book.current?.conn
+    private var client: RemoteClient? = book.current?.takeIf { it.conn.token.isNotEmpty() }?.let(::newClient)
     /** 429·503 뒤 자동 갱신을 미루는 시각 (휴대폰 시계) */
     private var pauseUntil = 0L
     /** 기본 네트워크가 (다시) 잡혔다는 신호 — 이벤트 스트림이 옛 소켓을 버리고 바로 다시 붙는다 */
@@ -128,6 +152,9 @@ class OfficeRepository(private val context: Context) {
 
     private val _state = MutableStateFlow(initialState())
     val state: StateFlow<OfficeState> = _state.asStateFlow()
+
+    private val _pcs = MutableStateFlow(buildPcs())
+    val pcs: StateFlow<PcListState> = _pcs.asStateFlow()
 
     init {
         connectivity?.registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
@@ -150,11 +177,60 @@ class OfficeRepository(private val context: Context) {
                 }
             }
         })
-        if (conn != null && prefs.stopReason == null) PollWorker.schedule(context)
+        if (book.entries.isNotEmpty()) PollWorker.schedule(context)
     }
 
-    // 화면 갱신과 백그라운드 조회가 같은 "기억한 길"을 쓴다 (AppPrefs)
-    private fun newClient(c: Connection) = RemoteClient(c, ::isPhoneOnline, prefs.routeMemory)
+    // 화면 갱신과 백그라운드 조회가 같은 "기억한 길"을 쓴다 (AppPrefs). 클라이언트마다 그 PC 전용 값에 묶어
+    // 전환 중인 이전 PC의 늦은 응답이 새 PC 값에 섞이지 않게 한다
+    private fun newClient(e: PcEntry) = RemoteClient(e.conn, ::isPhoneOnline, AppPrefs(context, e.id).routeMemory)
+
+    private fun migrateLegacy(b: PcBook) {
+        val first = b.entries.firstOrNull() ?: return
+        prefs.pcId = b.currentId.orEmpty()
+        if (prefs.migrateLegacy(first.id)) Notifier.cancelLegacy(context)
+        // 웹 저장 공간은 지금까지 이 PC 하나만 썼다 — 주인으로 적어 둔다 (안 그러면 첫 실행 때 비워진다)
+        if (b.entries.size == 1 && prefs.webStoragePc.isEmpty()) prefs.webStoragePc = first.id
+    }
+
+    private fun buildPcs(): PcListState {
+        val now = System.currentTimeMillis()
+        val items = book.entries.map { e ->
+            val isCurrent = e.id == book.currentId
+            val p = if (isCurrent) prefs else AppPrefs(context, e.id)
+            val s = _state.value.takeIf { isCurrent }
+            PcInfo(
+                id = e.id,
+                name = PcBooks.name(e),
+                alias = e.alias,
+                address = displayAddress(e.conn),
+                paused = if (s != null) s.gate != null else p.stopReason != null || p.lockRetryAt > now + p.clockOffset,
+                pending = s?.decisions?.total ?: p.pendingCount,
+            )
+        }
+        return PcListState(items, book.currentId)
+    }
+
+    private fun publishPcs() {
+        _pcs.value = buildPcs()
+    }
+
+    /** 이 PC가 이제 화면에 붙는 PC다 — 진행 중이던 이전 PC의 조회는 결과가 버려진다(client 비교) */
+    private fun activate(e: PcEntry) {
+        prefs.pcId = e.id
+        conn = e.conn
+        client = e.takeIf { it.conn.token.isNotEmpty() }?.let(::newClient)
+        refreshLock = Mutex()
+        pauseUntil = 0
+        offlineJob?.cancel()
+    }
+
+    /** 웹 화면 저장 공간(localStorage)은 PC가 달라도 같은 출처다 — 다른 PC가 쓰던 거면 화면을 열기 전에 비운다 */
+    fun prepareWebStorage() {
+        val id = book.currentId ?: return
+        if (prefs.webStoragePc == id) return
+        android.webkit.WebStorage.getInstance().deleteAllData()
+        prefs.webStoragePc = id
+    }
 
     fun isPhoneOnline(): Boolean {
         val cm = connectivity ?: return true
@@ -178,7 +254,7 @@ class OfficeRepository(private val context: Context) {
 
     private fun gateFromPrefs(serverNow: Long): Gate? {
         val stop = prefs.stopReason
-        if (conn == null) return if (stop == StopReason.REVOKED) Gate.Revoked else Gate.NotConnected
+        if (conn == null) return Gate.NotConnected
         return when (stop) {
             StopReason.REVOKED -> Gate.Revoked
             StopReason.UNAUTHORIZED -> Gate.Unauthorized
@@ -191,21 +267,18 @@ class OfficeRepository(private val context: Context) {
 
     // ── 연결 ────────────────────────────────────────────
 
-    /** 스캔한 QR로 연결을 시도한다. GET /v1/status가 성공해야 저장한다 */
+    /** 스캔한 QR로 연결을 시도한다. GET /v1/status가 성공해야 저장한다. 같은 PC(인증서 확인값)면 갱신, 새 PC가 4번째면 거부 */
     suspend fun connect(qr: QrPayload): ConnectResult {
         val candidate = Connection(qr.host, qr.port, qr.token, qr.spki, qr.lan, qr.isLanOnly, qr.isTailscale)
-        // 저장 전이라 기억한 길은 임시로 두고, 성공하면 prefs에 옮긴다 (prefs.clear() 뒤에)
+        if (book.find(candidate.spki) == null && book.isFull) return ConnectResult.Full
+        // 저장 전이라 기억한 길은 임시로 두고, 성공하면 prefs에 옮긴다
         val firstRoute = InMemoryRoute()
         val c = RemoteClient(candidate, ::isPhoneOnline, firstRoute)
         return when (val r = c.status()) {
             is ApiResult.Ok -> {
-                secure.save(candidate)
-                conn = candidate
-                prefs.clear()
+                val added = adopt(candidate) ?: return ConnectResult.Full
                 prefs.routeMemory.preferred = firstRoute.preferred
-                client = newClient(candidate)
                 prefs.displayAddress = displayAddress(candidate)
-                pauseUntil = 0
                 onStatus(r.value)
                 _state.value = OfficeState(
                     gate = null,
@@ -218,18 +291,17 @@ class OfficeRepository(private val context: Context) {
                     isTailscale = candidate.isTailscale,
                 )
                 PollWorker.schedule(context)
+                publishPcs()
                 refreshDecisions()
-                ConnectResult.Ok
+                ConnectResult.Ok(PcBooks.name(added.first), added.second)
             }
             is ApiResult.Fail -> {
                 // 잠김은 토큰이 맞을 수 있으니 저장해 두고 풀리면 이어서 붙는다
                 if (r.error is ApiError.Locked) {
-                    secure.save(candidate)
-                    conn = candidate
-                    prefs.clear()
-                    client = newClient(candidate)
+                    adopt(candidate) ?: return ConnectResult.Full
                     prefs.displayAddress = displayAddress(candidate)
-                    _state.update { it.copy(address = prefs.displayAddress, isLanOnly = candidate.isLanOnly, isTailscale = candidate.isTailscale) }
+                    _state.value = initialState()
+                    publishPcs()
                     applyError(r.error, r.tried)
                 }
                 ConnectResult.Failed(r.error, r.tried)
@@ -237,15 +309,65 @@ class OfficeRepository(private val context: Context) {
         }
     }
 
-    /** "이 PC와 연결 끊기" — 기기에서 열쇠(토큰)와 연결 정보를 지우고 자동 확인을 멈춘다 */
-    fun forget() {
-        PollWorker.cancel(context)
-        secure.clear()
-        prefs.clear()
-        Notifier.cancelAll(context)
-        conn = null
-        client = null
-        _state.value = OfficeState(gate = Gate.NotConnected)
+    /** 목록에 넣고(같은 PC면 갱신) 그 PC를 현재로 만든다. 그 PC의 옛 상태(멈춤·잠금)는 지워 다시 시작한다. 가득 차면 null */
+    private fun adopt(candidate: Connection): Pair<PcEntry, Boolean>? {
+        val (nb, entry, refreshed) = when (val r = PcBooks.add(book, candidate, System.currentTimeMillis())) {
+            PcAdd.Full -> return null
+            is PcAdd.Added -> Triple(r.book, r.entry, false)
+            is PcAdd.Updated -> Triple(r.book, r.entry, true)
+        }
+        secure.saveBook(nb)
+        book = nb
+        prefs.clearPc(entry.id)
+        activate(entry)
+        return entry to refreshed
+    }
+
+    /** "이 PC 연결 끊기" — 현재 PC의 열쇠·연결 정보·상태·알림만 지우고, 남은 PC가 있으면 첫 번째로 이어 간다. 없으면 처음 화면 */
+    fun forget(): ForgetOutcome? {
+        val e = book.current ?: return null
+        val nb = PcBooks.remove(book, e.id)
+        // 새 목록을 먼저 저장하고 나서 지운다
+        if (nb.entries.isEmpty()) secure.clear() else secure.saveBook(nb)
+        book = nb
+        prefs.clearPc(e.id)
+        Notifier.cancelFor(context, e.slot)
+        val next = nb.current
+        if (next == null) {
+            PollWorker.cancel(context)
+            prefs.pcId = ""
+            conn = null
+            client = null
+            refreshLock = Mutex()
+            _state.value = OfficeState(gate = Gate.NotConnected)
+        } else {
+            activate(next)
+            _state.value = initialState()
+            if (_state.value.gate == null) scope.launch { refresh() }
+        }
+        publishPcs()
+        return ForgetOutcome(PcBooks.name(e), next?.let(PcBooks::name))
+    }
+
+    /** PC 바꾸기 — 이전 PC의 화면 값은 버리고 새 PC 값으로 다시 시작한다 (섞임 방지). 새 값이 오기 전에는 로딩 */
+    fun switchTo(id: String) {
+        val e = book.find(id) ?: return
+        if (id == book.currentId) return
+        val nb = PcBooks.select(book, id)
+        secure.saveBook(nb)
+        book = nb
+        activate(e)
+        _state.value = initialState()
+        publishPcs()
+        if (_state.value.gate == null) scope.launch { refresh() }
+    }
+
+    /** 별칭 바꾸기 (20자까지, 비우면 기본 이름 "PC n") */
+    fun rename(id: String, alias: String) {
+        if (book.find(id) == null) return
+        book = PcBooks.rename(book, id, alias)
+        secure.saveBook(book)
+        publishPcs()
     }
 
     // ── 조회 ────────────────────────────────────────────
@@ -255,10 +377,13 @@ class OfficeRepository(private val context: Context) {
         val c = client ?: return
         if (_state.value.gate != null) return
         if (System.currentTimeMillis() < pauseUntil) return
+        // 기다리거나 응답을 받는 사이 PC가 바뀌었으면(client가 다르면) 이전 PC 결과는 버린다
         refreshLock.withLock {
+            if (client !== c) return
             val wasDown = _state.value.reach != Reach.OK
             _state.update { it.copy(isLoading = true) }
             val s = c.status()
+            if (client !== c) return
             if (s is ApiResult.Fail) {
                 _state.update { it.copy(isLoading = false) }
                 applyError(s.error, s.tried)
@@ -266,6 +391,7 @@ class OfficeRepository(private val context: Context) {
             }
             onStatus((s as ApiResult.Ok).value)
             val d = c.decisions()
+            if (client !== c) return
             if (d is ApiResult.Fail) {
                 _state.update { it.copy(isLoading = false) }
                 applyError(d.error, d.tried)
@@ -274,7 +400,7 @@ class OfficeRepository(private val context: Context) {
             onDecisions((d as ApiResult.Ok).value)
             _state.update { it.copy(isLoading = false, reach = Reach.OK, justRecovered = wasDown) }
         }
-        if (_state.value.justRecovered) {
+        if (_state.value.justRecovered && client === c) {
             delay(1500)
             _state.update { it.copy(justRecovered = false) }
         }
@@ -282,7 +408,9 @@ class OfficeRepository(private val context: Context) {
 
     private suspend fun refreshDecisions() {
         val c = client ?: return
-        when (val d = c.decisions()) {
+        val d0 = c.decisions()
+        if (client !== c) return
+        when (val d = d0) {
             is ApiResult.Ok -> onDecisions(d.value)
             is ApiResult.Fail -> applyError(d.error, d.tried)
         }
@@ -323,7 +451,9 @@ class OfficeRepository(private val context: Context) {
     private fun onDecisions(d: DecisionsResponse) {
         // 화면에 보인 결정은 알린 것으로 친다 (백그라운드 알림 중복 방지)
         prefs.notifiedIds = d.decisions.map { it.id }.toSet()
+        prefs.pendingCount = d.total
         _state.update { it.copy(decisions = d) }
+        publishPcs()
     }
 
     // ── 결정·지시 ───────────────────────────────────────
@@ -337,7 +467,13 @@ class OfficeRepository(private val context: Context) {
 
     private suspend fun act(id: String, send: suspend (RemoteClient) -> ApiResult<com.claudeoffice.remote.net.DecideResponse>): ActionResult {
         val c = client ?: return ActionResult.Failed(ApiError.Unauthorized)
-        return when (val r = send(c)) {
+        val r0 = send(c)
+        // 보내는 사이 PC를 바꿨으면 결과는 보낸 PC의 것이다 — 지금 화면 상태에는 손대지 않는다
+        if (client !== c) return when (r0) {
+            is ApiResult.Ok -> ActionResult.Done(r0.value.result)
+            is ApiResult.Fail -> ActionResult.Failed(r0.error)
+        }
+        return when (val r = r0) {
             is ApiResult.Ok -> {
                 removeDecision(id)
                 scope.launch { refresh() }
@@ -357,7 +493,12 @@ class OfficeRepository(private val context: Context) {
 
     suspend fun instruct(staffId: String, text: String): ActionResult {
         val c = client ?: return ActionResult.Failed(ApiError.Unauthorized)
-        return when (val r = c.instruct(staffId, text)) {
+        val r0 = c.instruct(staffId, text)
+        if (client !== c) return when (r0) {
+            is ApiResult.Ok -> ActionResult.Done("accepted")
+            is ApiResult.Fail -> ActionResult.Failed(r0.error)
+        }
+        return when (val r = r0) {
             is ApiResult.Ok -> {
                 scope.launch { refresh() }
                 ActionResult.Done("accepted")
@@ -381,33 +522,28 @@ class OfficeRepository(private val context: Context) {
         if (tried.isNotEmpty()) _state.update { it.copy(tried = tried) }
         when (e) {
             ApiError.TokenRevoked -> {
-                // 저장된 토큰 삭제, 재시도·백그라운드 조회 중단 (규격 9절)
-                secure.clear()
-                conn = null
-                client = null
-                PollWorker.cancel(context)
-                prefs.stopReason = StopReason.REVOKED
+                revoke(book.currentId)
                 setGate(Gate.Revoked)
             }
             ApiError.Unauthorized -> {
                 // 계속 시도하면 스스로 잠금을 부르므로 자동 조회를 멈춘다 (토큰은 새 QR을 찍을 때 바뀐다)
-                prefs.stopReason = StopReason.UNAUTHORIZED
+                recordStop(prefs, e)
                 setGate(Gate.Unauthorized)
             }
             is ApiError.Locked -> {
-                prefs.lockRetryAt = e.retryAt
+                recordStop(prefs, e)
                 setGate(Gate.Locked(e.retryAt))
             }
             ApiError.PinMismatch -> {
-                prefs.stopReason = StopReason.PIN_MISMATCH
+                recordStop(prefs, e)
                 setGate(Gate.PinMismatch)
             }
             ApiError.NeedsAppUpdate -> {
-                prefs.stopReason = StopReason.NEEDS_APP_UPDATE
+                recordStop(prefs, e)
                 setGate(Gate.NeedsAppUpdate)
             }
             ApiError.NeedsPcUpdate -> {
-                prefs.stopReason = StopReason.NEEDS_PC_UPDATE
+                recordStop(prefs, e)
                 setGate(Gate.NeedsPcUpdate)
             }
             is ApiError.AppBug -> setGate(Gate.AppBug(e.code))
@@ -427,41 +563,94 @@ class OfficeRepository(private val context: Context) {
         }
     }
 
-    private fun setGate(g: Gate) = _state.update { it.copy(gate = g, isLoading = false) }
+    /** 자동 조회를 멈춰야 하는 오류를 그 PC의 값에 적는다 (현재 PC든 백그라운드로 본 다른 PC든 같은 규칙) */
+    private fun recordStop(p: AppPrefs, e: ApiError) {
+        when (e) {
+            ApiError.TokenRevoked -> p.stopReason = StopReason.REVOKED
+            ApiError.Unauthorized -> p.stopReason = StopReason.UNAUTHORIZED
+            is ApiError.Locked -> p.lockRetryAt = e.retryAt
+            ApiError.PinMismatch -> p.stopReason = StopReason.PIN_MISMATCH
+            ApiError.NeedsAppUpdate -> p.stopReason = StopReason.NEEDS_APP_UPDATE
+            ApiError.NeedsPcUpdate -> p.stopReason = StopReason.NEEDS_PC_UPDATE
+            else -> Unit
+        }
+    }
+
+    /** 토큰이 폐기된 PC: 저장된 열쇠를 지우고(이름·주소는 둔다) 그 PC의 자동 조회를 멈춘다 (규격 9절). 같은 QR을 다시 찍으면 그 항목이 갱신된다 */
+    private fun revoke(id: String?) {
+        id ?: return
+        if (book.find(id) == null) return
+        book = PcBooks.withoutToken(book, id)
+        secure.saveBook(book)
+        recordStop(AppPrefs(context, id), ApiError.TokenRevoked)
+        if (id == book.currentId) {
+            prefs.stopReason = StopReason.REVOKED
+            conn = book.current?.conn
+            client = null
+        }
+    }
+
+    private fun setGate(g: Gate) {
+        _state.update { it.copy(gate = g, isLoading = false) }
+        publishPcs()
+    }
     private fun setReach(r: Reach) = _state.update { it.copy(reach = r, isLoading = false) }
 
     // ── 백그라운드 조회 (PollWorker) ─────────────────────────
 
+    /** 저장된 PC를 차례로 조회한다. 앱이 열려 있으면 현재 PC는 화면이 직접 갱신하므로 건너뛴다. 한 PC 실패가 다른 PC를 막지 않는다 */
     suspend fun backgroundPoll() {
-        val c = client ?: return
-        if (prefs.stopReason != null) return
-        val serverNow = System.currentTimeMillis() + prefs.clockOffset
-        if (prefs.lockRetryAt > serverNow) return
         val isForeground = ProcessLifecycleOwner.get().lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)
-        if (isForeground) return // 앱이 열려 있으면 화면이 직접 갱신한다
+        for (entry in book.entries.toList()) {
+            val isCurrent = entry.id == book.currentId
+            if (isCurrent && isForeground) continue
+            try {
+                pollOne(entry, isCurrent)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (_: Exception) {
+            }
+        }
+        publishPcs()
+    }
 
-        when (val r = c.decisions()) {
+    private suspend fun pollOne(entry: PcEntry, isCurrent: Boolean) {
+        if (entry.conn.token.isEmpty()) return
+        val p = if (isCurrent) prefs else AppPrefs(context, entry.id)
+        if (p.stopReason != null) return
+        val serverNow = System.currentTimeMillis() + p.clockOffset
+        if (p.lockRetryAt > serverNow) return
+        val c = if (isCurrent) client ?: return else newClient(entry)
+        val prefix = PcBooks.noticePrefix(book, entry)
+
+        val r = c.decisions()
+        // 조회하는 사이 화면 PC가 바뀐 경우 화면 상태에는 손대지 않는다 (값은 그 PC의 prefs에만 적는다)
+        val onScreen = isCurrent && client === c
+        when (r) {
             is ApiResult.Ok -> {
-                prefs.clockOffset = r.serverTime - System.currentTimeMillis()
-                prefs.lastSuccessAt = System.currentTimeMillis()
-                prefs.lockRetryAt = 0
-                val fresh = newDecisions(r.value.decisions, prefs.notifiedIds)
+                p.clockOffset = r.serverTime - System.currentTimeMillis()
+                p.lastSuccessAt = System.currentTimeMillis()
+                p.lockRetryAt = 0
+                val fresh = newDecisions(r.value.decisions, p.notifiedIds)
                 decisionNotice(fresh)?.let {
-                    Notifier.showDecisions(context, it)
+                    Notifier.showDecisions(context, it.forPc(prefix), entry)
                     if (!prefs.delayBannerDone) prefs.delayBannerPending = true
                 }
-                prefs.notifiedIds = r.value.decisions.map { it.id }.toSet()
-                _state.update { it.copy(decisions = r.value, reach = Reach.OK, clockOffset = prefs.clockOffset, lastSuccessAt = prefs.lastSuccessAt) }
+                p.notifiedIds = r.value.decisions.map { it.id }.toSet()
+                p.pendingCount = r.value.total
+                if (onScreen) _state.update { it.copy(decisions = r.value, reach = Reach.OK, clockOffset = p.clockOffset, lastSuccessAt = p.lastSuccessAt) }
             }
             is ApiResult.Fail -> {
                 val e = r.error
-                applyError(e, r.tried)
+                if (onScreen) applyError(e, r.tried)
+                else if (e == ApiError.TokenRevoked) revoke(entry.id)
+                else recordStop(p, e)
                 when (e) {
-                    ApiError.TokenRevoked, ApiError.Unauthorized -> Notifier.showConnection(context, reconnectNotice())
-                    ApiError.PinMismatch -> Notifier.showConnection(context, pinNotice())
-                    is ApiError.Locked -> if (prefs.lockNotifiedFor != e.retryAt) {
-                        prefs.lockNotifiedFor = e.retryAt
-                        Notifier.showConnection(context, lockNotice(clockText(e.retryAt - prefs.clockOffset)))
+                    ApiError.TokenRevoked, ApiError.Unauthorized -> Notifier.showConnection(context, reconnectNotice().forPc(prefix), entry)
+                    ApiError.PinMismatch -> Notifier.showConnection(context, pinNotice().forPc(prefix), entry)
+                    is ApiError.Locked -> if (p.lockNotifiedFor != e.retryAt) {
+                        p.lockNotifiedFor = e.retryAt
+                        Notifier.showConnection(context, lockNotice(clockText(e.retryAt - p.clockOffset)).forPc(prefix), entry)
                     }
                     else -> Unit
                 }
@@ -504,6 +693,7 @@ class OfficeRepository(private val context: Context) {
     suspend fun v2Call(method: String, args: kotlinx.serialization.json.JsonArray, confirm: Boolean, key: String, capabilities: Set<String> = emptySet()): ApiResult<kotlinx.serialization.json.JsonElement> {
         val c = client ?: return ApiResult.Fail(ApiError.Unauthorized)
         return c.v2Call(method, args, confirm, key, capabilities).also {
+            if (client !== c) return@also // 호출하는 사이 PC를 바꿨다 — 이전 PC의 결과로 지금 상태를 바꾸지 않는다
             if (it is ApiResult.Fail) applyV2Error(it.error, it.tried) else markReachable()
             if (method == "hello" && it is ApiResult.Ok) applyHello(it.value)
         }
@@ -513,16 +703,21 @@ class OfficeRepository(private val context: Context) {
     @Synchronized
     private fun applyHello(result: kotlinx.serialization.json.JsonElement) {
         val updated = conn?.refreshedFromHello(result) ?: return
-        secure.save(updated)
+        val entry = (PcBooks.add(book, updated, 0) as? PcAdd.Updated) ?: return
+        secure.saveBook(entry.book)
+        book = entry.book
         conn = updated
-        client = newClient(updated)
+        client = newClient(entry.entry)
         prefs.displayAddress = displayAddress(updated)
         _state.update { it.copy(address = prefs.displayAddress, isLanOnly = updated.isLanOnly, isTailscale = updated.isTailscale) }
     }
 
     suspend fun v2Upload(name: String, mime: String, bytes: ByteArray): ApiResult<kotlinx.serialization.json.JsonElement> {
         val c = client ?: return ApiResult.Fail(ApiError.Unauthorized)
-        return c.v2Upload(name, mime, bytes).also { if (it is ApiResult.Fail) applyV2Error(it.error, it.tried) else markReachable() }
+        return c.v2Upload(name, mime, bytes).also {
+            if (client !== c) return@also
+            if (it is ApiResult.Fail) applyV2Error(it.error, it.tried) else markReachable()
+        }
     }
 
     suspend fun v2File(id: String): ApiResult<com.claudeoffice.remote.net.FileBytes> {

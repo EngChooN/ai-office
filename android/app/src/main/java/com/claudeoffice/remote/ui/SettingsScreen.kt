@@ -22,6 +22,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.text.style.TextOverflow
+import com.claudeoffice.remote.data.PcListState
+import com.claudeoffice.remote.store.MAX_ALIAS
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -44,11 +49,13 @@ import com.claudeoffice.remote.ui.theme.Space
 import com.claudeoffice.remote.ui.theme.Type
 
 @Composable
-fun SettingsTab(state: OfficeState, onForget: () -> Unit, onBack: (() -> Unit)? = null) {
+fun SettingsTab(state: OfficeState, pcs: PcListState, onForget: () -> Unit, onRename: (String, String) -> Unit, onBack: (() -> Unit)? = null) {
     val c = Office.colors
     val context = LocalContext.current
     var exempt by remember { mutableStateOf(isBatteryExempt(context)) }
     var confirm by remember { mutableStateOf(false) }
+    var renaming by remember { mutableStateOf(false) }
+    val pcName = pcs.current?.name ?: ""
     ResumeEffect { exempt = isBatteryExempt(context) }
 
     Column(Modifier.fillMaxSize()) {
@@ -62,7 +69,11 @@ fun SettingsTab(state: OfficeState, onForget: () -> Unit, onBack: (() -> Unit)? 
             OfficeCard {
                 Column(verticalArrangement = Arrangement.spacedBy(Space.s1)) {
                     MutedText(S.get(R.string.settings_connected_pc))
-                    Text(state.address.ifBlank { "—" }, style = Type.titleMedium, color = c.onSurface)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(pcName.ifBlank { "—" }, style = Type.titleMedium, color = c.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                        if (pcs.current != null) PlainTextButton(S.get(R.string.pc_rename), { renaming = true })
+                    }
+                    MutedText(state.address.ifBlank { "—" })
                     when (state.route) {
                         com.claudeoffice.remote.net.Route.LAN -> MutedText(S.get(R.string.settings_route_lan))
                         com.claudeoffice.remote.net.Route.EXTERNAL -> MutedText(S.get(R.string.settings_route_ext))
@@ -80,6 +91,10 @@ fun SettingsTab(state: OfficeState, onForget: () -> Unit, onBack: (() -> Unit)? 
                         Text(label, style = Type.label, color = dot)
                     }
                     MutedText(S.get(R.string.settings_versions, state.serverVersion.ifBlank { "—" }, BuildConfig.VERSION_NAME, PROTOCOL_VERSION))
+                    // 연결 끊기는 이 PC 카드 안에 둔다 (카드 제목에 PC 이름이 있어 어느 PC인지 분명하다)
+                    Spacer(Modifier.height(Space.s2))
+                    DangerOutlineButton(S.get(R.string.btn_disconnect_pc), { confirm = true }, Modifier.fillMaxWidth())
+                    MutedText(S.get(R.string.settings_disconnect_hint))
                 }
             }
             OfficeCard {
@@ -96,15 +111,13 @@ fun SettingsTab(state: OfficeState, onForget: () -> Unit, onBack: (() -> Unit)? 
                     }
                 }
             }
-            DangerOutlineButton(S.get(R.string.btn_disconnect_pc), { confirm = true }, Modifier.fillMaxWidth())
-            MutedText(S.get(R.string.settings_disconnect_hint))
             Spacer(Modifier.heightIn(min = Space.s5))
         }
     }
     if (confirm) {
         AlertDialog(
             onDismissRequest = { confirm = false },
-            title = { Text(S.get(R.string.dlg_disconnect_title), style = Type.titleMedium) },
+            title = { Text(S.get(R.string.dlg_disconnect_title, pcName), style = Type.titleMedium) },
             text = { Text(S.get(R.string.dlg_disconnect_body), style = Type.bodyLarge) },
             confirmButton = {
                 PlainTextButton(S.get(R.string.btn_disconnect), {
@@ -113,6 +126,28 @@ fun SettingsTab(state: OfficeState, onForget: () -> Unit, onBack: (() -> Unit)? 
                 }, color = c.statusError)
             },
             dismissButton = { PlainTextButton(S.get(R.string.btn_cancel), { confirm = false }, color = c.onSurfaceMuted) },
+            containerColor = c.surface,
+        )
+    }
+    if (renaming) {
+        val cur = pcs.current
+        var text by remember { mutableStateOf(cur?.alias.orEmpty()) }
+        AlertDialog(
+            onDismissRequest = { renaming = false },
+            title = { Text(S.get(R.string.pc_rename_title), style = Type.titleMedium) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(Space.s2)) {
+                    OutlinedTextField(text, { text = it.take(MAX_ALIAS) }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                    MutedText(S.get(R.string.pc_rename_hint))
+                }
+            },
+            confirmButton = {
+                PlainTextButton(S.get(R.string.btn_save), {
+                    renaming = false
+                    if (cur != null) onRename(cur.id, text)
+                })
+            },
+            dismissButton = { PlainTextButton(S.get(R.string.btn_cancel), { renaming = false }, color = c.onSurfaceMuted) },
             containerColor = c.surface,
         )
     }

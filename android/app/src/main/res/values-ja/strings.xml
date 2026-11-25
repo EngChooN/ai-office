@@ -121,9 +121,9 @@
     <string name="settings_off">オフ</string>
     <string name="settings_on_arrow">オン ›</string>
     <string name="btn_disconnect_pc">このPCとの接続を解除</string>
-    <string name="settings_disconnect_hint">接続を解除すると、このスマホに保存されたキーが削除されます。再び使うには新しいQRを読み取る必要があります。</string>
-    <string name="dlg_disconnect_title">このPCとの接続を解除しますか？</string>
-    <string name="dlg_disconnect_body">このスマホに保存されたキーと接続情報を削除し、自動確認を停止します。</string>
+    <string name="settings_disconnect_hint">接続を解除すると、このPCのキーがこのスマホから削除されます。ほかのPCには影響しません。再び使うには新しいQRを読み取る必要があります。</string>
+    <string name="dlg_disconnect_title">%1$sとの接続を解除しますか？</string>
+    <string name="dlg_disconnect_body">このスマホに保存されたこのPCのキー・証明書の確認値・接続情報を削除し、このPCの通知を停止します。ほかのPCには影響しません。</string>
     <string name="btn_disconnect">接続解除</string>
     <string name="settings_language">言語</string>
     <string name="lang_auto">端末の設定に従う</string>
@@ -253,4 +253,22 @@
     <string name="manual_err_wrong_plain">コードが違います。PCで再確認してください</string>
     <string name="manual_err_full">接続の空きがありません。他の接続を先に解除してください</string>
     <string name="manual_err_failed">接続できませんでした。しばらくしてからもう一度お試しください</string>
+    <string name="pc_switch_cd">PCを切り替える</string>
+    <string name="pc_sheet_title">接続中のPC</string>
+    <string name="pc_add">PCを追加</string>
+    <string name="pc_current_cd">表示中のPC</string>
+    <string name="pc_pending_cd">承認待ち%1$d件</string>
+    <string name="dlg_pc_full_title">PCは最大3台まで接続できます</string>
+    <string name="dlg_pc_full_body">新しいPCを追加するには、設定で使わないPCの接続を先に解除してください。</string>
+    <string name="btn_open_settings">設定を開く</string>
+    <string name="pc_disconnected">%1$sとの接続を解除しました</string>
+    <string name="pc_refreshed">%1$sの接続情報を更新しました</string>
+    <string name="pc_rename">名前を変更</string>
+    <string name="pc_rename_title">PCの名前</string>
+    <string name="pc_rename_hint">20文字まで。空にするとPC 1のような標準の名前に戻ります</string>
+    <string name="btn_save">保存</string>
+    <string name="settings_pc_title">接続中のPC · %1$s</string>
+    <string name="web_reload_title">画面を読み込めませんでした</string>
+    <string name="web_reload_body">画面が止まったか、読み込み中に問題が起きました。再読み込みで多くは解決します。</string>
+    <string name="web_reload_btn">再読み込み</string>
 </resources>

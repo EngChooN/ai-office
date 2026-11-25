@@ -1,5 +1,5 @@
 // 앱 언어: 기본은 기기 언어를 따르고(ko·en·ja·zh), 지원하지 않는 기기 언어면 영어. 앱 안에서 고른 값은 따로 저장한다.
-// AppPrefs.clear()(연결 끊기)에 지워지지 않도록 별도 파일에 둔다
+// AppPrefs.clearPc()(연결 끊기)에 지워지지 않도록 별도 파일에 둔다
 
 package com.claudeoffice.remote
 

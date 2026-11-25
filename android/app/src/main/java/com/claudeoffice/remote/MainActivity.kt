@@ -51,6 +51,9 @@ class MainActivity : ComponentActivity() {
         // 디버그 빌드에서만 값이 있다 (src/debug). 릴리스에는 이 입력 경로 자체가 없다
         val qr = DebugHooks.qrFrom(intent)
         val web = DebugHooks.webEntryFrom(intent)
-        return if (openDecisions || qr != null || web != null) LaunchRequest(openDecisions, qr, web) else null
+        // 알림에는 어느 PC 것인지 담겨 있다 — 누르면 그 PC로 바꿔 연다
+        val pc = intent.getStringExtra(Notifier.EXTRA_PC)
+        val openState = intent.getStringExtra(Notifier.EXTRA_OPEN) == Notifier.OPEN_STATE
+        return if (openDecisions || openState || qr != null || web != null) LaunchRequest(openDecisions, qr, web, pc) else null
     }
 }

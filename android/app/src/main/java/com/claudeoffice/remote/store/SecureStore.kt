@@ -1,4 +1,4 @@
-// 연결 정보(주소·포트·토큰·지문) 저장. Android Keystore의 AES-GCM 키로 암호화한 값만 기기에 남긴다
+// 연결 정보(PC 목록: 주소·포트·토큰·지문) 저장. Android Keystore의 AES-GCM 키로 암호화한 값만 기기에 남긴다
 // 키는 Keystore 밖으로 나오지 않는다. "기기에서 지우기"는 암호문과 키를 함께 지운다
 
 package com.claudeoffice.remote.store
@@ -7,51 +7,58 @@ import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
-import com.claudeoffice.remote.net.Connection
 import java.security.KeyStore
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 
 class SecureStore(context: Context) {
     private val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
-    @Serializable
-    private data class Stored(val host: String, val port: Int, val token: String, val spki: String, val lan: String? = null, val lo: Boolean = false, val ts: Boolean = false)
+    /**
+     * 저장된 PC 목록. 업데이트 전의 1대 저장(conn)이 있으면 1번 PC로 옮긴다.
+     * 옛 값은 새 목록이 저장된 뒤에만 지운다 — 중간에 꺼져도 다음 실행에서 다시 옮긴다
+     */
+    @Synchronized
+    fun loadBook(): PcBook {
+        prefs.getString(KEY_BOOK, null)?.let { blob ->
+            // 새 목록이 있으면 옛 값은 남은 찌꺼기 — 지운다
+            if (prefs.contains(KEY_CONN)) prefs.edit().remove(KEY_CONN).commit()
+            return decrypt(blob)?.let { runCatching { PcBookCodec.decode(it) }.getOrNull() } ?: PcBook()
+        }
+        val legacy = prefs.getString(KEY_CONN, null) ?: return PcBook()
+        val book = decrypt(legacy)?.let { runCatching { PcBookCodec.fromLegacy(it) }.getOrNull() } ?: return PcBook()
+        saveBook(book)
+        prefs.edit().remove(KEY_CONN).commit()
+        return book
+    }
 
     @Synchronized
-    fun load(): Connection? {
-        val blob = prefs.getString(KEY_CONN, null) ?: return null
+    fun saveBook(book: PcBook) {
+        val cipher = Cipher.getInstance(TRANSFORMATION)
+        cipher.init(Cipher.ENCRYPT_MODE, key() ?: createKey())
+        val out = cipher.iv + cipher.doFinal(PcBookCodec.encode(book).toByteArray(Charsets.UTF_8))
+        check(cipher.iv.size == IV_BYTES)
+        prefs.edit().putString(KEY_BOOK, Base64.encodeToString(out, Base64.NO_WRAP)).commit()
+    }
+
+    /** 키가 사라졌거나(기기 초기화·복원) 손상됨 → null (연결 정보 없음으로 본다) */
+    private fun decrypt(blob: String): String? {
         return try {
             val bytes = Base64.decode(blob, Base64.NO_WRAP)
             val cipher = Cipher.getInstance(TRANSFORMATION)
             cipher.init(Cipher.DECRYPT_MODE, key() ?: return null, GCMParameterSpec(128, bytes, 0, IV_BYTES))
-            val plain = cipher.doFinal(bytes, IV_BYTES, bytes.size - IV_BYTES)
-            val s = Json.decodeFromString(Stored.serializer(), plain.toString(Charsets.UTF_8))
-            Connection(s.host, s.port, s.token, s.spki, s.lan, s.lo, s.ts)
+            cipher.doFinal(bytes, IV_BYTES, bytes.size - IV_BYTES).toString(Charsets.UTF_8)
         } catch (_: Exception) {
-            // 키가 사라졌거나(기기 초기화·복원) 손상됨 → 연결 정보 없음으로 본다
             null
         }
     }
 
-    @Synchronized
-    fun save(conn: Connection) {
-        val plain = Json.encodeToString(Stored.serializer(), Stored(conn.host, conn.port, conn.token, conn.spki, conn.lan, conn.isLanOnly, conn.isTailscale))
-        val cipher = Cipher.getInstance(TRANSFORMATION)
-        cipher.init(Cipher.ENCRYPT_MODE, key() ?: createKey())
-        val out = cipher.iv + cipher.doFinal(plain.toByteArray(Charsets.UTF_8))
-        check(cipher.iv.size == IV_BYTES)
-        prefs.edit().putString(KEY_CONN, Base64.encodeToString(out, Base64.NO_WRAP)).commit()
-    }
-
-    /** 저장된 연결 정보와 Keystore 키를 모두 지운다 */
+    /** 저장된 연결 정보와 Keystore 키를 모두 지운다 (마지막 PC를 끊을 때) */
     @Synchronized
     fun clear() {
-        prefs.edit().remove(KEY_CONN).commit()
+        prefs.edit().remove(KEY_BOOK).remove(KEY_CONN).commit()
         try {
             keyStore().deleteEntry(ALIAS)
         } catch (_: Exception) {
@@ -83,5 +90,6 @@ class SecureStore(context: Context) {
         const val IV_BYTES = 12
         const val PREFS = "secure"
         const val KEY_CONN = "conn"
+        const val KEY_BOOK = "book"
     }
 }

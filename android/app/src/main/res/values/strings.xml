@@ -121,9 +121,9 @@
     <string name="settings_off">꺼져 있음</string>
     <string name="settings_on_arrow">켜져 있음 ›</string>
     <string name="btn_disconnect_pc">이 PC와 연결 끊기</string>
-    <string name="settings_disconnect_hint">연결을 끊으면 이 휴대폰에 저장된 열쇠가 지워져요. 다시 쓰려면 QR을 새로 찍어야 해요.</string>
-    <string name="dlg_disconnect_title">이 PC와 연결을 끊을까요?</string>
-    <string name="dlg_disconnect_body">이 휴대폰에 저장된 열쇠와 연결 정보를 지우고 자동 확인을 멈춰요.</string>
+    <string name="settings_disconnect_hint">연결을 끊으면 이 PC의 열쇠가 이 휴대폰에서 지워져요. 다른 PC에는 영향이 없고, 다시 쓰려면 QR을 새로 찍어야 해요.</string>
+    <string name="dlg_disconnect_title">%1$s 연결을 끊을까요?</string>
+    <string name="dlg_disconnect_body">이 휴대폰에 저장된 이 PC의 열쇠·인증서 확인값·연결 정보를 지우고, 이 PC의 알림을 멈춰요. 다른 PC에는 영향이 없어요.</string>
     <string name="btn_disconnect">연결 끊기</string>
     <string name="settings_language">언어</string>
     <string name="lang_auto">기기 설정 따르기</string>
@@ -254,4 +254,22 @@
     <string name="manual_err_wrong_plain">코드가 달라요. PC에서 코드를 다시 확인해 주세요</string>
     <string name="manual_err_full">연결 자리가 없어요. 다른 연결을 먼저 해제해 주세요</string>
     <string name="manual_err_failed">연결하지 못했어요. 잠시 뒤 다시 해 주세요</string>
+    <string name="pc_switch_cd">PC 바꾸기</string>
+    <string name="pc_sheet_title">연결된 PC</string>
+    <string name="pc_add">PC 추가</string>
+    <string name="pc_current_cd">지금 보는 PC</string>
+    <string name="pc_pending_cd">결재 대기 %1$d건</string>
+    <string name="dlg_pc_full_title">PC는 최대 3대까지 연결할 수 있어요</string>
+    <string name="dlg_pc_full_body">새 PC를 추가하려면 설정에서 쓰지 않는 PC의 연결을 먼저 끊어 주세요.</string>
+    <string name="btn_open_settings">설정 열기</string>
+    <string name="pc_disconnected">%1$s 연결을 끊었어요</string>
+    <string name="pc_refreshed">%1$s 연결 정보를 새로 고쳤어요</string>
+    <string name="pc_rename">이름 바꾸기</string>
+    <string name="pc_rename_title">PC 이름</string>
+    <string name="pc_rename_hint">20자까지. 비우면 PC 1처럼 기본 이름으로 돌아가요</string>
+    <string name="btn_save">저장</string>
+    <string name="settings_pc_title">연결된 PC · %1$s</string>
+    <string name="web_reload_title">화면을 불러오지 못했어요</string>
+    <string name="web_reload_body">화면이 멈췄거나 불러오는 중에 문제가 생겼어요. 다시 불러오면 대부분 해결돼요.</string>
+    <string name="web_reload_btn">다시 불러오기</string>
 </resources>

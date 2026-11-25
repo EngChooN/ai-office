@@ -121,9 +121,9 @@
     <string name="settings_off">Off</string>
     <string name="settings_on_arrow">On ›</string>
     <string name="btn_disconnect_pc">Disconnect from this PC</string>
-    <string name="settings_disconnect_hint">Disconnecting deletes the key stored on this phone. To use it again, scan a new QR.</string>
-    <string name="dlg_disconnect_title">Disconnect from this PC?</string>
-    <string name="dlg_disconnect_body">Deletes the key and connection info stored on this phone and stops automatic checks.</string>
+    <string name="settings_disconnect_hint">Disconnecting deletes this PC\'s key from this phone. Other PCs are not affected. To use it again, scan a new QR.</string>
+    <string name="dlg_disconnect_title">Disconnect from %1$s?</string>
+    <string name="dlg_disconnect_body">Deletes this PC\'s key, certificate fingerprint and connection info stored on this phone, and stops this PC\'s notifications. Other PCs are not affected.</string>
     <string name="btn_disconnect">Disconnect</string>
     <string name="settings_language">Language</string>
     <string name="lang_auto">Follow device</string>
@@ -253,4 +253,22 @@
     <string name="manual_err_wrong_plain">Wrong code. Check the code on the PC again</string>
     <string name="manual_err_full">No connection slot is free. Remove another connection first</string>
     <string name="manual_err_failed">Couldn\'t connect. Please try again shortly</string>
+    <string name="pc_switch_cd">Switch PC</string>
+    <string name="pc_sheet_title">Connected PCs</string>
+    <string name="pc_add">Add PC</string>
+    <string name="pc_current_cd">Current PC</string>
+    <string name="pc_pending_cd">%1$d pending decisions</string>
+    <string name="dlg_pc_full_title">You can connect up to 3 PCs</string>
+    <string name="dlg_pc_full_body">To add a new PC, first disconnect a PC you no longer use in Settings.</string>
+    <string name="btn_open_settings">Open settings</string>
+    <string name="pc_disconnected">Disconnected from %1$s</string>
+    <string name="pc_refreshed">Refreshed the connection info for %1$s</string>
+    <string name="pc_rename">Rename</string>
+    <string name="pc_rename_title">PC name</string>
+    <string name="pc_rename_hint">Up to 20 characters. Leave empty to go back to a default name like PC 1</string>
+    <string name="btn_save">Save</string>
+    <string name="settings_pc_title">Connected PC · %1$s</string>
+    <string name="web_reload_title">Couldn\'t load the screen</string>
+    <string name="web_reload_body">The screen stopped or hit a problem while loading. Reloading usually fixes it.</string>
+    <string name="web_reload_btn">Reload</string>
 </resources>

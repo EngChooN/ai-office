@@ -18,6 +18,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Checklist
 import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material3.AlertDialog
+import androidx.compose.runtime.key
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
@@ -64,7 +66,7 @@ private sealed interface Onboarding {
     data class Connecting(val qr: QrPayload) : Onboarding
     data class Failed(val qr: QrPayload, val error: ApiError, val tried: List<com.claudeoffice.remote.net.Endpoint>) : Onboarding
     data object QrNeedsUpdate : Onboarding
-    data object Connected : Onboarding
+    data class Connected(val refreshedName: String?) : Onboarding
 }
 
 enum class Tab { STAFF, DECISIONS, SETTINGS }
@@ -96,27 +98,62 @@ private val DetailSaver = androidx.compose.runtime.saveable.Saver<Detail?, Strin
 )
 
 /** 첫 화면에서 열 탭 (알림을 눌러 열었을 때 등) */
-class LaunchRequest(val openDecisions: Boolean, val qrText: String?, val webEntry: com.claudeoffice.remote.web.WebEntry? = null)
+class LaunchRequest(val openDecisions: Boolean, val qrText: String?, val webEntry: com.claudeoffice.remote.web.WebEntry? = null, val pcId: String? = null)
+
+/** PC 고르기·끊기·이름 바꾸기에 필요한 것을 한 묶음으로 내려 보낸다 */
+private class PcCtl(
+    val pcs: com.claudeoffice.remote.data.PcListState,
+    val onSwitch: (String) -> Unit,
+    val onAdd: () -> Unit,
+    val onFull: () -> Unit,
+    val onForget: () -> Unit,
+    val onRename: (String, String) -> Unit,
+) {
+    @Composable
+    fun Bar() = PcBar(pcs, onSwitch, onAdd, onFull)
+}
 
 @Composable
 fun AppRoot(repo: OfficeRepository, launch: LaunchRequest?, onLaunchHandled: () -> Unit) {
     val state by repo.state.collectAsStateWithLifecycle()
+    val pcs by repo.pcs.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     var onboarding by remember { mutableStateOf<Onboarding?>(null) }
     var tab by rememberSaveable { mutableStateOf<Tab?>(null) }
+    var fullDialog by remember { mutableStateOf(false) }
+    val rootSnackbar = remember { SnackbarHostState() }
 
     fun connect(qr: QrPayload) {
         onboarding = Onboarding.Connecting(qr)
         scope.launch {
             onboarding = when (val r = repo.connect(qr)) {
-                ConnectResult.Ok -> {
+                is ConnectResult.Ok -> {
                     tab = null
-                    Onboarding.Connected
+                    Onboarding.Connected(r.name.takeIf { r.refreshed })
+                }
+                // 새 PC가 4번째 — 쓰던 연결은 그대로 두고 안내만 띄운다
+                ConnectResult.Full -> {
+                    fullDialog = true
+                    null
                 }
                 is ConnectResult.Failed -> if (r.error is ApiError.Locked) null else Onboarding.Failed(qr, r.error, r.tried)
             }
         }
     }
+
+    // PC 바꾸기·끊기: 이전 PC의 상세 화면·선택은 닫고 직원 탭 첫 화면으로 (화면은 PC id로 key를 걸어 새로 만든다)
+    val ctl = PcCtl(
+        pcs,
+        onSwitch = { id -> repo.switchTo(id); tab = Tab.STAFF },
+        onAdd = { onboarding = Onboarding.Scan },
+        onFull = { fullDialog = true },
+        onForget = {
+            val r = repo.forget()
+            tab = if (r?.next != null) Tab.STAFF else null
+            if (r != null) scope.launch { rootSnackbar.showSnackbar(S.get(R.string.pc_disconnected, r.forgotten)) }
+        },
+        onRename = repo::rename,
+    )
 
     // PC 화면 모바일 빌드 (APK에 들어 있을 때). 디버그 빌드는 브리지 시험 페이지로 바꿔 띄울 수 있다
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -126,6 +163,8 @@ fun AppRoot(repo: OfficeRepository, launch: LaunchRequest?, onLaunchHandled: () 
     LaunchedEffect(launch) {
         val req = launch ?: return@LaunchedEffect
         req.webEntry?.let { webEntry = it }
+        // 알림을 누르면 그 알림의 PC로 바꿔 연다
+        req.pcId?.let { id -> if (id != pcs.currentId) { repo.switchTo(id); tab = Tab.STAFF } }
         if (req.openDecisions) tab = Tab.DECISIONS
         req.qrText?.let { text ->
             when (val r = com.claudeoffice.remote.net.parseQr(text)) {
@@ -179,47 +218,80 @@ fun AppRoot(repo: OfficeRepository, launch: LaunchRequest?, onLaunchHandled: () 
                     isTailscale = step.qr.isTailscale,
                 )
                 Onboarding.QrNeedsUpdate -> GateScreen(Gate.NeedsAppUpdate, 0, onScan = { onboarding = Onboarding.Scan }, onRetry = { onboarding = Onboarding.Scan }, onSettings = null)
-                Onboarding.Connected -> ConnectedScreen(state.address) { onboarding = null }
+                is Onboarding.Connected -> ConnectedScreen(state.address, step.refreshedName) { onboarding = null }
             }
             state.gate == Gate.NotConnected -> StartScreen(onScan = { onboarding = Onboarding.Scan }, onManual = { onboarding = Onboarding.Manual })
-            keepWeb -> {
-                WebRoot(repo, webEntry!!)
+            // PC가 바뀌면 key가 달라져 화면(웹·상세·선택)이 새로 만들어진다 — 이전 PC 내용이 남지 않는다
+            keepWeb -> key(pcs.currentId) {
+                WebRoot(repo, webEntry!!, ctl)
                 if (gate != null) Box(Modifier.fillMaxSize().background(Office.colors.background).systemBarsPadding()) {
-                    GatedRoot(repo, gate, state.clockOffset, onScan = { onboarding = Onboarding.Scan })
+                    GatedRoot(repo, gate, state.clockOffset, ctl, onScan = { onboarding = Onboarding.Scan })
                 }
             }
-            state.gate != null -> GatedRoot(repo, state.gate!!, state.clockOffset, onScan = { onboarding = Onboarding.Scan })
+            state.gate != null -> key(pcs.currentId) { GatedRoot(repo, state.gate!!, state.clockOffset, ctl, onScan = { onboarding = Onboarding.Scan }) }
             // 전체 기능(v2)이 켜진 PC + 화면 묶음이 있으면 PC 화면(위 keepWeb), 아니면 기존 네이티브 화면(v1)
-            else -> MainRoot(repo, tab, onTab = { tab = it }, hasWebBundle = webEntry != null)
+            else -> key(pcs.currentId) { MainRoot(repo, ctl, tab, onTab = { tab = it }, hasWebBundle = webEntry != null) }
         }
         if (step == null) UpdateBanner(Modifier.align(Alignment.TopCenter))
+        OfficeSnackbarHost(rootSnackbar, Modifier.align(Alignment.BottomCenter).padding(bottom = 88.dp))
+        if (fullDialog) {
+            AlertDialog(
+                onDismissRequest = { fullDialog = false },
+                title = { Text(S.get(R.string.dlg_pc_full_title), style = Type.titleMedium) },
+                text = { Text(S.get(R.string.dlg_pc_full_body), style = Type.bodyLarge) },
+                confirmButton = {
+                    PlainTextButton(S.get(R.string.btn_open_settings), {
+                        fullDialog = false
+                        onboarding = null
+                        tab = Tab.SETTINGS
+                    })
+                },
+                dismissButton = { PlainTextButton(S.get(R.string.btn_ok), { fullDialog = false }, color = Office.colors.onSurfaceMuted) },
+                containerColor = Office.colors.surface,
+            )
+        }
     }
 }
 
 @Composable
-private fun GatedRoot(repo: OfficeRepository, gate: Gate, clockOffset: Long, onScan: () -> Unit) {
+private fun GatedRoot(repo: OfficeRepository, gate: Gate, clockOffset: Long, ctl: PcCtl, onScan: () -> Unit) {
     val scope = rememberCoroutineScope()
     var showSettings by remember { mutableStateOf(false) }
     val state by repo.state.collectAsStateWithLifecycle()
-    if (showSettings) {
-        BackHandler { showSettings = false }
-        SettingsTab(state, onForget = { repo.forget() }, onBack = { showSettings = false })
-    } else {
-        GateScreen(gate, clockOffset, onScan, onRetry = { scope.launch { repo.retry() } }, onSettings = { showSettings = true })
+    // 막힌 PC에서도 다른 PC로 넘어갈 수 있게 PC 고르기를 위에 둔다
+    Column(Modifier.fillMaxSize()) {
+        ctl.Bar()
+        Box(Modifier.weight(1f)) {
+            if (showSettings) {
+                BackHandler { showSettings = false }
+                SettingsTab(state, ctl.pcs, onForget = ctl.onForget, onRename = ctl.onRename, onBack = { showSettings = false })
+            } else {
+                GateScreen(gate, clockOffset, onScan, onRetry = { scope.launch { repo.retry() } }, onSettings = { showSettings = true })
+            }
+        }
     }
 }
 
 @Composable
-private fun WebRoot(repo: OfficeRepository, entry: com.claudeoffice.remote.web.WebEntry) {
+private fun WebRoot(repo: OfficeRepository, entry: com.claudeoffice.remote.web.WebEntry, ctl: PcCtl) {
     // 안전 영역과 키보드는 셸이 잡는다 (WebView 안 입력창이 키보드에 가리지 않게).
     // 연결 끊김·재연결 배너는 화면(PC 화면 모바일 빌드)이 connection 메시지로 직접 보인다 — 셸 배너를 겹쳐 그리지 않는다.
     // 토큰 폐기·잠김·인증서 불일치처럼 막히는 경우는 Gate로 네이티브 상태 화면이 대신 뜬다
     // 키보드 높이는 WebShell이 정한다 (화면이 --ime를 처리하면 크기를 줄이지 않고, 아니면 줄인다 — 한쪽만)
-    Box(Modifier.fillMaxSize().systemBarsPadding()) { com.claudeoffice.remote.web.WebShell(repo, entry) }
+    // 화면 저장 공간은 PC가 달라도 같은 출처라, 다른 PC가 쓰던 거면 새 화면을 열기 전에 비운다 (이전 화면이 닫힌 뒤에 실행된다)
+    var ready by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        repo.prepareWebStorage()
+        ready = true
+    }
+    Column(Modifier.fillMaxSize().systemBarsPadding()) {
+        ctl.Bar()
+        Box(Modifier.weight(1f)) { if (ready) com.claudeoffice.remote.web.WebShell(repo, entry) }
+    }
 }
 
 @Composable
-private fun MainRoot(repo: OfficeRepository, requestedTab: Tab?, onTab: (Tab) -> Unit, hasWebBundle: Boolean = false) {
+private fun MainRoot(repo: OfficeRepository, ctl: PcCtl, requestedTab: Tab?, onTab: (Tab) -> Unit, hasWebBundle: Boolean = false) {
     val c = Office.colors
     val state by repo.state.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
@@ -298,11 +370,12 @@ private fun MainRoot(repo: OfficeRepository, requestedTab: Tab?, onTab: (Tab) ->
         },
     ) { pad ->
         Column(Modifier.padding(pad)) {
+            ctl.Bar()
             Banners(state) { scope.launch { repo.retry() } }
             val isUnreachable = state.reach == Reach.REMOTE_OFF || state.reach == Reach.UNREACHABLE
             Box(Modifier.weight(1f)) {
                 when {
-                    tab == Tab.SETTINGS -> SettingsTab(state, onForget = { repo.forget() })
+                    tab == Tab.SETTINGS -> SettingsTab(state, ctl.pcs, onForget = ctl.onForget, onRename = ctl.onRename)
                     isUnreachable -> ReachScreen(state.reach, state.lastSuccessAt, state.tried, state.isLanOnly, state.isTailscale) { scope.launch { repo.retry() } }
                     tab == Tab.STAFF -> Box(Modifier.alpha(if (state.reach == Reach.PHONE_OFFLINE) 0.6f else 1f)) {
                         StaffTab(
@@ -351,8 +424,8 @@ private fun Banners(state: com.claudeoffice.remote.data.OfficeState, isDetail: B
 }
 
 @Composable
-private fun OfficeSnackbarHost(host: SnackbarHostState) {
-    SnackbarHost(host) { data ->
+private fun OfficeSnackbarHost(host: SnackbarHostState, modifier: Modifier = Modifier) {
+    SnackbarHost(host, modifier) { data ->
         Snackbar(data, containerColor = Office.colors.onSurface, contentColor = Office.colors.background)
     }
 }

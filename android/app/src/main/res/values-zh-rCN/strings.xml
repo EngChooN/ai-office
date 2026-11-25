@@ -121,9 +121,9 @@
     <string name="settings_off">已关闭</string>
     <string name="settings_on_arrow">已开启 ›</string>
     <string name="btn_disconnect_pc">断开与此电脑的连接</string>
-    <string name="settings_disconnect_hint">断开连接会删除这部手机上保存的密钥。再次使用需要重新扫描二维码。</string>
-    <string name="dlg_disconnect_title">要断开与此电脑的连接吗？</string>
-    <string name="dlg_disconnect_body">将删除这部手机上保存的密钥和连接信息，并停止自动检查。</string>
+    <string name="settings_disconnect_hint">断开连接会从这部手机删除此电脑的密钥。不影响其他电脑。再次使用需要重新扫描二维码。</string>
+    <string name="dlg_disconnect_title">要断开与%1$s的连接吗？</string>
+    <string name="dlg_disconnect_body">将删除这部手机上保存的此电脑的密钥、证书确认值和连接信息，并停止此电脑的通知。不影响其他电脑。</string>
     <string name="btn_disconnect">断开连接</string>
     <string name="settings_language">语言</string>
     <string name="lang_auto">跟随设备</string>
@@ -253,4 +253,22 @@
     <string name="manual_err_wrong_plain">连接码错误。请在电脑上再次确认</string>
     <string name="manual_err_full">没有空闲的连接位。请先解除其他连接</string>
     <string name="manual_err_failed">连接失败，请稍后再试</string>
+    <string name="pc_switch_cd">切换电脑</string>
+    <string name="pc_sheet_title">已连接的电脑</string>
+    <string name="pc_add">添加电脑</string>
+    <string name="pc_current_cd">当前电脑</string>
+    <string name="pc_pending_cd">待审批%1$d项</string>
+    <string name="dlg_pc_full_title">最多可连接3台电脑</string>
+    <string name="dlg_pc_full_body">要添加新电脑，请先在设置中断开不再使用的电脑。</string>
+    <string name="btn_open_settings">打开设置</string>
+    <string name="pc_disconnected">已断开与%1$s的连接</string>
+    <string name="pc_refreshed">已更新%1$s的连接信息</string>
+    <string name="pc_rename">重命名</string>
+    <string name="pc_rename_title">电脑名称</string>
+    <string name="pc_rename_hint">最多20个字。留空则恢复为PC 1这样的默认名称</string>
+    <string name="btn_save">保存</string>
+    <string name="settings_pc_title">已连接的电脑 · %1$s</string>
+    <string name="web_reload_title">无法加载画面</string>
+    <string name="web_reload_body">画面停止或加载时出现问题。重新加载通常可以解决。</string>
+    <string name="web_reload_btn">重新加载</string>
 </resources>

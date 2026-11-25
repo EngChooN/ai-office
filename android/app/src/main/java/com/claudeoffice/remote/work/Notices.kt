@@ -33,3 +33,6 @@ fun decisionNotice(fresh: List<Decision>, showNames: Boolean = NOTICE_SHOWS_STAF
 fun reconnectNotice() = Notice(S.get(R.string.notice_reconnect_title), S.get(R.string.notice_reconnect_body))
 fun pinNotice() = Notice(S.get(R.string.notice_pin_title), S.get(R.string.notice_pin_body))
 fun lockNotice(untilText: String) = Notice(S.get(R.string.notice_lock_title), S.get(R.string.notice_lock_body, untilText))
+
+/** 여러 PC가 연결돼 있으면 제목 앞에 PC 이름을 붙인다 ("[PC 2] 확인할 결정 3건"). prefix가 null이면 그대로 */
+fun Notice.forPc(prefix: String?) = if (prefix == null) this else copy(title = "[$prefix] $title")
