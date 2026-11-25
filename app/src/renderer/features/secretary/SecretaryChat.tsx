@@ -23,6 +23,7 @@ import {
 import { ApprovalCards } from "./ApprovalCards";
 import { ConfirmCard } from "./ConfirmCard";
 import { EditCompareCard } from "./EditCompareCard";
+import { useDraft } from "@/lib/drafts";
 import { useSecretaryDraft } from "./draft";
 import { SecretaryFace } from "./SecretaryFace";
 import { QueuedBadge, useQueuePosition } from "./QueuedBadge";
@@ -400,21 +401,28 @@ export function SecretaryComposer({
   placeholder,
   onSubmit,
   sendFailedText = t("deskPet.sendFailed"),
+  draftKey,
 }: {
   autoFocus?: boolean;
   onSent?: () => void;
   placeholder?: string;
   onSubmit?: (text: string) => Promise<unknown> | void;
   sendFailedText?: string;
+  /** 주면 쓰던 글을 다른 페이지에 갔다 와도 남긴다 (비서 페이지만 — ⌘K·펫 창은 창이 따로라 저장소를 같이 못 쓴다) */
+  draftKey?: string;
 }) {
-  const [draft, setDraft] = useState("");
+  const local = useState("");
+  const kept = useDraft(draftKey ?? "", "");
+  const [draft, setDraft] = draftKey ? kept : local;
   // 보내지 못한 까닭 (빈 글이면 안내 없음). 쓴 글은 입력창에 되돌린다
   const [failText, setFailText] = useState("");
   const ref = useRef<HTMLTextAreaElement>(null);
   const prefill = useSecretaryDraft((s) => s.prefill);
+  // 채우기 신호는 한 번만 쓴다 — 남겨 두면 다른 페이지에 갔다 와서 다시 그려질 때 고쳐 쓴 글을 덮어쓴다
   useEffect(() => {
     if (!prefill) return;
     setDraft(prefill.text);
+    useSecretaryDraft.setState({ prefill: null });
     ref.current?.focus();
   }, [prefill]);
   const send = () => {

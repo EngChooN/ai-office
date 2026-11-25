@@ -31,6 +31,7 @@ import { useLayout } from '@/layout/useLayout'
 import { useLang } from '@/lib/i18n'
 import { connectOffice, useOffice, useWorkMode } from './store'
 import { ToastHost } from '@/lib/toast'
+import { pruneDrafts } from '@/lib/drafts'
 import { keyName } from '@/lib/keyName'
 import { t } from '@shared/i18n'
 import { DuoIcon } from '@/components/duo-icon'
@@ -38,6 +39,14 @@ import { DuoIcon } from '@/components/duo-icon'
 export default function App() {
   useEffect(() => connectOffice(), [])
   useEffect(() => preloadPages(), [])
+  // 내보낸 직원에게 쓰던 글·첨부는 정리한다 — 어디서 해고했든 직원 목록에서 빠지면 (불러오기 전 빈 목록일 때는 건너뛴다)
+  useEffect(
+    () =>
+      useOffice.subscribe((s, prev) => {
+        if (s.isLoaded && s.staff !== prev.staff) pruneDrafts('staff', s.staff.map((x) => x.id))
+      }),
+    [],
+  )
   // 언어를 바꾸면 화면 전체를 다시 그려 모든 글자를 새 언어로 (저장 데이터는 store에 있어 그대로)
   const lang = useLang()
   return <AppBody key={lang} />

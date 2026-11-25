@@ -74,7 +74,7 @@ export function SecretaryPage() {
         {isLimited && <p className="text-status-waiting text-xs">{t('secretary.limited')}</p>}
         {hasMessages && <ExampleChips className="mx-auto w-full max-w-3xl overflow-x-auto [scrollbar-width:none]" />}
         <div className="mx-auto w-full max-w-3xl">
-          <SecretaryComposer />
+          <SecretaryComposer draftKey="secretary:draft" />
         </div>
       </div>
     </Page>

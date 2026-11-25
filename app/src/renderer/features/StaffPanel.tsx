@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
+import { ifUnchanged, keepNewer, useDraft } from '@/lib/drafts'
+import { showToast } from '@/lib/toast'
 import { useShallow } from 'zustand/react/shallow'
 import { handleComposerKey, NEWLINE_HINT, SEND_HINT, STOP_HINT } from '@/lib/composerKeys'
 import { useOffice, useWorkMode } from '@/store'
@@ -306,7 +308,8 @@ function ResizeHandle({ width, onResize }: { width: number; onResize: (width: nu
 function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; onResize: (width: number) => void }) {
   const select = useOffice((s) => s.select)
   const liveLogs = useOffice((s) => s.liveLogs)
-  const [draft, setDraft] = useState('')
+  // 쓰던 지시는 다른 직원·페이지에 갔다 와도 남는다 (보내면 비운다)
+  const [draft, setDraft] = useDraft(`staff:${staff.id}:draft`, '')
   const composerRef = useRef<HTMLTextAreaElement>(null)
   const [tab, setTab] = useState<StaffPanelTab>('work')
   const isHired = staff.kind === 'hired'
@@ -394,8 +397,8 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
 
   const todayTokens = isHired ? null : record ? record.tokensIn + record.tokensOut : 0
   const handleClose = () => select(null)
-  const draftFiles = useDraftAttachments()
-  const [pickedManual, setPickedManual] = useState<ManualChoice | null>(null)
+  const draftFiles = useDraftAttachments(`staff:${staff.id}:files`)
+  const [pickedManual, setPickedManual] = useDraft<ManualChoice | null>(`staff:${staff.id}:manual`, null)
   /** 지시창의 '자율 진행' — 켜고 보내면 묻지 않고 끝까지 (위험 작업은 건너뛰고 보고) */
   const [isAutonomous, setIsAutonomous] = useState(false)
   // now: 일하는 중이면 하던 일을 멈추고 바로 전한다 (끼어들기) · 아니면 하던 일이 끝난 뒤 이어서 처리한다
@@ -403,22 +406,32 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
     const text = typed.trim().replace(/^\/\S*\s*/, (m) => (pickedManual ? '' : m))
     // 매뉴얼을 골랐으면 덧붙일 말 없이도 보낼 수 있다
     if (!text && draftFiles.files.length === 0 && !pickedManual) return
+    // 보낼 글·첨부·매뉴얼을 떼어 두고 먼저 모두 비운다 — 연타로 두 번 가지 않고, 늦게 끝난 보내기가 그새 새로 쓴 것을 지우지 않는다. 못 보내면 되돌린다
+    const files = draftFiles.files
+    const choice = pickedManual
     setDraft('')
+    draftFiles.clear()
+    setPickedManual(null)
     // 내가 보낸 지시는 위를 읽던 중이어도 바로 보이게
     logScroll.scrollToBottom()
-    const attachments = await draftFiles.upload()
-    draftFiles.clear()
-    const choice = pickedManual
-    setPickedManual(null)
-    if (choice?.scope) {
-      void window.office.startRun({ manualName: choice.name, scope: choice.scope, input: text, attachments })
-      return
+    try {
+      const attachments = await draftFiles.upload(files)
+      if (choice?.scope) {
+        // 매뉴얼·대상 팀이 사라졌으면 main이 실행하지 않고 null을 돌려준다 — 실패로 보고 되돌린다
+        if (!(await window.office.startRun({ manualName: choice.name, scope: choice.scope, input: text, attachments }))) throw new Error('run not started')
+        return
+      }
+      // /명령(스킬 포함)은 그대로 보낸다 — 막힌 명령·/clear는 main이 판정한다. 개인 매뉴얼을 고르면 그 스킬을 쓰라고 분명히 적어 보낸다
+      const body = text || (attachments?.length ? '첨부한 파일을 확인해 주세요.' : '')
+      const instruction = choice ? `[업무 매뉴얼: ${choice.name}] "${choice.name}" 스킬(매뉴얼)을 사용해서 처리해 주세요.${body ? `\n${body}` : ''}` : body
+      if (isNow) await window.office.interrupt(staff.id, instruction, attachments)
+      else await window.office.instruct(staff.id, instruction, attachments, isAutonomous ? { isAutonomous: true } : undefined)
+    } catch {
+      setDraft((d) => keepNewer(d, typed))
+      draftFiles.restore(files)
+      setPickedManual((m) => keepNewer(m, choice))
+      showToast(t('common.sendFailedKept'))
     }
-    // /명령(스킬 포함)은 그대로 보낸다 — 막힌 명령·/clear는 main이 판정한다. 개인 매뉴얼을 고르면 그 스킬을 쓰라고 분명히 적어 보낸다
-    const body = text || (attachments?.length ? '첨부한 파일을 확인해 주세요.' : '')
-    const instruction = choice ? `[업무 매뉴얼: ${choice.name}] "${choice.name}" 스킬(매뉴얼)을 사용해서 처리해 주세요.${body ? `\n${body}` : ''}` : body
-    if (isNow) void window.office.interrupt(staff.id, instruction, attachments)
-    else void window.office.instruct(staff.id, instruction, attachments, isAutonomous ? { isAutonomous: true } : undefined)
   }
   const isBusy = staff.status === 'working' || staff.status === 'waiting'
   const hasDraft = Boolean(draft.trim()) || draftFiles.files.length > 0 || Boolean(pickedManual)
@@ -496,6 +509,7 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
     }
   }
   const handleFire = () => {
+    // 쓰던 글은 직원 목록에서 빠지면 App이 정리한다
     if (window.confirm(t('staffPanel.fire.confirm', { name: staff.name }))) void window.office.fire(staff.id)
   }
   const [isExportOpen, setExportOpen] = useState(false)
@@ -860,12 +874,17 @@ const PROFILE_DATE: Intl.DateTimeFormatOptions = {
 /** 직원 프로필·성장: 레벨·경험치·누적 실적·소속 팀·예약 업무 */
 /** 소개 탭 '업무 지침' — 보이기·고치기. 저장하면 다음 지시 때 같은 대화를 새 지침으로 다시 연다(restart). 일하는 중에는 고칠 수 없다 */
 function InstructionsCard({ staff }: { staff: Staff }) {
-  const [isEditing, setIsEditing] = useState(false)
-  const [text, setText] = useState(staff.systemPrompt)
+  // 고치는 중인 글 (null = 고치는 중 아님) — 다른 탭·페이지에 갔다 와도 편집창과 글이 남는다
+  const [editing, setEditing] = useDraft<string | null>(`staff:${staff.id}:guide`, null)
+  const isEditing = editing !== null
+  const text = editing ?? staff.systemPrompt
+  const setText = (v: string) => setEditing(v)
   const isBusy = staff.status === 'working' || staff.status === 'waiting'
   const save = async () => {
+    const sent = editing
     await window.office.updateStaff(staff.id, { systemPrompt: text.trim() })
-    setIsEditing(false)
+    // 저장을 기다리는 사이 더 고쳤으면 편집창을 닫지 않는다
+    setEditing(ifUnchanged(sent, null))
   }
   return (
     <EquipCard icon={<BookOpenIcon />} title={t('staffPanel.profile.card.instructions')}>
@@ -874,7 +893,7 @@ function InstructionsCard({ staff }: { staff: Staff }) {
           <Textarea value={text} onChange={(e) => setText(e.target.value)} rows={6} className="text-xs" aria-label={t('staffPanel.profile.card.instructions')} />
           <span className="text-muted-foreground text-[11px]">{t('staffPanel.instructions.restartNote')}</span>
           <div className="flex justify-end gap-1.5">
-            <Button size="sm" variant="outline" onClick={() => (setText(staff.systemPrompt), setIsEditing(false))}>
+            <Button size="sm" variant="outline" onClick={() => setEditing(null)}>
               {t('staffPanel.instructions.cancel')}
             </Button>
             <Button size="sm" disabled={isBusy || text.trim() === staff.systemPrompt.trim()} onClick={() => void save()}>
@@ -886,7 +905,7 @@ function InstructionsCard({ staff }: { staff: Staff }) {
         <div className="flex flex-col gap-2 text-xs">
           <p className={cn('selectable line-clamp-6 whitespace-pre-wrap', !staff.systemPrompt.trim() && 'text-muted-foreground')}>{staff.systemPrompt.trim() || t('staffPanel.instructions.empty')}</p>
           <div className="flex items-center gap-2">
-            <Button size="sm" variant="outline" disabled={isBusy} onClick={() => setIsEditing(true)}>
+            <Button size="sm" variant="outline" disabled={isBusy} onClick={() => setEditing(staff.systemPrompt)}>
               {t('staffPanel.instructions.edit')}
             </Button>
             {isBusy && <span className="text-muted-foreground text-[11px]">{t('staffPanel.instructions.busy')}</span>}
@@ -1133,21 +1152,31 @@ function ExternalActions({ staff }: { staff: Staff }) {
   const [model, setModel] = useState<ModelChoice>('default')
   const [teamId, setTeamId] = useState('')
   const [approvalMode, setApprovalMode] = useState<ApprovalMode>(newStaffApprovalMode(IS_REMOTE_SCREEN))
-  const [order, setOrder] = useState('')
+  const [order, setOrder] = useDraft(`staff:${staff.id}:order`, '')
   const [isSending, setIsSending] = useState(false)
 
   /** 원래 창은 그대로 두고, 대화를 복사한 분신이 사무실에서 지시를 받아 일한다 */
-  const orderFiles = useDraftAttachments()
+  const orderFiles = useDraftAttachments(`staff:${staff.id}:orderFiles`)
   const handleFork = async () => {
     const text = order.trim()
     if (!text) return
     setIsSending(true)
-    const attachments = await orderFiles.upload()
+    // 보낼 지시·첨부를 떼어 두고 먼저 비운다 — 늦게 끝나도 그새 새로 쓴 것을 지우지 않는다. 분신을 못 만들면 되돌린다
+    const files = orderFiles.files
     orderFiles.clear()
-    const clone = await window.office.forkExternal(staff.id, text, attachments)
-    setIsSending(false)
     setOrder('')
-    if (clone) select(clone.id)
+    try {
+      const attachments = await orderFiles.upload(files)
+      const clone = await window.office.forkExternal(staff.id, text, attachments)
+      if (!clone) throw new Error('fork failed')
+      select(clone.id)
+    } catch {
+      setOrder((v) => keepNewer(v, order))
+      orderFiles.restore(files)
+      showToast(t('common.sendFailedKept'))
+    } finally {
+      setIsSending(false)
+    }
   }
 
   const handleFire = async () => {

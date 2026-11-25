@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
+import { ifUnchanged, useDraft } from '@/lib/drafts'
 import { NotOnWindows } from '@/components/not-on-windows'
 import { IS_REMOTE_SCREEN } from '@/shell'
 import type { Staff, WorkChanges, WorkRevertInfo } from '@shared/types'
@@ -23,8 +24,9 @@ function DiffLine({ line }: { line: string }) {
 /** 작업 결과 검토: 직원이 바꾼 파일과 diff를 보고, 결재하면 커밋 → 푸시·PR */
 export function ReviewTab({ staff }: { staff: Staff }) {
   const [changes, setChanges] = useState<WorkChanges | null>(null)
-  const [message, setMessage] = useState('')
-  const [prTitle, setPrTitle] = useState('')
+  // 쓰던 커밋 메시지·PR 제목은 다른 탭·직원에 갔다 와도 남는다
+  const [message, setMessage] = useDraft(`staff:${staff.id}:commit`, '')
+  const [prTitle, setPrTitle] = useDraft(`staff:${staff.id}:prTitle`, '')
   const [isBusy, setIsBusy] = useState(false)
   const [output, setOutput] = useState('')
   const [revert, setRevert] = useState<WorkRevertInfo | null>(null)
@@ -63,14 +65,22 @@ export function ReviewTab({ staff }: { staff: Staff }) {
   }
   const handleCommit = () =>
     run(async () => {
+      const sent = { message, prTitle }
       const r = await window.office.commitChanges(staff.id, message.trim())
+      // 기다리는 사이 새로 쓴 메시지·PR 제목은 덮어쓰지 않는다
       if (r.ok) {
-        setPrTitle(message.trim().split('\n')[0])
-        setMessage('')
+        setPrTitle(ifUnchanged(sent.prTitle, sent.message.trim().split('\n')[0]))
+        setMessage(ifUnchanged(sent.message, ''))
       }
       return r
     })
-  const handlePr = () => run(() => window.office.pushAndCreatePr(staff.id, prTitle.trim(), t('review.prBody', { name: staff.name, role: staff.role })))
+  const handlePr = () =>
+    run(async () => {
+      const sent = prTitle
+      const r = await window.office.pushAndCreatePr(staff.id, prTitle.trim(), t('review.prBody', { name: staff.name, role: staff.role }))
+      if (r.ok) setPrTitle(ifUnchanged(sent, ''))
+      return r
+    })
 
   if (!changes) return <p className="text-muted-foreground p-4 text-xs">{t('review.loading')}</p>
   if (!staff.ownCwd && staff.kind === 'hired') return <p className="text-muted-foreground p-4 text-xs">{t('review.noOwnCwd')}</p>

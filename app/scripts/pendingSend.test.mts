@@ -62,9 +62,12 @@ test('결재 버튼은 모두 같은 훅(useDecide)을 거치고 직접 decide�
 
 test('보내는 중 말풍선: 휴대폰·원격 화면에서만, 첨부 업로드 뒤에 띄운다', () => {
   const hook = read('src/renderer/features/usePendingSends.ts')
-  assert.match(hook, /if \(!IS_REMOTE_SCREEN\) return void window\.office\.sendChat/)
+  assert.match(hook, /if \(!isRemote\) \{\n\s+try \{\n\s+return \(await window\.office\.sendChat/)
+  // 보내는 중·실패 말풍선은 대화 페이지 밖(모듈 보관소)에 둔다 — 다른 페이지에 갔다 와도 '다시 보내기'가 남는다
+  assert.match(hook, /const usePending = create<PendingSend\[\]>/)
+  assert.doesNotMatch(hook, /useState<PendingSend\[\]>|isUnmounted/)
   const chat = read('src/renderer/features/ChatPage.tsx')
-  assert.match(chat, /const attachments = await draftFiles\.upload\(\)\n\s+draftFiles\.clear\(\)\n\s+onSend\(/)
+  assert.match(chat, /const attachments = await draftFiles\.upload\(files\)\n\s+if \(!\(await onSend\(/)
 })
 
 test('새 문구 4개 언어', () => {

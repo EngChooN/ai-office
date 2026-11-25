@@ -6,6 +6,7 @@ import { Page } from '@/components/ui/page'
 import { NativeSelect } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
+import { ifUnchanged, useDraft } from '@/lib/drafts'
 import { useShallow } from 'zustand/react/shallow'
 import { useOffice } from '@/store'
 import type { Schedule } from '@shared/types'
@@ -38,31 +39,34 @@ function nextRunText(sc: Schedule, now: number) {
 export function SchedulePage() {
   const staff = useOffice(useShallow((s) => s.staff.filter((x) => x.kind === 'hired')))
   const schedules = useOffice((s) => s.schedules)
-  const [draft, setDraft] = useState<Draft>(() => emptyDraft())
+  // 쓰던 폼(고치는 중인 예약 포함)은 다른 페이지에 갔다 와도 남는다 — null이면 새 빈 폼
+  const [kept, setKept] = useDraft<{ draft: Draft; editingId: string | null } | null>('schedule:form', null)
+  const [fresh] = useState<Draft>(() => emptyDraft())
+  const draft = kept?.draft ?? fresh
   // 고치는 중인 예약 — 위 입력 칸을 그대로 쓰고, 같은 id로 저장하면 main이 덮어쓴다 (마지막 실행 날짜는 main이 유지)
-  const [editingId, setEditingId] = useState<string | null>(null)
+  const editingId = kept?.editingId ?? null
   const formRef = useRef<HTMLFormElement>(null)
   // 다음 실행 표시는 시각이 지나면 바뀌므로 1분마다 다시 그린다
   const now = useNow(60_000)
   const editing = editingId ? schedules.find((x) => x.id === editingId) : undefined
 
-  const update = (patch: Partial<Draft>) => setDraft((d) => ({ ...d, ...patch }))
+  const update = (patch: Partial<Draft>) => setKept((k) => ({ editingId: k?.editingId ?? null, draft: { ...(k?.draft ?? fresh), ...patch } }))
   const isValid = draft.staffId && draft.label.trim() && draft.instruction.trim() && draft.weekdays.length > 0 && draft.time
-  const resetForm = (staffId = draft.staffId) => {
-    setEditingId(null)
-    setDraft(emptyDraft(staffId))
-  }
+  // 고른 직원은 남겨 둔다 (다음 예약도 같은 직원일 때가 많다)
+  const formAfter = (staffId: string) => (staffId ? { editingId: null, draft: emptyDraft(staffId) } : null)
+  const resetForm = (staffId = draft.staffId) => setKept(formAfter(staffId))
   const handleSave = async (e: FormEvent) => {
     e.preventDefault()
     if (!isValid) return
     // 편집 중 목록에서 사용 여부를 바꿨을 수 있다 — 그건 목록 쪽 값을 따른다
     const enabled = editing?.enabled ?? draft.enabled
+    const sent = kept
     await window.office.saveSchedule({ ...draft, enabled, label: draft.label.trim(), instruction: draft.instruction.trim() })
-    resetForm()
+    // 저장을 기다리는 사이 새로 고친 폼은 비우지 않는다
+    setKept(ifUnchanged(sent, formAfter(draft.staffId)))
   }
   const handleEdit = (sc: Schedule) => {
-    setEditingId(sc.id)
-    setDraft(toDraft(sc))
+    setKept({ editingId: sc.id, draft: toDraft(sc) })
     formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
   }
   const toggleDay = (d: number) => update({ weekdays: draft.weekdays.includes(d) ? draft.weekdays.filter((x) => x !== d) : [...draft.weekdays, d].sort() })

@@ -5,6 +5,8 @@ import { useShallow } from 'zustand/react/shallow'
 import { Button } from '@/components/ui/button'
 import { AttachButton, AttachmentView, DraftAttachments, useDraftAttachments } from '@/components/attachments'
 import { cn } from '@/lib/utils'
+import { keepNewer, useDraft } from '@/lib/drafts'
+import { showToast } from '@/lib/toast'
 import { handleComposerKey, NEWLINE_HINT } from '@/lib/composerKeys'
 import { commandDescription, commandItem, manualItem, SlashMenu, usePersonalManuals, useSlashKeys, useStaffCommands, type SlashMode } from '@/components/slash-menu'
 import { matchCommands, runsOnEnter } from '@shared/slashCommands'
@@ -702,8 +704,10 @@ function PendingApprovalButtons({ approval: a, staffName }: { approval: Approval
   )
 }
 
-function Composer({ room, onSend }: { room: RoomInfo | undefined; onSend: (input: SendInput) => void }) {
-  const [draft, setDraft] = useState('')
+function Composer({ room, onSend }: { room: RoomInfo | undefined; onSend: (input: SendInput) => Promise<boolean> }) {
+  // 방마다 쓰던 글·첨부를 따로 들고 있는다 — 다른 방·페이지에 갔다 와도 남는다
+  const draftKey = `chat:${room?.room ?? 'all'}`
+  const [draft, setDraft] = useDraft(`${draftKey}:draft`, '')
   const hired = useOffice(useShallow((s) => s.staff.filter((x) => x.kind === 'hired')))
   const teams = useOffice((s) => s.teams)
   const labs = useOffice((s) => s.labs)
@@ -753,7 +757,7 @@ function Composer({ room, onSend }: { room: RoomInfo | undefined; onSend: (input
   }
   const slashKeys = useSlashKeys(slashCommands.length, slashQuery, handleSlashPick)
 
-  const draftFiles = useDraftAttachments()
+  const draftFiles = useDraftAttachments(`${draftKey}:files`)
   // 답장: 입력칸 위 인용 줄. 멘션 없이 직원 말에 답하면 그 직원이 받는다
   const reply = useOffice((s) => s.chatReply)
   const setReply = useOffice((s) => s.setChatReply)
@@ -779,13 +783,21 @@ function Composer({ room, onSend }: { room: RoomInfo | undefined; onSend: (input
   const handleSend = async (typed = draft, mode: ChatSendMode = 'wait') => {
     const text = typed.trim()
     if (!text && draftFiles.files.length === 0) return
+    // 보낼 글·첨부를 떼어 두고 먼저 비운다 — 연타로 두 번 가지 않고, 그새 붙인 새 파일은 지우지 않는다. 못 보내면 되돌린다
+    const files = draftFiles.files
     setDraft('')
+    draftFiles.clear()
     slashRest.current = ''
     const replyTo = reply?.id
     setReply(null)
-    const attachments = await draftFiles.upload()
-    draftFiles.clear()
-    onSend({ text, attachments, room: room?.room, mode, replyTo })
+    try {
+      const attachments = await draftFiles.upload(files)
+      if (!(await onSend({ text, attachments, room: room?.room, mode, replyTo }))) throw new Error('send failed')
+    } catch {
+      setDraft((d) => keepNewer(d, typed))
+      draftFiles.restore(files)
+      showToast(t('common.sendFailedKept'))
+    }
   }
   // 보내기 옆 ▾: 예약 보내기·반복 지시
   const [isReserveOpen, setIsReserveOpen] = useState(false)
@@ -795,11 +807,18 @@ function Composer({ room, onSend }: { room: RoomInfo | undefined; onSend: (input
     if (!text) return setReserveNote(t('chat.reserve.empty'))
     setIsReserveOpen(false)
     setReserveNote('')
+    const files = draftFiles.files
     setDraft('')
-    setReply(null)
-    const attachments = await draftFiles.upload()
     draftFiles.clear()
-    void window.office.saveChatReservation(reservationInput(pick, text, room?.room ?? null, attachments))
+    setReply(null)
+    try {
+      const attachments = await draftFiles.upload(files)
+      await window.office.saveChatReservation(reservationInput(pick, text, room?.room ?? null, attachments))
+    } catch {
+      setDraft((d) => keepNewer(d, text))
+      draftFiles.restore(files)
+      showToast(t('common.sendFailedKept'))
+    }
   }
   // 같은 이름의 직원·팀·랩이 있으면 "@디자인(팀)"처럼 종류를 붙여 고른 대상에게 가게 한다
   // 고른 뒤에는 입력창에 포커스를 주고 커서를 끝(넣은 "@이름 " 뒤)으로 — 글이 바뀐 다음 프레임에 옮긴다

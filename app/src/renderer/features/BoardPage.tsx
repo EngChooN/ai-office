@@ -13,6 +13,8 @@ import { Markdown } from '@/components/markdown'
 import { AttachButton, AttachmentView, DraftAttachments, useDraftAttachments } from '@/components/attachments'
 import { ArtifactCards } from '@/components/artifact-card'
 import { cn } from '@/lib/utils'
+import { keepNewer, useDraft } from '@/lib/drafts'
+import { showToast } from '@/lib/toast'
 import { useShallow } from 'zustand/react/shallow'
 import { useOffice } from '@/store'
 import { isAbsorbedOpen } from '@shared/planTasks'
@@ -63,33 +65,45 @@ export function BoardPage() {
   }, [tasks])
   const hiredStaff = useOffice(useShallow((s) => s.staff.filter((x) => x.kind === 'hired')))
   const teams = useOffice(useShallow((s) => s.teams.filter((tm) => tm.kind === 'hired')))
-  const [title, setTitle] = useState('')
-  const [detail, setDetail] = useState('')
-  const [teamId, setTeamId] = useState('')
+  // 새 카드에 쓰던 값은 다른 페이지에 갔다 와도 남는다 (만들면 비운다)
+  const [title, setTitle] = useDraft('board:new:title', '')
+  const [detail, setDetail] = useDraft('board:new:detail', '')
+  const [teamId, setTeamId] = useDraft('board:new:team', '')
   const [dragOver, setDragOver] = useState<TaskStatus | null>(null)
   const labs = useOffice((s) => s.labs)
-  const [labId, setLabId] = useState('')
+  const [labId, setLabId] = useDraft('board:new:lab', '')
   /** 자율 진행(묻지 않고 끝까지)으로 만들기 */
-  const [isAutonomous, setIsAutonomous] = useState(false)
+  const [isAutonomous, setIsAutonomous] = useDraft('board:new:auto', false)
   /** 보드 필터: 전체 또는 특정 랩 */
   const [labFilter, setLabFilter] = useState('')
-  const draftFiles = useDraftAttachments()
+  const draftFiles = useDraftAttachments('board:new:files')
   const handleCreate = async (e: FormEvent) => {
     e.preventDefault()
     if (!title.trim()) return
-    const attachments = await draftFiles.upload()
+    // 보낼 값을 떼어 두고 먼저 비운다 — 연타로 두 번 만들지 않고, 늦게 끝나도 그새 새로 쓴 것을 지우지 않는다. 못 만들면 되돌린다
+    const files = draftFiles.files
+    const sent = { title, detail, isAutonomous }
     draftFiles.clear()
-    await window.office.createTask({
-      title: title.trim(),
-      detail: detail.trim(),
-      teamId: teamId || null,
-      labId: labId || null,
-      attachments,
-      ...(isAutonomous ? { isAutonomous: true } : {}),
-    })
     setTitle('')
     setDetail('')
     setIsAutonomous(false)
+    try {
+      const attachments = await draftFiles.upload(files)
+      await window.office.createTask({
+        title: sent.title.trim(),
+        detail: sent.detail.trim(),
+        teamId: teamId || null,
+        labId: labId || null,
+        attachments,
+        ...(sent.isAutonomous ? { isAutonomous: true } : {}),
+      })
+    } catch {
+      setTitle((v) => keepNewer(v, sent.title))
+      setDetail((v) => keepNewer(v, sent.detail))
+      setIsAutonomous((v) => v || sent.isAutonomous)
+      draftFiles.restore(files)
+      showToast(t('common.sendFailedKept'))
+    }
   }
   const handleDrop = (status: TaskStatus) => (e: DragEvent) => {
     e.preventDefault()

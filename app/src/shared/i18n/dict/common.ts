@@ -15,4 +15,11 @@ export default {
   'common.formerStaff': { ko: '퇴사자', en: 'Former staff', ja: '退職者', zh: '已离职员工' },
   'common.toBottom': { ko: '맨 아래로', en: 'Jump to latest', ja: '最新へ', zh: '回到底部' },
   'common.newMessages': { ko: '새 메시지 {count}', en: '{count} new', ja: '新着 {count}', zh: '{count} 条新消息' },
+  // 보내기가 실패하면 쓴 글·첨부를 입력칸에 되돌린다 (lib/drafts)
+  'common.sendFailedKept': {
+    ko: '보내지 못했어요. 쓴 내용을 다시 넣어 두었으니 한 번 더 보내 주세요',
+    en: "Couldn't send. Your message is back in the box — please send it again",
+    ja: '送れませんでした。書いた内容を戻したので、もう一度送ってください',
+    zh: '发送失败。已把内容放回输入框，请再发送一次',
+  },
 } satisfies Record<string, Entry>

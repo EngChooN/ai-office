@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { ArtifactCards } from '@/components/artifact-card'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
+import { keepNewer, useDraft } from '@/lib/drafts'
 import { attachmentUrl, isImageAttachment, type Attachment } from '@shared/types'
 import { t } from '@shared/i18n'
 import { IS_REMOTE_SCREEN } from '@/shell'
@@ -11,19 +12,25 @@ import { fenceCode, isInsideFence, looksLikeCode } from '@shared/codePaste'
 
 const FILE_MAX_BYTES = 20 * 1024 * 1024
 
-/** 입력창에 붙일 파일 상태: 붙여넣기·끌어다 놓기·파일 선택 → 보낼 때 앱 첨부 폴더에 저장 */
-export function useDraftAttachments() {
-  const [files, setFiles] = useState<File[]>([])
+const NO_FILES: File[] = []
+
+/** 입력창에 붙일 파일 상태: 붙여넣기·끌어다 놓기·파일 선택 → 보낼 때 앱 첨부 폴더에 저장. key를 주면 다른 화면에 갔다 와도 남는다 (lib/drafts) */
+export function useDraftAttachments(key?: string) {
+  const local = useState<File[]>(NO_FILES)
+  const kept = useDraft<File[]>(key ?? '', NO_FILES)
+  const [files, setFiles] = key ? kept : local
   const add = (list: FileList | File[] | null) => {
     const picked = [...(list ?? [])].filter((f) => f.size <= FILE_MAX_BYTES)
     if (picked.length) setFiles((prev) => [...prev, ...picked])
   }
   const remove = (i: number) => setFiles((prev) => prev.filter((_, idx) => idx !== i))
   const clear = () => setFiles([])
-  /** 보낼 때 호출: 파일을 main에 넘겨 저장하고 첨부 정보를 받는다 */
-  const upload = async (): Promise<Attachment[]> => {
-    if (files.length === 0) return []
-    const payload = await Promise.all(files.map(async (f) => ({ name: f.name || `${t('attach.pastedImage')}.${f.type.split('/')[1] ?? 'png'}`, mime: f.type, data: await f.arrayBuffer() })))
+  /** 보내기에 실패했을 때 비웠던 파일을 되돌린다 (그새 새로 붙인 게 있으면 그대로) */
+  const restore = (list: File[]) => setFiles((prev) => keepNewer(prev, list))
+  /** 보낼 때 호출: 파일을 main에 넘겨 저장하고 첨부 정보를 받는다. list를 주면 그 파일만 (보낼 때 떼어 둔 것 — 그새 붙인 새 파일과 섞이지 않게) */
+  const upload = async (list: File[] = files): Promise<Attachment[]> => {
+    if (list.length === 0) return []
+    const payload = await Promise.all(list.map(async (f) => ({ name: f.name || `${t('attach.pastedImage')}.${f.type.split('/')[1] ?? 'png'}`, mime: f.type, data: await f.arrayBuffer() })))
     return window.office.saveAttachments(payload)
   }
   const bind = {
@@ -42,7 +49,7 @@ export function useDraftAttachments() {
       add(e.dataTransfer.files)
     },
   }
-  return { files, add, remove, clear, upload, bind }
+  return { files, add, remove, clear, restore, upload, bind }
 }
 
 /**
