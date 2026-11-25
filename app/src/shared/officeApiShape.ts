@@ -90,6 +90,7 @@ export const OFFICE_METHODS = [
   'forkExternal',
   'answerMeetingDecision',
   'endMeeting',
+  'resolveMeetingOutcome',
   'stopTask',
   'resumePlan',
   'reviewPlan',

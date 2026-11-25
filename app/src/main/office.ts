@@ -73,6 +73,9 @@ import {
   type ApprovalHistoryFilter,
   type ApprovalRecord,
   type ApprovalResult,
+  type ArtifactKind,
+  type MeetingOutcome,
+  type MeetingOutcomeChoice,
 } from '../shared/types'
 import { recordBashWrite, recordWrite, WrittenStore, writtenWaitReason } from '../shared/writtenFiles'
 import { buildStaffActivity } from '../shared/staffActivity'
@@ -83,7 +86,8 @@ import { hireDefaults } from '../shared/tokenSaving.ts'
 import { findCodexCli, lastProviderStatus, openResumeInTerminal, providerStatus } from './setup'
 import { hasOpenDelegation, type DelegationInput } from '../shared/delegation'
 import { decisionSections, decisionSectionsOf, decisionsContext, delegatedPrompt, parseDelegatedChoice, recordAnswer, recordDelegated, splitDecision, withDecisionSections } from '../shared/meetingDecisions'
-import { isAbsorbedOpen, matchAbsorbed, meetingCardItems, meetingResultCard, pickPlanCard } from '../shared/planTasks'
+import { isAbsorbedOpen, matchAbsorbed, meetingCardItems, pickPlanCard, uniqueById } from '../shared/planTasks'
+import { buildMeetingPlan, isOutcomeChoice } from '../shared/meetingOutcome'
 import { shouldNudgeBackground, shouldNudgeLead } from '../shared/leadNudge'
 import { NO_HOLD, planHold, type HeldItem, type PlanHoldState } from '../shared/planHold'
 import { isScheduleDue } from '../shared/schedule'
@@ -2874,7 +2878,9 @@ export class Office extends EventEmitter<{
           { title: z.string().describe(t('staff.tool.artifact.title')), path: z.string().describe(t('staff.tool.artifact.path')), caption: z.string().optional().describe(t('staff.tool.caption')) },
           async ({ title, path: file, caption }) => {
             const taskId = this.taskOriginOf(staffId)
-            const r = saveArtifactFile({ title, source: file, staffId, staffName: this.hired.get(staffId)?.name ?? '', taskId })
+            // 앱이 붙이는 표시: 회의 결과물 내기 카드면 'meeting', 그 밖엔 대표가 시킨 일('owner') — 지침이 요청받았을 때만 올리게 한다
+            const origin = taskId && this.tasks.get(taskId)?.meetingId ? 'meeting' : 'owner'
+            const r = saveArtifactFile({ title, source: file, staffId, staffName: this.hired.get(staffId)?.name ?? '', taskId, origin })
             if (!r.ok) return text(t(`staff.tool.artifact.${r.reason}`))
             const att: Attachment = { id: r.ref.id, name: r.ref.name, path: r.file, mime: mimeOf(r.ref.name), size: r.ref.size, artifact: r.ref }
             const body = caption?.trim() || t('staff.tool.artifact.chat', { title: r.ref.title, version: r.ref.version })
@@ -2923,15 +2929,20 @@ export class Office extends EventEmitter<{
           },
           async ({ spec, subtasks, task: taskTitle, title, absorbs }) => {
             if (inHelpContext(this.helpOriginsOf(staffId))) return text(t('staff.tool.help.noBypass'))
-            const candidates = this.delegatesOf(staffId)
-            if (candidates.length === 0) return text(this.helpTargetsOf(staffId).length ? t('staff.tool.plan.useHelp') : t('staff.tool.plan.notLeader'))
-            const unknown = subtasks.filter((st) => !candidates.some((m) => m.name === st.assignee)).map((st) => st.assignee)
-            if (unknown.length) return text(t('staff.tool.plan.unknown', { names: unknown.join(', ') }))
             // 한 번에 여러 업무를 받았을 수 있으니 카드 제목으로 어느 업무의 기획안인지 고른다
             // 대화방 지시로 저절로 만든 카드도 그 업무의 카드다 — 기획안이 따로 카드를 또 만들지 않게
             const myTasks = cardIdsOf(this.origins.get(staffId) ?? []).flatMap((id) => this.tasks.get(id) ?? [])
+            // 회의 결과로 올린 기획안을 '다시 기획'으로 돌려받았으면 리더가 아닌 진행자도 다시 올린다 (담당 후보 = 그 회의 참석자)
+            const revisedMeetingPlan = myTasks.find((x) => x.meetingId && x.plan?.status === 'revise' && x.assigneeId === staffId)
+            const delegates = this.delegatesOf(staffId)
+            const candidates = uniqueById([...delegates, ...(revisedMeetingPlan ? this.meetingPlanPeople(revisedMeetingPlan) : [])])
+            if (candidates.length === 0) return text(this.helpTargetsOf(staffId).length ? t('staff.tool.plan.useHelp') : t('staff.tool.plan.notLeader'))
+            const unknown = subtasks.filter((st) => !candidates.some((m) => m.name === st.assignee)).map((st) => st.assignee)
+            if (unknown.length) return text(t('staff.tool.plan.unknown', { names: unknown.join(', ') }))
             const picked = pickPlanCard(myTasks, { task: taskTitle, title })
             if ('error' in picked) return text(picked.error)
+            // 리더가 아니면 돌려받은 회의 기획안 말고는 기획안을 올리지 못한다
+            if (delegates.length === 0 && picked.card?.id !== revisedMeetingPlan?.id) return text(t('staff.tool.plan.notLeader'))
             let task = picked.card
             // 대화 지시로 만든 카드는 제목이 지시 요약이다 — 리드가 붙인 기획 제목으로 바꾼다
             if (task?.fromChat && title?.trim()) task = { ...task, title: title.trim().slice(0, 60) }
@@ -4278,7 +4289,7 @@ export class Office extends EventEmitter<{
       this.gallery = this.gallery.filter((e) => e.id !== r.absorbed)
       db.deleteGalleryRow(r.absorbed)
     }
-    storeGalleryEntry(async () => r.entry, this.galleryIo()).catch((e) => console.error('[office] recordLooseGallery', e))
+    storeGalleryEntry(async () => ({ ...r.entry, origin: 'owner' }), this.galleryIo()).catch((e) => console.error('[office] recordLooseGallery', e))
   }
 
   galleryList(): GalleryEntry[] {
@@ -4319,6 +4330,7 @@ export class Office extends EventEmitter<{
             ...((this.tasks.get(task.id)?.artifacts ?? task.artifacts)?.length ? { artifacts: this.tasks.get(task.id)?.artifacts ?? task.artifacts } : {}),
             files,
             finishedAt: Date.now(),
+            origin: task.meetingId ? 'meeting' : 'owner',
           }
         },
         this.galleryIo(),
@@ -4581,11 +4593,26 @@ export class Office extends EventEmitter<{
     return practice
   }
 
+  private meetingPeople(m: Meeting) {
+    return m.participantIds.map((id) => this.hired.get(id)).filter((s): s is db.StoredStaff => Boolean(s))
+  }
+
+  /** 회의 기획안을 다시 올릴 때 담당 후보: 그 회의 참석자 (회의 기록이 지워졌으면 처음 기획안의 담당자) */
+  private meetingPlanPeople(task: Task) {
+    const m = this.meetings.find((x) => x.id === task.meetingId)
+    const ids = m ? m.participantIds : (task.plan?.subtasks ?? []).flatMap((st) => (st.assigneeId ? [st.assigneeId] : []))
+    return ids.map((id) => this.hired.get(id)).filter((s): s is db.StoredStaff => Boolean(s))
+  }
+
+  /** 진행자 = 팀장·랩 리드인 참석자, 없으면 첫 참석자. 회의록을 쓰고 위임된 결정을 정하고, 회의 결과(결재·결과물)를 맡는다 */
+  private chairOf(people: db.StoredStaff[]): db.StoredStaff | undefined {
+    return people.find((p) => this.teamOf(p.id)?.leadId === p.id || this.labsOf(p.id).some((l) => l.leadId === p.id)) ?? people[0]
+  }
+
   private async runMeeting(m: Meeting) {
-    const people = m.participantIds.map((id) => this.hired.get(id)).filter((s): s is db.StoredStaff => Boolean(s))
+    const people = this.meetingPeople(m)
     m.decisions = m.decisions ?? []
-    // 진행자 = 팀장·랩 리드인 참석자, 없으면 첫 참석자. 회의록을 쓰고 위임된 결정을 정한다
-    const chair = people.find((p) => this.teamOf(p.id)?.leadId === p.id || this.labsOf(p.id).some((l) => l.leadId === p.id)) ?? people[0]
+    const chair = this.chairOf(people)
     const transcript = () => {
       const decided = decisionsContext(m)
       return [m.messages.map((x) => `${x.name}: ${x.text}`).join('\n') || '(아직 발언 없음)', decided && `\n${decided}`].filter(Boolean).join('\n')
@@ -4628,6 +4655,10 @@ export class Office extends EventEmitter<{
         m.status = 'stopped'
         m.summary = t('officeMsg.meetingEnded')
       } else if (chair) {
+        // 화면이 "회의록 쓰는 중"을 알 수 있게 (끝내기 신호는 이 메모리에만 있다)
+        m.phase = 'minutes'
+        db.saveMeeting(m)
+        this.scheduleEmit()
         const names = people.map((p) => `${p.name}(${p.role})`).join(', ')
         const r = await askAsProvider(chair.provider, chair.model, {
           cwd: chair.cwd,
@@ -4639,27 +4670,8 @@ export class Office extends EventEmitter<{
         // 결정은 AI가 다시 쓰지 않는다 — 저장된 결정으로 앱이 만든 섹션을 회의록 뒤에 붙인다
         const decisions = m.decisions.length ? decisionSections(m) : ''
         m.summary = [r.text.trim(), decisions].filter(Boolean).join('\n\n')
-        const lab = this.labsOf(chair.id).find((l) => people.every((p) => l.memberIds.includes(p.id)))
-        const items = parseActionItems(r.text)
-        if (items.length && this.delegatesOf(chair.id).length) {
-          // 진행자가 리드면 할 일을 낱장으로 뿌리지 않는다 — 선행 관계를 모른 채 "모두 시작"으로 한꺼번에 돌지 않게,
-          // 결과 카드 한 장을 리드에게 주고 리드가 순서를 정해 기획안으로 올린다 (시작은 사용자가 보드에서)
-          const card = meetingResultCard(
-            m.topic,
-            r.text,
-            items.map((it) => ({ title: it.title, assignee: people.find((p) => it.assignee && it.assignee.includes(p.name))?.name ?? null })),
-            decisionSections(m),
-          )
-          const task = this.createTask({ ...card, teamId: this.teamOf(chair.id)?.id ?? null, labId: lab?.id ?? null })
-          // 시작은 지금처럼 대표가 보드에서 누른다
-          this.saveTask({ ...task, assigneeId: chair.id, meetingId: m.id })
-        } else
-          for (const item of items) {
-            const assignee = people.find((p) => item.assignee && item.assignee.includes(p.name))
-            const task = this.createTask({ title: item.title, detail: `회의 "${m.topic}"에서 나온 할 일`, teamId: this.teamOf(assignee?.id ?? chair.id)?.id ?? null, labId: lab?.id ?? null })
-            // 리드가 없는 회의는 예전처럼 담당 제안만 채워 둔다 (시작은 보드에서 사용자가)
-            if (assignee) this.saveTask({ ...task, assigneeId: assignee.id })
-          }
+        // 카드는 저절로 만들지 않는다 — 대표가 종료 선택 창에서 결재 올리기·결과물 내기·건너뛰기를 고른다 (resolveMeetingOutcome)
+        m.outcome = { state: 'pending', at: Date.now() }
       }
       if (!isDiscarded) {
         m.status = 'done'
@@ -4670,6 +4682,7 @@ export class Office extends EventEmitter<{
       m.summary = t('officeMsg.meetingAborted', { error: String(e) })
     }
     this.meetingStops.delete(m.id)
+    delete m.phase
     for (const p of people) this.patch(p.id, { activity: '' })
     db.saveMeeting(m)
     this.scheduleEmit()
@@ -4751,6 +4764,65 @@ export class Office extends EventEmitter<{
       resolve('', true)
     }
     this.postChat('me', `⏹ 회의를 끝내요${mode === 'wrapup' ? ' — 지금까지 이야기로 회의록을 정리할게요' : ''}: ${m.topic}`.slice(0, CHAT_TEXT_MAX))
+  }
+
+  /** 회의 결과 고르기 (종료 선택 창). 고르기 전(pending)일 때만 한 번 — 곧바로 working으로 바꿔 연타·두 창에서 눌러도 한 번만 처리한다 */
+  resolveMeetingOutcome(meetingId: string, choice: MeetingOutcomeChoice): boolean {
+    if (!isOutcomeChoice(choice)) return false
+    const m = this.meetings.find((x) => x.id === meetingId)
+    if (!m || m.outcome?.state !== 'pending') return false
+    const save = (outcome: MeetingOutcome) => {
+      m.outcome = outcome
+      db.saveMeeting(m)
+      this.scheduleEmit()
+    }
+    if (choice.kind === 'skip') {
+      save({ state: 'skipped', at: Date.now() })
+      return true
+    }
+    const people = this.meetingPeople(m)
+    const chair = this.chairOf(people)
+    if (!chair) return false
+    save({ state: 'working', at: Date.now() })
+    try {
+      const ref = choice.kind === 'plan' ? this.proposeMeetingPlan(m, people, chair) : this.orderMeetingArtifact(m, people, chair, choice.format)
+      save({ state: choice.kind, at: Date.now(), ref })
+      return true
+    } catch (e) {
+      console.error('[office] resolveMeetingOutcome', e)
+      save({ state: 'pending', at: Date.now() })
+      return false
+    }
+  }
+
+  private meetingLab(people: db.StoredStaff[], chair: db.StoredStaff) {
+    return this.labsOf(chair.id).find((l) => people.every((p) => l.memberIds.includes(p.id))) ?? null
+  }
+
+  /** 결재 올리기: 회의록으로 기획안 한 건을 앱이 바로 만들어 결재함에 (승인 전엔 아무 일도 시작하지 않는다 — propose_plan과 같은 대기 상태) */
+  private proposeMeetingPlan(m: Meeting, people: db.StoredStaff[], chair: db.StoredStaff) {
+    const built = buildMeetingPlan(m, people, chair, { spec: t('meeting.outcome.planSpec', { topic: m.topic }), itemDetail: t('meeting.outcome.planItem', { topic: m.topic }) })
+    const lab = this.meetingLab(people, chair)
+    const task = this.createTask({ title: built.title, detail: '', teamId: this.teamOf(chair.id)?.id ?? null, labId: lab?.id ?? null })
+    const plan: TaskPlan = { spec: built.spec, subtasks: built.subtasks, status: 'waiting', feedback: '', isAggregating: false, proposedAt: Date.now(), absorbedIds: [] }
+    this.saveTask({ ...task, assigneeId: chair.id, meetingId: m.id, plan, status: 'doing', updatedAt: Date.now() })
+    const roomId = (lab ? labRoomId(lab.id) : this.teamOf(chair.id)?.id) ?? this.roomOf(chair.id)
+    const room = findRoom(roomId, [...this.teams.values()], [...this.labs.values()])?.room
+    this.postChat(chair.id, t('staff.tool.plan.posted', { title: task.title, n: plan.subtasks.length }), undefined, undefined, room, false, { plan: { taskId: task.id, proposedAt: plan.proposedAt } })
+    this.emit('notify', { title: t('notify.planConfirm', { name: chair.name }), body: task.title, staffId: chair.id })
+    return task.id
+  }
+
+  /** 결과물 내기: 진행자에게 회의록으로 정리 문서·HTML을 만들어 올리는 업무 카드를 맡긴다 (그 카드로 올린 결과물은 'meeting' 표시) */
+  private orderMeetingArtifact(m: Meeting, people: db.StoredStaff[], chair: db.StoredStaff, format: ArtifactKind) {
+    const lab = this.meetingLab(people, chair)
+    const how = t(format === 'html' ? 'meeting.outcome.artifactHtml' : 'meeting.outcome.artifactMd')
+    const task = this.createTask({ title: t('meeting.outcome.artifactTitle', { topic: m.topic }).slice(0, 60), detail: `${how}
+
+${m.summary}`, teamId: this.teamOf(chair.id)?.id ?? null, labId: lab?.id ?? null })
+    this.saveTask({ ...task, meetingId: m.id })
+    this.assignTask(task.id, chair.id)
+    return task.id
   }
 
   startTasks(taskIds: string[]) {
@@ -5318,25 +5390,6 @@ export class Office extends EventEmitter<{
       this.emit('snapshot', this.snapshot())
     }, 50)
   }
-}
-
-/** 회의록의 "할 일:" 아래 글머리표를 카드로 뽑는다 ([할 일]·[ ]·굵게 표시는 걷어내고 "(담당: 이름)"은 따로) */
-function parseActionItems(text: string) {
-  const items: { title: string; assignee: string | null }[] = []
-  let isInTodo = false
-  for (const raw of text.split('\n')) {
-    const line = raw.replaceAll('**', '').trim()
-    if (/^할 일\s*:/.test(line)) {
-      isInTodo = !/없음/.test(line)
-      continue
-    }
-    const bullet = line.match(/^[-*•]\s*(?:\[[^\]]*\]\s*)?(.+)$/)
-    if (isInTodo && bullet) {
-      const m = bullet[1].match(/^(.*?)\s*\((?:담당|담당 제안)\s*[:：]?\s*([^)]*)\)\s*$/)
-      items.push(m ? { title: m[1].trim(), assignee: m[2].trim() || null } : { title: bullet[1].trim(), assignee: null })
-    } else if (isInTodo && line && !bullet) isInTodo = false
-  }
-  return items
 }
 
 function isFile(p: string) {

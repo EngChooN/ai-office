@@ -4,6 +4,8 @@ import type { Entry } from './index.ts'
 export default {
   'nav.gallery': { ko: '결과물 갤러리', en: 'Gallery', ja: '成果ギャラリー', zh: '成果画廊' },
   'gallery.title': { ko: '결과물 갤러리', en: 'Work gallery', ja: '成果ギャラリー', zh: '成果画廊' },
+  'gallery.legacy': { ko: '예전 결과물 {n}개', en: '{n} older items', ja: '以前の成果物 {n} 件', zh: '{n} 个旧成果' },
+  'gallery.legacyHint': { ko: '이번 정리 전에 모인 결과물이에요. 지우지 않고 여기 접어 뒀어요.', en: 'Collected before this cleanup. Kept here, folded away — nothing was deleted.', ja: '今回の整理より前に集まった成果物です。削除せずここにまとめました。', zh: '这些是本次整理前收集的成果，没有删除，折叠放在这里。' },
   'gallery.description': {
     ko: '끝난 업무의 캡처·링크·바뀐 파일을 카드로 모아요. 업무 카드가 "검토"로 넘어가거나, 카드 없이 맡긴 일에서 직원이 결과물·사진을 올리면 저절로 생겨요.',
     en: 'Screenshots, links, and changed files from finished work, collected as cards. A card appears when a board task moves to Review, or when staff post a result or picture for work without a board task.',

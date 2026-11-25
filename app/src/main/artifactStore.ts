@@ -2,7 +2,7 @@ import crypto from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 import { ARTIFACT_CSP, ARTIFACT_MAX_BYTES, artifactDocument, checkArtifactFile, cleanArtifactTitle, parseArtifactUrl } from '../shared/artifact.ts'
-import type { ArtifactInfo, ArtifactKind, ArtifactRef, ArtifactVersionInfo } from '../shared/types.ts'
+import type { ArtifactInfo, ArtifactKind, ArtifactOrigin, ArtifactRef, ArtifactVersionInfo } from '../shared/types.ts'
 
 // 아티팩트 저장소: <root>/<아티팩트 id>/meta.json 과 <root>/<아티팩트 id>/<버전>/<파일> (electron 없이 폴더만 받아 쓴다)
 
@@ -21,12 +21,15 @@ interface Meta {
   taskId: string | null
   sourcePath: string
   versions: StoredVersion[]
+  /** 올린 까닭 (앱이 붙인다). 없으면 이번 정리 전의 예전 결과물 — 새 버전이 올라오면 그때 붙는다 */
+  origin?: ArtifactOrigin
 }
 
 export interface ArtifactOwner {
   staffId: string
   staffName: string
   taskId: string | null
+  origin?: ArtifactOrigin
 }
 export type SaveResult = { ok: true; ref: ArtifactRef; file: string; isNewVersion: boolean } | { ok: false; reason: 'missing' | 'ext' | 'size' | 'empty' }
 
@@ -135,7 +138,7 @@ export function saveArtifact(root: string, input: { title: string; source: strin
   // 새 파일만 만든다 (이미 있는 링크·파일은 덮어쓰지 않는다)
   fs.writeFileSync(realFile, data, { flag: 'wx' })
   // 다시 올릴 때의 제목·업무 카드·이름으로 맞춘다
-  Object.assign(meta, { title, staffName: input.staffName, taskId: input.taskId ?? meta.taskId, sourcePath })
+  Object.assign(meta, { title, staffName: input.staffName, taskId: input.taskId ?? meta.taskId, sourcePath, ...(input.origin ? { origin: input.origin } : {}) })
   meta.versions.push(version)
   const metaDir = realInside(root, path.join(root, meta.id))
   if (!metaDir) return { ok: false, reason: 'missing' }
@@ -160,7 +163,7 @@ export function listArtifacts(root: string): ArtifactInfo[] {
   return listMetas(root)
     .map((m) => {
       const v = m.versions[m.versions.length - 1]
-      return { ...refOf(m, v), staffId: m.staffId, staffName: m.staffName, taskId: m.taskId, updatedAt: v.createdAt, versionCount: m.versions.length }
+      return { ...refOf(m, v), ...(m.origin ? { origin: m.origin } : {}), staffId: m.staffId, staffName: m.staffName, taskId: m.taskId, updatedAt: v.createdAt, versionCount: m.versions.length }
     })
     .sort((a, b) => b.updatedAt - a.updatedAt)
 }

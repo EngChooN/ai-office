@@ -226,10 +226,10 @@ export default {
     zh: '[子任务完成] “{title}”的子任务已全部完成。请检查并汇总结果，向代表做最终汇报。如有遗漏，请自行补完或用 delegate 追加交办。',
   },
   'staff.captureGuide': {
-    ko: '화면·페이지를 만들거나 고쳤으면 끝날 때 결과 화면을 capture_screen(맥) 또는 report_image(그림 파일)로 1~2장만 찍어 보고에 붙이세요. 앱·작업 창 위주로, 다른 개인 창은 찍지 마세요. HTML 시안·대시보드·차트나 정리 문서(.md)를 만들었으면 report_artifact로 올려 대표가 앱에서 바로 열어 보게 하세요.',
-    en: 'If you built or changed a screen or page, attach 1–2 shots of the final result via capture_screen (Mac) or report_image (image file). Focus on the app/work window; never capture other personal windows. If you made an HTML mockup, dashboard, chart or a write-up (.md), publish it with report_artifact so the owner can open it right in the app.',
-    ja: '画面やページを作成・修正したら、終了時に結果を capture_screen（Mac）または report_image（画像ファイル）で1〜2枚だけ撮って報告に添付。アプリ・作業ウィンドウ中心に、他の個人ウィンドウは撮らないこと。HTML のデザイン案・ダッシュボード・グラフやまとめ文書（.md）を作ったら、report_artifact で提出して代表がアプリですぐ開けるようにすること。',
-    zh: '若做了或改了界面/页面，结束时用 capture_screen（Mac）或 report_image（图片文件）只截 1~2 张最终结果附在报告里。以应用/工作窗口为主，不要拍其他个人窗口。若做了 HTML 方案、仪表盘、图表或整理文档（.md），用 report_artifact 提交，让代表能在应用里直接打开。',
+    ko: '화면·페이지를 만들거나 고쳤으면 끝날 때 결과 화면을 capture_screen(맥) 또는 report_image(그림 파일)로 1~2장만 찍어 보고에 붙이세요. 앱·작업 창 위주로, 다른 개인 창은 찍지 마세요. HTML 시안·대시보드·차트나 정리 문서(.md)는 대표가 결과물로 요청했거나 회의 결과물 내기 업무일 때만 report_artifact로 올리세요. 요청받지 않았으면 올리지 말고 보고 글에 요약하세요.',
+    en: 'If you built or changed a screen or page, attach 1–2 shots of the final result via capture_screen (Mac) or report_image (image file). Focus on the app/work window; never capture other personal windows. Publish an HTML mockup, dashboard, chart or write-up (.md) with report_artifact only when the owner asked for it as a deliverable or the task is producing a meeting deliverable. Otherwise don’t publish it — summarize it in your report.',
+    ja: '画面やページを作成・修正したら、終了時に結果を capture_screen（Mac）または report_image（画像ファイル）で1〜2枚だけ撮って報告に添付。アプリ・作業ウィンドウ中心に、他の個人ウィンドウは撮らないこと。HTML のデザイン案・ダッシュボード・グラフやまとめ文書（.md）は、代表が成果物として依頼した場合か会議の成果物を作る業務の場合だけ report_artifact で提出すること。依頼がなければ提出せず、報告文で要約すること。',
+    zh: '若做了或改了界面/页面，结束时用 capture_screen（Mac）或 report_image（图片文件）只截 1~2 张最终结果附在报告里。以应用/工作窗口为主，不要拍其他个人窗口。HTML 方案、仪表盘、图表或整理文档（.md）只有在代表要求作为成果提交、或是产出会议成果的任务时，才用 report_artifact 提交。没有要求就不要提交，在报告里概括即可。',
   },
   'staff.leadGuide': {
     ko: [

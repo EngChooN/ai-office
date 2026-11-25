@@ -7,7 +7,7 @@ import type { Zone } from '../shared/economy'
 import type { GridItem, SeatSetPart } from '../shared/iso/furniture'
 import type { OfficeMethod } from '../shared/officeApiShape'
 import type { TutorialInput, TutorialScenario } from '../shared/tutorial'
-import { HOOK_PORT, type Attachment, type RemoteMode } from '../shared/types'
+import { HOOK_PORT, type Attachment, type MeetingOutcomeChoice, type RemoteMode } from '../shared/types'
 import { listAgentTemplates } from './agents'
 import { findById, saveUploads } from './attachments'
 import { openFound } from './fileScope'
@@ -125,6 +125,7 @@ export function createOfficeHandlers(office: Office, remoteApi: () => RemoteServ
     startMeeting: (input: Parameters<Office['startMeeting']>[0]) => office.startMeeting(input),
     answerMeetingDecision: (meetingId: string, decisionId: string, answer: string) => office.answerMeetingDecision(meetingId, decisionId, answer),
     endMeeting: (meetingId: string, mode: 'wrapup' | 'discard') => office.endMeeting(meetingId, mode),
+    resolveMeetingOutcome: (meetingId: string, choice: MeetingOutcomeChoice) => office.resolveMeetingOutcome(meetingId, choice),
     stopTask: (taskId: string) => office.stopTask(taskId),
     resumePlan: (taskId: string) => office.resumePlan(taskId),
     reviewPlan: (taskId: string, isApproved: boolean, feedback: string) => office.reviewPlan(taskId, isApproved, feedback),

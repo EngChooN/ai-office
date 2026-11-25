@@ -8,7 +8,12 @@ import { Page } from '@/components/ui/page'
 import { cn } from '@/lib/utils'
 import { useShallow } from 'zustand/react/shallow'
 import { useOffice } from '@/store'
-import { isMeetingLive, type Meeting, type MeetingDecision } from '@shared/types'
+import { isMeetingLive, type Meeting, type MeetingDecision, type MeetingOutcome } from '@shared/types'
+import { meetingProgress } from '@shared/meetingProgress'
+import { minutesMarkdown, needsOutcome, outcomeTaskId, shouldOpenOutcome } from '@shared/meetingOutcome'
+import { MeetingLive } from './MeetingLive'
+import { MeetingOutcomeDialog } from './MeetingOutcomeDialog'
+import { TaskDetail } from './BoardPage'
 import { t, fmtDate, type TKey } from '@shared/i18n'
 import { Avatar, PracticeBadge } from './StaffCard'
 import { useTutorialMeetingId, useTutorialStep } from './Tutorial'
@@ -41,15 +46,41 @@ export function MeetingPage() {
   const [rounds, setRounds] = useState(2)
   const [openId, setOpenId] = useState<string | null>(null)
   const running = meetings.find(isMeetingLive)
+  const progress = running ? meetingProgress(running) : null
+  const past = meetings.filter((m) => !isMeetingLive(m))
+  // 위 칸: 진행 중(회의가 있을 때만) · 지난 회의 · 새 회의. 회의가 열려 있으면 진행 중부터
+  const [tab, setTab] = useState<'live' | 'past' | 'new'>(running ? 'live' : 'new')
+  const shownTab = tab === 'live' && !running ? 'past' : tab
+  // 결과 고르기 창: 이 화면에서 진행 중이던 회의가 회의록을 내는 순간 저절로 열고, 닫으면 지난 회의 카드에서 다시 연다
+  const [outcomeId, setOutcomeId] = useState<string | null>(null)
+  const outcomeMeeting = meetings.find((m) => m.id === outcomeId && needsOutcome(m))
+  const prevMeetings = useRef(meetings)
+  useEffect(() => {
+    const before = prevMeetings.current
+    prevMeetings.current = meetings
+    const ended = meetings.find((m) => shouldOpenOutcome(before.find((b) => b.id === m.id), m))
+    if (!ended) return
+    setOutcomeId(ended.id)
+    setOpenId(ended.id)
+    setTab('past')
+  }, [meetings])
+  // 새 회의를 열면 진행 중 칸으로
+  const runningId = running?.id
+  useEffect(() => {
+    if (runningId) setTab('live')
+  }, [runningId])
   const preset = useOffice((s) => s.meetingPreset)
   const setMeetingPreset = useOffice((s) => s.setMeetingPreset)
   const teams = useOffice((s) => s.teams)
   const labs = useOffice((s) => s.labs)
   const groups = useMemo(() => buildGroups(staff, teams, labs), [staff, teams, labs])
   const [notice, setNotice] = useState<string | null>(null)
-  // 튜토리얼에서 회의 시작을 건너뛰었어도 '할 일로 올리기' 단계에선 연습 회의를 펼쳐 둔다
+  // 튜토리얼에서 회의 시작을 건너뛰었어도 '할 일로 올리기' 단계에선 연습 회의를 펼쳐 둔다 (지난 회의 칸에)
   const tutorialMeetingId = useTutorialMeetingId()
   const isTodoStep = useTutorialStep() === 'b3'
+  useEffect(() => {
+    if (isTodoStep) setTab('past')
+  }, [isTodoStep])
   // 회의실이 클수록(회사 레벨) 더 많이 부를 수 있다
   const level = useOffice((s) => s.company.level)
   const capacity = meetingRoomOf(level).capacity
@@ -85,6 +116,7 @@ export function MeetingPage() {
     if (!topic.trim() || picked.length < 2) return
     const m = await window.office.startMeeting({ topic: topic.trim(), participantIds: picked, rounds })
     setOpenId(m.id)
+    setTab(isMeetingLive(m) ? 'live' : 'past')
     setTopic('')
     setPicked([])
     setNotice(null)
@@ -98,6 +130,18 @@ export function MeetingPage() {
       <FirstHint id="meeting" target="tut-meeting-start" sides={['below', 'left', 'above']} />
       <div className="min-w-0 flex-1">
         <Page title={t('meeting.title')} description={t('meeting.description')}>
+          <div role="tablist" className="bg-muted mb-4 inline-flex max-w-full gap-1 overflow-x-auto rounded-full p-1 text-xs">
+            {running && <TabButton isOn={shownTab === 'live'} onClick={() => setTab('live')} label={t('meeting.tab.live')} isLive />}
+            <TabButton isOn={shownTab === 'past'} onClick={() => setTab('past')} label={t('meeting.tab.past', { n: past.length })} />
+            <TabButton isOn={shownTab === 'new'} onClick={() => setTab('new')} label={t('meeting.tab.new')} />
+          </div>
+          {shownTab === 'live' && running && (
+            <div className="max-w-3xl phone:flex phone:h-[calc(100dvh-12rem)] phone:flex-col">
+              {/* 연습 회의·데모데이는 바퀴 계산을 하지 않고 예전 카드로 */}
+              {progress ? <MeetingLive meeting={running} progress={progress} /> : <MeetingCard meeting={running} isOpen onToggle={() => {}} />}
+            </div>
+          )}
+          {shownTab === 'new' && (
           <form onSubmit={handleStart} className="bg-card mb-6 flex max-w-3xl flex-col gap-3 rounded-xl border p-4">
             <Input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder={t('meeting.topicPlaceholder')} disabled={Boolean(running)} />
             {groups.length > 0 && (
@@ -152,13 +196,18 @@ export function MeetingPage() {
               </Button>
             </div>
           </form>
+          )}
 
-          <div className="flex max-w-3xl flex-col gap-3">
-            {meetings.map((m) => (
-              <MeetingCard key={m.id} meeting={m} isOpen={openId === m.id || isMeetingLive(m) || (isTodoStep && m.id === tutorialMeetingId)} onToggle={() => setOpenId(openId === m.id ? null : m.id)} />
-            ))}
-          </div>
+          {shownTab === 'past' && (
+            <div className="flex max-w-3xl flex-col gap-3">
+              {past.length === 0 && <p className="text-muted-foreground text-sm">{t('meeting.past.empty')}</p>}
+              {past.map((m) => (
+                <MeetingCard key={m.id} meeting={m} isOpen={openId === m.id || (isTodoStep && m.id === tutorialMeetingId)} onToggle={() => setOpenId(openId === m.id ? null : m.id)} onChooseOutcome={() => setOutcomeId(m.id)} />
+              ))}
+            </div>
+          )}
         </Page>
+        {outcomeMeeting && <MeetingOutcomeDialog meeting={outcomeMeeting} onClose={() => setOutcomeId(null)} />}
       </div>
     </div>
   )
@@ -195,7 +244,41 @@ function GroupChip({ group: g, picked, max, isFull, divider, onClick }: { group:
   )
 }
 
-function MeetingCard({ meeting: m, isOpen, onToggle }: { meeting: Meeting; isOpen: boolean; onToggle: () => void }) {
+function TabButton({ isOn, onClick, label, isLive }: { isOn: boolean; onClick: () => void; label: string; isLive?: boolean }) {
+  return (
+    <button type="button" role="tab" aria-selected={isOn} onClick={onClick} className={cn('phone:min-h-9 flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1', isOn ? 'bg-background font-semibold shadow-sm' : 'text-muted-foreground')}>
+      {isLive && <span className="bg-primary size-1.5 rounded-full motion-safe:animate-pulse" aria-hidden />}
+      {label}
+    </button>
+  )
+}
+
+const OUTCOME_LABEL: Record<Exclude<MeetingOutcome['state'], 'pending'>, TKey> = {
+  working: 'meeting.outcome.state.working',
+  plan: 'meeting.outcome.state.plan',
+  artifact: 'meeting.outcome.state.artifact',
+  skipped: 'meeting.outcome.state.skipped',
+}
+
+/** 결재 올림·결과물 맡김 회의의 '결과 보기': 확인 기다리는 기획안이면 결재함에서, 아니면 그 업무 카드 상세를 연다 (카드가 지워졌으면 숨김) */
+function OutcomeResultButton({ outcome }: { outcome: MeetingOutcome | undefined }) {
+  const ref = outcomeTaskId(outcome)
+  const task = useOffice((s) => (ref ? s.tasks.find((x) => x.id === ref) : undefined))
+  const subtasks = useOffice(useShallow((s) => (ref ? s.tasks.filter((x) => x.parentId === ref) : [])))
+  const [isOpen, setIsOpen] = useState(false)
+  if (!task) return null
+  const open = () => (task.plan?.status === 'waiting' ? useOffice.getState().openPlanInInbox(task.id) : setIsOpen(true))
+  return (
+    <div className="px-4 pb-3">
+      <Button size="sm" variant="outline" onClick={open}>
+        {t('meeting.outcome.view')}
+      </Button>
+      <TaskDetail task={task} subtasks={subtasks} isOpen={isOpen} onOpenChange={setIsOpen} />
+    </div>
+  )
+}
+
+function MeetingCard({ meeting: m, isOpen, onToggle, onChooseOutcome }: { meeting: Meeting; isOpen: boolean; onToggle: () => void; onChooseOutcome?: () => void }) {
   const staff = useOffice((s) => s.staff)
   // 튜토리얼 회의: 결정을 할 일로 올리는 단계에서만 버튼을 보인다
   const isTutorialMeeting = useTutorialMeetingId() === m.id
@@ -215,8 +298,17 @@ function MeetingCard({ meeting: m, isOpen, onToggle }: { meeting: Meeting; isOpe
         </span>
         {m.isPractice && <PracticeBadge className="text-[11px]" />}
         <span className="flex-1 font-medium">{m.topic}</span>
+        {m.outcome && m.outcome.state !== 'pending' && <Badge variant="outline" className="text-[11px]">{t(OUTCOME_LABEL[m.outcome.state])}</Badge>}
         <span className="text-muted-foreground text-xs">{fmtDate(m.createdAt, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
       </button>
+      {needsOutcome(m) && onChooseOutcome && (
+        <div className="px-4 pb-3">
+          <Button size="sm" onClick={onChooseOutcome}>
+            {t('meeting.outcome.choose')}
+          </Button>
+        </div>
+      )}
+      <OutcomeResultButton outcome={m.outcome} />
       {/* 연습 회의는 대본이 끝내므로 끝내기 버튼을 두지 않는다 */}
       {isMeetingLive(m) && !m.isPractice && <EndMeetingButtons meetingId={m.id} className="px-4 pb-3" />}
       {isOpen && (
@@ -245,7 +337,7 @@ function MeetingCard({ meeting: m, isOpen, onToggle }: { meeting: Meeting; isOpe
           {m.summary && (
             <div className="bg-muted rounded-lg p-3 text-sm">
               <div className="mb-1 text-xs font-semibold">{t('meeting.minutes')}</div>
-              <Markdown>{m.summary}</Markdown>
+              <Markdown>{minutesMarkdown(m.summary)}</Markdown>
               {isTutorialMeeting && tutorialStep === 'b3' && (
                 <Button size="sm" className="mt-2" onClick={() => void window.office.tutorialAct({ type: 'createTodos' })} data-tour="tut-todos">
                   {t('tutorial.meeting.createTodos')}

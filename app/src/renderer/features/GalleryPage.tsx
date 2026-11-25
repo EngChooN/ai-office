@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type KeyboardEvent, type MouseEvent } from 'react'
-import { FileDiffIcon, GalleryHorizontalEndIcon, LinkIcon, PresentationIcon, Trash2Icon } from 'lucide-react'
+import { ChevronRightIcon, FileDiffIcon, GalleryHorizontalEndIcon, LinkIcon, PresentationIcon, Trash2Icon } from 'lucide-react'
 import { AttachmentView } from '@/components/attachments'
 import { ArtifactCards } from '@/components/artifact-card'
 import { Markdown } from '@/components/markdown'
@@ -10,7 +10,7 @@ import { Page } from '@/components/ui/page'
 import { NativeSelect } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import { useOffice } from '@/store'
-import { filterGallery, type DemoDayConfig, type GalleryEntry, type GalleryFile, type GalleryPeriod } from '@shared/gallery'
+import { filterGallery, isLegacyEntry, type DemoDayConfig, type GalleryEntry, type GalleryFile, type GalleryPeriod } from '@shared/gallery'
 import { fmtDate, t, type TKey } from '@shared/i18n'
 
 const PERIODS: GalleryPeriod[] = ['week', 'month', 'all']
@@ -45,6 +45,16 @@ export function GalleryPage() {
   // 직원 칸은 갤러리에 카드가 있는 사람만 (해고한 직원도 이름으로 남는다)
   const people = useMemo(() => [...new Map(entries.map((e) => [e.staffId, e.staffName])).entries()], [entries])
   const shown = useMemo(() => filterGallery(entries, { staffId: staffId || undefined, labId: labId || undefined, period }, Date.now()), [entries, staffId, labId, period])
+  // 표시 없는 예전 결과물은 지우지 않고 아래 접힌 칸에 모은다
+  const current = shown.filter((e) => !isLegacyEntry(e))
+  const legacy = shown.filter(isLegacyEntry)
+  const cards = (list: GalleryEntry[]) => (
+    <ul className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-3">
+      {list.map((e) => (
+        <GalleryCard key={e.id} entry={e} onOpen={() => setOpenId(e.id)} onDelete={() => void handleDelete(e)} />
+      ))}
+    </ul>
+  )
 
   const handleDelete = async (e: GalleryEntry) => {
     if (!window.confirm(t('gallery.confirmDelete', { title: e.title }))) return
@@ -80,19 +90,25 @@ export function GalleryPage() {
             ))}
           </NativeSelect>
         )}
-        <span className="text-muted-foreground ml-auto text-xs">{t('gallery.count', { n: shown.length })}</span>
+        <span className="text-muted-foreground ml-auto text-xs">{t('gallery.count', { n: current.length })}</span>
       </div>
-      {shown.length === 0 ? (
+      {current.length === 0 ? (
         <div className="text-muted-foreground flex flex-col items-start gap-2 rounded-xl border border-dashed p-6 text-sm">
           <GalleryHorizontalEndIcon className="size-5" />
-          {entries.length === 0 ? t('gallery.empty') : t('gallery.noMatch')}
+          {entries.length === 0 || legacy.length > 0 ? t('gallery.empty') : t('gallery.noMatch')}
         </div>
       ) : (
-        <ul className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-3">
-          {shown.map((e) => (
-            <GalleryCard key={e.id} entry={e} onOpen={() => setOpenId(e.id)} onDelete={() => void handleDelete(e)} />
-          ))}
-        </ul>
+        cards(current)
+      )}
+      {legacy.length > 0 && (
+        <details className="group mt-6">
+          <summary className="text-muted-foreground hover:text-foreground flex cursor-pointer items-center gap-1.5 text-sm font-medium select-none">
+            <ChevronRightIcon className="size-4 transition-transform group-open:rotate-90 motion-reduce:transition-none" />
+            {t('gallery.legacy', { n: legacy.length })}
+          </summary>
+          <p className="text-muted-foreground mt-1 mb-3 text-xs">{t('gallery.legacyHint')}</p>
+          {cards(legacy)}
+        </details>
       )}
       <GalleryDetail entry={opened} onClose={() => setOpenId(null)} />
     </Page>
@@ -102,7 +118,9 @@ export function GalleryPage() {
 function GalleryCard({ entry: e, onOpen, onDelete }: { entry: GalleryEntry; onOpen: () => void; onDelete: () => void }) {
   // 카드 안의 버튼·링크·파일 펼치기는 그대로 두고, 나머지를 누르면 상세 창
   const handleClick = (ev: MouseEvent<HTMLLIElement>) => {
-    if ((ev.target as HTMLElement).closest('a, button, details')) return
+    // 카드 밖(예전 결과물 접힌 칸의 details)은 따지지 않는다
+    const hit = (ev.target as HTMLElement).closest('a, button, details')
+    if (hit && ev.currentTarget.contains(hit)) return
     onOpen()
   }
   const handleKeyDown = (ev: KeyboardEvent<HTMLLIElement>) => {

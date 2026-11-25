@@ -186,6 +186,7 @@ export const METHOD_ACCESS: Record<OfficeMethod, MethodAccess> = {
   forkExternal: 'write',
   answerMeetingDecision: 'write',
   endMeeting: 'write',
+  resolveMeetingOutcome: 'write',
   stopTask: 'write',
   resumePlan: 'write',
   reviewPlan: 'write',

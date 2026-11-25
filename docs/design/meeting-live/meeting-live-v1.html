@@ -1,0 +1,416 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>회의 중 화면 개편 — 시안 v1</title>
+<style>
+/* 색은 앱 index.css 라벤더 테마 라이트·다크 값을 그대로 옮김 */
+.light{--bg:#F6F5FB;--fg:#221F33;--card:#FFFFFF;--muted:#ECEAF6;--mfg:#66627F;--border:#DEDAF0;--primary:#6C5CE7;--pfg:#FFFFFF;--ring:#8776FF;--accent:#E9E6FA;--work:#1C7C46;--wait:#9A5B00;--spark:#FF7AC6;--gend:#C884E5;--side:#EFEDF8;--shadow:rgba(108,92,231,.18);--dim:rgba(34,31,51,.35)}
+.dark{--bg:#14131C;--fg:#EDEBF8;--card:#201F2D;--muted:#292739;--mfg:#A7A3C4;--border:#34314A;--primary:#9B8CFF;--pfg:#1A1240;--ring:#9B8CFF;--accent:#302D47;--work:#4ADE80;--wait:#F2C94C;--spark:#FF7AC6;--gend:#C884E5;--side:#100F17;--shadow:rgba(0,0,0,.5);--dim:rgba(0,0,0,.55)}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,"Apple SD Gothic Neo","Pretendard","Noto Sans KR","Hiragino Sans","PingFang SC",sans-serif;background:#ECEAF6;color:#221F33;font-size:14px;line-height:1.5}
+.page{max-width:1340px;margin:0 auto;padding:28px 28px 60px}
+h1{font-size:24px;margin:0 0 6px}
+h2{font-size:19px;margin:46px 0 6px;display:flex;gap:10px;align-items:center}
+h2 .no{background:#6C5CE7;color:#fff;border-radius:999px;font-size:12px;padding:2px 10px}
+h3{font-size:16px;margin:26px 0 4px}
+.lead{color:#66627F;margin:0 0 12px}
+.rec{background:#fff;border:2px solid #6C5CE7;border-radius:16px;padding:14px 18px;margin:16px 0}
+.rec b.c{color:#6C5CE7}
+.box{background:#fff;border:1px solid #DEDAF0;border-radius:16px;padding:14px 18px;margin:12px 0}
+.box ul,.rec ul{margin:6px 0;padding-left:20px}
+.ctl{position:sticky;top:0;z-index:50;background:rgba(236,234,246,.94);backdrop-filter:blur(6px);padding:10px 0;display:flex;gap:16px;flex-wrap:wrap;align-items:center;border-bottom:1px solid #DEDAF0}
+.ctl .grp{display:flex;gap:4px;align-items:center;font-size:12px;color:#66627F}
+.ctl button{border:1px solid #DEDAF0;background:#fff;border-radius:999px;padding:4px 12px;font-size:12px;cursor:pointer;color:#221F33}
+.ctl button.on{background:#6C5CE7;color:#fff;border-color:#6C5CE7}
+.row{display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start}
+.cap{font-size:12px;color:#66627F;margin:8px 2px 0}
+.cap b{color:#221F33}
+.tag{display:inline-block;font-size:11px;font-weight:700;border-radius:6px;padding:1px 7px;margin-right:4px;background:#221F33;color:#fff}
+.tag.r{background:#6C5CE7}
+.pros{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0 0;max-width:900px}
+.pros div{background:#fff;border:1px solid #DEDAF0;border-radius:12px;padding:10px 14px;font-size:13px}
+.pros b{display:block;margin-bottom:2px}
+table{border-collapse:collapse;background:#fff;border-radius:12px;overflow:hidden;font-size:12.5px;margin:8px 0}
+th,td{border:1px solid #DEDAF0;padding:5px 9px;text-align:left;vertical-align:top}
+th{background:#F6F5FB}
+td.n{text-align:right;color:#66627F;font-variant-numeric:tabular-nums}
+td.max{background:#FFF4DC}
+
+/* ───────── 앱 화면 공통 ───────── */
+.dev{background:var(--bg);color:var(--fg);border:1px solid var(--border);border-radius:16px;overflow:hidden;position:relative;font-size:14px;flex:none}
+.pc{width:880px;height:600px;display:flex}
+.ph{width:360px;height:720px;display:flex;flex-direction:column;border-radius:26px;border:6px solid #221F33}
+.dark.ph{border-color:#000}
+.rooms{width:170px;flex:none;background:var(--side);border-right:1px solid var(--border);padding:12px 8px;display:flex;flex-direction:column;gap:2px;font-size:12.5px}
+.rooms .h{font-size:11px;color:var(--mfg);padding:2px 8px 6px}
+.rooms .it{padding:6px 10px;border-radius:999px;color:var(--mfg);display:flex;gap:6px;align-items:center;white-space:nowrap;overflow:hidden}
+.rooms .it.on{background:linear-gradient(90deg,color-mix(in oklab,var(--ring) 22%,transparent),transparent);color:var(--fg);font-weight:600}
+.main{flex:1;min-width:0;display:flex;flex-direction:column;position:relative}
+.muted{color:var(--mfg)}
+.xs{font-size:12px}.xxs{font-size:11px}
+.b{font-weight:600}
+.btn{display:inline-flex;align-items:center;gap:5px;height:30px;padding:0 12px;border-radius:999px;font-size:12.5px;font-weight:500;white-space:nowrap;border:1px solid transparent}
+.btn.o{border-color:var(--border);background:var(--card);color:var(--fg)}
+.btn.g{color:var(--mfg)}
+.btn.p{background:linear-gradient(135deg,var(--primary),var(--gend));color:#fff;box-shadow:0 6px 16px -6px color-mix(in oklab,var(--primary) 70%,transparent)}
+.dark .btn.p{color:#1A1240}
+.btn.dis{opacity:.45}
+.av{border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-weight:700;flex:none;position:relative}
+.av.s28{width:28px;height:28px;font-size:12px}.av.s36{width:36px;height:36px;font-size:14px}.av.s20{width:20px;height:20px;font-size:10px}.av.s24{width:24px;height:24px;font-size:11px}
+.av.speak{box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--primary);animation:halo 1.4s ease-in-out infinite}
+@keyframes halo{50%{box-shadow:0 0 0 2px var(--bg),0 0 0 6px color-mix(in oklab,var(--primary) 45%,transparent)}}
+.av.doneR{opacity:.55}
+.av .ck{position:absolute;right:-3px;bottom:-3px;width:14px;height:14px;border-radius:50%;background:var(--work);color:#fff;font-size:9px;display:flex;align-items:center;justify-content:center;border:2px solid var(--bg)}
+.live{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:1px 9px;font-size:11px;font-weight:700;background:var(--primary);color:var(--pfg);white-space:nowrap}
+.live i{width:6px;height:6px;border-radius:50%;background:currentColor;animation:blink 1.2s infinite}
+@keyframes blink{50%{opacity:.3}}
+.seg{display:inline-flex;background:var(--muted);border-radius:999px;padding:3px;gap:2px}
+.seg span{padding:4px 12px;border-radius:999px;font-size:12px;color:var(--mfg);white-space:nowrap;display:inline-flex;gap:5px;align-items:center}
+.seg span.on{background:var(--card);color:var(--fg);font-weight:600;box-shadow:0 1px 3px var(--shadow)}
+.seg .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--primary)}
+.bars{display:flex;gap:4px;flex:1;min-width:60px}
+.bars i{flex:1;height:6px;border-radius:999px;background:var(--muted);overflow:hidden;position:relative}
+.bars i b{position:absolute;inset:0 auto 0 0;background:linear-gradient(90deg,var(--primary),var(--gend));border-radius:999px}
+.speakTag{font-size:11px;font-weight:600;color:var(--primary);display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+.wave{display:inline-flex;gap:2px;align-items:flex-end;height:10px}
+.wave i{width:2px;background:var(--primary);border-radius:1px;animation:wv .9s ease-in-out infinite}
+.wave i:nth-child(1){height:4px}.wave i:nth-child(2){height:9px;animation-delay:.15s}.wave i:nth-child(3){height:6px;animation-delay:.3s}
+@keyframes wv{50%{transform:scaleY(.4)}}
+.chat{flex:1;overflow:hidden;padding:12px 16px;display:flex;flex-direction:column;gap:12px;justify-content:flex-end}
+.msg{display:flex;gap:8px}
+.msg .bd{min-width:0}
+.msg .nm{font-size:12px;color:var(--mfg);display:flex;gap:6px;align-items:baseline}
+.msg .tx{background:var(--card);border:1px solid var(--border);border-radius:4px 14px 14px 14px;padding:7px 11px;font-size:13.5px;margin-top:2px;line-height:1.45}
+.msg.typing .tx{display:inline-flex;gap:4px;padding:10px 12px;border-color:color-mix(in oklab,var(--primary) 45%,var(--border))}
+.msg.typing .tx i{width:6px;height:6px;border-radius:50%;background:var(--primary);animation:blink 1.2s infinite}
+.msg.typing .tx i:nth-child(2){animation-delay:.2s}.msg.typing .tx i:nth-child(3){animation-delay:.4s}
+.rdiv{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--mfg)}
+.rdiv:before,.rdiv:after{content:"";flex:1;height:1px;background:var(--border)}
+.newpill{position:absolute;left:50%;transform:translateX(-50%);background:var(--fg);color:var(--bg);border-radius:999px;padding:5px 12px;font-size:12px;font-weight:600;box-shadow:0 6px 16px -4px var(--shadow);white-space:nowrap;z-index:5}
+.decision{border:1px solid var(--wait);border-left-width:4px;background:color-mix(in oklab,var(--wait) 10%,transparent);border-radius:10px;padding:8px 10px;font-size:12.5px}
+.decision .q{font-weight:600}
+.decision .opts{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+.endbar{border-top:1px solid var(--border);background:var(--card);padding:10px 14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px}
+.hist{padding:10px 14px;display:flex;gap:10px;align-items:center;font-size:13px}
+.st{border-radius:5px;padding:0 6px;font-size:11px;font-weight:600;background:var(--muted);white-space:nowrap}
+.st.w{background:color-mix(in oklab,var(--wait) 18%,transparent);color:var(--wait)}
+.st.ok{background:color-mix(in oklab,var(--work) 16%,transparent);color:var(--work)}
+.st.p{background:color-mix(in oklab,var(--primary) 16%,transparent);color:var(--primary)}
+.ellip{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.topbar{height:46px;display:flex;align-items:center;gap:8px;padding:0 12px;border-bottom:1px solid var(--border);background:var(--card);flex:none}
+.band{margin:12px 16px 0;border-radius:16px;padding:1.5px;background:linear-gradient(135deg,var(--ring),var(--spark))}
+.band>div{background:var(--card);border-radius:14.5px;padding:10px 12px;display:flex;gap:10px;align-items:center}
+.drawer{position:absolute;right:0;top:0;bottom:0;width:420px;background:var(--bg);border-left:1px solid var(--border);box-shadow:-16px 0 40px -16px var(--shadow);display:flex;flex-direction:column;z-index:4}
+.scrim{position:absolute;inset:0;background:var(--dim);z-index:3}
+.side{width:260px;flex:none;border-left:1px solid var(--border);background:var(--card);padding:14px;display:flex;flex-direction:column;gap:12px;font-size:12.5px}
+.order{display:flex;flex-direction:column;gap:6px}
+.order .o{display:flex;align-items:center;gap:8px}
+.order .o.now{background:color-mix(in oklab,var(--primary) 12%,transparent);border-radius:10px;padding:4px 6px;margin:0 -6px}
+.lbl{font-size:11px;color:var(--mfg);font-weight:600}
+/* 끝난 뒤 선택 */
+.modal{position:absolute;z-index:6;background:var(--card);border:1px solid var(--border);box-shadow:0 24px 60px -20px rgba(0,0,0,.5);display:flex;flex-direction:column}
+.pcm{left:50%;top:50%;transform:translate(-50%,-50%);width:560px;border-radius:24px;background-image:radial-gradient(120% 60% at 50% -10%,color-mix(in oklab,var(--ring) 16%,transparent),transparent 70%)}
+.sheet{left:0;right:0;bottom:0;border-radius:22px 22px 0 0;max-height:92%}
+.mhd{padding:16px 18px 8px}
+.mbd{padding:4px 18px 12px;display:flex;flex-direction:column;gap:10px;overflow:hidden}
+.mft{padding:12px 18px 16px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;border-top:1px solid var(--border)}
+.mins{background:var(--muted);border-radius:12px;padding:8px 12px;font-size:12.5px}
+.mins ul{margin:2px 0 0;padding-left:16px}
+.opt{border:1.5px solid var(--border);border-radius:14px;padding:10px 12px;display:flex;gap:10px;align-items:flex-start;background:var(--card)}
+.opt.on{border-color:var(--primary);background:color-mix(in oklab,var(--primary) 7%,var(--card))}
+.opt .rd{width:18px;height:18px;border-radius:50%;border:2px solid var(--border);flex:none;margin-top:2px}
+.opt.on .rd{border:5px solid var(--primary)}
+.opt .ic{width:30px;height:30px;border-radius:9px;flex:none;display:flex;align-items:center;justify-content:center;font-size:15px;background:var(--muted)}
+.opt .t{font-weight:600;font-size:13.5px}
+.opt .d{font-size:12px;color:var(--mfg);line-height:1.4}
+.fmt{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
+.fmt span{border:1px solid var(--border);border-radius:10px;padding:4px 10px;font-size:12px;background:var(--card)}
+.fmt span.on{border-color:var(--primary);background:var(--accent);font-weight:600}
+.handle{width:40px;height:4px;border-radius:9px;background:var(--border);margin:8px auto 0}
+.ann{position:absolute;z-index:20;background:#FF7AC6;color:#fff;font:700 11px/1 -apple-system,sans-serif;border-radius:999px;width:20px;height:20px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.25)}
+.legend{font-size:12px;color:#66627F;margin:6px 0 0;padding-left:0;list-style:none}
+.legend li{margin:2px 0}
+.legend b.n{display:inline-flex;background:#FF7AC6;color:#fff;border-radius:999px;width:18px;height:18px;align-items:center;justify-content:center;font-size:10px;margin-right:4px}
+</style></head>
+<body>
+<div class="page">
+<h1>회의 중 화면 개편 — 시안 v1</h1>
+<p class="lead">작성: 디자인 팀 이디자 · 2026-11-25 · 코드 수정 없음(그림 시안만). 색은 지금 앱 라벤더 테마 그대로입니다. 위쪽 단추로 언어·라이트/다크를 바꿔 볼 수 있습니다.</p>
+
+<div class="rec">
+<b class="c">추천: A안 "회의 전용 화면"</b> (대표 미확인)
+<ul>
+<li>회의가 열려 있는 동안 회의실 화면 전체가 <b>그 회의 하나만</b> 보여 줍니다. 지난 회의 기록은 옆 칸("지난 회의")으로 빠져서 섞이지 않습니다.</li>
+<li>새 발언은 단체방처럼 <b>아래로 쌓이고</b> 화면이 저절로 따라갑니다. 위로 올려 읽는 중이면 따라가지 않고 "새 발언 2개 ↓" 단추만 뜹니다.</li>
+<li>휴대폰에서도 같은 모양 그대로 쓸 수 있습니다. B안은 한 번 더 눌러야 하고, C안은 휴대폰에서 현황이 다른 칸으로 숨어 버립니다.</li>
+<li>끝나면 같은 화면 위에 <b>"결재 올리기 / 결과물 내기"</b> 선택 창이 뜹니다. 건너뛰면 회의록만 남습니다(김기획 조사안과 같음).</li>
+</ul>
+</div>
+
+<div class="ctl">
+  <div class="grp">언어 <span id="langs"></span></div>
+  <div class="grp">모드 <span id="modes"></span></div>
+</div>
+
+<h2><span class="no">0</span>지금 화면의 문제</h2>
+<div class="box">
+<ul>
+<li>진행 중 회의가 지난 회의 카드들과 같은 모양으로 <b>목록 맨 위</b>에 붙어 있습니다. 새 회의 만들기 칸이 그 위를 차지해서, 회의 내용은 화면 중간부터 시작합니다.</li>
+<li>새 발언이 카드 <b>아래쪽</b>에 붙는데 화면은 따라 내려가지 않습니다. 직접 내려야 봅니다.</li>
+<li>참석자가 누구인지, 몇 바퀴째인지, 지금 누가 말하는지가 보이지 않습니다. "발언 준비 중…" 한 줄뿐입니다.</li>
+<li>끝내기 단추는 카드 머리 바로 아래에 있어서, 내용을 읽다 보면 화면 밖으로 사라집니다.</li>
+</ul>
+</div>
+
+<h2><span class="no">1</span>회의 중 화면 — 3가지 안</h2>
+<p class="lead">세 안 모두 같은 장면입니다: 참석자 4명, 3바퀴 중 2바퀴째, 박개발이 말하는 중, 다음 차례 정리드.</p>
+
+<h3><span class="tag r">추천</span>A안 · 회의 전용 화면</h3>
+<div class="row"><div id="A-pc"></div><div id="A-ph"></div></div>
+<ul class="legend">
+<li><b class="n">1</b>위쪽 칸 나누기: <b>진행 중 · 지난 회의 · 새 회의</b>. 회의가 열려 있으면 "진행 중"이 먼저 열립니다. 회의가 없으면 "진행 중" 칸은 사라집니다.</li>
+<li><b class="n">2</b>참석자 줄: 말하는 사람은 테두리가 빛나고 "말하는 중", 이번 바퀴에 말을 마친 사람은 ✓와 함께 흐려지고, 다음 사람은 "다음"이 붙습니다.</li>
+<li><b class="n">3</b>바퀴 막대: 칸 하나가 한 바퀴. 지금 바퀴는 말한 사람 수만큼 차오릅니다.</li>
+<li><b class="n">4</b>대화는 아래로 쌓이고 바퀴가 바뀌면 "2바퀴째" 줄이 들어갑니다. 지금 말하는 사람 자리에 점 세 개가 깜빡입니다.</li>
+<li><b class="n">5</b>위로 올려 읽는 중일 때만 "새 발언 2개 ↓"가 뜹니다. 누르면 맨 아래로 가서 다시 따라갑니다.</li>
+<li><b class="n">6</b>끝내기 단추는 화면 아래에 늘 붙어 있습니다(휴대폰은 엄지 닿는 자리).</li>
+</ul>
+<div class="pros"><div><b>좋은 점</b>한 번에 하나만 보여 헷갈리지 않음 · 휴대폰과 PC가 같은 모양 · 단체방과 같은 읽는 방식이라 익숙함</div><div><b>아쉬운 점</b>회의 중에 지난 회의를 보려면 칸을 옮겨야 함(진행 중 칸에 ● 표시가 남아 바로 돌아올 수 있음)</div></div>
+
+<h3>B안 · 위쪽 고정 띠 + 옆 창</h3>
+<div class="row"><div id="B-pc"></div><div id="B-ph"></div></div>
+<p class="cap">회의실 화면은 지금처럼 두고, 진행 중 회의만 맨 위 <b>빛나는 띠</b>로 뺍니다. 띠를 누르면 PC는 오른쪽 옆 창, 휴대폰은 전체 화면으로 대화가 열립니다. 새 회의 칸은 회의 중엔 접혀 있습니다.</p>
+<div class="pros"><div><b>좋은 점</b>지금 화면을 가장 적게 바꿈 · 회의 중에도 지난 기록을 바로 볼 수 있음</div><div><b>아쉬운 점</b>대화를 보려면 한 번 더 눌러야 함 · 옆 창 420폭이라 긴 발언은 좁음 · 휴대폰은 결국 A안과 같은 화면이 하나 더 생김</div></div>
+
+<h3>C안 · 왼쪽 대화 + 오른쪽 현황판</h3>
+<div class="row"><div id="C-pc"></div><div id="C-ph"></div></div>
+<p class="cap">PC는 오른쪽에 <b>발언 순서표</b>(누가 끝났고 누가 말하고 다음이 누구인지)와 결정 대기, 끝내기 단추를 모읍니다. 휴대폰은 폭이 모자라 "대화 · 현황" 두 칸으로 나눕니다.</p>
+<div class="pros"><div><b>좋은 점</b>발언 순서가 가장 자세히 보임 · 참석자가 많은 큰 회의(10명 이상)에 유리</div><div><b>아쉬운 점</b>PC 왼쪽 방 목록까지 세 칸이라 대화 폭이 좁음 · 휴대폰에선 현황이 다른 칸에 숨음</div></div>
+
+<h2><span class="no">2</span>회의가 끝난 뒤 — 결과 고르기</h2>
+<p class="lead">"여기까지 정리하고 끝내기" 또는 정해진 바퀴가 다 끝나면 회의록이 만들어진 뒤 이 창이 뜹니다. "정리 없이 끝내기"는 지금처럼 바로 끝나고 이 창이 뜨지 않습니다. <b>세 안 모두 같은 창</b>을 씁니다.</p>
+<div class="row"><div id="E-pc"></div><div id="E-ph"></div></div>
+<ul class="legend">
+<li><b class="n">1</b>회의록 요약과 할 일 수를 먼저 보여 줍니다. "회의록 전체 보기"로 펼칠 수 있습니다.</li>
+<li><b class="n">2</b>둘 중 하나를 고릅니다. 처음엔 아무것도 골라져 있지 않습니다(무조건 추가 없앰). 고르기 전엔 오른쪽 아래 단추가 꺼져 있습니다. (그림은 PC=결과물, 휴대폰=결재를 고른 뒤 모습)</li>
+<li><b class="n">3</b>결과물을 고르면 형식이 나옵니다: <b>화면·대시보드(HTML)</b> 또는 <b>정리 문서</b>. 처음엔 "정리 문서"가 골라져 있습니다(추천, 대표 미확인).</li>
+<li><b class="n">4</b>아래 왼쪽 "건너뛰기 — 회의록만 남기기": 카드·결재·결과물 아무것도 만들지 않습니다.</li>
+<li><b class="n">5</b>오른쪽 단추 이름이 고른 것에 따라 바뀝니다: "결재함에 올리기" / "만들기 시작".</li>
+<li><b class="n">6</b>창을 그냥 닫으면(✕ 또는 바깥 누르기) 아무것도 만들지 않고, 지난 회의 카드에 "결과 고르기" 단추가 남습니다.</li>
+</ul>
+<h3>고른 뒤 · 지난 회의 카드</h3>
+<div class="row"><div id="H-pc"></div><div id="H-ph"></div></div>
+<p class="cap">회의 카드 오른쪽에 결과가 한 칸으로 붙습니다: <b>결재 올림</b>(누르면 그 결재 카드로) · <b>결과물 만드는 중 → 결과물 보기</b> · <b>회의록만</b> · 아직 안 고른 회의는 <b>결과 고르기</b> 단추.</p>
+
+<h2><span class="no">3</span>4개 언어 문구 길이</h2>
+<p class="lead">새로 들어가는 문구만 모았습니다. 노란 칸이 가장 긴 언어입니다. 위쪽 언어 단추로 바꾸면 위 화면들이 그 언어로 다시 그려집니다. 360폭 휴대폰에서 넘치는 곳은 없었습니다(이 시안에서 직접 확인).</p>
+<div id="len"></div>
+
+<h2><span class="no">4</span>정해 주실 것 — 2026-11-25 대표 확정: A안 · 기본 형식 정리 문서</h2>
+<div class="box">
+<ol>
+<li><b>회의 중 화면은 어느 안으로 할까요?</b> — A안 회의 전용 화면 <b>(추천, 대표 미확인)</b> / B안 위쪽 띠 + 옆 창 / C안 대화 + 현황판</li>
+<li><b>결과물 형식 처음 고른 값</b> — 정리 문서 <b>(추천: 회의 결과는 글이 대부분)</b> / HTML / 처음엔 안 고름</li>
+<li><b>건너뛰기·나중에 고르기</b> — 김기획 조사안대로 둘 다 둡니다(건너뛰면 회의록만, 닫으면 나중에 다시 고르기). 기획 단계 질문 3번과 같은 답으로 맞춥니다.</li>
+</ol>
+</div>
+
+<h2><span class="no">5</span>개발 전달 메모 (확정 후 정리드에게)</h2>
+<div class="box xs" style="font-size:13px">
+<ul>
+<li>지금 데이터에 "몇 바퀴째"와 "다음 차례"는 따로 없습니다. 발언 수 ÷ 참석자 수로 계산할 수 있어 보입니다(추정, 개발 확인 필요).</li>
+<li>따라가기: 맨 아래에서 80px 안쪽에 있으면 따라가고, 그보다 위면 멈추고 "새 발언 N개 ↓"를 띄웁니다.</li>
+<li>말하는 사람 테두리·점 깜빡임은 "움직임 줄이기" 설정이면 멈춥니다.</li>
+<li>결정 요청(대표에게 묻는 칸)은 지금 모양(노란 왼쪽 줄)을 그대로 대화 흐름 안에 넣고, 대기 중이면 맨 위 상태를 "결정 대기"로 바꿉니다.</li>
+<li>결과 고르기 창: PC는 가운데 창 560폭, 휴대폰은 아래에서 올라오는 판. 기존 대화상자 모서리·빛 그대로.</li>
+</ul>
+</div>
+</div>
+
+<script>
+const L = {
+ko:{live:'회의 중',tabLive:'진행 중',tabPast:'지난 회의',tabNew:'새 회의',round:'{n}/{t}바퀴',roundDiv:'{n}바퀴째',speaking:'말하는 중',next:'다음',newN:'새 발언 {n}개 ↓',host:'진행 {name}',wrap:'여기까지 정리하고 끝내기',discard:'정리 없이 끝내기',back:'회의실',topic:'회의실 개편 방향',rooms:'방',roomAll:'전체 방',roomDesign:'디자인 팀',roomMeet:'회의실',
+ m1:'지금은 진행 중 회의가 기록 맨 위에 붙어서 어디까지 왔는지 알기 어려워요.',m2:'끝나면 결재로 올릴지, 결과물로 낼지 대표님이 고르게 하면 좋겠습니다.',m3:'회의 중엔 전용 화면으로 바꾸고, 새 발언은 아래로 쌓이게 할게요.',
+ watch:'회의 보기',formLocked:'회의가 끝나면 새 회의를 열 수 있어요',pastA:'1분기 출시 일정',pastB:'휴대폰 화면 점검',ended:'종료',tabChat:'대화',tabStatus:'현황',order:'발언 순서',decWait:'결정 대기',
+ decQ:'결과물 형식은 기본으로 무엇을 고를까요?',decA:'정리 문서',decB:'HTML',
+ endTitle:'회의가 끝났어요. 결과를 어떻게 할까요?',minutes:'회의록',minFull:'회의록 전체 보기',todos:'할 일 {n}개',
+ s1:'진행 중 회의는 전용 화면으로 분리',s2:'끝나면 결재·결과물 중 선택',s3:'결과물은 대표 요청분만 남김',
+ apT:'결재 올리기',apD:'회의록·결정·할 일을 기획안 한 건으로 결재함에 올려요. 승인 전엔 아무 일도 시작하지 않아요.',
+ arT:'결과물 내기',arD:'진행자가 회의 내용으로 파일을 만들어 결과물에 올려요.',fHtml:'화면·대시보드 (HTML)',fMd:'정리 문서',
+ skip:'건너뛰기 — 회의록만 남기기',goAp:'결재함에 올리기',goAr:'만들기 시작',closeNote:'닫아도 회의록은 남고, 지난 회의에서 다시 고를 수 있어요.',
+ rAp:'결재 올림',rArMaking:'결과물 만드는 중',rArView:'결과물 보기',rOnly:'회의록만',rPick:'결과 고르기'},
+en:{live:'Live',tabLive:'Live',tabPast:'Past meetings',tabNew:'New meeting',round:'Round {n} of {t}',roundDiv:'Round {n}',speaking:'Speaking',next:'Next',newN:'{n} new turns ↓',host:'Host: {name}',wrap:'Wrap up and end here',discard:'End without minutes',back:'Meeting room',topic:'Meeting room revamp',rooms:'Rooms',roomAll:'All',roomDesign:'Design team',roomMeet:'Meeting room',
+ m1:"Right now the live meeting sits on top of the history, so it's hard to tell how far along it is.",m2:'When it ends, let the CEO choose: send for approval or make a deliverable.',m3:'During a meeting we switch to its own screen, with new turns stacking at the bottom.',
+ watch:'Open meeting',formLocked:'You can start a new meeting when this one ends',pastA:'Q1 launch schedule',pastB:'Phone screen check',ended:'Ended',tabChat:'Chat',tabStatus:'Status',order:'Speaking order',decWait:'Awaiting decision',
+ decQ:'Which deliverable format should be the default?',decA:'Write-up',decB:'HTML',
+ endTitle:'The meeting is over. What should we do with it?',minutes:'Minutes',minFull:'View full minutes',todos:'{n} to-dos',
+ s1:'Live meeting gets its own screen',s2:'Choose approval or deliverable at the end',s3:'Keep only requested deliverables',
+ apT:'Send for approval',apD:'Files the minutes, decisions and to-dos as one plan in Approvals. Nothing starts until you approve.',
+ arT:'Make a deliverable',arD:'The host turns the meeting into a file and adds it to Deliverables.',fHtml:'Page or dashboard (HTML)',fMd:'Write-up document',
+ skip:'Skip — keep minutes only',goAp:'Send to Approvals',goAr:'Start making it',closeNote:'Closing keeps the minutes. You can choose later from past meetings.',
+ rAp:'Sent for approval',rArMaking:'Making deliverable',rArView:'View deliverable',rOnly:'Minutes only',rPick:'Choose outcome'},
+ja:{live:'会議中',tabLive:'進行中',tabPast:'過去の会議',tabNew:'新しい会議',round:'{n}/{t}周目',roundDiv:'{n}周目',speaking:'発言中',next:'次',newN:'新しい発言 {n}件 ↓',host:'進行 {name}',wrap:'ここまでまとめて終了',discard:'まとめずに終了',back:'会議室',topic:'会議室リニューアルの方向',rooms:'ルーム',roomAll:'全体',roomDesign:'デザインチーム',roomMeet:'会議室',
+ m1:'今は進行中の会議が履歴の一番上にあって、どこまで進んだか分かりにくいです。',m2:'終わったら決裁に回すか成果物にするか、代表が選べるといいです。',m3:'会議中は専用画面に切り替え、新しい発言は下に積み上げます。',
+ watch:'会議を見る',formLocked:'会議が終わると新しい会議を開けます',pastA:'第1四半期リリース日程',pastB:'スマホ画面の点検',ended:'終了',tabChat:'会話',tabStatus:'状況',order:'発言順',decWait:'決定待ち',
+ decQ:'成果物の形式は何を初期値にしますか？',decA:'まとめ文書',decB:'HTML',
+ endTitle:'会議が終わりました。結果をどうしますか？',minutes:'議事録',minFull:'議事録をすべて見る',todos:'やること {n}件',
+ s1:'進行中の会議は専用画面に分ける',s2:'終了時に決裁か成果物かを選ぶ',s3:'成果物は代表の依頼分だけ残す',
+ apT:'決裁に回す',apD:'議事録・決定事項・やることを企画案1件として決裁箱に入れます。承認するまで何も始まりません。',
+ arT:'成果物を作る',arD:'進行役が会議内容からファイルを作り、成果物に追加します。',fHtml:'画面・ダッシュボード（HTML）',fMd:'まとめ文書',
+ skip:'スキップ — 議事録だけ残す',goAp:'決裁箱に送る',goAr:'作成を開始',closeNote:'閉じても議事録は残り、過去の会議から後で選べます。',
+ rAp:'決裁に提出済み',rArMaking:'成果物を作成中',rArView:'成果物を見る',rOnly:'議事録のみ',rPick:'結果を選ぶ'},
+zh:{live:'会议中',tabLive:'进行中',tabPast:'历史会议',tabNew:'新会议',round:'第{n}/{t}轮',roundDiv:'第{n}轮',speaking:'发言中',next:'下一位',newN:'{n}条新发言 ↓',host:'主持 {name}',wrap:'整理到此并结束',discard:'不整理直接结束',back:'会议室',topic:'会议室改版方向',rooms:'房间',roomAll:'全部',roomDesign:'设计组',roomMeet:'会议室',
+ m1:'现在进行中的会议挂在记录最上面，很难看出进行到哪了。',m2:'结束后最好让老板选择：提交审批还是生成成果物。',m3:'开会时切换到专用页面，新发言往下堆叠。',
+ watch:'查看会议',formLocked:'本次会议结束后才能开新会议',pastA:'第一季度发布计划',pastB:'手机页面检查',ended:'已结束',tabChat:'对话',tabStatus:'进度',order:'发言顺序',decWait:'待决定',
+ decQ:'成果物默认用哪种格式？',decA:'整理文档',decB:'HTML',
+ endTitle:'会议结束了，结果怎么处理？',minutes:'会议记录',minFull:'查看完整记录',todos:'{n}项待办',
+ s1:'进行中的会议单独成页',s2:'结束时选择审批或成果物',s3:'只保留老板要求的成果物',
+ apT:'提交审批',apD:'将会议记录、决定和待办作为一份方案提交到审批箱。批准前不会开始任何工作。',
+ arT:'生成成果物',arD:'主持人根据会议内容制作文件并放入成果物。',fHtml:'页面·仪表盘（HTML）',fMd:'整理文档',
+ skip:'跳过 — 仅保留会议记录',goAp:'提交到审批箱',goAr:'开始制作',closeNote:'关闭后会议记录仍会保留，可在历史会议中再选择。',
+ rAp:'已提交审批',rArMaking:'成果物制作中',rArView:'查看成果物',rOnly:'仅会议记录',rPick:'选择结果'}};
+const P=[
+ {c:'#6C5CE7',n:{ko:'정리드',en:'Jung',ja:'チョン',zh:'郑组长'}},
+ {c:'#E07A5F',n:{ko:'김기획',en:'Kim',ja:'キム',zh:'金企划'}},
+ {c:'#D6589F',n:{ko:'이디자',en:'Lee',ja:'イ',zh:'李设计'}},
+ {c:'#2A9D8F',n:{ko:'박개발',en:'Park',ja:'パク',zh:'朴开发'}}];
+let lang='ko', mode='mix';
+const h=(k,v={})=>{let s=L[lang][k]??k;for(const x in v)s=s.replace('{'+x+'}',v[x]);return s}
+const nm=i=>P[i].n[lang];
+const av=(i,sz,cls='')=>`<span class="av s${sz} ${cls}" style="background:${P[i].c}">${nm(i)[0]}${cls.includes('doneR')?'<span class="ck">✓</span>':''}</span>`;
+const ann=(n,x,y)=>`<span class="ann" style="left:${x}px;top:${y}px">${n}</span>`;
+const md=dev=>mode==='mix'?(dev==='pc'?'light':'dark'):mode;
+const bars=(sz)=>`<div class="bars"><i><b style="width:100%"></b></i><i><b style="width:75%"></b></i><i></i></div>`;
+const rooms=()=>`<aside class="rooms"><div class="h">${h('rooms')}</div><div class="it"># ${h('roomAll')}</div><div class="it"># ${h('roomDesign')}</div><div class="it on">▣ ${h('roomMeet')} <span class="live" style="margin-left:auto;padding:0 6px"><i></i></span></div></aside>`;
+const msgs=(small)=>`
+ <div class="rdiv">${h('roundDiv',{n:2})}</div>
+ <div class="msg">${av(0,28)}<div class="bd"><div class="nm"><b>${nm(0)}</b><span class="xxs">14:06</span></div><div class="tx">${h('m1')}</div></div></div>
+ <div class="msg">${av(1,28)}<div class="bd"><div class="nm"><b>${nm(1)}</b><span class="xxs">14:07</span></div><div class="tx">${h('m2')}</div></div></div>
+ <div class="msg">${av(2,28)}<div class="bd"><div class="nm"><b>${nm(2)}</b><span class="xxs">14:07</span></div><div class="tx">${h('m3')}</div></div></div>
+ <div class="msg typing">${av(3,28,'speak')}<div class="bd"><div class="nm"><b>${nm(3)}</b><span class="speakTag">${h('speaking')}</span></div><div class="tx"><i></i><i></i><i></i></div></div></div>`;
+const people=(sz,names=true)=>[0,1,2,3].map(i=>{
+  const cls=i<3?'doneR':'speak';const sub=i===3?`<span class="speakTag"><span class="wave"><i></i><i></i><i></i></span>${h('speaking')}</span>`:i===0?`<span class="xxs muted">${h('next')}</span>`:'';
+  return `<div style="display:flex;flex-direction:column;align-items:center;gap:3px;min-width:${sz===36?64:52}px">${av(i,sz,cls)}${names?`<span class="xxs ${i===3?'b':'muted'} ellip" style="max-width:70px">${nm(i)}</span>`:''}${sub}</div>`}).join('');
+const segTabs=(past=12)=>`<div class="seg"><span class="on"><i class="dot"></i>${h('tabLive')}</span><span>${h('tabPast')} ${past}</span><span>+ ${h('tabNew')}</span></div>`;
+const endBtns=()=>`<span class="btn o">■ ${h('wrap')}</span><span class="btn g">${h('discard')}</span>`;
+
+function A_pc(){return `<div class="dev pc ${md('pc')}">${rooms()}<div class="main">
+ <div style="padding:12px 16px 0">${segTabs()}</div>
+ <div style="padding:12px 16px 10px;border-bottom:1px solid var(--border)">
+  <div style="display:flex;gap:8px;align-items:center"><span class="live"><i></i>${h('live')}</span><b style="font-size:16px" class="ellip">${h('topic')}</b><span class="xs muted" style="white-space:nowrap">· ${h('host',{name:nm(0)})}</span></div>
+  <div style="display:flex;gap:16px;align-items:flex-start;margin-top:10px">
+   <div style="display:flex;gap:6px">${people(36)}</div>
+   <div style="flex:1;display:flex;flex-direction:column;gap:6px;padding-top:8px;min-width:0"><span class="xs b">${h('round',{n:2,t:3})}</span>${bars()}</div>
+  </div></div>
+ <div class="chat" style="position:relative">${msgs()}</div>
+ <span class="newpill" style="bottom:62px">${h('newN',{n:2})}</span>
+ <div class="endbar">${endBtns()}</div>
+ ${ann(1,2,6)}${ann(2,2,92)}${ann(3,300,88)}${ann(4,2,254)}${ann(5,412,506)}${ann(6,2,538)}
+</div></div>`}
+function A_ph(){return `<div class="dev ph ${md('ph')}">
+ <div class="topbar"><span class="muted">‹</span><b>${h('back')}</b></div>
+ <div style="padding:10px 12px 0">${segTabs()}</div>
+ <div style="padding:10px 12px 8px;border-bottom:1px solid var(--border)">
+  <div style="display:flex;gap:6px;align-items:center"><span class="live"><i></i>${h('live')}</span><b class="ellip">${h('topic')}</b></div>
+  <div style="display:flex;gap:8px;align-items:center;margin-top:8px"><span class="xs b" style="white-space:nowrap">${h('round',{n:2,t:3})}</span>${bars()}</div>
+  <div style="display:flex;gap:4px;margin-top:8px;overflow:hidden">${people(28)}</div>
+ </div>
+ <div class="chat" style="padding:10px 12px">${msgs()}</div>
+ <span class="newpill" style="bottom:110px">${h('newN',{n:2})}</span>
+ <div class="endbar" style="padding:10px 12px 14px">${endBtns()}</div>
+</div>`}
+function B_pc(){return `<div class="dev pc ${md('pc')}">${rooms()}<div class="main">
+ <div style="padding:14px 16px 0"><b style="font-size:18px">${h('roomMeet')}</b></div>
+ <div class="band"><div><span class="live"><i></i>${h('live')}</span><b class="ellip">${h('topic')}</b>
+  <span style="display:flex;gap:5px;align-items:center;margin-left:auto">${av(3,20,'speak')}<span class="speakTag">${nm(3)} ${h('speaking')}</span></span><span class="xs muted">· ${h('round',{n:2,t:3})}</span><span class="btn p" style="height:26px">${h('watch')} →</span></div></div>
+ <div class="card" style="margin:12px 16px 0;padding:10px 14px;font-size:12.5px" ><span class="muted">+ ${h('tabNew')} — ${h('formLocked')}</span></div>
+ <div style="margin:12px 16px;display:flex;flex-direction:column;gap:8px">
+  <div class="card hist"><span class="st">${h('ended')}</span><b class="ellip" style="flex:1">${h('pastA')}</b><span class="xs muted">11/24</span></div>
+  <div class="card hist"><span class="st">${h('ended')}</span><b class="ellip" style="flex:1">${h('pastB')}</b><span class="xs muted">11/21</span></div></div>
+ <div class="scrim"></div>
+ <div class="drawer"><div style="padding:12px 14px;border-bottom:1px solid var(--border)"><div style="display:flex;gap:6px;align-items:center"><span class="live"><i></i>${h('live')}</span><b class="ellip" style="flex:1">${h('topic')}</b><span class="muted">✕</span></div>
+  <div style="display:flex;gap:8px;align-items:center;margin-top:8px"><span class="xs b" style="white-space:nowrap">${h('round',{n:2,t:3})}</span>${bars()}</div>
+  <div style="display:flex;gap:4px;margin-top:8px">${people(28)}</div></div>
+  <div class="chat">${msgs()}</div><div class="endbar">${endBtns()}</div></div>
+</div></div>`}
+function B_ph(){return `<div class="dev ph ${md('ph')}">
+ <div class="topbar"><b>${h('roomMeet')}</b></div>
+ <div class="band" style="margin:10px 12px 0"><div style="flex-wrap:wrap;gap:6px 8px"><span class="live"><i></i>${h('live')}</span><b class="ellip" style="flex:1;min-width:0">${h('topic')}</b>
+  <span style="display:flex;gap:5px;align-items:center;width:100%">${av(3,20,'speak')}<span class="speakTag">${nm(3)} ${h('speaking')}</span><span class="xs muted">· ${h('round',{n:2,t:3})}</span><span class="btn p" style="height:26px;margin-left:auto">${h('watch')} →</span></span></div></div>
+ <div class="card" style="margin:10px 12px 0;padding:9px 12px;font-size:12px"><span class="muted">+ ${h('tabNew')} — ${h('formLocked')}</span></div>
+ <div style="margin:10px 12px;display:flex;flex-direction:column;gap:8px">
+  <div class="card hist"><span class="st">${h('ended')}</span><b class="ellip" style="flex:1">${h('pastA')}</b><span class="xs muted">11/24</span></div>
+  <div class="card hist"><span class="st">${h('ended')}</span><b class="ellip" style="flex:1">${h('pastB')}</b><span class="xs muted">11/21</span></div></div>
+</div>`}
+const orderList=()=>`<div class="order">${[0,1,2].map(i=>`<div class="o">${av(i,24,'doneR')}<span class="muted ellip">${nm(i)}</span></div>`).join('')}
+ <div class="o now">${av(3,24,'speak')}<b class="ellip">${nm(3)}</b><span class="speakTag" style="margin-left:auto"><span class="wave"><i></i><i></i><i></i></span>${h('speaking')}</span></div>
+ <div class="rdiv">${h('roundDiv',{n:3})}</div>
+ <div class="o">${av(0,24)}<span class="ellip">${nm(0)}</span><span class="xxs muted" style="margin-left:auto">${h('next')}</span></div></div>`;
+const decision=()=>`<div class="decision"><div class="xxs" style="color:var(--wait);font-weight:700">${h('decWait')} · ${nm(1)}</div><div class="q">${h('decQ')}</div><div class="opts"><span class="btn o" style="height:26px">${h('decA')}</span><span class="btn o" style="height:26px">${h('decB')}</span></div></div>`;
+function C_pc(){return `<div class="dev pc ${md('pc')}">${rooms()}<div class="main" style="flex-direction:row">
+ <div style="flex:1;min-width:0;display:flex;flex-direction:column"><div style="padding:12px 16px 10px;border-bottom:1px solid var(--border)">${segTabs()}<div style="display:flex;gap:8px;align-items:center;margin-top:10px"><span class="live"><i></i>${h('live')}</span><b style="font-size:15px" class="ellip">${h('topic')}</b></div></div>
+  <div class="chat">${msgs()}</div></div>
+ <div class="side"><div><div class="lbl">${h('round',{n:2,t:3})}</div><div style="margin-top:6px;display:flex">${bars()}</div></div>
+  <div><div class="lbl" style="margin-bottom:6px">${h('order')}</div>${orderList()}</div>
+  ${decision()}
+  <div style="margin-top:auto;display:flex;flex-direction:column;gap:6px">${endBtns()}</div></div>
+</div></div>`}
+function C_ph(){return `<div class="dev ph ${md('ph')}">
+ <div class="topbar"><span class="muted">‹</span><b class="ellip">${h('topic')}</b><span class="live" style="margin-left:auto"><i></i>${h('live')}</span></div>
+ <div style="padding:10px 12px 0"><div class="seg" style="width:100%"><span class="on" style="flex:1;justify-content:center">${h('tabChat')}</span><span style="flex:1;justify-content:center">${h('tabStatus')} · ${h('round',{n:2,t:3})}</span></div></div>
+ <div style="margin:8px 12px 0;display:flex;gap:6px;align-items:center" class="xs">${av(3,20,'speak')}<span class="speakTag">${nm(3)} ${h('speaking')}</span><span class="muted">· ${h('next')} ${nm(0)}</span></div>
+ <div class="chat" style="padding:10px 12px">${msgs()}</div>
+ <div class="endbar" style="padding:10px 12px 14px">${endBtns()}</div>
+</div>`}
+const choiceBody=(sel,pc)=>`
+ <div class="mins"><div style="display:flex;align-items:center;gap:6px"><b class="xs">${h('minutes')}</b><span class="st p">${h('todos',{n:3})}</span><span class="xs" style="margin-left:auto;color:var(--primary)">${h('minFull')} ›</span></div>
+  <ul><li>${h('s1')}</li><li>${h('s2')}</li><li>${h('s3')}</li></ul></div>
+ <div class="opt ${sel==='ap'?'on':''}"><span class="rd"></span><span class="ic">✓</span><div><div class="t">${h('apT')}</div><div class="d">${h('apD')}</div></div></div>
+ <div class="opt ${sel==='ar'?'on':''}"><span class="rd"></span><span class="ic">▤</span><div style="min-width:0"><div class="t">${h('arT')}</div><div class="d">${h('arD')}</div>
+  ${sel==='ar'?`<div class="fmt"><span>${h('fHtml')}</span><span class="on">✓ ${h('fMd')}</span></div>`:''}</div></div>`;
+function E_pc(){return `<div class="dev pc ${md('pc')}">${rooms()}<div class="main">
+ <div style="padding:12px 16px 0">${segTabs()}</div><div class="chat" style="opacity:.7">${msgs()}</div>
+ <div class="scrim" style="z-index:5"></div>
+ <div class="modal pcm"><div class="mhd" style="display:flex;gap:8px"><div style="flex:1"><div class="xs muted">${h('topic')} · ${h('host',{name:nm(0)})}</div><b style="font-size:16px">${h('endTitle')}</b></div><span class="muted">✕</span></div>
+  <div class="mbd">${choiceBody('ar',true)}</div>
+  <div class="mft"><span class="btn g">${h('skip')}</span><span class="btn p" style="margin-left:auto">${h('goAr')}</span><div class="xxs muted" style="width:100%">${h('closeNote')}</div></div></div>
+ ${ann(1,52,150)}${ann(2,52,262)}${ann(3,52,392)}${ann(4,52,458)}${ann(5,646,458)}${ann(6,640,86)}
+</div></div>`}
+function E_ph(){return `<div class="dev ph ${md('ph')}">
+ <div class="topbar"><span class="muted">‹</span><b>${h('back')}</b></div><div class="chat" style="opacity:.7">${msgs()}</div>
+ <div class="scrim" style="z-index:5"></div>
+ <div class="modal sheet"><div class="handle"></div><div class="mhd" style="padding-top:10px"><div class="xs muted ellip">${h('topic')}</div><b style="font-size:15px">${h('endTitle')}</b></div>
+  <div class="mbd">${choiceBody('ap',false)}</div>
+  <div class="mft" style="flex-direction:column;align-items:stretch;gap:6px"><span class="btn p" style="justify-content:center;height:40px">${h('goAp')}</span><span class="btn g" style="justify-content:center">${h('skip')}</span><div class="xxs muted" style="text-align:center">${h('closeNote')}</div></div></div>
+</div>`}
+const histRows=(ph)=>`<div style="display:flex;flex-direction:column;gap:8px;padding:${ph?'10px 12px':'14px 16px'}">
+ <div class="card hist"><span class="st">${h('ended')}</span><b class="ellip" style="flex:1">${h('topic')}</b><span class="btn p" style="height:26px">${h('rPick')}</span></div>
+ <div class="card hist"><span class="st">${h('ended')}</span><b class="ellip" style="flex:1">${h('pastA')}</b><span class="st w">✓ ${h('rAp')} ›</span></div>
+ <div class="card hist"><span class="st">${h('ended')}</span><b class="ellip" style="flex:1">${h('pastB')}</b><span class="st p">${h('rArMaking')}…</span></div>
+ <div class="card hist"><span class="st">${h('ended')}</span><b class="ellip" style="flex:1">${h('s1')}</b><span class="st ok">${h('rArView')} ›</span></div>
+ <div class="card hist"><span class="st">${h('ended')}</span><b class="ellip" style="flex:1">${h('s3')}</b><span class="st">${h('rOnly')}</span></div></div>`;
+function H_pc(){return `<div class="dev ${md('pc')}" style="width:880px;display:flex">${rooms()}<div class="main"><div style="padding:12px 16px 0"><div class="seg"><span>+ ${h('tabNew')}</span><span class="on">${h('tabPast')} 13</span></div></div>${histRows(false)}</div></div>`}
+function H_ph(){return `<div class="dev ${md('ph')}" style="width:360px;border-radius:18px">${histRows(true)}</div>`}
+
+function lenTable(){
+ const keys=['live','tabLive','tabPast','tabNew','round','speaking','next','newN','wrap','discard','endTitle','apT','apD','arT','arD','fHtml','fMd','skip','goAp','goAr','closeNote','rAp','rArMaking','rArView','rOnly','rPick','formLocked','watch'];
+ const ls=['ko','en','ja','zh'];
+ // 대략 폭: 한·중·일 글자 1, 영문 0.55
+ const w=s=>[...s].reduce((a,c)=>a+(/[\u0000-ɏ]/.test(c)?0.55:1),0);
+ let r='<table><tr><th>문구</th>'+ls.map(l=>`<th>${l}</th><th>폭</th>`).join('')+'</tr>';
+ for(const k of keys){const vs=ls.map(l=>L[l][k].replace(/\{n\}/g,'2').replace(/\{t\}/g,'3'));const ws=vs.map(w);const mx=Math.max(...ws);
+  r+=`<tr><td><code>${k}</code></td>`+vs.map((v,i)=>`<td class="${ws[i]===mx?'max':''}">${v}</td><td class="n">${ws[i].toFixed(0)}</td>`).join('')+'</tr>'}
+ return r+'</table><p class="cap">폭 = 한·중·일 글자 1칸, 영문 0.55칸으로 어림한 값. 가장 긴 곳: 영어 설명 문구(결재 설명·닫기 안내)와 영어 끝내기 단추. 휴대폰 끝내기 단추 두 개는 영어에서 두 줄로 내려가도록 줄바꿈을 허용합니다.</p>'}
+
+function render(){
+ document.documentElement.lang=lang;
+ for(const [id,f] of Object.entries({'A-pc':A_pc,'A-ph':A_ph,'B-pc':B_pc,'B-ph':B_ph,'C-pc':C_pc,'C-ph':C_ph,'E-pc':E_pc,'E-ph':E_ph,'H-pc':H_pc,'H-ph':H_ph}))document.getElementById(id).innerHTML=f();
+ document.getElementById('len').innerHTML=lenTable();
+ document.getElementById('langs').innerHTML=['ko','en','ja','zh'].map(l=>`<button class="${l===lang?'on':''}" onclick="lang='${l}';render()">${({ko:'한국어',en:'English',ja:'日本語',zh:'中文'})[l]}</button>`).join('');
+ document.getElementById('modes').innerHTML=[['mix','PC 라이트 · 폰 다크'],['light','모두 라이트'],['dark','모두 다크']].map(([m,t])=>`<button class="${m===mode?'on':''}" onclick="mode='${m}';render()">${t}</button>`).join('');
+}
+const q=new URLSearchParams(location.hash.slice(1));if(q.get('lang'))lang=q.get('lang');if(q.get('mode'))mode=q.get('mode');
+render();
+</script>
+</body></html>

@@ -1,5 +1,5 @@
 // 결과물 갤러리·데모데이 — 끝난 업무 카드를 모으고, 매주 정한 시간에 짧게 요약한다 (AI 호출 없음)
-import type { ArtifactRef, Attachment, Meeting } from './types'
+import type { ArtifactOrigin, ArtifactRef, Attachment, Meeting } from './types'
 import { t } from './i18n/index.ts'
 import { replaceArtifactRef } from './artifact.ts'
 
@@ -25,7 +25,12 @@ export interface GalleryEntry {
   /** 작업 폴더에서 바뀐 파일 (git으로 볼 수 있을 때만) */
   files: GalleryFile[]
   finishedAt: number
+  /** 남긴 까닭 (앱이 붙인다). 없으면 이번 정리 전의 예전 항목 — 갤러리에서 '예전 결과물' 칸에 접어 둔다 */
+  origin?: ArtifactOrigin
 }
+
+/** 예전 결과물: 표시가 없는 항목 (지우지 않고 접힌 칸에서 다시 볼 수 있다) */
+export const isLegacyEntry = (e: Pick<GalleryEntry, 'origin'>) => e.origin === undefined
 
 export interface GalleryFile {
   path: string

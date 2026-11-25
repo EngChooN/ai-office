@@ -465,8 +465,8 @@ function planStatusLabel(task: Task, children: Task[]) {
   return t('board.plan.progress', { done: steps.filter((c) => c.status === 'review' || c.status === 'done').length, total: steps.length })
 }
 
-/** 카드 상세: 설명·첨부·보고를 마크다운으로 크게 본다 */
-function TaskDetail({ task, subtasks: children, isOpen, onOpenChange }: { task: Task; subtasks: Task[]; isOpen: boolean; onOpenChange: (isOpen: boolean) => void }) {
+/** 카드 상세: 설명·첨부·보고를 마크다운으로 크게 본다 (회의실 '결과 보기'도 이 창으로) */
+export function TaskDetail({ task, subtasks: children, isOpen, onOpenChange }: { task: Task; subtasks: Task[]; isOpen: boolean; onOpenChange: (isOpen: boolean) => void }) {
   const staff = useOffice((s) => s.staff)
   const assignee = staff.find((x) => x.id === task.assigneeId)
   return (

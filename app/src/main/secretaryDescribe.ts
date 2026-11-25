@@ -157,6 +157,11 @@ export function describeLines(method: OfficeMethod, args: unknown[], nameOf: Nam
     case 'endMeeting':
       lines.push(L('secretary.d.meeting', { target: id(a0) }), L(a1 === 'discard' ? 'secretary.d.endDiscard' : 'secretary.d.endSummarize'))
       break
+    case 'resolveMeetingOutcome': {
+      const kind = (a1 as { kind?: string } | undefined)?.kind
+      lines.push(L('secretary.d.meeting', { target: id(a0) }), L(kind === 'plan' ? 'secretary.d.outcomePlan' : kind === 'artifact' ? 'secretary.d.outcomeArtifact' : 'secretary.d.outcomeSkip'))
+      break
+    }
     case 'answerMeetingDecision':
       lines.push(L('secretary.d.meeting', { target: id(a0) }), L('secretary.d.meetingAnswer', { text: quote(a2) }))
       break

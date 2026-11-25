@@ -641,7 +641,20 @@ export interface Meeting {
   demo?: DemoStage
   /** 튜토리얼 연습 회사 데이터 — '연습 회사 정리'와 첫 실제 고용 때 지운다 */
   isPractice?: boolean
+  /** minutes = 발언을 마치고 진행자가 회의록을 쓰는 중 (끝내기 신호는 main 메모리에만 있어 화면이 알 수 있게 저장한다) */
+  phase?: 'minutes'
+  /** 회의록을 낸 뒤 대표가 고를 결과 (없으면 예전 회의 = 이미 처리됨) — shared/meetingOutcome */
+  outcome?: MeetingOutcome
 }
+
+/** 회의 결과 고르기: pending = 고르기 전 · working = 처리 중(연타·두 창 중복 방지) · plan = 결재에 올림 · artifact = 결과물 내기 맡김 · skipped = 회의록만 */
+export interface MeetingOutcome {
+  state: 'pending' | 'working' | 'plan' | 'artifact' | 'skipped'
+  at: number
+  /** plan이면 기획안 카드 id · artifact면 결과물 업무 카드 id (회의 카드 '결과 보기') */
+  ref?: string
+}
+export type MeetingOutcomeChoice = { kind: 'plan' } | { kind: 'artifact'; format: ArtifactKind } | { kind: 'skip' }
 
 export interface Schedule {
   id: string
@@ -680,7 +693,10 @@ export interface ArtifactRef {
   size: number
 }
 /** 목록 한 줄 — 최신 버전 기준 */
+/** 결과물을 올린 까닭 (앱이 붙인다): owner = 대표가 시킨 일 · meeting = 회의 결과물 내기. 없으면 이번 정리 전의 예전 결과물 */
+export type ArtifactOrigin = 'owner' | 'meeting'
 export interface ArtifactInfo extends ArtifactRef {
+  origin?: ArtifactOrigin
   staffId: string
   staffName: string
   /** 올릴 때 하던 업무 카드 (없으면 null) */
@@ -1307,6 +1323,8 @@ export interface OfficeApi {
   answerMeetingDecision(meetingId: string, decisionId: string, answer: string): Promise<void>
   /** 진행 중인 회의를 끝낸다. wrapup이면 지금까지 나온 이야기로 회의록·결과 카드를 만들고, discard면 아무것도 남기지 않는다 */
   endMeeting(meetingId: string, mode: 'wrapup' | 'discard'): Promise<void>
+  /** 회의 결과 고르기 (종료 선택 창) — 고르기 전(pending) 회의만. 처리했으면 true */
+  resolveMeetingOutcome(meetingId: string, choice: MeetingOutcomeChoice): Promise<boolean>
   /** 진행 중인 카드를 멈춰 할 일로 되돌린다 (기획 카드면 기획 전체를 멈춤) */
   stopTask(taskId: string): Promise<void>
   /** 멈춘 기획을 다시 진행한다 */

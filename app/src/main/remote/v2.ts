@@ -158,6 +158,7 @@ export const V2_METHODS: Record<OfficeMethod, MethodSpec> = {
   startMeeting: R('o'),
   answerMeetingDecision: R('s s s'),
   endMeeting: R('s s'),
+  resolveMeetingOutcome: R('s o'),
   stopTask: R('s'),
   resumePlan: R('s'),
   reviewPlan: R('s b s'),
@@ -272,6 +273,8 @@ export const V2_FIELDS: Partial<Record<OfficeMethod, Record<number, string[]>>> 
   setAutoApprove: { 0: fieldsExcept('setAutoApprove', 0, ['isFull'], { mode: true, hours: true, start: true, end: true }) },
   saveKnowledge: { 0: fieldsOf('saveKnowledge', 0, { id: true, kind: true, title: true, body: true, tags: true, docPath: true }) },
   startMeeting: { 0: fieldsOf('startMeeting', 0, { topic: true, participantIds: true, rounds: true }) },
+  // 고르기는 종류마다 필드가 달라(artifact만 format) 공통 키로 고를 수 없어 직접 적는다
+  resolveMeetingOutcome: { 1: ['kind', 'format'] },
   // 진행 입력은 종류마다 필드가 달라(view는 화면 이름만 더) 공통 키로 고를 수 없어 직접 적는다
   tutorialAct: { 0: ['type', 'view'] },
   saveSchedule: { 0: fieldsOf('saveSchedule', 0, { id: true, staffId: true, label: true, time: true, weekdays: true, instruction: true, enabled: true }) },
