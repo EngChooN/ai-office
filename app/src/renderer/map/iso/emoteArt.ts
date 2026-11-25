@@ -78,3 +78,36 @@ export function artEmote(kind: EmoteKind) {
 
 /** 화면 캔버스 */
 export const drawEmote = (kind: EmoteKind) => toCanvas(artEmote(kind))
+
+// ── 도우미 말풍선 "×N" — 감정 말풍선과 같은 틀(높이 12 몸통·꼬리·외곽선), 폭만 숫자 길이에 맞춘다. 사라지지 않고 떠 있는다 ──
+const HELPER_INK = '#4b3bc7' // 시안 글자색 — 사무실 캔버스는 앱 테마를 따르지 않는다
+const HELPER_BACK = '#b3aaf2' // 뒷사람 (시안 불투명도 .45를 흰 바탕 위 색으로)
+/** 겹친 두 사람 9×8 (l = 뒷사람, d = 앞사람) */
+const HELPER_ICON = ['.ll......', 'llll.dd..', '.ll.dddd.', '....dddd.', 'll...dd..', 'll.dddddd', 'l.ddddddd', '..ddddddd']
+/** 3×5 숫자 */
+const DIGIT = ['111101101101111', '010110010010111', '111001111100111', '111001111001111', '101101111001001', '111100111001111', '111100111101111', '111001001001001', '111101111101111', '111101111001111']
+const TIMES = ['101', '010', '101']
+
+/** "×N" 말풍선 (픽셀). 아래 가운데가 기준점 */
+export function artHelperBubble(n: number) {
+  const digits = String(Math.min(99, Math.max(0, Math.floor(n))))
+  const W = 17 + digits.length * 4
+  const H = 15
+  const cv = new Cv(W, H)
+  const put = (x: number, y: number, c: string) => cv.write(y * W + x, [...hex(c), 255] as [number, number, number, number])
+  for (let y = 0; y < 12; y++)
+    for (let x = 0; x < W; x++) {
+      const isCorner = (x === 0 || x === W - 1) && (y === 0 || y === 11)
+      if (isCorner) continue
+      const isEdge = x === 0 || x === W - 1 || y === 0 || y === 11 || ((x === 1 || x === W - 2) && (y === 1 || y === 10))
+      put(x, y, isEdge ? OUT : y >= 9 ? '#e6e3f2' : '#ffffff')
+    }
+  const mid = Math.floor(W / 2)
+  for (const [x, y, c] of [[mid - 1, 11, '#ffffff'], [mid, 11, '#ffffff'], [mid + 1, 11, '#ffffff'], [mid - 1, 12, OUT], [mid, 12, '#e6e3f2'], [mid + 1, 12, OUT], [mid, 13, OUT]] as [number, number, string][]) put(x, y, c)
+  HELPER_ICON.forEach((row, y) => [...row].forEach((k, x) => k !== '.' && put(x + 2, y + 2, k === 'l' ? HELPER_BACK : HELPER_INK)))
+  TIMES.forEach((row, y) => [...row].forEach((k, x) => k === '1' && put(x + 12, y + 5, HELPER_INK)))
+  ;[...digits].forEach((d, i) => [...DIGIT[Number(d)]].forEach((k, j) => k === '1' && put(16 + i * 4 + (j % 3), 4 + Math.floor(j / 3), HELPER_INK)))
+  return cv
+}
+
+export const drawHelperBubble = (n: number) => toCanvas(artHelperBubble(n))

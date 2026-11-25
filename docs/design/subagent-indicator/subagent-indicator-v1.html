@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>도우미(서브에이전트) 사용 중 표시 — 시안 v1</title>
+<style>
+/* 색은 앱 index.css 라벤더 테마 라이트·다크 값을 그대로 옮김 */
+.light{--bg:#F6F5FB;--fg:#221F33;--card:#FFFFFF;--muted:#ECEAF6;--mfg:#66627F;--border:#DEDAF0;--primary:#6C5CE7;--ring:#8776FF;--accent:#E9E6FA;--work:#1C7C46;--wait:#9A5B00;--spark:#FF7AC6;--shadow:rgba(108,92,231,.18)}
+.dark{--bg:#14131C;--fg:#EDEBF8;--card:#201F2D;--muted:#292739;--mfg:#A7A3C4;--border:#34314A;--primary:#9B8CFF;--ring:#9B8CFF;--accent:#302D47;--work:#4ADE80;--wait:#F2C94C;--spark:#FF7AC6;--shadow:rgba(0,0,0,.5)}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,"Apple SD Gothic Neo","Pretendard","Noto Sans KR","Hiragino Sans","PingFang SC",sans-serif;background:#ECEAF6;color:#221F33;font-size:14px;line-height:1.5}
+.page{max-width:1240px;margin:0 auto;padding:32px 28px 60px}
+h1{font-size:24px;margin:0 0 6px}
+h2{font-size:18px;margin:44px 0 6px;display:flex;gap:10px;align-items:center}
+h2 .no{background:#6C5CE7;color:#fff;border-radius:999px;font-size:12px;padding:2px 10px}
+.lead{color:#66627F;margin:0 0 14px}
+.rec{background:#fff;border:2px solid #6C5CE7;border-radius:16px;padding:14px 18px;margin:18px 0}
+.rec b{color:#6C5CE7}
+.row{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start}
+.frame{background:var(--bg);color:var(--fg);border-radius:18px;padding:16px;border:1px solid var(--border)}
+.cap{font-size:12px;color:#66627F;margin:8px 2px 0;max-width:278px}
+.cap b{color:#221F33}
+.tag{display:inline-block;font-size:11px;font-weight:700;border-radius:6px;padding:1px 7px;margin-right:4px;background:#221F33;color:#fff}
+.tag.rec2{background:#6C5CE7}
+/* ── 공통 아이콘: 겹친 두 사람(도우미) ── */
+.ic{width:14px;height:14px;flex:none}
+/* ── 칩 ── */
+.chip{display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 8px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap;
+  background:color-mix(in oklab,var(--primary) 14%,transparent);color:var(--primary);border:1px solid color-mix(in oklab,var(--primary) 35%,transparent)}
+.chip.grad{background:linear-gradient(135deg,color-mix(in oklab,var(--primary) 18%,transparent),color-mix(in oklab,var(--spark) 18%,transparent))}
+.dots{display:inline-flex;gap:3px}.dots i{width:6px;height:6px;border-radius:50%;background:var(--primary);animation:pulse 1.2s infinite}
+.dots i:nth-child(2){animation-delay:.2s}.dots i:nth-child(3){animation-delay:.4s}
+.dots i.off{background:color-mix(in oklab,var(--primary) 30%,transparent);animation:none}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.faces{display:inline-flex}.faces i{width:16px;height:16px;border-radius:50%;border:2px solid var(--card);margin-left:-5px;background:var(--primary);display:inline-block}
+.faces i:first-child{margin-left:0}.faces i:nth-child(2){background:var(--ring);opacity:.8}.faces i:nth-child(3){background:var(--spark)}
+/* ── 사무실 ── */
+.office{width:280px;height:220px;position:relative;overflow:hidden;border-radius:14px;image-rendering:pixelated;border:1px solid #DEDAF0}
+.office>img.bg{position:absolute;left:-150px;top:0;width:620px;height:420px}
+.ob{position:absolute;font:700 12px/1 -apple-system,sans-serif}
+/* A 머리 위 말풍선 배지 */
+.bubble{left:118px;top:4px;background:#fff;color:#4B3BC7;border:2px solid #221F33;border-radius:6px;padding:3px 5px;display:flex;align-items:center;gap:3px;box-shadow:2px 2px 0 rgba(0,0,0,.25);animation:bob 1.6s ease-in-out infinite}
+.bubble:after{content:"";position:absolute;left:8px;bottom:-6px;width:6px;height:6px;background:#fff;border-right:2px solid #221F33;border-bottom:2px solid #221F33;transform:rotate(45deg)}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
+/* B 분신 */
+.ghost{position:absolute;width:56px;height:74px;overflow:hidden;opacity:.55;filter:grayscale(1) sepia(1) hue-rotate(205deg) saturate(2.2) brightness(1.1);-webkit-mask-image:radial-gradient(ellipse 50% 50% at 50% 45%,#000 55%,transparent 80%);mask-image:radial-gradient(ellipse 50% 50% at 50% 45%,#000 55%,transparent 80%)}
+.ghost img{position:absolute;left:-232px;top:-30px;width:620px;height:420px}
+.ghost.g1{left:44px;top:22px;animation:gh 2s ease-in-out infinite}
+.ghost.g2{left:128px;top:22px;animation:gh 2s ease-in-out .6s infinite}
+@keyframes gh{0%,100%{opacity:.4}50%{opacity:.65}}
+.gnum{left:112px;top:6px;color:#fff;background:#6C5CE7;border-radius:999px;padding:3px 7px;font-size:11px}
+/* C 작은 도우미 공 */
+.orb{position:absolute;width:12px;height:12px;background:#9B8CFF;border:2px solid #221F33;border-radius:3px;box-shadow:inset -2px -2px 0 #6C5CE7}
+.orb:before,.orb:after{content:"";position:absolute;top:3px;width:2px;height:2px;background:#221F33}
+.orb:before{left:2px}.orb:after{left:6px}
+.orb.o1{left:80px;top:24px;animation:fl 1.4s ease-in-out infinite}
+.orb.o2{left:138px;top:14px;animation:fl 1.4s ease-in-out .3s infinite}
+.orb.o3{left:150px;top:46px;animation:fl 1.4s ease-in-out .6s infinite}
+@keyframes fl{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+/* D 바닥 고리 */
+.ringwrap{left:70px;top:82px;width:90px;height:40px}
+.ringwrap svg{width:90px;height:40px}
+.rnum{left:160px;top:96px;background:#fff;color:#4B3BC7;border:2px solid #221F33;border-radius:6px;padding:2px 5px;font-size:11px}
+/* ── 카드·목록 ── */
+.scard{width:268px;background:var(--card);border:1px solid var(--border);border-radius:18px;padding:14px;box-shadow:0 10px 28px -14px var(--shadow)}
+.shead{display:flex;gap:10px;align-items:center}
+.av{width:40px;height:40px;border-radius:12px;background:url(office-thumb.png) -238px -32px/620px 420px;image-rendering:pixelated;flex:none;border:1px solid var(--border)}
+.nm{font-weight:700}.role{font-size:12px;color:var(--mfg)}
+.st{display:flex;align-items:center;gap:6px;font-size:12px;margin-top:10px;flex-wrap:wrap}
+.st .d{width:8px;height:8px;border-radius:50%;background:var(--work)}
+.task{font-size:12px;color:var(--mfg);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.list{width:360px;background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+.li{display:flex;align-items:center;gap:8px;padding:10px 12px;border-top:1px solid var(--border);font-size:13px}
+.li:first-child{border-top:0}
+.li .t{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.li .who{font-size:12px;color:var(--mfg)}
+/* ── 머리말 ── */
+.hdr{width:560px;background:var(--card);border:1px solid var(--border);border-radius:18px;overflow:hidden}
+.hdr.phone{width:360px}
+.htop{display:flex;align-items:center;gap:10px;padding:12px 14px}
+.htop .grow{flex:1;min-width:0}
+.hline{font-size:12px;color:var(--mfg);display:flex;align-items:center;gap:6px;white-space:nowrap;overflow:hidden}
+.btn{font-size:12px;border:1px solid var(--border);background:var(--muted);color:var(--fg);border-radius:999px;padding:0 12px;height:32px;display:inline-flex;align-items:center;gap:4px;cursor:pointer;min-width:44px;justify-content:center}
+.sub{border-top:1px solid var(--border);background:color-mix(in oklab,var(--primary) 5%,var(--card));padding:8px 14px}
+.sub .r{display:flex;gap:8px;align-items:center;font-size:12px;padding:5px 0}
+.sub .r .n{width:22px;height:22px;border-radius:7px;background:color-mix(in oklab,var(--primary) 18%,transparent);color:var(--primary);display:grid;place-items:center;font-weight:700;font-size:11px;flex:none}
+.sub .r .w{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sub .r .tm{color:var(--mfg);font-variant-numeric:tabular-nums}
+.ok{color:var(--work);font-weight:700}
+.spin{width:10px;height:10px;border:2px solid color-mix(in oklab,var(--primary) 30%,transparent);border-top-color:var(--primary);border-radius:50%;animation:sp 1s linear infinite;flex:none}
+@keyframes sp{to{transform:rotate(360deg)}}
+/* ── 설정 ── */
+.set{width:360px;background:var(--card);border:1px solid var(--border);border-radius:18px;padding:14px 16px}
+.set .top{display:flex;gap:12px;align-items:flex-start}
+.set .ttl{font-weight:700;font-size:14px}
+.set .desc{font-size:12px;color:var(--mfg);margin-top:2px}
+.set .warn{display:flex;gap:6px;align-items:flex-start;font-size:12px;color:var(--wait);margin-top:8px;font-weight:600}
+.sw{width:44px;height:26px;border-radius:999px;background:var(--primary);position:relative;flex:none;margin-top:2px}
+.sw:after{content:"";position:absolute;right:3px;top:3px;width:20px;height:20px;border-radius:50%;background:#fff}
+.sw.off{background:var(--border)}.sw.off:after{right:auto;left:3px}
+.langtag{font-size:10px;font-weight:700;color:var(--mfg);border:1px solid var(--border);border-radius:4px;padding:0 4px;margin-left:6px;vertical-align:2px}
+/* ── 표 ── */
+table{border-collapse:collapse;background:#fff;border-radius:14px;overflow:hidden;width:100%;font-size:13px}
+th,td{border-bottom:1px solid #DEDAF0;padding:10px 12px;text-align:left;vertical-align:middle}
+th{background:#F6F5FB;font-size:12px;color:#66627F}
+.good{color:#1C7C46;font-weight:700}.mid{color:#9A5B00;font-weight:700}.bad{color:#C42B2B;font-weight:700}
+.note{font-size:12px;color:#66627F;margin-top:8px}
+</style></head>
+<body>
+<svg width="0" height="0" style="position:absolute"><defs>
+<symbol id="helper" viewBox="0 0 16 16"><circle cx="5.5" cy="5" r="2.6" fill="currentColor" opacity=".45"/><path d="M1 13.5c0-2.6 2-4.3 4.5-4.3" stroke="currentColor" stroke-width="1.6" fill="none" opacity=".45" stroke-linecap="round"/><circle cx="10.5" cy="5.6" r="2.8" fill="currentColor"/><path d="M5.6 14.5c0-2.8 2.2-4.7 4.9-4.7s4.9 1.9 4.9 4.7" fill="currentColor"/></symbol>
+</defs></svg>
+<div class="page">
+<h1>"도우미(서브에이전트) 사용 중" 표시 — 시안 v1</h1>
+<p class="lead">2026-11-25 · 이디자 · 색은 앱 라벤더 테마(라이트·다크) 값 그대로 · 사무실 그림은 기존 사무실 캡처 위에 덧그린 모형입니다(실제 앱 화면 아님) · 제품 코드 수정 없음</p>
+
+<div class="rec">
+<b>추천 조합 (대표 미확인)</b> — ① 사무실: <b>A안 머리 위 말풍선 "×3"</b> · ② 카드·목록: <b>칩 "도우미 3"</b> (아주 좁으면 "×3") · ③ 머리말: 상태 줄에 "도우미 3명과 함께" + <b>눌러서 각 도우미가 뭘 하는지 펼치기</b> · ④ 설정: 스위치 + 노란 경고 한 줄.<br>
+이유: 사무실에 이미 있는 감정 말풍선(💡❤️🎵)과 같은 모양이라 새로 배울 게 없고, 작은 화면·작은 캐릭터에서도 숫자가 읽힙니다. "3/5"는 전체 개수를 미리 알 수 없어(추정) 틀린 숫자가 나올 위험이 있습니다.<br>
+<span style="font-size:12px;color:#66627F">이름 제안: 화면에는 "서브에이전트" 대신 <b>"도우미"</b>(Helpers · ヘルパー · 助手). "분신"은 외부 직원 포크에 이미 쓰고 있어 피했습니다.</span>
+</div>
+
+<!-- ① 사무실 -->
+<h2><span class="no">①</span>사무실 그림 — 4안</h2>
+<p class="lead">위쪽 책상에서 일하는 직원이 도우미 3명을 쓰는 중이라고 가정. 실제 크기의 약 1.6배로 확대해 보여 줍니다(아래 '실제 크기'도 확인).</p>
+<div class="row">
+ <div><div class="office"><img class="bg" src="office-thumb.png"><div class="ob bubble"><svg class="ic"><use href="#helper"/></svg>×3</div></div>
+  <p class="cap"><span class="tag rec2">A 추천</span><b>머리 위 말풍선 배지</b> — 기존 감정 말풍선과 같은 틀. 숫자가 바로 읽힘. 말풍선이 겹치면 감정 말풍선보다 이 배지를 우선(제안).</p></div>
+ <div><div class="office"><img class="bg" src="office-thumb.png"><div class="ghost g1"><img src="office-thumb.png"></div><div class="ghost g2"><img src="office-thumb.png"></div><div class="ob gnum">+2</div></div>
+  <p class="cap"><span class="tag">B</span><b>분신이 옆에 앉음</b> — 가장 직관적이고 재미있음. 다만 책상·옆 직원과 겹치고, 4명 이상이면 그릴 자리가 없음. 기존 '분신(포크)'과 헷갈림.</p></div>
+ <div><div class="office"><img class="bg" src="office-thumb.png"><i class="orb o1"></i><i class="orb o2"></i><i class="orb o3"></i></div>
+  <p class="cap"><span class="tag">C</span><b>작은 도우미 로봇이 머리 주위를 맴돔</b> — 귀엽고 개수를 그대로 보여 줌. 5개 넘으면 복잡, 실제 크기에서 6px라 잘 안 보임.</p></div>
+ <div><div class="office"><img class="bg" src="office-thumb.png"><div class="ob ringwrap"><svg viewBox="0 0 90 40"><ellipse cx="45" cy="20" rx="40" ry="15" fill="none" stroke="#6C5CE7" stroke-width="4" stroke-dasharray="60 6 60 6 60 200" opacity=".85"/></svg></div><div class="ob rnum">3</div></div>
+  <p class="cap"><span class="tag">D</span><b>바닥 빛 고리</b> — 고리 조각 수 = 도우미 수. 차분해서 업무 모드에 어울림. 의자·책상에 가려 잘 안 보이고 뜻을 바로 알기 어려움.</p></div>
+</div>
+<p class="note">실제 크기(휴대폰 사무실 미리보기 크기) 비교: A·B는 읽힘, C·D는 확대해야 보임.</p>
+<div class="row" style="gap:10px">
+ <div class="office" style="zoom:.62"><img class="bg" src="office-thumb.png"><div class="ob bubble"><svg class="ic"><use href="#helper"/></svg>×3</div></div>
+ <div class="office" style="zoom:.62"><img class="bg" src="office-thumb.png"><div class="ghost g1"><img src="office-thumb.png"></div><div class="ghost g2"><img src="office-thumb.png"></div><div class="ob gnum">+2</div></div>
+ <div class="office" style="zoom:.62"><img class="bg" src="office-thumb.png"><i class="orb o1"></i><i class="orb o2"></i><i class="orb o3"></i></div>
+ <div class="office" style="zoom:.62"><img class="bg" src="office-thumb.png"><div class="ob ringwrap"><svg viewBox="0 0 90 40"><ellipse cx="45" cy="20" rx="40" ry="15" fill="none" stroke="#6C5CE7" stroke-width="4" stroke-dasharray="60 6 60 6 60 200" opacity=".85"/></svg></div><div class="ob rnum">3</div></div>
+</div>
+
+<!-- 숫자 표기 -->
+<h2><span class="no">숫자</span>몇 명이 동시에 도는지 — 표기 5가지 비교</h2>
+<div class="frame light" style="padding:0;border:0;background:none">
+<table>
+<tr><th>표기</th><th>모양</th><th>한눈에 뜻</th><th>좁은 폭(320~360)</th><th>4개 언어</th><th>메모</th></tr>
+<tr><td><b>×3</b> <span class="tag rec2">추천</span></td><td><span class="chip"><svg class="ic"><use href="#helper"/></svg>×3</span></td><td class="good">좋음</td><td class="good">가장 짧음</td><td class="good">번역 불필요</td><td>사무실 말풍선·아주 좁은 칸용</td></tr>
+<tr><td><b>도우미 3</b> <span class="tag rec2">추천</span></td><td><span class="chip"><svg class="ic"><use href="#helper"/></svg>도우미 3</span></td><td class="good">가장 좋음</td><td class="mid">보통</td><td class="mid">Helpers 3 / ヘルパー 3 / 助手 3</td><td>카드·목록·머리말용</td></tr>
+<tr><td><b>3/5 진행</b></td><td><span class="chip">3/5 진행</span></td><td class="mid">헷갈림(완료 3? 동시 3?)</td><td class="mid">보통</td><td class="mid">번역 필요</td><td class="bad">전체 수를 미리 모를 수 있음(추정)</td></tr>
+<tr><td><b>점 ●●●</b></td><td><span class="chip"><span class="dots"><i></i><i></i><i></i></span></span></td><td class="mid">세어야 앎</td><td class="good">짧음</td><td class="good">번역 불필요</td><td>5개 넘으면 못 셈 · 색약 사용자에게 불리</td></tr>
+<tr><td><b>얼굴 겹침</b></td><td class="light"><span class="chip"><span class="faces"><i></i><i></i><i></i></span></span></td><td class="mid">"여럿"은 알지만 숫자는 모름</td><td class="good">짧음</td><td class="good">번역 불필요</td><td>도우미 그림을 따로 그려야 함</td></tr>
+</table>
+<p class="note">권장 규칙: 넓은 곳은 "도우미 3", 좁은 곳·사무실은 "×3". 1명일 때도 "×1"이 아니라 표시 생략(혼자 일하는 것과 차이가 없어 보임) — 제안. 끝난 도우미 수는 머리말 펼침에서만 보여 줌.</p>
+</div>
+
+<!-- ② 카드·목록 -->
+<h2><span class="no">②</span>직원 카드 · 업무 목록 줄</h2>
+<p class="lead">왼쪽 라이트, 오른쪽 다크. 목록 줄은 휴대폰 폭 360 기준.</p>
+<div class="row">
+ <div class="frame light"><div class="row" style="flex-direction:column;gap:12px">
+  <div class="scard"><div class="shead"><div class="av"></div><div><div class="nm">정리드</div><div class="role">개발 리드 · Opus</div></div></div>
+   <div class="st"><span class="d"></span>작업 중 <span class="chip"><svg class="ic"><use href="#helper"/></svg>도우미 3</span></div>
+   <div class="task">휴대폰 화면 높이 측정하고 결과 정리</div></div>
+  <div class="list">
+   <div class="li"><span class="t">휴대폰 화면 높이 측정</span><span class="who">정리드</span><span class="chip"><svg class="ic"><use href="#helper"/></svg>×3</span></div>
+   <div class="li"><span class="t">4개 언어 업데이트 소식 정리</span><span class="who">김버전</span><span class="chip" style="background:none;border-color:transparent;color:var(--mfg)">—</span></div>
+   <div class="li"><span class="t">결재 카드 문구 다듬기 (아주 긴 제목이 잘리는지 확인)</span><span class="who">이디자</span><span class="chip"><svg class="ic"><use href="#helper"/></svg>×5</span></div>
+  </div></div></div>
+ <div class="frame dark"><div class="row" style="flex-direction:column;gap:12px">
+  <div class="scard"><div class="shead"><div class="av"></div><div><div class="nm">정리드</div><div class="role">개발 리드 · Opus</div></div></div>
+   <div class="st"><span class="d"></span>작업 중 <span class="chip"><svg class="ic"><use href="#helper"/></svg>도우미 3</span></div>
+   <div class="task">휴대폰 화면 높이 측정하고 결과 정리</div></div>
+  <div class="list">
+   <div class="li"><span class="t">휴대폰 화면 높이 측정</span><span class="who">정리드</span><span class="chip"><svg class="ic"><use href="#helper"/></svg>×3</span></div>
+   <div class="li"><span class="t">4개 언어 업데이트 소식 정리</span><span class="who">김버전</span><span class="chip" style="background:none;border-color:transparent;color:var(--mfg)">—</span></div>
+   <div class="li"><span class="t">결재 카드 문구 다듬기 (아주 긴 제목이 잘리는지 확인)</span><span class="who">이디자</span><span class="chip"><svg class="ic"><use href="#helper"/></svg>×5</span></div>
+  </div></div></div>
+</div>
+<p class="note">카드: 상태 글자("작업 중") 바로 옆. 목록 줄: 맨 오른쪽 고정, 제목이 대신 줄어듦(…). 도우미를 안 쓰는 줄에는 칩을 넣지 않음("—"는 자리 확인용 표시).</p>
+
+<!-- ③ 머리말 -->
+<h2><span class="no">③</span>채팅 · 업무 상세 머리말</h2>
+<p class="lead">상태 줄에 한 줄 추가 → 누르면 각 도우미가 무엇을 하는지 펼쳐 봄. 위: PC 폭(라이트·다크), 아래: 휴대폰 360(4개 언어).</p>
+<div class="row">
+ <div class="frame light"><div class="hdr">
+  <div class="htop"><div class="av"></div><div class="grow"><div class="nm">정리드</div>
+   <div class="hline"><span class="d" style="width:8px;height:8px;border-radius:50%;background:var(--work)"></span>작업 중 · <span style="color:var(--primary);font-weight:600;display:inline-flex;gap:4px;align-items:center"><svg class="ic"><use href="#helper"/></svg>도우미 3명과 함께</span></div></div>
+   <span class="btn">접기 ▴</span></div>
+  <div class="sub">
+   <div class="r"><span class="n">1</span><span class="spin"></span><span class="w">화면 높이 재는 스크립트 찾는 중</span><span class="tm">0:42</span></div>
+   <div class="r"><span class="n">2</span><span class="spin"></span><span class="w">휴대폰 4개 폭에서 캡처하는 중</span><span class="tm">1:05</span></div>
+   <div class="r"><span class="n">3</span><span class="spin"></span><span class="w">지난 결과와 비교하는 중</span><span class="tm">0:18</span></div>
+   <div class="r" style="opacity:.7"><span class="n">✓</span><span class="w">관련 파일 목록 정리</span><span class="ok">끝남</span></div>
+  </div></div></div>
+ <div class="frame dark"><div class="hdr">
+  <div class="htop"><div class="av"></div><div class="grow"><div class="nm">정리드</div>
+   <div class="hline"><span class="d" style="width:8px;height:8px;border-radius:50%;background:var(--work)"></span>작업 중 · <span style="color:var(--primary);font-weight:600;display:inline-flex;gap:4px;align-items:center"><svg class="ic"><use href="#helper"/></svg>도우미 3명과 함께</span></div></div>
+   <span class="btn">펼치기 ▾</span></div></div>
+  <p class="cap" style="color:#A7A3C4">접힌 상태(기본). 한 줄만 늘어남.</p></div>
+</div>
+<div class="row" style="margin-top:14px">
+ <div class="frame light"><div class="row" style="flex-direction:column;gap:8px">
+  <div class="hdr phone"><div class="htop"><div class="av" style="width:32px;height:32px"></div><div class="grow"><div class="nm">정리드<span class="langtag">KO</span></div><div class="hline">● 작업 중 · <span style="color:var(--primary);font-weight:600">도우미 3명과 함께</span></div></div><span class="btn">▾</span></div></div>
+  <div class="hdr phone"><div class="htop"><div class="av" style="width:32px;height:32px"></div><div class="grow"><div class="nm">Jung Lead<span class="langtag">EN</span></div><div class="hline">● Working · <span style="color:var(--primary);font-weight:600">with 3 helpers</span></div></div><span class="btn">▾</span></div></div>
+  <div class="hdr phone"><div class="htop"><div class="av" style="width:32px;height:32px"></div><div class="grow"><div class="nm">ジョン・リード<span class="langtag">JA</span></div><div class="hline">● 作業中 · <span style="color:var(--primary);font-weight:600">ヘルパー3人と一緒</span></div></div><span class="btn">▾</span></div></div>
+  <div class="hdr phone"><div class="htop"><div class="av" style="width:32px;height:32px"></div><div class="grow"><div class="nm">郑领导<span class="langtag">ZH</span></div><div class="hline">● 工作中 · <span style="color:var(--primary);font-weight:600">与 3 位助手一起</span></div></div><span class="btn">▾</span></div></div>
+ </div></div>
+ <div style="max-width:420px"><p class="cap" style="max-width:420px"><b>휴대폰 머리말 규칙(제안)</b><br>· 360 폭에서 4개 언어 모두 한 줄 안에 들어감(이 시안에서 확인).<br>· 320 폭에서 넘치면 "도우미 3명과 함께" → "×3" 칩으로 줄임.<br>· 펼침 버튼은 손가락 크기 44px 이상.<br>· 펼친 목록의 각 줄 설명은 도우미가 받은 일 제목을 그대로 씀(번역하지 않음 — 사용자 데이터).<br>· 도우미가 모두 끝나면 줄이 사라지고, 머리말 펼침에 "도우미 3명이 끝냄"만 잠깐 남김.</p></div>
+</div>
+
+<!-- ④ 설정 -->
+<h2><span class="no">④</span>직원 설정 — 켜기 스위치 문구</h2>
+<p class="lead">직원 설정(장비/설정 탭)의 한 줄. 휴대폰 폭 360, 4개 언어. 경고는 '대기' 색(노랑/갈색)으로, 빨강은 쓰지 않음(오류처럼 보임).</p>
+<div class="row">
+ <div class="frame light"><div class="row" style="flex-direction:column;gap:10px">
+  <div class="set"><div class="top"><div style="flex:1"><div class="ttl">도우미 나눠 쓰기<span class="langtag">KO</span></div><div class="desc">켜면 일할 때 항상 도우미 여러 명에게 나눠 맡겨요. 큰 일이 더 빨리 끝날 수 있어요.</div></div><span class="sw"></span></div>
+   <div class="warn">⚠ 비용(토큰)이 평소의 2~4배까지 늘 수 있어요.</div></div>
+  <div class="set"><div class="top"><div style="flex:1"><div class="ttl">Split work with helpers<span class="langtag">EN</span></div><div class="desc">When on, this employee always splits work across several helpers. Big tasks may finish faster.</div></div><span class="sw"></span></div>
+   <div class="warn">⚠ Costs (tokens) can rise to 2–4× the usual.</div></div>
+ </div></div>
+ <div class="frame dark"><div class="row" style="flex-direction:column;gap:10px">
+  <div class="set"><div class="top"><div style="flex:1"><div class="ttl">ヘルパーに分担する<span class="langtag">JA</span></div><div class="desc">オンにすると、作業を常に複数のヘルパーに分けて任せます。大きな仕事が早く終わることがあります。</div></div><span class="sw"></span></div>
+   <div class="warn">⚠ 費用（トークン）が通常の2〜4倍になることがあります。</div></div>
+  <div class="set"><div class="top"><div style="flex:1"><div class="ttl">分给助手一起做<span class="langtag">ZH</span></div><div class="desc">开启后，工作时总会分给多位助手一起完成。大任务可能更快完成。</div></div><span class="sw off"></span></div>
+   <div class="warn">⚠ 费用（token）可能增至平时的 2–4 倍。</div></div>
+ </div></div>
+</div>
+<p class="note">스위치는 손가락 크기를 위해 줄 전체를 눌러도 켜지게 하는 것을 제안. 켜는 순간 확인 창은 두지 않음(경고 줄이 늘 보이므로) — 대표가 원하면 첫 1회 확인 창 추가 가능. 휴대폰에서 켤 수 있게 할지는 정해지지 않음.</p>
+
+<h2><span class="no">인계</span>개발에 넘길 때 필요한 것 (확정 후)</h2>
+<p class="lead" style="max-width:900px">· 도우미 수 = "지금 동시에 일하는 도우미 수"(끝난 것 제외) — 이 숫자를 앱이 실제로 알 수 있는지는 <b>확인 못 함</b>(정리드 확인 필요).<br>
+· 칩 색: 테마 <code>--primary</code> 14% 배경 + 35% 테두리, 글자 <code>--primary</code>. 사무실 말풍선: 흰 바탕 + 2px 진한 테두리(기존 감정 말풍선 규격 따름).<br>
+· 문구 키 예: 도우미 N / ×N / 도우미 N명과 함께 / 설정 제목·설명·경고 — 4개 언어 위 시안 문구 그대로.<br>
+· 표시하지 않는 경우: 도우미 0~1명, 설정이 꺼진 직원, 업무 모드에서는 사무실 그림 표시만 숨김(카드·머리말은 유지) — 제안.</p>
+</div>
+</body></html>

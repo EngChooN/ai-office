@@ -9,6 +9,8 @@ import { t } from '@shared/i18n'
 import type { TKey } from '@shared/i18n'
 import { PcOnlyState } from '@/components/pc-only-state'
 import { IS_REMOTE_SCREEN } from '@/shell'
+import { SwitchTrack } from '@/components/ui/switch'
+import { HelperIcon } from '@/components/helper-badge'
 
 const LEVEL_LABEL: Record<PolicyLevel, TKey> = { block: 'policy.level.block', ask: 'policy.level.ask', auto: 'policy.level.auto' }
 
@@ -103,6 +105,26 @@ function LevelCheck({ id, on, eq, setEq, desc, disabled }: { id: PolicyRowId; on
   )
 }
 
+/** 도우미 나눠 쓰기 — 카드 전체가 스위치(손가락 크기). 비용 경고는 켜짐·꺼짐과 상관없이 늘 보인다 (휴대폰도 PC와 똑같이 켜고 끈다) */
+function HelpersCard({ isOn, onChange }: { isOn: boolean; onChange: (isOn: boolean) => void }) {
+  return (
+    <button type="button" role="switch" aria-checked={isOn} onClick={() => onChange(!isOn)} className="bg-card focus-ring flex w-full items-start gap-2.5 rounded-xl border p-3 text-left">
+      <span className="bg-muted text-muted-foreground grid size-8 shrink-0 place-items-center rounded-lg [&_svg]:size-4">
+        <HelperIcon />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-semibold">{t('helpers.setting.title')}</span>
+        <span className="text-muted-foreground mt-0.5 block text-xs">{t('helpers.setting.desc')}</span>
+        <span className="text-status-waiting mt-2 flex items-start gap-1.5 text-xs font-semibold">
+          <TriangleAlertIcon className="mt-px size-3.5 shrink-0" />
+          {t('helpers.setting.warn')}
+        </span>
+      </span>
+      <SwitchTrack checked={isOn} className="mt-1" />
+    </button>
+  )
+}
+
 /** 장비 지급: 일마다 카드 한 장(파일·인터넷·프로그램·브라우저·연결된 서비스·화면 찍기·매뉴얼). 바꾸면 다음 지시부터 새 장비로 일한다 */
 export function EquipmentTab({ staff }: { staff: Staff }) {
   const [catalog, setCatalog] = useState<EquipmentCatalog | null>(null)
@@ -117,7 +139,7 @@ export function EquipmentTab({ staff }: { staff: Staff }) {
 
   const toggleIn = (list: string[], v: string) => (list.includes(v) ? list.filter((x) => x !== v) : [...list, v])
   // 바꾼 것 수: 권한 행 + 그 밖의 장비 칸 (연결된 서비스 결재 없이 쓰기는 allowedTools라 '연결된 서비스' 한 칸으로 센다)
-  const others = (['mcpServers', 'skills', 'lightModelOff', 'shellNetwork', 'browserAuto'] as const).filter((k) => JSON.stringify(eq[k] ?? null) !== JSON.stringify(staff.equipment[k] ?? null)).length
+  const others = (['mcpServers', 'skills', 'lightModelOff', 'shellNetwork', 'browserAuto', 'helpers'] as const).filter((k) => JSON.stringify(eq[k] ?? null) !== JSON.stringify(staff.equipment[k] ?? null)).length
   const changed = isDirty ? Math.max(1, changedRows(staff.equipment, eq) + others) : 0
   // 월 예산은 없앴다 (실제 한도는 엔진 플랜 사용률이 정한다) — 예전에 정한 값도 지운다
   const handleSave = () => void window.office.setEquipment(staff.id, { ...eq, monthlyBudgetUsd: 0 })
@@ -226,6 +248,9 @@ export function EquipmentTab({ staff }: { staff: Staff }) {
             </label>
           </EquipCard>
         )}
+
+        {/* 도우미(서브에이전트)는 Claude 직원만 — GPT 엔진에는 없다 */}
+        {staff.provider === 'claude' && <HelpersCard isOn={eq.helpers === true} onChange={(isOn) => setEq((x) => ({ ...x, helpers: isOn }))} />}
 
         {details.length > 0 && (
           <details className="text-muted-foreground text-[11px]">

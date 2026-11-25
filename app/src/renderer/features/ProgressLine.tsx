@@ -4,9 +4,13 @@ import { t } from '@shared/i18n'
 import { cn } from '@/lib/utils'
 import { Avatar } from './StaffCard'
 import { STATUS_META } from './status'
+import { HelperPanel, HelpersToggle, useHelpersOpen } from '@/components/helper-badge'
 
 /** 지시를 받은 직원이 답하기 전까지의 상태 한 줄 (#9) — 대화방(chat)과 직원 패널 업무 탭(panel)이 같이 쓴다 */
-export function ProgressLine({ staff, progress, variant }: { staff: Pick<Staff, 'name' | 'avatar' | 'activity' | 'teamId'>; progress: StaffProgress; variant: 'chat' | 'panel' }) {
+export function ProgressLine({ staff, progress, variant }: { staff: Pick<Staff, 'name' | 'avatar' | 'activity' | 'teamId' | 'provider' | 'equipment' | 'helpers'>; progress: StaffProgress; variant: 'chat' | 'panel' }) {
+  // 도우미 N명과 함께 ▾ — 펼친 목록은 상태 줄 아래에 (폭이 320 미만이면 ×N, 줄을 감싼 @container 기준)
+  const helpers = useHelpersOpen()
+  const helperToggle = <HelpersToggle staff={staff} isOpen={helpers.isOpen} onToggle={helpers.toggle} />
   const meta = STATUS_META[PROGRESS_STATUS[progress.state]]
   const detail = progress.state === 'working' && staff.activity ? staff.activity : ''
   const more = progress.queued > 0 ? t('progress.more', { count: progress.queued }) : ''
@@ -14,6 +18,7 @@ export function ProgressLine({ staff, progress, variant }: { staff: Pick<Staff, 
 
   if (variant === 'chat') {
     return (
+      <div className="@container min-w-0">
       <div role="status" className="text-muted-foreground flex min-w-0 items-center gap-2 text-xs">
         <Avatar avatar={staff.avatar} name={staff.name} teamId={staff.teamId} className="size-5" />
         <span className="text-foreground max-w-[40%] min-w-0 truncate font-medium">{staff.name}</span>
@@ -21,20 +26,25 @@ export function ProgressLine({ staff, progress, variant }: { staff: Pick<Staff, 
         <span className={cn('min-w-0 truncate font-medium', meta.text)}>{t(PROGRESS_LABEL[progress.state])}</span>
         {detail && <span className="min-w-0 truncate">· {detail}</span>}
         {more && <span className="shrink-0">· {more}</span>}
+        {helperToggle}
+      </div>
+      <HelperPanel staff={staff} isOpen={helpers.isOpen} className="mt-1 rounded-lg border" />
       </div>
     )
   }
 
   return (
-    <section role="status" className="border-b px-4 py-3 text-xs">
-      <div className="flex items-center gap-2">
+    <section role="status" className="@container border-b px-4 py-3 text-xs">
+      <div className="flex min-w-0 items-center gap-2">
         {dot}
         <span className={cn('font-medium', meta.text)}>{t(PROGRESS_LABEL[progress.state])}</span>
         {progress.requestedBy && <span className="bg-muted text-muted-foreground truncate rounded px-1.5 py-0.5">{t('progress.helpFrom', { name: progress.requestedBy })}</span>}
+        {helperToggle}
         {more && <span className="text-muted-foreground ml-auto shrink-0">{more}</span>}
       </div>
       {progress.text && <p className="mt-1 truncate">{progress.text}</p>}
       {detail && <p className="text-muted-foreground mt-0.5 truncate">{detail}</p>}
+      <HelperPanel staff={staff} isOpen={helpers.isOpen} className="-mx-4 mt-2 -mb-3" />
     </section>
   )
 }

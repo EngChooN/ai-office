@@ -1,4 +1,5 @@
 import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
+import { HelpersBar } from '@/components/helper-badge'
 import { BookOpenIcon, BriefcaseIcon, CalendarClockIcon, CircleStopIcon, DownloadIcon, EllipsisIcon, FolderIcon, InfoIcon, PaperclipIcon, PlusIcon, SendIcon, SquareTerminalIcon, TrophyIcon, UserMinusIcon, XIcon, ZapIcon } from 'lucide-react'
 import { NativeSelect } from '@/components/ui/select'
 import { AttachButton, AttachmentView, DraftAttachments, useDraftAttachments } from '@/components/attachments'
@@ -640,6 +641,8 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
               <ProgressLine staff={staff} progress={staff.progress} variant="panel" />
             </div>
           )}
+          {/* 세로 폰은 진행 줄을 숨기니 도우미 줄만 따로 (좌우 분할은 왼쪽 진행 줄에 있다) */}
+          <HelpersBar staff={staff} className="slim:block hidden border-b px-3 py-1" />
           <section className="split:hidden slim:hidden flex items-center gap-4 border-b px-4 py-3 text-xs">
             <span className="text-muted-foreground">{t('staffPanel.usage.today')}</span>
             <span>{t('staffPanel.usage.tokens', { n: formatTokens(isHired ? (record?.tokensIn ?? 0) + (record?.tokensOut ?? 0) : (todayTokens ?? 0)) })}</span>

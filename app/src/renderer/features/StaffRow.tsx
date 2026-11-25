@@ -9,6 +9,7 @@ import { nowLine } from '@shared/staffCard'
 import { isAwaitingTeam } from '@shared/delegation'
 import { Avatar, Elapsed, LeadMark, PracticeBadge, StatusDot, UnreadBadge } from './StaffCard'
 import { roleLabel } from '@shared/roleLabel'
+import { HelperChip } from '@/components/helper-badge'
 
 interface Props {
   staff: Staff
@@ -60,6 +61,7 @@ export function StaffRow({ staff, isLead = false, isLab = false, isSelected, onS
       <div className="flex min-w-0 flex-1 items-center gap-1 text-xs" title={summary}>
         <span className={cn('truncate', tone !== 'working' && tone !== 'waiting' && 'text-muted-foreground')}>{summary}</span>
       </div>
+      <HelperChip staff={staff} isShort />
       {staff.approvals.length > 0 && <Badge className="bg-status-waiting shrink-0 text-background">{t('staffCard.approvals', { n: staff.approvals.length })}</Badge>}
       {staff.kind === 'external' && (
         <Badge variant="outline" className="shrink-0">

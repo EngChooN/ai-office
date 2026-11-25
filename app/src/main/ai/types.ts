@@ -1,6 +1,6 @@
 // 공급자 중립 계약 — 직원 세션(AgentRuntime)과 앱 내부 AI(AiBackend). 구현은 공급자별 파일(claude.ts …)에 둔다.
 import type { McpConfig } from '../../shared/customMcp.ts'
-import type { AiProvider, Attachment, ModelChoice } from '../../shared/types'
+import type { AiProvider, Attachment, HelperRun, ModelChoice } from '../../shared/types'
 import type { RawCommand } from '../../shared/slashCommands.ts'
 
 export type { AiProvider }
@@ -25,6 +25,8 @@ export type RuntimeEvent =
   | { type: 'rateLimit'; info: RateLimitInfo }
   | { type: 'commands'; commands: RawCommand[] }
   | { type: 'backgroundTasks'; tasks: string[] }
+  /** 도우미(서브에이전트) 목록이 바뀜 — 도는 중 + 이번 턴에 끝난 것 */
+  | { type: 'helpers'; helpers: HelperRun[] }
   /** 직전 모델 호출에 실은 문맥 크기 */
   | { type: 'context'; tokens: number }
   | { type: 'text'; text: string }
@@ -53,8 +55,8 @@ export interface RuntimeStartOpts {
   shellNetwork?: boolean
   /** 도구 사용 전 결재 */
   canUseTool(toolName: string, input: Record<string, unknown>, signal: AbortSignal): Promise<ToolDecision>
-  /** 도구 실행 직전: deny 사유를 돌려주면 막고, ask면 권한 모드와 상관없이 결재(canUseTool)로 되돌린다 */
-  onToolUse(toolName: string, input: unknown): { deny: string } | { ask: true } | null
+  /** 도구 실행 직전: deny 사유를 돌려주면 막고, ask면 권한 모드와 상관없이 결재(canUseTool)로 되돌린다. fromHelper = 도우미(서브에이전트) 안에서 부른 도구 */
+  onToolUse(toolName: string, input: unknown, fromHelper: boolean): { deny: string } | { ask: true } | null
 }
 
 /** 직원 1명 = 세션 1개 */

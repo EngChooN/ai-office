@@ -19,7 +19,8 @@ import { meetingLayoutOf, meetingSeatFor, type MeetingLayout } from '@shared/iso
 import { setAutoOff, useSeatStatus } from './iso/seatStatus'
 import { ITEM_ACTIONS } from '@shared/iso/actions'
 import { DESK_FLIP, deskCellOf, partitionJoins, HALL_SIT_Z, MEETING_CHAIR, artMeetingChair, isSplitChair, PODIUM_KEY, WALL_FADE_ALPHA, ZONE_FLOOR_KINDS, artHallRow, artMeetingRoom, artMeetingTable, artPodium, artPlanEdges, artZoneFloor, drawItem, drawPerson, isoLook, personSitDrop, drawPet, PET_HOMES, type PetKind, type PetPose, drawPersonShadow, drawPlanRoom, PERSON_DIRS, personDirOf, finishKey, finishLabel, finishOf, hallRowKey, meetingTableKey, planRoomTextureKey, withSurfaces, zoneFloorKey, type Finish, type MeetingTableKind, type ZoneFloor, seatHeight, toCanvas, type ArtBox, type ItemArt, type PersonDir, type PersonPose } from './iso/isoArt'
-import { drawEmote, emoteKindOf, type EmoteKind } from './iso/emoteArt'
+import { drawEmote, drawHelperBubble, emoteKindOf, type EmoteKind } from './iso/emoteArt'
+import { helperBadgeCount } from '@shared/helpers'
 import { playLevelUpFx } from './iso/levelUpFx'
 import { pinchStep } from './gestures'
 import { isNightTime } from '@shared/dayNight'
@@ -58,6 +59,8 @@ const CHAT_SHOW_MS = 2600
 const STAY_MIN_MS = 9000
 const STAY_MAX_MS = 22000
 const EMOTE_MS = 1600
+/** 도우미 말풍선 흔들림 주기 */
+const HELPER_BOB_MS = 1600
 const BUBBLE_TEXT_MAX = 28
 const NAME_MAX = 7
 /** 머리와 이름표 사이 (px) */
@@ -187,6 +190,12 @@ interface Actor {
   bubbleText: Phaser.GameObjects.Text
   bubbleBg: Phaser.GameObjects.Graphics
   emote: Phaser.GameObjects.Image
+  /** 도우미 말풍선 "×N" — 감정 말풍선이 뜨는 동안은 숨었다가 끝나면 돌아온다 */
+  helper: Phaser.GameObjects.Image
+  /** 그려 둔 도우미 수 (같으면 그림을 바꾸지 않는다) */
+  helperN: number
+  /** 감정 말풍선이 끝나는 시각 (scene time ms) */
+  emoteUntil: number
   /** 칸 좌표 (실수, 칸 중심 = gx + 0.5) */
   x: number
   y: number
@@ -321,6 +330,8 @@ export class IsoOfficeScene extends Phaser.Scene {
   private isUserCamera = false
   /** 장면 내보내기 중 (setExportMode) */
   private isRedacting = false
+  /** 업무 모드: 사무실 머리 위 도우미 말풍선을 숨긴다 (카드·머리말 표시는 그대로) */
+  private isWorkMode = false
   private isCameraLocked = false
   private hasFirstView = false
   private panFrom: { x: number; y: number } | null = null
@@ -424,6 +435,7 @@ export class IsoOfficeScene extends Phaser.Scene {
   private sync() {
     const state = useOffice.getState()
     const { teams, company, meetings, settings } = state
+    this.isWorkMode = settings.isWorkMode
     const allStaff = sceneStaffOf(state.staff)
     const isLevelUp = !this.isFirstSync && company.level > this.companyLevel
     this.companyLevel = company.level
@@ -978,7 +990,8 @@ export class IsoOfficeScene extends Phaser.Scene {
     const bubbleBg = this.add.graphics()
     const bubble = this.add.container(0, -60, [bubbleBg, bubbleText])
     const emote = this.add.image(0, -58, this.emoteTexture('happy')).setOrigin(0.5, 1).setAlpha(0)
-    const label = this.add.container(0, 0, [name, bubble, emote]).setDepth(DEPTH.label)
+    const helper = this.add.image(0, -58, this.helperTexture(2)).setOrigin(0.5, 1).setAlpha(0)
+    const label = this.add.container(0, 0, [name, bubble, helper, emote]).setDepth(DEPTH.label)
     container.setInteractive({ useHandCursor: true, hitArea: new Phaser.Geom.Rectangle(-16, -54, 32, 58), hitAreaCallback: Phaser.Geom.Rectangle.Contains })
     container.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
       // Phaser는 캔버스 밖(위에 덮인 외관 거리·버튼)을 누른 것도 같은 자리로 판정한다 — 캔버스를 직접 누른 것만 받는다
@@ -1005,6 +1018,9 @@ export class IsoOfficeScene extends Phaser.Scene {
       bubbleText,
       bubbleBg,
       emote,
+      helper,
+      helperN: 2,
+      emoteUntil: 0,
       x: 0,
       y: 0,
       path: [],
@@ -1464,6 +1480,7 @@ export class IsoOfficeScene extends Phaser.Scene {
     this.tweens.killTweensOf(a.emote)
     const y = this.labelTop(a) - 2
     a.emote.setTexture(this.emoteTexture(emoteKindOf(icon))).setAlpha(1).setY(y)
+    a.emoteUntil = this.time.now + EMOTE_MS
     this.tweens.add({ targets: a.emote, y: y - 14, alpha: 0, delay: EMOTE_MS * 0.5, duration: EMOTE_MS * 0.5 })
   }
 
@@ -1537,6 +1554,7 @@ export class IsoOfficeScene extends Phaser.Scene {
     a.shadow.setPosition(foot.x, foot.y).setVisible(!a.isSitting && a.container.visible)
     a.label.setPosition(foot.x, foot.y).setVisible(a.container.visible)
     a.bubble.setY(this.labelTop(a) - 8)
+    this.drawHelper(a)
     // 퇴근하면 몸통이 입구에 숨어 있다 — 미니 뷰는 빈 자리를 비춘다
     const at = !a.container.visible && a.seat ? { x: a.seat.gx + 0.5, y: a.seat.gy + 0.5 } : a
     // 앞 변으로 당긴 점이 깎인 자리(ㄷ자 안뜰 등)에 떨어지면 당기지 않고 그 칸 그대로 — 미니 뷰가 빈 칸을 비추지 않게
@@ -1544,6 +1562,29 @@ export class IsoOfficeScene extends Phaser.Scene {
     const f = isInside(this.room, Math.floor(pulled.x), Math.floor(pulled.y)) ? pulled : at
     const fp = this.wpt(f.x, f.y)
     a.focus.setPosition(fp.x, fp.y)
+  }
+
+  /**
+   * 도우미 말풍선: 도우미 2명 이상이 도는 동안 떠 있고(위아래 2px, 1.6초 주기), 0~1명이 되면 서서히 사라진다.
+   * 감정 말풍선·말 풍선이 떠 있으면 바로 숨겼다가 끝나면 돌아온다. 업무 모드에서는 숨긴다
+   */
+  private drawHelper(a: Actor) {
+    const n = this.isWorkMode ? 0 : helperBadgeCount(a.staff)
+    const now = this.time.now
+    const isCovered = a.bubble.visible || now < a.emoteUntil
+    if (n && n !== a.helperN) {
+      a.helper.setTexture(this.helperTexture(n))
+      a.helperN = n
+    }
+    const alpha = isCovered ? 0 : n ? Math.min(1, a.helper.alpha + 0.15) : Math.max(0, a.helper.alpha - 0.06)
+    a.helper.setAlpha(alpha).setVisible(alpha > 0)
+    if (alpha > 0) a.helper.setY(this.labelTop(a) - 2 - (1 - Math.cos((now / HELPER_BOB_MS) * Math.PI * 2)))
+  }
+
+  private helperTexture(n: number) {
+    const key = `iso-helper-${Math.min(99, n)}`
+    if (!this.textures.exists(key)) addArt(this.textures, key, drawHelperBubble(n))
+    return key
   }
 
   /** 머리 위 이름표의 윗변 (이름이 숨어 있으면 머리) — 말풍선·이모티콘을 이 위에 띄운다 */

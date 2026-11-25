@@ -342,7 +342,7 @@ export class CodexRuntime implements AgentRuntime {
   private onItemStarted(item: Json | undefined) {
     const tool = item ? toolOfItem(item) : null
     if (!item || !tool || !this.opts) return
-    const verdict = this.opts.onToolUse(tool.toolName, tool.input)
+    const verdict = this.opts.onToolUse(tool.toolName, tool.input, false)
     if (!verdict || 'ask' in verdict) return // ask는 승인 요청 쪽(onRequest)이 결재로 돌린다
     const id = String(item.id)
     this.denied.set(id, verdict.deny)

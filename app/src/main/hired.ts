@@ -18,6 +18,7 @@ import { parseSlash, type RawCommand } from '../shared/slashCommands.ts'
 import { browserOutputDir } from './browser'
 import { computerPermissionNotice } from './computer'
 import { isNetworkError } from '../shared/networkError.ts'
+import { isHelperBarredTool, isHelpersOn } from '../shared/helpers.ts'
 import { createRuntime, modelIdFor, type AgentRuntime, type RateLimitInfo, type RuntimeEvent, type RuntimeMcpServer, type ToolDecision } from './ai'
 
 const ACTIVITY_MAX = 80
@@ -363,7 +364,7 @@ class Worker {
       modelId: this.modelId(this.modelNow),
       resumeId: s.sessionId,
       approvalMode: s.approvalMode === 'acceptEdits' ? 'acceptEdits' : 'ask',
-      systemPromptAppend: capPrompt([t('staff.identity', { name: s.name, role: s.role }), t('staff.language'), reportStyleRule(this.hooks.reportStyle?.()), this.hooks.context(s.id), refDocs.prompt, browserGuide, computerGuide, t('staff.captureGuide'), capPrompt(s.systemPrompt, PERSONA_MAX)].filter(Boolean).join('\n'), PROMPT_MAX),
+      systemPromptAppend: capPrompt([t('staff.identity', { name: s.name, role: s.role }), t('staff.language'), reportStyleRule(this.hooks.reportStyle?.()), this.hooks.context(s.id), refDocs.prompt, browserGuide, computerGuide, t('staff.captureGuide'), isHelpersOn(s) ? t('staff.helpers.guide') : '', capPrompt(s.systemPrompt, PERSONA_MAX)].filter(Boolean).join('\n'), PROMPT_MAX),
       mcpServers: { ...mcpServers, office: this.hooks.officeTools(s.id) },
       selectedMcp: s.equipment.mcpServers,
       shellNetwork: s.provider === 'codex' && s.equipment.shellNetwork === true,
@@ -395,7 +396,12 @@ class Worker {
           () => this.askApproval(toolName, input, signal, questions),
         )
       },
-      onToolUse: (toolName, toolInput) => {
+      onToolUse: (toolName, toolInput, fromHelper) => {
+        // 도우미 쓰기가 켜진 직원의 도우미는 사무실 도구(위임·보고·결재)와 또 다른 도우미를 못 쓴다 — 보고가 겹치고 비용이 불어난다
+        if (fromHelper && isHelpersOn(s) && isHelperBarredTool(toolName, OFFICE_TOOL_PREFIX)) {
+          this.hooks.log(s.id, 'tool', `막힘 (도우미): ${toolName}`.slice(0, ACTIVITY_MAX))
+          return { deny: t('staff.deny.helperTool') }
+        }
         // "위험 명령 금지"는 결재 판단보다 앞서 막는다 (settings.json 허용 규칙·자율 장비로도 못 뚫게). 자율 진행 중에는 장비 설정과 상관없이 켠다
         const command = toolName === 'Bash' ? (toolInput as { command?: unknown }).command : undefined
         const risky = typeof command === 'string' && (s.equipment.disallowedTools.includes(RISKY_BASH) || this.hooks.isAutonomous(s.id)) ? findRiskyCommand(command) : null
@@ -478,6 +484,10 @@ class Worker {
     }
     if (m.type === 'commands') {
       this.hooks.commands(id, m.commands, this.terminalOnly)
+      return
+    }
+    if (m.type === 'helpers') {
+      this.hooks.update(id, { helpers: m.helpers })
       return
     }
     if (m.type === 'backgroundTasks') {

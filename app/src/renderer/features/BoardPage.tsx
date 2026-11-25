@@ -1,4 +1,5 @@
 import { findRoom } from '@shared/chatRooms'
+import { HelperChip, HelpersBar } from '@/components/helper-badge'
 import { useChatGroups } from './chatRoomHooks'
 import { memo, useMemo, useState, type DragEvent, type FormEvent } from 'react'
 import { PlayIcon, PlusIcon, SquareIcon, Trash2Icon } from 'lucide-react'
@@ -401,7 +402,8 @@ const TaskCard = memo(function TaskCard({ task, parent, subtasks: children, staf
       ) : (
         assignee && (
           <div className="text-muted-foreground flex items-center gap-1.5 text-xs">
-            <Avatar avatar={assignee.avatar} name={assignee.name} teamId={assignee.teamId} className="size-5" /> {assignee.name}
+            <Avatar avatar={assignee.avatar} name={assignee.name} teamId={assignee.teamId} className="size-5" /> <span className="min-w-0 truncate">{assignee.name}</span>
+            {task.status === 'doing' && <HelperChip staff={assignee} isShort className="ml-auto" />}
           </div>
         )
       )}
@@ -462,6 +464,7 @@ function TaskDetail({ task, subtasks: children, isOpen, onOpenChange }: { task: 
             {t(STATUS_LABEL[task.status])}
             {assignee && ` · ${t('board.detail.assignee', { name: assignee.name })}`}
           </DialogDescription>
+          {assignee && task.status === 'doing' && <HelpersBar staff={assignee} />}
         </DialogHeader>
         {task.detail && (
           <section className="flex flex-col gap-1">

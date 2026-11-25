@@ -4,7 +4,8 @@ import path from 'node:path'
 import fs from 'node:fs'
 import { app } from 'electron'
 import type { Query, SDKMessage, SDKUserMessage } from '@anthropic-ai/claude-agent-sdk'
-import type { Attachment, ClaudeModel, ModelChoice } from '../../shared/types'
+import type { Attachment, ClaudeModel, HelperRun, ModelChoice } from '../../shared/types'
+import { helperEnded, helperStarted, isHelperTask, pruneEnded } from '../../shared/helpers.ts'
 import type { RawCommand } from '../../shared/slashCommands.ts'
 import { t } from '../../shared/i18n/index.ts'
 import { HIRED_ENV } from '../external'
@@ -97,6 +98,8 @@ export class ClaudeRuntime implements AgentRuntime {
   private sentMsgs = new Map<string, SDKUserMessage>()
   /** 이번 세션의 로그인 오류 상태 — 세션을 닫거나 열 때마다 새로 만든다. 결과 전에 닫힌 세션의 오류가 다음 세션 결과에 남지 않게 (#20, 한리뷰 R2) */
   private login = new LoginWatch()
+  /** 이번 턴의 도우미(서브에이전트) — 도는 중 + 끝난 것. 턴이 끝나면 끝난 것을 지운다 */
+  private helpers: HelperRun[] = []
 
   constructor(private onEvent: (e: RuntimeEvent) => void) {}
 
@@ -166,6 +169,13 @@ export class ClaudeRuntime implements AgentRuntime {
     this.q = null
     this.login = new LoginWatch()
     this.forgetDelivered()
+    this.setHelpers([]) // 세션과 함께 도우미도 끝난다
+  }
+
+  private setHelpers(next: HelperRun[]) {
+    if (next === this.helpers || (next.length === 0 && this.helpers.length === 0)) return
+    this.helpers = next
+    this.onEvent({ type: 'helpers', helpers: next })
   }
 
   dispose() {
@@ -204,6 +214,7 @@ export class ClaudeRuntime implements AgentRuntime {
   }
 
   start(o: RuntimeStartOpts) {
+    this.setHelpers([])
     const q = sdk.query({
       prompt: this.messages(this.generation),
       options: {
@@ -230,7 +241,8 @@ export class ClaudeRuntime implements AgentRuntime {
               hooks: [
                 async (input) => {
                   if (input.hook_event_name === 'PreToolUse') {
-                    const verdict = o.onToolUse(input.tool_name, input.tool_input)
+                    // agent_id는 도우미(서브에이전트) 안에서 부른 도구일 때만 온다
+                    const verdict = o.onToolUse(input.tool_name, input.tool_input, input.agent_id !== undefined)
                     if (verdict && 'ask' in verdict) return { hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'ask' } }
                     if (verdict) return { hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: verdict.deny } }
                   }
@@ -264,6 +276,7 @@ export class ClaudeRuntime implements AgentRuntime {
       if (this.q === q) {
         this.q = null
         this.forgetDelivered()
+        this.setHelpers([])
       }
     }
   }
@@ -273,6 +286,11 @@ export class ClaudeRuntime implements AgentRuntime {
     if (m.type === 'rate_limit_event') return emit({ type: 'rateLimit', info: m.rate_limit_info })
     if (m.type === 'system' && m.subtype === 'commands_changed') return emit({ type: 'commands', commands: m.commands })
     if (m.type === 'system' && m.subtype === 'background_tasks_changed') return emit({ type: 'backgroundTasks', tasks: m.tasks.filter((task) => !task.ambient).map((task) => task.description) })
+    if (m.type === 'system' && m.subtype === 'task_started') {
+      if (isHelperTask(m)) this.setHelpers(helperStarted(this.helpers, { id: m.task_id, title: m.description, at: Date.now() }))
+      return
+    }
+    if (m.type === 'system' && m.subtype === 'task_notification') return this.setHelpers(helperEnded(this.helpers, m.task_id, Date.now()))
     if (m.type === 'system' && m.subtype === 'init') return emit({ type: 'init', sessionId: m.session_id, terminalOnly: m.terminal_slash_commands ?? [] })
     if (m.type === 'assistant') {
       const ctx = contextOf(m.message.usage)
@@ -298,6 +316,7 @@ export class ClaudeRuntime implements AgentRuntime {
       // 로그인 안 됨도 실패로 — 받는 쪽은 결과 글(4개 언어 안내)을 오류 사유로 보여 준다 (#20)
       const isLoginFail = this.login.settle(m.is_error, m.subtype === 'success' ? m.result : '')
       emit({ type: 'result', ok: m.subtype === 'success' && !isNetFail && !isLoginFail, subtype: m.subtype, text: isLoginFail ? t('claude.loginNeeded.staff') : m.subtype === 'success' ? m.result : '', numTurns: m.num_turns, costUsd: m.total_cost_usd, ...usageTotals(m.modelUsage) })
+      this.setHelpers(pruneEnded(this.helpers))
     }
   }
 }

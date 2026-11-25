@@ -212,6 +212,8 @@ export interface Staff {
   isAutonomous?: boolean
   /** 리더가 쉬는 중(idle)이지만 맡긴 팀원 일이 남아 기다리는 중 — 화면 표시용, main이 채운다 (shared/delegation.ts isAwaitingTeam) */
   awaitingTeam?: boolean
+  /** 이번 턴에 띄운 도우미(서브에이전트) — 도는 중 + 이번 턴에 끝난 것. 턴이 끝나면 끝난 것은 빠진다 (화면 표시용, main이 채운다, 저장 안 함) */
+  helpers?: HelperRun[]
   /** 튜토리얼 연습 회사 데이터 — '연습 회사 정리'와 첫 실제 고용 때 지운다 */
   isPractice?: boolean
 }
@@ -347,6 +349,14 @@ export interface ProcessRun {
   updatedAt: number
 }
 
+/** 도우미(서브에이전트) 한 명 — title은 직원이 붙인 일 제목 그대로(번역 안 함), 시각은 PC 시계 ms */
+export interface HelperRun {
+  id: string
+  title: string
+  startedAt: number
+  endedAt?: number
+}
+
 /** 직원에게 지급하는 장비: MCP 서버·스킬·도구 권한·월 예산 */
 export interface Equipment {
   mcpServers: string[]
@@ -362,6 +372,8 @@ export interface Equipment {
   shellNetwork?: boolean
   /** true면 자동결재·자율 진행 중 브라우저 이동·클릭·입력·제출을 결재 없이 한다 (로그인·결제 칸 입력 등은 그대로 기다린다 — browserAutoVerdict). 대표만 켠다 */
   browserAuto?: boolean
+  /** true면 일할 때 늘 도우미(서브에이전트)에게 나눠 맡기라고 지시하고, 도우미 안에서는 사무실 도구·또 다른 도우미를 막는다 (Claude 직원만 — shared/helpers.ts) */
+  helpers?: boolean
 }
 
 export interface EquipmentCatalog {

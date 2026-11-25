@@ -1,4 +1,5 @@
 import { useMemo, type CSSProperties } from 'react'
+import { HelperChip } from '@/components/helper-badge'
 import { PlusIcon } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -202,6 +203,7 @@ export function StaffCard({ staff, isLead = false, isLab = false, isSelected, on
       <div className={cn('flex items-center gap-1.5 text-xs font-medium', meta.text)}>
         <span className={cn('size-2 shrink-0 rounded-full', meta.dot, tone === 'working' && 'animate-pulse motion-reduce:animate-none')} />
         {meta.label}
+        <HelperChip staff={staff} />
         <Elapsed staff={staff} className="font-normal" />
       </div>
       <div className="bg-background rounded-lg px-2.5 py-1.5 text-xs leading-relaxed">
