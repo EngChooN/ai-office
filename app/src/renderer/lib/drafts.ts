@@ -1,12 +1,14 @@
 import { useCallback, useRef } from 'react'
 import { create } from 'zustand'
+import { draftKey, ownerFromSearch } from './webOwner.ts'
 
 // 작성 중인 값을 키별로 들고 있는다 — 페이지 이동·직원 전환·언어 변경으로 입력칸이 다시 그려져도 남는다.
 // 글(문자열)만 저장소에도 적어 앱을 껐다 켜도 남긴다. 첨부 파일·폼 객체는 메모리만 (앱을 끄면 사라진다)
 // 키는 `화면:대상:칸` (예 `staff:<id>:draft`, `chat:<방id>:files`). 접두사로 한 번에 비운다
 const useDrafts = create<Record<string, unknown>>(() => ({}))
 
-const STORE_KEY = 'ai-office:drafts:v1'
+// 셸이 준 PC 구분이 있으면 PC별 키 (webOwner.ts)
+const STORE_KEY = draftKey(typeof location === 'undefined' ? '' : ownerFromSearch(location.search).pc)
 const SAVE_DELAY_MS = 400
 const MAX_TEXT = 200_000
 

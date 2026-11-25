@@ -273,7 +273,7 @@ class V2ShellTest {
             override fun onEvent(name: String, data: String) { events += name }
             override fun onHello(isResync: Boolean) { resync = isResync }
             override fun onState(state: String, reason: String?) {}
-            override fun onFatal(error: ApiError) { fatal = error }
+            override fun onFatal(error: ApiError, from: com.claudeoffice.remote.net.RemoteClient) { fatal = error }
         }, scope)
         stream.start()
         withTimeout(10_000) { while (fatal == null) delay(20) }
@@ -284,6 +284,26 @@ class V2ShellTest {
         assertEquals("/v2/events", req.path)
         assertEquals("text/event-stream", req.getHeader("Accept"))
         assertEquals(1, server.requestCount) // 폐기되면 다시 붙지 않는다
+        scope.cancel()
+    }
+
+    @Test fun eventStreamFatalCarriesClientCapturedAtStart_evenIfScreenSwitchedToAnotherPc() = runBlocking {
+        // 전환 직후 이전 PC(A)의 오류: 오류를 낸 연결 식별자는 시작할 때 잡은 A다. 그 뒤 현재 연결이 B로 바뀌어도 B로 바뀌지 않는다
+        server.enqueue(MockResponse().setHeader("Content-Type", "text/event-stream").setBody("event: hello\ndata: {}\n\nevent: bye\ndata: {\"reason\":\"token_revoked\"}\n\n"))
+        val a = client()
+        val b = client()
+        var current = a
+        var from: com.claudeoffice.remote.net.RemoteClient? = null
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+        EventStream({ current }, object : EventSink {
+            override fun onEvent(name: String, data: String) {}
+            override fun onHello(resync: Boolean) { current = b } // 읽는 동안 화면이 B로 전환
+            override fun onState(state: String, reason: String?) {}
+            override fun onFatal(error: ApiError, from0: com.claudeoffice.remote.net.RemoteClient) { from = from0 }
+        }, scope).also { it.start() }
+        withTimeout(10_000) { while (from == null) delay(20) }
+        assertTrue(from === a)
+        assertTrue(from !== current)
         scope.cancel()
     }
 
@@ -300,7 +320,7 @@ class V2ShellTest {
             override fun onEvent(name: String, data: String) {}
             override fun onHello(resync: Boolean) {}
             override fun onState(state: String, reason: String?) { states += "$state:${reason ?: ""}" }
-            override fun onFatal(error: ApiError) { fatal = error }
+            override fun onFatal(error: ApiError, from: com.claudeoffice.remote.net.RemoteClient) { fatal = error }
         }, scope).start()
         withTimeout(15_000) { while (fatal == null) delay(20) }
         assertNull(server.takeRequest().getHeader("Last-Event-ID"))
@@ -326,7 +346,7 @@ class V2ShellTest {
             override fun onEvent(name: String, data: String) {}
             override fun onHello(resync: Boolean) { stream!!.stop(); isStopped = true }
             override fun onState(state: String, reason: String?) {}
-            override fun onFatal(error: ApiError) {}
+            override fun onFatal(error: ApiError, from: com.claudeoffice.remote.net.RemoteClient) {}
         }, scope)
         stream.start()
         withTimeout(10_000) { while (!isStopped) delay(20) }
@@ -346,7 +366,7 @@ class V2ShellTest {
             override fun onEvent(name: String, data: String) {}
             override fun onHello(resync: Boolean) {}
             override fun onState(state: String, reason: String?) {}
-            override fun onFatal(error: ApiError) { fatal = error }
+            override fun onFatal(error: ApiError, from: com.claudeoffice.remote.net.RemoteClient) { fatal = error }
         }, scope, capabilities = { setOf("iso-office") }).start()
         withTimeout(15_000) { while (fatal == null) delay(20) }
         assertEquals("iso-office", server.takeRequest().getHeader("X-Office-Capabilities"))

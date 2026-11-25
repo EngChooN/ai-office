@@ -26,7 +26,11 @@ interface EventSink {
     fun onHello(resync: Boolean)
     fun onState(state: String, reason: String? = null)
     /** 다시 붙지 말아야 하는 끝 (토큰 폐기·스위치 꺼짐·버전·잠금) */
-    fun onFatal(error: ApiError)
+    /** from: 이 연결을 시작할 때 잡은 PC 연결 식별자 — 도착이 늦어 그새 다른 PC로 바뀌었어도 어느 PC의 신호인지 안다 */
+    fun onFatal(error: ApiError, from: RemoteClient)
+
+    /** 스트림이 열렸다 (from: 시작 때 잡은 연결 식별자) */
+    fun onOpened(from: RemoteClient) {}
 }
 
 class EventStream(
@@ -81,16 +85,17 @@ class EventStream(
             when (val r = c.v2Events(lastEventId, capabilities())) {
                 is ApiResult.Ok -> {
                     sink.onState("open")
+                    sink.onOpened(c)
                     val bye = withContext(Dispatchers.IO) { read(r.value) }
                     // 오래 이어졌던 연결이면 지연을 처음으로
                     if (now() - opened >= SSE_STABLE_MS) attempt = 0
                     // 토큰 폐기만 끝. PC에서 원격을 껐다면(remote_disabled) 다시 켤 때까지 계속 붙어 본다
-                    if (bye == "token_revoked") return sink.onFatal(ApiError.TokenRevoked)
+                    if (bye == "token_revoked") return sink.onFatal(ApiError.TokenRevoked, c)
                     sink.onState("reconnecting", bye)
                 }
                 is ApiResult.Fail -> when (val e = r.error) {
                     ApiError.TokenRevoked, ApiError.Unauthorized, ApiError.NeedsPcUpdate,
-                    ApiError.NeedsAppUpdate, ApiError.PinMismatch, is ApiError.Locked -> return sink.onFatal(e)
+                    ApiError.NeedsAppUpdate, ApiError.PinMismatch, is ApiError.Locked -> return sink.onFatal(e, c)
                     is ApiError.RateLimited -> {
                         sink.onState("reconnecting", "rate_limited")
                         withTimeoutOrNull(e.retryAfterSec * 1000L) { wake.receive() }

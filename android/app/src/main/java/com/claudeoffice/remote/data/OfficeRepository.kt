@@ -25,6 +25,7 @@ import com.claudeoffice.remote.store.AppPrefs
 import com.claudeoffice.remote.store.MAX_PCS
 import com.claudeoffice.remote.store.PcAdd
 import com.claudeoffice.remote.store.PcBook
+import com.claudeoffice.remote.store.BookGate
 import com.claudeoffice.remote.store.PcBooks
 import com.claudeoffice.remote.store.PcEntry
 import com.claudeoffice.remote.store.SecureStore
@@ -139,6 +140,7 @@ class OfficeRepository(private val context: Context) {
     private var refreshLock = Mutex()
     private val connectivity = context.getSystemService(ConnectivityManager::class.java)
     /** 저장된 PC 목록(최대 3대). 옛 버전의 1대 저장은 여기서 1번 PC로 옮긴다 */
+    private val gate = BookGate()
     private var book: PcBook = secure.loadBook().also(::migrateLegacy)
     // conn·client는 "지금 화면에 붙은 PC" 하나. 다른 PC는 백그라운드 조회만 한다
     private var conn: Connection? = book.current?.conn
@@ -182,7 +184,16 @@ class OfficeRepository(private val context: Context) {
 
     // 화면 갱신과 백그라운드 조회가 같은 "기억한 길"을 쓴다 (AppPrefs). 클라이언트마다 그 PC 전용 값에 묶어
     // 전환 중인 이전 PC의 늦은 응답이 새 PC 값에 섞이지 않게 한다
-    private fun newClient(e: PcEntry) = RemoteClient(e.conn, ::isPhoneOnline, AppPrefs(context, e.id).routeMemory)
+    // 기억한 길은 응답이 오는 시점에 그 PC가 아직 같은 연결일 때만 적는다 (끊은 PC의 값이 되살아나지 않게)
+    private fun newClient(e: PcEntry): RemoteClient {
+        val mem = AppPrefs(context, e.id).routeMemory
+        val guarded = object : com.claudeoffice.remote.net.RouteMemory {
+            override var preferred: com.claudeoffice.remote.net.Route?
+                get() = mem.preferred
+                set(v) { gate.locked { if (PcBooks.isLive(book, e)) mem.preferred = v } }
+        }
+        return RemoteClient(e.conn, ::isPhoneOnline, guarded)
+    }
 
     private fun migrateLegacy(b: PcBook) {
         val first = b.entries.firstOrNull() ?: return
@@ -229,12 +240,14 @@ class OfficeRepository(private val context: Context) {
         prefs.webStoragePc = ""
     }
 
-    /** 웹 화면 저장 공간(localStorage)은 PC가 달라도 같은 출처다 — 다른 PC가 쓰던 거면 화면을 열기 전에 비운다 */
+    /**
+     * 웹 화면 저장 공간(localStorage)은 PC가 달라도 같은 출처다. 전환할 때 통째로 비우지 않는다 —
+     * 화면이 주소의 pc 값을 보고 다른 PC의 설정만 지우고 글은 PC별로 남긴다 (web/lib/webOwner.ts)
+     */
+    fun webQuery(): String = PcBooks.webQuery(book)
+
     fun prepareWebStorage() {
-        val id = book.currentId ?: return
-        if (prefs.webStoragePc == id) return
-        clearWebStorage()
-        prefs.webStoragePc = id
+        prefs.webStoragePc = book.currentId ?: return
     }
 
     fun isPhoneOnline(): Boolean {
@@ -315,7 +328,9 @@ class OfficeRepository(private val context: Context) {
     }
 
     /** 목록에 넣고(같은 PC면 갱신) 그 PC를 현재로 만든다. 그 PC의 옛 상태(멈춤·잠금)는 지워 다시 시작한다. 가득 차면 null */
-    private fun adopt(candidate: Connection): Pair<PcEntry, Boolean>? {
+    private fun adopt(candidate: Connection): Pair<PcEntry, Boolean>? = gate.locked { adoptLocked(candidate) }
+
+    private fun adoptLocked(candidate: Connection): Pair<PcEntry, Boolean>? {
         val (nb, entry, refreshed) = when (val r = PcBooks.add(book, candidate, System.currentTimeMillis())) {
             PcAdd.Full -> return null
             is PcAdd.Added -> Triple(r.book, r.entry, false)
@@ -329,7 +344,9 @@ class OfficeRepository(private val context: Context) {
     }
 
     /** "이 PC 연결 끊기" — 현재 PC의 열쇠·연결 정보·상태·알림만 지우고, 남은 PC가 있으면 첫 번째로 이어 간다. 없으면 처음 화면 */
-    fun forget(): ForgetOutcome? {
+    fun forget(): ForgetOutcome? = gate.locked { forgetLocked() }
+
+    private fun forgetLocked(): ForgetOutcome? {
         val e = book.current ?: return null
         val nb = PcBooks.remove(book, e.id)
         // 새 목록을 먼저 저장하고 나서 지운다
@@ -357,7 +374,9 @@ class OfficeRepository(private val context: Context) {
     }
 
     /** PC 바꾸기 — 이전 PC의 화면 값은 버리고 새 PC 값으로 다시 시작한다 (섞임 방지). 새 값이 오기 전에는 로딩 */
-    fun switchTo(id: String) {
+    fun switchTo(id: String) = gate.locked { switchToLocked(id) }
+
+    private fun switchToLocked(id: String) {
         val e = book.find(id) ?: return
         if (id == book.currentId) return
         val nb = PcBooks.select(book, id)
@@ -372,7 +391,7 @@ class OfficeRepository(private val context: Context) {
     /** 별칭 바꾸기 (20자까지, 비우면 기본 이름 "PC n") */
     fun rename(id: String, alias: String) {
         if (book.find(id) == null) return
-        book = PcBooks.rename(book, id, alias)
+        gate.locked { book = PcBooks.rename(book, id, alias) }
         secure.saveBook(book)
         publishPcs()
     }
@@ -584,7 +603,9 @@ class OfficeRepository(private val context: Context) {
     }
 
     /** 토큰이 폐기된 PC: 저장된 열쇠를 지우고(이름·주소는 둔다) 그 PC의 자동 조회를 멈춘다 (규격 9절). 같은 QR을 다시 찍으면 그 항목이 갱신된다 */
-    private fun revoke(id: String?) {
+    private fun revoke(id: String?) = gate.locked { revokeLocked(id) }
+
+    private fun revokeLocked(id: String?) {
         id ?: return
         if (book.find(id) == null) return
         book = PcBooks.withoutToken(book, id)
@@ -632,8 +653,11 @@ class OfficeRepository(private val context: Context) {
         val prefix = PcBooks.noticePrefix(book, entry)
 
         val r = c.decisions()
-        // 기다리는 사이 이 PC가 끊겼거나 다시 연결돼 열쇠가 바뀌었으면 결과를 버린다 (알림·설정·열쇠 폐기 모두)
-        if (!PcBooks.isLive(book, entry)) return
+        // 검사와 알림·저장을 한 잠금으로 — 그 사이 연결 해제가 끼어들지 못한다. 끊겼거나 열쇠가 바뀐 PC의 결과는 버린다
+        gate.locked { if (PcBooks.isLive(book, entry)) applyPoll(entry, isCurrent, c, p, prefix, r) }
+    }
+
+    private fun applyPoll(entry: PcEntry, isCurrent: Boolean, c: RemoteClient, p: AppPrefs, prefix: String?, r: ApiResult<DecisionsResponse>) {
         // 조회하는 사이 화면 PC가 바뀐 경우 화면 상태에는 손대지 않는다 (값은 그 PC의 prefs에만 적는다)
         val onScreen = isCurrent && client === c
         when (r) {
@@ -721,8 +745,9 @@ class OfficeRepository(private val context: Context) {
     }
 
     /** hello가 알려 준 전용 모드·내부 주소로 저장값을 갱신한다 (QR 재스캔 없이 따라간다) */
-    @Synchronized
-    private fun applyHello(result: kotlinx.serialization.json.JsonElement) {
+    private fun applyHello(result: kotlinx.serialization.json.JsonElement) = gate.locked { applyHelloLocked(result) }
+
+    private fun applyHelloLocked(result: kotlinx.serialization.json.JsonElement) {
         val updated = conn?.refreshedFromHello(result) ?: return
         val entry = (PcBooks.add(book, updated, 0) as? PcAdd.Updated) ?: return
         secure.saveBook(entry.book)

@@ -218,4 +218,41 @@ class PcBookTest {
         val after = PcBooks.remove(book, book.entries[0].id)
         assertTrue(after.entries.isEmpty() && after.current == null)
     }
+
+    @Test fun webQueryCarriesCurrentAndSavedPcs() {
+        val b = three()
+        val q = PcBooks.webQuery(b)
+        assertTrue(q, q.startsWith("?pc=" + java.net.URLEncoder.encode(b.currentId!!, "UTF-8") + "&pcs="))
+        b.entries.forEach { assertTrue(q.contains(java.net.URLEncoder.encode(it.id, "UTF-8"))) }
+        assertEquals("", PcBooks.webQuery(PcBook()))
+    }
+
+    /** 연결 해제와 응답 처리(검사→알림·저장)가 동시에 실행되지 않는다: 해제가 잠금을 잡고 있는 동안 응답 처리는 기다렸다가, 끝난 뒤 검사에서 떨어진다 */
+    @Test fun forgetAndLateResponseNeverRunTogether() {
+        val gate = com.claudeoffice.remote.store.BookGate()
+        var book = three()
+        val seen = book.entries[0]
+        val inForget = java.util.concurrent.CountDownLatch(1)
+        val applied = java.util.concurrent.atomic.AtomicBoolean(false)
+        val forgetDone = java.util.concurrent.atomic.AtomicBoolean(false)
+        val appliedDuringForget = java.util.concurrent.atomic.AtomicBoolean(false)
+        val forget = Thread {
+            gate.locked {
+                inForget.countDown()
+                Thread.sleep(150) // 해제 도중
+                book = PcBooks.remove(book, seen.id)
+                forgetDone.set(true)
+            }
+        }
+        val response = Thread {
+            inForget.await()
+            gate.locked {
+                if (!forgetDone.get()) appliedDuringForget.set(true)
+                if (PcBooks.isLive(book, seen)) applied.set(true)
+            }
+        }
+        forget.start(); response.start(); forget.join(); response.join()
+        assertTrue("해제 도중에 응답이 처리됨", !appliedDuringForget.get())
+        assertTrue("끊긴 PC에 알림·저장이 됨", !applied.get())
+    }
 }

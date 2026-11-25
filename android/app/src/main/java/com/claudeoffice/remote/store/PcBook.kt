@@ -27,7 +27,23 @@ sealed interface PcAdd {
     data object Full : PcAdd
 }
 
+/**
+ * 저장 목록을 바꾸는 일(연결 추가·해제·전환·열쇠 폐기)과 "아직 연결돼 있으면 알림·저장"하는 일을 한 줄로 세운다.
+ * 이게 없으면 응답 처리가 유효성 검사를 통과한 직후 연결 해제가 끼어들어, 지운 PC의 알림·값이 다시 생긴다
+ */
+class BookGate {
+    private val lock = Any()
+    fun <T> locked(block: () -> T): T = synchronized(lock, block)
+}
+
 object PcBooks {
+    /** 웹 화면 주소에 붙이는 PC 구분: 지금 PC(pc)와 저장된 PC들(pcs). 화면이 PC별로 글을 남기고 설정은 PC마다 초기화한다 */
+    fun webQuery(book: PcBook): String {
+        val enc = { v: String -> java.net.URLEncoder.encode(v, "UTF-8") }
+        val pc = book.currentId ?: return ""
+        return "?pc=${enc(pc)}&pcs=${book.entries.joinToString(",") { enc(it.id) }}"
+    }
+
     /** 새 연결을 넣는다. 같은 PC면 갱신(별칭·순서 유지, 3대가 차 있어도 허용), 새 PC가 4번째면 거부. 결과 PC가 현재 PC가 된다 */
     fun add(book: PcBook, conn: Connection, now: Long): PcAdd {
         val existing = book.find(conn.spki)

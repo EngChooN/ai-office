@@ -209,7 +209,7 @@ fun WebShell(repo: OfficeRepository, entry: WebEntry, modifier: Modifier = Modif
     var failed by remember { mutableStateOf(false) }
     var reloadKey by remember { mutableIntStateOf(0) }
     val webView = remember(reloadKey) {
-        createWebView(activity, entry, bridge, onFailed = { failed = true }) { callback, accept ->
+        createWebView(activity, entry, repo.webQuery(), bridge, onFailed = { failed = true }) { callback, accept ->
             fileCallback[0]?.onReceiveValue(null)
             fileCallback[0] = callback
             val isImageOnly = accept.isNotEmpty() && accept.all { it.startsWith("image/") }
@@ -281,6 +281,7 @@ fun WebShell(repo: OfficeRepository, entry: WebEntry, modifier: Modifier = Modif
 private fun createWebView(
     activity: Activity,
     entry: WebEntry,
+    query: String,
     bridge: Bridge,
     onFailed: () -> Unit,
     chooseFiles: (ValueCallback<Array<Uri>>, List<String>) -> Unit,
@@ -405,7 +406,7 @@ private fun createWebView(
                 override fun onLayoutChange(v: android.view.View, l: Int, t: Int, r: Int, b: Int, ol: Int, ot: Int, or: Int, ob: Int) {
                     if (b - t <= 0 || r - l <= 0) return
                     v.removeOnLayoutChangeListener(this)
-                    loadUrl(entry.url)
+                    loadUrl(entry.url + query)
                 }
             })
         } else {
@@ -589,17 +590,17 @@ private class Bridge(
 
     override fun onState(state: String, reason: String?) {
         reporter.report(state, reason)
-        // 스트림이 다시 열렸다 = PC에 닿는다. 셸이 들고 있던 "닿지 않음"을 지운다 (화면은 connection으로 따로 안다)
-        if (state == "open") {
-            val from = repo.currentClient()
-            main.post { repo.markReachableFrom(from) }
-        }
     }
 
-    override fun onFatal(error: com.claudeoffice.remote.net.ApiError) {
+    // 스트림이 다시 열렸다 = PC에 닿는다. 셸이 들고 있던 "닿지 않음"을 지운다 (화면은 connection으로 따로 안다)
+    // 스트림이 시작할 때 잡은 연결 식별자(from)를 그대로 받는다 — 여기서 currentClient()를 다시 읽으면 이미 B로 바뀐 뒤의 A 신호가 B에 붙는다
+    override fun onOpened(from: com.claudeoffice.remote.net.RemoteClient) {
+        main.post { repo.markReachableFrom(from) }
+    }
+
+    override fun onFatal(error: com.claudeoffice.remote.net.ApiError, from: com.claudeoffice.remote.net.RemoteClient) {
         reporter.report("closed", appCode(error))
-        // 예약된 사이 PC가 바뀔 수 있다 — 오류를 낸 PC(연결 식별자)를 지금 잡아 두고, 실행할 때 같은 PC일 때만 반영한다
-        val from = repo.currentClient()
+        // 실행할 때 화면 PC가 아직 from일 때만 반영한다
         main.post { repo.applyV2ErrorFrom(from, error) }
     }
 
