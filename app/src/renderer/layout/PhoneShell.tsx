@@ -84,7 +84,7 @@ function PhoneTopBar() {
   const isSplitChat = useIsSplit() && view === 'chat'
   return (
     // 가로 폰에서는 숨기고 같은 버튼을 아래 탭 줄 오른쪽에 둔다 (PhoneTabBar)
-    <header className="short:hidden split:h-[46px] flex h-12 shrink-0 items-center gap-2 border-b px-3">
+    <header className="pc-header short:hidden split:h-[46px] flex h-12 shrink-0 items-center gap-2 border-b px-3">
       <span className="min-w-0 flex-1 truncate font-semibold">{labelOf(view)}</span>
       {/* 자동결재 표시가 뜨면 폭이 모자라 자금은 숨긴다 (상점·급여 명세서에 같은 값) */}
       {!isWorkMode && !isAuto && !isSplitChat && (

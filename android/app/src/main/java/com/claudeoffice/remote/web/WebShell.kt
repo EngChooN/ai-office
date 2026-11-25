@@ -69,6 +69,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
@@ -184,7 +185,12 @@ private class ArtifactViewAssets(private val views: ArtifactViews) : WebViewAsse
 @OptIn(ExperimentalLayoutApi::class)
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
-fun WebShell(repo: OfficeRepository, entry: WebEntry, modifier: Modifier = Modifier) {
+fun WebShell(
+    repo: OfficeRepository, entry: WebEntry, modifier: Modifier = Modifier,
+    /** 제목 줄 안에 얹는 PC 칩 (화면이 "pc-chip"을 알리고 세로 폰일 때만 그린다) */
+    chip: (@Composable (Modifier, (Int) -> Unit) -> Unit)? = null,
+    onChipMode: (Boolean) -> Unit = {},
+) {
     val activity = LocalContext.current as Activity
     val scope = rememberCoroutineScope()
     val isTablet = LocalConfiguration.current.screenWidthDp >= 840
@@ -261,6 +267,14 @@ fun WebShell(repo: OfficeRepository, entry: WebEntry, modifier: Modifier = Modif
         }
     }
 
+    val config = LocalConfiguration.current
+    val isChipMode = chip != null && bridge.hasPcChip && config.screenWidthDp < 600 && config.orientation == android.content.res.Configuration.ORIENTATION_PORTRAIT
+    SideEffect { onChipMode(isChipMode) }
+    DisposableEffect(Unit) { onDispose { onChipMode(false) } }
+    var chipWidth by remember { mutableStateOf(0) }
+    // 칩이 차지하는 폭(왼쪽 끝부터, dp)을 화면에 알려 제목 줄이 그만큼 비킨다. 칩을 안 그리면 0
+    LaunchedEffect(isChipMode, chipWidth, bridge.readyTick) { bridge.sendChip(if (isChipMode) chipWidth else 0, webView) }
+
     Box(modifier = modifier.fillMaxSize()) {
         key(webView) {
             AndroidView(
@@ -268,6 +282,7 @@ fun WebShell(repo: OfficeRepository, entry: WebEntry, modifier: Modifier = Modif
                 factory = { webView.also { (it.parent as? ViewGroup)?.removeView(it) } },
             )
         }
+        if (isChipMode && !failed) chip!!(Modifier.align(Alignment.TopStart)) { chipWidth = it }
         if (failed) {
             Column(
                 modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).padding(24.dp),
@@ -439,6 +454,13 @@ private class Bridge(
     var isImeByScreen by androidx.compose.runtime.mutableStateOf(false)
         private set
     private var lastIme = -1
+    private var lastChip = -1
+    /** 화면이 ready를 보낼 때마다 늘어난다 (화면이 다시 읽히면 칩 폭을 다시 알리기 위함) */
+    var readyTick by androidx.compose.runtime.mutableStateOf(0)
+        private set
+    /** 화면이 제목 줄에 PC 칩 자리를 비워 줄 수 있는지 (ready의 features "pc-chip") */
+    var hasPcChip by androidx.compose.runtime.mutableStateOf(false)
+        private set
     /** 같은 요청 id를 다시 보내면 같은 Idempotency-Key — PC가 한 번만 처리한다 */
     private val session = UUID.randomUUID().toString()
     var isTablet = false
@@ -462,6 +484,9 @@ private class Bridge(
             is BridgeRequest.Ready -> {
                 isReady = true
                 isImeByScreen = "ime" in r.features
+                hasPcChip = "pc-chip" in r.features
+                lastChip = -1
+                readyTick++
                 val caps = capabilitiesOf(r.features)
                 // 화면을 다시 읽어 능력이 바뀌었으면 이벤트 스트림도 새 헤더로 다시 붙는다 (연결 단위로 판정)
                 val isChanged = caps != screenCapabilities
@@ -566,6 +591,18 @@ private class Bridge(
         main.post { view.evaluateJavascript("document.documentElement.style.setProperty('--ime','${imeDp}px')", null) }
     }
 
+    fun sendChip(widthDp: Int, view: WebView) {
+        if (!isReady || widthDp == lastChip) return
+        lastChip = widthDp
+        main.post {
+            view.evaluateJavascript(
+                if (widthDp > 0) "(function(){var d=document.documentElement;d.style.setProperty('--pc-chip','${widthDp}px');d.dataset.pcchip=''})()"
+                else "(function(){var d=document.documentElement;d.style.removeProperty('--pc-chip');delete d.dataset.pcchip})()",
+                null,
+            )
+        }
+    }
+
     fun onForeground() {
         isForeground = true
         // 이미 붙는 중(지연 대기)이면 깨우고, 멈춰 있었으면 새로 연다
@@ -584,6 +621,8 @@ private class Bridge(
         isReady = false
         reply = null
         lastIme = -1
+        lastChip = -1
+        hasPcChip = false
         pendingBack?.complete(false)
         pendingBack = null
     }

@@ -130,5 +130,6 @@ document.addEventListener('focusin', (e) => {
 })
 
 // features:['ime'] = 키보드는 화면이 --ime로 비킨다 → 셸은 WebView 크기를 줄이지 않는다 (android-bridge.md "키보드")
+// 'pc-chip' = 위 제목 줄 왼쪽에 폰 앱이 PC 칩을 얹는다 → 셸이 --pc-chip(칩 오른쪽 끝, px)·data-pcchip를 <html>에 넣고, 제목 줄은 그만큼 비킨다 (index.css .pc-header)
 // 'iso-office' = 회사 레벨 11 이상을 그릴 수 있다 → 셸이 /v2/call·/v2/events 헤더 X-Office-Capabilities로 PC에 알린다 (없으면 PC가 Lv.10으로 줄여 보냄)
-bridge.notify({ type: 'ready', features: ['ime', ...SCREEN_CAPABILITIES] })
+bridge.notify({ type: 'ready', features: ['ime', 'pc-chip', ...SCREEN_CAPABILITIES] })

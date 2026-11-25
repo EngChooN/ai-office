@@ -269,7 +269,7 @@ test('개편 안내: 예전 레벨보다 낮을 때만 "낮아 보여도", 올�
 
 test('설치: ready에 iso-office를 알린다 — 셸이 /v2/call·/v2/events 헤더로 PC에 싣는다 (없으면 PC가 Lv.10으로 줄여 보냄)', () => {
   assert.deepEqual([...SCREEN_CAPABILITIES], ['iso-office'])
-  assert.match(read('src/renderer/mobile/install.ts'), /notify\(\{ type: 'ready', features: \['ime', \.\.\.SCREEN_CAPABILITIES\] \}\)/)
+  assert.match(read('src/renderer/mobile/install.ts'), /notify\(\{ type: 'ready', features: \['ime', 'pc-chip', \.\.\.SCREEN_CAPABILITIES\] \}\)/)
 })
 
 test('PC 전용: 폴더·파일 고르기는 경로 입력 시트, 터미널·로그인·QR은 안내 — 서버에 보내지 않는다', async () => {

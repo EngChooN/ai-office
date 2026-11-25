@@ -9,6 +9,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -51,7 +56,7 @@ import com.claudeoffice.remote.ui.theme.Type
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PcBar(pcs: PcListState, onSwitch: (String) -> Unit, onAdd: () -> Unit, onFull: () -> Unit, modifier: Modifier = Modifier, onSettings: (() -> Unit)? = null) {
+fun PcBar(pcs: PcListState, onSwitch: (String) -> Unit, onAdd: () -> Unit, onFull: () -> Unit, modifier: Modifier = Modifier, onSettings: (() -> Unit)? = null, compact: Boolean = false, onChipWidth: (Int) -> Unit = {}) {
     val current = pcs.current ?: return
     val c = Office.colors
     var open by remember { mutableStateOf(false) }
@@ -59,7 +64,37 @@ fun PcBar(pcs: PcListState, onSwitch: (String) -> Unit, onAdd: () -> Unit, onFul
     val maxChip = (LocalConfiguration.current.screenWidthDp * 0.6f).dp
     val others = pcs.items.filter { it.id != current.id }.sumOf { it.pending }
 
-    Row(modifier.fillMaxWidth().heightIn(min = 48.dp).padding(horizontal = Space.s4), verticalAlignment = Alignment.CenterVertically) {
+    if (compact) {
+        // 제목 줄 안에 얹는 작은 칩: 보이는 높이 32dp, 누르는 곳은 줄 높이 48dp 전체. 폭은 화면의 30%까지
+        val maxCompact = (LocalConfiguration.current.screenWidthDp * 0.3f).dp
+        val density = androidx.compose.ui.platform.LocalDensity.current
+        Box(
+            modifier
+                .height(48.dp)
+                .onSizeChanged { onChipWidth(with(density) { it.width.toDp().value.toInt() }) }
+                .clickable { open = true }
+                .semantics { contentDescription = S.get(R.string.pc_switch_cd) + ", " + current.name }
+                .padding(start = Space.s3),
+            contentAlignment = Alignment.CenterStart,
+        ) {
+            Row(
+                Modifier
+                    .widthIn(max = maxCompact)
+                    .height(32.dp)
+                    .background(c.surface, Radius.lg)
+                    .border(1.dp, c.outline, Radius.lg)
+                    .padding(start = Space.s2, end = 0.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                StatusDot(dotColor(current))
+                Spacer(Modifier.width(Space.s1))
+                Text(current.name, style = Type.label, color = c.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                Icon(Icons.Filled.ArrowDropDown, contentDescription = null, tint = c.onSurfaceMuted, modifier = Modifier.size(20.dp))
+            }
+            // 다른 PC에 결재 대기가 있으면 칩 오른쪽 위에 작은 점 (숫자는 PC 목록에서)
+            if (others > 0) Box(Modifier.align(Alignment.CenterEnd).offset(x = 2.dp, y = (-12).dp).size(8.dp).background(c.statusWaitingFill, androidx.compose.foundation.shape.CircleShape))
+        }
+    } else Row(modifier.fillMaxWidth().heightIn(min = 48.dp).padding(horizontal = Space.s4), verticalAlignment = Alignment.CenterVertically) {
         Row(
             Modifier
                 .widthIn(max = maxChip)

@@ -25,7 +25,7 @@ export function ChatSlimBar({ room, title, description, onSearch }: { room: Chat
   const working = people.filter((s) => s.status === 'working')
   const faces = (working.length > 0 ? working : people).slice(0, FACES_MAX)
   return (
-    <div className="slim:flex hidden min-h-[46px] shrink-0 items-center gap-1 border-b px-2">
+    <div className="pc-header slim:flex hidden min-h-[46px] shrink-0 items-center gap-1 border-b px-2">
       <PopMenu
         opens="down"
         label={t('chat.slim.switch')}
@@ -33,10 +33,10 @@ export function ChatSlimBar({ room, title, description, onSearch }: { room: Chat
         buttonClassName="h-9 w-full min-w-0 justify-start gap-1.5 px-2"
         icon={
           <>
-            <span className="min-w-0 shrink truncate text-base font-semibold">{title}</span>
+            <span className="min-w-0 shrink truncate text-[1.0625rem] font-semibold">{title}</span>
             <ChevronDownIcon className="text-muted-foreground size-4 shrink-0" />
             {faces.length > 0 && (
-              <span className="ml-1 flex shrink-0 -space-x-1.5 max-[359px]:hidden">
+              <span className="pc-header-avatars ml-1 flex shrink-0 -space-x-1.5 max-[359px]:hidden">
                 {faces.map((s) => (
                   <Avatar key={s.id} avatar={s.avatar} name={s.name} teamId={s.teamId} className="ring-background size-5 ring-2" />
                 ))}

@@ -113,6 +113,10 @@ private class PcCtl(
 ) {
     @Composable
     fun Bar() = PcBar(pcs, onSwitch, onAdd, onFull, onSettings = onSettings)
+
+    /** 제목 줄 안에 얹는 작은 칩 (세로 폰 + 화면이 자리를 비워 주는 경우) */
+    @Composable
+    fun Chip(modifier: Modifier, onWidth: (Int) -> Unit) = PcBar(pcs, onSwitch, onAdd, onFull, modifier, onSettings, compact = true, onChipWidth = onWidth)
 }
 
 @Composable
@@ -294,9 +298,13 @@ private fun WebRoot(repo: OfficeRepository, entry: com.claudeoffice.remote.web.W
         repo.prepareWebStorage()
         ready = true
     }
+    // 칩이 제목 줄 안으로 합쳐지면(chipInTitle) 위 별도 줄은 없앤다
+    var chipInTitle by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize().systemBarsPadding()) {
-        ctl.Bar()
-        Box(Modifier.weight(1f)) { if (ready) com.claudeoffice.remote.web.WebShell(repo, entry) }
+        if (!chipInTitle) ctl.Bar()
+        Box(Modifier.weight(1f)) {
+            if (ready) com.claudeoffice.remote.web.WebShell(repo, entry, chip = { m, w -> ctl.Chip(m, w) }, onChipMode = { chipInTitle = it })
+        }
     }
 }
 

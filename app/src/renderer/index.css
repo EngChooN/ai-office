@@ -1070,3 +1070,8 @@
 [data-ws-color] body { box-shadow: inset 0 0 0 2px var(--ws-current); }
 /* 끊긴 동안 마지막 화면을 회색으로 (보내기는 메인이 막는다) */
 [data-ws-offline] #root main { filter: grayscale(1); opacity: .75; }
+
+/* 폰 앱이 제목 줄 왼쪽에 PC 칩을 얹을 때(셸이 --pc-chip을 넣음) 제목 줄은 칩 오른쪽부터 시작한다 */
+html[data-pcchip] .pc-header { padding-inline-start: calc(var(--pc-chip, 0px) + 8px); }
+/* 칩 자리를 위해 제목 옆 직원 얼굴 묶음은 뺀다 */
+html[data-pcchip] .pc-header .pc-header-avatars { display: none; }
