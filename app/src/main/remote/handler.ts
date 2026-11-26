@@ -2,7 +2,7 @@
 // 판단 순서(규격 v1 2-4 · v2 9절): 버전(426) → 잠금 → 인증 → 속도 → 경로·메서드(404·405) → 본문(415·413·400) → 처리
 // v1 경로는 아래 4개뿐이다. v2(/v2/*)는 같은 앞단(preflight)을 거친 뒤 service.ts가 처리한다
 
-import type { Staff, Task } from '../../shared/types'
+import type { ReReview, Staff, Task } from '../../shared/types'
 import type { AuthGuard } from './auth.ts'
 import type { Capabilities } from './capabilities.ts'
 import { bearerToken } from './auth.ts'
@@ -21,7 +21,7 @@ import {
 
 /** 원격이 사무실에 할 수 있는 일 전부 (이 밖의 Office 기능은 타입으로도 닿지 않는다) */
 export interface RemoteOfficePort {
-  view(): { staff: Staff[]; tasks: Task[] }
+  view(): { staff: Staff[]; tasks: Task[]; reReviews?: Record<string, ReReview> }
   /** 처리했으면 true (이미 끝난 결정이면 false → 409) */
   decide(approvalId: string, allow: boolean): boolean
   answerQuestion(approvalId: string, answers: Record<string, string>): boolean
@@ -121,8 +121,8 @@ export function handleRequest(req: RemoteRequest, ctx: RemoteContext): RemoteRes
   if (!r) return fail('not_found')
   if (req.method !== allow) return fail('method_not_allowed', { allow })
 
-  const { staff, tasks } = office.view()
-  if (r.name === 'status') return ok(200, statusBody(staff, tasks, ctx.serverVersion), now)
+  const { staff, tasks, reReviews } = office.view()
+  if (r.name === 'status') return ok(200, statusBody(staff, tasks, ctx.serverVersion, reReviews), now)
   if (r.name === 'decisions') return ok(200, decisionsBody(staff, tasks), now)
 
   // ⑥ 본문

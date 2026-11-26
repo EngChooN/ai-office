@@ -274,4 +274,24 @@
     <string name="web_reload_title">Couldn\'t load the screen</string>
     <string name="web_reload_body">The screen stopped or hit a problem while loading. Reloading usually fixes it.</string>
     <string name="web_reload_btn">Reload</string>
+    <string name="tab_board">Tasks</string>
+    <string name="title_board">Task board</string>
+    <string name="work_queued">To do</string>
+    <string name="work_working">In progress</string>
+    <string name="work_awaitingUser">Waiting for you</string>
+    <string name="work_review">In review</string>
+    <string name="work_done">Done</string>
+    <string name="work_wait_under_min">Under 1 min</string>
+    <string name="work_wait_min">%1$d min</string>
+    <string name="work_wait_hour">%1$d hr %2$d min</string>
+    <string name="work_wait_day">%1$d d %2$d hr</string>
+    <string name="work_band_title">%1$d waiting for you</string>
+    <string name="work_band_oldest">%1$s · for %2$s</string>
+    <string name="work_waited">for %1$s</string>
+    <string name="work_rereview">Re-review</string>
+    <string name="work_unassigned">Unassigned</string>
+    <string name="work_empty">No tasks yet</string>
+    <string name="work_empty_hint">Assign a task on your PC and its status shows up here</string>
+    <string name="work_wait_list">Tasks waiting for you</string>
+    <string name="work_wait_list_close">Close</string>
 </resources>

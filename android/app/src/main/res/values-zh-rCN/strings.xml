@@ -274,4 +274,24 @@
     <string name="web_reload_title">无法加载画面</string>
     <string name="web_reload_body">画面停止或加载时出现问题。重新加载通常可以解决。</string>
     <string name="web_reload_btn">重新加载</string>
+    <string name="tab_board">任务</string>
+    <string name="title_board">任务看板</string>
+    <string name="work_queued">待办</string>
+    <string name="work_working">进行中</string>
+    <string name="work_awaitingUser">等待你的回复</string>
+    <string name="work_review">审核中</string>
+    <string name="work_done">已完成</string>
+    <string name="work_wait_under_min">不到 1 分钟</string>
+    <string name="work_wait_min">%1$d 分钟</string>
+    <string name="work_wait_hour">%1$d 小时 %2$d 分钟</string>
+    <string name="work_wait_day">%1$d 天 %2$d 小时</string>
+    <string name="work_band_title">等待回复 %1$d 项</string>
+    <string name="work_band_oldest">%1$s · 已等 %2$s</string>
+    <string name="work_waited">已等 %1$s</string>
+    <string name="work_rereview">需重新审核</string>
+    <string name="work_unassigned">无负责人</string>
+    <string name="work_empty">还没有任务</string>
+    <string name="work_empty_hint">在电脑上分配任务后，状态会显示在这里</string>
+    <string name="work_wait_list">等待你回复的任务</string>
+    <string name="work_wait_list_close">关闭</string>
 </resources>

@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Checklist
+import androidx.compose.material.icons.outlined.Dashboard
 import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.AlertDialog
@@ -69,7 +70,7 @@ private sealed interface Onboarding {
     data class Connected(val refreshedName: String?) : Onboarding
 }
 
-enum class Tab { STAFF, DECISIONS, SETTINGS }
+enum class Tab { STAFF, DECISIONS, BOARD, SETTINGS }
 
 private sealed interface Detail {
     data class Staff(val id: String) : Detail
@@ -383,6 +384,7 @@ private fun MainRoot(repo: OfficeRepository, ctl: PcCtl, requestedTab: Tab?, onT
                     },
                     label = { Text(S.get(R.string.tab_decisions), style = Type.label) }, colors = colors,
                 )
+                NavigationBarItem(tab == Tab.BOARD, { onTab(Tab.BOARD) }, { Icon(Icons.Outlined.Dashboard, null, Modifier.size(24.dp)) }, label = { Text(S.get(R.string.tab_board), style = Type.label) }, colors = colors)
                 NavigationBarItem(tab == Tab.SETTINGS, { onTab(Tab.SETTINGS) }, { Icon(Icons.Outlined.Settings, null, Modifier.size(24.dp)) }, label = { Text(S.get(R.string.cd_settings), style = Type.label) }, colors = colors)
             }
         },
@@ -403,6 +405,7 @@ private fun MainRoot(repo: OfficeRepository, ctl: PcCtl, requestedTab: Tab?, onT
                             selectedId = wideSelection,
                         )
                     }
+                    tab == Tab.BOARD -> Box(Modifier.alpha(if (state.reach == Reach.PHONE_OFFLINE) 0.6f else 1f)) { BoardTab(state) }
                     else -> Box(Modifier.alpha(if (state.reach == Reach.PHONE_OFFLINE) 0.6f else 1f)) {
                         DecisionsTab(
                             state, repo::refresh,

@@ -1667,7 +1667,11 @@ export class Office extends EventEmitter<{
 
   remotePort(): RemoteOfficePort {
     return {
-      view: () => ({ staff: [...this.hired.values()].map((s) => this.liveStaff(s)), tasks: [...this.tasks.values()] }),
+      view: () => {
+        // '재검토 필요'는 git 조회가 비동기라 직전에 계산해 둔 값을 싣고, 이번 조회로 새로 계산해 둔다(폰이 곧 다시 부른다)
+        void this.taskReReviews().then((m) => (this.reReviewCache = m), () => {})
+        return { staff: [...this.hired.values()].map((s) => this.liveStaff(s)), tasks: [...this.tasks.values()], reReviews: this.reReviewCache }
+      },
       decide: (id, allow) => this.decide(id, allow, REMOTE_MARK),
       answerQuestion: (id, answers) => this.answerQuestion(id, answers, REMOTE_MARK),
       reviewPlan: (taskId, isApproved, feedback) => this.reviewPlan(taskId, isApproved, feedback, REMOTE_MARK),
@@ -3534,6 +3538,8 @@ export class Office extends EventEmitter<{
     const s = this.hired.get(staffId) ?? this.external.find((x) => x.id === staffId)
     return s && fs.existsSync(s.cwd) ? s.cwd : null
   }
+
+  private reReviewCache: Record<string, ReReview> = {}
 
   /** 상태 보드 '재검토 필요': 검토 커밋이 있는 카드만 담당 직원 작업 폴더의 HEAD와 비교 (폴더마다 git 한 번, 이 응답 안에서만) */
   async taskReReviews() {

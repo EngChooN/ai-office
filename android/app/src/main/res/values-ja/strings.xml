@@ -274,4 +274,24 @@
     <string name="web_reload_title">画面を読み込めませんでした</string>
     <string name="web_reload_body">画面が止まったか、読み込み中に問題が起きました。再読み込みで多くは解決します。</string>
     <string name="web_reload_btn">再読み込み</string>
+    <string name="tab_board">仕事</string>
+    <string name="title_board">仕事ボード</string>
+    <string name="work_queued">未着手</string>
+    <string name="work_working">進行中</string>
+    <string name="work_awaitingUser">あなたの返答待ち</string>
+    <string name="work_review">レビュー中</string>
+    <string name="work_done">完了</string>
+    <string name="work_wait_under_min">1分未満</string>
+    <string name="work_wait_min">%1$d分</string>
+    <string name="work_wait_hour">%1$d時間%2$d分</string>
+    <string name="work_wait_day">%1$d日%2$d時間</string>
+    <string name="work_band_title">返答待ち %1$d件</string>
+    <string name="work_band_oldest">%1$s · %2$s経過</string>
+    <string name="work_waited">%1$s経過</string>
+    <string name="work_rereview">再レビュー</string>
+    <string name="work_unassigned">担当なし</string>
+    <string name="work_empty">まだ仕事がありません</string>
+    <string name="work_empty_hint">PCで仕事を任せると、ここに状況が表示されます</string>
+    <string name="work_wait_list">あなたの返答を待っている仕事</string>
+    <string name="work_wait_list_close">閉じる</string>
 </resources>

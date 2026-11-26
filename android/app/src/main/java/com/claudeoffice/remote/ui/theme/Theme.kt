@@ -38,6 +38,8 @@ data class OfficeColors(
     val onStatusWaitingFill: Color,
     val statusIdle: Color,
     val statusError: Color,
+    /** 상태 보드 '재검토 필요' 파랑 (데스크톱 --status-rereview) */
+    val statusReReview: Color,
 )
 
 val DarkTokens = OfficeColors(
@@ -57,6 +59,7 @@ val DarkTokens = OfficeColors(
     onStatusWaitingFill = Color(0xFF000000),
     statusIdle = Color(0xFF88909C),
     statusError = Color(0xFFF14445),
+    statusReReview = Color(0xFF5CC8FF),
 )
 
 val LightTokens = OfficeColors(
@@ -76,6 +79,7 @@ val LightTokens = OfficeColors(
     onStatusWaitingFill = Color(0xFF000000),
     statusIdle = Color(0xFF626975),
     statusError = Color(0xFFCC272E),
+    statusReReview = Color(0xFF0B6DA1),
 )
 
 /** 간격 (dp) */

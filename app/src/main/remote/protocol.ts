@@ -3,6 +3,8 @@
 
 import type { Approval, Staff, StaffQuestion, Task } from '../../shared/types'
 import { canonicalAvatar } from '../../shared/look.ts'
+import { workStateOf, cleanTime } from '../../shared/workWait.ts'
+import type { ReReview } from '../../shared/types'
 
 export const PROTOCOL_VERSION = 1
 /** 이 서버가 제공하는 프로토콜 (v1 4종 + v2 OfficeApi 전체) — v1 /status의 supportedProtocols, 426의 supported */
@@ -138,7 +140,7 @@ export function toRemoteStaff(s: Staff, pendingPlans: number) {
 
 /** v1 상태 응답. 0.9.0부터 선택 필드 supportedProtocols·fullAccess를 더한다 (v1 앱은 무시 — v2 규격 2-1절).
  * 전체 기능 스위치는 없앴다(원격이 켜져 있으면 v2를 바로 쓴다) — fullAccess는 1.0.x·1.1 앱 호환을 위해 항상 true */
-export function statusBody(staff: Staff[], tasks: Task[], serverVersion: string) {
+export function statusBody(staff: Staff[], tasks: Task[], serverVersion: string, reReviews: Record<string, ReReview> = {}) {
   const hired = staff.filter((s) => s.kind === 'hired')
   const plans = waitingPlans(tasks)
   const summary = { working: 0, waiting: 0, error: 0, idle: 0, offline: 0 }
@@ -149,7 +151,33 @@ export function statusBody(staff: Staff[], tasks: Task[], serverVersion: string)
     summary,
     supportedProtocols: SUPPORTED_VERSIONS,
     fullAccess: true,
+    works: worksOf(tasks, reReviews, new Map(hired.map((s) => [s.id, s.name]))),
   }
+}
+
+/** 상태 보드(읽기 전용) 스냅샷 — 새 선택 필드. 구버전 앱은 무시한다. 완료 카드는 최근 것만 */
+const DONE_WORKS_MAX = 20
+const WORKS_MAX = 200
+
+export function worksOf(tasks: Task[], reReviews: Record<string, ReReview>, names: Map<string, string>) {
+  const rows = tasks
+    .filter((t) => !t.isPractice)
+    .map((t) => {
+      const state = workStateOf(t)
+      return {
+        id: t.id,
+        title: clip(t.title, SUMMARY_MAX),
+        assigneeName: (t.assigneeId && names.get(t.assigneeId)) || '',
+        updatedAt: t.updatedAt,
+        v: 1,
+        state,
+        waitingSince: state === 'awaitingUser' ? (cleanTime(t.work?.waitingSince) ?? 0) : 0,
+        reReview: reReviews[t.id] ?? 'unknown',
+      }
+    })
+  const live = rows.filter((r) => r.state !== 'done')
+  const done = rows.filter((r) => r.state === 'done').sort((a, b) => b.updatedAt - a.updatedAt).slice(0, DONE_WORKS_MAX)
+  return [...live, ...done].slice(0, WORKS_MAX)
 }
 
 /** 대표 확인을 기다리는 기획 카드 */

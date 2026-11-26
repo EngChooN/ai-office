@@ -31,6 +31,22 @@ data class RemoteStaff(
     val pendingDecisions: Int = 0,
 )
 
+/**
+ * 상태 보드 한 건(읽기 전용). 모르는 필드는 무시, 없는 값은 기본값, 버전(v)별 분기 없음.
+ * state는 queued·working·awaitingUser·review·done — 모르는 값은 할 일로 본다 ([workStateOf])
+ */
+@Serializable
+data class RemoteWork(
+    val id: String,
+    val title: String = "",
+    val assigneeName: String = "",
+    val v: Int = 1,
+    val state: String = "queued",
+    val waitingSince: Long = 0,
+    /** needed(재검토 필요) · clear · unknown — needed일 때만 칩을 띄운다 */
+    val reReview: String = "unknown",
+)
+
 @Serializable
 data class StatusSummary(
     val working: Int = 0,
@@ -49,6 +65,8 @@ data class StatusResponse(
     val summary: StatusSummary = StatusSummary(),
     /** v2 규격 2-1: 이 PC가 제공하는 프로토콜. 없으면 [1] */
     val supportedProtocols: List<Int> = listOf(1),
+    /** 상태 보드 (구버전 PC는 안 보냄 → 빈 목록) */
+    val works: List<RemoteWork> = emptyList(),
 )
 
 @Serializable
