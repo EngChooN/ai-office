@@ -103,6 +103,7 @@ export function createOfficeHandlers(office: Office, remoteApi: () => RemoteServ
       return r.canceled ? [] : r.filePaths
     },
     missingFiles: (paths: string[]) => office.missingFiles(paths),
+    taskReReviews: () => office.taskReReviews(),
     setRefDocs: (target: Parameters<Office['setRefDocs']>[0], docs: string[]) => office.setRefDocs(target, docs),
     hooksStatus: () => ({ installed: hooksInstalled(), isAskInstalled: askHookInstalled(), port: HOOK_PORT }),
     setHooksInstalled: (installed: boolean) => ({ installed: setHooksInstalled(installed), isAskInstalled: askHookInstalled(), port: HOOK_PORT }),

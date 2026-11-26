@@ -177,6 +177,7 @@ import { autoWaitReason, autoActionKey, autoKindOf, autoStep, autoSummaryText, a
 import { HELP_MAX_PER_TASK, HELP_TEXT_MAX, HelpLedger, mustUseHelp, helpTargetIds, helpCtxOf, inHelpContext, isHelpWaiting, type HelpCtx } from '../shared/helpRequest'
 import { AUTONOMY_TEXT_ASK_MAX, autonomyVerdict, fallbackAnswers, isFullAutonomy, isTaskAutonomous, markProxyAnswers, nextTextAskRetry, resolveAutonomy } from '../shared/autonomy'
 import { clipLeaderReport } from '../shared/memberReport'
+import { snapshotFor, type ReReview } from './workStatus'
 import { commitAll, folderState, pushAndPr, repoRoot, restoreFiles, snapshotTree, treeDiff, workBaseStillValid, workChanges } from './review'
 import { readCodexExternalDay, readExternalDay } from './transcript'
 import { Tutorial } from './tutorial'
@@ -3532,6 +3533,20 @@ export class Office extends EventEmitter<{
   private cwdOf(staffId: string) {
     const s = this.hired.get(staffId) ?? this.external.find((x) => x.id === staffId)
     return s && fs.existsSync(s.cwd) ? s.cwd : null
+  }
+
+  /** 상태 보드 '재검토 필요': 검토 커밋이 있는 카드만 담당 직원 작업 폴더의 HEAD와 비교 (폴더마다 git 한 번, 이 응답 안에서만) */
+  async taskReReviews() {
+    const heads = new Map<string, Promise<string | null>>()
+    const out: Record<string, ReReview> = {}
+    await Promise.all(
+      [...this.tasks.values()]
+        .filter((tk) => tk.work?.reviewCommit)
+        .map(async (tk) => {
+          out[tk.id] = (await snapshotFor(tk.work!, tk.assigneeId ? this.cwdOf(tk.assigneeId) : null, heads)).reReview
+        }),
+    )
+    return out
   }
 
   async workChanges(staffId: string) {

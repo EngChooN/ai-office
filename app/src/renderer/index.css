@@ -80,8 +80,10 @@
   --transition-fast: .15s;
   --destructive-foreground: #FFFFFF;
 }
+/* 상태 보드 '재검토 필요' 칩 파랑 — 직원 상태색(초록·노랑·회색·빨강)과 겹치지 않게 테마와 관계없이 한 색 (docs/design/status-board/decision.md ④) */
+:root, [data-mode='dark'] { --status-rereview: #5CC8FF; }
 [data-mode='dark'] { --overlay-bg: rgba(0,0,0,.62); --duo-fill-opacity: .6; }
-[data-mode='light'] { --hover-mix: #000000; --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2366627F' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); }
+[data-mode='light'] { --status-rereview: #0B6DA1; --hover-mix: #000000; --select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2366627F' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); }
 
 [data-theme='lavender'][data-mode='light'] {
   color-scheme: light;
@@ -566,6 +568,7 @@
   --color-status-waiting: var(--status-waiting);
   --color-status-idle: var(--status-idle);
   --color-status-error: var(--status-error);
+  --color-status-rereview: var(--status-rereview);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-hud: var(--hud);
   --color-hud-foreground: var(--hud-foreground);

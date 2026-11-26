@@ -10,6 +10,7 @@ import {
   type WorkStatus,
 } from '../src/main/workStatus.ts'
 import { headCommit } from '../src/main/review.ts'
+import { awaitingTasks, workStateOf } from '../src/shared/workWait.ts'
 
 const A = 'a'.repeat(40)
 const B = 'b'.repeat(40)
@@ -93,6 +94,13 @@ test("'재검토 필요' 세 값: 다르면 needed, 같으면 clear, 어느 쪽�
   assert.equal(reReviewOf(A, ''), 'unknown')
 })
 
+test('짧은 커밋 번호와 전체 번호가 섞여도 같은 커밋이면 clear, 다른 커밋이면 needed', () => {
+  assert.equal(reReviewOf(A.slice(0, 7), A), 'clear')
+  assert.equal(reReviewOf(A, A.slice(0, 12).toUpperCase()), 'clear')
+  assert.equal(reReviewOf(A.slice(0, 7), B), 'needed')
+  assert.equal(reReviewOf(B, A.slice(0, 7)), 'needed')
+})
+
 test('스냅샷: 버전·상태·대기 시작 시각·검토 커밋 + 계산한 재검토 값', () => {
   const s = st({ state: 'done', reviewCommit: A })
   assert.deepEqual(toSnapshot(s, B), { v: WORK_STATUS_VERSION, state: 'done', waitingSince: null, reviewCommit: A, reReview: 'needed' })
@@ -112,6 +120,8 @@ test('snapshotFor: 검토 커밋 없으면 git을 부르지 않고, 같은 폴�
   assert.equal(calls, 1)
   assert.equal((await snapshotFor(r, null, heads, read)).reReview, 'unknown')
   assert.equal((await snapshotFor(r, '/x', heads, async () => { throw new Error('git') })).reReview, 'unknown')
+  // 다음 응답은 새 Map — 그새 HEAD가 검토 커밋으로 돌아왔으면 새로 읽어 clear
+  assert.equal((await snapshotFor(r, '/w', new Map(), async () => A)).reReview, 'clear')
 })
 
 test('실제 git 폴더: 검토 뒤 커밋하면 재검토 필요, git 폴더가 아니면 판단 불가', async () => {
@@ -131,4 +141,19 @@ test('실제 git 폴더: 검토 뒤 커밋하면 재검토 필요, git 폴더가
   } finally {
     fs.rmSync(dir, { recursive: true, force: true })
   }
+})
+
+test('화면용: 상태 칸이 없는 카드는 보드 칸에서, 대표 응답 대기는 오래 기다린 순(시각 모르면 맨 뒤)', () => {
+  assert.equal(workStateOf({ status: 'doing' }), 'working')
+  assert.equal(workStateOf({ status: 'done' }), 'done')
+  assert.equal(workStateOf({ status: 'doing', work: st({ state: 'awaitingUser', waitingSince: 5 }) }), 'awaitingUser')
+  const tk = (id: string, work?: WorkStatus) => ({ id, status: 'doing' as const, work })
+  const list = [
+    tk('new', st({ state: 'awaitingUser', waitingSince: 9_000 })),
+    tk('plain'),
+    tk('unknown', st({ state: 'awaitingUser', waitingSince: null })),
+    tk('old', st({ state: 'awaitingUser', waitingSince: 1_000 })),
+    tk('review', st({ state: 'review', reviewCommit: A })),
+  ]
+  assert.deepEqual(awaitingTasks(list).map((x) => x.id), ['old', 'new', 'unknown'])
 })

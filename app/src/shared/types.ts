@@ -1283,6 +1283,8 @@ export interface OfficeApi {
   pickFiles(): Promise<string[]>
   /** 이 중 없는 파일 */
   missingFiles(paths: string[]): Promise<string[]>
+  /** 상태 보드 '재검토 필요': 검토 커밋이 있는 카드만 task id → 값 (없는 카드는 판단 불가). HEAD를 읽으므로 비동기 */
+  taskReReviews(): Promise<Record<string, ReReview>>
 
   fireExternal(staffId: string): Promise<boolean>
   recruitExternal(staffId: string, input: { role: string; model: ModelChoice; teamId: string | null; approvalMode: ApprovalMode }): Promise<Staff | null>

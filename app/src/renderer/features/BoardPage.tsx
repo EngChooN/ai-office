@@ -1,7 +1,7 @@
 import { findRoom } from '@shared/chatRooms'
 import { HelperChip, HelpersBar } from '@/components/helper-badge'
 import { useChatGroups } from './chatRoomHooks'
-import { memo, useMemo, useState, type DragEvent, type FormEvent } from 'react'
+import { memo, useEffect, useMemo, useState, type DragEvent, type FormEvent } from 'react'
 import { PlayIcon, PlusIcon, SquareIcon, Trash2Icon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -20,7 +20,9 @@ import { useOffice } from '@/store'
 import { isAbsorbedOpen } from '@shared/planTasks'
 import { t, type TKey } from '@shared/i18n'
 import { useManualLabelOf } from '@/components/slash-menu'
-import type { Staff, Task, TaskStatus } from '@shared/types'
+import type { ReReview, Staff, Task, TaskStatus } from '@shared/types'
+import { awaitingTasks } from '@shared/workWait'
+import { AwaitingBand, WorkStatusRow } from './WorkStatusChips'
 import { PlanCard } from './PlanCard'
 import { RunCard } from './RunCard'
 import { FirstHint } from './FirstHint'
@@ -63,6 +65,11 @@ export function BoardPage() {
     }
     return { byId, childrenOf }
   }, [tasks])
+  // 상태 보드: 대표 응답 대기 띠(오래된 순)와 '재검토 필요' (HEAD를 읽어야 해서 카드가 바뀔 때마다 메인에 따로 묻는다)
+  const awaiting = useMemo(() => awaitingTasks(tasks), [tasks])
+  const reReviews = useReReviews(tasks)
+  const [bandTaskId, setBandTaskId] = useState<string | null>(null)
+  const bandTask = bandTaskId ? byId.get(bandTaskId) : undefined
   const hiredStaff = useOffice(useShallow((s) => s.staff.filter((x) => x.kind === 'hired')))
   const teams = useOffice(useShallow((s) => s.teams.filter((tm) => tm.kind === 'hired')))
   // 새 카드에 쓰던 값은 다른 페이지에 갔다 와도 남는다 (만들면 비운다)
@@ -116,6 +123,16 @@ export function BoardPage() {
     <Page title={t('board.title')} description={t('board.description')} className="flex flex-col gap-4">
       {/* 처음 열 때 한 번: 사이드바 '업무 보드' 옆 (폰은 화면 아래) */}
       <FirstHint id="board" target={navTourTarget('board')} sides={['right', 'below']} />
+      <AwaitingBand tasks={awaiting} onOpen={(tk) => setBandTaskId(tk.id)} />
+      {bandTask && (
+        <TaskDetail
+          task={bandTask}
+          subtasks={childrenOf.get(bandTask.id) ?? NO_TASKS}
+          reReview={reReviews[bandTask.id]}
+          isOpen
+          onOpenChange={(isOpen) => !isOpen && setBandTaskId(null)}
+        />
+      )}
       <form onSubmit={handleCreate} className="bg-card flex flex-col gap-2 rounded-xl border p-3">
         {/* 좁으면 팀·랩·추가 버튼이 다음 줄로 내려간다 */}
         <div className="flex flex-wrap gap-2">
@@ -205,6 +222,7 @@ export function BoardPage() {
                     parent={tk.parentId ? byId.get(tk.parentId) : undefined}
                     subtasks={childrenOf.get(tk.id) ?? NO_TASKS}
                     staff={hiredStaff}
+                    reReview={reReviews[tk.id]}
                     className={col.status === 'done' ? DONE_CARD_CLASS : undefined}
                   />
                 ))}
@@ -215,6 +233,24 @@ export function BoardPage() {
       </div>
     </Page>
   )
+}
+
+/** 카드 id → '재검토 필요' 값. 카드 목록이 바뀔 때마다 새로 묻고, 늦게 온 옛 답은 버린다 (실패하면 표시 없음) */
+function useReReviews(tasks: Task[]) {
+  const [reReviews, setReReviews] = useState<Record<string, ReReview>>({})
+  const hasReviewCommit = tasks.some((tk) => tk.work?.reviewCommit)
+  useEffect(() => {
+    if (!hasReviewCommit) return setReReviews({})
+    let isCurrent = true
+    window.office.taskReReviews().then(
+      (r) => isCurrent && setReReviews(r),
+      () => isCurrent && setReReviews({}),
+    )
+    return () => {
+      isCurrent = false
+    }
+  }, [tasks, hasReviewCommit])
+  return reReviews
 }
 
 /** 대화방 지시로 저절로 생긴 카드: 어느 방에서 온 일인지 — 누르면 그 대화로 */
@@ -242,6 +278,8 @@ type TaskCardProps = {
   subtasks: Task[]
   /** 고용 직원 (보드가 한 번 골라 내려준다) */
   staff: Staff[]
+  /** '재검토 필요' 서버 값 (없으면 판단 불가) */
+  reReview: ReReview | undefined
   className?: string
 }
 
@@ -250,12 +288,15 @@ const isSameCardProps = (a: TaskCardProps, b: TaskCardProps) =>
   a.task === b.task &&
   a.parent === b.parent &&
   a.staff === b.staff &&
+  a.reReview === b.reReview &&
   a.className === b.className &&
   a.subtasks.length === b.subtasks.length &&
   a.subtasks.every((c, i) => c === b.subtasks[i])
 
 // 현황이 와도 이 카드에 쓰는 값(카드·부모·하위·직원)이 그대로면 다시 그리지 않는다 — 안 바뀐 카드는 store가 이전 객체를 그대로 준다
-const TaskCard = memo(function TaskCard({ task, parent, subtasks: children, staff, className }: TaskCardProps) {
+const TaskCard = memo(function TaskCard({ task, parent, subtasks: children, staff, reReview, className }: TaskCardProps) {
+  // 완료 카드: 제목·담당만 흐리게 — 상태·재검토 칩은 흐리지 않는다
+  const dim = task.status === 'done' ? 'opacity-60' : undefined
   const team = useOffice((s) => s.teams.find((tm) => tm.id === task.teamId))
   const lab = useOffice((s) => s.labs.find((l) => l.id === task.labId))
   const assignee = staff.find((s) => s.id === task.assigneeId)
@@ -305,7 +346,7 @@ const TaskCard = memo(function TaskCard({ task, parent, subtasks: children, staf
   return (
     <article draggable onDragStart={(e) => e.dataTransfer.setData(DRAG_TYPE, task.id)} className={cn('bg-card flex min-w-0 shrink-0 cursor-grab flex-col gap-2 rounded-lg border p-3 text-sm shadow-sm', className)}>
       <div className="flex items-start gap-2">
-        <button type="button" onClick={openDetail} className="min-w-0 flex-1 text-left font-medium break-words hover:underline">
+        <button type="button" onClick={openDetail} className={cn('min-w-0 flex-1 text-left font-medium break-words hover:underline', dim)}>
           {task.title}
         </button>
         <button type="button" onClick={() => void window.office.deleteTask(task.id)} className="text-muted-foreground hover:text-foreground" aria-label={t('common.delete')}>
@@ -351,7 +392,8 @@ const TaskCard = memo(function TaskCard({ task, parent, subtasks: children, staf
       {task.usage && (
         <span className="text-muted-foreground text-[10px] tabular-nums"><IconText size={11} text={t('board.card.usage', { tokens: formatTokens(task.usage.tokens), cost: formatCost(task.usage.costUsd) })} /></span>
       )}
-      <TaskDetail task={task} subtasks={children} isOpen={isOpen} onOpenChange={setIsOpen} />
+      <WorkStatusRow task={task} reReview={reReview} />
+      <TaskDetail task={task} subtasks={children} reReview={reReview} isOpen={isOpen} onOpenChange={setIsOpen} />
       {/* 휴대폰: 카드 끌어 옮기기가 터치에서 안 되니 칸을 골라 옮긴다 */}
       <NativeSelect
         value={task.status}
@@ -415,7 +457,7 @@ const TaskCard = memo(function TaskCard({ task, parent, subtasks: children, staf
         </div>
       ) : (
         assignee && (
-          <div className="text-muted-foreground flex items-center gap-1.5 text-xs">
+          <div className={cn('text-muted-foreground flex items-center gap-1.5 text-xs', dim)}>
             <Avatar avatar={assignee.avatar} name={assignee.name} teamId={assignee.teamId} className="size-5" /> <span className="min-w-0 truncate">{assignee.name}</span>
             {task.status === 'doing' && <HelperChip staff={assignee} isShort className="ml-auto" />}
           </div>
@@ -466,7 +508,19 @@ function planStatusLabel(task: Task, children: Task[]) {
 }
 
 /** 카드 상세: 설명·첨부·보고를 마크다운으로 크게 본다 (회의실 '결과 보기'도 이 창으로) */
-export function TaskDetail({ task, subtasks: children, isOpen, onOpenChange }: { task: Task; subtasks: Task[]; isOpen: boolean; onOpenChange: (isOpen: boolean) => void }) {
+export function TaskDetail({
+  task,
+  subtasks: children,
+  reReview,
+  isOpen,
+  onOpenChange,
+}: {
+  task: Task
+  subtasks: Task[]
+  reReview?: ReReview
+  isOpen: boolean
+  onOpenChange: (isOpen: boolean) => void
+}) {
   const staff = useOffice((s) => s.staff)
   const assignee = staff.find((x) => x.id === task.assigneeId)
   return (
@@ -478,6 +532,7 @@ export function TaskDetail({ task, subtasks: children, isOpen, onOpenChange }: {
             {t(STATUS_LABEL[task.status])}
             {assignee && ` · ${t('board.detail.assignee', { name: assignee.name })}`}
           </DialogDescription>
+          <WorkStatusRow task={task} reReview={reReview} />
           {assignee && task.status === 'doing' && <HelpersBar staff={assignee} />}
         </DialogHeader>
         {task.detail && (

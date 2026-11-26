@@ -28,6 +28,7 @@ export const OFFICE_METHODS = [
   'pickFolder',
   'pickFiles',
   'missingFiles',
+  'taskReReviews',
   'setRefDocs',
   'hooksStatus',
   'setHooksInstalled',

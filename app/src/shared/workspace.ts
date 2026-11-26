@@ -124,6 +124,7 @@ export const METHOD_ACCESS: Record<OfficeMethod, MethodAccess> = {
   pickFolder: 'write',
   pickFiles: 'write',
   missingFiles: 'read',
+  taskReReviews: 'read',
   setRefDocs: 'write',
   hooksStatus: 'read',
   setHooksInstalled: 'write',

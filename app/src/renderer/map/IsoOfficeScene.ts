@@ -7,7 +7,7 @@ import { useOffice, viewLevelOf } from '@/store'
 import { t, type TKey } from '@shared/i18n'
 import { buildFloors, levelRowOf, officeOf } from '@shared/officeLevel'
 import type { ShopState } from '@shared/economy'
-import { isMeetingLive, type Meeting, type Settings, type Staff, type Team } from '@shared/types'
+import { isMeetingLive, type Meeting, type Settings, type Staff, type Task, type Team } from '@shared/types'
 import { PIXEL, TILE_H, TILE_W, cellKey, isInside, miniFocus, toGrid, toWorld, type Cell, type Room } from '@shared/iso/grid'
 import { cellsOf, FACE_STEP, facingOf, specOf, spotsOf, type GridItem, type Rot } from '@shared/iso/furniture'
 import { fixedTiles, nextSeatCap, seatCapOf, type FixedTile, type FloorState } from '@shared/iso/place'
@@ -21,6 +21,7 @@ import { ITEM_ACTIONS } from '@shared/iso/actions'
 import { DESK_FLIP, deskCellOf, partitionJoins, HALL_SIT_Z, MEETING_CHAIR, artMeetingChair, isSplitChair, PODIUM_KEY, WALL_FADE_ALPHA, ZONE_FLOOR_KINDS, artHallRow, artMeetingRoom, artMeetingTable, artPodium, artPlanEdges, artZoneFloor, drawItem, drawPerson, isoLook, personSitDrop, drawPet, PET_HOMES, type PetKind, type PetPose, drawPersonShadow, drawPlanRoom, PERSON_DIRS, personDirOf, finishKey, finishLabel, finishOf, hallRowKey, meetingTableKey, planRoomTextureKey, withSurfaces, zoneFloorKey, type Finish, type MeetingTableKind, type ZoneFloor, seatHeight, toCanvas, type ArtBox, type ItemArt, type PersonDir, type PersonPose } from './iso/isoArt'
 import { drawEmote, drawHelperBubble, emoteKindOf, type EmoteKind } from './iso/emoteArt'
 import { helperBadgeCount } from '@shared/helpers'
+import { awaitingTasks, waitLabel, waitTime } from '@shared/workWait'
 import { playLevelUpFx } from './iso/levelUpFx'
 import { pinchStep } from './gestures'
 import { isNightTime } from '@shared/dayNight'
@@ -194,6 +195,10 @@ interface Actor {
   helper: Phaser.GameObjects.Image
   /** 그려 둔 도우미 수 (같으면 그림을 바꾸지 않는다) */
   helperN: number
+  /** 대표 응답 대기 '!' 말풍선 — 그 직원이 맡은 일이 대표 응답 대기인 동안 계속 떠 있다 (상태 보드 decision.md ⑤) */
+  await: Phaser.GameObjects.Image
+  /** 그 직원의 대표 응답 대기 일 중 가장 오래 기다린 것 (없으면 null) */
+  awaitTask: Task | null
   /** 감정 말풍선이 끝나는 시각 (scene time ms) */
   emoteUntil: number
   /** 칸 좌표 (실수, 칸 중심 = gx + 0.5) */
@@ -332,6 +337,8 @@ export class IsoOfficeScene extends Phaser.Scene {
   private isRedacting = false
   /** 업무 모드: 사무실 머리 위 도우미 말풍선을 숨긴다 (카드·머리말 표시는 그대로) */
   private isWorkMode = false
+  /** 직원 id → 가장 오래 기다린 대표 응답 대기 일 (카드 목록이 바뀔 때만 다시 만든다) */
+  private awaitBy: { tasks: Task[] | null; byStaff: Map<string, Task> } = { tasks: null, byStaff: new Map() }
   private isCameraLocked = false
   private hasFirstView = false
   private panFrom: { x: number; y: number } | null = null
@@ -991,7 +998,14 @@ export class IsoOfficeScene extends Phaser.Scene {
     const bubble = this.add.container(0, -60, [bubbleBg, bubbleText])
     const emote = this.add.image(0, -58, this.emoteTexture('happy')).setOrigin(0.5, 1).setAlpha(0)
     const helper = this.add.image(0, -58, this.helperTexture(2)).setOrigin(0.5, 1).setAlpha(0)
-    const label = this.add.container(0, 0, [name, bubble, helper, emote]).setDepth(DEPTH.label)
+    const awaitImg = this.add.image(0, -58, this.emoteTexture('ask')).setOrigin(0.5, 1).setAlpha(0).setVisible(false)
+    // 말풍선에 마우스를 올려도 몸통처럼 설명 상자(일 이름·대기 시간)를 띄운다
+    awaitImg.setInteractive({ useHandCursor: true })
+    awaitImg.on('pointerover', () => (this.hoverId = s.id))
+    awaitImg.on('pointerout', () => {
+      if (this.hoverId === s.id) this.hoverId = null
+    })
+    const label = this.add.container(0, 0, [name, bubble, helper, awaitImg, emote]).setDepth(DEPTH.label)
     container.setInteractive({ useHandCursor: true, hitArea: new Phaser.Geom.Rectangle(-16, -54, 32, 58), hitAreaCallback: Phaser.Geom.Rectangle.Contains })
     container.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
       // Phaser는 캔버스 밖(위에 덮인 외관 거리·버튼)을 누른 것도 같은 자리로 판정한다 — 캔버스를 직접 누른 것만 받는다
@@ -1020,6 +1034,8 @@ export class IsoOfficeScene extends Phaser.Scene {
       emote,
       helper,
       helperN: 2,
+      await: awaitImg,
+      awaitTask: null,
       emoteUntil: 0,
       x: 0,
       y: 0,
@@ -1424,7 +1440,9 @@ export class IsoOfficeScene extends Phaser.Scene {
 
   private applyLook(a: Actor, isSelected: boolean) {
     const s = a.staff
-    a.mark.setVisible(s.status === 'waiting' || s.status === 'error')
+    a.awaitTask = this.awaitingOf(s.id)
+    // 대표 응답 대기 말풍선이 떠 있으면 같은 뜻의 노란 '!' 표시는 겹치지 않게 숨긴다 (오류 표시는 그대로)
+    a.mark.setVisible(s.status === 'error' || (s.status === 'waiting' && !a.awaitTask))
     a.mark.setBackgroundColor(s.status === 'error' ? '#e0533c' : '#f0c541')
     a.ring.setVisible(isSelected)
     const atDesk = a.mode === 'desk' && !a.goal
@@ -1484,6 +1502,18 @@ export class IsoOfficeScene extends Phaser.Scene {
     this.tweens.add({ targets: a.emote, y: y - 14, alpha: 0, delay: EMOTE_MS * 0.5, duration: EMOTE_MS * 0.5 })
   }
 
+  /** 이 직원이 맡은 대표 응답 대기 일 중 가장 오래 기다린 것 */
+  private awaitingOf(staffId: string): Task | null {
+    const tasks = useOffice.getState().tasks
+    if (this.awaitBy.tasks !== tasks) {
+      const byStaff = new Map<string, Task>()
+      // 오래된 순이라 직원마다 처음 만난 일이 가장 오래 기다린 일
+      for (const tk of awaitingTasks(tasks)) if (tk.assigneeId && !byStaff.has(tk.assigneeId)) byStaff.set(tk.assigneeId, tk)
+      this.awaitBy = { tasks, byStaff }
+    }
+    return this.awaitBy.byStaff.get(staffId) ?? null
+  }
+
   private updateTooltip() {
     const a = this.hoverId && !this.isRedacting ? this.actors.get(this.hoverId) : undefined
     this.tooltip.setVisible(Boolean(a))
@@ -1493,6 +1523,11 @@ export class IsoOfficeScene extends Phaser.Scene {
     const status = t(s.awaitingTeam ? 'status.awaitingTeam' : STATUS_LABEL[s.status])
     const lines = [`${s.name} · ${roleLabel(s.role)}`, t('map.tip.status', { status }), t('map.tip.activity', { activity: activity || '—' })]
     if (s.kind === 'hired') lines.push(t('map.tip.level', { level: s.stats.level, done: s.stats.tasksDone }))
+    if (a.awaitTask) {
+      const w = waitTime(a.awaitTask.work?.waitingSince, Date.now())
+      const title = a.awaitTask.title.length > 42 ? `${a.awaitTask.title.slice(0, 42)}…` : a.awaitTask.title
+      lines.push(`${s.name} · ${t('workStatus.state.awaitingUser')}`, w ? t('workStatus.mapTip', { task: title, time: waitLabel(w) }) : title)
+    }
     this.tooltipText.setText(lines.join('\n'))
     const b = this.tooltipText.getBounds()
     const pad = 8
@@ -1554,6 +1589,7 @@ export class IsoOfficeScene extends Phaser.Scene {
     a.shadow.setPosition(foot.x, foot.y).setVisible(!a.isSitting && a.container.visible)
     a.label.setPosition(foot.x, foot.y).setVisible(a.container.visible)
     a.bubble.setY(this.labelTop(a) - 8)
+    this.drawAwait(a)
     this.drawHelper(a)
     // 퇴근하면 몸통이 입구에 숨어 있다 — 미니 뷰는 빈 자리를 비춘다
     const at = !a.container.visible && a.seat ? { x: a.seat.gx + 0.5, y: a.seat.gy + 0.5 } : a
@@ -1571,7 +1607,8 @@ export class IsoOfficeScene extends Phaser.Scene {
   private drawHelper(a: Actor) {
     const n = this.isWorkMode ? 0 : helperBadgeCount(a.staff)
     const now = this.time.now
-    const isCovered = a.bubble.visible || now < a.emoteUntil
+    // 대표 응답 대기 말풍선이 같은 자리를 쓴다 — 그쪽이 먼저
+    const isCovered = a.bubble.visible || now < a.emoteUntil || a.await.visible
     if (n && n !== a.helperN) {
       a.helper.setTexture(this.helperTexture(n))
       a.helperN = n
@@ -1579,6 +1616,19 @@ export class IsoOfficeScene extends Phaser.Scene {
     const alpha = isCovered ? 0 : n ? Math.min(1, a.helper.alpha + 0.15) : Math.max(0, a.helper.alpha - 0.06)
     a.helper.setAlpha(alpha).setVisible(alpha > 0)
     if (alpha > 0) a.helper.setY(this.labelTop(a) - 2 - (1 - Math.cos((now / HELPER_BOB_MS) * Math.PI * 2)))
+  }
+
+  /**
+   * 대표 응답 대기 말풍선 '!': 대기하는 동안 사라지지 않고 떠 있다(도우미 말풍선처럼 살짝 위아래).
+   * 감정 말풍선·말 풍선이 뜨는 동안만 비켜 주고, 업무 모드에서는 숨긴다
+   */
+  private drawAwait(a: Actor) {
+    const now = this.time.now
+    const isOn = Boolean(a.awaitTask) && !this.isWorkMode
+    const isCovered = a.bubble.visible || now < a.emoteUntil
+    const alpha = isOn && !isCovered ? Math.min(1, a.await.alpha + 0.15) : Math.max(0, a.await.alpha - (isCovered ? 1 : 0.06))
+    a.await.setAlpha(alpha).setVisible(alpha > 0)
+    if (alpha > 0) a.await.setY(this.labelTop(a) - 2 - (1 - Math.cos((now / HELPER_BOB_MS) * Math.PI * 2)))
   }
 
   private helperTexture(n: number) {

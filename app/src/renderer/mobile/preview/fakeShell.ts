@@ -1,7 +1,7 @@
 // 개발 미리보기 전용 가짜 안드로이드 셸: OfficeBridge 계약(docs/specs/android-bridge.md)대로 답하고, 사무실은 고정 데이터
 // 실제 어댑터(remoteOffice.ts)·폰 틀을 그대로 거치므로 pc_only·confirm_required·첨부 올리기도 브라우저에서 확인할 수 있다
 // 앱(dist-mobile)에는 들어가지 않는다 — mobile-preview.html만 이 파일을 쓴다
-// 주소 쿼리: view=board · select=s4 · hire=1 · more=1 · banner=reconnecting|closed · work=1 · pc=old(hello·칸 배치를 모르는 예전 PC) · decor=1(꾸미기 서랍에 가구, 놓기·옮기기·넣기 응답) · xp=28000(회사 경험치 — 개편 안내 확인용)
+// 주소 쿼리: view=board · select=s4 · hire=1 · more=1 · banner=reconnecting|closed · work=1 · pc=old(hello·칸 배치를 모르는 예전 PC) · decor=1(꾸미기 서랍에 가구, 놓기·옮기기·넣기 응답) · xp=28000(회사 경험치 — 개편 안내 확인용) · ws=1(상태 보드: 대표 응답 대기·재검토 필요 카드)
 
 import { APP_VERSION } from '@/lib/changelog'
 import { companyFromXp, DEFAULT_EQUIPMENT, DEFAULT_SETTINGS, type ChatMessage, type OfficeSnapshot, type Staff } from '@shared/types'
@@ -386,6 +386,21 @@ if (demo && LANGS.includes(demo)) {
   slip.rows = staff.slice(0, 6).map((s) => ({ staffId: s.id, name: s.name, role: s.role, avatar: s.avatar, costUsd: 3.21, tokensIn: 2_100_000, tokensOut: 180_000, tasksDone: 9 }))
 }
 
+// ws=1: 상태 보드 확인용 — 진행 중 앞 두 장은 대표 응답 대기(3시간 5분·42분), 검토·완료 카드 하나씩 '재검토 필요'
+const WS_COMMIT = 'a'.repeat(40)
+const wsReReviews: Record<string, 'needed'> = {}
+if (params.get('ws') === '1') {
+  const doing = snapshot.tasks.filter((tk) => tk.status === 'doing')
+  const waits = [185, 42]
+  doing.slice(0, 2).forEach((tk, i) => (tk.work = { state: 'awaitingUser', waitingSince: now - waits[i] * min, reviewCommit: null }))
+  for (const status of ['review', 'done'] as const) {
+    const tk = snapshot.tasks.find((x) => x.status === status)
+    if (!tk) continue
+    tk.work = { state: status, waitingSince: null, reviewCommit: WS_COMMIT }
+    wsReReviews[tk.id] = 'needed'
+  }
+}
+
 // stage=1: 진행 중인 데모데이 발표 (발표장이 저절로 열린다 — 좁은 폭 배치 확인용)
 if (params.get('stage') === '1') {
   const [presenter, ...rest] = snapshot.staff
@@ -475,6 +490,7 @@ const impl: Record<string, (...args: never[]) => unknown> = {
   customMcpList: () => [],
   listAgentTemplates: () => [],
   missingFiles: () => [],
+  taskReReviews: () => wsReReviews,
   workRevertInfo: () => ({ available: false, startedAt: 0, files: [], skipped: [] }),
   workChanges: () => ({ cwd: '/Users/me/x', isGit: true, branch: 'main', files: [], diff: '', hasGh: true, ahead: 0 }),
   refreshPlanUsage: () => snapshot.planUsage,

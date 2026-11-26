@@ -119,6 +119,7 @@ export const V2_METHODS: Record<OfficeMethod, MethodSpec> = {
   setRefDocs: S('o S'),
   pickFiles: P('enter_path'),
   missingFiles: S('S'),
+  taskReReviews: R(),
   fireExternal: S('s'),
   recruitExternal: S('s o'),
   equipmentCatalog: S('s'),

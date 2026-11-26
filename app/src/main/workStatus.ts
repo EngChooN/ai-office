@@ -1,8 +1,10 @@
 import { headCommit } from './review.ts'
-import { t, type Lang } from '../shared/i18n/index.ts'
+import { cleanTime } from '../shared/workWait.ts'
 import type { ReReview, TaskStatus, WorkState, WorkStatus, WorkStatusSnapshot } from '../shared/types.ts'
 
 export type { ReReview, WorkState, WorkStatus, WorkStatusSnapshot }
+// 대기 시간·상태 이름은 화면도 쓰므로 shared에 둔다 (git을 부르지 않는 순수 계산)
+export { waitTime, waitLabel, workStateLabel, type WaitTime } from '../shared/workWait.ts'
 
 // 상태 보드: 맡긴 일의 진행 상태 한 칸 — 상태 값·전이·옛 기록 기본값·대기 시간·'재검토 필요' 판단을 여기 한곳에 둔다.
 // 화면(데스크톱·휴대폰)은 같은 스냅샷을 읽기만 한다. '재검토 필요'는 저장하지 않고 내려보낼 때마다 계산한다
@@ -61,12 +63,16 @@ export function normalizeWork(raw: unknown, taskStatus?: TaskStatus): WorkStatus
   }
 }
 
-/** 검토 커밋과 지금 HEAD를 비교한다. 어느 쪽이든 모르면 판단 불가 */
+/**
+ * 검토 커밋과 지금 HEAD를 비교한다. 어느 쪽이든 모르면 판단 불가.
+ * 짧은 번호(7자~)와 전체 번호가 섞여도 같은 커밋이면 '아님' — 짧은 쪽이 긴 쪽의 앞부분이면 같은 커밋으로 본다
+ */
 export function reReviewOf(reviewCommit: string | null | undefined, head: string | null | undefined): ReReview {
-  const a = cleanCommit(reviewCommit)
-  const b = cleanCommit(head)
+  const a = cleanCommit(reviewCommit)?.toLowerCase()
+  const b = cleanCommit(head)?.toLowerCase()
   if (!a || !b) return 'unknown'
-  return a.toLowerCase() === b.toLowerCase() ? 'clear' : 'needed'
+  const [short, long] = a.length <= b.length ? [a, b] : [b, a]
+  return long.startsWith(short) ? 'clear' : 'needed'
 }
 
 export function toSnapshot(s: WorkStatus, head: string | null | undefined): WorkStatusSnapshot {
@@ -75,7 +81,8 @@ export function toSnapshot(s: WorkStatus, head: string | null | undefined): Work
 
 /**
  * 작업 폴더의 HEAD를 읽어 스냅샷을 만든다. 검토 커밋이 없으면 git을 부르지 않는다.
- * 같은 폴더를 여러 번 물을 때는 heads에 한 번 읽은 값을 담아 넘긴다
+ * 같은 폴더를 여러 번 물을 때는 heads에 한 번 읽은 값을 담아 넘긴다.
+ * heads는 응답 한 번(목록 한 번 만들기) 안에서만 나눠 쓰고, 다음 응답에는 새 Map을 만든다 — 다시 쓰면 커밋이 바뀌어도 옛 HEAD로 판단한다
  */
 export async function snapshotFor(
   s: WorkStatus,
@@ -87,38 +94,6 @@ export async function snapshotFor(
   let head = heads.get(cwd)
   if (!head) heads.set(cwd, (head = readHead(cwd).catch(() => null)))
   return toSnapshot(s, await head)
-}
-
-/** 대기 시간: 시계가 어긋나 음수면 0분, 1분이 안 되면 '1분 미만' */
-export interface WaitTime {
-  minutes: number
-  isUnderMinute: boolean
-}
-
-export function waitTime(since: number | null | undefined, now: number): WaitTime | null {
-  const from = cleanTime(since)
-  if (from === null || !Number.isFinite(now)) return null
-  const minutes = Math.floor(Math.max(0, now - from) / 60_000)
-  return { minutes, isUnderMinute: minutes < 1 }
-}
-
-/** '1분 미만' · '42분' · '3시간 5분' · '2일 4시간' */
-export function waitLabel(w: WaitTime, lang?: Lang): string {
-  if (w.isUnderMinute) return t('workStatus.wait.underMinute', undefined, lang)
-  const days = Math.floor(w.minutes / 1440)
-  const hours = Math.floor((w.minutes % 1440) / 60)
-  const mins = w.minutes % 60
-  if (days > 0) return t('workStatus.wait.days', { d: days, h: hours }, lang)
-  if (hours > 0) return t('workStatus.wait.hours', { h: hours, m: mins }, lang)
-  return t('workStatus.wait.minutes', { m: mins }, lang)
-}
-
-export function workStateLabel(s: WorkState, lang?: Lang): string {
-  return t(`workStatus.state.${s}`, undefined, lang)
-}
-
-function cleanTime(v: unknown): number | null {
-  return typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : null
 }
 
 function cleanCommit(v: unknown): string | null {
