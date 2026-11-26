@@ -51,6 +51,15 @@ export async function snapshotTree(cwd: string): Promise<string | null> {
   }
 }
 
+/** 지금 커밋(HEAD). git 폴더가 아니거나 커밋이 없으면 null */
+export async function headCommit(cwd: string): Promise<string | null> {
+  try {
+    return (await git(cwd, 'rev-parse', '--verify', 'HEAD')).trim() || null
+  } catch {
+    return null
+  }
+}
+
 /** 저장 시점의 폴더 상태: HEAD·브랜치·작업 트리 해시. 앱을 다시 켠 뒤 기록이 아직 유효한지 가리는 데 쓴다 */
 export interface FolderState {
   head: string

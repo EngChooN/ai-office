@@ -2,6 +2,7 @@ import { DatabaseSync } from 'node:sqlite'
 import type { AutoApproveConfig } from '../shared/autoApprove'
 import type { ApprovalRule } from '../shared/approvalRules'
 import type { PendingApproval } from './pendingApprovals.ts'
+import { normalizeWork } from './workStatus.ts'
 import type { KnowledgeEntry } from '../shared/knowledge'
 import type { GalleryEntry, Praise } from '../shared/gallery'
 import type { UnreadReports } from '../shared/unreadReports'
@@ -143,6 +144,8 @@ export function openDb() {
   if (!taskCols.includes('artifacts')) db.exec('ALTER TABLE task ADD COLUMN artifacts TEXT')
   // 대화방 지시로 저절로 만든 카드 — { room, chatId } (JSON)
   if (!taskCols.includes('from_chat')) db.exec('ALTER TABLE task ADD COLUMN from_chat TEXT')
+  // 상태 보드 칸 — { state, waitingSince, reviewCommit } (JSON). 옛 행은 없고 읽을 때 보드 칸에서 기본값
+  if (!taskCols.includes('work_status')) db.exec('ALTER TABLE task ADD COLUMN work_status TEXT')
   // 첨부(JSON 배열)는 로그·단체방·업무 카드에 붙는다
   const teamCols = (db.prepare('PRAGMA table_info(team)').all() as { name: string }[]).map((c) => c.name)
   if (!teamCols.includes('manuals')) db.exec('ALTER TABLE team ADD COLUMN manuals TEXT')
@@ -548,6 +551,7 @@ interface TaskRow {
   is_autonomous: number | null
   artifacts: string | null
   from_chat?: string | null
+  work_status?: string | null
 }
 
 export function loadTasks(): Task[] {
@@ -571,6 +575,7 @@ export function loadTasks(): Task[] {
     ...(r.is_autonomous ? { isAutonomous: true } : {}),
     ...parseArtifacts(r.artifacts),
     ...parseFromChat(r.from_chat),
+    work: normalizeWork(parseJson<unknown>(r.work_status ?? null), r.status),
   }))
 }
 
@@ -597,15 +602,16 @@ function parseArtifacts(raw: string | null): Pick<Task, 'artifacts'> {
 
 export function upsertTask(t: Task) {
   run(
-    `INSERT INTO task (id, title, detail, status, assignee_id, team_id, result, created_at, updated_at, lab_id, attachments, parent_id, plan, meeting_id, usage, is_practice, is_autonomous, artifacts, from_chat) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO task (id, title, detail, status, assignee_id, team_id, result, created_at, updated_at, lab_id, attachments, parent_id, plan, meeting_id, usage, is_practice, is_autonomous, artifacts, from_chat, work_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET title = excluded.title, detail = excluded.detail, status = excluded.status, assignee_id = excluded.assignee_id,
        team_id = excluded.team_id, result = excluded.result, updated_at = excluded.updated_at, lab_id = excluded.lab_id, attachments = excluded.attachments,
        parent_id = excluded.parent_id, plan = excluded.plan, meeting_id = excluded.meeting_id, usage = excluded.usage, is_practice = excluded.is_practice, is_autonomous = excluded.is_autonomous,
-       artifacts = excluded.artifacts, from_chat = excluded.from_chat`,
+       artifacts = excluded.artifacts, from_chat = excluded.from_chat, work_status = excluded.work_status`,
     t.id, t.title, t.detail, t.status, t.assigneeId, t.teamId, t.result, t.createdAt, t.updatedAt, t.labId, t.attachments?.length ? JSON.stringify(t.attachments) : null,
     t.parentId ?? null, t.plan ? JSON.stringify(t.plan) : null, t.meetingId ?? null, t.usage ? JSON.stringify(t.usage) : null, t.isPractice ? 1 : null, t.isAutonomous ? 1 : null,
     t.artifacts?.length ? JSON.stringify(t.artifacts) : null,
     t.fromChat ? JSON.stringify(t.fromChat) : null,
+    t.work ? JSON.stringify(t.work) : null,
   )
 }
 

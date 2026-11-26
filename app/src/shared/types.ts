@@ -552,6 +552,28 @@ export interface Task {
   isAutonomous?: boolean
   /** 대화방 지시로 직원이 일을 시작하며 저절로 만든 카드 — 어느 방의 어느 메시지인지 */
   fromChat?: { room: string | null; chatId: number }
+  /** 상태 보드 칸 (main/workStatus.ts) — 옛 기록은 없고, 읽을 때 보드 칸에서 기본값을 만든다 */
+  work?: WorkStatus
+}
+
+/** 상태 보드: 할 일 → 진행 중 → (대표 응답 대기) → 검토 중 → 완료. 규칙·계산은 main/workStatus.ts */
+export type WorkState = 'queued' | 'working' | 'awaitingUser' | 'review' | 'done'
+
+export interface WorkStatus {
+  state: WorkState
+  /** 대표 응답 대기에 들어간 시각 — 그 상태일 때만 값이 있다 */
+  waitingSince: number | null
+  /** 검토에 들어갈 때의 커밋 — 다시 진행하면 지운다 */
+  reviewCommit: string | null
+}
+
+/** '재검토 필요' 세 값: 검토 커밋≠HEAD → needed · 같음 → clear · 커밋 없음·HEAD 조회 실패 → unknown(표시 끔) */
+export type ReReview = 'needed' | 'clear' | 'unknown'
+
+/** 데스크톱·휴대폰이 읽는 상태 보드 한 칸. 읽는 쪽은 v로 분기하지 않는다 — 모르는 칸은 무시, 없는 칸은 기본값 */
+export interface WorkStatusSnapshot extends WorkStatus {
+  v: number
+  reReview: ReReview
 }
 
 export interface TaskUsage {

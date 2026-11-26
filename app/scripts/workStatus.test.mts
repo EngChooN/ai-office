@@ -1,0 +1,134 @@
+// 상태 보드 한 칸: 상태 전이·옛 기록 기본값·대기 시간·'재검토 필요' 세 값 — pnpm test
+import assert from 'node:assert/strict'
+import { execFileSync } from 'node:child_process'
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+import { test } from 'node:test'
+import {
+  WORK_STATES, WORK_STATUS_VERSION, canMove, moveWork, normalizeWork, reReviewOf, snapshotFor, toSnapshot, waitLabel, waitTime, workStateLabel,
+  type WorkStatus,
+} from '../src/main/workStatus.ts'
+import { headCommit } from '../src/main/review.ts'
+
+const A = 'a'.repeat(40)
+const B = 'b'.repeat(40)
+const st = (over: Partial<WorkStatus> = {}): WorkStatus => ({ state: 'queued', waitingSince: null, reviewCommit: null, ...over })
+
+test('상태 이름은 다섯 개, 보드 순서대로', () => {
+  assert.deepEqual([...WORK_STATES], ['queued', 'working', 'awaitingUser', 'review', 'done'])
+  assert.equal(workStateLabel('awaitingUser', 'ko'), '대표 응답 대기')
+  assert.equal(workStateLabel('done', 'en'), 'Done')
+})
+
+test('옮길 수 없는 전이는 같은 객체를 그대로 돌려준다', () => {
+  const q = st()
+  assert.equal(moveWork(q, 'review', { now: 1000, head: A }), q)
+  assert.equal(moveWork(q, 'queued', { now: 1000 }), q)
+  const d = st({ state: 'done', reviewCommit: A })
+  assert.equal(moveWork(d, 'awaitingUser', { now: 1000 }), d)
+  assert.equal(canMove('done', 'review'), false)
+  assert.equal(canMove('working', 'review'), true)
+})
+
+test('대표 응답 대기: 들어가면 시각을 찍고, 나오면 지운다. 같은 상태로는 시각이 새로 찍히지 않는다', () => {
+  const w = moveWork(st({ state: 'working' }), 'awaitingUser', { now: 5000 })
+  assert.deepEqual(w, { state: 'awaitingUser', waitingSince: 5000, reviewCommit: null })
+  assert.equal(moveWork(w, 'awaitingUser', { now: 9000 }), w)
+  assert.deepEqual(moveWork(w, 'working', { now: 9000 }), { state: 'working', waitingSince: null, reviewCommit: null })
+})
+
+test('검토: 들어갈 때 HEAD를 남기고, 완료·대표 응답 대기에서는 유지, 다시 진행하면 지운다', () => {
+  const r = moveWork(st({ state: 'working' }), 'review', { now: 1, head: ` ${A}\n` })
+  assert.equal(r.reviewCommit, A)
+  assert.equal(moveWork(r, 'done', { now: 2 }).reviewCommit, A)
+  assert.equal(moveWork(r, 'awaitingUser', { now: 2 }).reviewCommit, A)
+  assert.equal(moveWork(r, 'working', { now: 2 }).reviewCommit, null)
+  assert.equal(moveWork(moveWork(r, 'done', { now: 2 }), 'queued', { now: 3 }).reviewCommit, null)
+  // HEAD를 모르면(깃 폴더 아님·조회 실패) 비워 둔다 → 나중에 판단 불가
+  assert.equal(moveWork(st({ state: 'working' }), 'review', { now: 1, head: null }).reviewCommit, null)
+  assert.equal(moveWork(st({ state: 'working' }), 'review', { now: 1, head: 'not-a-commit' }).reviewCommit, null)
+})
+
+test('옛 기록: 상태 칸이 없으면 보드 칸에서, 그것도 없으면 할 일', () => {
+  assert.deepEqual(normalizeWork(undefined, 'todo'), st())
+  assert.equal(normalizeWork(null, 'doing').state, 'working')
+  assert.equal(normalizeWork(undefined, 'review').state, 'review')
+  assert.equal(normalizeWork(undefined, 'done').state, 'done')
+  assert.equal(normalizeWork(undefined).state, 'queued')
+  assert.equal(normalizeWork('garbage', 'done').state, 'done')
+})
+
+test('옛 기록·받은 값 정리: 모르는 칸은 버리고, 상태와 안 맞는 시각·틀린 커밋은 비운다', () => {
+  assert.deepEqual(normalizeWork({ state: 'awaitingUser', waitingSince: 7000, reviewCommit: A, extra: 1, v: 99 }, 'doing'), {
+    state: 'awaitingUser', waitingSince: 7000, reviewCommit: A,
+  })
+  assert.equal(normalizeWork({ state: 'working', waitingSince: 7000 }).waitingSince, null)
+  assert.equal(normalizeWork({ state: 'awaitingUser', waitingSince: '7000' }).waitingSince, null)
+  assert.equal(normalizeWork({ state: 'awaitingUser', waitingSince: -5 }).waitingSince, null)
+  assert.equal(normalizeWork({ state: 'review', reviewCommit: 'main' }).reviewCommit, null)
+  assert.equal(normalizeWork({ state: 'nope' }, 'review').state, 'review')
+})
+
+test('대기 시간: 음수는 0분, 1분 미만 표기, 분·시간·일', () => {
+  assert.deepEqual(waitTime(10_000, 5_000), { minutes: 0, isUnderMinute: true })
+  assert.deepEqual(waitTime(0 + 1, 59_000), { minutes: 0, isUnderMinute: true })
+  assert.deepEqual(waitTime(1, 60_001), { minutes: 1, isUnderMinute: false })
+  assert.equal(waitTime(null, 1000), null)
+  assert.equal(waitTime(1000, Number.NaN), null)
+  const at = (min: number) => waitLabel(waitTime(1, 1 + min * 60_000)!, 'ko')
+  assert.equal(waitLabel(waitTime(10_000, 5_000)!, 'ko'), '1분 미만')
+  assert.equal(at(42), '42분')
+  assert.equal(at(185), '3시간 5분')
+  assert.equal(at(2 * 1440 + 4 * 60 + 30), '2일 4시간')
+  assert.equal(waitLabel(waitTime(1, 30_000)!, 'en'), 'Under 1 min')
+})
+
+test("'재검토 필요' 세 값: 다르면 needed, 같으면 clear, 어느 쪽이든 모르면 unknown", () => {
+  assert.equal(reReviewOf(A, B), 'needed')
+  assert.equal(reReviewOf(A, A), 'clear')
+  assert.equal(reReviewOf(A, A.toUpperCase()), 'clear')
+  assert.equal(reReviewOf(null, A), 'unknown')
+  assert.equal(reReviewOf(A, null), 'unknown')
+  assert.equal(reReviewOf(A, ''), 'unknown')
+})
+
+test('스냅샷: 버전·상태·대기 시작 시각·검토 커밋 + 계산한 재검토 값', () => {
+  const s = st({ state: 'done', reviewCommit: A })
+  assert.deepEqual(toSnapshot(s, B), { v: WORK_STATUS_VERSION, state: 'done', waitingSince: null, reviewCommit: A, reReview: 'needed' })
+  // 받은 스냅샷을 다시 읽어도 같은 칸 (v·reReview 같은 계산 칸은 버린다)
+  assert.deepEqual(normalizeWork(JSON.parse(JSON.stringify(toSnapshot(s, B)))), s)
+})
+
+test('snapshotFor: 검토 커밋 없으면 git을 부르지 않고, 같은 폴더는 한 번만 읽고, 조회 실패는 판단 불가', async () => {
+  let calls = 0
+  const read = async () => (calls++, B)
+  const heads = new Map<string, Promise<string | null>>()
+  assert.equal((await snapshotFor(st({ state: 'working' }), '/w', heads, read)).reReview, 'unknown')
+  assert.equal(calls, 0)
+  const r = st({ state: 'review', reviewCommit: A })
+  assert.equal((await snapshotFor(r, '/w', heads, read)).reReview, 'needed')
+  assert.equal((await snapshotFor(r, '/w', heads, read)).reReview, 'needed')
+  assert.equal(calls, 1)
+  assert.equal((await snapshotFor(r, null, heads, read)).reReview, 'unknown')
+  assert.equal((await snapshotFor(r, '/x', heads, async () => { throw new Error('git') })).reReview, 'unknown')
+})
+
+test('실제 git 폴더: 검토 뒤 커밋하면 재검토 필요, git 폴더가 아니면 판단 불가', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'work-status-'))
+  try {
+    assert.equal(await headCommit(dir), null)
+    const g = (...a: string[]) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', ...a], { cwd: dir, stdio: 'pipe' })
+    g('init', '-q')
+    assert.equal(await headCommit(dir), null) // 커밋 없음
+    fs.writeFileSync(path.join(dir, 'a.txt'), '1')
+    g('add', '.'); g('commit', '-qm', 'one')
+    const r = moveWork(st({ state: 'working' }), 'review', { now: 1, head: await headCommit(dir) })
+    assert.equal((await snapshotFor(r, dir)).reReview, 'clear')
+    fs.writeFileSync(path.join(dir, 'a.txt'), '2')
+    g('commit', '-qam', 'two')
+    assert.equal((await snapshotFor(r, dir)).reReview, 'needed')
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true })
+  }
+})
