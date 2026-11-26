@@ -7,6 +7,7 @@ import type { ChatRoomInfo } from '@shared/chatRooms'
 import { t } from '@shared/i18n'
 import { AutoApproveBadge } from './AutoApprove'
 import { ChatSide } from './ChatSide'
+import { GroupRoomAbout } from './GroupRoomAbout'
 import { useRoomPeople } from './chatRoomHooks'
 import { Avatar } from './StaffCard'
 
@@ -64,7 +65,13 @@ export function ChatSlimBar({ room, title, description, onSearch }: { room: Chat
         <SearchIcon />
       </Button>
       <PopMenu opens="down" icon={<InfoIcon />} label={t('chat.slim.about')}>
-        {() => <p className="text-muted-foreground p-1.5 text-xs">{description}</p>}
+        {() => (
+          <div className="max-w-72 p-1.5">
+            <p className="text-muted-foreground text-xs">{description}</p>
+            {/* 단체방: 함께 있는 팀·프로젝트와 지우기 (데스크톱 ⓘ와 같은 것) */}
+            {room?.kind === 'group' && <GroupRoomAbout room={room} />}
+          </div>
+        )}
       </PopMenu>
       {/* 비서는 상단 앱 바에만 들어가는 곳이 있어 남긴다 (분할 화면과 같음) */}
       <Button size="icon" variant="ghost" className="shrink-0" onClick={() => setView('secretary')} aria-label={t('shell.secretary')}>

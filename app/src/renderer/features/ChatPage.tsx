@@ -41,6 +41,7 @@ import { ChatSide } from './ChatSide'
 import { RoomListColumn, useRoomListLayout } from './RoomListColumn'
 import { chatWidthOf, CHIP_MIN_WIDTH, summarizeRoomPeople } from '@shared/chatRoomLayout'
 import { ChatSlimBar } from './ChatSlimBar'
+import { GroupRoomAbout, GroupRoomDeleteButton } from './GroupRoomAbout'
 import { PopMenu, PopMenuItem } from '@/components/pop-menu'
 
 const MENTION_MAX = 6
@@ -117,6 +118,7 @@ export function ChatPage() {
           <Button size="sm" variant="ghost" className="size-8 p-0" onClick={() => setIsSearchOpen((v) => !v)} title={t('chat.search.open')} aria-label={t('chat.search.open')}>
             <SearchIcon />
           </Button>
+          {room?.kind === 'group' && <GroupRoomDeleteButton room={room} />}
         </div>
         <RoomStatusStrip room={room} isSummary isFaces={chatWidthOf(rowWidth, listMode) < CHIP_MIN_WIDTH && rowWidth > 0} />
       </div>
@@ -127,6 +129,7 @@ export function ChatPage() {
           <Button size="sm" variant="ghost" className="size-8 p-0" onClick={() => setIsSearchOpen((v) => !v)} title={t('chat.search.open')} aria-label={t('chat.search.open')}>
             <SearchIcon />
           </Button>
+          {room?.kind === 'group' && <GroupRoomDeleteButton room={room} />}
         </div>
         <div className="split:hidden slim:hidden">
           <p className="text-muted-foreground short:hidden text-xs">{description}</p>
@@ -153,32 +156,6 @@ export function ChatPage() {
         </div>
       </div>
       <ChatGroupDialog />
-    </div>
-  )
-}
-
-/** 단체방 ⓘ 안: 함께 있는 팀·프로젝트 · 지우기 (대화 기록은 남는다) */
-function GroupRoomAbout({ room }: { room: Extract<RoomInfo, { kind: 'group' }> }) {
-  const setChatRoom = useOffice((s) => s.setChatRoom)
-  const handleDelete = async () => {
-    if (!window.confirm(t('chat.group.confirmDelete', { name: room.name }))) return
-    await window.office.deleteChatGroup(room.group.id)
-    setChatRoom(null)
-  }
-  return (
-    <div className="mt-2 flex flex-col gap-1.5 border-t pt-2">
-      <span className="text-muted-foreground text-[11px] font-medium">{t('chat.group.includes')}</span>
-      <span className="flex flex-wrap gap-1">
-        {[...room.teams, ...room.labs].map((g) => (
-          <span key={g.id} className="flex items-center gap-1 rounded-full border px-1.5 text-[11px] leading-5">
-            <span className="size-1.5 rounded-full" style={{ background: g.color }} />
-            {g.name}
-          </span>
-        ))}
-      </span>
-      <Button size="sm" variant="ghost" className="text-status-error justify-start px-1.5" onClick={() => void handleDelete()}>
-        {t('chat.group.delete')}
-      </Button>
     </div>
   )
 }

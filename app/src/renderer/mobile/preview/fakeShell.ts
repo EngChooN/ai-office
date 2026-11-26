@@ -386,6 +386,11 @@ if (demo && LANGS.includes(demo)) {
   slip.rows = staff.slice(0, 6).map((s) => ({ staffId: s.id, name: s.name, role: s.role, avatar: s.avatar, costUsd: 3.21, tokensIn: 2_100_000, tokensOut: 180_000, tasksDone: 9 }))
 }
 
+// group=1: 단체방 하나 — 모든 팀·랩을 담는다 (대화방 머리 ⓘ·🗑 확인용, demo와 함께 써도 된다)
+if (params.get('group') === '1') {
+  snapshot.chatGroups = [{ id: 'g1', name: { ko: '출시 준비 합동 단체방', en: 'Launch prep joint room', ja: 'リリース準備合同ルーム', zh: '发布准备联合群' }[demo ?? 'ko'], color: '#e07a5f', teamIds: snapshot.teams.map((tm) => tm.id), labIds: snapshot.labs.map((lb) => lb.id) }]
+}
+
 // ws=1: 상태 보드 확인용 — 진행 중 앞 두 장은 대표 응답 대기(3시간 5분·42분), 검토·완료 카드 하나씩 '재검토 필요'
 const WS_COMMIT = 'a'.repeat(40)
 const wsReReviews: Record<string, 'needed'> = {}
