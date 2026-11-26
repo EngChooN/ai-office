@@ -183,6 +183,11 @@ test('followTask: 보드 칸·대표 응답 대기를 따라간다 (칸을 바�
   const asking = followTask(reviewed, 'review', true, at)
   assert.deepEqual(asking, { state: 'awaitingUser', waitingSince: 5_000, reviewCommit: A })
   assert.equal(followTask(asking, 'review', false, at).state, 'review')
+  // 대기를 마치고 검토로 돌아와도 같은 회차 — 기준 커밋을 지우지 않는다 (지우면 '재검토 필요'가 사라진다)
+  assert.equal(followTask(asking, 'review', false, at).reviewCommit, A)
+  assert.equal(moveWork(asking, 'review', { now: 6_000, head: B }).reviewCommit, A)
+  // 진행 중 대기(기준 없음)에서 검토로 가면 새 회차
+  assert.equal(followTask(waiting, 'review', false, { now: 6_000, head: B }).reviewCommit, B)
 })
 
 test('hasReviewRound: 검토 커밋을 남겨 둘 상태 — 검토·대기·완료만', () => {

@@ -30,3 +30,14 @@ fun nextDoneLimit(current: Int): Int = (current.coerceAtLeast(DONE_LIMIT_DEFAULT
 
 /** 빠진 완료가 있고 아직 500에 닿지 않았으면 휴대폰에서 더 불러올 수 있다 (닿았으면 "PC에서 볼 수 있어요") */
 fun canLoadMoreDone(doneLimit: Int, doneOmitted: Int): Boolean = doneOmitted > 0 && doneLimit < DONE_LIMIT_MAX
+
+/**
+ * "더 보기" 요청이 끝난 뒤의 완료 건수. 받은 응답으로만 판단한다.
+ * 실패·중단(응답 없음)이면 누르기 전 값으로 되돌려 다시 누를 수 있게 하고,
+ * 성공했는데 빠진 개수가 줄지 않았으면 더 보기를 모르는 옛 PC — 500으로 올려 "PC에서 볼 수 있어요"로 바꾼다
+ */
+fun doneLimitAfterLoadMore(before: Int, requested: Int, omittedBefore: Int, omittedAfter: Int?): Int = when {
+    omittedAfter == null -> before
+    omittedAfter > 0 && omittedAfter >= omittedBefore -> DONE_LIMIT_MAX
+    else -> requested
+}

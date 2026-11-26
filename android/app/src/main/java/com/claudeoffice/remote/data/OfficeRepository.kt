@@ -14,7 +14,7 @@ import com.claudeoffice.remote.net.ApiResult
 import com.claudeoffice.remote.net.Connection
 import com.claudeoffice.remote.net.DONE_LIMIT_DEFAULT
 import com.claudeoffice.remote.net.canLoadMoreDone
-import com.claudeoffice.remote.net.DONE_LIMIT_MAX
+import com.claudeoffice.remote.net.doneLimitAfterLoadMore
 import com.claudeoffice.remote.net.nextDoneLimit
 import com.claudeoffice.remote.net.Decision
 import com.claudeoffice.remote.net.Endpoint
@@ -449,30 +449,33 @@ class OfficeRepository(private val context: Context) {
 
     // ── 조회 ────────────────────────────────────────────
 
-    /** 화면 갱신. 막는 상태(Gate)에서는 요청하지 않는다 — 다시 시도는 retry()로 */
-    suspend fun refresh() {
-        val c = client ?: return
-        if (_state.value.gate != null) return
-        if (System.currentTimeMillis() < pauseUntil) return
+    /** 화면 갱신. 막는 상태(Gate)에서는 요청하지 않는다 — 다시 시도는 retry()로. 상태를 받았으면 그 응답, 못 받았으면 null */
+    suspend fun refresh(): StatusResponse? {
+        val c = client ?: return null
+        if (_state.value.gate != null) return null
+        if (System.currentTimeMillis() < pauseUntil) return null
+        var got: StatusResponse? = null
         // 기다리거나 응답을 받는 사이 PC가 바뀌었으면(client가 다르면) 이전 PC 결과는 버린다
         refreshLock.withLock {
-            if (client !== c) return
+            if (client !== c) return null
             val wasDown = _state.value.reach != Reach.OK
             _state.update { it.copy(isLoading = true) }
             val s = c.status(_state.value.doneLimit)
-            if (client !== c) return
+            if (client !== c) return null
             if (s is ApiResult.Fail) {
                 _state.update { it.copy(isLoading = false) }
                 applyError(s.error, s.tried)
-                return
+                return null
             }
-            onStatus((s as ApiResult.Ok).value)
+            val st = (s as ApiResult.Ok).value
+            got = st
+            onStatus(st)
             val d = c.decisions()
-            if (client !== c) return
+            if (client !== c) return null
             if (d is ApiResult.Fail) {
                 _state.update { it.copy(isLoading = false) }
                 applyError(d.error, d.tried)
-                return
+                return got
             }
             onDecisions((d as ApiResult.Ok).value)
             _state.update { it.copy(isLoading = false, reach = Reach.OK, justRecovered = wasDown) }
@@ -481,6 +484,7 @@ class OfficeRepository(private val context: Context) {
             delay(1500)
             _state.update { it.copy(justRecovered = false) }
         }
+        return got
     }
 
     /**
@@ -493,16 +497,16 @@ class OfficeRepository(private val context: Context) {
         val s = _state.value
         if (s.isLoadingMoreDone || !canLoadMoreDone(s.doneLimit, s.status?.worksDoneOmitted ?: 0)) return
         val omittedBefore = s.status?.worksDoneOmitted ?: 0
-        _state.update { it.copy(doneLimit = nextDoneLimit(it.doneLimit), isLoadingMoreDone = true) }
+        val limitBefore = s.doneLimit
+        val requested = nextDoneLimit(limitBefore)
+        _state.update { it.copy(doneLimit = requested, isLoadingMoreDone = true) }
+        var got: StatusResponse? = null
         try {
-            refresh()
+            got = refresh()
         } finally {
             // 그 사이 PC를 바꿨으면 새 PC 상태는 이미 새로 만들어졌다 — 건드리지 않는다
             if (book.currentId == pcId) _state.update {
-                // 빠진 개수가 그대로면 더 보기를 모르는 옛 PC — 버튼 대신 "PC에서 볼 수 있어요"로 바꾼다
-                val omittedAfter = it.status?.worksDoneOmitted ?: 0
-                val limit = if (it.status != null && omittedAfter > 0 && omittedAfter >= omittedBefore) DONE_LIMIT_MAX else it.doneLimit
-                it.copy(isLoadingMoreDone = false, doneLimit = limit)
+                it.copy(isLoadingMoreDone = false, doneLimit = doneLimitAfterLoadMore(limitBefore, requested, omittedBefore, got?.worksDoneOmitted))
             }
         }
     }

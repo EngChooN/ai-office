@@ -3,6 +3,7 @@ package com.claudeoffice.remote
 import com.claudeoffice.remote.net.StatusResponse
 import com.claudeoffice.remote.net.WORK_STATES
 import com.claudeoffice.remote.net.DONE_LIMIT_MAX
+import com.claudeoffice.remote.net.doneLimitAfterLoadMore
 import com.claudeoffice.remote.net.awaitingWorks
 import com.claudeoffice.remote.net.canLoadMoreDone
 import com.claudeoffice.remote.net.nextDoneLimit
@@ -91,5 +92,17 @@ class WorkBoardTest {
         assertFalse(canLoadMoreDone(20, 0))
         // 500에 닿았는데도 남으면 "PC에서 볼 수 있어요"
         assertFalse(canLoadMoreDone(500, 30))
+    }
+
+    @Test
+    fun loadMoreDoneJudgesOldPcOnlyFromSuccessfulResponse() {
+        // 실패·중단: 누르기 전 값으로 돌아가 다시 누를 수 있다
+        assertEquals(20, doneLimitAfterLoadMore(20, 40, 30, null))
+        assertTrue(canLoadMoreDone(doneLimitAfterLoadMore(20, 40, 30, null), 30))
+        // 성공했고 빠진 개수가 줄었으면 늘린 값 유지
+        assertEquals(40, doneLimitAfterLoadMore(20, 40, 30, 10))
+        assertEquals(40, doneLimitAfterLoadMore(20, 40, 30, 0))
+        // 성공했는데 빠진 개수가 그대로면 옛 PC — 500으로 "PC에서 볼 수 있어요"
+        assertEquals(DONE_LIMIT_MAX, doneLimitAfterLoadMore(20, 40, 30, 30))
     }
 }

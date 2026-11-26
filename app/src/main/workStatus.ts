@@ -63,7 +63,9 @@ export function hasReviewRound(state: WorkState): boolean {
 }
 
 function enter(cur: WorkStatus, to: WorkState, at: { now: number; head?: string | null }): WorkStatus {
-  const reviewCommit = to === 'review' ? cleanCommit(at.head) : to === 'queued' || to === 'working' ? null : cur.reviewCommit
+  // 검토 중 대표 응답 대기에서 검토로 돌아오면 같은 회차 — 기준 커밋을 그대로 둔다
+  const resumed = to === 'review' && cur.state === 'awaitingUser' && !!cur.reviewCommit
+  const reviewCommit = resumed ? cur.reviewCommit : to === 'review' ? cleanCommit(at.head) : to === 'queued' || to === 'working' ? null : cur.reviewCommit
   const waitingSince = to === 'awaitingUser' ? cleanTime(at.now) : null
   return { state: to, waitingSince, reviewCommit }
 }

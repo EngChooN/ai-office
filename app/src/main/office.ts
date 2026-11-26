@@ -268,6 +268,7 @@ export class Office extends EventEmitter<{
   private pending: readonly PendingApproval[] = []
   /** 업무별 검토 회차 번호 — 늦게 끝난 HEAD 조회가 다른 회차의 검토 커밋으로 남지 않게 (stampReviewCommit) */
   private reviewRounds = new Map<string, number>()
+  private reviewSeq = 0
   /** 앱을 다시 켜며 되살린 결재 id → 저장 내용 (살아 있는 세션 요청이 없어 decide·answerQuestion이 새 지시로 이어 간다) */
   private restoredAsks = new Map<string, PendingApproval>()
   /** 복원 결재를 승인해 다시 실행할 때 한 번만 통과시키는 허용 */
@@ -4279,8 +4280,10 @@ export class Office extends EventEmitter<{
     if (work !== t.work) t = { ...t, work }
     db.upsertTask(t)
     this.tasks.set(t.id, t)
-    // 검토에 들어간 순간의 코드 버전을 남긴다 (git은 비동기라 저장 뒤에 채운다). 할 일·진행 중으로 돌아가면 그 회차는 무효
-    if (work.state === 'review' && cur.state !== 'review') this.stampReviewCommit(t.id)
+    // 검토에 들어간 순간의 코드 버전을 남긴다 (git은 비동기라 저장 뒤에 채운다). 할 일·진행 중으로 돌아가면 그 회차는 무효.
+    // 검토 중 대표 응답 대기를 마치고 돌아온 것은 같은 회차 — 기준을 다시 찍지 않는다
+    const resumed = cur.state === 'awaitingUser' && (!!cur.reviewCommit || this.reviewRounds.has(t.id))
+    if (work.state === 'review' && cur.state !== 'review' && !resumed) this.stampReviewCommit(t.id)
     else if (work.state === 'queued' || work.state === 'working') this.reviewRounds.delete(t.id)
     this.scheduleEmit()
   }
@@ -4308,11 +4311,12 @@ export class Office extends EventEmitter<{
   }
 
   /**
-   * 검토 회차마다 번호를 매겨, 조회가 끝났을 때 같은 회차일 때만 검토 커밋을 남긴다.
+   * 검토 회차마다 앱 전체에서 겹치지 않는 번호를 매겨, 조회가 끝났을 때 같은 회차일 때만 검토 커밋을 남긴다.
    * 조회 중에 완료·대표 응답 대기로 넘어가도 같은 회차라 남기고, 진행 중으로 돌아갔다가 다시 검토하면 옛 조회 결과는 버린다
+   * (회차를 지웠다가 새로 매겨도 번호가 겹치지 않아야 한다)
    */
   private stampReviewCommit(taskId: string) {
-    const round = (this.reviewRounds.get(taskId) ?? 0) + 1
+    const round = ++this.reviewSeq
     this.reviewRounds.set(taskId, round)
     const assignee = this.tasks.get(taskId)?.assigneeId
     const cwd = assignee ? this.cwdOf(assignee) : null
