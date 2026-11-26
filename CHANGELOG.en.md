@@ -18,7 +18,7 @@ Writing rules
 - **New** "Waiting for you" band and '!' bubble in the office
 - **New** "Re-review needed" when code changes after review
 - **New** Phone "Tasks" tab and "Load older done"
-- **Better** Phone header PC chip and keyboard response
+- **Better** Phone PC chip, keyboard response, delete group chat
 
 The phone Tasks tab and keyboard response have not been checked on a real phone, and the rest has not been checked on a Windows PC.
 
@@ -31,6 +31,7 @@ The phone Tasks tab and keyboard response have not been checked on a real phone,
 ### Improvements
 - The two-line PC indicator at the top of the phone is now merged into the screen title row, so the screen has more room.
 - Reduced the stutter on the phone when the keyboard comes up.
+- On a portrait phone, "Delete this group chat" is now available inside the group chat's ⓘ. On PC and landscape phone, the trash button next to the magnifier in the title row deletes it right away (with a confirmation).
 
 ## [1.7.0] - 2026-11-25
 
