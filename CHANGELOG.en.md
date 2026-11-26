@@ -11,6 +11,27 @@ Writing rules
 - Leave out: internal or development matters, re-fixes of features added in the same version, how a security hole worked (if needed, one line on the result), minor wording or spacing tweaks.
 - Couldn't do it before → new feature; easier than before → improvement; was working wrongly → bug fix.
 
+## [1.8.0] - 2026-11-26
+
+### At a glance
+- **New** A status chip on every task card
+- **New** "Waiting for you" band and '!' bubble in the office
+- **New** "Re-review needed" when code changes after review
+- **New** Phone "Tasks" tab and "Load older done"
+- **Better** Phone header PC chip and keyboard response
+
+The phone Tasks tab and keyboard response have not been checked on a real phone, and the rest has not been checked on a Windows PC.
+
+### New features
+- Every card on the task board now has a status chip: To do, In progress, Waiting for you, In review or Done. Waiting cards also show how long they have waited, like "42 min".
+- Tasks waiting for your answer gather in a yellow band at the top of the board, oldest first. In the office, a '!' bubble floats over the staff member who is waiting.
+- A blue "↻ Re-review needed" chip appears on tasks whose code changed after review. It stays clear on Done cards.
+- The phone app has a new "Tasks" tab (view only). See counts by status, the waiting row and a list in status order, and use "Load older done" to fetch earlier finished tasks.
+
+### Improvements
+- The two-line PC indicator at the top of the phone is now merged into the screen title row, so the screen has more room.
+- Reduced the stutter on the phone when the keyboard comes up.
+
 ## [1.7.0] - 2026-11-25
 
 ### At a glance

@@ -56,6 +56,14 @@
 - 바탕화면 비서(`deskPet.ts` `petTargets`)·보드·비서(`secretary.ts`)·원격(`remote/v2.ts`)이 단체방을 인식. 시험: `collabApproval`·`collabPairs`·`chatRooms`·`helpRequest` 등.
 
 
+## [1.8.0] - 2026-11-26
+
+### 새 기능
+- 업무 상태 보드(c299a18·3d73c46·43fe97f·4107cde·39dfebc): `workStatus.ts`(5상태·전이·대기 시간·재검토 세 값), `WorkStatusChips.tsx`, 사무실 '!' 말풍선. 한리뷰 4차까지 보완.
+- 안드로이드 업무 탭(fec3808·4107cde): `BoardScreens.kt`·`WorkBoard.kt`, 폰 응답 works 스냅샷, 이전 완료 더 보기.
+- 안드로이드: PC 칩 제목 줄 합침(8913cac·a44459d), 키보드 WebView 크기 한 번만 반영(f78cafe).
+- 실기기·윈도우 확인 전.
+
 ## [1.7.0] - 2026-11-25
 
 ### 새 기능
