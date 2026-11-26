@@ -272,7 +272,11 @@ class RemoteClient(
         .apply { segments.forEach { addPathSegment(it) } }
         .build()
 
-    suspend fun status() = call({ get(url(it, "status")) }, StatusResponse.serializer()) { it.serverTime }
+    /** doneLimit: 완료를 최근 몇 건까지 받을지. 기본 20이면 쿼리를 붙이지 않는다 (옛 PC는 쿼리를 무시하고 20건) */
+    suspend fun status(doneLimit: Int = DONE_LIMIT_DEFAULT) = call({
+        val u = url(it, "status")
+        get(if (doneLimit == DONE_LIMIT_DEFAULT) u else u.newBuilder().addQueryParameter("doneLimit", doneLimit.toString()).build())
+    }, StatusResponse.serializer()) { it.serverTime }
 
     suspend fun decisions() = call({ get(url(it, "decisions")) }, DecisionsResponse.serializer()) { it.serverTime }
 

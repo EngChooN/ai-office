@@ -2,7 +2,10 @@ package com.claudeoffice.remote
 
 import com.claudeoffice.remote.net.StatusResponse
 import com.claudeoffice.remote.net.WORK_STATES
+import com.claudeoffice.remote.net.DONE_LIMIT_MAX
 import com.claudeoffice.remote.net.awaitingWorks
+import com.claudeoffice.remote.net.canLoadMoreDone
+import com.claudeoffice.remote.net.nextDoneLimit
 import com.claudeoffice.remote.net.needsReReview
 import com.claudeoffice.remote.net.protocolJson
 import com.claudeoffice.remote.net.waitMinutes
@@ -69,5 +72,24 @@ class WorkBoardTest {
         assertEquals(0L, waitMinutes(10_000_000, 5_000_000))
         assertEquals(42L, waitMinutes(1, 1 + 42 * 60_000L))
         assertEquals(null, waitMinutes(0, 5_000_000))
+    }
+
+    @Test
+    fun nextDoneLimitAddsTwentyUpToFiveHundred() {
+        assertEquals(40, nextDoneLimit(20))
+        assertEquals(60, nextDoneLimit(40))
+        assertEquals(500, nextDoneLimit(480))
+        assertEquals(500, nextDoneLimit(490))
+        assertEquals(500, nextDoneLimit(500))
+        assertEquals(DONE_LIMIT_MAX, generateSequence(20, ::nextDoneLimit).take(100).last())
+    }
+
+    @Test
+    fun loadMoreDoneOnlyWhileOmittedAndBelowCap() {
+        assertTrue(canLoadMoreDone(20, 7))
+        assertTrue(canLoadMoreDone(480, 1))
+        assertFalse(canLoadMoreDone(20, 0))
+        // 500에 닿았는데도 남으면 "PC에서 볼 수 있어요"
+        assertFalse(canLoadMoreDone(500, 30))
     }
 }

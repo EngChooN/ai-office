@@ -405,7 +405,9 @@ private fun MainRoot(repo: OfficeRepository, ctl: PcCtl, requestedTab: Tab?, onT
                             selectedId = wideSelection,
                         )
                     }
-                    tab == Tab.BOARD -> Box(Modifier.alpha(if (state.reach == Reach.PHONE_OFFLINE) 0.6f else 1f)) { BoardTab(state) }
+                    tab == Tab.BOARD -> Box(Modifier.alpha(if (state.reach == Reach.PHONE_OFFLINE) 0.6f else 1f)) {
+                        BoardTab(state, onLoadMoreDone = { scope.launch { repo.loadMoreDone() } })
+                    }
                     else -> Box(Modifier.alpha(if (state.reach == Reach.PHONE_OFFLINE) 0.6f else 1f)) {
                         DecisionsTab(
                             state, repo::refresh,

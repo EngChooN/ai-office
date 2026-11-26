@@ -295,4 +295,6 @@
     <string name="work_wait_list">Tasks waiting for you</string>
     <string name="work_wait_list_close">Close</string>
     <string name="work_done_omitted">%1$d earlier completed items can be viewed on the PC</string>
+    <string name="work_done_more">Show earlier completed (%1$d left)</string>
+    <string name="work_done_more_loading">Loading earlier completed… (%1$d left)</string>
 </resources>

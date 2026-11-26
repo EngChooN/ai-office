@@ -49,6 +49,16 @@ class PinnedClientTest {
         assertEquals("Bearer $token", req.getHeader("Authorization"))
     }
 
+    @Test fun statusCarriesDoneLimitOnlyWhenAboveDefault() = runBlocking {
+        server.enqueue(MockResponse().setBody(statusJson))
+        server.enqueue(MockResponse().setBody(statusJson))
+        val c = client(spkiPin(serverCert.certificate))
+        assertTrue(c.status(40) is ApiResult.Ok)
+        assertEquals("/v1/status?doneLimit=40", server.takeRequest().path)
+        assertTrue(c.status(20) is ApiResult.Ok)
+        assertEquals("/v1/status", server.takeRequest().path)
+    }
+
     @Test fun refusesWhenPinDiffersAndNeverSendsTheToken() = runBlocking {
         server.enqueue(MockResponse().setBody(statusJson))
         val r = client(spkiPin(otherCert.certificate)).status()

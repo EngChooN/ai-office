@@ -295,4 +295,6 @@
     <string name="work_wait_list">等待你回复的任务</string>
     <string name="work_wait_list_close">关闭</string>
     <string name="work_done_omitted">更早的 %1$d 项已完成工作可在电脑上查看</string>
+    <string name="work_done_more">查看更早的已完成工作（还剩 %1$d 项）</string>
+    <string name="work_done_more_loading">正在加载更早的已完成工作…（还剩 %1$d 项）</string>
 </resources>

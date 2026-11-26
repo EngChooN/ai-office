@@ -49,11 +49,17 @@ export function moveWork(cur: WorkStatus, to: WorkState, at: { now: number; head
 
 /**
  * 앱의 실제 진행을 상태에 반영한다 — 보드 칸(할 일·진행 중·검토·완료)과 대표 응답 대기 여부가 기준.
- * 사람이 보드에서 칸을 바로 옮긴 경우(할 일→검토 등)도 따라가야 하므로 전이 표를 거치지 않는다. 같은 상태면 그대로(같은 참조)
+ * 사람이 보드에서 칸을 바로 옮긴 경우(할 일→검토 등)도 따라가야 하므로 전이 표를 거치지 않는다. 같은 상태면 그대로(같은 참조).
+ * 대표 응답 대기는 완료가 아닌 모든 칸에서 우선한다 — 턴 끝에 글로 물으면 카드가 먼저 검토로 가고, 앱을 다시 켜면 할 일로 돌아가 있다
  */
 export function followTask(cur: WorkStatus, taskStatus: TaskStatus, isAwaiting: boolean, at: { now: number; head?: string | null }): WorkStatus {
-  const to: WorkState = taskStatus === 'doing' && isAwaiting ? 'awaitingUser' : FROM_TASK[taskStatus] ?? cur.state
+  const to: WorkState = taskStatus !== 'done' && isAwaiting ? 'awaitingUser' : FROM_TASK[taskStatus] ?? cur.state
   return to === cur.state ? cur : enter(cur, to, at)
+}
+
+/** 검토 커밋을 그대로 두는 상태 — 검토 중, 검토 중 대표 응답 대기, 완료 (할 일·진행 중으로 가면 지운다) */
+export function hasReviewRound(state: WorkState): boolean {
+  return state === 'review' || state === 'awaitingUser' || state === 'done'
 }
 
 function enter(cur: WorkStatus, to: WorkState, at: { now: number; head?: string | null }): WorkStatus {

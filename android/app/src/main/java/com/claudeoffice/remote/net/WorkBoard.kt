@@ -18,3 +18,15 @@ fun waitMinutes(since: Long, serverNow: Long): Long? = if (since <= 0) null else
 fun worksOfState(works: List<RemoteWork>, state: String): List<RemoteWork> = works.filter { workStateOf(it) == state }
 
 fun needsReReview(w: RemoteWork): Boolean = w.reReview == "needed"
+
+// ── 이전 완료 더 보기 (GET /v1/status?doneLimit=N, PC가 20~500으로 맞춘다) ──
+
+const val DONE_LIMIT_DEFAULT = 20
+const val DONE_LIMIT_STEP = 20
+const val DONE_LIMIT_MAX = 500
+
+/** "더 보기" 한 번 누른 뒤의 완료 건수 — +20, 500에서 멈춘다 */
+fun nextDoneLimit(current: Int): Int = (current.coerceAtLeast(DONE_LIMIT_DEFAULT) + DONE_LIMIT_STEP).coerceAtMost(DONE_LIMIT_MAX)
+
+/** 빠진 완료가 있고 아직 500에 닿지 않았으면 휴대폰에서 더 불러올 수 있다 (닿았으면 "PC에서 볼 수 있어요") */
+fun canLoadMoreDone(doneLimit: Int, doneOmitted: Int): Boolean = doneOmitted > 0 && doneLimit < DONE_LIMIT_MAX

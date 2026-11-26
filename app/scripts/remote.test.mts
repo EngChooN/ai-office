@@ -10,7 +10,7 @@ import { test } from 'node:test'
 import { AUTH_LIMITS, AuthGuard, bearerToken, hashToken, newToken, sameHash } from '../src/main/remote/auth.ts'
 import { createSelfSignedCert, spkiFingerprint } from '../src/main/remote/cert.ts'
 import { handleRequest, type RemoteOfficePort, type RemoteRequest } from '../src/main/remote/handler.ts'
-import { BODY_MAX_BYTES, decisionsBody, FREE_ACTIVITY, remoteActivity, statusBody } from '../src/main/remote/protocol.ts'
+import { BODY_MAX_BYTES, decisionsBody, FREE_ACTIVITY, remoteActivity, statusBody, type RemoteResponse } from '../src/main/remote/protocol.ts'
 import { MAX_CONNECTIONS, MAX_CONNECTIONS_PER_ADDRESS, RemoteServer } from '../src/main/remote/server.ts'
 import { AVATAR_LIMIT, canonicalAvatar, decodeLook } from '../src/shared/look.ts'
 import { isLanAddress, isValidQrPayload, lanForQr, qrImage, qrText } from '../src/main/remote/qr.ts'
@@ -101,9 +101,34 @@ function setup() {
         isBodyTooLarge: r.isBodyTooLarge,
       },
       { guard, office: office.port, serverVersion: '0.8.0', now, isReady: true },
-    )
+    ) as RemoteResponse // 시험용 port에는 reReviews가 없어 상태 응답도 곧바로 나온다
   return { ...office, guard, token, call, tick: (ms: number) => (now += ms) }
 }
+
+test('상태 응답: 재검토 판단은 상태 요청에서만 비동기로 읽고, ?doneLimit으로 완료를 더 싣는다', async () => {
+  const office = makeOffice()
+  const guard = new AuthGuard({ tokenHash: null, revoked: [] })
+  const { token } = guard.rotate()
+  for (let i = 0; i < 30; i++) office.tasks.push({ id: `d${i}`, title: `끝 ${i}`, detail: '', status: 'done', assigneeId: null, teamId: null, result: '', createdAt: 0, updatedAt: i })
+  let reads = 0
+  const port: RemoteOfficePort = { ...office.port, reReviews: async () => (reads++, { d29: 'needed' }) }
+  const call = (url: string) =>
+    handleRequest({ method: 'GET', url, authorization: `Bearer ${token}`, ip: IP, body: null }, { guard, office: port, serverVersion: '0.8.0', now: NOW, isReady: true })
+  // 결재 목록은 git을 읽지 않는다
+  assert.equal((call('/v1/decisions') as RemoteResponse).status, 200)
+  assert.equal(reads, 0)
+  const pending = call('/v1/status')
+  assert.ok(pending instanceof Promise)
+  const first = (await pending).body as any
+  assert.equal(reads, 1)
+  assert.equal(first.works.find((w: any) => w.id === 'd29').reReview, 'needed')
+  assert.equal(first.works.filter((w: any) => w.state === 'done').length, 20)
+  assert.equal(first.worksDoneOmitted, 10)
+  const more = (await call('/v1/status?doneLimit=40')).body as any
+  assert.equal(more.works.filter((w: any) => w.state === 'done').length, 30)
+  assert.equal(more.worksDoneOmitted, 0)
+  assert.equal(((await call('/v1/status?doneLimit=abc')).body as any).worksDoneOmitted, 10)
+})
 
 // ── 토큰·비교 ──────────────────────────────────────────
 test('토큰: 32바이트 base64url 43자, 해시끼리 상수 시간 비교, Bearer만 읽는다', () => {

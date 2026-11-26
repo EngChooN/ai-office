@@ -1,4 +1,4 @@
-import { execFile, execFileSync } from 'node:child_process'
+import { execFile } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -11,7 +11,6 @@ import { toolEnv, WHICH } from './platform.ts'
 const run = promisify(execFile)
 const DIFF_MAX = 200_000
 const GIT_TIMEOUT_MS = 20_000
-const HEAD_SYNC_TIMEOUT_MS = 1_500
 const env = toolEnv()
 
 async function git(cwd: string, ...args: string[]) {
@@ -56,15 +55,6 @@ export async function snapshotTree(cwd: string): Promise<string | null> {
 export async function headCommit(cwd: string): Promise<string | null> {
   try {
     return (await git(cwd, 'rev-parse', '--verify', 'HEAD')).trim() || null
-  } catch {
-    return null
-  }
-}
-
-/** 휴대폰 상태 응답처럼 동기로 답해야 하는 곳용 HEAD — 응답마다 새로 읽는다(짧은 제한 시간, 실패하면 null) */
-export function headCommitSync(cwd: string): string | null {
-  try {
-    return execFileSync('git', ['rev-parse', '--verify', 'HEAD'], { cwd, timeout: HEAD_SYNC_TIMEOUT_MS, env, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim() || null
   } catch {
     return null
   }

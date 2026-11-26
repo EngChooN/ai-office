@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
@@ -42,6 +43,7 @@ import com.claudeoffice.remote.data.OfficeState
 import com.claudeoffice.remote.net.RemoteWork
 import com.claudeoffice.remote.net.WORK_STATES
 import com.claudeoffice.remote.net.awaitingWorks
+import com.claudeoffice.remote.net.canLoadMoreDone
 import com.claudeoffice.remote.net.needsReReview
 import com.claudeoffice.remote.net.waitMinutes
 import com.claudeoffice.remote.net.workStateOf
@@ -87,7 +89,7 @@ fun workWaitText(since: Long, serverNow: Long): String {
 }
 
 @Composable
-fun BoardTab(state: OfficeState) {
+fun BoardTab(state: OfficeState, onLoadMoreDone: () -> Unit) {
     val c = Office.colors
     val works = state.status?.works.orEmpty()
     var filter by rememberSaveable { mutableStateOf<String?>(null) }
@@ -125,13 +127,17 @@ fun BoardTab(state: OfficeState) {
                 if (rows.isEmpty() && !hasOmitted) continue
                 if (rows.isNotEmpty()) item(key = "h-$st") { WorkGroupHeader(st, rows.size) }
                 items(rows, key = { it.id }) { w -> WorkCard(w, state.serverNow) }
-                // 완료 묶음 끝: 폰에 오지 않은(최근 20건 밖) 완료 안내
+                // 완료 묶음 끝: 폰에 오지 않은 완료 — 500건까지는 "더 보기"로 불러오고, 그 너머는 PC에서 보도록 안내
                 if (hasOmitted) item(key = "done-omitted") {
-                    Text(
-                        S.get(R.string.work_done_omitted, doneOmitted),
-                        style = Type.bodySmall, color = c.onSurfaceMuted, textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth().alpha(0.8f).padding(vertical = Space.s2),
-                    )
+                    if (canLoadMoreDone(state.doneLimit, doneOmitted)) {
+                        LoadMoreDoneRow(doneOmitted, state.isLoadingMoreDone, onLoadMoreDone)
+                    } else {
+                        Text(
+                            S.get(R.string.work_done_omitted, doneOmitted),
+                            style = Type.bodySmall, color = c.onSurfaceMuted, textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth().alpha(0.8f).padding(vertical = Space.s2),
+                        )
+                    }
                 }
             }
         }
@@ -194,6 +200,25 @@ private fun AwaitBand(awaiting: List<RemoteWork>, serverNow: Long, onClick: () -
             style = Type.bodySmall, color = c.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis,
         )
     }
+}
+
+/** 완료 칸 끝 "이전 완료 더 보기 (N건 남음)" — 둥근 카드 줄. 불러오는 동안은 흐리게 두고 누름을 받지 않는다 */
+@Composable
+private fun LoadMoreDoneRow(remaining: Int, isLoading: Boolean, onClick: () -> Unit) {
+    val c = Office.colors
+    Text(
+        S.get(if (isLoading) R.string.work_done_more_loading else R.string.work_done_more, remaining),
+        style = Type.label, color = c.primary, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center,
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 48.dp)
+            .alpha(if (isLoading) 0.6f else 1f)
+            .background(c.surface, Radius.xl)
+            .border(1.dp, c.outline, Radius.xl)
+            .clickable(enabled = !isLoading, onClick = onClick)
+            .wrapContentHeight(Alignment.CenterVertically)
+            .padding(horizontal = Space.s3, vertical = Space.s2),
+    )
 }
 
 @Composable

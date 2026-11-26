@@ -296,4 +296,6 @@
     <string name="work_wait_list">대표 응답을 기다리는 일</string>
     <string name="work_wait_list_close">닫기</string>
     <string name="work_done_omitted">이전 완료 %1$d건은 PC에서 볼 수 있어요</string>
+    <string name="work_done_more">이전 완료 더 보기 (%1$d건 남음)</string>
+    <string name="work_done_more_loading">이전 완료 불러오는 중… (%1$d건 남음)</string>
 </resources>

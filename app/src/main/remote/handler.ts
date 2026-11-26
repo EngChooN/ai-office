@@ -21,7 +21,9 @@ import {
 
 /** 원격이 사무실에 할 수 있는 일 전부 (이 밖의 Office 기능은 타입으로도 닿지 않는다) */
 export interface RemoteOfficePort {
-  view(): { staff: Staff[]; tasks: Task[]; reReviews?: Record<string, ReReview> }
+  view(): { staff: Staff[]; tasks: Task[] }
+  /** 업무별 '재검토 필요' — 상태 응답 때만 부른다(git을 읽어 비동기). 없으면 모두 판단 불가 */
+  reReviews?(): Promise<Record<string, ReReview>>
   /** 처리했으면 true (이미 끝난 결정이면 false → 409) */
   decide(approvalId: string, allow: boolean): boolean
   answerQuestion(approvalId: string, answers: Record<string, string>): boolean
@@ -31,7 +33,7 @@ export interface RemoteOfficePort {
 
 export interface RemoteRequest {
   method: string
-  /** 경로 (쿼리 문자열 포함일 수 있음 — 쓰지 않는다) */
+  /** 경로 (쿼리 문자열 포함일 수 있음 — 상태 요청의 doneLimit만 읽는다) */
   url: string
   authorization?: string
   contentType?: string
@@ -111,7 +113,14 @@ export function preflight(req: Pick<RemoteRequest, 'url' | 'authorization' | 'ip
   return null
 }
 
-export function handleRequest(req: RemoteRequest, ctx: RemoteContext): RemoteResponse {
+/** 휴대폰이 더 달라고 한 완료 개수 (?doneLimit=N). 없거나 이상하면 기본값, 범위는 protocol이 맞춘다 */
+function doneLimitOf(url: string): number | undefined {
+  const raw = new URLSearchParams(url.split('?')[1] ?? '').get('doneLimit')
+  const n = raw && /^\d{1,4}$/.test(raw) ? Number(raw) : NaN
+  return Number.isFinite(n) ? n : undefined
+}
+
+export function handleRequest(req: RemoteRequest, ctx: RemoteContext): RemoteResponse | Promise<RemoteResponse> {
   const { office, now } = ctx
   const path = req.url.split('?')[0]
   const blocked = preflight(req, ctx)
@@ -121,8 +130,12 @@ export function handleRequest(req: RemoteRequest, ctx: RemoteContext): RemoteRes
   if (!r) return fail('not_found')
   if (req.method !== allow) return fail('method_not_allowed', { allow })
 
-  const { staff, tasks, reReviews } = office.view()
-  if (r.name === 'status') return ok(200, statusBody(staff, tasks, ctx.serverVersion, reReviews), now)
+  const { staff, tasks } = office.view()
+  if (r.name === 'status') {
+    const doneLimit = doneLimitOf(req.url)
+    const body = (reReviews: Record<string, ReReview>) => ok(200, statusBody(staff, tasks, ctx.serverVersion, reReviews, doneLimit), now)
+    return office.reReviews ? office.reReviews().then(body, () => body({})) : body({})
+  }
   if (r.name === 'decisions') return ok(200, decisionsBody(staff, tasks), now)
 
   // ⑥ 본문

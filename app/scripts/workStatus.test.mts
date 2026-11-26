@@ -6,11 +6,11 @@ import os from 'node:os'
 import path from 'node:path'
 import { test } from 'node:test'
 import {
-  WORK_STATES, WORK_STATUS_VERSION, canMove, followTask, moveWork, normalizeWork, reReviewOf, snapshotFor, toSnapshot, waitLabel, waitTime, workStateLabel,
+  WORK_STATES, WORK_STATUS_VERSION, canMove, followTask, hasReviewRound, moveWork, normalizeWork, reReviewOf, snapshotFor, toSnapshot, waitLabel, waitTime, workStateLabel,
   type WorkStatus,
 } from '../src/main/workStatus.ts'
-import { headCommit, headCommitSync } from '../src/main/review.ts'
-import { worksOf } from '../src/main/remote/protocol.ts'
+import { headCommit } from '../src/main/review.ts'
+import { doneWorksLimit, worksOf } from '../src/main/remote/protocol.ts'
 import type { Task } from '../src/shared/types.ts'
 import { awaitingTasks, workStateOf } from '../src/shared/workWait.ts'
 
@@ -172,25 +172,35 @@ test('followTask: 보드 칸·대표 응답 대기를 따라간다 (칸을 바�
   assert.deepEqual(waiting, { state: 'awaitingUser', waitingSince: 5_000, reviewCommit: null })
   assert.equal(followTask(waiting, 'doing', true, { now: 9_000 }), waiting)
   assert.equal(followTask(waiting, 'doing', false, at).state, 'working')
-  // 진행 중이 아닌 카드는 대기 표시를 무시한다
-  assert.equal(followTask(working, 'review', true, at).state, 'review')
+  // 턴 끝 글 질문(카드가 먼저 검토로 감)·재시작 복원(할 일로 돌아감)도 대표 응답 대기, 완료만 대기 표시를 무시한다
+  assert.equal(followTask(working, 'review', true, at).state, 'awaitingUser')
+  assert.equal(followTask(queued, 'todo', true, at).state, 'awaitingUser')
+  assert.equal(followTask(working, 'done', true, at).state, 'done')
   const reviewed = { state: 'review' as const, waitingSince: null, reviewCommit: A }
   assert.equal(followTask(reviewed, 'done', false, at).reviewCommit, A)
   assert.equal(followTask(reviewed, 'doing', false, at).reviewCommit, null)
+  // 검토 중에 질문이 올라와도 검토 커밋은 남고, 답이 끝나면 다시 검토 중
+  const asking = followTask(reviewed, 'review', true, at)
+  assert.deepEqual(asking, { state: 'awaitingUser', waitingSince: 5_000, reviewCommit: A })
+  assert.equal(followTask(asking, 'review', false, at).state, 'review')
 })
 
-test('headCommitSync: 응답마다 새로 읽는다 — 커밋이 바뀌면 바로 다른 값, 저장소가 아니면 null', () => {
+test('hasReviewRound: 검토 커밋을 남겨 둘 상태 — 검토·대기·완료만', () => {
+  assert.deepEqual(WORK_STATES.filter(hasReviewRound), ['awaitingUser', 'review', 'done'])
+})
+
+test('headCommit: 응답마다 새로 읽는다 — 커밋이 바뀌면 바로 다른 값, 저장소가 아니면 null', async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ws-sync-'))
   try {
-    assert.equal(headCommitSync(dir), null)
+    assert.equal(await headCommit(dir), null)
     const g = (...a: string[]) => execFileSync('git', ['-c', 'user.email=t@t', '-c', 'user.name=t', ...a], { cwd: dir })
     g('init', '-q')
     g('commit', '-q', '--allow-empty', '-m', 'a')
-    const first = headCommitSync(dir)
+    const first = await headCommit(dir)
     assert.match(first ?? '', /^[0-9a-f]{40}$/)
     g('commit', '-q', '--allow-empty', '-m', 'b')
-    assert.notEqual(headCommitSync(dir), first)
-    assert.equal(reReviewOf(first, headCommitSync(dir)), 'needed')
+    assert.notEqual(await headCommit(dir), first)
+    assert.equal(reReviewOf(first, await headCommit(dir)), 'needed')
   } finally {
     fs.rmSync(dir, { recursive: true, force: true })
   }
@@ -211,4 +221,9 @@ test('worksOf: 끝나지 않은 업무는 모두 싣고, 완료는 최근 20건 
   assert.equal(worksDoneOmitted, 5)
   assert.equal(works.find((w) => w.id === 't324')?.reviewCommit, A)
   assert.equal(works.find((w) => w.id === 't0')?.reviewCommit, '')
+  // 휴대폰 '이전 완료 더 보기': 달라는 만큼(20~500) 싣는다
+  const more = worksOf(tasks, {}, new Map(), 40)
+  assert.equal(more.works.filter((w) => w.state === 'done').length, 25)
+  assert.equal(more.worksDoneOmitted, 0)
+  assert.deepEqual([undefined, 0, 5, 40, 41.7, 9999, NaN].map(doneWorksLimit), [20, 20, 20, 40, 41, 500, 20])
 })

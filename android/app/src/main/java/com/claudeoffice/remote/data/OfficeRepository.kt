@@ -12,6 +12,10 @@ import androidx.lifecycle.ProcessLifecycleOwner
 import com.claudeoffice.remote.net.ApiError
 import com.claudeoffice.remote.net.ApiResult
 import com.claudeoffice.remote.net.Connection
+import com.claudeoffice.remote.net.DONE_LIMIT_DEFAULT
+import com.claudeoffice.remote.net.canLoadMoreDone
+import com.claudeoffice.remote.net.DONE_LIMIT_MAX
+import com.claudeoffice.remote.net.nextDoneLimit
 import com.claudeoffice.remote.net.Decision
 import com.claudeoffice.remote.net.Endpoint
 import com.claudeoffice.remote.net.InMemoryRoute
@@ -101,6 +105,10 @@ data class OfficeState(
     /** 같은 네트워크 전용 모드로 연결돼 있다 (닿지 않을 때 문구가 달라진다) */
     val isLanOnly: Boolean = false,
     val isTailscale: Boolean = false,
+    /** 상태 요청에 싣는 완료 건수 (지금 PC 기준 메모리 값 — 앱 재시작·PC 전환 때 20) */
+    val doneLimit: Int = DONE_LIMIT_DEFAULT,
+    /** "이전 완료 더 보기"로 불러오는 중 (중복 누름 무시) */
+    val isLoadingMoreDone: Boolean = false,
 ) {
     val serverNow get() = System.currentTimeMillis() + clockOffset
     val canAct get() = gate == null && reach == Reach.OK
@@ -451,7 +459,7 @@ class OfficeRepository(private val context: Context) {
             if (client !== c) return
             val wasDown = _state.value.reach != Reach.OK
             _state.update { it.copy(isLoading = true) }
-            val s = c.status()
+            val s = c.status(_state.value.doneLimit)
             if (client !== c) return
             if (s is ApiResult.Fail) {
                 _state.update { it.copy(isLoading = false) }
@@ -472,6 +480,30 @@ class OfficeRepository(private val context: Context) {
         if (_state.value.justRecovered && client === c) {
             delay(1500)
             _state.update { it.copy(justRecovered = false) }
+        }
+    }
+
+    /**
+     * 완료 칸 끝 "이전 완료 더 보기": 완료 건수를 +20(최대 500) 하고 곧바로 다시 불러온다. 불러오는 동안 다시 누르면 무시.
+     * 값은 화면 상태에만 둔다 — PC를 바꾸거나 앱을 다시 켜면 상태가 새로 만들어져 20으로 돌아간다
+     */
+    suspend fun loadMoreDone() {
+        if (client == null) return
+        val pcId = book.currentId
+        val s = _state.value
+        if (s.isLoadingMoreDone || !canLoadMoreDone(s.doneLimit, s.status?.worksDoneOmitted ?: 0)) return
+        val omittedBefore = s.status?.worksDoneOmitted ?: 0
+        _state.update { it.copy(doneLimit = nextDoneLimit(it.doneLimit), isLoadingMoreDone = true) }
+        try {
+            refresh()
+        } finally {
+            // 그 사이 PC를 바꿨으면 새 PC 상태는 이미 새로 만들어졌다 — 건드리지 않는다
+            if (book.currentId == pcId) _state.update {
+                // 빠진 개수가 그대로면 더 보기를 모르는 옛 PC — 버튼 대신 "PC에서 볼 수 있어요"로 바꾼다
+                val omittedAfter = it.status?.worksDoneOmitted ?: 0
+                val limit = if (it.status != null && omittedAfter > 0 && omittedAfter >= omittedBefore) DONE_LIMIT_MAX else it.doneLimit
+                it.copy(isLoadingMoreDone = false, doneLimit = limit)
+            }
         }
     }
 

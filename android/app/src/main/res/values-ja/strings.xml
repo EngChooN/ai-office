@@ -295,4 +295,6 @@
     <string name="work_wait_list">あなたの返答を待っている仕事</string>
     <string name="work_wait_list_close">閉じる</string>
     <string name="work_done_omitted">以前の完了 %1$d件はPCで見られます</string>
+    <string name="work_done_more">以前の完了をもっと見る（残り%1$d件）</string>
+    <string name="work_done_more_loading">以前の完了を読み込み中…（残り%1$d件）</string>
 </resources>

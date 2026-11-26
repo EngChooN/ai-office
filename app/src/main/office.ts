@@ -177,8 +177,8 @@ import { autoWaitReason, autoActionKey, autoKindOf, autoStep, autoSummaryText, a
 import { HELP_MAX_PER_TASK, HELP_TEXT_MAX, HelpLedger, mustUseHelp, helpTargetIds, helpCtxOf, inHelpContext, isHelpWaiting, type HelpCtx } from '../shared/helpRequest'
 import { AUTONOMY_TEXT_ASK_MAX, autonomyVerdict, fallbackAnswers, isFullAutonomy, isTaskAutonomous, markProxyAnswers, nextTextAskRetry, resolveAutonomy } from '../shared/autonomy'
 import { clipLeaderReport } from '../shared/memberReport'
-import { followTask, normalizeWork, snapshotFor, toSnapshot, type ReReview } from './workStatus'
-import { commitAll, folderState, headCommit, headCommitSync, pushAndPr, repoRoot, restoreFiles, snapshotTree, treeDiff, workBaseStillValid, workChanges } from './review'
+import { followTask, hasReviewRound, normalizeWork, snapshotFor, type ReReview } from './workStatus'
+import { commitAll, folderState, headCommit, pushAndPr, repoRoot, restoreFiles, snapshotTree, treeDiff, workBaseStillValid, workChanges } from './review'
 import { readCodexExternalDay, readExternalDay } from './transcript'
 import { Tutorial } from './tutorial'
 import { errorLog } from './errorLog'
@@ -266,6 +266,8 @@ export class Office extends EventEmitter<{
   private textAsks = new Map<string, { staffId: string; question: string; taskId: string | null }>()
   /** 저장해 둔 결재·질문 (앱을 껐다 켜도 이어 가려고 — pendingApprovals.ts) */
   private pending: readonly PendingApproval[] = []
+  /** 업무별 검토 회차 번호 — 늦게 끝난 HEAD 조회가 다른 회차의 검토 커밋으로 남지 않게 (stampReviewCommit) */
+  private reviewRounds = new Map<string, number>()
   /** 앱을 다시 켜며 되살린 결재 id → 저장 내용 (살아 있는 세션 요청이 없어 decide·answerQuestion이 새 지시로 이어 간다) */
   private restoredAsks = new Map<string, PendingApproval>()
   /** 복원 결재를 승인해 다시 실행할 때 한 번만 통과시키는 허용 */
@@ -1667,10 +1669,9 @@ export class Office extends EventEmitter<{
 
   remotePort(): RemoteOfficePort {
     return {
-      view: () => {
-        // '재검토 필요'는 이번 응답에서 HEAD를 새로 읽어 계산한다 (폴더마다 한 번, 이 응답 안에서만)
-        return { staff: [...this.hired.values()].map((s) => this.liveStaff(s)), tasks: [...this.tasks.values()], reReviews: this.taskReReviewsNow() }
-      },
+      view: () => ({ staff: [...this.hired.values()].map((s) => this.liveStaff(s)), tasks: [...this.tasks.values()] }),
+      // '재검토 필요'는 상태 응답마다 HEAD를 새로 읽어 계산한다 (비동기 — 앱의 다른 처리를 막지 않는다)
+      reReviews: () => this.taskReReviews(),
       decide: (id, allow) => this.decide(id, allow, REMOTE_MARK),
       answerQuestion: (id, answers) => this.answerQuestion(id, answers, REMOTE_MARK),
       reviewPlan: (taskId, isApproved, feedback) => this.reviewPlan(taskId, isApproved, feedback, REMOTE_MARK),
@@ -3539,19 +3540,6 @@ export class Office extends EventEmitter<{
     return s && fs.existsSync(s.cwd) ? s.cwd : null
   }
 
-  /** 휴대폰 상태 응답용(동기) — 규칙은 taskReReviews와 같다 */
-  private taskReReviewsNow() {
-    const heads = new Map<string, string | null>()
-    const out: Record<string, ReReview> = {}
-    for (const tk of this.tasks.values()) {
-      const cwd = tk.work?.reviewCommit && tk.assigneeId ? this.cwdOf(tk.assigneeId) : null
-      if (!cwd) continue
-      if (!heads.has(cwd)) heads.set(cwd, headCommitSync(cwd))
-      out[tk.id] = toSnapshot(tk.work!, heads.get(cwd)).reReview
-    }
-    return out
-  }
-
   /** 상태 보드 '재검토 필요': 검토 커밋이 있는 카드만 담당 직원 작업 폴더의 HEAD와 비교 (폴더마다 git 한 번, 이 응답 안에서만) */
   async taskReReviews() {
     const heads = new Map<string, Promise<string | null>>()
@@ -4291,36 +4279,48 @@ export class Office extends EventEmitter<{
     if (work !== t.work) t = { ...t, work }
     db.upsertTask(t)
     this.tasks.set(t.id, t)
-    // 검토에 들어간 순간의 코드 버전을 남긴다 (git은 비동기라 저장 뒤에 채운다)
+    // 검토에 들어간 순간의 코드 버전을 남긴다 (git은 비동기라 저장 뒤에 채운다). 할 일·진행 중으로 돌아가면 그 회차는 무효
     if (work.state === 'review' && cur.state !== 'review') this.stampReviewCommit(t.id)
+    else if (work.state === 'queued' || work.state === 'working') this.reviewRounds.delete(t.id)
     this.scheduleEmit()
   }
 
-  /** 대표 응답 대기: 대표 확인을 기다리는 기획안, 또는 담당 직원이 이 업무를 하다 올린 결재·질문이 남아 있을 때 */
+  /**
+   * 대표 응답 대기: 대표 확인을 기다리는 기획안, 또는 담당 직원이 이 업무를 하다 올린 결재·질문이 남아 있을 때.
+   * 이 업무에 묶인 결재·질문은 칸과 상관없이 본다(턴 끝 글 질문은 카드가 검토로 간 뒤, 재시작 복원은 할 일로 돌린 뒤에 올라온다)
+   */
   private isAwaitingUser(t: Task) {
-    if (t.status !== 'doing') return false
-    if (t.plan?.status === 'waiting') return true
+    if (t.status === 'done') return false
+    if (t.status === 'doing' && t.plan?.status === 'waiting') return true
     const s = t.assigneeId ? this.hired.get(t.assigneeId) : undefined
     if (!s?.approvals.length) return false
     const open = new Set(s.approvals.map((a) => a.id))
-    return this.taskOriginOf(s.id) === t.id || this.pending.some((p) => p.taskId === t.id && open.has(p.id))
+    if (this.pending.some((p) => p.taskId === t.id && open.has(p.id))) return true
+    return t.status === 'doing' && this.taskOriginOf(s.id) === t.id
   }
 
-  /** 직원의 결재·질문이 생기거나 닫히면 그 직원이 하던 업무의 대기 상태를 다시 맞춘다 */
+  /** 직원의 결재·질문이 생기거나 닫히면 그 직원이 맡은 (끝나지 않은) 업무의 대기 상태를 다시 맞춘다 */
   private syncAwaiting(staffId: string) {
     for (const t of this.tasks.values()) {
-      if (t.assigneeId !== staffId || t.status !== 'doing') continue
+      if (t.assigneeId !== staffId || t.status === 'done') continue
       if ((t.work?.state === 'awaitingUser') !== this.isAwaitingUser(t)) this.saveTask(t)
     }
   }
 
+  /**
+   * 검토 회차마다 번호를 매겨, 조회가 끝났을 때 같은 회차일 때만 검토 커밋을 남긴다.
+   * 조회 중에 완료·대표 응답 대기로 넘어가도 같은 회차라 남기고, 진행 중으로 돌아갔다가 다시 검토하면 옛 조회 결과는 버린다
+   */
   private stampReviewCommit(taskId: string) {
+    const round = (this.reviewRounds.get(taskId) ?? 0) + 1
+    this.reviewRounds.set(taskId, round)
     const assignee = this.tasks.get(taskId)?.assigneeId
     const cwd = assignee ? this.cwdOf(assignee) : null
     if (!cwd) return
     void headCommit(cwd).then((head) => {
+      if (this.reviewRounds.get(taskId) !== round) return
       const t = this.tasks.get(taskId)
-      if (head && t?.work?.state === 'review' && !t.work.reviewCommit) this.saveTask({ ...t, work: { ...t.work, reviewCommit: head } })
+      if (head && t?.work && !t.work.reviewCommit && hasReviewRound(t.work.state)) this.saveTask({ ...t, work: { ...t.work, reviewCommit: head } })
     })
   }
 
