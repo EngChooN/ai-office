@@ -6,7 +6,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,10 +21,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -101,23 +104,34 @@ fun BoardTab(state: OfficeState) {
             return@Column
         }
         // 개수 타일 + 대기 줄은 위에 고정, 목록만 스크롤
+        val doneOmitted = state.status?.worksDoneOmitted ?: 0
         Column(Modifier.padding(horizontal = Space.s4)) {
-            WorkTiles(works, filter) { filter = if (filter == it) null else it }
+            WorkTiles(works, doneOmitted, filter) { filter = if (filter == it) null else it }
             if (awaiting.isNotEmpty()) {
                 Spacer(Modifier.height(Space.s2))
                 AwaitBand(awaiting, state.serverNow) { isListOpen = true }
             }
             Spacer(Modifier.height(Space.s3))
         }
-        LazyColumn(Modifier.weight(1f).padding(horizontal = Space.s4)) {
+        LazyColumn(
+            Modifier.weight(1f).padding(horizontal = Space.s4),
+            verticalArrangement = Arrangement.spacedBy(Space.s2),
+            contentPadding = PaddingValues(bottom = Space.s4),
+        ) {
             for (st in WORK_STATES) {
                 if (filter != null && filter != st) continue
                 val rows = worksOfState(works, st)
-                if (rows.isEmpty()) continue
-                item(key = "h-$st") { WorkGroupHeader(st, rows.size) }
-                items(rows, key = { it.id }) { w ->
-                    WorkRow(w, state.serverNow)
-                    HorizontalDivider(color = c.outline)
+                val hasOmitted = st == "done" && doneOmitted > 0
+                if (rows.isEmpty() && !hasOmitted) continue
+                if (rows.isNotEmpty()) item(key = "h-$st") { WorkGroupHeader(st, rows.size) }
+                items(rows, key = { it.id }) { w -> WorkCard(w, state.serverNow) }
+                // 완료 묶음 끝: 폰에 오지 않은(최근 20건 밖) 완료 안내
+                if (hasOmitted) item(key = "done-omitted") {
+                    Text(
+                        S.get(R.string.work_done_omitted, doneOmitted),
+                        style = Type.bodySmall, color = c.onSurfaceMuted, textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth().alpha(0.8f).padding(vertical = Space.s2),
+                    )
                 }
             }
         }
@@ -126,11 +140,12 @@ fun BoardTab(state: OfficeState) {
 }
 
 @Composable
-private fun WorkTiles(works: List<RemoteWork>, filter: String?, onTap: (String) -> Unit) {
+private fun WorkTiles(works: List<RemoteWork>, doneOmitted: Int, filter: String?, onTap: (String) -> Unit) {
     val c = Office.colors
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Space.s2)) {
         for (st in listOf("awaitingUser", "working", "review", "done")) {
-            val n = works.count { workStateOf(it) == st }
+            // 완료 개수는 폰에 오지 않은 옛 완료까지 더한다 (PC 보드와 같은 숫자)
+            val n = works.count { workStateOf(it) == st } + if (st == "done") doneOmitted else 0
             val isSelected = filter == st
             val border = when {
                 isSelected -> c.primary
@@ -183,29 +198,39 @@ private fun AwaitBand(awaiting: List<RemoteWork>, serverNow: Long, onClick: () -
 
 @Composable
 private fun WorkGroupHeader(state: String, n: Int) {
-    Row(Modifier.fillMaxWidth().padding(top = Space.s3, bottom = Space.s1), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().padding(top = Space.s2), verticalAlignment = Alignment.CenterVertically) {
         StatusDot(workStateColor(state), 7)
         Spacer(Modifier.width(Space.s1))
         Text("${workStateLabel(state)} · $n", style = Type.label, color = Office.colors.onSurfaceMuted)
     }
 }
 
+/** 업무 카드 — 결재 카드와 같은 둥근 카드(OfficeCard). 칩 줄은 긴 번역에서 다음 줄로 넘어간다 */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun WorkRow(w: RemoteWork, serverNow: Long) {
+private fun WorkCard(w: RemoteWork, serverNow: Long) {
     val c = Office.colors
     val st = workStateOf(w)
     val isDone = st == "done"
-    Column(Modifier.fillMaxWidth().heightIn(min = 64.dp).padding(vertical = Space.s3), verticalArrangement = Arrangement.spacedBy(Space.s1)) {
+    OfficeCard { Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(Space.s2)) {
         // 완료 카드는 제목·담당만 흐리게 — 상태 칩과 재검토 칩은 그대로
         Column(Modifier.alpha(if (isDone) 0.6f else 1f)) {
             Text(w.title, style = Type.titleMedium, color = c.onSurface, maxLines = 2, overflow = TextOverflow.Ellipsis)
             MutedText(w.assigneeName.ifEmpty { S.get(R.string.work_unassigned) }, maxLines = 1)
         }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Space.s2)) {
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(Space.s2),
+            verticalArrangement = Arrangement.spacedBy(Space.s1),
+        ) {
             StatusBadge(workStateLabel(st), workStateColor(st))
             if (st == "awaitingUser") {
                 val wait = workWaitText(w.waitingSince, serverNow)
-                if (wait.isNotEmpty()) Text(S.get(R.string.work_waited, wait), style = Type.label, color = c.statusWaiting, fontWeight = FontWeight.Bold)
+                if (wait.isNotEmpty()) {
+                    Text(
+                        S.get(R.string.work_waited, wait), style = Type.label, color = c.statusWaiting, fontWeight = FontWeight.Bold,
+                        modifier = Modifier.align(Alignment.CenterVertically),
+                    )
+                }
             }
             if (needsReReview(w)) {
                 Text(
@@ -218,7 +243,7 @@ private fun WorkRow(w: RemoteWork, serverNow: Long) {
                 )
             }
         }
-    }
+    } }
 }
 
 @Composable
@@ -229,11 +254,8 @@ private fun AwaitDialog(awaiting: List<RemoteWork>, serverNow: Long, onClose: ()
         containerColor = c.surface,
         title = { Text(S.get(R.string.work_wait_list), style = Type.titleMedium, color = c.onSurface) },
         text = {
-            LazyColumn {
-                items(awaiting, key = { it.id }) { w ->
-                    WorkRow(w, serverNow)
-                    HorizontalDivider(color = c.outline)
-                }
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(Space.s2)) {
+                items(awaiting, key = { it.id }) { w -> WorkCard(w, serverNow) }
             }
         },
         confirmButton = { TextButton(onClose) { Text(S.get(R.string.work_wait_list_close), color = c.primary) } },

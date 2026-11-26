@@ -177,8 +177,8 @@ import { autoWaitReason, autoActionKey, autoKindOf, autoStep, autoSummaryText, a
 import { HELP_MAX_PER_TASK, HELP_TEXT_MAX, HelpLedger, mustUseHelp, helpTargetIds, helpCtxOf, inHelpContext, isHelpWaiting, type HelpCtx } from '../shared/helpRequest'
 import { AUTONOMY_TEXT_ASK_MAX, autonomyVerdict, fallbackAnswers, isFullAutonomy, isTaskAutonomous, markProxyAnswers, nextTextAskRetry, resolveAutonomy } from '../shared/autonomy'
 import { clipLeaderReport } from '../shared/memberReport'
-import { snapshotFor, type ReReview } from './workStatus'
-import { commitAll, folderState, pushAndPr, repoRoot, restoreFiles, snapshotTree, treeDiff, workBaseStillValid, workChanges } from './review'
+import { followTask, normalizeWork, snapshotFor, toSnapshot, type ReReview } from './workStatus'
+import { commitAll, folderState, headCommit, headCommitSync, pushAndPr, repoRoot, restoreFiles, snapshotTree, treeDiff, workBaseStillValid, workChanges } from './review'
 import { readCodexExternalDay, readExternalDay } from './transcript'
 import { Tutorial } from './tutorial'
 import { errorLog } from './errorLog'
@@ -1668,9 +1668,8 @@ export class Office extends EventEmitter<{
   remotePort(): RemoteOfficePort {
     return {
       view: () => {
-        // '재검토 필요'는 git 조회가 비동기라 직전에 계산해 둔 값을 싣고, 이번 조회로 새로 계산해 둔다(폰이 곧 다시 부른다)
-        void this.taskReReviews().then((m) => (this.reReviewCache = m), () => {})
-        return { staff: [...this.hired.values()].map((s) => this.liveStaff(s)), tasks: [...this.tasks.values()], reReviews: this.reReviewCache }
+        // '재검토 필요'는 이번 응답에서 HEAD를 새로 읽어 계산한다 (폴더마다 한 번, 이 응답 안에서만)
+        return { staff: [...this.hired.values()].map((s) => this.liveStaff(s)), tasks: [...this.tasks.values()], reReviews: this.taskReReviewsNow() }
       },
       decide: (id, allow) => this.decide(id, allow, REMOTE_MARK),
       answerQuestion: (id, answers) => this.answerQuestion(id, answers, REMOTE_MARK),
@@ -1891,6 +1890,7 @@ export class Office extends EventEmitter<{
       s.status = 'waiting'
       s.activity = p.questions ? t('officeMsg.waitAnswer') : t('officeMsg.waitApproval', { tool: p.toolName })
     }
+    for (const id of new Set(restore.map((p) => p.staffId))) this.syncAwaiting(id)
     if (restore.length) this.scheduleEmit()
   }
 
@@ -3539,7 +3539,18 @@ export class Office extends EventEmitter<{
     return s && fs.existsSync(s.cwd) ? s.cwd : null
   }
 
-  private reReviewCache: Record<string, ReReview> = {}
+  /** 휴대폰 상태 응답용(동기) — 규칙은 taskReReviews와 같다 */
+  private taskReReviewsNow() {
+    const heads = new Map<string, string | null>()
+    const out: Record<string, ReReview> = {}
+    for (const tk of this.tasks.values()) {
+      const cwd = tk.work?.reviewCommit && tk.assigneeId ? this.cwdOf(tk.assigneeId) : null
+      if (!cwd) continue
+      if (!heads.has(cwd)) heads.set(cwd, headCommitSync(cwd))
+      out[tk.id] = toSnapshot(tk.work!, heads.get(cwd)).reReview
+    }
+    return out
+  }
 
   /** 상태 보드 '재검토 필요': 검토 커밋이 있는 카드만 담당 직원 작업 폴더의 HEAD와 비교 (폴더마다 git 한 번, 이 응답 안에서만) */
   async taskReReviews() {
@@ -4273,10 +4284,44 @@ export class Office extends EventEmitter<{
     this.saveTask({ ...t, usage: { tokens: (t.usage?.tokens ?? 0) + tokens, costUsd: (t.usage?.costUsd ?? 0) + delta.cost } })
   }
 
+  /** 업무 카드 저장 — 상태 보드 상태(work)는 여기서 보드 칸·대표 응답 대기 여부를 따라 함께 바꾼다 (상태를 바꾸는 곳은 이 한 곳) */
   private saveTask(t: Task) {
+    const cur = t.work ?? normalizeWork(null, this.tasks.get(t.id)?.status ?? t.status)
+    const work = followTask(cur, t.status, this.isAwaitingUser(t), { now: Date.now() })
+    if (work !== t.work) t = { ...t, work }
     db.upsertTask(t)
     this.tasks.set(t.id, t)
+    // 검토에 들어간 순간의 코드 버전을 남긴다 (git은 비동기라 저장 뒤에 채운다)
+    if (work.state === 'review' && cur.state !== 'review') this.stampReviewCommit(t.id)
     this.scheduleEmit()
+  }
+
+  /** 대표 응답 대기: 대표 확인을 기다리는 기획안, 또는 담당 직원이 이 업무를 하다 올린 결재·질문이 남아 있을 때 */
+  private isAwaitingUser(t: Task) {
+    if (t.status !== 'doing') return false
+    if (t.plan?.status === 'waiting') return true
+    const s = t.assigneeId ? this.hired.get(t.assigneeId) : undefined
+    if (!s?.approvals.length) return false
+    const open = new Set(s.approvals.map((a) => a.id))
+    return this.taskOriginOf(s.id) === t.id || this.pending.some((p) => p.taskId === t.id && open.has(p.id))
+  }
+
+  /** 직원의 결재·질문이 생기거나 닫히면 그 직원이 하던 업무의 대기 상태를 다시 맞춘다 */
+  private syncAwaiting(staffId: string) {
+    for (const t of this.tasks.values()) {
+      if (t.assigneeId !== staffId || t.status !== 'doing') continue
+      if ((t.work?.state === 'awaitingUser') !== this.isAwaitingUser(t)) this.saveTask(t)
+    }
+  }
+
+  private stampReviewCommit(taskId: string) {
+    const assignee = this.tasks.get(taskId)?.assigneeId
+    const cwd = assignee ? this.cwdOf(assignee) : null
+    if (!cwd) return
+    void headCommit(cwd).then((head) => {
+      const t = this.tasks.get(taskId)
+      if (head && t?.work?.state === 'review' && !t.work.reviewCommit) this.saveTask({ ...t, work: { ...t.work, reviewCommit: head } })
+    })
   }
 
   /** 결과물을 고쳐 다시 올리면, 이미 그 결과물을 가진 업무 카드·갤러리 카드도 새 버전으로 바꾼다
@@ -5377,6 +5422,7 @@ ${m.summary}`, teamId: this.teamOf(chair.id)?.id ?? null, labId: lab?.id ?? null
     const s = this.hired.get(id)
     if (!s) return
     Object.assign(s, patch)
+    if ('status' in patch || 'approvals' in patch) this.syncAwaiting(id)
     this.scheduleEmit()
   }
 

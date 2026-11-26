@@ -235,19 +235,31 @@ export function BoardPage() {
   )
 }
 
-/** 카드 id → '재검토 필요' 값. 카드 목록이 바뀔 때마다 새로 묻고, 늦게 온 옛 답은 버린다 (실패하면 표시 없음) */
-function useReReviews(tasks: Task[]) {
+/** 보드를 켜 둔 채 커밋만 바뀌어도 '재검토 필요'가 따라오게 다시 묻는 간격 */
+const REREVIEW_POLL_MS = 30_000
+
+/** 카드 id → '재검토 필요' 값. 카드 목록이 바뀔 때·창으로 돌아올 때·30초마다 새로 묻고, 늦게 온 옛 답은 버린다 (실패하면 표시 없음) */
+export function useReReviews(tasks: Task[]) {
   const [reReviews, setReReviews] = useState<Record<string, ReReview>>({})
   const hasReviewCommit = tasks.some((tk) => tk.work?.reviewCommit)
   useEffect(() => {
     if (!hasReviewCommit) return setReReviews({})
     let isCurrent = true
-    window.office.taskReReviews().then(
-      (r) => isCurrent && setReReviews(r),
-      () => isCurrent && setReReviews({}),
-    )
+    let seq = 0
+    const ask = () => {
+      const mine = ++seq
+      window.office.taskReReviews().then(
+        (r) => isCurrent && mine === seq && setReReviews(r),
+        () => isCurrent && mine === seq && setReReviews({}),
+      )
+    }
+    ask()
+    const timer = setInterval(ask, REREVIEW_POLL_MS)
+    window.addEventListener('focus', ask)
     return () => {
       isCurrent = false
+      clearInterval(timer)
+      window.removeEventListener('focus', ask)
     }
   }, [tasks, hasReviewCommit])
   return reReviews
@@ -392,7 +404,6 @@ const TaskCard = memo(function TaskCard({ task, parent, subtasks: children, staf
       {task.usage && (
         <span className="text-muted-foreground text-[10px] tabular-nums"><IconText size={11} text={t('board.card.usage', { tokens: formatTokens(task.usage.tokens), cost: formatCost(task.usage.costUsd) })} /></span>
       )}
-      <WorkStatusRow task={task} reReview={reReview} />
       <TaskDetail task={task} subtasks={children} reReview={reReview} isOpen={isOpen} onOpenChange={setIsOpen} />
       {/* 휴대폰: 카드 끌어 옮기기가 터치에서 안 되니 칸을 골라 옮긴다 */}
       <NativeSelect
@@ -463,6 +474,8 @@ const TaskCard = memo(function TaskCard({ task, parent, subtasks: children, staf
           </div>
         )
       )}
+      {/* 상태 칩은 담당자 아래 (대표 컨펌 시안 A안) */}
+      <WorkStatusRow task={task} reReview={reReview} />
       {task.status === 'doing' && !run && task.plan?.status !== 'waiting' && (
         <div className="flex gap-1.5">
           {task.plan?.isPaused ? (

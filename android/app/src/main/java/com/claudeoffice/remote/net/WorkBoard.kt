@@ -2,8 +2,8 @@
 
 package com.claudeoffice.remote.net
 
-/** 보드에 놓이는 순서 */
-val WORK_STATES = listOf("queued", "working", "awaitingUser", "review", "done")
+/** 목록에 놓이는 순서 — 대표 응답 대기 → 진행 중 → 검토 중 → 할 일 → 완료 (decision.md ②) */
+val WORK_STATES = listOf("awaitingUser", "working", "review", "queued", "done")
 
 /** 모르는 상태 문자열은 할 일로 */
 fun workStateOf(w: RemoteWork): String = if (w.state in WORK_STATES) w.state else "queued"

@@ -151,13 +151,13 @@ export function statusBody(staff: Staff[], tasks: Task[], serverVersion: string,
     summary,
     supportedProtocols: SUPPORTED_VERSIONS,
     fullAccess: true,
-    works: worksOf(tasks, reReviews, new Map(hired.map((s) => [s.id, s.name]))),
+    ...worksOf(tasks, reReviews, new Map(hired.map((s) => [s.id, s.name]))),
   }
 }
 
-/** 상태 보드(읽기 전용) 스냅샷 — 새 선택 필드. 구버전 앱은 무시한다. 완료 카드는 최근 것만 */
+/** 상태 보드(읽기 전용) 스냅샷 — 새 선택 필드. 구버전 앱은 무시한다.
+ * 끝나지 않은 업무는 모두 싣는다(대기 건수가 틀리면 안 되므로). 완료는 최근 것만 싣고, 빠진 개수를 worksDoneOmitted로 알린다 */
 const DONE_WORKS_MAX = 20
-const WORKS_MAX = 200
 
 export function worksOf(tasks: Task[], reReviews: Record<string, ReReview>, names: Map<string, string>) {
   const rows = tasks
@@ -172,12 +172,13 @@ export function worksOf(tasks: Task[], reReviews: Record<string, ReReview>, name
         v: 1,
         state,
         waitingSince: state === 'awaitingUser' ? (cleanTime(t.work?.waitingSince) ?? 0) : 0,
+        reviewCommit: t.work?.reviewCommit ?? '',
         reReview: reReviews[t.id] ?? 'unknown',
       }
     })
   const live = rows.filter((r) => r.state !== 'done')
-  const done = rows.filter((r) => r.state === 'done').sort((a, b) => b.updatedAt - a.updatedAt).slice(0, DONE_WORKS_MAX)
-  return [...live, ...done].slice(0, WORKS_MAX)
+  const done = rows.filter((r) => r.state === 'done').sort((a, b) => b.updatedAt - a.updatedAt)
+  return { works: [...live, ...done.slice(0, DONE_WORKS_MAX)], worksDoneOmitted: Math.max(0, done.length - DONE_WORKS_MAX) }
 }
 
 /** 대표 확인을 기다리는 기획 카드 */

@@ -45,6 +45,8 @@ data class RemoteWork(
     val waitingSince: Long = 0,
     /** needed(재검토 필요) · clear · unknown — needed일 때만 칩을 띄운다 */
     val reReview: String = "unknown",
+    /** 재검토 기준 커밋 — 파싱만, 화면에 표시하지 않음 */
+    val reviewCommit: String = "",
 )
 
 @Serializable
@@ -67,6 +69,8 @@ data class StatusResponse(
     val supportedProtocols: List<Int> = listOf(1),
     /** 상태 보드 (구버전 PC는 안 보냄 → 빈 목록) */
     val works: List<RemoteWork> = emptyList(),
+    /** 완료 업무 중 폰에 보내지 않은(최근 20건 밖) 개수 */
+    val worksDoneOmitted: Int = 0,
 )
 
 @Serializable

@@ -13,7 +13,7 @@ import { meetingProgress } from '@shared/meetingProgress'
 import { minutesMarkdown, needsOutcome, outcomeTaskId, shouldOpenOutcome } from '@shared/meetingOutcome'
 import { MeetingLive } from './MeetingLive'
 import { MeetingOutcomeDialog } from './MeetingOutcomeDialog'
-import { TaskDetail } from './BoardPage'
+import { TaskDetail, useReReviews } from './BoardPage'
 import { t, fmtDate, type TKey } from '@shared/i18n'
 import { Avatar, PracticeBadge } from './StaffCard'
 import { useTutorialMeetingId, useTutorialStep } from './Tutorial'
@@ -266,6 +266,9 @@ function OutcomeResultButton({ outcome }: { outcome: MeetingOutcome | undefined 
   const task = useOffice((s) => (ref ? s.tasks.find((x) => x.id === ref) : undefined))
   const subtasks = useOffice(useShallow((s) => (ref ? s.tasks.filter((x) => x.parentId === ref) : [])))
   const [isOpen, setIsOpen] = useState(false)
+  // 보드에서 열 때와 같은 '재검토 필요' 값 — 상세를 연 동안만 묻는다
+  const asked = useMemo(() => (task && isOpen ? [task] : []), [task, isOpen])
+  const reReviews = useReReviews(asked)
   if (!task) return null
   const open = () => (task.plan?.status === 'waiting' ? useOffice.getState().openPlanInInbox(task.id) : setIsOpen(true))
   return (
@@ -273,7 +276,7 @@ function OutcomeResultButton({ outcome }: { outcome: MeetingOutcome | undefined 
       <Button size="sm" variant="outline" onClick={open}>
         {t('meeting.outcome.view')}
       </Button>
-      <TaskDetail task={task} subtasks={subtasks} isOpen={isOpen} onOpenChange={setIsOpen} />
+      <TaskDetail task={task} subtasks={subtasks} reReview={reReviews[task.id]} isOpen={isOpen} onOpenChange={setIsOpen} />
     </div>
   )
 }

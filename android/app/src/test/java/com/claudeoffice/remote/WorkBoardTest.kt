@@ -1,11 +1,13 @@
 package com.claudeoffice.remote
 
 import com.claudeoffice.remote.net.StatusResponse
+import com.claudeoffice.remote.net.WORK_STATES
 import com.claudeoffice.remote.net.awaitingWorks
 import com.claudeoffice.remote.net.needsReReview
 import com.claudeoffice.remote.net.protocolJson
 import com.claudeoffice.remote.net.waitMinutes
 import com.claudeoffice.remote.net.workStateOf
+import com.claudeoffice.remote.net.worksOfState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -19,6 +21,26 @@ class WorkBoardTest {
     fun oldServerWithoutWorksGivesEmptyList() {
         val r = protocolJson.decodeFromString(StatusResponse.serializer(), """{"protocolVersion":1}""")
         assertTrue(r.works.isEmpty())
+        assertEquals(0, r.worksDoneOmitted)
+    }
+
+    @Test
+    fun listOrderFollowsDecision() {
+        // decision.md ②: 대기 → 진행 → 검토 → 할 일 → 완료
+        assertEquals(listOf("awaitingUser", "working", "review", "queued", "done"), WORK_STATES)
+        val w = parse("""[{"id":"d","state":"done"},{"id":"q","state":"queued"},{"id":"r","state":"review"},{"id":"k","state":"working"},{"id":"a","state":"awaitingUser"}]""")
+        assertEquals(listOf("a", "k", "r", "q", "d"), WORK_STATES.flatMap { st -> worksOfState(w, st) }.map { it.id })
+    }
+
+    @Test
+    fun doneOmittedAndReviewCommitParsed() {
+        val r = protocolJson.decodeFromString(
+            StatusResponse.serializer(),
+            """{"protocolVersion":1,"worksDoneOmitted":7,"works":[{"id":"a","state":"done","reviewCommit":"abc123"},{"id":"b"}]}""",
+        )
+        assertEquals(7, r.worksDoneOmitted)
+        assertEquals("abc123", r.works[0].reviewCommit)
+        assertEquals("", r.works[1].reviewCommit)
     }
 
     @Test

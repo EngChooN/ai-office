@@ -294,4 +294,5 @@
     <string name="work_empty_hint">PCで仕事を任せると、ここに状況が表示されます</string>
     <string name="work_wait_list">あなたの返答を待っている仕事</string>
     <string name="work_wait_list_close">閉じる</string>
+    <string name="work_done_omitted">以前の完了 %1$d件はPCで見られます</string>
 </resources>

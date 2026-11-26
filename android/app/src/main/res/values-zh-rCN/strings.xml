@@ -294,4 +294,5 @@
     <string name="work_empty_hint">在电脑上分配任务后，状态会显示在这里</string>
     <string name="work_wait_list">等待你回复的任务</string>
     <string name="work_wait_list_close">关闭</string>
+    <string name="work_done_omitted">更早的 %1$d 项已完成工作可在电脑上查看</string>
 </resources>

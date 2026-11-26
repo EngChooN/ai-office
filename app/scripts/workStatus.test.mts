@@ -6,10 +6,12 @@ import os from 'node:os'
 import path from 'node:path'
 import { test } from 'node:test'
 import {
-  WORK_STATES, WORK_STATUS_VERSION, canMove, moveWork, normalizeWork, reReviewOf, snapshotFor, toSnapshot, waitLabel, waitTime, workStateLabel,
+  WORK_STATES, WORK_STATUS_VERSION, canMove, followTask, moveWork, normalizeWork, reReviewOf, snapshotFor, toSnapshot, waitLabel, waitTime, workStateLabel,
   type WorkStatus,
 } from '../src/main/workStatus.ts'
-import { headCommit } from '../src/main/review.ts'
+import { headCommit, headCommitSync } from '../src/main/review.ts'
+import { worksOf } from '../src/main/remote/protocol.ts'
+import type { Task } from '../src/shared/types.ts'
 import { awaitingTasks, workStateOf } from '../src/shared/workWait.ts'
 
 const A = 'a'.repeat(40)
@@ -156,4 +158,57 @@ test('화면용: 상태 칸이 없는 카드는 보드 칸에서, 대표 응답 
     tk('review', st({ state: 'review', reviewCommit: A })),
   ]
   assert.deepEqual(awaitingTasks(list).map((x) => x.id), ['old', 'new', 'unknown'])
+})
+
+test('followTask: 보드 칸·대표 응답 대기를 따라간다 (칸을 바로 옮겨도, 옛 카드를 완료로 옮겨도)', () => {
+  const at = { now: 5_000 }
+  const queued = normalizeWork(null, 'todo')
+  assert.equal(followTask(queued, 'todo', false, at), queued)
+  assert.equal(followTask(queued, 'done', false, at).state, 'done')
+  assert.equal(followTask(queued, 'review', false, at).state, 'review')
+  const working = followTask(queued, 'doing', false, at)
+  assert.equal(working.state, 'working')
+  const waiting = followTask(working, 'doing', true, at)
+  assert.deepEqual(waiting, { state: 'awaitingUser', waitingSince: 5_000, reviewCommit: null })
+  assert.equal(followTask(waiting, 'doing', true, { now: 9_000 }), waiting)
+  assert.equal(followTask(waiting, 'doing', false, at).state, 'working')
+  // 진행 중이 아닌 카드는 대기 표시를 무시한다
+  assert.equal(followTask(working, 'review', true, at).state, 'review')
+  const reviewed = { state: 'review' as const, waitingSince: null, reviewCommit: A }
+  assert.equal(followTask(reviewed, 'done', false, at).reviewCommit, A)
+  assert.equal(followTask(reviewed, 'doing', false, at).reviewCommit, null)
+})
+
+test('headCommitSync: 응답마다 새로 읽는다 — 커밋이 바뀌면 바로 다른 값, 저장소가 아니면 null', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ws-sync-'))
+  try {
+    assert.equal(headCommitSync(dir), null)
+    const g = (...a: string[]) => execFileSync('git', ['-c', 'user.email=t@t', '-c', 'user.name=t', ...a], { cwd: dir })
+    g('init', '-q')
+    g('commit', '-q', '--allow-empty', '-m', 'a')
+    const first = headCommitSync(dir)
+    assert.match(first ?? '', /^[0-9a-f]{40}$/)
+    g('commit', '-q', '--allow-empty', '-m', 'b')
+    assert.notEqual(headCommitSync(dir), first)
+    assert.equal(reReviewOf(first, headCommitSync(dir)), 'needed')
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('worksOf: 끝나지 않은 업무는 모두 싣고, 완료는 최근 20건 + 빠진 개수, 검토 커밋도 싣는다', () => {
+  const card = (i: number, status: Task['status'], work?: Task['work']) =>
+    ({ id: `t${i}`, title: `일 ${i}`, status, assigneeId: null, updatedAt: i, work } as unknown as Task)
+  const tasks = [
+    ...Array.from({ length: 200 }, (_, i) => card(i, 'doing')),
+    card(200, 'doing', { state: 'awaitingUser', waitingSince: 1_000, reviewCommit: null }),
+    ...Array.from({ length: 25 }, (_, i) => card(300 + i, 'done', { state: 'done', waitingSince: null, reviewCommit: A })),
+  ]
+  const { works, worksDoneOmitted } = worksOf(tasks, {}, new Map())
+  assert.equal(works.filter((w) => w.state !== 'done').length, 201)
+  assert.ok(works.some((w) => w.id === 't200' && w.state === 'awaitingUser' && w.waitingSince === 1_000))
+  assert.equal(works.filter((w) => w.state === 'done').length, 20)
+  assert.equal(worksDoneOmitted, 5)
+  assert.equal(works.find((w) => w.id === 't324')?.reviewCommit, A)
+  assert.equal(works.find((w) => w.id === 't0')?.reviewCommit, '')
 })

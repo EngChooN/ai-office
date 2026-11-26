@@ -294,4 +294,5 @@
     <string name="work_empty_hint">Assign a task on your PC and its status shows up here</string>
     <string name="work_wait_list">Tasks waiting for you</string>
     <string name="work_wait_list_close">Close</string>
+    <string name="work_done_omitted">%1$d earlier completed items can be viewed on the PC</string>
 </resources>

@@ -44,6 +44,19 @@ export function canMove(from: WorkState, to: WorkState): boolean {
  */
 export function moveWork(cur: WorkStatus, to: WorkState, at: { now: number; head?: string | null }): WorkStatus {
   if (!canMove(cur.state, to)) return cur
+  return enter(cur, to, at)
+}
+
+/**
+ * 앱의 실제 진행을 상태에 반영한다 — 보드 칸(할 일·진행 중·검토·완료)과 대표 응답 대기 여부가 기준.
+ * 사람이 보드에서 칸을 바로 옮긴 경우(할 일→검토 등)도 따라가야 하므로 전이 표를 거치지 않는다. 같은 상태면 그대로(같은 참조)
+ */
+export function followTask(cur: WorkStatus, taskStatus: TaskStatus, isAwaiting: boolean, at: { now: number; head?: string | null }): WorkStatus {
+  const to: WorkState = taskStatus === 'doing' && isAwaiting ? 'awaitingUser' : FROM_TASK[taskStatus] ?? cur.state
+  return to === cur.state ? cur : enter(cur, to, at)
+}
+
+function enter(cur: WorkStatus, to: WorkState, at: { now: number; head?: string | null }): WorkStatus {
   const reviewCommit = to === 'review' ? cleanCommit(at.head) : to === 'queued' || to === 'working' ? null : cur.reviewCommit
   const waitingSince = to === 'awaitingUser' ? cleanTime(at.now) : null
   return { state: to, waitingSince, reviewCommit }

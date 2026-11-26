@@ -295,4 +295,5 @@
     <string name="work_empty_hint">PC에서 일을 맡기면 여기에 상태가 보여요</string>
     <string name="work_wait_list">대표 응답을 기다리는 일</string>
     <string name="work_wait_list_close">닫기</string>
+    <string name="work_done_omitted">이전 완료 %1$d건은 PC에서 볼 수 있어요</string>
 </resources>
