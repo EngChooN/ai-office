@@ -227,4 +227,5 @@ export default {
   'chat.group.memberOf': { ko: '소속: {groups}', en: 'Member of: {groups}', ja: '所属: {groups}', zh: '所属：{groups}' },
   'chat.group.delete': { ko: '이 단체방 지우기', en: 'Delete this group room', ja: 'このグループルームを削除', zh: '删除此联合群' },
   'chat.group.confirmDelete': { ko: '{name} 단체방을 지울까요? 대화 기록은 남아요.', en: 'Delete the {name} group room? The conversation history stays.', ja: '{name}グループルームを削除しますか？会話の記録は残ります。', zh: '要删除 {name} 联合群吗？聊天记录会保留。' },
+  'chat.group.deleteFailed': { ko: '단체방을 지우지 못했어요. 잠시 뒤 다시 시도해 주세요.', en: 'Could not delete the group room. Please try again in a moment.', ja: 'グループルームを削除できませんでした。しばらくしてからもう一度お試しください。', zh: '无法删除联合群，请稍后再试。' },
 } satisfies Record<string, Entry>

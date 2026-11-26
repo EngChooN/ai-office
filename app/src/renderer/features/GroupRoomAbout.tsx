@@ -12,7 +12,12 @@ function useDeleteGroupRoom(room: GroupRoom) {
   const setChatRoom = useOffice((s) => s.setChatRoom)
   return async () => {
     if (!window.confirm(t('chat.group.confirmDelete', { name: room.name }))) return
-    await window.office.deleteChatGroup(room.group.id)
+    try {
+      await window.office.deleteChatGroup(room.group.id)
+    } catch {
+      window.alert(t('chat.group.deleteFailed'))
+      return
+    }
     setChatRoom(null)
   }
 }

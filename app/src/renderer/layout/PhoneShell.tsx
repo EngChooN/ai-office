@@ -21,6 +21,8 @@ import { LoadErrorBoundary } from '@/components/load-error-boundary'
 import { fmtDate, t } from '@shared/i18n'
 import { DuoIcon } from '@/components/duo-icon'
 import { useIsSlim, useIsSplit } from './useLayout'
+import { useChatRoom } from '@/features/chatRoomHooks'
+import { GroupRoomDeleteButton } from '@/features/GroupRoomAbout'
 
 // 폰 틀 (docs/specs/android-pc-layout.md 2절): 상단 바 · 연결 배너 · 기존 화면 · 아래 탭 5칸 · 더보기 시트
 // 화면 컴포넌트·색·아이콘·문구는 PC 것을 그대로 쓰고, 틀만 바꾼다. 직원 패널은 전체 화면 시트(StaffPanel의 phone: 클래스)
@@ -82,6 +84,7 @@ function PhoneTopBar() {
   const requestChatSearch = useOffice((s) => s.requestChatSearch)
   // 좌우 분할 대화방: 46px 한 줄에 대화 · 결재 대기 · 🔍 · ＋ (자금은 숨긴다 — 시안). 비서 ✨는 진입점이 여기뿐이라 남긴다
   const isSplitChat = useIsSplit() && view === 'chat'
+  const chatRoom = useChatRoom()
   return (
     // 가로 폰에서는 숨기고 같은 버튼을 아래 탭 줄 오른쪽에 둔다 (PhoneTabBar)
     <header className="pc-header short:hidden split:h-[46px] flex h-12 shrink-0 items-center gap-2 border-b px-3">
@@ -103,6 +106,7 @@ function PhoneTopBar() {
           <SearchIcon />
         </Button>
       )}
+      {isSplitChat && chatRoom?.kind === 'group' && <GroupRoomDeleteButton room={chatRoom} />}
       <Button size="icon" variant="outline" className={cn('shrink-0', HEADER_ICON, view === 'secretary' && 'border-primary text-primary')} onClick={() => setView('secretary')} aria-label={t('shell.secretary')}>
         <SparklesIcon />
       </Button>
