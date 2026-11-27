@@ -216,6 +216,12 @@ export interface Staff {
   helpers?: HelperRun[]
   /** 튜토리얼 연습 회사 데이터 — '연습 회사 정리'와 첫 실제 고용 때 지운다 */
   isPractice?: boolean
+  /** 빠른 대화 임시 직원 — 인원·책상·수당에서 빠진다 (shared/quickChat.ts countsAsStaff) */
+  isQuick?: boolean
+  /** 빠른 대화를 닫은 시각 (null·없음 = 진행 중) */
+  quickClosedAt?: number | null
+  /** 빠른 대화 제목 — 첫 지시 앞부분 ('' = 아직 없음) */
+  quickTitle?: string
 }
 
 /** 부서. 고용 직원 팀은 사용자가 만들고, 외부 직원은 프로젝트 폴더별 가상 팀(proj:)으로 묶는다 */
@@ -552,8 +558,18 @@ export interface Task {
   isAutonomous?: boolean
   /** 대화방 지시로 직원이 일을 시작하며 저절로 만든 카드 — 어느 방의 어느 메시지인지 */
   fromChat?: { room: string | null; chatId: number }
+  /** 직원이 일하다 만든 카드(add_task·기획안)면 그 일이 온 방 ('' = 전체 방) — 보고가 소속 방으로 새지 않게 */
+  room?: string
+  /** 담당 직원이 오류·실행 횟수 초과 등으로 못 끝내 할 일로 돌아온 카드 — 다시 진행·옮기면 지운다 (직접 중단·인터넷 대기는 실패가 아니다) */
+  failure?: TaskFailure
   /** 상태 보드 칸 (main/workStatus.ts) — 옛 기록은 없고, 읽을 때 보드 칸에서 기본값을 만든다 */
   work?: WorkStatus
+}
+
+export interface TaskFailure {
+  at: number
+  /** 오류 첫 줄 (짧게) */
+  reason: string
 }
 
 /** 상태 보드: 할 일 → 진행 중 → (대표 응답 대기) → 검토 중 → 완료. 규칙·계산은 main/workStatus.ts */
@@ -857,6 +873,20 @@ export type TokenBudget = Record<BudgetPeriod, number>
 /** 보고 말투: 쉬운 말(기본, 비개발자용) · 전문가(용어·경로 그대로) */
 export type ReportStyle = 'easy' | 'expert'
 
+/** 빠른 대화 시작 창에서 고른 값 */
+export interface QuickChatInput {
+  provider: AiProvider
+  /** 작업 폴더 (없으면 홈 폴더) */
+  cwd?: string
+  approvalMode: ApprovalMode
+}
+
+/** 빠른 대화 관리 창: 빠른 대화 사용량 합계(업무 수당과 따로) + 대화마다 AI 세션 파일 크기(바이트, 못 찾으면 0) */
+export interface QuickChatStats {
+  usage: { costUsd: number; tokensIn: number; tokensOut: number }
+  sizes: Record<string, number>
+}
+
 export interface Settings {
   /** 월 비용 예산 — 토큰 예산과 함께 보조 지표로 남긴다 */
   monthlyBudgetUsd: number
@@ -917,6 +947,8 @@ export interface Settings {
   tokenSaverMode?: boolean
   /** 직원·비서의 답변·보고 말투. 없으면 쉬운 말 — shared/reportStyle.ts */
   reportStyle?: ReportStyle
+  /** 빠른 대화에서 파일 고칠 때 결재 방식 (시작 창 기본값). 없으면 매번 묻기 */
+  quickApproval?: ApprovalMode
 }
 
 /** Codex 사용률을 못 읽은 이유 — 실행 파일 없음·응답 없음·응답 해석 실패·5시간/주간 창 없음 */
@@ -1252,6 +1284,14 @@ export interface OfficeApi {
   resumeInTerminal(staffId: string): Promise<string>
   /** 직원 엔진(Claude ↔ GPT)을 바꾼다. 쉬는 중·새 엔진 준비됐을 때만, 대화는 새로 시작 (PC 전용) */
   changeEngine(staffId: string, provider: AiProvider): Promise<EngineChangeResult>
+  /** 새 빠른 대화 — 임시 직원을 만든다 (인원·책상·수당 제외). 대화는 room 'quick:<직원 id>'의 sendChat으로 */
+  startQuickChat(input: QuickChatInput): Promise<Staff>
+  /** 빠른 대화 닫기 — 일을 멈추고 기록은 보관 */
+  closeQuickChat(staffId: string): Promise<void>
+  /** 빠른 대화 삭제 — 대화 기록·AI 세션 파일·임시 직원을 함께 지운다 (되돌릴 수 없음) */
+  deleteQuickChat(staffId: string): Promise<void>
+  /** 빠른 대화 관리 창 — 사용량 합계와 대화마다 세션 파일 크기 (읽기만) */
+  quickChatStats(): Promise<QuickChatStats>
   decide(approvalId: string, allow: boolean): Promise<boolean>
   getRecord(staffId: string): Promise<DailyRecord>
   /** beforeId보다 앞선 기록 limit개 (기본 RECORD_PAGE) — 업무 패널에서 위로 올릴 때 */

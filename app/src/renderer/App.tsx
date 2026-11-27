@@ -6,6 +6,7 @@ import { Onboarding } from '@/features/Onboarding'
 import { TutorialChip, TutorialDone, TutorialGuide, TutorialPicker } from '@/features/Tutorial'
 import { HelpButton } from '@/features/HelpMenu'
 import { HireDialog } from '@/features/HireDialog'
+import { QuickStartDialog } from '@/features/QuickChat'
 import { NavTabs } from '@/features/NavTabs'
 import { NAV_GROUP_DEFS, groupOfView, showsTabRow } from '@/features/navGroups'
 import { Sidebar } from '@/features/Sidebar'
@@ -91,6 +92,7 @@ function AppBody() {
   const overlays = (
     <>
       <HireDialog />
+      <QuickStartDialog />
       <Onboarding />
       <CoachTour isOpen={isTourOpen} onClose={() => setIsTourOpen(false)} />
       <TutorialPicker isOpen={isPickerOpen} onClose={() => setIsPickerOpen(false)} />
@@ -171,7 +173,8 @@ function DesktopShell({ children }: { children?: React.ReactNode }) {
       </header>
       {/* 다른 PC 화면(원격 창)일 때만: 'OO의 사무실을 보는 중' 띠와 끊김 안내 */}
       <WorkspaceBand />
-      {isLoaded && staff.length === 0 && <EmptyOfficeHint />}
+      {/* 빠른 대화 임시 직원만 있으면 아직 빈 사무실이다 */}
+      {isLoaded && !staff.some((s) => !s.isQuick) && <EmptyOfficeHint />}
       {/* 공급자 연결은 PC에서 (휴대폰에서 누르면 휴대폰 설정 화면으로 가 버린다) */}
       {!IS_REMOTE_SCREEN && <ProviderBanner />}
       <div className="relative flex min-h-0 flex-1 overflow-hidden">

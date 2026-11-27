@@ -14,6 +14,7 @@ import {
   ok,
   parseDecisionBody,
   parseInstructionBody,
+  remoteHired,
   statusBody,
   SUPPORTED_VERSIONS,
   type RemoteResponse,
@@ -145,7 +146,7 @@ export function handleRequest(req: RemoteRequest, ctx: RemoteContext): RemoteRes
   if (r.name === 'instruction') {
     const input = parseInstructionBody(json.value)
     if (!input) return fail('invalid_request')
-    if (!staff.some((s) => s.id === input.staffId && s.kind === 'hired')) return fail('staff_not_found')
+    if (!remoteHired(staff).some((s) => s.id === input.staffId)) return fail('staff_not_found')
     office.instruct(input.staffId, input.text)
     return ok(202, { accepted: true, staffId: input.staffId }, now)
   }

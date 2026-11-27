@@ -38,7 +38,7 @@ const BAD = 'border-status-error focus-visible:border-status-error'
 
 /** 매뉴얼 편집 창: 기본은 이름·언제 쓰나요·절차(또는 단계), 저장 위치·파일 이름·공통 안내는 '자세히 설정' 안에 */
 export function ManualEditor({ initial, previousPath, projectDirs, onClose, onSaved }: { initial: ManualInput; previousPath?: string; projectDirs: string[]; onClose: () => void; onSaved: (saved: Manual) => void }) {
-  const staff = useOffice(useShallow((s) => s.staff.filter((x) => x.kind === 'hired')))
+  const staff = useOffice(useShallow((s) => s.staff.filter((x) => x.kind === 'hired' && !x.isQuick)))
   const [form, setForm] = useState<ManualInput>(initial)
   const [error, setError] = useState('')
   const [isSaving, setIsSaving] = useState(false)

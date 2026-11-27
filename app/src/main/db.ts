@@ -44,6 +44,8 @@ import { parseResume } from '../shared/secretaryProgress'
 import { EMPTY_SHOP, type LedgerEntry, type LedgerKind, type ShopState } from '../shared/economy'
 import type { RemoteConfig } from './remote/service.ts'
 import { settleGrid } from './shopGrid.ts'
+import { cardRoom, labRoomId } from '../shared/chatRooms.ts'
+import { inferTaskRooms, type BackfillChat, type BackfillLog, type BackfillResult, type KnownCard } from './taskRoomBackfill.ts'
 import { createWorkBaseStore } from './workBaseStore.ts'
 import { ensurePeerTables, sqlitePeerStore, type PeerStore } from './peer/peerStore.ts'
 import { cleanupLegacyPeerData, type LegacyPeerCleanupResult } from './peer/legacyPeerCleanup.ts'
@@ -132,6 +134,14 @@ export function openDb() {
   // 대화 기억 길이 ('short'|'normal'|'long'|'full', 없으면 보통)
   if (!staffCols.includes('memory')) db.exec('ALTER TABLE staff ADD COLUMN memory TEXT')
   if (!staffCols.includes('provider')) db.exec("ALTER TABLE staff ADD COLUMN provider TEXT NOT NULL DEFAULT 'claude'")
+  // 빠른 대화 임시 직원 (1 = 빠른 대화). 닫은 시각·제목은 목록·방문자 표시용 — 비면 진행 중·제목 없음
+  if (!staffCols.includes('is_quick')) db.exec('ALTER TABLE staff ADD COLUMN is_quick INTEGER')
+  if (!staffCols.includes('quick_closed_at')) db.exec('ALTER TABLE staff ADD COLUMN quick_closed_at INTEGER')
+  if (!staffCols.includes('quick_title')) db.exec('ALTER TABLE staff ADD COLUMN quick_title TEXT')
+  if (!staffCols.includes('quick_old_sessions')) db.exec('ALTER TABLE staff ADD COLUMN quick_old_sessions TEXT')
+  // 빠른 대화 사용량 표시 (1 = 빠른 대화 — 업무 수당·보고서 합계에서 뺀다)
+  const usageCols = (db.prepare('PRAGMA table_info(usage)').all() as { name: string }[]).map((c) => c.name)
+  if (!usageCols.includes('quick')) db.exec('ALTER TABLE usage ADD COLUMN quick INTEGER')
   const taskCols = (db.prepare('PRAGMA table_info(task)').all() as { name: string }[]).map((c) => c.name)
   if (!taskCols.includes('lab_id')) db.exec('ALTER TABLE task ADD COLUMN lab_id TEXT')
   if (!taskCols.includes('parent_id')) db.exec('ALTER TABLE task ADD COLUMN parent_id TEXT')
@@ -146,6 +156,10 @@ export function openDb() {
   if (!taskCols.includes('from_chat')) db.exec('ALTER TABLE task ADD COLUMN from_chat TEXT')
   // 상태 보드 칸 — { state, waitingSince, reviewCommit } (JSON). 옛 행은 없고 읽을 때 보드 칸에서 기본값
   if (!taskCols.includes('work_status')) db.exec('ALTER TABLE task ADD COLUMN work_status TEXT')
+  // 직원이 일하다 만든 카드의 방 ('' = 전체 방, NULL = 정해진 방 없음)
+  if (!taskCols.includes('room')) db.exec('ALTER TABLE task ADD COLUMN room TEXT')
+  // 못 끝내 할 일로 돌아온 카드 — { at, reason } (JSON)
+  if (!taskCols.includes('failure')) db.exec('ALTER TABLE task ADD COLUMN failure TEXT')
   // 첨부(JSON 배열)는 로그·단체방·업무 카드에 붙는다
   const teamCols = (db.prepare('PRAGMA table_info(team)').all() as { name: string }[]).map((c) => c.name)
   if (!teamCols.includes('manuals')) db.exec('ALTER TABLE team ADD COLUMN manuals TEXT')
@@ -204,6 +218,9 @@ interface StaffRow {
   is_practice: number | null
   provider: string | null
   memory: string | null
+  is_quick: number | null
+  quick_closed_at: number | null
+  quick_title: string | null
 }
 
 export type StoredStaff = Omit<Staff, 'stats' | 'meetingId' | 'labIds' | 'statusSince' | 'todayDone'>
@@ -238,16 +255,36 @@ export function loadHiredStaff(): StoredStaff[] {
       deskIndex: r.desk_index,
       hiredAt: r.hired_at,
       ...(r.is_practice ? { isPractice: true } : {}),
+      ...(r.is_quick ? { isQuick: true, quickClosedAt: r.quick_closed_at, quickTitle: r.quick_title ?? '' } : {}),
     }
   })
 }
 
-export function insertStaff(id: string, input: HireInput, deskIndex: number, hiredAt: number, isPractice = false) {
+export function insertStaff(id: string, input: HireInput, deskIndex: number, hiredAt: number, isPractice = false, isQuick = false) {
   run(
-    `INSERT INTO staff (id, name, role, avatar, model, cwd, system_prompt, approval_mode, session_id, desk_index, hired_at, team_id, is_practice, provider)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?)`,
-    id, input.name, input.role, input.avatar, input.model, input.cwd, input.systemPrompt, input.approvalMode, deskIndex, hiredAt, input.teamId, isPractice ? 1 : null, input.provider ?? 'claude',
+    `INSERT INTO staff (id, name, role, avatar, model, cwd, system_prompt, approval_mode, session_id, desk_index, hired_at, team_id, is_practice, provider, is_quick)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?)`,
+    id, input.name, input.role, input.avatar, input.model, input.cwd, input.systemPrompt, input.approvalMode, deskIndex, hiredAt, input.teamId, isPractice ? 1 : null, input.provider ?? 'claude', isQuick ? 1 : null,
   )
+}
+
+/** 빠른 대화 닫은 시각(null = 다시 진행 중)·제목 */
+export function updateQuickRow(id: string, patch: { closedAt?: number | null; title?: string }) {
+  if (patch.closedAt !== undefined) run('UPDATE staff SET quick_closed_at = ? WHERE id = ?', patch.closedAt, id)
+  if (patch.title !== undefined) run('UPDATE staff SET quick_title = ? WHERE id = ?', patch.title, id)
+}
+
+/** 빠른 대화 사용량 합계 (업무 수당과 따로) */
+export function quickUsageTotal() {
+  const row = get<{ c: number; i: number; o: number }>(
+    'SELECT COALESCE(SUM(cost_usd), 0) c, COALESCE(SUM(tokens_in), 0) i, COALESCE(SUM(tokens_out), 0) o FROM usage WHERE quick = 1',
+  )!
+  return { costUsd: row.c, tokensIn: row.i, tokensOut: row.o }
+}
+
+/** 방 하나의 대화 글을 지운다 (빠른 대화 삭제) */
+export function deleteRoomChats(room: string) {
+  run('DELETE FROM chat WHERE room = ?', room)
 }
 
 export function updateStaffRow(id: string, patch: { teamId?: string | null; name?: string; role?: string; model?: ModelChoice; avatar?: number; systemPrompt?: string; cwd?: string; memory?: Staff['memory'] }) {
@@ -290,7 +327,28 @@ export function deleteStaff(id: string) {
 }
 
 export function saveSessionId(id: string, sessionId: string | null) {
+  // 빠른 대화는 바뀌기 전 세션 id를 모아 둔다 — 삭제 때 /clear·폴더 변경 전 기록 파일까지 지운다
+  const row = get<{ session_id: string | null; is_quick: number | null; quick_old_sessions: string | null }>('SELECT session_id, is_quick, quick_old_sessions FROM staff WHERE id = ?', id)
+  if (row?.is_quick && row.session_id && row.session_id !== sessionId) {
+    const old = parseOldSessions(row.quick_old_sessions)
+    if (!old.includes(row.session_id)) run('UPDATE staff SET quick_old_sessions = ? WHERE id = ?', JSON.stringify([...old, row.session_id]), id)
+  }
   run('UPDATE staff SET session_id = ? WHERE id = ?', sessionId, id)
+}
+
+function parseOldSessions(raw: string | null): string[] {
+  try {
+    const v: unknown = JSON.parse(raw ?? '[]')
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []
+  } catch {
+    return []
+  }
+}
+
+/** 빠른 대화가 쓴 세션 id 전부 (지난 것 + 지금 것, 중복 없이) */
+export function quickSessionIds(id: string, current: string | null): string[] {
+  const row = get<{ quick_old_sessions: string | null }>('SELECT quick_old_sessions FROM staff WHERE id = ?', id)
+  return [...new Set([...parseOldSessions(row?.quick_old_sessions ?? null), ...(current ? [current] : [])])]
 }
 
 // ── 로그·사용량 ─────────────────────────────────────────
@@ -437,6 +495,56 @@ export function importLegacyApprovals(since: number, parse: (text: string, textI
   return n
 }
 
+const TASK_ROOM_BACKFILL_KEY = 'taskRoomBackfilled'
+/** 기록을 볼 때 가장 오래된 카드보다 이만큼 앞부터 (그 카드를 만든 턴의 지시·결과 줄) */
+const TASK_ROOM_BACKFILL_LEAD_MS = 24 * 3600_000
+
+/** 방을 채우기 전에 본 카드 수 (방 없는 최상위 카드) — 실제로 바꾸기 전 개수 확인용 */
+export function taskRoomBackfillPlan(homeRoom: (staffId: string) => string | undefined): BackfillResult | null {
+  if (get<{ value: string }>('SELECT value FROM setting WHERE key = ?', TASK_ROOM_BACKFILL_KEY)) return null
+  const tasks = loadTasks().filter((t) => !t.isPractice)
+  const byId = new Map(tasks.map((t) => [t.id, t]))
+  // 방을 채울지 볼 카드: 최상위·대화 지시 카드 아님·방 없음 (랩 카드는 지금 랩 방으로 가지만, 다른 방 일로 만든 카드면 그 방으로)
+  const targets = tasks.filter((t) => !t.parentId && !t.fromChat && t.room === undefined)
+  if (!targets.length) return { filled: [], skipped: [] }
+  const targetIds = new Set(targets.map((t) => t.id))
+  const rootOf = (t: Task) => {
+    let cur: Task | undefined = t
+    for (let depth = 0; cur?.parentId && depth < 6; depth++) cur = byId.get(cur.parentId)
+    return cur && targetIds.has(cur.id) ? cur.id : undefined
+  }
+  const known: KnownCard[] = tasks.map((t) => ({ id: t.id, title: t.title, createdAt: t.createdAt, room: cardRoom(t.id, (id) => byId.get(id), labRoomId), rootId: rootOf(t) }))
+  const since = Math.min(...targets.map((t) => t.createdAt)) - TASK_ROOM_BACKFILL_LEAD_MS
+  const logs = all<BackfillLog>(
+    "SELECT staff_id AS staffId, ts, type, text FROM log WHERE ts >= ? AND (type IN ('instruction', 'result', 'error') OR (type = 'tool' AND (text LIKE 'mcp\\_\\_office\\_\\_add\\_task %' ESCAPE '\\' OR text LIKE 'mcp\\_\\_office\\_\\_propose\\_plan %' ESCAPE '\\')))",
+    since,
+  )
+  const chats = all<BackfillChat>("SELECT ts, sender, COALESCE(room, '') AS room, text FROM chat WHERE ts >= ?", since)
+  const names = new Map(all<{ id: string; name: string }>('SELECT id, name FROM staff').map((s) => [s.id, s.name]))
+  return inferTaskRooms({ cards: targets.map((t) => ({ id: t.id, title: t.title, createdAt: t.createdAt })), logs, chats, known, homeRoom, names })
+}
+
+/**
+ * 예전 카드(카드에 방을 싣기 전 직원이 만든 카드)의 방을 기록으로 찾아 한 번만 채운다 (setting 표에 완료 표시·채운 카드 목록).
+ * 확실히 찾은 카드만 바꾸고 나머지는 그대로 둔다. 바꾼 카드와 건너뛴 카드를 돌려주고, 이미 했으면 null
+ */
+export function backfillTaskRooms(homeRoom: (staffId: string) => string | undefined): BackfillResult | null {
+  const plan = taskRoomBackfillPlan(homeRoom)
+  if (!plan) return null
+  db.exec('BEGIN')
+  try {
+    for (const f of plan.filled) run('UPDATE task SET room = ? WHERE id = ? AND room IS NULL', f.room, f.id)
+    // 채운 카드 목록을 남긴다 — 되돌릴 때 이 카드들의 room만 비우면 된다
+    const summary = { at: Date.now(), filled: plan.filled, skipped: plan.skipped.length }
+    run('INSERT INTO setting (key, value) VALUES (?, ?)', TASK_ROOM_BACKFILL_KEY, JSON.stringify(summary))
+    db.exec('COMMIT')
+  } catch (e) {
+    db.exec('ROLLBACK')
+    throw e
+  }
+  return plan
+}
+
 export function allLogsBetween(since: number, until: number): LogEntry[] {
   return all<LogRow>('SELECT * FROM log WHERE ts >= ? AND ts < ? ORDER BY ts', since, until).map(toLog)
 }
@@ -460,7 +568,9 @@ export function savedTokensBetween(since: number, until: number) {
 }
 
 export function insertUsage(staffId: string, costUsd: number, tokensIn: number, tokensOut: number) {
-  run('INSERT INTO usage (staff_id, ts, cost_usd, tokens_in, tokens_out) VALUES (?, ?, ?, ?, ?)', staffId, Date.now(), costUsd, tokensIn, tokensOut)
+  // 빠른 대화 직원 사용량은 표시해 두고 업무 수당·보고서 합계에서 뺀다 (따로 합산)
+  const quick = get<{ q: number | null }>('SELECT is_quick q FROM staff WHERE id = ?', staffId)?.q ? 1 : null
+  run('INSERT INTO usage (staff_id, ts, cost_usd, tokens_in, tokens_out, quick) VALUES (?, ?, ?, ?, ?, ?)', staffId, Date.now(), costUsd, tokensIn, tokensOut, quick)
 }
 
 export function usageSince(staffId: string, since: number, until = Number.MAX_SAFE_INTEGER) {
@@ -474,7 +584,7 @@ export function usageSince(staffId: string, since: number, until = Number.MAX_SA
 /** 기간 전체(전 직원) 사용량 합계 */
 export function usageTotalBetween(since: number, until: number) {
   const row = get<{ c: number; i: number; o: number }>(
-    'SELECT COALESCE(SUM(cost_usd), 0) c, COALESCE(SUM(tokens_in), 0) i, COALESCE(SUM(tokens_out), 0) o FROM usage WHERE ts >= ? AND ts < ?',
+    'SELECT COALESCE(SUM(cost_usd), 0) c, COALESCE(SUM(tokens_in), 0) i, COALESCE(SUM(tokens_out), 0) o FROM usage WHERE ts >= ? AND ts < ? AND quick IS NULL',
     since, until,
   )!
   return { costUsd: row.c, tokensIn: row.i, tokensOut: row.o }
@@ -482,7 +592,7 @@ export function usageTotalBetween(since: number, until: number) {
 
 export function usageByStaffBetween(since: number, until: number) {
   return all<{ staff_id: string; c: number; i: number; o: number }>(
-    'SELECT staff_id, SUM(cost_usd) c, SUM(tokens_in) i, SUM(tokens_out) o FROM usage WHERE ts >= ? AND ts < ? GROUP BY staff_id',
+    'SELECT staff_id, SUM(cost_usd) c, SUM(tokens_in) i, SUM(tokens_out) o FROM usage WHERE ts >= ? AND ts < ? AND quick IS NULL GROUP BY staff_id',
     since, until,
   )
 }
@@ -552,6 +662,8 @@ interface TaskRow {
   artifacts: string | null
   from_chat?: string | null
   work_status?: string | null
+  room?: string | null
+  failure?: string | null
 }
 
 export function loadTasks(): Task[] {
@@ -575,8 +687,15 @@ export function loadTasks(): Task[] {
     ...(r.is_autonomous ? { isAutonomous: true } : {}),
     ...parseArtifacts(r.artifacts),
     ...parseFromChat(r.from_chat),
+    ...(typeof r.room === 'string' ? { room: r.room } : {}),
+    ...parseFailure(r.failure),
     work: normalizeWork(parseJson<unknown>(r.work_status ?? null), r.status),
   }))
+}
+
+function parseFailure(raw: string | null | undefined): Pick<Task, 'failure'> {
+  const v = parseJson<{ at?: unknown; reason?: unknown }>(raw ?? null)
+  return v && typeof v.at === 'number' ? { failure: { at: v.at, reason: typeof v.reason === 'string' ? v.reason : '' } } : {}
 }
 
 function parseFromChat(raw: string | null | undefined): Pick<Task, 'fromChat'> {
@@ -602,16 +721,18 @@ function parseArtifacts(raw: string | null): Pick<Task, 'artifacts'> {
 
 export function upsertTask(t: Task) {
   run(
-    `INSERT INTO task (id, title, detail, status, assignee_id, team_id, result, created_at, updated_at, lab_id, attachments, parent_id, plan, meeting_id, usage, is_practice, is_autonomous, artifacts, from_chat, work_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO task (id, title, detail, status, assignee_id, team_id, result, created_at, updated_at, lab_id, attachments, parent_id, plan, meeting_id, usage, is_practice, is_autonomous, artifacts, from_chat, work_status, room, failure) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET title = excluded.title, detail = excluded.detail, status = excluded.status, assignee_id = excluded.assignee_id,
        team_id = excluded.team_id, result = excluded.result, updated_at = excluded.updated_at, lab_id = excluded.lab_id, attachments = excluded.attachments,
        parent_id = excluded.parent_id, plan = excluded.plan, meeting_id = excluded.meeting_id, usage = excluded.usage, is_practice = excluded.is_practice, is_autonomous = excluded.is_autonomous,
-       artifacts = excluded.artifacts, from_chat = excluded.from_chat, work_status = excluded.work_status`,
+       artifacts = excluded.artifacts, from_chat = excluded.from_chat, work_status = excluded.work_status, room = excluded.room, failure = excluded.failure`,
     t.id, t.title, t.detail, t.status, t.assigneeId, t.teamId, t.result, t.createdAt, t.updatedAt, t.labId, t.attachments?.length ? JSON.stringify(t.attachments) : null,
     t.parentId ?? null, t.plan ? JSON.stringify(t.plan) : null, t.meetingId ?? null, t.usage ? JSON.stringify(t.usage) : null, t.isPractice ? 1 : null, t.isAutonomous ? 1 : null,
     t.artifacts?.length ? JSON.stringify(t.artifacts) : null,
     t.fromChat ? JSON.stringify(t.fromChat) : null,
     t.work ? JSON.stringify(t.work) : null,
+    t.room ?? null,
+    t.failure ? JSON.stringify(t.failure) : null,
   )
 }
 
@@ -1103,31 +1224,34 @@ export function ledgerEntries(limit: number): LedgerEntry[] {
 
 /** 고용 직원이 지금까지 쓴 토큰 (수당 계산용) */
 export function tokenTotal() {
-  return get<{ t: number }>('SELECT COALESCE(SUM(tokens_in + tokens_out), 0) t FROM usage')!.t
+  return get<{ t: number }>('SELECT COALESCE(SUM(tokens_in + tokens_out), 0) t FROM usage WHERE quick IS NULL')!.t
 }
 
 /** 날짜별 토큰 사용량 (장부에 하루치 수당으로 묶어 보여 준다) */
 export function tokensByDay(limit: number) {
   return all<{ day: string; t: number; ts: number }>(
-    "SELECT date(ts / 1000, 'unixepoch', 'localtime') day, SUM(tokens_in + tokens_out) t, MAX(ts) ts FROM usage GROUP BY day ORDER BY day DESC LIMIT ?",
+    "SELECT date(ts / 1000, 'unixepoch', 'localtime') day, SUM(tokens_in + tokens_out) t, MAX(ts) ts FROM usage WHERE quick IS NULL GROUP BY day ORDER BY day DESC LIMIT ?",
     limit,
   )
 }
 
 // ── 미션·업적용 집계 ──
 
+// 빠른 대화 임시 직원의 기록은 미션·업적에 넣지 않는다
+const NOT_QUICK_LOG = 'staff_id NOT IN (SELECT id FROM staff WHERE is_quick = 1)'
+
 export function countLogs(type: string, since: number) {
-  return get<{ n: number }>('SELECT COUNT(*) n FROM log WHERE type = ? AND ts >= ?', type, since)!.n
+  return get<{ n: number }>(`SELECT COUNT(*) n FROM log WHERE type = ? AND ts >= ? AND ${NOT_QUICK_LOG}`, type, since)!.n
 }
 
 /** 지시를 보낸 날짜들 ('YYYY-MM-DD', 이 PC 시간대) — 연속 출근 업적용. 따로 출근 기록을 남기지 않고 기존 지시 기록에서 뽑는다 */
 export function instructionDays(): string[] {
-  return all<{ d: string }>("SELECT DISTINCT strftime('%Y-%m-%d', ts / 1000, 'unixepoch', 'localtime') d FROM log WHERE type = 'instruction'").map((r) => r.d)
+  return all<{ d: string }>(`SELECT DISTINCT strftime('%Y-%m-%d', ts / 1000, 'unixepoch', 'localtime') d FROM log WHERE type = 'instruction' AND ${NOT_QUICK_LOG}`).map((r) => r.d)
 }
 
 /** 22시~다음 날 6시(이 PC 시간대)에 보낸 지시 수 — 야근 업적용 */
 export function countNightInstructions(): number {
-  return get<{ n: number }>("SELECT COUNT(*) n FROM log WHERE type = 'instruction' AND (CAST(strftime('%H', ts / 1000, 'unixepoch', 'localtime') AS INTEGER) >= 22 OR CAST(strftime('%H', ts / 1000, 'unixepoch', 'localtime') AS INTEGER) < 6)")!.n
+  return get<{ n: number }>(`SELECT COUNT(*) n FROM log WHERE type = 'instruction' AND ${NOT_QUICK_LOG} AND (CAST(strftime('%H', ts / 1000, 'unixepoch', 'localtime') AS INTEGER) >= 22 OR CAST(strftime('%H', ts / 1000, 'unixepoch', 'localtime') AS INTEGER) < 6)`)!.n
 }
 
 /** 고른 칭호 id 하나만 저장한다 (없으면 null) */
@@ -1153,7 +1277,7 @@ export function countLedgerKind(kind: LedgerKind, since: number) {
 }
 
 export function tokensSince(since: number) {
-  return get<{ t: number }>('SELECT COALESCE(SUM(tokens_in + tokens_out), 0) t FROM usage WHERE ts >= ?', since)!.t
+  return get<{ t: number }>('SELECT COALESCE(SUM(tokens_in + tokens_out), 0) t FROM usage WHERE ts >= ? AND quick IS NULL', since)!.t
 }
 
 /** 이미 받은 보상 키 */

@@ -314,6 +314,7 @@ test('3) 처음 멈춘 지 6시간이 지나도록 연결되지 않으면 평소
   assert.equal(hasParked(a), false)
   assert.notEqual(staff(a).status, 'netWait')
   assert.equal(task(card).status, 'todo')
+  assert.ok(task(card).failure, '오래 연결되지 않아 포기한 일은 실패 표시')
   online = true
   const sent = claude(a).sent.length
   await tickNet()
@@ -381,24 +382,27 @@ test('5) 리드가 연결을 기다리는 중 팀원의 위임 결과 보고가 
   assert.equal(task(card).status, 'review')
 })
 
-// ── 6) 인터넷이 아닌 API 오류는 지금처럼 ───────────────────
+// ── 6) 인터넷이 아닌 API 오류는 보관하지 않고 실패로 ───────────────────
 
-test('6) Claude: 인터넷이 아닌 API 오류(is_error, 401)는 지금처럼 답 글로 끝나 카드가 검토로 간다', async () => {
+test('6) Claude: 인터넷이 아닌 API 오류(is_error, 401)는 보관하지 않고 실패 — 카드는 검토가 아니라 실패 표시로 할 일에', async () => {
   const a = hire('인증')
   const card = await startTask(a)
   claude(a).result('API Error: 401 {"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"}}', true)
+  await flush()
   assert.equal(hasParked(a), false)
   assert.notEqual(staff(a).status, 'netWait')
-  assert.equal(task(card).status, 'review')
+  assert.equal(task(card).status, 'todo')
+  assert.match(task(card).failure?.reason ?? '', /API Error: 401/)
 })
 
-test('6) Codex: 인터넷이 아닌 오류(사용량 한도)는 지금처럼 오류로 정리한다', async () => {
+test('6) Codex: 인터넷이 아닌 오류(사용량 한도)는 오류로 정리하고 카드에 실패 표시', async () => {
   const a = hire('한도', 'codex')
   const card = await startTask(a)
   codex(a).notify('error', { error: { message: "You've hit your usage limit. Try again later." }, willRetry: false })
   assert.equal(hasParked(a), false)
   assert.equal(staff(a).status, 'error')
   assert.equal(task(card).status, 'todo')
+  assert.match(task(card).failure?.reason ?? '', /usage limit/, 'GPT 오류도 실패 표시와 이유')
   await tickNet()
   assert.equal(netChecks, 0, '보관한 일이 없으면 연결을 확인하지 않는다')
 })

@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils'
 import { GROUP_NAME_MAX, groupRoomId, groupRoomMembers, roomLabs, roomTeams } from '@shared/chatRooms'
 import { TEAM_COLORS } from '@shared/types'
 import { t } from '@shared/i18n'
+import { countsAsStaff } from '@shared/quickChat'
 import { ColorChoice } from './OrgCreateDialog'
 
 /**
@@ -34,7 +35,7 @@ function GroupForm({ onClose }: { onClose: () => void }) {
   const openChatRoom = useOffice((s) => s.openChatRoom)
   const teams = useMemo(() => roomTeams(allTeams), [allTeams])
   const labs = useMemo(() => roomLabs(allLabs), [allLabs])
-  const hired = useMemo(() => staff.filter((s) => s.kind === 'hired' && !s.isPractice), [staff])
+  const hired = useMemo(() => staff.filter((s) => s.kind === 'hired' && countsAsStaff(s)), [staff])
   const [name, setName] = useState('')
   const [color, setColor] = useState<string>(TEAM_COLORS[groupCount % TEAM_COLORS.length])
   const [teamIds, setTeamIds] = useState<string[]>([])

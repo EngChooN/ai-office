@@ -40,7 +40,7 @@ function usePhase(): TimeOfDay {
 /** 지금 일하는 직원이 있는 층(1층부터) — 밤에 그 층 창에만 불을 켠다. 그림 함수는 스토어를 읽지 않고 여기서 넘겨받는다.
  * 같은 층 구성이면 같은 Set을 돌려줘 외관을 다시 굽지 않는다 */
 function useWorkingFloors(level: number): ReadonlySet<number> {
-  const staff = useOffice((s) => s.staff)
+  const staff = useOfficeStaff()
   const teams = useOffice((s) => s.teams)
   const key = useMemo(() => {
     const working = staff.map((s) => (s.status === 'working' || isAwaitingTeam(s) ? { ...s, status: 'working' as const } : s))
@@ -50,6 +50,12 @@ function useWorkingFloors(level: number): ReadonlySet<number> {
       .join(',')
   }, [level, staff, teams])
   return useMemo(() => new Set(key ? key.split(',').map(Number) : []), [key])
+}
+
+/** 사무실에 있는 직원 — 빠른 대화 임시 직원은 사무실 그림·층 인원·현황판에서 뺀다 */
+function useOfficeStaff() {
+  const staff = useOffice((s) => s.staff)
+  return useMemo(() => staff.filter((s) => !s.isQuick), [staff])
 }
 
 const ZOOM_STEP = 1.25
@@ -316,7 +322,7 @@ function OfficeExterior() {
 /** 건물 안 왼쪽 위: 밖으로 나가기 + (층이 여럿이면) 층 미니맵 */
 function Minimap() {
   const level = useViewLevel()
-  const staff = useOffice((s) => s.staff)
+  const staff = useOfficeStaff()
   const teams = useOffice((s) => s.teams)
   const meetings = useOffice((s) => s.meetings)
   const viewFloor = useOffice((s) => s.viewFloor)
@@ -364,7 +370,7 @@ function Minimap() {
 
 /** 맵 오른쪽 위 현황판: 회사 레벨·직원 현황·꾸미기 모드 */
 function Hud() {
-  const staff = useOffice((s) => s.staff)
+  const staff = useOfficeStaff()
   const company = useOffice((s) => s.company)
   const running = useOffice((s) => s.meetings.find(isMeetingLive))
   const isDecorating = useOffice((s) => s.isDecorating)
@@ -476,7 +482,8 @@ export function OfficeMap() {
   useEffect(() => {
     const st = useOffice.getState()
     const s = st.staff.find((x) => x.id === selectedId)
-    if (s) st.setViewFloor(staffFloor(s, st.teams, viewLevelOf(st), undefined, st.staff))
+    // 빠른 대화 임시 직원은 사무실에 없으니 층을 옮기지 않는다
+    if (s && !s.isQuick) st.setViewFloor(staffFloor(s, st.teams, viewLevelOf(st), undefined, st.staff.filter((x) => !x.isQuick)))
   }, [selectedId])
 
   return (

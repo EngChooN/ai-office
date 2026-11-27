@@ -56,6 +56,16 @@
 - 바탕화면 비서(`deskPet.ts` `petTargets`)·보드·비서(`secretary.ts`)·원격(`remote/v2.ts`)이 단체방을 인식. 시험: `collabApproval`·`collabPairs`·`chatRooms`·`helpRequest` 등.
 
 
+## [1.9.0] - 2026-11-27
+
+### 새 기능
+- 빠른 대화: `Staff.isQuick`·`quick:<직원 id>` 방·`shared/quickChat.ts`(`countsAsStaff`), `main/quickSession.ts`(닫기·삭제·세션 파일 정리), `QuickChat.tsx`·`QuickManageDialog.tsx`, 설정 `quickApproval`(기본 ask), 휴대폰은 `remote/quickHide.ts`로 v1만 숨김. 설계는 `docs/specs/quick-chat-design.md`.
+- 팀원 못 끝냄 통보(`shared/delegateFail.ts`): 맡긴 리더에게 한 번.
+
+### 개선·수정
+- 보고·질문·알림 방 라우팅, 예전 카드 방 채움 1회(`main/taskRoomBackfill.ts`). 실패한 일 '할 일' 칸 표시, 위임 실패 시 리더 '쉬는 중'.
+- 실행 횟수 초과는 자동 시험만, 휴대폰 실기기·윈도우 확인 전.
+
 ## [1.8.0] - 2026-11-26
 
 ### 새 기능

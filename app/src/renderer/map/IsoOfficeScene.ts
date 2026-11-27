@@ -237,7 +237,8 @@ interface IxRun {
 
 /** 상호작용 이벤트를 뽑을 스냅샷 부분 */
 /** 장면이 보는 직원: 팀원 일을 기다리는 리더는 자리에 앉아 일하는 모습으로 둔다 (돌아다니거나 놀러 가지 않게). 실제 상태는 awaitingTeam으로 남는다 */
-const sceneStaffOf = (staff: Staff[]) => staff.map((s) => (isAwaitingTeam(s) ? { ...s, status: 'working' as const } : s))
+// 빠른 대화 임시 직원은 사무실에 앉지 않는다 (방문자 그림은 나중 단계)
+const sceneStaffOf = (staff: Staff[]) => staff.flatMap((s) => (s.isQuick ? [] : [isAwaitingTeam(s) ? { ...s, status: 'working' as const } : s]))
 const ixSnapOf = (st: ReturnType<typeof useOffice.getState>): IxSnap => ({ staff: sceneStaffOf(st.staff), teams: st.teams, tasks: st.tasks, logs: st.liveLogs, companyLevel: st.company.level, selectedId: st.selectedId })
 
 interface FurnPart {

@@ -47,6 +47,7 @@ export default {
   'officeMsg.errPracticeTeam': { ko: '연습 팀은 합칠 수 없어요', en: 'Practice teams cannot be merged', ja: '練習チームは統合できません', zh: '练习团队无法合并' },
   'officeMsg.errStaffNotFound': { ko: '직원을 찾지 못했어요', en: 'Could not find the staff member', ja: 'スタッフが見つかりません', zh: '找不到该员工' },
   'officeMsg.errPracticeStaff': { ko: '연습 직원은 옮길 수 없어요', en: 'Practice staff cannot be moved', ja: '練習スタッフは移動できません', zh: '练习员工无法调动' },
+  'officeMsg.errQuickStaff': { ko: '빠른 대화 임시 직원은 팀·프로젝트에 넣을 수 없어요', en: 'Quick chat temp staff cannot join teams or projects', ja: 'クイックチャットの臨時スタッフはチーム・プロジェクトに入れられません', zh: '快速对话的临时员工无法加入团队或项目' },
   'officeMsg.errTeamNotFound': { ko: '옮길 팀을 찾지 못했어요', en: 'Could not find the team to move to', ja: '移動先のチームが見つかりません', zh: '找不到要调往的团队' },
   'officeMsg.errManualNotRegistered': { ko: '등록된 매뉴얼이 아니에요', en: 'This is not a registered manual', ja: '登録されたマニュアルではありません', zh: '这不是已登记的手册' },
   'officeMsg.errManualGlobalPc': { ko: '전역 매뉴얼은 PC에서 해 주세요 (프로젝트 폴더 매뉴얼만 휴대폰에서 할 수 있어요)', en: 'Please do global manuals on the PC (only project-folder manuals can be done from the phone)', ja: '全体マニュアルはPCで操作してください（スマホではプロジェクトフォルダのマニュアルのみ操作できます）', zh: '全局手册请在电脑上操作（手机上只能操作项目文件夹手册）' },

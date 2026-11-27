@@ -98,7 +98,8 @@ export function PetPanel() {
   const chatGroups = useOffice((s) => s.chatGroups);
   const approvals = useMemo(() => petApprovals(staff), [staff]);
   const targets = useMemo(
-    () => petTargets({ staff, teams, labs, chatGroups }),
+    // 빠른 대화 임시 직원은 말 걸 상대 목록에 넣지 않는다
+    () => petTargets({ staff: staff.filter((x) => !x.isQuick), teams, labs, chatGroups }),
     [staff, teams, labs, chatGroups],
   );
   const [target, setTarget] = useState<PetTarget>(PET_SECRETARY);

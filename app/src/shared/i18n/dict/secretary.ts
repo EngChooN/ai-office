@@ -280,4 +280,5 @@ export default {
   'secretary.setting.sharedBrowserLogin': { ko: '브라우저 로그인 함께 쓰기', en: 'Shared browser login', ja: 'ブラウザーのログインを共有', zh: '共享浏览器登录' },
   'secretary.setting.tokenSaverMode': { ko: '토큰 절약 모드', en: 'Token saver mode', ja: 'トークン節約モード', zh: 'Token 节省模式' },
   'secretary.setting.reportStyle': { ko: '보고 말투', en: 'Report style', ja: '報告の口調', zh: '汇报语气' },
+  'secretary.setting.quickApproval': { ko: '빠른 대화 파일 수정 결재', en: 'Quick chat file-edit approval', ja: 'クイックチャットのファイル編集承認', zh: '快速对话文件修改审批' },
 } satisfies Record<string, Entry>

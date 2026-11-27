@@ -289,6 +289,8 @@
     <string name="work_band_oldest">%1$s · 已等 %2$s</string>
     <string name="work_waited">已等 %1$s</string>
     <string name="work_rereview">需重新审核</string>
+    <string name="work_failed">失败</string>
+    <string name="work_failed_reason">原因：%1$s</string>
     <string name="work_unassigned">无负责人</string>
     <string name="work_empty">还没有任务</string>
     <string name="work_empty_hint">在电脑上分配任务后，状态会显示在这里</string>

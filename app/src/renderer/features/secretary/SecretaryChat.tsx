@@ -29,6 +29,7 @@ import { SecretaryFace } from "./SecretaryFace";
 import { QueuedBadge, useQueuePosition } from "./QueuedBadge";
 import { fmtDate, t } from "@shared/i18n";
 import { QUEUE_MAX } from "@shared/secretaryQueue";
+import { countsAsStaff } from "@shared/quickChat";
 import { isResumable, type SecretaryResumeFail } from "@shared/secretaryProgress";
 import { IS_TOUCH } from "@/shell";
 import { findSecretaryHits, stepIndex } from "@shared/chatFind";
@@ -50,7 +51,8 @@ const timeText = (ts: number) =>
 /** 예시 질문 (완료 기준 ★ 질문에서) — 이름이 들어가는 칩은 이 사무실 직원으로 채운다 */
 export function useExampleQuestions() {
   const staff = useOffice((s) => s.staff);
-  const hired = staff.filter((s) => s.kind === "hired");
+  // 연습·빠른 대화 임시 직원은 예시에 이름을 쓰지 않는다
+  const hired = staff.filter((s) => s.kind === "hired" && countsAsStaff(s));
   const qa = hired.find((s) => /QA|큐에이|테스트/i.test(s.role)) ?? hired[0];
   const designer = hired.find((s) => /디자/.test(s.role));
   return [

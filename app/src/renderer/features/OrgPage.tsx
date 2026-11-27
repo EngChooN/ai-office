@@ -32,7 +32,7 @@ export function OrgPage() {
     return () => clearTimeout(timer)
   }, [newId])
 
-  const hired = staff.filter((s) => s.kind === 'hired')
+  const hired = staff.filter((s) => s.kind === 'hired' && !s.isQuick)
   const unassigned = hired.filter((s) => !s.teamId || !teams.some((tm) => tm.id === s.teamId))
   const groups: OrgGroup[] = [...teams.map((team) => ({ kind: 'team' as const, team })), ...labs.map((lab) => ({ kind: 'project' as const, lab }))]
 
@@ -236,7 +236,7 @@ function FloorItems({ team, teams, close }: { team: Team; teams: Team[]; close: 
   const staff = useOffice((s) => s.staff)
   const { floors } = officeOf(level)
   if (floors < 2 || isWorkMode) return null
-  const current = teamFloor(team, level, teams, staff)
+  const current = teamFloor(team, level, teams, staff.filter((s) => !s.isQuick))
   return (
     <>
       {Array.from({ length: floors }, (_, i) => i + 1).map((f) => (

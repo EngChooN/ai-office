@@ -33,6 +33,7 @@ import { isoLevelOf } from '../shared/iso/levels'
 import { arrangeSteps, decorCompares, furnitureName, layoutText, undoSteps } from './secretaryDecor'
 import { compactStaffActivity } from '../shared/staffActivity'
 import { findRoom } from '../shared/chatRooms'
+import { quickStaffIdOf } from '../shared/quickChat.ts'
 import { capText, compactChatHistory, compactGeneric, compareSteps, compactLogs, compactOverview, compactManual, compactPeriod, compactStaffDetail, guideLines } from './secretaryCompact'
 
 const KEEP_DAYS = 30
@@ -838,6 +839,9 @@ export class Secretary {
   /** 방 이름 (팀·프로젝트, 없으면 전체 방) — chatHistory 요약 앞머리 */
   private roomLabel(room: string | undefined): string {
     const snap = this.office.snapshot()
+    // 빠른 대화 방('quick:<직원 id>')은 전체 방으로 오인하지 않게 따로 부른다
+    const quickId = quickStaffIdOf(room)
+    if (quickId) return `빠른 대화 · ${snap.staff.find((x) => x.id === quickId)?.name ?? '닫힘'}`
     const info = findRoom(room, snap.teams, snap.labs, snap.chatGroups)
     return info ? info.name : '전체 방'
   }

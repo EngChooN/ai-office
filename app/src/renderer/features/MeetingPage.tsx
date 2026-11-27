@@ -38,7 +38,7 @@ const STATUS_LABEL: Record<Meeting['status'], TKey> = {
 
 /** 회의실: 직원 여럿을 불러 한 주제로 돌아가며 발언하고, 회의록·할 일을 남긴다 */
 export function MeetingPage() {
-  const staff = useOffice(useShallow((s) => s.staff.filter((x) => x.kind === 'hired')))
+  const staff = useOffice(useShallow((s) => s.staff.filter((x) => x.kind === 'hired' && !x.isQuick)))
   const meetings = useOffice((s) => s.meetings)
   const listLayout = useRoomListLayout()
   const [topic, setTopic] = useState('')

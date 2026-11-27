@@ -53,8 +53,11 @@ import {
   type StaffQuestion,
   type StaffStats,
   type Task,
+  type TaskFailure,
   type TaskPlan,
   type AiProvider,
+  type QuickChatInput,
+  type QuickChatStats,
   type EngineChangeResult,
   type PlanUsage,
   type CodexUsageNote,
@@ -93,7 +96,11 @@ import { NO_HOLD, planHold, type HeldItem, type PlanHoldState } from '../shared/
 import { isScheduleDue } from '../shared/schedule'
 import { detectTextQuestion, toTextQuestions } from '../shared/textQuestion'
 import { mentionTargets, OFFICE_SENDER, parseMentions } from '../shared/mention'
-import { cardRoom, chatResponder, chatRoomMembers, chatRoomMentionTargets, findRoom, GLOBAL_ROOM, groupRoomId, homeRoom, labRoomId, normalizeChatGroup, originRoom, parseRoom, roomExists, roomForOrigins as roomForOriginsOf, roomsForOrigins as roomsForOriginsOf, resolveOriginRoom, roomHead } from '../shared/chatRooms'
+import { deleteSessionFile, sessionFileSize } from './quickSession'
+import { LEGACY_AVATARS } from '../shared/look'
+import { delegateFailNotices, failReasonOf } from '../shared/delegateFail'
+import { countsAsStaff, QUICK_ROOM_PREFIX, quickRoomId, quickStaffIdOf, quickTitleFrom } from '../shared/quickChat'
+import { cardRoom, chatResponder, chatRoomMembers, chatRoomMentionTargets, findRoom, GLOBAL_ROOM, groupRoomId, homeRoom, labRoomId, normalizeChatGroup, parseRoom, roomExists, roomForOrigins as roomForOriginsOf, roomsForOrigins as roomsForOriginsOf, resolveOriginRoom, roomHead } from '../shared/chatRooms'
 import { mergeRefDocs, normalizeRefDocPath, refDocKey, refDocsPrompt, sanitizeRefDocs } from '../shared/refDocs'
 import { draftCovered, isSameRule, matchRule, ruleLabel, type ApprovalRule } from '../shared/approvalRules'
 import { askDecisionInput, matchPastDecisions, sameAskDecisions } from '../shared/askDecision'
@@ -414,9 +421,9 @@ export class Office extends EventEmitter<{
       isAutonomous: (id) => this.isAutonomous(id),
       cancelApproval: (id) => this.dropApproval(id, '취소됨'),
       rateLimit: (info, provider) => (provider === 'codex' ? this.onCodexRateLimit(info) : this.onRateLimit(info)),
-      finished: (id, summary, backgroundTasks, pending) => this.onFinished(id, summary, backgroundTasks, pending),
+      finished: (id, summary, backgroundTasks, pending, isError) => this.onFinished(id, summary, backgroundTasks, pending, isError),
       stopped: (id) => this.onStopped(id),
-      failed: (id, error) => this.onFailed(id, error),
+      failed: (id, error, pending) => this.onFailed(id, error, pending),
       officeTools: (id) => this.officeTools(id),
       context: (id) => this.teamContext(id),
       saved: (id, tokens) => db.insertSaving(id, tokens),
@@ -611,6 +618,8 @@ export class Office extends EventEmitter<{
       // 연습 직원은 세션을 만들지 않는다 (지시가 가도 AI를 부르지 않게)
       if (!s.isPractice) this.manager.add(this.liveStaff(s))
     }
+    // 예전 카드의 방 채우기 (한 번만) — 직원 소속 방이 필요해 직원을 읽은 뒤에, 이어 하기(resumeTasks) 전에
+    this.backfillTaskRooms()
     // 칸 배치로 옮기기 (shop.schema가 2가 아닐 때 한 번만) — 회사 레벨이 필요해 직원·기록을 읽은 뒤에
     try {
       const c = this.company()
@@ -757,21 +766,36 @@ export class Office extends EventEmitter<{
 
   /** 부탁받은 일이 오류·중지로 끝나 결과 없이 사라지지 않게: 요청을 닫고(대상당 1건 제한 해제) 부탁한 직원에게 못 마쳤다고 보고한다 */
   private failHelpRequests(staffId: string, ownOrigins: readonly Origin[], why: 'error' | 'stopped') {
-    const name = this.hired.get(staffId)?.name ?? ''
     // 재위임 결과를 기다리느라 보류해 둔 요청도 함께 실패로 닫는다 (요청한 리더에게 끊기지 않고 알린다)
     const origins = [...ownOrigins, ...(this.helpHeld.get(staffId) ?? [])]
     this.helpHeld.delete(staffId)
+    this.notifyHelpFailed(staffId, origins, why)
+    this.helpLedger.release(staffId, [], (id) => this.isHelpLive(id))
+  }
+
+  /** 받은 도움 요청을 닫고 부탁한 직원에게 못 마쳤다고 알린다 (정상 보고 대신) */
+  private notifyHelpFailed(staffId: string, origins: readonly Origin[], why: 'error' | 'stopped') {
+    const name = this.hired.get(staffId)?.name ?? ''
     for (const o of origins) {
       if (o.kind !== 'help') continue
       const resumeCtx = this.helpLedger.close(o.reqId)
       if (!this.hired.has(o.fromId)) continue
       this.instruct(o.fromId, t(why === 'error' ? 'staff.msg.helpFailed.error' : 'staff.msg.helpFailed.stopped', { name }), { kind: 'user', room: o.room, ...(resumeCtx ? { help: resumeCtx } : {}), ...(o.isAutonomous ? { isAutonomous: true } : {}) })
     }
-    this.helpLedger.release(staffId, [], (id) => this.isHelpLive(id))
+  }
+
+  /** 맡긴 일을 팀원이 오류·중지로 못 끝냈으면 맡긴 리더에게 알린다 (리더가 없으면 건너뜀). 받은 일을 비우기 전에 한 번만 부른다 */
+  private failDelegations(staffId: string, origins: readonly Origin[], why: 'error' | 'stopped', error = '') {
+    const name = this.hired.get(staffId)?.name ?? ''
+    const reason = failReasonOf(error)
+    for (const n of delegateFailNotices(origins, (id) => this.hired.has(id))) {
+      const text = why === 'error' ? t('staff.msg.delegateFailed.error', { name, reason: reason || '-' }) : t('staff.msg.delegateFailed.stopped', { name })
+      this.instruct(n.leadId, text, { kind: 'user', room: n.room, ...(n.isAutonomous ? { isAutonomous: true } : {}) })
+    }
   }
 
   /** 실행 중 예외(SDK·Codex 오류): 인터넷이 끊긴 것이면 받은 일을 보관해 연결되면 이어 가고, 아니면 받은 일을 정리한다 */
-  private onFailed(staffId: string, error: string) {
+  private onFailed(staffId: string, error: string, pending = 0) {
     errorLog.record('staff', error) // 피드백에 붙일 최근 오류 기록 (직원 이름은 넣지 않는다)
     // 보관 중에는 돌고 있는 턴이 없다 — 늦게 온 같은 실패(Claude가 세션을 닫으며 "returned an error result"로 다시 던진 것)는 연결 대기를 그대로 둔다
     if (this.netParked.has(staffId)) return void this.patch(staffId, { status: 'netWait', activity: '' })
@@ -781,18 +805,25 @@ export class Office extends EventEmitter<{
     this.origins.set(staffId, [])
     this.clearWritten(staffId)
     this.taskQueue.set(staffId, [])
-    this.settleFailed(staffId, error, origins, queued)
+    this.settleFailed(staffId, error, origins, queued, { pending })
   }
 
   /** 오류로 끝난 받은 일 정리: 대화방에 알리고, 부탁을 닫고, 업무 카드를 되돌린다 (보관했다 포기한 일도 여기로) */
-  private settleFailed(staffId: string, error: string, origins: Origin[], queued: readonly { taskId: string }[]) {
-    for (const o of origins) if (o.kind === 'process') this.stopRun(o.runId)
+  /** pending: 받은 일 가운데 아직 엔진에 전하지 않고 줄 서 있던 지시 수 (뒤쪽) — 그 카드는 시작 전이라 실패로 표시하지 않는다 */
+  private settleFailed(staffId: string, error: string, origins: Origin[], queued: readonly { taskId: string }[], { notifyLeads = true, isFailure = true, pending = 0 } = {}) {
+    // 하던 카드만 '실패' (줄 선 지시·대기 카드는 시작 전이라 그냥 할 일로). 대표·리더가 보관을 풀며 정리한 일은 실패가 아니다
+    const failure = isFailure ? { at: Date.now(), reason: failReasonOf(error) } : undefined
+    const ran = origins.slice(0, Math.max(0, origins.length - pending))
+    for (const o of origins) if (o.kind === 'process') (failure && ran.includes(o) ? this.failRun(o.runId, failure) : this.stopRun(o.runId))
     this.failHelpRequests(staffId, origins, 'error')
-    const taskIds = [...cardIdsOf(origins), ...queued.map((q) => q.taskId)]
-    for (const id of taskIds) this.returnToTodo(id)
+    if (notifyLeads) this.failDelegations(staffId, origins, 'error', error)
+    for (const o of origins) for (const id of cardIdsOf([o])) this.returnToTodo(id, ran.includes(o) ? failure : undefined)
+    for (const q of queued) this.returnToTodo(q.taskId)
     for (const o of origins) this.setDelivery(o.chatId, staffId, { state: 'error' })
     // 쉬는 중에 세션만 끊긴 경우는 다시 보낼 지시가 없으니 대화방에 알리지 않는다 (상태·기록에는 남는다)
-    if (origins.length || queued.length) this.postChat(staffId, t('chat.runError', { error: error.slice(0, 200) }), undefined, undefined, this.roomForOrigins(staffId, origins))
+    // 받은 일이 없고 대기 카드만 있으면 그 카드의 방으로 (소속 방으로 새지 않게)
+    const errorRoom = this.roomForOrigins(staffId, origins.length ? origins : queued.map((q): Origin => ({ kind: 'task', taskId: q.taskId })))
+    if (origins.length || queued.length) this.postChat(staffId, t('chat.runError', { error: error.slice(0, 200) }), undefined, undefined, errorRoom)
     this.releaseHeld(staffId)
     this.releaseWaiting(staffId)
     this.scheduleEmit()
@@ -819,11 +850,12 @@ export class Office extends EventEmitter<{
   }
 
   /** 보관을 풀고 평소 오류처럼 정리한다 (대표가 새로 지시·중지했거나, 오래 연결되지 않았을 때) */
-  private cancelNetPark(staffId: string) {
+  /** opts.isFailure: 대표가 새로 지시·중지했거나 리더가 바꿔 맡겨 푼 보관은 false (실패 표시 없이 할 일로) */
+  private cancelNetPark(staffId: string, opts: { notifyLeads?: boolean; isFailure?: boolean } = {}) {
     const p = this.netParked.cancel(staffId)
     if (!p) return
     this.patch(staffId, { status: 'idle', activity: '' })
-    this.settleFailed(staffId, p.error, p.origins, p.queued)
+    this.settleFailed(staffId, p.error, p.origins, p.queued, opts)
   }
 
   /** 연결 확인 (보관한 일이 있을 때만 돈다): 오래된 보관은 포기하고, 인터넷이 돌아왔으면 모두 이어 간다 */
@@ -880,8 +912,8 @@ export class Office extends EventEmitter<{
 
   /** 회사 경험치 = 고용 직원 경험치 합 + 직원 1명당 100. 레벨은 지금까지 오른 최고 레벨 아래로 내려가지 않는다 */
   private company() {
-    // 연습 직원은 회사 경험치에 넣지 않는다 (연습만으로 레벨·레벨업 보상이 생기지 않게)
-    const hired = [...this.hired.values()].filter((s) => !s.isPractice)
+    // 연습 직원·빠른 대화 임시 직원은 회사 경험치에 넣지 않는다 (연습·임시 대화만으로 레벨·레벨업 보상이 생기지 않게)
+    const hired = [...this.hired.values()].filter(countsAsStaff)
     return companyFromXp(hired.reduce((sum, s) => sum + this.statsOf(s.id).xp, 0) + hired.length * 100, this.companyLevelMax)
   }
 
@@ -945,8 +977,8 @@ export class Office extends EventEmitter<{
   // ── 직원 ──────────────────────────────────────────────
 
   /** isPractice: 튜토리얼 연습 직원 (세션·인사·기록 없음). 첫 실제 고용이면 남아 있는 연습 회사를 먼저 지운다 */
-  hire(input: HireInput, isPractice = false): Staff {
-    if (!isPractice && this.hasPracticeData()) this.tutorial.cleanup()
+  hire(input: HireInput, isPractice = false, isQuick = false): Staff {
+    if (!isPractice && !isQuick && this.hasPracticeData()) this.tutorial.cleanup()
     // 토큰 절약 모드: 고용 창이 비워 보낸 값만 채운다 (연습 직원은 제외)
     const saver = isPractice ? {} : hireDefaults(this.settings.tokenSaverMode, input.provider ?? defaultProvider(lastProviderStatus()))
     input = { ...input, model: input.model || (saver.model ?? 'default'), memory: input.memory ?? saver.memory }
@@ -954,8 +986,9 @@ export class Office extends EventEmitter<{
     input = { ...input, ...fit }
     const id = crypto.randomUUID()
     const hiredAt = Date.now()
-    const deskIndex = this.nextDesk()
-    db.insertStaff(id, input, deskIndex, hiredAt, isPractice)
+    // 빠른 대화 임시 직원은 책상을 차지하지 않는다
+    const deskIndex = isQuick ? -1 : this.nextDesk()
+    db.insertStaff(id, input, deskIndex, hiredAt, isPractice, isQuick)
     if (input.memory && input.memory !== 'normal') db.updateStaffRow(id, { memory: input.memory })
     const staff: db.StoredStaff = {
       id,
@@ -976,6 +1009,7 @@ export class Office extends EventEmitter<{
       equipment: { ...DEFAULT_EQUIPMENT, skills: [] },
       pid: null,
       ...(isPractice ? { isPractice: true } : {}),
+      ...(isQuick ? { isQuick: true, quickClosedAt: null, quickTitle: '' } : {}),
     }
     this.hired.set(id, staff)
     for (const labId of input.labIds ?? []) {
@@ -992,6 +1026,11 @@ export class Office extends EventEmitter<{
       return live
     }
     this.manager.add(live)
+    // 빠른 대화는 인사·고용 기록 없이 바로 대화방으로
+    if (isQuick) {
+      this.scheduleEmit()
+      return live
+    }
     if (input.teamId && /팀장/.test(input.role)) {
       const team = this.teams.get(input.teamId)
       if (team && !team.leadId) this.updateTeam(team.id, { leadId: id })
@@ -1015,8 +1054,10 @@ export class Office extends EventEmitter<{
     return ''
   }
 
-  fire(staffId: string) {
+  fire(staffId: string, isSilent = false) {
     const s = this.hired.get(staffId)
+    // 화면 밖(비서·휴대폰) 해고도 빠른 대화면 삭제와 같게 — 방 대화·세션 파일을 남기지 않는다
+    if (s?.isQuick && !isSilent) return this.deleteQuickChat(staffId)
     // 결재 카드도 정리한다 (안 닫으면 단체방에 눌러도 반응 없는 카드가 남는다) — 엔진 대기는 remove가 거부로 푼다
     if (s) this.closeCards(s, s.approvals, 'canceled')
     this.lastTextAsk.delete(staffId)
@@ -1038,9 +1079,107 @@ export class Office extends EventEmitter<{
     }
     for (const t of this.tasks.values()) if (t.assigneeId === staffId) t.assigneeId = null
     for (const sc of [...this.schedules.values()]) if (sc.staffId === staffId) this.schedules.delete(sc.id)
-    if (s) this.postChat('me', t('officeMsg.staffLeft', { name: s.name }))
+    if (s && !isSilent) this.postChat('me', t('officeMsg.staffLeft', { name: s.name }))
     this.markReportsRead(staffId)
     this.scheduleEmit()
+  }
+
+  // ── 빠른 대화 (임시 직원 한 명과 주고받는 대화방 — docs/specs/quick-chat-design.md) ──
+
+  /** 새 빠른 대화: 임시 직원을 만든다 (책상·인원·수당 제외). 폴더를 안 고르면 홈 폴더. 결재 방식은 시작 창에서 고른 값(기본 매번 묻기) */
+  startQuickChat(input: QuickChatInput): Staff {
+    const provider: AiProvider = input.provider === 'codex' ? 'codex' : 'claude'
+    return this.hire(
+      {
+        name: t('quick.staffName'),
+        role: t('quick.role'),
+        avatar: Math.floor(Math.random() * LEGACY_AVATARS),
+        provider,
+        model: 'default',
+        cwd: input.cwd ?? '',
+        systemPrompt: '',
+        // 대화가 길어져도 새 대화로 넘기지 않는다 (세션 파일이 하나로 남아 삭제 때 함께 지울 수 있다)
+        memory: 'full',
+        approvalMode: (input.approvalMode ?? this.settings.quickApproval) === 'acceptEdits' ? 'acceptEdits' : 'ask',
+        teamId: null,
+      },
+      false,
+      true,
+    )
+  }
+
+  /** 빠른 대화 방에 보낸 글: 그 임시 직원 한 명에게만 전한다. 닫힌 대화면 다시 진행 중으로, 제목이 없으면 첫 글로 */
+  private sendQuickChat(s: db.StoredStaff, text: string, attachments: Attachment[], mode?: ChatSendMode, replyTo?: ChatMessage['replyTo']) {
+    const room = quickRoomId(s.id)
+    const mine = this.postChat('me', text, attachments, undefined, room, false, replyTo ? { replyTo } : {})
+    if (s.quickClosedAt) {
+      s.quickClosedAt = null
+      db.updateQuickRow(s.id, { closedAt: null })
+    }
+    const body = text.trim()
+    if (!s.quickTitle && body) {
+      s.quickTitle = quickTitleFrom(body)
+      db.updateQuickRow(s.id, { title: s.quickTitle })
+    }
+    // Claude Code 세션처럼 머리말 없이 그대로 전한다
+    const message = body || t('quick.attachOnly')
+    const origin: Origin = { kind: 'chat', room, chatId: mine.id }
+    if (mode === 'now' && s.status === 'working') {
+      this.setDelivery(mine.id, s.id, { state: 'received' })
+      void this.interrupt(s.id, message, attachments, origin)
+    } else if (mode) {
+      const isHeld = this.instructFromPanel(s.id, message, attachments, origin, body.startsWith('/') ? undefined : body || undefined)
+      this.setDelivery(mine.id, s.id, { state: isHeld ? 'waiting' : 'received' })
+    } else {
+      this.setDelivery(mine.id, s.id, { state: 'received' })
+      this.instruct(s.id, message, origin, attachments, '', true)
+    }
+    this.scheduleEmit()
+  }
+
+  /** 빠른 대화 닫기: 하던 일을 멈추고 기록은 보관한다 (사무실엔 방문자로 남는다). 그 방에 다시 글을 보내면 이어서 연다 */
+  closeQuickChat(staffId: string) {
+    const s = this.hired.get(staffId)
+    if (!s?.isQuick || s.quickClosedAt) return
+    // 줄 서 있던 말은 버린다 — 멈춘 뒤 다음 말이 저절로 시작되면 닫은 대화가 다시 열린다
+    for (const w of this.waitingMsgs.list(s.id)) this.setDelivery(w.origin.chatId, s.id, { state: 'stopped' })
+    this.waitingMsgs.clear(s.id)
+    this.heldLocal.delete(s.id)
+    if (s.status === 'working' || s.status === 'waiting' || s.status === 'netWait') {
+      this.hardStops.add(s.id)
+      void this.interrupt(s.id)
+    }
+    s.quickClosedAt = Date.now()
+    db.updateQuickRow(s.id, { closedAt: s.quickClosedAt })
+    this.scheduleEmit()
+  }
+
+  /** 빠른 대화 삭제: 일 멈춤 → AI 세션 파일 → 임시 직원·기록·사용량·방 대화. 되돌릴 수 없다 (작업 폴더 파일은 건드리지 않는다) */
+  deleteQuickChat(staffId: string) {
+    const s = this.hired.get(staffId)
+    if (!s?.isQuick) return
+    if (s.status === 'working' || s.status === 'waiting' || s.status === 'netWait') this.hardStops.add(s.id)
+    // 엔진을 먼저 내려야 세션 파일을 지운 뒤 다시 쓰지 않는다. 파일을 못 지우면 직원·기록을 남겨 다시 지울 수 있게 한다
+    const { provider } = s
+    this.manager.remove(staffId)
+    // /clear 등으로 바뀌기 전 세션까지 모두 (db.saveSessionId가 빠른 대화의 지난 세션 id를 모아 둔다)
+    const results = db.quickSessionIds(staffId, s.sessionId).map((id) => deleteSessionFile(provider, id))
+    if (results.includes('failed')) {
+      this.manager.add(this.liveStaff(s))
+      this.hardStops.delete(s.id)
+      throw new Error('quick session file delete failed')
+    }
+    this.fire(staffId, true)
+    db.deleteStaffTraces([staffId])
+    db.deleteRoomChats(quickRoomId(staffId))
+    this.scheduleEmit()
+  }
+
+  /** 빠른 대화 관리 창: 빠른 대화 사용량 합계 + 대화마다 AI 세션 파일 크기 (읽기만, 파일이 없으면 0) */
+  quickChatStats(): QuickChatStats {
+    const sizes: Record<string, number> = {}
+    for (const s of this.hired.values()) if (s.isQuick) sizes[s.id] = db.quickSessionIds(s.id, s.sessionId).reduce((sum, id) => sum + sessionFileSize(s.provider, id), 0)
+    return { usage: db.quickUsageTotal(), sizes }
   }
 
   /**
@@ -1050,7 +1189,8 @@ export class Office extends EventEmitter<{
    */
   async changeEngine(staffId: string, provider: AiProvider): Promise<EngineChangeResult> {
     const s = this.hired.get(staffId)
-    if (!s || s.isPractice) return { error: t('engineChange.error.notHired') }
+    // 빠른 대화의 엔진 바꾸기는 2차 (맥락 인수인계 필요)
+    if (!s || !countsAsStaff(s)) return { error: t('engineChange.error.notHired') }
     // 비서 카드의 엔진 칸은 글로 고칠 수 있어 엉뚱한 값이 올 수 있다
     if (provider !== 'claude' && provider !== 'codex') return { error: t('engineChange.error.notReady', { engine: String(provider) }) }
     if (s.provider === provider) return { error: '' }
@@ -1083,6 +1223,8 @@ export class Office extends EventEmitter<{
     if (!s) return
     // 결재 방식·장비 같은 다른 필드가 섞여 들어와도(비서 카드) 반영하지 않는다
     const patch = pickStaffPatch(input)
+    // 빠른 대화 임시 직원은 팀에 넣지 않는다 (위임·단체방 대상이 되면 안 된다)
+    if (s.isQuick) delete patch.teamId
     // 엔진은 changeEngine으로만 바꾸니, 모델이 엔진에 안 맞으면 기본 모델로
     if (patch.model !== undefined) {
       const fit = fitEngineModel(s.provider, patch.model, lastProviderStatus()?.codex.models ?? [])
@@ -1118,10 +1260,15 @@ export class Office extends EventEmitter<{
     const s = this.hired.get(staffId)
     // 연습 직원은 AI를 부르지 않는다 (튜토리얼 진행은 대본이 맡는다)
     if (!s || s.isPractice) return
+    // 닫아 둔 빠른 대화도 직원 창·끼어들기로 일을 받으면 진행 중으로 돌아온다
+    if (s.isQuick && s.quickClosedAt) {
+      s.quickClosedAt = null
+      db.updateQuickRow(s.id, { closedAt: null })
+    }
     // 인터넷 연결을 기다리는 중: 대표가 직접 보낸 말이면 보관을 풀고(평소 오류 정리) 새 지시로 받는다. 그 밖의 지시는 이어 간 뒤에 보낸다
     if (this.netParked.has(staffId)) {
       if (!isDirect) return void this.heldLocal.set(staffId, [...(this.heldLocal.get(staffId) ?? []), { text, origin, attachments, via, isDirect }])
-      this.cancelNetPark(staffId)
+      this.cancelNetPark(staffId, { isFailure: false })
     }
     this.log(staffId, 'instruction', via ? `${via} ${text}` : text, attachments)
     if (this.handleSlash(staffId, text, origin)) return
@@ -1344,7 +1491,7 @@ export class Office extends EventEmitter<{
     // 인터넷 연결을 기다리던 일은 돌고 있는 턴이 없다 — 보관을 풀어 정리하고, 지시가 있으면 새로 보낸다
     if (this.netParked.has(staffId)) {
       this.hardStops.delete(staffId)
-      this.cancelNetPark(staffId)
+      this.cancelNetPark(staffId, { isFailure: false })
       if (text?.trim()) return this.instruct(staffId, text, origin ?? { kind: 'user' }, attachments, '', true)
       this.log(staffId, 'status', tk('log.stopped'))
       return
@@ -1375,19 +1522,21 @@ export class Office extends EventEmitter<{
     void this.persistWork(staffId) // 마지막 수정까지 반영한 폴더 상태로 다시 저장
     // 대화 지시로 만든 카드는 이어 가지 않는다 (예전처럼 멈춘 대화 지시는 다시 시켜야 시작)
     const chatCards = new Set((this.origins.get(staffId) ?? []).flatMap((o) => (o.kind !== 'task' && o.cardId ? [o.cardId] : [])))
+    // 받은 일을 비우기 전에 방을 잡아 둔다 — 멈춤 안내가 하던 일의 방에 뜨게 (비운 뒤엔 소속 방으로 샌다)
+    const room = this.roomOf(staffId)
     const taskIds = this.dropWork(staffId).filter((id) => !chatCards.has(id))
     // Esc·중단 버튼은 대개 말을 걸려고 멈춘 것 — 이야기가 끝나면 하던 카드(기획이면 기획째)를 이어 간다
     const isHard = this.hardStops.delete(staffId)
     if (!isHard && taskIds.length) {
       this.resumeAfterTalk.set(staffId, taskIds)
-      this.postChat(staffId, t('officeMsg.stoppedWillResume'))
-    } else this.postChat(staffId, t('officeMsg.stopped'))
+      this.postChat(staffId, t('officeMsg.stoppedWillResume'), undefined, undefined, room)
+    } else this.postChat(staffId, t('officeMsg.stopped'), undefined, undefined, room)
     this.releaseHeld(staffId)
     this.releaseWaiting(staffId)
   }
 
   /** 받은 일을 모두 내려놓는다: 업무 카드·대기 카드는 할 일로, 프로세스는 멈추고, 피어 일·도움 요청은 중단으로 닫는다. 되돌린 카드 id */
-  private dropWork(staffId: string) {
+  private dropWork(staffId: string, { notifyLeads = true } = {}) {
     const origins = this.origins.get(staffId) ?? []
     const queued = this.taskQueue.get(staffId) ?? []
     this.origins.set(staffId, [])
@@ -1398,16 +1547,18 @@ export class Office extends EventEmitter<{
     for (const o of origins) this.setDelivery(o.chatId, staffId, { state: 'stopped' })
     for (const o of origins) if (o.kind === 'process') this.stopRun(o.runId)
     this.failHelpRequests(staffId, origins, 'stopped')
+    if (notifyLeads) this.failDelegations(staffId, origins, 'stopped')
     return taskIds
   }
 
-  private returnToTodo(taskId: string) {
+  /** failure: 담당 직원이 오류로 못 끝냈으면 '실패' 표시를 단다 (직접 중단·바꿔 맡기기는 표시 없이) */
+  private returnToTodo(taskId: string, failure?: TaskFailure) {
     const t = this.tasks.get(taskId)
     if (!t || t.status !== 'doing') return
     // 승인된 기획 카드(하위 진행·취합 중)는 기획째 멈춰 두고, 나머지는 할 일로 되돌린다
     if (t.plan?.status === 'approved') return this.pausePlan(t.id)
     // 확인 대기·다시 기획 중이던 기획안은 접는다 (결재함에 남지 않게)
-    this.saveTask({ ...t, status: 'todo', plan: t.plan ? null : t.plan, updatedAt: Date.now() })
+    this.saveTask({ ...t, status: 'todo', plan: t.plan ? null : t.plan, ...(failure ? { failure } : {}), updatedAt: Date.now() })
     if (t.parentId) this.pausePlan(t.parentId)
   }
 
@@ -1415,7 +1566,7 @@ export class Office extends EventEmitter<{
     const t = this.tasks.get(taskId)
     if (!t?.plan || t.plan.status !== 'approved' || t.plan.isPaused) return
     this.saveTask({ ...t, plan: { ...t.plan, isPaused: true }, updatedAt: Date.now() })
-    this.postChat('me', `⏸ "${t.title}" 기획을 멈췄어요. 업무 보드에서 "다시 진행"을 누르면 이어서 해요.`.slice(0, CHAT_TEXT_MAX))
+    this.postChat('me', `⏸ "${t.title}" 기획을 멈췄어요. 업무 보드에서 "다시 진행"을 누르면 이어서 해요.`.slice(0, CHAT_TEXT_MAX), undefined, undefined, this.planRoom(t.id))
   }
 
   /** 촬영용 데모: demo-seed가 남긴 실시간 상태(직원 상태·결재·사용률·터미널 세션)를 채운다. 꺼져 있으면 아무것도 안 한다 */
@@ -1471,6 +1622,21 @@ export class Office extends EventEmitter<{
       db.pruneApprovalRecords(Date.now() - APPROVAL_RECORD_KEEP_MS)
     } catch (e) {
       console.error('[office] pruneApprovalRecords', e)
+    }
+  }
+
+  /** 방이 실리기 전 직원이 만든 카드의 방을 기록으로 찾아 한 번만 채운다 (확실한 카드만 — 나머지는 지금처럼 소속 방) */
+  private backfillTaskRooms() {
+    try {
+      const done = db.backfillTaskRooms((id) => this.homeRoomOf(id))
+      if (!done) return
+      for (const f of done.filled) {
+        const t = this.tasks.get(f.id)
+        if (t && t.room === undefined) this.tasks.set(f.id, { ...t, room: f.room })
+      }
+      console.log(`[office] backfillTaskRooms: filled ${done.filled.length}, skipped ${done.skipped.length}`)
+    } catch (e) {
+      console.error('[office] backfillTaskRooms', e)
     }
   }
 
@@ -1714,7 +1880,7 @@ export class Office extends EventEmitter<{
     return ext.provider === 'codex' ? readCodexExternalDay(staffId, ext.sessionId, since, undefined, 0) : readExternalDay(staffId, ext.cwd, ext.sessionId, since, 0)
   }
 
-  private onFinished(staffId: string, summary: string, backgroundTasks: string[] = [], pending = 0) {
+  private onFinished(staffId: string, summary: string, backgroundTasks: string[] = [], pending = 0, isError = false) {
     void this.persistWork(staffId) // 마지막 수정까지 반영한 폴더 상태로 다시 저장
     const s = this.hired.get(staffId)
     if (!s) return
@@ -1728,7 +1894,8 @@ export class Office extends EventEmitter<{
     // 받은 리더가 팀원에게 재위임해 결과를 기다리는 요청은 위로 보고하지 않고 보류한다 — 하위 결과가 모두 돌아오고
     // 리더가 그 결과를 받아 처리한 턴에서 한 번에 취합해 보고한다 (결과가 와 있어도 아직 대기열에 있으면 보류)
     const allDone = [...(this.helpHeld.get(staffId) ?? []), ...split.done]
-    const waitingHelp = allDone.filter((o) => o.kind === 'help' && o.help && isHelpWaiting(staffId, o.help.rootId, keep, this.helpLedger))
+    // 실패로 끝난 턴이면 취합을 기다릴 것 없이 모두 못 마친 것으로 닫는다 (부탁한 사람에게 실패를 알린다)
+    const waitingHelp = isError ? [] : allDone.filter((o) => o.kind === 'help' && o.help && isHelpWaiting(staffId, o.help.rootId, keep, this.helpLedger))
     const origins = allDone.filter((o) => !waitingHelp.includes(o))
     if (waitingHelp.length) this.helpHeld.set(staffId, waitingHelp)
     else this.helpHeld.delete(staffId)
@@ -1742,13 +1909,16 @@ export class Office extends EventEmitter<{
     const short = summary.length > CHAT_TEXT_MAX ? `${summary.slice(0, CHAT_TEXT_MAX)}…` : summary
     // 리더에게는 단체방용 600자가 아니라 넉넉한 상한으로 — 결론·결정이 뒤에 있어도 읽게 (넘으면 잘렸다고 알린다)
     const leaderText = clipLeaderReport(summary, (n) => t('staff.msg.memberReportCut', { n }))
+    // 실패로 끝난 턴(실행 횟수 초과 등)의 카드는 검토로 넘기지 않고 '실패' 표시를 달아 할 일로 되돌린다
+    const failure = isError ? { at: Date.now(), reason: failReasonOf(summary) } : undefined
     for (const o of origins) {
       const cardId = o.kind === 'task' ? o.taskId : o.cardId
       if (cardId) {
         const t = this.tasks.get(cardId)
-        // 리드의 기획안이 확인 대기·하위 업무 진행 중이면 아직 끝난 게 아니다 (취합 보고가 끝나야 검토로)
+        // 리드의 기획안이 확인 대기·하위 업무 진행 중이면 아직 끝난 게 아니다 (취합 보고가 끝나야 검토로) — 실패여도 기획은 그대로 둔다
         const isPlanOpen = Boolean(t?.plan) && !t?.plan?.isAggregating
-        if (t && t.status === 'doing' && !isPlanOpen) {
+        if (t && failure && !isPlanOpen) this.returnToTodo(t.id, failure)
+        else if (t && t.status === 'doing' && !isPlanOpen) {
           this.saveTask({ ...t, status: 'review', result: summary.slice(0, TASK_RESULT_MAX), updatedAt: Date.now() })
           // 리드가 취합 보고를 올리면 하위 업무·묶은 카드는 확인이 끝난 셈이다 — 대표는 이 카드 하나만 검토한다
           if (t.plan?.isAggregating) this.completeChildren(t.id)
@@ -1757,7 +1927,11 @@ export class Office extends EventEmitter<{
           if (t.parentId) this.advancePlan(t.parentId)
         }
       }
-      if (o.kind === 'process') this.onStepDone(o.runId, o.stepId, s, summary)
+      // 절차 단계가 실패로 끝나면 다음 단계로 넘기지 않는다 — 절차를 멈추고 이어진 카드는 실패로 할 일에
+      if (o.kind === 'process' && failure) this.failRun(o.runId, failure)
+      else if (o.kind === 'process') this.onStepDone(o.runId, o.stepId, s, summary)
+      // 실패로 끝난 결과(실행 횟수 초과·로그인 실패 등)는 맡긴 리더·부탁한 사람에게 보고 대신 '못 끝냄' 통보로 (아래 failDelegations·notifyHelpFailed)
+      if (failure && (o.kind === 'delegate' || o.kind === 'help')) continue
       // 도움 요청으로 받은 일의 결과는 부탁한 사람에게 보고로 돌아간다 (위임과 같은 경로)
       const reportTo = o.kind === 'delegate' ? o.leadId : o.kind === 'help' ? o.fromId : null
       // 결과로 부탁한 사람이 다시 시작해도 사슬(원업무·경로)이 이어지도록 요청을 닫으며 정보를 받아 붙인다
@@ -1766,25 +1940,20 @@ export class Office extends EventEmitter<{
         this.instruct(reportTo, t('staff.msg.memberReport', { name: s.name, role: s.role, text: leaderText }), { kind: 'user', room: o.room, ...(resumeCtx ? { help: resumeCtx } : {}), ...(o.isAutonomous ? { isAutonomous: true } : {}) })
       }
     }
+    if (isError) {
+      this.failDelegations(staffId, origins, 'error', summary)
+      this.notifyHelpFailed(staffId, origins, 'error')
+    }
     // 이 직원이 연 도움 요청 원업무가 모두 끝났으면(열린 요청·돌아올 결과 없음) 센 횟수를 비운다 — 받은 요청은 위에서 닫은 뒤에 본다
     this.helpLedger.release(staffId, keep, (id) => this.isHelpLive(id))
     // 단체방에는 보고 원문을 그대로 남긴다 (긴 보고는 화면에서 접어 보여 준다). 이어진 카드가 있으면 보고에 붙여 '카드 열기'·👍로 쓴다
     const reportTaskId = origins.map((o) => (o.kind === 'task' ? o.taskId : o.cardId)).find((id) => id && this.tasks.has(id))
-    // 여러 방의 지시를 한 턴에 처리했으면 같은 보고를 그 방들 각각에 올린다
-    const reports = new Map(rooms.map((r) => [r, this.postChat(staffId, summary.slice(0, TASK_RESULT_MAX) || t('notify.chatDone'), undefined, undefined, r, true, reportTaskId ? { taskId: reportTaskId } : {})]))
-    for (const o of origins) this.setDelivery(o.chatId, staffId, { state: 'done', reportId: (reports.get(this.originRoomOf(o, room)) ?? reports.get(room)!).id })
-    // 대표에게 올린 보고 — 직원 카드에 안 읽은 개수로 쌓인다 (패널을 열어 두었으면 화면이 곧바로 읽음 처리한다)
-    this.unreadReports = addUnread(this.unreadReports, staffId)
-    db.saveUnreadReports(this.unreadReports)
-    this.scheduleEmit()
-    this.emit('notify', { title: t('notify.report', { name: s.name }), body: short.slice(0, 120) || t('notify.reportDone'), staffId })
-    // 글 질문 카드는 직원당 하나(결재함 카드는 방이 없다)라 보고가 여러 방에 갔어도 하나만 올린다 — 알림 방 기준은 보고 방 중 첫 방
-    this.finishingRoom.set(staffId, room)
-    try {
-      this.registerTextQuestion(staffId, summary, origins, isAutoCheckTurn)
-    } finally {
-      this.finishingRoom.delete(staffId)
-    }
+    // 실패로 끝난 턴은 완료 보고가 아니다 — 방마다 오류 안내만 올리고, 지시 말풍선은 '오류'로 (안 읽은 보고·보고 알림·글 질문 없음)
+    if (isError) {
+      for (const r of rooms) this.postChat(staffId, t('chat.runError', { error: summary.slice(0, 200) }), undefined, undefined, r)
+      for (const o of origins) this.setDelivery(o.chatId, staffId, { state: 'error' })
+      this.scheduleEmit()
+    } else this.postReports(staffId, s.name, summary, short, origins, rooms, reportTaskId, isAutoCheckTurn)
     // 아직 답할 지시가 남았으면 다음 업무 카드는 그 답까지 마친 뒤에 맡긴다
     // 대표가 일하는 중에 보낸 대기 메시지가 다음 업무 카드보다 먼저다
     if (pending === 0 && !this.releaseWaiting(staffId)) {
@@ -1796,6 +1965,26 @@ export class Office extends EventEmitter<{
     }
     this.checkStall(staffId, summary, isAutoCheckTurn, backgroundTasks, room, this.hasAutonomousOrigin(origins))
     this.releaseHeld(staffId)
+  }
+
+  /** 정상으로 끝난 턴의 보고: 방마다 보고를 올리고, 지시 말풍선을 완료로, 안 읽은 보고·알림, 끝 글의 질문 카드 */
+  private postReports(staffId: string, name: string, summary: string, short: string, origins: Origin[], rooms: string[], reportTaskId: string | undefined, isAutoCheckTurn: boolean) {
+    const room = rooms[0]
+    // 여러 방의 지시를 한 턴에 처리했으면 같은 보고를 그 방들 각각에 올린다
+    const reports = new Map(rooms.map((r) => [r, this.postChat(staffId, summary.slice(0, TASK_RESULT_MAX) || t('notify.chatDone'), undefined, undefined, r, true, reportTaskId ? { taskId: reportTaskId } : {})]))
+    for (const o of origins) this.setDelivery(o.chatId, staffId, { state: 'done', reportId: (reports.get(this.originRoomOf(o, room)) ?? reports.get(room)!).id })
+    // 대표에게 올린 보고 — 직원 카드에 안 읽은 개수로 쌓인다 (패널을 열어 두었으면 화면이 곧바로 읽음 처리한다)
+    this.unreadReports = addUnread(this.unreadReports, staffId)
+    db.saveUnreadReports(this.unreadReports)
+    this.scheduleEmit()
+    this.emit('notify', { title: t('notify.report', { name }), body: short.slice(0, 120) || t('notify.reportDone'), staffId })
+    // 글 질문 카드는 직원당 하나(결재함 카드는 방이 없다)라 보고가 여러 방에 갔어도 하나만 올린다 — 알림 방 기준은 보고 방 중 첫 방
+    this.finishingRoom.set(staffId, room)
+    try {
+      this.registerTextQuestion(staffId, summary, origins, isAutoCheckTurn)
+    } finally {
+      this.finishingRoom.delete(staffId)
+    }
   }
 
   /**
@@ -2377,7 +2566,7 @@ export class Office extends EventEmitter<{
   /** 메뉴바 요약: 오늘 끝낸 업무 수·오늘 비용 */
   todaySummary() {
     const since = startOfDay(new Date())
-    const done = [...this.hired.values()].reduce((n, s) => n + db.resultCountBetween(s.id, since, Date.now() + 1), 0)
+    const done = [...this.hired.values()].filter(countsAsStaff).reduce((n, s) => n + db.resultCountBetween(s.id, since, Date.now() + 1), 0)
     return { done, costUsd: db.usageTotalBetween(since, Date.now() + 1).costUsd }
   }
 
@@ -2436,7 +2625,7 @@ export class Office extends EventEmitter<{
   moveStaff(staffId: string, move: { teamId?: string | null; joinLabIds?: string[]; leaveLabIds?: string[] }) {
     const s = this.hired.get(staffId)
     if (!s) throw new InvalidArgsError(t('officeMsg.errStaffNotFound'))
-    if (s.isPractice) throw new InvalidArgsError(t('officeMsg.errPracticeStaff'))
+    if (!countsAsStaff(s)) throw new InvalidArgsError(t(s.isQuick ? 'officeMsg.errQuickStaff' : 'officeMsg.errPracticeStaff'))
     if (move.teamId && !this.teams.get(move.teamId)) throw new InvalidArgsError(t('officeMsg.errTeamNotFound'))
     if (move.teamId !== undefined && move.teamId !== s.teamId) this.updateStaff(staffId, { teamId: move.teamId })
     for (const id of move.joinLabIds ?? []) {
@@ -2480,7 +2669,7 @@ export class Office extends EventEmitter<{
       if (lab.leadId !== staffId) continue
       for (const id of lab.memberIds) {
         const m = this.hired.get(id)
-        if (m) out.set(m.id, m)
+        if (m && countsAsStaff(m)) out.set(m.id, m)
       }
     }
     out.delete(staffId)
@@ -2517,8 +2706,10 @@ export class Office extends EventEmitter<{
     this.log(staffId, 'status', line)
     this.log(target.id, 'status', line)
     // 버리는 일은 지금 정리한다 — 끊긴 턴의 결과는 끼어들기라 보고로 치지 않으므로, 새 지시의 출처만 남는다 (연결 대기 중이면 interrupt가 보관을 풀며 정리한다)
-    if (interrupt === 'replace' && !this.netParked.has(target.id)) {
-      this.dropWork(target.id)
+    if (interrupt === 'replace') {
+      // 맡긴 리더가 직접 바꾼 일이라 '못 끝냄' 통보는 보내지 않는다 (연결 대기 중이면 보관을 여기서 풀어 정리한다)
+      if (this.netParked.has(target.id)) this.cancelNetPark(target.id, { notifyLeads: false, isFailure: false })
+      else this.dropWork(target.id, { notifyLeads: false })
       this.resumeAfterTalk.delete(target.id) // 전에 멈춰 둔 카드도 다시 이어 가지 않는다
     }
     void this.interrupt(target.id, interrupt === 'replace' ? `${t('staff.msg.replaced', { lead: lead.name })}\n\n${msg}` : msg, [], origin)
@@ -2551,7 +2742,7 @@ export class Office extends EventEmitter<{
     const ids = helpTargetIds(
       staffId,
       { teamMemberIds: team ? this.membersOf(team.id).map((m) => m.id) : [], labMemberIds: labs.map((l) => l.memberIds), isLabLead: labs.some((l) => l.leadId === staffId), isTeamLead: team?.leadId === staffId, leaderPeerIds: this.leaderPeersOf(staffId) },
-      (id) => this.hired.has(id),
+      (id) => { const m = this.hired.get(id); return Boolean(m && countsAsStaff(m)) },
     )
     const out = new Map(ids.map((id) => [id, this.hired.get(id)!]))
     const ctx = helpCtxOf(this.helpOriginsOf(staffId))
@@ -2968,11 +3159,13 @@ export class Office extends EventEmitter<{
                   teamId: this.teamOf(staffId)?.id ?? null,
                   labId: lab?.id ?? null,
                   isAutonomous: this.hasAutonomousOrigin(this.origins.get(staffId) ?? []),
+                  // 하위 업무·취합 보고가 기획을 시킨 방으로 가게 (하위 카드는 cardRoom이 이 방을 물려받는다)
+                  room: this.workRoomOf(staffId),
                 }),
                 assigneeId: staffId,
                 status: 'doing',
               }
-              this.origins.set(staffId, [...(this.origins.get(staffId) ?? []), { kind: 'task', taskId: task.id, room: originRoom(this.origins.get(staffId) ?? []) ?? this.taskRoom(task.id) ?? this.roomOf(staffId) }])
+              this.addCurrentOrigin(staffId, { kind: 'task', taskId: task.id, room: this.taskRoom(task.id) ?? this.roomOf(staffId) })
             }
             // 회의 결과 카드에 이미 들어 있는 할 일은 따로 카드가 없다 — 못 찾았다고 알리지 않는다
             const ownItems = meetingCardItems(task.detail)
@@ -2993,13 +3186,16 @@ export class Office extends EventEmitter<{
               proposedAt: Date.now(),
               absorbedIds: absorbed.ids,
             }
-            this.saveTask({ ...task, plan, status: 'doing', updatedAt: Date.now() })
+            // 방이 정해지지 않은 카드(방 없는 보드 카드)로 기획하면 지금 일의 방을 실어 둔다 — 하위 업무·취합 보고가 그 방으로 가게
+            const workRoom = this.workRoomOf(staffId)
+            const isRoomless = this.taskRoom(task.id) === undefined && workRoom !== undefined
+            this.saveTask({ ...task, ...(isRoomless ? { room: workRoom } : {}), plan, status: 'doing', updatedAt: Date.now() })
             const lead = this.hired.get(staffId)!
-            // 대화방에 확인 카드로: 일을 맡긴 방, 없으면(보드·직원 패널로 맡긴 일) 리드의 랩 방 → 팀 방 → 전체 방
+            // 대화방에 확인 카드로: 카드(기획)의 방, 없으면(보드·직원 패널로 맡긴 일) 리드의 랩 방 → 팀 방 → 지금 방
             const leadLab = this.labsOf(staffId).find((l) => l.leadId === staffId)
-            const planRoomId = originRoom(this.origins.get(staffId) ?? []) ?? (leadLab ? labRoomId(leadLab.id) : this.teamOf(staffId)?.id) ?? this.roomOf(staffId)
-            // 방이 없는 팀·랩(연습·프로젝트)이면 전체 방
-            const planRoom = findRoom(planRoomId, [...this.teams.values()], [...this.labs.values()])?.room
+            const planRoomId = this.taskRoom(task.id) ?? (leadLab ? labRoomId(leadLab.id) : this.teamOf(staffId)?.id) ?? this.roomOf(staffId)
+            // 전체 방은 그대로, 방이 없는 팀·랩(연습·프로젝트)이면 지금 일의 방
+            const planRoom = planRoomId === GLOBAL_ROOM ? GLOBAL_ROOM : findRoom(planRoomId, [...this.teams.values()], [...this.labs.values()], [...this.chatGroups.values()])?.room
             this.postChat(staffId, t('staff.tool.plan.posted', { title: task.title, n: plan.subtasks.length }), undefined, undefined, planRoom, false, { plan: { taskId: task.id, proposedAt: plan.proposedAt } })
             const absorbNote = absorbs?.length
               ? `${t('staff.tool.plan.absorbFound', { n: absorbed.ids.length })}${absorbed.unmatched.length ? t('staff.tool.plan.absorbMissing', { titles: absorbed.unmatched.join(', ') }) : ''}`
@@ -3024,7 +3220,8 @@ export class Office extends EventEmitter<{
             if (mustUseHelp(this.delegatesOf(staffId).length, this.helpTargetsOf(staffId).length)) return text(t('staff.tool.add.useHelp'))
             const lab = this.labsOf(staffId).find((l) => l.leadId === staffId) ?? null
             // 자율 업무를 하다 올린 카드는 자율을 물려받는다
-            const card = this.createTask({ title, detail: detail ?? '', teamId: this.teamOf(staffId)?.id ?? null, labId: lab?.id ?? null, isAutonomous: this.hasAutonomousOrigin(this.origins.get(staffId) ?? []) })
+            // 일하던 방을 카드에 실어 둔다 — 이 카드의 보고·질문이 담당자 소속 방이 아니라 그 일이 온 방으로 간다
+            const card = this.createTask({ title, detail: detail ?? '', teamId: this.teamOf(staffId)?.id ?? null, labId: lab?.id ?? null, isAutonomous: this.hasAutonomousOrigin(this.origins.get(staffId) ?? []), room: this.workRoomOf(staffId) })
             // 담당자 이름은 나·내 시키기 대상만 인정한다 — 프로젝트·팀 밖 사람에게 카드로 일을 배정하는 우회를 막는다 (밖의 사람은 리더 간 협업 요청으로)
             const assignable = [this.hired.get(staffId), ...this.delegatesOf(staffId)]
             const named = assignee?.trim() ? assignable.find((s) => s?.name === assignee.trim()) : undefined
@@ -3094,6 +3291,8 @@ export class Office extends EventEmitter<{
   }
 
   private saveLabObj(lab: Lab) {
+    // 빠른 대화 임시 직원은 프로젝트 멤버로 넣지 않는다
+    if (lab.memberIds.some((id) => this.hired.get(id)?.isQuick)) lab = { ...lab, memberIds: lab.memberIds.filter((id) => !this.hired.get(id)?.isQuick), leadId: lab.leadId && this.hired.get(lab.leadId)?.isQuick ? null : lab.leadId }
     db.saveLab(lab)
     this.labs.set(lab.id, lab)
     this.scheduleEmit()
@@ -3245,7 +3444,7 @@ export class Office extends EventEmitter<{
     // 직원이 없거나 staffId가 비면(직원 0명 포함) 앱이 직접 쓴다 — 사용량은 비서 몫
     const s = staffId ? this.hired.get(staffId) : undefined
     if (staffId && !s) throw new Error(t('officeMsg.errStaffNotFoundDot'))
-    const hiredRoles = [...new Set([...this.hired.values()].map((x) => x.role))]
+    const hiredRoles = [...new Set([...this.hired.values()].filter(countsAsStaff).map((x) => x.role))]
     const roles = (hiredRoles.length ? hiredRoles : ['기획자', '디자이너', '개발자', '리뷰어', 'QA']).join(', ')
     const r = await askOnce({
       cwd: s ? s.cwd : os.homedir(),
@@ -3447,6 +3646,13 @@ export class Office extends EventEmitter<{
     run.pendingOutput = ''
     if (approve) this.advanceRun(run)
     else this.runStep(run, feedback.trim())
+  }
+
+  /** 절차 단계가 실패로 끝났다: 절차를 멈추고, 이어진 업무 카드는 '실패' 표시로 할 일에 */
+  private failRun(runId: string, failure: TaskFailure) {
+    const run = this.runs.find((r) => r.id === runId)
+    this.stopRun(runId)
+    if (run?.taskId) this.returnToTodo(run.taskId, failure)
   }
 
   stopRun(runId: string) {
@@ -3812,7 +4018,7 @@ export class Office extends EventEmitter<{
       case 'purchases':
         return db.countLedgerKind('purchase', since)
       case 'staff':
-        return [...this.hired.values()].filter((s) => !s.isPractice).length
+        return [...this.hired.values()].filter(countsAsStaff).length
       case 'level':
         return this.company().level
       // 레벨 기본 지급(무료)은 빼고 센다. 세트는 품목마다 직접 산 것이 있어야 완성 — 이미 받은 업적은 그대로(ach: 키)
@@ -3992,12 +4198,12 @@ export class Office extends EventEmitter<{
     return restored
   }
 
-  createTask(input: { title: string; detail: string; teamId: string | null; labId?: string | null; attachments?: Attachment[]; isAutonomous?: boolean }): Task {
+  createTask(input: { title: string; detail: string; teamId: string | null; labId?: string | null; attachments?: Attachment[]; isAutonomous?: boolean; room?: string }): Task {
     const now = Date.now()
     // 휴대폰에서 자율 진행을 켜면 PC에 알린다
     if (input.isAutonomous) this.notifyRemoteChange('notify.remoteAutonomy')
-    const { isAutonomous, ...rest } = input
-    const task: Task = { id: crypto.randomUUID(), ...rest, labId: input.labId ?? null, status: 'todo', assigneeId: null, result: '', createdAt: now, updatedAt: now, ...(isAutonomous ? { isAutonomous: true } : {}) }
+    const { isAutonomous, room, ...rest } = input
+    const task: Task = { id: crypto.randomUUID(), ...rest, ...(room !== undefined ? { room } : {}), labId: input.labId ?? null, status: 'todo', assigneeId: null, result: '', createdAt: now, updatedAt: now, ...(isAutonomous ? { isAutonomous: true } : {}) }
     this.saveTask(task)
     return task
   }
@@ -4018,6 +4224,8 @@ export class Office extends EventEmitter<{
     if (!task || !s) return
     // 연습 카드·연습 직원은 AI 대신 튜토리얼로 (둘 중 하나만 연습이면 시작하지 않는다)
     if (task.isPractice || s.isPractice) return
+    // 빠른 대화 임시 직원은 업무 카드를 받지 않는다
+    if (!countsAsStaff(s)) return
     // 이미 이 카드를 하는 중이면 다시 보내지 않는다 (시작을 두 번 눌러도 지시는 한 번)
     if (this.isWorkingOn(staffId, taskId)) return
     this.taskStartedAt.set(taskId, Date.now())
@@ -4076,7 +4284,7 @@ export class Office extends EventEmitter<{
     if (!t?.plan?.isPaused) return
     // 취합 중에 멈췄으면 하위가 다 끝난 상태라 advancePlan이 취합을 다시 맡긴다
     this.saveTask({ ...t, plan: { ...t.plan, isPaused: false, isAggregating: false }, updatedAt: Date.now() })
-    this.postChat('me', `▶️ "${t.title}" 기획을 다시 진행해요.`.slice(0, CHAT_TEXT_MAX))
+    this.postChat('me', `▶️ "${t.title}" 기획을 다시 진행해요.`.slice(0, CHAT_TEXT_MAX), undefined, undefined, this.planRoom(t.id))
     this.advancePlan(t.id)
   }
 
@@ -4117,7 +4325,7 @@ export class Office extends EventEmitter<{
       if (card && card.status === 'todo' && !card.parentId) this.saveTask({ ...card, parentId: t.id, updatedAt: now })
     }
     this.saveTask({ ...t, plan: { ...t.plan, status: 'approved', feedback, childIds }, updatedAt: now })
-    this.postChat('me', `✅ "${t.title}" 기획안 승인 — 하위 업무 ${childIds.length}건을 순서대로 진행해요.${feedback ? ` 코멘트: ${feedback}` : ''}`.slice(0, CHAT_TEXT_MAX))
+    this.postChat('me', `✅ "${t.title}" 기획안 승인 — 하위 업무 ${childIds.length}건을 순서대로 진행해요.${feedback ? ` 코멘트: ${feedback}` : ''}`.slice(0, CHAT_TEXT_MAX), undefined, undefined, this.planRoom(t.id))
     this.advancePlan(t.id)
     return true
   }
@@ -4275,6 +4483,11 @@ export class Office extends EventEmitter<{
 
   /** 업무 카드 저장 — 상태 보드 상태(work)는 여기서 보드 칸·대표 응답 대기 여부를 따라 함께 바꾼다 (상태를 바꾸는 곳은 이 한 곳) */
   private saveTask(t: Task) {
+    // 실패 표시는 할 일 칸에서만 — 다시 진행·검토·완료로 옮기면 지운다
+    if (t.failure && t.status !== 'todo') {
+      const { failure: _f, ...rest } = t
+      t = rest
+    }
     const cur = t.work ?? normalizeWork(null, this.tasks.get(t.id)?.status ?? t.status)
     const work = followTask(cur, t.status, this.isAwaitingUser(t), { now: Date.now() })
     if (work !== t.work) t = { ...t, work }
@@ -4435,7 +4648,7 @@ export class Office extends EventEmitter<{
     const meeting: Meeting = {
       id: crypto.randomUUID(),
       topic: t('gallery.demo.topic', { date: fmtDate(now, { month: 'numeric', day: 'numeric' }) }),
-      participantIds: groups.map((g) => g.staffId).filter((id) => this.hired.has(id)).slice(0, meetingRoomOf(this.company().level).capacity),
+      participantIds: groups.map((g) => g.staffId).filter((id) => this.isCountedStaff(id)).slice(0, meetingRoomOf(this.company().level).capacity),
       rounds: 1,
       status: 'running',
       messages: [],
@@ -4634,7 +4847,8 @@ export class Office extends EventEmitter<{
       id: crypto.randomUUID(),
       topic: input.topic,
       // 회의실 크기(레벨별 최대 인원)를 넘으면 앞에서부터 그만큼만
-      participantIds: [...new Set(input.participantIds)].filter((id) => this.hired.has(id)).slice(0, meetingRoomOf(this.company().level).capacity),
+      // 연습 회의(연습 직원)는 아래에서 따로 받는다 — 빠른 대화 임시 직원만 뺀다
+      participantIds: [...new Set(input.participantIds)].filter((id) => this.hired.get(id)?.isPractice || this.isCountedStaff(id)).slice(0, meetingRoomOf(this.company().level).capacity),
       rounds: input.rounds,
       status: 'running',
       messages: [],
@@ -4642,6 +4856,7 @@ export class Office extends EventEmitter<{
       createdAt: Date.now(),
     }
     if (meeting.participantIds.some((id) => this.hired.get(id)?.isPractice)) return this.startPracticeMeeting(meeting)
+    meeting.participantIds = meeting.participantIds.filter((id) => this.isCountedStaff(id))
     this.meetings = [meeting, ...this.meetings].slice(0, MEETING_KEEP)
     db.saveMeeting(meeting)
     this.postChat('me', `📋 회의 시작: ${meeting.topic}`)
@@ -5029,6 +5244,14 @@ ${m.summary}`, teamId: this.teamOf(chair.id)?.id ?? null, labId: lab?.id ?? null
    * 아무도 안 부르면 팀장·랩 리드가 받는다
    */
   sendChat(text: string, attachments: Attachment[] = [], room?: string, mode?: ChatSendMode, replyToId?: number, scheduled?: ChatMessage['scheduled']) {
+    // 빠른 대화 방은 그 임시 직원에게만 (멘션·단체방 규칙 없음)
+    if (room?.startsWith(QUICK_ROOM_PREFIX)) {
+      // 지워졌거나 id가 빈 빠른 대화 방(오래된 창·예약·휴대폰)에 온 글은 버린다 — 전체 방으로 흘리지 않는다
+      const quick = this.hired.get(quickStaffIdOf(room) ?? '')
+      if (!quick?.isQuick) return
+      const q = replyToId ? db.getChat(replyToId) : null
+      return this.sendQuickChat(quick, text, attachments, mode, q ? { id: q.id, from: q.from, text: q.text.replace(/\s+/g, ' ').trim().slice(0, REPLY_QUOTE_MAX) } : undefined)
+    }
     const allTeams = [...this.teams.values()]
     const allLabs = [...this.labs.values()]
     const info = findRoom(room, allTeams, allLabs, [...this.chatGroups.values()])
@@ -5043,8 +5266,8 @@ ${m.summary}`, teamId: this.teamOf(chair.id)?.id ?? null, labId: lab?.id ?? null
     const mine = this.postChat('me', text, attachments, undefined, room, false, { ...(replyTo ? { replyTo } : {}), ...(scheduled ? { scheduled } : {}) })
     // 앱이 직접 처리하는 단체방 명령: /데모데이
     if (!room && /^\/(데모데이|demoday)$/i.test(text.trim())) return this.runDemoDayNow()
-    // 튜토리얼 연습 직원·팀·랩은 단체방 대상에서 뺀다 (AI 호출 없음)
-    const allHired = [...this.hired.values()].filter((s) => !s.isPractice)
+    // 튜토리얼 연습 직원·팀·랩은 단체방 대상에서 뺀다 (AI 호출 없음). 빠른 대화 임시 직원은 자기 방에서만 받는다
+    const allHired = [...this.hired.values()].filter(countsAsStaff)
     const hired = info ? chatRoomMembers(info, allHired) : allHired
     if (hired.length === 0) {
       if (!info) return say(t('officeMsg.sendNoStaff'))
@@ -5135,20 +5358,55 @@ ${m.summary}`, teamId: this.teamOf(chair.id)?.id ?? null, labId: lab?.id ?? null
   }
 
   private roomAlive(room: string): boolean {
+    const quickId = quickStaffIdOf(room)
+    if (quickId) return Boolean(this.hired.get(quickId)?.isQuick)
     return roomExists(room, [...this.teams.values()], [...this.labs.values()], [...this.chatGroups.values()])
   }
 
   private homeRoomOf(staffId: string): string | undefined {
     const s = this.hired.get(staffId)
     if (!s || s.isPractice) return undefined
+    // 빠른 대화 임시 직원의 결재·질문·보고는 자기 방으로
+    if (s.isQuick) return quickRoomId(s.id)
     return homeRoom(s, [...this.teams.values()], [...this.labs.values()])
   }
 
   /** 직원이 지금 하는 일의 방 ('' = 전체 방) — 하던 일이 없으면 방금 끝낸 일의 방, 그것도 없으면 소속 방 */
   private roomOf(from: string): string {
-    const origins = this.origins.get(from) ?? []
+    // 턴을 마무리하는 중(글 질문 알림 등)이면 끝낸 일의 방 — 남은 줄 선 지시의 방으로 가지 않게
+    const finishing = this.finishingRoom.get(from)
+    if (finishing !== undefined) return finishing
+    const origins = this.currentOrigins(from)
     if (origins.length) return this.roomForOrigins(from, origins)
-    return this.finishingRoom.get(from) ?? this.homeRoomOf(from) ?? GLOBAL_ROOM
+    return this.homeRoomOf(from) ?? GLOBAL_ROOM
+  }
+
+  /** 지금 도는 턴의 지시들 — 일하는 중에 받아 줄 선 지시(아직 전하지 않은 몫)는 뺀다 (그 방으로 지금 일의 글이 새지 않게) */
+  private currentOrigins(staffId: string): Origin[] {
+    const origins = this.origins.get(staffId) ?? []
+    return origins.slice(0, Math.max(1, origins.length - this.manager.backlog(staffId)))
+  }
+
+  /** 지금 턴의 일에 출처를 더한다 (기획 카드 등) — 줄 선 지시 앞에 넣어 줄 선 몫(뒤쪽 backlog개)이 어긋나지 않게 */
+  private addCurrentOrigin(staffId: string, origin: Origin) {
+    const origins = this.origins.get(staffId) ?? []
+    const at = Math.max(0, origins.length - this.manager.backlog(staffId))
+    this.origins.set(staffId, [...origins.slice(0, at), origin, ...origins.slice(at)])
+  }
+
+  /** 지금 하는 일이 온 방 — 정해진 방이 없으면(직원 패널·방 없는 보드 카드) undefined. 직원이 만드는 카드에 실어 보고가 그 방으로 가게 */
+  private workRoomOf(staffId: string): string | undefined {
+    for (const o of this.currentOrigins(staffId)) {
+      const r = resolveOriginRoom(o, (id) => this.taskRoom(id), (x) => this.roomAlive(x))
+      if (r !== undefined) return r
+    }
+    return undefined
+  }
+
+  /** 기획 알림(승인·멈춤·다시 진행)을 올릴 방: 기획 카드의 방, 정해진 방이 없으면 전체 방 */
+  private planRoom(taskId: string): string {
+    const room = this.taskRoom(taskId)
+    return room !== undefined && this.roomAlive(room) ? room : GLOBAL_ROOM
   }
 
   /** 업무 카드의 방: 대화 지시로 만든 카드면 그 방, 기획 하위 업무면 기획 카드의 방, 랩 카드면 랩 방 (그 밖·방 없는 랩은 전체 방) */
@@ -5183,7 +5441,8 @@ ${m.summary}`, teamId: this.teamOf(chair.id)?.id ?? null, labId: lab?.id ?? null
    */
   private cardForChatWork(staffId: string) {
     const s = this.hired.get(staffId)
-    if (!s || s.isPractice || s.status !== 'working') return
+    // 빠른 대화는 업무 보드에 카드를 만들지 않는다 (Claude Code 세션처럼 대화만)
+    if (!s || !countsAsStaff(s) || s.status !== 'working') return
     const origins = this.origins.get(staffId) ?? []
     const current = origins.slice(0, Math.max(1, origins.length - this.manager.backlog(staffId)))
     const o = current.find((x) => x.kind === 'chat' && x.chatId && !x.cardId)
@@ -5355,7 +5614,8 @@ ${m.summary}`, teamId: this.teamOf(chair.id)?.id ?? null, labId: lab?.id ?? null
     const logs = db.allLogsBetween(since, until)
     const lines = [`# ${tr('report.title', { date: fmtDate(day, { month: 'long', day: 'numeric', weekday: 'short' }) })}`, '']
     let total = 0
-    for (const s of this.hired.values()) {
+    // 빠른 대화 사용량은 보고서 합계에 넣지 않는다 (따로 합산)
+    for (const s of [...this.hired.values()].filter(countsAsStaff)) {
       const mine = logs.filter((l) => l.staffId === s.id)
       const usage = db.usageSince(s.id, since, until)
       total += usage.costUsd
@@ -5444,7 +5704,14 @@ ${m.summary}`, teamId: this.teamOf(chair.id)?.id ?? null, labId: lab?.id ?? null
     this.scheduleEmit()
   }
 
+  /** 회사 인원으로 세는 고용 직원인지 (연습·빠른 대화 제외) — 회의 참가자 등 */
+  private isCountedStaff(id: string) {
+    const s = this.hired.get(id)
+    return Boolean(s && countsAsStaff(s))
+  }
+
   private nextDesk() {
+    // 빠른 대화 임시 직원은 책상이 없다(-1)
     const used = new Set([...this.hired.values(), ...this.external].map((s) => s.deskIndex))
     let i = 0
     while (used.has(i)) i++

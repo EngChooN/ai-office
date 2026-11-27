@@ -11,6 +11,7 @@ import { PcOnlyState } from '@/components/pc-only-state'
 import { IS_REMOTE_SCREEN } from '@/shell'
 import { ConnectSection } from './connect/ConnectSection'
 import { SECTION_ID } from './settingsSections'
+import { QuickApprovalToggle } from './QuickChat'
 import { PROVIDER_SECTION_ID, ProviderSection } from './ProviderCards'
 import { COMPANY_LEVELS, type DayNight, type HooksStatus, type Settings, type ThemeId } from '@shared/types'
 import { DARK_ONLY_THEMES, DEFAULT_UI_THEME, UI_THEME_GROUPS, type UiMode } from '@shared/uiTheme'
@@ -409,6 +410,15 @@ export function SettingsPage() {
                 <input type="checkbox" checked={settings.tokenSaverMode === true} onChange={(e) => update({ tokenSaverMode: e.target.checked })} /> {t('settingsPage.tokenSaver.toggle')}
               </label>
             </Section>
+            {/* 빠른 대화 시작 창의 '파일 고칠 때' 기본값 (휴대폰은 1차에서 빠른 대화가 없다) */}
+            {!IS_REMOTE_SCREEN && (
+              <Section title={t('quick.settings.title')} description={t('quick.settings.desc')}>
+                <div className="flex items-center gap-3">
+                  <span className="text-sm">{t('quick.approval.label')}</span>
+                  <QuickApprovalToggle value={settings.quickApproval ?? 'ask'} onChange={(quickApproval) => update({ quickApproval })} />
+                </div>
+              </Section>
+            )}
             <Section title={t('settingsPage.reportStyle.title')} description={t('settingsPage.reportStyle.desc')}>
               <div className="space-y-1.5">
                 {(['easy', 'expert'] as const).map((style) => (

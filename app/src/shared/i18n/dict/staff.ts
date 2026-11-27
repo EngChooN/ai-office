@@ -414,6 +414,18 @@ export default {
     ja: '{name}さんは頼まれた仕事を終えられませんでした（中止）。必要なら別の方法を探すか、もう一度頼んでください。',
     zh: '{name} 未能完成你请求的工作（已中止）。如有需要，请另想办法或再次求助。',
   },
+  'staff.msg.delegateFailed.error': {
+    ko: '[팀원 못 끝냄] {name} 님이 맡긴 일을 못 끝냈습니다(오류: {reason}). 필요하면 다시 맡기거나 다른 방법을 찾으세요.',
+    en: '[Member could not finish] {name} could not finish the work you delegated (error: {reason}). Delegate again or find another way if needed.',
+    ja: '[メンバー未完了] {name}さんは任された仕事を終えられませんでした（エラー: {reason}）。必要なら再度任せるか、別の方法を探してください。',
+    zh: '[成员未完成] {name} 未能完成你委派的工作（出错：{reason}）。如有需要，请重新委派或另想办法。',
+  },
+  'staff.msg.delegateFailed.stopped': {
+    ko: '[팀원 못 끝냄] {name} 님이 맡긴 일을 못 끝냈습니다(중지). 필요하면 다시 맡기거나 다른 방법을 찾으세요.',
+    en: '[Member could not finish] {name} could not finish the work you delegated (stopped). Delegate again or find another way if needed.',
+    ja: '[メンバー未完了] {name}さんは任された仕事を終えられませんでした（中止）。必要なら再度任せるか、別の方法を探してください。',
+    zh: '[成员未完成] {name} 未能完成你委派的工作（已中止）。如有需要，请重新委派或另想办法。',
+  },
   'staff.msg.helpDeclined': {
     ko: '[협업 거절] {name}({role}): 이 요청은 할 수 없다고 합니다. 사유: {text}\n(다른 방법을 찾거나 대표에게 알려 주세요)',
     en: '[Request declined] {name} ({role}) cannot do this. Reason: {text}\n(Find another way or tell the owner)',

@@ -7,6 +7,7 @@ import { keyName } from '@/lib/keyName'
 import { useOffice } from '@/store'
 import { fmtDate, t } from '@shared/i18n'
 import { findRoom } from '@shared/chatRooms'
+import { quickStaffIdOf } from '@shared/quickChat'
 import { stepIndex } from '@shared/chatFind'
 import { useChatGroups } from './chatRoomHooks'
 import type { ChatDelivery, ChatMessage, ChatReservation, ChatReservationInput, ChatSearchHit, Staff } from '@shared/types'
@@ -473,7 +474,15 @@ export function ChatSearch({ room, onClose, onQuery }: { room: string | undefine
     setIndex(next)
     void goToMessage(hits[next].message.id)
   }
-  const roomName = (r: string | undefined) => findRoom(r, teams, labs, groups)?.name ?? t('chat.room.allName')
+  const roomName = (r: string | undefined) => {
+    // 빠른 대화 방은 팀·랩·그룹 목록에 없다 — 그 대화 제목으로 (누르면 goToMessage가 그 방을 연다)
+    const quickId = quickStaffIdOf(r)
+    if (quickId) {
+      const q = staff.find((s) => s.id === quickId)
+      return `${t('quick.section')} · ${q?.quickTitle || t('quick.untitled')}`
+    }
+    return findRoom(r, teams, labs, groups)?.name ?? t('chat.room.allName')
+  }
   const scopeBtn = (value: 'room' | 'all', label: string) => (
     <button type="button" aria-pressed={scope === value} onClick={() => setScope(value)} className={cn('rounded-full border px-2 py-0.5 text-[11px]', scope === value ? 'bg-primary text-primary-foreground border-primary' : 'text-muted-foreground hover:bg-accent')}>
       {label}

@@ -70,7 +70,7 @@ export function BoardPage() {
   const reReviews = useReReviews(tasks)
   const [bandTaskId, setBandTaskId] = useState<string | null>(null)
   const bandTask = bandTaskId ? byId.get(bandTaskId) : undefined
-  const hiredStaff = useOffice(useShallow((s) => s.staff.filter((x) => x.kind === 'hired')))
+  const hiredStaff = useOffice(useShallow((s) => s.staff.filter((x) => x.kind === 'hired' && !x.isQuick)))
   const teams = useOffice(useShallow((s) => s.teams.filter((tm) => tm.kind === 'hired')))
   // 새 카드에 쓰던 값은 다른 페이지에 갔다 와도 남는다 (만들면 비운다)
   const [title, setTitle] = useDraft('board:new:title', '')

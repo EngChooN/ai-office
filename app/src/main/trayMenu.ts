@@ -6,6 +6,7 @@ import { AUTO_DAILY_DEFAULT, AUTO_HOURS, formatRemaining, type AutoApprovePlan }
 import { remoteActivity } from './remote/protocol.ts'
 import type { OfficeSnapshot, Staff } from '../shared/types'
 import { t } from '../shared/i18n/index.ts'
+import { countsAsStaff } from '../shared/quickChat.ts'
 
 const TEXT_MAX = 40
 const APPROVALS_MAX = 15
@@ -78,7 +79,8 @@ const staffItem = (s: Staff, actions: TrayMenuActions): MenuItemConstructorOptio
 
 /** 직원 전체: 팀별·랩별 하위 메뉴 (한 사람이 팀과 랩에 함께 보일 수 있다). 팀 없는 직원·외부 직원도 빠짐없이 */
 function staffMenu(snap: OfficeSnapshot, actions: TrayMenuActions): MenuItemConstructorOptions[] {
-  const hired = snap.staff.filter((s) => s.kind === 'hired')
+  // 연습·빠른 대화 임시 직원은 직원 목록에서 뺀다 (결재·일하는 중 수·모두 멈추기에는 그대로 들어간다)
+  const hired = snap.staff.filter((s) => s.kind === 'hired' && countsAsStaff(s))
   const external = snap.staff.filter((s) => s.kind === 'external')
   const working = (list: Staff[]) => list.filter((s) => s.status === 'working').length
   const group = (name: string, list: Staff[]): MenuItemConstructorOptions => ({
@@ -201,7 +203,7 @@ export function buildTrayMenu(snap: OfficeSnapshot, extra: TrayExtra, actions: T
     })
   items.push({ label: t('tray.openInbox'), click: () => actions.openView('inbox') }, { label: t('tray.openBoard'), click: () => actions.openView('board') })
   const staff = staffMenu(snap, actions)
-  if (staff.length) items.push({ label: t('tray.allStaff', { n: snap.staff.length }), submenu: staff })
+  if (staff.length) items.push({ label: t('tray.allStaff', { n: snap.staff.filter((s) => s.kind === 'external' || countsAsStaff(s)).length }), submenu: staff })
   items.push({ type: 'separator' })
 
   const r = extra.remote

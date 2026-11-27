@@ -22,6 +22,7 @@ register('./officeLoaderHooks.mjs', import.meta.url)
 const { Office } = await import('../src/main/office.ts')
 const { ClaudeRuntime } = await import('../src/main/ai/claude.ts')
 const db = await import('../src/main/db.ts')
+const { labRoomId } = await import('../src/shared/chatRooms.ts')
 const { startLocalMcp, stopLocalMcp } = await import('../src/main/mcp/localMcp.ts')
 
 await startLocalMcp()
@@ -175,4 +176,115 @@ test('위임: 팀 방에서 시킨 리드의 보고는 팀 방, 전체 방에서
     await settle()
     assert.deepEqual(reportRooms(a), [want])
   }
+})
+
+// ── 지시한 방에서만: 팀장이 프로젝트 방 일을 하며 만든 카드·멈춤 안내·줄 선 지시 (실제 기록에서 팀 방으로 샌 경로) ──
+
+const toolOf = () => office as unknown as { officeMcp: Map<string, { config: { url: string; headers: Record<string, string> } }> }
+async function callTool(staffId: string, name: string, args: Record<string, unknown>) {
+  const cfg = toolOf().officeMcp.get(staffId)?.config
+  assert.ok(cfg, '직원 세션의 사무실 도구가 등록돼 있다')
+  const res = await fetch(cfg.url, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream', ...cfg.headers },
+    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name, arguments: args } }),
+  })
+  const body = (await res.json()) as { result: { content: { text: string }[] } }
+  return body.result.content[0].text
+}
+/** 고용 인사를 뺀 직원 글 (인사는 소속 방에 올라가는 게 맞다) */
+const postsOf = (id: string) => db.recentChat(300).filter((m) => m.from === id && !m.text.includes('잘 부탁드려요'))
+
+/** 팀장 a·팀원 b(프론트 팀) + a가 멤버인 프로젝트(리드는 다른 사람) */
+async function teamInProject() {
+  const { team, a, b } = await oneTeam()
+  const pl = hire('김리드', null)
+  const lab = office.createLab({ name: '앱', color: '#123', goal: '', cwd: root, leadId: pl, memberIds: [pl, a] })
+  await settle()
+  return { team, a, b, labRoom: labRoomId(lab.id) }
+}
+
+test('프로젝트 방 일을 하던 팀장이 add_task로 팀원에게 맡긴 카드: 카드에 그 방이 실리고, 팀원의 보고는 팀 방이 아니라 프로젝트 방으로', async () => {
+  const { team, a, b, labRoom } = await teamInProject()
+  inst(a, labRoom, '프로젝트 방 일')
+  rt(a).init()
+  await flush()
+  const reply = await callTool(a, 'add_task', { title: '화면 고치기', assignee: '최팀원' })
+  assert.match(reply, /최팀원/)
+  const card = snap().tasks.find((x) => x.title === '화면 고치기')!
+  assert.equal(card.room, labRoom, '카드에 일하던 방을 싣는다')
+  assert.equal(db.loadTasks().find((x) => x.id === card.id)?.room, labRoom, '다시 켜도 남는다')
+  rt(b).init()
+  rt(b).result('고쳤습니다')
+  await settle()
+  assert.deepEqual(reportRooms(b), [labRoom])
+  assert.ok(!postsOf(b).some((m) => m.room === team.id), '팀 방에는 아무것도 올리지 않는다')
+})
+
+test('프로젝트 방 일을 하던 팀장이 새 기획안을 올리면: 기획 카드에 그 방이 실리고, 하위 업무 보고도 프로젝트 방으로', async () => {
+  const { team, a, b, labRoom } = await teamInProject()
+  inst(a, labRoom, '큰 일')
+  rt(a).init()
+  await flush()
+  await callTool(a, 'propose_plan', { title: '큰 기획', spec: '나눠서 진행', subtasks: [{ title: '하위 일', detail: '…', assignee: '최팀원' }] })
+  const plan = snap().tasks.find((x) => x.plan && x.title === '큰 기획')!
+  assert.equal(plan.room, labRoom)
+  assert.equal(postsOf(a).find((m) => m.plan)?.room, labRoom, '기획안 확인 카드도 그 방')
+  assert.equal(office.reviewPlan(plan.id, true, ''), true)
+  await settle()
+  assert.equal(db.recentChat(300).find((m) => m.from === 'me' && m.text.includes('기획안 승인'))?.room, labRoom, '기획 승인 알림도 그 방')
+  rt(b).init()
+  rt(b).result('하위 일 끝')
+  await settle()
+  assert.deepEqual(reportRooms(b), [labRoom])
+  assert.ok(!postsOf(b).some((m) => m.room === team.id))
+})
+
+test('멈춤 안내는 하던 일의 방에 — 받은 일을 비운 뒤라 소속 팀 방으로 새지 않는다', async () => {
+  const { b, labRoom } = await teamInProject()
+  inst(b, labRoom, '프로젝트 방 일')
+  rt(b).init()
+  void office.interrupt(b)
+  await flush()
+  rt(b).result('')
+  await settle()
+  const posts = postsOf(b)
+  assert.ok(posts.length > 0, '멈춤 안내가 올라간다')
+  assert.ok(posts.every((m) => m.room === labRoom), JSON.stringify(posts.map((m) => [m.room, m.text])))
+})
+
+test('줄 선 지시의 방으로 지금 일의 글이 새지 않는다: 직원 창 지시를 하던 팀장의 위임 글은 프로젝트 방이 아니라 평소 방', async () => {
+  const { team, a, labRoom } = await teamInProject()
+  inst(a, undefined, '직원 창에서 시킨 일')
+  rt(a).init()
+  inst(a, labRoom, '프로젝트 방에서 보낸 다음 일') // 일하는 중이라 줄을 선다
+  await flush()
+  delegate(a, '최팀원', '이것 해 주세요')
+  const line = postsOf(a).find((m) => m.text.startsWith('@최팀원'))
+  assert.equal(line?.room, team.id)
+})
+
+test('줄 선 지시가 있을 때 올린 새 기획 카드는 지금 일의 방 — 줄 선 프로젝트 방 지시의 방을 물려받지 않는다', async () => {
+  const { a, labRoom } = await teamInProject()
+  inst(a, undefined, '직원 창의 현재 일')
+  rt(a).init()
+  inst(a, labRoom, '아직 처리하지 않은 프로젝트 일')
+  await flush()
+  await callTool(a, 'propose_plan', { title: '현재 일의 기획', spec: '나눠서 진행', subtasks: [{ title: '하위 일', detail: '상세', assignee: '최팀원' }] })
+  const plan = snap().tasks.find((x) => x.title === '현재 일의 기획')!
+  assert.notEqual(plan.room, labRoom)
+  assert.notEqual(postsOf(a).find((m) => m.plan)?.room, labRoom, '기획안 확인 카드도')
+})
+
+test('턴 끝 글 질문 알림은 끝낸 일의 방 — 줄 선 다음 지시의 방으로 가지 않는다', async () => {
+  const { team, b, labRoom } = await teamInProject()
+  inst(b, team.id, '팀 방의 현재 일')
+  rt(b).init()
+  inst(b, labRoom, '아직 처리하지 않은 프로젝트 일')
+  await flush()
+  rt(b).result('어느 쪽으로 할까요?\n1. 빠른 길\n2. 안전한 길')
+  await settle()
+  const question = postsOf(b).find((m) => m.approval)
+  assert.ok(question, '질문 알림이 올라간다')
+  assert.equal(question.room, team.id)
 })

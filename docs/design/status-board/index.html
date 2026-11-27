@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>상태 보드 · 디자인 시안 (5개 항목 × 2~3안)</title>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;background:#eef0f3;color:#14161b;font:14px/1.55 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif}
+  header.top{background:#fff;border-bottom:1px solid #d7dbe1;padding:16px 28px}
+  header.top h1{font-size:19px;margin:0 0 4px}
+  header.top p{margin:2px 0;color:#565b63;font-size:13px}
+  nav.toc{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  nav.toc a{font-size:12.5px;padding:4px 10px;border:1px solid #d7dbe1;border-radius:99px;color:#14161b;text-decoration:none;background:#f8f9fb}
+  main{padding:8px 28px 60px}
+  section.q{margin:26px 0 40px}
+  section.q>h2{font-size:18px;margin:0 0 4px}
+  section.q>.lead{color:#565b63;margin:0 0 14px;max-width:1100px}
+  .opt{background:#fff;border:1px solid #d7dbe1;border-radius:16px;padding:16px 18px 18px;margin:0 0 18px}
+  .opt.rec{border:2px solid #4b3bc7}
+  .opt h3{font-size:15.5px;margin:0 0 2px}
+  .opt .one{color:#454a52;font-size:13px;margin:0 0 4px;max-width:1150px}
+  .opt .pc{font-size:12.5px;color:#454a52;margin:0 0 12px;max-width:1150px}
+  .opt .pc b{color:#0a7e3a}.opt .pc i{font-style:normal;color:#b3261e;font-weight:600}
+  .tag{display:inline-block;font-size:11px;padding:1px 8px;border-radius:99px;background:#14161b;color:#fff;margin-left:6px;vertical-align:2px;font-weight:600}
+  .tag.rec{background:#4b3bc7}.tag.meet{background:#7a5a00}
+  .pair{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start}
+  .cap{font-size:11.5px;color:#565b63;margin:0 0 5px;font-weight:600;letter-spacing:.02em}
+  .note{background:#fff;border:1px solid #d7dbe1;border-radius:14px;padding:12px 18px;max-width:1150px;font-size:13px}
+  .note h4{margin:4px 0 6px;font-size:14px}
+  .note ul{margin:4px 0 8px;padding-left:18px}
+  body.only section.q{display:none} body.only section.q.show{display:block} body.only header.top nav, body.only .global{display:none}
+
+  /* ── 테마 변수: 데스크톱(라벤더) ── */
+  .dl{--bg:#F6F5FB;--card:#FFFFFF;--fg:#221F33;--mu:#66627F;--mbg:#ECEAF6;--bd:#DEDAF0;--pri:#6C5CE7;--work:#1C7C46;--wait:#9A5B00;--waitbg:#FFF4DC;--waitbd:#E9C46A;--idle:#6B6B62;--err:#C42B2B;--errbg:#FCE9E9;--info:#0B6DA1;--infobg:#E3F2FB;--orange:#C2410C;--orangefg:#fff;--side:#EFEDF8}
+  .dd{--bg:#14131C;--card:#201F2D;--fg:#EDEBF8;--mu:#A7A3C4;--mbg:#292739;--bd:#34314A;--pri:#9B8CFF;--work:#4ADE80;--wait:#F2C94C;--waitbg:#2E2918;--waitbd:#6B5A22;--idle:#9A98AC;--err:#FF6B6B;--errbg:#3A1F24;--info:#5CC8FF;--infobg:#16303F;--orange:#F0834E;--orangefg:#1B0F08;--side:#1A1926}
+  /* ── 테마 변수: 안드로이드 ── */
+  .al{--bg:#F9FAFB;--card:#FFFFFF;--fg:#13161C;--mu:#565B63;--mbg:#EEF0F4;--bd:#D7DBE1;--pri:#BB4F0C;--work:#0A7E3A;--wait:#9A6000;--waitbg:#FFF5D6;--waitbd:#EDB417;--idle:#626975;--err:#CC272E;--errbg:#FDE8E8;--info:#0B6DA1;--infobg:#E3F2FB;--orange:#C2410C;--orangefg:#fff;--side:#fff}
+  .ad{--bg:#0D1014;--card:#15181E;--fg:#F2F2F2;--mu:#999FA8;--mbg:#1E2228;--bd:#292E36;--pri:#F0834E;--work:#3FC168;--wait:#EDB417;--waitbg:#2A2410;--waitbd:#7A5E0A;--idle:#88909C;--err:#F14445;--errbg:#3A1A1C;--info:#5CC8FF;--infobg:#132A36;--orange:#F0834E;--orangefg:#1B0F08;--side:#15181E}
+
+  /* ── 공통 부품 ── */
+  .scr{background:var(--bg);color:var(--fg);border:1px solid #c9ced6;border-radius:12px;overflow:hidden;font-size:12.5px}
+  .desk{width:740px}
+  .phone{width:360px;border-radius:22px;border:6px solid #1b1d22}
+  .bar{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--bd);background:var(--card)}
+  .bar b{font-size:14px}
+  .bar .sp{flex:1}
+  .muted{color:var(--mu)}
+  .chip{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:1px 8px 1px 7px;border-radius:99px;border:1px solid var(--bd);background:var(--card);color:var(--fg);white-space:nowrap;line-height:18px}
+  .dot{width:7px;height:7px;border-radius:50%;background:currentColor;flex:none}
+  .s-queued .dot{color:var(--idle)} .s-working .dot{color:var(--work)} .s-awaitingUser{border-color:var(--waitbd);background:var(--waitbg)} .s-awaitingUser .dot{color:var(--wait)} .s-review .dot{color:var(--pri)} .s-done .dot{color:var(--work)}
+  .av{width:18px;height:18px;border-radius:50%;display:inline-grid;place-items:center;font-size:10px;font-weight:700;color:#fff;flex:none}
+  .who{display:inline-flex;align-items:center;gap:5px;color:var(--mu);font-size:11.5px}
+  .card{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:8px 9px;display:flex;flex-direction:column;gap:6px}
+  .card .t{font-weight:600;font-size:12.5px;line-height:1.35}
+  .card .meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .card.done .t,.card.done .who{opacity:.6}
+  .wtime{font-size:11px;font-weight:700;color:var(--wait)}
+  /* 재검토 표시 — 기본은 ④ A안(파랑 테두리 칩) */
+  .rr{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:0 8px 0 6px;line-height:18px;border-radius:99px;border:1.5px solid var(--info);color:var(--info);background:var(--infobg);white-space:nowrap}
+  .rr svg{width:11px;height:11px}
+  .rrB{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:0 8px 0 6px;line-height:19px;border-radius:6px;background:var(--orange);color:var(--orangefg);white-space:nowrap}
+  .rrB svg{width:11px;height:11px}
+  .rrC{margin:-8px -9px 0;padding:4px 9px;background:var(--errbg);color:var(--err);font-size:11px;font-weight:700;border-radius:9px 9px 0 0;border-bottom:1px solid color-mix(in srgb,var(--err) 35%,transparent);display:flex;align-items:center;gap:5px}
+  .rrC svg{width:11px;height:11px}
+  .card.hasC{border-color:color-mix(in srgb,var(--err) 55%,var(--bd))}
+
+  /* 데스크톱 보드 */
+  .dwrap{display:flex}
+  .dside{width:44px;background:var(--side);border-right:1px solid var(--bd);display:flex;flex-direction:column;align-items:center;gap:12px;padding-top:12px}
+  .dside i{width:20px;height:20px;border-radius:6px;background:var(--mbg);display:block;position:relative}
+  .dside i.on{background:var(--pri)}
+  .dside i .n{position:absolute;top:-6px;right:-8px;background:var(--wait);color:var(--card);font-size:9px;font-style:normal;font-weight:800;border-radius:99px;padding:0 4px;line-height:13px}
+  .dmain{flex:1;padding:10px 12px 12px;min-width:0}
+  .cols{display:grid;gap:8px}
+  .col{background:var(--mbg);border-radius:10px;padding:7px;display:flex;flex-direction:column;gap:6px;min-width:0}
+  .col h5{margin:0 2px 2px;font-size:11.5px;display:flex;justify-content:space-between;color:var(--mu)}
+  .col h5 span{color:var(--fg)}
+  table.lst{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--bd);border-radius:10px;overflow:hidden}
+  table.lst td,table.lst th{padding:7px 9px;border-bottom:1px solid var(--bd);text-align:left;vertical-align:middle;font-size:12px}
+  table.lst th{font-size:11px;color:var(--mu);font-weight:600;background:var(--mbg)}
+  table.lst tr.done td{color:var(--mu)}
+  .filters{display:flex;gap:6px;margin:0 0 8px;flex-wrap:wrap}
+  .filters .f{font-size:11px;padding:2px 9px;border-radius:99px;border:1px solid var(--bd);background:var(--card)}
+  .filters .f.on{background:var(--fg);color:var(--card);border-color:var(--fg)}
+  .grp{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:8px 10px;display:flex;gap:10px;align-items:flex-start;margin-bottom:7px}
+  .grp .nm{width:92px;display:flex;align-items:center;gap:6px;font-weight:700;font-size:12px;flex:none;padding-top:3px}
+  .grp .items{display:flex;flex-wrap:wrap;gap:6px;flex:1}
+  .mini{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--bd);border-radius:8px;padding:4px 7px;font-size:11.5px;background:var(--bg)}
+  .mini.done{opacity:.95}.mini.done .tt{opacity:.6}
+
+  /* 대기 줄 */
+  .wband{display:flex;align-items:center;gap:8px;border:1px solid var(--waitbd);background:var(--waitbg);border-radius:10px;padding:7px 10px;margin:0 0 9px;font-size:12px}
+  .wband .ic{width:20px;height:20px;border-radius:50%;background:var(--wait);color:var(--card);display:grid;place-items:center;font-weight:900;font-size:12px;flex:none}
+  .wband .items{display:flex;gap:6px;flex:1;min-width:0;overflow:hidden}
+  .wband .it{display:inline-flex;gap:6px;align-items:center;background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:2px 8px;white-space:nowrap;font-size:11.5px}
+  .wband .more{font-weight:700;color:var(--fg);white-space:nowrap;font-size:11.5px}
+  .wcards{display:flex;gap:8px;margin:0 0 9px}
+  .wcard{flex:1;background:var(--card);border:1.5px solid var(--waitbd);border-left:5px solid var(--wait);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:4px;min-width:0}
+  .wcard .big{font-size:16px;font-weight:800;color:var(--wait)}
+  .wcard .t{font-weight:600}
+  .card.waitHL{border:1.5px solid var(--waitbd);border-left:5px solid var(--wait)}
+  .btn{font-size:11px;font-weight:700;padding:3px 10px;border-radius:7px;background:var(--pri);color:var(--card);white-space:nowrap}
+
+  /* 안드로이드 */
+  .ast{height:22px;display:flex;justify-content:space-between;padding:3px 14px 0;font-size:11px;color:var(--fg);background:var(--card)}
+  .ahead{display:flex;align-items:center;gap:8px;padding:10px 14px 8px;background:var(--card)}
+  .ahead b{font-size:17px}
+  .abody{padding:8px 12px 12px;height:560px;overflow:hidden;display:flex;flex-direction:column;gap:8px}
+  .abody>*{flex:none}
+  .short .abody{height:auto}
+  .tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+  .tile{border:1px solid var(--bd);background:var(--card);border-radius:12px;padding:6px 8px;min-height:48px}
+  .tile .n{font-size:17px;font-weight:800;line-height:1.1}
+  .tile .l{font-size:10.5px;color:var(--mu);display:flex;align-items:center;gap:4px}
+  .tile.w{border-color:var(--waitbd);background:var(--waitbg)} .tile.w .n{color:var(--wait)}
+  .tile.on{outline:2px solid var(--fg);outline-offset:-2px}
+  .sec{font-size:11.5px;font-weight:700;color:var(--mu);display:flex;justify-content:space-between;align-items:center;padding:4px 2px 0;min-height:24px}
+  .row{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:9px 11px;display:flex;flex-direction:column;gap:5px;min-height:48px}
+  .row .t{font-weight:600;font-size:13px}
+  .row .meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .row.done .t,.row.done .who{opacity:.6}
+  .row.waitHL{border:1.5px solid var(--waitbd);border-left:5px solid var(--wait)}
+  .tabs{display:flex;gap:0;border-bottom:1px solid var(--bd);margin:0 -12px;padding:0 6px;overflow:hidden;background:var(--card)}
+  .tabs span{padding:10px 9px;font-size:12px;font-weight:600;color:var(--mu);white-space:nowrap;border-bottom:2.5px solid transparent;min-height:44px}
+  .tabs span.on{color:var(--fg);border-color:var(--pri)}
+  .tabs span em{font-style:normal;font-size:10.5px;margin-left:3px;padding:0 5px;border-radius:99px;background:var(--mbg)}
+  .tabs span.w em{background:var(--wait);color:var(--card)}
+  .fold{background:var(--card);border:1px solid var(--bd);border-radius:12px;overflow:hidden}
+  .fold .h{display:flex;align-items:center;gap:7px;padding:11px 12px;font-weight:700;font-size:12.5px;min-height:48px}
+  .fold .h .c{margin-left:auto;color:var(--mu);font-weight:600}
+  .fold .b{border-top:1px solid var(--bd);display:flex;flex-direction:column}
+  .fold .b .r{padding:8px 12px;border-bottom:1px solid var(--bd);display:flex;flex-direction:column;gap:4px}
+  .fold .b .r:last-child{border-bottom:0}
+  .fold.wait{border-color:var(--waitbd);background:var(--waitbg)} .fold.wait .b{background:var(--card)}
+  .sticky{position:relative}
+  .sticky:after{content:"위 고정";position:absolute;right:-2px;top:-9px;font-size:9px;background:#4b3bc7;color:#fff;padding:0 5px;border-radius:5px}
+
+  /* 사무실 */
+  .office{position:relative;width:520px;height:300px;background:#2a2838;border-radius:10px;overflow:hidden}
+  .office canvas{image-rendering:pixelated;position:absolute;left:0;top:0;width:520px;height:300px}
+  .hud{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--card);border-bottom:1px solid var(--bd)}
+  .tip{position:absolute;background:var(--card);color:var(--fg);border:1px solid var(--bd);border-radius:9px;padding:6px 9px;font-size:11.5px;box-shadow:0 6px 18px rgba(0,0,0,.25);white-space:nowrap}
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>상태 보드 · 디자인 시안 — 5개 항목, 항목마다 2~3안</h1>
+  <p>모든 안을 <b>라이트(왼쪽)·다크(오른쪽)</b>로 나란히 그렸습니다. 보라 테두리 = 이디자 추천안(대표 미확인). <span class="tag meet">회의 추천안</span>은 회의에서 나온 안이며 확정이 아닙니다.</p>
+  <p>예시 글은 한국어입니다. 색은 지금 앱 값(데스크톱 라벤더 테마, 안드로이드 기본 색)을 썼습니다. 한 항목에서 고른 안은 다른 항목과 자유롭게 섞을 수 있습니다.</p>
+  <nav class="toc"><a href="#s1">① 데스크톱 배치</a><a href="#s2">② 안드로이드 구성</a><a href="#s3">③ 대표 응답 대기 줄</a><a href="#s4">④ 재검토 필요 표시</a><a href="#s5">⑤ 사무실 말풍선</a><a href="#s6">개발 전달 기준(공통)</a></nav>
+</header>
+<main>
+
+<section class="q" id="s1">
+  <h2>① 데스크톱 상태 보드 배치</h2>
+  <p class="lead">맡긴 일 7건(대기 2·진행 1·검토 1·할 일 1·완료 2)을 같은 데이터로 그렸습니다. 맨 위 대기 줄과 재검토 표시는 ③·④ 추천안 모양입니다.</p>
+  <div class="opt rec"><h3>A. 상태별 칸 나눔 — 지금 업무 보드 4칸 그대로 + 상태 칩<span class="tag rec">추천</span></h3>
+    <p class="one">칸은 지금처럼 할 일·진행 중·검토·완료 4개입니다. '대표 응답 대기'는 칸을 새로 만들지 않고 진행 중 칸 카드에 칩으로 붙이고, 맨 위 대기 줄로도 끌어올립니다.</p>
+    <p class="pc"><b>좋은 점</b> 대표님이 이미 쓰는 화면이라 새로 배울 게 없습니다. 칸 폭이 지금과 같습니다. <i>아쉬운 점</i> 일이 많으면 칸마다 세로로 길어집니다.</p>
+    <div class="pair" data-r="d1a"></div></div>
+  <div class="opt"><h3>B. 한 줄 목록 + 상태 칩</h3>
+    <p class="one">한 줄에 일 하나. 상태·제목·담당·시간·표시를 표처럼 놓고 상태 순으로 정렬합니다. 위 칩으로 상태를 거릅니다.</p>
+    <p class="pc"><b>좋은 점</b> 일이 수십 건이어도 훑기 쉽고 대기 시간 비교가 쉽습니다. <i>아쉬운 점</i> 칸반과 모양이 달라 화면이 하나 더 생기는 느낌입니다. 카드를 끌어 옮기는 지금 방식과 어울리지 않습니다.</p>
+    <div class="pair" data-r="d1b"></div></div>
+  <div class="opt"><h3>C. 직원별 묶음</h3>
+    <p class="one">직원 한 명당 한 줄. 그 사람에게 맡긴 일을 상태 칩과 함께 옆으로 나열합니다.</p>
+    <p class="pc"><b>좋은 점</b> 누가 바쁘고 누가 막혔는지 바로 보입니다. <i>아쉬운 점</i> '무엇이 어디까지 왔나'보다 '누가'가 앞서서 일의 흐름은 덜 보입니다. 직원이 많으면 길어집니다.</p>
+    <div class="pair" data-r="d1c"></div></div>
+</section>
+
+<section class="q" id="s2">
+  <h2>② 안드로이드 화면 구성 (읽기 전용)</h2>
+  <p class="lead">360dp 폭 휴대폰입니다. 위 대기 줄과 재검토 표시는 ③·④ 추천안 모양입니다. 누르는 곳은 모두 48dp 이상으로 잡았습니다.</p>
+  <div class="opt rec"><h3>A. 상태별 세로 목록 + 위 고정 줄<span class="tag rec">추천</span><span class="tag meet">회의 추천안</span></h3>
+    <p class="one">위에 상태별 개수 타일(직원 화면의 개수 타일과 같은 모양)이 있고, 누르면 그 상태만 걸러 보입니다. 그 아래 대기 줄이 고정되고, 목록은 상태 순으로 이어집니다.</p>
+    <p class="pc"><b>좋은 점</b> 직원 화면과 같은 틀이라 익숙합니다. 한 번 내려 보면 전부 보입니다. <i>아쉬운 점</i> 완료가 쌓이면 목록이 길어집니다(타일로 거르면 해결).</p>
+    <div class="pair" data-r="a2a"></div></div>
+  <div class="opt"><h3>B. 탭 전환</h3>
+    <p class="one">위 탭(대기·진행·검토·할 일·완료)으로 상태를 바꿔 봅니다. 대기 탭은 숫자를 노란색으로 강조합니다.</p>
+    <p class="pc"><b>좋은 점</b> 한 화면에 한 상태만 보여 깔끔합니다. <i>아쉬운 점</i> 다른 상태를 보려면 매번 눌러야 합니다. 360폭에서 탭 5개가 빠듯해 일본어·영어는 옆으로 밀어야 할 수 있습니다(추정).</p>
+    <div class="pair" data-r="a2b"></div></div>
+  <div class="opt"><h3>C. 접히는 묶음</h3>
+    <p class="one">상태마다 접었다 펴는 묶음. 대기·진행·검토는 펼쳐 두고, 할 일·완료는 처음에 접어 둡니다.</p>
+    <p class="pc"><b>좋은 점</b> 완료가 많아도 화면이 짧습니다. <i>아쉬운 점</i> 접힌 안에 재검토 표시가 숨을 수 있어 묶음 제목에도 개수를 따로 보여야 합니다.</p>
+    <div class="pair" data-r="a2c"></div></div>
+</section>
+
+<section class="q" id="s3">
+  <h2>③ '대표 응답 대기' 줄 모양·위치</h2>
+  <p class="lead">대기 2건(3시간 5분, 42분)일 때입니다. 위는 데스크톱 보드 윗부분, 아래는 휴대폰 윗부분입니다. 대기 시간은 정해진 규칙(1분 미만 / 42분 / 3시간 5분 / 2일 4시간)대로 씁니다.</p>
+  <div class="opt rec"><h3>A. 맨 위 노란 띠 한 줄<span class="tag rec">추천</span></h3>
+    <p class="one">보드 맨 위에 높이 36px 띠 하나. 건수와 일 이름·대기 시간을 오래된 순으로 나열하고, 넘치면 '+N건'. 누르면 그 일 자세히 보기로 갑니다.</p>
+    <p class="pc"><b>좋은 점</b> 지금 앱의 '결재 한 줄 띠'와 같은 자리·모양이라 '대표가 할 일은 위 노란 띠'로 통일됩니다. 공간을 적게 씁니다. <i>아쉬운 점</i> 3건 넘으면 일부가 '+N건'으로 숨습니다.</p>
+    <div class="pair" data-r="w3a"></div></div>
+  <div class="opt"><h3>B. 맨 위 카드 줄</h3>
+    <p class="one">대기 일마다 작은 카드를 맨 위에 가로로 놓고, 대기 시간을 크게 씁니다. 휴대폰은 옆으로 넘겨 봅니다.</p>
+    <p class="pc"><b>좋은 점</b> 가장 눈에 띕니다. 오래 기다린 일이 바로 보입니다. <i>아쉬운 점</i> 보드 높이를 80px쯤 더 차지합니다. 휴대폰은 옆으로 넘겨야 다 보입니다.</p>
+    <div class="pair" data-r="w3b"></div></div>
+  <div class="opt"><h3>C. 따로 줄 없이 카드만 강조</h3>
+    <p class="one">위 줄은 두지 않습니다. 대기 중인 카드가 자기 칸 맨 위로 올라오고 노란 테두리·대기 시간이 붙습니다. 왼쪽 메뉴에 대기 건수만 숫자로 띄웁니다.</p>
+    <p class="pc"><b>좋은 점</b> 보드 모양이 지금과 거의 같습니다. <i>아쉬운 점</i> 칸이 여러 개면 대기 카드가 흩어져 한눈에 모이지 않습니다.</p>
+    <div class="pair" data-r="w3c"></div></div>
+</section>
+
+<section class="q" id="s4">
+  <h2>④ '재검토 필요' 표시 색·모양</h2>
+  <p class="lead">검토 뒤 코드가 바뀐 일에 붙습니다. 위는 데스크톱 카드(검토 중·완료), 아래는 휴대폰 줄(검토 중·완료)입니다. <b>완료 카드는 글이 흐려져도 표시는 흐리지 않습니다.</b> 판단 불가일 때는 아무것도 붙지 않습니다.</p>
+  <div class="opt rec"><h3>A. 파랑 테두리 칩 + 되돌이 화살표<span class="tag rec">추천</span></h3>
+    <p class="one">'↻ 재검토 필요' 글자 칩. 파랑은 지금 앱의 보조색(라이트 #0B6DA1 / 다크 #5CC8FF)입니다.</p>
+    <p class="pc"><b>좋은 점</b> 직원 상태색(초록 일하는 중·노랑 대기·회색 쉬는 중·빨강 오류) 어디에도 겹치지 않아 '대기'나 '오류'로 잘못 읽히지 않습니다. 글자·아이콘이 함께 있어 색을 구별하기 어려운 분도 알아봅니다. <i>아쉬운 점</i> 주황보다 '급하다'는 느낌은 약합니다.</p>
+    <div class="pair" data-r="r4a"></div></div>
+  <div class="opt"><h3>B. 주황 채운 배지<span class="tag meet">회의 추천안</span></h3>
+    <p class="one">주황 바탕에 흰 글자 '↻ 재검토 필요'.</p>
+    <p class="pc"><b>좋은 점</b> 가장 눈에 띕니다. <i>아쉬운 점</i> 안드로이드는 기본 강조색이 주황이라 버튼처럼 보이고, 노란 '대표 응답 대기'와도 비슷해 두 표시가 한 카드에 함께 붙으면 헷갈립니다. 데스크톱 '노을' 테마의 강조색과도 겹칩니다.</p>
+    <div class="pair" data-r="r4b"></div></div>
+  <div class="opt"><h3>C. 카드 맨 위 붉은 띠(설명 글)</h3>
+    <p class="one">카드 맨 위에 붉은 띠를 깔고 '↻ 검토 뒤 코드가 바뀌었어요 — 다시 봐 주세요'라고 풀어 씁니다.</p>
+    <p class="pc"><b>좋은 점</b> 이유까지 써 있어 처음 보는 분도 바로 압니다. <i>아쉬운 점</i> 빨강은 '오류'로 읽힙니다. 카드가 한 줄 높아집니다.</p>
+    <div class="pair" data-r="r4c"></div></div>
+</section>
+
+<section class="q" id="s5">
+  <h2>⑤ 사무실 화면 직원 말풍선</h2>
+  <p class="lead">사무실 그림의 말풍선은 지금 감정 말풍선과 같은 도트 틀(흰 풍선·검은 테두리)로 그렸습니다. 사무실 그림은 지금도 라이트·다크와 관계없이 같은 색이라, 라이트·다크 차이는 위쪽 줄과 마우스를 올렸을 때 뜨는 설명 상자에만 있습니다.</p>
+  <div class="opt rec"><h3>A. '대표 응답 대기'일 때만 띄움<span class="tag rec">추천</span></h3>
+    <p class="one">대표 답을 기다리는 직원 머리 위에만 주황 '!' 말풍선이 계속 떠 있습니다. 마우스를 올리면 일 이름과 대기 시간이 보입니다. 다른 상태는 띄우지 않습니다.</p>
+    <p class="pc"><b>좋은 점</b> 사무실에서도 '누가 나를 기다리나'만 바로 보입니다. 지금 '!' 감정 말풍선을 그대로 써서 새 그림이 거의 필요 없습니다. <i>아쉬운 점</i> 지금은 잠깐 떴다 사라지는 감정 말풍선과 구별이 약할 수 있습니다(계속 떠 있는 것으로 구별).</p>
+    <div class="pair" data-r="o5a"></div></div>
+  <div class="opt"><h3>B. 띄우지 않음 (지금 그대로)</h3>
+    <p class="one">사무실 그림은 바꾸지 않고, 상태는 보드에서만 봅니다.</p>
+    <p class="pc"><b>좋은 점</b> 개발할 것이 없고 사무실이 깔끔합니다. 업무 모드(맵을 숨기는 모드)를 쓰면 어차피 안 보입니다. <i>아쉬운 점</i> 사무실을 보고 있을 때는 기다리는 일을 놓칠 수 있습니다.</p>
+    <div class="pair" data-r="o5b"></div></div>
+  <div class="opt"><h3>C. 모든 상태를 작은 말풍선으로</h3>
+    <p class="one">진행 중(…)·대표 응답 대기(!)·검토 중(눈)·완료(✓)를 직원마다 늘 띄웁니다.</p>
+    <p class="pc"><b>좋은 점</b> 사무실만 봐도 전체 상황이 보입니다. <i>아쉬운 점</i> 직원이 많으면 말풍선이 겹치고, 감정 말풍선과 섞여 정작 '대기'가 묻힙니다. 새 도트 아이콘 2개가 필요합니다.</p>
+    <div class="pair" data-r="o5c"></div></div>
+</section>
+
+<section class="q global" id="s6">
+  <div class="note">
+    <h4>개발 전달 기준 (공통 · 고른 안이 정해지면 그 안 부분만 넘깁니다)</h4>
+    <ul>
+      <li>상태 칩: 높이 20px, 글자 11px 굵게, 점 7px. 색 — 할 일 회색(status-idle), 진행 중 초록(status-working), 대표 응답 대기 노랑(status-waiting, 연한 노랑 바탕), 검토 중 테마 강조색(primary), 완료 초록 점. 이름은 이미 있는 4개 언어 문구(workStatus.state.*)를 씁니다.</li>
+      <li>대기 시간 글자: 새 모듈의 문구 규칙 그대로. 노랑(status-waiting) 굵게 11px. 1분마다 새로 그립니다.</li>
+      <li>재검토 표시: 서버가 준 값이 '필요'일 때만 붙입니다. '판단 불가'·'아님'은 아무것도 안 붙입니다. 완료 카드에서는 글·담당만 흐리게(불투명도 .6) 하고 표시는 흐리지 않습니다.</li>
+      <li>안드로이드: 누르는 곳 48dp 이상, 카드 모서리 12dp, 기존 OfficeCard·StatusBadge·SummaryTiles 틀 재사용(최가독 조사). 재검토용 파랑은 안드로이드에 없는 색이라 새로 추가(라이트 #0B6DA1 / 다크 #5CC8FF) — A안을 고를 때만.</li>
+      <li>사무실 말풍선: 기존 감정 말풍선 틀(13×15 도트)과 '!'(ask) 아이콘 재사용. 대기 동안 계속 떠 있음.</li>
+      <li>확정 전 사항: 4개 언어에서 긴 이름이 넘치는지는 고른 안으로 다시 확인합니다.</li>
+    </ul>
+  </div>
+</section>
+</main>
+
+<script>
+const ST = { queued:'할 일', working:'진행 중', awaitingUser:'대표 응답 대기', review:'검토 중', done:'완료' }
+const AV = { 정리드:'#6C5CE7', 이디자:'#D0567A', 강백엔:'#0B7F8A', 한리뷰:'#B4690E', 임안드:'#2E7D32', 오큐에이:'#5A6B8C', 최가독:'#8A4FBF' }
+const T = [
+  { t:'로그인 화면 안내 문구 확인 부탁', who:'이디자', s:'awaitingUser', wait:'3시간 5분', col:'doing' },
+  { t:'윈도우 빌드 올릴지 결정', who:'정리드', s:'awaitingUser', wait:'42분', col:'doing' },
+  { t:'안드로이드 업무 목록 화면', who:'임안드', s:'working', col:'doing' },
+  { t:'재검토 판정 보완', who:'강백엔', s:'review', rr:true, col:'review' },
+  { t:'QA 체크리스트 작성', who:'오큐에이', s:'queued', col:'todo' },
+  { t:'상태 계산 모듈 구현', who:'정리드', s:'done', rr:true, col:'done' },
+  { t:'재사용 부품 조사', who:'최가독', s:'done', col:'done' },
+]
+const ARROW = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 8a5 5 0 1 1-1.6-3.7"/><path d="M13 2.5v3h-3"/></svg>'
+let RR = 'A'
+const rrTag = () => RR==='A' ? `<span class="rr">${ARROW}재검토 필요</span>` : RR==='B' ? `<span class="rrB">${ARROW}재검토 필요</span>` : ''
+const rrTop = (x) => RR==='C' && x.rr ? `<div class="rrC">${ARROW}검토 뒤 코드가 바뀌었어요 — 다시 봐 주세요</div>` : ''
+const chip = (s) => `<span class="chip s-${s}"><span class="dot"></span>${ST[s]}</span>`
+const av = (n) => `<span class="av" style="background:${AV[n]}">${n[0]}</span>`
+const who = (n) => `<span class="who">${av(n)}${n}</span>`
+const card = (x, o={}) => `<div class="card ${x.s==='done'?'done':''} ${RR==='C'&&x.rr?'hasC':''} ${o.hl&&x.s==='awaitingUser'?'waitHL':''}">${rrTop(x)}<div class="t">${x.t}</div><div class="meta">${who(x.who)}</div><div class="meta">${chip(x.s)}${x.wait?`<span class="wtime">${x.wait}째</span>`:''}${x.rr&&RR!=='C'?rrTag():''}</div></div>`
+const rowA = (x, o={}) => `<div class="row ${x.s==='done'?'done':''} ${RR==='C'&&x.rr?'hasC':''} ${o.hl&&x.s==='awaitingUser'?'waitHL':''}" style="${RR==='C'&&x.rr?'border-color:color-mix(in srgb,var(--err) 55%,var(--bd))':''}">${RR==='C'&&x.rr?rrTop(x).replace('margin:-8px -9px 0','').replace('class="rrC"','class="rrC" style="margin:-9px -11px 0;border-radius:11px 11px 0 0"'):''}<div class="t">${x.t}</div><div class="meta">${chip(x.s)}${x.wait?`<span class="wtime">${x.wait}째</span>`:''}${x.rr&&RR!=='C'?rrTag():''}<span style="flex:1"></span>${who(x.who)}</div></div>`
+const waits = T.filter(x=>x.s==='awaitingUser')
+
+function bandA(phone){
+  if (phone) return `<div class="wband sticky" style="margin:0"><span class="ic">!</span><div style="display:flex;flex-direction:column;flex:1;min-width:0"><b>대표 응답 대기 2건</b><span class="muted" style="font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">가장 오래: ${waits[0].t} · <b class="wtime">${waits[0].wait}째</b></span></div><span class="more">›</span></div>`
+  return `<div class="wband"><span class="ic">!</span><b style="white-space:nowrap">대표 응답 대기 2건</b><div class="items">${waits.map(x=>`<span class="it">${x.t}<span class="wtime">${x.wait}째</span></span>`).join('')}</div><span class="more">모두 보기 ›</span></div>`
+}
+function bandB(phone){
+  const c = waits.map(x=>`<div class="wcard" style="${phone?'flex:0 0 240px':''}"><span class="big">${x.wait}째</span><span class="t">${x.t}</span>${who(x.who)}</div>`).join('')
+  return phone ? `<div class="sec">대표 응답 대기 2건<span>옆으로 넘기기 ›</span></div><div class="wcards" style="overflow:hidden;margin:0">${c}</div>` : `<div class="wcards">${c}</div>`
+}
+function desk(inner, mode, o={}){
+  return `<div class="scr desk"><div class="bar"><b>업무 보드</b><span class="muted">맡긴 일 7건</span><span class="sp"></span><span class="chip">보기 전용</span></div><div class="dwrap"><div class="dside"><i></i><i class="on"></i><i>${o.sideN?'<span class="n">2</span>':''}</i><i></i></div><div class="dmain">${inner}</div></div></div>`
+}
+function kanban(o={}){
+  const cols = [['todo','할 일'],['doing','진행 중'],['review','검토'],['done','완료']]
+  return `<div class="cols" style="grid-template-columns:repeat(4,1fr)">${cols.map(([k,l])=>{const xs=T.filter(x=>x.col===k);return `<div class="col"><h5><span>${l}</span>${xs.length}</h5>${xs.map(x=>card(x,o)).join('')}</div>`}).join('')}</div>`
+}
+function phone(inner, title='업무', short=false){
+  return `<div class="scr phone${short?' short':''}"><div class="ast"><span>9:41</span><span>▮▮ ◔</span></div><div class="ahead"><b>${title}</b><span class="sp" style="flex:1"></span><span class="chip">보기 전용</span></div><div class="abody">${inner}</div></div>`
+}
+function tiles(){
+  const n = s=>T.filter(x=>x.s===s).length
+  return `<div class="tiles"><div class="tile w"><div class="n">${n('awaitingUser')}</div><div class="l">대기</div></div><div class="tile"><div class="n">${n('working')}</div><div class="l">진행 중</div></div><div class="tile"><div class="n">${n('review')}</div><div class="l">검토 중</div></div><div class="tile"><div class="n">${n('done')}</div><div class="l">완료</div></div></div>`
+}
+const order = ['awaitingUser','working','review','queued','done']
+
+const R = {
+  d1a: () => desk(bandA() + kanban()),
+  d1b: () => desk(bandA() + `<div class="filters"><span class="f on">전체 7</span><span class="f">대표 응답 대기 2</span><span class="f">진행 중 1</span><span class="f">검토 중 1</span><span class="f">할 일 1</span><span class="f">완료 2</span></div><table class="lst"><tr><th>상태</th><th>일</th><th>담당</th><th>대기</th><th>표시</th></tr>${order.flatMap(s=>T.filter(x=>x.s===s)).map(x=>`<tr class="${x.s==='done'?'done':''}"><td>${chip(x.s)}</td><td><b style="font-weight:600">${x.t}</b></td><td>${who(x.who)}</td><td>${x.wait?`<span class="wtime">${x.wait}째</span>`:'<span class="muted">—</span>'}</td><td>${x.rr?rrTag():''}</td></tr>`).join('')}</table>`),
+  d1c: () => desk(bandA() + Object.keys(AV).filter(n=>T.some(x=>x.who===n)).map(n=>`<div class="grp"><div class="nm">${av(n)}${n}</div><div class="items">${T.filter(x=>x.who===n).map(x=>`<span class="mini ${x.s==='done'?'done':''}">${chip(x.s)}<span class="tt">${x.t}</span>${x.wait?`<span class="wtime">${x.wait}째</span>`:''}${x.rr?rrTag():''}</span>`).join('')}</div></div>`).join('')),
+
+  a2a: () => phone(tiles() + bandA(true) + order.map(s=>{const xs=T.filter(x=>x.s===s); if(!xs.length) return ''; return `<div class="sec">${ST[s]} ${xs.length}</div>` + xs.map(x=>rowA(x)).join('')}).join('')),
+  a2b: () => phone(`<div class="tabs"><span class="w">대기<em>2</em></span><span class="on">진행 중<em>1</em></span><span>검토<em>1</em></span><span>할 일<em>1</em></span><span>완료<em>2</em></span></div>` + bandA(true) + T.filter(x=>x.s==='working').map(x=>rowA(x)).join('') + `<div class="sec" style="justify-content:center;font-weight:500">다른 상태는 위 탭을 눌러 봅니다</div>`),
+  a2c: () => phone(bandA(true) + order.map(s=>{const xs=T.filter(x=>x.s===s); const open=!['queued','done'].includes(s); const rrN=xs.filter(x=>x.rr).length; return `<div class="fold ${s==='awaitingUser'?'wait':''}"><div class="h">${open?'▾':'▸'} ${chip(s)}${!open&&rrN?rrTag().replace('재검토 필요','재검토 '+rrN):''}<span class="c">${xs.length}건</span></div>${open?`<div class="b">${xs.map(x=>`<div class="r"><b style="font-weight:600">${x.t}</b><div class="meta" style="display:flex;gap:6px;align-items:center">${who(x.who)}${x.wait?`<span class="wtime">${x.wait}째</span>`:''}${x.rr?rrTag():''}</div></div>`).join('')}</div>`:''}</div>`}).join('')),
+
+  w3a: () => `<div style="display:flex;flex-direction:column;gap:10px">${desk(bandA() + mini4())}${phone(bandA(true) + tilesRows(), '업무', true)}</div>`,
+  w3b: () => `<div style="display:flex;flex-direction:column;gap:10px">${desk(bandB() + mini4())}${phone(bandB(true) + tilesRows(), '업무', true)}</div>`,
+  w3c: () => `<div style="display:flex;flex-direction:column;gap:10px">${desk(kanbanTop({hl:true}), '', {sideN:true})}${phone(T.filter(x=>x.s==='awaitingUser').map(x=>rowA(x,{hl:true})).join('') + T.filter(x=>x.s==='working').map(x=>rowA(x)).join(''), '업무', true)}</div>`,
+
+  r4a: () => withRR('A'), r4b: () => withRR('B'), r4c: () => withRR('C'),
+  o5a: (m) => office(m,'A'), o5b: (m) => office(m,'B'), o5c: (m) => office(m,'C'),
+}
+function mini4(){ return `<div class="cols" style="grid-template-columns:repeat(4,1fr)">${['할 일','진행 중','검토','완료'].map(l=>`<div class="col" style="height:46px"><h5><span>${l}</span></h5></div>`).join('')}</div>` }
+function tilesRows(){ return T.filter(x=>x.s==='working').map(x=>rowA(x)).join('') }
+function kanbanTop(o){
+  // 대기 카드가 진행 중 칸 맨 위로
+  const cols = [['todo','할 일'],['doing','진행 중'],['review','검토'],['done','완료']]
+  return `<div class="cols" style="grid-template-columns:repeat(4,1fr)">${cols.map(([k,l])=>{const xs=T.filter(x=>x.col===k&&x.s!=='done');return `<div class="col"><h5><span>${l}</span>${xs.length}</h5>${xs.map(x=>card(x,o)).join('')}</div>`}).join('')}</div>`
+}
+function withRR(k){
+  const save = RR; RR = k
+  const xs = T.filter(x=>x.rr)
+  const both = { t:'결재 안내 문구 정리', who:'이디자', s:'awaitingUser', wait:'42분', rr:true }
+  const html = `<div style="display:flex;flex-direction:column;gap:10px"><div class="scr" style="width:560px;padding:12px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;background:var(--mbg)">${[...xs, both].map(x=>card(x)).join('')}</div><div class="scr phone" style="border-width:4px"><div class="abody" style="height:auto">${[...xs, both].map(x=>rowA(x)).join('')}</div></div></div>`
+  RR = save; return html
+}
+
+// ── 사무실(도트) ──
+const OUT='#2e2a40'
+const COL={O:'#f0834e',G:'#3fb868',e:'#3a3040',w:'#ffffff',g:'#8a8fa8'}
+const ICON={
+  ask:['...OOO...','...OOO...','...OOO...','...OOO...','....O....','.........','...OOO...','...OOO...'],
+  done:['........G','.......GG','......GG.','G....GG..','GG..GG...','.GGGG....','..GG.....','.........'],
+  look:['.........','.ee...ee.','ewwe.ewwe','ewwe.ewwe','eewe.eewe','eewe.eewe','.ee...ee.','.........'],
+  dots:['.........','.........','.........','.........','.gg.gg.gg','.gg.gg.gg','.........','.........'],
+}
+function bubble(ctx, cx, by, kind){
+  const W=13, x0=cx-6, y0=by-14
+  const put=(x,y,c)=>{ctx.fillStyle=c;ctx.fillRect(x0+x,y0+y,1,1)}
+  for(let y=0;y<12;y++)for(let x=0;x<W;x++){const corner=(x===0||x===W-1)&&(y===0||y===11);if(corner)continue;const edge=x===0||x===W-1||y===0||y===11||((x===1||x===W-2)&&(y===1||y===10));put(x,y,edge?OUT:y>=9?'#e6e3f2':'#fff')}
+  ;[[5,11,'#fff'],[6,11,'#fff'],[7,11,'#fff'],[5,12,OUT],[6,12,'#e6e3f2'],[7,12,OUT],[6,13,OUT]].forEach(([x,y,c])=>put(x,y,c))
+  ICON[kind].forEach((row,y)=>[...row].forEach((k,x)=>k!=='.'&&put(x+2,y+2,COL[k])))
+}
+function person(ctx,x,y,shirt,hair){
+  const r=(a,b,w,h,c)=>{ctx.fillStyle=c;ctx.fillRect(x+a,y+b,w,h)}
+  r(-3,-2,7,9,shirt); r(-3,-11,7,8,'#f3c9a5'); r(-3,-12,7,3,hair); r(-4,-11,1,4,hair); r(4,-11,1,4,hair); r(-1,-7,1,1,'#3a3040'); r(2,-7,1,1,'#3a3040')
+  r(-3,7,2,3,'#3b3f55'); r(2,7,2,3,'#3b3f55')
+}
+function desk_(ctx,x,y){ const r=(a,b,w,h,c)=>{ctx.fillStyle=c;ctx.fillRect(x+a,y+b,w,h)}; r(-12,0,26,6,'#b98a5a'); r(-12,6,26,2,'#8a6240'); r(-5,-8,11,7,'#2e2a40'); r(-4,-7,9,5,'#7fd0ff') }
+function drawOffice(cv, mode){
+  const ctx=cv.getContext('2d'); cv.width=174; cv.height=100
+  ctx.fillStyle='#d9c9a8'; ctx.fillRect(0,0,174,100)
+  for(let y=0;y<100;y+=10)for(let x=(y/10)%2?0:10;x<174;x+=20){ctx.fillStyle='#cfbd99';ctx.fillRect(x,y,10,10)}
+  ctx.fillStyle='#bfb3d6'; ctx.fillRect(0,0,174,16); ctx.fillStyle='#a99cc6'; ctx.fillRect(0,14,174,2)
+  const staff=[[30,46,'#D0567A','#3a2a20','awaitingUser'],[86,46,'#6C5CE7','#20202a','awaitingUser'],[142,46,'#2E7D32','#5a3a20','working'],[30,86,'#0B7F8A','#2a2a2a','review'],[86,86,'#5A6B8C','#6a4030','queued'],[142,86,'#8A4FBF','#20202a','done']]
+  staff.forEach(([x,y,s,h])=>{ person(ctx,x,y-6,s,h); desk_(ctx,x,y+2) })
+  staff.forEach(([x,y,,,st])=>{
+    const by=y-19
+    if(mode==='A'&&st==='awaitingUser') bubble(ctx,x,by,'ask')
+    if(mode==='C'){ const k={awaitingUser:'ask',working:'dots',review:'look',done:'done'}[st]; if(k) bubble(ctx,x,by,k) }
+  })
+  
+}
+function office(m, k){
+  const id='cv'+k+m
+  setTimeout(()=>drawOffice(document.getElementById(id),k))
+  const tip = k==='A' ? `<div class="tip" style="left:12px;top:206px"><b>이디자</b> · 대표 응답 대기<br>로그인 화면 안내 문구 확인 부탁 · <span class="wtime">3시간 5분째</span></div>` : k==='B' ? `<div class="tip" style="left:300px;top:226px;opacity:.95">말풍선 없음 — 상태는 업무 보드에서</div>` : ''
+  return `<div class="scr" style="width:520px"><div class="hud"><b>사무실</b><span class="muted">1층</span><span style="flex:1"></span>${k!=='B'?'<span class="chip s-awaitingUser"><span class="dot"></span>대표 응답 대기 2</span>':''}</div><div class="office"><canvas id="${id}"></canvas>${tip}</div></div>`
+}
+
+document.querySelectorAll('[data-r]').forEach(el=>{
+  const k=el.dataset.r, isA=/^a2/.test(k)
+  const mk=(mode)=>{ const cls = isA ? (mode==='l'?'al':'ad') : (k.startsWith('w3')||k.startsWith('r4')) ? null : (mode==='l'?'dl':'dd'); return cls }
+  ;['l','d'].forEach(mode=>{
+    const box=document.createElement('div')
+    let html = R[k](mode)
+    if (k.startsWith('w3')||k.startsWith('r4')){
+      // 위는 데스크톱 색, 아래 휴대폰은 안드로이드 색
+      const tmp=document.createElement('div'); tmp.innerHTML=html
+      const parts=[...tmp.firstElementChild.children]
+      parts[0].classList.add(mode==='l'?'dl':'dd'); parts[1].classList.add(mode==='l'?'al':'ad')
+      html=tmp.innerHTML
+      box.innerHTML=`<p class="cap">${mode==='l'?'라이트':'다크'} · 위 데스크톱 / 아래 휴대폰</p>`+html
+    } else {
+      box.innerHTML=`<p class="cap">${mode==='l'?'라이트':'다크'}</p><div class="${mk(mode)}">${html}</div>`
+    }
+    el.appendChild(box)
+  })
+})
+const only=new URLSearchParams(location.search).get('only')
+if(only){document.body.classList.add('only');document.getElementById(only).classList.add('show')}
+</script>
+</body>
+</html>

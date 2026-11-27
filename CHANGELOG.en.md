@@ -11,6 +11,31 @@ Writing rules
 - Leave out: internal or development matters, re-fixes of features added in the same version, how a security hole worked (if needed, one line on the result), minor wording or spacing tweaks.
 - Couldn't do it before → new feature; easier than before → improvement; was working wrongly → bug fix.
 
+## [1.9.0] - 2026-11-27
+
+### At a glance
+- **New** Quick chat: talk to AI with no hire
+- **New** Leader is told when a teammate can't finish
+- **Better** Reports and questions reach only the room you used
+- **Better** Leader shows "resting" when delegated work fails
+- **Fixed** Failed tasks show a red mark in To do
+
+Staff windows, phone and scheduled instructions, and the meeting and commit-notice rooms work as before. The run-count limit was checked only by automated tests, the phone screens have not been checked on a real device, and the rest has not been checked on a Windows PC.
+
+### New features
+- New "Quick chat" lets you talk to Claude or GPT right away without hiring staff. Pick the approval mode when you start; it is not counted in headcount, desks or payroll.
+- You can close or delete a quick chat. Deleting removes the chat history and the AI session file together and cannot be undone.
+- The management window shows usage and session size for each quick chat.
+- You can also start, close and delete quick chats on the phone. The phone always asks for approval.
+- When a teammate can't finish a task, a [Teammate couldn't finish] notice goes once to the leader who assigned it.
+
+### Improvements
+- Reports, questions and notices reach only the room where you gave the instruction. Older cards fill in their room once on first launch; cards whose room is unclear are left alone.
+- When delegated work fails, the leader switches to "resting".
+
+### Bug fixes
+- A failed task now shows in To do with a red "Failed" mark instead of in Review (PC and phone Tasks tab).
+
 ## [1.8.0] - 2026-11-26
 
 ### At a glance

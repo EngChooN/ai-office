@@ -74,7 +74,7 @@ function InfoForm({ group, onClose }: { group: OrgGroup; onClose: () => void }) 
 
 /** 사람 바꾸기 — 만들기 3단계와 같은 고르기 칸 */
 function PeopleForm({ group, onClose }: { group: OrgGroup; onClose: () => void }) {
-  const hired = useOffice(useShallow((s) => s.staff.filter((x) => x.kind === 'hired')))
+  const hired = useOffice(useShallow((s) => s.staff.filter((x) => x.kind === 'hired' && !x.isQuick)))
   const teams = useOffice(useShallow((s) => s.teams.filter((tm) => tm.kind === 'hired')))
   const [picked, setPicked] = useState(() => groupMembers(group, hired).map((s) => s.id))
   const [leadId, setLeadId] = useState(groupLeadId(group))

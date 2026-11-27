@@ -1,4 +1,5 @@
 import { mentionTargets, pickResponder, type MentionTarget, type ResponderCandidate } from './mention.ts'
+import { QUICK_ROOM_PREFIX } from './quickChat.ts'
 import type { ChatGroup, ChatMessage, Lab, Staff, Team } from './types'
 
 // 대화방: 전체 방(room 없음) + 고용 팀마다 방 하나(room = 팀 id) + 랩마다 방 하나(room = 'lab:<랩 id>')
@@ -51,8 +52,13 @@ export const GROUP_ROOM_PREFIX = 'group:'
 export const groupRoomId = (groupId: string) => `${GROUP_ROOM_PREFIX}${groupId}`
 
 /** room 값이 가리키는 방 종류와 팀·랩·단체방 id (빈 값 = 전체 방 → undefined) */
-export function parseRoom(room: string | null | undefined): { kind: 'team' | 'lab' | 'group'; id: string } | undefined {
+export function parseRoom(room: string | null | undefined): { kind: 'team' | 'lab' | 'group' | 'quick'; id: string } | undefined {
   if (!room) return undefined
+  // 빠른 대화 방 — 팀 방으로 오인하지 않게 먼저 본다
+  if (room.startsWith(QUICK_ROOM_PREFIX)) {
+    const id = room.slice(QUICK_ROOM_PREFIX.length)
+    return id ? { kind: 'quick', id } : undefined
+  }
   if (room.startsWith(GROUP_ROOM_PREFIX)) {
     const id = room.slice(GROUP_ROOM_PREFIX.length)
     return id ? { kind: 'group', id } : undefined
@@ -88,7 +94,8 @@ export type ChatRoomInfo<T extends TeamLike = TeamLike, L extends LabLike = LabL
 /** room 값 → 지금 있는 팀 방·랩 방·단체방 (없어졌거나 방이 없는 팀·랩이면 undefined = 전체 방) */
 export function findRoom<T extends TeamLike, L extends LabLike, G extends GroupLike = GroupLike>(room: string | null | undefined, teams: T[], labs: L[], groups: G[] = []): ChatRoomInfo<T, L, G> | undefined {
   const parsed = parseRoom(room)
-  if (!parsed || !room) return undefined
+  // 빠른 대화 방은 팀·랩·단체방이 아니다 (화면·main이 따로 다룬다)
+  if (!parsed || !room || parsed.kind === 'quick') return undefined
   if (parsed.kind === 'group') {
     const group = groups.find((g) => g.id === parsed.id)
     if (!group) return undefined
@@ -209,16 +216,18 @@ export function roomForOrigins(origins: readonly OriginLike[], taskRoomOf: (task
   return roomsForOrigins(origins, taskRoomOf, home, isRoom)[0]
 }
 
-type RoomCard = { fromChat?: { room: string | null } | null; parentId?: string | null; labId?: string | null }
+type RoomCard = { fromChat?: { room: string | null } | null; room?: string; parentId?: string | null; labId?: string | null }
 
 /**
- * 업무 카드의 방: 대화 지시로 만든 카드면 그 방(전체 방이면 GLOBAL_ROOM), 기획 하위 업무면 기획 카드의 방, 랩 카드면 랩 방.
+ * 업무 카드의 방: 대화 지시로 만든 카드면 그 방(전체 방이면 GLOBAL_ROOM), 직원이 일하다 만든 카드면 그 일의 방,
+ * 기획 하위 업무면 기획 카드의 방, 랩 카드면 랩 방.
  * 그 밖은 undefined (= 정해진 방 없음 → 담당 직원의 소속 방). labRoom은 방이 있는 랩이면 그 방을 돌려준다
  */
 export function cardRoom(taskId: string, getTask: (id: string) => RoomCard | undefined, labRoom: (labId: string) => string | undefined): string | undefined {
   let task = getTask(taskId)
   for (let depth = 0; task && depth < 6; depth++) {
     if (task.fromChat) return task.fromChat.room ?? GLOBAL_ROOM
+    if (task.room !== undefined) return task.room
     if (!task.parentId) return task.labId ? labRoom(task.labId) : undefined
     task = getTask(task.parentId)
   }
@@ -237,6 +246,8 @@ export function chatLines(messages: ChatMessage[], room: string | undefined): Ch
   const lines: ChatLine[] = []
   let open = new Map<string, Extract<ChatLine, { kind: 'roomSummary' }>>()
   for (const m of messages) {
+    // 빠른 대화는 혼자 쓰는 방이라 전체 방에 요약 줄을 띄우지 않는다
+    if (m.room?.startsWith(QUICK_ROOM_PREFIX)) continue
     if (!m.room) {
       open = new Map()
       lines.push({ kind: 'message', message: m })

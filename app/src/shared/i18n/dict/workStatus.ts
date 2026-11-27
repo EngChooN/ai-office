@@ -19,5 +19,8 @@ export default {
   'workStatus.waitedFor': { ko: '{time}째', en: 'for {time}', ja: '{time}経過', zh: '已等 {time}' },
   'workStatus.reReview': { ko: '재검토 필요', en: 'Re-review', ja: '再レビュー', zh: '需重新审核' },
   'workStatus.reReviewTitle': { ko: '검토한 뒤 코드가 바뀌었어요. 다시 확인해 주세요.', en: 'The code changed after review. Please check it again.', ja: 'レビュー後にコードが変わりました。もう一度確認してください。', zh: '审核后代码有变动，请再确认一次。' },
+  'workStatus.failed': { ko: '실패', en: 'Failed', ja: '失敗', zh: '失败' },
+  'workStatus.failedTitle': { ko: '담당 직원이 끝내지 못해 할 일로 돌아왔어요. 이유: {reason}', en: "The assignee couldn't finish, so it's back in To do. Reason: {reason}", ja: '担当者が終えられず「やること」に戻りました。理由: {reason}', zh: '负责人未能完成，已退回待办。原因：{reason}' },
+  'workStatus.failedTitleNoReason': { ko: '담당 직원이 끝내지 못해 할 일로 돌아왔어요.', en: "The assignee couldn't finish, so it's back in To do.", ja: '担当者が終えられず「やること」に戻りました。', zh: '负责人未能完成，已退回待办。' },
   'workStatus.mapTip': { ko: '{task} · {time}째', en: '{task} · for {time}', ja: '{task} · {time}経過', zh: '{task} · 已等 {time}' },
 } satisfies Record<string, Entry>

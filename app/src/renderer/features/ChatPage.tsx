@@ -26,10 +26,12 @@ import { JumpToBottom, useStickToBottom } from '@/components/stick-to-bottom'
 import { QuestionBox } from './QuestionBox'
 import { useDecide } from './useDecide'
 import { usePendingSends, type SendInput } from './usePendingSends'
+import { QuickChatHead, QuickComposer, QuickEmpty, useQuickRoomStaff } from './QuickChat'
 import type { PendingSend } from '@shared/pendingSend'
 import { ProgressLine, WaitingCards } from './ProgressLine'
 import { statusMetaOf } from './status'
 import { progressesForRoom } from '@shared/progressView'
+import { countsAsStaff, quickRoomId, quickStaffIdOf } from '@shared/quickChat'
 import { AlwaysApproveButton } from './AutoApprove'
 import { BubbleMenu, ChatSearch, DeliveryLine, PlanNotice, ReplyBar, ReplyQuote, ReportActions, ReservationCards, ReserveMenu, reservationInput, useFindShortcut, useSearchHighlight } from './ChatExtras'
 import { firstUnread, roomKey, seenOf } from '@shared/chatUnread'
@@ -78,6 +80,35 @@ function MeText({ text, targets }: { text: string; targets: MentionTarget[] }) {
 
 /** 사무실 단체방: 직원 보고·결재 요청·위임이 채팅으로 흐르고, @직원·@팀·@랩·@전체 로 바로 지시한다. 전체 방 + 팀별 방 + 랩별 방 */
 export function ChatPage() {
+  // 빠른 대화 방은 따로 그린다 (방을 오갈 때 각자 다시 붙게 — 방 목록 폭 재기 등)
+  const quick = useQuickRoomStaff()
+  return quick ? <QuickChatPage staff={quick} /> : <RoomChatPage />
+}
+
+/** 빠른 대화 방: 임시 직원 한 명과 주고받는 대화 — 머리·입력창만 다르고 말풍선 목록·방 목록은 같이 쓴다 */
+function QuickChatPage({ staff }: { staff: Staff }) {
+  const pendingSends = usePendingSends()
+  const listLayout = useRoomListLayout()
+  const room = quickRoomId(staff.id)
+  const isEmpty = useOffice((s) => !s.chat.some((m) => m.room === room)) && !pendingSends.items.some((p) => p.room === room)
+  return (
+    <div className="flex h-full flex-col">
+      <QuickChatHead staff={staff} />
+      <div ref={listLayout.rowRef} className="flex min-h-0 flex-1">
+        <RoomListColumn room={undefined} layout={listLayout} />
+        <ChatSide room={undefined} className="side:flex hidden" />
+        <div className="flex min-w-0 flex-1 flex-col">
+          {isEmpty ? <div className="min-h-0 flex-1"><QuickEmpty /></div> : <MessageList room={room} searchQuery="" pending={pendingSends.items} onRetry={pendingSends.retry} />}
+          <RoomWaiting room={room} />
+          {/* 다른 빠른 대화로 옮기면 쓰던 글을 가져가지 않게 */}
+          <QuickComposer key={staff.id} staff={staff} onSend={pendingSends.send} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function RoomChatPage() {
   const room = useChatRoom()
   // 휴대폰·원격 화면: 보낸 글이 PC에서 돌아올 때까지 보여 줄 '보내는 중' 말풍선
   const pendingSends = usePendingSends()
@@ -370,9 +401,9 @@ function MessageList({ room, searchQuery, pending, onRetry }: { room: string | u
   const setChatRoom = useOffice((s) => s.setChatRoom)
   const lines = useMemo(() => chatLines(chat, room), [chat, room])
   // 말풍선 속 @이름 강조: 지금 있는 직원·팀·랩 이름과 맞을 때만
-  const hiredKey = staff.flatMap((s) => (s.kind === 'hired' && !s.isPractice ? [`${s.id}\t${s.name}\t${s.teamId ?? ''}`] : [])).join('\n')
+  const hiredKey = staff.flatMap((s) => (s.kind === 'hired' && countsAsStaff(s) ? [`${s.id}\t${s.name}\t${s.teamId ?? ''}`] : [])).join('\n')
   // eslint-disable-next-line react-hooks/exhaustive-deps -- 직원 상태가 바뀔 때마다 말풍선을 다시 그리지 않게 이름·팀이 바뀔 때만
-  const hired = useMemo(() => staff.filter((s) => s.kind === 'hired' && !s.isPractice), [hiredKey])
+  const hired = useMemo(() => staff.filter((s) => s.kind === 'hired' && countsAsStaff(s)), [hiredKey])
   const mentions = useMemo(() => mentionTargets(hired, teams.filter((x) => !x.isPractice), labs.filter((x) => !x.isPractice)), [hired, teams, labs])
   // 아직 기다리는 결재·질문 — 말풍선에서 바로 처리한다
   const pendingById = useMemo(() => new Map(staff.flatMap((s) => s.approvals.map((a) => [a.id, a]))), [staff])
@@ -436,7 +467,8 @@ function MessageList({ room, searchQuery, pending, onRetry }: { room: string | u
           {lines.map((line) => {
             if (line.kind === 'roomSummary') {
               const info = findRoom(line.room, teams, labs, groups)
-              const kind = parseRoom(line.room)?.kind ?? 'team'
+              const parsed = parseRoom(line.room)?.kind
+              const kind = !parsed || parsed === 'quick' ? 'team' : parsed
               return <RoomSummary key={`room:${line.room}:${line.firstId}`} info={info} kind={kind} count={line.count} onOpen={info ? () => setChatRoom(line.room) : undefined} />
             }
             const m = line.message
@@ -503,7 +535,8 @@ function PendingBubble({ pending: p, onRetry }: { pending: PendingSend; onRetry:
 /** 이 방에서 받은 지시를 아직 처리 중인 직원들 (#9) — 작업 내용이 바뀔 때 말풍선 목록이 다시 그려지지 않게 따로 구독한다 */
 function ProgressLines({ room }: { room: string | undefined }) {
   const staff = useOffice((s) => s.staff)
-  const working = useMemo(() => progressesForRoom(staff.filter((s) => s.kind === 'hired' && !s.isPractice), room), [staff, room])
+  // 빠른 대화 임시 직원은 자기 빠른 대화 방에서만 보인다
+  const working = useMemo(() => progressesForRoom(staff.filter((s) => s.kind === 'hired' && (countsAsStaff(s) || (s.isQuick && s.id === quickStaffIdOf(room)))), room), [staff, room])
   if (working.length === 0) return null
   return (
     <div className="flex flex-col gap-1.5">
@@ -685,7 +718,7 @@ function Composer({ room, onSend }: { room: RoomInfo | undefined; onSend: (input
   // 방마다 쓰던 글·첨부를 따로 들고 있는다 — 다른 방·페이지에 갔다 와도 남는다
   const draftKey = `chat:${room?.room ?? 'all'}`
   const [draft, setDraft] = useDraft(`${draftKey}:draft`, '')
-  const hired = useOffice(useShallow((s) => s.staff.filter((x) => x.kind === 'hired')))
+  const hired = useOffice(useShallow((s) => s.staff.filter((x) => x.kind === 'hired' && countsAsStaff(x))))
   const teams = useOffice((s) => s.teams)
   const labs = useOffice((s) => s.labs)
   // 팀·랩 방에서는 방 참여자와 @전체(= 팀·랩 전원)만 부른다
@@ -838,7 +871,7 @@ function Composer({ room, onSend }: { room: RoomInfo | undefined; onSend: (input
   // "@이름 /"를 넣어 바로 메뉴를 띄운다. 쓰던 글은 고른 명령 뒤에 다시 붙인다
   const slashRest = useRef('')
   const openSlash = (mode: 'manual' | 'command') => {
-    const members = (room ? chatRoomMembers(room, hired) : hired).filter((s) => !s.isPractice)
+    const members = (room ? chatRoomMembers(room, hired) : hired).filter(countsAsStaff)
     const leadIds = new Set([...teams, ...labs].map((g) => g.leadId))
     const fallbackId = chatResponder('', room, members.map((s) => ({ id: s.id, role: s.role, status: s.status, isOverBudget: false, isLead: leadIds.has(s.id) })))
     const next = slashButtonDraft(draft, targets, fallbackId)

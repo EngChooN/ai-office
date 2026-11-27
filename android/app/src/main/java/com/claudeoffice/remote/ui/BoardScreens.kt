@@ -257,6 +257,9 @@ private fun WorkCard(w: RemoteWork, serverNow: Long) {
                     )
                 }
             }
+            if (w.failed && st == "queued") {
+                FailedChip(w.failureReason)
+            }
             if (needsReReview(w)) {
                 Text(
                     "↻ ${S.get(R.string.work_rereview)}",
@@ -269,6 +272,23 @@ private fun WorkCard(w: RemoteWork, serverNow: Long) {
             }
         }
     } }
+}
+
+/** 실패 칩 — PC와 같은 빨강. 이유가 있으면 칩 아래 한 줄로 */
+@Composable
+private fun FailedChip(reason: String) {
+    val c = Office.colors
+    Text(
+        "⚠ ${S.get(R.string.work_failed)}",
+        style = Type.label, color = c.statusError,
+        modifier = Modifier
+            .background(c.statusError.copy(alpha = 0.12f), Radius.sm)
+            .border(1.5.dp, c.statusError, Radius.sm)
+            .padding(horizontal = 6.dp, vertical = 2.dp),
+    )
+    if (reason.isNotEmpty()) {
+        MutedText(S.get(R.string.work_failed_reason, reason), maxLines = 2)
+    }
 }
 
 @Composable

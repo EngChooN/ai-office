@@ -27,7 +27,7 @@ import { AutonomyCheck } from './Autonomy'
 import { MemoryLengthSelect } from './MemoryLength'
 import { useProviders } from './ProviderCards'
 import { claudeModelName, CLAUDE_MODEL_ROWS, usageDotsText } from './modelOptions'
-import { folderName, formatCost, formatTokens, shortPath, statusMetaOf } from './status'
+import { folderName, formatCost, formatTokens, shortPath } from './status'
 import { Markdown } from '@/components/markdown'
 import { JumpToBottom, useStickToBottom } from '@/components/stick-to-bottom'
 import { manualLabel } from '@shared/manualName'
@@ -305,6 +305,11 @@ function ResizeHandle({ width, onResize }: { width: number; onResize: (width: nu
   )
 }
 
+// 패널 탭 — 고용 직원 / 외부 세션 / 빠른 대화 임시 직원
+const HIRED_TABS: readonly StaffPanelTab[] = ['work', 'approvals', 'review', 'equip', 'profile']
+const EXTERNAL_TABS: readonly StaffPanelTab[] = ['work', 'approvals', 'review']
+const QUICK_TABS: readonly StaffPanelTab[] = ['work', 'approvals']
+
 function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; onResize: (width: number) => void }) {
   const select = useOffice((s) => s.select)
   const liveLogs = useOffice((s) => s.liveLogs)
@@ -313,6 +318,9 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
   const composerRef = useRef<HTMLTextAreaElement>(null)
   const [tab, setTab] = useState<StaffPanelTab>('work')
   const isHired = staff.kind === 'hired'
+  // 빠른 대화 임시 직원: 일·결재만 — 소개·장비·평가 탭과 해고·내보내기처럼 정식 직원으로 다루는 것은 두지 않는다
+  const isQuick = Boolean(staff.isQuick)
+  const tabs = isQuick ? QUICK_TABS : isHired ? HIRED_TABS : EXTERNAL_TABS
 
   // 직원 카드의 예시·버튼: 지시창을 채우고(빈 글이면 그대로, 쓰던 글이 있으면 뒤에 붙임) 대화 탭으로 — 보내기는 대표가
   const staffDraft = useOffice((s) => s.staffDraft)
@@ -335,9 +343,9 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
   const clearStaffTab = useOffice((s) => s.clearStaffTab)
   useEffect(() => {
     if (staffTab?.staffId !== staff.id) return
-    setTab(staffTab.tab)
+    setTab(tabs.includes(staffTab.tab) ? staffTab.tab : 'work')
     clearStaffTab()
-  }, [staffTab, staff.id, clearStaffTab])
+  }, [staffTab, staff.id, clearStaffTab, tabs])
 
   // 기록은 날짜와 상관없이 최근부터, 위로 올리면 이전 기록을 이어 붙인다 (사용량은 오늘 것만)
   const logScrollRef = useRef<HTMLDivElement>(null)
@@ -599,14 +607,15 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
         </div>
       )}
       {
-        <div className="side:flex-col side:gap-0.5 side:border-b-0 side:px-0 side:text-sm flex border-b px-4 text-xs">
-          {(isHired ? (['work', 'approvals', 'review', 'equip', 'profile'] as const) : (['work', 'approvals', 'review'] as const)).map((key) => (
+        // 세로 폰: 탭 이름은 줄바꿈하지 않는다 — 다 못 들어가는 언어(영·일)는 옆으로 밀어 본다 (상태는 머리에 이미 있다)
+        <div className="side:flex-col side:gap-0.5 side:border-b-0 side:px-0 side:text-sm slim:overflow-x-auto slim:px-1.5 flex border-b px-4 text-xs [scrollbar-width:none]">
+          {tabs.map((key) => (
             <button
               key={key}
               type="button"
               onClick={() => setTab(key)}
               className={cn(
-                'side:mb-0 side:rounded-[10px] side:border-b-0 side:px-2.5 side:py-1.5 side:text-left -mb-px border-b-2 px-3 py-2',
+                'side:mb-0 side:rounded-[10px] side:border-b-0 side:px-2.5 side:py-1.5 side:text-left slim:mb-0 slim:px-2.5 -mb-px shrink-0 border-b-2 px-3 py-2 whitespace-nowrap',
                 tab === key ? 'border-primary text-foreground side:bg-accent font-medium' : 'text-muted-foreground border-transparent',
               )}
             >
@@ -621,11 +630,6 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
               )}
             </button>
           ))}
-          {/* 세로 폰: 진행 상태는 탭 줄 오른쪽 한 마디 (진행 줄·사용량 칸은 숨긴다) */}
-          <span className={cn('slim:flex hidden ml-auto items-center gap-1.5 self-center text-[11px]', statusMetaOf(staff).text)}>
-            <span className={cn('size-1.5 rounded-full', statusMetaOf(staff).dot, staff.status === 'working' && 'animate-pulse')} />
-            {statusMetaOf(staff).label}
-          </span>
         </div>
       }
 
@@ -641,11 +645,11 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
       <div className="split:flex split:min-w-0 split:flex-1 split:flex-col contents">
       {tab === 'approvals' ? (
         <ApprovalTab staff={staff} />
-      ) : tab === 'review' ? (
+      ) : tab === 'review' && !isQuick ? (
         <ReviewTab staff={staff} />
-      ) : tab === 'equip' && isHired ? (
+      ) : tab === 'equip' && isHired && !isQuick ? (
         <EquipmentTab staff={staff} />
-      ) : tab === 'profile' && isHired ? (
+      ) : tab === 'profile' && isHired && !isQuick ? (
         <Profile staff={staff} />
       ) : (
         <>
@@ -740,7 +744,7 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
         </>
       )}
 
-      {tab === 'review' || tab === 'equip' || tab === 'approvals' ? null : isHired ? (
+      {(tab === 'review' && !isQuick) || tab === 'equip' || tab === 'approvals' ? null : isHired ? (
         // 작은 창(폰 키보드가 올라온 때 등)에서 매뉴얼·명령 메뉴가 길어지면 메뉴가 먼저 줄어 스크롤되고, 그래도 모자라면 입력 영역이 스크롤된다 — 패널 밖으로 밀리지 않게 (가로 폰은 패널을 스크롤하므로 그대로)
         <footer className="short:shrink-0 split:px-3 split:py-2 slim:px-3 slim:py-2 flex min-h-0 flex-col gap-2 overflow-y-auto border-t p-4">
           <DraftAttachments files={draftFiles.files} onRemove={draftFiles.remove} />
@@ -774,14 +778,16 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
                     <IconText text={t('slashMenu.manualButton')} size={16} />
                   </PopMenuItem>
                   <PopMenuItem onClick={() => (close(), openSlash('command'))}>{t('slashMenu.button')}</PopMenuItem>
-                  {window.officePack && (
+                  {window.officePack && !isQuick && (
                     <PopMenuItem icon={<DownloadIcon />} onClick={() => (close(), setExportOpen(true))}>
                       {t('pack.export.button')}
                     </PopMenuItem>
                   )}
-                  <PopMenuItem icon={<UserMinusIcon />} onClick={() => (close(), void handleFire())} className="text-muted-foreground">
-                    {t('staffPanel.fire.button')}
-                  </PopMenuItem>
+                  {!isQuick && (
+                    <PopMenuItem icon={<UserMinusIcon />} onClick={() => (close(), void handleFire())} className="text-muted-foreground">
+                      {t('staffPanel.fire.button')}
+                    </PopMenuItem>
+                  )}
                 </>
               )}
             </PopMenu>
@@ -846,14 +852,16 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
             <Button size="sm" variant="ghost" className="h-8 px-2 text-xs" onClick={() => openSlash('command')} title={t('slashMenu.buttonTitle')}>
               {t('slashMenu.button')}
             </Button>
-            {window.officePack && (
+            {window.officePack && !isQuick && (
               <Button size="sm" variant="ghost" className="h-8 px-2 text-xs" onClick={() => setExportOpen(true)}>
                 <DownloadIcon /> {t('pack.export.button')}
               </Button>
             )}
-            <Button size="sm" variant="ghost" className="text-muted-foreground ml-auto" onClick={handleFire}>
-              <UserMinusIcon /> {t('staffPanel.fire.button')}
-            </Button>
+            {!isQuick && (
+              <Button size="sm" variant="ghost" className="text-muted-foreground ml-auto" onClick={handleFire}>
+                <UserMinusIcon /> {t('staffPanel.fire.button')}
+              </Button>
+            )}
             <StaffExportDialog open={isExportOpen} onOpenChange={setExportOpen} initialId={staff.id} />
           </div>
         </footer>

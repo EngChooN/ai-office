@@ -64,7 +64,7 @@ export interface HiredHooks {
    * backgroundTasks: 턴이 끝날 때 세션에 아직 돌고 있는 백그라운드 작업 설명 (끝나도 직원을 다시 깨우지 않으니 점검용).
    * pending: 일하는 중에 받아 아직 답하지 않은 지시 수 (다음 결과로 이어서 답한다)
    */
-  finished(staffId: string, summary: string, backgroundTasks: string[], pending: number): void
+  finished(staffId: string, summary: string, backgroundTasks: string[], pending: number, isError?: boolean): void
   /** 손이 빈 직원이 새 지시를 받아 일을 시작함 (작업 전 상태를 기록하는 시점) */
   workStarted(staffId: string): void
   /** 직원이 파일 수정 도구로 건드린 파일 경로 (같은 폴더를 쓰는 다른 직원의 변경과 가르는 용도) */
@@ -76,7 +76,8 @@ export interface HiredHooks {
   /** 대표가 하던 일을 멈춤 (보고 없이 끝남) */
   stopped(staffId: string): void
   /** 실행 중 예외로 멈춤 (보고 없이 끝남 — 받은 일 정리·대화방 알림) */
-  failed(staffId: string, error: string): void
+  /** pending: 오류 때 버린 줄 선 지시 수 (아직 엔진에 전하지 않은 몫) */
+  failed(staffId: string, error: string, pending?: number): void
   /** 사무실 MCP 도구(팀 조회·위임·보드). 직원마다 같은 서버를 붙이고 권한은 도구 안에서 판단한다 */
   officeTools(staffId: string): RuntimeMcpServer
   /** 공용 브라우저 로그인을 다른 직원이 쓰고 있어 이 직원에게는 브라우저를 못 붙였는가 */
@@ -126,6 +127,8 @@ class Worker {
   private lastReport = ''
   /** 보낸 /명령 이름 (결과가 올 때까지) — /compact처럼 모델이 돌지 않는 명령도 끝난 보고로 친다 */
   private slashPending: string | null = null
+  /** 방금 턴이 실패 결과로 끝났다 — Claude가 세션을 닫으며 같은 실패를 예외로 다시 던지면 다음 일의 실패로 치지 않는다 */
+  private isErrorEchoExpected = false
   /** 세션 init이 알려 준 터미널 화면 전용 명령 */
   private terminalOnly: string[] = []
   /** 세션에서 돌고 있는 백그라운드 작업 (SDK background_tasks_changed — 받을 때마다 통째로 바꾼다) */
@@ -197,11 +200,12 @@ class Worker {
     this.interruptSeq++
     this.stopping = null
     this.isRunning = false
+    const pending = this.rt.backlog
     this.rt.dropQueued()
     this.rt.close()
     this.hooks.update(this.staff.id, { status: 'error', activity: error.slice(0, ACTIVITY_MAX) })
     this.hooks.log(this.staff.id, 'error', error)
-    this.hooks.failed(this.staff.id, error)
+    this.hooks.failed(this.staff.id, error, pending)
     this.applyPendingRestart()
   }
 
@@ -469,13 +473,19 @@ class Worker {
   private handle(m: RuntimeEvent) {
     const id = this.staff.id
     this.clearFirstResponseTimer() // 엔진이 응답했다
+    // 다음 턴이 실제로 움직이기 시작했으면 이후 예외는 그 턴의 것이다
+    if (m.type === 'text' || m.type === 'fileTouched' || m.type === 'autoTurn') this.isErrorEchoExpected = false
     if (m.type === 'error') {
       this.isRunning = false
-      // 받은 일은 office가 모두 정리한다 — 남은 입력이 출처 없이 다시 실행되지 않게 같이 버린다
+      // 받은 일은 office가 모두 정리한다 — 남은 입력이 출처 없이 다시 실행되지 않게 같이 버린다 (버린 수는 시작 전 몫이라 실패로 치지 않게 넘긴다)
+      // 앞 턴의 실패 결과를 다시 던진 것이면 지금 받은 일은 아직 돌지 않았다 — 모두 시작 전 몫으로 넘긴다
+      const isEcho = this.isErrorEchoExpected && /returned an error result/i.test(String(m.error))
+      this.isErrorEchoExpected = false
+      const pending = isEcho ? Number.MAX_SAFE_INTEGER : this.rt.backlog
       this.rt.dropQueued()
       this.hooks.update(id, { status: 'error', activity: String(m.error).slice(0, ACTIVITY_MAX) })
       this.hooks.log(id, 'error', String(m.error))
-      this.hooks.failed(id, String(m.error))
+      this.hooks.failed(id, String(m.error), pending)
       return
     }
     if (m.type === 'rateLimit') {
@@ -526,6 +536,7 @@ class Worker {
       return
     }
     if (m.type === 'result') {
+      this.isErrorEchoExpected = !m.ok
       // costUsd·tokens는 세션 단위 누적값 → 직전 기록과의 차이만 저장
       const totals = { tokensIn: m.tokensIn, tokensOut: m.tokensOut }
       const delta = {
@@ -589,7 +600,7 @@ class Worker {
         tokensOut: this.staff.tokensOut,
       })
       this.isRunning = this.rt.queued > 0
-      this.hooks.finished(id, summary, isError ? [] : this.backgroundTasks, this.rt.queued)
+      this.hooks.finished(id, summary, isError ? [] : this.backgroundTasks, this.rt.queued, isError)
       this.applyPendingRestart()
     }
   }

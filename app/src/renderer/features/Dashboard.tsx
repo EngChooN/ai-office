@@ -89,7 +89,9 @@ const STATUS_FILTERS: SummaryKey[] = ['waiting', 'working', 'idle']
 
 /** 직원 목록(A안): 위 알림 줄(문제·요금제, 있을 때만) → 한 문장 요약 → 팀별 명함 카드를 급한 순으로 + '＋ 직원 추가' */
 export function Dashboard() {
-  const staff = useOffice((s) => s.staff)
+  // 빠른 대화 임시 직원은 직원 목록·인원 수에서 뺀다 (빠른 대화 목록에서 따로 본다)
+  const allStaff = useOffice((s) => s.staff)
+  const staff = useMemo(() => allStaff.filter((s) => !s.isQuick), [allStaff])
   const teams = useOffice((s) => s.teams)
   const selectedId = useOffice((s) => s.selectedId)
   const select = useOffice((s) => s.select)

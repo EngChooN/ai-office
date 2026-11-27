@@ -31,6 +31,9 @@ interface OfficeState extends OfficeSnapshot {
   /** 여러 팀·프로젝트 단체방 만들기 창 (방 목록이 팝업 안에 있어도 창이 닫히지 않게 대화방 화면이 그린다) */
   isChatGroupDialogOpen: boolean
   setChatGroupDialogOpen(isOpen: boolean): void
+  /** 빠른 대화 시작 창 (방 목록·회의실 어디서 눌러도 열리게 App이 그린다) */
+  isQuickStartOpen: boolean
+  setQuickStartOpen(isOpen: boolean): void
   /** 랩 회의 열기 등에서 회의실 화면에 미리 채울 참석자 */
   meetingPreset: { topic: string; participantIds: string[] } | null
   /** 직원 카드의 예시·버튼이 그 직원 패널 지시창에 채울 글 (nonce가 바뀔 때마다 한 번 채움, 보내기는 대표가) */
@@ -143,6 +146,8 @@ export const useOffice = create<OfficeState>((set) => ({
   openChatRoom: (chatRoom) => set((s) => ({ chatRoom, view: shownView('chat', s.settings.isWorkMode) })),
   isChatGroupDialogOpen: false,
   setChatGroupDialogOpen: (isChatGroupDialogOpen) => set({ isChatGroupDialogOpen }),
+  isQuickStartOpen: false,
+  setQuickStartOpen: (isQuickStartOpen) => set({ isQuickStartOpen }),
   meetingPreset: null,
   staffDraft: null,
   setStaffDraft: (draft) => set((s) => ({ staffDraft: draft && { ...draft, nonce: (s.staffDraft?.nonce ?? 0) + 1 } })),

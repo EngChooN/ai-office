@@ -159,6 +159,11 @@ export const SECRETARY_TOOLS: Record<OfficeMethod, ToolSpec> = {
   openClaudeLogin: exclude,
   openCodexLogin: exclude,
   resumeInTerminal: exclude,
+  // 빠른 대화는 대표가 직접 여는 대화방 — 비서가 만들거나 지우지 않는다
+  startQuickChat: exclude,
+  closeQuickChat: exclude,
+  deleteQuickChat: exclude,
+  quickChatStats: exclude,
   remoteQr: exclude,
   regenerateRemoteQr: exclude,
   setRemoteEnabled: exclude,

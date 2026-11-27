@@ -34,6 +34,14 @@ test('리더 기획의 하위 업무를 팀원이 할 일·진행 중으로 들�
   assert.equal(hasOpenDelegation(base({ tasks: [plan, sub({ assigneeId: 'x', status: 'doing' }), sub({ assigneeId: null })] })), false)
 })
 
+test('실패로 할 일에 돌아온 카드는 기다리는 일이 아니다 (리더가 add_task로 맡긴 카드·하위 업무 모두)', () => {
+  const failure = { at: 1, reason: 'API Error: 400' }
+  assert.equal(hasOpenDelegation(base({ tasks: [plan, sub({ failure })] })), false)
+  assert.equal(hasOpenDelegation(base({ tasks: [{ id: 'c', assigneeId: 'm1', status: 'todo', failure }], assignedTaskIds: ['c'] })), false)
+  // 다시 맡겨 표시가 지워지면 다시 기다린다
+  assert.equal(hasOpenDelegation(base({ tasks: [{ id: 'c', assigneeId: 'm1', status: 'todo' }], assignedTaskIds: ['c'] })), true)
+})
+
 const pausedPlan = { ...plan, plan: { isPaused: true } }
 
 test('멈춘 기획의 todo 하위 카드는 기다리는 일이 아니다', () => {

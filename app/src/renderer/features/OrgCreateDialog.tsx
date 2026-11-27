@@ -25,7 +25,7 @@ const NAME_EXAMPLES: Record<Kind, TKey[]> = {
 export function OrgCreateDialog({ initialKind, onClose, onCreated }: { initialKind?: Kind; onClose: () => void; onCreated: (id: string) => void }) {
   const teams = useOffice(useShallow((s) => s.teams.filter((tm) => tm.kind === 'hired')))
   const labs = useOffice((s) => s.labs)
-  const hired = useOffice(useShallow((s) => s.staff.filter((x) => x.kind === 'hired')))
+  const hired = useOffice(useShallow((s) => s.staff.filter((x) => x.kind === 'hired' && !x.isQuick)))
   const [step, setStep] = useState(initialKind ? 1 : 0)
   const [kind, setKind] = useState<Kind>(initialKind ?? 'team')
   const [name, setName] = useState('')

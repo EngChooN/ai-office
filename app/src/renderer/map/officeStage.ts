@@ -395,7 +395,7 @@ class OfficeStage {
     const now = performance.now()
     const needFloors = new Set<number>()
     // 다른 층 회의에 간 직원 → 회의가 열린 층 (자기 층 회의는 그 층 장면에 캐릭터가 회의실로 간다)
-    const floorData = buildFloors(level, st.staff, st.teams, st.meetings.filter(isMeetingLive))
+    const floorData = buildFloors(level, st.staff.filter((s) => !s.isQuick), st.teams, st.meetings.filter(isMeetingLive))
     const meetingFloorOf = new Map(
       floorData.flatMap((f) =>
         f.meetingRoom.meetings.flatMap((m) => m.participantIds.filter((id) => !f.staff.some((x) => x.id === id)).map((id) => [id, f.floor] as const)),

@@ -12,7 +12,6 @@ import { HIRED_ENV } from '../external'
 import { contextOf } from '../sessionRotate'
 import { PendingSends } from './pendingSends'
 import { exeName } from '../platform'
-import { isNetworkError } from '../../shared/networkError.ts'
 import { LoginWatch } from '../../shared/loginError.ts'
 import type { AgentRuntime, AiBackend, AskOptions, AskResult, RuntimeEvent, RuntimeStartOpts, SecretaryEvent, SecretaryRun, SecretaryRunOpts } from './types'
 
@@ -311,11 +310,11 @@ export class ClaudeRuntime implements AgentRuntime {
       // 이 턴이 처리한 지시를 먼저 지운다 — 결과를 받은 쪽이 queued로 "남은 지시가 있나"를 본다
       this.pending.settle(m.user_message_uuids ?? (m.user_message_uuid ? [m.user_message_uuid] : undefined))
       this.pruneSent()
-      // API 연결 실패는 subtype success·is_error true로 온다 ("API Error: Can't reach the API server … (ENOTFOUND)") — 인터넷 오류만 실패로 넘긴다 (다른 API 오류는 지금처럼 답 글로)
-      const isNetFail = m.subtype === 'success' && m.is_error && isNetworkError(m.result)
+      // API 오류는 subtype success·is_error true로 온다 ("API Error: Can't reach the API server … (ENOTFOUND)", "API Error: 500 …") — 실패로 넘긴다.
+      // 받는 쪽은 결과 글을 오류 사유로 쓰고, 인터넷 오류면 받은 일을 보관했다가 이어 간다
       // 로그인 안 됨도 실패로 — 받는 쪽은 결과 글(4개 언어 안내)을 오류 사유로 보여 준다 (#20)
       const isLoginFail = this.login.settle(m.is_error, m.subtype === 'success' ? m.result : '')
-      emit({ type: 'result', ok: m.subtype === 'success' && !isNetFail && !isLoginFail, subtype: m.subtype, text: isLoginFail ? t('claude.loginNeeded.staff') : m.subtype === 'success' ? m.result : '', numTurns: m.num_turns, costUsd: m.total_cost_usd, ...usageTotals(m.modelUsage) })
+      emit({ type: 'result', ok: m.subtype === 'success' && !m.is_error && !isLoginFail, subtype: m.subtype, text: isLoginFail ? t('claude.loginNeeded.staff') : m.subtype === 'success' ? m.result : '', numTurns: m.num_turns, costUsd: m.total_cost_usd, ...usageTotals(m.modelUsage) })
       this.setHelpers(pruneEnded(this.helpers))
     }
   }

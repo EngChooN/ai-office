@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>안드로이드 위쪽 머리줄 개선 · 시안 4안</title>
+<style>
+  :root{
+    --page:#f4f5f7; --ink:#13161c; --muted:#565b63; --card:#fff; --line:#d7dbe1; --accent:#bb4f0c;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--page);color:var(--ink);font:14px/1.55 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR","Hiragino Sans","PingFang SC",sans-serif}
+  header.top{position:sticky;top:0;z-index:20;background:#fff;border-bottom:1px solid var(--line);padding:12px 24px;display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+  header.top h1{font-size:17px;margin:0 12px 0 0}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .seg button{border:0;background:#fff;padding:7px 12px;font:inherit;font-size:13px;cursor:pointer;color:var(--muted);min-height:34px}
+  .seg button.on{background:#13161c;color:#fff}
+  .seg+.lbl{margin-left:4px}
+  .lbl{font-size:12px;color:var(--muted)}
+  main{padding:20px 24px 60px}
+  .intro{max-width:1100px;margin:0 0 18px}
+  .intro p{margin:4px 0;color:var(--muted)}
+  table.cmp{border-collapse:collapse;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden;margin:10px 0 26px;width:100%;max-width:1280px}
+  table.cmp th,table.cmp td{border-bottom:1px solid #eceef2;padding:9px 12px;text-align:left;vertical-align:top;font-size:13px}
+  table.cmp th{background:#f8f9fb;font-weight:600;white-space:nowrap}
+  table.cmp tr.rec td{background:#fff7f1}
+  .tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:99px;background:#13161c;color:#fff;margin-left:6px;vertical-align:1px}
+  .tag.rec{background:var(--accent)}
+  .tag.warn{background:#9a6000}
+  .opts{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start}
+  .opt{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px 18px 18px}
+  .opt.rec{border:2px solid var(--accent)}
+  .opt h2{font-size:16px;margin:0 0 2px}
+  .opt .one{color:var(--muted);font-size:13px;margin:0 0 12px;max-width:860px}
+  .pair{display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap}
+  .cap{font-size:12px;color:var(--muted);margin:0 0 6px}
+  .ruler{font-size:12px;margin-top:6px;font-weight:600}
+  .ruler b{color:var(--accent)}
+  .notes{max-width:1280px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 20px;margin-top:28px}
+  .notes h3{margin:8px 0 6px;font-size:15px}
+  .notes ul{margin:0 0 8px;padding-left:20px}
+  .notes li{margin:3px 0}
+
+  /* ---------- 휴대폰 (1 CSS px = 1 dp) ---------- */
+  .phone{--bg:#0d1014;--surface:#15181e;--muted-s:#1e2228;--sel:#262c35;--outline:#292e36;--on:#f2f2f2;--onm:#999fa8;--primary:#f0834e;--work:#3fc168;--wait:#edb417;
+    width:var(--w);height:640px;border-radius:22px;overflow:hidden;position:relative;background:var(--bg);color:var(--on);
+    box-shadow:0 0 0 7px #2a2d33,0 8px 24px rgba(0,0,0,.18);display:flex;flex-direction:column;font-size:14px;margin:7px}
+  body.light .phone{--bg:#f9fafb;--surface:#ffffff;--muted-s:#eef0f4;--sel:#e2e8f1;--outline:#d7dbe1;--on:#13161c;--onm:#565b63;--primary:#bb4f0c;--work:#0a7e3a;--wait:#9a6000;
+    box-shadow:0 0 0 7px #c9ccd2,0 8px 24px rgba(0,0,0,.10)}
+  .sb{height:24px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 14px;font-size:12px;font-weight:600;background:var(--bg)}
+  .sb i{font-style:normal;letter-spacing:2px;font-size:10px;opacity:.85}
+  /* 지금 앱의 PC 줄 (네이티브) */
+  .pcbar{height:48px;flex:none;display:flex;align-items:center;padding:0 16px;background:var(--bg);gap:8px}
+  .chip{display:flex;align-items:center;gap:8px;height:40px;padding:0 4px 0 12px;border:1px solid var(--outline);border-radius:12px;background:var(--surface);max-width:60%;min-width:0}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--work);flex:none}
+  .dot.wait{background:var(--wait)}
+  .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;font-weight:600}
+  .car{flex:none;width:20px;text-align:center;color:var(--onm);font-size:11px}
+  .badge{flex:none;min-width:18px;height:18px;border-radius:9px;background:#edb417;color:#000;font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;padding:0 5px}
+  /* 웹(PC 화면) 제목 줄 */
+  .title{height:52px;flex:none;display:flex;align-items:center;padding:0 4px 0 12px;background:var(--surface);border-bottom:1px solid var(--outline);gap:2px;min-width:0}
+  .ttl{display:flex;align-items:center;gap:4px;font-size:19px;font-weight:700;white-space:nowrap;padding:0 6px 0 4px;height:48px;flex:none}
+  .ttl .car{font-size:12px}
+  .avs{display:flex;margin-left:4px;flex:none}
+  .av{width:26px;height:26px;border-radius:50%;background:#6b4f3f;border:2px solid var(--surface);margin-left:-8px;font-size:9px;display:flex;align-items:center;justify-content:center;color:#fff}
+  .av:first-child{margin-left:0}
+  .sp{flex:1;min-width:0}
+  .ib{width:48px;height:48px;flex:none;display:flex;align-items:center;justify-content:center;color:var(--on)}
+  .ib svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  /* 대화 내용 자리 */
+  .body{flex:1;min-height:0;overflow:hidden;padding:12px 14px 0 12px;display:flex;flex-direction:column;gap:10px;position:relative}
+  .msg{display:flex;gap:8px;align-items:flex-start}
+  .ao{width:32px;height:32px;border-radius:50%;background:var(--muted-s);border:1px solid var(--outline);flex:none;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--onm)}
+  .bub{background:var(--surface);border:1px solid var(--outline);border-radius:16px;padding:10px 12px;flex:1;max-width:84%}
+  .ln{height:9px;border-radius:5px;background:var(--sel);margin:6px 0}
+  .who{font-size:11px;color:var(--onm);margin:0 0 4px 40px}
+  .input{height:56px;flex:none;display:flex;align-items:center;gap:8px;padding:0 10px;border-top:1px solid var(--outline);background:var(--bg)}
+  .input .fld{flex:1;height:40px;border:1px solid var(--outline);border-radius:20px}
+  .input .c{width:40px;height:40px;border-radius:50%;background:var(--muted-s);flex:none}
+  .input .c.p{background:var(--primary);opacity:.75}
+  .nav{height:60px;flex:none;display:flex;border-top:1px solid var(--outline);background:var(--surface)}
+  .nav div{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:10.5px;color:var(--onm);min-width:0;text-align:center;line-height:1.15;padding:0 2px}
+  .nav div b{width:20px;height:16px;border-radius:5px;border:1.6px solid currentColor;display:block}
+  .nav div.on{color:var(--on);font-weight:700}
+
+  /* B: 얇은 띠 */
+  .strip{height:24px;flex:none;display:flex;align-items:center;gap:6px;padding:0 16px;background:var(--bg);font-size:12px;color:var(--onm);min-width:0}
+  .strip .nm{font-weight:600;color:var(--on)}
+  .strip .chg{margin-left:auto;flex:none;color:var(--primary);font-weight:600}
+  /* A: 제목 줄 안 작은 칩 */
+  .mini{display:flex;align-items:center;gap:4px;height:32px;padding:0 0 0 8px;border:1px solid var(--outline);border-radius:16px;background:var(--muted-s);font-size:13px;min-width:0}
+  .tapw{height:48px;display:flex;align-items:center;min-width:48px;flex:0 1 auto;min-width:0}
+.ttl.sm{font-size:17px;padding:0 4px 0 2px}
+  .mini .car{width:16px}
+  .vsep{width:1px;height:22px;background:var(--outline);flex:none;margin:0 4px}
+  /* C: 두 줄 제목 */
+  .ttl2{display:flex;flex-direction:column;justify-content:center;height:56px;padding:0 6px 0 4px;min-width:0;flex:0 1 auto}
+  .ttl2 .l1{display:flex;align-items:center;gap:4px;font-size:18px;font-weight:700;line-height:1.2;white-space:nowrap}
+  .ttl2 .l2{display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--onm);line-height:1.3;min-width:0}
+  .ttl2 .l2 .nm{font-weight:500}
+  .title.h56{height:56px}
+  /* 시트·메뉴 */
+  .scrim{position:absolute;inset:0;background:rgba(0,0,0,.45);z-index:5}
+  .sheet{position:absolute;left:0;right:0;bottom:0;background:var(--surface);border-radius:20px 20px 0 0;z-index:6;padding:8px 16px 14px}
+  .sheet .grab{width:32px;height:4px;border-radius:2px;background:var(--outline);margin:4px auto 10px}
+  .sheet h4{margin:0 0 6px;font-size:16px}
+  .row{min-height:56px;display:flex;align-items:center;gap:12px;min-width:0}
+  .row .col{flex:1;min-width:0}
+  .row .col .nm{display:block;font-weight:500}
+  .row .addr{font-size:11px;color:var(--onm)}
+  .row .ok{color:var(--primary);font-weight:700}
+  .row.add{color:var(--primary);font-weight:600}
+  .menu{position:absolute;left:8px;z-index:6;background:var(--surface);border:1px solid var(--outline);border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.35);padding:6px 0;width:min(300px,calc(var(--w) - 16px))}
+  .menu .sec{font-size:11px;color:var(--onm);padding:6px 14px 2px}
+  .menu .row{min-height:48px;padding:0 14px;gap:10px}
+  .menu hr{border:0;border-top:1px solid var(--outline);margin:4px 0}
+  .menu .proj{opacity:.9}
+  .newpill{position:absolute;right:12px;bottom:126px;background:var(--primary);color:#fff;font-size:12px;border-radius:16px;padding:6px 12px;z-index:3;opacity:.0}
+
+  /* 터치 영역 보기 */
+  body.touch .t{outline:2px dashed #2f80ff;outline-offset:-2px}
+  body.touch .t.bad{outline-color:#f14445}
+  .touchnote{display:none;font-size:11px;color:#2f80ff;margin-top:4px}
+  body.touch .touchnote{display:block}
+  .hint{font-size:11px;color:var(--muted);margin-top:4px}
+  /* 높이 표시 띠 */
+  .hl{position:absolute;left:0;right:0;pointer-events:none;border-left:4px solid var(--accent);z-index:4}
+</style>
+</head>
+<body class="dark">
+<header class="top">
+  <h1>안드로이드 위쪽 머리줄 · 시안 4안</h1>
+  <span class="lbl">언어</span>
+  <div class="seg" id="lang"><button data-v="ko" class="on">한국어</button><button data-v="en">English</button><button data-v="ja">日本語</button><button data-v="zh">中文</button></div>
+  <span class="lbl">화면</span>
+  <div class="seg" id="theme"><button data-v="dark" class="on">다크</button><button data-v="light">라이트</button></div>
+  <span class="lbl">폭</span>
+  <div class="seg" id="width"><button data-v="360" class="on">360dp</button><button data-v="412">412dp</button></div>
+  <span class="lbl">PC 이름</span>
+  <div class="seg" id="name"><button data-v="short" class="on">짧게</button><button data-v="long">길게(20자 안팎)</button></div>
+  <div class="seg" id="touch"><button data-v="off" class="on">터치 영역 숨김</button><button data-v="on">터치 영역 보기</button></div>
+</header>
+<main>
+  <div class="intro">
+    <p><b>지금 문제</b>: 상태바 아래에 PC 고르기 줄(48dp)이 따로 있고, 그 밑에 제목 줄(약 52dp)이 또 있어 위쪽이 약 100dp를 차지합니다.</p>
+    <p>시안은 레이아웃 수준입니다. 1 화면 점 = 1dp로 그렸습니다. 대화 내용·아바타는 자리 표시이고, 색은 지금 앱 색 그대로입니다. 위 단추로 언어·라이트/다크·폭·긴 PC 이름·터치 영역을 바꿔 볼 수 있습니다.</p>
+  </div>
+
+  <table class="cmp">
+    <tr><th>안</th><th>위쪽 높이(상태바 제외)</th><th>공간 절약</th><th>한 손 조작</th><th>PC 바꾸기 쉬움</th><th>개발 메모(추정)</th></tr>
+    <tr class="rec"><td><b>A. 제목 줄에 작은 PC 칩 합치기</b><span class="tag rec">추천</span></td><td>100 → 52dp</td><td>48dp 늘어남 — 대화가 약 2줄 더 보임</td><td>보통 — 칩이 왼쪽 위라 엄지가 조금 멀다</td><td>좋음 — 지금처럼 한 번 누르면 PC 목록, 지금 PC 이름도 늘 보임. 단, 긴 이름은 앞 몇 글자만 보임</td><td>제목 줄은 PC 화면(웹)이라 칩 자리를 웹이 비워 두고 앱이 그 위에 그려야 함</td></tr>
+    <tr><td><b>B. 얇은 띠 한 줄(24dp)</b><span class="tag warn">터치 미달</span></td><td>100 → 76dp</td><td>24dp 늘어남 — 넷 중 가장 적음</td><td>나쁨 — 띠가 얇아 누르기 어렵다</td><td>보통 — 이름은 늘 보이지만 누르는 곳이 24dp라 48dp 기준 미달</td><td>앱 쪽만 고치면 됨(가장 쉬움). 48dp를 맞추려면 띠를 다시 두껍게 해야 함</td></tr>
+    <tr><td><b>C. ‘AI Office ▾’ 메뉴 안에 PC 바꾸기</b></td><td>100 → 56dp</td><td>44dp 늘어남</td><td>보통 — 누르는 곳은 A와 같은 자리</td><td>조금 불편 — 메뉴를 열고 한 번 더 눌러야 함(2번). 지금 PC는 제목 밑 작은 글로 보임</td><td>웹 메뉴 안에 앱 기능을 넣어야 해 PC 앱도 함께 바꿔야 함(PC 쪽 업데이트 필요)</td></tr>
+    <tr><td><b>D. 대화를 내리면 PC 줄 숨김</b></td><td>위: 100dp / 읽는 중: 52dp</td><td>읽는 동안만 48dp</td><td>좋음 — 지금 모양 그대로라 익숙함</td><td>조금 불편 — 숨어 있을 땐 위로 살짝 끌어내려야 보임</td><td>웹 대화 목록의 스크롤을 앱이 알아야 함. 대화는 위로 올려 읽어서 자주 다시 나타날 수 있음</td></tr>
+  </table>
+
+  <div class="opts" id="opts"></div>
+
+  <section class="notes">
+    <h3>추천 이유 — A안 (추천안, 대표 미확인)</h3>
+    <ul>
+      <li>공간을 가장 많이 돌려받으면서(48dp), PC 바꾸기는 지금과 똑같이 <b>한 번 누르기</b>로 남습니다.</li>
+      <li>지금 보고 있는 PC 이름이 늘 보여서, 다른 PC에 지시를 잘못 보낼 걱정이 적습니다.</li>
+      <li>360dp에서는 칩이 좁아 긴 이름은 “…”로 줄입니다. 전체 이름은 누르면 뜨는 PC 목록에서 두 줄까지 보입니다.</li>
+      <li>A안에서는 칩 자리를 위해 제목 옆 직원 얼굴 묶음을 뺍니다(412dp에서도). 그래도 긴 이름은 360dp에서 앞 2~4글자, 412dp에서 앞 5~7글자 정도만 보입니다. PC 이름을 짧게(예: ‘집’, ‘회사’) 바꾸도록 PC 목록 창에서 안내하면 좋습니다.</li>
+    </ul>
+    <h3>개발 전달 기준 (고르신 뒤 임안드에게)</h3>
+    <ul>
+      <li><b>터치 영역</b>: 모든 단추 48×48dp 이상. A안 칩은 보이는 모양 32dp 높이, 누르는 곳은 줄 높이 48dp 전체.</li>
+      <li><b>A안 칩 폭</b>: 화면 폭의 30%(360dp에서 약 108dp)까지. 이름 한 줄, 넘치면 끝을 “…”. 점(초록=일하는 중, 노랑=쉬는 중) + 이름 + ▾.</li>
+      <li><b>A안 순서</b>: [PC 칩] | 구분선 | AI Office ▾ | 빈칸 | 찾기·정보·반짝 단추. 제목 ‘AI Office’는 줄이지 않되, 글자 크기를 19→17로 한 단계 낮춰 360dp에서 칩 자리(약 90dp)를 확보.</li>
+      <li><b>다른 PC 결재 대기</b>: 지금처럼 숫자 배지. A안은 칩 오른쪽 위에 작은 점 배지, 숫자는 PC 목록에서.</li>
+      <li><b>PC 목록 창</b>: 지금 쓰는 아래쪽 창(연결된 PC·PC 추가·설정)을 그대로 씀.</li>
+      <li><b>색</b>: 지금 앱 테마 색(배경·면·테두리·주황 강조) 그대로. 새 색 없음.</li>
+      <li><b>확인 못 함</b>: 실제 휴대폰·실제 앱에서는 보지 않았습니다. 웹 제목 줄과 앱 칩을 한 줄에 겹치는 방법이 가능한지는 개발 확인이 필요합니다(추정).</li>
+    </ul>
+  </section>
+</main>
+
+<script>
+const T={
+  ko:{nav:["직원 목록","단체방","업무 보드","결재함","더보기"],short:"PC 2",long:"디자인팀 사무실 맥북프로16",other:"집 Windows",third:"PC 3",
+      sheet:"연결된 PC",add:"PC 추가",settings:"설정",switch:"PC 바꾸기",chg:"바꾸기",working:"일하는 중",projects:"프로젝트",
+      p1:"AI Office",p2:"관악산 게임",all:"전체 방",who:"ai-office · 완료 보고",pull:"↓ 끌어내리면 PC 줄"},
+  en:{nav:["Staff","Group chat","Board","Approvals","More"],short:"PC 2",long:"Design Studio iMac 27",other:"Home Windows",third:"PC 3",
+      sheet:"Connected PCs",add:"Add PC",settings:"Settings",switch:"Switch PC",chg:"Switch",working:"Working",projects:"Projects",
+      p1:"AI Office",p2:"Gwanak game",all:"All rooms",who:"ai-office · Report",pull:"↓ Pull for PC bar"},
+  ja:{nav:["社員一覧","全体ルーム","業務ボード","決裁箱","その他"],short:"PC 2",long:"デザインチームのMacBook Pro",other:"自宅のWindows",third:"PC 3",
+      sheet:"接続中のPC",add:"PCを追加",settings:"設定",switch:"PCを切り替える",chg:"切替",working:"作業中",projects:"プロジェクト",
+      p1:"AI Office",p2:"冠岳山ゲーム",all:"全ルーム",who:"ai-office · 完了報告",pull:"↓ 引き下げてPCバー"},
+  zh:{nav:["员工列表","群聊","任务看板","审批箱","更多"],short:"PC 2",long:"设计团队办公室的MacBook Pro",other:"家里的 Windows",third:"PC 3",
+      sheet:"已连接的电脑",add:"添加电脑",settings:"设置",switch:"切换电脑",chg:"切换",working:"工作中",projects:"项目",
+      p1:"AI Office",p2:"冠岳山游戏",all:"全部房间",who:"ai-office · 完成报告",pull:"↓ 下拉显示电脑栏"},
+};
+const S={lang:"ko",theme:"dark",w:360,name:"short"};
+const ico={
+  search:'<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>',
+  info:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8v.01"/></svg>',
+  spark:'<svg viewBox="0 0 24 24"><path d="M10 3l1.8 4.7L16.5 9.5l-4.7 1.8L10 16l-1.8-4.7L3.5 9.5l4.7-1.8z"/><path d="M18 14l.8 2.2L21 17l-2.2.8L18 20l-.8-2.2L15 17l2.2-.8z"/></svg>'};
+const t=()=>T[S.lang];
+const pcName=()=>S.name==="long"?t().long:t().short;
+const esc=s=>s.replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+
+const sb=()=>`<div class="sb"><span>12:20</span><i>▼ ▲ ▮▮</i></div>`;
+const icons=()=>`<div class="ib t">${ico.search}</div><div class="ib t">${ico.info}</div><div class="ib t">${ico.spark}</div>`;
+const avs=()=>S.w>=400?`<div class="avs"><div class="av">리</div><div class="av">패</div><div class="av">가</div></div>`:"";
+const ttl=()=>`<div class="ttl t">AI Office<span class="car">▼</span></div>`;
+function body(scrolled){
+  const b=()=>`<div class="bub"><div class="ln" style="width:92%"></div><div class="ln" style="width:80%"></div><div class="ln" style="width:88%"></div><div class="ln" style="width:55%"></div></div>`;
+  return `<div class="body">${scrolled?`<div class="msg"><div class="ao">AO</div>${b()}</div>`:""}
+    <div class="msg"><div class="ao">AO</div>${b()}</div>
+    <div class="who">${esc(t().who)}</div>
+    <div class="msg"><div class="ao">AO</div><div class="bub"><div class="ln" style="width:94%"></div><div class="ln" style="width:60%"></div></div></div>
+    <div class="msg"><div class="ao">AO</div>${b()}</div>
+  </div>`;
+}
+const foot=()=>`<div class="input"><div class="c t"></div><div class="fld"></div><div class="c p t"></div></div>
+  <div class="nav">${t().nav.map((n,i)=>`<div class="${i===1?"on":""}"><b></b>${esc(n)}</div>`).join("")}</div>`;
+function sheet(){
+  const L=t();
+  return `<div class="scrim"></div><div class="sheet"><div class="grab"></div><h4>${esc(L.sheet)}</h4>
+   <div class="row t"><span class="dot"></span><div class="col"><span class="nm" style="white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical">${esc(pcName())}</span><span class="addr">100.101.102.103</span></div><span class="ok">✓</span></div>
+   <div class="row t"><span class="dot wait"></span><div class="col"><span class="nm">${esc(L.other)}</span><span class="addr">100.88.10.4</span></div><span class="badge">2</span></div>
+   <div class="row add t">＋ ${esc(L.add)}</div>
+   <div class="row t" style="color:var(--on)">⚙ ${esc(L.settings)}</div></div>`;
+}
+function phone(inner,extra=""){return `<div class="phone" style="--w:${S.w}px">${sb()}${inner}${extra}</div>`;}
+
+/* 지금 */
+const now=()=>phone(`<div class="pcbar"><div class="chip t"><span class="dot"></span><span class="nm">${esc(pcName())}</span><span class="car">▼</span></div></div>
+  <div class="title">${ttl()}${avs()}<div class="sp"></div>${icons()}</div>${body()}${foot()}`);
+
+/* A */
+const aTitle=()=>`<div class="title"><div class="tapw t" style="max-width:${Math.round(S.w*0.3)+8}px"><div class="mini" style="max-width:${Math.round(S.w*0.3)}px;position:relative"><span class="dot"></span><span class="nm">${esc(pcName())}</span><span class="car">▼</span><span style="position:absolute;top:-2px;right:-2px;width:9px;height:9px;border-radius:50%;background:#edb417;border:2px solid var(--surface)"></span></div></div><div class="vsep"></div>${ttl().replace('class="ttl t"','class="ttl sm t"')}<div class="sp"></div>${icons()}</div>`;
+const A1=()=>phone(aTitle()+body(true)+foot());
+const A2=()=>phone(aTitle()+body(true)+foot(),sheet());
+
+/* B */
+const bStrip=()=>`<div class="strip t bad"><span class="dot"></span><span class="nm">${esc(pcName())}</span><span>· ${esc(t().working)}</span><span class="chg">${esc(t().chg)} ▾</span></div>`;
+const bTitle=()=>`<div class="title">${ttl()}${avs()}<div class="sp"></div>${icons()}</div>`;
+const B1=()=>phone(bStrip()+bTitle()+body()+foot());
+const B2=()=>phone(bStrip()+bTitle()+body()+foot(),sheet());
+
+/* C */
+const cTitle=()=>`<div class="title h56"><div class="ttl2 t"><div class="l1">AI Office<span class="car">▼</span></div><div class="l2"><span class="dot"></span><span class="nm">${esc(pcName())}</span></div></div>${avs()}<div class="sp"></div>${icons()}</div>`;
+function cMenu(){const L=t();return `<div class="scrim" style="background:rgba(0,0,0,.25)"></div><div class="menu" style="top:84px">
+  <div class="sec">${esc(L.switch)}</div>
+  <div class="row t"><span class="dot"></span><span class="nm" style="flex:1">${esc(pcName())}</span><span class="ok">✓</span></div>
+  <div class="row t"><span class="dot wait"></span><span class="nm" style="flex:1">${esc(L.other)}</span><span class="badge">2</span></div>
+  <div class="row t" style="color:var(--primary);font-weight:600">＋ ${esc(L.add)}</div>
+  <hr><div class="sec">${esc(L.projects)}</div>
+  <div class="row proj t">${esc(L.all)}</div><div class="row proj t"><b>${esc(L.p1)}</b></div><div class="row proj t">${esc(L.p2)}</div></div>`;}
+const C1=()=>phone(cTitle()+body(true)+foot());
+const C2=()=>phone(cTitle()+body(true)+foot(),cMenu());
+
+/* D */
+const D1=()=>now();
+const D2=()=>phone(`<div class="title">${ttl()}${avs()}<div class="sp"></div>${icons()}</div>
+  <div style="height:0;position:relative;z-index:3"><div style="position:absolute;left:50%;transform:translateX(-50%);top:6px;font-size:11px;background:var(--muted-s);color:var(--onm);border:1px solid var(--outline);border-radius:12px;padding:3px 10px;white-space:nowrap">${esc(t().pull)}</div></div>${body(true)}${foot()}`);
+
+const OPTS=[
+  {id:"A",rec:true,h:"A. 제목 줄에 작은 PC 칩 합치기",one:"PC 줄을 없애고, 제목 줄 맨 왼쪽에 작은 칩으로 넣습니다. 누르면 지금과 같은 PC 목록 창이 뜹니다.",
+   p:[[A1,"평소"],[A2,"칩을 누르면 — 지금 쓰는 PC 목록 창"]],r:"위쪽 100dp → <b>52dp</b> (−48)"},
+  {id:"B",h:"B. 제목 위 얇은 띠 한 줄 (24dp)",one:"PC 줄을 24dp 띠로 얇게 줄입니다. 점·이름·‘바꾸기’를 한 줄로 보여 줍니다.",
+   p:[[B1,"평소"],[B2,"띠를 누르면 — PC 목록 창"]],r:"위쪽 100dp → <b>76dp</b> (−24)",
+   tn:"빨간 점선: 띠의 누르는 곳이 24dp라 48dp 기준에 못 미칩니다."},
+  {id:"C",h:"C. ‘AI Office ▾’ 메뉴 안에 PC 바꾸기",one:"PC 줄을 없애고, 제목 아래에 지금 PC를 작은 글로 적습니다. PC 바꾸기는 제목 메뉴 맨 위에 들어갑니다.",
+   p:[[C1,"평소"],[C2,"제목을 누르면 — PC와 프로젝트를 한 메뉴에서"]],r:"위쪽 100dp → <b>56dp</b> (−44)"},
+  {id:"D",h:"D. 대화를 내려 읽으면 PC 줄 숨김",one:"모양은 지금 그대로 두고, 대화를 읽으며 스크롤하면 PC 줄이 위로 숨습니다. 끌어내리면 다시 나옵니다.",
+   p:[[D1,"맨 위 / 멈춰 있을 때 (지금과 같음)"],[D2,"스크롤해 읽는 중"]],r:"맨 위 100dp · 읽는 중 <b>52dp</b>"},
+];
+function render(){
+  document.body.className=(S.theme)+(document.getElementById("touch").querySelector(".on").dataset.v==="on"?" touch":"");
+  if(S.theme==="light")document.body.classList.add("light");
+  const html=[`<section class="opt"><h2>지금 (참고)</h2><p class="one">PC 줄 48dp + 제목 줄 52dp</p><div class="pair"><div>${now()}<div class="ruler">위쪽 <b>100dp</b></div></div></div></section>`]
+   .concat(OPTS.map(o=>`<section class="opt${o.rec?" rec":""}"><h2>${o.h}${o.rec?'<span class="tag rec">추천</span>':""}</h2><p class="one">${o.one}</p>
+    <div class="pair">${o.p.map(([f,c])=>`<div><p class="cap">${c}</p>${f()}</div>`).join("")}</div>
+    <div class="ruler">${o.r}</div>${o.tn?`<div class="touchnote" style="color:#f14445">${o.tn}</div>`:""}<div class="touchnote">파란 점선 = 누르는 곳(48dp 이상)</div></section>`));
+  document.getElementById("opts").innerHTML=html.join("");
+}
+for(const [id,key] of [["lang","lang"],["theme","theme"],["width","w"],["name","name"],["touch",null]]){
+  document.getElementById(id).addEventListener("click",e=>{
+    const b=e.target.closest("button");if(!b)return;
+    b.parentNode.querySelectorAll("button").forEach(x=>x.classList.toggle("on",x===b));
+    if(key)S[key]=key==="w"?+b.dataset.v:b.dataset.v;render();
+  });
+}
+// 주소 끝에 ?lang=en&theme=light&w=412&name=long&touch=on 처럼 붙여도 됨 (캡처용)
+const q=new URLSearchParams(location.search);
+for(const [id,key,p] of [["lang","lang","lang"],["theme","theme","theme"],["width","w","w"],["name","name","name"],["touch",null,"touch"]]){
+  const v=q.get(p);if(!v)continue;const b=document.querySelector(`#${id} button[data-v="${v}"]`);if(b)b.click();
+}
+render();
+</script>
+</body>
+</html>

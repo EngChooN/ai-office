@@ -5,6 +5,7 @@ import type { OfficeMethod } from '../shared/officeApiShape.ts'
 import { t } from '../shared/i18n/index.ts'
 import type { Approval, AutoApproveState, ChatMessage, AutoHandled, DailyRecord, LogEntry, Manual, OfficeSnapshot, SecretaryCompare, Task } from '../shared/types.ts'
 import { approvalHeadline } from '../shared/approvalEffect.ts'
+import { countsAsStaff } from '../shared/quickChat.ts'
 
 /** 도구 결과 한 번의 상한 (글자) */
 export const COMPACT_MAX = 6000
@@ -31,7 +32,8 @@ export type OverviewSection = 'all' | 'people' | 'approvals' | 'tasks' | 'org' |
 
 /** 사무실 현황을 질문에 맞는 부분만 (기본: 사람 + 결재 대기) */
 export function compactOverview(snap: OfficeSnapshot, section: OverviewSection = 'all', now = Date.now()): string {
-  const hired = snap.staff.filter((s) => s.kind === 'hired')
+  // 연습·빠른 대화 임시 직원은 인원·일 맡길 대상에서 뺀다 (결재 대기는 그대로 보인다 — 그 직원 결재도 대표가 처리한다)
+  const hired = snap.staff.filter((s) => s.kind === 'hired' && countsAsStaff(s))
   const team = (id: string | null) => snap.teams.find((t) => t.id === id)?.name ?? ''
   const name = (id: string | null) => (id ? (snap.staff.find((s) => s.id === id)?.name ?? '') : '')
   const out: string[] = []
@@ -41,7 +43,8 @@ export function compactOverview(snap: OfficeSnapshot, section: OverviewSection =
     .map(([l, n]) => `${l} ${n}`)
     .join(' · ')
   if (section === 'all' || section === 'people') {
-    out.push(`## 직원 (고용 ${hired.length}명: ${counts || '없음'}${snap.staff.length > hired.length ? ` · 외부 세션 ${snap.staff.length - hired.length}` : ''})`)
+    const external = snap.staff.filter((s) => s.kind === 'external').length
+    out.push(`## 직원 (고용 ${hired.length}명: ${counts || '없음'}${external ? ` · 외부 세션 ${external}` : ''})`)
     for (const s of hired) out.push(`- ${s.name} [${s.id}] ${s.role} · 엔진 ${s.provider === 'codex' ? 'GPT' : 'Claude'}${team(s.teamId) ? ` · ${team(s.teamId)}` : ''} · ${STATUS[s.status] ?? s.status} ${ago(s.statusSince, now)}${s.activity ? ` · ${clip(s.activity, 60)}` : ''}${s.approvals.length ? ` · 대기 ${s.approvals.length}` : ''}`)
   }
   if (section === 'all' || section === 'approvals') {

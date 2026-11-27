@@ -17,6 +17,9 @@ export function restrictRemoteArgs(method: string, args: unknown[], ctx: RemoteG
     // 새 직원: 작업 폴더는 기본 폴더, 승인은 늘 묻기 (파일 수정 자동 승인은 PC에서만)
     case 'hire':
       return patchAt(0, { cwd, approvalMode: 'ask' })
+    // 빠른 대화: 작업 폴더는 기본 폴더, 승인은 늘 묻기 (파일 수정 자동 승인은 PC에서만)
+    case 'startQuickChat':
+      return patchAt(0, { cwd, approvalMode: 'ask' })
     // 기존 외부 세션을 직원으로: 승인은 늘 묻기
     case 'recruitExternal':
       return patchAt(1, { approvalMode: 'ask' })

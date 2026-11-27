@@ -22,7 +22,7 @@ const SETTING_KEY_MAP: Record<keyof Settings, true> = {
   monthlyBudgetUsd: true, tokenBudget: true, theme: true, dayNight: true, uiMode: true, uiTheme: true, plants: true, isChatterOn: true, isSecretaryBriefOn: true,
   workHours: true, layout: true, isTrayOn: true, isDeskPetOn: true, deskPetSize: true, deskPetOpacity: true, launchAtLogin: true, isOnboarded: true, defaultCwd: true, seenHints: true, isHintsOff: true,
   isWorkMode: true, isFullAccessNoticeSeen: true, isProviderBannerSeen: true, internalAi: true, language: true, demoDay: true, isStaffCaptureOn: true,
-  isSecretaryWebOn: true, sharedBrowserLogin: true, tokenSaverMode: true, reportStyle: true,
+  isSecretaryWebOn: true, sharedBrowserLogin: true, tokenSaverMode: true, reportStyle: true, quickApproval: true,
 }
 export const SETTING_KEYS = new Set<string>(Object.keys(SETTING_KEY_MAP))
 /** 이 설정은 바꿔도 꾸미기라 보통 */

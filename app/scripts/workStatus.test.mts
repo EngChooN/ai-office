@@ -232,3 +232,13 @@ test('worksOf: 끝나지 않은 업무는 모두 싣고, 완료는 최근 20건 
   assert.equal(more.worksDoneOmitted, 0)
   assert.deepEqual([undefined, 0, 5, 40, 41.7, 9999, NaN].map(doneWorksLimit), [20, 20, 20, 40, 41, 500, 20])
 })
+
+test('worksOf: 실패는 할 일 칸에 돌아온 카드만 싣고 이유는 길면 줄인다 (없는 카드는 failed false)', () => {
+  const card = (id: string, status: Task['status'], failure?: Task['failure']) => ({ id, title: id, status, assigneeId: null, updatedAt: 1, failure } as unknown as Task)
+  const { works } = worksOf([card('a', 'todo', { at: 5, reason: '오류 첫 줄' }), card('b', 'doing', { at: 5, reason: '남은 값' }), card('c', 'todo'), card('d', 'todo', { at: 5, reason: 'x'.repeat(5000) })], {}, new Map())
+  const by = Object.fromEntries(works.map((w) => [w.id, w]))
+  assert.deepEqual([by.a.failed, by.a.failureReason], [true, '오류 첫 줄'])
+  assert.deepEqual([by.b.failed, by.b.failureReason], [false, ''])
+  assert.deepEqual([by.c.failed, by.c.failureReason], [false, ''])
+  assert.ok(by.d.failureReason.length < 400)
+})

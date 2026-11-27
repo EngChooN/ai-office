@@ -5,6 +5,7 @@ import { chatRoomMembers, findRoom, groupRoomId, labRoomId, roomLabs, roomTeams,
 import { roomKey, roomsWithPendingApproval, unreadByRoom } from '@shared/chatUnread'
 import { nextFocusIndex } from '@shared/chatRoomLayout'
 import { isAwaitingTeam } from '@shared/delegation'
+import { countsAsStaff, quickStaffIdOf } from '@shared/quickChat'
 import { t } from '@shared/i18n'
 import { usePendingMeetingDecisions } from './nav'
 
@@ -73,9 +74,11 @@ export type RoomEntry = {
 export function useRoomEntries(current: string | undefined, allLabel: string): RoomEntry[] {
   const openChatRoom = useOffice((s) => s.openChatRoom)
   const isChatView = useOffice((s) => s.view === 'chat')
+  // 빠른 대화를 보는 중이면 위 방들은 '보는 중'이 아니다 (빠른 대화 묶음이 따로 표시)
+  const isQuickView = useOffice((s) => Boolean(quickStaffIdOf(s.chatRoom)))
   const { teamRooms, labRooms, groupRooms, unread, approvalRooms } = useRoomList()
   const entry = (key: string, label: string, group: RoomEntry['group'], room: string | null, color?: string, sub?: string): RoomEntry => {
-    const isActive = isChatView && (current ?? null) === room
+    const isActive = isChatView && !isQuickView && (current ?? null) === room
     const k = roomKey(room)
     return { key, label, group, color, sub, isActive, unread: isActive ? 0 : (unread[k] ?? 0), hasApproval: approvalRooms.has(k), select: () => openChatRoom(room) }
   }
@@ -111,7 +114,7 @@ export const unreadText = (count: number) => (count > 99 ? '99+' : String(count)
 export function useRoomPeople(room: ChatRoomInfo<Team, Lab> | undefined) {
   const staff = useOffice((s) => s.staff)
   return useMemo(() => {
-    const hired = staff.filter((s) => s.kind === 'hired' && !s.isPractice)
+    const hired = staff.filter((s) => s.kind === 'hired' && countsAsStaff(s))
     const list = room ? chatRoomMembers(room, hired) : hired.filter((s) => (s.status !== 'idle' || isAwaitingTeam(s)) && s.status !== 'offline')
     return [...list].sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status])
   }, [staff, room])

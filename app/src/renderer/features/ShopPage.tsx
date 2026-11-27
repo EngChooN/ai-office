@@ -421,7 +421,7 @@ function Missions({ onNotice }: { onNotice: (m: string) => void }) {
 /** 산 벽지·바닥은 구역에, 책상·의자는 직원에게 적용 */
 function ApplyControl({ item }: { item: ShopItem }) {
   const shop = useOffice((s) => s.shop)
-  const staff = useOffice(useShallow((s) => s.staff.filter((x) => x.kind === 'hired')))
+  const staff = useOffice(useShallow((s) => s.staff.filter((x) => x.kind === 'hired' && !x.isQuick)))
   if (item.category === 'wallpaper' || item.category === 'floor') {
     const slot = item.category
     return (

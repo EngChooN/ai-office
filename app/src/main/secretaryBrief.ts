@@ -30,7 +30,7 @@ export function briefCounts(snap: Pick<OfficeSnapshot, 'tasks' | 'staff'>, since
   return {
     done: snap.tasks.filter((x) => x.updatedAt >= since && (x.status === 'done' || x.status === 'review')).length,
     approvals: snap.staff.reduce((n, s) => n + s.approvals.filter((a) => !a.questions).length, 0),
-    errors: snap.staff.filter((s) => s.kind === 'hired' && s.status === 'error').length,
+    errors: snap.staff.filter((s) => s.kind === 'hired' && !s.isQuick && s.status === 'error').length,
   }
 }
 

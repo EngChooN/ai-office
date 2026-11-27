@@ -5,6 +5,7 @@ import { EmptyGuide } from '@/components/empty-guide'
 import { Page } from '@/components/ui/page'
 import { useOffice } from '@/store'
 import { pendingMeetingDecisions } from '@shared/meetingDecisions'
+import { countsAsStaff } from '@shared/quickChat'
 import { DecisionBox, EndMeetingButtons } from './MeetingPage'
 import { PlanCard } from './PlanCard'
 import { QuestionBox, StopWorkButton } from './QuestionBox'
@@ -90,7 +91,8 @@ export function InboxPage() {
       {approvals.length === 0 && externalWaiting.length === 0 && decisions.length === 0 && checkingRuns.length === 0 && waitingPlans.length === 0 && (
         // 비었을 때: 결재가 언제 생기는지 알려 주고, 직원이 없으면 고용으로 보낸다
         <EmptyGuide title={t('inbox.empty')} when={t('guideHint.inbox.emptyDesc')}>
-          {!staff.some((x) => x.kind === 'hired') && (
+          {/* 연습·빠른 대화 임시 직원만 있으면 아직 직원이 없는 것 */}
+          {!staff.some((x) => x.kind === 'hired' && countsAsStaff(x)) && (
             <>
               <p className="text-xs">{t('guideHint.inbox.noStaff')}</p>
               <Button size="sm" onClick={() => useOffice.getState().setHireOpen(true)}>

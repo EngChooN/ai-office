@@ -21,7 +21,7 @@ import { NewManualDialog } from './NewManualDialog'
 export function ManualsPage() {
   const manuals = useOffice((s) => s.manuals)
   const refresh = useOffice((s) => s.refreshManuals)
-  const staff = useOffice(useShallow((s) => s.staff.filter((x) => x.kind === 'hired')))
+  const staff = useOffice(useShallow((s) => s.staff.filter((x) => x.kind === 'hired' && !x.isQuick)))
   const labs = useOffice((s) => s.labs)
   const teams = useOffice(useShallow((s) => s.teams.filter((tm) => tm.kind === 'hired')))
   const [isStarting, setIsStarting] = useState(false)
@@ -123,7 +123,7 @@ export function ManualsPage() {
 
 /** 쓸 수 있게 하기: 한 명이 하는 업무는 직원에게, 여러 명이 이어서 하는 업무는 랩·팀에. 기본 선택은 지금 쓰는 곳만(새 매뉴얼은 비어 있음) — 전원 기본 선택은 뜻하지 않게 권한을 넓힌다 */
 function TrainDialog({ manual, isJustSaved, onClose }: { manual: Manual; isJustSaved?: boolean; onClose: () => void }) {
-  const staff = useOffice(useShallow((s) => s.staff.filter((x) => x.kind === 'hired')))
+  const staff = useOffice(useShallow((s) => s.staff.filter((x) => x.kind === 'hired' && !x.isQuick)))
   const labs = useOffice((s) => s.labs)
   const teams = useOffice(useShallow((s) => s.teams.filter((tm) => tm.kind === 'hired')))
   const [staffIds, setStaffIds] = useState(() => staff.filter((s) => s.equipment.skills === 'all' || s.equipment.skills.includes(manual.name)).map((s) => s.id))

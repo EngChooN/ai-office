@@ -8,7 +8,7 @@ import { roleLabel } from '@shared/roleLabel'
 
 /** 직원 내보내기: 고용 직원을 여러 명 고르고 파일 하나로 저장한다 (main의 pack:exportStaff) */
 export function StaffExportDialog({ open, onOpenChange, initialId }: { open: boolean; onOpenChange: (open: boolean) => void; initialId: string | null }) {
-  const staff = useOffice(useShallow((s) => s.staff.filter((x) => x.kind === 'hired')))
+  const staff = useOffice(useShallow((s) => s.staff.filter((x) => x.kind === 'hired' && !x.isQuick)))
   const [picked, setPicked] = useState<string[]>([])
 
   // 열 때마다 지금 보고 있는 직원부터 고른 상태로 시작한다

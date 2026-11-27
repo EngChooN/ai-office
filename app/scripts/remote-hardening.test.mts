@@ -204,3 +204,14 @@ test('휴대폰 마지막 접속: 휴대폰 열쇠 성공만 기록, 다른 PC·
   guard.rotate()
   assert.equal(guard.phoneSeenAt, null)
 })
+
+test('빠른 대화: 휴대폰에서 시작하면 승인은 ask·기본 폴더로 고정, 닫기·삭제는 그대로 통과', async () => {
+  const restrict: V2CallDeps['restrict'] = (method, args) => restrictRemoteArgs(method, args, { defaultCwd: '/work/default' })
+  const d = callOf({ restrict })
+  await handleV2Call({ method: 'startQuickChat', args: [{ provider: 'codex', cwd: '/etc', approvalMode: 'acceptEdits' }] }, d.deps)
+  assert.deepEqual(d.calls[0].args[0], { provider: 'codex', cwd: '/work/default', approvalMode: 'ask' })
+  await handleV2Call({ method: 'closeQuickChat', args: ['q1'] }, d.deps)
+  await handleV2Call({ method: 'deleteQuickChat', args: ['q1'] }, d.deps)
+  assert.deepEqual(d.calls.slice(1).map((c) => c.method), ['closeQuickChat', 'deleteQuickChat'])
+  assert.deepEqual([V2_METHODS.startQuickChat.cls, V2_METHODS.closeQuickChat.cls, V2_METHODS.deleteQuickChat.cls], ['S', 'R', 'R'])
+})

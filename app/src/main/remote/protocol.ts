@@ -5,6 +5,7 @@ import type { Approval, Staff, StaffQuestion, Task } from '../../shared/types'
 import { canonicalAvatar } from '../../shared/look.ts'
 import { workStateOf, cleanTime } from '../../shared/workWait.ts'
 import type { ReReview } from '../../shared/types'
+import { isRemoteVisibleStaff } from './quickHide.ts'
 
 export const PROTOCOL_VERSION = 1
 /** 이 서버가 제공하는 프로토콜 (v1 4종 + v2 OfficeApi 전체) — v1 /status의 supportedProtocols, 426의 supported */
@@ -123,6 +124,9 @@ export function remoteActivity(status: Staff['status'], activity: string) {
 
 // ── 응답 모양 ────────────────────────────────────────────
 
+/** 휴대폰에 보일 고용 직원 — 빠른 대화 임시 직원은 1차에서 PC 전용이라 뺀다 (그 직원의 결재·기획 카드도 함께 빠진다) */
+export const remoteHired = (staff: Staff[]) => staff.filter((s) => s.kind === 'hired' && isRemoteVisibleStaff(s))
+
 /** 원격에 보여 줄 직원: 고용 직원만, 필드는 이름으로 골라 담는다 (작업 폴더·지침·비용·세션·장비 등은 빼고) */
 export function toRemoteStaff(s: Staff, pendingPlans: number) {
   return {
@@ -141,7 +145,7 @@ export function toRemoteStaff(s: Staff, pendingPlans: number) {
 /** v1 상태 응답. 0.9.0부터 선택 필드 supportedProtocols·fullAccess를 더한다 (v1 앱은 무시 — v2 규격 2-1절).
  * 전체 기능 스위치는 없앴다(원격이 켜져 있으면 v2를 바로 쓴다) — fullAccess는 1.0.x·1.1 앱 호환을 위해 항상 true */
 export function statusBody(staff: Staff[], tasks: Task[], serverVersion: string, reReviews: Record<string, ReReview> = {}, doneLimit?: number) {
-  const hired = staff.filter((s) => s.kind === 'hired')
+  const hired = remoteHired(staff)
   const plans = waitingPlans(tasks)
   const summary = { working: 0, waiting: 0, error: 0, idle: 0, offline: 0 }
   for (const s of hired) summary[remoteStatus(s.status)]++
@@ -181,6 +185,9 @@ export function worksOf(tasks: Task[], reReviews: Record<string, ReReview>, name
         waitingSince: state === 'awaitingUser' ? (cleanTime(t.work?.waitingSince) ?? 0) : 0,
         reviewCommit: t.work?.reviewCommit ?? '',
         reReview: reReviews[t.id] ?? 'unknown',
+        // 실패: PC와 같이 '할 일' 칸에 돌아온 카드만 (다시 진행·옮기면 failure를 지운다)
+        failed: !!t.failure && t.status === 'todo',
+        failureReason: t.failure && t.status === 'todo' ? clip(t.failure.reason ?? '', 300) : '',
       }
     })
   const live = rows.filter((r) => r.state !== 'done')
@@ -238,7 +245,7 @@ function planDecision(t: Task, staffName: string) {
 
 /** 대기 결정 목록: 고용 직원의 결재·질문 + 대표 확인 대기 기획. 오래 기다린 것부터, 최대 100건 */
 export function decisionsBody(staff: Staff[], tasks: Task[]) {
-  const hired = staff.filter((s) => s.kind === 'hired')
+  const hired = remoteHired(staff)
   const nameOf = (id: string) => hired.find((s) => s.id === id)?.name ?? ''
   const all = [
     ...hired.flatMap((s) => s.approvals.map((a) => approvalDecision(a, s.name))),
@@ -253,7 +260,7 @@ export function decisionsBody(staff: Staff[], tasks: Task[]) {
 export function findDecision(id: string, staff: Staff[], tasks: Task[]): (DecisionRef & { questions?: StaffQuestion[] }) | null {
   if (id.startsWith(APPROVAL_PREFIX)) {
     const approvalId = id.slice(APPROVAL_PREFIX.length)
-    const a = staff.filter((s) => s.kind === 'hired').flatMap((s) => s.approvals).find((x) => x.id === approvalId)
+    const a = remoteHired(staff).flatMap((s) => s.approvals).find((x) => x.id === approvalId)
     if (!a) return null
     return a.questions ? { kind: 'question', approvalId, questions: a.questions } : { kind: 'approval', approvalId, isTruncated: isLongSummary(a) }
   }

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronRightIcon, RotateCwIcon } from 'lucide-react'
+import { ChevronRightIcon, CircleAlertIcon, RotateCwIcon } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import { useOffice } from '@/store'
@@ -43,6 +43,21 @@ export function ReReviewChip({ value, className }: { value: ReReview | undefined
   )
 }
 
+/** 담당 직원이 오류로 못 끝내 할 일로 돌아온 카드 — 이유는 마우스를 올리면 */
+export function FailedChip({ task, className }: { task: Task; className?: string }) {
+  if (!task.failure || task.status !== 'todo') return null
+  const reason = task.failure.reason
+  return (
+    <span
+      title={reason ? t('workStatus.failedTitle', { reason }) : t('workStatus.failedTitleNoReason')}
+      className={cn('border-status-error bg-status-error/10 text-status-error inline-flex h-5 w-fit shrink-0 items-center gap-1 rounded-full border-[1.5px] px-2 text-[11px] font-bold whitespace-nowrap', className)}
+    >
+      <CircleAlertIcon className="size-[11px]" strokeWidth={2.5} />
+      {t('workStatus.failed')}
+    </span>
+  )
+}
+
 /** '42분' — 대기 시작 시각을 모르면 아무것도 */
 export function WaitText({ since, now, className }: { since: number | null | undefined; now: number; className?: string }) {
   const w = waitTime(since, now)
@@ -56,13 +71,14 @@ export function LiveWaitText({ since, className }: { since: number | null | unde
   return <WaitText since={since} now={now} className={className} />
 }
 
-/** 카드·상세 창의 상태 줄: 상태 칩 (+ 대기 시간) (+ 재검토 필요) */
+/** 카드·상세 창의 상태 줄: 상태 칩 (+ 대기 시간) (+ 실패) (+ 재검토 필요) */
 export function WorkStatusRow({ task, reReview, className }: { task: Task; reReview: ReReview | undefined; className?: string }) {
   const state = workStateOf(task)
   return (
     <div className={cn('flex flex-wrap items-center gap-1.5', className)}>
       <WorkStateChip state={state} />
       {state === 'awaitingUser' && <LiveWaitText since={task.work?.waitingSince} />}
+      <FailedChip task={task} />
       <ReReviewChip value={reReview} />
     </div>
   )

@@ -15,7 +15,8 @@ export function ProviderBanner() {
   const isOnboarded = useOffice((s) => s.settings.isOnboarded)
   const isSeen = useOffice((s) => s.settings.isProviderBannerSeen)
   const setView = useOffice((s) => s.setView)
-  const staffCount = useOffice((s) => s.staff.length)
+  // 빠른 대화 임시 직원은 고용한 직원으로 세지 않는다
+  const staffCount = useOffice((s) => s.staff.filter((x) => !x.isQuick).length)
   // 띄울 수도 있는 사람만 Codex 상태를 묻는다 (조회에 몇 초 걸린다)
   const { status } = useProviders(isLoaded && isOnboarded && !isSeen)
   const action = providerBannerAction({ isLoaded, isOnboarded, isSeen, codexState: status?.codex.state ?? null, staffCount })

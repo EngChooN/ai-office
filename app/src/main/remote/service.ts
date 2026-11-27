@@ -275,7 +275,8 @@ export class RemoteService {
 
   /** PC에서 일어난 이벤트를 열린 v2 이벤트 스트림에 보낸다 (원격이 켜져 있을 때만) */
   publish(event: HubEvent, data: unknown) {
-    if (this.server.isListening) this.hub.publish(event, data)
+    if (!this.server.isListening) return
+    this.hub.publish(event, data)
   }
 
   private now() {

@@ -47,6 +47,9 @@ data class RemoteWork(
     val reReview: String = "unknown",
     /** 재검토 기준 커밋 — 파싱만, 화면에 표시하지 않음 */
     val reviewCommit: String = "",
+    /** 담당 직원이 못 끝내 할 일로 돌아온 카드 (구버전 PC는 안 보냄 → false) */
+    val failed: Boolean = false,
+    val failureReason: String = "",
 )
 
 @Serializable

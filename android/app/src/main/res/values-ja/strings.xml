@@ -289,6 +289,8 @@
     <string name="work_band_oldest">%1$s · %2$s経過</string>
     <string name="work_waited">%1$s経過</string>
     <string name="work_rereview">再レビュー</string>
+    <string name="work_failed">失敗</string>
+    <string name="work_failed_reason">理由: %1$s</string>
     <string name="work_unassigned">担当なし</string>
     <string name="work_empty">まだ仕事がありません</string>
     <string name="work_empty_hint">PCで仕事を任せると、ここに状況が表示されます</string>

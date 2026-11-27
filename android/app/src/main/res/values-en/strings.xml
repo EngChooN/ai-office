@@ -289,6 +289,8 @@
     <string name="work_band_oldest">%1$s · for %2$s</string>
     <string name="work_waited">for %1$s</string>
     <string name="work_rereview">Re-review</string>
+    <string name="work_failed">Failed</string>
+    <string name="work_failed_reason">Reason: %1$s</string>
     <string name="work_unassigned">Unassigned</string>
     <string name="work_empty">No tasks yet</string>
     <string name="work_empty_hint">Assign a task on your PC and its status shows up here</string>

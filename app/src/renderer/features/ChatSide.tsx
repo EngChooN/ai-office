@@ -7,6 +7,7 @@ import type { ChatRoomInfo } from '@shared/chatRooms'
 import { t } from '@shared/i18n'
 import { Avatar } from './StaffCard'
 import { statusMetaOf } from './status'
+import { QuickRoomSection } from './QuickChat'
 import { doingOf, roomArrowKeys, unreadText, useMeetingEntry, useRoomEntries, useRoomPeople, type RoomEntry } from './chatRoomHooks'
 
 const GROUP_LABEL = { all: 'chat.room.all', team: 'chat.room.groupTeams', lab: 'chat.room.groupLabs', group: 'chat.group.listHeading' } as const
@@ -101,6 +102,7 @@ export function ChatSide({
         <PlusIcon className="size-3.5 shrink-0" />
         <span className="min-w-0 flex-1 truncate">{t('chat.group.new')}</span>
       </button>
+      <QuickRoomSection onPicked={onPicked} />
       <div className="mt-2 border-t pt-2">
         {/* 회의실 줄: 회의실 화면이면 선택됨, 답 기다리는 회의 결정 수는 방 안 읽은 수(빨강)와 구분되게 노랑 */}
         <button

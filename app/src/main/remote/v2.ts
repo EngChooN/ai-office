@@ -98,6 +98,11 @@ export const V2_METHODS: Record<OfficeMethod, MethodSpec> = {
   resumeInTerminal: P('open_on_pc', 's'),
   // 엔진 바꾸기: 로그인 상태·쉬는 중인지는 PC(office.changeEngine)가 다시 확인하고, 엔진 값도 claude·codex만 받는다
   changeEngine: R('s s'),
+  // 빠른 대화: 휴대폰에서도 시작·닫기·삭제 (시작은 작업 폴더·승인 방식을 PC가 정한다 — restrict가 기본 폴더와 'ask'로 채움)
+  startQuickChat: S('o'),
+  closeQuickChat: R('s'),
+  deleteQuickChat: R('s'),
+  quickChatStats: R(),
   decide: R('s b'),
   getRecord: R('s'),
   getRecordBefore: R('s n n?'),
@@ -250,6 +255,7 @@ const fieldsExcept = <M extends OfficeMethod, I extends number, X extends keyof 
 export const V2_FIELDS: Partial<Record<OfficeMethod, Record<number, string[]>>> = {
   // 원격은 작업 폴더·승인 방식을 정하지 못한다 (restrict가 기본 폴더와 'ask'로 채운다)
   hire: { 0: fieldsExcept('hire', 0, ['cwd', 'approvalMode'], { name: true, role: true, avatar: true, model: true, provider: true, systemPrompt: true, teamId: true, labIds: true, memory: true }) },
+  startQuickChat: { 0: fieldsExcept('startQuickChat', 0, ['cwd', 'approvalMode'], { provider: true }) },
   updateStaff: { 1: fieldsExcept('updateStaff', 1, ['cwd'], { teamId: true, name: true, role: true, model: true, avatar: true, systemPrompt: true, memory: true }) },
   updateTeam: { 1: fieldsOf('updateTeam', 1, { name: true, color: true, leadId: true, floor: true, description: true }) },
   approvalHistory: { 1: fieldsOf('approvalHistory', 1, { beforeId: true, limit: true, filter: true }) },
@@ -287,7 +293,7 @@ export const V2_FIELDS: Partial<Record<OfficeMethod, Record<number, string[]>>> 
     // 막는 목록은 REMOTE_BLOCKED_SETTINGS 한 곳 — 비서 카드 실행도 같은 목록으로 막는다 (secretaryCore)
     // 화면 캡처 허용·공용 브라우저 로그인은 PC에서만 (폰에서 대표 화면 캡처 권한을 켜지 못하게). PC 화면 모드·색 테마·바탕화면 비서도 PC에서만
     // 기본 작업 폴더도 PC에서만 (원격에서 바꾸면 새 고용·지시의 작업 폴더 제한이 우회된다)
-    0: fieldsExcept('updateSettings', 0, REMOTE_BLOCKED_SETTINGS, { monthlyBudgetUsd: true, tokenBudget: true, theme: true, dayNight: true, plants: true, isChatterOn: true, isSecretaryBriefOn: true, workHours: true, layout: true, isTrayOn: true, launchAtLogin: true, isOnboarded: true, seenHints: true, isHintsOff: true, isWorkMode: true, isFullAccessNoticeSeen: true, isProviderBannerSeen: true, internalAi: true, language: true, demoDay: true, isSecretaryWebOn: true, tokenSaverMode: true, reportStyle: true }),
+    0: fieldsExcept('updateSettings', 0, REMOTE_BLOCKED_SETTINGS, { monthlyBudgetUsd: true, tokenBudget: true, theme: true, dayNight: true, plants: true, isChatterOn: true, isSecretaryBriefOn: true, workHours: true, layout: true, isTrayOn: true, launchAtLogin: true, isOnboarded: true, seenHints: true, isHintsOff: true, isWorkMode: true, isFullAccessNoticeSeen: true, isProviderBannerSeen: true, internalAi: true, language: true, demoDay: true, isSecretaryWebOn: true, tokenSaverMode: true, reportStyle: true, quickApproval: true }),
   },
 }
 

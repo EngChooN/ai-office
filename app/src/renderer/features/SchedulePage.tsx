@@ -37,7 +37,7 @@ function nextRunText(sc: Schedule, now: number) {
 
 /** 예약 업무: 정해진 시각에 직원에게 지시를 보낸다 (출근 브리핑·퇴근 보고 등) */
 export function SchedulePage() {
-  const staff = useOffice(useShallow((s) => s.staff.filter((x) => x.kind === 'hired')))
+  const staff = useOffice(useShallow((s) => s.staff.filter((x) => x.kind === 'hired' && !x.isQuick)))
   const schedules = useOffice((s) => s.schedules)
   // 쓰던 폼(고치는 중인 예약 포함)은 다른 페이지에 갔다 와도 남는다 — null이면 새 빈 폼
   const [kept, setKept] = useDraft<{ draft: Draft; editingId: string | null } | null>('schedule:form', null)

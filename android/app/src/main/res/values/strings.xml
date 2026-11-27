@@ -290,6 +290,8 @@
     <string name="work_band_oldest">%1$s · %2$s째</string>
     <string name="work_waited">%1$s째</string>
     <string name="work_rereview">재검토 필요</string>
+    <string name="work_failed">실패</string>
+    <string name="work_failed_reason">이유: %1$s</string>
     <string name="work_unassigned">담당 없음</string>
     <string name="work_empty">맡긴 일이 아직 없어요</string>
     <string name="work_empty_hint">PC에서 일을 맡기면 여기에 상태가 보여요</string>

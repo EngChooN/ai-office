@@ -20,7 +20,7 @@ type Step = 'choose' | 'describe' | 'templates' | 'direct'
 
 /** 새 매뉴얼 3갈래: 말로 설명(AI 초안) · 예시에서 고르기 · 직접 쓰기 — 어느 갈래든 채운 양식을 onDone으로 넘겨 편집 창에서 이어 간다 */
 export function NewManualDialog({ projectDir, onClose, onDone }: { projectDir: string | null; onClose: () => void; onDone: (input: ManualInput) => void }) {
-  const staff = useOffice(useShallow((s) => s.staff.filter((x) => x.kind === 'hired')))
+  const staff = useOffice(useShallow((s) => s.staff.filter((x) => x.kind === 'hired' && !x.isQuick)))
   const [step, setStep] = useState<Step>('choose')
   const [kind, setKind] = useState<ManualKind>('personal')
   const [request, setRequest] = useState('')
