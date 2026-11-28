@@ -44,6 +44,15 @@ export type ApprovalMode = 'ask' | 'acceptEdits'
 export const newStaffApprovalMode = (isMobile: boolean): ApprovalMode => (isMobile ? 'ask' : 'acceptEdits')
 /** 대화 기억 길이: 대화가 얼마나 길어지면 새 대화로 넘길지 (짧게·보통·길게·최대=넘기지 않음) */
 export type MemoryLength = 'short' | 'normal' | 'long' | 'full'
+/** 직원이 쓰고 있는 답 글 (text가 비면 다 썼거나 멈춤) */
+export interface StaffDraft {
+  staffId: string
+  text: string
+}
+/** 생각 깊이(추론 강도): 'default'면 엔진·모델 기본값. Claude·Codex가 함께 받는 단계만 쓴다 */
+export const EFFORT_LEVELS = ['low', 'medium', 'high', 'xhigh', 'max'] as const
+export type EffortLevel = (typeof EFFORT_LEVELS)[number]
+export type EffortChoice = 'default' | EffortLevel
 
 /** 자동결재·자율 진행 중에도 결재함에서 대표를 기다리는 이유 (결재 카드 문구는 이 값으로 고른다) */
 export type ApprovalWaitReason =
@@ -179,6 +188,10 @@ export interface Staff {
   sessionId: string | null
   /** 대화 기억 길이 (없으면 보통) */
   memory?: MemoryLength
+  /** 생각 깊이 (없으면 엔진 기본) */
+  effort?: EffortLevel
+  /** 빠른 모드 — 답을 더 빨리 받는 대신 사용량을 더 쓴다 (없으면 끔) */
+  fast?: boolean
   teamId: string | null
   /** 소속 랩(프로젝트 팀) — 여러 개 가능 */
   labIds: string[]
@@ -1257,7 +1270,7 @@ export interface OfficeApi {
   /** 직원 마켓 채용 (파일 가져오기와 같은 검증·채용 길). provider를 빼면 PC가 준비된 엔진으로 정한다 */
   hireMarket(id: string, provider?: AiProvider): Promise<PackResult>
   fire(staffId: string): Promise<void>
-  updateStaff(staffId: string, patch: { teamId?: string | null; name?: string; role?: string; model?: ModelChoice; avatar?: number; systemPrompt?: string; cwd?: string; memory?: MemoryLength }): Promise<void>
+  updateStaff(staffId: string, patch: { teamId?: string | null; name?: string; role?: string; model?: ModelChoice; avatar?: number; systemPrompt?: string; cwd?: string; memory?: MemoryLength; effort?: EffortChoice; fast?: boolean }): Promise<void>
   /** text가 /명령이면 세션에 그대로 보낸다. /clear는 새 대화로, 막힌 기본 명령은 보내지 않고 직원 기록에 안내를 남긴다 */
   /** opts.isAutonomous: 자율 진행(묻지 않고 끝까지)으로 맡긴다 — PC에서만 */
   instruct(staffId: string, text: string, attachments?: Attachment[], opts?: { isAutonomous?: boolean }): Promise<void>
@@ -1486,6 +1499,8 @@ export interface OfficeApi {
 
   onSnapshot(cb: (snapshot: OfficeSnapshot) => void): () => void
   onLog(cb: (entry: LogEntry) => void): () => void
+  /** 직원이 쓰고 있는 답 글 (글자가 나오는 대로 — 다 쓰면 기록(onLog)으로 오고 빈 글로 지운다). PC 화면만 받는다 */
+  onDraft(cb: (draft: StaffDraft) => void): () => void
   /** 결재 기록이 새로 남음 (PC 화면만 받는다 — 휴대폰 스트림에는 보내지 않는다) */
   onApprovalRecord(cb: (record: ApprovalRecord) => void): () => void
   onChat(cb: (message: ChatMessage) => void): () => void

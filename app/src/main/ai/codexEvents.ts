@@ -1,4 +1,4 @@
-import type { ToolDecision, RuntimeEvent } from './types.ts'
+import type { ToolDecision, RuntimeEvent, RuntimeTuning } from './types.ts'
 import { codexCostUsd, type CodexUsage } from './codexPricing.ts'
 
 // Codex app-server 알림·승인 요청 → 공급자 중립 이벤트/도구 판정. 프로세스 없이 테스트할 수 있게 순수 함수로 둔다.
@@ -92,6 +92,16 @@ export function approvalResponse(d: ToolDecision, method?: string) {
  * Claude의 acceptEdits는 파일 수정만 자동이고 셸은 묻는다 — Codex의 on-request는 셸을 묻지 않고 돌리므로 두 방식 모두 untrusted로 두고,
  * acceptEdits의 파일 수정 자동 승인은 승인 요청을 받는 쪽(codex.ts onRequest)에서 한다
  */
+/**
+ * 생각 깊이·빠른 모드 → turn/start 칸. Codex는 턴에 준 값을 다음 턴에도 이어 쓴다 (실제 Codex 0.164로 확인):
+ * - 빠른 모드: model/list의 serviceTiers가 알려 주는 'priority' 등급. null을 보내면 보통('default')으로 돌아간다
+ * - 생각 깊이: null을 보내도 앞 턴 값이 남는다 — '기본'은 모델 기본값(defaultReasoningEffort)을 명시해 되돌린다. 모르면 null
+ */
+export const tuningParams = (t: RuntimeTuning, modelDefaultEffort?: string) => ({ effort: t.effort ?? modelDefaultEffort ?? null, serviceTier: t.fast ? 'priority' : null })
+
+/** model/list에서 고른 모델의 기본 생각 깊이 */
+export const modelDefaultEffort = (list: { id: string; defaultReasoningEffort?: string }[], model: string | undefined) => list.find((m) => m.id === model)?.defaultReasoningEffort
+
 export function approvalSettings(_mode: 'ask' | 'acceptEdits') {
   return { approvalPolicy: 'untrusted', sandbox: 'workspace-write' } as const
 }
@@ -122,6 +132,8 @@ export function translateNotification(method: string, params: Json, state: Codex
     if (TOOL_ITEMS.includes(str(item.type))) state.awaitingFinal = true
     return []
   }
+  // 쓰고 있는 답 글 — 다 쓰면 item/completed로 전체 글이 한 번 더 온다
+  if (method === 'item/agentMessage/delta') return str(params.delta) ? [{ type: 'textDelta', text: str(params.delta) }] : []
   if (method === 'item/completed') {
     const item = obj(params.item)
     if (item.type === 'agentMessage' && str(item.text).trim()) state.awaitingFinal = item.phase === 'commentary'

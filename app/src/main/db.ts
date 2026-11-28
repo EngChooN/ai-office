@@ -11,6 +11,9 @@ import { app } from 'electron'
 import path from 'node:path'
 import {
   DEFAULT_EQUIPMENT,
+  EFFORT_LEVELS,
+  type EffortChoice,
+  type EffortLevel,
   type ApprovalActor,
   type ApprovalHistoryFilter,
   type ApprovalRecord,
@@ -133,6 +136,9 @@ export function openDb() {
   // 모델 공급자 ('claude' | 'codex'). 기존 행은 자동으로 'claude'
   // 대화 기억 길이 ('short'|'normal'|'long'|'full', 없으면 보통)
   if (!staffCols.includes('memory')) db.exec('ALTER TABLE staff ADD COLUMN memory TEXT')
+  // 생각 깊이 ('low'…'max', 없으면 엔진 기본)·빠른 모드 (1 = 켬)
+  if (!staffCols.includes('effort')) db.exec('ALTER TABLE staff ADD COLUMN effort TEXT')
+  if (!staffCols.includes('fast')) db.exec('ALTER TABLE staff ADD COLUMN fast INTEGER')
   if (!staffCols.includes('provider')) db.exec("ALTER TABLE staff ADD COLUMN provider TEXT NOT NULL DEFAULT 'claude'")
   // 빠른 대화 임시 직원 (1 = 빠른 대화). 닫은 시각·제목은 목록·방문자 표시용 — 비면 진행 중·제목 없음
   if (!staffCols.includes('is_quick')) db.exec('ALTER TABLE staff ADD COLUMN is_quick INTEGER')
@@ -218,6 +224,8 @@ interface StaffRow {
   is_practice: number | null
   provider: string | null
   memory: string | null
+  effort: string | null
+  fast: number | null
   is_quick: number | null
   quick_closed_at: number | null
   quick_title: string | null
@@ -242,6 +250,8 @@ export function loadHiredStaff(): StoredStaff[] {
       approvalMode: r.approval_mode as Staff['approvalMode'],
       sessionId: r.session_id,
       ...(r.memory && r.memory !== 'normal' ? { memory: r.memory as Staff['memory'] } : {}),
+      ...((EFFORT_LEVELS as readonly (string | null)[]).includes(r.effort) ? { effort: r.effort as EffortLevel } : {}),
+      ...(r.fast ? { fast: true } : {}),
       teamId: r.team_id,
       equipment: r.equipment ? { ...DEFAULT_EQUIPMENT, ...(JSON.parse(r.equipment) as Partial<Equipment>) } : DEFAULT_EQUIPMENT,
       refDocs: parseList(r.ref_docs),
@@ -287,8 +297,10 @@ export function deleteRoomChats(room: string) {
   run('DELETE FROM chat WHERE room = ?', room)
 }
 
-export function updateStaffRow(id: string, patch: { teamId?: string | null; name?: string; role?: string; model?: ModelChoice; avatar?: number; systemPrompt?: string; cwd?: string; memory?: Staff['memory'] }) {
+export function updateStaffRow(id: string, patch: { teamId?: string | null; name?: string; role?: string; model?: ModelChoice; avatar?: number; systemPrompt?: string; cwd?: string; memory?: Staff['memory']; effort?: EffortChoice; fast?: boolean }) {
   if (patch.memory !== undefined) run('UPDATE staff SET memory = ? WHERE id = ?', patch.memory, id)
+  if (patch.effort !== undefined) run('UPDATE staff SET effort = ? WHERE id = ?', patch.effort === 'default' ? null : patch.effort, id)
+  if (patch.fast !== undefined) run('UPDATE staff SET fast = ? WHERE id = ?', patch.fast ? 1 : null, id)
   if (patch.teamId !== undefined) run('UPDATE staff SET team_id = ? WHERE id = ?', patch.teamId, id)
   if (patch.name !== undefined) run('UPDATE staff SET name = ? WHERE id = ?', patch.name, id)
   if (patch.role !== undefined) run('UPDATE staff SET role = ? WHERE id = ?', patch.role, id)
@@ -876,6 +888,28 @@ export function updateChatMeta(id: number, change: (meta: ChatMeta) => ChatMeta)
   const meta = metaJson(change(parseChatMeta(row.meta)))
   run('UPDATE chat SET meta = ? WHERE id = ?', meta, id)
   return toChatMessage({ ...row, meta })
+}
+
+/** 메시지 글을 고친다 (중간 글 이어 붙이기) — 바뀐 메시지 (없으면 null) */
+export function updateChatText(id: number, text: string): ChatMessage | null {
+  const row = get<ChatRow>('SELECT * FROM chat WHERE id = ?', id)
+  if (!row) return null
+  run('UPDATE chat SET text = ? WHERE id = ?', text, id)
+  return toChatMessage({ ...row, text })
+}
+
+/** 일반 메시지를 보고로 바꾼다 (마지막 중간 글 = 최종 보고) — 바뀐 메시지 (없으면 null) */
+export function markChatReport(id: number, meta: ChatMeta = {}): ChatMessage | null {
+  const row = get<ChatRow>('SELECT * FROM chat WHERE id = ?', id)
+  if (!row) return null
+  const metaRaw = metaJson({ ...parseChatMeta(row.meta), ...meta })
+  run('UPDATE chat SET is_report = 1, meta = ? WHERE id = ?', metaRaw, id)
+  return toChatMessage({ ...row, is_report: 1, meta: metaRaw })
+}
+
+/** 방의 마지막 메시지 id ('' = 전체 방) */
+export function lastChatId(room: string): number | undefined {
+  return get<{ id: number }>("SELECT id FROM chat WHERE COALESCE(room, '') = ? ORDER BY id DESC LIMIT 1", room)?.id
 }
 
 const CHAT_SEARCH_MAX = 100

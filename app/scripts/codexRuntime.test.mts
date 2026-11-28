@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { test } from 'node:test'
-import { approvalResponse, approvalSettings, approvalTool, commandText, endedBeforeFinal, newCodexState, pickModel, toolOfItem, translateNotification } from '../src/main/ai/codexEvents.ts'
+import { approvalResponse, approvalSettings, approvalTool, commandText, endedBeforeFinal, newCodexState, pickModel, toolOfItem, translateNotification, tuningParams, modelDefaultEffort } from '../src/main/ai/codexEvents.ts'
 import { codexCostUsd, priceFor } from '../src/main/ai/codexPricing.ts'
 import { findCodexRollout, readCodexTail } from '../src/main/ai/codexSession.ts'
 
@@ -39,6 +39,35 @@ test('이벤트 변환: 답 글·토큰·턴 끝(result)', () => {
   assert.equal(r.tokensIn, 29645)
   assert.equal(r.tokensOut, 102)
   assert.equal(r.costUsd, codexCostUsd('gpt-6-luna', st.usage))
+})
+
+test('이벤트 변환: 답 글 조각(agentMessage/delta)은 textDelta, 빈 조각은 버린다', () => {
+  const st = newCodexState('gpt-6-luna')
+  assert.deepEqual(translateNotification('item/agentMessage/delta', { delta: '안녕' }, st), [{ type: 'textDelta', text: '안녕' }])
+  assert.deepEqual(translateNotification('item/agentMessage/delta', { delta: ' ' }, st), [{ type: 'textDelta', text: ' ' }])
+  assert.deepEqual(translateNotification('item/agentMessage/delta', { delta: '' }, st), [])
+  assert.deepEqual(translateNotification('item/agentMessage/delta', {}, st), [])
+})
+
+test('turn/start 설정: 생각 깊이는 그대로(없으면 null), 빠른 모드는 serviceTier priority', () => {
+  assert.deepEqual(tuningParams({ fast: false }), { effort: null, serviceTier: null })
+  assert.deepEqual(tuningParams({ effort: 'high', fast: false }), { effort: 'high', serviceTier: null })
+  assert.deepEqual(tuningParams({ effort: 'low', fast: true }), { effort: 'low', serviceTier: 'priority' })
+  assert.deepEqual(tuningParams({ fast: true }), { effort: null, serviceTier: 'priority' })
+  // 직원이 깊이를 안 정했으면 모델 기본 깊이, 정했으면 직원 값이 먼저
+  assert.deepEqual(tuningParams({ fast: false }, 'medium'), { effort: 'medium', serviceTier: null })
+  assert.deepEqual(tuningParams({ effort: 'xhigh', fast: true }, 'medium'), { effort: 'xhigh', serviceTier: 'priority' })
+  assert.deepEqual(tuningParams({ fast: false }, undefined), { effort: null, serviceTier: null })
+})
+
+test('modelDefaultEffort: 고른 모델의 defaultReasoningEffort, 없거나 모르는 모델이면 undefined', () => {
+  const list = [{ id: 'gpt-a', defaultReasoningEffort: 'medium' }, { id: 'gpt-b', defaultReasoningEffort: 'high' }, { id: 'gpt-c' }]
+  assert.equal(modelDefaultEffort(list, 'gpt-a'), 'medium')
+  assert.equal(modelDefaultEffort(list, 'gpt-b'), 'high')
+  assert.equal(modelDefaultEffort(list, 'gpt-c'), undefined)
+  assert.equal(modelDefaultEffort(list, 'gpt-z'), undefined)
+  assert.equal(modelDefaultEffort(list, undefined), undefined)
+  assert.equal(modelDefaultEffort([], 'gpt-a'), undefined)
 })
 
 test('이벤트 변환: 중단·실패는 result(ok=false), 재시도 오류는 건너뜀', () => {

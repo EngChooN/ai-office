@@ -1,4 +1,4 @@
-import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
+import { Fragment, memo, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { HelpersBar } from '@/components/helper-badge'
 import { BookOpenIcon, BriefcaseIcon, CalendarClockIcon, CircleStopIcon, DownloadIcon, EllipsisIcon, FolderIcon, InfoIcon, PaperclipIcon, PlusIcon, SendIcon, SquareTerminalIcon, TrophyIcon, UserMinusIcon, XIcon, ZapIcon } from 'lucide-react'
 import { NativeSelect } from '@/components/ui/select'
@@ -25,10 +25,12 @@ import { Avatar, StatusDot } from './StaffCard'
 import { ProgressLine, WaitingCards } from './ProgressLine'
 import { AutonomyCheck } from './Autonomy'
 import { MemoryLengthSelect } from './MemoryLength'
+import { EffortSelect, FastToggle } from './TuningControls'
 import { useProviders } from './ProviderCards'
 import { claudeModelName, CLAUDE_MODEL_ROWS, usageDotsText } from './modelOptions'
 import { folderName, formatCost, formatTokens, shortPath } from './status'
 import { Markdown } from '@/components/markdown'
+import { splitInstruction, type InstructionParts } from '@shared/instructionHead'
 import { JumpToBottom, useStickToBottom } from '@/components/stick-to-bottom'
 import { manualLabel } from '@shared/manualName'
 import { commandItem, manualItem, SlashMenu, useManualLabelOf, usePersonalManuals, useSlashKeys, useStaffCommands, type SlashMode } from '@/components/slash-menu'
@@ -221,10 +223,12 @@ const logKey = (l: LogEntry) => `${l.id}-${l.ts}`
 
 // 지시를 입력하는 동안 기록 줄이 다시 그려지지 않도록 한 줄씩 메모한다
 // 긴 기록: 화면 밖 줄은 그리기·배치를 건너뛴다(content-visibility). 높이는 한 번 그려진 값을 기억하고 처음엔 두 줄쯤으로 잡는다
-// 대표의 지시는 연한 주 색 배경 칸으로 보고와 구분한다 (#19 — 같은 방향으로 이어져 어디까지가 내 말인지 헷갈림). 좌우 정렬은 시각·종류 칸이 있는 좁은 기록에서 줄이 들쭉날쭉해져 쓰지 않는다
+// 대표의 지시는 은은한 주 색 바탕 + 왼쪽 2px 선으로 보고와 구분한다 (#19 — 같은 방향으로 이어져 어디까지가 내 말인지 헷갈림). 선은 안쪽 그림자라 폭을 차지하지 않는다
+// 시각·종류 칸 폭은 다른 줄과 같게 둬서 글 시작 위치가 맞는다. 좌우 정렬은 좁은 기록에서 줄이 들쭉날쭉해져 쓰지 않는다
 const LogRow = memo(function LogRow({ entry: l }: { entry: LogEntry }) {
+  const isInstruction = l.type === 'instruction'
   return (
-    <div className={cn('flex gap-2 [contain-intrinsic-size:auto_2.5em] [content-visibility:auto]', l.type === 'instruction' && 'bg-primary/10 border-primary/60 -mx-1.5 my-0.5 rounded-md border-l-2 py-1 pr-1.5 pl-1')}>
+    <div className={cn('flex gap-2 [contain-intrinsic-size:auto_2.5em] [content-visibility:auto]', isInstruction && 'bg-primary/5 dark:bg-primary/7 -mx-1.5 my-0.5 rounded py-1.5 pr-1.5 pl-1.5 shadow-[inset_2px_0_0_color-mix(in_srgb,var(--primary)_45%,transparent)]')}>
       <span className="text-muted-foreground w-[3.4em] shrink-0 tabular-nums">
         {fmtDate(l.ts, {
           hour: '2-digit',
@@ -232,15 +236,99 @@ const LogRow = memo(function LogRow({ entry: l }: { entry: LogEntry }) {
           hour12: false,
         })}
       </span>
-      <span className={cn('w-[2.6em] shrink-0 font-medium', LOG_COLOR[l.type] ?? 'text-muted-foreground')}>{t(LOG_LABEL[l.type])}</span>
+      {isInstruction ? (
+        <span className="w-[2.6em] shrink-0">
+          <span className="text-primary bg-primary/14 -ml-[3px] inline-block max-w-full overflow-hidden rounded px-[3px] align-top text-[10.5px] leading-4 font-semibold tracking-[-0.1px] whitespace-nowrap">{t(LOG_LABEL[l.type])}</span>
+        </span>
+      ) : (
+        <span className={cn('w-[2.6em] shrink-0 font-medium', LOG_COLOR[l.type] ?? 'text-muted-foreground')}>{t(LOG_LABEL[l.type])}</span>
+      )}
       <div className="flex min-w-0 flex-1 flex-col gap-1">
-        {/* 지시는 대표가 엔터로 나눈 줄을 그대로 살린다 (마크다운은 한 줄 바꿈을 이어 붙인다) */}
-        {l.type === 'reply' || l.type === 'result' ? <Markdown>{l.text}</Markdown> : l.type === 'instruction' ? <Markdown className="[&_li]:whitespace-pre-line [&_p]:whitespace-pre-line">{l.text}</Markdown> : <span className="selectable break-words whitespace-pre-wrap"><IconText text={trOr(l.textI18n, l.text)} size={13} isLeadingOnly /></span>}
+        {l.type === 'reply' || l.type === 'result' ? <Markdown>{l.text}</Markdown> : isInstruction ? <InstructionBody text={l.text} /> : <span className="selectable break-words whitespace-pre-wrap"><IconText text={trOr(l.textI18n, l.text)} size={13} isLeadingOnly /></span>}
         <AttachmentView attachments={l.attachments} size="sm" />
       </div>
     </div>
   )
 })
+
+
+/** 지시 앞머리 '[○○의 도움 요청]' 등 → 보낸 곳 칩. 매뉴얼은 '매뉴얼 · 매뉴얼 이름' */
+function SourceChip({ source }: { source: NonNullable<InstructionParts['source']> }) {
+  const isManual = source.kind === 'manual'
+  const name = isManual ? t('staffPanel.instr.manual') : source.name
+  const tail = isManual ? source.name : t(source.kind === 'help' ? 'staffPanel.instr.help' : 'staffPanel.instr.order')
+  return (
+    <span className="border-border bg-card text-muted-foreground inline-flex max-w-full items-center gap-1 rounded-full border py-0 pr-[7px] pl-[3px] text-[11px] leading-[18px] whitespace-nowrap">
+      <span className={cn('grid size-[13px] shrink-0 place-items-center rounded-full text-[8.5px] leading-[13px] font-bold text-white', isManual ? 'bg-status-waiting' : 'bg-accent-a')}>
+        {isManual ? <BookOpenIcon className="size-2" /> : Array.from(name)[0]}
+      </span>
+      <b className="text-foreground font-semibold">{name}</b>
+      <span className="truncate">· {tail}</span>
+    </span>
+  )
+}
+
+/**
+ * 지시 본문: 앞머리는 칩·굵은 제목으로, 끝의 '(끝나면 … 보고하세요)'는 작은 안내로 바꿔 보인다 (저장된 글은 그대로).
+ * 4줄이 넘으면 접고 '더 보기 (N줄)'. 접힘은 화면에서만 기억한다 (새로 열면 접힘)
+ */
+function InstructionBody({ text }: { text: string }) {
+  const parts = useMemo(() => splitInstruction(text), [text])
+  const id = useId()
+  const ref = useRef<HTMLDivElement>(null)
+  const [isOpen, setIsOpen] = useState(false)
+  const [lines, setLines] = useState(0) // 넘칠 때만 전체 줄 수, 아니면 0
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el || isOpen) return
+    const measure = () => {
+      if (el.scrollHeight <= el.clientHeight + 1) return setLines(0)
+      const p = el.querySelector('p') ?? el
+      const lh = parseFloat(getComputedStyle(p).lineHeight) || parseFloat(getComputedStyle(p).fontSize) * 1.5
+      setLines(Math.max(5, Math.round(el.scrollHeight / lh)))
+    }
+    measure()
+    // 패널 폭·글자 크기가 바뀌면 줄 수도 바뀌니 다시 잰다 (화면 밖이라 처음에 못 잰 줄도 보이면 잰다)
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [isOpen, parts.body])
+  return (
+    <div className="min-w-0">
+      {(parts.source || parts.title) && (
+        <div className="mb-[3px] flex flex-wrap items-center gap-x-1.5 gap-y-1">
+          {parts.source && <SourceChip source={parts.source} />}
+          {parts.title && <span className="text-[12.5px] font-semibold">{parts.title}</span>}
+        </div>
+      )}
+      {parts.body && (
+        // 지시는 대표가 엔터로 나눈 줄을 그대로 살린다 (마크다운은 한 줄 바꿈을 이어 붙인다)
+        <div id={id} ref={ref} className={cn(!isOpen && 'line-clamp-4')}>
+          <Markdown className="[&_li]:whitespace-pre-line [&_p]:whitespace-pre-line">{parts.body}</Markdown>
+        </div>
+      )}
+      {(lines > 0 || isOpen) && (
+        <button type="button" aria-expanded={isOpen} aria-controls={id} onClick={() => setIsOpen((v) => !v)} className="text-primary mt-0.5 text-[11.5px] font-medium hover:underline">
+          {isOpen ? `${t('staffPanel.instr.less')} ▴` : `${t('staffPanel.instr.more', { n: lines })} ▾`}
+        </button>
+      )}
+      {parts.reportTo && <div className="text-muted-foreground mt-1 flex items-center gap-1 text-[11px]">↩ {t('staffPanel.instr.reportTo', { name: parts.reportTo })}</div>}
+    </div>
+  )
+}
+
+/** 쓰고 있는 답 글 — 기록 줄과 같은 모양, 종류 칸이 깜빡인다 (다 쓰면 진짜 기록 줄로 바뀐다) */
+function WritingRow({ text }: { text: string }) {
+  return (
+    <div className="flex gap-2" aria-live="off" title={t('tuning.writing')}>
+      <span className="text-muted-foreground w-[3.4em] shrink-0" />
+      <span className="text-muted-foreground w-[2.6em] shrink-0 animate-pulse font-medium">{t(LOG_LABEL.reply)}</span>
+      <div className="min-w-0 flex-1">
+        <Markdown>{text}</Markdown>
+      </div>
+    </div>
+  )
+}
 
 /** 날짜가 바뀌는 자리의 구분선 (예: 11월 6일 (금), 올해가 아니면 연도도) */
 const DayDivider = memo(function DayDivider({ ts }: { ts: number }) {
@@ -324,6 +412,8 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
 
   // 직원 카드의 예시·버튼: 지시창을 채우고(빈 글이면 그대로, 쓰던 글이 있으면 뒤에 붙임) 대화 탭으로 — 보내기는 대표가
   const staffDraft = useOffice((s) => s.staffDraft)
+  /** 직원이 지금 쓰고 있는 답 글 (글자가 나오는 대로) */
+  const writingText = useOffice((s) => (s.selectedId ? s.drafts[s.selectedId] : undefined))
   const setStaffDraft = useOffice((s) => s.setStaffDraft)
   useEffect(() => {
     if (!staffDraft || staffDraft.staffId !== staff.id) return
@@ -736,6 +826,8 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
                     <LogRow entry={l} />
                   </Fragment>
                 ))}
+                {/* 쓰고 있는 답 글: 다 쓰면 위 기록 줄로 바뀌고 사라진다 */}
+                {isBusy && writingText && <WritingRow text={writingText} />}
               </div>
             </section>
             <JumpToBottom isNear={logScroll.isNear} unread={logScroll.unread} onClick={() => logScroll.scrollToBottom(true)} />
@@ -773,6 +865,10 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
                   </div>
                   <div className="px-2.5 py-1">
                     <MemoryLengthSelect staff={staff} />
+                  </div>
+                  <div className="flex items-center gap-3 px-2.5 py-1">
+                    <EffortSelect staff={staff} />
+                    <FastToggle staff={staff} />
                   </div>
                   <PopMenuItem onClick={() => (close(), openSlash('manual'))}>
                     <IconText text={t('slashMenu.manualButton')} size={16} />
@@ -841,8 +937,10 @@ function PanelBody({ staff, width, onResize }: { staff: Staff; width: number; on
               </Button>
             )}
           </div>
-          <div className="split:hidden slim:hidden flex items-center gap-2 px-1">
+          <div className="split:hidden slim:hidden flex flex-wrap items-center gap-x-3 gap-y-1 px-1">
             <AutonomyCheck checked={isAutonomous} onChange={setIsAutonomous} className="min-w-0 flex-1" />
+            <FastToggle staff={staff} />
+            <EffortSelect staff={staff} />
             <MemoryLengthSelect staff={staff} />
           </div>
           <div className="split:hidden slim:hidden flex items-center gap-2">

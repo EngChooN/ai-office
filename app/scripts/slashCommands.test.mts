@@ -1,7 +1,7 @@
 // /명령어: 목록 추리기·보낸 글 판정·자동완성 거르기 단위 테스트 — npm test
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { CLAUDE_MODEL_CHOICES, matchCommands, parseModelArg, needsTranslation, parseSlash, parseTranslations, pendingDescriptions, runsOnEnter, slashAction, toStaffCommands, type RawCommand } from '../src/shared/slashCommands.ts'
+import { CLAUDE_MODEL_CHOICES, EFFORT_CHOICES, matchCommands, parseEffortArg, parseFastArg, parseModelArg, needsTranslation, parseSlash, parseTranslations, pendingDescriptions, runsOnEnter, slashAction, toStaffCommands, type RawCommand } from '../src/shared/slashCommands.ts'
 
 const cmd = (name: string, builtin = false, extra: Partial<RawCommand> = {}): RawCommand => ({ name, description: `${name} 설명`, argumentHint: '', builtin, ...extra })
 
@@ -149,13 +149,33 @@ test('별칭: /review는 code-review로, /checkup은 doctor로 판정한다', ()
   assert.deepEqual(slashAction('/checkup', raw), { kind: 'pass', name: 'doctor' })
 })
 
-test('setting: /model·/effort·/fast·/advisor는 앱 설정 처리 (목록 전·후 같음), Codex 직원은 막고 안내', () => {
+test('setting: /model·/effort·/fast·/advisor는 앱 설정 처리 (목록 전·후 같음), Codex 직원은 /model·/advisor만 막는다', () => {
   for (const raw of [[], BUILTIN_RAW]) {
     assert.deepEqual(slashAction('/model opus', raw), { kind: 'setting', name: 'model', args: 'opus' })
     assert.deepEqual(slashAction('/model', raw), { kind: 'setting', name: 'model', args: '' })
     for (const n of ['effort', 'fast', 'advisor'] as const) assert.deepEqual(slashAction(`/${n} high`, raw), { kind: 'setting', name: n, args: 'high' })
     assert.equal(slashAction('/model opus', raw, 'codex').kind, 'blocked')
+    assert.equal(slashAction('/advisor', raw, 'codex').kind, 'blocked')
+    // Codex도 생각 깊이·빠른 모드는 앱 설정으로
+    assert.deepEqual(slashAction('/effort high', raw, 'codex'), { kind: 'setting', name: 'effort', args: 'high' })
+    assert.deepEqual(slashAction('/fast', raw, 'codex'), { kind: 'setting', name: 'fast', args: '' })
   }
+})
+
+test('parseEffortArg: default·auto는 엔진 기본, EFFORT_LEVELS만 받고(대소문자·공백 무시) 나머지는 null', () => {
+  assert.deepEqual(EFFORT_CHOICES, ['default', 'low', 'medium', 'high', 'xhigh', 'max'])
+  for (const e of EFFORT_CHOICES) assert.equal(parseEffortArg(e), e)
+  assert.equal(parseEffortArg('  HIGH '), 'high')
+  assert.equal(parseEffortArg('Auto'), 'default')
+  for (const bad of ['', 'ultra', 'minimal', 'high max', '3']) assert.equal(parseEffortArg(bad), null, bad)
+})
+
+test('parseFastArg: 비우면 toggle, on/off·true/false·1/0, 모르는 값은 null', () => {
+  assert.equal(parseFastArg(''), 'toggle')
+  assert.equal(parseFastArg('   '), 'toggle')
+  for (const on of ['on', 'ON', 'true', '1', ' On ']) assert.equal(parseFastArg(on), true, on)
+  for (const off of ['off', 'False', '0']) assert.equal(parseFastArg(off), false, off)
+  for (const bad of ['yes', 'fast', '2']) assert.equal(parseFastArg(bad), null, bad)
 })
 
 test('parseModelArg: 별칭(대소문자·공백 무시)만 받고 모르는 값은 null', () => {

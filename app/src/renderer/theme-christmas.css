@@ -1,0 +1,157 @@
+/* 특별 테마 "크리스마스" — 밤 전나무 색 + 창 위 전구 줄 + 내리는 눈 + 카드 눈 쌓임 + 리본 단 주 버튼 (시안: docs/design/christmas-theme v6 (가) 1차)
+   규칙은 모두 [data-theme='christmas'] 아래에만 둔다 → 다른 테마 화면은 그대로 (scripts/themeChristmas.test.mts가 지킨다).
+   장식은 모두 클릭을 받지 않는다(pointer-events: none). 색 토큰 이름은 index.css 라벤더 세트와 같고, 창 배경은 shared/uiTheme.ts windowBg와 맞춘다.
+   다크 전용이라 라이트 세트는 없다. 시안과 다른 점: 머리글(44px)은 창 버튼·윈도우 제목 줄 높이와 맞물려 있어 아래로 내리지 않고,
+   전구 줄을 13px로 얇게 해 창 맨 위 가장자리에만 걸친다. 모서리 호랑가시·제목 글꼴·사무실 그림 연출은 2차 */
+
+/* ── 색: 다크 전용 (시안 (가) 다크) ── */
+[data-theme='christmas'][data-mode='dark'] {
+  color-scheme: dark;
+  --background: #101A15;
+  --foreground: #F6F1E6;
+  --card: #1A2620;
+  --card-foreground: #F6F1E6;
+  --popover: #1A2620;
+  --popover-foreground: #F6F1E6;
+  /* 글자로도 쓰이는 주 색은 어두운 바탕에서 읽히는 밝은 빨강 — 버튼 바탕의 진한 빨강은 아래 --xmas-btn */
+  --primary: #FF8E98;
+  --primary-foreground: #3A0610;
+  --secondary: #22302A;
+  --secondary-foreground: #F6F1E6;
+  --muted: #22302A;
+  --muted-foreground: #B9C2B8;
+  --accent: #2A3A31;
+  --accent-foreground: #F6F1E6;
+  --destructive: #FF6B6B;
+  --destructive-foreground: #2A0A0A;
+  --border: #2E3D34;
+  --input: #4A5E52;
+  --ring: #E6C77A;
+  --accent-a: #5CC8FF;
+  --accent-b: #8FD6A8;
+  --surface-chrome: #14201A;
+  --surface-sidebar: #0C1410;
+  --hud: #1A2620;
+  --hud-foreground: #F6F1E6;
+  --hud-border: #2E3D34;
+  --spark-from: #FF8E98;
+  --spark-to: #E6C77A;
+  --grad-primary-end: #FFB3A8;
+  --grad-primary: linear-gradient(135deg, #FF8E98, #FFA3A3, #FFB3A8);
+  --shadow-color: rgba(0,0,0,.6);
+  --status-working: #6FD39A;
+  --status-waiting: #F2CF6E;
+  --status-idle: #9AA69D;
+  --status-error: #FF6B6B;
+  /* 빨강과 초록 사이에 어두운 전나무 띠를 둬 갈색으로 섞이지 않게 */
+  --sidebar-bg: linear-gradient(170deg, #3A1519, #16201B 55%, #123222);
+  /* 장식 */
+  --xmas-btn: #C8283E;
+  --xmas-btn-hover: #B3223A;
+  --xmas-btn-fg: #FFFFFF;
+  --xmas-gold: #E6C77A;
+  --xmas-lights: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='176' height='14'%3E%3Cpath d='M0 1 Q22 7 44 1 T88 1 T132 1 T176 1' fill='none' stroke='%23556B5E' stroke-width='1.2'/%3E%3Cg%3E%3Canimate attributeName='opacity' values='1;.72;1' dur='3.4s' begin='-0s' repeatCount='indefinite'/%3E%3Ccircle cx='22' cy='8.5' r='5' fill='%23FF5A6A' opacity='.22'/%3E%3Crect x='20.2' y='3.4' width='3.6' height='2.4' rx='.8' fill='%236B7A70'/%3E%3Cellipse cx='22' cy='8.6' rx='2.7' ry='3.6' fill='%23FF5A6A'/%3E%3C/g%3E%3Cg%3E%3Canimate attributeName='opacity' values='1;.72;1' dur='3.4s' begin='-0.85s' repeatCount='indefinite'/%3E%3Ccircle cx='66' cy='8.5' r='5' fill='%23F2CF6E' opacity='.22'/%3E%3Crect x='64.2' y='3.4' width='3.6' height='2.4' rx='.8' fill='%236B7A70'/%3E%3Cellipse cx='66' cy='8.6' rx='2.7' ry='3.6' fill='%23F2CF6E'/%3E%3C/g%3E%3Cg%3E%3Canimate attributeName='opacity' values='1;.72;1' dur='3.4s' begin='-1.7s' repeatCount='indefinite'/%3E%3Ccircle cx='110' cy='8.5' r='5' fill='%236FD39A' opacity='.22'/%3E%3Crect x='108.2' y='3.4' width='3.6' height='2.4' rx='.8' fill='%236B7A70'/%3E%3Cellipse cx='110' cy='8.6' rx='2.7' ry='3.6' fill='%236FD39A'/%3E%3C/g%3E%3Cg%3E%3Canimate attributeName='opacity' values='1;.72;1' dur='3.4s' begin='-2.55s' repeatCount='indefinite'/%3E%3Ccircle cx='154' cy='8.5' r='5' fill='%23FFF4DC' opacity='.22'/%3E%3Crect x='152.2' y='3.4' width='3.6' height='2.4' rx='.8' fill='%236B7A70'/%3E%3Cellipse cx='154' cy='8.6' rx='2.7' ry='3.6' fill='%23FFF4DC'/%3E%3C/g%3E%3C/svg%3E");
+  --xmas-lights-still: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='176' height='14'%3E%3Cpath d='M0 1 Q22 7 44 1 T88 1 T132 1 T176 1' fill='none' stroke='%23556B5E' stroke-width='1.2'/%3E%3Cg%3E%3Ccircle cx='22' cy='8.5' r='5' fill='%23FF5A6A' opacity='.22'/%3E%3Crect x='20.2' y='3.4' width='3.6' height='2.4' rx='.8' fill='%236B7A70'/%3E%3Cellipse cx='22' cy='8.6' rx='2.7' ry='3.6' fill='%23FF5A6A'/%3E%3C/g%3E%3Cg%3E%3Ccircle cx='66' cy='8.5' r='5' fill='%23F2CF6E' opacity='.22'/%3E%3Crect x='64.2' y='3.4' width='3.6' height='2.4' rx='.8' fill='%236B7A70'/%3E%3Cellipse cx='66' cy='8.6' rx='2.7' ry='3.6' fill='%23F2CF6E'/%3E%3C/g%3E%3Cg%3E%3Ccircle cx='110' cy='8.5' r='5' fill='%236FD39A' opacity='.22'/%3E%3Crect x='108.2' y='3.4' width='3.6' height='2.4' rx='.8' fill='%236B7A70'/%3E%3Cellipse cx='110' cy='8.6' rx='2.7' ry='3.6' fill='%236FD39A'/%3E%3C/g%3E%3Cg%3E%3Ccircle cx='154' cy='8.5' r='5' fill='%23FFF4DC' opacity='.22'/%3E%3Crect x='152.2' y='3.4' width='3.6' height='2.4' rx='.8' fill='%236B7A70'/%3E%3Cellipse cx='154' cy='8.6' rx='2.7' ry='3.6' fill='%23FFF4DC'/%3E%3C/g%3E%3C/svg%3E");
+  --xmas-snowcap: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='12' preserveAspectRatio='none'%3E%3Cpath d='M0 7 Q6 1 13 5 Q19 0 27 4 Q35 -1 42 5 Q50 1 60 6 L60 12 L0 12Z' fill='white'/%3E%3C/svg%3E");
+  --xmas-ribbon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='10'%3E%3Cpath d='M9 6 C5 0 0 1 2 6 C3 8 6 7 9 6 Z M9 6 C13 0 18 1 16 6 C15 8 12 7 9 6 Z' fill='%23E6C77A' stroke='%23A07F2E' stroke-width='.8'/%3E%3Ccircle cx='9' cy='6' r='1.8' fill='%23C9A24A'/%3E%3C/svg%3E");
+}
+
+/* ── ① 전구 줄: 창 맨 위 13px. 빨강·금·초록·크림 전구가 44px 간격, 밝기 100→72%를 3.4초에 한 번, 전구마다 시작이 달라 물결처럼 ── */
+[data-theme='christmas'] body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 14px;
+  z-index: 60;
+  pointer-events: none;
+  background: var(--xmas-lights) repeat-x;
+}
+
+/* ── ② 내리는 눈: 흰 눈 + 금·초록빛 눈 몇 송이, 두 겹이 다른 속도로. 대화상자·팝업(z-50)보다 아래 ── */
+[data-theme='christmas'] body::after {
+  content: '';
+  position: fixed;
+  inset: -300px 0 0;
+  z-index: 40;
+  pointer-events: none;
+  opacity: 0.6;
+  /* 송이마다 크기·간격이 다른 여러 겹 — 같은 간격으로 찍히면 눈이 아니라 점무늬로 보인다 */
+  background-image:
+    radial-gradient(circle, rgba(255,255,255,.95) 0 1.8px, transparent 2.4px),
+    radial-gradient(circle, rgba(255,255,255,.85) 0 1.2px, transparent 1.7px),
+    radial-gradient(circle, rgba(230,199,122,.9) 0 1.4px, transparent 2px),
+    radial-gradient(circle, rgba(255,255,255,.7) 0 1px, transparent 1.5px),
+    radial-gradient(circle, rgba(143,214,168,.85) 0 1.3px, transparent 1.9px),
+    radial-gradient(circle, rgba(255,255,255,.9) 0 1.5px, transparent 2.1px);
+  /* 타일 높이가 모두 300px의 약수 → 300px 내려가면 처음과 똑같아 끊김 없이 되풀이. 폭은 서로 나눠지지 않는 수로 */
+  background-size: 263px 300px, 197px 150px, 331px 300px, 151px 100px, 389px 300px, 229px 150px;
+  background-position: 17px 23px, 121px 88px, 203px 151px, 64px 41px, 290px 212px, 158px 7px;
+  animation: xmas-fall 18s linear infinite;
+  will-change: transform;
+}
+@keyframes xmas-fall {
+  to { transform: translateY(300px); }
+}
+
+/* ── ③ 카드 눈 쌓임: 윗선에 12px 물결 눈, 테두리 위로 7px만, 양 끝은 흐리게 ──
+   앱의 카드는 대부분 공용 Card 부품이 아니라 "bg-card rounded-xl border" 판이라 그 조합을 카드로 본다.
+   점선 판(빈 자리 안내)과 넘침을 자르는 판(눈이 잘려 첫 줄 글자 위에만 남는다)은 뺀다. 대화상자는 원래 fixed라 위치는 그대로 */
+[data-theme='christmas'] :is([data-slot='card'], .bg-card.rounded-xl.border):not(.absolute, .fixed, .sticky, .border-dashed, .overflow-hidden) {
+  position: relative;
+}
+[data-theme='christmas'] :is([data-slot='card'], .bg-card.rounded-xl.border, [data-slot='dialog']):not(.border-dashed, .overflow-hidden)::before {
+  content: '';
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: -7px;
+  height: 12px;
+  z-index: 2;
+  pointer-events: none;
+  background: var(--xmas-snowcap) repeat-x;
+  background-size: 60px 12px;
+  -webkit-mask: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+  mask: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+}
+
+/* ── ④ 리본 버튼: 주 버튼만 진한 빨강 + 안쪽 1.5px 금빛 테두리 + 둥근 알약, 위 가운데 금 리본(버튼 밖으로 7px) ── */
+[data-theme='christmas'] [data-slot='button'][data-variant='default'] {
+  background: var(--xmas-btn);
+  color: var(--xmas-btn-fg);
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--xmas-gold) 70%, transparent);
+}
+[data-theme='christmas'] [data-slot='button'][data-variant='default']:hover:not(:disabled) {
+  background: var(--xmas-btn-hover);
+}
+[data-theme='christmas'] [data-slot='button'][data-variant='default']:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--xmas-gold), var(--focus-ring);
+}
+/* 리본은 넉넉한 버튼에만 — 촘촘한 줄의 작은 버튼은 리본이 윗줄을 가린다 */
+[data-theme='christmas'] [data-slot='button'][data-variant='default']:not(.absolute, .fixed, .sticky, .h-5, .h-6, .h-7, .size-5, .size-6, .size-7, .size-8) {
+  position: relative;
+}
+[data-theme='christmas'] [data-slot='button'][data-variant='default']:not(.absolute, .fixed, .sticky, .h-5, .h-6, .h-7, .size-5, .size-6, .size-7, .size-8)::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: -7px;
+  width: 18px;
+  height: 10px;
+  transform: translateX(-50%);
+  pointer-events: none;
+  background: var(--xmas-ribbon) no-repeat;
+}
+
+/* ── 움직임 줄이기: 장식은 그대로 보이되 멈춘다 (전구는 켜진 채, 눈은 멈춘 채) ── */
+@media (prefers-reduced-motion: reduce) {
+  [data-theme='christmas'] body::before {
+    background-image: var(--xmas-lights-still);
+  }
+  [data-theme='christmas'] body::after {
+    animation: none;
+    transform: translateY(300px);
+  }
+}

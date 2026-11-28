@@ -3,6 +3,8 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 // 특별 테마(레트로) 규칙은 이 파일에만 — 모두 [data-theme='retro'] 아래라 다른 테마에는 닿지 않는다
 import './theme-retro.css'
+// 특별 테마(크리스마스) 규칙·장식 — 모두 [data-theme='christmas'] 아래
+import './theme-christmas.css'
 import { getLang, onLangChange } from '@shared/i18n'
 import { watchSystemMode } from '@/lib/uiTheme'
 import { loadPage } from '@/layout/pages'

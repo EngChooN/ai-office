@@ -4,7 +4,7 @@ import type { TKey } from './i18n/index.ts'
 // 색 값은 renderer/index.css의 [data-theme][data-mode] 토큰이 기준 (docs/design-refresh/themes/tokens.css)
 
 export type UiMode = 'system' | 'light' | 'dark'
-export type UiThemeId = 'lavender' | 'blue' | 'terracotta' | 'sage' | 'rose' | 'mono' | 'aurora' | 'twilight' | 'candy' | 'meadow' | 'retro'
+export type UiThemeId = 'lavender' | 'blue' | 'terracotta' | 'sage' | 'rose' | 'mono' | 'aurora' | 'twilight' | 'candy' | 'meadow' | 'holly' | 'evergreen' | 'snowfall' | 'retro' | 'christmas'
 export type ResolvedMode = 'light' | 'dark'
 
 export const DEFAULT_UI_MODE: UiMode = 'system'
@@ -17,6 +17,8 @@ export interface UiThemeOption {
   /** 설정 카드 동그란 견본 (135° 2색 그라데이션) */
   swatchFrom: string
   swatchTo: string
+  /** 견본 가운데 색 — 빨강·초록처럼 바로 이으면 탁해지는 두 색 사이에 밝은 띠를 끼운다 */
+  swatchMid?: string
   /** 특별 테마: 이름만으로 알기 어려워 한 줄 설명과 미리보기 그림을 함께 보여 준다 */
   descKey?: TKey
 }
@@ -46,18 +48,34 @@ export const UI_THEME_GROUPS: { id: string; titleKey?: TKey; themes: UiThemeOpti
     ],
   },
   {
-    // 색만이 아니라 모양·글꼴까지 바꾸는 테마 (규칙: renderer/theme-retro.css)
+    // 크리스마스 색 테마 — 색만 바뀌고 눈·장식은 없다 (시안: docs/design/christmas-theme v6 (나))
+    id: 'christmas',
+    titleKey: 'uiTheme.group.christmas',
+    themes: [
+      { id: 'holly', labelKey: 'uiTheme.name.holly', swatchFrom: '#B81D35', swatchMid: '#F6EBD3', swatchTo: '#1C5636' },
+      { id: 'evergreen', labelKey: 'uiTheme.name.evergreen', swatchFrom: '#6E1A30', swatchMid: '#E8C878', swatchTo: '#1B4C35' },
+      { id: 'snowfall', labelKey: 'uiTheme.name.snowfall', swatchFrom: '#D23A48', swatchMid: '#FFFFFF', swatchTo: '#2F7F52' },
+    ],
+  },
+  {
+    // 색만이 아니라 모양·장식까지 바꾸는 테마 (규칙: renderer/theme-retro.css, theme-christmas.css)
     id: 'special',
     titleKey: 'uiTheme.group.special',
-    themes: [{ id: 'retro', labelKey: 'uiTheme.name.retro', descKey: 'uiTheme.retro.desc', swatchFrom: '#8F80E6', swatchTo: '#E8C79A' }],
+    themes: [
+      { id: 'retro', labelKey: 'uiTheme.name.retro', descKey: 'uiTheme.retro.desc', swatchFrom: '#8F80E6', swatchTo: '#E8C79A' },
+      { id: 'christmas', labelKey: 'uiTheme.name.christmas', descKey: 'uiTheme.christmas.desc', swatchFrom: '#B81D35', swatchMid: '#F6EBD3', swatchTo: '#1C5636' },
+    ],
   },
 ]
 
 export const UI_THEME_IDS: UiThemeId[] = UI_THEME_GROUPS.flatMap((g) => g.themes.map((x) => x.id))
 
 /** 다크로만 만든 테마 — 고르면 앱 화면 모드 설정과 상관없이 다크로 보이고, 다른 테마로 바꾸면 원래 설정대로 돌아간다 */
-export const DARK_ONLY_THEMES: readonly UiThemeId[] = ['retro']
+export const DARK_ONLY_THEMES: readonly UiThemeId[] = ['retro', 'christmas']
 
+/** 견본 동그라미 배경 (135°) */
+export const swatchBackground = (x: Pick<UiThemeOption, 'swatchFrom' | 'swatchMid' | 'swatchTo'>) =>
+  `linear-gradient(135deg, ${[x.swatchFrom, x.swatchMid, x.swatchTo].filter(Boolean).join(', ')})`
 /** 테마까지 따진 화면 모드 (저장된 uiMode는 그대로 둔다) */
 export const themeMode = (theme: UiThemeId, mode: UiMode): UiMode => (DARK_ONLY_THEMES.includes(theme) ? 'dark' : mode)
 
@@ -80,7 +98,10 @@ export const WINDOW_BG: Record<ResolvedMode, { background: string; symbol: strin
   dark: { background: '#14131C', symbol: '#E8E6F5' },
 }
 
-/** 레트로(다크 전용)는 바탕이 라벤더와 많이 달라 따로 둔다 — 값은 theme-retro.css의 --background·--foreground와 같다 */
-const RETRO_WINDOW_BG = { background: '#1D1A2A', symbol: '#FAF5EC' }
+/** 다크 전용 특별 테마는 바탕이 라벤더와 많이 달라 따로 둔다 — 값은 theme-retro.css·theme-christmas.css의 --background·--foreground와 같다 */
+const SPECIAL_WINDOW_BG: Partial<Record<UiThemeId, { background: string; symbol: string }>> = {
+  retro: { background: '#1D1A2A', symbol: '#FAF5EC' },
+  christmas: { background: '#101A15', symbol: '#F6F1E6' },
+}
 
-export const windowBg = (theme: UiThemeId, mode: ResolvedMode) => (theme === 'retro' ? RETRO_WINDOW_BG : WINDOW_BG[mode])
+export const windowBg = (theme: UiThemeId, mode: ResolvedMode) => SPECIAL_WINDOW_BG[theme] ?? WINDOW_BG[mode]

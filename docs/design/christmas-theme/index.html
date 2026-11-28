@@ -1,0 +1,2355 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><title>크리스마스 테마 시안 v6</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/jua/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/gowun-dodum/index.css"><style>
+[data-theme]{--radius:18px;--grad-primary:linear-gradient(135deg,var(--spark-from),var(--grad-primary-end));--grad-nav-active:linear-gradient(90deg,color-mix(in oklab,var(--ring) 22%,transparent),transparent);--shadow-primary:0 6px 16px -6px color-mix(in oklab,var(--primary) 70%,transparent);--focus-ring:0 0 0 4px color-mix(in oklab,var(--ring) 24%,transparent)}
+[data-theme='holly'][data-mode='light'] {
+  color-scheme: light;
+  --background: #FBF7F2;
+  --foreground: #2A1C1E;
+  --card: #FFFFFF;
+  --card-foreground: #2A1C1E;
+  --popover: #FFFFFF;
+  --popover-foreground: #2A1C1E;
+  --primary: #B01C33;
+  --primary-foreground: #FFFFFF;
+  --secondary: #F3ECE4;
+  --secondary-foreground: #2A1C1E;
+  --muted: #F3ECE4;
+  --muted-foreground: #665A57;
+  --accent: #F7E6E4;
+  --accent-foreground: #2A1C1E;
+  --destructive: #C42B2B;
+  --destructive-foreground: #FFFFFF;
+  --border: #E9DED5;
+  --input: #D6C8BE;
+  --ring: #2F7A4C;
+  --accent-a: #0B6DA1;
+  --accent-b: #5C4CE3;
+  --surface-chrome: #FFFCF8;
+  --surface-sidebar: #F5EEE8;
+  --hud: rgba(255,255,255,.92);
+  --hud-foreground: #2A1C1E;
+  --hud-border: #E9DED5;
+  --spark-from: #B01C33;
+  --spark-to: #E6C79A;
+  --grad-primary-end: #9E1B30;
+  --grad-primary: linear-gradient(135deg, #B01C33, #C0283C, #9E1B30);
+  --shadow-color: #B01C3340;
+  --status-working: #1C7C46;
+  --status-waiting: #9A5B00;
+  --status-idle: #6B6B62;
+  --status-error: #C42B2B;
+  --sidebar-bg: linear-gradient(170deg, #F8DCDD, #F6EEDD, #D9EBDD);
+  --snow-core: #FFFFFF;
+  --snow-edge: #D06A78;
+  --snow-alt: #5E9F76;
+}
+[data-theme='holly'][data-mode='dark'] {
+  color-scheme: dark;
+  --background: #171313;
+  --foreground: #F5EEEC;
+  --card: #241D1D;
+  --card-foreground: #F5EEEC;
+  --popover: #241D1D;
+  --popover-foreground: #F5EEEC;
+  --primary: #FF8C96;
+  --primary-foreground: #3A0610;
+  --secondary: #2F2727;
+  --secondary-foreground: #F5EEEC;
+  --muted: #2F2727;
+  --muted-foreground: #BAAEAC;
+  --accent: #3A2B2C;
+  --accent-foreground: #F5EEEC;
+  --destructive: #FF6B6B;
+  --destructive-foreground: #2A0A0A;
+  --border: #423637;
+  --input: #534646;
+  --ring: #8FD6A8;
+  --accent-a: #5CC8FF;
+  --accent-b: #B6A8FF;
+  --surface-chrome: #1D1818;
+  --surface-sidebar: #110D0D;
+  --hud: #241D1D;
+  --hud-foreground: #F5EEEC;
+  --hud-border: #423637;
+  --spark-from: #FF8C96;
+  --spark-to: #9DDCB0;
+  --grad-primary-end: #FFBFB0;
+  --grad-primary: linear-gradient(135deg, #FF8C96, #FFA3A3, #FFBFB0);
+  --shadow-color: rgba(0,0,0,.6);
+  --status-working: #4ADE80;
+  --status-waiting: #F2C94C;
+  --status-idle: #9A98AC;
+  --status-error: #FF6B6B;
+  --sidebar-bg: linear-gradient(170deg, #3A1519, #2A2620, #123222);
+  --snow-core: #FFFFFF;
+  --snow-edge: #FFD3D8;
+  --snow-alt: #B9E8C8;
+}
+[data-theme='evergreen'][data-mode='light'] {
+  color-scheme: light;
+  --background: #F8F6EE;
+  --foreground: #1D2A22;
+  --card: #FFFFFF;
+  --card-foreground: #1D2A22;
+  --popover: #FFFFFF;
+  --popover-foreground: #1D2A22;
+  --primary: #7E1F38;
+  --primary-foreground: #FFFFFF;
+  --secondary: #EEECE0;
+  --secondary-foreground: #1D2A22;
+  --muted: #EEECE0;
+  --muted-foreground: #5B6359;
+  --accent: #F1E9D2;
+  --accent-foreground: #1D2A22;
+  --destructive: #C42B2B;
+  --destructive-foreground: #FFFFFF;
+  --border: #E2DCCB;
+  --input: #CEC8B5;
+  --ring: #2F7A4C;
+  --accent-a: #0B6DA1;
+  --accent-b: #5C4CE3;
+  --surface-chrome: #FCFBF6;
+  --surface-sidebar: #EFEDE3;
+  --hud: rgba(255,255,255,.92);
+  --hud-foreground: #1D2A22;
+  --hud-border: #E2DCCB;
+  --spark-from: #7E1F38;
+  --spark-to: #D9B45E;
+  --grad-primary-end: #7A2340;
+  --grad-primary: linear-gradient(135deg, #7E1F38, #8E2A44, #7A2340);
+  --shadow-color: #7E1F3840;
+  --status-working: #1C7C46;
+  --status-waiting: #9A5B00;
+  --status-idle: #6B6B62;
+  --status-error: #C42B2B;
+  --sidebar-bg: linear-gradient(170deg, #F1DCE0, #F4E7C4, #DCE9DD);
+  --snow-core: #FFFFFF;
+  --snow-edge: #C2A04C;
+  --snow-alt: #4E8A60;
+}
+[data-theme='evergreen'][data-mode='dark'] {
+  color-scheme: dark;
+  --background: #131512;
+  --foreground: #F1EEE6;
+  --card: #1F221D;
+  --card-foreground: #F1EEE6;
+  --popover: #1F221D;
+  --popover-foreground: #F1EEE6;
+  --primary: #F0A8B4;
+  --primary-foreground: #2A0A12;
+  --secondary: #2A2D27;
+  --secondary-foreground: #F1EEE6;
+  --muted: #2A2D27;
+  --muted-foreground: #B3B4AA;
+  --accent: #353528;
+  --accent-foreground: #F1EEE6;
+  --destructive: #FF6B6B;
+  --destructive-foreground: #2A0A0A;
+  --border: #3A3D34;
+  --input: #4B4E44;
+  --ring: #E8C878;
+  --accent-a: #5CC8FF;
+  --accent-b: #B6A8FF;
+  --surface-chrome: #191B17;
+  --surface-sidebar: #0E100D;
+  --hud: #1F221D;
+  --hud-foreground: #F1EEE6;
+  --hud-border: #3A3D34;
+  --spark-from: #F0A8B4;
+  --spark-to: #E8C878;
+  --grad-primary-end: #9FD4AE;
+  --grad-primary: linear-gradient(135deg, #F0A8B4, #E8C878, #9FD4AE);
+  --shadow-color: rgba(0,0,0,.6);
+  --status-working: #4ADE80;
+  --status-waiting: #F2C94C;
+  --status-idle: #9A98AC;
+  --status-error: #FF6B6B;
+  --sidebar-bg: linear-gradient(170deg, #3A1520, #2E2814, #12301F);
+  --snow-core: #FFFFFF;
+  --snow-edge: #E8D49C;
+  --snow-alt: #F4B8C2;
+}
+[data-theme='snowfall'][data-mode='light'] {
+  color-scheme: light;
+  --background: #F7F9FA;
+  --foreground: #1C2227;
+  --card: #FFFFFF;
+  --card-foreground: #1C2227;
+  --popover: #FFFFFF;
+  --popover-foreground: #1C2227;
+  --primary: #2A6E47;
+  --primary-foreground: #FFFFFF;
+  --secondary: #EDF1F3;
+  --secondary-foreground: #1C2227;
+  --muted: #EDF1F3;
+  --muted-foreground: #5A646B;
+  --accent: #EAF2EE;
+  --accent-foreground: #1C2227;
+  --destructive: #C42B2B;
+  --destructive-foreground: #FFFFFF;
+  --border: #DDE3E7;
+  --input: #C9D1D6;
+  --ring: #C8323F;
+  --accent-a: #0B6DA1;
+  --accent-b: #5C4CE3;
+  --surface-chrome: #FFFFFF;
+  --surface-sidebar: #F1F4F6;
+  --hud: rgba(255,255,255,.92);
+  --hud-foreground: #1C2227;
+  --hud-border: #DDE3E7;
+  --spark-from: #2A6E47;
+  --spark-to: #BFD0DA;
+  --grad-primary-end: #256342;
+  --grad-primary: linear-gradient(135deg, #2A6E47, #2F7A4F, #256342);
+  --shadow-color: #2A6E4740;
+  --status-working: #1C7C46;
+  --status-waiting: #9A5B00;
+  --status-idle: #6B6B62;
+  --status-error: #C42B2B;
+  --sidebar-bg: linear-gradient(170deg, #FBE9EA, #FFFFFF, #E3F0E7);
+  --snow-core: #FFFFFF;
+  --snow-edge: #9DB0C0;
+  --snow-alt: #D45A66;
+}
+[data-theme='snowfall'][data-mode='dark'] {
+  color-scheme: dark;
+  --background: #121518;
+  --foreground: #EEF2F5;
+  --card: #1D2228;
+  --card-foreground: #EEF2F5;
+  --popover: #1D2228;
+  --popover-foreground: #EEF2F5;
+  --primary: #9FDAB4;
+  --primary-foreground: #082114;
+  --secondary: #272D33;
+  --secondary-foreground: #EEF2F5;
+  --muted: #272D33;
+  --muted-foreground: #AAB4BC;
+  --accent: #2C3540;
+  --accent-foreground: #EEF2F5;
+  --destructive: #FF6B6B;
+  --destructive-foreground: #2A0A0A;
+  --border: #343C44;
+  --input: #444D56;
+  --ring: #FF9AA5;
+  --accent-a: #5CC8FF;
+  --accent-b: #B6A8FF;
+  --surface-chrome: #171B1F;
+  --surface-sidebar: #0D1013;
+  --hud: #1D2228;
+  --hud-foreground: #EEF2F5;
+  --hud-border: #343C44;
+  --spark-from: #9FDAB4;
+  --spark-to: #FFB3BA;
+  --grad-primary-end: #FFB3BA;
+  --grad-primary: linear-gradient(135deg, #9FDAB4, #E6EEF2, #FFB3BA);
+  --shadow-color: rgba(0,0,0,.6);
+  --status-working: #4ADE80;
+  --status-waiting: #F2C94C;
+  --status-idle: #9A98AC;
+  --status-error: #FF6B6B;
+  --sidebar-bg: linear-gradient(170deg, #1A2A22, #1E242B, #34191D);
+  --snow-core: #FFFFFF;
+  --snow-edge: #DDE7F0;
+  --snow-alt: #FFB3BA;
+}
+[data-theme='v4evergreen'][data-mode='light'] {
+  color-scheme: light;
+  --background: #F7F6EF;
+  --foreground: #1D2A22;
+  --card: #FFFFFF;
+  --card-foreground: #1D2A22;
+  --popover: #FFFFFF;
+  --popover-foreground: #1D2A22;
+  --primary: #1F5A40;
+  --primary-foreground: #FFFFFF;
+  --secondary: #EEEDE2;
+  --secondary-foreground: #1D2A22;
+  --muted: #EEEDE2;
+  --muted-foreground: #5B6359;
+  --accent: #E7EFE3;
+  --accent-foreground: #1D2A22;
+  --destructive: #C42B2B;
+  --destructive-foreground: #FFFFFF;
+  --border: #E0DDCF;
+  --input: #CDCABA;
+  --ring: #3E7C5C;
+  --accent-a: #0B6DA1;
+  --accent-b: #5C4CE3;
+  --surface-chrome: #FCFBF6;
+  --surface-sidebar: #EEEFE6;
+  --hud: rgba(255,255,255,.92);
+  --hud-foreground: #1D2A22;
+  --hud-border: #E0DDCF;
+  --spark-from: #1F5A40;
+  --spark-to: #D2B266;
+  --grad-primary-end: #5F7A2C;
+  --grad-primary: linear-gradient(135deg, #1F5A40, #356A3F, #5F7A2C);
+  --shadow-color: #1F5A4040;
+  --status-working: #1C7C46;
+  --status-waiting: #9A5B00;
+  --status-idle: #6B6B62;
+  --status-error: #C42B2B;
+  --sidebar-bg: linear-gradient(170deg, #DDEBDF, #F3E8C8);
+  --snow-core: #FFFFFF;
+  --snow-edge: #C2A04C;
+  --snow-alt: #6E9C7E;
+}
+[data-theme='v4evergreen'][data-mode='dark'] {
+  color-scheme: dark;
+  --background: #111814;
+  --foreground: #EEF1EC;
+  --card: #1D2620;
+  --card-foreground: #EEF1EC;
+  --popover: #1D2620;
+  --popover-foreground: #EEF1EC;
+  --primary: #9FD4AE;
+  --primary-foreground: #0B2116;
+  --secondary: #28322B;
+  --secondary-foreground: #EEF1EC;
+  --muted: #28322B;
+  --muted-foreground: #AEB8AF;
+  --accent: #2F3D33;
+  --accent-foreground: #EEF1EC;
+  --destructive: #FF6B6B;
+  --destructive-foreground: #2A0A0A;
+  --border: #36423A;
+  --input: #465349;
+  --ring: #9FD4AE;
+  --accent-a: #5CC8FF;
+  --accent-b: #B6A8FF;
+  --surface-chrome: #161E19;
+  --surface-sidebar: #0D130F;
+  --hud: #1D2620;
+  --hud-foreground: #EEF1EC;
+  --hud-border: #36423A;
+  --spark-from: #9FD4AE;
+  --spark-to: #E6CB86;
+  --grad-primary-end: #E6C878;
+  --grad-primary: linear-gradient(135deg, #9FD4AE, #C2D58E, #E6C878);
+  --shadow-color: rgba(0,0,0,.6);
+  --status-working: #4ADE80;
+  --status-waiting: #F2C94C;
+  --status-idle: #9A98AC;
+  --status-error: #FF6B6B;
+  --sidebar-bg: linear-gradient(170deg, #163323, #2E2A16);
+  --snow-core: #FFFFFF;
+  --snow-edge: #E8D49C;
+  --snow-alt: #FFF4D6;
+}
+[data-theme='v4mulledwine'][data-mode='light'] {
+  color-scheme: light;
+  --background: #FAF5F3;
+  --foreground: #2B1D21;
+  --card: #FFFFFF;
+  --card-foreground: #2B1D21;
+  --popover: #FFFFFF;
+  --popover-foreground: #2B1D21;
+  --primary: #7A2840;
+  --primary-foreground: #FFFFFF;
+  --secondary: #F1E9E6;
+  --secondary-foreground: #2B1D21;
+  --muted: #F1E9E6;
+  --muted-foreground: #685A5D;
+  --accent: #F4E6E4;
+  --accent-foreground: #2B1D21;
+  --destructive: #C42B2B;
+  --destructive-foreground: #FFFFFF;
+  --border: #E8DCD8;
+  --input: #D6C7C3;
+  --ring: #A04A5E;
+  --accent-a: #0B6DA1;
+  --accent-b: #5C4CE3;
+  --surface-chrome: #FEFBFA;
+  --surface-sidebar: #F3ECEA;
+  --hud: rgba(255,255,255,.92);
+  --hud-foreground: #2B1D21;
+  --hud-border: #E8DCD8;
+  --spark-from: #7A2840;
+  --spark-to: #D9A98E;
+  --grad-primary-end: #9A4A3A;
+  --grad-primary: linear-gradient(135deg, #7A2840, #8A3540, #9A4A3A);
+  --shadow-color: #7A284040;
+  --status-working: #1C7C46;
+  --status-waiting: #9A5B00;
+  --status-idle: #6B6B62;
+  --status-error: #C42B2B;
+  --sidebar-bg: linear-gradient(170deg, #F3DDE0, #F7E9DC);
+  --snow-core: #FFFFFF;
+  --snow-edge: #C9908A;
+  --snow-alt: #D4B27A;
+}
+[data-theme='v4mulledwine'][data-mode='dark'] {
+  color-scheme: dark;
+  --background: #1A1214;
+  --foreground: #F3ECEE;
+  --card: #281C20;
+  --card-foreground: #F3ECEE;
+  --popover: #281C20;
+  --popover-foreground: #F3ECEE;
+  --primary: #F0B3C2;
+  --primary-foreground: #3A0E1C;
+  --secondary: #33262A;
+  --secondary-foreground: #F3ECEE;
+  --muted: #33262A;
+  --muted-foreground: #BCADB1;
+  --accent: #3D2C31;
+  --accent-foreground: #F3ECEE;
+  --destructive: #FF6B6B;
+  --destructive-foreground: #2A0A0A;
+  --border: #45353A;
+  --input: #55434A;
+  --ring: #F0B3C2;
+  --accent-a: #5CC8FF;
+  --accent-b: #B6A8FF;
+  --surface-chrome: #20171A;
+  --surface-sidebar: #150E10;
+  --hud: #281C20;
+  --hud-foreground: #F3ECEE;
+  --hud-border: #45353A;
+  --spark-from: #F0B3C2;
+  --spark-to: #EFCDB6;
+  --grad-primary-end: #F2CDB4;
+  --grad-primary: linear-gradient(135deg, #F0B3C2, #F1C0BB, #F2CDB4);
+  --shadow-color: rgba(0,0,0,.6);
+  --status-working: #4ADE80;
+  --status-waiting: #F2C94C;
+  --status-idle: #9A98AC;
+  --status-error: #FF6B6B;
+  --sidebar-bg: linear-gradient(170deg, #3A1824, #3A2A22);
+  --snow-core: #FFFFFF;
+  --snow-edge: #F2D2C2;
+  --snow-alt: #EAD3A0;
+}
+[data-theme='v4holly'][data-mode='light'] {
+  color-scheme: light;
+  --background: #F6F7F2;
+  --foreground: #1C2922;
+  --card: #FFFFFF;
+  --card-foreground: #1C2922;
+  --popover: #FFFFFF;
+  --popover-foreground: #1C2922;
+  --primary: #24573F;
+  --primary-foreground: #FFFFFF;
+  --secondary: #ECEFE7;
+  --secondary-foreground: #1C2922;
+  --muted: #ECEFE7;
+  --muted-foreground: #59645C;
+  --accent: #E5EEE6;
+  --accent-foreground: #1C2922;
+  --destructive: #C42B2B;
+  --destructive-foreground: #FFFFFF;
+  --border: #DCE1D8;
+  --input: #C6CDC3;
+  --ring: #3F7A5C;
+  --accent-a: #0B6DA1;
+  --accent-b: #5C4CE3;
+  --surface-chrome: #FCFDFA;
+  --surface-sidebar: #EDF0EA;
+  --hud: rgba(255,255,255,.92);
+  --hud-foreground: #1C2922;
+  --hud-border: #DCE1D8;
+  --spark-from: #24573F;
+  --spark-to: #C9DCCB;
+  --grad-primary-end: #2F6B52;
+  --grad-primary: linear-gradient(135deg, #24573F, #285F47, #2F6B52);
+  --shadow-color: #24573F40;
+  --status-working: #1C7C46;
+  --status-waiting: #9A5B00;
+  --status-idle: #6B6B62;
+  --status-error: #C42B2B;
+  --sidebar-bg: linear-gradient(170deg, #D8E9DD, #F4F0E4);
+  --snow-core: #FFFFFF;
+  --snow-edge: #8FAE98;
+  --snow-alt: #C9AE6E;
+  --berry: #B3263A;
+}
+[data-theme='v4holly'][data-mode='dark'] {
+  color-scheme: dark;
+  --background: #111815;
+  --foreground: #EEF2EF;
+  --card: #1C2621;
+  --card-foreground: #EEF2EF;
+  --popover: #1C2621;
+  --popover-foreground: #EEF2EF;
+  --primary: #A8D8BA;
+  --primary-foreground: #0A2216;
+  --secondary: #27322C;
+  --secondary-foreground: #EEF2EF;
+  --muted: #27322C;
+  --muted-foreground: #ABB8B0;
+  --accent: #2E3C35;
+  --accent-foreground: #EEF2EF;
+  --destructive: #FF6B6B;
+  --destructive-foreground: #2A0A0A;
+  --border: #35423B;
+  --input: #45534B;
+  --ring: #A8D8BA;
+  --accent-a: #5CC8FF;
+  --accent-b: #B6A8FF;
+  --surface-chrome: #151D19;
+  --surface-sidebar: #0C120F;
+  --hud: #1C2621;
+  --hud-foreground: #EEF2EF;
+  --hud-border: #35423B;
+  --spark-from: #A8D8BA;
+  --spark-to: #E3EBDD;
+  --grad-primary-end: #E6EBDD;
+  --grad-primary: linear-gradient(135deg, #A8D8BA, #C7E2CB, #E6EBDD);
+  --shadow-color: rgba(0,0,0,.6);
+  --status-working: #4ADE80;
+  --status-waiting: #F2C94C;
+  --status-idle: #9A98AC;
+  --status-error: #FF6B6B;
+  --sidebar-bg: linear-gradient(170deg, #14332A, #26302A);
+  --snow-core: #FFFFFF;
+  --snow-edge: #DDEBE1;
+  --snow-alt: #F0E2B8;
+  --berry: #F08A98;
+}
+[data-theme='midnight'][data-mode='light'] {
+  color-scheme: light;
+  --background: #F5F6F9;
+  --foreground: #1E222F;
+  --card: #FFFFFF;
+  --card-foreground: #1E222F;
+  --popover: #FFFFFF;
+  --popover-foreground: #1E222F;
+  --primary: #33457E;
+  --primary-foreground: #FFFFFF;
+  --secondary: #ECEDF3;
+  --secondary-foreground: #1E222F;
+  --muted: #ECEDF3;
+  --muted-foreground: #626674;
+  --accent: #E5E9F5;
+  --accent-foreground: #1E222F;
+  --destructive: #C42B2B;
+  --destructive-foreground: #FFFFFF;
+  --border: #DDE0E9;
+  --input: #C9CDDA;
+  --ring: #5B6FAE;
+  --accent-a: #0B6DA1;
+  --accent-b: #5C4CE3;
+  --surface-chrome: #FBFCFE;
+  --surface-sidebar: #ECEEF4;
+  --hud: rgba(255,255,255,.92);
+  --hud-foreground: #1E222F;
+  --hud-border: #DDE0E9;
+  --spark-from: #33457E;
+  --spark-to: #8EC3E0;
+  --grad-primary-end: #2C6A8E;
+  --shadow-color: #33457E40;
+  --status-working: #1C7C46;
+  --status-waiting: #9A5B00;
+  --status-idle: #6B6B62;
+  --status-error: #C42B2B;
+  --sidebar-bg: linear-gradient(170deg, #DCE1F3, #DCEEF8);
+}
+
+[data-theme='midnight'][data-mode='dark'] {
+  color-scheme: dark;
+  --background: #13151A;
+  --foreground: #ECEEF3;
+  --card: #21242C;
+  --card-foreground: #ECEEF3;
+  --popover: #21242C;
+  --popover-foreground: #ECEEF3;
+  --primary: #A9BCF2;
+  --primary-foreground: #0E1430;
+  --secondary: #2D3039;
+  --secondary-foreground: #ECEEF3;
+  --muted: #2D3039;
+  --muted-foreground: #ABAFBA;
+  --accent: #363B4A;
+  --accent-foreground: #ECEEF3;
+  --destructive: #FF6B6B;
+  --destructive-foreground: #2A0A0A;
+  --border: #3B3F4A;
+  --input: #494D5A;
+  --ring: #A9BCF2;
+  --accent-a: #5CC8FF;
+  --accent-b: #B6A8FF;
+  --surface-chrome: #1A1C23;
+  --surface-sidebar: #0F1115;
+  --hud: #21242C;
+  --hud-foreground: #ECEEF3;
+  --hud-border: #3B3F4A;
+  --spark-from: #A9BCF2;
+  --spark-to: #A7D3EC;
+  --grad-primary-end: #9ECDE8;
+  --shadow-color: rgba(0,0,0,.6);
+  --status-working: #4ADE80;
+  --status-waiting: #F2C94C;
+  --status-idle: #9A98AC;
+  --status-error: #FF6B6B;
+  --sidebar-bg: linear-gradient(170deg, #1B2242, #142F3D);
+}
+
+[data-theme='frost'][data-mode='light'] {
+  color-scheme: light;
+  --background: #F5F5F9;
+  --foreground: #1E212F;
+  --card: #FFFFFF;
+  --card-foreground: #1E212F;
+  --popover: #FFFFFF;
+  --popover-foreground: #1E212F;
+  --primary: #414E8C;
+  --primary-foreground: #FFFFFF;
+  --secondary: #ECEDF3;
+  --secondary-foreground: #1E212F;
+  --muted: #ECEDF3;
+  --muted-foreground: #626474;
+  --accent: #E5E7F5;
+  --accent-foreground: #1E212F;
+  --destructive: #C42B2B;
+  --destructive-foreground: #FFFFFF;
+  --border: #DDDFE9;
+  --input: #C9CCDA;
+  --ring: #6672B8;
+  --accent-a: #0B6DA1;
+  --accent-b: #5C4CE3;
+  --surface-chrome: #FBFCFE;
+  --surface-sidebar: #ECEDF4;
+  --hud: rgba(255,255,255,.92);
+  --hud-foreground: #1E212F;
+  --hud-border: #DDDFE9;
+  --spark-from: #414E8C;
+  --spark-to: #A9A3DB;
+  --grad-primary-end: #5A549E;
+  --shadow-color: #414E8C40;
+  --status-working: #1C7C46;
+  --status-waiting: #9A5B00;
+  --status-idle: #6B6B62;
+  --status-error: #C42B2B;
+  --sidebar-bg: linear-gradient(170deg, #DFE1F4, #EAE7F7);
+}
+
+[data-theme='frost'][data-mode='dark'] {
+  color-scheme: dark;
+  --background: #13141A;
+  --foreground: #ECEDF3;
+  --card: #21232C;
+  --card-foreground: #ECEDF3;
+  --popover: #21232C;
+  --popover-foreground: #ECEDF3;
+  --primary: #B3BBF5;
+  --primary-foreground: #11143A;
+  --secondary: #2D2E39;
+  --secondary-foreground: #ECEDF3;
+  --muted: #2D2E39;
+  --muted-foreground: #ABADBA;
+  --accent: #36394A;
+  --accent-foreground: #ECEDF3;
+  --destructive: #FF6B6B;
+  --destructive-foreground: #2A0A0A;
+  --border: #3B3D4A;
+  --input: #494C5A;
+  --ring: #B3BBF5;
+  --accent-a: #5CC8FF;
+  --accent-b: #B6A8FF;
+  --surface-chrome: #1A1B23;
+  --surface-sidebar: #0F1015;
+  --hud: #21232C;
+  --hud-foreground: #ECEDF3;
+  --hud-border: #3B3D4A;
+  --spark-from: #B3BBF5;
+  --spark-to: #CBC6F2;
+  --grad-primary-end: #C3BBF0;
+  --shadow-color: rgba(0,0,0,.6);
+  --status-working: #4ADE80;
+  --status-waiting: #F2C94C;
+  --status-idle: #9A98AC;
+  --status-error: #FF6B6B;
+  --sidebar-bg: linear-gradient(170deg, #1E2143, #29253F);
+}
+
+[data-theme='glacier'][data-mode='light'] {
+  color-scheme: light;
+  --background: #F5F8F9;
+  --foreground: #1E2A2F;
+  --card: #FFFFFF;
+  --card-foreground: #1E2A2F;
+  --popover: #FFFFFF;
+  --popover-foreground: #1E2A2F;
+  --primary: #1F5D70;
+  --primary-foreground: #FFFFFF;
+  --secondary: #ECF1F3;
+  --secondary-foreground: #1E2A2F;
+  --muted: #ECF1F3;
+  --muted-foreground: #626F74;
+  --accent: #E5F1F5;
+  --accent-foreground: #1E2A2F;
+  --destructive: #C42B2B;
+  --destructive-foreground: #FFFFFF;
+  --border: #DDE6E9;
+  --input: #C9D5DA;
+  --ring: #3F8AA0;
+  --accent-a: #0B6DA1;
+  --accent-b: #5C4CE3;
+  --surface-chrome: #FBFDFE;
+  --surface-sidebar: #ECF2F4;
+  --hud: rgba(255,255,255,.92);
+  --hud-foreground: #1E2A2F;
+  --hud-border: #DDE6E9;
+  --spark-from: #1F5D70;
+  --spark-to: #9CC7D9;
+  --grad-primary-end: #2F5F86;
+  --shadow-color: #1F5D7040;
+  --status-working: #1C7C46;
+  --status-waiting: #9A5B00;
+  --status-idle: #6B6B62;
+  --status-error: #C42B2B;
+  --sidebar-bg: linear-gradient(170deg, #D7EBF1, #E6EFF6);
+}
+
+[data-theme='glacier'][data-mode='dark'] {
+  color-scheme: dark;
+  --background: #13191A;
+  --foreground: #ECF1F3;
+  --card: #21292C;
+  --card-foreground: #ECF1F3;
+  --popover: #21292C;
+  --popover-foreground: #ECF1F3;
+  --primary: #8FD0E3;
+  --primary-foreground: #062029;
+  --secondary: #2D3639;
+  --secondary-foreground: #ECF1F3;
+  --muted: #2D3639;
+  --muted-foreground: #ABB6BA;
+  --accent: #36454A;
+  --accent-foreground: #ECF1F3;
+  --destructive: #FF6B6B;
+  --destructive-foreground: #2A0A0A;
+  --border: #3B464A;
+  --input: #49555A;
+  --ring: #8FD0E3;
+  --accent-a: #5CC8FF;
+  --accent-b: #B6A8FF;
+  --surface-chrome: #1A2123;
+  --surface-sidebar: #0F1315;
+  --hud: #21292C;
+  --hud-foreground: #ECF1F3;
+  --hud-border: #3B464A;
+  --spark-from: #8FD0E3;
+  --spark-to: #CFE6F2;
+  --grad-primary-end: #B5D3EE;
+  --shadow-color: rgba(0,0,0,.6);
+  --status-working: #4ADE80;
+  --status-waiting: #F2C94C;
+  --status-idle: #9A98AC;
+  --status-error: #FF6B6B;
+  --sidebar-bg: linear-gradient(170deg, #132F38, #1E2A3A);
+}
+body{margin:0;font:14px/1.55 -apple-system,'Apple SD Gothic Neo','Pretendard',sans-serif;background:#F3F2F7;color:#221F33}
+.wrap{max-width:1180px;margin:0 auto;padding:32px 24px 80px}
+h1{font-size:26px;margin:0 0 6px} h2{font-size:20px;margin:0 0 8px} h2 small{color:#777;font-weight:500;font-size:14px}
+section{background:#fff;border-radius:20px;padding:24px;margin:22px 0;box-shadow:0 8px 24px -14px rgba(0,0,0,.25)}
+.lead{color:#444} .bigsw{display:inline-block;width:28px;height:28px;border-radius:50%;vertical-align:middle;margin-right:8px;border:1px solid rgba(0,0,0,.1)}
+.sum{display:grid;grid-template-columns:repeat(3,1fr);gap:14px} .sum div{border:1px solid #e5e3ee;border-radius:16px;padding:14px}
+.sum .sw2{width:44px;height:44px;border-radius:50%;border:1px solid rgba(0,0,0,.1);margin-bottom:8px}
+.rec{background:#FFF6E0;border-radius:12px;padding:10px 14px;margin-top:12px}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:16px} figure{margin:0} figcaption{font-size:12px;color:#888;margin-bottom:6px}
+/* 앱 미리보기 */
+.win,.set{background:var(--background);color:var(--foreground);border:1px solid var(--border);border-radius:16px;overflow:hidden;font-size:12.5px}
+.win{display:flex;height:370px}
+.sb{width:128px;flex-shrink:0;background:var(--surface-sidebar);background-image:var(--sidebar-bg);border-right:1px solid var(--border);padding:10px 8px;display:flex;flex-direction:column;gap:2px}
+.logo{font-weight:700;padding:2px 8px 10px;background:var(--grad-primary);-webkit-background-clip:text;color:transparent}
+.sb a{padding:6px 8px;border-radius:999px;color:var(--foreground)} .sb a.on{background:var(--grad-nav-active);font-weight:600}
+.sbfoot{margin-top:auto;font-size:11px;color:var(--muted-foreground);padding:0 6px}
+main{flex:1;min-width:0;display:flex;flex-direction:column;background:var(--surface-chrome)}
+.hd{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--border)}
+.chip{margin-left:auto;background:var(--secondary);border:1px solid var(--border);border-radius:999px;padding:1px 9px;font-size:11px}
+.chat{flex:1;padding:10px 12px;display:flex;flex-direction:column;gap:7px;background:var(--background)}
+.row{display:flex;gap:6px;align-items:flex-start} .row.me{justify-content:flex-end}
+.av{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:var(--accent-a);color:#fff;font-size:10px;font-weight:700;flex-shrink:0} .av.b{background:var(--accent-b)}
+.bub{max-width:76%;padding:6px 10px;border-radius:14px} .bub.o{background:var(--card);border:1px solid var(--border)}
+.bub.m{background:var(--primary);color:var(--primary-foreground)} .tm{font-size:10px;opacity:.75;text-align:right}
+.lnk{color:var(--primary);text-decoration:underline;font-weight:600}
+.card{margin:0 12px 12px;background:var(--card);color:var(--card-foreground);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px}
+.ct{display:flex;gap:8px;align-items:center} .st{font-size:11px;color:var(--muted-foreground);display:flex;align-items:center;gap:3px}
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block} .dot.w{background:var(--status-working)} .dot.q{background:var(--status-waiting)} .dot.e{background:var(--status-error)}
+.mut{color:var(--muted-foreground);margin:4px 0 8px}
+.inp{border:1px solid var(--ring);box-shadow:var(--focus-ring);border-radius:12px;padding:5px 10px;color:var(--muted-foreground);background:var(--background)}
+.btns{display:flex;gap:6px;margin-top:9px} button{font:inherit;font-weight:500;border-radius:999px;padding:5px 14px;border:1px solid transparent}
+.bp{background:var(--grad-primary);color:var(--primary-foreground);box-shadow:var(--shadow-primary)}
+.bo{background:var(--card);color:var(--foreground);border-color:var(--input)} .bd{background:var(--destructive);color:var(--destructive-foreground)}
+/* 설정 카드 */
+.set{padding:16px} .gt{font-size:12px;color:var(--muted-foreground);font-weight:600;margin:12px 0 6px}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.tc{display:flex;align-items:center;gap:10px;border:1px solid var(--border);border-radius:16px;padding:10px;background:var(--card);font-weight:500}
+.tc.sel{border-color:var(--ring);box-shadow:0 0 0 2px var(--ring)} .sw{width:36px;height:36px;border-radius:50%;border:1px solid rgba(0,0,0,.1);flex-shrink:0}
+.ct2{border-collapse:collapse;width:100%;font-size:12.5px;margin-top:8px} .ct2 td,.ct2 th{border-bottom:1px solid #eee;padding:5px 6px;text-align:left}
+.pv{display:inline-block;padding:0 6px;border-radius:6px;font-weight:600;border:1px solid rgba(0,0,0,.08)}
+pre{background:#1d1b26;color:#e8e6f5;border-radius:12px;padding:14px;overflow:auto;font-size:11.5px;max-height:420px}
+code{background:#f0eef7;border-radius:5px;padding:0 4px} .cmp{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+/* ❄ 눈 효과 */
+[data-theme='midnight'][data-mode='light']{--snow-core:#FFFFFF;--snow-edge:#7FA3C9}
+[data-theme='midnight'][data-mode='dark']{--snow-core:#FFFFFF;--snow-edge:#CFE3F5}
+[data-theme='frost'][data-mode='light']{--snow-core:#FFFFFF;--snow-edge:#9A96CC}
+[data-theme='frost'][data-mode='dark']{--snow-core:#FFFFFF;--snow-edge:#DEDAF7}
+[data-theme='glacier'][data-mode='light']{--snow-core:#FFFFFF;--snow-edge:#7FAFC2}
+[data-theme='glacier'][data-mode='dark']{--snow-core:#FFFFFF;--snow-edge:#D4ECF5}
+h3{font-size:16px;margin:26px 0 8px}
+.snowctl{display:flex;flex-wrap:wrap;gap:10px 22px;background:#F6F5FA;border-radius:14px;padding:10px 14px;margin:10px 0 14px}
+.snowctl .g{display:flex;gap:10px;align-items:center} .snowctl label{cursor:pointer;white-space:nowrap}
+.clk{color:#777} .clk b{color:#221F33}
+.snowhost .win{position:relative} .snowhost .chat{position:relative} .snowhost .chat>.row{position:relative;z-index:1}
+canvas.snow{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;display:block}
+.snowhost .win>canvas.snow{z-index:5}
+.lvcmp{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.lv{border:1px solid #e5e3ee;border-radius:16px;padding:12px} .lv.rec2{border:2px solid #E0A800;background:#FFFCF2}
+.lvh{display:flex;align-items:center;gap:8px;margin-bottom:8px} .badge{background:#E0A800;color:#fff;border-radius:999px;font-size:11px;padding:1px 8px;font-weight:700} .badge.gray{background:#999}
+.lv ul{padding-left:18px;margin:8px 0;font-size:12.5px} .lv p{margin:0;font-size:12.5px;color:#444}
+.mini{position:relative;height:120px;border-radius:12px;overflow:hidden;background:var(--background);color:var(--foreground);border:1px solid var(--border);margin-bottom:6px;padding:12px;box-sizing:border-box;font-size:12px}
+.mini .mc{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:8px 10px;width:70%}
+.mini .mc i{display:block;height:6px;border-radius:3px;background:var(--muted);margin-top:6px} .mini .mc i:last-child{width:60%}
+.mini canvas.snow{z-index:2}
+.optrow{display:flex;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid var(--border);margin-top:12px;padding-top:10px} .optrow.dim{opacity:.45}
+.tg{width:36px;height:20px;border-radius:999px;background:var(--input);position:relative;flex-shrink:0} .tg.on{background:var(--grad-primary)} .tg i{position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3)} .tg.on i{left:18px}
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:999px;overflow:hidden;font-size:12px} .seg span{padding:3px 12px} .seg .on{background:var(--primary);color:var(--primary-foreground)}
+.sw.snowy{position:relative;overflow:hidden}
+.sw.snowy::after{content:'';position:absolute;inset:-36px 0 0;background-image:radial-gradient(circle,#fff 0 1.2px,transparent 1.7px),radial-gradient(circle,rgba(255,255,255,.8) 0 .9px,transparent 1.4px);background-size:14px 18px,11px 12px;background-position:2px 0,8px 5px;animation:swsnow 6s linear infinite}
+.sw.snowy.still::after{animation:none}
+@keyframes swsnow{to{transform:translateY(36px)}}
+@media (prefers-reduced-motion: reduce){.sw.snowy::after{animation:none}}
+.memo li{margin:6px 0} .memo ul{margin:4px 0}
+.place td{vertical-align:top}
+@media (max-width:760px){.pair,.lvcmp,.sum{grid-template-columns:1fr}}
+
+/* v4 */
+.berry{position:relative}
+.berry::before{content:'';position:absolute;right:6px;bottom:6px;width:7px;height:7px;border-radius:50%;background:#B3263A;box-shadow:-6px 0 0 0 #B3263A,-3px -5px 0 0 #C9394C;z-index:1}
+.sb a.on::after{content:'';display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--berry,transparent);margin-left:6px;vertical-align:middle}
+.chip{border-color:color-mix(in oklab,var(--berry,var(--border)) 60%,var(--border))}
+.oldzone{border-top:3px dashed #ccc;margin-top:48px;padding-top:10px}
+.oldzone>h2.zt{font-size:22px;color:#777}
+.oldzone section{opacity:.92}
+.cmpg{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.cmpg>div{border:1px solid #e5e3ee;border-radius:16px;padding:12px}
+.swrow{display:flex;gap:14px;align-items:center;margin:8px 0}
+.swrow .big{width:64px;height:64px;border-radius:50%;border:1px solid rgba(0,0,0,.1);flex-shrink:0}
+.swrow small{display:block;color:#777}
+.bar{height:22px;border-radius:999px;border:1px solid rgba(0,0,0,.08);margin:4px 0 10px}
+
+.cmp3{margin-top:14px;border:1px solid #e5e3ee;border-radius:16px;padding:12px}
+.cmp3t{font-weight:600;margin-bottom:8px}
+.cmp3r{display:flex;gap:14px;align-items:center;padding:10px 12px;border-radius:12px;background:#fff}
+.cmp3r.dk{background:#141617;margin-top:8px}
+.cmp3r .sw.big{width:72px;height:72px}
+
+/* ===== v6 · 크리스마스 특별 테마 (가) ===== */
+.xw{--xbg:#101A15;--xcard:#1A2620;--xfg:#F6F1E6;--xmfg:#B9C2B8;--xborder:#2E3D34;--xred:#C8283E;--xredt:#FF8E98;--xgreen:#8FD6A8;--xpine:#1F5C3B;--xgold:#E6C77A;--xcream:#F6EBD3;
+  --xsb:linear-gradient(170deg,#3A1519,#16201B 55%,#123222);--xsnow:#FFFFFF;--xsnowshade:transparent;--xbubo:#1A2620;--xbubme:#1F5C3B;--xbubmefg:#F6F1E6;--xglow:1;
+  position:relative;display:grid;grid-template-columns:150px 1fr;height:470px;border-radius:16px;overflow:hidden;background:var(--xbg);color:var(--xfg);font-size:13px;border:1px solid var(--xborder);box-shadow:0 10px 30px -12px rgba(0,0,0,.35)}
+.xw[data-xm='light']{--xbg:#FBF7F0;--xcard:#FFFFFF;--xfg:#2A1C1E;--xmfg:#665A57;--xborder:#E9DED5;--xred:#B01C33;--xredt:#B01C33;--xgreen:#1E5C3A;--xpine:#1E5C3A;--xgold:#8A6A1E;--xcream:#F6EBD3;
+  --xsb:linear-gradient(170deg,#F8DCDD,#F8F1E4 55%,#DCEBDF);--xsnow:#FFFFFF;--xsnowshade:#AEBBC4;--xbubo:#FFFFFF;--xbubme:#1E5C3A;--xbubmefg:#FFFFFF;--xglow:.45}
+.xw .xh{font-family:'Jua','Gowun Dodum',system-ui,sans-serif;font-weight:400;letter-spacing:.2px}
+/* 전구 줄 */
+.xw .lights{position:absolute;left:0;right:0;top:0;height:22px;z-index:5;pointer-events:none;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='22'%3E%3Cpath d='M0 5 Q22 15 44 5' fill='none' stroke='%23556B5E' stroke-width='1.4'/%3E%3C/svg%3E") repeat-x}
+.xw[data-xm='light'] .lights{background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='22'%3E%3Cpath d='M0 5 Q22 15 44 5' fill='none' stroke='%237E8A80' stroke-width='1.4'/%3E%3C/svg%3E") repeat-x}
+.xw .lights i{position:absolute;top:8px;width:7px;height:10px;border-radius:50% 50% 45% 45%;transform:translateX(-50%);animation:xtw 3.4s ease-in-out infinite}
+.xw .lights i::before{content:'';position:absolute;left:1.5px;top:-3px;width:4px;height:3px;background:#6B7A70;border-radius:1px}
+.xw .lights i.r{background:#FF5A6A;box-shadow:0 0 calc(8px*var(--xglow)) #FF5A6A}
+.xw .lights i.g{background:#F2CF6E;box-shadow:0 0 calc(8px*var(--xglow)) #F2CF6E}
+.xw .lights i.n{background:#6FD39A;box-shadow:0 0 calc(8px*var(--xglow)) #6FD39A}
+.xw .lights i.w{background:#FFF4DC;box-shadow:0 0 calc(8px*var(--xglow)) #FFF4DC}
+.xw[data-xm='light'] .lights i.w{background:#F2E2B8}
+@keyframes xtw{0%,100%{opacity:1}50%{opacity:.72}}
+/* 사이드바 */
+.xw .xsb{background:var(--xsb);padding:30px 10px 12px;display:flex;flex-direction:column;gap:3px;border-right:1px solid var(--xborder);position:relative}
+.xw .xlogo{display:flex;align-items:center;gap:6px;font-size:16px;color:var(--xredt);margin:0 4px 12px}
+.xw .xsb a{padding:7px 10px;border-radius:12px;color:var(--xfg)}
+.xw .xsb a.on{background:color-mix(in oklab,var(--xcard) 70%,transparent);box-shadow:inset 3px 0 0 var(--xred)}
+.xw .xsb .foot{margin-top:auto;font-size:11px;color:var(--xmfg);padding:0 6px}
+/* 본문 */
+.xw main{position:relative;padding:30px 16px 14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.xw .xhd{display:flex;align-items:center;justify-content:space-between}
+.xw .xhd b{font-size:15px}
+.xw .xchip{position:relative;font-size:11px;padding:3px 10px 3px 22px;border-radius:999px;border:1px solid color-mix(in oklab,var(--xgold) 55%,var(--xborder));color:var(--xfg)}
+.xw .xchip svg{position:absolute;left:6px;top:50%;transform:translateY(-50%)}
+.xw .row{display:flex;gap:8px;align-items:flex-start}
+.xw .row.me{justify-content:flex-end}
+.xw .av{width:24px;height:24px;border-radius:50%;background:var(--xred);color:#fff;display:grid;place-items:center;font-size:11px;flex-shrink:0}
+.xw .av.b{background:var(--xpine)}
+.xw .bub{padding:8px 12px;border-radius:16px;max-width:76%;line-height:1.5}
+.xw .bub.o{background:var(--xbubo);border:1px solid var(--xborder);border-top-left-radius:6px}
+.xw .bub.m{background:var(--xbubme);color:var(--xbubmefg);border-top-right-radius:6px;position:relative}
+.xw .bub .tm{font-size:10px;opacity:.75;text-align:right}
+.xw .lnk{color:var(--xredt);text-decoration:underline}
+/* 카드 + 눈 쌓임 */
+.xw .xcard{position:relative;margin-top:auto;background:var(--xcard);border:1px solid var(--xborder);border-radius:16px;padding:16px 14px 12px}
+.xw .snowcap{position:absolute;left:12px;right:12px;top:-7px;height:12px;z-index:2;pointer-events:none;filter:drop-shadow(0 1px 0 var(--xsnowshade));
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='12' preserveAspectRatio='none'%3E%3Cpath d='M0 7 Q6 1 13 5 Q19 0 27 4 Q35 -1 42 5 Q50 1 60 6 L60 12 L0 12Z' fill='white'/%3E%3C/svg%3E") repeat-x;background-size:60px 12px;
+  -webkit-mask:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent);mask:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent)}
+.xw .xcard .ct{display:flex;gap:8px;align-items:center;font-size:12px}
+.xw .xcard .mut{color:var(--xmfg);margin:6px 0 8px;font-size:12px}
+.xw .xinp{border:1.5px solid var(--xborder);border-radius:12px;padding:7px 10px;color:var(--xmfg);background:color-mix(in oklab,var(--xbg) 60%,var(--xcard))}
+.xw .xbtns{display:flex;gap:8px;margin-top:10px}
+.xw .xbtns button{border-radius:999px;padding:6px 16px;font-size:12px;font-weight:600;border:1px solid var(--xborder);background:transparent;color:var(--xfg)}
+.xw .xbtns .gift{position:relative;background:var(--xred);color:#fff;border-color:transparent;box-shadow:inset 0 0 0 1.5px color-mix(in oklab,var(--xgold) 70%,transparent)}
+.xw .xbtns .gift::after{content:'';position:absolute;left:50%;top:-7px;width:18px;height:10px;transform:translateX(-50%);
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='10'%3E%3Cpath d='M9 6 C5 0 0 1 2 6 C3 8 6 7 9 6 Z M9 6 C13 0 18 1 16 6 C15 8 12 7 9 6 Z' fill='%23E6C77A' stroke='%23A07F2E' stroke-width='.8'/%3E%3Ccircle cx='9' cy='6' r='1.8' fill='%23C9A24A'/%3E%3C/svg%3E")}
+.xw .xbtns .del{color:#fff;background:#C42B2B;border-color:transparent}
+.xw[data-xm='dark'] .xbtns .del{background:#FF6B6B;color:#2A0A0A}
+.xw .dot{display:inline-block;width:8px;height:8px;border-radius:50%}
+/* 모서리 호랑가시 */
+.xw .holly-corner{position:absolute;right:8px;bottom:8px;z-index:1;pointer-events:none;opacity:.95}
+/* 눈 */
+.xw main>*:not(.xsnowfx){position:relative;z-index:1}
+.xw .xsnowfx{position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.xw .xsnowfx::before,.xw .xsnowfx::after{content:'';position:absolute;inset:-200px 0 0;
+  background-image:radial-gradient(circle,rgba(255,255,255,.95) 0 1.6px,transparent 2.2px),radial-gradient(circle,rgba(230,199,122,.9) 0 1.3px,transparent 1.9px);
+  background-size:90px 110px,130px 150px;background-position:10px 0,60px 40px;animation:xfall 14s linear infinite}
+.xw .xsnowfx::after{background-image:radial-gradient(circle,rgba(255,255,255,.8) 0 1.1px,transparent 1.6px),radial-gradient(circle,rgba(143,214,168,.85) 0 1.2px,transparent 1.8px);background-size:70px 90px,160px 170px;background-position:35px 20px,100px 70px;animation-duration:20s}
+.xw[data-xm='light'] .xsnowfx{opacity:.7}
+.xw[data-xm='light'] .xsnowfx::before{background-image:radial-gradient(circle,#fff 0 1.1px,#D06A78 1.3px 2.2px,transparent 2.6px),radial-gradient(circle,#fff 0 .8px,#B8923A 1px 1.8px,transparent 2.2px)}
+.xw[data-xm='light'] .xsnowfx::after{background-image:radial-gradient(circle,#fff 0 .8px,#9DB0C0 1px 1.8px,transparent 2.2px),radial-gradient(circle,#fff 0 .8px,#5E9F76 1px 1.8px,transparent 2.2px)}
+@keyframes xfall{to{transform:translateY(200px)}}
+/* 끄기 · 움직임 줄이기 */
+.xoff-lights .xw .lights,.xoff-snow .xw .xsnowfx,.xoff-deco .xw .snowcap,.xoff-deco .xw .holly-corner,.xoff-deco .xw .xbtns .gift::after{display:none}
+.xoff-deco .xw .xbtns .gift{box-shadow:none}
+.xreduce .xw *,.xreduce .xw *::before,.xreduce .xw *::after{animation:none!important}
+@media (prefers-reduced-motion: reduce){.xw *,.xw *::before,.xw *::after{animation:none!important}}
+.xctl{display:flex;flex-wrap:wrap;gap:14px;align-items:center;background:#f6f5fb;border-radius:12px;padding:10px 14px;margin:10px 0 14px;font-size:14px}
+.xctl label{display:flex;gap:5px;align-items:center;cursor:pointer}
+.cmp2{width:100%;border-collapse:collapse;font-size:14px}
+.cmp2 th,.cmp2 td{border-bottom:1px solid #eceaf3;padding:9px 10px;text-align:left;vertical-align:top}
+.cmp2 th{background:#faf9fd}
+.cmp2 tr.recrow td{background:#fff8e6}
+.fontrow{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.fontrow>div{border:1px solid #e5e3ee;border-radius:14px;padding:12px}
+.fontrow .smp{font-size:22px;margin:6px 0}
+.decog{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.decog>div{border:1px solid #e5e3ee;border-radius:14px;padding:12px;font-size:13.5px;color:#444}
+.decog b{color:#222}
+.lvl{display:inline-block;font-size:11px;padding:1px 8px;border-radius:999px;margin-left:4px}
+.lvl.l{background:#E3F4E8;color:#1C6B3A}.lvl.m{background:#FFF2D6;color:#8A5A00}.lvl.h{background:#FCE3E5;color:#A31D2E}
+.xset{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.xsetc{border-radius:16px;padding:14px;border:1px solid #e5e3ee}
+.xsetc.dk{background:#141A17;color:#F6F1E6;border-color:#2E3D34}
+.xsetc .tile{display:flex;align-items:center;gap:10px;border:1.5px solid #ddd;border-radius:14px;padding:10px;margin:6px 0}
+.xsetc.dk .tile{border-color:#2E3D34}
+.xsetc .tile.sel{border-color:#C8283E;box-shadow:0 0 0 2px #C8283E40}
+.xsetc .tile small{display:block;opacity:.75;font-size:11.5px}
+.xsetc .opt{display:flex;justify-content:space-between;align-items:center;padding:7px 2px;font-size:13px;border-top:1px dashed #0002}
+.xsetc.dk .opt{border-color:#ffffff22}
+.tg{width:34px;height:20px;border-radius:999px;background:#C8283E;position:relative;flex-shrink:0}
+.tg::after{content:'';position:absolute;right:2px;top:2px;width:16px;height:16px;border-radius:50%;background:#fff}
+.tg.off{background:#9AA39C}.tg.off::after{right:auto;left:2px}
+.secz{border-top:3px solid #C8283E;margin-top:40px;padding-top:6px}
+.secz>h2.zt{font-size:22px}
+</style></head><body><div class="wrap">
+<h1>🎄 크리스마스 테마 시안 (v6 · 특별 테마 안 추가)</h1>
+<p class="lead">2026-11-27 · 이디자 · 대표 방향 "크리스마스를 색 테마 하나로 끝내지 말고 특별 테마처럼"에 맞춰 (가) 특별 테마 안을 맨 위에 새로 그렸습니다. 직전의 빨강+초록 색 테마 3개는 (나)로 그 아래에 두었습니다. 앱 그림은 실제 앱 캡처가 아니라 같은 색 값으로 그린 미리보기입니다. 지난 시안(v4·v3)은 맨 아래 비교용입니다.</p>
+<section><h2>먼저 고를 것 · (가) 특별 테마 vs (나) 색 테마 3개</h2>
+<p class="lead">대표 방향에 따라 크리스마스를 <b>특별 테마</b>(레트로처럼 색뿐 아니라 모양·장식까지 바꾸는 테마)로 만드는 안 (가)를 새로 그렸습니다. 직전에 만든 빨강+초록 색 테마 3개는 (나)로 아래에 그대로 두었습니다.</p>
+<table class="cmp2"><tr><th></th><th>(가) 특별 테마 1개 · 장식 풍성</th><th>(나) 색 테마 3개 + 눈 효과</th></tr>
+<tr><td><b>보이는 것</b></td><td>빨강·초록·크림·금 색 + 눈 + 상단 전구 줄 + 카드 눈 쌓임 + 리본 버튼 + 모서리 호랑가시 + 제목 글꼴</td><td>빨강·초록 색 변주 3개 + 눈. 모양은 지금 앱 그대로</td></tr>
+<tr><td><b>설정 위치</b></td><td>'특별' 묶음 (레트로 옆). 장식·전구·눈 따로 끄기</td><td>'크리스마스' 색 묶음 (지금 임시 3개 자리)</td></tr>
+<tr><td><b>모드</b></td><td>다크 전용 추천 (아래 이유)</td><td>라이트·다크 둘 다</td></tr>
+<tr><td><b>구현 부담 (추정)</b></td><td><span class="lvl m">중간</span> 레트로가 만든 틀(특별 묶음·다크 전용·테마 전용 CSS 파일)을 그대로 쓰면 됨. 장식은 그림 몇 개 + CSS. 전구·눈 끄기 설정 3개 추가</td><td><span class="lvl l">작음</span> 색 블록 3개 교체 + 눈 효과 + 견본 표시 방식만</td></tr>
+<tr><td><b>위험</b></td><td>장식이 화면마다 겹치지 않는지 검수할 곳이 많음(휴대폰 포함)</td><td>"색만 바뀌어 크리스마스 느낌이 약하다"는 처음 문제가 다시 나올 수 있음</td></tr>
+<tr class="recrow"><td><b>추천</b></td><td colspan="2"><b>추천(대표 미확인): (가) 특별 테마, 다크 전용.</b> 대표가 원한 "확 크리스마스" 느낌은 색보다 전구·눈 쌓임·리본 같은 모양에서 나옵니다. 부담을 줄이려면 1차는 <b>색·눈·전구 줄·카드 눈 쌓임·리본 버튼</b>만, 모서리 호랑가시·제목 글꼴·사무실 그림 연출은 2차로 나누기를 권합니다. (가)를 고르면 임시 색 테마 3개(holly·evergreen·snowfall)는 빼는 것을 권합니다.</td></tr></table></section>
+
+<section><h2>(가) 크리스마스 특별 테마 <small>· 앱 미리보기</small></h2>
+<p class="lead"><span class="bigsw" style="background:linear-gradient(135deg,#B81D35 0%,#C8283E 28%,#F6EBD3 50%,#2F7A4C 72%,#1C5636 100%)"></span>바탕은 밤 전나무 숲 같은 아주 어두운 초록, 버튼은 크리스마스 레드, 강조는 금·크림. 빨강과 초록은 <b>직접 섞지 않고</b> 크림·금 띠를 사이에 둬서 갈색이 생기지 않게 했습니다. 아래 그림은 실제로 움직입니다(전구 깜빡임·눈).</p>
+<div class="xctl" id="xctl"><b>미리보기 조절</b>
+ <label><input type="checkbox" data-x="xoff-lights">전구 줄 끄기</label>
+ <label><input type="checkbox" data-x="xoff-snow">눈 끄기</label>
+ <label><input type="checkbox" data-x="xoff-deco">장식 끄기(눈 쌓임·리본·호랑가시)</label>
+ <label><input type="checkbox" data-x="xreduce">'움직임 줄이기' 켠 상태</label></div>
+<div class="pair" id="xpair"><figure><figcaption>다크 (추천 · 다크 전용)</figcaption><div class="xw" data-xm="dark">
+ <div class="lights"><i class="r" style="left:22px;animation-delay:0.0s"></i><i class="g" style="left:66px;animation-delay:0.7s"></i><i class="n" style="left:110px;animation-delay:1.4s"></i><i class="w" style="left:154px;animation-delay:2.1s"></i><i class="r" style="left:198px;animation-delay:2.8s"></i><i class="g" style="left:242px;animation-delay:0.1s"></i><i class="n" style="left:286px;animation-delay:0.8s"></i><i class="w" style="left:330px;animation-delay:1.5s"></i><i class="r" style="left:374px;animation-delay:2.2s"></i><i class="g" style="left:418px;animation-delay:2.9s"></i><i class="n" style="left:462px;animation-delay:0.2s"></i><i class="w" style="left:506px;animation-delay:0.9s"></i><i class="r" style="left:550px;animation-delay:1.6s"></i><i class="g" style="left:594px;animation-delay:2.3s"></i><i class="n" style="left:638px;animation-delay:3.0s"></i><i class="w" style="left:682px;animation-delay:0.3s"></i></div>
+ <nav class="xsb"><div class="xlogo xh"><svg width="26" height="18" viewBox="0 0 34 24"><path d="M17 14 C12 6 6 9 2 5 C4 9 2 12 5 14 C3 16 5 19 3 22 C8 19 12 21 17 14Z" fill="#2F7A4C" stroke="#1C5636" stroke-width=".8"/><path d="M17 14 C22 6 28 9 32 5 C30 9 32 12 29 14 C31 16 29 19 31 22 C26 19 22 21 17 14Z" fill="#3F8A5A" stroke="#1C5636" stroke-width=".8"/><circle cx="14.5" cy="13" r="3" fill="#C8283E"/><circle cx="19.5" cy="13" r="3" fill="#D93A4E"/><circle cx="17" cy="9" r="3" fill="#B81D35"/><circle cx="16" cy="8" r=".9" fill="#fff" opacity=".7"/></svg>AI Office</div>
+  <a>🏢 사무실</a><a class="on">💬 대화</a><a>📋 업무 보드</a><a>⚙️ 설정</a>
+  <div class="foot"><span class="dot" style="background:#4ADE80"></span> 3명 일하는 중</div></nav>
+ <main><div class="xsnowfx"></div>
+  <div class="xhd"><b class="xh">대화 · 디자인 팀</b><span class="xchip"><svg width="14" height="10" viewBox="0 0 34 24"><path d="M17 14 C12 6 6 9 2 5 C4 9 2 12 5 14 C3 16 5 19 3 22 C8 19 12 21 17 14Z" fill="#2F7A4C" stroke="#1C5636" stroke-width=".8"/><path d="M17 14 C22 6 28 9 32 5 C30 9 32 12 29 14 C31 16 29 19 31 22 C26 19 22 21 17 14Z" fill="#3F8A5A" stroke="#1C5636" stroke-width=".8"/><circle cx="14.5" cy="13" r="3" fill="#C8283E"/><circle cx="19.5" cy="13" r="3" fill="#D93A4E"/><circle cx="17" cy="9" r="3" fill="#B81D35"/><circle cx="16" cy="8" r=".9" fill="#fff" opacity=".7"/></svg>크리스마스</span></div>
+  <div class="row"><span class="av">정</span><div class="bub o"><b>정리드</b><br>시안 확인 부탁드려요. 장식이 글자를 가리지 않는지 봐 주세요.</div></div>
+  <div class="row me"><div class="bub m">좋아요. 크리스마스 느낌이 확 나네요<div class="tm">오후 3:12</div></div></div>
+  <div class="row"><span class="av b">박</span><div class="bub o">회의는 <a class="lnk">업무 카드 #24</a>에서 이어 갈게요.</div></div>
+  <div class="xcard"><div class="snowcap"></div>
+   <div class="ct"><b class="xh" style="font-size:14px">업무 카드</b><span class="dot" style="background:#4ADE80"></span>진행 <span class="dot" style="background:#F2C94C"></span>대기 <span class="dot" style="background:#FF6B6B"></span>오류</div>
+   <p class="mut">크리스마스 이벤트 배너 만들기 · 이디자</p>
+   <div class="xinp">지시 입력…</div>
+   <div class="xbtns"><button class="gift">보내기</button><button>취소</button><button class="del">삭제</button></div>
+   <div class="holly-corner"><svg width="30" height="21" viewBox="0 0 34 24"><path d="M17 14 C12 6 6 9 2 5 C4 9 2 12 5 14 C3 16 5 19 3 22 C8 19 12 21 17 14Z" fill="#2F7A4C" stroke="#1C5636" stroke-width=".8"/><path d="M17 14 C22 6 28 9 32 5 C30 9 32 12 29 14 C31 16 29 19 31 22 C26 19 22 21 17 14Z" fill="#3F8A5A" stroke="#1C5636" stroke-width=".8"/><circle cx="14.5" cy="13" r="3" fill="#C8283E"/><circle cx="19.5" cy="13" r="3" fill="#D93A4E"/><circle cx="17" cy="9" r="3" fill="#B81D35"/><circle cx="16" cy="8" r=".9" fill="#fff" opacity=".7"/></svg></div></div>
+ </main></div></figure><figure><figcaption>라이트 (참고 · 만들 경우)</figcaption><div class="xw" data-xm="light">
+ <div class="lights"><i class="r" style="left:22px;animation-delay:0.0s"></i><i class="g" style="left:66px;animation-delay:0.7s"></i><i class="n" style="left:110px;animation-delay:1.4s"></i><i class="w" style="left:154px;animation-delay:2.1s"></i><i class="r" style="left:198px;animation-delay:2.8s"></i><i class="g" style="left:242px;animation-delay:0.1s"></i><i class="n" style="left:286px;animation-delay:0.8s"></i><i class="w" style="left:330px;animation-delay:1.5s"></i><i class="r" style="left:374px;animation-delay:2.2s"></i><i class="g" style="left:418px;animation-delay:2.9s"></i><i class="n" style="left:462px;animation-delay:0.2s"></i><i class="w" style="left:506px;animation-delay:0.9s"></i><i class="r" style="left:550px;animation-delay:1.6s"></i><i class="g" style="left:594px;animation-delay:2.3s"></i><i class="n" style="left:638px;animation-delay:3.0s"></i><i class="w" style="left:682px;animation-delay:0.3s"></i></div>
+ <nav class="xsb"><div class="xlogo xh"><svg width="26" height="18" viewBox="0 0 34 24"><path d="M17 14 C12 6 6 9 2 5 C4 9 2 12 5 14 C3 16 5 19 3 22 C8 19 12 21 17 14Z" fill="#2F7A4C" stroke="#1C5636" stroke-width=".8"/><path d="M17 14 C22 6 28 9 32 5 C30 9 32 12 29 14 C31 16 29 19 31 22 C26 19 22 21 17 14Z" fill="#3F8A5A" stroke="#1C5636" stroke-width=".8"/><circle cx="14.5" cy="13" r="3" fill="#C8283E"/><circle cx="19.5" cy="13" r="3" fill="#D93A4E"/><circle cx="17" cy="9" r="3" fill="#B81D35"/><circle cx="16" cy="8" r=".9" fill="#fff" opacity=".7"/></svg>AI Office</div>
+  <a>🏢 사무실</a><a class="on">💬 대화</a><a>📋 업무 보드</a><a>⚙️ 설정</a>
+  <div class="foot"><span class="dot" style="background:#4ADE80"></span> 3명 일하는 중</div></nav>
+ <main><div class="xsnowfx"></div>
+  <div class="xhd"><b class="xh">대화 · 디자인 팀</b><span class="xchip"><svg width="14" height="10" viewBox="0 0 34 24"><path d="M17 14 C12 6 6 9 2 5 C4 9 2 12 5 14 C3 16 5 19 3 22 C8 19 12 21 17 14Z" fill="#2F7A4C" stroke="#1C5636" stroke-width=".8"/><path d="M17 14 C22 6 28 9 32 5 C30 9 32 12 29 14 C31 16 29 19 31 22 C26 19 22 21 17 14Z" fill="#3F8A5A" stroke="#1C5636" stroke-width=".8"/><circle cx="14.5" cy="13" r="3" fill="#C8283E"/><circle cx="19.5" cy="13" r="3" fill="#D93A4E"/><circle cx="17" cy="9" r="3" fill="#B81D35"/><circle cx="16" cy="8" r=".9" fill="#fff" opacity=".7"/></svg>크리스마스</span></div>
+  <div class="row"><span class="av">정</span><div class="bub o"><b>정리드</b><br>시안 확인 부탁드려요. 장식이 글자를 가리지 않는지 봐 주세요.</div></div>
+  <div class="row me"><div class="bub m">좋아요. 크리스마스 느낌이 확 나네요<div class="tm">오후 3:12</div></div></div>
+  <div class="row"><span class="av b">박</span><div class="bub o">회의는 <a class="lnk">업무 카드 #24</a>에서 이어 갈게요.</div></div>
+  <div class="xcard"><div class="snowcap"></div>
+   <div class="ct"><b class="xh" style="font-size:14px">업무 카드</b><span class="dot" style="background:#4ADE80"></span>진행 <span class="dot" style="background:#F2C94C"></span>대기 <span class="dot" style="background:#FF6B6B"></span>오류</div>
+   <p class="mut">크리스마스 이벤트 배너 만들기 · 이디자</p>
+   <div class="xinp">지시 입력…</div>
+   <div class="xbtns"><button class="gift">보내기</button><button>취소</button><button class="del">삭제</button></div>
+   <div class="holly-corner"><svg width="30" height="21" viewBox="0 0 34 24"><path d="M17 14 C12 6 6 9 2 5 C4 9 2 12 5 14 C3 16 5 19 3 22 C8 19 12 21 17 14Z" fill="#2F7A4C" stroke="#1C5636" stroke-width=".8"/><path d="M17 14 C22 6 28 9 32 5 C30 9 32 12 29 14 C31 16 29 19 31 22 C26 19 22 21 17 14Z" fill="#3F8A5A" stroke="#1C5636" stroke-width=".8"/><circle cx="14.5" cy="13" r="3" fill="#C8283E"/><circle cx="19.5" cy="13" r="3" fill="#D93A4E"/><circle cx="17" cy="9" r="3" fill="#B81D35"/><circle cx="16" cy="8" r=".9" fill="#fff" opacity=".7"/></svg></div></div>
+ </main></div></figure></div>
+<p style="color:#666;font-size:14px">· <b>다크 전용을 추천하는 이유</b>: 전구 빛과 눈이 어두운 바탕에서 살아납니다(라이트에선 전구가 흐리고, 눈송이에 테두리를 둘러야 보임). 레트로도 다크 전용이라 같은 방식으로 붙이면 되고, 색·대비 검수가 절반이 됩니다.<br>
+· 글자 대비(직접 계산): 다크 본문 15.8 · 흐린 글자 8.6 · 버튼 흰 글자/빨강 5.5 · 링크 7.1 · 사이드바 12.4 이상. 라이트 본문 15.3 · 흐린 글자 6.2 · 버튼 6.9 · 내 말풍선 7.9. 모두 4.5:1 이상 ✅<br>
+· 삭제 버튼은 빨강을 그대로 두되, 보내기 버튼은 <b>금빛 테두리와 리본</b>이 있어 서로 헷갈리지 않습니다.</p></section>
+
+<section><h2>(가) 장식 요소 · 기준</h2>
+<p class="lead">원칙: 장식은 <b>글자·버튼·입력칸 위에 올라가지 않습니다</b>. 모두 클릭을 받지 않고(마우스가 통과), 화면 가장자리·카드 윗선에만 붙습니다.</p>
+<div class="decog">
+<div><b>① 상단 전구 줄</b> <span class="lvl l">1차</span><br>창 맨 위 22px 띠. 빨강·금·초록·크림 전구가 44px 간격. 깜빡임은 밝기 100→72% 사이를 3.4초에 한 번(번쩍이지 않게), 전구마다 시작 시점이 달라 물결처럼. 머리글은 그만큼 아래로 내려 겹치지 않음.</div>
+<div><b>② 눈 내리기</b> <span class="lvl l">1차</span><br>기존 눈 효과 그대로(양 '약하게' 기본). 눈송이 일부를 금·초록빛으로. 설정에서 끄기·양 조절.</div>
+<div><b>③ 카드 눈 쌓임</b> <span class="lvl l">1차</span><br>카드 윗선에 높이 12px 물결 모양 흰 눈. 테두리 위로 7px만 올라오고 양 끝은 흐려짐. 카드 안 여백을 4px 늘려 글자와 닿지 않음. 라이트에서는 아래쪽에 1px 회색 선을 줘 흰 카드 위에서도 보이게.</div>
+<div><b>④ 리본 버튼</b> <span class="lvl l">1차</span><br>주 버튼(보내기 등)만: 빨강 + 안쪽 1.5px 금빛 테두리 + 버튼 위 가운데 작은 금 리본(18×10px, 버튼 밖으로 7px). 다른 버튼은 그대로. 둥근 알약 모양.</div>
+<div><b>⑤ 모서리 호랑가시</b> <span class="lvl m">2차</span><br>잎 2장 + 빨간 열매 3개. 로고 옆(26px), 머리 칩(14px), 입력 카드 오른쪽 아래 빈 곳(30px). 글자 자리에는 두지 않음.</div>
+<div><b>⑥ 제목 글꼴</b> <span class="lvl m">2차</span><br>본문은 지금 글꼴 그대로(가독성). 로고·화면 제목·카드 제목만 둥근 글꼴. 아래 후보 참고.</div>
+</div>
+<h3>글꼴 후보 (제목에만 · 가독성 우선)</h3>
+<div class="fontrow">
+<div><b>주아 (Jua)</b> · 추천(대표 미확인)<div class="smp" style="font-family:'Jua'">메리 크리스마스 업무 카드 123</div><small style="color:#666">둥글고 두꺼워 작은 크기에도 또렷. 무료(OFL). 한글·영문만 → 일본어·중국어 화면은 기본 글꼴로.</small></div>
+<div><b>고운돋움 (Gowun Dodum)</b><div class="smp" style="font-family:'Gowun Dodum'">메리 크리스마스 업무 카드 123</div><small style="color:#666">부드럽고 단정. 축제 느낌은 약함. 무료(OFL).</small></div>
+<div><b>지금 글꼴 그대로</b><div class="smp">메리 크리스마스 업무 카드 123</div><small style="color:#666">글꼴 파일 추가 없음. 장식만으로 충분하다면 이쪽.</small></div>
+</div>
+<p style="color:#888;font-size:13px">글꼴 미리보기는 인터넷에서 글꼴을 불러와 보여 줍니다. 앱에 넣을 때는 레트로의 갈무리처럼 앱 안에 파일로 넣고, 이 테마를 고를 때만 불러옵니다.</p>
+
+<h3>사무실 그림 화면 연출 (메모만 · 구현 난이도 추정)</h3>
+<table class="cmp2"><tr><th>연출</th><th>내용</th><th>난이도</th></tr>
+<tr><td>창문 눈 쌓임</td><td>사무실 창틀 아래쪽에 흰 띠, 창밖에 눈 내림</td><td><span class="lvl l">낮음</span> 기존 창 그림 위에 덧그리기</td></tr>
+<tr><td>사무실 구석 트리</td><td>작은 트리 1그루(전구 깜빡임은 선택)</td><td><span class="lvl m">중간</span> 새 소품 그림 1개 + 자리 잡기(직원 동선과 겹치지 않게)</td></tr>
+<tr><td>책상 위 선물상자·양말</td><td>빈 책상 모서리에 작은 소품</td><td><span class="lvl m">중간</span> 소품 여러 개, 책상 배치마다 확인</td></tr>
+<tr><td>직원 산타 모자</td><td>모든 직원 머리에 모자</td><td><span class="lvl h">높음</span> 앞·뒤·옆·앉기·타자 등 동작마다 맞춰야 함</td></tr></table>
+<p style="color:#888;font-size:13px">사무실 그림은 이번 시안에 그리지 않았습니다. 고르시면 기준 그림을 따로 만들겠습니다.</p></section>
+
+<section><h2>(가) 설정 화면</h2>
+<div class="xset">
+<div class="xsetc dk"><b>색 테마 · 특별</b>
+ <div class="tile"><span class="sw" style="background:linear-gradient(135deg,#8F80E6,#E8C79A)"></span><span>레트로<small>도트 글꼴·각진 모양</small></span></div>
+ <div class="tile sel"><span class="sw snowy" style="background:linear-gradient(135deg,#B81D35 0%,#C8283E 28%,#F6EBD3 50%,#2F7A4C 72%,#1C5636 100%)"></span><span>크리스마스<small>전구·눈·리본 장식 · 다크 전용</small></span></div>
+ <div class="opt">눈 내리기 <span>약하게 ▾ <span class="tg" style="display:inline-block;vertical-align:middle"></span></span></div>
+ <div class="opt">전구 줄 <span class="tg"></span></div>
+ <div class="opt">장식 (눈 쌓임·리본·호랑가시) <span class="tg"></span></div>
+ <div class="opt" style="opacity:.75">기기의 '움직임 줄이기'가 켜져 있으면 전구 깜빡임·눈이 멈춥니다 <span></span></div></div>
+<div class="xsetc"><b>정할 때 기준</b><ul style="margin:8px 0 0;padding-left:18px;font-size:14px;line-height:1.7">
+<li>크리스마스 테마를 고른 사람에게만 아래 3개 스위치가 보입니다.</li>
+<li>스위치는 기본 모두 켬. 꺼도 색은 그대로.</li>
+<li>'움직임 줄이기'면 장식은 보이되 멈춥니다(전구는 켜진 채 고정, 눈은 멈춘 채).</li>
+<li>견본에는 작은 눈이 늘 내림(지금 색 테마 견본과 같은 방식).</li></ul></div>
+</div></section>
+<div class="secz"><h2 class="zt">(나) 색 테마 3개 + 눈 효과 안 (v5 · 빨강+초록)</h2><p class="lead">빨강과 초록을 함께 쓰되 가운데에 크림·금·눈 흰빛 띠를 끼워 갈색으로 탁해지지 않게 한 색 변주 3개입니다. (가)를 고르면 이 중 A 호랑가시 색이 특별 테마의 바탕이 됩니다.</p></div>
+<section><h2>한눈에 고르기 · 견본 3개 나란히</h2><div class="sum">
+<div><div class="sw2" style="background:linear-gradient(135deg,#B81D35 0%,#C8283E 28%,#F6EBD3 50%,#2F7A4C 72%,#1C5636 100%)"></div><b>A · 호랑가시</b><br><span style="color:#666">선명한 빨강 ↔ 전나무 초록, 가운데 크림 · 가장 클래식</span></div>
+<div><div class="sw2" style="background:linear-gradient(135deg,#6E1A30 0%,#8E2640 26%,#E8C878 50%,#3F7F55 74%,#1B4C35 100%)"></div><b>B · 금빛 트리</b><br><span style="color:#666">와인 레드 ↔ 숲 초록, 가운데 샴페인 금 · 어둡고 고급</span></div>
+<div><div class="sw2" style="background:linear-gradient(135deg,#D23A48 0%,#E25A64 16%,#F8F3F1 36%,#FFFFFF 50%,#F1F6F2 64%,#5FA77A 84%,#2F7F52 100%)"></div><b>C · 화이트 크리스마스</b><br><span style="color:#666">눈 흰빛 바탕, 양 끝에 빨강·초록 · 밝고 깨끗</span></div>
+</div>
+<div class="cmp3"><div class="cmp3t">구별되는지 확인 · 실제 설정 화면 크기(36px)와 크게</div>
+<div class="cmp3r"><span class="sw" style="background:linear-gradient(135deg,#B81D35 0%,#C8283E 28%,#F6EBD3 50%,#2F7A4C 72%,#1C5636 100%)"></span><span class="sw" style="background:linear-gradient(135deg,#6E1A30 0%,#8E2640 26%,#E8C878 50%,#3F7F55 74%,#1B4C35 100%)"></span><span class="sw" style="background:linear-gradient(135deg,#D23A48 0%,#E25A64 16%,#F8F3F1 36%,#FFFFFF 50%,#F1F6F2 64%,#5FA77A 84%,#2F7F52 100%)"></span><span style="width:24px"></span><span class="sw big" style="background:linear-gradient(135deg,#B81D35 0%,#C8283E 28%,#F6EBD3 50%,#2F7A4C 72%,#1C5636 100%)"></span><span class="sw big" style="background:linear-gradient(135deg,#6E1A30 0%,#8E2640 26%,#E8C878 50%,#3F7F55 74%,#1B4C35 100%)"></span><span class="sw big" style="background:linear-gradient(135deg,#D23A48 0%,#E25A64 16%,#F8F3F1 36%,#FFFFFF 50%,#F1F6F2 64%,#5FA77A 84%,#2F7F52 100%)"></span></div>
+<div class="cmp3r dk"><span class="sw" style="background:linear-gradient(135deg,#B81D35 0%,#C8283E 28%,#F6EBD3 50%,#2F7A4C 72%,#1C5636 100%)"></span><span class="sw" style="background:linear-gradient(135deg,#6E1A30 0%,#8E2640 26%,#E8C878 50%,#3F7F55 74%,#1B4C35 100%)"></span><span class="sw" style="background:linear-gradient(135deg,#D23A48 0%,#E25A64 16%,#F8F3F1 36%,#FFFFFF 50%,#F1F6F2 64%,#5FA77A 84%,#2F7F52 100%)"></span><span style="width:24px"></span><span class="sw big" style="background:linear-gradient(135deg,#B81D35 0%,#C8283E 28%,#F6EBD3 50%,#2F7A4C 72%,#1C5636 100%)"></span><span class="sw big" style="background:linear-gradient(135deg,#6E1A30 0%,#8E2640 26%,#E8C878 50%,#3F7F55 74%,#1B4C35 100%)"></span><span class="sw big" style="background:linear-gradient(135deg,#D23A48 0%,#E25A64 16%,#F8F3F1 36%,#FFFFFF 50%,#F1F6F2 64%,#5FA77A 84%,#2F7F52 100%)"></span></div>
+<p style="color:#666;margin:6px 0 0">셋 다 빨강과 초록이 보이지만 <b>밝기와 가운데 띠</b>로 갈립니다. A는 또렷한 빨강·초록(가운데 크림), B는 어두운 와인·숲(가운데 금), C는 거의 흰 원(끝에만 빨강·초록).</p></div>
+<div class="rec"><b>추천(대표 미확인)</b>: 하나만 고른다면 <b>A 호랑가시</b>. "빨강+초록" 그대로이면서 크림 띠 덕에 탁하지 않습니다. 셋 다 넣어도 밝기로 구별됩니다.</div>
+<p style="color:#666;margin:10px 0 0">방향: 빨강과 초록을 함께 쓰되, 처음 임시안의 문제(① 두 색이 섞이는 가운데가 갈색 ② 쨍한 원색)를 피했습니다. 가운데에 크림·금·눈 흰빛을 끼우고, 빨강은 순수 빨강 대신 살짝 깊은 크리스마스 레드를 썼습니다.</p></section>
+<section><h2>설정 화면 · 색 테마 카드</h2><p class="lead">'크리스마스' 묶음의 견본 3개입니다. 견본에는 작은 눈이 늘 내립니다(고를 때 눈 효과를 미리 보여 줌).</p>
+<div class="pair"><figure><figcaption>라이트 (호랑가시 사용 중)</figcaption><div class="set" data-theme="holly" data-mode="light"><b>색 테마</b><p class="mut">앱 바깥 화면(메뉴·카드·버튼)의 색을 고릅니다.</p>
+ <div class="gt">두 색 그라데이션</div><div class="grid"><div class="tc"><span class="sw" style="background:linear-gradient(135deg,#7C6CFF,#14B8A6)"></span><span>오로라</span></div><div class="tc"><span class="sw" style="background:linear-gradient(135deg,#6366F1,#F97316)"></span><span>황혼</span></div><div class="tc"><span class="sw" style="background:linear-gradient(135deg,#D946EF,#38BDF8)"></span><span>캔디</span></div><div class="tc"><span class="sw" style="background:linear-gradient(135deg,#22C55E,#F5B21A)"></span><span>초원</span></div></div>
+ <div class="gt">크리스마스</div><div class="grid"><div class="tc sel"><span class="sw snowy" style="background:linear-gradient(135deg,#B81D35 0%,#C8283E 28%,#F6EBD3 50%,#2F7A4C 72%,#1C5636 100%)"></span><span>호랑가시</span></div><div class="tc"><span class="sw snowy" style="background:linear-gradient(135deg,#6E1A30 0%,#8E2640 26%,#E8C878 50%,#3F7F55 74%,#1B4C35 100%)"></span><span>금빛 트리</span></div><div class="tc"><span class="sw snowy" style="background:linear-gradient(135deg,#D23A48 0%,#E25A64 16%,#F8F3F1 36%,#FFFFFF 50%,#F1F6F2 64%,#5FA77A 84%,#2F7F52 100%)"></span><span>화이트 크리스마스</span></div></div></div></figure><figure><figcaption>다크 (호랑가시 사용 중)</figcaption><div class="set" data-theme="holly" data-mode="dark"><b>색 테마</b><p class="mut">앱 바깥 화면(메뉴·카드·버튼)의 색을 고릅니다.</p>
+ <div class="gt">두 색 그라데이션</div><div class="grid"><div class="tc"><span class="sw" style="background:linear-gradient(135deg,#7C6CFF,#14B8A6)"></span><span>오로라</span></div><div class="tc"><span class="sw" style="background:linear-gradient(135deg,#6366F1,#F97316)"></span><span>황혼</span></div><div class="tc"><span class="sw" style="background:linear-gradient(135deg,#D946EF,#38BDF8)"></span><span>캔디</span></div><div class="tc"><span class="sw" style="background:linear-gradient(135deg,#22C55E,#F5B21A)"></span><span>초원</span></div></div>
+ <div class="gt">크리스마스</div><div class="grid"><div class="tc sel"><span class="sw snowy" style="background:linear-gradient(135deg,#B81D35 0%,#C8283E 28%,#F6EBD3 50%,#2F7A4C 72%,#1C5636 100%)"></span><span>호랑가시</span></div><div class="tc"><span class="sw snowy" style="background:linear-gradient(135deg,#6E1A30 0%,#8E2640 26%,#E8C878 50%,#3F7F55 74%,#1B4C35 100%)"></span><span>금빛 트리</span></div><div class="tc"><span class="sw snowy" style="background:linear-gradient(135deg,#D23A48 0%,#E25A64 16%,#F8F3F1 36%,#FFFFFF 50%,#F1F6F2 64%,#5FA77A 84%,#2F7F52 100%)"></span><span>화이트 크리스마스</span></div></div></div></figure></div></section>
+<section><h2>후보 A · 호랑가시 <small>(Holly)</small></h2>
+<p class="lead"><span class="bigsw" style="background:linear-gradient(135deg,#B81D35 0%,#C8283E 28%,#F6EBD3 50%,#2F7A4C 72%,#1C5636 100%)"></span>선명한 크리스마스 레드와 짙은 전나무 초록을 정면으로 씁니다. 두 색 사이에 <b>크림색 띠</b>를 한 번 끼워, 빨강과 초록이 섞이며 갈색이 되는 것을 막았습니다. 라이트에서는 버튼이 빨강, 선택 테두리·사이드바 아래쪽이 초록입니다.<br>
+<b>이름 후보</b>: 호랑가시 / 클래식 크리스마스 / 산타 리본 · 영어 Holly · 견본 <code>#B81D35 → #C8283E → #F6EBD3 → #2F7A4C → #1C5636</code> · 가장 낮은 글자 대비 <b>5.82:1</b> (기준 4.5:1 이상 ✅)</p>
+<div class="pair"><figure><figcaption>라이트</figcaption><div class="win" data-theme="holly" data-mode="light">
+ <nav class="sb"><div class="logo">AI Office</div>
+  <a>🏢 사무실</a><a class="on">💬 대화</a><a>📋 업무 보드</a><a>⚙️ 설정</a>
+  <div class="sbfoot"><span class="dot w"></span>3명 일하는 중</div></nav>
+ <main>
+  <div class="hd"><b>대화 · 디자인 팀</b><span class="chip">🎄 호랑가시</span></div>
+  <div class="chat">
+   <div class="row"><span class="av">정</span><div class="bub o"><b>정리드</b><br>시안 확인 부탁드려요. 버튼 색이 괜찮은지 봐 주세요.</div></div>
+   <div class="row me"><div class="bub m">좋아요. 크리스마스 느낌이 나네요<div class="tm">오후 3:12</div></div></div>
+   <div class="row"><span class="av b">박</span><div class="bub o">회의는 <a class="lnk">업무 카드 #24</a>에서 이어 갈게요.</div></div>
+  </div>
+  <div class="card"><div class="ct"><b>업무 카드</b><span class="st"><span class="dot w"></span>진행</span><span class="st"><span class="dot q"></span>대기</span><span class="st"><span class="dot e"></span>오류</span></div>
+   <p class="mut">크리스마스 이벤트 배너 만들기 · 이디자</p>
+   <div class="inp">지시 입력…</div>
+   <div class="btns"><button class="bp">보내기</button><button class="bo">취소</button><button class="bd">삭제</button></div></div>
+ </main></div></figure><figure><figcaption>다크</figcaption><div class="win" data-theme="holly" data-mode="dark">
+ <nav class="sb"><div class="logo">AI Office</div>
+  <a>🏢 사무실</a><a class="on">💬 대화</a><a>📋 업무 보드</a><a>⚙️ 설정</a>
+  <div class="sbfoot"><span class="dot w"></span>3명 일하는 중</div></nav>
+ <main>
+  <div class="hd"><b>대화 · 디자인 팀</b><span class="chip">🎄 호랑가시</span></div>
+  <div class="chat">
+   <div class="row"><span class="av">정</span><div class="bub o"><b>정리드</b><br>시안 확인 부탁드려요. 버튼 색이 괜찮은지 봐 주세요.</div></div>
+   <div class="row me"><div class="bub m">좋아요. 크리스마스 느낌이 나네요<div class="tm">오후 3:12</div></div></div>
+   <div class="row"><span class="av b">박</span><div class="bub o">회의는 <a class="lnk">업무 카드 #24</a>에서 이어 갈게요.</div></div>
+  </div>
+  <div class="card"><div class="ct"><b>업무 카드</b><span class="st"><span class="dot w"></span>진행</span><span class="st"><span class="dot q"></span>대기</span><span class="st"><span class="dot e"></span>오류</span></div>
+   <p class="mut">크리스마스 이벤트 배너 만들기 · 이디자</p>
+   <div class="inp">지시 입력…</div>
+   <div class="btns"><button class="bp">보내기</button><button class="bo">취소</button><button class="bd">삭제</button></div></div>
+ </main></div></figure></div>
+<details><summary>글자 대비 표 (WCAG AA 4.5:1 기준)</summary><table class="ct2"><tr><th>항목</th><th>라이트</th><th>다크</th></tr><tr><td>본문 글자 / 바탕</td><td><span class="pv" style="color:#2A1C1E;background:#FBF7F2">가A</span> 15.34 ✅</td><td><span class="pv" style="color:#F5EEEC;background:#171313">가A</span> 16.09 ✅</td></tr><tr><td>흐린 글자 / 바탕</td><td><span class="pv" style="color:#665A57;background:#FBF7F2">가A</span> 6.22 ✅</td><td><span class="pv" style="color:#BAAEAC;background:#171313">가A</span> 8.55 ✅</td></tr><tr><td>흐린 글자 / 카드</td><td><span class="pv" style="color:#665A57;background:#FFFFFF">가A</span> 6.63 ✅</td><td><span class="pv" style="color:#BAAEAC;background:#241D1D">가A</span> 7.68 ✅</td></tr><tr><td>주 색 글자(링크) / 카드</td><td><span class="pv" style="color:#B01C33;background:#FFFFFF">가A</span> 6.86 ✅</td><td><span class="pv" style="color:#FF8C96;background:#241D1D">가A</span> 7.44 ✅</td></tr><tr><td>버튼 글자 / 버튼 시작색</td><td><span class="pv" style="color:#FFFFFF;background:#B01C33">가A</span> 6.86 ✅</td><td><span class="pv" style="color:#3A0610;background:#FF8C96">가A</span> 7.78 ✅</td></tr><tr><td>버튼 글자 / 버튼 가운데색</td><td><span class="pv" style="color:#FFFFFF;background:#C0283C">가A</span> 5.82 ✅</td><td><span class="pv" style="color:#3A0610;background:#FFA3A3">가A</span> 9.08 ✅</td></tr><tr><td>버튼 글자 / 버튼 끝색</td><td><span class="pv" style="color:#FFFFFF;background:#9E1B30">가A</span> 7.91 ✅</td><td><span class="pv" style="color:#3A0610;background:#FFBFB0">가A</span> 10.99 ✅</td></tr><tr><td>메뉴 글자 / 사이드바 위</td><td><span class="pv" style="color:#2A1C1E;background:#F8DCDD">가A</span> 12.68 ✅</td><td><span class="pv" style="color:#F5EEEC;background:#3A1519">가A</span> 14.08 ✅</td></tr><tr><td>메뉴 글자 / 사이드바 가운데</td><td><span class="pv" style="color:#2A1C1E;background:#F6EEDD">가A</span> 14.18 ✅</td><td><span class="pv" style="color:#F5EEEC;background:#2A2620">가A</span> 13.12 ✅</td></tr><tr><td>메뉴 글자 / 사이드바 아래</td><td><span class="pv" style="color:#2A1C1E;background:#D9EBDD">가A</span> 13.15 ✅</td><td><span class="pv" style="color:#F5EEEC;background:#123222">가A</span> 12.17 ✅</td></tr><tr><td>삭제 버튼 글자</td><td><span class="pv" style="color:#FFFFFF;background:#C42B2B">가A</span> 5.63 ✅</td><td><span class="pv" style="color:#2A0A0A;background:#FF6B6B">가A</span> 6.6 ✅</td></tr></table></details></section>
+<section><h2>후보 B · 금빛 트리 <small>(Golden Tree)</small></h2>
+<p class="lead"><span class="bigsw" style="background:linear-gradient(135deg,#6E1A30 0%,#8E2640 26%,#E8C878 50%,#3F7F55 74%,#1B4C35 100%)"></span>깊은 와인 레드와 숲 초록 사이에 <b>샴페인 금빛 띠</b>를 끼웠습니다. 트리의 금 장식 느낌. 셋 중 가장 어둡고 고급스럽습니다. 라이트에서는 버튼이 와인, 사이드바가 와인→금→초록으로 번집니다. 눈은 금빛이 섞여 내립니다.<br>
+<b>이름 후보</b>: 금빛 트리 / 금빛 리본 / 전나무 금빛 · 영어 Golden Tree · 견본 <code>#6E1A30 → #8E2640 → #E8C878 → #3F7F55 → #1B4C35</code> · 가장 낮은 글자 대비 <b>5.75:1</b> (기준 4.5:1 이상 ✅)</p>
+<div class="pair"><figure><figcaption>라이트</figcaption><div class="win" data-theme="evergreen" data-mode="light">
+ <nav class="sb"><div class="logo">AI Office</div>
+  <a>🏢 사무실</a><a class="on">💬 대화</a><a>📋 업무 보드</a><a>⚙️ 설정</a>
+  <div class="sbfoot"><span class="dot w"></span>3명 일하는 중</div></nav>
+ <main>
+  <div class="hd"><b>대화 · 디자인 팀</b><span class="chip">🎄 금빛 트리</span></div>
+  <div class="chat">
+   <div class="row"><span class="av">정</span><div class="bub o"><b>정리드</b><br>시안 확인 부탁드려요. 버튼 색이 괜찮은지 봐 주세요.</div></div>
+   <div class="row me"><div class="bub m">좋아요. 크리스마스 느낌이 나네요<div class="tm">오후 3:12</div></div></div>
+   <div class="row"><span class="av b">박</span><div class="bub o">회의는 <a class="lnk">업무 카드 #24</a>에서 이어 갈게요.</div></div>
+  </div>
+  <div class="card"><div class="ct"><b>업무 카드</b><span class="st"><span class="dot w"></span>진행</span><span class="st"><span class="dot q"></span>대기</span><span class="st"><span class="dot e"></span>오류</span></div>
+   <p class="mut">크리스마스 이벤트 배너 만들기 · 이디자</p>
+   <div class="inp">지시 입력…</div>
+   <div class="btns"><button class="bp">보내기</button><button class="bo">취소</button><button class="bd">삭제</button></div></div>
+ </main></div></figure><figure><figcaption>다크</figcaption><div class="win" data-theme="evergreen" data-mode="dark">
+ <nav class="sb"><div class="logo">AI Office</div>
+  <a>🏢 사무실</a><a class="on">💬 대화</a><a>📋 업무 보드</a><a>⚙️ 설정</a>
+  <div class="sbfoot"><span class="dot w"></span>3명 일하는 중</div></nav>
+ <main>
+  <div class="hd"><b>대화 · 디자인 팀</b><span class="chip">🎄 금빛 트리</span></div>
+  <div class="chat">
+   <div class="row"><span class="av">정</span><div class="bub o"><b>정리드</b><br>시안 확인 부탁드려요. 버튼 색이 괜찮은지 봐 주세요.</div></div>
+   <div class="row me"><div class="bub m">좋아요. 크리스마스 느낌이 나네요<div class="tm">오후 3:12</div></div></div>
+   <div class="row"><span class="av b">박</span><div class="bub o">회의는 <a class="lnk">업무 카드 #24</a>에서 이어 갈게요.</div></div>
+  </div>
+  <div class="card"><div class="ct"><b>업무 카드</b><span class="st"><span class="dot w"></span>진행</span><span class="st"><span class="dot q"></span>대기</span><span class="st"><span class="dot e"></span>오류</span></div>
+   <p class="mut">크리스마스 이벤트 배너 만들기 · 이디자</p>
+   <div class="inp">지시 입력…</div>
+   <div class="btns"><button class="bp">보내기</button><button class="bo">취소</button><button class="bd">삭제</button></div></div>
+ </main></div></figure></div>
+<details><summary>글자 대비 표 (WCAG AA 4.5:1 기준)</summary><table class="ct2"><tr><th>항목</th><th>라이트</th><th>다크</th></tr><tr><td>본문 글자 / 바탕</td><td><span class="pv" style="color:#1D2A22;background:#F8F6EE">가A</span> 13.8 ✅</td><td><span class="pv" style="color:#F1EEE6;background:#131512">가A</span> 15.84 ✅</td></tr><tr><td>흐린 글자 / 바탕</td><td><span class="pv" style="color:#5B6359;background:#F8F6EE">가A</span> 5.75 ✅</td><td><span class="pv" style="color:#B3B4AA;background:#131512">가A</span> 8.77 ✅</td></tr><tr><td>흐린 글자 / 카드</td><td><span class="pv" style="color:#5B6359;background:#FFFFFF">가A</span> 6.22 ✅</td><td><span class="pv" style="color:#B3B4AA;background:#1F221D">가A</span> 7.68 ✅</td></tr><tr><td>주 색 글자(링크) / 카드</td><td><span class="pv" style="color:#7E1F38;background:#FFFFFF">가A</span> 9.81 ✅</td><td><span class="pv" style="color:#F0A8B4;background:#1F221D">가A</span> 8.4 ✅</td></tr><tr><td>버튼 글자 / 버튼 시작색</td><td><span class="pv" style="color:#FFFFFF;background:#7E1F38">가A</span> 9.81 ✅</td><td><span class="pv" style="color:#2A0A12;background:#F0A8B4">가A</span> 9.53 ✅</td></tr><tr><td>버튼 글자 / 버튼 가운데색</td><td><span class="pv" style="color:#FFFFFF;background:#8E2A44">가A</span> 8.19 ✅</td><td><span class="pv" style="color:#2A0A12;background:#E8C878">가A</span> 11.27 ✅</td></tr><tr><td>버튼 글자 / 버튼 끝색</td><td><span class="pv" style="color:#FFFFFF;background:#7A2340">가A</span> 9.8 ✅</td><td><span class="pv" style="color:#2A0A12;background:#9FD4AE">가A</span> 10.87 ✅</td></tr><tr><td>메뉴 글자 / 사이드바 위</td><td><span class="pv" style="color:#1D2A22;background:#F1DCE0">가A</span> 11.41 ✅</td><td><span class="pv" style="color:#F1EEE6;background:#3A1520">가A</span> 13.85 ✅</td></tr><tr><td>메뉴 글자 / 사이드바 가운데</td><td><span class="pv" style="color:#1D2A22;background:#F4E7C4">가A</span> 12.14 ✅</td><td><span class="pv" style="color:#F1EEE6;background:#2E2814">가A</span> 12.67 ✅</td></tr><tr><td>메뉴 글자 / 사이드바 아래</td><td><span class="pv" style="color:#1D2A22;background:#DCE9DD">가A</span> 11.9 ✅</td><td><span class="pv" style="color:#F1EEE6;background:#12301F">가A</span> 12.34 ✅</td></tr><tr><td>삭제 버튼 글자</td><td><span class="pv" style="color:#FFFFFF;background:#C42B2B">가A</span> 5.63 ✅</td><td><span class="pv" style="color:#2A0A0A;background:#FF6B6B">가A</span> 6.6 ✅</td></tr></table></details></section>
+<section><h2>후보 C · 화이트 크리스마스 <small>(White Christmas)</small></h2>
+<p class="lead"><span class="bigsw" style="background:linear-gradient(135deg,#D23A48 0%,#E25A64 16%,#F8F3F1 36%,#FFFFFF 50%,#F1F6F2 64%,#5FA77A 84%,#2F7F52 100%)"></span><b>눈 흰빛이 넓게</b> 자리 잡고, 빨강과 초록은 양 끝에만 보입니다. 바탕도 가장 밝고 차가운 흰빛. 라이트에서는 버튼이 초록, 선택 테두리가 빨강입니다. 셋 중 가장 가볍고 깨끗합니다.<br>
+<b>이름 후보</b>: 화이트 크리스마스 / 눈꽃 / 눈 덮인 숲 · 영어 White Christmas · 견본 <code>#D23A48 → #E25A64 → #F8F3F1 → #FFFFFF → #F1F6F2 → #5FA77A → #2F7F52</code> · 가장 낮은 글자 대비 <b>5.23:1</b> (기준 4.5:1 이상 ✅)</p>
+<div class="pair"><figure><figcaption>라이트</figcaption><div class="win" data-theme="snowfall" data-mode="light">
+ <nav class="sb"><div class="logo">AI Office</div>
+  <a>🏢 사무실</a><a class="on">💬 대화</a><a>📋 업무 보드</a><a>⚙️ 설정</a>
+  <div class="sbfoot"><span class="dot w"></span>3명 일하는 중</div></nav>
+ <main>
+  <div class="hd"><b>대화 · 디자인 팀</b><span class="chip">🎄 화이트 크리스마스</span></div>
+  <div class="chat">
+   <div class="row"><span class="av">정</span><div class="bub o"><b>정리드</b><br>시안 확인 부탁드려요. 버튼 색이 괜찮은지 봐 주세요.</div></div>
+   <div class="row me"><div class="bub m">좋아요. 크리스마스 느낌이 나네요<div class="tm">오후 3:12</div></div></div>
+   <div class="row"><span class="av b">박</span><div class="bub o">회의는 <a class="lnk">업무 카드 #24</a>에서 이어 갈게요.</div></div>
+  </div>
+  <div class="card"><div class="ct"><b>업무 카드</b><span class="st"><span class="dot w"></span>진행</span><span class="st"><span class="dot q"></span>대기</span><span class="st"><span class="dot e"></span>오류</span></div>
+   <p class="mut">크리스마스 이벤트 배너 만들기 · 이디자</p>
+   <div class="inp">지시 입력…</div>
+   <div class="btns"><button class="bp">보내기</button><button class="bo">취소</button><button class="bd">삭제</button></div></div>
+ </main></div></figure><figure><figcaption>다크</figcaption><div class="win" data-theme="snowfall" data-mode="dark">
+ <nav class="sb"><div class="logo">AI Office</div>
+  <a>🏢 사무실</a><a class="on">💬 대화</a><a>📋 업무 보드</a><a>⚙️ 설정</a>
+  <div class="sbfoot"><span class="dot w"></span>3명 일하는 중</div></nav>
+ <main>
+  <div class="hd"><b>대화 · 디자인 팀</b><span class="chip">🎄 화이트 크리스마스</span></div>
+  <div class="chat">
+   <div class="row"><span class="av">정</span><div class="bub o"><b>정리드</b><br>시안 확인 부탁드려요. 버튼 색이 괜찮은지 봐 주세요.</div></div>
+   <div class="row me"><div class="bub m">좋아요. 크리스마스 느낌이 나네요<div class="tm">오후 3:12</div></div></div>
+   <div class="row"><span class="av b">박</span><div class="bub o">회의는 <a class="lnk">업무 카드 #24</a>에서 이어 갈게요.</div></div>
+  </div>
+  <div class="card"><div class="ct"><b>업무 카드</b><span class="st"><span class="dot w"></span>진행</span><span class="st"><span class="dot q"></span>대기</span><span class="st"><span class="dot e"></span>오류</span></div>
+   <p class="mut">크리스마스 이벤트 배너 만들기 · 이디자</p>
+   <div class="inp">지시 입력…</div>
+   <div class="btns"><button class="bp">보내기</button><button class="bo">취소</button><button class="bd">삭제</button></div></div>
+ </main></div></figure></div>
+<details><summary>글자 대비 표 (WCAG AA 4.5:1 기준)</summary><table class="ct2"><tr><th>항목</th><th>라이트</th><th>다크</th></tr><tr><td>본문 글자 / 바탕</td><td><span class="pv" style="color:#1C2227;background:#F7F9FA">가A</span> 15.21 ✅</td><td><span class="pv" style="color:#EEF2F5;background:#121518">가A</span> 16.28 ✅</td></tr><tr><td>흐린 글자 / 바탕</td><td><span class="pv" style="color:#5A646B;background:#F7F9FA">가A</span> 5.73 ✅</td><td><span class="pv" style="color:#AAB4BC;background:#121518">가A</span> 8.69 ✅</td></tr><tr><td>흐린 글자 / 카드</td><td><span class="pv" style="color:#5A646B;background:#FFFFFF">가A</span> 6.05 ✅</td><td><span class="pv" style="color:#AAB4BC;background:#1D2228">가A</span> 7.6 ✅</td></tr><tr><td>주 색 글자(링크) / 카드</td><td><span class="pv" style="color:#2A6E47;background:#FFFFFF">가A</span> 6.14 ✅</td><td><span class="pv" style="color:#9FDAB4;background:#1D2228">가A</span> 10.03 ✅</td></tr><tr><td>버튼 글자 / 버튼 시작색</td><td><span class="pv" style="color:#FFFFFF;background:#2A6E47">가A</span> 6.14 ✅</td><td><span class="pv" style="color:#082114;background:#9FDAB4">가A</span> 10.63 ✅</td></tr><tr><td>버튼 글자 / 버튼 가운데색</td><td><span class="pv" style="color:#FFFFFF;background:#2F7A4F">가A</span> 5.23 ✅</td><td><span class="pv" style="color:#082114;background:#E6EEF2">가A</span> 14.44 ✅</td></tr><tr><td>버튼 글자 / 버튼 끝색</td><td><span class="pv" style="color:#FFFFFF;background:#256342">가A</span> 7.14 ✅</td><td><span class="pv" style="color:#082114;background:#FFB3BA">가A</span> 10.02 ✅</td></tr><tr><td>메뉴 글자 / 사이드바 위</td><td><span class="pv" style="color:#1C2227;background:#FBE9EA">가A</span> 13.73 ✅</td><td><span class="pv" style="color:#EEF2F5;background:#1A2A22">가A</span> 13.34 ✅</td></tr><tr><td>메뉴 글자 / 사이드바 가운데</td><td><span class="pv" style="color:#1C2227;background:#FFFFFF">가A</span> 16.06 ✅</td><td><span class="pv" style="color:#EEF2F5;background:#1E242B">가A</span> 13.9 ✅</td></tr><tr><td>메뉴 글자 / 사이드바 아래</td><td><span class="pv" style="color:#1C2227;background:#E3F0E7">가A</span> 13.68 ✅</td><td><span class="pv" style="color:#EEF2F5;background:#34191D">가A</span> 14.32 ✅</td></tr><tr><td>삭제 버튼 글자</td><td><span class="pv" style="color:#FFFFFF;background:#C42B2B">가A</span> 5.63 ✅</td><td><span class="pv" style="color:#2A0A0A;background:#FF6B6B">가A</span> 6.6 ✅</td></tr></table></details></section>
+<section><h2>가운데 색 확인 (갈색으로 탁해지지 않는지)</h2><p class="lead">빨강과 초록은 서로 반대 색이라 그냥 이으면 가운데가 반드시 <b>흙갈색</b>이 됩니다. 처음 임시안이 촌스러워 보인 가장 큰 이유입니다. 그래서 세 후보 모두 가운데에 밝은 색 띠(크림·금·눈 흰빛)를 끼워, 빨강은 밝아지며 띠로, 띠에서 다시 초록으로 넘어가게 했습니다.</p>
+<div class="cmpg"><div><b>A · 호랑가시</b>
+<div class="swrow"><span class="big" style="background:linear-gradient(135deg,#B81D35,#1C5636)"></span><span><b>빨강·초록만 이으면 ✗</b> <small>가운데 <code>#6A3A36</code> · 채도 33% 밝기 31% (흙갈색)</small></span></div>
+<div class="bar" style="background:linear-gradient(90deg,#B81D35,#1C5636)"></div>
+<div class="swrow"><span class="big" style="background:linear-gradient(135deg,#B81D35 0%,#C8283E 28%,#F6EBD3 50%,#2F7A4C 72%,#1C5636 100%)"></span><span><b>가운데 크림 띠 ✅</b> <small><code>#B81D35 → #C8283E → #F6EBD3 → #2F7A4C → #1C5636</code></small></span></div>
+<div class="bar" style="background:linear-gradient(90deg,#B81D35 0%,#C8283E 28%,#F6EBD3 50%,#2F7A4C 72%,#1C5636 100%)"></div></div><div><b>B · 금빛 트리</b>
+<div class="swrow"><span class="big" style="background:linear-gradient(135deg,#6E1A30,#1B4C35)"></span><span><b>빨강·초록만 이으면 ✗</b> <small>가운데 <code>#443332</code> · 채도 15% 밝기 23% (흙갈색)</small></span></div>
+<div class="bar" style="background:linear-gradient(90deg,#6E1A30,#1B4C35)"></div>
+<div class="swrow"><span class="big" style="background:linear-gradient(135deg,#6E1A30 0%,#8E2640 26%,#E8C878 50%,#3F7F55 74%,#1B4C35 100%)"></span><span><b>가운데 샴페인 금 띠 ✅</b> <small><code>#6E1A30 → #8E2640 → #E8C878 → #3F7F55 → #1B4C35</code></small></span></div>
+<div class="bar" style="background:linear-gradient(90deg,#6E1A30 0%,#8E2640 26%,#E8C878 50%,#3F7F55 74%,#1B4C35 100%)"></div></div><div><b>C · 화이트 크리스마스</b>
+<div class="swrow"><span class="big" style="background:linear-gradient(135deg,#D23A48,#2F7F52)"></span><span><b>빨강·초록만 이으면 ✗</b> <small>가운데 <code>#805C4D</code> · 채도 25% 밝기 40% (흙갈색)</small></span></div>
+<div class="bar" style="background:linear-gradient(90deg,#D23A48,#2F7F52)"></div>
+<div class="swrow"><span class="big" style="background:linear-gradient(135deg,#D23A48 0%,#E25A64 16%,#F8F3F1 36%,#FFFFFF 50%,#F1F6F2 64%,#5FA77A 84%,#2F7F52 100%)"></span><span><b>가운데 눈 흰빛 띠 ✅</b> <small><code>#D23A48 → #E25A64 → #F8F3F1 → #FFFFFF → #F1F6F2 → #5FA77A → #2F7F52</code></small></span></div>
+<div class="bar" style="background:linear-gradient(90deg,#D23A48 0%,#E25A64 16%,#F8F3F1 36%,#FFFFFF 50%,#F1F6F2 64%,#5FA77A 84%,#2F7F52 100%)"></div></div></div>
+<p style="color:#666">· 앱 버튼은 흰 글자를 읽히게 하려면 어두운 색이어야 해서, 라이트에서는 한 가지 색(A 빨강, B 와인, C 초록)으로 칠하고 다른 색은 사이드바·선택 테두리·눈송이에 씁니다. 다크는 버튼이 밝은 색이라 B·C처럼 세 색 그라데이션도 됩니다.<br>· 사이드바도 빨강→크림/금/흰→초록 세 색으로 이어 갈색 구간이 없습니다.</p></section>
+<section id="snow"><h2>❄ 눈 내리는 효과</h2>
+<p class="lead">크리스마스 테마를 고르면 화면에 눈송이가 천천히 내려옵니다. 아래 그림은 <b>실제로 움직입니다</b>. 눈은 그림 한 장(캔버스)에만 그려지고 마우스를 받지 않아서, 눈 위로도 버튼·링크가 그대로 눌립니다. 눈송이는 테마에 맞춰 <b>흰 눈 + 테마 색 눈</b>을 섞어 내립니다(약 30%). A는 연한 초록, B는 금빛·로즈, C는 연한 빨강이 섞입니다. 라이트에서는 흰 눈이 바탕에 묻히므로 몸통을 테마 색으로 칠하고 가운데에 작은 흰 반짝임을 둡니다.</p>
+<div class="snowctl">
+ <span class="g"><b>후보</b><label><input type="radio" name="sth" value="holly" checked>A 호랑가시</label><label><input type="radio" name="sth" value="evergreen">B 금빛 트리</label><label><input type="radio" name="sth" value="snowfall">C 화이트 크리스마스</label></span>
+ <span class="g"><b>눈 양</b><label><input type="radio" name="slv" value="light" checked>약하게 ★</label><label><input type="radio" name="slv" value="normal">보통</label><label><input type="radio" name="slv" value="heavy">펑펑</label></span>
+ <span class="g"><b>위치</b><label><input type="radio" name="spl" value="behind" checked>내용 뒤 ★</label><label><input type="radio" name="spl" value="over">맨 위</label></span>
+ <span class="g"><label><input type="checkbox" id="srm">'움직임 줄이기' 켠 상태 흉내</label></span>
+</div>
+<div class="pair"><figure><figcaption>라이트 · <span class="clk">보내기 눌러 보기 → <b data-clk>0</b>번 눌림</span></figcaption><div class="snowhost" data-mode="light"></div></figure>
+<figure><figcaption>다크 · <span class="clk">보내기 눌러 보기 → <b data-clk>0</b>번 눌림</span></figcaption><div class="snowhost" data-mode="dark"></div></figure></div>
+<p class="mut" style="color:#666">★ = 추천(대표 미확인). '내용 뒤'는 말풍선·카드 뒤 빈 바탕에만 눈이 보이고, '맨 위'는 글자 위로도 지나갑니다.</p>
+
+<h3>눈 양 비교 (3단계)</h3>
+<div class="lvcmp">
+ <div class="lv rec2"><div class="lvh"><b>약하게</b><span class="badge">추천</span></div><div class="mini" data-lv="light" data-mode="light"></div><div class="mini" data-lv="light" data-mode="dark"></div>
+  <ul><li>눈송이 수: 화면 넓이 10만 px²당 <b>14개</b>, 최대 <b>40개</b></li><li>크기: 지름 2.4~5px</li><li>속도: 초당 14~30px (화면 위→아래 약 15~25초)</li><li>결정 모양(❄) 10%</li></ul>
+  <p>은은하게 '오는 듯 마는 듯'. 하루 종일 켜 두어도 눈이 피곤하지 않습니다. <b>기본값으로 추천</b>합니다.</p></div>
+ <div class="lv"><div class="lvh"><b>보통</b></div><div class="mini" data-lv="normal" data-mode="light"></div><div class="mini" data-lv="normal" data-mode="dark"></div>
+  <ul><li>10만 px²당 <b>28개</b>, 최대 <b>80개</b></li><li>지름 3~7px</li><li>초당 20~42px</li><li>결정 모양 15%</li></ul>
+  <p>눈이 온다는 게 확실히 보입니다. 설정에서 고를 수 있는 '한 단계 더'로 두면 좋습니다.</p></div>
+ <div class="lv"><div class="lvh"><b>펑펑</b><span class="badge gray">참고용</span></div><div class="mini" data-lv="heavy" data-mode="light"></div><div class="mini" data-lv="heavy" data-mode="dark"></div>
+  <ul><li>10만 px²당 <b>50개</b>, 최대 <b>140개</b></li><li>지름 3.6~8.4px</li><li>초당 30~60px</li><li>결정 모양 20%</li></ul>
+  <p>분위기는 강하지만 일하는 화면에는 산만합니다. 넣지 않는 것을 추천합니다(비교용).</p></div>
+</div>
+
+<h3>눈 색 (테마별 · 라이트에서도 보이게)</h3>
+<table class="ct2"><tr><th>후보</th><th>라이트: 몸통 + 섞이는 눈(30%) · 가운데 흰 점</th><th>다크: 가운데 / 가장자리 + 섞이는 눈(30%)</th></tr><tr><td>A 호랑가시</td><td><span class="pv" style="background:#D06A78;color:#fff">#D06A78</span> + <span class="pv" style="background:#5E9F76;color:#fff">#5E9F76</span> <small>바탕 대비 3.27:1</small></td><td><span class="pv" style="background:#FFFFFF;color:#222">#FFFFFF</span> / <span class="pv" style="background:#FFD3D8;color:#222">#FFD3D8</span> + <span class="pv" style="background:#B9E8C8;color:#222">#B9E8C8</span></td></tr><tr><td>B 금빛 트리</td><td><span class="pv" style="background:#C2A04C;color:#fff">#C2A04C</span> + <span class="pv" style="background:#4E8A60;color:#fff">#4E8A60</span> <small>바탕 대비 2.3:1</small></td><td><span class="pv" style="background:#FFFFFF;color:#222">#FFFFFF</span> / <span class="pv" style="background:#E8D49C;color:#222">#E8D49C</span> + <span class="pv" style="background:#F4B8C2;color:#222">#F4B8C2</span></td></tr><tr><td>C 화이트 크리스마스</td><td><span class="pv" style="background:#9DB0C0;color:#fff">#9DB0C0</span> + <span class="pv" style="background:#D45A66;color:#fff">#D45A66</span> <small>바탕 대비 2.11:1</small></td><td><span class="pv" style="background:#FFFFFF;color:#222">#FFFFFF</span> / <span class="pv" style="background:#DDE7F0;color:#222">#DDE7F0</span> + <span class="pv" style="background:#FFB3BA;color:#222">#FFB3BA</span></td></tr><tr><td colspan="3" style="color:#666">눈은 장식이라 글자 기준(4.5:1)은 적용하지 않고, 라이트에서 '보이지만 튀지 않는' 2.2~2.5:1로 맞췄습니다. 그림자(블러)는 휴대폰에서 무거워 쓰지 않고 두 겹 동그라미로 대신합니다.</td></tr></table>
+
+<h3>어디에 내릴까</h3>
+<table class="ct2 place"><tr><th>안</th><th>좋은 점</th><th>아쉬운 점</th><th>판단</th></tr>
+<tr><td><b>① 앱 전체 · 내용 뒤</b><br><span class="mut" style="color:#888">바탕에만, 카드·말풍선 뒤로</span></td><td>어느 화면에서나 '겨울 테마'가 느껴집니다. 글자를 덮지 않습니다.</td><td>카드가 꽉 찬 화면에서는 눈이 잘 안 보입니다(오히려 장점).</td><td><b>추천 ★</b></td></tr>
+<tr><td>①-b 앱 전체 · 맨 위</td><td>가장 눈에 띕니다.</td><td>대화·업무 글 위로 계속 무언가 지나가서 읽기에 방해됩니다.</td><td>비추천</td></tr>
+<tr><td><b>② 사무실 그림 화면만</b></td><td>직원들이 있는 사무실에 눈이 오는 그림이라 분위기가 가장 잘 삽니다. 글을 읽는 화면이 아닙니다.</td><td>다른 화면에서는 테마 느낌이 없습니다.</td><td><b>①과 함께 추천 ★</b><br>(사무실은 그림 위로 내려도 됨)</td></tr>
+<tr><td>③ 설정 견본만</td><td>가장 가볍습니다.</td><td>고를 때만 잠깐 보여서 '눈 효과'라고 하기엔 약합니다.</td><td>맛보기로 덧붙임</td></tr></table>
+<div class="rec"><b>추천(대표 미확인)</b>: <b>① 앱 바탕(내용 뒤) + ② 사무실 화면(그림 위)</b>에 '약하게'로 내리고, <b>③ 설정 견본</b>에는 작은 눈이 늘 내리게 해 고를 때 미리 알 수 있게 합니다.</div>
+
+<h3>설정 화면 · 눈 켜기/끄기</h3>
+<div class="pair"><figure><figcaption>라이트 · 크리스마스 테마를 골랐을 때만 나타남</figcaption><div class="set" data-theme="holly" data-mode="light"><div class="gt">크리스마스</div><div class="grid"><div class="tc sel"><span class="sw snowy" style="background:linear-gradient(135deg,#B81D35 0%,#C8283E 28%,#F6EBD3 50%,#2F7A4C 72%,#1C5636 100%)"></span><span>호랑가시</span></div><div class="tc"><span class="sw snowy" style="background:linear-gradient(135deg,#6E1A30 0%,#8E2640 26%,#E8C878 50%,#3F7F55 74%,#1B4C35 100%)"></span><span>금빛 트리</span></div><div class="tc"><span class="sw snowy" style="background:linear-gradient(135deg,#D23A48 0%,#E25A64 16%,#F8F3F1 36%,#FFFFFF 50%,#F1F6F2 64%,#5FA77A 84%,#2F7F52 100%)"></span><span>화이트 크리스마스</span></div></div>
+ <div class="optrow"><div><b>눈 내리기</b><div class="mut" style="margin:2px 0 0">화면 바탕과 사무실에 눈이 내립니다.</div></div><span class="tg on"><i></i></span></div>
+ <div class="optrow"><div><b>눈 양</b></div><span class="seg"><span class="on">약하게</span><span>보통</span></span></div></div></figure>
+<figure><figcaption>다크 · 기기의 '움직임 줄이기'가 켜져 있을 때</figcaption><div class="set" data-theme="holly" data-mode="dark"><div class="gt">크리스마스</div><div class="grid"><div class="tc sel"><span class="sw snowy still" style="background:linear-gradient(135deg,#B81D35 0%,#C8283E 28%,#F6EBD3 50%,#2F7A4C 72%,#1C5636 100%)"></span><span>호랑가시</span></div><div class="tc"><span class="sw snowy still" style="background:linear-gradient(135deg,#6E1A30 0%,#8E2640 26%,#E8C878 50%,#3F7F55 74%,#1B4C35 100%)"></span><span>금빛 트리</span></div><div class="tc"><span class="sw snowy still" style="background:linear-gradient(135deg,#D23A48 0%,#E25A64 16%,#F8F3F1 36%,#FFFFFF 50%,#F1F6F2 64%,#5FA77A 84%,#2F7F52 100%)"></span><span>화이트 크리스마스</span></div></div>
+ <div class="optrow"><div><b>눈 내리기</b><div class="mut" style="margin:2px 0 0">기기에서 '움직임 줄이기'가 켜져 있어 눈이 멈춰 있어요.</div></div><span class="tg on"><i></i></span></div>
+ <div class="optrow dim"><div><b>눈 양</b></div><span class="seg"><span class="on">약하게</span><span>보통</span></span></div></div></figure></div>
+<p class="mut" style="color:#666">문구는 4개 언어 추천안: 눈 내리기 / Snowfall / 雪を降らせる / 飘雪 · 약하게 / Light / 少なめ / 少量 · 보통 / Normal / ふつう / 适中 · 안내 "기기에서 '움직임 줄이기'가 켜져 있어 눈이 멈춰 있어요." / "Snow is paused because Reduce Motion is on." / "「視差効果を減らす」がオンのため雪は止まっています。" / "系统已开启“减弱动态效果”，雪花已暂停。"</p>
+
+<h3>구현 메모 (정리드님께)</h3>
+<ol class="memo">
+<li><b>한 장의 캔버스</b>: 화면마다 눈송이 DOM을 만들지 말고, 투명 <code>&lt;canvas&gt;</code> 하나에 그립니다. <code>pointer-events:none</code>, <code>aria-hidden="true"</code>. ①은 앱 바탕 바로 위·내용 아래(z-index), ②는 사무실 캔버스 위에 같은 방식으로 한 장 더.</li>
+<li><b>켜기·끄기 설정</b>: <code>snowEffect: 'off' | 'light' | 'normal'</code> 하나로 저장(기본 <code>'light'</code>, 추천안). 크리스마스 묶음 테마일 때만 설정 줄을 보여 주고 효과도 그때만 돕니다. 다른 테마로 바꾸면 값은 남겨 두되 효과는 멈춤.</li>
+<li><b>움직임 줄이기</b>: <code>matchMedia('(prefers-reduced-motion: reduce)')</code>가 켜져 있으면 움직이지 않고 <b>멈춘 눈을 한 번만 그리고</b> 끝(수는 절반). 설정을 바꾸면 바로 따라가도록 <code>change</code> 이벤트를 듣습니다. 앱에 이미 같은 방식이 있습니다(LiveMiniView, levelUpFx).</li>
+<li><b>가볍게 돌리기</b>
+ <ul><li>눈송이 수 = 화면 넓이 × 밀도, 그리고 <b>상한</b>: 약하게 40 / 보통 80. 휴대폰(좁은 화면·터치)은 상한을 <b>절반</b>.</li>
+ <li>휴대폰·저사양은 <b>초당 30장</b>으로 제한(프레임 하나 건너 그리기). 데스크톱은 60.</li>
+ <li>캔버스 해상도는 기기 배율을 <b>최대 1.5배</b>까지만(눈은 작아서 차이가 안 보임).</li>
+ <li>창이 숨겨지거나(<code>visibilitychange</code>) 화면 밖이면(<code>IntersectionObserver</code>) 멈춤.</li>
+ <li>그림자·블러 금지. 동그라미 두 겹(몸통 색 + 가운데 흰 점)과 결정 모양은 선 3개로.</li>
+ <li>프레임이 계속 느리면(예: 2초 평균 24장 미만) 눈송이 수를 자동으로 절반으로.</li></ul></li>
+<li><b>움직임</b>: 위에서 아래로 일정 속도 + 좌우로 살짝 흔들림(사인파, 폭 6~20px) + 아주 약한 바람. 바닥에 닿으면 위에서 다시 시작. 쌓이는 효과는 없음.</li>
+<li><b>설정 견본 맛보기(③)</b>: 캔버스 없이 CSS만 — 견본 동그라미 안 점 무늬 배경을 6초에 한 번 아래로 흘림. 움직임 줄이기면 멈춤. 이 시안의 <code>.sw.snowy</code> 그대로 쓰면 됩니다.</li>
+<li><b>색 토큰</b>: 테마 블록에 <code>--snow-core</code>, <code>--snow-edge</code>, <code>--snow-alt</code>(섞이는 테마 색 눈, 약 30%) 추가. 값은 아래 개발 전달 CSS에 들어 있습니다. 캔버스는 시작할 때와 테마가 바뀔 때 이 값을 읽어 씁니다.</li>
+<li><b>참고 코드</b>: 이 시안 파일 맨 아래 <code>&lt;script&gt;</code>의 <code>Snow</code>가 위 규칙대로 만든 견본입니다(디자인 확인용, 그대로 쓰지 않아도 됨).</li>
+</ol></section>
+
+<section><h2>개발 전달 · 구현용 값</h2>
+<p>① <code>app/src/renderer/index.css</code>: 지금 들어 있는 임시 크리스마스 3종(<code>holly</code>·<code>evergreen</code>·<code>snowfall</code>) 블록을 아래로 바꿉니다. <b>id 3개를 그대로 재사용</b>하므로 이미 고른 사람 설정이 그대로 이어집니다. 토큰 이름과 순서는 aurora 블록과 같고, 새로 <code>--grad-primary</code>(버튼), <code>--snow-core/edge/alt</code>(눈)가 붙습니다. <code>--sidebar-bg</code>는 세 색입니다.</p>
+<pre>/* 크리스마스 테마 3종 (docs/design/christmas-theme v5) */
+[data-theme='holly'][data-mode='light'] {
+  color-scheme: light;
+  --background: #FBF7F2;
+  --foreground: #2A1C1E;
+  --card: #FFFFFF;
+  --card-foreground: #2A1C1E;
+  --popover: #FFFFFF;
+  --popover-foreground: #2A1C1E;
+  --primary: #B01C33;
+  --primary-foreground: #FFFFFF;
+  --secondary: #F3ECE4;
+  --secondary-foreground: #2A1C1E;
+  --muted: #F3ECE4;
+  --muted-foreground: #665A57;
+  --accent: #F7E6E4;
+  --accent-foreground: #2A1C1E;
+  --destructive: #C42B2B;
+  --destructive-foreground: #FFFFFF;
+  --border: #E9DED5;
+  --input: #D6C8BE;
+  --ring: #2F7A4C;
+  --accent-a: #0B6DA1;
+  --accent-b: #5C4CE3;
+  --surface-chrome: #FFFCF8;
+  --surface-sidebar: #F5EEE8;
+  --hud: rgba(255,255,255,.92);
+  --hud-foreground: #2A1C1E;
+  --hud-border: #E9DED5;
+  --spark-from: #B01C33;
+  --spark-to: #E6C79A;
+  --grad-primary-end: #9E1B30;
+  --grad-primary: linear-gradient(135deg, #B01C33, #C0283C, #9E1B30);
+  --shadow-color: #B01C3340;
+  --status-working: #1C7C46;
+  --status-waiting: #9A5B00;
+  --status-idle: #6B6B62;
+  --status-error: #C42B2B;
+  --sidebar-bg: linear-gradient(170deg, #F8DCDD, #F6EEDD, #D9EBDD);
+  --snow-core: #FFFFFF;
+  --snow-edge: #D06A78;
+  --snow-alt: #5E9F76;
+}
+[data-theme='holly'][data-mode='dark'] {
+  color-scheme: dark;
+  --background: #171313;
+  --foreground: #F5EEEC;
+  --card: #241D1D;
+  --card-foreground: #F5EEEC;
+  --popover: #241D1D;
+  --popover-foreground: #F5EEEC;
+  --primary: #FF8C96;
+  --primary-foreground: #3A0610;
+  --secondary: #2F2727;
+  --secondary-foreground: #F5EEEC;
+  --muted: #2F2727;
+  --muted-foreground: #BAAEAC;
+  --accent: #3A2B2C;
+  --accent-foreground: #F5EEEC;
+  --destructive: #FF6B6B;
+  --destructive-foreground: #2A0A0A;
+  --border: #423637;
+  --input: #534646;
+  --ring: #8FD6A8;
+  --accent-a: #5CC8FF;
+  --accent-b: #B6A8FF;
+  --surface-chrome: #1D1818;
+  --surface-sidebar: #110D0D;
+  --hud: #241D1D;
+  --hud-foreground: #F5EEEC;
+  --hud-border: #423637;
+  --spark-from: #FF8C96;
+  --spark-to: #9DDCB0;
+  --grad-primary-end: #FFBFB0;
+  --grad-primary: linear-gradient(135deg, #FF8C96, #FFA3A3, #FFBFB0);
+  --shadow-color: rgba(0,0,0,.6);
+  --status-working: #4ADE80;
+  --status-waiting: #F2C94C;
+  --status-idle: #9A98AC;
+  --status-error: #FF6B6B;
+  --sidebar-bg: linear-gradient(170deg, #3A1519, #2A2620, #123222);
+  --snow-core: #FFFFFF;
+  --snow-edge: #FFD3D8;
+  --snow-alt: #B9E8C8;
+}
+[data-theme='evergreen'][data-mode='light'] {
+  color-scheme: light;
+  --background: #F8F6EE;
+  --foreground: #1D2A22;
+  --card: #FFFFFF;
+  --card-foreground: #1D2A22;
+  --popover: #FFFFFF;
+  --popover-foreground: #1D2A22;
+  --primary: #7E1F38;
+  --primary-foreground: #FFFFFF;
+  --secondary: #EEECE0;
+  --secondary-foreground: #1D2A22;
+  --muted: #EEECE0;
+  --muted-foreground: #5B6359;
+  --accent: #F1E9D2;
+  --accent-foreground: #1D2A22;
+  --destructive: #C42B2B;
+  --destructive-foreground: #FFFFFF;
+  --border: #E2DCCB;
+  --input: #CEC8B5;
+  --ring: #2F7A4C;
+  --accent-a: #0B6DA1;
+  --accent-b: #5C4CE3;
+  --surface-chrome: #FCFBF6;
+  --surface-sidebar: #EFEDE3;
+  --hud: rgba(255,255,255,.92);
+  --hud-foreground: #1D2A22;
+  --hud-border: #E2DCCB;
+  --spark-from: #7E1F38;
+  --spark-to: #D9B45E;
+  --grad-primary-end: #7A2340;
+  --grad-primary: linear-gradient(135deg, #7E1F38, #8E2A44, #7A2340);
+  --shadow-color: #7E1F3840;
+  --status-working: #1C7C46;
+  --status-waiting: #9A5B00;
+  --status-idle: #6B6B62;
+  --status-error: #C42B2B;
+  --sidebar-bg: linear-gradient(170deg, #F1DCE0, #F4E7C4, #DCE9DD);
+  --snow-core: #FFFFFF;
+  --snow-edge: #C2A04C;
+  --snow-alt: #4E8A60;
+}
+[data-theme='evergreen'][data-mode='dark'] {
+  color-scheme: dark;
+  --background: #131512;
+  --foreground: #F1EEE6;
+  --card: #1F221D;
+  --card-foreground: #F1EEE6;
+  --popover: #1F221D;
+  --popover-foreground: #F1EEE6;
+  --primary: #F0A8B4;
+  --primary-foreground: #2A0A12;
+  --secondary: #2A2D27;
+  --secondary-foreground: #F1EEE6;
+  --muted: #2A2D27;
+  --muted-foreground: #B3B4AA;
+  --accent: #353528;
+  --accent-foreground: #F1EEE6;
+  --destructive: #FF6B6B;
+  --destructive-foreground: #2A0A0A;
+  --border: #3A3D34;
+  --input: #4B4E44;
+  --ring: #E8C878;
+  --accent-a: #5CC8FF;
+  --accent-b: #B6A8FF;
+  --surface-chrome: #191B17;
+  --surface-sidebar: #0E100D;
+  --hud: #1F221D;
+  --hud-foreground: #F1EEE6;
+  --hud-border: #3A3D34;
+  --spark-from: #F0A8B4;
+  --spark-to: #E8C878;
+  --grad-primary-end: #9FD4AE;
+  --grad-primary: linear-gradient(135deg, #F0A8B4, #E8C878, #9FD4AE);
+  --shadow-color: rgba(0,0,0,.6);
+  --status-working: #4ADE80;
+  --status-waiting: #F2C94C;
+  --status-idle: #9A98AC;
+  --status-error: #FF6B6B;
+  --sidebar-bg: linear-gradient(170deg, #3A1520, #2E2814, #12301F);
+  --snow-core: #FFFFFF;
+  --snow-edge: #E8D49C;
+  --snow-alt: #F4B8C2;
+}
+[data-theme='snowfall'][data-mode='light'] {
+  color-scheme: light;
+  --background: #F7F9FA;
+  --foreground: #1C2227;
+  --card: #FFFFFF;
+  --card-foreground: #1C2227;
+  --popover: #FFFFFF;
+  --popover-foreground: #1C2227;
+  --primary: #2A6E47;
+  --primary-foreground: #FFFFFF;
+  --secondary: #EDF1F3;
+  --secondary-foreground: #1C2227;
+  --muted: #EDF1F3;
+  --muted-foreground: #5A646B;
+  --accent: #EAF2EE;
+  --accent-foreground: #1C2227;
+  --destructive: #C42B2B;
+  --destructive-foreground: #FFFFFF;
+  --border: #DDE3E7;
+  --input: #C9D1D6;
+  --ring: #C8323F;
+  --accent-a: #0B6DA1;
+  --accent-b: #5C4CE3;
+  --surface-chrome: #FFFFFF;
+  --surface-sidebar: #F1F4F6;
+  --hud: rgba(255,255,255,.92);
+  --hud-foreground: #1C2227;
+  --hud-border: #DDE3E7;
+  --spark-from: #2A6E47;
+  --spark-to: #BFD0DA;
+  --grad-primary-end: #256342;
+  --grad-primary: linear-gradient(135deg, #2A6E47, #2F7A4F, #256342);
+  --shadow-color: #2A6E4740;
+  --status-working: #1C7C46;
+  --status-waiting: #9A5B00;
+  --status-idle: #6B6B62;
+  --status-error: #C42B2B;
+  --sidebar-bg: linear-gradient(170deg, #FBE9EA, #FFFFFF, #E3F0E7);
+  --snow-core: #FFFFFF;
+  --snow-edge: #9DB0C0;
+  --snow-alt: #D45A66;
+}
+[data-theme='snowfall'][data-mode='dark'] {
+  color-scheme: dark;
+  --background: #121518;
+  --foreground: #EEF2F5;
+  --card: #1D2228;
+  --card-foreground: #EEF2F5;
+  --popover: #1D2228;
+  --popover-foreground: #EEF2F5;
+  --primary: #9FDAB4;
+  --primary-foreground: #082114;
+  --secondary: #272D33;
+  --secondary-foreground: #EEF2F5;
+  --muted: #272D33;
+  --muted-foreground: #AAB4BC;
+  --accent: #2C3540;
+  --accent-foreground: #EEF2F5;
+  --destructive: #FF6B6B;
+  --destructive-foreground: #2A0A0A;
+  --border: #343C44;
+  --input: #444D56;
+  --ring: #FF9AA5;
+  --accent-a: #5CC8FF;
+  --accent-b: #B6A8FF;
+  --surface-chrome: #171B1F;
+  --surface-sidebar: #0D1013;
+  --hud: #1D2228;
+  --hud-foreground: #EEF2F5;
+  --hud-border: #343C44;
+  --spark-from: #9FDAB4;
+  --spark-to: #FFB3BA;
+  --grad-primary-end: #FFB3BA;
+  --grad-primary: linear-gradient(135deg, #9FDAB4, #E6EEF2, #FFB3BA);
+  --shadow-color: rgba(0,0,0,.6);
+  --status-working: #4ADE80;
+  --status-waiting: #F2C94C;
+  --status-idle: #9A98AC;
+  --status-error: #FF6B6B;
+  --sidebar-bg: linear-gradient(170deg, #1A2A22, #1E242B, #34191D);
+  --snow-core: #FFFFFF;
+  --snow-edge: #DDE7F0;
+  --snow-alt: #FFB3BA;
+}
+</pre>
+<p>② <code>app/src/shared/uiTheme.ts</code> 'christmas' 묶음: 견본이 두 색(<code>swatchFrom/To</code>)으로는 표현이 안 됩니다(빨강→초록을 그냥 이으면 갈색). 견본용 그라데이션 문자열 <code>swatchStops</code>를 새로 두는 안을 제안합니다.</p>
+<pre>  {
+    id: 'christmas',
+    titleKey: 'uiTheme.group.christmas',
+    themes: [
+      { id: 'holly', labelKey: 'uiTheme.name.holly', swatchStops: '#B81D35 0%, #C8283E 28%, #F6EBD3 50%, #2F7A4C 72%, #1C5636 100%' },
+      { id: 'evergreen', labelKey: 'uiTheme.name.evergreen', swatchStops: '#6E1A30 0%, #8E2640 26%, #E8C878 50%, #3F7F55 74%, #1B4C35 100%' },
+      { id: 'snowfall', labelKey: 'uiTheme.name.snowfall', swatchStops: '#D23A48 0%, #E25A64 16%, #F8F3F1 36%, #FFFFFF 50%, #F1F6F2 64%, #5FA77A 84%, #2F7F52 100%' },
+    ],
+  },
+// 견본: linear-gradient(135deg, swatchStops)</pre>
+<p>③ 이름 4개 언어 (추천안, 대표 미확인)</p><pre>'uiTheme.group.christmas': { ko: '크리스마스', en: 'Christmas', ja: 'クリスマス', zh: '圣诞' },
+'uiTheme.name.holly': { ko: '호랑가시', en: 'Holly', ja: 'ヒイラギ', zh: '冬青' },
+'uiTheme.name.evergreen': { ko: '금빛 트리', en: 'Golden Tree', ja: 'ゴールドツリー', zh: '金色圣诞树' },
+'uiTheme.name.snowfall': { ko: '화이트 크리스마스', en: 'White Christmas', ja: 'ホワイトクリスマス', zh: '白色圣诞' },</pre>
+<p>④ v4에 있던 <code>--berry</code>(열매 점)와 <code>mulledwine</code> id는 이번 안에서 쓰지 않습니다.</p>
+<p class="mut" style="color:#666">결정이 필요한 것: 크리스마스 기간에만 보일지(예: 12월) 아니면 항상 보일지.</p></section>
+<div class="oldzone"><h2 class="zt">비교용 · 이전 시안 v4 (초록·와인 차분한 톤, 쓰지 않음)</h2><p style="color:#777">대표 피드백 "A와 C가 둘 다 초록이라 차이가 없다", 이어서 "초록과 빨강을 섞는 게 제일 크리스마스 같다"로 교체된 안입니다.</p><section><h2>한눈에 고르기</h2><div class="sum">
+<div><div class="sw2 " style="background:linear-gradient(135deg,#1F5A40,#4E8A5C,#DCC07A)"></div><b>A · 전나무 금빛</b><br><span style="color:#666">전나무 초록→샴페인 금 · 가장 크리스마스다움</span></div>
+<div><div class="sw2" style="background:linear-gradient(135deg,#6B2236,#A85A62,#E9C6AE)"></div><b>B · 뱅쇼</b><br><span style="color:#666">와인 버건디→로즈골드 크림 · 따뜻하고 고급</span></div>
+<div><div class="sw2 berry" style="background:linear-gradient(135deg,#24573F,#8FB49A,#F1ECDF)"></div><b>C · 호랑가시</b><br><span style="color:#666">초록→눈 흰빛 + 작은 빨강 열매 · 빨강·초록을 은은하게</span></div>
+</div><div class="rec"><b>추천(대표 미확인)</b>: 하나만 고른다면 <b>A 전나무 금빛</b>. 초록+금은 빨강 없이도 크리스마스가 한눈에 보이고, 오래 켜 두어도 피곤하지 않습니다. 셋 다 넣어도 초록·와인·흰빛으로 서로 구분됩니다.</div>
+<p style="color:#666;margin:10px 0 0">방향: 크리스마스 색(초록·빨강·금)을 쓰되 원색 대신 <b>깊고 채도 낮은 톤</b>. 파랑·검정 위주는 뺐습니다. 다크 바탕도 순수 검정이 아니라 각 테마 색이 살짝 섞인 어두운 초록·와인빛입니다.</p></section>
+<section><h2>설정 화면 · 색 테마 카드</h2><p class="lead">'크리스마스' 묶음의 견본 3개입니다. 견본에는 작은 눈이 늘 내립니다(고를 때 눈 효과를 미리 보여 줌). 호랑가시 견본에는 빨간 열매 점이 붙습니다.</p>
+<div class="pair"><figure><figcaption>라이트 (전나무 금빛 사용 중)</figcaption><div class="set" data-theme="v4evergreen" data-mode="light"><b>색 테마</b><p class="mut">앱 바깥 화면(메뉴·카드·버튼)의 색을 고릅니다.</p>
+ <div class="gt">두 색 그라데이션</div><div class="grid"><div class="tc"><span class="sw" style="background:linear-gradient(135deg,#7C6CFF,#14B8A6)"></span><span>오로라</span></div><div class="tc"><span class="sw" style="background:linear-gradient(135deg,#6366F1,#F97316)"></span><span>황혼</span></div><div class="tc"><span class="sw" style="background:linear-gradient(135deg,#D946EF,#38BDF8)"></span><span>캔디</span></div><div class="tc"><span class="sw" style="background:linear-gradient(135deg,#22C55E,#F5B21A)"></span><span>초원</span></div></div>
+ <div class="gt">크리스마스</div><div class="grid"><div class="tc sel"><span class="sw snowy" style="background:linear-gradient(135deg,#1F5A40,#4E8A5C,#DCC07A)"></span><span>전나무 금빛</span></div><div class="tc"><span class="sw snowy" style="background:linear-gradient(135deg,#6B2236,#A85A62,#E9C6AE)"></span><span>뱅쇼</span></div><div class="tc"><span class="sw berry snowy" style="background:linear-gradient(135deg,#24573F,#8FB49A,#F1ECDF)"></span><span>호랑가시</span></div></div></div></figure><figure><figcaption>다크 (전나무 금빛 사용 중)</figcaption><div class="set" data-theme="v4evergreen" data-mode="dark"><b>색 테마</b><p class="mut">앱 바깥 화면(메뉴·카드·버튼)의 색을 고릅니다.</p>
+ <div class="gt">두 색 그라데이션</div><div class="grid"><div class="tc"><span class="sw" style="background:linear-gradient(135deg,#7C6CFF,#14B8A6)"></span><span>오로라</span></div><div class="tc"><span class="sw" style="background:linear-gradient(135deg,#6366F1,#F97316)"></span><span>황혼</span></div><div class="tc"><span class="sw" style="background:linear-gradient(135deg,#D946EF,#38BDF8)"></span><span>캔디</span></div><div class="tc"><span class="sw" style="background:linear-gradient(135deg,#22C55E,#F5B21A)"></span><span>초원</span></div></div>
+ <div class="gt">크리스마스</div><div class="grid"><div class="tc sel"><span class="sw snowy" style="background:linear-gradient(135deg,#1F5A40,#4E8A5C,#DCC07A)"></span><span>전나무 금빛</span></div><div class="tc"><span class="sw snowy" style="background:linear-gradient(135deg,#6B2236,#A85A62,#E9C6AE)"></span><span>뱅쇼</span></div><div class="tc"><span class="sw berry snowy" style="background:linear-gradient(135deg,#24573F,#8FB49A,#F1ECDF)"></span><span>호랑가시</span></div></div></div></figure></div></section>
+<section><h2>v4 후보 A · 전나무 금빛 <small>(Pine Gold)</small></h2>
+<p class="lead"><span class="bigsw" style="background:linear-gradient(135deg,#1F5A40,#4E8A5C,#DCC07A)"></span>깊은 전나무 초록이 샴페인 금빛으로 번집니다. 트리와 금 장식이 바로 떠오르는 가장 '크리스마스다운' 조합입니다. 라이트에서는 버튼을 초록 계열로 두고(금색 버튼은 흰 글자를 위해 어둡게 하면 갈색이 됨), 금빛은 사이드바·견본·눈송이에 씁니다.<br>
+<b>이름 후보</b>: 전나무 금빛 / 금빛 트리 / 샴페인 숲 · 영어 Pine Gold · 견본 <code>#1F5A40 → #4E8A5C → #DCC07A</code> · 가장 낮은 글자 대비 <b>4.88:1</b> (기준 4.5:1 이상 ✅)</p>
+<div class="pair"><figure><figcaption>라이트</figcaption><div class="win" data-theme="v4evergreen" data-mode="light">
+ <nav class="sb"><div class="logo">AI Office</div>
+  <a>🏢 사무실</a><a class="on">💬 대화</a><a>📋 업무 보드</a><a>⚙️ 설정</a>
+  <div class="sbfoot"><span class="dot w"></span>3명 일하는 중</div></nav>
+ <main>
+  <div class="hd"><b>대화 · 디자인 팀</b><span class="chip">🎄 전나무 금빛</span></div>
+  <div class="chat">
+   <div class="row"><span class="av">정</span><div class="bub o"><b>정리드</b><br>시안 확인 부탁드려요. 버튼 색이 괜찮은지 봐 주세요.</div></div>
+   <div class="row me"><div class="bub m">좋아요. 크리스마스 느낌이 나네요<div class="tm">오후 3:12</div></div></div>
+   <div class="row"><span class="av b">박</span><div class="bub o">회의는 <a class="lnk">업무 카드 #24</a>에서 이어 갈게요.</div></div>
+  </div>
+  <div class="card"><div class="ct"><b>업무 카드</b><span class="st"><span class="dot w"></span>진행</span><span class="st"><span class="dot q"></span>대기</span><span class="st"><span class="dot e"></span>오류</span></div>
+   <p class="mut">크리스마스 이벤트 배너 만들기 · 이디자</p>
+   <div class="inp">지시 입력…</div>
+   <div class="btns"><button class="bp">보내기</button><button class="bo">취소</button><button class="bd">삭제</button></div></div>
+ </main></div></figure><figure><figcaption>다크</figcaption><div class="win" data-theme="v4evergreen" data-mode="dark">
+ <nav class="sb"><div class="logo">AI Office</div>
+  <a>🏢 사무실</a><a class="on">💬 대화</a><a>📋 업무 보드</a><a>⚙️ 설정</a>
+  <div class="sbfoot"><span class="dot w"></span>3명 일하는 중</div></nav>
+ <main>
+  <div class="hd"><b>대화 · 디자인 팀</b><span class="chip">🎄 전나무 금빛</span></div>
+  <div class="chat">
+   <div class="row"><span class="av">정</span><div class="bub o"><b>정리드</b><br>시안 확인 부탁드려요. 버튼 색이 괜찮은지 봐 주세요.</div></div>
+   <div class="row me"><div class="bub m">좋아요. 크리스마스 느낌이 나네요<div class="tm">오후 3:12</div></div></div>
+   <div class="row"><span class="av b">박</span><div class="bub o">회의는 <a class="lnk">업무 카드 #24</a>에서 이어 갈게요.</div></div>
+  </div>
+  <div class="card"><div class="ct"><b>업무 카드</b><span class="st"><span class="dot w"></span>진행</span><span class="st"><span class="dot q"></span>대기</span><span class="st"><span class="dot e"></span>오류</span></div>
+   <p class="mut">크리스마스 이벤트 배너 만들기 · 이디자</p>
+   <div class="inp">지시 입력…</div>
+   <div class="btns"><button class="bp">보내기</button><button class="bo">취소</button><button class="bd">삭제</button></div></div>
+ </main></div></figure></div>
+<details><summary>글자 대비 표 (WCAG AA 4.5:1 기준)</summary><table class="ct2"><tr><th>항목</th><th>라이트</th><th>다크</th></tr><tr><td>본문 글자 / 바탕</td><td><span class="pv" style="color:#1D2A22;background:#F7F6EF">가A</span> 13.78 ✅</td><td><span class="pv" style="color:#EEF1EC;background:#111814">가A</span> 15.82 ✅</td></tr><tr><td>흐린 글자 / 바탕</td><td><span class="pv" style="color:#5B6359;background:#F7F6EF">가A</span> 5.75 ✅</td><td><span class="pv" style="color:#AEB8AF;background:#111814">가A</span> 8.82 ✅</td></tr><tr><td>흐린 글자 / 카드</td><td><span class="pv" style="color:#5B6359;background:#FFFFFF">가A</span> 6.22 ✅</td><td><span class="pv" style="color:#AEB8AF;background:#1D2620">가A</span> 7.61 ✅</td></tr><tr><td>주 색 글자(링크) / 카드</td><td><span class="pv" style="color:#1F5A40;background:#FFFFFF">가A</span> 8.09 ✅</td><td><span class="pv" style="color:#9FD4AE;background:#1D2620">가A</span> 9.26 ✅</td></tr><tr><td>버튼 글자 / 버튼 시작색</td><td><span class="pv" style="color:#FFFFFF;background:#1F5A40">가A</span> 8.09 ✅</td><td><span class="pv" style="color:#0B2116;background:#9FD4AE">가A</span> 10.06 ✅</td></tr><tr><td>버튼 글자 / 버튼 가운데색</td><td><span class="pv" style="color:#FFFFFF;background:#356A3F">가A</span> 6.39 ✅</td><td><span class="pv" style="color:#0B2116;background:#C2D58E">가A</span> 10.62 ✅</td></tr><tr><td>버튼 글자 / 버튼 끝색</td><td><span class="pv" style="color:#FFFFFF;background:#5F7A2C">가A</span> 4.88 ✅</td><td><span class="pv" style="color:#0B2116;background:#E6C878">가A</span> 10.37 ✅</td></tr><tr><td>메뉴 글자 / 사이드바 위</td><td><span class="pv" style="color:#1D2A22;background:#DDEBDF">가A</span> 12.1 ✅</td><td><span class="pv" style="color:#EEF1EC;background:#163323">가A</span> 12.03 ✅</td></tr><tr><td>메뉴 글자 / 사이드바 아래</td><td><span class="pv" style="color:#1D2A22;background:#F3E8C8">가A</span> 12.22 ✅</td><td><span class="pv" style="color:#EEF1EC;background:#2E2A16">가A</span> 12.63 ✅</td></tr><tr><td>삭제 버튼 글자</td><td><span class="pv" style="color:#FFFFFF;background:#C42B2B">가A</span> 5.63 ✅</td><td><span class="pv" style="color:#2A0A0A;background:#FF6B6B">가A</span> 6.6 ✅</td></tr></table></details></section>
+<section><h2>v4 후보 B · 뱅쇼 <small>(Mulled Wine)</small></h2>
+<p class="lead"><span class="bigsw" style="background:linear-gradient(135deg,#6B2236,#A85A62,#E9C6AE)"></span>와인 버건디가 크림빛 로즈골드로 번집니다. 따뜻한 뱅쇼, 리본, 벽난로 느낌. 빨강을 쨍하지 않게 쓴 안이라 차분하고 고급스럽습니다.<br>
+<b>이름 후보</b>: 뱅쇼 / 와인 리본 / 로즈골드 · 영어 Mulled Wine · 견본 <code>#6B2236 → #A85A62 → #E9C6AE</code> · 가장 낮은 글자 대비 <b>6.05:1</b> (기준 4.5:1 이상 ✅)</p>
+<div class="pair"><figure><figcaption>라이트</figcaption><div class="win" data-theme="v4mulledwine" data-mode="light">
+ <nav class="sb"><div class="logo">AI Office</div>
+  <a>🏢 사무실</a><a class="on">💬 대화</a><a>📋 업무 보드</a><a>⚙️ 설정</a>
+  <div class="sbfoot"><span class="dot w"></span>3명 일하는 중</div></nav>
+ <main>
+  <div class="hd"><b>대화 · 디자인 팀</b><span class="chip">🎄 뱅쇼</span></div>
+  <div class="chat">
+   <div class="row"><span class="av">정</span><div class="bub o"><b>정리드</b><br>시안 확인 부탁드려요. 버튼 색이 괜찮은지 봐 주세요.</div></div>
+   <div class="row me"><div class="bub m">좋아요. 크리스마스 느낌이 나네요<div class="tm">오후 3:12</div></div></div>
+   <div class="row"><span class="av b">박</span><div class="bub o">회의는 <a class="lnk">업무 카드 #24</a>에서 이어 갈게요.</div></div>
+  </div>
+  <div class="card"><div class="ct"><b>업무 카드</b><span class="st"><span class="dot w"></span>진행</span><span class="st"><span class="dot q"></span>대기</span><span class="st"><span class="dot e"></span>오류</span></div>
+   <p class="mut">크리스마스 이벤트 배너 만들기 · 이디자</p>
+   <div class="inp">지시 입력…</div>
+   <div class="btns"><button class="bp">보내기</button><button class="bo">취소</button><button class="bd">삭제</button></div></div>
+ </main></div></figure><figure><figcaption>다크</figcaption><div class="win" data-theme="v4mulledwine" data-mode="dark">
+ <nav class="sb"><div class="logo">AI Office</div>
+  <a>🏢 사무실</a><a class="on">💬 대화</a><a>📋 업무 보드</a><a>⚙️ 설정</a>
+  <div class="sbfoot"><span class="dot w"></span>3명 일하는 중</div></nav>
+ <main>
+  <div class="hd"><b>대화 · 디자인 팀</b><span class="chip">🎄 뱅쇼</span></div>
+  <div class="chat">
+   <div class="row"><span class="av">정</span><div class="bub o"><b>정리드</b><br>시안 확인 부탁드려요. 버튼 색이 괜찮은지 봐 주세요.</div></div>
+   <div class="row me"><div class="bub m">좋아요. 크리스마스 느낌이 나네요<div class="tm">오후 3:12</div></div></div>
+   <div class="row"><span class="av b">박</span><div class="bub o">회의는 <a class="lnk">업무 카드 #24</a>에서 이어 갈게요.</div></div>
+  </div>
+  <div class="card"><div class="ct"><b>업무 카드</b><span class="st"><span class="dot w"></span>진행</span><span class="st"><span class="dot q"></span>대기</span><span class="st"><span class="dot e"></span>오류</span></div>
+   <p class="mut">크리스마스 이벤트 배너 만들기 · 이디자</p>
+   <div class="inp">지시 입력…</div>
+   <div class="btns"><button class="bp">보내기</button><button class="bo">취소</button><button class="bd">삭제</button></div></div>
+ </main></div></figure></div>
+<details><summary>글자 대비 표 (WCAG AA 4.5:1 기준)</summary><table class="ct2"><tr><th>항목</th><th>라이트</th><th>다크</th></tr><tr><td>본문 글자 / 바탕</td><td><span class="pv" style="color:#2B1D21;background:#FAF5F3">가A</span> 14.93 ✅</td><td><span class="pv" style="color:#F3ECEE;background:#1A1214">가A</span> 15.82 ✅</td></tr><tr><td>흐린 글자 / 바탕</td><td><span class="pv" style="color:#685A5D;background:#FAF5F3">가A</span> 6.05 ✅</td><td><span class="pv" style="color:#BCADB1;background:#1A1214">가A</span> 8.55 ✅</td></tr><tr><td>흐린 글자 / 카드</td><td><span class="pv" style="color:#685A5D;background:#FFFFFF">가A</span> 6.54 ✅</td><td><span class="pv" style="color:#BCADB1;background:#281C20">가A</span> 7.63 ✅</td></tr><tr><td>주 색 글자(링크) / 카드</td><td><span class="pv" style="color:#7A2840;background:#FFFFFF">가A</span> 9.52 ✅</td><td><span class="pv" style="color:#F0B3C2;background:#281C20">가A</span> 9.34 ✅</td></tr><tr><td>버튼 글자 / 버튼 시작색</td><td><span class="pv" style="color:#FFFFFF;background:#7A2840">가A</span> 9.52 ✅</td><td><span class="pv" style="color:#3A0E1C;background:#F0B3C2">가A</span> 9.47 ✅</td></tr><tr><td>버튼 글자 / 버튼 가운데색</td><td><span class="pv" style="color:#FFFFFF;background:#8A3540">가A</span> 7.88 ✅</td><td><span class="pv" style="color:#3A0E1C;background:#F1C0BB">가A</span> 10.32 ✅</td></tr><tr><td>버튼 글자 / 버튼 끝색</td><td><span class="pv" style="color:#FFFFFF;background:#9A4A3A">가A</span> 6.15 ✅</td><td><span class="pv" style="color:#3A0E1C;background:#F2CDB4">가A</span> 11.25 ✅</td></tr><tr><td>메뉴 글자 / 사이드바 위</td><td><span class="pv" style="color:#2B1D21;background:#F3DDE0">가A</span> 12.48 ✅</td><td><span class="pv" style="color:#F3ECEE;background:#3A1824">가A</span> 13.51 ✅</td></tr><tr><td>메뉴 글자 / 사이드바 아래</td><td><span class="pv" style="color:#2B1D21;background:#F7E9DC">가A</span> 13.57 ✅</td><td><span class="pv" style="color:#F3ECEE;background:#3A2A22">가A</span> 11.76 ✅</td></tr><tr><td>삭제 버튼 글자</td><td><span class="pv" style="color:#FFFFFF;background:#C42B2B">가A</span> 5.63 ✅</td><td><span class="pv" style="color:#2A0A0A;background:#FF6B6B">가A</span> 6.6 ✅</td></tr></table></details></section>
+<section><h2>v4 후보 C · 호랑가시 <small>(Holly Berry)</small></h2>
+<p class="lead"><span class="bigsw berry" style="background:linear-gradient(135deg,#24573F,#8FB49A,#F1ECDF)"></span>깊은 초록이 눈 같은 크림 흰빛으로 번지고, <b>호랑가시 열매 빨강</b>을 작은 포인트로만 씁니다(견본의 열매 점, 메뉴 선택 표시, 머리 칩 테두리). 빨강·초록을 다 쓰지만 면적이 작아 촌스럽지 않습니다.<br>
+<b>이름 후보</b>: 호랑가시 / 겨우살이 / 눈 덮인 숲 · 영어 Holly Berry · 견본 <code>#24573F → #8FB49A → #F1ECDF</code> · 열매 빨강 <code>#B3263A</code> · 가장 낮은 글자 대비 <b>5.73:1</b> (기준 4.5:1 이상 ✅)</p>
+<div class="pair"><figure><figcaption>라이트</figcaption><div class="win" data-theme="v4holly" data-mode="light">
+ <nav class="sb"><div class="logo">AI Office</div>
+  <a>🏢 사무실</a><a class="on">💬 대화</a><a>📋 업무 보드</a><a>⚙️ 설정</a>
+  <div class="sbfoot"><span class="dot w"></span>3명 일하는 중</div></nav>
+ <main>
+  <div class="hd"><b>대화 · 디자인 팀</b><span class="chip">🎄 호랑가시</span></div>
+  <div class="chat">
+   <div class="row"><span class="av">정</span><div class="bub o"><b>정리드</b><br>시안 확인 부탁드려요. 버튼 색이 괜찮은지 봐 주세요.</div></div>
+   <div class="row me"><div class="bub m">좋아요. 크리스마스 느낌이 나네요<div class="tm">오후 3:12</div></div></div>
+   <div class="row"><span class="av b">박</span><div class="bub o">회의는 <a class="lnk">업무 카드 #24</a>에서 이어 갈게요.</div></div>
+  </div>
+  <div class="card"><div class="ct"><b>업무 카드</b><span class="st"><span class="dot w"></span>진행</span><span class="st"><span class="dot q"></span>대기</span><span class="st"><span class="dot e"></span>오류</span></div>
+   <p class="mut">크리스마스 이벤트 배너 만들기 · 이디자</p>
+   <div class="inp">지시 입력…</div>
+   <div class="btns"><button class="bp">보내기</button><button class="bo">취소</button><button class="bd">삭제</button></div></div>
+ </main></div></figure><figure><figcaption>다크</figcaption><div class="win" data-theme="v4holly" data-mode="dark">
+ <nav class="sb"><div class="logo">AI Office</div>
+  <a>🏢 사무실</a><a class="on">💬 대화</a><a>📋 업무 보드</a><a>⚙️ 설정</a>
+  <div class="sbfoot"><span class="dot w"></span>3명 일하는 중</div></nav>
+ <main>
+  <div class="hd"><b>대화 · 디자인 팀</b><span class="chip">🎄 호랑가시</span></div>
+  <div class="chat">
+   <div class="row"><span class="av">정</span><div class="bub o"><b>정리드</b><br>시안 확인 부탁드려요. 버튼 색이 괜찮은지 봐 주세요.</div></div>
+   <div class="row me"><div class="bub m">좋아요. 크리스마스 느낌이 나네요<div class="tm">오후 3:12</div></div></div>
+   <div class="row"><span class="av b">박</span><div class="bub o">회의는 <a class="lnk">업무 카드 #24</a>에서 이어 갈게요.</div></div>
+  </div>
+  <div class="card"><div class="ct"><b>업무 카드</b><span class="st"><span class="dot w"></span>진행</span><span class="st"><span class="dot q"></span>대기</span><span class="st"><span class="dot e"></span>오류</span></div>
+   <p class="mut">크리스마스 이벤트 배너 만들기 · 이디자</p>
+   <div class="inp">지시 입력…</div>
+   <div class="btns"><button class="bp">보내기</button><button class="bo">취소</button><button class="bd">삭제</button></div></div>
+ </main></div></figure></div>
+<details><summary>글자 대비 표 (WCAG AA 4.5:1 기준)</summary><table class="ct2"><tr><th>항목</th><th>라이트</th><th>다크</th></tr><tr><td>본문 글자 / 바탕</td><td><span class="pv" style="color:#1C2922;background:#F6F7F2">가A</span> 14.04 ✅</td><td><span class="pv" style="color:#EEF2EF;background:#111815">가A</span> 15.95 ✅</td></tr><tr><td>흐린 글자 / 바탕</td><td><span class="pv" style="color:#59645C;background:#F6F7F2">가A</span> 5.73 ✅</td><td><span class="pv" style="color:#ABB8B0;background:#111815">가A</span> 8.77 ✅</td></tr><tr><td>흐린 글자 / 카드</td><td><span class="pv" style="color:#59645C;background:#FFFFFF">가A</span> 6.17 ✅</td><td><span class="pv" style="color:#ABB8B0;background:#1C2621">가A</span> 7.57 ✅</td></tr><tr><td>주 색 글자(링크) / 카드</td><td><span class="pv" style="color:#24573F;background:#FFFFFF">가A</span> 8.37 ✅</td><td><span class="pv" style="color:#A8D8BA;background:#1C2621">가A</span> 9.79 ✅</td></tr><tr><td>버튼 글자 / 버튼 시작색</td><td><span class="pv" style="color:#FFFFFF;background:#24573F">가A</span> 8.37 ✅</td><td><span class="pv" style="color:#0A2216;background:#A8D8BA">가A</span> 10.53 ✅</td></tr><tr><td>버튼 글자 / 버튼 가운데색</td><td><span class="pv" style="color:#FFFFFF;background:#285F47">가A</span> 7.45 ✅</td><td><span class="pv" style="color:#0A2216;background:#C7E2CB">가A</span> 12.1 ✅</td></tr><tr><td>버튼 글자 / 버튼 끝색</td><td><span class="pv" style="color:#FFFFFF;background:#2F6B52">가A</span> 6.28 ✅</td><td><span class="pv" style="color:#0A2216;background:#E6EBDD">가A</span> 13.8 ✅</td></tr><tr><td>메뉴 글자 / 사이드바 위</td><td><span class="pv" style="color:#1C2922;background:#D8E9DD">가A</span> 11.96 ✅</td><td><span class="pv" style="color:#EEF2EF;background:#14332A">가A</span> 12.09 ✅</td></tr><tr><td>메뉴 글자 / 사이드바 아래</td><td><span class="pv" style="color:#1C2922;background:#F4F0E4">가A</span> 13.26 ✅</td><td><span class="pv" style="color:#EEF2EF;background:#26302A">가A</span> 12.08 ✅</td></tr><tr><td>삭제 버튼 글자</td><td><span class="pv" style="color:#FFFFFF;background:#C42B2B">가A</span> 5.63 ✅</td><td><span class="pv" style="color:#2A0A0A;background:#FF6B6B">가A</span> 6.6 ✅</td></tr></table></details></section>
+<section><h2>가운데 색 확인 (탁해지지 않는지)</h2><p class="lead">초록·빨강·금은 그냥 이으면 가운데가 올리브·흙빛·잿빛으로 죽기 쉽습니다. 그래서 세 후보 모두 <b>가운데 색을 하나 지정</b>해 세 색으로 잇습니다. 위는 두 색만 이었을 때, 아래는 가운데 색을 넣었을 때입니다.</p>
+<div class="cmpg"><div><b>A · 전나무 금빛</b>
+<div class="swrow"><span class="big" style="background:linear-gradient(135deg,#1F5A40,#DCC07A)"></span><span><b>두 색만</b> <small>가운데 <code>#7E8D5D</code> · 색상 79° 채도 21%</small></span></div>
+<div class="bar" style="background:linear-gradient(90deg,#1F5A40,#DCC07A)"></div>
+<div class="swrow"><span class="big" style="background:linear-gradient(135deg,#1F5A40,#4E8A5C,#DCC07A)"></span><span><b>가운데 색 지정 ✅</b> <small><code>#4E8A5C</code> 경유 · 앞 절반 <code>#36724E</code> / 뒤 절반 <code>#95A56B</code></small></span></div>
+<div class="bar" style="background:linear-gradient(90deg,#1F5A40,#4E8A5C,#DCC07A)"></div></div><div><b>B · 뱅쇼</b>
+<div class="swrow"><span class="big" style="background:linear-gradient(135deg,#6B2236,#E9C6AE)"></span><span><b>두 색만</b> <small>가운데 <code>#AA7472</code> · 색상 2° 채도 25%</small></span></div>
+<div class="bar" style="background:linear-gradient(90deg,#6B2236,#E9C6AE)"></div>
+<div class="swrow"><span class="big" style="background:linear-gradient(135deg,#6B2236,#A85A62,#E9C6AE)"></span><span><b>가운데 색 지정 ✅</b> <small><code>#A85A62</code> 경유 · 앞 절반 <code>#8A3E4C</code> / 뒤 절반 <code>#C89088</code></small></span></div>
+<div class="bar" style="background:linear-gradient(90deg,#6B2236,#A85A62,#E9C6AE)"></div></div><div><b>C · 호랑가시</b>
+<div class="swrow"><span class="big" style="background:linear-gradient(135deg,#24573F,#F1ECDF)"></span><span><b>두 색만</b> <small>가운데 <code>#8AA28F</code> · 색상 133° 채도 11%</small></span></div>
+<div class="bar" style="background:linear-gradient(90deg,#24573F,#F1ECDF)"></div>
+<div class="swrow"><span class="big berry" style="background:linear-gradient(135deg,#24573F,#8FB49A,#F1ECDF)"></span><span><b>가운데 색 지정 ✅</b> <small><code>#8FB49A</code> 경유 · 앞 절반 <code>#5A866C</code> / 뒤 절반 <code>#C0D0BC</code></small></span></div>
+<div class="bar" style="background:linear-gradient(90deg,#24573F,#8FB49A,#F1ECDF)"></div></div></div>
+<p style="color:#666">· A는 두 색만이면 가운데가 칙칙한 올리브(채도 21%) → 밝은 잎 초록을 넣어 초록이 금빛으로 맑게 넘어갑니다.<br>· B는 두 색만이면 흐린 장밋빛 → 로즈 와인을 넣어 붉은 기가 살아 있습니다. 갈색으로 빠지지 않습니다.<br>· C는 두 색만이면 잿빛 세이지(채도 11%) → 세이지 초록을 넣어 초록이 눈 흰빛으로 번집니다.<br>· 버튼도 같은 이유로 세 색 그라데이션(<code>--grad-primary</code>)을 테마마다 지정했습니다. 라이트 전나무 금빛 버튼은 금색을 끝에 두면 흰 글자를 위해 어두운 갈색이 되므로 올리브 초록에서 멈춥니다.</p></section>
+<details><summary>v4 구현 값 (참고)</summary><section><h2>개발 전달 · 구현용 값</h2>
+<p>① <code>app/src/renderer/index.css</code>: 지금 들어 있는 임시 크리스마스 3종(<code>holly</code>·<code>evergreen</code>·<code>snowfall</code>) 블록을 아래로 바꿉니다. 토큰 이름과 순서는 aurora 블록과 같고, 새로 <code>--grad-primary</code>(세 색 버튼), <code>--snow-core/edge/alt</code>(눈), <code>--berry</code>(호랑가시 열매 포인트)가 붙습니다.</p>
+<pre>/* 크리스마스 테마 3종 (docs/design/christmas-theme v4) */
+[data-theme='v4evergreen'][data-mode='light'] {
+  color-scheme: light;
+  --background: #F7F6EF;
+  --foreground: #1D2A22;
+  --card: #FFFFFF;
+  --card-foreground: #1D2A22;
+  --popover: #FFFFFF;
+  --popover-foreground: #1D2A22;
+  --primary: #1F5A40;
+  --primary-foreground: #FFFFFF;
+  --secondary: #EEEDE2;
+  --secondary-foreground: #1D2A22;
+  --muted: #EEEDE2;
+  --muted-foreground: #5B6359;
+  --accent: #E7EFE3;
+  --accent-foreground: #1D2A22;
+  --destructive: #C42B2B;
+  --destructive-foreground: #FFFFFF;
+  --border: #E0DDCF;
+  --input: #CDCABA;
+  --ring: #3E7C5C;
+  --accent-a: #0B6DA1;
+  --accent-b: #5C4CE3;
+  --surface-chrome: #FCFBF6;
+  --surface-sidebar: #EEEFE6;
+  --hud: rgba(255,255,255,.92);
+  --hud-foreground: #1D2A22;
+  --hud-border: #E0DDCF;
+  --spark-from: #1F5A40;
+  --spark-to: #D2B266;
+  --grad-primary-end: #5F7A2C;
+  --grad-primary: linear-gradient(135deg, #1F5A40, #356A3F, #5F7A2C);
+  --shadow-color: #1F5A4040;
+  --status-working: #1C7C46;
+  --status-waiting: #9A5B00;
+  --status-idle: #6B6B62;
+  --status-error: #C42B2B;
+  --sidebar-bg: linear-gradient(170deg, #DDEBDF, #F3E8C8);
+  --snow-core: #FFFFFF;
+  --snow-edge: #C2A04C;
+  --snow-alt: #6E9C7E;
+}
+[data-theme='v4evergreen'][data-mode='dark'] {
+  color-scheme: dark;
+  --background: #111814;
+  --foreground: #EEF1EC;
+  --card: #1D2620;
+  --card-foreground: #EEF1EC;
+  --popover: #1D2620;
+  --popover-foreground: #EEF1EC;
+  --primary: #9FD4AE;
+  --primary-foreground: #0B2116;
+  --secondary: #28322B;
+  --secondary-foreground: #EEF1EC;
+  --muted: #28322B;
+  --muted-foreground: #AEB8AF;
+  --accent: #2F3D33;
+  --accent-foreground: #EEF1EC;
+  --destructive: #FF6B6B;
+  --destructive-foreground: #2A0A0A;
+  --border: #36423A;
+  --input: #465349;
+  --ring: #9FD4AE;
+  --accent-a: #5CC8FF;
+  --accent-b: #B6A8FF;
+  --surface-chrome: #161E19;
+  --surface-sidebar: #0D130F;
+  --hud: #1D2620;
+  --hud-foreground: #EEF1EC;
+  --hud-border: #36423A;
+  --spark-from: #9FD4AE;
+  --spark-to: #E6CB86;
+  --grad-primary-end: #E6C878;
+  --grad-primary: linear-gradient(135deg, #9FD4AE, #C2D58E, #E6C878);
+  --shadow-color: rgba(0,0,0,.6);
+  --status-working: #4ADE80;
+  --status-waiting: #F2C94C;
+  --status-idle: #9A98AC;
+  --status-error: #FF6B6B;
+  --sidebar-bg: linear-gradient(170deg, #163323, #2E2A16);
+  --snow-core: #FFFFFF;
+  --snow-edge: #E8D49C;
+  --snow-alt: #FFF4D6;
+}
+[data-theme='v4mulledwine'][data-mode='light'] {
+  color-scheme: light;
+  --background: #FAF5F3;
+  --foreground: #2B1D21;
+  --card: #FFFFFF;
+  --card-foreground: #2B1D21;
+  --popover: #FFFFFF;
+  --popover-foreground: #2B1D21;
+  --primary: #7A2840;
+  --primary-foreground: #FFFFFF;
+  --secondary: #F1E9E6;
+  --secondary-foreground: #2B1D21;
+  --muted: #F1E9E6;
+  --muted-foreground: #685A5D;
+  --accent: #F4E6E4;
+  --accent-foreground: #2B1D21;
+  --destructive: #C42B2B;
+  --destructive-foreground: #FFFFFF;
+  --border: #E8DCD8;
+  --input: #D6C7C3;
+  --ring: #A04A5E;
+  --accent-a: #0B6DA1;
+  --accent-b: #5C4CE3;
+  --surface-chrome: #FEFBFA;
+  --surface-sidebar: #F3ECEA;
+  --hud: rgba(255,255,255,.92);
+  --hud-foreground: #2B1D21;
+  --hud-border: #E8DCD8;
+  --spark-from: #7A2840;
+  --spark-to: #D9A98E;
+  --grad-primary-end: #9A4A3A;
+  --grad-primary: linear-gradient(135deg, #7A2840, #8A3540, #9A4A3A);
+  --shadow-color: #7A284040;
+  --status-working: #1C7C46;
+  --status-waiting: #9A5B00;
+  --status-idle: #6B6B62;
+  --status-error: #C42B2B;
+  --sidebar-bg: linear-gradient(170deg, #F3DDE0, #F7E9DC);
+  --snow-core: #FFFFFF;
+  --snow-edge: #C9908A;
+  --snow-alt: #D4B27A;
+}
+[data-theme='v4mulledwine'][data-mode='dark'] {
+  color-scheme: dark;
+  --background: #1A1214;
+  --foreground: #F3ECEE;
+  --card: #281C20;
+  --card-foreground: #F3ECEE;
+  --popover: #281C20;
+  --popover-foreground: #F3ECEE;
+  --primary: #F0B3C2;
+  --primary-foreground: #3A0E1C;
+  --secondary: #33262A;
+  --secondary-foreground: #F3ECEE;
+  --muted: #33262A;
+  --muted-foreground: #BCADB1;
+  --accent: #3D2C31;
+  --accent-foreground: #F3ECEE;
+  --destructive: #FF6B6B;
+  --destructive-foreground: #2A0A0A;
+  --border: #45353A;
+  --input: #55434A;
+  --ring: #F0B3C2;
+  --accent-a: #5CC8FF;
+  --accent-b: #B6A8FF;
+  --surface-chrome: #20171A;
+  --surface-sidebar: #150E10;
+  --hud: #281C20;
+  --hud-foreground: #F3ECEE;
+  --hud-border: #45353A;
+  --spark-from: #F0B3C2;
+  --spark-to: #EFCDB6;
+  --grad-primary-end: #F2CDB4;
+  --grad-primary: linear-gradient(135deg, #F0B3C2, #F1C0BB, #F2CDB4);
+  --shadow-color: rgba(0,0,0,.6);
+  --status-working: #4ADE80;
+  --status-waiting: #F2C94C;
+  --status-idle: #9A98AC;
+  --status-error: #FF6B6B;
+  --sidebar-bg: linear-gradient(170deg, #3A1824, #3A2A22);
+  --snow-core: #FFFFFF;
+  --snow-edge: #F2D2C2;
+  --snow-alt: #EAD3A0;
+}
+[data-theme='v4holly'][data-mode='light'] {
+  color-scheme: light;
+  --background: #F6F7F2;
+  --foreground: #1C2922;
+  --card: #FFFFFF;
+  --card-foreground: #1C2922;
+  --popover: #FFFFFF;
+  --popover-foreground: #1C2922;
+  --primary: #24573F;
+  --primary-foreground: #FFFFFF;
+  --secondary: #ECEFE7;
+  --secondary-foreground: #1C2922;
+  --muted: #ECEFE7;
+  --muted-foreground: #59645C;
+  --accent: #E5EEE6;
+  --accent-foreground: #1C2922;
+  --destructive: #C42B2B;
+  --destructive-foreground: #FFFFFF;
+  --border: #DCE1D8;
+  --input: #C6CDC3;
+  --ring: #3F7A5C;
+  --accent-a: #0B6DA1;
+  --accent-b: #5C4CE3;
+  --surface-chrome: #FCFDFA;
+  --surface-sidebar: #EDF0EA;
+  --hud: rgba(255,255,255,.92);
+  --hud-foreground: #1C2922;
+  --hud-border: #DCE1D8;
+  --spark-from: #24573F;
+  --spark-to: #C9DCCB;
+  --grad-primary-end: #2F6B52;
+  --grad-primary: linear-gradient(135deg, #24573F, #285F47, #2F6B52);
+  --shadow-color: #24573F40;
+  --status-working: #1C7C46;
+  --status-waiting: #9A5B00;
+  --status-idle: #6B6B62;
+  --status-error: #C42B2B;
+  --sidebar-bg: linear-gradient(170deg, #D8E9DD, #F4F0E4);
+  --snow-core: #FFFFFF;
+  --snow-edge: #8FAE98;
+  --snow-alt: #C9AE6E;
+  --berry: #B3263A;
+}
+[data-theme='v4holly'][data-mode='dark'] {
+  color-scheme: dark;
+  --background: #111815;
+  --foreground: #EEF2EF;
+  --card: #1C2621;
+  --card-foreground: #EEF2EF;
+  --popover: #1C2621;
+  --popover-foreground: #EEF2EF;
+  --primary: #A8D8BA;
+  --primary-foreground: #0A2216;
+  --secondary: #27322C;
+  --secondary-foreground: #EEF2EF;
+  --muted: #27322C;
+  --muted-foreground: #ABB8B0;
+  --accent: #2E3C35;
+  --accent-foreground: #EEF2EF;
+  --destructive: #FF6B6B;
+  --destructive-foreground: #2A0A0A;
+  --border: #35423B;
+  --input: #45534B;
+  --ring: #A8D8BA;
+  --accent-a: #5CC8FF;
+  --accent-b: #B6A8FF;
+  --surface-chrome: #151D19;
+  --surface-sidebar: #0C120F;
+  --hud: #1C2621;
+  --hud-foreground: #EEF2EF;
+  --hud-border: #35423B;
+  --spark-from: #A8D8BA;
+  --spark-to: #E3EBDD;
+  --grad-primary-end: #E6EBDD;
+  --grad-primary: linear-gradient(135deg, #A8D8BA, #C7E2CB, #E6EBDD);
+  --shadow-color: rgba(0,0,0,.6);
+  --status-working: #4ADE80;
+  --status-waiting: #F2C94C;
+  --status-idle: #9A98AC;
+  --status-error: #FF6B6B;
+  --sidebar-bg: linear-gradient(170deg, #14332A, #26302A);
+  --snow-core: #FFFFFF;
+  --snow-edge: #DDEBE1;
+  --snow-alt: #F0E2B8;
+  --berry: #F08A98;
+}
+</pre>
+<p>② <code>app/src/shared/uiTheme.ts</code> 'christmas' 묶음: id는 <b>evergreen·holly는 그대로 재사용</b>(이미 고른 사람 설정이 그대로 이어짐), <code>snowfall</code>은 <code>mulledwine</code>로 바꾸고 저장값 <code>snowfall</code>은 <code>mulledwine</code>으로 옮기기를 제안합니다. 견본에 가운데 색 <code>swatchMid</code>가 새로 필요합니다(없으면 두 색만으로 칙칙해짐).</p>
+<pre>  {
+    id: 'christmas',
+    titleKey: 'uiTheme.group.christmas',
+    themes: [
+      { id: 'evergreen', labelKey: 'uiTheme.name.evergreen', swatchFrom: '#1F5A40', swatchMid: '#4E8A5C', swatchTo: '#DCC07A' },
+      { id: 'mulledwine', labelKey: 'uiTheme.name.mulledwine', swatchFrom: '#6B2236', swatchMid: '#A85A62', swatchTo: '#E9C6AE' },
+      { id: 'holly', labelKey: 'uiTheme.name.holly', swatchFrom: '#24573F', swatchMid: '#8FB49A', swatchTo: '#F1ECDF' },
+    ],
+  },
+// 견본: linear-gradient(135deg, swatchFrom, swatchMid, swatchTo)
+// holly 견본에는 열매 점 2개(#B3263A / #C9394C, 지름 7px, 오른쪽 아래) — 이 시안의 .berry::before 참고</pre>
+<p>③ 이름 4개 언어 (추천안, 대표 미확인)</p><pre>'uiTheme.group.christmas': { ko: '크리스마스', en: 'Christmas', ja: 'クリスマス', zh: '圣诞' },
+'uiTheme.name.evergreen': { ko: '전나무 금빛', en: 'Pine Gold', ja: 'もみの木ゴールド', zh: '松林金' },
+'uiTheme.name.mulledwine': { ko: '뱅쇼', en: 'Mulled Wine', ja: 'ホットワイン', zh: '热红酒' },
+'uiTheme.name.holly': { ko: '호랑가시', en: 'Holly Berry', ja: 'ヒイラギ', zh: '冬青' },</pre>
+<p>④ <code>--berry</code>를 쓰는 곳(호랑가시만): 왼쪽 메뉴 선택 항목 글자 뒤 열매 점(지름 6px), 머리 칩 테두리(60% 섞기), 견본 열매 점. 다른 테마는 값이 없어 아무것도 안 바뀝니다.</p>
+<p class="mut" style="color:#666">결정이 필요한 것: 크리스마스 기간에만 보일지(예: 12월) 아니면 항상 보일지. 기간 한정이면 기간이 끝난 뒤 이 테마를 쓰던 사람을 어느 테마로 돌릴지도 정해야 합니다.</p></section>
+</details></div>
+<div class="oldzone"><h2 class="zt">비교용 · 파랑 시안 (v3, 쓰지 않음)</h2>
+<p style="color:#777">대표 피드백 "파랗고 까맣기만 해서 크리스마스스럽지 않다"로 교체된 안입니다. 비교를 위해 남겨 둡니다.</p>
+<section><h2>한눈에 고르기</h2><div class="sum">
+<div><div class="sw2" style="background:linear-gradient(135deg,#34457A,#A7D3EC)"></div><b>A · 밤하늘</b><br><span class="mut" style="color:#666">남색→얼음 하늘색 · 가장 무난</span></div><div><div class="sw2" style="background:linear-gradient(135deg,#45518C,#C6C2E8)"></div><b>B · 서리</b><br><span class="mut" style="color:#666">남색→은빛 라벤더 · 지금 앱과 잘 이어짐</span></div><div><div class="sw2" style="background:linear-gradient(135deg,#25667A,#D2E6F0)"></div><b>C · 빙하</b><br><span class="mut" style="color:#666">청록 얼음→눈 흰빛 · 가장 시원</span></div>
+</div><div class="rec"><b>추천(대표 미확인)</b>: 하나만 고른다면 <b>A 밤하늘</b>입니다. '눈 오는 밤'이 가장 바로 떠오르고 라이트·다크 모두 안정적입니다. 3개를 다 넣어도 서로 구분됩니다(파랑·보랏빛·청록).</div></section>
+<section><h2>후보 A · 밤하늘 <small>(Midnight)</small></h2>
+<p class="lead"><span class="bigsw" style="background:linear-gradient(135deg,#34457A,#A7D3EC)"></span>깊은 남색 밤하늘에서 얼음 하늘색으로 번집니다. 같은 파랑 계열이라 가운데가 맑은 회청색으로 이어집니다. 가장 무난하고 오래 써도 편합니다.<br>
+<b>이름 후보</b>: 밤하늘 / 한겨울밤 / 별밤 · 영어 Midnight · 견본 <code>#34457A → #A7D3EC</code> · 가장 낮은 글자 대비 <b>5.29:1</b> (기준 4.5:1 이상 ✅)</p>
+<div class="pair"><figure><figcaption>라이트</figcaption><div class="win" data-theme="midnight" data-mode="light">
+ <nav class="sb"><div class="logo">AI Office</div>
+  <a>🏢 사무실</a><a class="on">💬 대화</a><a>📋 업무 보드</a><a>⚙️ 설정</a>
+  <div class="sbfoot"><span class="dot w"></span>3명 일하는 중</div></nav>
+ <main>
+  <div class="hd"><b>대화 · 디자인 팀</b><span class="chip">❄ 밤하늘</span></div>
+  <div class="chat">
+   <div class="row"><span class="av">정</span><div class="bub o"><b>정리드</b><br>시안 확인 부탁드려요. 버튼 색이 괜찮은지 봐 주세요.</div></div>
+   <div class="row me"><div class="bub m">좋아요. 버튼이 차분하게 잘 보이네요<div class="tm">오후 3:12</div></div></div>
+   <div class="row"><span class="av b">박</span><div class="bub o">회의는 <a class="lnk">업무 카드 #24</a>에서 이어 갈게요.</div></div>
+  </div>
+  <div class="card"><div class="ct"><b>업무 카드</b><span class="st"><span class="dot w"></span>진행</span><span class="st"><span class="dot q"></span>대기</span><span class="st"><span class="dot e"></span>오류</span></div>
+   <p class="mut">크리스마스 이벤트 배너 만들기 · 이디자</p>
+   <div class="inp">지시 입력…</div>
+   <div class="btns"><button class="bp">보내기</button><button class="bo">취소</button><button class="bd">삭제</button></div></div>
+ </main></div></figure><figure><figcaption>다크</figcaption><div class="win" data-theme="midnight" data-mode="dark">
+ <nav class="sb"><div class="logo">AI Office</div>
+  <a>🏢 사무실</a><a class="on">💬 대화</a><a>📋 업무 보드</a><a>⚙️ 설정</a>
+  <div class="sbfoot"><span class="dot w"></span>3명 일하는 중</div></nav>
+ <main>
+  <div class="hd"><b>대화 · 디자인 팀</b><span class="chip">❄ 밤하늘</span></div>
+  <div class="chat">
+   <div class="row"><span class="av">정</span><div class="bub o"><b>정리드</b><br>시안 확인 부탁드려요. 버튼 색이 괜찮은지 봐 주세요.</div></div>
+   <div class="row me"><div class="bub m">좋아요. 버튼이 차분하게 잘 보이네요<div class="tm">오후 3:12</div></div></div>
+   <div class="row"><span class="av b">박</span><div class="bub o">회의는 <a class="lnk">업무 카드 #24</a>에서 이어 갈게요.</div></div>
+  </div>
+  <div class="card"><div class="ct"><b>업무 카드</b><span class="st"><span class="dot w"></span>진행</span><span class="st"><span class="dot q"></span>대기</span><span class="st"><span class="dot e"></span>오류</span></div>
+   <p class="mut">크리스마스 이벤트 배너 만들기 · 이디자</p>
+   <div class="inp">지시 입력…</div>
+   <div class="btns"><button class="bp">보내기</button><button class="bo">취소</button><button class="bd">삭제</button></div></div>
+ </main></div></figure></div>
+<details><summary>글자 대비 표 (WCAG AA 4.5:1 기준)</summary><table class="ct2"><tr><th>항목</th><th>라이트</th><th>다크</th></tr><tr><td>본문 글자 / 바탕</td><td><span class="pv" style="color:#1E222F;background:#F5F6F9">가A</span> 14.67 ✅</td><td><span class="pv" style="color:#ECEEF3;background:#13151A">가A</span> 15.73 ✅</td></tr><tr><td>흐린 글자 / 바탕</td><td><span class="pv" style="color:#626674;background:#F5F6F9">가A</span> 5.29 ✅</td><td><span class="pv" style="color:#ABAFBA;background:#13151A">가A</span> 8.32 ✅</td></tr><tr><td>흐린 글자 / 카드</td><td><span class="pv" style="color:#626674;background:#FFFFFF">가A</span> 5.72 ✅</td><td><span class="pv" style="color:#ABAFBA;background:#21242C">가A</span> 7.07 ✅</td></tr><tr><td>주 색 글자(링크) / 카드</td><td><span class="pv" style="color:#33457E;background:#FFFFFF">가A</span> 9.16 ✅</td><td><span class="pv" style="color:#A9BCF2;background:#21242C">가A</span> 8.25 ✅</td></tr><tr><td>버튼 글자 / 버튼 시작색</td><td><span class="pv" style="color:#FFFFFF;background:#33457E">가A</span> 9.16 ✅</td><td><span class="pv" style="color:#0E1430;background:#A9BCF2">가A</span> 9.61 ✅</td></tr><tr><td>버튼 글자 / 버튼 끝색</td><td><span class="pv" style="color:#FFFFFF;background:#2C6A8E">가A</span> 5.9 ✅</td><td><span class="pv" style="color:#0E1430;background:#9ECDE8">가A</span> 10.63 ✅</td></tr><tr><td>메뉴 글자 / 사이드바 위</td><td><span class="pv" style="color:#1E222F;background:#DCE1F3">가A</span> 12.16 ✅</td><td><span class="pv" style="color:#ECEEF3;background:#1B2242">가A</span> 13.36 ✅</td></tr><tr><td>메뉴 글자 / 사이드바 아래</td><td><span class="pv" style="color:#1E222F;background:#DCEEF8">가A</span> 13.3 ✅</td><td><span class="pv" style="color:#ECEEF3;background:#142F3D">가A</span> 12.03 ✅</td></tr><tr><td>삭제 버튼 글자</td><td><span class="pv" style="color:#FFFFFF;background:#C42B2B">가A</span> 5.63 ✅</td><td><span class="pv" style="color:#2A0A0A;background:#FF6B6B">가A</span> 6.6 ✅</td></tr></table></details></section><section><h2>후보 B · 서리 <small>(Frost)</small></h2>
+<p class="lead"><span class="bigsw" style="background:linear-gradient(135deg,#45518C,#C6C2E8)"></span>남색에서 은빛 라벤더로 번집니다. 눈 위에 드리운 푸른 그림자 느낌입니다. 보랏빛이 살짝 돌아 기존 라벤더 앱 분위기와 가장 잘 이어집니다.<br>
+<b>이름 후보</b>: 서리 / 은빛 서리 / 눈그늘 · 영어 Frost · 견본 <code>#45518C → #C6C2E8</code> · 가장 낮은 글자 대비 <b>5.37:1</b> (기준 4.5:1 이상 ✅)</p>
+<div class="pair"><figure><figcaption>라이트</figcaption><div class="win" data-theme="frost" data-mode="light">
+ <nav class="sb"><div class="logo">AI Office</div>
+  <a>🏢 사무실</a><a class="on">💬 대화</a><a>📋 업무 보드</a><a>⚙️ 설정</a>
+  <div class="sbfoot"><span class="dot w"></span>3명 일하는 중</div></nav>
+ <main>
+  <div class="hd"><b>대화 · 디자인 팀</b><span class="chip">❄ 서리</span></div>
+  <div class="chat">
+   <div class="row"><span class="av">정</span><div class="bub o"><b>정리드</b><br>시안 확인 부탁드려요. 버튼 색이 괜찮은지 봐 주세요.</div></div>
+   <div class="row me"><div class="bub m">좋아요. 버튼이 차분하게 잘 보이네요<div class="tm">오후 3:12</div></div></div>
+   <div class="row"><span class="av b">박</span><div class="bub o">회의는 <a class="lnk">업무 카드 #24</a>에서 이어 갈게요.</div></div>
+  </div>
+  <div class="card"><div class="ct"><b>업무 카드</b><span class="st"><span class="dot w"></span>진행</span><span class="st"><span class="dot q"></span>대기</span><span class="st"><span class="dot e"></span>오류</span></div>
+   <p class="mut">크리스마스 이벤트 배너 만들기 · 이디자</p>
+   <div class="inp">지시 입력…</div>
+   <div class="btns"><button class="bp">보내기</button><button class="bo">취소</button><button class="bd">삭제</button></div></div>
+ </main></div></figure><figure><figcaption>다크</figcaption><div class="win" data-theme="frost" data-mode="dark">
+ <nav class="sb"><div class="logo">AI Office</div>
+  <a>🏢 사무실</a><a class="on">💬 대화</a><a>📋 업무 보드</a><a>⚙️ 설정</a>
+  <div class="sbfoot"><span class="dot w"></span>3명 일하는 중</div></nav>
+ <main>
+  <div class="hd"><b>대화 · 디자인 팀</b><span class="chip">❄ 서리</span></div>
+  <div class="chat">
+   <div class="row"><span class="av">정</span><div class="bub o"><b>정리드</b><br>시안 확인 부탁드려요. 버튼 색이 괜찮은지 봐 주세요.</div></div>
+   <div class="row me"><div class="bub m">좋아요. 버튼이 차분하게 잘 보이네요<div class="tm">오후 3:12</div></div></div>
+   <div class="row"><span class="av b">박</span><div class="bub o">회의는 <a class="lnk">업무 카드 #24</a>에서 이어 갈게요.</div></div>
+  </div>
+  <div class="card"><div class="ct"><b>업무 카드</b><span class="st"><span class="dot w"></span>진행</span><span class="st"><span class="dot q"></span>대기</span><span class="st"><span class="dot e"></span>오류</span></div>
+   <p class="mut">크리스마스 이벤트 배너 만들기 · 이디자</p>
+   <div class="inp">지시 입력…</div>
+   <div class="btns"><button class="bp">보내기</button><button class="bo">취소</button><button class="bd">삭제</button></div></div>
+ </main></div></figure></div>
+<details><summary>글자 대비 표 (WCAG AA 4.5:1 기준)</summary><table class="ct2"><tr><th>항목</th><th>라이트</th><th>다크</th></tr><tr><td>본문 글자 / 바탕</td><td><span class="pv" style="color:#1E212F;background:#F5F5F9">가A</span> 14.7 ✅</td><td><span class="pv" style="color:#ECEDF3;background:#13141A">가A</span> 15.73 ✅</td></tr><tr><td>흐린 글자 / 바탕</td><td><span class="pv" style="color:#626474;background:#F5F5F9">가A</span> 5.37 ✅</td><td><span class="pv" style="color:#ABADBA;background:#13141A">가A</span> 8.24 ✅</td></tr><tr><td>흐린 글자 / 카드</td><td><span class="pv" style="color:#626474;background:#FFFFFF">가A</span> 5.84 ✅</td><td><span class="pv" style="color:#ABADBA;background:#21232C">가A</span> 7.02 ✅</td></tr><tr><td>주 색 글자(링크) / 카드</td><td><span class="pv" style="color:#414E8C;background:#FFFFFF">가A</span> 7.8 ✅</td><td><span class="pv" style="color:#B3BBF5;background:#21232C">가A</span> 8.46 ✅</td></tr><tr><td>버튼 글자 / 버튼 시작색</td><td><span class="pv" style="color:#FFFFFF;background:#414E8C">가A</span> 7.8 ✅</td><td><span class="pv" style="color:#11143A;background:#B3BBF5">가A</span> 9.57 ✅</td></tr><tr><td>버튼 글자 / 버튼 끝색</td><td><span class="pv" style="color:#FFFFFF;background:#5A549E">가A</span> 6.57 ✅</td><td><span class="pv" style="color:#11143A;background:#C3BBF0">가A</span> 9.86 ✅</td></tr><tr><td>메뉴 글자 / 사이드바 위</td><td><span class="pv" style="color:#1E212F;background:#DFE1F4">가A</span> 12.34 ✅</td><td><span class="pv" style="color:#ECEDF3;background:#1E2143">가A</span> 13.28 ✅</td></tr><tr><td>메뉴 글자 / 사이드바 아래</td><td><span class="pv" style="color:#1E212F;background:#EAE7F7">가A</span> 13.15 ✅</td><td><span class="pv" style="color:#ECEDF3;background:#29253F">가A</span> 12.56 ✅</td></tr><tr><td>삭제 버튼 글자</td><td><span class="pv" style="color:#FFFFFF;background:#C42B2B">가A</span> 5.63 ✅</td><td><span class="pv" style="color:#2A0A0A;background:#FF6B6B">가A</span> 6.6 ✅</td></tr></table></details></section><section><h2>후보 C · 빙하 <small>(Glacier)</small></h2>
+<p class="lead"><span class="bigsw" style="background:linear-gradient(135deg,#25667A,#D2E6F0)"></span>깊은 청록 얼음에서 눈 흰빛으로 번집니다. 셋 중 가장 시원하고 맑습니다. 다크에서는 얼음 호수처럼 보입니다.<br>
+<b>이름 후보</b>: 빙하 / 얼음호수 / 설원 · 영어 Glacier · 견본 <code>#25667A → #D2E6F0</code> · 가장 낮은 글자 대비 <b>4.86:1</b> (기준 4.5:1 이상 ✅)</p>
+<div class="pair"><figure><figcaption>라이트</figcaption><div class="win" data-theme="glacier" data-mode="light">
+ <nav class="sb"><div class="logo">AI Office</div>
+  <a>🏢 사무실</a><a class="on">💬 대화</a><a>📋 업무 보드</a><a>⚙️ 설정</a>
+  <div class="sbfoot"><span class="dot w"></span>3명 일하는 중</div></nav>
+ <main>
+  <div class="hd"><b>대화 · 디자인 팀</b><span class="chip">❄ 빙하</span></div>
+  <div class="chat">
+   <div class="row"><span class="av">정</span><div class="bub o"><b>정리드</b><br>시안 확인 부탁드려요. 버튼 색이 괜찮은지 봐 주세요.</div></div>
+   <div class="row me"><div class="bub m">좋아요. 버튼이 차분하게 잘 보이네요<div class="tm">오후 3:12</div></div></div>
+   <div class="row"><span class="av b">박</span><div class="bub o">회의는 <a class="lnk">업무 카드 #24</a>에서 이어 갈게요.</div></div>
+  </div>
+  <div class="card"><div class="ct"><b>업무 카드</b><span class="st"><span class="dot w"></span>진행</span><span class="st"><span class="dot q"></span>대기</span><span class="st"><span class="dot e"></span>오류</span></div>
+   <p class="mut">크리스마스 이벤트 배너 만들기 · 이디자</p>
+   <div class="inp">지시 입력…</div>
+   <div class="btns"><button class="bp">보내기</button><button class="bo">취소</button><button class="bd">삭제</button></div></div>
+ </main></div></figure><figure><figcaption>다크</figcaption><div class="win" data-theme="glacier" data-mode="dark">
+ <nav class="sb"><div class="logo">AI Office</div>
+  <a>🏢 사무실</a><a class="on">💬 대화</a><a>📋 업무 보드</a><a>⚙️ 설정</a>
+  <div class="sbfoot"><span class="dot w"></span>3명 일하는 중</div></nav>
+ <main>
+  <div class="hd"><b>대화 · 디자인 팀</b><span class="chip">❄ 빙하</span></div>
+  <div class="chat">
+   <div class="row"><span class="av">정</span><div class="bub o"><b>정리드</b><br>시안 확인 부탁드려요. 버튼 색이 괜찮은지 봐 주세요.</div></div>
+   <div class="row me"><div class="bub m">좋아요. 버튼이 차분하게 잘 보이네요<div class="tm">오후 3:12</div></div></div>
+   <div class="row"><span class="av b">박</span><div class="bub o">회의는 <a class="lnk">업무 카드 #24</a>에서 이어 갈게요.</div></div>
+  </div>
+  <div class="card"><div class="ct"><b>업무 카드</b><span class="st"><span class="dot w"></span>진행</span><span class="st"><span class="dot q"></span>대기</span><span class="st"><span class="dot e"></span>오류</span></div>
+   <p class="mut">크리스마스 이벤트 배너 만들기 · 이디자</p>
+   <div class="inp">지시 입력…</div>
+   <div class="btns"><button class="bp">보내기</button><button class="bo">취소</button><button class="bd">삭제</button></div></div>
+ </main></div></figure></div>
+<details><summary>글자 대비 표 (WCAG AA 4.5:1 기준)</summary><table class="ct2"><tr><th>항목</th><th>라이트</th><th>다크</th></tr><tr><td>본문 글자 / 바탕</td><td><span class="pv" style="color:#1E2A2F;background:#F5F8F9">가A</span> 13.79 ✅</td><td><span class="pv" style="color:#ECF1F3;background:#13191A">가A</span> 15.61 ✅</td></tr><tr><td>흐린 글자 / 바탕</td><td><span class="pv" style="color:#626F74;background:#F5F8F9">가A</span> 4.86 ✅</td><td><span class="pv" style="color:#ABB6BA;background:#13191A">가A</span> 8.57 ✅</td></tr><tr><td>흐린 글자 / 카드</td><td><span class="pv" style="color:#626F74;background:#FFFFFF">가A</span> 5.19 ✅</td><td><span class="pv" style="color:#ABB6BA;background:#21292C">가A</span> 7.14 ✅</td></tr><tr><td>주 색 글자(링크) / 카드</td><td><span class="pv" style="color:#1F5D70;background:#FFFFFF">가A</span> 7.35 ✅</td><td><span class="pv" style="color:#8FD0E3;background:#21292C">가A</span> 8.67 ✅</td></tr><tr><td>버튼 글자 / 버튼 시작색</td><td><span class="pv" style="color:#FFFFFF;background:#1F5D70">가A</span> 7.35 ✅</td><td><span class="pv" style="color:#062029;background:#8FD0E3">가A</span> 9.87 ✅</td></tr><tr><td>버튼 글자 / 버튼 끝색</td><td><span class="pv" style="color:#FFFFFF;background:#2F5F86">가A</span> 6.77 ✅</td><td><span class="pv" style="color:#062029;background:#B5D3EE">가A</span> 10.85 ✅</td></tr><tr><td>메뉴 글자 / 사이드바 위</td><td><span class="pv" style="color:#1E2A2F;background:#D7EBF1">가A</span> 11.94 ✅</td><td><span class="pv" style="color:#ECF1F3;background:#132F38">가A</span> 12.37 ✅</td></tr><tr><td>메뉴 글자 / 사이드바 아래</td><td><span class="pv" style="color:#1E2A2F;background:#E6EFF6">가A</span> 12.64 ✅</td><td><span class="pv" style="color:#ECF1F3;background:#1E2A3A">가A</span> 12.74 ✅</td></tr><tr><td>삭제 버튼 글자</td><td><span class="pv" style="color:#FFFFFF;background:#C42B2B">가A</span> 5.63 ✅</td><td><span class="pv" style="color:#2A0A0A;background:#FF6B6B">가A</span> 6.6 ✅</td></tr></table></details></section>
+<section><h2>가운데 색 확인 (탁해지지 않는지)</h2><p class="lead">앱은 두 색을 그대로 이어 칠합니다(sRGB). 그래서 두 색의 딱 중간 색을 따로 뽑아 보았습니다. 세 후보 모두 가운데가 푸른 기를 유지합니다. 갈색이나 잿빛으로 죽지 않습니다.</p>
+<div class="cmp"><span><span class="bigsw" style="width:56px;height:56px;background:linear-gradient(135deg,#34457A,#A7D3EC)"></span> <span class="bigsw" style="background:#6E8CB3"></span><b>밤하늘</b> 가운데 <code>#6E8CB3</code> · 색상 214°(파랑 계열) · 채도 31%</span><span><span class="bigsw" style="width:56px;height:56px;background:linear-gradient(135deg,#45518C,#C6C2E8)"></span> <span class="bigsw" style="background:#868ABA"></span><b>서리</b> 가운데 <code>#868ABA</code> · 색상 235°(파랑 계열) · 채도 28%</span><span><span class="bigsw" style="width:56px;height:56px;background:linear-gradient(135deg,#25667A,#D2E6F0)"></span> <span class="bigsw" style="background:#7CA6B5"></span><b>빙하</b> 가운데 <code>#7CA6B5</code> · 색상 196°(파랑 계열) · 채도 28%</span></div>
+<p class="mut" style="color:#666">참고: 채도가 10% 아래로 떨어지면 회색으로 보이기 시작합니다. 세 후보는 28~31%라 은은하지만 색이 남아 있습니다.</p>
+<p><b>빨강 포인트</b>: 이번 시안에서는 빼 두었습니다. 넣는다면 큰 면적이 아니라, 설정 견본 옆 작은 장식이나 알림 점 정도가 알맞습니다. 삭제·오류 빨강은 모든 테마 공통값 그대로라 겹치지 않습니다.</p></section>
+<details><summary>이전 파랑 시안 구현 값 (참고)</summary><section><h2>개발 전달 · 구현용 값</h2>
+<p>① <code>app/src/renderer/index.css</code>: 그라데이션 테마 4종 블록 뒤에 그대로 붙이면 됩니다. 토큰 이름과 순서는 aurora 블록과 같습니다.</p><pre>/* 겨울(크리스마스) 테마 3종 — 그라데이션 테마와 같은 gen 규칙 (docs/design/christmas-theme) */
+[data-theme='midnight'][data-mode='light'] {
+  color-scheme: light;
+  --background: #F5F6F9;
+  --foreground: #1E222F;
+  --card: #FFFFFF;
+  --card-foreground: #1E222F;
+  --popover: #FFFFFF;
+  --popover-foreground: #1E222F;
+  --primary: #33457E;
+  --primary-foreground: #FFFFFF;
+  --secondary: #ECEDF3;
+  --secondary-foreground: #1E222F;
+  --muted: #ECEDF3;
+  --muted-foreground: #626674;
+  --accent: #E5E9F5;
+  --accent-foreground: #1E222F;
+  --destructive: #C42B2B;
+  --destructive-foreground: #FFFFFF;
+  --border: #DDE0E9;
+  --input: #C9CDDA;
+  --ring: #5B6FAE;
+  --accent-a: #0B6DA1;
+  --accent-b: #5C4CE3;
+  --surface-chrome: #FBFCFE;
+  --surface-sidebar: #ECEEF4;
+  --hud: rgba(255,255,255,.92);
+  --hud-foreground: #1E222F;
+  --hud-border: #DDE0E9;
+  --spark-from: #33457E;
+  --spark-to: #8EC3E0;
+  --grad-primary-end: #2C6A8E;
+  --shadow-color: #33457E40;
+  --status-working: #1C7C46;
+  --status-waiting: #9A5B00;
+  --status-idle: #6B6B62;
+  --status-error: #C42B2B;
+  --sidebar-bg: linear-gradient(170deg, #DCE1F3, #DCEEF8);
+}
+
+[data-theme='midnight'][data-mode='dark'] {
+  color-scheme: dark;
+  --background: #13151A;
+  --foreground: #ECEEF3;
+  --card: #21242C;
+  --card-foreground: #ECEEF3;
+  --popover: #21242C;
+  --popover-foreground: #ECEEF3;
+  --primary: #A9BCF2;
+  --primary-foreground: #0E1430;
+  --secondary: #2D3039;
+  --secondary-foreground: #ECEEF3;
+  --muted: #2D3039;
+  --muted-foreground: #ABAFBA;
+  --accent: #363B4A;
+  --accent-foreground: #ECEEF3;
+  --destructive: #FF6B6B;
+  --destructive-foreground: #2A0A0A;
+  --border: #3B3F4A;
+  --input: #494D5A;
+  --ring: #A9BCF2;
+  --accent-a: #5CC8FF;
+  --accent-b: #B6A8FF;
+  --surface-chrome: #1A1C23;
+  --surface-sidebar: #0F1115;
+  --hud: #21242C;
+  --hud-foreground: #ECEEF3;
+  --hud-border: #3B3F4A;
+  --spark-from: #A9BCF2;
+  --spark-to: #A7D3EC;
+  --grad-primary-end: #9ECDE8;
+  --shadow-color: rgba(0,0,0,.6);
+  --status-working: #4ADE80;
+  --status-waiting: #F2C94C;
+  --status-idle: #9A98AC;
+  --status-error: #FF6B6B;
+  --sidebar-bg: linear-gradient(170deg, #1B2242, #142F3D);
+}
+
+[data-theme='frost'][data-mode='light'] {
+  color-scheme: light;
+  --background: #F5F5F9;
+  --foreground: #1E212F;
+  --card: #FFFFFF;
+  --card-foreground: #1E212F;
+  --popover: #FFFFFF;
+  --popover-foreground: #1E212F;
+  --primary: #414E8C;
+  --primary-foreground: #FFFFFF;
+  --secondary: #ECEDF3;
+  --secondary-foreground: #1E212F;
+  --muted: #ECEDF3;
+  --muted-foreground: #626474;
+  --accent: #E5E7F5;
+  --accent-foreground: #1E212F;
+  --destructive: #C42B2B;
+  --destructive-foreground: #FFFFFF;
+  --border: #DDDFE9;
+  --input: #C9CCDA;
+  --ring: #6672B8;
+  --accent-a: #0B6DA1;
+  --accent-b: #5C4CE3;
+  --surface-chrome: #FBFCFE;
+  --surface-sidebar: #ECEDF4;
+  --hud: rgba(255,255,255,.92);
+  --hud-foreground: #1E212F;
+  --hud-border: #DDDFE9;
+  --spark-from: #414E8C;
+  --spark-to: #A9A3DB;
+  --grad-primary-end: #5A549E;
+  --shadow-color: #414E8C40;
+  --status-working: #1C7C46;
+  --status-waiting: #9A5B00;
+  --status-idle: #6B6B62;
+  --status-error: #C42B2B;
+  --sidebar-bg: linear-gradient(170deg, #DFE1F4, #EAE7F7);
+}
+
+[data-theme='frost'][data-mode='dark'] {
+  color-scheme: dark;
+  --background: #13141A;
+  --foreground: #ECEDF3;
+  --card: #21232C;
+  --card-foreground: #ECEDF3;
+  --popover: #21232C;
+  --popover-foreground: #ECEDF3;
+  --primary: #B3BBF5;
+  --primary-foreground: #11143A;
+  --secondary: #2D2E39;
+  --secondary-foreground: #ECEDF3;
+  --muted: #2D2E39;
+  --muted-foreground: #ABADBA;
+  --accent: #36394A;
+  --accent-foreground: #ECEDF3;
+  --destructive: #FF6B6B;
+  --destructive-foreground: #2A0A0A;
+  --border: #3B3D4A;
+  --input: #494C5A;
+  --ring: #B3BBF5;
+  --accent-a: #5CC8FF;
+  --accent-b: #B6A8FF;
+  --surface-chrome: #1A1B23;
+  --surface-sidebar: #0F1015;
+  --hud: #21232C;
+  --hud-foreground: #ECEDF3;
+  --hud-border: #3B3D4A;
+  --spark-from: #B3BBF5;
+  --spark-to: #CBC6F2;
+  --grad-primary-end: #C3BBF0;
+  --shadow-color: rgba(0,0,0,.6);
+  --status-working: #4ADE80;
+  --status-waiting: #F2C94C;
+  --status-idle: #9A98AC;
+  --status-error: #FF6B6B;
+  --sidebar-bg: linear-gradient(170deg, #1E2143, #29253F);
+}
+
+[data-theme='glacier'][data-mode='light'] {
+  color-scheme: light;
+  --background: #F5F8F9;
+  --foreground: #1E2A2F;
+  --card: #FFFFFF;
+  --card-foreground: #1E2A2F;
+  --popover: #FFFFFF;
+  --popover-foreground: #1E2A2F;
+  --primary: #1F5D70;
+  --primary-foreground: #FFFFFF;
+  --secondary: #ECF1F3;
+  --secondary-foreground: #1E2A2F;
+  --muted: #ECF1F3;
+  --muted-foreground: #626F74;
+  --accent: #E5F1F5;
+  --accent-foreground: #1E2A2F;
+  --destructive: #C42B2B;
+  --destructive-foreground: #FFFFFF;
+  --border: #DDE6E9;
+  --input: #C9D5DA;
+  --ring: #3F8AA0;
+  --accent-a: #0B6DA1;
+  --accent-b: #5C4CE3;
+  --surface-chrome: #FBFDFE;
+  --surface-sidebar: #ECF2F4;
+  --hud: rgba(255,255,255,.92);
+  --hud-foreground: #1E2A2F;
+  --hud-border: #DDE6E9;
+  --spark-from: #1F5D70;
+  --spark-to: #9CC7D9;
+  --grad-primary-end: #2F5F86;
+  --shadow-color: #1F5D7040;
+  --status-working: #1C7C46;
+  --status-waiting: #9A5B00;
+  --status-idle: #6B6B62;
+  --status-error: #C42B2B;
+  --sidebar-bg: linear-gradient(170deg, #D7EBF1, #E6EFF6);
+}
+
+[data-theme='glacier'][data-mode='dark'] {
+  color-scheme: dark;
+  --background: #13191A;
+  --foreground: #ECF1F3;
+  --card: #21292C;
+  --card-foreground: #ECF1F3;
+  --popover: #21292C;
+  --popover-foreground: #ECF1F3;
+  --primary: #8FD0E3;
+  --primary-foreground: #062029;
+  --secondary: #2D3639;
+  --secondary-foreground: #ECF1F3;
+  --muted: #2D3639;
+  --muted-foreground: #ABB6BA;
+  --accent: #36454A;
+  --accent-foreground: #ECF1F3;
+  --destructive: #FF6B6B;
+  --destructive-foreground: #2A0A0A;
+  --border: #3B464A;
+  --input: #49555A;
+  --ring: #8FD0E3;
+  --accent-a: #5CC8FF;
+  --accent-b: #B6A8FF;
+  --surface-chrome: #1A2123;
+  --surface-sidebar: #0F1315;
+  --hud: #21292C;
+  --hud-foreground: #ECF1F3;
+  --hud-border: #3B464A;
+  --spark-from: #8FD0E3;
+  --spark-to: #CFE6F2;
+  --grad-primary-end: #B5D3EE;
+  --shadow-color: rgba(0,0,0,.6);
+  --status-working: #4ADE80;
+  --status-waiting: #F2C94C;
+  --status-idle: #9A98AC;
+  --status-error: #FF6B6B;
+  --sidebar-bg: linear-gradient(170deg, #132F38, #1E2A3A);
+}</pre>
+<p>② <code>app/src/shared/uiTheme.ts</code>: <code>UiThemeId</code>에 <code>'midnight' | 'frost' | 'glacier'</code>를 추가하고, 'gradient' 다음에 새 묶음을 넣습니다.</p>
+<pre>  {
+    id: 'christmas',
+    titleKey: 'uiTheme.group.christmas',
+    themes: [
+      { id: 'midnight', labelKey: 'uiTheme.name.midnight', swatchFrom: '#34457A', swatchTo: '#A7D3EC' },
+      { id: 'frost', labelKey: 'uiTheme.name.frost', swatchFrom: '#45518C', swatchTo: '#C6C2E8' },
+      { id: 'glacier', labelKey: 'uiTheme.name.glacier', swatchFrom: '#25667A', swatchTo: '#D2E6F0' },
+    ],
+  },</pre>
+<p>③ 이름 4개 언어 (추천안, 대표 미확인)</p><pre>'uiTheme.group.christmas': { ko: '크리스마스', en: 'Christmas', ja: 'クリスマス', zh: '圣诞' },  // 또는 '겨울' / 'Winter' / '冬' / '冬季'
+'uiTheme.name.midnight': { ko: '밤하늘', en: 'Midnight', ja: '夜空', zh: '夜空' },
+'uiTheme.name.frost': { ko: '서리', en: 'Frost', ja: '霜', zh: '霜' },
+'uiTheme.name.glacier': { ko: '빙하', en: 'Glacier', ja: '氷河', zh: '冰川' },</pre>
+<p class="mut" style="color:#666">결정이 필요한 것: 크리스마스 기간에만 보일지(예: 12월) 아니면 항상 보일지. 기간 한정이면 기간이 끝난 뒤 이 테마를 쓰던 사람을 어느 테마로 돌릴지도 정해야 합니다.</p></section>
+</details></div>
+
+</div>
+<script>
+/* 눈 효과 견본 — 디자인 확인용. 규칙: 캔버스 1장, 밀도×넓이(상한), 휴대폰 상한 절반·30fps, DPR ≤1.5, 화면 밖·숨김이면 멈춤, 움직임 줄이기면 멈춘 눈 한 번만 */
+const LEVELS={
+  light:{dens:14,max:40,r:[1.2,2.5],v:[14,30],crystal:.10},
+  normal:{dens:28,max:80,r:[1.5,3.5],v:[20,42],crystal:.15},
+  heavy:{dens:50,max:140,r:[1.8,4.2],v:[30,60],crystal:.20},
+};
+const MOBILE=matchMedia('(pointer: coarse)').matches||innerWidth<700;
+const rmQuery=matchMedia('(prefers-reduced-motion: reduce)');
+const all=new Set();
+let forceStill=false;
+const rnd=(a,b)=>a+Math.random()*(b-a);
+class Snow{
+  constructor(canvas,level,themeEl){this.c=canvas;this.ctx=canvas.getContext('2d');this.themeEl=themeEl;this.flakes=[];this.visible=true;this.last=0;this.skip=false;this.setLevel(level);
+    new ResizeObserver(()=>this.resize()).observe(canvas);
+    new IntersectionObserver(e=>{this.visible=e[0].isIntersecting;this.kick()}).observe(canvas);
+    all.add(this);this.resize();}
+  get still(){return forceStill||rmQuery.matches}
+  setLevel(l){this.L=LEVELS[l];this.populate();this.kick()}
+  readColors(){const s=getComputedStyle(this.themeEl);this.core=s.getPropertyValue('--snow-core').trim()||'#fff';this.edge=s.getPropertyValue('--snow-edge').trim()||'#cfe3f5';this.alt=s.getPropertyValue('--snow-alt').trim()||this.edge;this.dark=this.themeEl.dataset.mode==='dark'}
+  resize(){const dpr=Math.min(devicePixelRatio||1,1.5),w=this.c.clientWidth,h=this.c.clientHeight;if(!w||!h)return;this.w=w;this.h=h;this.c.width=Math.round(w*dpr);this.c.height=Math.round(h*dpr);this.ctx.setTransform(dpr,0,0,dpr,0,0);this.populate();this.kick()}
+  target(){if(!this.w)return 0;let n=Math.round(this.w*this.h/1e5*this.L.dens);const cap=MOBILE?this.L.max/2:this.L.max;n=Math.min(n,cap);return this.still?Math.ceil(n/2):n}
+  make(anyY){const L=this.L;return{x:Math.random()*this.w,y:anyY?Math.random()*this.h:-10,r:rnd(L.r[0],L.r[1]),v:rnd(L.v[0],L.v[1]),ph:Math.random()*6.28,sw:rnd(.6,1.4),amp:rnd(6,20),cr:Math.random()<L.crystal,alt:Math.random()<.3,rot:Math.random()*6.28,a:rnd(.6,.95)}}
+  populate(){const n=this.target();while(this.flakes.length<n)this.flakes.push(this.make(true));this.flakes.length=n;this.readColors();this.draw(0)}
+  kick(){if(this.raf||!this.visible||document.hidden)return;if(this.still){this.readColors();this.draw(0);return}this.last=performance.now();this.raf=requestAnimationFrame(t=>this.tick(t))}
+  tick(t){this.raf=0;if(!this.visible||document.hidden||this.still){this.draw(0);return}
+    if(MOBILE&&(this.skip=!this.skip)){this.raf=requestAnimationFrame(x=>this.tick(x));return}
+    const dt=Math.min((t-this.last)/1000,.1);this.last=t;this.time=(this.time||0)+dt;this.draw(dt);this.raf=requestAnimationFrame(x=>this.tick(x))}
+  draw(dt){const g=this.ctx;if(!this.w)return;g.clearRect(0,0,this.w,this.h);const wind=Math.sin((this.time||0)*.15)*4;
+    for(const f of this.flakes){
+      if(dt){f.y+=f.v*dt;f.x+=(Math.cos((this.time)*f.sw+f.ph)*f.amp*.6+wind)*dt;f.rot+=dt*.5;
+        if(f.y>this.h+10){Object.assign(f,this.make(false))} if(f.x<-10)f.x+=this.w+20; if(f.x>this.w+10)f.x-=this.w+20}
+      g.globalAlpha=f.a;
+      if(f.cr){const R=f.r*2.1;g.strokeStyle=f.alt?this.alt:(this.dark?this.core:this.edge);g.lineWidth=this.dark?1:1.2;g.beginPath();for(let k=0;k<3;k++){const an=f.rot+k*Math.PI/3,cx=Math.cos(an)*R,sy=Math.sin(an)*R;g.moveTo(f.x-cx,f.y-sy);g.lineTo(f.x+cx,f.y+sy)}g.stroke();
+        if(!this.dark){g.fillStyle=this.core;g.beginPath();g.arc(f.x,f.y,f.r*.5,0,6.283);g.fill()}continue}
+      g.fillStyle=f.alt?this.alt:this.edge;g.beginPath();g.arc(f.x,f.y,f.r,0,6.283);g.fill();
+      g.fillStyle=f.alt&&this.dark?this.alt:this.core;g.beginPath();g.arc(f.x,f.y,f.r*(this.dark?.75:.35),0,6.283);g.fill();
+    }g.globalAlpha=1}
+}
+document.addEventListener('visibilitychange',()=>all.forEach(s=>s.kick()));
+rmQuery.addEventListener?.('change',()=>all.forEach(s=>s.populate()||s.kick()));
+
+/* 미리보기 그리기 */
+const NAMES={holly:'호랑가시',evergreen:'금빛 트리',snowfall:'화이트 크리스마스'};
+const winHTML=(th,mode)=>`<div class="win" data-theme="${th}" data-mode="${mode}">
+ <nav class="sb"><div class="logo">AI Office</div><a>🏢 사무실</a><a class="on">💬 대화</a><a>📋 업무 보드</a><a>⚙️ 설정</a><div class="sbfoot"><span class="dot w"></span>3명 일하는 중</div></nav>
+ <main><div class="hd"><b>대화 · 디자인 팀</b><span class="chip">🎄 ${NAMES[th]}</span></div>
+  <div class="chat"><div class="row"><span class="av">정</span><div class="bub o"><b>정리드</b><br>눈 효과 시안 확인 부탁드려요.</div></div>
+   <div class="row me"><div class="bub m">글자 위로는 안 지나가네요<div class="tm">오후 3:12</div></div></div>
+   <div class="row"><span class="av b">박</span><div class="bub o">회의는 <a class="lnk">업무 카드 #24</a>에서 이어 갈게요.</div></div></div>
+  <div class="card"><div class="ct"><b>업무 카드</b><span class="st"><span class="dot w"></span>진행</span><span class="st"><span class="dot q"></span>대기</span></div>
+   <p class="mut">크리스마스 눈 효과 · 이디자</p><div class="btns"><button class="bp" data-send>보내기</button><button class="bo">취소</button></div></div></main></div>`;
+const state={th:'holly',lv:'light',pl:'behind'};
+const big=[];
+function buildBig(){big.forEach(s=>{cancelAnimationFrame(s.raf);all.delete(s)});big.length=0;
+  document.querySelectorAll('.snowhost').forEach(h=>{const mode=h.dataset.mode;h.innerHTML=winHTML(state.th,mode);const win=h.firstElementChild;
+    const cv=document.createElement('canvas');cv.className='snow';cv.setAttribute('aria-hidden','true');(state.pl==='behind'?win.querySelector('.chat'):win).appendChild(cv);
+    big.push(new Snow(cv,state.lv,win));
+    const cnt=h.parentElement.querySelector('[data-clk]');win.querySelector('[data-send]').onclick=()=>cnt.textContent=+cnt.textContent+1;});}
+document.querySelectorAll('.mini').forEach(m=>{m.dataset.theme='holly';m.innerHTML='<div class="mc"><b>업무 카드</b><i></i><i></i></div>';const cv=document.createElement('canvas');cv.className='snow';m.appendChild(cv);m._s=new Snow(cv,m.dataset.lv,m)});
+document.querySelectorAll('input[name=sth]').forEach(i=>i.onchange=()=>{state.th=i.value;buildBig();document.querySelectorAll('.mini').forEach(m=>{m.dataset.theme=i.value;m._s.populate()})});
+document.querySelectorAll('input[name=slv]').forEach(i=>i.onchange=()=>{state.lv=i.value;big.forEach(s=>s.setLevel(i.value))});
+document.querySelectorAll('input[name=spl]').forEach(i=>i.onchange=()=>{state.pl=i.value;buildBig()});
+document.getElementById('srm').onchange=e=>{forceStill=e.target.checked;all.forEach(s=>{s.populate();s.kick()})};
+buildBig();
+</script>
+<script>document.querySelectorAll('#xctl input').forEach(c=>c.addEventListener('change',()=>document.body.classList.toggle(c.dataset.x,c.checked)));</script></body></html>

@@ -1,6 +1,6 @@
 // 공급자 중립 계약 — 직원 세션(AgentRuntime)과 앱 내부 AI(AiBackend). 구현은 공급자별 파일(claude.ts …)에 둔다.
 import type { McpConfig } from '../../shared/customMcp.ts'
-import type { AiProvider, Attachment, HelperRun, ModelChoice } from '../../shared/types'
+import type { AiProvider, Attachment, EffortLevel, HelperRun, ModelChoice } from '../../shared/types'
 import type { RawCommand } from '../../shared/slashCommands.ts'
 
 export type { AiProvider }
@@ -30,12 +30,21 @@ export type RuntimeEvent =
   /** 직전 모델 호출에 실은 문맥 크기 */
   | { type: 'context'; tokens: number }
   | { type: 'text'; text: string }
+  /** 쓰고 있는 답 글 조각 (글자가 나오는 대로). 다 쓰면 같은 글이 text로 한 번 더 온다 */
+  | { type: 'textDelta'; text: string }
   | { type: 'fileTouched'; path: string }
   /** 앱이 보내지 않은 턴을 엔진이 스스로 시작 (Codex /goal 이어 하기) — 이 턴의 result를 업무 끝으로 받는다 */
   | { type: 'autoTurn' }
   /** 한 턴의 끝. costUsd·tokens는 세션 시작부터의 누적 */
   | { type: 'result'; ok: boolean; subtype: string; text: string; numTurns: number; costUsd: number; tokensIn: number; tokensOut: number }
   | { type: 'error'; error: unknown }
+
+/** 생각 깊이·빠른 모드 — 세션을 닫지 않고 바꿀 수 있다 */
+export interface RuntimeTuning {
+  /** 없으면 엔진·모델 기본 */
+  effort?: EffortLevel
+  fast: boolean
+}
 
 export interface RuntimeStartOpts {
   cwd: string
@@ -44,6 +53,7 @@ export interface RuntimeStartOpts {
   /** 이어받을 세션 id */
   resumeId: string | null
   approvalMode: 'ask' | 'acceptEdits'
+  tuning: RuntimeTuning
   /** 공급자 기본 지침 뒤에 덧붙이는 글 */
   systemPromptAppend: string
   mcpServers: Record<string, RuntimeMcpServer>
@@ -73,6 +83,8 @@ export interface AgentRuntime {
   /** 지금 턴을 끊는다 (결과는 result 이벤트로 온다) */
   interrupt(): Promise<void>
   setModel(modelId: string | undefined): void
+  /** 생각 깊이·빠른 모드를 바꾼다 — 세션이 열려 있으면 다음 모델 호출부터, 아니면 다음 start에서 */
+  setTuning(tuning: RuntimeTuning): void
   /** 아직 시작하지 않은 지시를 버린다 (실행 오류 뒤 — 출처를 잃은 지시가 다시 실행되지 않게) */
   dropQueued(): void
   /** 세션만 닫는다 — 다음 send 때 다시 열 수 있다 */

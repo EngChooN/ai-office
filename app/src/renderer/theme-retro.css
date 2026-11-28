@@ -144,8 +144,12 @@
   font-family: inherit;
 }
 /* 작은 글자 → 12px 갈무리11, 14·15px → 15px 갈무리14 (renderer의 text-[Npx]는 모두 여기 있어야 한다 — 시험이 확인) */
-[data-theme='retro'] :is(.text-xs, .text-\[9\.5px\], .text-\[10px\], .text-\[10\.5px\], .text-\[11px\], .text-\[11\.5px\], .text-\[12px\], .text-\[13px\]) {
+[data-theme='retro'] :is(.text-xs, .text-\[9\.5px\], .text-\[10px\], .text-\[10\.5px\], .text-\[11px\], .text-\[11\.5px\], .text-\[12px\], .text-\[12\.5px\], .text-\[13px\]) {
   font-size: 12px;
+  font-family: var(--retro-small);
+}
+/* 13px 동그라미 안 첫 글자(지시 줄 보낸 곳 칩)는 키우면 넘쳐 크기는 그대로, 글꼴만 */
+[data-theme='retro'] .text-\[8\.5px\] {
   font-family: var(--retro-small);
 }
 [data-theme='retro'] :is(.text-\[14px\], .text-\[15px\]) {

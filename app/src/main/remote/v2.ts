@@ -256,7 +256,7 @@ export const V2_FIELDS: Partial<Record<OfficeMethod, Record<number, string[]>>> 
   // 원격은 작업 폴더·승인 방식을 정하지 못한다 (restrict가 기본 폴더와 'ask'로 채운다)
   hire: { 0: fieldsExcept('hire', 0, ['cwd', 'approvalMode'], { name: true, role: true, avatar: true, model: true, provider: true, systemPrompt: true, teamId: true, labIds: true, memory: true }) },
   startQuickChat: { 0: fieldsExcept('startQuickChat', 0, ['cwd', 'approvalMode'], { provider: true }) },
-  updateStaff: { 1: fieldsExcept('updateStaff', 1, ['cwd'], { teamId: true, name: true, role: true, model: true, avatar: true, systemPrompt: true, memory: true }) },
+  updateStaff: { 1: fieldsExcept('updateStaff', 1, ['cwd'], { teamId: true, name: true, role: true, model: true, avatar: true, systemPrompt: true, memory: true, effort: true, fast: true }) },
   updateTeam: { 1: fieldsOf('updateTeam', 1, { name: true, color: true, leadId: true, floor: true, description: true }) },
   approvalHistory: { 1: fieldsOf('approvalHistory', 1, { beforeId: true, limit: true, filter: true }) },
   // 랩 작업 폴더는 직원 작업 폴더처럼 PC에서만 (restrict가 새 랩은 폴더 없음으로 채운다)

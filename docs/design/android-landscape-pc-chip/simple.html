@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><title>가로 폰 PC 칩 — 세로 폰과 똑같이 (단순 시안)</title>
+<style>
+:root{--bg:#f9fafb;--surface:#fff;--ms:#eef0f4;--outline:#d7dbe1;--on:#13161c;--onm:#565b63;--primary:#bb4f0c;--work:#0a7e3a;--wait:#9a6000}
+*{box-sizing:border-box}
+body{margin:0;background:#e9ecf0;font-family:-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;color:var(--on);padding:24px 28px;width:1240px}
+h1{font-size:20px;margin:0 0 4px}
+.lead{margin:0 0 18px;color:var(--onm);font-size:14px}
+.row{display:flex;gap:36px;align-items:flex-start}
+.cap{font-size:13px;font-weight:700;margin:0 0 8px}
+.cap small{font-weight:500;color:var(--onm)}
+.dev{background:var(--bg);border:7px solid #1b1e23;border-radius:22px;overflow:hidden;display:flex;flex-direction:column;position:relative}
+.sb{height:24px;flex:none;display:flex;justify-content:space-between;align-items:center;padding:0 16px;font-size:12px;font-weight:600}
+.hd{height:48px;flex:none;display:flex;align-items:center;gap:8px;padding:0 12px;border-bottom:1px solid var(--outline);background:var(--bg)}
+.chip{display:flex;align-items:center;gap:4px;height:32px;padding:0 6px 0 8px;border:1px solid var(--outline);border-radius:12px;background:var(--surface);font-size:13px;font-weight:600;white-space:nowrap}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--work)}
+.car{font-size:9px;color:var(--onm)}
+.vbar{width:1px;height:22px;background:var(--outline)}
+.ttl{font-size:17px;font-weight:700}
+.sp{flex:1}
+.ib{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;color:var(--onm);font-size:16px}
+.body{flex:1;overflow:hidden;padding:10px 12px;display:flex;gap:10px}
+.colm{flex:1;min-width:0;background:var(--ms);border-radius:12px;padding:8px;display:flex;flex-direction:column;gap:6px}
+.colm h4{margin:0 0 2px;font-size:12px;color:var(--onm)}
+.card{background:var(--surface);border:1px solid var(--outline);border-radius:10px;padding:8px 10px;font-size:12px}
+.nav{flex:none;display:flex;align-items:center;border-top:1px solid var(--outline);background:var(--bg)}
+.nav .t{flex:1;text-align:center;font-size:11px;color:var(--onm)}
+.nav .t.on{color:var(--primary);font-weight:700}
+.mark{position:absolute;border:2.5px dashed var(--primary);border-radius:10px;pointer-events:none}
+.tag{position:absolute;background:var(--primary);color:#fff;font-size:11px;font-weight:700;padding:2px 7px;border-radius:6px;white-space:nowrap}
+.ruler{position:absolute;right:-64px;width:56px;border-left:2px solid var(--primary);font-size:12px;font-weight:700;color:var(--primary);display:flex;align-items:center;padding-left:6px}
+.note{margin-top:22px;background:#fff;border:1px solid var(--outline);border-radius:12px;padding:12px 18px;font-size:14px;line-height:1.65;max-width:1180px}
+.note b{color:var(--primary)}
+.mini{transform:scale(.5);transform-origin:0 0}
+</style></head><body>
+<h1>가로 폰도 세로 폰과 똑같이 — 제목 줄 안에 PC 칩</h1>
+<p class="lead">별도 PC 줄 없음. 세로 폰의 제목 줄(칩 · 구분선 · 화면 제목 · 오른쪽 단추)을 가로 폰에도 그대로 보여 줍니다. 라이트 모드, 화면: 업무.</p>
+<div class="row">
+  <div>
+    <p class="cap" style="margin-bottom:30px">가로 폰 (제안) <small>780 × 360dp</small></p>
+    <div style="position:relative;width:794px;height:374px;margin-right:70px">
+      <div class="dev" style="width:794px;height:374px">
+        <div class="sb"><span>9:41</span><span>▮▮ 82%</span></div>
+        <div class="hd"><div class="chip"><span class="dot"></span>회사 맥북<span class="car">▼</span></div><div class="vbar"></div><span class="ttl">업무</span><div class="sp"></div><div class="ib">🔔</div><div class="ib">✦</div><div class="ib">＋</div><div class="ib">?</div></div>
+        <div class="body">
+          <div class="colm"><h4>할 일 3</h4><div class="card">가로 화면 칩 시안</div><div class="card">4개 언어 안내 점검</div><div class="card">업데이트 소식 초안</div></div>
+          <div class="colm"><h4>하는 중 2</h4><div class="card">결재함 정리</div><div class="card">윈도우 빌드</div></div>
+          <div class="colm"><h4>검토 1</h4><div class="card">설정 화면 다듬기</div></div>
+          <div class="colm"><h4>끝남 4</h4><div class="card">알림 소리 수정</div></div>
+        </div>
+        <div class="nav" style="height:44px"><span class="t">사무실</span><span class="t">대화</span><span class="t on">업무</span><span class="t">결재함</span><span class="t">더보기</span></div>
+      </div>
+      <div class="mark" style="left:15px;top:35px;width:106px;height:40px"></div>
+      <div class="tag" style="left:15px;top:-22px">PC 칩 (세로 폰과 같은 자리·모양)</div>
+      <div class="ruler" style="top:31px;height:48px;right:-62px">48dp</div>
+    </div>
+  </div>
+  <div>
+    <p class="cap" style="margin-bottom:30px">세로 폰 (지금 모습, 비교용) <small>360 × 780dp · 50% 축소</small></p>
+    <div style="width:187px;height:397px;position:relative">
+      <div class="mini"><div class="dev" style="width:374px;height:794px">
+        <div class="sb"><span>9:41</span><span>▮▮ 82%</span></div>
+        <div class="hd"><div class="chip"><span class="dot"></span>회사 맥북<span class="car">▼</span></div><div class="vbar"></div><span class="ttl">업무</span><div class="sp"></div><div class="ib">🔔</div><div class="ib">?</div></div>
+        <div class="body" style="flex-direction:column">
+          <div class="colm" style="flex:none"><h4>할 일 3</h4><div class="card">가로 화면 칩 시안</div><div class="card">4개 언어 안내 점검</div><div class="card">업데이트 소식 초안</div></div>
+          <div class="colm" style="flex:none"><h4>하는 중 2</h4><div class="card">결재함 정리</div><div class="card">윈도우 빌드</div></div>
+        </div>
+        <div class="nav" style="height:64px"><span class="t">사무실</span><span class="t">대화</span><span class="t on">업무</span><span class="t">결재함</span><span class="t">더보기</span></div>
+      </div></div>
+      <div class="mark" style="left:8px;top:17px;width:44px;height:22px;border-width:2px"></div>
+    </div>
+  </div>
+</div>
+<div class="note">
+  <b>제목 줄 높이: 48dp</b> — 가로 폰 높이 360dp 중 상태 표시줄 24 + 제목 줄 48 + 아래 탭 줄 44를 빼면 내용 높이가 지금 244 → <b>196dp</b> (탭 줄이 있는 화면은 210 → 162dp).<br>
+  <b>전제</b>: 지금 가로 폰(높이 500dp 미만)에서는 제목 줄이 숨겨져 있습니다. 이 시안은 그 제목 줄을 가로에서도 다시 보이게 하는 것을 전제로 합니다. 칩 모양·자리는 세로 폰 그대로입니다.
+</div>
+</body></html>

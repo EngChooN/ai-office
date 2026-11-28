@@ -1,4 +1,5 @@
 import fs from 'node:fs'
+import { stripLanguageTurn } from './ai/languageRule.ts'
 import os from 'node:os'
 import path from 'node:path'
 import type { LogEntry } from '../shared/types'
@@ -50,7 +51,7 @@ export function readExternalDay(staffId: string, cwd: string, sessionId: string,
     const content = line.message?.content
     const isLogged = ts >= logSince
     if (isLogged && line.type === 'user' && typeof content === 'string' && !content.startsWith('<')) {
-      logs.push({ id: seq++, staffId, ts, type: 'instruction', text: content.slice(0, TEXT_MAX) })
+      logs.push({ id: seq++, staffId, ts, type: 'instruction', text: stripLanguageTurn(content).slice(0, TEXT_MAX) })
     }
     if (line.type === 'assistant') {
       // 한 API 응답이 블록마다 줄로 나뉘어 같은 usage가 반복되므로 requestId로 한 번만 센다
@@ -140,7 +141,7 @@ export function readCodexExternalDay(staffId: string, sessionId: string, since: 
     if (p.type === 'message') {
       const text = (p.content ?? []).map((c) => c.text ?? '').join('').trim()
       if (!text) continue
-      if (p.role === 'user' && !text.startsWith('<')) logs.push({ id: seq++, staffId, ts, type: 'instruction', text: text.slice(0, TEXT_MAX) })
+      if (p.role === 'user' && !text.startsWith('<')) logs.push({ id: seq++, staffId, ts, type: 'instruction', text: stripLanguageTurn(text).slice(0, TEXT_MAX) })
       if (p.role === 'assistant') logs.push({ id: seq++, staffId, ts, type: 'reply', text: text.slice(0, TEXT_MAX) })
     } else if ((p.type === 'function_call' || p.type === 'custom_tool_call') && p.name) {
       logs.push({ id: seq++, staffId, ts, type: 'tool', text: p.name })

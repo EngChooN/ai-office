@@ -334,6 +334,8 @@ function registerIpc() {
     win?.webContents.send('office:onLog', entry)
     remote?.publish('log', entry)
   })
+  // 직원이 쓰고 있는 답 글 — 자주 오므로 PC 화면만 받는다 (휴대폰은 다 쓴 기록(log)으로)
+  office.on('draft', (draft) => win?.webContents.send('office:onDraft', draft))
   // 결재 기록은 PC 화면만 받는다 (원본 명령이 들어 있어 휴대폰 스트림에는 보내지 않는다)
   office.on('approvalRecord', (r) => win?.webContents.send('office:onApprovalRecord', r))
   // 바탕화면 비서 창도 단체방 글을 받는다 (앱에서 보낸 글·직원의 중간 글을 펼침 창이 곧바로 다시 읽게)

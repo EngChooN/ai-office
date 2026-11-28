@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>직원 패널 기록 — 지시 줄 다듬기 시안</title>
+<style>
+/* 앱 라벤더 테마 토큰 그대로 (app/src/renderer/index.css) */
+[data-mode='light'] {
+  --background:#F6F5FB; --foreground:#221F33; --card:#FFFFFF; --primary:#6C5CE7; --muted:#ECEAF6;
+  --muted-foreground:#66627F; --border:#DEDAF0; --accent-a:#0B6DA1; --status-working:#1C7C46; --status-waiting:#9A5B00;
+}
+[data-mode='dark'] {
+  --background:#14131C; --foreground:#EDEBF8; --card:#201F2D; --primary:#9B8CFF; --muted:#292739;
+  --muted-foreground:#A7A3C4; --border:#34314A; --accent-a:#5CC8FF; --status-working:#4ADE80; --status-waiting:#F5B451;
+}
+* { box-sizing: border-box; }
+body { margin:0; background:var(--background); color:var(--foreground);
+  font-family:-apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Pretendard', 'Segoe UI', sans-serif; padding:28px; }
+h1 { font-size:18px; margin:0 0 4px; }
+.sub { color:var(--muted-foreground); font-size:12.5px; margin:0 0 20px; }
+.cols { display:flex; gap:28px; align-items:flex-start; }
+.col h2 { font-size:13px; margin:0 0 8px; color:var(--muted-foreground); font-weight:600; }
+.col h2 b { color:var(--foreground); }
+.panel { width:380px; background:var(--card); border:1px solid var(--border); border-radius:14px; padding:12px 14px; }
+.log { font-size:13px; line-height:1.55; display:flex; flex-direction:column; gap:8px; }
+.row { display:flex; gap:8px; }
+.time { width:3.4em; flex-shrink:0; color:var(--muted-foreground); font-variant-numeric:tabular-nums; }
+.kind { width:2.6em; flex-shrink:0; font-weight:500; color:var(--muted-foreground); }
+.kind.ok { color:var(--status-working); }
+.body { min-width:0; flex:1; word-break:break-word; }
+.body p { margin:0; white-space:pre-line; }
+
+/* ── 지금 (스크린샷 재현) ── */
+.before .row.ins { background:color-mix(in srgb, var(--primary) 10%, transparent); border:1px solid color-mix(in srgb, var(--primary) 60%, transparent);
+  border-left-width:2px; border-radius:6px; margin:2px -6px; padding:4px 6px 4px 4px; }
+.before .row.ins .kind { color:var(--primary); }
+
+/* ── 바꾼 뒤 ── */
+/* 줄 전체: 테두리 없이 은은한 배경 + 왼쪽 2px 선(옅게). 시각·종류 칸 폭과 간격은 다른 줄과 같다 */
+.after .row.ins { position:relative; margin:2px -6px; padding:6px 6px 6px 4px; border-radius:4px;
+  background:color-mix(in srgb, var(--primary) 5%, transparent); box-shadow:inset 2px 0 0 color-mix(in srgb, var(--primary) 45%, transparent); }
+[data-mode='dark'] .after .row.ins { background:color-mix(in srgb, var(--primary) 7%, transparent); }
+/* 종류 칸: 작은 배지 (글자 10.5px, 주 색 14% 바탕) — 칸 폭 2.6em 안에 들어간다 */
+.after .row.ins .kind { font-weight:600; }
+.badge { display:inline-block; font-size:10.5px; line-height:16px; padding:0 3px; margin-left:-3px; border-radius:4px; margin-top:2px;
+  color:var(--primary); background:color-mix(in srgb, var(--primary) 14%, transparent); letter-spacing:-.1px; white-space:nowrap; max-width:100%; overflow:hidden; }
+/* 머리 줄: 보낸 곳 칩 + 업무 제목 */
+.head { display:flex; flex-wrap:wrap; align-items:center; gap:4px 6px; margin-bottom:3px; }
+.chip { display:inline-flex; align-items:center; gap:4px; font-size:11px; line-height:18px; padding:0 7px 0 3px; border-radius:999px;
+  border:1px solid var(--border); background:var(--card); color:var(--muted-foreground); white-space:nowrap; }
+.chip .av { width:13px; height:13px; border-radius:50%; background:var(--accent-a); color:#fff; font-size:8.5px; display:grid; place-items:center; font-weight:700; }
+.chip.owner .av { background:var(--primary); }
+.chip.manual .av { background:var(--status-waiting); }
+.chip b { color:var(--foreground); font-weight:600; }
+.title { font-weight:600; font-size:12.5px; }
+/* 본문 4줄 접기 */
+.clamp { display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:4; overflow:hidden; }
+.more { margin-top:2px; font-size:11.5px; color:var(--primary); background:none; border:0; padding:0; cursor:pointer; font-weight:500; }
+/* 끝머리 '(끝나면 … 보고하세요)' → 작은 회색 안내 */
+.foot { margin-top:4px; font-size:11px; color:var(--muted-foreground); display:flex; align-items:center; gap:4px; }
+
+.langs { margin-top:26px; }
+.langs .panel { width:auto; display:flex; gap:22px; flex-wrap:wrap; }
+.langs .row { width:330px; }
+.note { margin-top:22px; font-size:12px; color:var(--muted-foreground); max-width:820px; line-height:1.6; }
+</style>
+</head>
+<body>
+<script>
+const mode = new URLSearchParams(location.search).get('mode') || 'dark'
+document.body.dataset.mode = mode
+</script>
+<h1>직원 패널 기록 — '지시' 줄 다듬기</h1>
+<p class="sub">라벤더 테마 · 패널 폭 380px(기본) · 기록 글자 13px · <span id="m"></span></p>
+
+<div class="cols">
+  <div class="col before">
+    <h2><b>지금</b> — 굵은 보라 테두리 상자</h2>
+    <div class="panel"><div class="log">
+      <div class="row"><span class="time">17:51</span><span class="kind">작업</span><div class="body">파일 읽기 · office.ts</div></div>
+      <div class="row ins"><span class="time">17:52</span><span class="kind">지시</span><div class="body"><p>[정리드의 도움 요청] [휴대폰 화면 확인] 폴더 /Users/pc-2311001/flitto/poc/claude-office (커밋 전 변경). 단체방에 직원이 일하는 도중 쓴 글이 그때그때 일반 메시지로 올라오고, 마지막 글은 '완료 보고'로 바뀌도록 고쳤습니다(같은 메시지 번호로 다시 보냄, app/src/main/office.ts postMidReply·postReports). 단체방의 '쓰는 중'은 이름만 한 줄로 바뀌었습니다.
+휴대폰 화면(원격 v2)에서 다음을 확인해 주세요.
+① 단체방 '질문시험방'에 직원 2명이 동시에 글을 올릴 때 깨지는 곳이 없는지
+② 마지막 글이 '완료 보고'로 바뀌는 게 새로고침 없이 반영되는지
+③ 짧은 글이 합쳐진 말풍선이 줄바꿈되는지
+완료 기준: 항목별 통과/실패와 근거, 휴대폰 화면 사진 1장. 코드는 고치지 말아 주세요.
+(끝나면 결과를 정리드에게 보고하세요)</p></div></div>
+      <div class="row"><span class="time">17:53</span><span class="kind">작업</span><div class="body">화면 캡처 · 휴대폰</div></div>
+      <div class="row ins"><span class="time">18:02</span><span class="kind">지시</span><div class="body"><p>버튼 색만 조금 더 진하게 해 주세요.</p></div></div>
+      <div class="row"><span class="time">18:04</span><span class="kind ok">보고</span><div class="body"><p>세 항목 모두 통과했습니다. 사진 1장 붙였습니다.</p></div></div>
+    </div></div>
+  </div>
+
+  <div class="col after">
+    <h2><b>바꾼 뒤</b> — 은은한 배경 · 얇은 선 · 배지 · 보낸 곳 칩 · 4줄 접기</h2>
+    <div class="panel"><div class="log">
+      <div class="row"><span class="time">17:51</span><span class="kind">작업</span><div class="body">파일 읽기 · office.ts</div></div>
+      <div class="row ins"><span class="time">17:52</span><span class="kind"><span class="badge">지시</span></span><div class="body">
+        <div class="head"><span class="chip"><span class="av">정</span><b>정리드</b>· 도움 요청</span><span class="title">휴대폰 화면 확인</span></div>
+        <p class="clamp">폴더 /Users/pc-2311001/flitto/poc/claude-office (커밋 전 변경). 단체방에 직원이 일하는 도중 쓴 글이 그때그때 일반 메시지로 올라오고, 마지막 글은 '완료 보고'로 바뀌도록 고쳤습니다(같은 메시지 번호로 다시 보냄, app/src/main/office.ts postMidReply·postReports). 단체방의 '쓰는 중'은 이름만 한 줄로 바뀌었습니다.
+휴대폰 화면(원격 v2)에서 다음을 확인해 주세요.</p>
+        <button class="more">더 보기 (7줄) ▾</button>
+        <div class="foot">↩ 끝나면 정리드에게 보고</div>
+      </div></div>
+      <div class="row"><span class="time">17:53</span><span class="kind">작업</span><div class="body">화면 캡처 · 휴대폰</div></div>
+      <div class="row ins"><span class="time">18:02</span><span class="kind"><span class="badge">지시</span></span><div class="body"><p>버튼 색만 조금 더 진하게 해 주세요.</p></div></div>
+      <div class="row"><span class="time">18:04</span><span class="kind ok">보고</span><div class="body"><p>세 항목 모두 통과했습니다. 사진 1장 붙였습니다.</p></div></div>
+    </div></div>
+  </div>
+
+  <div class="col after">
+    <h2><b>펼친 상태</b> · 다른 보낸 곳</h2>
+    <div class="panel"><div class="log">
+      <div class="row ins"><span class="time">17:52</span><span class="kind"><span class="badge">지시</span></span><div class="body">
+        <div class="head"><span class="chip"><span class="av">정</span><b>정리드</b>· 도움 요청</span><span class="title">휴대폰 화면 확인</span></div>
+        <p>폴더 /Users/pc-2311001/flitto/poc/claude-office (커밋 전 변경). 단체방에 직원이 일하는 도중 쓴 글이 그때그때 일반 메시지로 올라오고, 마지막 글은 '완료 보고'로 바뀌도록 고쳤습니다.
+휴대폰 화면(원격 v2)에서 다음을 확인해 주세요.
+① 단체방 '질문시험방'에 직원 2명이 동시에 글을 올릴 때 깨지는 곳이 없는지
+② 마지막 글이 '완료 보고'로 바뀌는 게 새로고침 없이 반영되는지
+③ 짧은 글이 합쳐진 말풍선이 줄바꿈되는지
+완료 기준: 항목별 통과/실패와 근거, 휴대폰 화면 사진 1장.</p>
+        <button class="more">접기 ▴</button>
+        <div class="foot">↩ 끝나면 정리드에게 보고</div>
+      </div></div>
+      <div class="row ins"><span class="time">18:10</span><span class="kind"><span class="badge">지시</span></span><div class="body">
+        <div class="head"><span class="chip"><span class="av">리</span><b>박리드</b>· 지시</span></div>
+        <p>디자인 시안 PNG를 docs 폴더에 정리해 주세요.</p>
+      </div></div>
+      <div class="row ins"><span class="time">18:12</span><span class="kind"><span class="badge">지시</span></span><div class="body">
+        <div class="head"><span class="chip manual"><span class="av">▤</span><b>매뉴얼</b>· 주간 보고</span></div>
+        <p>이번 주 것으로 작성해 주세요.</p>
+      </div></div>
+      <div class="row"><span class="time">18:13</span><span class="kind">작업</span><div class="body">파일 쓰기 · report.md</div></div>
+    </div></div>
+  </div>
+</div>
+
+<div class="langs after">
+  <h2 style="font-size:13px;margin:0 0 8px;color:var(--muted-foreground)">4개 언어 — 배지·칩·접기 문구가 칸 폭(2.6em) 안에 들어가는지</h2>
+  <div class="panel"><div class="log" style="flex-direction:row;flex-wrap:wrap;gap:12px 22px">
+    <div class="row ins"><span class="time">17:52</span><span class="kind"><span class="badge">지시</span></span><div class="body"><div class="head"><span class="chip"><span class="av">정</span><b>정리드</b>· 도움 요청</span></div><button class="more">더 보기 (7줄) ▾</button><div class="foot">↩ 끝나면 정리드에게 보고</div></div></div>
+    <div class="row ins"><span class="time">17:52</span><span class="kind"><span class="badge">Order</span></span><div class="body"><div class="head"><span class="chip"><span class="av">J</span><b>Jung</b>· Help request</span></div><button class="more">Show more (7 lines) ▾</button><div class="foot">↩ Report back to Jung when done</div></div></div>
+    <div class="row ins"><span class="time">17:52</span><span class="kind"><span class="badge">指示</span></span><div class="body"><div class="head"><span class="chip"><span class="av">정</span><b>チョン</b>· 助けの依頼</span></div><button class="more">もっと見る (7行) ▾</button><div class="foot">↩ 終わったらチョンに報告</div></div></div>
+    <div class="row ins"><span class="time">17:52</span><span class="kind"><span class="badge">指令</span></span><div class="body"><div class="head"><span class="chip"><span class="av">정</span><b>郑</b>· 求助</span></div><button class="more">展开 (7 行) ▾</button><div class="foot">↩ 完成后向 郑 汇报</div></div></div>
+  </div></div>
+</div>
+
+<p class="note">기준: 시각(3.4em)·종류(2.6em) 칸 폭과 8px 간격은 그대로 → 보고·작업 줄과 글 시작 위치가 같습니다. 바깥 테두리 상자를 없애고 왼쪽 2px 선(주 색 45%) + 바탕 주 색 5%(다크 7%)만 남겼습니다. 보낸 곳 칩은 '[○○의 도움 요청]·[○○의 지시]·[업무 매뉴얼: ○○]' 앞머리를 떼어 만들고, 이어지는 '[제목]'은 굵은 제목으로, 끝의 '(끝나면 결과를 ○○에게 보고하세요)'는 작은 회색 안내로 바꿉니다. 대표가 직접 쓴 지시(앞머리 없음)는 칩 없이 배지만 붙습니다.</p>
+<script>document.getElementById('m').textContent = mode === 'dark' ? '다크' : '라이트'</script>
+</body>
+</html>

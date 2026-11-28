@@ -1,6 +1,7 @@
 // /명령어: 직원 세션이 알려 준 명령 목록을 앱에서 쓸 것만 추리고, 보낸 글이 어떤 명령인지 판정한다
 // main(지시 전달)·PC 화면·휴대폰 자동완성이 같은 함수를 쓴다 (electron 없이 테스트한다)
 import type { Lang } from './i18n/index.ts'
+import { EFFORT_LEVELS, type EffortChoice } from './types.ts'
 
 /** 자동완성 한 줄 — 스냅샷 staffCommands[직원 id]로 PC 화면·휴대폰(remote v2)에 같이 간다 */
 export interface StaffCommand {
@@ -37,8 +38,10 @@ export const APP_BUILTINS = new Set([
   'model', 'effort', 'fast', 'advisor',
 ])
 
-/** 앱 설정으로 처리하는 명령 — /model은 직원 모델을 바꾸고, 나머지는 앱에 대응 설정이 없어 안내만 한다 (Claude 직원만) */
+/** 앱 설정으로 처리하는 명령 — /model은 직원 모델, /effort·/fast는 생각 깊이·빠른 모드를 바꾸고, /advisor는 대응 설정이 없어 안내만 한다 */
 export const SETTING_COMMANDS = new Set(['model', 'effort', 'fast', 'advisor'])
+/** Codex 직원도 쓰는 설정 명령 (모델은 Codex 목록이 달라 막는다) */
+const ENGINE_TUNING_COMMANDS = new Set(['effort', 'fast'])
 
 /** 세션이 인자 안내를 비워 보내지만 인자가 꼭 필요한 기본 명령 — 목록에서 Enter가 바로 보내지 않고 채우기만 하게 */
 const BUILTIN_HINTS: Record<string, string> = { goal: '<condition>' }
@@ -109,8 +112,8 @@ export function slashAction(text: string, raw: RawCommand[] = [], provider: 'cla
   const name = builtin?.name ?? typed
   if (CLEAR_ALIASES.has(name) && (builtin || name === 'clear')) return { kind: 'clear' }
   if (SETTING_COMMANDS.has(name)) {
-    // 설정 명령은 Claude 직원만 — Codex 직원에게는 앱이 모델을 따로 관리하므로 안내만. 목록 수신 전(raw 없음)에도 같게
-    if (provider === 'codex') return { kind: 'blocked', name: typed }
+    // Codex 직원은 생각 깊이·빠른 모드만 — 모델은 앱이 따로 관리하므로 안내만. 목록 수신 전(raw 없음)에도 같게
+    if (provider === 'codex') return ENGINE_TUNING_COMMANDS.has(name) ? { kind: 'setting', name: name as 'effort' | 'fast', args: parsed.args } : { kind: 'blocked', name: typed }
     if (builtin || !raw.length) return { kind: 'setting', name: name as 'model' | 'effort' | 'fast' | 'advisor', args: parsed.args }
   }
   if (BLOCKED_COMMANDS.has(name) && (builtin || !raw.some((c) => c.name === name))) return { kind: 'blocked', name: typed }
@@ -123,6 +126,23 @@ export const CLAUDE_MODEL_CHOICES = ['default', 'fable', 'opus', 'sonnet', 'haik
 export function parseModelArg(args: string): (typeof CLAUDE_MODEL_CHOICES)[number] | null {
   const v = args.trim().toLowerCase()
   return CLAUDE_MODEL_CHOICES.find((m) => m === v) ?? null
+}
+
+/** /effort 뒤 글 → 생각 깊이. 'default'·'auto'는 엔진 기본, 나머지는 EFFORT_LEVELS만 (대소문자 무관) */
+export const EFFORT_CHOICES: readonly EffortChoice[] = ['default', ...EFFORT_LEVELS]
+export function parseEffortArg(args: string): EffortChoice | null {
+  const v = args.trim().toLowerCase()
+  if (v === 'auto') return 'default'
+  return EFFORT_CHOICES.find((e) => e === v) ?? null
+}
+
+/** /fast 뒤 글 → 켬·끔. 비우면 'toggle', 모르는 값이면 null */
+export function parseFastArg(args: string): boolean | 'toggle' | null {
+  const v = args.trim().toLowerCase()
+  if (!v) return 'toggle'
+  if (v === 'on' || v === 'true' || v === '1') return true
+  if (v === 'off' || v === 'false' || v === '0') return false
+  return null
 }
 
 /**

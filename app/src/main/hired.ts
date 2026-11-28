@@ -20,6 +20,7 @@ import { computerPermissionNotice } from './computer'
 import { isNetworkError } from '../shared/networkError.ts'
 import { isHelperBarredTool, isHelpersOn } from '../shared/helpers.ts'
 import { createRuntime, modelIdFor, type AgentRuntime, type RateLimitInfo, type RuntimeEvent, type RuntimeMcpServer, type ToolDecision } from './ai'
+import type { RuntimeTuning } from './ai/types'
 
 const ACTIVITY_MAX = 80
 /** 인수인계 글이 차지하는 토큰 (직전 보고 상한 4000자 안팎) */
@@ -84,6 +85,8 @@ export interface HiredHooks {
   browserBlocked?(staffId: string): boolean
   /** 한가해졌을 때 공용 브라우저 락을 쥐었거나 막혀 있던 직원이면 놓고 true — 세션을 닫아 크롬을 끝내고 다음 지시 때 다시 연다 */
   releaseBrowser?(staffId: string): boolean
+  /** 직원이 쓰고 있는 답 글 (글자가 나오는 대로, 몰아서). 빈 글 = 다 썼거나 멈춤 */
+  draft?(staffId: string, text: string): void
   /** 세션 시작 시 덧붙이는 팀 맥락 */
   context(staffId: string): string
   /** 세션 시작 시 정하는 참고 문서: 프롬프트 안내와 결재 없이 읽을 경로 (둘이 어긋나지 않게 한 번에 받는다) */
@@ -100,6 +103,12 @@ export interface HiredHooks {
 
 /** 지시를 보낸 뒤 엔진에서 첫 이벤트가 이만큼 안 오면 멈춘 것으로 본다 / 끼어들기(interrupt) 응답을 이만큼 기다린 뒤 강제로 끊는다 (시험에서 줄여 쓴다) */
 export const stallTiming = { firstResponseMs: 5 * 60_000, interruptMs: 10_000 }
+
+/** 쓰고 있는 답 글을 화면에 보내는 간격 — 글자마다 보내지 않고 이만큼 모아 보낸다 */
+export const DRAFT_FLUSH_MS = 80
+
+/** 직원 설정 → 엔진의 생각 깊이·빠른 모드 */
+export const tuningOf = (s: Pick<Staff, 'effort' | 'fast'>): RuntimeTuning => ({ ...(s.effort ? { effort: s.effort } : {}), fast: s.fast === true })
 
 const OFFICE_TOOL_PREFIX = 'mcp__office__'
 const QUESTION_TOOL = 'AskUserQuestion'
@@ -135,6 +144,9 @@ class Worker {
   private backgroundTasks: string[] = []
   /** 지시를 보낸 뒤 첫 이벤트를 기다리는 감시 (이벤트가 하나라도 오면 풀린다) */
   private firstResponseTimer: ReturnType<typeof setTimeout> | null = null
+  /** 쓰고 있는 답 글 (다 쓰면 기록으로 남기고 비운다) */
+  private draft = ''
+  private draftTimer: ReturnType<typeof setTimeout> | null = null
 
   constructor(
     private staff: Staff,
@@ -203,6 +215,7 @@ class Worker {
     const pending = this.rt.backlog
     this.rt.dropQueued()
     this.rt.close()
+    this.clearDraft()
     this.hooks.update(this.staff.id, { status: 'error', activity: error.slice(0, ACTIVITY_MAX) })
     this.hooks.log(this.staff.id, 'error', error)
     this.hooks.failed(this.staff.id, error, pending)
@@ -263,6 +276,7 @@ class Worker {
       this.stopping = null
       this.isRunning = false
       this.hooks.log(this.staff.id, 'status', tk(followUp ? 'staff.err.forceClosed' : 'staff.err.forceStopped'))
+      this.clearDraft()
       if (!followUp) {
         this.rt.dropQueued()
         this.rt.close()
@@ -322,6 +336,31 @@ class Worker {
     this.closeSession()
   }
 
+  /** 생각 깊이·빠른 모드가 바뀜 — 세션을 닫지 않고 바로 (일하는 중이면 다음 모델 호출부터) */
+  retune() {
+    this.rt.setTuning(tuningOf(this.staff))
+  }
+
+  /** 답 글 조각을 모아 두었다가 DRAFT_FLUSH_MS마다 한 번 보낸다 */
+  private pushDraft(text: string) {
+    this.draft += text
+    if (this.draftTimer) return
+    this.draftTimer = setTimeout(() => {
+      this.draftTimer = null
+      if (this.draft) this.hooks.draft?.(this.staff.id, this.draft)
+    }, DRAFT_FLUSH_MS)
+    this.draftTimer.unref?.()
+  }
+
+  /** 다 쓴 글이 기록으로 가거나 턴이 끝나면 쓰고 있던 글을 지운다 */
+  private clearDraft() {
+    if (this.draftTimer) clearTimeout(this.draftTimer)
+    this.draftTimer = null
+    if (!this.draft) return
+    this.draft = ''
+    this.hooks.draft?.(this.staff.id, '')
+  }
+
   /** 다음 지시 때 새 설정으로 다시 열리도록 세션을 닫는다 (결재 대기는 취소) */
   private closeSession() {
     this.modelNow = this.staff.model
@@ -329,6 +368,7 @@ class Worker {
     for (const resolve of this.pending.values()) resolve({ behavior: 'deny', message: t('staff.deny.equip'), interrupt: true })
     this.pending.clear()
     this.rt.close()
+    this.clearDraft()
   }
 
   get isSessionOpen() {
@@ -340,6 +380,7 @@ class Worker {
     for (const resolve of this.pending.values()) resolve({ behavior: 'deny', message: t('staff.deny.fired'), interrupt: true })
     this.pending.clear()
     this.rt.dispose()
+    this.clearDraft()
   }
 
   /**
@@ -368,6 +409,7 @@ class Worker {
       modelId: this.modelId(this.modelNow),
       resumeId: s.sessionId,
       approvalMode: s.approvalMode === 'acceptEdits' ? 'acceptEdits' : 'ask',
+      tuning: tuningOf(s),
       systemPromptAppend: capPrompt([t('staff.identity', { name: s.name, role: s.role }), t('staff.language'), reportStyleRule(this.hooks.reportStyle?.()), this.hooks.context(s.id), refDocs.prompt, browserGuide, computerGuide, t('staff.captureGuide'), isHelpersOn(s) ? t('staff.helpers.guide') : '', capPrompt(s.systemPrompt, PERSONA_MAX)].filter(Boolean).join('\n'), PROMPT_MAX),
       mcpServers: { ...mcpServers, office: this.hooks.officeTools(s.id) },
       selectedMcp: s.equipment.mcpServers,
@@ -474,7 +516,9 @@ class Worker {
     const id = this.staff.id
     this.clearFirstResponseTimer() // 엔진이 응답했다
     // 다음 턴이 실제로 움직이기 시작했으면 이후 예외는 그 턴의 것이다
-    if (m.type === 'text' || m.type === 'fileTouched' || m.type === 'autoTurn') this.isErrorEchoExpected = false
+    if (m.type === 'text' || m.type === 'textDelta' || m.type === 'fileTouched' || m.type === 'autoTurn') this.isErrorEchoExpected = false
+    // 턴이 끝나면(성공·실패) 쓰다 만 글은 지운다 — 끝 보고는 기록으로 온다
+    if (m.type === 'error' || m.type === 'result') this.clearDraft()
     if (m.type === 'error') {
       this.isRunning = false
       // 받은 일은 office가 모두 정리한다 — 남은 입력이 출처 없이 다시 실행되지 않게 같이 버린다 (버린 수는 시작 전 몫이라 실패로 치지 않게 넘긴다)
@@ -518,8 +562,14 @@ class Worker {
       this.contextTokens = m.tokens
       return
     }
+    if (m.type === 'textDelta') {
+      this.pushDraft(m.text)
+      return
+    }
     if (m.type === 'text') {
+      // 다 쓴 글(단체방 메시지)을 먼저 보내고 '쓰는 중' 상자를 지운다 — 글이 잠깐 사라지는 틈이 없게
       this.hooks.log(id, 'reply', m.text)
+      this.clearDraft()
       this.hooks.update(id, { activity: m.text.replace(/\s+/g, ' ').slice(0, ACTIVITY_MAX) })
       return
     }
@@ -671,6 +721,10 @@ export class HiredStaffManager {
 
   restart(staffId: string) {
     this.workers.get(staffId)?.restart()
+  }
+
+  retune(staffId: string) {
+    this.workers.get(staffId)?.retune()
   }
 
   resetSession(staffId: string) {

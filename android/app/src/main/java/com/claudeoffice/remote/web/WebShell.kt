@@ -267,8 +267,12 @@ fun WebShell(
     }
 
     val config = LocalConfiguration.current
-    val isChipMode = chip != null && bridge.hasPcChip && bridge.isChipSlot && config.screenWidthDp < 600 && config.orientation == android.content.res.Configuration.ORIENTATION_PORTRAIT
-    SideEffect { onChipMode(isChipMode) }
+    // 폰(짧은 변 600dp 미만)이면 세로·가로 모두 제목 줄 안에 칩 — 태블릿은 예전 별도 줄
+    val isPortraitPhone = chip != null && config.smallestScreenWidthDp < 600
+    val isChipMode = isPortraitPhone && !failed && bridge.hasPcChip && bridge.isChipSlot
+    // 위 별도 PC 줄은 폰(세로·가로)에서 화면이 칩을 지원하거나 아직 ready 전(불러오는 중)이면 없앤다 — 팝업·직원 패널이 제목 줄을 덮어 칩이 잠시 숨어도 별도 줄로 되돌리지 않는다
+    val noSeparateBar = isPortraitPhone && !failed && (bridge.hasPcChip || !bridge.isReadySeen)
+    SideEffect { onChipMode(noSeparateBar) }
     DisposableEffect(Unit) { onDispose { onChipMode(false) } }
     var chipWidth by remember { mutableStateOf(0) }
     // 칩이 차지하는 폭(왼쪽 끝부터, dp)을 화면에 알려 제목 줄이 그만큼 비킨다. 칩을 안 그리면 0
@@ -460,6 +464,9 @@ private class Bridge(
     /** 화면이 제목 줄에 PC 칩 자리를 비워 줄 수 있는지 (ready의 features "pc-chip") */
     var hasPcChip by androidx.compose.runtime.mutableStateOf(false)
         private set
+    /** 이 화면에서 ready를 한 번이라도 받았는지 (불러오는 동안 별도 PC 줄이 깜빡이지 않게) */
+    var isReadySeen by androidx.compose.runtime.mutableStateOf(false)
+        private set
     /** 화면이 알린 "지금 칩 자리(왼쪽 위)에 제목 줄이 보인다" — 덮이면 false (ready마다 다시 알린다) */
     var isChipSlot by androidx.compose.runtime.mutableStateOf(false)
         private set
@@ -487,6 +494,7 @@ private class Bridge(
                 isReady = true
                 isImeByScreen = "ime" in r.features
                 hasPcChip = "pc-chip" in r.features
+                isReadySeen = true
                 isChipSlot = false
                 lastChip = -1
                 readyTick++
@@ -627,6 +635,7 @@ private class Bridge(
         lastIme = -1
         lastChip = -1
         hasPcChip = false
+        isReadySeen = false
         isChipSlot = false
         pendingBack?.complete(false)
         pendingBack = null

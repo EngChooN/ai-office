@@ -8,10 +8,17 @@ import type { Entry } from './index.ts'
 export default {
   // ── 시스템 프롬프트 ──
   'staff.language': {
-    ko: '앱 언어는 한국어입니다. 사용자와 팀원에게 하는 모든 대답과 보고는 한국어로 하세요.',
-    en: 'The app language is English. Write every reply and report to the user and teammates in English.',
-    ja: 'アプリの言語は日本語です。ユーザーやチームメンバーへの返答・報告はすべて日本語で行ってください。',
-    zh: '应用语言为简体中文。对用户和团队成员的所有回复与汇报都请使用简体中文。',
+    ko: '앱 언어는 한국어입니다. 사용자와 팀원에게 하는 모든 글은 한국어로 쓰세요: 최종 보고·질문·완료 글은 물론, 도구를 쓰는 사이사이에 남기는 짧은 진행 메모("~를 확인합니다" 같은 한 줄)도 반드시 한국어로 씁니다. 받은 지시나 제목·파일 내용이 영어여도 답은 한국어로 합니다. 코드·명령어·파일 경로·고유명사만 원문 그대로 둡니다.',
+    en: 'The app language is English. Write everything addressed to the user and teammates in English: final reports, questions and completion messages, and also the short progress notes you write between tool calls (one-liners like "Checking …"). If the instruction, title or file contents you received are in another language, still answer in English. Keep only code, commands, file paths and proper nouns as written.',
+    ja: 'アプリの言語は日本語です。ユーザーやチームメンバーに向けた文はすべて日本語で書いてください。最終報告・質問・完了メッセージはもちろん、ツールを使う合間に書く短い進捗メモ(「〜を確認します」のような一行)も必ず日本語にします。受け取った指示やタイトル・ファイルの内容が他の言語でも、返答は日本語で行います。コード・コマンド・ファイルパス・固有名詞だけは原文のままにします。',
+    zh: '应用语言为简体中文。所有写给用户和团队成员的内容都请使用简体中文:最终汇报、提问和完成消息,以及调用工具之间写的简短进度说明(如“正在检查……”这样的一行)也必须使用简体中文。即使收到的指示、标题或文件内容是其他语言,也用简体中文回答。只有代码、命令、文件路径和专有名词保持原文。',
+  },
+  // 지시마다 끝에 붙이는 한 줄 (영어 지시에 끌려가지 않게, 앱 언어를 바꿔도 열린 대화에 바로 반영)
+  'staff.languageTurn': {
+    ko: '(앱 언어: 한국어 — 진행 메모·보고·질문 모두 한국어로. 코드·명령어·경로·고유명사만 원문)',
+    en: '(App language: English — write progress notes, reports and questions in English. Keep only code, commands, paths and proper nouns as written)',
+    ja: '(アプリの言語:日本語 — 進捗メモ・報告・質問はすべて日本語で。コード・コマンド・パス・固有名詞のみ原文のまま)',
+    zh: '(应用语言:简体中文 — 进度说明、汇报和提问都用简体中文。仅代码、命令、路径和专有名词保持原文)',
   },
   // 보고 말투 — docs/design-refresh/plain-report/rules.md 2·3절을 줄인 문안. 형식·도구 사용은 그대로, 문장 스타일만
   'staff.reportStyle.easy': {

@@ -86,8 +86,8 @@ function PhoneTopBar() {
   const isSplitChat = useIsSplit() && view === 'chat'
   const chatRoom = useChatRoom()
   return (
-    // 가로 폰에서는 숨기고 같은 버튼을 아래 탭 줄 오른쪽에 둔다 (PhoneTabBar)
-    <header className="pc-header short:hidden split:h-[46px] flex h-12 shrink-0 items-center gap-2 border-b px-3">
+    // 가로 폰에서도 세로 폰처럼 제목 줄을 보인다 (PC 칩이 이 안에 들어간다)
+    <header className="pc-header split:h-[46px] flex h-12 shrink-0 items-center gap-2 border-b px-3">
       <span className="min-w-0 flex-1 truncate font-semibold">{labelOf(view)}</span>
       {/* 자동결재 표시가 뜨면 폭이 모자라 자금은 숨긴다 (상점·급여 명세서에 같은 값) */}
       {!isWorkMode && !isAuto && !isSplitChat && (
@@ -175,8 +175,6 @@ function PhoneTabBar() {
   const badges = useNavBadges()
   const isKeyboardOpen = useMobileUi((s) => s.isKeyboardOpen)
   const setMoreOpen = useMobileUi((s) => s.setMoreOpen)
-  const setHireOpen = useOffice((s) => s.setHireOpen)
-  const waitingCount = useOffice((s) => s.staff.filter((x) => x.status === 'waiting').length)
   const tabs = isWorkMode ? WORK_TABS : PHONE_TABS
   // 아래 탭에 이미 숫자가 보이는 화면(업무 보드 등)은 더보기 숫자에 다시 세지 않는다
   const moreViews = moreGroups(isWorkMode).flatMap((g) => visibleTabs(g, isWorkMode).map((x) => x.view)).filter((v) => !tabs.includes(v))
@@ -194,18 +192,6 @@ function PhoneTabBar() {
         return <Tab key={v} label={item.label} icon={<Icon className="size-5" />} isSelected={view === v} badge={badges[v]} onClick={() => setView(v)} tour={`nav-${v}`} />
       })}
       <Tab label={t('shell.more')} icon={<EllipsisIcon className="size-5" />} isSelected={isMoreSelected} badge={moreBadge} onClick={() => setMoreOpen(true)} tour="nav-more" />
-      {/* 가로 폰: 숨긴 상단 바의 확인 필요·직원 고용 */}
-      <div className="short:flex hidden shrink-0 items-center gap-1 border-l px-2">
-        {waitingCount > 0 && (
-          <Button size="sm" variant="outline" className="border-status-waiting text-status-waiting px-2" onClick={() => setView('inbox')} aria-label={t('shell.needsAttention', { n: waitingCount })}>
-            <BellIcon /> {waitingCount}
-          </Button>
-        )}
-        <Button size="icon" onClick={() => setHireOpen(true)} aria-label={t('shell.hire')}>
-          <UserPlusIcon />
-        </Button>
-        <HelpButton />
-      </div>
     </nav>
   )
 }

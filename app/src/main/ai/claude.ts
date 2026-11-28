@@ -4,6 +4,7 @@ import path from 'node:path'
 import fs from 'node:fs'
 import { app } from 'electron'
 import type { Query, SDKMessage, SDKUserMessage } from '@anthropic-ai/claude-agent-sdk'
+import { withLanguageTail, withLanguageTurn } from './languageRule.ts'
 import type { Attachment, ClaudeModel, HelperRun, ModelChoice } from '../../shared/types'
 import { helperEnded, helperStarted, isHelperTask, pruneEnded } from '../../shared/helpers.ts'
 import type { RawCommand } from '../../shared/slashCommands.ts'
@@ -13,7 +14,7 @@ import { contextOf } from '../sessionRotate'
 import { PendingSends } from './pendingSends'
 import { exeName } from '../platform'
 import { LoginWatch } from '../../shared/loginError.ts'
-import type { AgentRuntime, AiBackend, AskOptions, AskResult, RuntimeEvent, RuntimeStartOpts, SecretaryEvent, SecretaryRun, SecretaryRunOpts } from './types'
+import type { AgentRuntime, AiBackend, AskOptions, AskResult, RuntimeEvent, RuntimeStartOpts, RuntimeTuning, SecretaryEvent, SecretaryRun, SecretaryRunOpts } from './types'
 
 // SDK는 ESM 전용이라 externals로 두고 require(esm)로 불러온다
 export const sdk = createRequire(__filename)('@anthropic-ai/claude-agent-sdk') as typeof import('@anthropic-ai/claude-agent-sdk')
@@ -120,7 +121,7 @@ export class ClaudeRuntime implements AgentRuntime {
 
   send(text: string, attachments: Attachment[]) {
     const uuid = crypto.randomUUID()
-    const msg: SDKUserMessage = { type: 'user', message: { role: 'user', content: toContent(text, attachments) }, parent_tool_use_id: null, uuid }
+    const msg: SDKUserMessage = { type: 'user', message: { role: 'user', content: toContent(withLanguageTurn(text), attachments) }, parent_tool_use_id: null, uuid }
     this.pending.add(uuid)
     this.sentMsgs.set(uuid, msg)
     this.inbox.push(msg)
@@ -159,6 +160,11 @@ export class ClaudeRuntime implements AgentRuntime {
 
   setModel(modelId: string | undefined) {
     void this.q?.setModel(modelId)
+  }
+
+  /** 생각 깊이 null은 모델 기본으로 되돌린다. 빠른 모드는 앱 설정 그대로 */
+  setTuning(tuning: RuntimeTuning) {
+    this.q?.applyFlagSettings({ effortLevel: tuning.effort ?? null, fastMode: tuning.fast }).catch(() => {})
   }
 
   close() {
@@ -222,8 +228,13 @@ export class ClaudeRuntime implements AgentRuntime {
         model: o.modelId,
         resume: o.resumeId ?? undefined,
         permissionMode: o.approvalMode === 'acceptEdits' ? 'acceptEdits' : 'default',
-        systemPrompt: { type: 'preset', preset: 'claude_code', append: o.systemPromptAppend },
+        systemPrompt: { type: 'preset', preset: 'claude_code', append: withLanguageTail(o.systemPromptAppend) },
         settingSources: ['user', 'project', 'local'],
+        effort: o.tuning.effort,
+        // 빠른 모드는 앱 설정이 정한다 (사용자 설정 파일 값보다 앞선다)
+        settings: { fastMode: o.tuning.fast },
+        // 답 글을 글자가 나오는 대로 받는다 (stream_event → textDelta)
+        includePartialMessages: true,
         // 고용 직원 표시: 사용자 설정의 "질문 받기" hook이 이 세션은 건너뛴다 (질문은 canUseTool → 결재함·대신 답하기로)
         env: { ...process.env, [HIRED_ENV]: '1' },
         mcpServers: o.mcpServers,
@@ -283,6 +294,12 @@ export class ClaudeRuntime implements AgentRuntime {
   private translate(m: SDKMessage) {
     const emit = this.onEvent
     if (m.type === 'rate_limit_event') return emit({ type: 'rateLimit', info: m.rate_limit_info })
+    if (m.type === 'stream_event') {
+      // 직원 본인의 답 글만 (도우미 안의 글은 보고가 아니다)
+      const ev = m.event
+      if (m.parent_tool_use_id === null && ev.type === 'content_block_delta' && ev.delta.type === 'text_delta' && ev.delta.text) emit({ type: 'textDelta', text: ev.delta.text })
+      return
+    }
     if (m.type === 'system' && m.subtype === 'commands_changed') return emit({ type: 'commands', commands: m.commands })
     if (m.type === 'system' && m.subtype === 'background_tasks_changed') return emit({ type: 'backgroundTasks', tasks: m.tasks.filter((task) => !task.ambient).map((task) => task.description) })
     if (m.type === 'system' && m.subtype === 'task_started') {

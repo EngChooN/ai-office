@@ -45,6 +45,7 @@ import { chatWidthOf, CHIP_MIN_WIDTH, summarizeRoomPeople } from '@shared/chatRo
 import { ChatSlimBar } from './ChatSlimBar'
 import { GroupRoomAbout, GroupRoomDeleteButton } from './GroupRoomAbout'
 import { PopMenu, PopMenuItem } from '@/components/pop-menu'
+import { typingNames } from '@shared/midReply'
 
 const MENTION_MAX = 6
 const KIND_ORDER: MentionKind[] = ['all', 'team', 'lab', 'staff']
@@ -537,13 +538,31 @@ function ProgressLines({ room }: { room: string | undefined }) {
   const staff = useOffice((s) => s.staff)
   // 빠른 대화 임시 직원은 자기 빠른 대화 방에서만 보인다
   const working = useMemo(() => progressesForRoom(staff.filter((s) => s.kind === 'hired' && (countsAsStaff(s) || (s.isQuick && s.id === quickStaffIdOf(room)))), room), [staff, room])
+  const drafts = useOffice((s) => s.drafts)
   if (working.length === 0) return null
+  // 쓰는 글은 지금 하는 지시의 방에만 — 다른 방 지시가 대기로 섞여 보이는 방에는 안 띄운다
+  const writingOf = (s: (typeof working)[number]) => (s.status === 'working' && (staff.find((x) => x.id === s.id)?.progress?.room ?? undefined) === (room || undefined) ? drafts[s.id] : undefined)
+  // 글자가 흐르는 상자는 1:1 대화(빠른 대화 방)에서만. 단체방은 문단이 끝나면 메시지로 올라오고, 쓰는 동안은 이름만 한 줄로 (여러 명이어도 화면이 흔들리지 않게)
+  const isOneOnOne = Boolean(quickStaffIdOf(room))
+  const typing = isOneOnOne ? [] : working.filter((s) => writingOf(s)).map((s) => s.name)
   return (
     <div className="flex flex-col gap-1.5">
       {working.map((s) => (
-        <ProgressLine key={s.id} staff={s} progress={s.progress} variant="chat" />
+        <ProgressLine key={s.id} staff={s} progress={s.progress} variant="chat" writing={isOneOnOne ? writingOf(s) : undefined} />
       ))}
+      {typing.length > 0 && <TypingLine names={typing} />}
     </div>
+  )
+}
+
+/** 단체방 '쓰는 중' 표시 한 줄: "큐에이시험·정리드 쓰는 중…" (TYPING_NAMES_MAX명 넘으면 '외 N명') */
+function TypingLine({ names }: { names: string[] }) {
+  const { shown, rest } = typingNames(names)
+  const label = rest ? t('chat.typingMore', { names: shown.join('·'), count: rest }) : t('chat.typing', { names: shown.join('·') })
+  return (
+    <p aria-live="off" title={names.join(', ')} className="text-status-working min-w-0 truncate pl-7 text-xs font-medium">
+      <span className="animate-pulse">{label}</span>
+    </p>
   )
 }
 
@@ -615,11 +634,12 @@ const Bubble = memo(function Bubble({
             {m.isReport && ` · ${t('chat.report.label')}`}
           </span>
         )}
+        {/* 말풍선은 메신저처럼 줄바꿈 한 번도 그대로 보인다 (문단 안만 — 블록 사이 빈 줄은 늘리지 않게) */}
         {/* 기획안 확인 요청은 글 대신 카드로만 (같은 말을 두 번 보이지 않게) */}
         <div className={cn('group selectable relative max-w-full min-w-0 rounded-2xl px-3 py-2 text-sm', isMe ? 'bg-primary text-primary-foreground whitespace-pre-wrap' : 'bg-card border', m.plan && 'hidden')}>
           <BubbleMenu message={m} isMe={isMe} />
           {m.replyTo && <ReplyQuote reply={m.replyTo} isMe={isMe} />}
-          <FoldableText text={m.text}>{isMe ? <MeText text={m.text} targets={mentions} /> : <Markdown plugins={plugins}>{m.text}</Markdown>}</FoldableText>
+          <FoldableText text={m.text}>{isMe ? <MeText text={m.text} targets={mentions} /> : <Markdown plugins={plugins} className="[&_p]:whitespace-pre-line">{m.text}</Markdown>}</FoldableText>
           {m.attachments?.length ? (
             <div className="mt-2">
               <AttachmentView attachments={m.attachments} />

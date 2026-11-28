@@ -11,6 +11,31 @@ Writing rules
 - Leave out: internal or development matters, re-fixes of features added in the same version, how a security hole worked (if needed, one line on the result), minor wording or spacing tweaks.
 - Couldn't do it before → new feature; easier than before → improvement; was working wrongly → bug fix.
 
+## [1.10.0] - 2026-11-28
+
+### At a glance
+- **New** Christmas theme with falling snow
+- **New** Thinking depth and fast mode per staff
+- **New** Replies appear while staff are working
+- **Better** PC chip moves into the phone title row
+- **Fixed** A single tilde no longer strikes text
+
+The Christmas theme hasn't been checked in the real PC app window or on Windows, and the phone PC chip hasn't been checked on a real device.
+
+### New features
+- You can pick a "Christmas" theme in Settings, decorated with string lights, falling snow, snow-capped cards and red ribbon buttons.
+- In the staff panel, you can choose thinking depth and fast mode for each staff member. Changing them mid-task doesn't break the chat and takes effect from the next step. The /effort and /fast commands work too.
+- Text a staff member writes while working now appears in the group room right away instead of waiting for the final report. Short pieces join into one bubble, and "○○ typing…" shows while they write. In quick chat, the text appears as it is written.
+
+### Improvements
+- On phones, the PC chip now sits inside the title row in both portrait and landscape, and the separate PC row is gone. Tablets stay as before.
+- Instruction text in the staff panel drops the header and report-back line to show just the body, and folds when long.
+- Staff replies follow the app language more reliably, including the short progress notes they leave between steps.
+- Line breaks in chat bubbles show exactly as written.
+
+### Bug fixes
+- A single tilde (for example 80~100) no longer turns text into strikethrough. Strikethrough now needs two tildes.
+
 ## [1.9.0] - 2026-11-27
 
 ### At a glance

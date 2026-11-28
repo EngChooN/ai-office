@@ -75,7 +75,7 @@ const confirmText = (method: OfficeMethod, fallback: string) => {
   return key ? t(key) : fallback
 }
 
-const EVENT_NAME: Record<OfficeEvent, string> = { onSnapshot: 'snapshot', onLog: 'log', onApprovalRecord: 'approvalRecord', onChat: 'chat', onFocus: 'focus', onRemoteStatus: 'remoteStatus', onGalleryChanged: 'galleryChanged' }
+const EVENT_NAME: Record<OfficeEvent, string> = { onSnapshot: 'snapshot', onLog: 'log', onDraft: 'draft', onApprovalRecord: 'approvalRecord', onChat: 'chat', onFocus: 'focus', onRemoteStatus: 'remoteStatus', onGalleryChanged: 'galleryChanged' }
 
 /** JSON으로 보낼 인자: 끝에 붙은 undefined는 빼고(PC가 남는 인자를 거절), 중간 undefined는 null */
 export function normalizeArgs(args: unknown[]): unknown[] {

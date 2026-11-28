@@ -178,7 +178,7 @@ export const OFFICE_METHODS = [
   'secretaryOpened',
 ] as const satisfies readonly OfficeMethod[]
 
-export const OFFICE_EVENTS = ['onSnapshot', 'onLog', 'onApprovalRecord', 'onChat', 'onFocus', 'onRemoteStatus', 'onGalleryChanged'] as const satisfies readonly OfficeEvent[]
+export const OFFICE_EVENTS = ['onSnapshot', 'onLog', 'onDraft', 'onApprovalRecord', 'onChat', 'onFocus', 'onRemoteStatus', 'onGalleryChanged'] as const satisfies readonly OfficeEvent[]
 
 // 목록이 OfficeApi와 빠짐없이 같은지 컴파일 때 확인한다
 type MissingMethods = Exclude<OfficeMethod, (typeof OFFICE_METHODS)[number]>

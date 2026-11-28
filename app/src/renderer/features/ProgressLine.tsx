@@ -2,12 +2,13 @@ import type { Staff, StaffProgress } from '@shared/types'
 import { PROGRESS_LABEL, PROGRESS_STATUS } from '@shared/progressView'
 import { t } from '@shared/i18n'
 import { cn } from '@/lib/utils'
+import { Markdown } from '@/components/markdown'
 import { Avatar } from './StaffCard'
 import { STATUS_META } from './status'
 import { HelperPanel, HelpersToggle, useHelpersOpen } from '@/components/helper-badge'
 
-/** 지시를 받은 직원이 답하기 전까지의 상태 한 줄 (#9) — 대화방(chat)과 직원 패널 업무 탭(panel)이 같이 쓴다 */
-export function ProgressLine({ staff, progress, variant }: { staff: Pick<Staff, 'name' | 'avatar' | 'activity' | 'teamId' | 'provider' | 'equipment' | 'helpers'>; progress: StaffProgress; variant: 'chat' | 'panel' }) {
+/** 지시를 받은 직원이 답하기 전까지의 상태 한 줄 (#9) — 대화방(chat)과 직원 패널 업무 탭(panel)이 같이 쓴다. writing: 1:1 대화에서 쓰고 있는 답 글 (다 쓰면 진짜 말풍선으로 올라온다 — 단체방은 이름만 'OO 쓰는 중…') */
+export function ProgressLine({ staff, progress, variant, writing }: { staff: Pick<Staff, 'name' | 'avatar' | 'activity' | 'teamId' | 'provider' | 'equipment' | 'helpers'>; progress: StaffProgress; variant: 'chat' | 'panel'; writing?: string }) {
   // 도우미 N명과 함께 ▾ — 펼친 목록은 상태 줄 아래에 (폭이 320 미만이면 ×N, 줄을 감싼 @container 기준)
   const helpers = useHelpersOpen()
   const helperToggle = <HelpersToggle staff={staff} isOpen={helpers.isOpen} onToggle={helpers.toggle} />
@@ -29,6 +30,12 @@ export function ProgressLine({ staff, progress, variant }: { staff: Pick<Staff, 
         {helperToggle}
       </div>
       <HelperPanel staff={staff} isOpen={helpers.isOpen} className="mt-1 rounded-lg border" />
+      {writing && (
+        <div aria-live="off" title={t('tuning.writing')} className="bg-muted/50 mt-1.5 ml-7 rounded-lg border px-3 py-2 text-sm">
+          <span className="text-status-working mb-1 block animate-pulse text-[11px] font-medium">{t('tuning.writing')}</span>
+          <Markdown>{writing}</Markdown>
+        </div>
+      )}
       </div>
     )
   }

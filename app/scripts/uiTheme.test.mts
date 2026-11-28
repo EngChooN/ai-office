@@ -73,8 +73,8 @@ test('index.html 첫 페인트 스크립트가 resolveMode·sanitizeUi와 같은
 
 // ── index.css 토큰 세트 검사 (gen.mjs와 같은 WCAG 공식) ──
 // :root는 라벤더 다크 폴백과 같은 블록이라 세트가 값을 빼먹으면 다크 값이 라이트로 새어 든다 → 세트마다 직접 정의해야 한다
-// 특별 테마(레트로) 세트는 theme-retro.css에 따로 있다
-const CSS = ['index.css', 'theme-retro.css'].map((f) => fs.readFileSync(new URL(`../src/renderer/${f}`, import.meta.url), 'utf8')).join('\n')
+// 특별 테마(레트로·크리스마스) 세트는 theme-retro.css·theme-christmas.css에 따로 있다
+const CSS = ['index.css', 'theme-retro.css', 'theme-christmas.css'].map((f) => fs.readFileSync(new URL(`../src/renderer/${f}`, import.meta.url), 'utf8')).join('\n')
 const SETS = [...CSS.matchAll(/\[data-theme='(\w+)'\]\[data-mode='(light|dark)'\]\s*\{([^}]*)\}/g)].map(([, theme, mode, body]) => ({
   theme,
   mode,

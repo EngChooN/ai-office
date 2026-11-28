@@ -14,10 +14,11 @@ import { SECTION_ID } from './settingsSections'
 import { QuickApprovalToggle } from './QuickChat'
 import { PROVIDER_SECTION_ID, ProviderSection } from './ProviderCards'
 import { COMPANY_LEVELS, type DayNight, type HooksStatus, type Settings, type ThemeId } from '@shared/types'
-import { DARK_ONLY_THEMES, DEFAULT_UI_THEME, UI_THEME_GROUPS, type UiMode } from '@shared/uiTheme'
+import { DARK_ONLY_THEMES, DEFAULT_UI_THEME, swatchBackground, UI_THEME_GROUPS, type UiMode } from '@shared/uiTheme'
 import { CheckIcon } from 'lucide-react'
 import { moreTourCount } from './CoachTour'
 import { showToast } from '@/lib/toast'
+import { ChristmasThemePreview } from './ChristmasThemePreview'
 import { RetroThemePreview } from './RetroThemePreview'
 import { PET_OPACITY_RANGE, PET_SIZE_RANGE, petOpacity, petSize } from '@shared/deskPet'
 import { officeOf } from '@shared/officeLevel'
@@ -268,7 +269,7 @@ export function SettingsPage() {
                             onClick={() => update({ uiTheme: theme.id })}
                             className={cn('enabled:hover:bg-accent/50 focus-ring col-span-full flex min-w-0 items-center gap-3 rounded-2xl border p-3 text-left disabled:opacity-60', isOn && 'border-ring ring-ring ring-2')}
                           >
-                            <RetroThemePreview />
+                            {theme.id === 'christmas' ? <ChristmasThemePreview /> : <RetroThemePreview />}
                             <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                               <span className="text-sm font-semibold">{t(theme.labelKey)}</span>
                               <span className="text-muted-foreground text-xs">{t(theme.descKey)}</span>
@@ -292,7 +293,7 @@ export function SettingsPage() {
                           onClick={() => update({ uiTheme: theme.id })}
                           className={cn('enabled:hover:bg-accent/50 focus-ring flex min-w-0 items-center gap-3 rounded-2xl border p-3 text-left disabled:opacity-60', isOn && 'border-ring ring-ring ring-2')}
                         >
-                          <span className="size-10 shrink-0 rounded-full border border-black/10" style={{ background: `linear-gradient(135deg, ${theme.swatchFrom}, ${theme.swatchTo})` }} />
+                          <span className="size-10 shrink-0 rounded-full border border-black/10" style={{ background: swatchBackground(theme) }} />
                           <span className="truncate text-sm font-medium">{t(theme.labelKey)}</span>
                         </button>
                       )

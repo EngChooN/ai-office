@@ -152,6 +152,9 @@ export default {
   'chat.pending.sending': { ko: '보내는 중…', en: 'Sending…', ja: '送信中…', zh: '发送中…' },
   'chat.pending.failed': { ko: '보내지 못했어요', en: 'Could not send', ja: '送信できませんでした', zh: '发送失败' },
   'chat.pending.retry': { ko: '다시 보내기', en: 'Send again', ja: '再送信', zh: '重新发送' },
+  // 단체방 '쓰는 중' 표시 — 글은 문단이 끝나면 메시지로 올라오고, 쓰는 동안은 이름만
+  'chat.typing': { ko: '{names} 쓰는 중…', en: '{names} typing…', ja: '{names} 入力中…', zh: '{names} 正在输入…' },
+  'chat.typingMore': { ko: '{names} 외 {count}명 쓰는 중…', en: '{names} and {count} more typing…', ja: '{names} ほか{count}名 入力中…', zh: '{names} 等{count}人正在输入…' },
   // ── 여러 팀·프로젝트 단체방 ──
   'chat.group.listHeading': { ko: '단체방', en: 'Group rooms', ja: 'グループルーム', zh: '联合群' },
   'chat.group.tag': { ko: '단체방', en: 'Group', ja: 'グループ', zh: '联合群' },

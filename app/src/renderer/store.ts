@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { AUTO_APPROVE_OFF, companyFromXp, DEFAULT_SETTINGS, SECRETARY_FOCUS, SECRETARY_PAGE_FOCUS, viewFromFocus, withSettingsDefaults, type ChatMessage, type LogEntry, type Manual, type OfficeSnapshot } from '@shared/types'
+import { AUTO_APPROVE_OFF, companyFromXp, DEFAULT_SETTINGS, SECRETARY_FOCUS, SECRETARY_PAGE_FOCUS, viewFromFocus, withSettingsDefaults, type ChatMessage, type LogEntry, type Manual, type OfficeSnapshot, type StaffDraft } from '@shared/types'
 import { EMPTY_SHOP } from '@shared/economy'
 import { clampFloor } from '@shared/officeLevel'
 import { applyLanguage } from '@/lib/i18n'
@@ -89,6 +89,9 @@ interface OfficeState extends OfficeSnapshot {
   setActiveHint(id: string | null): void
   setQuickSecretaryOpen(open: boolean): void
   pushLog(entry: LogEntry): void
+  /** 직원이 쓰고 있는 답 글 (직원 id → 글). 다 쓰면 비운다 */
+  drafts: Record<string, string>
+  setDraft(draft: StaffDraft): void
   pushChat(m: ChatMessage): void
   /** 화면에 불러온 범위 밖의 대화(검색 결과 앞뒤)를 제자리에 끼워 넣는다 */
   mergeChat(list: ChatMessage[]): void
@@ -203,6 +206,14 @@ export const useOffice = create<OfficeState>((set) => ({
   setActiveHint: (activeHint) => set({ activeHint }),
   setQuickSecretaryOpen: (isQuickSecretaryOpen) => set({ isQuickSecretaryOpen }),
   pushLog: (entry) => set((s) => ({ liveLogs: [...s.liveLogs.slice(-LIVE_LOG_MAX + 1), entry] })),
+  drafts: {},
+  setDraft: ({ staffId, text }) =>
+    set((s) => {
+      if (text) return { drafts: { ...s.drafts, [staffId]: text } }
+      if (!(staffId in s.drafts)) return s
+      const { [staffId]: _, ...rest } = s.drafts
+      return { drafts: rest }
+    }),
   // 같은 id면 결재 결과로 바뀐 메시지 → 제자리에서 바꾼다. 방마다 최근 CHAT_MAX개
   pushChat: (m) => set((s) => ({ chat: appendChat(s.chat, m, CHAT_MAX) })),
   mergeChat: (list) =>
@@ -270,7 +281,7 @@ export function loadChatHistory() {
 
 /** main 프로세스 이벤트를 store에 연결한다 (앱 시작 시 1회) */
 export function connectOffice() {
-  const { setSnapshot, pushLog, pushChat, select } = useOffice.getState()
+  const { setSnapshot, pushLog, setDraft, pushChat, select } = useOffice.getState()
   void window.office.snapshot().then(setSnapshot)
   loadChatHistory()
   // 메뉴바 "비서에게 말하기"는 직원 대신 비서 표시가 온다 → 빠른 창
@@ -281,7 +292,7 @@ export function connectOffice() {
     else if (viewFromFocus(id)) useOffice.getState().setView(viewFromFocus(id) as View)
     else select(id)
   }
-  const offs = [window.office.onSnapshot(setSnapshot), window.office.onLog(pushLog), window.office.onChat(pushChat), window.office.onFocus(focus)]
+  const offs = [window.office.onSnapshot(setSnapshot), window.office.onLog(pushLog), window.office.onDraft(setDraft), window.office.onChat(pushChat), window.office.onFocus(focus)]
   return () => offs.forEach((off) => off())
 }
 

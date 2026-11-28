@@ -40,6 +40,7 @@ import recordDay from './recordDay.ts'
 import helpers from './helpers.ts'
 import workStatus from './workStatus.ts'
 import quickChat from './quickChat.ts'
+import tuning from './tuning.ts'
 
 export interface Entry {
   ko: string
@@ -49,7 +50,7 @@ export interface Entry {
 }
 
 /** 영역별 조각 (같은 키가 두 파일에 있으면 테스트가 잡는다) */
-export const DICT_PARTS = { common, settings, featuresA, featuresB, shell, game, main, staff, logs, update, tools, knowledge, pack, gallery, tutorial, board, secretary, sceneExport, autonomy, deskPet, artifact, peer, memory, guideHint, chatStatus, chatMessenger, tokenSaving, workspace, manualTemplates, manualStart, connect, roleInfo, staffCard, alertBar, orgCard, approvalTab, recordDay, officeMsg, helpers, workStatus, quickChat }
+export const DICT_PARTS = { common, settings, featuresA, featuresB, shell, game, main, staff, logs, update, tools, knowledge, pack, gallery, tutorial, board, secretary, sceneExport, autonomy, deskPet, artifact, peer, memory, guideHint, chatStatus, chatMessenger, tokenSaving, workspace, manualTemplates, manualStart, connect, roleInfo, staffCard, alertBar, orgCard, approvalTab, recordDay, officeMsg, helpers, workStatus, quickChat, tuning }
 
-export const DICT = { ...common, ...settings, ...featuresA, ...featuresB, ...shell, ...game, ...main, ...staff, ...logs, ...update, ...tools, ...knowledge, ...pack, ...gallery, ...tutorial, ...board, ...secretary, ...sceneExport, ...autonomy, ...deskPet, ...artifact, ...peer, ...memory, ...guideHint, ...chatStatus, ...chatMessenger, ...tokenSaving, ...workspace, ...manualTemplates, ...manualStart, ...connect, ...roleInfo, ...staffCard, ...alertBar, ...orgCard, ...approvalTab, ...recordDay, ...officeMsg, ...helpers, ...workStatus, ...quickChat } satisfies Record<string, Entry>
+export const DICT = { ...common, ...settings, ...featuresA, ...featuresB, ...shell, ...game, ...main, ...staff, ...logs, ...update, ...tools, ...knowledge, ...pack, ...gallery, ...tutorial, ...board, ...secretary, ...sceneExport, ...autonomy, ...deskPet, ...artifact, ...peer, ...memory, ...guideHint, ...chatStatus, ...chatMessenger, ...tokenSaving, ...workspace, ...manualTemplates, ...manualStart, ...connect, ...roleInfo, ...staffCard, ...alertBar, ...orgCard, ...approvalTab, ...recordDay, ...officeMsg, ...helpers, ...workStatus, ...quickChat, ...tuning } satisfies Record<string, Entry>
 export type TKey = keyof typeof DICT

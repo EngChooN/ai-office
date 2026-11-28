@@ -82,6 +82,7 @@ import {
 } from '../shared/types'
 import { recordBashWrite, recordWrite, WrittenStore, writtenWaitReason } from '../shared/writtenFiles'
 import { buildStaffActivity } from '../shared/staffActivity'
+import { bubbleText, canMerge, finishPlan, stripPosted, type MidBubble } from '../shared/midReply'
 import { clampRecordLimit, pageLogs, RECORD_PAGE, RECORD_RECENT } from '../shared/recordLogs'
 import { answersText } from '../shared/chatApproval'
 import { defaultProvider, ENGINE_NAME, engineUnsupportedMcp, fitEngineModel, isEngineMismatch } from '../shared/engineModel'
@@ -136,7 +137,7 @@ import { browserMcpConfig, createBrowserLock } from './browser'
 import { computerMcpConfig } from './computer'
 import { COMPUTER_EQUIPMENT, computerSummaryI18n } from '../shared/computerTools.ts'
 import { BROWSER_AUTO_TOOL, BROWSER_EQUIPMENT } from '../shared/browserTools.ts'
-import { CLAUDE_MODEL_CHOICES, parseModelArg, parseSlash, parseTranslations, pendingDescriptions, slashAction, toStaffCommands, translationPrompt, type RawCommand, type StaffCommand } from '../shared/slashCommands.ts'
+import { CLAUDE_MODEL_CHOICES, EFFORT_CHOICES, parseEffortArg, parseFastArg, parseModelArg, parseSlash, parseTranslations, pendingDescriptions, slashAction, toStaffCommands, translationPrompt, type RawCommand, type StaffCommand } from '../shared/slashCommands.ts'
 import { listManuals, removeManual, saveManual } from './manuals'
 import { cleanTitle, manualLabel, resolveTitle } from '../shared/manualName'
 import {
@@ -286,6 +287,10 @@ export class Office extends EventEmitter<{
   private textAskRetries = new Map<string, number>()
   /** 직원별로 마지막에 글 질문으로 올린 문장 — 같은 질문을 되풀이해 올리지 않는다 */
   private lastTextAsk = new Map<string, string>()
+  /** 직원별로 이번 일에서 마지막에 단체방에 올린 중간 글 말풍선 — 짧은 글 이어 붙이기와 최종 보고 겹침 판단에 쓴다 (결재·질문 카드가 끼면 비운다) */
+  private midBubble = new Map<string, MidBubble>()
+  /** 직원별로 이번 일에서 단체방에 올린 중간 글 전부 (방·글) — 최종 보고 앞부분이 이미 올린 글이면 떼어 낸다 (카드가 껴도 일이 끝날 때까지 둔다) */
+  private midPosted = new Map<string, { room: string; text: string }[]>()
   /** 플랜 한도 때문에 보류 중인 예약·기획 하위 업무 (다시 계산되므로 저장하지 않는다) */
   private heldJobs: (HeldItem & { parentId?: string })[] = []
   /** 대표가 "바로 시작"한 뒤 이 시각까지는 보류하지 않는다 */
@@ -412,7 +417,10 @@ export class Office extends EventEmitter<{
     this.isNetBack = opts.isNetBack ?? (async () => net.isOnline() && (await this.isApiReachable()))
     this.manager = new HiredStaffManager({
       update: (id, patch) => this.patch(id, patch),
-      log: (id, type, text) => this.log(id, type, text),
+      log: (id, type, text) => {
+        this.log(id, type, text)
+        if (type === 'reply' && typeof text === 'string') this.postMidReply(id, text)
+      },
       requestApproval: (a) => this.addApproval(a),
       autoDecide: (id, toolName, input, summary, questions) => this.autoDecide(id, toolName, input, summary, questions),
       noteWrite: (id, toolName, input) => this.noteWrite(id, toolName, input),
@@ -426,6 +434,7 @@ export class Office extends EventEmitter<{
       failed: (id, error, pending) => this.onFailed(id, error, pending),
       officeTools: (id) => this.officeTools(id),
       context: (id) => this.teamContext(id),
+      draft: (id, text) => this.emit('draft', { staffId: id, text }),
       saved: (id, tokens) => db.insertSaving(id, tokens),
       usage: (id, delta) => this.addTaskUsage(id, delta),
       workStarted: (id) => void this.recordWorkStart(id),
@@ -804,6 +813,8 @@ export class Office extends EventEmitter<{
     const queued = this.taskQueue.get(staffId) ?? []
     this.origins.set(staffId, [])
     this.clearWritten(staffId)
+    this.midBubble.delete(staffId)
+    this.midPosted.delete(staffId)
     this.taskQueue.set(staffId, [])
     this.settleFailed(staffId, error, origins, queued, { pending })
   }
@@ -838,6 +849,8 @@ export class Office extends EventEmitter<{
     if (!this.netParked.park(staffId, error, origins, this.taskQueue.get(staffId) ?? [])) return false
     this.origins.set(staffId, [])
     this.clearWritten(staffId)
+    this.midBubble.delete(staffId)
+    this.midPosted.delete(staffId)
     this.taskQueue.set(staffId, [])
     this.patch(staffId, { status: 'netWait', activity: '' })
     this.log(staffId, 'status', tk('log.netParked'))
@@ -1234,9 +1247,17 @@ export class Office extends EventEmitter<{
     if (patch.teamId !== undefined && patch.teamId !== s.teamId) {
       for (const t of this.teams.values()) if (t.leadId === staffId && t.id !== patch.teamId) this.updateTeam(t.id, { leadId: null })
     }
-    const { cwd, ...rest } = patch
+    const { cwd, effort, fast, ...rest } = patch
     Object.assign(s, rest)
     if (cwd !== undefined) s.ownCwd = cwd
+    // 생각 깊이·빠른 모드는 세션을 닫지 않고 바로 바꾼다 (없는 값 = 엔진 기본·끔)
+    if (effort !== undefined || fast !== undefined) {
+      if (effort === 'default') delete s.effort
+      else if (effort !== undefined) s.effort = effort
+      if (fast === false) delete s.fast
+      else if (fast) s.fast = true
+      this.manager.retune(staffId)
+    }
     // 이름·직무·모델·업무 지침은 세션을 열 때 정해지므로, 바뀌면 다음 지시부터 새 값으로 이어간다
     if (patch.systemPrompt !== undefined || patch.name !== undefined || patch.role !== undefined || patch.model !== undefined) this.manager.restart(staffId)
     this.scheduleEmit()
@@ -1365,8 +1386,10 @@ export class Office extends EventEmitter<{
     return true
   }
 
-  /** /model은 직원 모델을 기존 변경 경로(updateStaff)로 바꾸고, 앱에 대응 설정이 없는 /effort·/fast·/advisor는 안내만 한다. 알려 줄 글을 돌려준다 */
+  /** /model·/effort·/fast는 직원 설정을 기존 변경 경로(updateStaff)로 바꾸고, 앱에 대응 설정이 없는 /advisor는 안내만 한다. 알려 줄 글을 돌려준다 */
   private applySettingCommand(staffId: string, name: 'model' | 'effort' | 'fast' | 'advisor', args: string) {
+    if (name === 'effort') return this.applyEffortCommand(staffId, args)
+    if (name === 'fast') return this.applyFastCommand(staffId, args)
     if (name !== 'model') return t('slash.noSetting', { name })
     const choices = CLAUDE_MODEL_CHOICES.join(', ')
     const current = this.hired.get(staffId)?.model ?? 'default'
@@ -1376,6 +1399,24 @@ export class Office extends EventEmitter<{
     if (model === current) return t('slash.model.same', { model })
     this.updateStaff(staffId, { model })
     return t('slash.model.changed', { model })
+  }
+
+  private applyEffortCommand(staffId: string, args: string) {
+    const choices = EFFORT_CHOICES.join(', ')
+    const current = this.hired.get(staffId)?.effort ?? 'default'
+    if (!args.trim()) return t('slash.effort.current', { current, choices })
+    const effort = parseEffortArg(args)
+    if (!effort) return t('slash.effort.unknown', { arg: args.trim().slice(0, 40), current, choices })
+    this.updateStaff(staffId, { effort })
+    return t('slash.effort.changed', { effort })
+  }
+
+  private applyFastCommand(staffId: string, args: string) {
+    const parsed = parseFastArg(args)
+    if (parsed === null) return t('slash.fast.unknown', { arg: args.trim().slice(0, 40) })
+    const fast = parsed === 'toggle' ? !this.hired.get(staffId)?.fast : parsed
+    this.updateStaff(staffId, { fast })
+    return t(fast ? 'slash.fast.on' : 'slash.fast.off')
   }
 
   /** 앱 언어로 보여 줄 명령 설명 — 기본 명령은 사전, 나머지는 번역 캐시 (없으면 원문) */
@@ -1541,6 +1582,8 @@ export class Office extends EventEmitter<{
     const queued = this.taskQueue.get(staffId) ?? []
     this.origins.set(staffId, [])
     this.clearWritten(staffId)
+    this.midBubble.delete(staffId)
+    this.midPosted.delete(staffId)
     this.taskQueue.set(staffId, [])
     const taskIds = [...cardIdsOf(origins), ...queued.map((q) => q.taskId)]
     for (const id of taskIds) this.returnToTodo(id)
@@ -1903,6 +1946,10 @@ export class Office extends EventEmitter<{
     const room = rooms[0]
     this.origins.set(staffId, keep)
     this.clearWritten(staffId)
+    const mid = this.midBubble.get(staffId)
+    const posted = this.midPosted.get(staffId) ?? []
+    this.midBubble.delete(staffId)
+    this.midPosted.delete(staffId)
     const doneTask = origins.find((o) => o.kind === 'task')
     if (doneTask && doneTask.kind === 'task') this.lastDoneTask.set(staffId, doneTask.taskId)
     else this.lastDoneTask.delete(staffId)
@@ -1953,7 +2000,7 @@ export class Office extends EventEmitter<{
       for (const r of rooms) this.postChat(staffId, t('chat.runError', { error: summary.slice(0, 200) }), undefined, undefined, r)
       for (const o of origins) this.setDelivery(o.chatId, staffId, { state: 'error' })
       this.scheduleEmit()
-    } else this.postReports(staffId, s.name, summary, short, origins, rooms, reportTaskId, isAutoCheckTurn)
+    } else this.postReports(staffId, s.name, summary, short, origins, rooms, reportTaskId, isAutoCheckTurn, mid, posted)
     // 아직 답할 지시가 남았으면 다음 업무 카드는 그 답까지 마친 뒤에 맡긴다
     // 대표가 일하는 중에 보낸 대기 메시지가 다음 업무 카드보다 먼저다
     if (pending === 0 && !this.releaseWaiting(staffId)) {
@@ -1968,10 +2015,26 @@ export class Office extends EventEmitter<{
   }
 
   /** 정상으로 끝난 턴의 보고: 방마다 보고를 올리고, 지시 말풍선을 완료로, 안 읽은 보고·알림, 끝 글의 질문 카드 */
-  private postReports(staffId: string, name: string, summary: string, short: string, origins: Origin[], rooms: string[], reportTaskId: string | undefined, isAutoCheckTurn: boolean) {
+  private postReports(staffId: string, name: string, summary: string, short: string, origins: Origin[], rooms: string[], reportTaskId: string | undefined, isAutoCheckTurn: boolean, mid?: MidBubble, posted: readonly { room: string; text: string }[] = []) {
     const room = rooms[0]
-    // 여러 방의 지시를 한 턴에 처리했으면 같은 보고를 그 방들 각각에 올린다
-    const reports = new Map(rooms.map((r) => [r, this.postChat(staffId, summary.slice(0, TASK_RESULT_MAX) || t('notify.chatDone'), undefined, undefined, r, true, reportTaskId ? { taskId: reportTaskId } : {})]))
+    const meta = reportTaskId ? { taskId: reportTaskId } : {}
+    // 여러 방의 지시를 한 턴에 처리했으면 같은 보고를 그 방들 각각에 올린다.
+    // 마지막 중간 글이 보고 글 그대로면 같은 글을 또 올리지 않고 그 말풍선을 보고로 바꾼다 (이어 붙인 말풍선이면 끝 조각만 떼어 보고로)
+    const reportIn = (r: string): ChatMessage => {
+      const plan = finishPlan(mid, r, summary, posted.filter((p) => p.room === r).map((p) => p.text))
+      if (mid && plan.kind === 'promote') {
+        const m = db.markChatReport(mid.chatId, meta)
+        // 휴대폰도 같은 id로 갈아 끼우도록 'chat'으로 보낸다 (store가 id가 같으면 바꿔 넣는다)
+        if (m) return (this.emit('chat', m), m)
+      }
+      if (mid && plan.kind === 'trim') {
+        const m = db.updateChatText(mid.chatId, plan.text)
+        if (m) this.emit('chat', m)
+      }
+      const text = plan.kind === 'post' ? plan.text : summary
+      return this.postChat(staffId, text.slice(0, TASK_RESULT_MAX) || t('notify.chatDone'), undefined, undefined, r, true, meta)
+    }
+    const reports = new Map(rooms.map((r) => [r, reportIn(r)]))
     for (const o of origins) this.setDelivery(o.chatId, staffId, { state: 'done', reportId: (reports.get(this.originRoomOf(o, room)) ?? reports.get(room)!).id })
     // 대표에게 올린 보고 — 직원 카드에 안 읽은 개수로 쌓인다 (패널을 열어 두었으면 화면이 곧바로 읽음 처리한다)
     this.unreadReports = addUnread(this.unreadReports, staffId)
@@ -2129,6 +2192,8 @@ export class Office extends EventEmitter<{
     if (requester) a = { ...a, requestedBy: requester.name }
     s.approvals = [...s.approvals, a]
     this.persistApproval(a)
+    // 카드 앞의 중간 글은 이미 방에 올라가 있다 — 카드 뒤의 글이 그 말풍선에 붙거나 최종 보고로 바뀌어 카드 위로 올라가지 않게 끊는다
+    this.midBubble.delete(s.id)
     if (a.questions) {
       this.patch(s.id, { status: 'waiting', activity: t('officeMsg.waitAnswer') })
       this.postChat(s.id, t('officeMsg.question', { summary: a.summary }).slice(0, CHAT_TEXT_MAX), undefined, { id: a.id })
@@ -5419,6 +5484,33 @@ ${m.summary}`, teamId: this.teamOf(chair.id)?.id ?? null, labId: lab?.id ?? null
     const m = db.insertChat(from, text, attachments, approval, room, isReport, meta)
     this.emit('chat', m)
     return m
+  }
+
+  /**
+   * 일하는 중 다 쓴 글 하나를 지금 일의 방에 일반 메시지로 올린다 (최종 보고를 기다리지 않고 주고받는 느낌으로).
+   * 짧은 글이 이어지면 직전 말풍선에 붙이고, 마지막 글이 최종 보고와 같으면 끝날 때 그 말풍선을 보고로 바꾼다 (postReports)
+   */
+  private postMidReply(staffId: string, text: string) {
+    if (!text.trim() || !this.hired.has(staffId)) return
+    const room = this.roomOf(staffId)
+    // Codex는 앞서 쓴 문단을 다음 글에 다시 붙여 쓰기도 한다 — 이미 올린 앞부분은 떼고, 같은 글이면 또 올리지 않는다
+    const posted = (this.midPosted.get(staffId) ?? []).filter((p) => p.room === room).map((p) => p.text.trim())
+    text = stripPosted(text, posted)
+    if (posted.includes(text)) return
+    const prev = this.midBubble.get(staffId)
+    if (canMerge(prev, room, db.lastChatId(room), text)) {
+      const pieces = [...prev.pieces, text]
+      const m = db.updateChatText(prev.chatId, bubbleText(pieces))
+      if (m) {
+        this.midBubble.set(staffId, { ...prev, pieces })
+        this.midPosted.set(staffId, [...(this.midPosted.get(staffId) ?? []), { room, text }])
+        this.emit('chat', m)
+        return
+      }
+    }
+    const m = this.postChat(staffId, text.trim().slice(0, TASK_RESULT_MAX), undefined, undefined, room)
+    this.midBubble.set(staffId, { chatId: m.id, room, pieces: [text] })
+    this.midPosted.set(staffId, [...(this.midPosted.get(staffId) ?? []), { room, text }])
   }
 
   /** 내가 보낸 대화방 지시의 처리 상태를 받은 직원 몫만 고친다 (chatId가 없으면 대화방 지시가 아니다) */

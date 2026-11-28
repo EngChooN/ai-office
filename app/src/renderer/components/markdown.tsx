@@ -77,7 +77,8 @@ function CodeBlock({ children }: { children?: ReactNode }) {
   )
 }
 
-const REMARK_PLUGINS = [remarkGfm, remarkCjkFriendly]
+// 물결표 하나(80~100mg)는 범위 표시라 취소선으로 보지 않는다 — 취소선은 ~~두 개~~만
+const REMARK_PLUGINS: NonNullable<Options['remarkPlugins']> = [[remarkGfm, { singleTilde: false }], remarkCjkFriendly]
 
 // 인터넷에서 받은 글(새 버전 소식)은 글자만 — 링크·이미지·화면 이동 링크는 글자만 남긴다
 const UNTRUSTED_ELEMENTS = ['p', 'ul', 'ol', 'li', 'strong', 'em', 'del', 'code', 'blockquote', 'br']

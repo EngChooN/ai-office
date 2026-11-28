@@ -56,6 +56,17 @@
 - 바탕화면 비서(`deskPet.ts` `petTargets`)·보드·비서(`secretary.ts`)·원격(`remote/v2.ts`)이 단체방을 인식. 시험: `collabApproval`·`collabPairs`·`chatRooms`·`helpRequest` 등.
 
 
+## [1.10.0] - 2026-11-28
+
+### 새 기능
+- 크리스마스 테마: `renderer/theme-christmas.css`, `features/ChristmasThemePreview.tsx`, `shared/uiTheme.ts`(`swatchBackground`), 시험 `themeChristmas.test.mts`.
+- 생각 깊이·빠른 모드: `Staff.effort`·`fast`(DB 열 `effort`·`fast` 추가), `RuntimeTuning`·`setTuning`(세션을 닫지 않고 적용), `/effort`·`/fast`(Codex 포함), `TuningControls.tsx`. 시험 `engineTuning.test.mts`.
+- 중간 글 단체방 게시: `shared/midReply.ts`·`office.ts postMidReply`(짧은 글 이어 붙이기, 최종 보고와 겹치면 승격·떼기), `textDelta`·`draft` 훅(1:1 글자 흐름, 단체방은 쓰는 중 한 줄). 시험 `midReply.test.mts`.
+
+### 개선
+- 휴대폰 PC 칩: `WebShell.kt` 폰(짧은 변 600dp 미만) 세로·가로 모두 제목 줄 안, 별도 PC 줄 제거. 화면 `PhoneShell.tsx`, 문서 `specs/android-bridge.md`.
+- 지시 글 머리말·보고 안내 접기 `shared/instructionHead.ts`(시험 `instructionHead.test.mts`), 언어 규칙 `ai/languageRule.ts`(시험 `languageRule.test.mts`), 말풍선 줄바꿈 유지, 마크다운 `singleTilde: false`.
+
 ## [1.9.0] - 2026-11-27
 
 ### 새 기능

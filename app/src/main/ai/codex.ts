@@ -1,4 +1,5 @@
 import path from 'node:path'
+import { withLanguageTail, withLanguageTurn } from './languageRule.ts'
 import fs from 'node:fs'
 import { spawn, type ChildProcessByStdio } from 'node:child_process'
 import type { Readable, Writable } from 'node:stream'
@@ -10,10 +11,10 @@ import { exeName } from '../platform'
 import { codexMcpConfig } from './codexMcp'
 import { codexAssets, codexQuery, codexSlash, type CodexSlash, codexSkillRoots, parseRateLimits, parseSkills, skillsAsCommands } from './codexAssets'
 import { codexCostUsd } from './codexPricing'
-import { approvalResponse, approvalSettings, approvalTool, newCodexState, pickModel, shellNetworkArgs, toolOfItem, translateNotification, CODEX_APPROVAL_METHODS, type CodexState } from './codexEvents'
+import { approvalResponse, approvalSettings, approvalTool, newCodexState, tuningParams, modelDefaultEffort, pickModel, shellNetworkArgs, toolOfItem, translateNotification, CODEX_APPROVAL_METHODS, type CodexState } from './codexEvents'
 import { t } from '../../shared/i18n/index.ts'
 import { editNeedsAsk } from '../../shared/autoApprove.ts'
-import type { AgentRuntime, RuntimeEvent, RuntimeStartOpts } from './types'
+import type { AgentRuntime, RuntimeEvent, RuntimeStartOpts, RuntimeTuning } from './types'
 
 /** Codex app-server 패키지 폴더 (bin/codex-app-server + bin/codex-code-mode-host + codex-path/rg).
  * 설치본: Resources/codex. 개발: AI_OFFICE_CODEX_DIR 또는 app/vendor/codex/<플랫폼>-<arch> (scripts/fetch-codex.mts 가 받는다) */
@@ -55,6 +56,9 @@ export class CodexRuntime implements AgentRuntime {
   private inbox: { text: string; attachments: Attachment[]; slash?: CodexSlash }[] = []
   private opts: RuntimeStartOpts | null = null
   private modelId: string | undefined
+  private tuning: RuntimeTuning = { fast: false }
+  /** 지금 모델의 기본 생각 깊이 ('기본'으로 되돌릴 때 명시해 보낸다) */
+  private defaultEffort: string | undefined
   private state: CodexState = newCodexState()
   private threadId: string | null = null
   private turnId: string | null = null
@@ -111,6 +115,11 @@ export class CodexRuntime implements AgentRuntime {
     this.modelId = modelId
   }
 
+  /** 다음 turn/start부터 — 턴마다 명시해 보낸다 */
+  setTuning(tuning: RuntimeTuning) {
+    this.tuning = tuning
+  }
+
   close() {
     this.generation++
     for (const a of this.aborts) a.abort()
@@ -152,6 +161,7 @@ export class CodexRuntime implements AgentRuntime {
   start(o: RuntimeStartOpts) {
     this.opts = o
     this.modelId = o.modelId
+    this.tuning = o.tuning
     this.state = newCodexState(o.modelId)
     const gen = this.generation
     try {
@@ -227,7 +237,7 @@ export class CodexRuntime implements AgentRuntime {
     const settings = { cwd: o.cwd, model, ...approvalSettings(o.approvalMode) }
     let r = o.resumeId ? await this.call('thread/resume', { threadId: o.resumeId, ...settings }) : null
     // 이어받을 기록이 사라졌으면 새 대화로 시작한다 (새 id가 init으로 알려지고 누적 기준이 초기화된다)
-    if (!r || r.error) r = await this.call('thread/start', { ...settings, developerInstructions: o.systemPromptAppend })
+    if (!r || r.error) r = await this.call('thread/start', { ...settings, developerInstructions: withLanguageTail(o.systemPromptAppend) })
     if (!live()) return
     const thread = (r.result as { thread?: { id?: string } } | undefined)?.thread
     if (!thread?.id) return this.failed(gen, new Error(r.error?.message ?? '대화를 열지 못했습니다'))
@@ -239,8 +249,10 @@ export class CodexRuntime implements AgentRuntime {
   /** model/list에서 모델을 골라 항상 명시한다 (목록을 못 받으면 요청값 그대로, 없으면 Codex 기본) */
   private async resolveModel(wanted: string | undefined) {
     const r = await this.call('model/list', {})
-    const data = (r.result as { data?: { id: string; isDefault?: boolean; hidden?: boolean }[] } | undefined)?.data
-    return data?.length ? pickModel(data, wanted) : wanted
+    const data = (r.result as { data?: { id: string; isDefault?: boolean; hidden?: boolean; defaultReasoningEffort?: string }[] } | undefined)?.data
+    const model = data?.length ? pickModel(data, wanted) : wanted
+    this.defaultEffort = data ? modelDefaultEffort(data, model) : undefined
+    return model
   }
 
   private async pump() {
@@ -253,7 +265,7 @@ export class CodexRuntime implements AgentRuntime {
     this.state.model = model
     const r = next.slash
       ? await this.call(next.slash.method, { threadId: this.threadId, ...next.slash.params })
-      : await this.call('turn/start', { threadId: this.threadId, model, input: toCodexInput(next.text, next.attachments) })
+      : await this.call('turn/start', { threadId: this.threadId, model, ...tuningParams(this.tuning, this.defaultEffort), input: toCodexInput(withLanguageTurn(next.text), next.attachments) })
     if (gen !== this.generation) return
     if (next.slash && !r.error) return this.afterSlash(next.slash, r)
     if (r.error) {

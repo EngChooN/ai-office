@@ -86,7 +86,8 @@ test('스코프: 모든 규칙이 [data-theme=retro] 아래 (글꼴 등록만 �
 const DARK = `${SCOPE}[data-mode='dark']`
 
 test('다크 전용: 레트로를 고르면 모드 설정과 상관없이 다크, 다른 테마는 설정 그대로', () => {
-  assert.deepEqual([...DARK_ONLY_THEMES], ['retro'])
+  // 크리스마스도 다크 전용 (scripts/themeChristmas.test.mts)
+  assert.deepEqual([...DARK_ONLY_THEMES], ['retro', 'christmas'])
   for (const mode of UI_MODES) {
     for (const dark of [true, false]) assert.equal(resolveMode(themeMode('retro', mode), dark), 'dark')
     assert.equal(themeMode('lavender', mode), mode)
@@ -107,12 +108,12 @@ test('테마 목록 동기화: 첫 페인트 스크립트(index·remote)에 레�
   for (const file of ['index.html', 'remote.html']) assert.ok(read(file).includes(UI_THEME_IDS.join('|')), `${file} 테마 목록`)
 })
 
-test('창 배경: windowBg가 레트로 --background·--foreground와 같고, 다른 테마는 예전 값 그대로', () => {
+test('창 배경: windowBg가 레트로 --background·--foreground와 같고, 다른 테마(다크 전용 특별 테마 빼고)는 예전 값 그대로', () => {
   const body = block(RETRO, DARK)
   for (const mode of ['light', 'dark'] as const) {
     assert.equal(windowBg('retro', mode).background, token(body, '--background'))
     assert.equal(windowBg('retro', mode).symbol, token(body, '--foreground'))
-    for (const id of UI_THEME_IDS.filter((x) => x !== 'retro')) assert.deepEqual(windowBg(id, mode), WINDOW_BG[mode])
+    for (const id of UI_THEME_IDS.filter((x) => !DARK_ONLY_THEMES.includes(x))) assert.deepEqual(windowBg(id, mode), WINDOW_BG[mode])
   }
 })
 
